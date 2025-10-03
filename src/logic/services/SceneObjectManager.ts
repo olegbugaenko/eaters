@@ -35,7 +35,7 @@ export interface SceneCameraState {
 
 const DEFAULT_SIZE: SceneSize = { width: 50, height: 50 };
 const DEFAULT_COLOR: SceneColor = { r: 1, g: 1, b: 1, a: 1 };
-const MIN_MAP_SIZE = 1000;
+const MIN_MAP_SIZE = 2000;
 const MAX_SCALE = 4;
 
 export class SceneObjectManager {
