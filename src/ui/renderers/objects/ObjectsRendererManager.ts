@@ -262,6 +262,10 @@ export class ObjectsRendererManager {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : undefined,
         color: instance.data.color ? { ...instance.data.color } : undefined,
+        rotation:
+          typeof instance.data.rotation === "number"
+            ? instance.data.rotation
+            : undefined,
       },
     };
   }

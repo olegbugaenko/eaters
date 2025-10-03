@@ -8,13 +8,21 @@ import {
   DynamicPrimitive,
   StaticPrimitive,
   VERTEX_COMPONENTS,
+  transformObjectPoint,
 } from "../objects/ObjectRenderer";
 
 interface CirclePrimitiveOptions {
-  position: SceneVector2;
+  center: SceneVector2;
   radius: number;
   color: SceneColor;
   segments?: number;
+  rotation?: number;
+  offset?: SceneVector2;
+}
+
+interface DynamicCircleOptions {
+  segments?: number;
+  offset?: SceneVector2;
 }
 
 const DEFAULT_SEGMENTS = 24;
@@ -176,20 +184,31 @@ export const createStaticCirclePrimitive = (
 ): StaticPrimitive => {
   const segments = options.segments ?? DEFAULT_SEGMENTS;
   const alpha = resolveAlpha(options.color);
+  const center = transformObjectPoint(
+    options.center,
+    options.rotation,
+    options.offset
+  );
   return {
-    data: buildCircleData(options.position, options.radius, options.color, alpha, segments),
+    data: buildCircleData(center, options.radius, options.color, alpha, segments),
   };
 };
 
 export const createDynamicCirclePrimitive = (
   instance: SceneObjectInstance,
-  segments = DEFAULT_SEGMENTS
+  options: DynamicCircleOptions = {}
 ): DynamicPrimitive => {
-  const position = instance.data.position;
+  const segments = options.segments ?? DEFAULT_SEGMENTS;
   const color = getColor(instance.data.color);
   let radius = getRadiusFromSize(instance.data.size, 0);
   const alpha = resolveAlpha(color);
-  const data = buildCircleData(position, radius, color, alpha, segments);
+  const data = buildCircleData(
+    getCenter(instance, options.offset),
+    radius,
+    color,
+    alpha,
+    segments
+  );
 
   return {
     data,
@@ -199,7 +218,7 @@ export const createDynamicCirclePrimitive = (
       const nextRadius = getRadiusFromSize(target.data.size, radius);
       const changed = updateCircleData(
         data,
-        target.data.position,
+        getCenter(target, options.offset),
         nextRadius,
         nextColor,
         nextAlpha,
@@ -209,4 +228,15 @@ export const createDynamicCirclePrimitive = (
       return changed ? data : null;
     },
   };
+};
+
+const getCenter = (
+  instance: SceneObjectInstance,
+  offset: SceneVector2 | undefined
+): SceneVector2 => {
+  return transformObjectPoint(
+    instance.data.position,
+    instance.data.rotation,
+    offset
+  );
 };

@@ -19,6 +19,7 @@ export interface SceneObjectData {
   position: SceneVector2;
   size?: SceneSize;
   color?: SceneColor;
+  rotation?: number;
 }
 
 export interface SceneObjectInstance {
@@ -35,6 +36,7 @@ export interface SceneCameraState {
 
 const DEFAULT_SIZE: SceneSize = { width: 50, height: 50 };
 const DEFAULT_COLOR: SceneColor = { r: 1, g: 1, b: 1, a: 1 };
+const DEFAULT_ROTATION = 0;
 const MIN_MAP_SIZE = 2000;
 const MAX_SCALE = 4;
 
@@ -64,6 +66,7 @@ export class SceneObjectManager {
         position: { ...data.position },
         size: data.size ? { ...data.size } : { ...DEFAULT_SIZE },
         color: data.color ? { ...data.color } : { ...DEFAULT_COLOR },
+        rotation: normalizeRotation(data.rotation),
       },
     };
     this.objects.set(id, instance);
@@ -90,6 +93,12 @@ export class SceneObjectManager {
         : instance.data.color
         ? { ...instance.data.color }
         : { ...DEFAULT_COLOR },
+      rotation:
+        typeof data.rotation === "number"
+          ? normalizeRotation(data.rotation)
+          : typeof instance.data.rotation === "number"
+          ? normalizeRotation(instance.data.rotation)
+          : DEFAULT_ROTATION,
     };
     if (this.added.has(id)) {
       this.added.set(id, instance);
@@ -286,6 +295,10 @@ export class SceneObjectManager {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
         color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
+        rotation:
+          typeof instance.data.rotation === "number"
+            ? normalizeRotation(instance.data.rotation)
+            : DEFAULT_ROTATION,
       },
     };
   }
@@ -303,3 +316,18 @@ const clamp = (value: number, min: number, max: number): number => {
   }
   return value;
 };
+
+function normalizeRotation(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DEFAULT_ROTATION;
+  }
+  if (value === 0) {
+    return 0;
+  }
+  const twoPi = Math.PI * 2;
+  const normalized = value % twoPi;
+  if (normalized === 0) {
+    return 0;
+  }
+  return normalized < 0 ? normalized + twoPi : normalized;
+}

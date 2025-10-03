@@ -10,6 +10,7 @@ import {
 
 const CIRCLE_SIZE_FACTOR = 0.4;
 const INNER_COLOR_LIGHTNESS = 0.85;
+const INNER_OFFSET_FACTOR = 0.25;
 
 const resolveColor = (color: SceneColor | undefined): SceneColor => {
   if (!color) {
@@ -38,18 +39,26 @@ export class BrickObjectRenderer extends ObjectRenderer {
     const radius = (Math.min(size.width, size.height) * CIRCLE_SIZE_FACTOR) / 2;
     const color = resolveColor(instance.data.color);
     const innerColor = createInnerColor(color);
+    const rotation = instance.data.rotation ?? 0;
+    const innerOffset = {
+      x: -size.width * INNER_OFFSET_FACTOR,
+      y: 0,
+    };
 
     return {
       staticPrimitives: [
         createStaticRectanglePrimitive({
-          position: instance.data.position,
+          center: instance.data.position,
           size,
           color,
+          rotation,
         }),
         createStaticCirclePrimitive({
-          position: instance.data.position,
+          center: instance.data.position,
           radius,
           color: innerColor,
+          rotation,
+          offset: innerOffset,
         }),
       ],
       dynamicPrimitives: [],
