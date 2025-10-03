@@ -5,16 +5,24 @@ import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
 import { BRICK_COUNT_BRIDGE_KEY } from "../../../logic/modules/BricksModule";
 import {
   SceneCameraState,
-  SceneObjectInstance,
   SceneObjectManager,
 } from "../../../logic/services/SceneObjectManager";
+import { createObjectsRendererManager } from "../../renderers/objects";
 import { Button } from "../../shared/Button";
 import "./SceneScreen.css";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
+uniform vec2 u_cameraPosition;
+uniform vec2 u_viewportSize;
+
+vec2 toClip(vec2 world) {
+  vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
+  return vec2(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0);
+}
+
 void main() {
-  gl_Position = vec4(a_position, 0.0, 1.0);
+  gl_Position = vec4(toClip(a_position), 0.0, 1.0);
 }
 `;
 
@@ -68,77 +76,6 @@ const createProgram = (
   }
   return program;
 };
-
-const EMPTY_GEOMETRY = new Float32Array(0);
-
-const buildGeometry = (
-  objects: readonly SceneObjectInstance[],
-  camera: SceneCameraState
-): Float32Array => {
-  if (objects.length === 0) {
-    return EMPTY_GEOMETRY;
-  }
-
-  const data: number[] = [];
-  const viewLeft = camera.position.x;
-  const viewTop = camera.position.y;
-  const viewRight = viewLeft + camera.viewportSize.width;
-  const viewBottom = viewTop + camera.viewportSize.height;
-
-  objects.forEach((object) => {
-    const { position, size } = object.data;
-    const width = size?.width ?? 0;
-    const height = size?.height ?? 0;
-    const halfWidth = width / 2;
-    const halfHeight = height / 2;
-
-    const leftWorld = position.x - halfWidth;
-    const rightWorld = position.x + halfWidth;
-    const topWorld = position.y - halfHeight;
-    const bottomWorld = position.y + halfHeight;
-
-    if (
-      rightWorld < viewLeft ||
-      leftWorld > viewRight ||
-      bottomWorld < viewTop ||
-      topWorld > viewBottom
-    ) {
-      return;
-    }
-
-    const left = toClipX(leftWorld, camera);
-    const right = toClipX(rightWorld, camera);
-    const top = toClipY(topWorld, camera);
-    const bottom = toClipY(bottomWorld, camera);
-
-    data.push(
-      left,
-      bottom,
-      right,
-      bottom,
-      left,
-      top,
-      left,
-      top,
-      right,
-      bottom,
-      right,
-      top
-    );
-  });
-
-  if (data.length === 0) {
-    return EMPTY_GEOMETRY;
-  }
-
-  return new Float32Array(data);
-};
-
-const toClipX = (value: number, camera: SceneCameraState): number =>
-  clamp(((value - camera.position.x) / camera.viewportSize.width) * 2 - 1, -1, 1);
-
-const toClipY = (value: number, camera: SceneCameraState): number =>
-  clamp(1 - ((value - camera.position.y) / camera.viewportSize.height) * 2, -1, 1);
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -212,17 +149,35 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
     const program = createProgram(gl, vertexShader, fragmentShader);
 
-    const positionBuffer = gl.createBuffer();
-    if (!positionBuffer) {
-      throw new Error("Unable to create buffer");
+    const staticBuffer = gl.createBuffer();
+    const dynamicBuffer = gl.createBuffer();
+    if (!staticBuffer || !dynamicBuffer) {
+      throw new Error("Unable to create buffers");
     }
+
+    const objectsRenderer = createObjectsRendererManager();
 
     gl.useProgram(program);
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    const enableAttributes = (buffer: WebGLBuffer) => {
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(positionLocation);
+      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    };
+
+    const cameraPositionLocation = gl.getUniformLocation(
+      program,
+      "u_cameraPosition"
+    );
+    const viewportSizeLocation = gl.getUniformLocation(
+      program,
+      "u_viewportSize"
+    );
+
+    if (!cameraPositionLocation || !viewportSizeLocation) {
+      throw new Error("Unable to resolve camera uniforms");
+    }
 
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.enable(gl.BLEND);
@@ -237,6 +192,30 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       inside: false,
     };
 
+    const applySync = () => {
+      const sync = objectsRenderer.consumeSyncInstructions();
+      if (sync.staticData) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, sync.staticData, gl.STATIC_DRAW);
+      }
+      if (sync.dynamicData) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, sync.dynamicData, gl.DYNAMIC_DRAW);
+      } else if (sync.dynamicUpdates.length > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
+        sync.dynamicUpdates.forEach(({ offset, data }) => {
+          gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            offset * Float32Array.BYTES_PER_ELEMENT,
+            data
+          );
+        });
+      }
+    };
+
+    objectsRenderer.applyChanges(scene.flushChanges());
+    applySync();
+
     const render = (timestamp: number) => {
       if (previousTime === null) {
         previousTime = timestamp;
@@ -247,13 +226,32 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       applyCameraMovement(pointerState, scene, deltaMs, canvas.width, canvas.height);
 
       const cameraState = scene.getCamera();
-      const geometry = buildGeometry(scene.getObjects(), cameraState);
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, geometry, gl.DYNAMIC_DRAW);
+      const changes = scene.flushChanges();
+      objectsRenderer.applyChanges(changes);
+      applySync();
+
       gl.clear(gl.COLOR_BUFFER_BIT);
-      if (geometry.length > 0) {
-        gl.drawArrays(gl.TRIANGLES, 0, geometry.length / 2);
-      }
+      gl.uniform2f(
+        cameraPositionLocation,
+        cameraState.position.x,
+        cameraState.position.y
+      );
+      gl.uniform2f(
+        viewportSizeLocation,
+        cameraState.viewportSize.width,
+        cameraState.viewportSize.height
+      );
+
+      const drawBuffer = (buffer: WebGLBuffer, vertexCount: number) => {
+        if (vertexCount <= 0) {
+          return;
+        }
+        enableAttributes(buffer);
+        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+      };
+
+      drawBuffer(staticBuffer, objectsRenderer.getStaticVertexCount());
+      drawBuffer(dynamicBuffer, objectsRenderer.getDynamicVertexCount());
 
       if (!cameraEquals(cameraState, cameraInfoRef.current)) {
         setCameraInfo(cameraState);
@@ -323,7 +321,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     return () => {
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
-      gl.deleteBuffer(positionBuffer);
+      gl.deleteBuffer(staticBuffer);
+      gl.deleteBuffer(dynamicBuffer);
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
