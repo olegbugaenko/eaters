@@ -14,6 +14,7 @@ export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
 
 interface BrickData {
   position: SceneVector2;
+  rotation: number;
 }
 
 interface BricksModuleOptions {
@@ -54,6 +55,7 @@ export class BricksModule implements GameModule {
     return {
       bricks: this.bricks.map((brick) => ({
         position: { ...brick.position },
+        rotation: brick.rotation,
       })),
     } satisfies BrickSaveData;
   }
@@ -87,6 +89,7 @@ export class BricksModule implements GameModule {
       ) {
         sanitized.push({
           position: this.clampToMap(brick.position),
+          rotation: sanitizeRotation((brick as BrickData).rotation),
         });
       }
     });
@@ -101,6 +104,7 @@ export class BricksModule implements GameModule {
     for (let i = 0; i < count; i += 1) {
       bricks.push({
         position: this.getRandomPosition(),
+        rotation: Math.random() * Math.PI * 2,
       });
     }
 
@@ -111,13 +115,15 @@ export class BricksModule implements GameModule {
     this.clearSceneObjects();
     this.bricks = bricks.map((brick) => ({
       position: this.clampToMap(brick.position),
+      rotation: sanitizeRotation(brick.rotation),
     }));
 
     this.bricks.forEach((brick) => {
       const id = this.options.scene.addObject("brick", {
         position: brick.position,
         size: { ...BRICK_SIZE },
-        color: { r: 1, g: 1, b: 1, a: 1 },
+        color: { r: 0.5, g: 0.5, b: 0.4, a: 1 },
+        rotation: brick.rotation,
       });
       this.objectIds.add(id);
     });
@@ -158,4 +164,11 @@ const clamp = (value: number, min: number, max: number): number => {
     return min;
   }
   return Math.min(Math.max(value, min), max);
+};
+
+const sanitizeRotation = (value: number | undefined): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  return Math.random() * Math.PI * 2;
 };

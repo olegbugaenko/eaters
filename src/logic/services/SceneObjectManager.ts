@@ -19,6 +19,7 @@ export interface SceneObjectData {
   position: SceneVector2;
   size?: SceneSize;
   color?: SceneColor;
+  rotation?: number;
 }
 
 export interface SceneObjectInstance {
@@ -35,6 +36,7 @@ export interface SceneCameraState {
 
 const DEFAULT_SIZE: SceneSize = { width: 50, height: 50 };
 const DEFAULT_COLOR: SceneColor = { r: 1, g: 1, b: 1, a: 1 };
+const DEFAULT_ROTATION = 0;
 const MIN_MAP_SIZE = 2000;
 const MAX_SCALE = 4;
 
@@ -42,6 +44,10 @@ export class SceneObjectManager {
   private objects = new Map<string, SceneObjectInstance>();
   private ordered: SceneObjectInstance[] = [];
   private idCounter = 0;
+
+  private added = new Map<string, SceneObjectInstance>();
+  private updated = new Map<string, SceneObjectInstance>();
+  private removed = new Set<string>();
 
   private mapSize: SceneSize = { width: MIN_MAP_SIZE, height: MIN_MAP_SIZE };
   private screenSize: SceneSize = { width: MIN_MAP_SIZE, height: MIN_MAP_SIZE };
@@ -60,10 +66,13 @@ export class SceneObjectManager {
         position: { ...data.position },
         size: data.size ? { ...data.size } : { ...DEFAULT_SIZE },
         color: data.color ? { ...data.color } : { ...DEFAULT_COLOR },
+        rotation: normalizeRotation(data.rotation),
       },
     };
     this.objects.set(id, instance);
     this.ordered.push(instance);
+    this.added.set(id, instance);
+    this.updated.delete(id);
     return id;
   }
 
@@ -84,7 +93,21 @@ export class SceneObjectManager {
         : instance.data.color
         ? { ...instance.data.color }
         : { ...DEFAULT_COLOR },
+      rotation:
+        typeof data.rotation === "number"
+          ? normalizeRotation(data.rotation)
+          : typeof instance.data.rotation === "number"
+          ? normalizeRotation(instance.data.rotation)
+          : DEFAULT_ROTATION,
     };
+    if (this.added.has(id)) {
+      this.added.set(id, instance);
+      return;
+    }
+    if (this.removed.has(id)) {
+      return;
+    }
+    this.updated.set(id, instance);
   }
 
   public removeObject(id: string): void {
@@ -96,12 +119,34 @@ export class SceneObjectManager {
     if (index >= 0) {
       this.ordered.splice(index, 1);
     }
+    if (this.added.delete(id)) {
+      this.updated.delete(id);
+      this.removed.delete(id);
+      return;
+    }
+    this.updated.delete(id);
+    this.removed.add(id);
   }
 
   public clear(): void {
+    const knownIds = new Set<string>();
+    for (const id of this.objects.keys()) {
+      knownIds.add(id);
+    }
+    for (const id of this.added.keys()) {
+      knownIds.add(id);
+    }
+    for (const id of this.updated.keys()) {
+      knownIds.add(id);
+    }
     this.objects.clear();
     this.ordered.length = 0;
     this.idCounter = 0;
+    this.added.clear();
+    this.updated.clear();
+    for (const id of knownIds) {
+      this.removed.add(id);
+    }
     this.resetCamera();
   }
 
@@ -111,6 +156,26 @@ export class SceneObjectManager {
 
   public getObjects(): readonly SceneObjectInstance[] {
     return this.ordered;
+  }
+
+  public flushChanges(): {
+    added: SceneObjectInstance[];
+    updated: SceneObjectInstance[];
+    removed: string[];
+  } {
+    const added = Array.from(this.added.values()).map((instance) =>
+      this.cloneInstance(instance)
+    );
+    const updated = Array.from(this.updated.values()).map((instance) =>
+      this.cloneInstance(instance)
+    );
+    const removed = Array.from(this.removed.values());
+
+    this.added.clear();
+    this.updated.clear();
+    this.removed.clear();
+
+    return { added, updated, removed };
   }
 
   public getMapSize(): SceneSize {
@@ -221,6 +286,22 @@ export class SceneObjectManager {
     const clampedY = clamp(this.camera.position.y, 0, maxY);
     this.camera.position = { x: clampedX, y: clampedY };
   }
+
+  private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {
+    return {
+      id: instance.id,
+      type: instance.type,
+      data: {
+        position: { ...instance.data.position },
+        size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
+        color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
+        rotation:
+          typeof instance.data.rotation === "number"
+            ? normalizeRotation(instance.data.rotation)
+            : DEFAULT_ROTATION,
+      },
+    };
+  }
 }
 
 const clamp = (value: number, min: number, max: number): number => {
@@ -235,3 +316,18 @@ const clamp = (value: number, min: number, max: number): number => {
   }
   return value;
 };
+
+function normalizeRotation(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DEFAULT_ROTATION;
+  }
+  if (value === 0) {
+    return 0;
+  }
+  const twoPi = Math.PI * 2;
+  const normalized = value % twoPi;
+  if (normalized === 0) {
+    return 0;
+  }
+  return normalized < 0 ? normalized + twoPi : normalized;
+}

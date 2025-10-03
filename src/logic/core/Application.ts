@@ -6,6 +6,7 @@ import { GameLoop } from "../services/GameLoop";
 import { TestTimeModule } from "../modules/TestTimeModule";
 import { SceneObjectManager } from "../services/SceneObjectManager";
 import { BricksModule } from "../modules/BricksModule";
+import { BulletModule } from "../modules/BulletModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -31,8 +32,13 @@ export class Application {
       bridge: this.dataBridge,
     });
 
+    const bulletModule = new BulletModule({
+      scene: sceneObjects,
+    });
+
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
+    this.registerModule(bulletModule);
   }
 
   public initialize(): void {
