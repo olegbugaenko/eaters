@@ -19,3 +19,4 @@ src/ - source files of the project
 Use prettier
 Use types
 Use shared styles and components as much as possible.
+UI should not work directly with logic, as well as logic with UI. We need to build and utilize interaction standart
