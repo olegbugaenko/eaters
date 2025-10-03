@@ -1,0 +1,16 @@
+.scene-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.scene-screen canvas {
+  border: 2px solid #1f6feb;
+  border-radius: 0.5rem;
+}
+
+.scene-overlay {
+  text-align: center;
+}
