@@ -69,15 +69,15 @@ const WAVE_START_ALPHA = 0.85;
 const WAVE_END_ALPHA = 0;
 
 const DEFAULT_EMITTER_OPTIONS: ParticleEmitterOptions = {
-  emissionDurationMs: 1_200,
-  particlesPerSecond: 160,
-  baseSpeed: 0.25,
-  speedVariation: 0.15,
+  emissionDurationMs: 700,
+  particlesPerSecond: 260,
+  baseSpeed: 0.1,
+  speedVariation: 0.05,
   particleLifetimeMs: 1_400,
   fadeStartMs: 700,
-  sizeRange: { min: 10, max: 26 },
-  spawnRadius: { min: 0, max: 24 },
-  color: { r: 1, g: 0.55, b: 0.15, a: 1 },
+  sizeRange: { min: 1, max: 2 },
+  spawnRadius: { min: 0, max: 12 },
+  color: { r: 1, g: 0.85, b: 0.55, a: 1 },
 };
 
 const WAVE_GRADIENT_STOPS = [
