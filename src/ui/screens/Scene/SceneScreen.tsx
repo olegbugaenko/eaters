@@ -7,14 +7,21 @@ import {
   SceneCameraState,
   SceneObjectManager,
 } from "../../../logic/services/SceneObjectManager";
-import { createObjectsRendererManager } from "../../renderers/objects";
+import {
+  COLOR_COMPONENTS,
+  POSITION_COMPONENTS,
+  VERTEX_COMPONENTS,
+  createObjectsRendererManager,
+} from "../../renderers/objects";
 import { Button } from "../../shared/Button";
 import "./SceneScreen.css";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
+attribute vec4 a_color;
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
+varying vec4 v_color;
 
 vec2 toClip(vec2 world) {
   vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
@@ -23,13 +30,15 @@ vec2 toClip(vec2 world) {
 
 void main() {
   gl_Position = vec4(toClip(a_position), 0.0, 1.0);
+  v_color = a_color;
 }
 `;
 
 const FRAGMENT_SHADER = `
 precision mediump float;
+varying vec4 v_color;
 void main() {
-  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+  gl_FragColor = v_color;
 }
 `;
 
@@ -160,10 +169,34 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     gl.useProgram(program);
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
+    const colorLocation = gl.getAttribLocation(program, "a_color");
+    const stride = VERTEX_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+    const colorOffset = POSITION_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+
+    if (positionLocation < 0 || colorLocation < 0) {
+      throw new Error("Unable to resolve vertex attribute locations");
+    }
+
     const enableAttributes = (buffer: WebGLBuffer) => {
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.enableVertexAttribArray(positionLocation);
-      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribPointer(
+        positionLocation,
+        POSITION_COMPONENTS,
+        gl.FLOAT,
+        false,
+        stride,
+        0
+      );
+      gl.enableVertexAttribArray(colorLocation);
+      gl.vertexAttribPointer(
+        colorLocation,
+        COLOR_COMPONENTS,
+        gl.FLOAT,
+        false,
+        stride,
+        colorOffset
+      );
     };
 
     const cameraPositionLocation = gl.getUniformLocation(

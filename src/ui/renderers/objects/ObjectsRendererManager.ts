@@ -3,6 +3,7 @@ import {
   ObjectRegistration,
   ObjectRenderer,
   StaticPrimitive,
+  VERTEX_COMPONENTS,
 } from "./ObjectRenderer";
 import {
   SceneObjectInstance,
@@ -92,11 +93,11 @@ export class ObjectsRendererManager {
   }
 
   public getStaticVertexCount(): number {
-    return this.staticData ? this.staticData.length / 2 : 0;
+    return this.staticData ? this.staticData.length / VERTEX_COMPONENTS : 0;
   }
 
   public getDynamicVertexCount(): number {
-    return this.dynamicData ? this.dynamicData.length / 2 : 0;
+    return this.dynamicData ? this.dynamicData.length / VERTEX_COMPONENTS : 0;
   }
 
   private addObject(instance: SceneObjectInstance): void {

@@ -5,6 +5,11 @@ import { ObjectRenderer } from "./ObjectRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
+export {
+  VERTEX_COMPONENTS,
+  POSITION_COMPONENTS,
+  COLOR_COMPONENTS,
+} from "./ObjectRenderer";
 
 export const createObjectsRendererManager = (): ObjectsRendererManager => {
   const renderers = new Map<string, ObjectRenderer>([
