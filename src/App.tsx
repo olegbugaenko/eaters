@@ -36,9 +36,20 @@ function App(): JSX.Element {
             onStart={() => {
               setScreen("scene");
             }}
+            onExit={() => {
+              app.returnToMainMenu();
+              setScreen("save-select");
+            }}
           />
         )}
-        {screen === "scene" && <SceneScreen />}
+        {screen === "scene" && (
+          <SceneScreen
+            onExit={() => {
+              app.returnToMainMenu();
+              setScreen("save-select");
+            }}
+          />
+        )}
       </div>
     </AppLogicContext.Provider>
   );

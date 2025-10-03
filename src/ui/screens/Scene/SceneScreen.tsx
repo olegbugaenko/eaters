@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
+import { Button } from "../../shared/Button";
 import "./SceneScreen.css";
 
 const VERTEX_SHADER = `
@@ -62,8 +63,13 @@ const createProgram = (
   return program;
 };
 
-export const SceneScreen: React.FC = () => {
+interface SceneScreenProps {
+  onExit: () => void;
+}
+
+export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const { bridge } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const formatted = useMemo(() => formatTime(timePlayed), [timePlayed]);
@@ -102,7 +108,6 @@ export const SceneScreen: React.FC = () => {
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
 
-    gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
     const drawScene = () => {
@@ -119,9 +124,39 @@ export const SceneScreen: React.FC = () => {
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     };
 
-    drawScene();
+    const baseWidth = canvas.width || 1;
+    const baseHeight = canvas.height || 1;
+    const aspectRatio = baseWidth / baseHeight;
+
+    const resize = () => {
+      const wrapper = wrapperRef.current ?? canvas.parentElement;
+      if (!wrapper) {
+        return;
+      }
+      const { clientWidth, clientHeight } = wrapper;
+      let targetWidth = clientWidth;
+      let targetHeight = targetWidth / aspectRatio;
+
+      if (targetHeight > clientHeight) {
+        targetHeight = clientHeight;
+        targetWidth = targetHeight * aspectRatio;
+      }
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = `${targetWidth}px`;
+      canvas.style.height = `${targetHeight}px`;
+      canvas.width = Math.max(1, Math.round(targetWidth * dpr));
+      canvas.height = Math.max(1, Math.round(targetHeight * dpr));
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      drawScene();
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
 
     return () => {
+      window.removeEventListener("resize", resize);
       gl.deleteBuffer(positionBuffer);
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
@@ -131,10 +166,12 @@ export const SceneScreen: React.FC = () => {
 
   return (
     <div className="scene-screen">
-      <canvas ref={canvasRef} width={512} height={512} />
-      <div className="scene-overlay">
-        <h2>Scene</h2>
-        <p>Time played: {formatted}</p>
+      <div className="scene-toolbar">
+        <Button onClick={onExit}>Main Menu</Button>
+        <div className="scene-status">Time played: {formatted}</div>
+      </div>
+      <div className="scene-canvas-wrapper" ref={wrapperRef}>
+        <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
       </div>
     </div>
   );

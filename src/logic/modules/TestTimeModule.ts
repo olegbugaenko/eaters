@@ -5,7 +5,6 @@ const BRIDGE_KEY = "time-played";
 
 interface TestTimeModuleOptions {
   bridge: DataBridge;
-  onStateChanged: () => void;
 }
 
 export class TestTimeModule implements GameModule {
@@ -35,7 +34,6 @@ export class TestTimeModule implements GameModule {
   public tick(deltaMs: number): void {
     this.timePlayedMs += deltaMs;
     this.pushState();
-    this.options.onStateChanged();
   }
 
   private pushState(): void {

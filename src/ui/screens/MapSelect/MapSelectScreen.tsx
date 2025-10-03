@@ -7,6 +7,7 @@ import "./MapSelectScreen.css";
 
 interface MapSelectScreenProps {
   onStart: () => void;
+  onExit: () => void;
 }
 
 const formatTime = (timeMs: number): string => {
@@ -18,7 +19,7 @@ const formatTime = (timeMs: number): string => {
   return `${minutes}:${seconds}`;
 };
 
-export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart }) => {
+export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExit }) => {
   const { bridge } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
 
@@ -28,7 +29,10 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart }) => 
     <div className="map-select-screen">
       <h1>Map Selection</h1>
       <p>Time played: {formatted}</p>
-      <Button onClick={onStart}>Start</Button>
+      <div className="map-select-actions">
+        <Button onClick={onStart}>Start</Button>
+        <Button onClick={onExit}>Main Menu</Button>
+      </div>
     </div>
   );
 };

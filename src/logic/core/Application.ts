@@ -20,9 +20,6 @@ export class Application {
 
     const timeModule = new TestTimeModule({
       bridge: this.dataBridge,
-      onStateChanged: () => {
-        saveManager.saveActiveSlot();
-      },
     });
 
     this.registerModule(timeModule);
@@ -37,7 +34,16 @@ export class Application {
     const gameLoop = this.getGameLoop();
     saveManager.setActiveSlot(slot);
     saveManager.loadActiveSlot();
+    saveManager.startAutoSave(10_000);
     gameLoop.start();
+  }
+
+  public returnToMainMenu(): void {
+    const saveManager = this.getSaveManager();
+    const gameLoop = this.getGameLoop();
+    saveManager.saveActiveSlot();
+    saveManager.clearActiveSlot();
+    gameLoop.stop();
   }
 
   public getBridge(): DataBridge {

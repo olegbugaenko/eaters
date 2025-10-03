@@ -1,16 +1,36 @@
 .scene-screen {
+  flex: 1;
+  align-self: stretch;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
   padding: 2rem;
 }
 
-.scene-screen canvas {
-  border: 2px solid #1f6feb;
-  border-radius: 0.5rem;
+.scene-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.scene-overlay {
-  text-align: center;
+.scene-status {
+  font-size: 1.1rem;
+}
+
+.scene-canvas-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.scene-canvas {
+  border: 2px solid #1f6feb;
+  border-radius: 0.5rem;
+  max-width: 100%;
+  max-height: 100%;
 }
