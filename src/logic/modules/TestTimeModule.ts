@@ -17,6 +17,11 @@ export class TestTimeModule implements GameModule {
     this.pushState();
   }
 
+  public reset(): void {
+    this.timePlayedMs = 0;
+    this.pushState();
+  }
+
   public load(data: unknown | undefined): void {
     if (typeof data === "object" && data !== null && "timePlayedMs" in data) {
       const typed = data as { timePlayedMs: number };

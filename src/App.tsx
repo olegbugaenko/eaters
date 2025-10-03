@@ -20,7 +20,9 @@ function App(): JSX.Element {
   }, [app]);
 
   return (
-    <AppLogicContext.Provider value={{ app, bridge: app.getBridge() }}>
+    <AppLogicContext.Provider
+      value={{ app, bridge: app.getBridge(), scene: app.getSceneObjects() }}
+    >
       <div className="app-root">
         {screen === "save-select" && (
           <SaveSlotSelectScreen

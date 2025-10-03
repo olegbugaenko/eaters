@@ -1,0 +1,153 @@
+import { DataBridge } from "../core/DataBridge";
+import { GameModule } from "../core/types";
+import {
+  SceneObjectManager,
+  SceneVector2,
+} from "../services/SceneObjectManager";
+
+const MIN_BRICKS = 10;
+const MAX_BRICKS = 20;
+const BRICK_SIZE = 0.08;
+
+export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
+
+interface BrickData {
+  position: SceneVector2;
+}
+
+interface BricksModuleOptions {
+  scene: SceneObjectManager;
+  bridge: DataBridge;
+}
+
+interface BrickSaveData {
+  bricks: BrickData[];
+}
+
+export class BricksModule implements GameModule {
+  public readonly id = "bricks";
+
+  private bricks: BrickData[] = [];
+  private objectIds = new Set<string>();
+
+  constructor(private readonly options: BricksModuleOptions) {}
+
+  public initialize(): void {
+    this.pushCount();
+  }
+
+  public reset(): void {
+    this.applyBricks(this.generateRandomBricks());
+  }
+
+  public load(data: unknown | undefined): void {
+    const parsed = this.parseSaveData(data);
+    if (parsed) {
+      this.applyBricks(parsed.bricks);
+      return;
+    }
+    this.pushCount();
+  }
+
+  public save(): unknown {
+    return {
+      bricks: this.bricks.map((brick) => ({
+        position: { ...brick.position },
+      })),
+    } satisfies BrickSaveData;
+  }
+
+  public tick(_deltaMs: number): void {
+    // Bricks are static for now.
+  }
+
+  private parseSaveData(data: unknown): BrickSaveData | null {
+    if (
+      typeof data !== "object" ||
+      data === null ||
+      !("bricks" in data) ||
+      !Array.isArray((data as { bricks: unknown }).bricks)
+    ) {
+      return null;
+    }
+
+    const bricksInput = (data as BrickSaveData).bricks;
+    const sanitized: BrickData[] = [];
+
+    bricksInput.forEach((brick) => {
+      if (
+        brick &&
+        typeof brick === "object" &&
+        "position" in brick &&
+        typeof brick.position === "object" &&
+        brick.position !== null &&
+        typeof brick.position.x === "number" &&
+        typeof brick.position.y === "number"
+      ) {
+        sanitized.push({
+          position: {
+            x: clamp(brick.position.x, 0, 1),
+            y: clamp(brick.position.y, 0, 1),
+          },
+        });
+      }
+    });
+
+    return { bricks: sanitized };
+  }
+
+  private generateRandomBricks(): BrickData[] {
+    const count = Math.floor(Math.random() * (MAX_BRICKS - MIN_BRICKS + 1)) + MIN_BRICKS;
+    const bricks: BrickData[] = [];
+
+    for (let i = 0; i < count; i += 1) {
+      bricks.push({
+        position: {
+          x: Math.random(),
+          y: Math.random(),
+        },
+      });
+    }
+
+    return bricks;
+  }
+
+  private applyBricks(bricks: BrickData[]): void {
+    this.clearSceneObjects();
+    this.bricks = bricks.map((brick) => ({
+      position: {
+        x: clamp(brick.position.x, 0, 1),
+        y: clamp(brick.position.y, 0, 1),
+      },
+    }));
+
+    this.bricks.forEach((brick) => {
+      const id = this.options.scene.addObject("brick", {
+        position: brick.position,
+        size: { width: BRICK_SIZE, height: BRICK_SIZE },
+        color: { r: 1, g: 1, b: 1, a: 1 },
+      });
+      this.objectIds.add(id);
+    });
+
+    this.pushCount();
+  }
+
+  private clearSceneObjects(): void {
+    this.objectIds.forEach((id) => {
+      this.options.scene.removeObject(id);
+    });
+    this.objectIds.clear();
+  }
+
+  private pushCount(): void {
+    this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.length);
+  }
+}
+
+const clamp = (value: number, min: number, max: number): number => {
+  if (Number.isNaN(value) || !Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(Math.max(value, min), max);
+};

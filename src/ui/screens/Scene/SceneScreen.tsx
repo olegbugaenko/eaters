@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
+import { BRICK_COUNT_BRIDGE_KEY } from "../../../logic/modules/BricksModule";
+import { SceneObjectInstance } from "../../../logic/services/SceneObjectManager";
 import { Button } from "../../shared/Button";
 import "./SceneScreen.css";
 
@@ -15,7 +17,7 @@ void main() {
 const FRAGMENT_SHADER = `
 precision mediump float;
 void main() {
-  gl_FragColor = vec4(0.2, 0.6, 0.9, 0.6);
+  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
 }
 `;
 
@@ -63,6 +65,62 @@ const createProgram = (
   return program;
 };
 
+const EMPTY_GEOMETRY = new Float32Array(0);
+
+const buildGeometry = (objects: readonly SceneObjectInstance[]): Float32Array => {
+  if (objects.length === 0) {
+    return EMPTY_GEOMETRY;
+  }
+
+  const data = new Float32Array(objects.length * 12);
+  let offset = 0;
+
+  objects.forEach((object) => {
+    const { position, size } = object.data;
+    const width = size?.width ?? 0.1;
+    const height = size?.height ?? 0.1;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    const left = toClip(position.x - halfWidth);
+    const right = toClip(position.x + halfWidth);
+    const top = toClip(position.y + halfHeight);
+    const bottom = toClip(position.y - halfHeight);
+
+    data[offset + 0] = left;
+    data[offset + 1] = bottom;
+    data[offset + 2] = right;
+    data[offset + 3] = bottom;
+    data[offset + 4] = left;
+    data[offset + 5] = top;
+    data[offset + 6] = left;
+    data[offset + 7] = top;
+    data[offset + 8] = right;
+    data[offset + 9] = bottom;
+    data[offset + 10] = right;
+    data[offset + 11] = top;
+
+    offset += 12;
+  });
+
+  return data;
+};
+
+const toClip = (value: number): number => clamp(value * 2 - 1, -1, 1);
+
+const clamp = (value: number, min: number, max: number): number => {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  if (value < min) {
+    return min;
+  }
+  if (value > max) {
+    return max;
+  }
+  return value;
+};
+
 interface SceneScreenProps {
   onExit: () => void;
 }
@@ -70,8 +128,9 @@ interface SceneScreenProps {
 export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const { bridge } = useAppLogic();
+  const { bridge, scene } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
+  const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const formatted = useMemo(() => formatTime(timePlayed), [timePlayed]);
 
   useEffect(() => {
@@ -94,34 +153,28 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       throw new Error("Unable to create buffer");
     }
 
-    const positions = new Float32Array([
-      -0.5, -0.5,
-      0.5, -0.5,
-      -0.5, 0.5,
-      -0.5, 0.5,
-      0.5, -0.5,
-      0.5, 0.5,
-    ]);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+    gl.useProgram(program);
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    const drawScene = () => {
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(program);
+    let frame = 0;
 
-      gl.enableVertexAttribArray(positionLocation);
+    const render = () => {
+      const geometry = buildGeometry(scene.getObjects());
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.bufferData(gl.ARRAY_BUFFER, geometry, gl.DYNAMIC_DRAW);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      if (geometry.length > 0) {
+        gl.drawArrays(gl.TRIANGLES, 0, geometry.length / 2);
+      }
+      frame = window.requestAnimationFrame(render);
     };
 
     const baseWidth = canvas.width || 1;
@@ -149,26 +202,30 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       canvas.height = Math.max(1, Math.round(targetHeight * dpr));
 
       gl.viewport(0, 0, canvas.width, canvas.height);
-      drawScene();
     };
 
     resize();
+    render();
     window.addEventListener("resize", resize);
 
     return () => {
       window.removeEventListener("resize", resize);
+      window.cancelAnimationFrame(frame);
       gl.deleteBuffer(positionBuffer);
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
     };
-  }, []);
+  }, [scene]);
 
   return (
     <div className="scene-screen">
       <div className="scene-toolbar">
         <Button onClick={onExit}>Main Menu</Button>
-        <div className="scene-status">Time played: {formatted}</div>
+        <div className="scene-status">
+          <span>Time played: {formatted}</span>
+          <span>Bricks: {brickCount}</span>
+        </div>
       </div>
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />

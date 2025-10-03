@@ -4,6 +4,8 @@ import { GameModule, SaveSlotId } from "./types";
 import { SaveManager } from "../services/SaveManager";
 import { GameLoop } from "../services/GameLoop";
 import { TestTimeModule } from "../modules/TestTimeModule";
+import { SceneObjectManager } from "../services/SceneObjectManager";
+import { BricksModule } from "../modules/BricksModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -13,26 +15,42 @@ export class Application {
   constructor() {
     const saveManager = new SaveManager();
     const gameLoop = new GameLoop();
+    const sceneObjects = new SceneObjectManager();
 
     this.serviceContainer.register("bridge", this.dataBridge);
     this.serviceContainer.register("saveManager", saveManager);
     this.serviceContainer.register("gameLoop", gameLoop);
+    this.serviceContainer.register("sceneObjects", sceneObjects);
 
     const timeModule = new TestTimeModule({
       bridge: this.dataBridge,
     });
 
+    const bricksModule = new BricksModule({
+      scene: sceneObjects,
+      bridge: this.dataBridge,
+    });
+
     this.registerModule(timeModule);
+    this.registerModule(bricksModule);
   }
 
   public initialize(): void {
     this.modules.forEach((module) => module.initialize());
   }
 
+  public reset(): void {
+    const scene = this.getSceneObjects();
+    scene.clear();
+    this.modules.forEach((module) => module.reset());
+  }
+
   public selectSlot(slot: SaveSlotId): void {
     const saveManager = this.getSaveManager();
     const gameLoop = this.getGameLoop();
+    gameLoop.stop();
     saveManager.setActiveSlot(slot);
+    this.reset();
     saveManager.loadActiveSlot();
     saveManager.startAutoSave(10_000);
     gameLoop.start();
@@ -41,13 +59,17 @@ export class Application {
   public returnToMainMenu(): void {
     const saveManager = this.getSaveManager();
     const gameLoop = this.getGameLoop();
+    gameLoop.stop();
     saveManager.saveActiveSlot();
     saveManager.clearActiveSlot();
-    gameLoop.stop();
   }
 
   public getBridge(): DataBridge {
     return this.dataBridge;
+  }
+
+  public getSceneObjects(): SceneObjectManager {
+    return this.serviceContainer.get<SceneObjectManager>("sceneObjects");
   }
 
   public getGameLoop(): GameLoop {
