@@ -32,10 +32,16 @@ export interface ExplosionConfig {
   emitter: ExplosionEmitterConfig;
 }
 
-const WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+const PLASMOID_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 1, g: 0.75, b: 0.3, a: 0.8 } },
   { offset: 0.35, color: { r: 1, g: 0.45, b: 0.15, a: 0.55 } },
   { offset: 1, color: { r: 1, g: 0.1, b: 0, a: 0 } },
+] as const;
+
+const MAGNETIC_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.6, g: 0.4, b: 1, a: 0.85 } },
+  { offset: 0.45, color: { r: 0.45, g: 0.2, b: 0.95, a: 0.6 } },
+  { offset: 1, color: { r: 0.25, g: 0.05, b: 0.7, a: 0 } },
 ] as const;
 
 const DEFAULT_EMITTER: ExplosionEmitterConfig = {
@@ -59,7 +65,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       radiusExtension: 180,
       startAlpha: 0.85,
       endAlpha: 0,
-      gradientStops: WAVE_GRADIENT_STOPS,
+      gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
     },
     emitter: DEFAULT_EMITTER,
   },
@@ -70,7 +76,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       radiusExtension: 180,
       startAlpha: 0.85,
       endAlpha: 0,
-      gradientStops: WAVE_GRADIENT_STOPS,
+      gradientStops: MAGNETIC_WAVE_GRADIENT_STOPS,
     },
     emitter: {
       ...DEFAULT_EMITTER,

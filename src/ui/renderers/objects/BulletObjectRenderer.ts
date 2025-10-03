@@ -91,11 +91,11 @@ const createTailVertices = (
 const createTailFill = (instance: SceneObjectInstance): SceneLinearGradientFill => {
   const radius = getBulletRadius(instance);
   const tail = getTailConfig(instance);
-  const tailLength = radius * tail.lengthMultiplier;
+  const tailHalfWidth = (radius * tail.widthMultiplier) / 2;
   return {
     fillType: FILL_TYPES.LINEAR_GRADIENT,
-    start: { x: -radius, y: 0 },
-    end: { x: -radius - tailLength, y: 0 },
+    start: { x: -radius, y: tailHalfWidth },
+    end: { x: -radius, y: -tailHalfWidth },
     stops: [
       { offset: 0, color: { ...tail.startColor } },
       { offset: 1, color: { ...tail.endColor } },
