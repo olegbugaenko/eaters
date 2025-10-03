@@ -10,6 +10,32 @@ import {
 const MIN_BRICKS = 1000;
 const MAX_BRICKS = 2000;
 const BRICK_SIZE: SceneSize = { width: 60, height: 30 };
+const BRICK_GRADIENT_STOPS = [
+  {
+    offset: 0,
+    color: { r: 0.9, g: 0.7, b: 0.1, a: 1 },
+  },
+  {
+    offset: 0.5,
+    color: { r: 1, g: 0.85, b: 0.3, a: 1 },
+  },
+  {
+    offset: 1,
+    color: { r: 0.9, g: 0.7, b: 0.1, a: 1 },
+  },
+] as const;
+const createBrickFill = (size: SceneSize) => {
+  const halfHeight = size.height / 2;
+  return {
+    fillType: FILL_TYPES.LINEAR_GRADIENT,
+    start: { x: 0, y: -halfHeight },
+    end: { x: 0, y: halfHeight },
+    stops: BRICK_GRADIENT_STOPS.map((stop) => ({
+      offset: stop.offset,
+      color: { ...stop.color },
+    })),
+  };
+};
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
 
@@ -123,10 +149,7 @@ export class BricksModule implements GameModule {
       const id = this.options.scene.addObject("brick", {
         position: brick.position,
         size: { ...BRICK_SIZE },
-        fill: {
-          fillType: FILL_TYPES.SOLID,
-          color: { r: 0.5, g: 0.5, b: 0.4, a: 1 },
-        },
+        fill: createBrickFill(BRICK_SIZE),
         rotation: brick.rotation,
       });
       this.objectIds.add(id);

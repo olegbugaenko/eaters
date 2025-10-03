@@ -6,8 +6,35 @@ import {
 } from "../services/SceneObjectManager";
 
 const BULLET_DIAMETER = 16;
-const BULLET_COLOR = { r: 1, g: 0.2, b: 0.2, a: 1 } as const;
+const BULLET_GRADIENT_STOPS = [
+  {
+    offset: 0,
+    color: { r: 0.7, g: 0.85, b: 1, a: 1 },
+  },
+  {
+    offset: 0.25,
+    color: { r: 0.2, g: 0.45, b: 0.9, a: 1 },
+  },
+  {
+    offset: 0.5,
+    color: { r: 1, g: 0.85, b: 0.2, a: 1 },
+  },
+  {
+    offset: 1,
+    color: { r: 1, g: 0.85, b: 0.2, a: 0 },
+  },
+] as const;
 const TRAVEL_TIME_SECONDS = 10;
+
+const createBulletFill = (radius: number) => ({
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: radius,
+  stops: BULLET_GRADIENT_STOPS.map((stop) => ({
+    offset: stop.offset,
+    color: { ...stop.color },
+  })),
+});
 
 interface BulletState {
   id: string;
@@ -63,10 +90,7 @@ export class BulletModule implements GameModule {
     const id = this.options.scene.addObject("bullet", {
       position: { ...position },
       size: { width: BULLET_DIAMETER, height: BULLET_DIAMETER },
-      fill: {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...BULLET_COLOR },
-      },
+      fill: createBulletFill(radius),
     });
     this.bullets.push({
       id,
@@ -95,10 +119,7 @@ export class BulletModule implements GameModule {
       this.options.scene.updateObject(bullet.id, {
         position: bullet.position,
         size: { width: bullet.radius * 2, height: bullet.radius * 2 },
-        fill: {
-          fillType: FILL_TYPES.SOLID,
-          color: { ...BULLET_COLOR },
-        },
+        fill: createBulletFill(bullet.radius),
       });
 
       survivors.push(bullet);
