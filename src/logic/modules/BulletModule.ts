@@ -26,6 +26,8 @@ const BULLET_GRADIENT_STOPS = [
   },
 ] as const;
 const TRAVEL_TIME_SECONDS = 20;
+const MIN_DIRECTION_ANGLE = -Math.PI / 6;
+const MAX_DIRECTION_ANGLE = Math.PI / 6;
 
 const createBulletFill = (radius: number) => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -44,6 +46,7 @@ interface BulletState {
   radius: number;
   lifetimeMs: number;
   elapsedMs: number;
+  rotation: number;
 }
 
 interface BulletModuleOptions {
@@ -87,22 +90,29 @@ export class BulletModule implements GameModule {
     const radius = BULLET_DIAMETER / 2;
     const distance = map.width + radius * 2;
     const speedPerMs = distance / (TRAVEL_TIME_SECONDS * 1000);
+    const angle = this.getRandomDirectionAngle();
     const position: SceneVector2 = {
       x: -radius,
       y: Math.random() * map.height,
+    };
+    const velocity = {
+      x: Math.cos(angle) * speedPerMs,
+      y: Math.sin(angle) * speedPerMs,
     };
     const id = this.options.scene.addObject("bullet", {
       position: { ...position },
       size: { width: BULLET_DIAMETER, height: BULLET_DIAMETER },
       fill: createBulletFill(radius),
+      rotation: angle,
     });
     this.bullets.push({
       id,
       position,
-      velocity: { x: speedPerMs, y: 0 },
+      velocity,
       radius,
       lifetimeMs: this.getRandomLifetime(),
       elapsedMs: 0,
+      rotation: angle,
     });
   }
 
@@ -117,6 +127,7 @@ export class BulletModule implements GameModule {
         y: bullet.position.y + bullet.velocity.y * delta,
       };
       bullet.elapsedMs += delta;
+      bullet.rotation = Math.atan2(bullet.velocity.y, bullet.velocity.x);
 
       if (bullet.elapsedMs >= bullet.lifetimeMs) {
         this.options.scene.removeObject(bullet.id);
@@ -127,7 +138,12 @@ export class BulletModule implements GameModule {
         return;
       }
 
-      if (bullet.position.x - bullet.radius > map.width) {
+      if (
+        bullet.position.x + bullet.radius < 0 ||
+        bullet.position.x - bullet.radius > map.width ||
+        bullet.position.y + bullet.radius < 0 ||
+        bullet.position.y - bullet.radius > map.height
+      ) {
         this.options.scene.removeObject(bullet.id);
         return;
       }
@@ -136,6 +152,7 @@ export class BulletModule implements GameModule {
         position: bullet.position,
         size: { width: bullet.radius * 2, height: bullet.radius * 2 },
         fill: createBulletFill(bullet.radius),
+        rotation: bullet.rotation,
       });
 
       survivors.push(bullet);
@@ -155,5 +172,10 @@ export class BulletModule implements GameModule {
     const minSeconds = 1;
     const maxSeconds = 20;
     return (minSeconds + Math.random() * (maxSeconds - minSeconds)) * 1000;
+  }
+
+  private getRandomDirectionAngle(): number {
+    const spread = MAX_DIRECTION_ANGLE - MIN_DIRECTION_ANGLE;
+    return MIN_DIRECTION_ANGLE + Math.random() * spread;
   }
 }
