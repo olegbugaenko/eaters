@@ -44,7 +44,9 @@ export class BulletModule implements GameModule {
     if (deltaMs <= 0) {
       return;
     }
-    this.spawnBullet();
+    for(let i = 0; i < 10; i++) {
+      this.spawnBullet();
+    }
     this.updateBullets(deltaMs);
   }
 

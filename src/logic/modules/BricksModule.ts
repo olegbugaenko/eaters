@@ -6,8 +6,8 @@ import {
   SceneSize,
 } from "../services/SceneObjectManager";
 
-const MIN_BRICKS = 10;
-const MAX_BRICKS = 20;
+const MIN_BRICKS = 1000;
+const MAX_BRICKS = 2000;
 const BRICK_SIZE: SceneSize = { width: 60, height: 30 };
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
