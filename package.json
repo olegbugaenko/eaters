@@ -11,7 +11,8 @@
     "electron": "electron .",
     "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
     "dist": "npm run build:electron",
-    "pack": "electron-builder --dir"
+    "pack": "electron-builder --dir",
+    "test": "tsc -p tsconfig.tests.json && node build/tests/tests/run.js"
   },
   "dependencies": {
     "react": "^18.2.0",

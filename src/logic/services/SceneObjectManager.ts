@@ -15,17 +15,64 @@ export interface SceneColor {
   a?: number;
 }
 
+export const FILL_TYPES = {
+  SOLID: 0,
+  LINEAR_GRADIENT: 1,
+  RADIAL_GRADIENT: 2,
+  DIAMOND_GRADIENT: 3,
+} as const;
+
+export type SceneFillType = (typeof FILL_TYPES)[keyof typeof FILL_TYPES];
+
+export interface SceneGradientStop {
+  offset: number;
+  color: SceneColor;
+}
+
+export interface SceneSolidFill {
+  fillType: typeof FILL_TYPES.SOLID;
+  color: SceneColor;
+}
+
+export interface SceneLinearGradientFill {
+  fillType: typeof FILL_TYPES.LINEAR_GRADIENT;
+  start?: SceneVector2;
+  end?: SceneVector2;
+  stops: SceneGradientStop[];
+}
+
+export interface SceneRadialGradientFill {
+  fillType: typeof FILL_TYPES.RADIAL_GRADIENT;
+  start?: SceneVector2;
+  end?: number;
+  stops: SceneGradientStop[];
+}
+
+export interface SceneDiamondGradientFill {
+  fillType: typeof FILL_TYPES.DIAMOND_GRADIENT;
+  start?: SceneVector2;
+  end?: number;
+  stops: SceneGradientStop[];
+}
+
+export type SceneFill =
+  | SceneSolidFill
+  | SceneLinearGradientFill
+  | SceneRadialGradientFill
+  | SceneDiamondGradientFill;
+
 export interface SceneObjectData {
   position: SceneVector2;
   size?: SceneSize;
   color?: SceneColor;
+  fill?: SceneFill;
   rotation?: number;
 }
 
 export interface SceneObjectInstance {
   id: string;
   type: string;
-  data: SceneObjectData;
+  data: SceneObjectData & { fill: SceneFill };
 }
 
 export interface SceneCameraState {
@@ -36,6 +83,10 @@ export interface SceneCameraState {
 
 const DEFAULT_SIZE: SceneSize = { width: 50, height: 50 };
 const DEFAULT_COLOR: SceneColor = { r: 1, g: 1, b: 1, a: 1 };
+const DEFAULT_FILL: SceneSolidFill = {
+  fillType: FILL_TYPES.SOLID,
+  color: { ...DEFAULT_COLOR },
+};
 const DEFAULT_ROTATION = 0;
 const MIN_MAP_SIZE = 2000;
 const MAX_SCALE = 4;
@@ -59,13 +110,21 @@ export class SceneObjectManager {
 
   public addObject(type: string, data: SceneObjectData): string {
     const id = `${type}-${++this.idCounter}`;
+    const size = data.size ? { ...data.size } : { ...DEFAULT_SIZE };
+    const fill = sanitizeFill(
+      data.fill ?? (data.color ? createSolidFill(data.color) : undefined)
+    );
+    const color = data.color
+      ? sanitizeColor(data.color)
+      : extractPrimaryColor(fill);
     const instance: SceneObjectInstance = {
       id,
       type,
       data: {
         position: { ...data.position },
-        size: data.size ? { ...data.size } : { ...DEFAULT_SIZE },
-        color: data.color ? { ...data.color } : { ...DEFAULT_COLOR },
+        size,
+        color,
+        fill,
         rotation: normalizeRotation(data.rotation),
       },
     };
@@ -81,24 +140,31 @@ export class SceneObjectManager {
     if (!instance) {
       return;
     }
+    const size = data.size
+      ? { ...data.size }
+      : instance.data.size
+      ? { ...instance.data.size }
+      : { ...DEFAULT_SIZE };
+    const fill = data.fill
+      ? sanitizeFill(data.fill)
+      : data.color
+      ? createSolidFill(data.color)
+      : cloneFill(instance.data.fill);
+    const color = data.color
+      ? sanitizeColor(data.color)
+      : extractPrimaryColor(fill);
+    const rotation =
+      typeof data.rotation === "number"
+        ? normalizeRotation(data.rotation)
+        : typeof instance.data.rotation === "number"
+        ? normalizeRotation(instance.data.rotation)
+        : DEFAULT_ROTATION;
     instance.data = {
       position: { ...data.position },
-      size: data.size
-        ? { ...data.size }
-        : instance.data.size
-        ? { ...instance.data.size }
-        : { ...DEFAULT_SIZE },
-      color: data.color
-        ? { ...data.color }
-        : instance.data.color
-        ? { ...instance.data.color }
-        : { ...DEFAULT_COLOR },
-      rotation:
-        typeof data.rotation === "number"
-          ? normalizeRotation(data.rotation)
-          : typeof instance.data.rotation === "number"
-          ? normalizeRotation(instance.data.rotation)
-          : DEFAULT_ROTATION,
+      size,
+      color,
+      fill,
+      rotation,
     };
     if (this.added.has(id)) {
       this.added.set(id, instance);
@@ -295,6 +361,7 @@ export class SceneObjectManager {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
         color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
+        fill: cloneFill(instance.data.fill),
         rotation:
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
@@ -302,6 +369,171 @@ export class SceneObjectManager {
       },
     };
   }
+}
+
+function sanitizeColor(color: SceneColor | undefined): SceneColor {
+  if (!color) {
+    return { ...DEFAULT_COLOR };
+  }
+  return {
+    r: clamp01(color.r),
+    g: clamp01(color.g),
+    b: clamp01(color.b),
+    a: clamp01(typeof color.a === "number" ? color.a : DEFAULT_COLOR.a ?? 1),
+  };
+}
+
+function clamp01(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+}
+
+function createSolidFill(color: SceneColor): SceneSolidFill {
+  return {
+    fillType: FILL_TYPES.SOLID,
+    color: sanitizeColor(color),
+  };
+}
+
+function sanitizeVector(
+  value: SceneVector2 | undefined
+): SceneVector2 | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const x = Number(value.x);
+  const y = Number(value.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return undefined;
+  }
+  return { x, y };
+}
+
+function sanitizeRadius(value: number | undefined): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+  if (value <= 0) {
+    return undefined;
+  }
+  return value;
+}
+
+function sanitizeGradientStops(
+  stops: SceneGradientStop[] | undefined
+): SceneGradientStop[] {
+  if (!stops || stops.length === 0) {
+    return [
+      {
+        offset: 0,
+        color: sanitizeColor(undefined),
+      },
+    ];
+  }
+  const sanitized: SceneGradientStop[] = [];
+  stops.forEach((stop) => {
+    if (!stop || typeof stop !== "object") {
+      return;
+    }
+    sanitized.push({
+      offset: clamp01(stop.offset),
+      color: sanitizeColor(stop.color),
+    });
+  });
+  if (sanitized.length === 0) {
+    sanitized.push({
+      offset: 0,
+      color: sanitizeColor(undefined),
+    });
+  } else {
+    sanitized.sort((a, b) => a.offset - b.offset);
+  }
+  return sanitized;
+}
+
+function sanitizeFill(fill: SceneFill | undefined): SceneFill {
+  if (!fill) {
+    return cloneFill(DEFAULT_FILL);
+  }
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: sanitizeColor(fill.color),
+      };
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: sanitizeVector(fill.start),
+        end: sanitizeVector(fill.end),
+        stops: sanitizeGradientStops(fill.stops),
+      };
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return {
+        fillType: fill.fillType,
+        start: sanitizeVector(fill.start),
+        end: sanitizeRadius(fill.end),
+        stops: sanitizeGradientStops(fill.stops),
+      };
+    default:
+      return cloneFill(DEFAULT_FILL);
+  }
+}
+
+function cloneFill(fill: SceneFill): SceneFill {
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...fill.color },
+      };
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: cloneStops(fill.stops),
+      };
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return {
+        fillType: fill.fillType,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end,
+        stops: cloneStops(fill.stops),
+      };
+  }
+  return {
+    fillType: FILL_TYPES.SOLID,
+    color: { ...DEFAULT_COLOR },
+  };
+}
+
+function cloneStops(stops: SceneGradientStop[]): SceneGradientStop[] {
+  return stops.map((stop) => ({
+    offset: stop.offset,
+    color: { ...stop.color },
+  }));
+}
+
+function extractPrimaryColor(fill: SceneFill): SceneColor {
+  if (fill.fillType === FILL_TYPES.SOLID) {
+    return { ...fill.color };
+  }
+  const first = fill.stops[0];
+  if (!first) {
+    return { ...DEFAULT_COLOR };
+  }
+  return { ...first.color };
 }
 
 const clamp = (value: number, min: number, max: number): number => {

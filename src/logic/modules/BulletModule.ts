@@ -1,5 +1,6 @@
 import { GameModule } from "../core/types";
 import {
+  FILL_TYPES,
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
@@ -62,7 +63,10 @@ export class BulletModule implements GameModule {
     const id = this.options.scene.addObject("bullet", {
       position: { ...position },
       size: { width: BULLET_DIAMETER, height: BULLET_DIAMETER },
-      color: { ...BULLET_COLOR },
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...BULLET_COLOR },
+      },
     });
     this.bullets.push({
       id,
@@ -91,7 +95,10 @@ export class BulletModule implements GameModule {
       this.options.scene.updateObject(bullet.id, {
         position: bullet.position,
         size: { width: bullet.radius * 2, height: bullet.radius * 2 },
-        color: { ...BULLET_COLOR },
+        fill: {
+          fillType: FILL_TYPES.SOLID,
+          color: { ...BULLET_COLOR },
+        },
       });
 
       survivors.push(bullet);

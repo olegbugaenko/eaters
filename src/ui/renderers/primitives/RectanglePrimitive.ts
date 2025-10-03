@@ -1,5 +1,5 @@
 import {
-  SceneColor,
+  SceneFill,
   SceneSize,
   SceneVector2,
 } from "../../../logic/services/SceneObjectManager";
@@ -8,53 +8,52 @@ import {
   VERTEX_COMPONENTS,
   transformObjectPoint,
 } from "../objects/ObjectRenderer";
+import {
+  copyFillComponents,
+  createFillVertexComponents,
+} from "./fill";
 
 interface RectanglePrimitiveOptions {
   center: SceneVector2;
   size: SceneSize;
-  color: SceneColor;
+  fill: SceneFill;
   rotation?: number;
   offset?: SceneVector2;
 }
 
 const VERTEX_COUNT = 6;
 
-const resolveAlpha = (color: SceneColor): number => {
-  if (typeof color.a === "number" && Number.isFinite(color.a)) {
-    return color.a;
-  }
-  return 1;
-};
-
 const pushVertex = (
   target: Float32Array,
   offset: number,
   x: number,
   y: number,
-  color: SceneColor,
-  alpha: number
+  fillComponents: Float32Array
 ): number => {
   target[offset + 0] = x;
   target[offset + 1] = y;
-  target[offset + 2] = color.r;
-  target[offset + 3] = color.g;
-  target[offset + 4] = color.b;
-  target[offset + 5] = alpha;
+  copyFillComponents(target, offset, fillComponents);
   return offset + VERTEX_COMPONENTS;
 };
 
 export const createStaticRectanglePrimitive = (
   options: RectanglePrimitiveOptions
 ): StaticPrimitive => {
-  const { center, size, color, rotation, offset } = options;
+  const { center, size, fill, rotation, offset } = options;
   const halfWidth = size.width / 2;
   const halfHeight = size.height / 2;
-  const alpha = resolveAlpha(color);
 
   const actualCenter = transformObjectPoint(center, rotation, offset);
   const angle = rotation ?? 0;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
+
+  const fillComponents = createFillVertexComponents({
+    fill,
+    center: actualCenter,
+    rotation: angle,
+    size,
+  });
 
   const bottomLeft = transformCorner(-halfWidth, halfHeight, actualCenter, cos, sin);
   const bottomRight = transformCorner(halfWidth, halfHeight, actualCenter, cos, sin);
@@ -65,14 +64,32 @@ export const createStaticRectanglePrimitive = (
   let writeOffset = 0;
 
   // Triangle 1 (bottom-left, bottom-right, top-left)
-  writeOffset = pushVertex(data, writeOffset, bottomLeft.x, bottomLeft.y, color, alpha);
-  writeOffset = pushVertex(data, writeOffset, bottomRight.x, bottomRight.y, color, alpha);
-  writeOffset = pushVertex(data, writeOffset, topLeft.x, topLeft.y, color, alpha);
+  writeOffset = pushVertex(
+    data,
+    writeOffset,
+    bottomLeft.x,
+    bottomLeft.y,
+    fillComponents
+  );
+  writeOffset = pushVertex(
+    data,
+    writeOffset,
+    bottomRight.x,
+    bottomRight.y,
+    fillComponents
+  );
+  writeOffset = pushVertex(data, writeOffset, topLeft.x, topLeft.y, fillComponents);
 
   // Triangle 2 (top-left, bottom-right, top-right)
-  writeOffset = pushVertex(data, writeOffset, topLeft.x, topLeft.y, color, alpha);
-  writeOffset = pushVertex(data, writeOffset, bottomRight.x, bottomRight.y, color, alpha);
-  pushVertex(data, writeOffset, topRight.x, topRight.y, color, alpha);
+  writeOffset = pushVertex(data, writeOffset, topLeft.x, topLeft.y, fillComponents);
+  writeOffset = pushVertex(
+    data,
+    writeOffset,
+    bottomRight.x,
+    bottomRight.y,
+    fillComponents
+  );
+  pushVertex(data, writeOffset, topRight.x, topRight.y, fillComponents);
 
   return { data };
 };

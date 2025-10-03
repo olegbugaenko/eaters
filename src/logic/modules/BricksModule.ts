@@ -1,6 +1,7 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
 import {
+  FILL_TYPES,
   SceneObjectManager,
   SceneVector2,
   SceneSize,
@@ -122,7 +123,10 @@ export class BricksModule implements GameModule {
       const id = this.options.scene.addObject("brick", {
         position: brick.position,
         size: { ...BRICK_SIZE },
-        color: { r: 0.5, g: 0.5, b: 0.4, a: 1 },
+        fill: {
+          fillType: FILL_TYPES.SOLID,
+          color: { r: 0.5, g: 0.5, b: 0.4, a: 1 },
+        },
         rotation: brick.rotation,
       });
       this.objectIds.add(id);
