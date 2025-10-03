@@ -67,12 +67,23 @@ export interface SceneObjectData {
   color?: SceneColor;
   fill?: SceneFill;
   rotation?: number;
+  customData?: unknown;
 }
 
 export interface SceneObjectInstance {
   id: string;
   type: string;
   data: SceneObjectData & { fill: SceneFill };
+}
+
+export const CUSTOM_DATA_KIND_PARTICLE_SYSTEM = "particle-system" as const;
+
+export interface ParticleSystemCustomData {
+  kind: typeof CUSTOM_DATA_KIND_PARTICLE_SYSTEM;
+  color: SceneColor;
+  positions: Float32Array;
+  sizes: Float32Array;
+  alphas: Float32Array;
 }
 
 export interface SceneCameraState {
@@ -126,6 +137,7 @@ export class SceneObjectManager {
         color,
         fill,
         rotation: normalizeRotation(data.rotation),
+        customData: cloneCustomData(data.customData),
       },
     };
     this.objects.set(id, instance);
@@ -165,6 +177,11 @@ export class SceneObjectManager {
       color,
       fill,
       rotation,
+      customData: cloneCustomData(
+        typeof data.customData !== "undefined"
+          ? data.customData
+          : instance.data.customData
+      ),
     };
     if (this.added.has(id)) {
       this.added.set(id, instance);
@@ -366,9 +383,46 @@ export class SceneObjectManager {
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
             : DEFAULT_ROTATION,
+        customData: cloneCustomData(instance.data.customData),
       },
     };
   }
+}
+
+function cloneCustomData<T>(value: T): T {
+  if (value === undefined || value === null) {
+    return value;
+  }
+
+  if (value instanceof ArrayBuffer) {
+    return value.slice(0) as T;
+  }
+
+  if (ArrayBuffer.isView(value)) {
+    const view = value as ArrayBufferView & { slice?: () => ArrayBufferView };
+    if (typeof view.slice === "function") {
+      return view.slice() as T;
+    }
+    const bufferCopy = view.buffer.slice(0);
+    return new (view.constructor as { new (buffer: ArrayBufferLike): ArrayBufferView })(
+      bufferCopy
+    ) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneCustomData(item)) as T;
+  }
+
+  if (typeof value === "object") {
+    const source = value as Record<string | number | symbol, unknown>;
+    const clone: Record<string | number | symbol, unknown> = {};
+    Object.keys(source).forEach((key) => {
+      clone[key] = cloneCustomData(source[key]);
+    });
+    return clone as T;
+  }
+
+  return value;
 }
 
 function sanitizeColor(color: SceneColor | undefined): SceneColor {
