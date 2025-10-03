@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
 import { BRICK_COUNT_BRIDGE_KEY } from "../../../logic/modules/BricksModule";
-import { SceneObjectInstance } from "../../../logic/services/SceneObjectManager";
+import {
+  SceneCameraState,
+  SceneObjectInstance,
+  SceneObjectManager,
+} from "../../../logic/services/SceneObjectManager";
 import { Button } from "../../shared/Button";
 import "./SceneScreen.css";
 
@@ -67,46 +71,74 @@ const createProgram = (
 
 const EMPTY_GEOMETRY = new Float32Array(0);
 
-const buildGeometry = (objects: readonly SceneObjectInstance[]): Float32Array => {
+const buildGeometry = (
+  objects: readonly SceneObjectInstance[],
+  camera: SceneCameraState
+): Float32Array => {
   if (objects.length === 0) {
     return EMPTY_GEOMETRY;
   }
 
-  const data = new Float32Array(objects.length * 12);
-  let offset = 0;
+  const data: number[] = [];
+  const viewLeft = camera.position.x;
+  const viewTop = camera.position.y;
+  const viewRight = viewLeft + camera.viewportSize.width;
+  const viewBottom = viewTop + camera.viewportSize.height;
 
   objects.forEach((object) => {
     const { position, size } = object.data;
-    const width = size?.width ?? 0.1;
-    const height = size?.height ?? 0.1;
+    const width = size?.width ?? 0;
+    const height = size?.height ?? 0;
     const halfWidth = width / 2;
     const halfHeight = height / 2;
 
-    const left = toClip(position.x - halfWidth);
-    const right = toClip(position.x + halfWidth);
-    const top = toClip(position.y + halfHeight);
-    const bottom = toClip(position.y - halfHeight);
+    const leftWorld = position.x - halfWidth;
+    const rightWorld = position.x + halfWidth;
+    const topWorld = position.y - halfHeight;
+    const bottomWorld = position.y + halfHeight;
 
-    data[offset + 0] = left;
-    data[offset + 1] = bottom;
-    data[offset + 2] = right;
-    data[offset + 3] = bottom;
-    data[offset + 4] = left;
-    data[offset + 5] = top;
-    data[offset + 6] = left;
-    data[offset + 7] = top;
-    data[offset + 8] = right;
-    data[offset + 9] = bottom;
-    data[offset + 10] = right;
-    data[offset + 11] = top;
+    if (
+      rightWorld < viewLeft ||
+      leftWorld > viewRight ||
+      bottomWorld < viewTop ||
+      topWorld > viewBottom
+    ) {
+      return;
+    }
 
-    offset += 12;
+    const left = toClipX(leftWorld, camera);
+    const right = toClipX(rightWorld, camera);
+    const top = toClipY(topWorld, camera);
+    const bottom = toClipY(bottomWorld, camera);
+
+    data.push(
+      left,
+      bottom,
+      right,
+      bottom,
+      left,
+      top,
+      left,
+      top,
+      right,
+      bottom,
+      right,
+      top
+    );
   });
 
-  return data;
+  if (data.length === 0) {
+    return EMPTY_GEOMETRY;
+  }
+
+  return new Float32Array(data);
 };
 
-const toClip = (value: number): number => clamp(value * 2 - 1, -1, 1);
+const toClipX = (value: number, camera: SceneCameraState): number =>
+  clamp(((value - camera.position.x) / camera.viewportSize.width) * 2 - 1, -1, 1);
+
+const toClipY = (value: number, camera: SceneCameraState): number =>
+  clamp(1 - ((value - camera.position.y) / camera.viewportSize.height) * 2, -1, 1);
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -132,6 +164,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const formatted = useMemo(() => formatTime(timePlayed), [timePlayed]);
+  const [scale, setScale] = useState(() => scene.getCamera().scale);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -165,15 +198,30 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     let frame = 0;
+    let previousTime: number | null = null;
 
-    const render = () => {
-      const geometry = buildGeometry(scene.getObjects());
+    const pointerState = {
+      x: 0,
+      y: 0,
+      inside: false,
+    };
+
+    const render = (timestamp: number) => {
+      if (previousTime === null) {
+        previousTime = timestamp;
+      }
+      const deltaMs = Math.min(timestamp - previousTime, 100);
+      previousTime = timestamp;
+
+      const cameraState = scene.getCamera();
+      const geometry = buildGeometry(scene.getObjects(), cameraState);
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, geometry, gl.DYNAMIC_DRAW);
       gl.clear(gl.COLOR_BUFFER_BIT);
       if (geometry.length > 0) {
         gl.drawArrays(gl.TRIANGLES, 0, geometry.length / 2);
       }
+      applyCameraMovement(pointerState, scene, deltaMs, canvas.width, canvas.height);
       frame = window.requestAnimationFrame(render);
     };
 
@@ -202,11 +250,35 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       canvas.height = Math.max(1, Math.round(targetHeight * dpr));
 
       gl.viewport(0, 0, canvas.width, canvas.height);
+      scene.setViewportScreenSize(canvas.width, canvas.height);
+      scene.setMapSize({
+        width: Math.max(canvas.width, canvas.height, 1000),
+        height: Math.max(canvas.width, canvas.height, 1000),
+      });
+      const current = scene.getCamera();
+      setScale(current.scale);
     };
 
     resize();
-    render();
+    frame = window.requestAnimationFrame(render);
     window.addEventListener("resize", resize);
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      pointerState.x = (x / rect.width) * canvas.width;
+      pointerState.y = (y / rect.height) * canvas.height;
+      pointerState.inside = x >= 0 && y >= 0 && x <= rect.width && y <= rect.height;
+    };
+
+    const handlePointerLeave = () => {
+      pointerState.inside = false;
+    };
+
+    canvas.addEventListener("pointermove", handlePointerMove);
+    canvas.addEventListener("pointerleave", handlePointerLeave);
+    canvas.addEventListener("pointerout", handlePointerLeave);
 
     return () => {
       window.removeEventListener("resize", resize);
@@ -215,6 +287,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
+      canvas.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerleave", handlePointerLeave);
+      canvas.removeEventListener("pointerout", handlePointerLeave);
     };
   }, [scene]);
 
@@ -225,6 +300,22 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
         <div className="scene-status">
           <span>Time played: {formatted}</span>
           <span>Bricks: {brickCount}</span>
+          <label className="scene-zoom">
+            Zoom: {scale.toFixed(2)}x
+            <input
+              type="range"
+              min={scene.getScaleRange().min}
+              max={scene.getScaleRange().max}
+              step={0.05}
+              value={scale}
+              onChange={(event) => {
+                const next = Number.parseFloat(event.target.value);
+                scene.setScale(next);
+                const current = scene.getCamera();
+                setScale(current.scale);
+              }}
+            />
+          </label>
         </div>
       </div>
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
@@ -232,4 +323,44 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       </div>
     </div>
   );
+};
+
+const EDGE_THRESHOLD = 48;
+const CAMERA_SPEED = 400; // world units per second
+
+interface PointerState {
+  x: number;
+  y: number;
+  inside: boolean;
+}
+
+const applyCameraMovement = (
+  pointer: PointerState,
+  scene: SceneObjectManager,
+  deltaMs: number,
+  canvasWidthPx: number,
+  canvasHeightPx: number
+) => {
+  if (!pointer.inside || deltaMs <= 0) {
+    return;
+  }
+  const deltaSeconds = deltaMs / 1000;
+  let moveX = 0;
+  let moveY = 0;
+
+  if (pointer.x < EDGE_THRESHOLD) {
+    moveX -= CAMERA_SPEED * deltaSeconds;
+  } else if (pointer.x > canvasWidthPx - EDGE_THRESHOLD) {
+    moveX += CAMERA_SPEED * deltaSeconds;
+  }
+
+  if (pointer.y < EDGE_THRESHOLD) {
+    moveY -= CAMERA_SPEED * deltaSeconds;
+  } else if (pointer.y > canvasHeightPx - EDGE_THRESHOLD) {
+    moveY += CAMERA_SPEED * deltaSeconds;
+  }
+
+  if (moveX !== 0 || moveY !== 0) {
+    scene.panCamera(moveX, moveY);
+  }
 };

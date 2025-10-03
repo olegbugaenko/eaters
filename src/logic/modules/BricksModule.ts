@@ -3,11 +3,12 @@ import { GameModule } from "../core/types";
 import {
   SceneObjectManager,
   SceneVector2,
+  SceneSize,
 } from "../services/SceneObjectManager";
 
 const MIN_BRICKS = 10;
 const MAX_BRICKS = 20;
-const BRICK_SIZE = 0.08;
+const BRICK_SIZE: SceneSize = { width: 60, height: 30 };
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
 
@@ -85,10 +86,7 @@ export class BricksModule implements GameModule {
         typeof brick.position.y === "number"
       ) {
         sanitized.push({
-          position: {
-            x: clamp(brick.position.x, 0, 1),
-            y: clamp(brick.position.y, 0, 1),
-          },
+          position: this.clampToMap(brick.position),
         });
       }
     });
@@ -102,10 +100,7 @@ export class BricksModule implements GameModule {
 
     for (let i = 0; i < count; i += 1) {
       bricks.push({
-        position: {
-          x: Math.random(),
-          y: Math.random(),
-        },
+        position: this.getRandomPosition(),
       });
     }
 
@@ -115,16 +110,13 @@ export class BricksModule implements GameModule {
   private applyBricks(bricks: BrickData[]): void {
     this.clearSceneObjects();
     this.bricks = bricks.map((brick) => ({
-      position: {
-        x: clamp(brick.position.x, 0, 1),
-        y: clamp(brick.position.y, 0, 1),
-      },
+      position: this.clampToMap(brick.position),
     }));
 
     this.bricks.forEach((brick) => {
       const id = this.options.scene.addObject("brick", {
         position: brick.position,
-        size: { width: BRICK_SIZE, height: BRICK_SIZE },
+        size: { ...BRICK_SIZE },
         color: { r: 1, g: 1, b: 1, a: 1 },
       });
       this.objectIds.add(id);
@@ -142,6 +134,22 @@ export class BricksModule implements GameModule {
 
   private pushCount(): void {
     this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.length);
+  }
+
+  private clampToMap(position: SceneVector2): SceneVector2 {
+    const { width, height } = this.options.scene.getMapSize();
+    return {
+      x: clamp(position.x, 0, width),
+      y: clamp(position.y, 0, height),
+    };
+  }
+
+  private getRandomPosition(): SceneVector2 {
+    const { width, height } = this.options.scene.getMapSize();
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+    };
   }
 }
 
