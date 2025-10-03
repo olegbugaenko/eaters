@@ -2,6 +2,7 @@ import { BrickObjectRenderer } from "./BrickObjectRenderer";
 import { BulletObjectRenderer } from "./BulletObjectRenderer";
 import { ObjectsRendererManager } from "./ObjectsRendererManager";
 import { ObjectRenderer } from "./ObjectRenderer";
+import { ExplosionObjectRenderer } from "./ExplosionObjectRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
@@ -21,6 +22,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
   const renderers = new Map<string, ObjectRenderer>([
     ["brick", new BrickObjectRenderer()],
     ["bullet", new BulletObjectRenderer()],
+    ["explosion", new ExplosionObjectRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };

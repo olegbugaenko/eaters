@@ -4,6 +4,7 @@ import {
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
+import { ExplosionModule } from "./ExplosionModule";
 
 const BULLET_DIAMETER = 16;
 const BULLET_GRADIENT_STOPS = [
@@ -41,10 +42,13 @@ interface BulletState {
   position: SceneVector2;
   velocity: SceneVector2;
   radius: number;
+  lifetimeMs: number;
+  elapsedMs: number;
 }
 
 interface BulletModuleOptions {
   scene: SceneObjectManager;
+  explosions: ExplosionModule;
 }
 
 export class BulletModule implements GameModule {
@@ -97,6 +101,8 @@ export class BulletModule implements GameModule {
       position,
       velocity: { x: speedPerMs, y: 0 },
       radius,
+      lifetimeMs: this.getRandomLifetime(),
+      elapsedMs: 0,
     });
   }
 
@@ -110,6 +116,16 @@ export class BulletModule implements GameModule {
         x: bullet.position.x + bullet.velocity.x * delta,
         y: bullet.position.y + bullet.velocity.y * delta,
       };
+      bullet.elapsedMs += delta;
+
+      if (bullet.elapsedMs >= bullet.lifetimeMs) {
+        this.options.scene.removeObject(bullet.id);
+        this.options.explosions.spawnExplosion({
+          position: { ...bullet.position },
+          initialRadius: bullet.radius,
+        });
+        return;
+      }
 
       if (bullet.position.x - bullet.radius > map.width) {
         this.options.scene.removeObject(bullet.id);
@@ -133,5 +149,11 @@ export class BulletModule implements GameModule {
       this.options.scene.removeObject(bullet.id);
     });
     this.bullets = [];
+  }
+
+  private getRandomLifetime(): number {
+    const minSeconds = 1;
+    const maxSeconds = 20;
+    return (minSeconds + Math.random() * (maxSeconds - minSeconds)) * 1000;
   }
 }

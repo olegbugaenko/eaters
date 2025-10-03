@@ -7,6 +7,7 @@ import { TestTimeModule } from "../modules/TestTimeModule";
 import { SceneObjectManager } from "../services/SceneObjectManager";
 import { BricksModule } from "../modules/BricksModule";
 import { BulletModule } from "../modules/BulletModule";
+import { ExplosionModule } from "../modules/ExplosionModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -32,12 +33,18 @@ export class Application {
       bridge: this.dataBridge,
     });
 
+    const explosionModule = new ExplosionModule({
+      scene: sceneObjects,
+    });
+
     const bulletModule = new BulletModule({
       scene: sceneObjects,
+      explosions: explosionModule,
     });
 
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
+    this.registerModule(explosionModule);
     this.registerModule(bulletModule);
   }
 
