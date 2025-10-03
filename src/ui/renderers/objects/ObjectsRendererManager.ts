@@ -48,11 +48,23 @@ export class ObjectsRendererManager {
   private staticData: Float32Array | null = null;
   private dynamicData: Float32Array | null = null;
 
+  private staticVertexCount = 0;
+  private dynamicVertexCount = 0;
+
   private staticDirty = false;
   private dynamicLayoutDirty = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
 
   constructor(private readonly renderers: Map<string, ObjectRenderer>) {}
+
+  public bootstrap(instances: readonly SceneObjectInstance[]): void {
+    instances.forEach((instance) => {
+      if (this.objects.has(instance.id)) {
+        return;
+      }
+      this.registerObject(instance);
+    });
+  }
 
   public applyChanges(
     changes: ReturnType<SceneObjectManager["flushChanges"]>
@@ -93,21 +105,33 @@ export class ObjectsRendererManager {
   }
 
   public getStaticVertexCount(): number {
-    return this.staticData ? this.staticData.length / VERTEX_COMPONENTS : 0;
+    return this.staticVertexCount;
   }
 
   public getDynamicVertexCount(): number {
-    return this.dynamicData ? this.dynamicData.length / VERTEX_COMPONENTS : 0;
+    return this.dynamicVertexCount;
   }
 
   private addObject(instance: SceneObjectInstance): void {
+    if (this.objects.has(instance.id)) {
+      this.updateObject(instance);
+      return;
+    }
+    this.registerObject(instance);
+  }
+
+  private registerObject(instance: SceneObjectInstance): void {
     const renderer = this.renderers.get(instance.type);
     if (!renderer) {
       console.warn(`No renderer registered for object type "${instance.type}".`);
       return;
     }
     const registration = renderer.register(instance);
-    const managed: ManagedObject = { instance, renderer, registration };
+    const managed: ManagedObject = {
+      instance: this.cloneInstance(instance),
+      renderer,
+      registration,
+    };
     this.objects.set(instance.id, managed);
 
     registration.staticPrimitives.forEach((primitive) => {
@@ -139,7 +163,7 @@ export class ObjectsRendererManager {
     if (!managed) {
       return;
     }
-    managed.instance = instance;
+    managed.instance = this.cloneInstance(instance);
     const updates = managed.renderer.update(instance, managed.registration);
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);
@@ -207,6 +231,7 @@ export class ObjectsRendererManager {
       offset += entry.primitive.data.length;
     });
     this.staticData = data;
+    this.staticVertexCount = this.staticData.length / VERTEX_COMPONENTS;
     this.staticDirty = false;
   }
 
@@ -224,7 +249,20 @@ export class ObjectsRendererManager {
       offset += entry.length;
     });
     this.dynamicData = data;
+    this.dynamicVertexCount = this.dynamicData.length / VERTEX_COMPONENTS;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
+  }
+
+  private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {
+    return {
+      id: instance.id,
+      type: instance.type,
+      data: {
+        position: { ...instance.data.position },
+        size: instance.data.size ? { ...instance.data.size } : undefined,
+        color: instance.data.color ? { ...instance.data.color } : undefined,
+      },
+    };
   }
 }

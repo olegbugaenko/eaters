@@ -4,8 +4,8 @@ import {
   SceneObjectInstance,
 } from "../../../logic/services/SceneObjectManager";
 import {
-  createCirclePrimitive,
-  createRectanglePrimitive,
+  createStaticCirclePrimitive,
+  createStaticRectanglePrimitive,
 } from "../primitives";
 
 const CIRCLE_SIZE_FACTOR = 0.4;
@@ -41,12 +41,12 @@ export class BrickObjectRenderer extends ObjectRenderer {
 
     return {
       staticPrimitives: [
-        createRectanglePrimitive({
+        createStaticRectanglePrimitive({
           position: instance.data.position,
           size,
           color,
         }),
-        createCirclePrimitive({
+        createStaticCirclePrimitive({
           position: instance.data.position,
           radius,
           color: innerColor,

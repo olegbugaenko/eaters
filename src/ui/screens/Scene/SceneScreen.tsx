@@ -165,6 +165,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     }
 
     const objectsRenderer = createObjectsRendererManager();
+    objectsRenderer.bootstrap(scene.getObjects());
 
     gl.useProgram(program);
 

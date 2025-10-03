@@ -6,7 +6,6 @@ export const VERTEX_COMPONENTS = POSITION_COMPONENTS + COLOR_COMPONENTS;
 
 export interface Primitive {
   readonly data: Float32Array;
-  readonly vertexCount: number;
 }
 
 export interface StaticPrimitive extends Primitive {}

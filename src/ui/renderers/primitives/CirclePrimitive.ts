@@ -171,14 +171,13 @@ const assignVertex = (
   return changed;
 };
 
-export const createCirclePrimitive = (
+export const createStaticCirclePrimitive = (
   options: CirclePrimitiveOptions
 ): StaticPrimitive => {
   const segments = options.segments ?? DEFAULT_SEGMENTS;
   const alpha = resolveAlpha(options.color);
   return {
     data: buildCircleData(options.position, options.radius, options.color, alpha, segments),
-    vertexCount: segments * 3,
   };
 };
 
@@ -191,11 +190,9 @@ export const createDynamicCirclePrimitive = (
   let radius = getRadiusFromSize(instance.data.size, 0);
   const alpha = resolveAlpha(color);
   const data = buildCircleData(position, radius, color, alpha, segments);
-  const vertexCount = segments * 3;
 
   return {
     data,
-    vertexCount,
     update(target: SceneObjectInstance) {
       const nextColor = getColor(target.data.color);
       const nextAlpha = resolveAlpha(nextColor);

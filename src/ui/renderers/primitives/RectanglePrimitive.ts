@@ -3,10 +3,7 @@ import {
   SceneSize,
   SceneVector2,
 } from "../../../logic/services/SceneObjectManager";
-import {
-  StaticPrimitive,
-  VERTEX_COMPONENTS,
-} from "../objects/ObjectRenderer";
+import { StaticPrimitive, VERTEX_COMPONENTS } from "../objects/ObjectRenderer";
 
 interface RectanglePrimitiveOptions {
   position: SceneVector2;
@@ -40,7 +37,7 @@ const pushVertex = (
   return offset + VERTEX_COMPONENTS;
 };
 
-export const createRectanglePrimitive = (
+export const createStaticRectanglePrimitive = (
   options: RectanglePrimitiveOptions
 ): StaticPrimitive => {
   const { position, size, color } = options;
@@ -62,5 +59,5 @@ export const createRectanglePrimitive = (
   offset = pushVertex(data, offset, right, bottom, color, alpha);
   pushVertex(data, offset, right, top, color, alpha);
 
-  return { data, vertexCount: VERTEX_COUNT };
+  return { data };
 };
