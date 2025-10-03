@@ -1,0 +1,105 @@
+import assert from "assert";
+import { FILL_TYPES, SceneObjectManager } from "../src/logic/services/SceneObjectManager";
+import { BulletModule } from "../src/logic/modules/BulletModule";
+import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modules/ExplosionModule";
+import { getBulletConfig } from "../src/db/bullets-db";
+import { ExplosionType } from "../src/db/explosions-db";
+import { describe, test } from "./testRunner";
+
+class ExplosionStub implements Pick<ExplosionModule, "spawnExplosionByType"> {
+  public readonly calls: Array<{
+    type: ExplosionType;
+    options: SpawnExplosionByTypeOptions;
+  }> = [];
+
+  public spawnExplosionByType(
+    type: ExplosionType,
+    options: SpawnExplosionByTypeOptions
+  ): void {
+    this.calls.push({ type, options });
+  }
+}
+
+describe("BulletModule", () => {
+  test("spawnBulletByType uses database-driven fill and tail data", () => {
+    const scene = new SceneObjectManager();
+    const explosions = new ExplosionStub();
+    const module = new BulletModule({
+      scene,
+      explosions: explosions as unknown as ExplosionModule,
+    });
+
+    const id = module.spawnBulletByType("plasmoid", {
+      position: { x: 100, y: 200 },
+      directionAngle: 0,
+    });
+
+    const instance = scene.getObject(id);
+    assert(instance, "Bullet should be registered in the scene");
+
+    const config = getBulletConfig("plasmoid");
+    const fill = instance.data.fill;
+    assert.strictEqual(fill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+    assert.strictEqual(fill.stops.length, config.gradientStops.length);
+
+    fill.stops.forEach((stop, index) => {
+      const expected = config.gradientStops[index];
+      assert(expected, "Expected gradient stop to exist");
+      assert.strictEqual(stop.offset, expected.offset);
+      assert.deepStrictEqual(stop.color, expected.color);
+    });
+
+    const customData = instance.data.customData as { tail?: unknown } | undefined;
+    assert(customData && customData.tail, "Bullet custom data should include tail config");
+
+    const tail = customData.tail as { startColor: unknown; endColor: unknown };
+    assert.deepStrictEqual(tail.startColor, config.tail.startColor);
+    assert.deepStrictEqual(tail.endColor, config.tail.endColor);
+  });
+
+  test("spawnBulletByType triggers explosion based on bullet type", () => {
+    const scene = new SceneObjectManager();
+    const explosions = new ExplosionStub();
+    const module = new BulletModule({
+      scene,
+      explosions: explosions as unknown as ExplosionModule,
+    });
+
+    const id = module.spawnBulletByType("magnetic", {
+      position: { x: 0, y: 0 },
+      directionAngle: 0,
+      lifetimeMs: 0,
+    });
+
+    const updater = module as unknown as { updateBullets(deltaMs: number): void };
+    updater.updateBullets(0);
+
+    assert.strictEqual(scene.getObject(id), undefined);
+    assert.strictEqual(explosions.calls.length, 1);
+    const [call] = explosions.calls;
+    assert(call, "Explosion should have been triggered");
+    assert.strictEqual(call.type, "magnetic");
+    assert.deepStrictEqual(call.options.position, { x: 0, y: 0 });
+    assert.strictEqual(call.options.initialRadius, getBulletConfig("magnetic").diameter / 2);
+  });
+
+  test("spawnBulletByType respects bullets without explosion types", () => {
+    const scene = new SceneObjectManager();
+    const explosions = new ExplosionStub();
+    const module = new BulletModule({
+      scene,
+      explosions: explosions as unknown as ExplosionModule,
+    });
+
+    module.spawnBulletByType("mechanical", {
+      position: { x: 0, y: 0 },
+      directionAngle: 0,
+      lifetimeMs: 0,
+    });
+
+    const updater = module as unknown as { updateBullets(deltaMs: number): void };
+    updater.updateBullets(0);
+
+    assert.strictEqual(explosions.calls.length, 0);
+  });
+});

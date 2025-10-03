@@ -1,36 +1,29 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
 import {
+  BRICK_TYPES,
+  BrickConfig,
+  BrickType,
+  getBrickConfig,
+  isBrickType,
+} from "../../db/bricks-db";
+import {
   FILL_TYPES,
   SceneObjectManager,
   SceneVector2,
-  SceneSize,
 } from "../services/SceneObjectManager";
 
 const MIN_BRICKS = 1000;
 const MAX_BRICKS = 2000;
-const BRICK_SIZE: SceneSize = { width: 60, height: 30 };
-const BRICK_GRADIENT_STOPS = [
-  {
-    offset: 0,
-    color: { r: 0.9, g: 0.7, b: 0.1, a: 1 },
-  },
-  {
-    offset: 0.5,
-    color: { r: 1, g: 0.85, b: 0.3, a: 1 },
-  },
-  {
-    offset: 1,
-    color: { r: 0.9, g: 0.7, b: 0.1, a: 1 },
-  },
-] as const;
-const createBrickFill = (size: SceneSize) => {
-  const halfHeight = size.height / 2;
+const DEFAULT_BRICK_TYPE: BrickType = "classic";
+
+const createBrickFill = (config: BrickConfig) => {
+  const halfHeight = config.size.height / 2;
   return {
     fillType: FILL_TYPES.LINEAR_GRADIENT,
     start: { x: 0, y: -halfHeight },
     end: { x: 0, y: halfHeight },
-    stops: BRICK_GRADIENT_STOPS.map((stop) => ({
+    stops: config.gradientStops.map((stop) => ({
       offset: stop.offset,
       color: { ...stop.color },
     })),
@@ -42,6 +35,7 @@ export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
 interface BrickData {
   position: SceneVector2;
   rotation: number;
+  type: BrickType;
 }
 
 interface BricksModuleOptions {
@@ -83,6 +77,7 @@ export class BricksModule implements GameModule {
       bricks: this.bricks.map((brick) => ({
         position: { ...brick.position },
         rotation: brick.rotation,
+        type: brick.type,
       })),
     } satisfies BrickSaveData;
   }
@@ -117,6 +112,7 @@ export class BricksModule implements GameModule {
         sanitized.push({
           position: this.clampToMap(brick.position),
           rotation: sanitizeRotation((brick as BrickData).rotation),
+          type: sanitizeBrickType((brick as BrickData).type),
         });
       }
     });
@@ -132,6 +128,7 @@ export class BricksModule implements GameModule {
       bricks.push({
         position: this.getRandomPosition(),
         rotation: Math.random() * Math.PI * 2,
+        type: this.getRandomBrickType(),
       });
     }
 
@@ -143,13 +140,15 @@ export class BricksModule implements GameModule {
     this.bricks = bricks.map((brick) => ({
       position: this.clampToMap(brick.position),
       rotation: sanitizeRotation(brick.rotation),
+      type: sanitizeBrickType(brick.type),
     }));
 
     this.bricks.forEach((brick) => {
+      const config = getBrickConfig(brick.type);
       const id = this.options.scene.addObject("brick", {
         position: brick.position,
-        size: { ...BRICK_SIZE },
-        fill: createBrickFill(BRICK_SIZE),
+        size: { ...config.size },
+        fill: createBrickFill(config),
         rotation: brick.rotation,
       });
       this.objectIds.add(id);
@@ -184,6 +183,11 @@ export class BricksModule implements GameModule {
       y: Math.random() * height,
     };
   }
+
+  private getRandomBrickType(): BrickType {
+    const index = Math.floor(Math.random() * BRICK_TYPES.length);
+    return BRICK_TYPES[index] ?? DEFAULT_BRICK_TYPE;
+  }
 }
 
 const clamp = (value: number, min: number, max: number): number => {
@@ -198,4 +202,11 @@ const sanitizeRotation = (value: number | undefined): number => {
     return value;
   }
   return Math.random() * Math.PI * 2;
+};
+
+const sanitizeBrickType = (value: BrickType | undefined): BrickType => {
+  if (isBrickType(value)) {
+    return value;
+  }
+  return DEFAULT_BRICK_TYPE;
 };
