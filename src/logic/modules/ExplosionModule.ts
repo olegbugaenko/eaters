@@ -38,6 +38,7 @@ interface ParticleEmitterState {
   elapsedMs: number;
   spawnAccumulator: number;
   particles: ParticleState[];
+  capacity: number;
 }
 
 interface WaveState {
@@ -146,9 +147,11 @@ export class ExplosionModule implements GameModule {
 
     const renderPayload: ParticleSystemCustomData = {
       kind: CUSTOM_DATA_KIND_PARTICLE_SYSTEM,
-      positions: new Float32Array(0),
-      sizes: new Float32Array(0),
-      alphas: new Float32Array(0),
+      capacity: emitter.capacity,
+      count: 0,
+      positions: new Float32Array(emitter.capacity * 2),
+      sizes: new Float32Array(emitter.capacity),
+      alphas: new Float32Array(emitter.capacity),
       color: { ...emitter.options.color },
     };
 
@@ -235,21 +238,35 @@ export class ExplosionModule implements GameModule {
 
   private updateRenderPayload(explosion: ExplosionState): void {
     const { renderPayload, emitter } = explosion;
-    const count = emitter.particles.length;
-    const positionsLength = count * 2;
+    const capacity = Math.max(0, renderPayload.capacity);
 
-    if (renderPayload.positions.length !== positionsLength) {
-      renderPayload.positions = new Float32Array(positionsLength);
-      renderPayload.sizes = new Float32Array(count);
-      renderPayload.alphas = new Float32Array(count);
+    if (renderPayload.positions.length !== capacity * 2) {
+      renderPayload.positions = new Float32Array(capacity * 2);
+    }
+    if (renderPayload.sizes.length !== capacity) {
+      renderPayload.sizes = new Float32Array(capacity);
+    }
+    if (renderPayload.alphas.length !== capacity) {
+      renderPayload.alphas = new Float32Array(capacity);
     }
 
-    emitter.particles.forEach((particle, index) => {
-      renderPayload.positions[index * 2] = particle.position.x;
-      renderPayload.positions[index * 2 + 1] = particle.position.y;
-      renderPayload.sizes[index] = particle.size;
-      renderPayload.alphas[index] = this.computeParticleAlpha(particle);
-    });
+    const activeCount = Math.min(emitter.particles.length, capacity);
+    renderPayload.count = activeCount;
+
+    for (let i = 0; i < activeCount; i += 1) {
+      const particle = emitter.particles[i]!;
+      renderPayload.positions[i * 2] = particle.position.x;
+      renderPayload.positions[i * 2 + 1] = particle.position.y;
+      renderPayload.sizes[i] = particle.size;
+      renderPayload.alphas[i] = this.computeParticleAlpha(particle);
+    }
+
+    for (let i = activeCount; i < capacity; i += 1) {
+      renderPayload.positions[i * 2] = explosion.position.x;
+      renderPayload.positions[i * 2 + 1] = explosion.position.y;
+      renderPayload.sizes[i] = 0;
+      renderPayload.alphas[i] = 0;
+    }
   }
 
   private computeParticleAlpha(particle: ParticleState): number {
@@ -278,6 +295,7 @@ export class ExplosionModule implements GameModule {
       elapsedMs: 0,
       spawnAccumulator: 0,
       particles: [],
+      capacity: computeEmitterCapacity(options),
     };
   }
 
@@ -367,4 +385,21 @@ function randomRange(min: number, max: number): number {
     return min;
   }
   return min + Math.random() * (max - min);
+}
+
+function computeEmitterCapacity(options: ParticleEmitterOptions): number {
+  const rate = Math.max(0, options.particlesPerSecond);
+  if (rate <= 0) {
+    return 0;
+  }
+  const emissionWindowMs = Math.max(
+    0,
+    Math.min(options.emissionDurationMs, options.particleLifetimeMs)
+  );
+  if (emissionWindowMs <= 0) {
+    return 0;
+  }
+  const base = (rate * emissionWindowMs) / 1000;
+  const slack = rate / 60;
+  return Math.max(1, Math.ceil(base + slack));
 }

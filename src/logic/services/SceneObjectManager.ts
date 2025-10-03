@@ -81,6 +81,8 @@ export const CUSTOM_DATA_KIND_PARTICLE_SYSTEM = "particle-system" as const;
 export interface ParticleSystemCustomData {
   kind: typeof CUSTOM_DATA_KIND_PARTICLE_SYSTEM;
   color: SceneColor;
+  capacity: number;
+  count: number;
   positions: Float32Array;
   sizes: Float32Array;
   alphas: Float32Array;
