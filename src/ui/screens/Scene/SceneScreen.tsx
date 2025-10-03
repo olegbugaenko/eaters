@@ -157,6 +157,26 @@ interface SceneScreenProps {
   onExit: () => void;
 }
 
+const cameraEquals = (
+  a: SceneCameraState,
+  b: SceneCameraState | undefined,
+  epsilon = 0.01
+): boolean => {
+  if (a === b) {
+    return true;
+  }
+  if (!b) {
+    return false;
+  }
+  return (
+    Math.abs(a.position.x - b.position.x) <= epsilon &&
+    Math.abs(a.position.y - b.position.y) <= epsilon &&
+    Math.abs(a.scale - b.scale) <= epsilon &&
+    Math.abs(a.viewportSize.width - b.viewportSize.width) <= epsilon &&
+    Math.abs(a.viewportSize.height - b.viewportSize.height) <= epsilon
+  );
+};
+
 export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -165,6 +185,17 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const formatted = useMemo(() => formatTime(timePlayed), [timePlayed]);
   const [scale, setScale] = useState(() => scene.getCamera().scale);
+  const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
+  const cameraInfoRef = useRef(cameraInfo);
+  const scaleRef = useRef(scale);
+
+  useEffect(() => {
+    cameraInfoRef.current = cameraInfo;
+  }, [cameraInfo]);
+
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -213,6 +244,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       const deltaMs = Math.min(timestamp - previousTime, 100);
       previousTime = timestamp;
 
+      applyCameraMovement(pointerState, scene, deltaMs, canvas.width, canvas.height);
+
       const cameraState = scene.getCamera();
       const geometry = buildGeometry(scene.getObjects(), cameraState);
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -221,7 +254,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       if (geometry.length > 0) {
         gl.drawArrays(gl.TRIANGLES, 0, geometry.length / 2);
       }
-      applyCameraMovement(pointerState, scene, deltaMs, canvas.width, canvas.height);
+
+      if (!cameraEquals(cameraState, cameraInfoRef.current)) {
+        setCameraInfo(cameraState);
+      }
+      if (Math.abs(cameraState.scale - scaleRef.current) > 0.0001) {
+        setScale(cameraState.scale);
+      }
       frame = window.requestAnimationFrame(render);
     };
 
@@ -257,6 +296,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       });
       const current = scene.getCamera();
       setScale(current.scale);
+      setCameraInfo(current);
     };
 
     resize();
@@ -313,9 +353,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
                 scene.setScale(next);
                 const current = scene.getCamera();
                 setScale(current.scale);
+                setCameraInfo(current);
               }}
             />
           </label>
+          <span>
+            Camera: x {cameraInfo.position.x.toFixed(1)}, y {cameraInfo.position.y.toFixed(1)}
+          </span>
         </div>
       </div>
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
