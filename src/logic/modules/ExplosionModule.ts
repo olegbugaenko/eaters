@@ -4,9 +4,15 @@ import {
   FILL_TYPES,
   ParticleSystemCustomData,
   SceneColor,
+  SceneGradientStop,
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
+import {
+  ExplosionConfig,
+  ExplosionType,
+  getExplosionConfig,
+} from "../../db/explosions-db";
 
 interface ExplosionModuleOptions {
   scene: SceneObjectManager;
@@ -46,6 +52,7 @@ interface WaveState {
   endRadius: number;
   startAlpha: number;
   endAlpha: number;
+  gradientStops: readonly SceneGradientStop[];
 }
 
 interface ExplosionState {
@@ -63,28 +70,10 @@ export interface SpawnExplosionOptions {
   initialRadius: number;
 }
 
-const EXPLOSION_LIFETIME_MS = 3_000;
-const WAVE_RADIUS_EXTENSION = 180;
-const WAVE_START_ALPHA = 0.85;
-const WAVE_END_ALPHA = 0;
-
-const DEFAULT_EMITTER_OPTIONS: ParticleEmitterOptions = {
-  emissionDurationMs: 700,
-  particlesPerSecond: 260,
-  baseSpeed: 0.1,
-  speedVariation: 0.05,
-  particleLifetimeMs: 1_400,
-  fadeStartMs: 700,
-  sizeRange: { min: 1, max: 2 },
-  spawnRadius: { min: 0, max: 12 },
-  color: { r: 1, g: 0.85, b: 0.55, a: 1 },
-};
-
-const WAVE_GRADIENT_STOPS = [
-  { offset: 0, color: { r: 1, g: 0.75, b: 0.3, a: 0.8 } },
-  { offset: 0.35, color: { r: 1, g: 0.45, b: 0.15, a: 0.55 } },
-  { offset: 1, color: { r: 1, g: 0.1, b: 0, a: 0 } },
-] as const;
+export interface SpawnExplosionByTypeOptions {
+  position: SceneVector2;
+  initialRadius?: number;
+}
 
 export class ExplosionModule implements GameModule {
   public readonly id = "explosions";
@@ -133,17 +122,40 @@ export class ExplosionModule implements GameModule {
   }
 
   public spawnExplosion(options: SpawnExplosionOptions): void {
+    this.spawnExplosionByType("plasmoid", options);
+  }
+
+  public spawnExplosionByType(
+    type: ExplosionType,
+    options: SpawnExplosionByTypeOptions
+  ): void {
+    const config = getExplosionConfig(type);
+    const initialRadius = Math.max(
+      1,
+      options.initialRadius ?? config.defaultInitialRadius
+    );
+    this.spawnConfiguredExplosion(config, {
+      position: options.position,
+      initialRadius,
+    });
+  }
+
+  private spawnConfiguredExplosion(
+    config: ExplosionConfig,
+    options: SpawnExplosionOptions
+  ): void {
     const startRadius = Math.max(1, options.initialRadius);
-    const endRadius = startRadius + WAVE_RADIUS_EXTENSION;
+    const endRadius = startRadius + config.wave.radiusExtension;
 
     const wave: WaveState = {
       startRadius,
       endRadius,
-      startAlpha: WAVE_START_ALPHA,
-      endAlpha: WAVE_END_ALPHA,
+      startAlpha: config.wave.startAlpha,
+      endAlpha: config.wave.endAlpha,
+      gradientStops: config.wave.gradientStops,
     };
 
-    const emitter = this.createEmitterState(options.initialRadius);
+    const emitter = this.createEmitterState(options.initialRadius, config);
 
     const renderPayload: ParticleSystemCustomData = {
       kind: CUSTOM_DATA_KIND_PARTICLE_SYSTEM,
@@ -158,7 +170,7 @@ export class ExplosionModule implements GameModule {
     const id = this.options.scene.addObject("explosion", {
       position: { ...options.position },
       size: { width: startRadius * 2, height: startRadius * 2 },
-      fill: createWaveFill(startRadius, wave.startAlpha),
+      fill: createWaveFill(startRadius, wave.startAlpha, wave.gradientStops),
       customData: renderPayload,
     });
 
@@ -166,7 +178,7 @@ export class ExplosionModule implements GameModule {
       id,
       position: { ...options.position },
       elapsedMs: 0,
-      lifetimeMs: EXPLOSION_LIFETIME_MS,
+      lifetimeMs: config.lifetimeMs,
       wave,
       emitter,
       renderPayload,
@@ -193,7 +205,7 @@ export class ExplosionModule implements GameModule {
     this.options.scene.updateObject(explosion.id, {
       position: { ...explosion.position },
       size: { width: radius * 2, height: radius * 2 },
-      fill: createWaveFill(radius, waveAlpha),
+      fill: createWaveFill(radius, waveAlpha, explosion.wave.gradientStops),
       customData: explosion.renderPayload,
     });
   }
@@ -281,13 +293,27 @@ export class ExplosionModule implements GameModule {
     return 1 - fadeProgress;
   }
 
-  private createEmitterState(initialRadius: number): ParticleEmitterState {
-    const options = {
-      ...DEFAULT_EMITTER_OPTIONS,
+  private createEmitterState(
+    initialRadius: number,
+    config: ExplosionConfig
+  ): ParticleEmitterState {
+    const spawnRadiusMax = Math.max(
+      config.emitter.spawnRadius.max,
+      initialRadius * config.emitter.spawnRadiusMultiplier
+    );
+    const options: ParticleEmitterOptions = {
+      emissionDurationMs: config.emitter.emissionDurationMs,
+      particlesPerSecond: config.emitter.particlesPerSecond,
+      baseSpeed: config.emitter.baseSpeed,
+      speedVariation: config.emitter.speedVariation,
+      particleLifetimeMs: config.emitter.particleLifetimeMs,
+      fadeStartMs: config.emitter.fadeStartMs,
+      sizeRange: { ...config.emitter.sizeRange },
       spawnRadius: {
-        min: DEFAULT_EMITTER_OPTIONS.spawnRadius.min,
-        max: Math.max(DEFAULT_EMITTER_OPTIONS.spawnRadius.max, initialRadius * 1.5),
+        min: config.emitter.spawnRadius.min,
+        max: spawnRadiusMax,
       },
+      color: { ...config.emitter.color },
     };
 
     return {
@@ -336,18 +362,22 @@ export class ExplosionModule implements GameModule {
   }
 }
 
-function createWaveFill(radius: number, alpha: number) {
+function createWaveFill(
+  radius: number,
+  alpha: number,
+  gradientStops: readonly SceneGradientStop[]
+) {
   return {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
     end: radius,
-    stops: WAVE_GRADIENT_STOPS.map((stop) => ({
+    stops: gradientStops.map((stop) => ({
       offset: stop.offset,
       color: {
         r: stop.color.r,
         g: stop.color.g,
         b: stop.color.b,
-        a: clamp01(stop.color.a * alpha),
+        a: clamp01((typeof stop.color.a === "number" ? stop.color.a : 1) * alpha),
       },
     })),
   };

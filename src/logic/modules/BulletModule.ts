@@ -4,49 +4,61 @@ import {
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
-import { ExplosionModule } from "./ExplosionModule";
+import {
+  BULLET_TYPES,
+  BulletConfig,
+  BulletTailConfig,
+  BulletType,
+  getBulletConfig,
+} from "../../db/bullets-db";
+import { ExplosionType } from "../../db/explosions-db";
+import { ExplosionModule, SpawnExplosionByTypeOptions } from "./ExplosionModule";
 
-const BULLET_DIAMETER = 16;
-const BULLET_GRADIENT_STOPS = [
-  {
-    offset: 0,
-    color: { r: 0.1, g: 0.15, b: 1, a: 1 },
-  },
-  {
-    offset: 0.35,
-    color: { r: 0.9, g: 0.95, b: 0.9, a: 1 },
-  },
-  {
-    offset: 0.5,
-    color: { r: 0.5, g: 0.85, b: 1.0, a: 0.75 },
-  },
-  {
-    offset: 1,
-    color: { r: 0.5, g: 0.85, b: 1.0, a: 0 },
-  },
-] as const;
-const TRAVEL_TIME_SECONDS = 20;
-const MIN_DIRECTION_ANGLE = -Math.PI / 6;
-const MAX_DIRECTION_ANGLE = Math.PI / 6;
+interface BulletCustomData {
+  type: BulletType;
+  tail: BulletTailConfig;
+}
 
-const createBulletFill = (radius: number) => ({
+const createBulletFill = (radius: number, config: BulletConfig) => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   end: radius,
-  stops: BULLET_GRADIENT_STOPS.map((stop) => ({
+  stops: config.gradientStops.map((stop) => ({
     offset: stop.offset,
     color: { ...stop.color },
   })),
 });
 
+const createBulletCustomData = (
+  type: BulletType,
+  tail: BulletTailConfig
+): BulletCustomData => ({
+  type,
+  tail: {
+    lengthMultiplier: tail.lengthMultiplier,
+    widthMultiplier: tail.widthMultiplier,
+    startColor: { ...tail.startColor },
+    endColor: { ...tail.endColor },
+  },
+});
+
 interface BulletState {
   id: string;
+  type: BulletType;
+  config: BulletConfig;
   position: SceneVector2;
   velocity: SceneVector2;
   radius: number;
   lifetimeMs: number;
   elapsedMs: number;
   rotation: number;
+  explosionType?: ExplosionType;
+}
+
+export interface SpawnBulletByTypeOptions {
+  position?: SceneVector2;
+  directionAngle?: number;
+  lifetimeMs?: number;
 }
 
 interface BulletModuleOptions {
@@ -79,41 +91,62 @@ export class BulletModule implements GameModule {
     if (deltaMs <= 0) {
       return;
     }
-    for(let i = 0; i < 2; i++) {
-      this.spawnBullet();
+    for (let i = 0; i < 2; i += 1) {
+      this.spawnBulletByType(this.getRandomBulletType());
     }
     this.updateBullets(deltaMs);
   }
 
-  private spawnBullet(): void {
+  public spawnBulletByType(
+    type: BulletType,
+    options: SpawnBulletByTypeOptions = {}
+  ): string {
+    const config = getBulletConfig(type);
     const map = this.options.scene.getMapSize();
-    const radius = BULLET_DIAMETER / 2;
+    const radius = config.diameter / 2;
     const distance = map.width + radius * 2;
-    const speedPerMs = distance / (TRAVEL_TIME_SECONDS * 1000);
-    const angle = this.getRandomDirectionAngle();
-    const position: SceneVector2 = {
-      x: -radius,
-      y: Math.random() * map.height,
-    };
+    const travelTime = Math.max(0.001, config.travelTimeSeconds) * 1000;
+    const speedPerMs = distance / travelTime;
+    const angle =
+      typeof options.directionAngle === "number"
+        ? options.directionAngle
+        : this.getRandomDirectionAngle(config);
+    const position: SceneVector2 = options.position
+      ? { ...options.position }
+      : {
+          x: -radius,
+          y: Math.random() * map.height,
+        };
     const velocity = {
       x: Math.cos(angle) * speedPerMs,
       y: Math.sin(angle) * speedPerMs,
     };
+
     const id = this.options.scene.addObject("bullet", {
       position: { ...position },
-      size: { width: BULLET_DIAMETER, height: BULLET_DIAMETER },
-      fill: createBulletFill(radius),
+      size: { width: config.diameter, height: config.diameter },
+      fill: createBulletFill(radius, config),
       rotation: angle,
+      customData: createBulletCustomData(type, config.tail),
     });
+
     this.bullets.push({
       id,
+      type,
+      config,
       position,
       velocity,
       radius,
-      lifetimeMs: this.getRandomLifetime(),
+      lifetimeMs: Math.max(
+        0,
+        options.lifetimeMs ?? this.getRandomLifetime(config)
+      ),
       elapsedMs: 0,
       rotation: angle,
+      explosionType: config.explosionType,
     });
+
+    return id;
   }
 
   private updateBullets(deltaMs: number): void {
@@ -131,7 +164,7 @@ export class BulletModule implements GameModule {
 
       if (bullet.elapsedMs >= bullet.lifetimeMs) {
         this.options.scene.removeObject(bullet.id);
-        this.options.explosions.spawnExplosion({
+        this.spawnExplosionForBullet(bullet, {
           position: { ...bullet.position },
           initialRadius: bullet.radius,
         });
@@ -151,7 +184,7 @@ export class BulletModule implements GameModule {
       this.options.scene.updateObject(bullet.id, {
         position: bullet.position,
         size: { width: bullet.radius * 2, height: bullet.radius * 2 },
-        fill: createBulletFill(bullet.radius),
+        fill: createBulletFill(bullet.radius, bullet.config),
         rotation: bullet.rotation,
       });
 
@@ -168,14 +201,33 @@ export class BulletModule implements GameModule {
     this.bullets = [];
   }
 
-  private getRandomLifetime(): number {
-    const minSeconds = 1;
-    const maxSeconds = 20;
-    return (minSeconds + Math.random() * (maxSeconds - minSeconds)) * 1000;
+  private spawnExplosionForBullet(
+    bullet: BulletState,
+    options: SpawnExplosionByTypeOptions
+  ): void {
+    if (!bullet.explosionType) {
+      return;
+    }
+    this.options.explosions.spawnExplosionByType(bullet.explosionType, options);
   }
 
-  private getRandomDirectionAngle(): number {
-    const spread = MAX_DIRECTION_ANGLE - MIN_DIRECTION_ANGLE;
-    return MIN_DIRECTION_ANGLE + Math.random() * spread;
+  private getRandomLifetime(config: BulletConfig): number {
+    const min = Math.max(0, config.lifetimeMsRange.min);
+    const max = Math.max(min, config.lifetimeMsRange.max);
+    if (max <= min) {
+      return min;
+    }
+    return min + Math.random() * (max - min);
+  }
+
+  private getRandomDirectionAngle(config: BulletConfig): number {
+    const { min, max } = config.directionAngleRange;
+    const spread = max - min;
+    return min + Math.random() * spread;
+  }
+
+  private getRandomBulletType(): BulletType {
+    const index = Math.floor(Math.random() * BULLET_TYPES.length);
+    return BULLET_TYPES[index] ?? BULLET_TYPES[0]!;
   }
 }
