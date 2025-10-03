@@ -4,8 +4,19 @@ import {
 } from "../../../logic/services/SceneObjectManager";
 
 export const POSITION_COMPONENTS = 2;
-export const COLOR_COMPONENTS = 4;
-export const VERTEX_COMPONENTS = POSITION_COMPONENTS + COLOR_COMPONENTS;
+export const FILL_INFO_COMPONENTS = 4;
+export const FILL_PARAMS0_COMPONENTS = 4;
+export const FILL_PARAMS1_COMPONENTS = 4;
+export const STOP_OFFSETS_COMPONENTS = 3;
+export const STOP_COLOR_COMPONENTS = 4;
+export const MAX_GRADIENT_STOPS = 3;
+export const FILL_COMPONENTS =
+  FILL_INFO_COMPONENTS +
+  FILL_PARAMS0_COMPONENTS +
+  FILL_PARAMS1_COMPONENTS +
+  STOP_OFFSETS_COMPONENTS +
+  STOP_COLOR_COMPONENTS * MAX_GRADIENT_STOPS;
+export const VERTEX_COMPONENTS = POSITION_COMPONENTS + FILL_COMPONENTS;
 
 export interface Primitive {
   readonly data: Float32Array;

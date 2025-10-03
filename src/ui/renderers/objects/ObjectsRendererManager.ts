@@ -6,6 +6,8 @@ import {
   VERTEX_COMPONENTS,
 } from "./ObjectRenderer";
 import {
+  FILL_TYPES,
+  SceneFill,
   SceneObjectInstance,
   SceneObjectManager,
 } from "../../../logic/services/SceneObjectManager";
@@ -262,6 +264,7 @@ export class ObjectsRendererManager {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : undefined,
         color: instance.data.color ? { ...instance.data.color } : undefined,
+        fill: cloneFill(instance.data.fill),
         rotation:
           typeof instance.data.rotation === "number"
             ? instance.data.rotation
@@ -270,3 +273,39 @@ export class ObjectsRendererManager {
     };
   }
 }
+
+const cloneFill = (fill: SceneFill): SceneFill => {
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...fill.color },
+      };
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return {
+        fillType: fill.fillType,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+    default:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 1, g: 1, b: 1, a: 1 },
+      };
+  }
+};

@@ -8,9 +8,13 @@ import {
   SceneObjectManager,
 } from "../../../logic/services/SceneObjectManager";
 import {
-  COLOR_COMPONENTS,
   POSITION_COMPONENTS,
   VERTEX_COMPONENTS,
+  FILL_INFO_COMPONENTS,
+  FILL_PARAMS0_COMPONENTS,
+  FILL_PARAMS1_COMPONENTS,
+  STOP_OFFSETS_COMPONENTS,
+  STOP_COLOR_COMPONENTS,
   createObjectsRendererManager,
 } from "../../renderers/objects";
 import { Button } from "../../shared/Button";
@@ -18,10 +22,23 @@ import "./SceneScreen.css";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
-attribute vec4 a_color;
+attribute vec4 a_fillInfo;
+attribute vec4 a_fillParams0;
+attribute vec4 a_fillParams1;
+attribute vec3 a_stopOffsets;
+attribute vec4 a_stopColor0;
+attribute vec4 a_stopColor1;
+attribute vec4 a_stopColor2;
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
-varying vec4 v_color;
+varying vec2 v_worldPosition;
+varying vec4 v_fillInfo;
+varying vec4 v_fillParams0;
+varying vec4 v_fillParams1;
+varying vec3 v_stopOffsets;
+varying vec4 v_stopColor0;
+varying vec4 v_stopColor1;
+varying vec4 v_stopColor2;
 
 vec2 toClip(vec2 world) {
   vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
@@ -30,15 +47,106 @@ vec2 toClip(vec2 world) {
 
 void main() {
   gl_Position = vec4(toClip(a_position), 0.0, 1.0);
-  v_color = a_color;
+  v_worldPosition = a_position;
+  v_fillInfo = a_fillInfo;
+  v_fillParams0 = a_fillParams0;
+  v_fillParams1 = a_fillParams1;
+  v_stopOffsets = a_stopOffsets;
+  v_stopColor0 = a_stopColor0;
+  v_stopColor1 = a_stopColor1;
+  v_stopColor2 = a_stopColor2;
 }
 `;
 
 const FRAGMENT_SHADER = `
 precision mediump float;
-varying vec4 v_color;
+
+varying vec2 v_worldPosition;
+varying vec4 v_fillInfo;
+varying vec4 v_fillParams0;
+varying vec4 v_fillParams1;
+varying vec3 v_stopOffsets;
+varying vec4 v_stopColor0;
+varying vec4 v_stopColor1;
+varying vec4 v_stopColor2;
+
+float clamp01(float value) {
+  return clamp(value, 0.0, 1.0);
+}
+
+vec4 sampleGradient(float t) {
+  float stopCount = v_fillInfo.y;
+  vec4 color0 = v_stopColor0;
+  if (stopCount < 1.5) {
+    return color0;
+  }
+
+  float offset0 = v_stopOffsets.x;
+  float offset1 = v_stopOffsets.y;
+  vec4 color1 = v_stopColor1;
+
+  if (stopCount < 2.5) {
+    if (t <= offset0) {
+      return color0;
+    }
+    if (t >= offset1) {
+      return color1;
+    }
+    float range = max(offset1 - offset0, 0.0001);
+    float factor = clamp((t - offset0) / range, 0.0, 1.0);
+    return mix(color0, color1, factor);
+  }
+
+  float offset2 = v_stopOffsets.z;
+  vec4 color2 = v_stopColor2;
+
+  if (t <= offset0) {
+    return color0;
+  }
+  if (t >= offset2) {
+    return color2;
+  }
+  if (t <= offset1) {
+    float range = max(offset1 - offset0, 0.0001);
+    float factor = clamp((t - offset0) / range, 0.0, 1.0);
+    return mix(color0, color1, factor);
+  }
+
+  float range = max(offset2 - offset1, 0.0001);
+  float factor = clamp((t - offset1) / range, 0.0, 1.0);
+  return mix(color1, color2, factor);
+}
+
 void main() {
-  gl_FragColor = v_color;
+  float fillType = v_fillInfo.x;
+  vec4 color = v_stopColor0;
+
+  if (fillType >= 0.5) {
+    float t = 0.0;
+    if (fillType < 1.5) {
+      vec2 start = v_fillParams0.xy;
+      vec2 dir = v_fillParams1.xy;
+      float invLenSq = v_fillParams1.z;
+      if (invLenSq > 0.0) {
+        float projection = dot(v_worldPosition - start, dir) * invLenSq;
+        t = clamp01(projection);
+      }
+    } else if (fillType < 2.5) {
+      vec2 center = v_fillParams0.xy;
+      float radius = max(v_fillParams0.z, 0.000001);
+      float dist = length(v_worldPosition - center);
+      t = clamp01(dist / radius);
+    } else {
+      vec2 center = v_fillParams0.xy;
+      float radius = max(v_fillParams0.z, 0.000001);
+      vec2 diff = v_worldPosition - center;
+      float dist = abs(diff.x) + abs(diff.y);
+      t = clamp01(dist / radius);
+    }
+    color = sampleGradient(t);
+  }
+
+  gl_FragColor = color;
 }
 `;
 
@@ -170,34 +278,54 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     gl.useProgram(program);
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
-    const colorLocation = gl.getAttribLocation(program, "a_color");
+    const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
+    const fillParams0Location = gl.getAttribLocation(program, "a_fillParams0");
+    const fillParams1Location = gl.getAttribLocation(program, "a_fillParams1");
+    const stopOffsetsLocation = gl.getAttribLocation(program, "a_stopOffsets");
+    const stopColor0Location = gl.getAttribLocation(program, "a_stopColor0");
+    const stopColor1Location = gl.getAttribLocation(program, "a_stopColor1");
+    const stopColor2Location = gl.getAttribLocation(program, "a_stopColor2");
     const stride = VERTEX_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    const colorOffset = POSITION_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
 
-    if (positionLocation < 0 || colorLocation < 0) {
+    const attributeLocations = [
+      positionLocation,
+      fillInfoLocation,
+      fillParams0Location,
+      fillParams1Location,
+      stopOffsetsLocation,
+      stopColor0Location,
+      stopColor1Location,
+      stopColor2Location,
+    ];
+
+    if (attributeLocations.some((location) => location < 0)) {
       throw new Error("Unable to resolve vertex attribute locations");
     }
 
+    const attributeConfigs = (() => {
+      let offset = 0;
+      const configs: Array<{ location: number; size: number; offset: number }> = [];
+      const pushConfig = (location: number, size: number) => {
+        configs.push({ location, size, offset });
+        offset += size * Float32Array.BYTES_PER_ELEMENT;
+      };
+      pushConfig(positionLocation, POSITION_COMPONENTS);
+      pushConfig(fillInfoLocation, FILL_INFO_COMPONENTS);
+      pushConfig(fillParams0Location, FILL_PARAMS0_COMPONENTS);
+      pushConfig(fillParams1Location, FILL_PARAMS1_COMPONENTS);
+      pushConfig(stopOffsetsLocation, STOP_OFFSETS_COMPONENTS);
+      pushConfig(stopColor0Location, STOP_COLOR_COMPONENTS);
+      pushConfig(stopColor1Location, STOP_COLOR_COMPONENTS);
+      pushConfig(stopColor2Location, STOP_COLOR_COMPONENTS);
+      return configs;
+    })();
+
     const enableAttributes = (buffer: WebGLBuffer) => {
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.enableVertexAttribArray(positionLocation);
-      gl.vertexAttribPointer(
-        positionLocation,
-        POSITION_COMPONENTS,
-        gl.FLOAT,
-        false,
-        stride,
-        0
-      );
-      gl.enableVertexAttribArray(colorLocation);
-      gl.vertexAttribPointer(
-        colorLocation,
-        COLOR_COMPONENTS,
-        gl.FLOAT,
-        false,
-        stride,
-        colorOffset
-      );
+      attributeConfigs.forEach(({ location, size, offset }) => {
+        gl.enableVertexAttribArray(location);
+        gl.vertexAttribPointer(location, size, gl.FLOAT, false, stride, offset);
+      });
     };
 
     const cameraPositionLocation = gl.getUniformLocation(
