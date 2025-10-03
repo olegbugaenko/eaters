@@ -9,22 +9,22 @@ const BULLET_DIAMETER = 16;
 const BULLET_GRADIENT_STOPS = [
   {
     offset: 0,
-    color: { r: 0.7, g: 0.85, b: 1, a: 1 },
+    color: { r: 0.1, g: 0.15, b: 1, a: 1 },
   },
   {
-    offset: 0.25,
-    color: { r: 0.2, g: 0.45, b: 0.9, a: 1 },
+    offset: 0.35,
+    color: { r: 0.9, g: 0.95, b: 0.9, a: 1 },
   },
   {
     offset: 0.5,
-    color: { r: 1, g: 0.85, b: 0.2, a: 1 },
+    color: { r: 0.5, g: 0.85, b: 1.0, a: 0.75 },
   },
   {
     offset: 1,
-    color: { r: 1, g: 0.85, b: 0.2, a: 0 },
+    color: { r: 0.5, g: 0.85, b: 1.0, a: 0 },
   },
 ] as const;
-const TRAVEL_TIME_SECONDS = 10;
+const TRAVEL_TIME_SECONDS = 20;
 
 const createBulletFill = (radius: number) => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -72,7 +72,7 @@ export class BulletModule implements GameModule {
     if (deltaMs <= 0) {
       return;
     }
-    for(let i = 0; i < 10; i++) {
+    for(let i = 0; i < 2; i++) {
       this.spawnBullet();
     }
     this.updateBullets(deltaMs);
