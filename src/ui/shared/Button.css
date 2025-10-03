@@ -1,0 +1,19 @@
+.button {
+  padding: 0.75rem 1.5rem;
+  background-color: #1f6feb;
+  border: none;
+  border-radius: 0.5rem;
+  color: #ffffff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.button:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.button:not(:disabled):hover {
+  background-color: #265ed0;
+}
