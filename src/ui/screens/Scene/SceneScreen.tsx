@@ -450,9 +450,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
 
       gl.viewport(0, 0, canvas.width, canvas.height);
       scene.setViewportScreenSize(canvas.width, canvas.height);
+      const currentMapSize = scene.getMapSize();
       scene.setMapSize({
-        width: Math.max(canvas.width, canvas.height, 1000),
-        height: Math.max(canvas.width, canvas.height, 1000),
+        width: Math.max(currentMapSize.width, canvas.width, canvas.height, 1000),
+        height: Math.max(currentMapSize.height, canvas.width, canvas.height, 1000),
       });
       const current = scene.getCamera();
       setScale(current.scale);

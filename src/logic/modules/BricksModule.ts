@@ -1,21 +1,13 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
-import {
-  BRICK_TYPES,
-  BrickConfig,
-  BrickType,
-  getBrickConfig,
-  isBrickType,
-} from "../../db/bricks-db";
+import { BrickConfig, BrickType, getBrickConfig, isBrickType } from "../../db/bricks-db";
 import {
   FILL_TYPES,
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
 
-const MIN_BRICKS = 1000;
-const MAX_BRICKS = 2000;
-const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
+const DEFAULT_BRICK_TYPE: BrickType = "classic";
 
 const createBrickFill = (config: BrickConfig) => {
   const fill = config.fill;
@@ -51,7 +43,7 @@ const createBrickFill = (config: BrickConfig) => {
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
 
-interface BrickData {
+export interface BrickData {
   position: SceneVector2;
   rotation: number;
   type: BrickType;
@@ -79,7 +71,7 @@ export class BricksModule implements GameModule {
   }
 
   public reset(): void {
-    this.applyBricks(this.generateRandomBricks());
+    this.applyBricks([]);
   }
 
   public load(data: unknown | undefined): void {
@@ -103,6 +95,10 @@ export class BricksModule implements GameModule {
 
   public tick(_deltaMs: number): void {
     // Bricks are static for now.
+  }
+
+  public setBricks(bricks: BrickData[]): void {
+    this.applyBricks(bricks);
   }
 
   private parseSaveData(data: unknown): BrickSaveData | null {
@@ -137,21 +133,6 @@ export class BricksModule implements GameModule {
     });
 
     return { bricks: sanitized };
-  }
-
-  private generateRandomBricks(): BrickData[] {
-    const count = Math.floor(Math.random() * (MAX_BRICKS - MIN_BRICKS + 1)) + MIN_BRICKS;
-    const bricks: BrickData[] = [];
-
-    for (let i = 0; i < count; i += 1) {
-      bricks.push({
-        position: this.getRandomPosition(),
-        rotation: Math.random() * Math.PI * 2,
-        type: this.getRandomBrickType(),
-      });
-    }
-
-    return bricks;
   }
 
   private applyBricks(bricks: BrickData[]): void {
@@ -201,18 +182,6 @@ export class BricksModule implements GameModule {
     };
   }
 
-  private getRandomPosition(): SceneVector2 {
-    const { width, height } = this.options.scene.getMapSize();
-    return {
-      x: Math.random() * width,
-      y: Math.random() * height,
-    };
-  }
-
-  private getRandomBrickType(): BrickType {
-    const index = Math.floor(Math.random() * BRICK_TYPES.length);
-    return BRICK_TYPES[index] ?? DEFAULT_BRICK_TYPE;
-  }
 }
 
 const clamp = (value: number, min: number, max: number): number => {

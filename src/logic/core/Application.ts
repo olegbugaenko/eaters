@@ -6,13 +6,16 @@ import { GameLoop } from "../services/GameLoop";
 import { TestTimeModule } from "../modules/TestTimeModule";
 import { SceneObjectManager } from "../services/SceneObjectManager";
 import { BricksModule } from "../modules/BricksModule";
+import { MapModule } from "../modules/MapModule";
 import { BulletModule } from "../modules/BulletModule";
 import { ExplosionModule } from "../modules/ExplosionModule";
+import { MapId } from "../../db/maps-db";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
   private dataBridge = new DataBridge();
   private modules: GameModule[] = [];
+  private mapModule: MapModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -32,6 +35,11 @@ export class Application {
       scene: sceneObjects,
       bridge: this.dataBridge,
     });
+    this.mapModule = new MapModule({
+      scene: sceneObjects,
+      bridge: this.dataBridge,
+      bricks: bricksModule,
+    });
 
     const explosionModule = new ExplosionModule({
       scene: sceneObjects,
@@ -44,6 +52,7 @@ export class Application {
 
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
+    this.registerModule(this.mapModule);
     this.registerModule(explosionModule);
     this.registerModule(bulletModule);
   }
@@ -91,6 +100,10 @@ export class Application {
 
   public getSaveManager(): SaveManager {
     return this.serviceContainer.get<SaveManager>("saveManager");
+  }
+
+  public selectMap(mapId: MapId): void {
+    this.mapModule.selectMap(mapId);
   }
 
   private registerModule(module: GameModule): void {

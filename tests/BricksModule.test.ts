@@ -5,6 +5,7 @@ import {
   SceneObjectManager,
   FILL_TYPES,
   SceneLinearGradientFill,
+  SceneRadialGradientFill,
 } from "../src/logic/services/SceneObjectManager";
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
 import { describe, test } from "./testRunner";
@@ -34,16 +35,27 @@ describe("BricksModule", () => {
     const fill = instance.data.fill;
     const fillConfig = config.fill;
     if (fillConfig.type === "linear") {
-      assert.strictEqual(fill.fillType, FILL_TYPES.LINEAR_GRADIENT);
-      assert.strictEqual(fill.stops.length, fillConfig.stops.length);
-      fill.stops.forEach((stop, index) => {
+      const linearFill = fill as SceneLinearGradientFill;
+      assert.strictEqual(linearFill.fillType, FILL_TYPES.LINEAR_GRADIENT);
+      assert.strictEqual(linearFill.stops.length, fillConfig.stops.length);
+      linearFill.stops.forEach((stop, index) => {
+        const expected = fillConfig.stops[index];
+        assert(expected, "expected gradient stop");
+        assert.strictEqual(stop.offset, expected.offset);
+        assert.deepStrictEqual(stop.color, expected.color);
+      });
+    } else if (fillConfig.type === "radial") {
+      const radialFill = fill as SceneRadialGradientFill;
+      assert.strictEqual(radialFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+      assert.strictEqual(radialFill.stops.length, fillConfig.stops.length);
+      radialFill.stops.forEach((stop, index) => {
         const expected = fillConfig.stops[index];
         assert(expected, "expected gradient stop");
         assert.strictEqual(stop.offset, expected.offset);
         assert.deepStrictEqual(stop.color, expected.color);
       });
     } else {
-      assert.fail("expected linear gradient fill");
+      assert.fail(`unexpected fill type: ${fillConfig.type}`);
     }
 
     assert(instance.data.stroke, "stroke should be defined");
