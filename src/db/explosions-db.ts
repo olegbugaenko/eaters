@@ -3,6 +3,7 @@ import {
   SceneColor,
   SceneFill,
   SceneGradientStop,
+  SceneVector2,
 } from "../logic/services/SceneObjectManager";
 
 export type ExplosionType = "plasmoid" | "magnetic";
@@ -31,6 +32,23 @@ export interface ExplosionEmitterConfig {
   arc?: number;
   direction?: number;
   fill?: SceneFill;
+}
+
+export interface ExplosionRendererEmitterConfig {
+  particlesPerSecond: number;
+  particleLifetimeMs: number;
+  fadeStartMs: number;
+  emissionDurationMs: number;
+  sizeRange: { min: number; max: number };
+  spawnRadius: { min: number; max: number };
+  baseSpeed: number;
+  speedVariation: number;
+  color: SceneColor;
+  fill?: SceneFill;
+  arc: number;
+  direction: number;
+  offset?: SceneVector2;
+  maxParticles?: number;
 }
 
 export interface ExplosionConfig {

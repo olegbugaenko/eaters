@@ -82,19 +82,6 @@ export interface SceneObjectInstance {
   data: SceneObjectData & { fill: SceneFill; stroke?: SceneStroke };
 }
 
-export const CUSTOM_DATA_KIND_PARTICLE_SYSTEM = "particle-system" as const;
-
-export interface ParticleSystemCustomData {
-  kind: typeof CUSTOM_DATA_KIND_PARTICLE_SYSTEM;
-  color: SceneColor;
-  capacity: number;
-  count: number;
-  positions: Float32Array;
-  sizes: Float32Array;
-  alphas: Float32Array;
-  fill?: SceneFill;
-}
-
 export interface SceneCameraState {
   position: SceneVector2;
   viewportSize: SceneSize;

@@ -25,6 +25,7 @@ export interface ParticleEmitterBaseConfig {
   offset: SceneVector2;
   color: SceneColor;
   fill?: SceneFill;
+  emissionDurationMs?: number;
   capacity: number;
 }
 
@@ -44,6 +45,7 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   data: Float32Array;
   capacity: number;
   signature: string;
+  ageMs: number;
 }
 
 export interface ParticleEmitterPrimitiveOptions<
@@ -141,6 +143,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     capacity,
     data: new Float32Array(capacity * VERTICES_PER_PARTICLE * VERTEX_COMPONENTS),
     signature: serializeConfig(config, options),
+    ageMs: 0,
   };
   writeEmitterBuffer(state, config, options.getOrigin(instance, config));
   return state;
@@ -156,6 +159,7 @@ const createEmptyParticleEmitterState = <
   capacity: 0,
   data: new Float32Array(0),
   signature: "",
+  ageMs: 0,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -169,12 +173,21 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     state.particles = [];
     state.data = new Float32Array(0);
     state.capacity = 0;
+    state.ageMs = 0;
     return;
   }
 
   const spawnRate = config.particlesPerSecond / 1000;
-  if (deltaMs > 0 && spawnRate > 0) {
-    state.spawnAccumulator += spawnRate * deltaMs;
+  const emissionDuration = getEmissionDuration(config);
+  const previousAge = state.ageMs;
+  state.ageMs = previousAge + deltaMs;
+
+  const activeDelta = computeActiveDelta(previousAge, deltaMs, emissionDuration);
+
+  if (activeDelta > 0 && spawnRate > 0) {
+    state.spawnAccumulator += spawnRate * activeDelta;
+  } else {
+    state.spawnAccumulator = 0;
   }
 
   const origin = options.getOrigin(instance, config);
@@ -343,6 +356,35 @@ const writeParticleVertex = (
   return offset + VERTEX_COMPONENTS;
 };
 
+const getEmissionDuration = (config: ParticleEmitterBaseConfig): number => {
+  const duration = config.emissionDurationMs;
+  if (typeof duration !== "number" || !Number.isFinite(duration)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  if (duration <= 0) {
+    return 0;
+  }
+  return duration;
+};
+
+const computeActiveDelta = (
+  previousAge: number,
+  deltaMs: number,
+  emissionDuration: number
+): number => {
+  if (!Number.isFinite(emissionDuration)) {
+    return deltaMs;
+  }
+  if (emissionDuration <= previousAge) {
+    return 0;
+  }
+  const available = emissionDuration - previousAge;
+  if (available <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.min(deltaMs, available));
+};
+
 const serializeConfig = <Config extends ParticleEmitterBaseConfig>(
   config: Config,
   options: ParticleEmitterPrimitiveOptions<Config>
@@ -358,6 +400,7 @@ export const sanitizeParticleEmitterConfig = (
     particlesPerSecond?: number;
     particleLifetimeMs?: number;
     fadeStartMs?: number;
+    emissionDurationMs?: number;
     sizeRange?: { min?: number; max?: number };
     offset?: SceneVector2;
     color?: SceneColor;
@@ -409,6 +452,11 @@ export const sanitizeParticleEmitterConfig = (
     options.defaultColor ?? { r: 1, g: 1, b: 1, a: 1 }
   );
   const fill = config.fill ? cloneSceneFill(config.fill) : undefined;
+  const emissionDurationMs =
+    typeof config.emissionDurationMs === "number" &&
+    Number.isFinite(config.emissionDurationMs)
+      ? Math.max(0, Number(config.emissionDurationMs))
+      : undefined;
   const maxParticles =
     typeof config.maxParticles === "number" && config.maxParticles > 0
       ? Math.floor(config.maxParticles)
@@ -429,6 +477,7 @@ export const sanitizeParticleEmitterConfig = (
     offset,
     color,
     fill,
+    emissionDurationMs,
     capacity,
   };
 };
