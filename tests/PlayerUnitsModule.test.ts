@@ -8,6 +8,12 @@ import {
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../src/logic/modules/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
+import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
+
+const createBricksModule = (scene: SceneObjectManager, bridge: DataBridge) => {
+  const explosions = new ExplosionModule({ scene });
+  return new BricksModule({ scene, bridge, explosions });
+};
 
 const tickSeconds = (module: PlayerUnitsModule, seconds: number) => {
   module.tick(seconds * 1000);
@@ -18,7 +24,7 @@ describe("PlayerUnitsModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const movement = new MovementService();
-    const bricks = new BricksModule({ scene, bridge });
+    const bricks = createBricksModule(scene, bridge);
     const units = new PlayerUnitsModule({ scene, bricks, bridge, movement });
 
     bricks.setBricks([
@@ -60,7 +66,7 @@ describe("PlayerUnitsModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const movement = new MovementService();
-    const bricks = new BricksModule({ scene, bridge });
+    const bricks = createBricksModule(scene, bridge);
     const units = new PlayerUnitsModule({ scene, bricks, bridge, movement });
 
     bricks.setBricks([

@@ -1,11 +1,13 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
 import { BrickConfig, BrickType, getBrickConfig, isBrickType } from "../../db/bricks-db";
+import type { ExplosionType } from "../../db/explosions-db";
 import {
   FILL_TYPES,
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
+import type { ExplosionModule } from "./ExplosionModule";
 
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
 
@@ -68,6 +70,7 @@ export interface BrickRuntimeState {
 interface BricksModuleOptions {
   scene: SceneObjectManager;
   bridge: DataBridge;
+  explosions: ExplosionModule;
 }
 
 interface BrickSaveData {
@@ -76,6 +79,9 @@ interface BrickSaveData {
 
 interface InternalBrickState extends BrickRuntimeState {
   sceneObjectId: string;
+  hitExplosionType?: ExplosionType;
+  destroyExplosionType?: ExplosionType;
+  explosionRadius: number;
 }
 
 export class BricksModule implements GameModule {
@@ -167,10 +173,12 @@ export class BricksModule implements GameModule {
     brick.hp = clamp(brick.hp - effectiveDamage, 0, brick.maxHp);
 
     if (brick.hp <= 0) {
+      this.spawnBrickExplosion(brick.destroyExplosionType, brick);
       this.destroyBrick(brick);
       return { destroyed: true, brick: null };
     }
 
+    this.spawnBrickExplosion(brick.hitExplosionType, brick);
     this.pushStats();
     return { destroyed: false, brick: this.cloneState(brick) };
   }
@@ -244,6 +252,10 @@ export class BricksModule implements GameModule {
       0
     );
     const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
+    const explosionRadius = Math.max(
+      Math.max(config.size.width, config.size.height) / 2,
+      physicalSize
+    );
 
     const position = this.clampToMap(brick.position);
     const rotation = sanitizeRotation(brick.rotation);
@@ -275,6 +287,9 @@ export class BricksModule implements GameModule {
       brickKnockBackSpeed,
       physicalSize,
       sceneObjectId,
+      hitExplosionType: destructuble?.hitExplosionType,
+      destroyExplosionType: destructuble?.destroyExplosionType,
+      explosionRadius,
     };
   }
 
@@ -331,6 +346,19 @@ export class BricksModule implements GameModule {
     };
   }
 
+  private spawnBrickExplosion(
+    type: ExplosionType | undefined,
+    brick: InternalBrickState
+  ): void {
+    if (!type) {
+      return;
+    }
+
+    this.options.explosions.spawnExplosionByType(type, {
+      position: { ...brick.position },
+      initialRadius: Math.max(1, brick.explosionRadius),
+    });
+  }
 }
 
 const sanitizeKnockBackSpeed = (

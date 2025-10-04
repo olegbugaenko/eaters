@@ -2,7 +2,8 @@
 
 This document summarizes the core building blocks that power the eater's prototype
 framework. Every system is designed for reusability so modules can combine without
-forming tight coupling between UI and logic.
+forming tight coupling between UI and logic. For an in-depth look at module APIs
+and data contracts, see the [Logic API Reference](./api-reference.md).
 
 ## Core runtime
 

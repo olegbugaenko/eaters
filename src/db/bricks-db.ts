@@ -5,7 +5,7 @@ import {
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
 
-import {DestructubleData} from '../logic/interfaces/destructuble';
+import { DestructubleData } from "../logic/interfaces/destructuble";
 
 export type BrickType = "classic" | "smallSquareGray" | "blueRadial";
 
@@ -80,7 +80,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       physicalSize: 28,
-    }
+      hitExplosionType: "plasmoid",
+      destroyExplosionType: "plasmoid",
+    },
   },
   smallSquareGray: {
     size: { width: 24, height: 24 },
@@ -98,7 +100,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       physicalSize: 16,
-    }
+      hitExplosionType: "plasmoid",
+      destroyExplosionType: "plasmoid",
+    },
   },
   blueRadial: {
     size: { width: 48, height: 48 },
@@ -116,7 +120,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       physicalSize: 24,
-    }
+      hitExplosionType: "magnetic",
+      destroyExplosionType: "magnetic",
+    },
   },
 };
 
