@@ -77,8 +77,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 25,
       armor: 2,
       baseDamage: 3,
-      brickKnockBackDistance: 20,
-      brickKnockBackSpeed: 40,
+      brickKnockBackDistance: 40,
+      brickKnockBackSpeed: 80,
       physicalSize: 28,
       damageExplosion: {
         type: "plasmoid",
@@ -95,7 +95,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     fill: {
       type: "radial",
       center: { x: 0, y: 0 },
-      radius: 28,
+      radius: 12,
       stops: SMALL_SQUARE_GRAY_GRADIENT,
     },
     stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
@@ -103,8 +103,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 5,
       armor: 0,
       baseDamage: 2,
-      brickKnockBackDistance: 20,
-      brickKnockBackSpeed: 40,
+      brickKnockBackDistance: 40,
+      brickKnockBackSpeed: 80,
       physicalSize: 16,
       damageExplosion: {
         type: "grayBrickHit",
