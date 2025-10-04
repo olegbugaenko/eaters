@@ -110,6 +110,15 @@ export class MovementService {
     body.position = cloneVector(position);
   }
 
+  public setBodyVelocity(bodyId: string, velocity: SceneVector2): void {
+    const body = this.bodies.get(bodyId);
+    if (!body) {
+      return;
+    }
+    body.velocity = cloneVector(velocity);
+    body.dampings = [];
+  }
+
   public setForce(bodyId: string, force: SceneVector2): void {
     const body = this.bodies.get(bodyId);
     if (!body) {
