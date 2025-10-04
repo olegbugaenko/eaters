@@ -45,11 +45,11 @@ export interface PlayerUnitConfig {
 }
 
 const BLUE_PENTAGON_VERTICES: readonly SceneVector2[] = [
-  { x: 0, y: -18 },
-  { x: 17, y: -6 },
-  { x: 11, y: 16 },
-  { x: -11, y: 16 },
-  { x: -17, y: -6 },
+  { x: 0, y: -6 },
+  { x: 17/3, y: -2 },
+  { x: 11/3, y: 16/3 },
+  { x: -11/3, y: 16/3 },
+  { x: -17/3, y: -2 },
 ];
 
 const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
@@ -58,7 +58,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     renderer: {
       kind: "polygon",
       vertices: BLUE_PENTAGON_VERTICES,
-      fill: { r: 0.2, g: 0.45, b: 0.95, a: 1 },
+      fill: { r: 0.2, g: 0.75, b: 0.95, a: 1 },
       stroke: {
         color: { r: 0.05, g: 0.15, b: 0.4, a: 1 },
         width: 2,
@@ -70,7 +70,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     baseAttackDamage: 2,
     baseAttackInterval: 1,
     baseAttackDistance: 5,
-    moveSpeed: 30,
+    moveSpeed: 80,
     moveAcceleration: 30,
     mass: 1.2,
     physicalSize: 12,
@@ -78,12 +78,12 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       particlesPerSecond: 120,
       particleLifetimeMs: 550,
       fadeStartMs: 300,
-      baseSpeed: 0.18,
-      speedVariation: 0.08,
+      baseSpeed: 0.09,
+      speedVariation: 0.03,
       sizeRange: { min: 1.2, max: 2.4 },
-      spread: Math.PI / 2.5,
+      spread: Math.PI / 5.5,
       offset: { x: -0.35, y: 0 },
-      color: { r: 0.2, g: 0.45, b: 0.95, a: 0.55 },
+      color: { r: 0.2, g: 0.85, b: 0.95, a: 0.35 },
       maxParticles: 80,
     },
   },
