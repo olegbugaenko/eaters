@@ -17,6 +17,7 @@ import {
 import { MovementService, MovementBodyState } from "../services/MovementService";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
+const COLLISION_RESOLUTION_ITERATIONS = 4;
 const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
@@ -57,6 +58,8 @@ interface PlayerUnitState {
   mass: number;
   physicalSize: number;
   attackCooldown: number;
+  preCollisionVelocity: SceneVector2;
+  lastNonZeroVelocity: SceneVector2;
   targetBrickId: string | null;
   objectId: string;
   renderer: PlayerUnitRendererConfig;
@@ -132,6 +135,10 @@ export class PlayerUnitsModule implements GameModule {
 
       unit.position = cloneVector(movementState.position);
 
+      if (vectorHasLength(movementState.velocity)) {
+        unit.lastNonZeroVelocity = cloneVector(movementState.velocity);
+      }
+
       const target = this.resolveTarget(unit);
       plannedTargets.set(unit.id, target?.id ?? null);
 
@@ -152,11 +159,28 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       const clampedPosition = this.clampToMap(movementState.position);
-      if (!vectorEquals(clampedPosition, movementState.position)) {
-        this.movement.setBodyPosition(unit.movementId, clampedPosition);
+      let resolvedPosition = clampedPosition;
+      let resolvedVelocity = movementState.velocity;
+
+      unit.preCollisionVelocity = cloneVector(movementState.velocity);
+
+      const collisionResolution = this.resolveUnitCollisions(
+        unit,
+        resolvedPosition,
+        resolvedVelocity
+      );
+      resolvedPosition = collisionResolution.position;
+      resolvedVelocity = collisionResolution.velocity;
+
+      if (!vectorEquals(resolvedPosition, movementState.position)) {
+        this.movement.setBodyPosition(unit.movementId, resolvedPosition);
       }
 
-      unit.position = { ...clampedPosition };
+      if (!vectorEquals(resolvedVelocity, movementState.velocity)) {
+        this.movement.setBodyVelocity(unit.movementId, resolvedVelocity);
+      }
+
+      unit.position = { ...resolvedPosition };
 
       let targetId = plannedTargets.get(unit.id) ?? null;
       let target: BrickRuntimeState | null = null;
@@ -172,7 +196,7 @@ export class PlayerUnitsModule implements GameModule {
         plannedTargets.set(unit.id, target?.id ?? null);
       }
 
-      const rotation = this.computeRotation(unit, target, movementState.velocity);
+      const rotation = this.computeRotation(unit, target, resolvedVelocity);
       unit.rotation = rotation;
       this.scene.updateObject(unit.objectId, {
         position: { ...unit.position },
@@ -321,6 +345,8 @@ export class PlayerUnitsModule implements GameModule {
       objectId,
       renderer: config.renderer,
       emitter,
+      preCollisionVelocity: { ...ZERO_VECTOR },
+      lastNonZeroVelocity: { ...ZERO_VECTOR },
     };
   }
 
@@ -375,6 +401,68 @@ export class PlayerUnitsModule implements GameModule {
     return this.computeSteeringForce(unit, movementState.velocity, ZERO_VECTOR);
   }
 
+  private resolveUnitCollisions(
+    unit: PlayerUnitState,
+    position: SceneVector2,
+    velocity: SceneVector2
+  ): { position: SceneVector2; velocity: SceneVector2 } {
+    if (unit.physicalSize <= 0) {
+      return { position, velocity };
+    }
+
+    let resolvedPosition = { ...position };
+    let resolvedVelocity = { ...velocity };
+    let adjusted = false;
+
+    for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
+      let collided = false;
+      const nearbyBricks = this.bricks.findBricksNear(resolvedPosition, unit.physicalSize);
+      if (nearbyBricks.length === 0) {
+        break;
+      }
+
+      nearbyBricks.forEach((brick) => {
+        const brickRadius = Math.max(brick.physicalSize, 0);
+        const combinedRadius = unit.physicalSize + brickRadius;
+        if (combinedRadius <= 0) {
+          return;
+        }
+
+        const offset = subtractVectors(resolvedPosition, brick.position);
+        const distance = vectorLength(offset);
+        if (!Number.isFinite(distance) || distance >= combinedRadius) {
+          return;
+        }
+
+        const normal = distance > 0 ? scaleVector(offset, 1 / distance) : { x: 1, y: 0 };
+        const correction = combinedRadius - distance;
+        resolvedPosition = addVectors(resolvedPosition, scaleVector(normal, correction));
+
+        const velocityAlongNormal = resolvedVelocity.x * normal.x + resolvedVelocity.y * normal.y;
+        if (velocityAlongNormal < 0) {
+          resolvedVelocity = subtractVectors(
+            resolvedVelocity,
+            scaleVector(normal, velocityAlongNormal)
+          );
+        }
+
+        collided = true;
+        adjusted = true;
+      });
+
+      if (!collided) {
+        break;
+      }
+    }
+
+    if (!adjusted) {
+      return { position, velocity };
+    }
+
+    resolvedPosition = this.clampToMap(resolvedPosition);
+    return { position: resolvedPosition, velocity: resolvedVelocity };
+  }
+
   private computeSteeringForce(
     unit: PlayerUnitState,
     currentVelocity: SceneVector2,
@@ -424,6 +512,18 @@ export class PlayerUnitsModule implements GameModule {
 
     if (result.destroyed) {
       unit.targetBrickId = null;
+      if (this.movement.getBodyState(unit.movementId)) {
+        const restoredVelocity = vectorHasLength(unit.lastNonZeroVelocity)
+          ? unit.lastNonZeroVelocity
+          : unit.preCollisionVelocity;
+        this.movement.setBodyVelocity(unit.movementId, {
+          x: restoredVelocity.x,
+          y: restoredVelocity.y,
+        });
+        if (vectorHasLength(restoredVelocity)) {
+          unit.lastNonZeroVelocity = cloneVector(restoredVelocity);
+        }
+      }
       return;
     }
 
@@ -589,6 +689,11 @@ const cloneFill = (fill: SceneFill): SceneFill => {
 };
 
 const cloneVector = (vector: SceneVector2): SceneVector2 => ({ x: vector.x, y: vector.y });
+
+const addVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
+  x: a.x + b.x,
+  y: a.y + b.y,
+});
 
 const subtractVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
   x: a.x - b.x,

@@ -9,6 +9,7 @@ import {
   SceneVector2,
 } from "../services/SceneObjectManager";
 import type { ExplosionModule } from "./ExplosionModule";
+import { SpatialGrid } from "../utils/SpatialGrid";
 
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
 
@@ -95,6 +96,7 @@ export class BricksModule implements GameModule {
   private bricks = new Map<string, InternalBrickState>();
   private brickOrder: InternalBrickState[] = [];
   private brickIdCounter = 0;
+  private readonly spatialIndex = new SpatialGrid<InternalBrickState>(10);
 
   constructor(private readonly options: BricksModuleOptions) {}
 
@@ -159,6 +161,19 @@ export class BricksModule implements GameModule {
       }
     });
     return best ? this.cloneState(best) : null;
+  }
+
+  public findBricksNear(position: SceneVector2, radius: number): BrickRuntimeState[] {
+    if (radius < 0) {
+      return [];
+    }
+
+    const bricks = this.spatialIndex.queryCircle(position, radius);
+    if (bricks.length === 0) {
+      return [];
+    }
+
+    return bricks.map((brick) => this.cloneState(brick));
   }
 
   public applyDamage(
@@ -235,6 +250,7 @@ export class BricksModule implements GameModule {
       const state = this.createBrickState(brick);
       this.bricks.set(state.id, state);
       this.brickOrder.push(state);
+      this.spatialIndex.set(state.id, state.position, state.physicalSize, state);
     });
 
     this.pushStats();
@@ -304,6 +320,7 @@ export class BricksModule implements GameModule {
     this.options.scene.removeObject(brick.sceneObjectId);
     this.bricks.delete(brick.id);
     this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
+    this.spatialIndex.delete(brick.id);
     this.pushStats();
   }
 
@@ -313,6 +330,7 @@ export class BricksModule implements GameModule {
     });
     this.bricks.clear();
     this.brickOrder = [];
+    this.spatialIndex.clear();
   }
 
   private pushStats(): void {
