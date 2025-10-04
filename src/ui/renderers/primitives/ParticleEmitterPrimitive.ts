@@ -6,6 +6,10 @@ import {
   SceneVector2,
 } from "../../../logic/services/SceneObjectManager";
 import {
+  cloneSceneFill,
+  sanitizeSceneColor,
+} from "../../../logic/services/particles/ParticleEmitterShared";
+import {
   DynamicPrimitive,
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
@@ -480,59 +484,6 @@ export const sanitizeParticleEmitterConfig = (
     emissionDurationMs,
     capacity,
   };
-};
-
-export const sanitizeSceneColor = (
-  color: SceneColor | undefined,
-  fallback: SceneColor
-): SceneColor => ({
-  r: typeof color?.r === "number" && Number.isFinite(color.r)
-    ? color.r
-    : fallback.r,
-  g: typeof color?.g === "number" && Number.isFinite(color.g)
-    ? color.g
-    : fallback.g,
-  b: typeof color?.b === "number" && Number.isFinite(color.b)
-    ? color.b
-    : fallback.b,
-  a: typeof color?.a === "number" && Number.isFinite(color.a)
-    ? color.a
-    : typeof fallback.a === "number"
-    ? fallback.a
-    : 1,
-});
-
-export const cloneSceneFill = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-      } as SceneFill;
-    default:
-      return fill;
-  }
 };
 
 const getNowMs = (): number => {

@@ -13,6 +13,12 @@ import {
   ExplosionType,
   getExplosionConfig,
 } from "../../db/explosions-db";
+import {
+  cloneSceneColor,
+  cloneSceneFill,
+  sanitizeAngle,
+  sanitizeArc,
+} from "../services/particles/ParticleEmitterShared";
 
 interface ExplosionModuleOptions {
   scene: SceneObjectManager;
@@ -236,8 +242,8 @@ const createEmitterCustomData = (
     spawnRadius: { min: spawnRadiusMin, max: spawnRadiusMax },
     baseSpeed: Math.max(0, config.emitter.baseSpeed),
     speedVariation: Math.max(0, config.emitter.speedVariation),
-    color: cloneColor(config.emitter.color),
-    fill: config.emitter.fill ? cloneFill(config.emitter.fill) : undefined,
+    color: cloneSceneColor(config.emitter.color),
+    fill: config.emitter.fill ? cloneSceneFill(config.emitter.fill) : undefined,
     arc: sanitizeArc(config.emitter.arc),
     direction: sanitizeAngle(config.emitter.direction),
     offset: { x: 0, y: 0 },
@@ -255,49 +261,6 @@ const computeEffectLifetime = (
   }
   const emitterLifetime = emitter.emissionDurationMs + emitter.particleLifetimeMs;
   return Math.max(waveLifetime, emitterLifetime);
-};
-
-const cloneColor = (color: SceneColor): SceneColor => ({
-  r: color.r,
-  g: color.g,
-  b: color.b,
-  a: typeof color.a === "number" ? color.a : 1,
-});
-
-const cloneFill = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-      } as SceneFill;
-    default:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { r: 1, g: 1, b: 1, a: 1 },
-      };
-  }
 };
 
 const computeEmitterMaxParticles = (
@@ -346,27 +309,3 @@ const clamp = (value: number, min: number, max: number): number => {
   return value;
 };
 
-const sanitizeArc = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return Math.PI * 2;
-  }
-  if (value <= 0) {
-    return 0;
-  }
-  if (value >= Math.PI * 2) {
-    return Math.PI * 2;
-  }
-  return value;
-};
-
-const sanitizeAngle = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return normalizeAngle(value);
-};
-
-const normalizeAngle = (angle: number): number => {
-  const wrapped = angle % (Math.PI * 2);
-  return wrapped < 0 ? wrapped + Math.PI * 2 : wrapped;
-};

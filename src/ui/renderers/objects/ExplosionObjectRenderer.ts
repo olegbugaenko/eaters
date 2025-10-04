@@ -14,6 +14,11 @@ import {
   createParticleEmitterPrimitive,
 } from "../primitives";
 import {
+  normalizeAngle,
+  sanitizeAngle,
+  sanitizeArc,
+} from "../../../logic/services/particles/ParticleEmitterShared";
+import {
   ParticleEmitterBaseConfig,
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
@@ -192,31 +197,6 @@ const randomBetween = (min: number, max: number): number => {
     return min;
   }
   return min + Math.random() * (max - min);
-};
-
-const sanitizeArc = (value: number): number => {
-  if (!Number.isFinite(value)) {
-    return Math.PI * 2;
-  }
-  if (value <= 0) {
-    return 0;
-  }
-  if (value >= Math.PI * 2) {
-    return Math.PI * 2;
-  }
-  return value;
-};
-
-const sanitizeAngle = (value: number): number => {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  return normalizeAngle(value);
-};
-
-const normalizeAngle = (angle: number): number => {
-  const wrapped = angle % (Math.PI * 2);
-  return wrapped < 0 ? wrapped + Math.PI * 2 : wrapped;
 };
 
 export class ExplosionObjectRenderer extends ObjectRenderer {
