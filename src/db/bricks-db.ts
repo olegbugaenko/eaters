@@ -5,6 +5,8 @@ import {
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
 
+import {DestructubleData} from '../logic/interfaces/destructuble';
+
 export type BrickType = "classic" | "smallSquareGray" | "blueRadial";
 
 export interface BrickStrokeConfig {
@@ -40,6 +42,7 @@ export interface BrickConfig {
   size: SceneSize;
   fill: BrickFillConfig;
   stroke?: BrickStrokeConfig;
+  gameData?: DestructubleData;
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
@@ -72,11 +75,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     stroke: { color: { r: 0.55, g: 0.4, b: 0.05, a: 1 }, width: 2 },
   },
   smallSquareGray: {
-    size: { width: 32, height: 32 },
+    size: { width: 24, height: 24 },
     fill: {
-      type: "linear",
-      start: { x: -8, y: 0 },
-      end: { x: 8, y: 0 },
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 28,
       stops: SMALL_SQUARE_GRAY_GRADIENT,
     },
     stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
