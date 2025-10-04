@@ -58,6 +58,7 @@ interface PlayerUnitState {
   mass: number;
   physicalSize: number;
   attackCooldown: number;
+  preCollisionVelocity: SceneVector2;
   targetBrickId: string | null;
   objectId: string;
   renderer: PlayerUnitRendererConfig;
@@ -155,6 +156,8 @@ export class PlayerUnitsModule implements GameModule {
       const clampedPosition = this.clampToMap(movementState.position);
       let resolvedPosition = clampedPosition;
       let resolvedVelocity = movementState.velocity;
+
+      unit.preCollisionVelocity = cloneVector(movementState.velocity);
 
       const collisionResolution = this.resolveUnitCollisions(
         unit,
@@ -337,6 +340,7 @@ export class PlayerUnitsModule implements GameModule {
       objectId,
       renderer: config.renderer,
       emitter,
+      preCollisionVelocity: { ...ZERO_VECTOR },
     };
   }
 
@@ -502,6 +506,12 @@ export class PlayerUnitsModule implements GameModule {
 
     if (result.destroyed) {
       unit.targetBrickId = null;
+      if (this.movement.getBodyState(unit.movementId)) {
+        this.movement.setBodyVelocity(unit.movementId, {
+          x: unit.preCollisionVelocity.x,
+          y: unit.preCollisionVelocity.y,
+        });
+      }
       return;
     }
 
