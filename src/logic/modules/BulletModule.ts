@@ -145,7 +145,7 @@ export class BulletModule implements GameModule {
     if (deltaMs <= 0) {
       return;
     }
-    for (let i = 0; i < 2; i += 1) {
+    for (let i = 0; i < 0; i += 1) {
       this.spawnBulletByType(this.getRandomBulletType());
     }
     this.updateBullets(deltaMs);

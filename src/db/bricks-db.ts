@@ -76,6 +76,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     destructubleData: {
       maxHp: 25,
       armor: 2,
+      baseDamage: 3,
+      brickKnockBackDistance: 20,
+      brickKnockBackSpeed: 40,
+      physicalSize: 28,
     }
   },
   smallSquareGray: {
@@ -90,6 +94,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     destructubleData: {
       maxHp: 5,
       armor: 0,
+      baseDamage: 2,
+      brickKnockBackDistance: 20,
+      brickKnockBackSpeed: 40,
+      physicalSize: 16,
     }
   },
   blueRadial: {
@@ -104,6 +112,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     destructubleData: {
       maxHp: 125,
       armor: 10,
+      baseDamage: 10,
+      brickKnockBackDistance: 20,
+      brickKnockBackSpeed: 40,
+      physicalSize: 24,
     }
   },
 };

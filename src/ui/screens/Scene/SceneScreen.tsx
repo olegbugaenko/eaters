@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
-import { BRICK_COUNT_BRIDGE_KEY } from "../../../logic/modules/BricksModule";
+import {
+  BRICK_COUNT_BRIDGE_KEY,
+  BRICK_TOTAL_HP_BRIDGE_KEY,
+} from "../../../logic/modules/BricksModule";
+import {
+  PLAYER_UNIT_COUNT_BRIDGE_KEY,
+  PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
+} from "../../../logic/modules/PlayerUnitsModule";
 import {
   SceneCameraState,
   SceneObjectManager,
@@ -237,6 +244,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const { bridge, scene } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
+  const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
+  const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
+  const unitTotalHp = useBridgeValue<number>(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
   const formatted = useMemo(() => formatTime(timePlayed), [timePlayed]);
   const [scale, setScale] = useState(() => scene.getCamera().scale);
   const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
@@ -450,9 +460,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
 
       gl.viewport(0, 0, canvas.width, canvas.height);
       scene.setViewportScreenSize(canvas.width, canvas.height);
+      const currentMapSize = scene.getMapSize();
       scene.setMapSize({
-        width: Math.max(canvas.width, canvas.height, 1000),
-        height: Math.max(canvas.width, canvas.height, 1000),
+        width: Math.max(currentMapSize.width, canvas.width, canvas.height, 1000),
+        height: Math.max(currentMapSize.height, canvas.width, canvas.height, 1000),
       });
       const current = scene.getCamera();
       setScale(current.scale);
@@ -500,7 +511,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
         <Button onClick={onExit}>Main Menu</Button>
         <div className="scene-status">
           <span>Time played: {formatted}</span>
-          <span>Bricks: {brickCount}</span>
+          <span>Particles: {brickCount}</span>
+          <span>Brick HP: {Math.round(brickTotalHp)}</span>
+          <span>Units: {unitCount} (HP {Math.round(unitTotalHp)})</span>
           <label className="scene-zoom">
             Zoom: {scale.toFixed(2)}x
             <input

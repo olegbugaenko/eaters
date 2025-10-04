@@ -6,23 +6,30 @@ import { GameLoop } from "../services/GameLoop";
 import { TestTimeModule } from "../modules/TestTimeModule";
 import { SceneObjectManager } from "../services/SceneObjectManager";
 import { BricksModule } from "../modules/BricksModule";
+import { MapModule } from "../modules/MapModule";
 import { BulletModule } from "../modules/BulletModule";
 import { ExplosionModule } from "../modules/ExplosionModule";
+import { MapId } from "../../db/maps-db";
+import { PlayerUnitsModule } from "../modules/PlayerUnitsModule";
+import { MovementService } from "../services/MovementService";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
   private dataBridge = new DataBridge();
   private modules: GameModule[] = [];
+  private mapModule: MapModule;
 
   constructor() {
     const saveManager = new SaveManager();
     const gameLoop = new GameLoop();
     const sceneObjects = new SceneObjectManager();
+    const movementService = new MovementService();
 
     this.serviceContainer.register("bridge", this.dataBridge);
     this.serviceContainer.register("saveManager", saveManager);
     this.serviceContainer.register("gameLoop", gameLoop);
     this.serviceContainer.register("sceneObjects", sceneObjects);
+    this.serviceContainer.register("movement", movementService);
 
     const timeModule = new TestTimeModule({
       bridge: this.dataBridge,
@@ -31,6 +38,18 @@ export class Application {
     const bricksModule = new BricksModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
+    });
+    const playerUnitsModule = new PlayerUnitsModule({
+      scene: sceneObjects,
+      bricks: bricksModule,
+      bridge: this.dataBridge,
+      movement: movementService,
+    });
+    this.mapModule = new MapModule({
+      scene: sceneObjects,
+      bridge: this.dataBridge,
+      bricks: bricksModule,
+      playerUnits: playerUnitsModule,
     });
 
     const explosionModule = new ExplosionModule({
@@ -44,6 +63,8 @@ export class Application {
 
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
+    this.registerModule(playerUnitsModule);
+    this.registerModule(this.mapModule);
     this.registerModule(explosionModule);
     this.registerModule(bulletModule);
   }
@@ -91,6 +112,10 @@ export class Application {
 
   public getSaveManager(): SaveManager {
     return this.serviceContainer.get<SaveManager>("saveManager");
+  }
+
+  public selectMap(mapId: MapId): void {
+    this.mapModule.selectMap(mapId);
   }
 
   private registerModule(module: GameModule): void {
