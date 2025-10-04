@@ -12,13 +12,19 @@ import {
   SceneRadialGradientFill,
 } from "../src/logic/services/SceneObjectManager";
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
+import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { describe, test } from "./testRunner";
+
+const createBricksModule = (scene: SceneObjectManager, bridge: DataBridge) => {
+  const explosions = new ExplosionModule({ scene });
+  return new BricksModule({ scene, bridge, explosions });
+};
 
 describe("BricksModule", () => {
   test("load applies brick type specific size and gradient", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
-    const module = new BricksModule({ scene, bridge });
+    const module = createBricksModule(scene, bridge);
 
     module.load({
       bricks: [
@@ -81,7 +87,7 @@ describe("BricksModule", () => {
   test("invalid brick types fallback to classic config", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
-    const module = new BricksModule({ scene, bridge });
+    const module = createBricksModule(scene, bridge);
 
     module.load({
       bricks: [
@@ -114,7 +120,7 @@ describe("BricksModule", () => {
   test("applyDamage respects armor and removes destroyed bricks", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
-    const module = new BricksModule({ scene, bridge });
+    const module = createBricksModule(scene, bridge);
 
     module.setBricks([
       {
@@ -141,7 +147,62 @@ describe("BricksModule", () => {
     const lethalHit = module.applyDamage(brick.id, 100);
     assert.strictEqual(lethalHit.destroyed, true);
     assert.strictEqual(module.getBrickState(brick.id), null);
-    assert.strictEqual(scene.getObjects().length, 0, "scene object should be removed");
+
+    const remainingObjects = scene.getObjects();
+    const brickObjects = remainingObjects.filter((object) => object.type === "brick");
+    const explosionObjects = remainingObjects.filter((object) => object.type === "explosion");
+
+    assert.strictEqual(brickObjects.length, 0, "brick scene object should be removed");
+    assert.strictEqual(explosionObjects.length, 1, "destroy explosion should be spawned");
     assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 0);
+  });
+
+  test("small gray bricks use configured explosion presets", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const module = createBricksModule(scene, bridge);
+
+    module.setBricks([
+      {
+        position: { x: 10, y: 10 },
+        rotation: 0,
+        type: "smallSquareGray",
+      },
+    ]);
+
+    const [brick] = module.getBrickStates();
+    assert(brick, "expected brick state");
+
+    module.applyDamage(brick.id, 3);
+
+    let explosions = scene.getObjects().filter((object) => object.type === "explosion");
+    assert.strictEqual(explosions.length, 1, "damage should spawn one explosion");
+    const damageExplosion = explosions[0]!;
+    assert.strictEqual(Math.round((damageExplosion.data.size?.width ?? 0) * 10) / 10, 18.4);
+    const damageEmitter = (damageExplosion.data.customData as { emitter?: { color?: unknown } })
+      ?.emitter;
+    assert(damageEmitter, "damage explosion should configure an emitter");
+    assert.deepStrictEqual(damageEmitter?.color, {
+      r: 0.82,
+      g: 0.84,
+      b: 0.88,
+      a: 1,
+    });
+
+    module.applyDamage(brick.id, 100);
+
+    explosions = scene.getObjects().filter((object) => object.type === "explosion");
+    assert.strictEqual(explosions.length, 2, "destroy should spawn another explosion");
+    const destroyExplosion = explosions[explosions.length - 1]!;
+    assert.strictEqual(Math.round((destroyExplosion.data.size?.width ?? 0) * 10) / 10, 30.4);
+    const destroyEmitter = (destroyExplosion.data.customData as { emitter?: { color?: unknown } })
+      ?.emitter;
+    assert(destroyEmitter, "destroy explosion should configure an emitter");
+    assert.deepStrictEqual(destroyEmitter?.color, {
+      r: 0.85,
+      g: 0.87,
+      b: 0.92,
+      a: 1,
+    });
   });
 });

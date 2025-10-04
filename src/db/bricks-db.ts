@@ -5,7 +5,7 @@ import {
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
 
-import {DestructubleData} from '../logic/interfaces/destructuble';
+import { DestructubleData } from "../logic/interfaces/destructuble";
 
 export type BrickType = "classic" | "smallSquareGray" | "blueRadial";
 
@@ -77,17 +77,25 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 25,
       armor: 2,
       baseDamage: 3,
-      brickKnockBackDistance: 20,
-      brickKnockBackSpeed: 40,
+      brickKnockBackDistance: 40,
+      brickKnockBackSpeed: 80,
       physicalSize: 28,
-    }
+      damageExplosion: {
+        type: "plasmoid",
+        radiusMultiplier: 0.9,
+      },
+      destructionExplosion: {
+        type: "plasmoid",
+        radiusMultiplier: 1.05,
+      },
+    },
   },
   smallSquareGray: {
     size: { width: 24, height: 24 },
     fill: {
       type: "radial",
       center: { x: 0, y: 0 },
-      radius: 28,
+      radius: 12,
       stops: SMALL_SQUARE_GRAY_GRADIENT,
     },
     stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
@@ -95,10 +103,19 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 5,
       armor: 0,
       baseDamage: 2,
-      brickKnockBackDistance: 20,
-      brickKnockBackSpeed: 40,
+      brickKnockBackDistance: 40,
+      brickKnockBackSpeed: 80,
       physicalSize: 16,
-    }
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
+    },
   },
   blueRadial: {
     size: { width: 48, height: 48 },
@@ -116,7 +133,15 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       physicalSize: 24,
-    }
+      damageExplosion: {
+        type: "magnetic",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "magnetic",
+        radiusMultiplier: 1.25,
+      },
+    },
   },
 };
 

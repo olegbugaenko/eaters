@@ -35,9 +35,14 @@ export class Application {
       bridge: this.dataBridge,
     });
 
+    const explosionModule = new ExplosionModule({
+      scene: sceneObjects,
+    });
+
     const bricksModule = new BricksModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
+      explosions: explosionModule,
     });
     const playerUnitsModule = new PlayerUnitsModule({
       scene: sceneObjects,
@@ -50,10 +55,6 @@ export class Application {
       bridge: this.dataBridge,
       bricks: bricksModule,
       playerUnits: playerUnitsModule,
-    });
-
-    const explosionModule = new ExplosionModule({
-      scene: sceneObjects,
     });
 
     const bulletModule = new BulletModule({

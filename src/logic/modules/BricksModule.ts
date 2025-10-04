@@ -1,11 +1,14 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
 import { BrickConfig, BrickType, getBrickConfig, isBrickType } from "../../db/bricks-db";
+import type { ExplosionType } from "../../db/explosions-db";
+import type { DestructubleExplosionConfig } from "../interfaces/destructuble";
 import {
   FILL_TYPES,
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
+import type { ExplosionModule } from "./ExplosionModule";
 
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
 
@@ -68,6 +71,7 @@ export interface BrickRuntimeState {
 interface BricksModuleOptions {
   scene: SceneObjectManager;
   bridge: DataBridge;
+  explosions: ExplosionModule;
 }
 
 interface BrickSaveData {
@@ -76,6 +80,13 @@ interface BrickSaveData {
 
 interface InternalBrickState extends BrickRuntimeState {
   sceneObjectId: string;
+  damageExplosion?: BrickExplosionState;
+  destructionExplosion?: BrickExplosionState;
+}
+
+interface BrickExplosionState {
+  type: ExplosionType;
+  initialRadius: number;
 }
 
 export class BricksModule implements GameModule {
@@ -167,10 +178,12 @@ export class BricksModule implements GameModule {
     brick.hp = clamp(brick.hp - effectiveDamage, 0, brick.maxHp);
 
     if (brick.hp <= 0) {
+      this.spawnBrickExplosion(brick.destructionExplosion, brick);
       this.destroyBrick(brick);
       return { destroyed: true, brick: null };
     }
 
+    this.spawnBrickExplosion(brick.damageExplosion, brick);
     this.pushStats();
     return { destroyed: false, brick: this.cloneState(brick) };
   }
@@ -244,7 +257,6 @@ export class BricksModule implements GameModule {
       0
     );
     const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
-
     const position = this.clampToMap(brick.position);
     const rotation = sanitizeRotation(brick.rotation);
 
@@ -275,6 +287,16 @@ export class BricksModule implements GameModule {
       brickKnockBackSpeed,
       physicalSize,
       sceneObjectId,
+      damageExplosion: resolveBrickExplosion(
+        destructuble?.damageExplosion,
+        config,
+        physicalSize
+      ),
+      destructionExplosion: resolveBrickExplosion(
+        destructuble?.destructionExplosion,
+        config,
+        physicalSize
+      ),
     };
   }
 
@@ -331,6 +353,19 @@ export class BricksModule implements GameModule {
     };
   }
 
+  private spawnBrickExplosion(
+    config: BrickExplosionState | undefined,
+    brick: InternalBrickState
+  ): void {
+    if (!config) {
+      return;
+    }
+
+    this.options.explosions.spawnExplosionByType(config.type, {
+      position: { ...brick.position },
+      initialRadius: Math.max(1, config.initialRadius),
+    });
+  }
 }
 
 const sanitizeKnockBackSpeed = (
@@ -375,4 +410,41 @@ const sanitizeBrickType = (value: BrickType | undefined): BrickType => {
     return value;
   }
   return DEFAULT_BRICK_TYPE;
+};
+
+const resolveBrickExplosion = (
+  config: DestructubleExplosionConfig | undefined,
+  brickConfig: BrickConfig,
+  physicalSize: number
+): BrickExplosionState | undefined => {
+  const baseRadius = Math.max(
+    Math.max(brickConfig.size.width, brickConfig.size.height) / 2,
+    physicalSize
+  );
+
+  const type = config?.type;
+  if (!type) {
+    return undefined;
+  }
+
+  if (
+    config &&
+    typeof config.initialRadius === "number" &&
+    Number.isFinite(config.initialRadius)
+  ) {
+    const radius = Math.max(1, config.initialRadius);
+    return { type, initialRadius: radius };
+  }
+
+  const multiplier =
+    config && typeof config.radiusMultiplier === "number" && Number.isFinite(config.radiusMultiplier)
+      ? config.radiusMultiplier
+      : 1;
+  const offset =
+    config && typeof config.radiusOffset === "number" && Number.isFinite(config.radiusOffset)
+      ? config.radiusOffset
+      : 0;
+
+  const initialRadius = Math.max(1, baseRadius * multiplier + offset);
+  return { type, initialRadius };
 };
