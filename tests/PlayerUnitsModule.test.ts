@@ -7,6 +7,7 @@ import {
   PlayerUnitsModule,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../src/logic/modules/PlayerUnitsModule";
+import { MovementService } from "../src/logic/services/MovementService";
 
 const tickSeconds = (module: PlayerUnitsModule, seconds: number) => {
   module.tick(seconds * 1000);
@@ -16,8 +17,9 @@ describe("PlayerUnitsModule", () => {
   test("unit destroys weak brick when in range", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const movement = new MovementService();
     const bricks = new BricksModule({ scene, bridge });
-    const units = new PlayerUnitsModule({ scene, bricks, bridge });
+    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement });
 
     bricks.setBricks([
       {
@@ -34,9 +36,9 @@ describe("PlayerUnitsModule", () => {
       },
     ]);
 
-    tickSeconds(units, 1);
-    tickSeconds(units, 1);
-    tickSeconds(units, 1);
+    for (let i = 0; i < 16 && bricks.getBrickStates().length > 0; i += 1) {
+      tickSeconds(units, 0.5);
+    }
 
     assert.strictEqual(bricks.getBrickStates().length, 0, "brick should be destroyed");
     const save = units.save() as { units?: { hp?: number }[] };
@@ -48,8 +50,9 @@ describe("PlayerUnitsModule", () => {
   test("unit moves towards brick and gets knocked back on counter damage", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const movement = new MovementService();
     const bricks = new BricksModule({ scene, bridge });
-    const units = new PlayerUnitsModule({ scene, bricks, bridge });
+    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement });
 
     bricks.setBricks([
       {
@@ -66,8 +69,16 @@ describe("PlayerUnitsModule", () => {
       },
     ]);
 
-    for (let i = 0; i < 8; i += 1) {
+    let minX = Infinity;
+    for (let i = 0; i < 10; i += 1) {
       tickSeconds(units, 1);
+      const snapshot = units.save() as {
+        units?: { position?: { x: number; y: number } }[];
+      };
+      const x = snapshot.units?.[0]?.position?.x;
+      if (typeof x === "number" && Number.isFinite(x)) {
+        minX = Math.min(minX, x);
+      }
     }
 
     const save = units.save() as {
@@ -76,7 +87,9 @@ describe("PlayerUnitsModule", () => {
     assert(save.units && save.units[0], "unit should be saved");
     const savedUnit = save.units[0]!;
     assert(savedUnit.position, "position should be saved");
-    assert(Math.abs(savedUnit.position!.x - 75) < 0.0001, "unit should be knocked back to x≈75");
+    assert(savedUnit.position!.x > 0, "unit should advance along the x axis");
+    assert(minX < 95, "unit should be pushed out of attack range during knockback");
+    assert(savedUnit.position!.x > minX, "unit should return toward the target after knockback");
     assert.strictEqual(savedUnit.position!.y, 0);
     assert.strictEqual(savedUnit.hp, 31, "unit should take counter damage");
     assert.strictEqual(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY), 31);

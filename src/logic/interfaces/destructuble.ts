@@ -3,5 +3,6 @@ export interface DestructubleData {
     maxHp: number;
     armor: number;
     baseDamage?: number;
-    brickKnockBack?: number;
+    brickKnockBackDistance?: number;
+    brickKnockBackSpeed?: number;
 }

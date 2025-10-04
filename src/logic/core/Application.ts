@@ -11,6 +11,7 @@ import { BulletModule } from "../modules/BulletModule";
 import { ExplosionModule } from "../modules/ExplosionModule";
 import { MapId } from "../../db/maps-db";
 import { PlayerUnitsModule } from "../modules/PlayerUnitsModule";
+import { MovementService } from "../services/MovementService";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -22,11 +23,13 @@ export class Application {
     const saveManager = new SaveManager();
     const gameLoop = new GameLoop();
     const sceneObjects = new SceneObjectManager();
+    const movementService = new MovementService();
 
     this.serviceContainer.register("bridge", this.dataBridge);
     this.serviceContainer.register("saveManager", saveManager);
     this.serviceContainer.register("gameLoop", gameLoop);
     this.serviceContainer.register("sceneObjects", sceneObjects);
+    this.serviceContainer.register("movement", movementService);
 
     const timeModule = new TestTimeModule({
       bridge: this.dataBridge,
@@ -40,6 +43,7 @@ export class Application {
       scene: sceneObjects,
       bricks: bricksModule,
       bridge: this.dataBridge,
+      movement: movementService,
     });
     this.mapModule = new MapModule({
       scene: sceneObjects,

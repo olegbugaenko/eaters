@@ -8,8 +8,10 @@ import {
   PlayerUnitRendererConfig,
   isPlayerUnitType,
 } from "../../db/player-units-db";
+import { MovementService, MovementBodyState } from "../services/MovementService";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
+const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
@@ -25,6 +27,7 @@ interface PlayerUnitsModuleOptions {
   scene: SceneObjectManager;
   bricks: BricksModule;
   bridge: DataBridge;
+  movement: MovementService;
 }
 
 interface PlayerUnitSaveData {
@@ -35,6 +38,8 @@ interface PlayerUnitState {
   id: string;
   type: PlayerUnitType;
   position: SceneVector2;
+  movementId: string;
+  rotation: number;
   hp: number;
   maxHp: number;
   armor: number;
@@ -42,6 +47,8 @@ interface PlayerUnitState {
   baseAttackInterval: number;
   baseAttackDistance: number;
   moveSpeed: number;
+  moveAcceleration: number;
+  mass: number;
   attackCooldown: number;
   targetBrickId: string | null;
   objectId: string;
@@ -54,6 +61,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly scene: SceneObjectManager;
   private readonly bricks: BricksModule;
   private readonly bridge: DataBridge;
+  private readonly movement: MovementService;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -63,6 +71,7 @@ export class PlayerUnitsModule implements GameModule {
     this.scene = options.scene;
     this.bricks = options.bricks;
     this.bridge = options.bridge;
+    this.movement = options.movement;
   }
 
   public initialize(): void {
@@ -96,13 +105,85 @@ export class PlayerUnitsModule implements GameModule {
     if (this.unitOrder.length === 0) {
       return;
     }
+
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
     const unitsSnapshot = [...this.unitOrder];
+    const plannedTargets = new Map<string, string | null>();
+
     unitsSnapshot.forEach((unit) => {
       if (!this.units.has(unit.id)) {
         return;
       }
-      this.updateUnit(unit, deltaSeconds);
+
+      unit.attackCooldown = Math.max(unit.attackCooldown - deltaSeconds, 0);
+
+      const movementState = this.movement.getBodyState(unit.movementId);
+      if (!movementState) {
+        return;
+      }
+
+      unit.position = cloneVector(movementState.position);
+
+      const target = this.resolveTarget(unit);
+      plannedTargets.set(unit.id, target?.id ?? null);
+
+      const force = this.computeDesiredForce(unit, movementState, target);
+      this.movement.setForce(unit.movementId, force);
+    });
+
+    this.movement.update(deltaSeconds);
+
+    unitsSnapshot.forEach((unit) => {
+      if (!this.units.has(unit.id)) {
+        return;
+      }
+
+      const movementState = this.movement.getBodyState(unit.movementId);
+      if (!movementState) {
+        return;
+      }
+
+      const clampedPosition = this.clampToMap(movementState.position);
+      if (!vectorEquals(clampedPosition, movementState.position)) {
+        this.movement.setBodyPosition(unit.movementId, clampedPosition);
+      }
+
+      unit.position = { ...clampedPosition };
+
+      let targetId = plannedTargets.get(unit.id) ?? null;
+      let target: BrickRuntimeState | null = null;
+      if (targetId) {
+        target = this.bricks.getBrickState(targetId);
+        if (!target) {
+          targetId = null;
+          plannedTargets.set(unit.id, null);
+        }
+      }
+      if (!target) {
+        target = this.resolveTarget(unit);
+        plannedTargets.set(unit.id, target?.id ?? null);
+      }
+
+      const rotation = this.computeRotation(unit, target, movementState.velocity);
+      unit.rotation = rotation;
+      this.scene.updateObject(unit.objectId, {
+        position: { ...unit.position },
+        rotation,
+      });
+
+      if (!target) {
+        return;
+      }
+
+      const direction = subtractVectors(target.position, unit.position);
+      const distance = Math.hypot(direction.x, direction.y);
+
+      if (
+        distance <= unit.baseAttackDistance + ATTACK_DISTANCE_EPSILON &&
+        unit.attackCooldown <= 0
+      ) {
+        this.performAttack(unit, target, direction, distance);
+      }
     });
   }
 
@@ -173,6 +254,14 @@ export class PlayerUnitsModule implements GameModule {
     const hp = clampNumber(unit.hp ?? maxHp, 0, maxHp);
     const attackCooldown = clampNumber(unit.attackCooldown ?? 0, 0, config.baseAttackInterval);
 
+    const mass = Math.max(config.mass, 0.001);
+    const moveAcceleration = Math.max(config.moveAcceleration, 0);
+    const movementId = this.movement.createBody({
+      position,
+      mass,
+      maxSpeed: Math.max(config.moveSpeed, 0),
+    });
+
     const objectId = this.scene.addObject("playerUnit", {
       position,
       fill: {
@@ -201,6 +290,8 @@ export class PlayerUnitsModule implements GameModule {
       id,
       type,
       position: { ...position },
+      movementId,
+      rotation: 0,
       hp,
       maxHp,
       armor: Math.max(config.armor, 0),
@@ -208,51 +299,13 @@ export class PlayerUnitsModule implements GameModule {
       baseAttackInterval: Math.max(config.baseAttackInterval, 0.01),
       baseAttackDistance: Math.max(config.baseAttackDistance, 0),
       moveSpeed: Math.max(config.moveSpeed, 0),
+      moveAcceleration,
+      mass,
       attackCooldown,
       targetBrickId: null,
       objectId,
       renderer: config.renderer,
     };
-  }
-
-  private updateUnit(unit: PlayerUnitState, deltaSeconds: number): void {
-    unit.attackCooldown = Math.max(unit.attackCooldown - deltaSeconds, 0);
-
-    const target = this.resolveTarget(unit);
-    if (!target) {
-      this.scene.updateObject(unit.objectId, {
-        position: { ...unit.position },
-      });
-      return;
-    }
-
-    const direction = {
-      x: target.position.x - unit.position.x,
-      y: target.position.y - unit.position.y,
-    };
-    const distance = Math.hypot(direction.x, direction.y);
-
-    const attackRange = unit.baseAttackDistance;
-    const withinAttackRange = distance <= attackRange + ATTACK_DISTANCE_EPSILON;
-
-    if (!withinAttackRange) {
-      this.moveTowards(unit, direction, distance, deltaSeconds);
-      this.scene.updateObject(unit.objectId, {
-        position: { ...unit.position },
-        rotation: Math.atan2(direction.y, direction.x),
-      });
-      return;
-    }
-
-    if (unit.attackCooldown > 0) {
-      this.scene.updateObject(unit.objectId, {
-        position: { ...unit.position },
-        rotation: Math.atan2(direction.y, direction.x),
-      });
-      return;
-    }
-
-    this.performAttack(unit, target, direction, distance);
   }
 
   private resolveTarget(unit: PlayerUnitState): BrickRuntimeState | null {
@@ -269,28 +322,78 @@ export class PlayerUnitsModule implements GameModule {
     return nearest ?? null;
   }
 
-  private moveTowards(
+  private computeDesiredForce(
     unit: PlayerUnitState,
-    direction: SceneVector2,
-    distance: number,
-    deltaSeconds: number
-  ): void {
-    const availableDistance = unit.moveSpeed * deltaSeconds;
-    if (availableDistance <= 0 || distance <= 0) {
-      return;
+    movementState: MovementBodyState,
+    target: BrickRuntimeState | null
+  ): SceneVector2 {
+    if (!target) {
+      return this.computeBrakingForce(unit, movementState);
     }
 
-    const distanceToCover = Math.max(distance - unit.baseAttackDistance, 0);
-    const step = Math.min(distanceToCover, availableDistance);
-    if (step <= 0) {
-      return;
+    const toTarget = subtractVectors(target.position, unit.position);
+    const distance = vectorLength(toTarget);
+    const distanceOutsideRange = Math.max(distance - unit.baseAttackDistance, 0);
+
+    if (distanceOutsideRange <= 0) {
+      return this.computeBrakingForce(unit, movementState);
     }
 
-    const factor = step / distance;
-    unit.position = this.clampToMap({
-      x: unit.position.x + direction.x * factor,
-      y: unit.position.y + direction.y * factor,
-    });
+    const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
+    const slowRadius = Math.max(unit.moveSpeed, unit.baseAttackDistance * 2);
+    const speedFactor = clampNumber(distanceOutsideRange / slowRadius, 0, 1);
+    const desiredSpeed = unit.moveSpeed * speedFactor;
+    const desiredVelocity = scaleVector(direction, desiredSpeed);
+
+    return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
+  }
+
+  private computeBrakingForce(
+    unit: PlayerUnitState,
+    movementState: MovementBodyState
+  ): SceneVector2 {
+    if (!vectorHasLength(movementState.velocity)) {
+      return ZERO_VECTOR;
+    }
+    return this.computeSteeringForce(unit, movementState.velocity, ZERO_VECTOR);
+  }
+
+  private computeSteeringForce(
+    unit: PlayerUnitState,
+    currentVelocity: SceneVector2,
+    desiredVelocity: SceneVector2
+  ): SceneVector2 {
+    const steering = subtractVectors(desiredVelocity, currentVelocity);
+    const magnitude = vectorLength(steering);
+    const maxForce = Math.max(unit.moveAcceleration, 0);
+    if (magnitude <= 0 || maxForce <= 0) {
+      return ZERO_VECTOR;
+    }
+
+    if (magnitude > maxForce) {
+      return scaleVector(steering, maxForce / magnitude);
+    }
+
+    return steering;
+  }
+
+  private computeRotation(
+    unit: PlayerUnitState,
+    target: BrickRuntimeState | null,
+    velocity: SceneVector2
+  ): number {
+    if (target) {
+      const toTarget = subtractVectors(target.position, unit.position);
+      if (vectorHasLength(toTarget)) {
+        return Math.atan2(toTarget.y, toTarget.x);
+      }
+    }
+
+    if (vectorHasLength(velocity)) {
+      return Math.atan2(velocity.y, velocity.x);
+    }
+
+    return unit.rotation;
   }
 
   private performAttack(
@@ -304,10 +407,6 @@ export class PlayerUnitsModule implements GameModule {
 
     if (result.destroyed) {
       unit.targetBrickId = null;
-      this.scene.updateObject(unit.objectId, {
-        position: { ...unit.position },
-        rotation: Math.atan2(direction.y, direction.x),
-      });
       return;
     }
 
@@ -318,9 +417,7 @@ export class PlayerUnitsModule implements GameModule {
       this.pushStats();
     }
 
-    if (surviving.brickKnockBack > 0) {
-      this.applyKnockBack(unit, direction, distance, surviving.brickKnockBack);
-    }
+    this.applyKnockBack(unit, direction, distance, surviving);
 
     if (unit.hp <= 0) {
       this.removeUnit(unit);
@@ -329,7 +426,7 @@ export class PlayerUnitsModule implements GameModule {
 
     this.scene.updateObject(unit.objectId, {
       position: { ...unit.position },
-      rotation: Math.atan2(direction.y, direction.x),
+      rotation: unit.rotation,
     });
   }
 
@@ -337,38 +434,37 @@ export class PlayerUnitsModule implements GameModule {
     unit: PlayerUnitState,
     direction: SceneVector2,
     distance: number,
-    knockBack: number
+    brick: BrickRuntimeState
   ): void {
-    if (knockBack <= 0) {
+    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
+    const knockBackSpeedRaw = brick.brickKnockBackSpeed ?? 0;
+    if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
       return;
     }
 
-    let scale = 1;
+    let axis = direction;
     if (distance > 0) {
-      scale = knockBack / distance;
+      axis = scaleVector(direction, 1 / distance);
+    } else if (!vectorHasLength(axis)) {
+      axis = { x: Math.cos(unit.rotation), y: Math.sin(unit.rotation) };
     }
 
-    if (!Number.isFinite(scale) || scale <= 0) {
-      scale = 1;
+    if (!vectorHasLength(axis)) {
+      axis = { x: 0, y: -1 };
     }
 
-    const offset = {
-      x: -direction.x * scale,
-      y: -direction.y * scale,
-    };
-
-    if (offset.x === 0 && offset.y === 0) {
-      offset.y = -knockBack;
+    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    if (knockBackSpeed <= 0) {
+      return;
     }
 
-    unit.position = this.clampToMap({
-      x: unit.position.x + offset.x,
-      y: unit.position.y + offset.y,
-    });
+    const impulse = scaleVector(axis, -knockBackSpeed);
+    this.movement.applyImpulse(unit.movementId, impulse, 1);
   }
 
   private removeUnit(unit: PlayerUnitState): void {
     this.scene.removeObject(unit.objectId);
+    this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.pushStats();
@@ -377,6 +473,7 @@ export class PlayerUnitsModule implements GameModule {
   private clearUnits(): void {
     this.unitOrder.forEach((unit) => {
       this.scene.removeObject(unit.objectId);
+      this.movement.removeBody(unit.movementId);
     });
     this.unitOrder = [];
     this.units.clear();
@@ -419,3 +516,23 @@ const sanitizeUnitType = (value: PlayerUnitType | undefined): PlayerUnitType => 
   }
   return "bluePentagon";
 };
+
+const cloneVector = (vector: SceneVector2): SceneVector2 => ({ x: vector.x, y: vector.y });
+
+const subtractVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
+  x: a.x - b.x,
+  y: a.y - b.y,
+});
+
+const scaleVector = (vector: SceneVector2, scalar: number): SceneVector2 => ({
+  x: vector.x * scalar,
+  y: vector.y * scalar,
+});
+
+const vectorLength = (vector: SceneVector2): number => Math.hypot(vector.x, vector.y);
+
+const vectorHasLength = (vector: SceneVector2, epsilon = 0.0001): boolean =>
+  Math.abs(vector.x) > epsilon || Math.abs(vector.y) > epsilon;
+
+const vectorEquals = (a: SceneVector2, b: SceneVector2, epsilon = 0.0001): boolean =>
+  Math.abs(a.x - b.x) <= epsilon && Math.abs(a.y - b.y) <= epsilon;

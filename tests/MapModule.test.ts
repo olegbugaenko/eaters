@@ -4,6 +4,7 @@ import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import { BricksModule } from "../src/logic/modules/BricksModule";
 import { PlayerUnitsModule } from "../src/logic/modules/PlayerUnitsModule";
+import { MovementService } from "../src/logic/services/MovementService";
 import { MapModule, PLAYER_UNIT_SPAWN_SAFE_RADIUS } from "../src/logic/modules/MapModule";
 
 const distanceSq = (a: { x: number; y: number }, b: { x: number; y: number }): number => {
@@ -17,7 +18,8 @@ describe("MapModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const bricks = new BricksModule({ scene, bridge });
-    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge });
+    const movement = new MovementService();
+    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement });
     const maps = new MapModule({ scene, bridge, bricks, playerUnits });
 
     maps.initialize();

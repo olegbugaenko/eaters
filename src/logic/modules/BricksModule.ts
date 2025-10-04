@@ -60,7 +60,8 @@ export interface BrickRuntimeState {
   maxHp: number;
   armor: number;
   baseDamage: number;
-  brickKnockBack: number;
+  brickKnockBackDistance: number;
+  brickKnockBackSpeed: number;
 }
 
 interface BricksModuleOptions {
@@ -231,7 +232,11 @@ export class BricksModule implements GameModule {
     const destructuble = config.destructubleData;
     const maxHp = Math.max(destructuble?.maxHp ?? 1, 1);
     const baseDamage = Math.max(destructuble?.baseDamage ?? 0, 0);
-    const brickKnockBack = Math.max(destructuble?.brickKnockBack ?? 0, 0);
+    const brickKnockBackDistance = Math.max(destructuble?.brickKnockBackDistance ?? 0, 0);
+    const brickKnockBackSpeed = sanitizeKnockBackSpeed(
+      destructuble?.brickKnockBackSpeed,
+      brickKnockBackDistance
+    );
     const armor = Math.max(destructuble?.armor ?? 0, 0);
     const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
 
@@ -261,7 +266,8 @@ export class BricksModule implements GameModule {
       maxHp,
       armor,
       baseDamage,
-      brickKnockBack,
+      brickKnockBackDistance,
+      brickKnockBackSpeed,
       sceneObjectId,
     };
   }
@@ -313,11 +319,25 @@ export class BricksModule implements GameModule {
       maxHp: state.maxHp,
       armor: state.armor,
       baseDamage: state.baseDamage,
-      brickKnockBack: state.brickKnockBack,
+      brickKnockBackDistance: state.brickKnockBackDistance,
+      brickKnockBackSpeed: state.brickKnockBackSpeed,
     };
   }
 
 }
+
+const sanitizeKnockBackSpeed = (
+  value: number | undefined,
+  distance: number
+): number => {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+  if (distance > 0) {
+    return distance * 2;
+  }
+  return 0;
+};
 
 const clamp = (value: number, min: number, max: number): number => {
   if (Number.isNaN(value) || !Number.isFinite(value)) {

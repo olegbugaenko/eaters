@@ -24,6 +24,8 @@ export interface PlayerUnitConfig {
   readonly baseAttackInterval: number; // seconds
   readonly baseAttackDistance: number;
   readonly moveSpeed: number; // units per second
+  readonly moveAcceleration: number; // force units per second^2 before mass
+  readonly mass: number;
 }
 
 const BLUE_PENTAGON_VERTICES: readonly SceneVector2[] = [
@@ -53,6 +55,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     baseAttackInterval: 1,
     baseAttackDistance: 5,
     moveSpeed: 15,
+    moveAcceleration: 30,
+    mass: 1.2,
   },
 };
 
