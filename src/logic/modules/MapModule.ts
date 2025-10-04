@@ -31,6 +31,7 @@ interface MapSaveData {
 }
 
 const DEFAULT_MAP_ID: MapId = "initial";
+export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -101,16 +102,98 @@ export class MapModule implements GameModule {
 
   private generateBricks(config: MapConfig): BrickData[] {
     const bricks: BrickData[] = [];
+    const unitPositions = (config.playerUnits ?? []).map((unit) =>
+      this.clampToMap(unit.position, config.size)
+    );
     config.bricks.forEach((group) => {
       for (let index = 0; index < group.count; index += 1) {
+        const position = this.findBrickSpawnPosition(config.size, unitPositions);
         bricks.push({
-          position: this.getRandomPosition(config.size),
+          position,
           rotation: Math.random() * Math.PI * 2,
           type: group.type,
         });
       }
     });
     return bricks;
+  }
+
+  private findBrickSpawnPosition(size: SceneSize, unitPositions: SceneVector2[]): SceneVector2 {
+    if (unitPositions.length === 0 || PLAYER_UNIT_SPAWN_SAFE_RADIUS <= 0) {
+      return this.getRandomPosition(size);
+    }
+
+    const safetyRadiusSq = PLAYER_UNIT_SPAWN_SAFE_RADIUS * PLAYER_UNIT_SPAWN_SAFE_RADIUS;
+    let bestPosition = this.getRandomPosition(size);
+    let nearest = this.findNearestPoint(bestPosition, unitPositions);
+
+    if (nearest.distanceSq >= safetyRadiusSq) {
+      return bestPosition;
+    }
+
+    const maxAttempts = 20;
+    for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
+      const candidate = this.getRandomPosition(size);
+      const candidateNearest = this.findNearestPoint(candidate, unitPositions);
+      if (candidateNearest.distanceSq >= safetyRadiusSq) {
+        return candidate;
+      }
+      if (candidateNearest.distanceSq > nearest.distanceSq) {
+        bestPosition = candidate;
+        nearest = candidateNearest;
+      }
+    }
+
+    if (nearest.distanceSq < safetyRadiusSq) {
+      return this.projectOutsideSafetyRadius(bestPosition, nearest.point, size);
+    }
+
+    return bestPosition;
+  }
+
+  private findNearestPoint(
+    position: SceneVector2,
+    points: SceneVector2[]
+  ): { point: SceneVector2; distanceSq: number } {
+    let nearestPoint = points[0]!;
+    let nearestDistanceSq = Infinity;
+    points.forEach((point) => {
+      const dx = position.x - point.x;
+      const dy = position.y - point.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < nearestDistanceSq) {
+        nearestDistanceSq = distSq;
+        nearestPoint = point;
+      }
+    });
+    return { point: nearestPoint, distanceSq: nearestDistanceSq };
+  }
+
+  private projectOutsideSafetyRadius(
+    position: SceneVector2,
+    nearest: SceneVector2,
+    size: SceneSize
+  ): SceneVector2 {
+    const dx = position.x - nearest.x;
+    const dy = position.y - nearest.y;
+    const distance = Math.hypot(dx, dy);
+    const safeDistance = PLAYER_UNIT_SPAWN_SAFE_RADIUS + 1;
+
+    let offsetX = dx;
+    let offsetY = dy;
+    if (distance === 0) {
+      offsetX = safeDistance;
+      offsetY = 0;
+    } else {
+      const scale = safeDistance / distance;
+      offsetX *= scale;
+      offsetY *= scale;
+    }
+
+    return {
+      x: clamp(nearest.x + offsetX, 0, size.width),
+      y: clamp(nearest.y + offsetY, 0, size.height),
+    };
   }
 
   private generatePlayerUnits(config: MapConfig): PlayerUnitSpawnData[] {

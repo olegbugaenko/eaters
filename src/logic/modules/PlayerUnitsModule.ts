@@ -8,6 +8,8 @@ import {
   isPlayerUnitType,
 } from "../../db/player-units-db";
 
+const ATTACK_DISTANCE_EPSILON = 0.001;
+
 export interface PlayerUnitSpawnData {
   readonly type: PlayerUnitType;
   readonly position: SceneVector2;
@@ -213,7 +215,10 @@ export class PlayerUnitsModule implements GameModule {
     };
     const distance = Math.hypot(direction.x, direction.y);
 
-    if (distance > unit.baseAttackDistance) {
+    const attackRange = unit.baseAttackDistance;
+    const withinAttackRange = distance <= attackRange + ATTACK_DISTANCE_EPSILON;
+
+    if (!withinAttackRange) {
       this.moveTowards(unit, direction, distance, deltaSeconds);
       this.scene.updateObject(unit.objectId, {
         position: { ...unit.position },
