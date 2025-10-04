@@ -1,11 +1,22 @@
-import { DynamicPrimitive, ObjectRegistration, ObjectRenderer } from "./ObjectRenderer";
+import {
+  DynamicPrimitive,
+  ObjectRegistration,
+  ObjectRenderer,
+  transformObjectPoint,
+} from "./ObjectRenderer";
 import {
   FILL_TYPES,
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
 } from "../../../logic/services/SceneObjectManager";
-import { createDynamicPolygonPrimitive } from "../primitives";
+import { createDynamicPolygonPrimitive, createParticleEmitterPrimitive } from "../primitives";
+import {
+  ParticleEmitterBaseConfig,
+  ParticleEmitterParticleState,
+  sanitizeParticleEmitterConfig,
+} from "../primitives/ParticleEmitterPrimitive";
+import type { PlayerUnitEmitterConfig } from "../../../db/player-units-db";
 
 interface PlayerUnitRendererPayload {
   kind?: string;
@@ -15,6 +26,15 @@ interface PlayerUnitRendererPayload {
 
 interface PlayerUnitCustomData {
   renderer?: PlayerUnitRendererPayload;
+  emitter?: PlayerUnitEmitterConfig;
+  physicalSize?: number;
+}
+
+interface PlayerUnitEmitterRenderConfig extends ParticleEmitterBaseConfig {
+  baseSpeed: number;
+  speedVariation: number;
+  spread: number;
+  physicalSize: number;
 }
 
 const DEFAULT_VERTICES: SceneVector2[] = [
@@ -24,6 +44,8 @@ const DEFAULT_VERTICES: SceneVector2[] = [
   { x: -11, y: 16 },
   { x: -17, y: -6 },
 ];
+
+const DEFAULT_EMITTER_COLOR = { r: 0.2, g: 0.45, b: 0.95, a: 0.5 };
 
 const isVector = (value: unknown): value is SceneVector2 =>
   typeof value === "object" &&
@@ -68,6 +90,133 @@ const extractRendererData = (
   };
 };
 
+const getEmitterConfig = (
+  instance: SceneObjectInstance
+): PlayerUnitEmitterRenderConfig | null => {
+  const payload = instance.data.customData as PlayerUnitCustomData | undefined;
+  if (!payload || typeof payload !== "object" || !payload.emitter) {
+    return null;
+  }
+
+  const base = sanitizeParticleEmitterConfig(payload.emitter, {
+    defaultColor: DEFAULT_EMITTER_COLOR,
+    defaultOffset: { x: 0, y: 0 },
+    minCapacity: 4,
+  });
+  if (!base) {
+    return null;
+  }
+
+  const baseSpeed = Math.max(
+    0,
+    Number.isFinite(payload.emitter.baseSpeed)
+      ? Number(payload.emitter.baseSpeed)
+      : 0
+  );
+  const speedVariation = Math.max(
+    0,
+    Number.isFinite(payload.emitter.speedVariation)
+      ? Number(payload.emitter.speedVariation)
+      : 0
+  );
+  const spread = Math.max(
+    0,
+    Number.isFinite(payload.emitter.spread)
+      ? Number(payload.emitter.spread)
+      : 0
+  );
+  const physicalSize =
+    typeof payload.physicalSize === "number" && Number.isFinite(payload.physicalSize)
+      ? Math.max(payload.physicalSize, 0)
+      : 0;
+
+  return {
+    ...base,
+    baseSpeed,
+    speedVariation,
+    spread,
+    physicalSize,
+  };
+};
+
+const serializeEmitterConfig = (
+  config: PlayerUnitEmitterRenderConfig
+): string => {
+  const serializedFill = config.fill ? JSON.stringify(config.fill) : "";
+  return [
+    config.particlesPerSecond,
+    config.particleLifetimeMs,
+    config.fadeStartMs,
+    config.sizeRange.min,
+    config.sizeRange.max,
+    config.offset.x,
+    config.offset.y,
+    config.color.r,
+    config.color.g,
+    config.color.b,
+    typeof config.color.a === "number" ? config.color.a : 1,
+    config.emissionDurationMs ?? -1,
+    config.capacity,
+    config.baseSpeed,
+    config.speedVariation,
+    config.spread,
+    config.physicalSize,
+    serializedFill,
+  ].join(":");
+};
+
+const createEmitterPrimitive = (
+  instance: SceneObjectInstance
+): DynamicPrimitive | null =>
+  createParticleEmitterPrimitive<PlayerUnitEmitterRenderConfig>(instance, {
+    getConfig: getEmitterConfig,
+    getOrigin: getEmitterOrigin,
+    spawnParticle: createEmitterParticle,
+    serializeConfig: serializeEmitterConfig,
+  });
+
+const getEmitterOrigin = (
+  instance: SceneObjectInstance,
+  config: PlayerUnitEmitterRenderConfig
+): SceneVector2 => {
+  const scale = Math.max(config.physicalSize, 1);
+  const offset = {
+    x: config.offset.x * scale,
+    y: config.offset.y * scale,
+  };
+  return transformObjectPoint(instance.data.position, instance.data.rotation, offset);
+};
+
+const createEmitterParticle = (
+  origin: SceneVector2,
+  instance: SceneObjectInstance,
+  config: PlayerUnitEmitterRenderConfig
+): ParticleEmitterParticleState => {
+  const baseDirection = (instance.data.rotation ?? 0) + Math.PI;
+  const halfSpread = config.spread / 2;
+  const direction =
+    baseDirection + (config.spread > 0 ? randomBetween(-halfSpread, halfSpread) : 0);
+  const speed = Math.max(
+    0,
+    config.baseSpeed +
+      (config.speedVariation > 0
+        ? randomBetween(-config.speedVariation, config.speedVariation)
+        : 0)
+  );
+  const size =
+    config.sizeRange.min === config.sizeRange.max
+      ? config.sizeRange.min
+      : randomBetween(config.sizeRange.min, config.sizeRange.max);
+
+  return {
+    position: { x: origin.x, y: origin.y },
+    velocity: { x: Math.cos(direction) * speed, y: Math.sin(direction) * speed },
+    ageMs: 0,
+    lifetimeMs: config.particleLifetimeMs,
+    size,
+  };
+};
+
 const hasStroke = (stroke: SceneStroke | undefined): stroke is SceneStroke =>
   !!stroke && typeof stroke.width === "number" && stroke.width > 0;
 
@@ -76,6 +225,11 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     const { vertices, offset } = extractRendererData(instance);
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
+
+    const emitterPrimitive = createEmitterPrimitive(instance);
+    if (emitterPrimitive) {
+      dynamicPrimitives.push(emitterPrimitive);
+    }
 
     if (hasStroke(instance.data.stroke)) {
       const strokeVertices = expandVerticesForStroke(vertices, instance.data.stroke.width);
@@ -135,6 +289,13 @@ const expandVerticesForStroke = (vertices: SceneVector2[], strokeWidth: number) 
       y: center.y + direction.y * scale,
     };
   });
+};
+
+const randomBetween = (min: number, max: number): number => {
+  if (max <= min) {
+    return min;
+  }
+  return min + Math.random() * (max - min);
 };
 
 const computeCenter = (vertices: SceneVector2[]): SceneVector2 => {

@@ -62,6 +62,7 @@ export interface BrickRuntimeState {
   baseDamage: number;
   brickKnockBackDistance: number;
   brickKnockBackSpeed: number;
+  physicalSize: number;
 }
 
 interface BricksModuleOptions {
@@ -238,6 +239,10 @@ export class BricksModule implements GameModule {
       brickKnockBackDistance
     );
     const armor = Math.max(destructuble?.armor ?? 0, 0);
+    const physicalSize = Math.max(
+      destructuble?.physicalSize ?? Math.max(config.size.width, config.size.height) / 2,
+      0
+    );
     const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
 
     const position = this.clampToMap(brick.position);
@@ -268,6 +273,7 @@ export class BricksModule implements GameModule {
       baseDamage,
       brickKnockBackDistance,
       brickKnockBackSpeed,
+      physicalSize,
       sceneObjectId,
     };
   }
@@ -321,6 +327,7 @@ export class BricksModule implements GameModule {
       baseDamage: state.baseDamage,
       brickKnockBackDistance: state.brickKnockBackDistance,
       brickKnockBackSpeed: state.brickKnockBackSpeed,
+      physicalSize: state.physicalSize,
     };
   }
 

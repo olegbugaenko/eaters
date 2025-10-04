@@ -36,6 +36,15 @@ describe("PlayerUnitsModule", () => {
       },
     ]);
 
+    const unitObject = scene.getObjects().find((object) => object.type === "playerUnit");
+    assert(unitObject, "unit scene object should be created");
+    const customData = unitObject!.data.customData as {
+      emitter?: unknown;
+      physicalSize?: number;
+    };
+    assert(customData && customData.emitter, "unit should include emitter config");
+    assert.strictEqual(customData?.physicalSize, 12);
+
     for (let i = 0; i < 16 && bricks.getBrickStates().length > 0; i += 1) {
       tickSeconds(units, 0.5);
     }
@@ -70,29 +79,31 @@ describe("PlayerUnitsModule", () => {
     ]);
 
     let minX = Infinity;
-    for (let i = 0; i < 10; i += 1) {
+    let savedUnit: { position?: { x: number; y: number }; hp?: number } | undefined;
+
+    for (let i = 0; i < 5; i += 1) {
       tickSeconds(units, 1);
       const snapshot = units.save() as {
-        units?: { position?: { x: number; y: number } }[];
+        units?: { position?: { x: number; y: number }; hp?: number }[];
       };
-      const x = snapshot.units?.[0]?.position?.x;
+      if (!snapshot.units || snapshot.units.length === 0) {
+        break;
+      }
+      savedUnit = snapshot.units[0];
+      const x = savedUnit?.position?.x;
       if (typeof x === "number" && Number.isFinite(x)) {
         minX = Math.min(minX, x);
       }
     }
 
-    const save = units.save() as {
-      units?: { position?: { x: number; y: number }; hp?: number }[];
-    };
-    assert(save.units && save.units[0], "unit should be saved");
-    const savedUnit = save.units[0]!;
+    assert(savedUnit, "unit should survive the observation window");
     assert(savedUnit.position, "position should be saved");
     assert(savedUnit.position!.x > 0, "unit should advance along the x axis");
-    assert(minX < 95, "unit should be pushed out of attack range during knockback");
+    assert(minX < 70, "unit should be pushed out of attack range during knockback");
     assert(savedUnit.position!.x > minX, "unit should return toward the target after knockback");
     assert.strictEqual(savedUnit.position!.y, 0);
-    assert.strictEqual(savedUnit.hp, 31, "unit should take counter damage");
-    assert.strictEqual(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY), 31);
+    assert.strictEqual(savedUnit.hp, 13, "unit should take counter damage and survive");
+    assert.strictEqual(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY), 13);
 
     const [brick] = bricks.getBrickStates();
     assert(brick, "brick should survive");

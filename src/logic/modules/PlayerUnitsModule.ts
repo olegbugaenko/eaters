@@ -1,12 +1,18 @@
 import { GameModule } from "../core/types";
 import { DataBridge } from "../core/DataBridge";
-import { SceneObjectManager, SceneVector2, FILL_TYPES } from "../services/SceneObjectManager";
+import {
+  SceneObjectManager,
+  SceneVector2,
+  FILL_TYPES,
+  SceneFill,
+} from "../services/SceneObjectManager";
 import { BricksModule, BrickRuntimeState } from "./BricksModule";
 import {
   PlayerUnitType,
   getPlayerUnitConfig,
   PlayerUnitRendererConfig,
   isPlayerUnitType,
+  PlayerUnitEmitterConfig,
 } from "../../db/player-units-db";
 import { MovementService, MovementBodyState } from "../services/MovementService";
 
@@ -49,10 +55,12 @@ interface PlayerUnitState {
   moveSpeed: number;
   moveAcceleration: number;
   mass: number;
+  physicalSize: number;
   attackCooldown: number;
   targetBrickId: string | null;
   objectId: string;
   renderer: PlayerUnitRendererConfig;
+  emitter?: PlayerUnitEmitterConfig;
 }
 
 export class PlayerUnitsModule implements GameModule {
@@ -177,9 +185,10 @@ export class PlayerUnitsModule implements GameModule {
 
       const direction = subtractVectors(target.position, unit.position);
       const distance = Math.hypot(direction.x, direction.y);
+      const attackRange = unit.baseAttackDistance + unit.physicalSize + target.physicalSize;
 
       if (
-        distance <= unit.baseAttackDistance + ATTACK_DISTANCE_EPSILON &&
+        distance <= attackRange + ATTACK_DISTANCE_EPSILON &&
         unit.attackCooldown <= 0
       ) {
         this.performAttack(unit, target, direction, distance);
@@ -256,11 +265,14 @@ export class PlayerUnitsModule implements GameModule {
 
     const mass = Math.max(config.mass, 0.001);
     const moveAcceleration = Math.max(config.moveAcceleration, 0);
+    const physicalSize = Math.max(config.physicalSize, 0);
     const movementId = this.movement.createBody({
       position,
       mass,
       maxSpeed: Math.max(config.moveSpeed, 0),
     });
+
+    const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
 
     const objectId = this.scene.addObject("playerUnit", {
       position,
@@ -281,6 +293,8 @@ export class PlayerUnitsModule implements GameModule {
           vertices: config.renderer.vertices.map((vertex) => ({ ...vertex })),
           offset: config.renderer.offset ? { ...config.renderer.offset } : undefined,
         },
+        emitter,
+        physicalSize,
       },
     });
 
@@ -301,10 +315,12 @@ export class PlayerUnitsModule implements GameModule {
       moveSpeed: Math.max(config.moveSpeed, 0),
       moveAcceleration,
       mass,
+      physicalSize,
       attackCooldown,
       targetBrickId: null,
       objectId,
       renderer: config.renderer,
+      emitter,
     };
   }
 
@@ -333,14 +349,15 @@ export class PlayerUnitsModule implements GameModule {
 
     const toTarget = subtractVectors(target.position, unit.position);
     const distance = vectorLength(toTarget);
-    const distanceOutsideRange = Math.max(distance - unit.baseAttackDistance, 0);
+    const attackRange = unit.baseAttackDistance + unit.physicalSize + target.physicalSize;
+    const distanceOutsideRange = Math.max(distance - attackRange, 0);
 
     if (distanceOutsideRange <= 0) {
       return this.computeBrakingForce(unit, movementState);
     }
 
     const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
-    const slowRadius = Math.max(unit.moveSpeed, unit.baseAttackDistance * 2);
+    const slowRadius = Math.max(unit.moveSpeed, attackRange);
     const speedFactor = clampNumber(distanceOutsideRange / slowRadius, 0, 1);
     const desiredSpeed = unit.moveSpeed * speedFactor;
     const desiredVelocity = scaleVector(direction, desiredSpeed);
@@ -515,6 +532,60 @@ const sanitizeUnitType = (value: PlayerUnitType | undefined): PlayerUnitType => 
     return value;
   }
   return "bluePentagon";
+};
+
+const cloneEmitter = (
+  config: PlayerUnitEmitterConfig
+): PlayerUnitEmitterConfig => ({
+  particlesPerSecond: config.particlesPerSecond,
+  particleLifetimeMs: config.particleLifetimeMs,
+  fadeStartMs: config.fadeStartMs,
+  baseSpeed: config.baseSpeed,
+  speedVariation: config.speedVariation,
+  sizeRange: { min: config.sizeRange.min, max: config.sizeRange.max },
+  spread: config.spread,
+  offset: { x: config.offset.x, y: config.offset.y },
+  color: {
+    r: config.color.r,
+    g: config.color.g,
+    b: config.color.b,
+    a: config.color.a,
+  },
+  fill: config.fill ? cloneFill(config.fill) : undefined,
+  maxParticles: config.maxParticles,
+});
+
+const cloneFill = (fill: SceneFill): SceneFill => {
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...fill.color },
+      };
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return {
+        fillType: fill.fillType,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: typeof fill.end === "number" ? fill.end : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      } as SceneFill;
+    default:
+      return fill;
+  }
 };
 
 const cloneVector = (vector: SceneVector2): SceneVector2 => ({ x: vector.x, y: vector.y });

@@ -5,4 +5,5 @@ export interface DestructubleData {
     baseDamage?: number;
     brickKnockBackDistance?: number;
     brickKnockBackSpeed?: number;
+    physicalSize?: number;
 }

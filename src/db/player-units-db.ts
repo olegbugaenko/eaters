@@ -1,4 +1,4 @@
-import { SceneColor, SceneVector2 } from "../logic/services/SceneObjectManager";
+import { SceneColor, SceneFill, SceneVector2 } from "../logic/services/SceneObjectManager";
 
 export type PlayerUnitType = "bluePentagon";
 
@@ -15,6 +15,20 @@ export interface PlayerUnitRendererPolygonConfig {
 
 export type PlayerUnitRendererConfig = PlayerUnitRendererPolygonConfig;
 
+export interface PlayerUnitEmitterConfig {
+  particlesPerSecond: number;
+  particleLifetimeMs: number;
+  fadeStartMs: number;
+  baseSpeed: number;
+  speedVariation: number;
+  sizeRange: { min: number; max: number };
+  spread: number;
+  offset: SceneVector2;
+  color: SceneColor;
+  fill?: SceneFill;
+  maxParticles?: number;
+}
+
 export interface PlayerUnitConfig {
   readonly name: string;
   readonly renderer: PlayerUnitRendererConfig;
@@ -26,6 +40,8 @@ export interface PlayerUnitConfig {
   readonly moveSpeed: number; // units per second
   readonly moveAcceleration: number; // force units per second^2 before mass
   readonly mass: number;
+  readonly physicalSize: number;
+  readonly emitter?: PlayerUnitEmitterConfig;
 }
 
 const BLUE_PENTAGON_VERTICES: readonly SceneVector2[] = [
@@ -54,9 +70,22 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     baseAttackDamage: 2,
     baseAttackInterval: 1,
     baseAttackDistance: 5,
-    moveSpeed: 15,
+    moveSpeed: 30,
     moveAcceleration: 30,
     mass: 1.2,
+    physicalSize: 12,
+    emitter: {
+      particlesPerSecond: 120,
+      particleLifetimeMs: 550,
+      fadeStartMs: 300,
+      baseSpeed: 0.18,
+      speedVariation: 0.08,
+      sizeRange: { min: 1.2, max: 2.4 },
+      spread: Math.PI / 2.5,
+      offset: { x: -0.35, y: 0 },
+      color: { r: 0.2, g: 0.45, b: 0.95, a: 0.55 },
+      maxParticles: 80,
+    },
   },
 };
 

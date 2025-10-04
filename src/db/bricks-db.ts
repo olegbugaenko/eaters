@@ -79,6 +79,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       baseDamage: 3,
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
+      physicalSize: 28,
     }
   },
   smallSquareGray: {
@@ -96,6 +97,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       baseDamage: 2,
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
+      physicalSize: 16,
     }
   },
   blueRadial: {
@@ -113,6 +115,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       baseDamage: 10,
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
+      physicalSize: 24,
     }
   },
 };
