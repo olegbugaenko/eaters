@@ -42,7 +42,7 @@ export interface BrickConfig {
   size: SceneSize;
   fill: BrickFillConfig;
   stroke?: BrickStrokeConfig;
-  gameData?: DestructubleData;
+  destructubleData?: DestructubleData;
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
@@ -73,6 +73,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       stops: CLASSIC_GRADIENT,
     },
     stroke: { color: { r: 0.55, g: 0.4, b: 0.05, a: 1 }, width: 2 },
+    destructubleData: {
+      maxHp: 25,
+      armor: 2,
+    }
   },
   smallSquareGray: {
     size: { width: 24, height: 24 },
@@ -83,6 +87,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       stops: SMALL_SQUARE_GRAY_GRADIENT,
     },
     stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 5,
+      armor: 0,
+    }
   },
   blueRadial: {
     size: { width: 48, height: 48 },
@@ -93,6 +101,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       stops: BLUE_RADIAL_GRADIENT,
     },
     stroke: { color: { r: 0.1, g: 0.15, b: 0.45, a: 1 }, width: 2.4 },
+    destructubleData: {
+      maxHp: 125,
+      armor: 10,
+    }
   },
 };
 
