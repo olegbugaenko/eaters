@@ -59,6 +59,7 @@ interface PlayerUnitState {
   physicalSize: number;
   attackCooldown: number;
   preCollisionVelocity: SceneVector2;
+  lastNonZeroVelocity: SceneVector2;
   targetBrickId: string | null;
   objectId: string;
   renderer: PlayerUnitRendererConfig;
@@ -133,6 +134,10 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       unit.position = cloneVector(movementState.position);
+
+      if (vectorHasLength(movementState.velocity)) {
+        unit.lastNonZeroVelocity = cloneVector(movementState.velocity);
+      }
 
       const target = this.resolveTarget(unit);
       plannedTargets.set(unit.id, target?.id ?? null);
@@ -341,6 +346,7 @@ export class PlayerUnitsModule implements GameModule {
       renderer: config.renderer,
       emitter,
       preCollisionVelocity: { ...ZERO_VECTOR },
+      lastNonZeroVelocity: { ...ZERO_VECTOR },
     };
   }
 
@@ -507,10 +513,16 @@ export class PlayerUnitsModule implements GameModule {
     if (result.destroyed) {
       unit.targetBrickId = null;
       if (this.movement.getBodyState(unit.movementId)) {
+        const restoredVelocity = vectorHasLength(unit.lastNonZeroVelocity)
+          ? unit.lastNonZeroVelocity
+          : unit.preCollisionVelocity;
         this.movement.setBodyVelocity(unit.movementId, {
-          x: unit.preCollisionVelocity.x,
-          y: unit.preCollisionVelocity.y,
+          x: restoredVelocity.x,
+          y: restoredVelocity.y,
         });
+        if (vectorHasLength(restoredVelocity)) {
+          unit.lastNonZeroVelocity = cloneVector(restoredVelocity);
+        }
       }
       return;
     }
