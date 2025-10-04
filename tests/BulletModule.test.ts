@@ -57,6 +57,31 @@ describe("BulletModule", () => {
     assert.deepStrictEqual(tail.endColor, config.tail.endColor);
   });
 
+  test("magnetic bullets carry tail emitter configuration", () => {
+    const scene = new SceneObjectManager();
+    const explosions = new ExplosionStub();
+    const module = new BulletModule({
+      scene,
+      explosions: explosions as unknown as ExplosionModule,
+    });
+
+    const id = module.spawnBulletByType("magnetic", {
+      position: { x: 25, y: 50 },
+      directionAngle: Math.PI / 4,
+    });
+
+    const instance = scene.getObject(id);
+    assert(instance, "Magnetic bullet should exist in the scene");
+
+    const customData = instance.data.customData as { tailEmitter?: unknown } | undefined;
+    assert(customData && customData.tailEmitter, "Magnetic bullet should include tail emitter config");
+
+    const tailEmitter = customData.tailEmitter;
+    const config = getBulletConfig("magnetic");
+    assert(config.tailEmitter, "Magnetic config should define tail emitter settings");
+    assert.deepStrictEqual(tailEmitter, config.tailEmitter);
+  });
+
   test("spawnBulletByType triggers explosion based on bullet type", () => {
     const scene = new SceneObjectManager();
     const explosions = new ExplosionStub();
