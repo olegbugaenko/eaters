@@ -3,6 +3,10 @@ import { GameModule } from "../core/types";
 import { SceneObjectManager, SceneSize } from "../services/SceneObjectManager";
 import { BricksModule, BrickData } from "./BricksModule";
 import {
+  PlayerUnitsModule,
+  PlayerUnitSpawnData,
+} from "./PlayerUnitsModule";
+import {
   MapConfig,
   MapId,
   MapListEntry,
@@ -10,6 +14,7 @@ import {
   getMapList,
   isMapId,
 } from "../../db/maps-db";
+import { SceneVector2 } from "../services/SceneObjectManager";
 
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
@@ -18,6 +23,7 @@ interface MapModuleOptions {
   scene: SceneObjectManager;
   bridge: DataBridge;
   bricks: BricksModule;
+  playerUnits: PlayerUnitsModule;
 }
 
 interface MapSaveData {
@@ -35,18 +41,18 @@ export class MapModule implements GameModule {
 
   public initialize(): void {
     this.pushMapList();
-    this.ensureSelection(false);
+    this.ensureSelection({ generateBricks: false, generateUnits: false });
   }
 
   public reset(): void {
-    this.ensureSelection(true);
+    this.ensureSelection({ generateBricks: true, generateUnits: true });
   }
 
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
     if (parsed) {
       this.selectedMapId = parsed.mapId;
-      this.applyMap(parsed.mapId, { generateBricks: false });
+      this.applyMap(parsed.mapId, { generateBricks: false, generateUnits: false });
       return;
     }
     this.pushSelectedMap();
@@ -67,21 +73,28 @@ export class MapModule implements GameModule {
       return;
     }
     this.selectedMapId = mapId;
-    this.applyMap(mapId, { generateBricks: true });
+    this.applyMap(mapId, { generateBricks: true, generateUnits: true });
   }
 
-  private ensureSelection(generateBricks: boolean): void {
+  private ensureSelection(options: { generateBricks: boolean; generateUnits: boolean }): void {
     const mapId = this.selectedMapId ?? DEFAULT_MAP_ID;
     this.selectedMapId = mapId;
-    this.applyMap(mapId, { generateBricks });
+    this.applyMap(mapId, options);
   }
 
-  private applyMap(mapId: MapId, options: { generateBricks: boolean }): void {
+  private applyMap(
+    mapId: MapId,
+    options: { generateBricks: boolean; generateUnits: boolean }
+  ): void {
     const config = getMapConfig(mapId);
     this.options.scene.setMapSize(config.size);
     if (options.generateBricks) {
       const bricks = this.generateBricks(config);
       this.options.bricks.setBricks(bricks);
+    }
+    if (options.generateUnits) {
+      const units = this.generatePlayerUnits(config);
+      this.options.playerUnits.setUnits(units);
     }
     this.pushSelectedMap();
   }
@@ -100,10 +113,27 @@ export class MapModule implements GameModule {
     return bricks;
   }
 
+  private generatePlayerUnits(config: MapConfig): PlayerUnitSpawnData[] {
+    if (!config.playerUnits) {
+      return [];
+    }
+    return config.playerUnits.map((unit) => ({
+      type: unit.type,
+      position: this.clampToMap(unit.position, config.size),
+    }));
+  }
+
   private getRandomPosition(size: SceneSize): BrickData["position"] {
     return {
       x: Math.random() * size.width,
       y: Math.random() * size.height,
+    };
+  }
+
+  private clampToMap(position: SceneVector2, size: SceneSize): SceneVector2 {
+    return {
+      x: clamp(position.x, 0, size.width),
+      y: clamp(position.y, 0, size.height),
     };
   }
 
@@ -130,3 +160,13 @@ export class MapModule implements GameModule {
 }
 
 export type { MapListEntry };
+
+const clamp = (value: number, min: number, max: number): number => {
+  if (Number.isFinite(value)) {
+    if (min > max) {
+      return min;
+    }
+    return Math.min(Math.max(value, min), max);
+  }
+  return min;
+};

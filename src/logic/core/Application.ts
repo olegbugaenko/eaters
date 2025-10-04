@@ -10,6 +10,7 @@ import { MapModule } from "../modules/MapModule";
 import { BulletModule } from "../modules/BulletModule";
 import { ExplosionModule } from "../modules/ExplosionModule";
 import { MapId } from "../../db/maps-db";
+import { PlayerUnitsModule } from "../modules/PlayerUnitsModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -35,10 +36,15 @@ export class Application {
       scene: sceneObjects,
       bridge: this.dataBridge,
     });
+    const playerUnitsModule = new PlayerUnitsModule({
+      scene: sceneObjects,
+      bricks: bricksModule,
+    });
     this.mapModule = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
       bricks: bricksModule,
+      playerUnits: playerUnitsModule,
     });
 
     const explosionModule = new ExplosionModule({
@@ -52,6 +58,7 @@ export class Application {
 
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
+    this.registerModule(playerUnitsModule);
     this.registerModule(this.mapModule);
     this.registerModule(explosionModule);
     this.registerModule(bulletModule);

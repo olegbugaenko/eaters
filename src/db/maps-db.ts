@@ -1,5 +1,6 @@
 import { BrickType } from "./bricks-db";
-import { SceneSize } from "../logic/services/SceneObjectManager";
+import { SceneSize, SceneVector2 } from "../logic/services/SceneObjectManager";
+import { PlayerUnitType } from "./player-units-db";
 
 export type MapId = "initial";
 
@@ -12,6 +13,7 @@ export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
   readonly bricks: readonly MapBrickGroupConfig[];
+  readonly playerUnits?: readonly MapPlayerUnitConfig[];
 }
 
 export interface MapListEntry {
@@ -22,6 +24,11 @@ export interface MapListEntry {
   readonly brickTypes: readonly BrickType[];
 }
 
+export interface MapPlayerUnitConfig {
+  readonly type: PlayerUnitType;
+  readonly position: SceneVector2;
+}
+
 const MAPS_DB: Record<MapId, MapConfig> = {
   initial: {
     name: "Initial Grounds",
@@ -30,6 +37,12 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       {
         type: "smallSquareGray",
         count: 2000,
+      },
+    ],
+    playerUnits: [
+      {
+        type: "bluePentagon",
+        position: { x: 100, y: 100 },
       },
     ],
   },

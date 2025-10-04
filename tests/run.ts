@@ -5,5 +5,6 @@ import "./fill.test";
 import "./BulletModule.test";
 import "./ExplosionModule.test";
 import "./BricksModule.test";
+import "./PlayerUnitsModule.test";
 
 void run();

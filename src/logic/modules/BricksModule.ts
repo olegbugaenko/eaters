@@ -47,6 +47,19 @@ export interface BrickData {
   position: SceneVector2;
   rotation: number;
   type: BrickType;
+  hp?: number;
+}
+
+export interface BrickRuntimeState {
+  id: string;
+  type: BrickType;
+  position: SceneVector2;
+  rotation: number;
+  hp: number;
+  maxHp: number;
+  armor: number;
+  baseDamage: number;
+  brickKnockBack: number;
 }
 
 interface BricksModuleOptions {
@@ -58,11 +71,16 @@ interface BrickSaveData {
   bricks: BrickData[];
 }
 
+interface InternalBrickState extends BrickRuntimeState {
+  sceneObjectId: string;
+}
+
 export class BricksModule implements GameModule {
   public readonly id = "bricks";
 
-  private bricks: BrickData[] = [];
-  private objectIds = new Set<string>();
+  private bricks = new Map<string, InternalBrickState>();
+  private brickOrder: InternalBrickState[] = [];
+  private brickIdCounter = 0;
 
   constructor(private readonly options: BricksModuleOptions) {}
 
@@ -77,7 +95,7 @@ export class BricksModule implements GameModule {
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
     if (parsed) {
-      this.applyBricks(parsed.bricks);
+      this.applyBricks(parsed);
       return;
     }
     this.pushCount();
@@ -85,10 +103,11 @@ export class BricksModule implements GameModule {
 
   public save(): unknown {
     return {
-      bricks: this.bricks.map((brick) => ({
+      bricks: this.brickOrder.map((brick) => ({
         position: { ...brick.position },
         rotation: brick.rotation,
         type: brick.type,
+        hp: brick.hp,
       })),
     } satisfies BrickSaveData;
   }
@@ -101,7 +120,58 @@ export class BricksModule implements GameModule {
     this.applyBricks(bricks);
   }
 
-  private parseSaveData(data: unknown): BrickSaveData | null {
+  public getBrickStates(): BrickRuntimeState[] {
+    return this.brickOrder.map((brick) => this.cloneState(brick));
+  }
+
+  public getBrickState(brickId: string): BrickRuntimeState | null {
+    const state = this.bricks.get(brickId);
+    if (!state) {
+      return null;
+    }
+    return this.cloneState(state);
+  }
+
+  public findNearestBrick(position: SceneVector2): BrickRuntimeState | null {
+    let best: InternalBrickState | null = null;
+    let bestDistSq = Infinity;
+    this.brickOrder.forEach((brick) => {
+      const dx = brick.position.x - position.x;
+      const dy = brick.position.y - position.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        best = brick;
+      }
+    });
+    return best ? this.cloneState(best) : null;
+  }
+
+  public applyDamage(
+    brickId: string,
+    rawDamage: number
+  ): { destroyed: boolean; brick: BrickRuntimeState | null } {
+    const brick = this.bricks.get(brickId);
+    if (!brick) {
+      return { destroyed: false, brick: null };
+    }
+
+    const effectiveDamage = Math.max(rawDamage - brick.armor, 0);
+    if (effectiveDamage <= 0) {
+      return { destroyed: false, brick: this.cloneState(brick) };
+    }
+
+    brick.hp = clamp(brick.hp - effectiveDamage, 0, brick.maxHp);
+
+    if (brick.hp <= 0) {
+      this.destroyBrick(brick);
+      return { destroyed: true, brick: null };
+    }
+
+    return { destroyed: false, brick: this.cloneState(brick) };
+  }
+
+  private parseSaveData(data: unknown): BrickData[] | null {
     if (
       typeof data !== "object" ||
       data === null ||
@@ -124,54 +194,93 @@ export class BricksModule implements GameModule {
         typeof brick.position.x === "number" &&
         typeof brick.position.y === "number"
       ) {
+        const type = sanitizeBrickType((brick as BrickData).type);
+        const config = getBrickConfig(type);
+        const maxHp = Math.max(config.destructubleData?.maxHp ?? 1, 1);
+        const hp = sanitizeHp((brick as BrickData).hp, maxHp);
         sanitized.push({
           position: this.clampToMap(brick.position),
           rotation: sanitizeRotation((brick as BrickData).rotation),
-          type: sanitizeBrickType((brick as BrickData).type),
+          type,
+          hp,
         });
       }
     });
 
-    return { bricks: sanitized };
+    return sanitized;
   }
 
   private applyBricks(bricks: BrickData[]): void {
     this.clearSceneObjects();
-    this.bricks = bricks.map((brick) => ({
-      position: this.clampToMap(brick.position),
-      rotation: sanitizeRotation(brick.rotation),
-      type: sanitizeBrickType(brick.type),
-    }));
+    this.brickIdCounter = 0;
 
-    this.bricks.forEach((brick) => {
-      const config = getBrickConfig(brick.type);
-      const id = this.options.scene.addObject("brick", {
-        position: brick.position,
-        size: { ...config.size },
-        fill: createBrickFill(config),
-        rotation: brick.rotation,
-        stroke: config.stroke
-          ? {
-              color: { ...config.stroke.color },
-              width: config.stroke.width,
-            }
-          : undefined,
-      });
-      this.objectIds.add(id);
+    bricks.forEach((brick) => {
+      const state = this.createBrickState(brick);
+      this.bricks.set(state.id, state);
+      this.brickOrder.push(state);
     });
 
     this.pushCount();
   }
 
-  private clearSceneObjects(): void {
-    this.objectIds.forEach((id) => {
-      this.options.scene.removeObject(id);
+  private createBrickState(brick: BrickData): InternalBrickState {
+    const type = sanitizeBrickType(brick.type);
+    const config = getBrickConfig(type);
+    const destructuble = config.destructubleData;
+    const maxHp = Math.max(destructuble?.maxHp ?? 1, 1);
+    const baseDamage = Math.max(destructuble?.baseDamage ?? 0, 0);
+    const brickKnockBack = Math.max(destructuble?.brickKnockBack ?? 0, 0);
+    const armor = Math.max(destructuble?.armor ?? 0, 0);
+    const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
+
+    const position = this.clampToMap(brick.position);
+    const rotation = sanitizeRotation(brick.rotation);
+
+    const id = this.createBrickId();
+    const sceneObjectId = this.options.scene.addObject("brick", {
+      position,
+      size: { ...config.size },
+      fill: createBrickFill(config),
+      rotation,
+      stroke: config.stroke
+        ? {
+            color: { ...config.stroke.color },
+            width: config.stroke.width,
+          }
+        : undefined,
     });
-    this.objectIds.clear();
+
+    return {
+      id,
+      type,
+      position,
+      rotation,
+      hp,
+      maxHp,
+      armor,
+      baseDamage,
+      brickKnockBack,
+      sceneObjectId,
+    };
+  }
+
+  private destroyBrick(brick: InternalBrickState): void {
+    this.options.scene.removeObject(brick.sceneObjectId);
+    this.bricks.delete(brick.id);
+    this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
+    this.pushCount();
+  }
+
+  private clearSceneObjects(): void {
+    this.brickOrder.forEach((brick) => {
+      this.options.scene.removeObject(brick.sceneObjectId);
+    });
+    this.bricks.clear();
+    this.brickOrder = [];
   }
 
   private pushCount(): void {
-    this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.length);
+    this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.size);
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {
@@ -182,13 +291,42 @@ export class BricksModule implements GameModule {
     };
   }
 
+  private createBrickId(): string {
+    this.brickIdCounter += 1;
+    return `brick-${this.brickIdCounter}`;
+  }
+
+  private cloneState(state: InternalBrickState): BrickRuntimeState {
+    return {
+      id: state.id,
+      type: state.type,
+      position: { ...state.position },
+      rotation: state.rotation,
+      hp: state.hp,
+      maxHp: state.maxHp,
+      armor: state.armor,
+      baseDamage: state.baseDamage,
+      brickKnockBack: state.brickKnockBack,
+    };
+  }
+
 }
 
 const clamp = (value: number, min: number, max: number): number => {
   if (Number.isNaN(value) || !Number.isFinite(value)) {
     return min;
   }
+  if (min > max) {
+    return min;
+  }
   return Math.min(Math.max(value, min), max);
+};
+
+const sanitizeHp = (value: number | undefined, maxHp: number): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return clamp(value, 0, maxHp);
+  }
+  return clamp(maxHp, 0, maxHp);
 };
 
 const sanitizeRotation = (value: number | undefined): number => {

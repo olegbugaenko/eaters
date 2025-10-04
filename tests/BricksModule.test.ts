@@ -68,8 +68,9 @@ describe("BricksModule", () => {
     assert(saved && typeof saved === "object", "save should return an object");
     const savedBricks = (saved as { bricks?: unknown }).bricks;
     assert(Array.isArray(savedBricks) && savedBricks.length === 1);
-    const savedBrick = savedBricks[0] as { type?: unknown };
+    const savedBrick = savedBricks[0] as { type?: unknown; hp?: number };
     assert.strictEqual(savedBrick.type, "smallSquareGray");
+    assert.strictEqual(savedBrick.hp, config.destructubleData?.maxHp);
   });
 
   test("invalid brick types fallback to classic config", () => {
@@ -103,5 +104,33 @@ describe("BricksModule", () => {
       assert.strictEqual(stop.offset, expected.offset);
       assert.deepStrictEqual(stop.color, expected.color);
     });
+  });
+
+  test("applyDamage respects armor and removes destroyed bricks", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const module = new BricksModule({ scene, bridge });
+
+    module.setBricks([
+      {
+        position: { x: 10, y: 10 },
+        rotation: 0,
+        type: "classic",
+      },
+    ]);
+
+    const [brick] = module.getBrickStates();
+    assert(brick, "expected brick state");
+
+    const firstHit = module.applyDamage(brick.id, 2);
+    assert.strictEqual(firstHit.destroyed, false);
+    const stateAfterFirst = module.getBrickState(brick.id);
+    assert(stateAfterFirst, "brick should survive first hit");
+    assert.strictEqual(stateAfterFirst?.hp, brick.maxHp - Math.max(2 - brick.armor, 0));
+
+    const lethalHit = module.applyDamage(brick.id, 100);
+    assert.strictEqual(lethalHit.destroyed, true);
+    assert.strictEqual(module.getBrickState(brick.id), null);
+    assert.strictEqual(scene.getObjects().length, 0, "scene object should be removed");
   });
 });
