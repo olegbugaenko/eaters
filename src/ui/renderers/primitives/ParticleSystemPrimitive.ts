@@ -3,15 +3,20 @@ import {
   FILL_TYPES,
   ParticleSystemCustomData,
   SceneColor,
+  SceneFill,
   SceneObjectInstance,
 } from "../../../logic/services/SceneObjectManager";
 import {
   DynamicPrimitive,
+  FILL_INFO_COMPONENTS,
+  FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
-  POSITION_COMPONENTS,
+  MAX_GRADIENT_STOPS,
+  STOP_COLOR_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
   VERTEX_COMPONENTS,
 } from "../objects/ObjectRenderer";
+import { copyFillComponents, createFillVertexComponents } from "./fill";
 
 const VERTICES_PER_PARTICLE = 6;
 
@@ -109,6 +114,13 @@ const populateParticleBuffer = (
     const size = isActive ? Math.max(payload.sizes[i] ?? 0, 0) : 0;
     const alpha = isActive ? clamp01(payload.alphas[i] ?? 0) : 0;
     const halfSize = size / 2;
+    const fillComponents = createFillComponentsForParticle(
+      payload,
+      centerX,
+      centerY,
+      size,
+      alpha
+    );
 
     offset = writeParticleQuad(
       target,
@@ -117,10 +129,7 @@ const populateParticleBuffer = (
       centerY - halfSize,
       centerX + halfSize,
       centerY + halfSize,
-      centerX,
-      centerY,
-      payload.color,
-      alpha
+      fillComponents
     );
   }
 };
@@ -132,17 +141,14 @@ const writeParticleQuad = (
   minY: number,
   maxX: number,
   maxY: number,
-  centerX: number,
-  centerY: number,
-  color: SceneColor,
-  alpha: number
+  fillComponents: Float32Array
 ): number => {
-  offset = writeParticleVertex(target, offset, minX, minY, centerX, centerY, color, alpha);
-  offset = writeParticleVertex(target, offset, maxX, minY, centerX, centerY, color, alpha);
-  offset = writeParticleVertex(target, offset, maxX, maxY, centerX, centerY, color, alpha);
-  offset = writeParticleVertex(target, offset, minX, minY, centerX, centerY, color, alpha);
-  offset = writeParticleVertex(target, offset, maxX, maxY, centerX, centerY, color, alpha);
-  offset = writeParticleVertex(target, offset, minX, maxY, centerX, centerY, color, alpha);
+  offset = writeParticleVertex(target, offset, minX, minY, fillComponents);
+  offset = writeParticleVertex(target, offset, maxX, minY, fillComponents);
+  offset = writeParticleVertex(target, offset, maxX, maxY, fillComponents);
+  offset = writeParticleVertex(target, offset, minX, minY, fillComponents);
+  offset = writeParticleVertex(target, offset, maxX, maxY, fillComponents);
+  offset = writeParticleVertex(target, offset, minX, maxY, fillComponents);
   return offset;
 };
 
@@ -151,52 +157,71 @@ const writeParticleVertex = (
   offset: number,
   x: number,
   y: number,
-  centerX: number,
-  centerY: number,
-  color: SceneColor,
-  alpha: number
+  fillComponents: Float32Array
 ): number => {
   target[offset + 0] = x;
   target[offset + 1] = y;
-  writeSolidFillComponents(target, offset, centerX, centerY, color, alpha);
+  copyFillComponents(target, offset, fillComponents);
   return offset + VERTEX_COMPONENTS;
 };
 
-const writeSolidFillComponents = (
-  target: Float32Array,
-  offset: number,
+const createFillComponentsForParticle = (
+  payload: ParticleSystemCustomData,
   centerX: number,
   centerY: number,
-  color: SceneColor,
+  size: number,
+  alpha: number
+): Float32Array => {
+  const fill = resolveParticleFill(payload);
+  const fillComponents = createFillVertexComponents({
+    fill,
+    center: { x: centerX, y: centerY },
+    rotation: 0,
+    size: { width: Math.max(size, 0.0001), height: Math.max(size, 0.0001) },
+    radius: size / 2,
+  });
+  applyParticleAlpha(fillComponents, alpha);
+  return fillComponents;
+};
+
+const resolveParticleFill = (payload: ParticleSystemCustomData): SceneFill => {
+  if (payload.fill) {
+    return payload.fill;
+  }
+  const color = payload.color ?? { r: 1, g: 1, b: 1, a: 1 };
+  return createSolidFill(color);
+};
+
+const createSolidFill = (color: SceneColor): SceneFill => ({
+  fillType: FILL_TYPES.SOLID,
+  color: {
+    r: color.r,
+    g: color.g,
+    b: color.b,
+    a: typeof color.a === "number" ? color.a : 1,
+  },
+});
+
+const applyParticleAlpha = (
+  components: Float32Array,
   alpha: number
 ): void => {
-  let write = offset + POSITION_COMPONENTS;
-  target[write++] = FILL_TYPES.SOLID;
-  target[write++] = 1;
-  target[write++] = 0;
-  target[write++] = 0;
-
-  target[write++] = centerX;
-  target[write++] = centerY;
-  target[write++] = 0;
-  target[write++] = 0;
-
-  for (let i = 0; i < FILL_PARAMS1_COMPONENTS; i += 1) {
-    target[write++] = 0;
+  const effectiveAlpha = clamp01(alpha);
+  if (effectiveAlpha >= 1) {
+    return;
   }
-
-  for (let i = 0; i < STOP_OFFSETS_COMPONENTS; i += 1) {
-    target[write++] = 0;
-  }
-
-  const baseAlpha = clamp01(typeof color.a === "number" ? color.a : 1);
-  const composedAlpha = clamp01(alpha * baseAlpha);
-
-  for (let i = 0; i < 3; i += 1) {
-    target[write++] = color.r;
-    target[write++] = color.g;
-    target[write++] = color.b;
-    target[write++] = composedAlpha;
+  const baseAlpha = effectiveAlpha;
+  const colorsOffset =
+    FILL_INFO_COMPONENTS +
+    FILL_PARAMS0_COMPONENTS +
+    FILL_PARAMS1_COMPONENTS +
+    STOP_OFFSETS_COMPONENTS;
+  for (let i = 0; i < MAX_GRADIENT_STOPS; i += 1) {
+    const base = colorsOffset + i * STOP_COLOR_COMPONENTS;
+    const alphaIndex = base + 3;
+    const current = components[alphaIndex] ?? 0;
+    const composed = clamp01(current * baseAlpha);
+    components[alphaIndex] = composed;
   }
 };
 

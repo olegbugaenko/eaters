@@ -1,4 +1,9 @@
-import { SceneColor, SceneGradientStop } from "../logic/services/SceneObjectManager";
+import {
+  FILL_TYPES,
+  SceneColor,
+  SceneFill,
+  SceneGradientStop,
+} from "../logic/services/SceneObjectManager";
 
 export type ExplosionType = "plasmoid" | "magnetic";
 
@@ -23,6 +28,9 @@ export interface ExplosionEmitterConfig {
    */
   spawnRadiusMultiplier: number;
   color: SceneColor;
+  arc?: number;
+  direction?: number;
+  fill?: SceneFill;
 }
 
 export interface ExplosionConfig {
@@ -44,6 +52,22 @@ const MAGNETIC_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.25, g: 0.05, b: 0.7, a: 0 } },
 ] as const;
 
+const DEFAULT_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.SOLID,
+  color: { r: 1, g: 0.85, b: 0.55, a: 1 },
+};
+
+const MAGNETIC_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 8,
+  stops: [
+    { offset: 0, color: { r: 1, g: 1, b: 1, a: 0.95 } },
+    { offset: 0.4, color: { r: 0.7, g: 0.6, b: 1, a: 0.6 } },
+    { offset: 1, color: { r: 0.4, g: 0.2, b: 0.9, a: 0 } },
+  ],
+};
+
 const DEFAULT_EMITTER: ExplosionEmitterConfig = {
   emissionDurationMs: 700,
   particlesPerSecond: 260,
@@ -55,6 +79,9 @@ const DEFAULT_EMITTER: ExplosionEmitterConfig = {
   spawnRadius: { min: 0, max: 12 },
   spawnRadiusMultiplier: 1.5,
   color: { r: 1, g: 0.85, b: 0.55, a: 1 },
+  arc: Math.PI * 2,
+  direction: 0,
+  fill: DEFAULT_EMITTER_FILL,
 };
 
 const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
@@ -81,6 +108,9 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: {
       ...DEFAULT_EMITTER,
       color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: MAGNETIC_EMITTER_FILL,
+      arc: Math.PI / 2,
+      direction: Math.PI,
     },
   },
 };

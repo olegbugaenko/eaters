@@ -15,6 +15,11 @@ export interface SceneColor {
   a?: number;
 }
 
+export interface SceneStroke {
+  color: SceneColor;
+  width: number;
+}
+
 export const FILL_TYPES = {
   SOLID: 0,
   LINEAR_GRADIENT: 1,
@@ -67,13 +72,14 @@ export interface SceneObjectData {
   color?: SceneColor;
   fill?: SceneFill;
   rotation?: number;
+  stroke?: SceneStroke;
   customData?: unknown;
 }
 
 export interface SceneObjectInstance {
   id: string;
   type: string;
-  data: SceneObjectData & { fill: SceneFill };
+  data: SceneObjectData & { fill: SceneFill; stroke?: SceneStroke };
 }
 
 export const CUSTOM_DATA_KIND_PARTICLE_SYSTEM = "particle-system" as const;
@@ -86,6 +92,7 @@ export interface ParticleSystemCustomData {
   positions: Float32Array;
   sizes: Float32Array;
   alphas: Float32Array;
+  fill?: SceneFill;
 }
 
 export interface SceneCameraState {
@@ -130,6 +137,7 @@ export class SceneObjectManager {
     const color = data.color
       ? sanitizeColor(data.color)
       : extractPrimaryColor(fill);
+    const stroke = sanitizeStroke(data.stroke);
     const instance: SceneObjectInstance = {
       id,
       type,
@@ -139,6 +147,7 @@ export class SceneObjectManager {
         color,
         fill,
         rotation: normalizeRotation(data.rotation),
+        stroke,
         customData: cloneCustomData(data.customData),
       },
     };
@@ -167,6 +176,10 @@ export class SceneObjectManager {
     const color = data.color
       ? sanitizeColor(data.color)
       : extractPrimaryColor(fill);
+    const stroke =
+      typeof data.stroke !== "undefined"
+        ? sanitizeStroke(data.stroke)
+        : cloneStroke(instance.data.stroke);
     const rotation =
       typeof data.rotation === "number"
         ? normalizeRotation(data.rotation)
@@ -179,6 +192,7 @@ export class SceneObjectManager {
       color,
       fill,
       rotation,
+      stroke,
       customData: cloneCustomData(
         typeof data.customData !== "undefined"
           ? data.customData
@@ -381,6 +395,7 @@ export class SceneObjectManager {
         size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
         color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
         fill: cloneFill(instance.data.fill),
+        stroke: cloneStroke(instance.data.stroke),
         rotation:
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
@@ -545,6 +560,20 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
   }
 }
 
+function sanitizeStroke(stroke: SceneStroke | undefined): SceneStroke | undefined {
+  if (!stroke || typeof stroke.width !== "number") {
+    return undefined;
+  }
+  const width = Number.isFinite(stroke.width) ? Math.max(0, stroke.width) : 0;
+  if (width <= 0) {
+    return undefined;
+  }
+  return {
+    color: sanitizeColor(stroke.color),
+    width,
+  };
+}
+
 function cloneFill(fill: SceneFill): SceneFill {
   switch (fill.fillType) {
     case FILL_TYPES.SOLID:
@@ -571,6 +600,16 @@ function cloneFill(fill: SceneFill): SceneFill {
   return {
     fillType: FILL_TYPES.SOLID,
     color: { ...DEFAULT_COLOR },
+  };
+}
+
+function cloneStroke(stroke: SceneStroke | undefined): SceneStroke | undefined {
+  if (!stroke) {
+    return undefined;
+  }
+  return {
+    color: { ...stroke.color },
+    width: stroke.width,
   };
 }
 

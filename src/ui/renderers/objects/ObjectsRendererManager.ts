@@ -10,6 +10,7 @@ import {
   SceneFill,
   SceneObjectInstance,
   SceneObjectManager,
+  SceneStroke,
 } from "../../../logic/services/SceneObjectManager";
 
 interface ManagedObject {
@@ -265,6 +266,7 @@ export class ObjectsRendererManager {
         size: instance.data.size ? { ...instance.data.size } : undefined,
         color: instance.data.color ? { ...instance.data.color } : undefined,
         fill: cloneFill(instance.data.fill),
+        stroke: cloneStroke(instance.data.stroke),
         rotation:
           typeof instance.data.rotation === "number"
             ? instance.data.rotation
@@ -308,4 +310,14 @@ const cloneFill = (fill: SceneFill): SceneFill => {
         color: { r: 1, g: 1, b: 1, a: 1 },
       };
   }
+};
+
+const cloneStroke = (stroke: SceneStroke | undefined): SceneStroke | undefined => {
+  if (!stroke) {
+    return undefined;
+  }
+  return {
+    color: { ...stroke.color },
+    width: stroke.width,
+  };
 };

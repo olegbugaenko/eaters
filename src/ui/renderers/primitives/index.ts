@@ -8,3 +8,8 @@ export {
   createStaticTrianglePrimitive,
   createDynamicTrianglePrimitive,
 } from "./TrianglePrimitive";
+export {
+  createStaticPolygonPrimitive,
+  createDynamicPolygonPrimitive,
+  createStaticPolygonStrokePrimitive,
+} from "./PolygonPrimitive";

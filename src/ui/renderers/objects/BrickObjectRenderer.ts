@@ -1,5 +1,10 @@
 import { ObjectRenderer, ObjectRegistration } from "./ObjectRenderer";
-import { FILL_TYPES, SceneObjectInstance } from "../../../logic/services/SceneObjectManager";
+import {
+  FILL_TYPES,
+  SceneFill,
+  SceneObjectInstance,
+  SceneStroke,
+} from "../../../logic/services/SceneObjectManager";
 import {
   createStaticCirclePrimitive,
   createStaticRectanglePrimitive,
@@ -24,23 +29,61 @@ export class BrickObjectRenderer extends ObjectRenderer {
       y: 0,
     };
 
-    return {
-      staticPrimitives: [
+    const primitives = [];
+    if (hasStroke(instance.data.stroke)) {
+      primitives.push(
         createStaticRectanglePrimitive({
           center: instance.data.position,
-          size,
-          fill,
+          size: expandSize(size, instance.data.stroke.width),
+          fill: createStrokeFill(instance.data.stroke),
           rotation,
-        }),
-        createStaticCirclePrimitive({
-          center: instance.data.position,
-          radius,
-          fill: innerFill,
-          rotation,
-          offset: innerOffset,
-        }),
-      ],
+        })
+      );
+    }
+
+    primitives.push(
+      createStaticRectanglePrimitive({
+        center: instance.data.position,
+        size,
+        fill,
+        rotation,
+      })
+    );
+
+    primitives.push(
+      createStaticCirclePrimitive({
+        center: instance.data.position,
+        radius,
+        fill: innerFill,
+        rotation,
+        offset: innerOffset,
+      })
+    );
+
+    return {
+      staticPrimitives: primitives,
       dynamicPrimitives: [],
     };
   }
 }
+
+const hasStroke = (stroke: SceneStroke | undefined): stroke is SceneStroke =>
+  !!stroke && typeof stroke.width === "number" && stroke.width > 0;
+
+const expandSize = (
+  size: { width: number; height: number },
+  strokeWidth: number
+): { width: number; height: number } => ({
+  width: size.width + strokeWidth * 2,
+  height: size.height + strokeWidth * 2,
+});
+
+const createStrokeFill = (stroke: SceneStroke): SceneFill => ({
+  fillType: FILL_TYPES.SOLID,
+  color: {
+    r: stroke.color.r,
+    g: stroke.color.g,
+    b: stroke.color.b,
+    a: typeof stroke.color.a === "number" ? stroke.color.a : 1,
+  },
+});

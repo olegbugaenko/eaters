@@ -4,6 +4,7 @@ import {
   FILL_TYPES,
   ParticleSystemCustomData,
   SceneColor,
+  SceneFill,
   SceneGradientStop,
   SceneObjectManager,
   SceneVector2,
@@ -37,6 +38,9 @@ interface ParticleEmitterOptions {
   sizeRange: { min: number; max: number };
   spawnRadius: { min: number; max: number };
   color: SceneColor;
+  arc: number;
+  direction: number;
+  fill: SceneFill;
 }
 
 interface ParticleEmitterState {
@@ -165,6 +169,7 @@ export class ExplosionModule implements GameModule {
       sizes: new Float32Array(emitter.capacity),
       alphas: new Float32Array(emitter.capacity),
       color: { ...emitter.options.color },
+      fill: cloneFill(emitter.options.fill),
     };
 
     const id = this.options.scene.addObject("explosion", {
@@ -314,6 +319,9 @@ export class ExplosionModule implements GameModule {
         max: spawnRadiusMax,
       },
       color: { ...config.emitter.color },
+      arc: sanitizeArc(config.emitter.arc),
+      direction: sanitizeAngle(config.emitter.direction),
+      fill: cloneFill(config.emitter.fill ?? createSolidFill(config.emitter.color)),
     };
 
     return {
@@ -329,13 +337,13 @@ export class ExplosionModule implements GameModule {
     center: SceneVector2,
     options: ParticleEmitterOptions
   ): ParticleState {
-    const direction = Math.random() * Math.PI * 2;
+    const direction = pickParticleDirection(options);
     const speed = Math.max(
       0,
       options.baseSpeed + (Math.random() * 2 - 1) * options.speedVariation
     );
     const radius = randomRange(options.spawnRadius.min, options.spawnRadius.max);
-    const offsetAngle = Math.random() * Math.PI * 2;
+    const offsetAngle = pickSpawnAngle(options, direction);
     const startPosition = {
       x: center.x + Math.cos(offsetAngle) * radius,
       y: center.y + Math.sin(offsetAngle) * radius,
@@ -382,6 +390,108 @@ function createWaveFill(
     })),
   };
 }
+
+const TWO_PI = Math.PI * 2;
+
+const sanitizeArc = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return TWO_PI;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= TWO_PI) {
+    return TWO_PI;
+  }
+  return value;
+};
+
+const sanitizeAngle = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return normalizeAngle(value);
+};
+
+const pickParticleDirection = (options: ParticleEmitterOptions): number => {
+  const arc = Math.max(0, options.arc);
+  if (arc === 0) {
+    return options.direction;
+  }
+  if (arc >= TWO_PI - 1e-6) {
+    return Math.random() * TWO_PI;
+  }
+  const halfArc = arc / 2;
+  const offset = Math.random() * arc - halfArc;
+  return normalizeAngle(options.direction + offset);
+};
+
+const pickSpawnAngle = (
+  options: ParticleEmitterOptions,
+  direction: number
+): number => {
+  const arc = Math.max(0, options.arc);
+  if (arc === 0) {
+    return direction;
+  }
+  if (arc >= TWO_PI - 1e-6) {
+    return Math.random() * TWO_PI;
+  }
+  const halfArc = arc / 2;
+  const offset = Math.random() * arc - halfArc;
+  return normalizeAngle(options.direction + offset);
+};
+
+const normalizeAngle = (angle: number): number => {
+  const wrapped = angle % TWO_PI;
+  return wrapped < 0 ? wrapped + TWO_PI : wrapped;
+};
+
+const createSolidFill = (color: SceneColor): SceneFill => ({
+  fillType: FILL_TYPES.SOLID,
+  color: {
+    r: color.r,
+    g: color.g,
+    b: color.b,
+    a: typeof color.a === "number" ? color.a : 1,
+  },
+});
+
+const cloneFill = (fill: SceneFill): SceneFill => {
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...fill.color },
+      };
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return {
+        fillType: fill.fillType,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+    default:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 1, g: 1, b: 1, a: 1 },
+      };
+  }
+};
 
 function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
