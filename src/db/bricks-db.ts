@@ -1,13 +1,45 @@
 import {
+  SceneColor,
   SceneGradientStop,
   SceneSize,
+  SceneVector2,
 } from "../logic/services/SceneObjectManager";
 
-export type BrickType = "classic" | "smallSquareGray";
+export type BrickType = "classic" | "smallSquareGray" | "blueRadial";
+
+export interface BrickStrokeConfig {
+  color: SceneColor;
+  width: number;
+}
+
+export interface BrickLinearFillConfig {
+  type: "linear";
+  start?: SceneVector2;
+  end?: SceneVector2;
+  stops: readonly SceneGradientStop[];
+}
+
+export interface BrickRadialFillConfig {
+  type: "radial";
+  center?: SceneVector2;
+  radius?: number;
+  stops: readonly SceneGradientStop[];
+}
+
+export interface BrickSolidFillConfig {
+  type: "solid";
+  color: SceneColor;
+}
+
+export type BrickFillConfig =
+  | BrickLinearFillConfig
+  | BrickRadialFillConfig
+  | BrickSolidFillConfig;
 
 export interface BrickConfig {
   size: SceneSize;
-  gradientStops: readonly SceneGradientStop[];
+  fill: BrickFillConfig;
+  stroke?: BrickStrokeConfig;
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
@@ -22,14 +54,42 @@ const SMALL_SQUARE_GRAY_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.45, g: 0.45, b: 0.5, a: 1 } },
 ] as const;
 
+const BLUE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.65, g: 0.8, b: 1, a: 1 } },
+  { offset: 0.4, color: { r: 0.35, g: 0.6, b: 0.95, a: 0.9 } },
+  { offset: 1, color: { r: 0.15, g: 0.25, b: 0.7, a: 0.6 } },
+] as const;
+
 const BRICK_DB: Record<BrickType, BrickConfig> = {
   classic: {
     size: { width: 60, height: 30 },
-    gradientStops: CLASSIC_GRADIENT,
+    fill: {
+      type: "linear",
+      start: { x: 0, y: -15 },
+      end: { x: 0, y: 15 },
+      stops: CLASSIC_GRADIENT,
+    },
+    stroke: { color: { r: 0.55, g: 0.4, b: 0.05, a: 1 }, width: 2 },
   },
   smallSquareGray: {
     size: { width: 32, height: 32 },
-    gradientStops: SMALL_SQUARE_GRAY_GRADIENT,
+    fill: {
+      type: "linear",
+      start: { x: -8, y: 0 },
+      end: { x: 8, y: 0 },
+      stops: SMALL_SQUARE_GRAY_GRADIENT,
+    },
+    stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
+  },
+  blueRadial: {
+    size: { width: 48, height: 48 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 28,
+      stops: BLUE_RADIAL_GRADIENT,
+    },
+    stroke: { color: { r: 0.1, g: 0.15, b: 0.45, a: 1 }, width: 2.4 },
   },
 };
 

@@ -1,4 +1,10 @@
-import { SceneColor, SceneGradientStop } from "../logic/services/SceneObjectManager";
+import {
+  FILL_TYPES,
+  SceneColor,
+  SceneFill,
+  SceneGradientStop,
+  SceneVector2,
+} from "../logic/services/SceneObjectManager";
 import { ExplosionType } from "./explosions-db";
 
 export type BulletType = "magnetic" | "plasmoid" | "mechanical";
@@ -10,6 +16,20 @@ export interface BulletTailConfig {
   endColor: SceneColor;
 }
 
+export interface BulletTailEmitterConfig {
+  particlesPerSecond: number;
+  particleLifetimeMs: number;
+  fadeStartMs: number;
+  baseSpeed: number;
+  speedVariation: number;
+  sizeRange: { min: number; max: number };
+  spread: number;
+  offset: SceneVector2;
+  color: SceneColor;
+  fill?: SceneFill;
+  maxParticles?: number;
+}
+
 export interface BulletConfig {
   diameter: number;
   travelTimeSeconds: number;
@@ -17,6 +37,7 @@ export interface BulletConfig {
   lifetimeMsRange: { min: number; max: number };
   gradientStops: readonly SceneGradientStop[];
   tail: BulletTailConfig;
+  tailEmitter?: BulletTailEmitterConfig;
   explosionType?: ExplosionType;
 }
 
@@ -56,6 +77,27 @@ const BULLET_DB: Record<BulletType, BulletConfig> = {
       widthMultiplier: 1.75,
       startColor: { r: 0.25, g: 0.45, b: 1, a: 0.65 },
       endColor: { r: 0.05, g: 0.15, b: 0.6, a: 0.1 },
+    },
+    tailEmitter: {
+      particlesPerSecond: 160,
+      particleLifetimeMs: 500,
+      fadeStartMs: 250,
+      baseSpeed: 0.22,
+      speedVariation: 0.08,
+      sizeRange: { min: 1, max: 2 },
+      spread: Math.PI / 6,
+      offset: { x: -1.1, y: 0 },
+      color: { r: 0.35, g: 0.6, b: 1, a: 0.65 },
+      fill: {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: { x: 0, y: 0 },
+        end: { x: 1, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.4, g: 0.65, b: 1, a: 0.7 } },
+          { offset: 1, color: { r: 0.1, g: 0.25, b: 0.65, a: 0 } },
+        ],
+      },
+      maxParticles: 60,
     },
     explosionType: "magnetic",
   },

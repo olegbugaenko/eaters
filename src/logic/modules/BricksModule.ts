@@ -18,16 +18,35 @@ const MAX_BRICKS = 2000;
 const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
 
 const createBrickFill = (config: BrickConfig) => {
-  const halfHeight = config.size.height / 2;
-  return {
-    fillType: FILL_TYPES.LINEAR_GRADIENT,
-    start: { x: 0, y: -halfHeight },
-    end: { x: 0, y: halfHeight },
-    stops: config.gradientStops.map((stop) => ({
-      offset: stop.offset,
-      color: { ...stop.color },
-    })),
-  };
+  const fill = config.fill;
+  switch (fill.type) {
+    case "solid":
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...fill.color },
+      };
+    case "radial":
+      return {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: fill.center ? { ...fill.center } : undefined,
+        end: fill.radius,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+    case "linear":
+    default:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+  }
 };
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
@@ -150,6 +169,12 @@ export class BricksModule implements GameModule {
         size: { ...config.size },
         fill: createBrickFill(config),
         rotation: brick.rotation,
+        stroke: config.stroke
+          ? {
+              color: { ...config.stroke.color },
+              width: config.stroke.width,
+            }
+          : undefined,
       });
       this.objectIds.add(id);
     });

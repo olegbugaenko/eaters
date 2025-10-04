@@ -1,6 +1,7 @@
 import { GameModule } from "../core/types";
 import {
   FILL_TYPES,
+  SceneFill,
   SceneObjectManager,
   SceneVector2,
 } from "../services/SceneObjectManager";
@@ -8,6 +9,7 @@ import {
   BULLET_TYPES,
   BulletConfig,
   BulletTailConfig,
+  BulletTailEmitterConfig,
   BulletType,
   getBulletConfig,
 } from "../../db/bullets-db";
@@ -17,6 +19,7 @@ import { ExplosionModule, SpawnExplosionByTypeOptions } from "./ExplosionModule"
 interface BulletCustomData {
   type: BulletType;
   tail: BulletTailConfig;
+  tailEmitter?: BulletTailEmitterConfig;
 }
 
 const createBulletFill = (radius: number, config: BulletConfig) => ({
@@ -31,7 +34,8 @@ const createBulletFill = (radius: number, config: BulletConfig) => ({
 
 const createBulletCustomData = (
   type: BulletType,
-  tail: BulletTailConfig
+  tail: BulletTailConfig,
+  tailEmitter: BulletTailEmitterConfig | undefined
 ): BulletCustomData => ({
   type,
   tail: {
@@ -40,7 +44,57 @@ const createBulletCustomData = (
     startColor: { ...tail.startColor },
     endColor: { ...tail.endColor },
   },
+  tailEmitter: tailEmitter ? cloneTailEmitterConfig(tailEmitter) : undefined,
 });
+
+const cloneTailEmitterConfig = (
+  config: BulletTailEmitterConfig
+): BulletTailEmitterConfig => ({
+  particlesPerSecond: config.particlesPerSecond,
+  particleLifetimeMs: config.particleLifetimeMs,
+  fadeStartMs: config.fadeStartMs,
+  baseSpeed: config.baseSpeed,
+  speedVariation: config.speedVariation,
+  sizeRange: { min: config.sizeRange.min, max: config.sizeRange.max },
+  spread: config.spread,
+  offset: { x: config.offset.x, y: config.offset.y },
+  color: { ...config.color },
+  fill: config.fill ? cloneFill(config.fill) : undefined,
+  maxParticles: config.maxParticles,
+});
+
+const cloneFill = (fill: SceneFill): SceneFill => {
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...fill.color },
+      };
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      };
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return {
+        fillType: fill.fillType,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: typeof fill.end === "number" ? fill.end : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: { ...stop.color },
+        })),
+      } as SceneFill;
+    default:
+      return fill;
+  }
+};
 
 interface BulletState {
   id: string;
@@ -127,7 +181,7 @@ export class BulletModule implements GameModule {
       size: { width: config.diameter, height: config.diameter },
       fill: createBulletFill(radius, config),
       rotation: angle,
-      customData: createBulletCustomData(type, config.tail),
+      customData: createBulletCustomData(type, config.tail, config.tailEmitter),
     });
 
     this.bullets.push({

@@ -1,11 +1,9 @@
 import assert from "assert";
+import { FILL_TYPES, SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import {
-  CUSTOM_DATA_KIND_PARTICLE_SYSTEM,
-  FILL_TYPES,
-  ParticleSystemCustomData,
-  SceneObjectManager,
-} from "../src/logic/services/SceneObjectManager";
-import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
+  ExplosionModule,
+  ExplosionRendererCustomData,
+} from "../src/logic/modules/ExplosionModule";
 import { getExplosionConfig } from "../src/db/explosions-db";
 import { describe, test } from "./testRunner";
 
@@ -34,10 +32,22 @@ describe("ExplosionModule", () => {
     assert(firstStop, "Explosion wave should have a first stop");
     assert.strictEqual(firstStop.color.a, expectedAlpha);
 
-    const customData = explosion.data.customData as ParticleSystemCustomData | undefined;
-    assert(customData, "Explosion should include particle system custom data");
-    assert.strictEqual(customData.kind, CUSTOM_DATA_KIND_PARTICLE_SYSTEM);
-    assert.deepStrictEqual(customData.color, config.emitter.color);
+    const customData = explosion.data.customData as
+      | ExplosionRendererCustomData
+      | undefined;
+    assert(customData, "Explosion should include emitter configuration");
+    const emitter = customData.emitter;
+    assert(emitter, "Explosion should expose emitter settings");
+    assert.deepStrictEqual(emitter.color, config.emitter.color);
+    assert.strictEqual(emitter.particlesPerSecond, config.emitter.particlesPerSecond);
+    assert.strictEqual(emitter.particleLifetimeMs, config.emitter.particleLifetimeMs);
+    assert.strictEqual(emitter.emissionDurationMs, config.emitter.emissionDurationMs);
+    const expectedDefaultSpawnMax = Math.max(
+      config.emitter.spawnRadius.max,
+      config.emitter.spawnRadius.min,
+      config.defaultInitialRadius * config.emitter.spawnRadiusMultiplier
+    );
+    assert.strictEqual(emitter.spawnRadius.max, expectedDefaultSpawnMax);
 
     assert.strictEqual(explosion.data.size?.width, config.defaultInitialRadius * 2);
     assert.strictEqual(explosion.data.size?.height, config.defaultInitialRadius * 2);
@@ -58,8 +68,18 @@ describe("ExplosionModule", () => {
     assert.strictEqual(explosion.data.size?.height, 80);
 
     const config = getExplosionConfig("plasmoid");
-    const customData = explosion.data.customData as ParticleSystemCustomData | undefined;
-    assert(customData, "Explosion should expose custom particle data");
-    assert.deepStrictEqual(customData.color, config.emitter.color);
+    const customData = explosion.data.customData as
+      | ExplosionRendererCustomData
+      | undefined;
+    assert(customData, "Explosion should expose emitter data");
+    const emitter = customData.emitter;
+    assert(emitter, "Explosion should provide emitter configuration");
+    assert.deepStrictEqual(emitter.color, config.emitter.color);
+    const expectedSpawnMax = Math.max(
+      config.emitter.spawnRadius.max,
+      config.emitter.spawnRadius.min,
+      40 * config.emitter.spawnRadiusMultiplier
+    );
+    assert.strictEqual(emitter.spawnRadius.max, expectedSpawnMax);
   });
 });
