@@ -80,8 +80,14 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       physicalSize: 28,
-      hitExplosionType: "plasmoid",
-      destroyExplosionType: "plasmoid",
+      damageExplosion: {
+        type: "plasmoid",
+        radiusMultiplier: 0.9,
+      },
+      destructionExplosion: {
+        type: "plasmoid",
+        radiusMultiplier: 1.05,
+      },
     },
   },
   smallSquareGray: {
@@ -100,8 +106,15 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       physicalSize: 16,
-      hitExplosionType: "plasmoid",
-      destroyExplosionType: "plasmoid",
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
     },
   },
   blueRadial: {
@@ -120,8 +133,14 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       physicalSize: 24,
-      hitExplosionType: "magnetic",
-      destroyExplosionType: "magnetic",
+      damageExplosion: {
+        type: "magnetic",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "magnetic",
+        radiusMultiplier: 1.25,
+      },
     },
   },
 };

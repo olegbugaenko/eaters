@@ -87,10 +87,11 @@ Manages destructible map bricks. Responsibilities:
   zero.
 
 Each brick stores knock-back parameters, base damage, and physical size derived
-from `bricks-db.ts`. Destructible configs can now define
-`hitExplosionType` / `destroyExplosionType`. The module spawns those effects via
-`ExplosionModule` using the brick's position and collision radius, so all visual
-logic is centralized in the explosion system.
+from `bricks-db.ts`. Destructible configs now define
+`damageExplosion` / `destructionExplosion`, providing explosion type references
+and radius tuning. The module spawns those effects via `ExplosionModule` using
+the brick's position, so all visual logic is centralized in the explosion
+system.
 
 ### `MapModule`
 Loads map definitions, wires brick groups, and resets dependent modules when the
@@ -133,15 +134,15 @@ Destructible metadata includes:
 - `baseDamage` — melee damage inflicted when units collide with the brick.
 - `brickKnockBackDistance` / `brickKnockBackSpeed` — knock-back tuning.
 - `physicalSize` — collision radius for targeting.
-- `hitExplosionType` / `destroyExplosionType` — identifiers for explosion
-  effects to spawn on damage and destruction. These values are consumed by
-  `BricksModule` and resolved by `ExplosionModule`.
+- `damageExplosion` / `destructionExplosion` — references to explosion effects
+  with optional radius overrides. These values are consumed by `BricksModule`
+  and resolved by `ExplosionModule`.
 
 ## Interaction flow summary
 
 1. A unit attacks a brick through `PlayerUnitsModule`.
 2. `BricksModule.applyDamage` reduces health and (if configured) calls
-   `ExplosionModule.spawnExplosionByType` with the hit or destroy effect.
+   `ExplosionModule.spawnExplosionByType` with the damage or destruction effect.
 3. `ExplosionModule` creates a wave scene object and optional particle emitter
    that the renderer animates automatically.
 4. `BricksModule` updates bridge statistics so UI counters stay in sync.
