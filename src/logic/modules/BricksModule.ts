@@ -15,7 +15,7 @@ import {
 
 const MIN_BRICKS = 1000;
 const MAX_BRICKS = 2000;
-const DEFAULT_BRICK_TYPE: BrickType = "classic";
+const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
 
 const createBrickFill = (config: BrickConfig) => {
   const halfHeight = config.size.height / 2;
