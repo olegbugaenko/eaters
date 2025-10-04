@@ -1,4 +1,5 @@
 import { GameModule } from "../core/types";
+import { DataBridge } from "../core/DataBridge";
 import { SceneObjectManager, SceneVector2, FILL_TYPES } from "../services/SceneObjectManager";
 import { BricksModule, BrickRuntimeState } from "./BricksModule";
 import {
@@ -10,6 +11,9 @@ import {
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 
+export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
+export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
+
 export interface PlayerUnitSpawnData {
   readonly type: PlayerUnitType;
   readonly position: SceneVector2;
@@ -20,6 +24,7 @@ export interface PlayerUnitSpawnData {
 interface PlayerUnitsModuleOptions {
   scene: SceneObjectManager;
   bricks: BricksModule;
+  bridge: DataBridge;
 }
 
 interface PlayerUnitSaveData {
@@ -48,6 +53,7 @@ export class PlayerUnitsModule implements GameModule {
 
   private readonly scene: SceneObjectManager;
   private readonly bricks: BricksModule;
+  private readonly bridge: DataBridge;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -56,10 +62,12 @@ export class PlayerUnitsModule implements GameModule {
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
     this.bricks = options.bricks;
+    this.bridge = options.bridge;
   }
 
   public initialize(): void {
     // Units are spawned by the map module.
+    this.pushStats();
   }
 
   public reset(): void {
@@ -100,6 +108,13 @@ export class PlayerUnitsModule implements GameModule {
 
   public setUnits(units: PlayerUnitSpawnData[]): void {
     this.applyUnits(units);
+  }
+
+  private pushStats(): void {
+    const units = this.unitOrder;
+    const totalHp = units.reduce((sum, unit) => sum + unit.hp, 0);
+    this.bridge.setValue(PLAYER_UNIT_COUNT_BRIDGE_KEY, units.length);
+    this.bridge.setValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, totalHp);
   }
 
   private parseSaveData(data: unknown): PlayerUnitSaveData | null {
@@ -145,6 +160,8 @@ export class PlayerUnitsModule implements GameModule {
       this.units.set(state.id, state);
       this.unitOrder.push(state);
     });
+
+    this.pushStats();
   }
 
   private createUnitState(unit: PlayerUnitSpawnData): PlayerUnitState {
@@ -298,6 +315,7 @@ export class PlayerUnitsModule implements GameModule {
     const counterDamage = Math.max(surviving.baseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
+      this.pushStats();
     }
 
     if (surviving.brickKnockBack > 0) {
@@ -353,6 +371,7 @@ export class PlayerUnitsModule implements GameModule {
     this.scene.removeObject(unit.objectId);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
+    this.pushStats();
   }
 
   private clearUnits(): void {

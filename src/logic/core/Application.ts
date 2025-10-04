@@ -39,6 +39,7 @@ export class Application {
     const playerUnitsModule = new PlayerUnitsModule({
       scene: sceneObjects,
       bricks: bricksModule,
+      bridge: this.dataBridge,
     });
     this.mapModule = new MapModule({
       scene: sceneObjects,

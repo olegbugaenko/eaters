@@ -40,7 +40,7 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
     <div className="map-select-screen">
       <h1>Map Selection</h1>
       <p>Time played: {formatted}</p>
-      <p>Bricks on map: {brickCount}</p>
+      <p>Particles on map: {brickCount}</p>
       <div className="map-select-list">
         {maps.map((map) => {
           const isSelected = map.id === selectedMap;
@@ -58,7 +58,7 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
                   </dd>
                 </div>
                 <div>
-                  <dt>Bricks</dt>
+                  <dt>Particles</dt>
                   <dd>{map.brickCount}</dd>
                 </div>
                 <div>

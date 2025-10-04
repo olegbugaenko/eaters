@@ -3,7 +3,10 @@ import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/BricksModule";
 import { DataBridge } from "../src/logic/core/DataBridge";
-import { PlayerUnitsModule } from "../src/logic/modules/PlayerUnitsModule";
+import {
+  PlayerUnitsModule,
+  PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
+} from "../src/logic/modules/PlayerUnitsModule";
 
 const tickSeconds = (module: PlayerUnitsModule, seconds: number) => {
   module.tick(seconds * 1000);
@@ -14,7 +17,7 @@ describe("PlayerUnitsModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const bricks = new BricksModule({ scene, bridge });
-    const units = new PlayerUnitsModule({ scene, bricks });
+    const units = new PlayerUnitsModule({ scene, bricks, bridge });
 
     bricks.setBricks([
       {
@@ -32,18 +35,21 @@ describe("PlayerUnitsModule", () => {
     ]);
 
     tickSeconds(units, 1);
+    tickSeconds(units, 1);
+    tickSeconds(units, 1);
 
     assert.strictEqual(bricks.getBrickStates().length, 0, "brick should be destroyed");
     const save = units.save() as { units?: { hp?: number }[] };
     assert(save.units && save.units[0], "unit should be saved");
-    assert.strictEqual(save.units[0]?.hp, 40);
+    assert.strictEqual(save.units[0]?.hp, 38);
+    assert.strictEqual(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY), 38);
   });
 
   test("unit moves towards brick and gets knocked back on counter damage", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const bricks = new BricksModule({ scene, bridge });
-    const units = new PlayerUnitsModule({ scene, bricks });
+    const units = new PlayerUnitsModule({ scene, bricks, bridge });
 
     bricks.setBricks([
       {
@@ -60,9 +66,9 @@ describe("PlayerUnitsModule", () => {
       },
     ]);
 
-    tickSeconds(units, 1);
-    tickSeconds(units, 1);
-    tickSeconds(units, 1);
+    for (let i = 0; i < 8; i += 1) {
+      tickSeconds(units, 1);
+    }
 
     const save = units.save() as {
       units?: { position?: { x: number; y: number }; hp?: number }[];
@@ -72,7 +78,8 @@ describe("PlayerUnitsModule", () => {
     assert(savedUnit.position, "position should be saved");
     assert(Math.abs(savedUnit.position!.x - 75) < 0.0001, "unit should be knocked back to x≈75");
     assert.strictEqual(savedUnit.position!.y, 0);
-    assert.strictEqual(savedUnit.hp, 33, "unit should take counter damage");
+    assert.strictEqual(savedUnit.hp, 31, "unit should take counter damage");
+    assert.strictEqual(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY), 31);
 
     const [brick] = bricks.getBrickStates();
     assert(brick, "brick should survive");

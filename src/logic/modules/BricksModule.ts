@@ -42,6 +42,7 @@ const createBrickFill = (config: BrickConfig) => {
 };
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
+export const BRICK_TOTAL_HP_BRIDGE_KEY = "bricks/totalHp";
 
 export interface BrickData {
   position: SceneVector2;
@@ -85,7 +86,7 @@ export class BricksModule implements GameModule {
   constructor(private readonly options: BricksModuleOptions) {}
 
   public initialize(): void {
-    this.pushCount();
+    this.pushStats();
   }
 
   public reset(): void {
@@ -98,7 +99,7 @@ export class BricksModule implements GameModule {
       this.applyBricks(parsed);
       return;
     }
-    this.pushCount();
+    this.pushStats();
   }
 
   public save(): unknown {
@@ -168,6 +169,7 @@ export class BricksModule implements GameModule {
       return { destroyed: true, brick: null };
     }
 
+    this.pushStats();
     return { destroyed: false, brick: this.cloneState(brick) };
   }
 
@@ -220,7 +222,7 @@ export class BricksModule implements GameModule {
       this.brickOrder.push(state);
     });
 
-    this.pushCount();
+    this.pushStats();
   }
 
   private createBrickState(brick: BrickData): InternalBrickState {
@@ -268,7 +270,7 @@ export class BricksModule implements GameModule {
     this.options.scene.removeObject(brick.sceneObjectId);
     this.bricks.delete(brick.id);
     this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
-    this.pushCount();
+    this.pushStats();
   }
 
   private clearSceneObjects(): void {
@@ -279,8 +281,13 @@ export class BricksModule implements GameModule {
     this.brickOrder = [];
   }
 
-  private pushCount(): void {
+  private pushStats(): void {
+    let totalHp = 0;
+    this.brickOrder.forEach((brick) => {
+      totalHp += brick.hp;
+    });
     this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.size);
+    this.options.bridge.setValue(BRICK_TOTAL_HP_BRIDGE_KEY, totalHp);
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {

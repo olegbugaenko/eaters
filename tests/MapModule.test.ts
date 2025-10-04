@@ -17,7 +17,7 @@ describe("MapModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const bricks = new BricksModule({ scene, bridge });
-    const playerUnits = new PlayerUnitsModule({ scene, bricks });
+    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge });
     const maps = new MapModule({ scene, bridge, bricks, playerUnits });
 
     maps.initialize();

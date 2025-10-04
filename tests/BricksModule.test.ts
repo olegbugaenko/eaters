@@ -1,5 +1,9 @@
 import assert from "assert";
-import { BricksModule, BRICK_COUNT_BRIDGE_KEY } from "../src/logic/modules/BricksModule";
+import {
+  BricksModule,
+  BRICK_COUNT_BRIDGE_KEY,
+  BRICK_TOTAL_HP_BRIDGE_KEY,
+} from "../src/logic/modules/BricksModule";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   SceneObjectManager,
@@ -63,6 +67,7 @@ describe("BricksModule", () => {
     assert.strictEqual(instance.data.stroke?.width, config.stroke?.width);
 
     assert.strictEqual(bridge.getValue(BRICK_COUNT_BRIDGE_KEY), 1);
+    assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 5);
 
     const saved = module.save();
     assert(saved && typeof saved === "object", "save should return an object");
@@ -127,10 +132,16 @@ describe("BricksModule", () => {
     const stateAfterFirst = module.getBrickState(brick.id);
     assert(stateAfterFirst, "brick should survive first hit");
     assert.strictEqual(stateAfterFirst?.hp, brick.maxHp - Math.max(2 - brick.armor, 0));
+    assert.strictEqual(
+      bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY),
+      stateAfterFirst?.hp,
+      "total HP should reflect damage"
+    );
 
     const lethalHit = module.applyDamage(brick.id, 100);
     assert.strictEqual(lethalHit.destroyed, true);
     assert.strictEqual(module.getBrickState(brick.id), null);
     assert.strictEqual(scene.getObjects().length, 0, "scene object should be removed");
+    assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 0);
   });
 });
