@@ -84,7 +84,7 @@ const BULLET_DB: Record<BulletType, BulletConfig> = {
       fadeStartMs: 250,
       baseSpeed: 0.22,
       speedVariation: 0.08,
-      sizeRange: { min: 6, max: 12 },
+      sizeRange: { min: 1, max: 2 },
       spread: Math.PI / 6,
       offset: { x: -1.1, y: 0 },
       color: { r: 0.35, g: 0.6, b: 1, a: 0.65 },
