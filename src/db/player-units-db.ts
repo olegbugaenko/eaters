@@ -78,7 +78,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       particlesPerSecond: 120,
       particleLifetimeMs: 550,
       fadeStartMs: 300,
-      baseSpeed: 0.09,
+      baseSpeed: 0.15,
       speedVariation: 0.03,
       sizeRange: { min: 1.2, max: 2.4 },
       spread: Math.PI / 5.5,

@@ -103,8 +103,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 5,
       armor: 0,
       baseDamage: 2,
-      brickKnockBackDistance: 40,
-      brickKnockBackSpeed: 80,
+      brickKnockBackDistance: 70,
+      brickKnockBackSpeed: 180,
       physicalSize: 16,
       damageExplosion: {
         type: "grayBrickHit",
