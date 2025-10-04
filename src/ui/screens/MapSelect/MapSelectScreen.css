@@ -11,6 +11,56 @@
   font-size: 1.2rem;
 }
 
+.map-select-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 960px;
+}
+
+.map-select-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.map-select-card h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.map-select-card.is-selected {
+  border-color: #61dafb;
+  transform: translateY(-4px);
+}
+
+.map-select-details {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.map-select-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.map-select-details dt {
+  font-weight: 600;
+}
+
+.map-select-details dd {
+  margin: 0;
+}
+
 .map-select-actions {
   display: flex;
   gap: 1rem;

@@ -1,10 +1,15 @@
 import assert from "assert";
-import { BricksModule, BRICK_COUNT_BRIDGE_KEY } from "../src/logic/modules/BricksModule";
+import {
+  BricksModule,
+  BRICK_COUNT_BRIDGE_KEY,
+  BRICK_TOTAL_HP_BRIDGE_KEY,
+} from "../src/logic/modules/BricksModule";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   SceneObjectManager,
   FILL_TYPES,
   SceneLinearGradientFill,
+  SceneRadialGradientFill,
 } from "../src/logic/services/SceneObjectManager";
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
 import { describe, test } from "./testRunner";
@@ -34,16 +39,27 @@ describe("BricksModule", () => {
     const fill = instance.data.fill;
     const fillConfig = config.fill;
     if (fillConfig.type === "linear") {
-      assert.strictEqual(fill.fillType, FILL_TYPES.LINEAR_GRADIENT);
-      assert.strictEqual(fill.stops.length, fillConfig.stops.length);
-      fill.stops.forEach((stop, index) => {
+      const linearFill = fill as SceneLinearGradientFill;
+      assert.strictEqual(linearFill.fillType, FILL_TYPES.LINEAR_GRADIENT);
+      assert.strictEqual(linearFill.stops.length, fillConfig.stops.length);
+      linearFill.stops.forEach((stop, index) => {
+        const expected = fillConfig.stops[index];
+        assert(expected, "expected gradient stop");
+        assert.strictEqual(stop.offset, expected.offset);
+        assert.deepStrictEqual(stop.color, expected.color);
+      });
+    } else if (fillConfig.type === "radial") {
+      const radialFill = fill as SceneRadialGradientFill;
+      assert.strictEqual(radialFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+      assert.strictEqual(radialFill.stops.length, fillConfig.stops.length);
+      radialFill.stops.forEach((stop, index) => {
         const expected = fillConfig.stops[index];
         assert(expected, "expected gradient stop");
         assert.strictEqual(stop.offset, expected.offset);
         assert.deepStrictEqual(stop.color, expected.color);
       });
     } else {
-      assert.fail("expected linear gradient fill");
+      assert.fail(`unexpected fill type: ${fillConfig.type}`);
     }
 
     assert(instance.data.stroke, "stroke should be defined");
@@ -51,13 +67,15 @@ describe("BricksModule", () => {
     assert.strictEqual(instance.data.stroke?.width, config.stroke?.width);
 
     assert.strictEqual(bridge.getValue(BRICK_COUNT_BRIDGE_KEY), 1);
+    assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 5);
 
     const saved = module.save();
     assert(saved && typeof saved === "object", "save should return an object");
     const savedBricks = (saved as { bricks?: unknown }).bricks;
     assert(Array.isArray(savedBricks) && savedBricks.length === 1);
-    const savedBrick = savedBricks[0] as { type?: unknown };
+    const savedBrick = savedBricks[0] as { type?: unknown; hp?: number };
     assert.strictEqual(savedBrick.type, "smallSquareGray");
+    assert.strictEqual(savedBrick.hp, config.destructubleData?.maxHp);
   });
 
   test("invalid brick types fallback to classic config", () => {
@@ -91,5 +109,39 @@ describe("BricksModule", () => {
       assert.strictEqual(stop.offset, expected.offset);
       assert.deepStrictEqual(stop.color, expected.color);
     });
+  });
+
+  test("applyDamage respects armor and removes destroyed bricks", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const module = new BricksModule({ scene, bridge });
+
+    module.setBricks([
+      {
+        position: { x: 10, y: 10 },
+        rotation: 0,
+        type: "classic",
+      },
+    ]);
+
+    const [brick] = module.getBrickStates();
+    assert(brick, "expected brick state");
+
+    const firstHit = module.applyDamage(brick.id, 2);
+    assert.strictEqual(firstHit.destroyed, false);
+    const stateAfterFirst = module.getBrickState(brick.id);
+    assert(stateAfterFirst, "brick should survive first hit");
+    assert.strictEqual(stateAfterFirst?.hp, brick.maxHp - Math.max(2 - brick.armor, 0));
+    assert.strictEqual(
+      bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY),
+      stateAfterFirst?.hp,
+      "total HP should reflect damage"
+    );
+
+    const lethalHit = module.applyDamage(brick.id, 100);
+    assert.strictEqual(lethalHit.destroyed, true);
+    assert.strictEqual(module.getBrickState(brick.id), null);
+    assert.strictEqual(scene.getObjects().length, 0, "scene object should be removed");
+    assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 0);
   });
 });
