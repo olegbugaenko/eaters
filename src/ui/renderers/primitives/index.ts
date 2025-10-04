@@ -13,3 +13,4 @@ export {
   createDynamicPolygonPrimitive,
   createStaticPolygonStrokePrimitive,
 } from "./PolygonPrimitive";
+export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
