@@ -32,13 +32,19 @@ export interface MapPlayerUnitConfig {
 const MAPS_DB: Record<MapId, MapConfig> = {
   initial: {
     name: "Initial Grounds",
-    size: { width: 4000, height: 4000 },
+    size: { width: 3000, height: 3000 },
     bricks: (() => {
-      const center: SceneVector2 = { x: 2000, y: 2000 };
+      const center: SceneVector2 = { x: 1500, y: 1500 };
       const largeCircle = circleWithBricks("smallSquareGray", {
         center,
-        innerRadius: 0,
+        innerRadius: 300,
         outerRadius: 500,
+      });
+
+      const largeYellowCircle = circleWithBricks("smallSquareYellow", {
+        center,
+        innerRadius: 0,
+        outerRadius: 300,
       });
 
       const satelliteCount = 10;
@@ -53,12 +59,42 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         };
         return circleWithBricks("smallSquareGray", {
           center: position,
-          innerRadius: 0,
+          innerRadius: satelliteRadius*0.5,
           outerRadius: satelliteRadius,
         });
       });
 
-      return [largeCircle, ...satellites];
+      const satellitesInner = Array.from({ length: satelliteCount }, (_, index) => {
+        const angle = (index / satelliteCount) * Math.PI * 2;
+        const position: SceneVector2 = {
+          x: center.x + Math.cos(angle) * orbitRadius,
+          y: center.y + Math.sin(angle) * orbitRadius,
+        };
+        return circleWithBricks("smallSquareYellow", {
+          center: position,
+          innerRadius: 0,
+          outerRadius: satelliteRadius*0.5,
+        });
+      });
+
+      const satelliteCountOuter = 32;
+      const satelliteRadiusOuter = 100;
+      const orbitRadiusOuter = 500 + 700 + satelliteRadius;
+
+      const satellitesOuter = Array.from({ length: satelliteCountOuter }, (_, index) => {
+        const angle = (index / satelliteCountOuter) * Math.PI * 2;
+        const position: SceneVector2 = {
+          x: center.x + Math.cos(angle) * orbitRadiusOuter,
+          y: center.y + Math.sin(angle) * orbitRadiusOuter,
+        };
+        return circleWithBricks("smallSquareGray", {
+          center: position,
+          innerRadius: 0,
+          outerRadius: satelliteRadiusOuter,
+        });
+      });
+
+      return [largeCircle, largeYellowCircle, ...satellites, ...satellitesInner, ...satellitesOuter];
     })(),
     playerUnits: [
       {
