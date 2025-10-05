@@ -34,6 +34,9 @@
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
+  --resource-glow-color: rgba(96, 165, 250, 0.4);
+  --resource-outline-color: rgba(96, 165, 250, 0.45);
+  --resource-text-flash-color: rgba(96, 165, 250, 0.8);
 }
 
 .scene-summoning-panel__resource-label {
@@ -60,11 +63,89 @@
 .scene-summoning-panel__resource .progress-bar--vertical .progress-bar__track {
   width: 110px;
   height: 110px;
-  border: 1px solid #333;
+  border: 1px solid var(--resource-outline-color);
+  border-radius: 999px;
+  background: radial-gradient(120% 120% at 50% 20%, rgba(248, 250, 252, 0.08), rgba(15, 23, 42, 0.55));
+  box-shadow: 0 0 0 0 var(--resource-glow-color);
+  transition: box-shadow 240ms ease, transform 240ms ease, border-color 240ms ease;
+}
+
+
+.scene-summoning-panel__resource .progress-bar--vertical .progress-bar__track::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffffff55, transparent 60%);
+  box-shadow: inset -10px -10px 20px rgba(0,0,0,0.3),
+              0 0 20px rgba(0,0,0,0.1);
 }
 
 .scene-summoning-panel__resource .progress-bar--vertical .progress-bar__track .progress-bar__fill {
   border-radius: 0;
+}
+
+.scene-summoning-panel__resource .progress-bar__label {
+  transition: transform 200ms ease, opacity 200ms ease;
+  will-change: transform;
+}
+
+.scene-summoning-panel__resource--mana {
+  --resource-glow-color: rgba(56, 189, 248, 0.35);
+  --resource-outline-color: rgba(56, 189, 248, 0.35);
+  --resource-text-flash-color: rgba(96, 165, 250, 0.85);
+}
+
+.scene-summoning-panel__resource--sanity {
+  --resource-glow-color: rgba(168, 85, 247, 0.35);
+  --resource-outline-color: rgba(168, 85, 247, 0.35);
+  --resource-text-flash-color: rgba(236, 72, 153, 0.8);
+}
+
+.scene-summoning-panel__resource--consuming .progress-bar--vertical .progress-bar__track {
+  animation: scene-summoning-panel__resource-flash 360ms ease-out;
+}
+
+.scene-summoning-panel__resource--consuming .progress-bar__fill {
+  filter: brightness(1.1) saturate(1.1);
+}
+
+.scene-summoning-panel__resource--consuming .progress-bar__label {
+  animation: scene-summoning-panel__resource-count-drop 360ms ease-out;
+  opacity: 0.92;
+}
+
+@keyframes scene-summoning-panel__resource-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--resource-glow-color);
+    transform: scale(1);
+  }
+  45% {
+    box-shadow: 0 0 28px 6px var(--resource-glow-color);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes scene-summoning-panel__resource-count-drop {
+  0% {
+    transform: translateY(0) scale(1);
+    text-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  45% {
+    transform: translateY(2px) scale(0.95);
+    text-shadow: 0 0 12px var(--resource-text-flash-color);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    text-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
 }
 
 .scene-summoning-panel__unit-list {
