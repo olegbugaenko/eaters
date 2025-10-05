@@ -1,18 +1,18 @@
 import { BrickType } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/SceneObjectManager";
 import { PlayerUnitType } from "./player-units-db";
+import {
+  BrickShapeBlueprint,
+  buildBricksFromBlueprints,
+  circleWithBricks,
+} from "../logic/services/BrickLayoutService";
 
 export type MapId = "initial";
-
-export interface MapBrickGroupConfig {
-  readonly type: BrickType;
-  readonly count: number;
-}
 
 export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
-  readonly bricks: readonly MapBrickGroupConfig[];
+  readonly bricks: readonly BrickShapeBlueprint[];
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
 }
 
@@ -33,12 +33,33 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   initial: {
     name: "Initial Grounds",
     size: { width: 4000, height: 4000 },
-    bricks: [
-      {
-        type: "smallSquareGray",
-        count: 2000,
-      },
-    ],
+    bricks: (() => {
+      const center: SceneVector2 = { x: 2000, y: 2000 };
+      const largeCircle = circleWithBricks("smallSquareGray", {
+        center,
+        innerRadius: 0,
+        outerRadius: 500,
+      });
+
+      const satelliteCount = 10;
+      const satelliteRadius = 125;
+      const orbitRadius = 500 + 200 + satelliteRadius;
+
+      const satellites = Array.from({ length: satelliteCount }, (_, index) => {
+        const angle = (index / satelliteCount) * Math.PI * 2;
+        const position: SceneVector2 = {
+          x: center.x + Math.cos(angle) * orbitRadius,
+          y: center.y + Math.sin(angle) * orbitRadius,
+        };
+        return circleWithBricks("smallSquareGray", {
+          center: position,
+          innerRadius: 0,
+          outerRadius: satelliteRadius,
+        });
+      });
+
+      return [largeCircle, ...satellites];
+    })(),
     playerUnits: [
       {
         type: "bluePentagon",
@@ -64,8 +85,9 @@ export const isMapId = (value: unknown): value is MapId =>
 export const getMapList = (): MapListEntry[] =>
   MAP_IDS.map((mapId) => {
     const config = MAPS_DB[mapId];
-    const brickCount = config.bricks.reduce((total, group) => total + group.count, 0);
-    const brickTypes = Array.from(new Set(config.bricks.map((group) => group.type)));
+    const bricks = buildBricksFromBlueprints(config.bricks);
+    const brickCount = bricks.length;
+    const brickTypes = Array.from(new Set(bricks.map((brick) => brick.type)));
     return {
       id: mapId,
       name: config.name,
