@@ -18,6 +18,10 @@ import {
 import { SceneVector2 } from "../services/SceneObjectManager";
 import { buildBricksFromBlueprints } from "../services/BrickLayoutService";
 
+interface ResourceRunController {
+  startRun(): void;
+}
+
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 
@@ -27,6 +31,7 @@ interface MapModuleOptions {
   bricks: BricksModule;
   playerUnits: PlayerUnitsModule;
   necromancer: NecromancerModule;
+  resources: ResourceRunController;
 }
 
 interface MapSaveData {
@@ -80,6 +85,13 @@ export class MapModule implements GameModule {
     this.applyMap(mapId, { generateBricks: true, generateUnits: true });
   }
 
+  public restartSelectedMap(): void {
+    if (!this.selectedMapId) {
+      return;
+    }
+    this.applyMap(this.selectedMapId, { generateBricks: true, generateUnits: true });
+  }
+
   private ensureSelection(options: { generateBricks: boolean; generateUnits: boolean }): void {
     const mapId = this.selectedMapId ?? DEFAULT_MAP_ID;
     this.selectedMapId = mapId;
@@ -105,6 +117,8 @@ export class MapModule implements GameModule {
     this.options.necromancer.configureForMap({
       spawnPoints: spawnUnits.map((unit) => unit.position),
     });
+
+    this.options.resources.startRun();
 
     this.pushSelectedMap();
   }

@@ -178,6 +178,15 @@ export class NecromancerModule implements GameModule {
     return true;
   }
 
+  public hasSanityForAnySpawn(): boolean {
+    const currentSanity = this.sanity.current;
+    return PLAYER_UNIT_TYPES.some((type) => {
+      const config = getPlayerUnitConfig(type);
+      const cost = normalizeResourceCost(config.cost);
+      return currentSanity >= cost.sanity;
+    });
+  }
+
   private pushSpawnOptions(): void {
     const options: NecromancerSpawnOption[] = PLAYER_UNIT_TYPES.map((type) => {
       const config = getPlayerUnitConfig(type);

@@ -50,6 +50,9 @@ function App(): JSX.Element {
               app.returnToMainMenu();
               setScreen("save-select");
             }}
+            onLeaveToMapSelect={() => {
+              setScreen("map-select");
+            }}
           />
         )}
       </div>

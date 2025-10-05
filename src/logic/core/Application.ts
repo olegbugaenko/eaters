@@ -13,6 +13,7 @@ import { MapId } from "../../db/maps-db";
 import { PlayerUnitsModule } from "../modules/PlayerUnitsModule";
 import { MovementService } from "../services/MovementService";
 import { NecromancerModule } from "../modules/NecromancerModule";
+import { ResourcesModule } from "../modules/ResourcesModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -20,6 +21,7 @@ export class Application {
   private modules: GameModule[] = [];
   private mapModule: MapModule;
   private necromancerModule: NecromancerModule;
+  private resourcesModule: ResourcesModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -33,6 +35,11 @@ export class Application {
     this.serviceContainer.register("sceneObjects", sceneObjects);
     this.serviceContainer.register("movement", movementService);
 
+    const resourcesModule = new ResourcesModule({
+      bridge: this.dataBridge,
+    });
+    this.resourcesModule = resourcesModule;
+
     const timeModule = new TestTimeModule({
       bridge: this.dataBridge,
     });
@@ -45,12 +52,16 @@ export class Application {
       scene: sceneObjects,
       bridge: this.dataBridge,
       explosions: explosionModule,
+      resources: resourcesModule,
     });
     const playerUnitsModule = new PlayerUnitsModule({
       scene: sceneObjects,
       bricks: bricksModule,
       bridge: this.dataBridge,
       movement: movementService,
+      onAllUnitsDefeated: () => {
+        this.handleAllUnitsDefeated();
+      },
     });
     this.necromancerModule = new NecromancerModule({
       bridge: this.dataBridge,
@@ -63,6 +74,7 @@ export class Application {
       bricks: bricksModule,
       playerUnits: playerUnitsModule,
       necromancer: this.necromancerModule,
+      resources: resourcesModule,
     });
 
     const bulletModule = new BulletModule({
@@ -70,6 +82,7 @@ export class Application {
       explosions: explosionModule,
     });
 
+    this.registerModule(resourcesModule);
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
     this.registerModule(playerUnitsModule);
@@ -128,6 +141,10 @@ export class Application {
     return this.necromancerModule;
   }
 
+  public restartCurrentMap(): void {
+    this.mapModule.restartSelectedMap();
+  }
+
   public selectMap(mapId: MapId): void {
     this.mapModule.selectMap(mapId);
   }
@@ -138,5 +155,12 @@ export class Application {
     this.modules.push(module);
     saveManager.registerModule(module);
     gameLoop.registerModule(module);
+  }
+
+  private handleAllUnitsDefeated(): void {
+    if (this.necromancerModule.hasSanityForAnySpawn()) {
+      return;
+    }
+    this.resourcesModule.finishRun();
   }
 }

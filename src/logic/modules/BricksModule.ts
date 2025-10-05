@@ -10,6 +10,16 @@ import {
 } from "../services/SceneObjectManager";
 import type { ExplosionModule } from "./ExplosionModule";
 import { SpatialGrid } from "../utils/SpatialGrid";
+import {
+  ResourceStockpile,
+  normalizeResourceAmount,
+  hasAnyResources,
+  cloneResourceStockpile,
+} from "../../db/resources-db";
+
+interface ResourceCollector {
+  grantResources(amount: ResourceStockpile): void;
+}
 
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
 
@@ -67,12 +77,14 @@ export interface BrickRuntimeState {
   brickKnockBackDistance: number;
   brickKnockBackSpeed: number;
   physicalSize: number;
+  rewards: ResourceStockpile;
 }
 
 interface BricksModuleOptions {
   scene: SceneObjectManager;
   bridge: DataBridge;
   explosions: ExplosionModule;
+  resources: ResourceCollector;
 }
 
 interface BrickSaveData {
@@ -275,6 +287,7 @@ export class BricksModule implements GameModule {
     const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
     const position = this.clampToMap(brick.position);
     const rotation = sanitizeRotation(brick.rotation);
+    const rewards = normalizeResourceAmount(config.rewards);
 
     const id = this.createBrickId();
     const sceneObjectId = this.options.scene.addObject("brick", {
@@ -302,6 +315,7 @@ export class BricksModule implements GameModule {
       brickKnockBackDistance,
       brickKnockBackSpeed,
       physicalSize,
+      rewards,
       sceneObjectId,
       damageExplosion: resolveBrickExplosion(
         destructuble?.damageExplosion,
@@ -317,6 +331,9 @@ export class BricksModule implements GameModule {
   }
 
   private destroyBrick(brick: InternalBrickState): void {
+    if (hasAnyResources(brick.rewards)) {
+      this.options.resources.grantResources(brick.rewards);
+    }
     this.options.scene.removeObject(brick.sceneObjectId);
     this.bricks.delete(brick.id);
     this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
@@ -368,6 +385,7 @@ export class BricksModule implements GameModule {
       brickKnockBackDistance: state.brickKnockBackDistance,
       brickKnockBackSpeed: state.brickKnockBackSpeed,
       physicalSize: state.physicalSize,
+      rewards: cloneResourceStockpile(state.rewards),
     };
   }
 

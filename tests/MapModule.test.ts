@@ -20,7 +20,15 @@ describe("MapModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
-    const bricks = new BricksModule({ scene, bridge, explosions });
+    const resources = {
+      startRun: () => {
+        // no-op for tests
+      },
+      grantResources: () => {
+        // no-op for tests
+      },
+    };
+    const bricks = new BricksModule({ scene, bridge, explosions, resources });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement });
     const necromancer = new NecromancerModule({
@@ -28,7 +36,14 @@ describe("MapModule", () => {
       playerUnits,
       scene,
     });
-    const maps = new MapModule({ scene, bridge, bricks, playerUnits, necromancer });
+    const maps = new MapModule({
+      scene,
+      bridge,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+    });
 
     necromancer.initialize();
     maps.initialize();
