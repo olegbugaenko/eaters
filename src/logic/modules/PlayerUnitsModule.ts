@@ -383,7 +383,14 @@ export class PlayerUnitsModule implements GameModule {
     }
 
     const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
-    const desiredSpeed = Math.min(unit.moveSpeed, distanceOutsideRange);
+    if (!vectorHasLength(direction)) {
+      return ZERO_VECTOR;
+    }
+
+    const desiredSpeed = Math.max(
+      Math.min(unit.moveSpeed, distanceOutsideRange),
+      unit.moveSpeed * 0.25
+    );
     const desiredVelocity = scaleVector(direction, desiredSpeed);
 
     return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
