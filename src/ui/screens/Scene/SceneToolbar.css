@@ -52,7 +52,7 @@
 .scene-toolbar__hp-bar {
   width: 100%;
   --progress-bar-track-color: rgba(31, 111, 235, 0.2);
-  --progress-bar-fill-color: linear-gradient(90deg, #10b981, #22d3ee);
+  --progress-bar-fill-color: linear-gradient(90deg, #f02931, #f2a33e);
   --progress-bar-label-color: #f8fafc;
 }
 

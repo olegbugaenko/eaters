@@ -18,15 +18,17 @@
 
 .progress-bar--horizontal .progress-bar__track {
   width: 100%;
-  height: 0.75rem;
+  height: 1.05rem;
+  position: relative;
 }
 
 .progress-bar--vertical .progress-bar__track {
   width: 0.85rem;
   height: 100%;
-  min-height: 4rem;
+  min-height: 5rem;
   display: flex;
   align-items: flex-end;
+  position: relative;
 }
 
 .progress-bar__fill {
@@ -44,9 +46,13 @@
 }
 
 .progress-bar__label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--progress-bar-label-color);
-  text-align: center;
-  white-space: nowrap;
+  position: absolute;
+  inset: 0;                     /* top:0; right:0; bottom:0; left:0 */
+  display: grid;
+  place-items: center;          /* ідеальне центрування по обох осях */
+  z-index: 1;                   /* над .progress-bar__fill */
+  pointer-events: none;
 }

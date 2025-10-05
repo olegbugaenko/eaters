@@ -44,8 +44,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     <div className={classes}>
       <div className="progress-bar__track">
         <div className="progress-bar__fill" style={fillStyle} />
+        {showText ? <div className="progress-bar__label">{label}</div> : null}
       </div>
-      {showText ? <div className="progress-bar__label">{label}</div> : null}
     </div>
   );
 };

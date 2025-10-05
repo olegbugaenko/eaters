@@ -38,6 +38,7 @@ export const SceneSummoningPanel: React.FC<SceneSummoningPanelProps> = ({
             current={resources.sanity.current}
             max={resources.sanity.max}
             formatValue={(current, max) => formatResourceValue(current, max)}
+            orientation={'vertical'}
           />
         </div>
       </div>
@@ -79,6 +80,7 @@ export const SceneSummoningPanel: React.FC<SceneSummoningPanelProps> = ({
             current={resources.mana.current}
             max={resources.mana.max}
             formatValue={(current, max) => formatResourceValue(current, max)}
+            orientation="vertical"
           />
         </div>
       </div>
