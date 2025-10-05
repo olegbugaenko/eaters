@@ -9,6 +9,7 @@ import {
 import { BricksModule, BrickRuntimeState } from "./BricksModule";
 import {
   PlayerUnitType,
+  PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
   PlayerUnitRendererConfig,
   isPlayerUnitType,
@@ -236,6 +237,35 @@ export class PlayerUnitsModule implements GameModule {
 
   public setUnits(units: PlayerUnitSpawnData[]): void {
     this.applyUnits(units);
+  }
+
+  public unitStressTest(): void {
+    const center: SceneVector2 = { x: 100, y: 100 };
+    const spread = 100;
+    const spawnCount = 100;
+    const spawnUnits: PlayerUnitSpawnData[] = [];
+    const availableTypes = PLAYER_UNIT_TYPES;
+
+    if (availableTypes.length === 0) {
+      return;
+    }
+
+    for (let index = 0; index < spawnCount; index += 1) {
+      const unitType = availableTypes[index % availableTypes.length]!;
+      const offsetX = (Math.random() * 2 - 1) * spread;
+      const offsetY = (Math.random() * 2 - 1) * spread;
+      const position = this.clampToMap({
+        x: center.x + offsetX,
+        y: center.y + offsetY,
+      });
+
+      spawnUnits.push({
+        type: unitType,
+        position,
+      });
+    }
+
+    this.applyUnits(spawnUnits);
   }
 
   private pushStats(): void {
@@ -499,7 +529,7 @@ export class PlayerUnitsModule implements GameModule {
   ): SceneVector2 {
     const steering = subtractVectors(desiredVelocity, currentVelocity);
     const magnitude = vectorLength(steering);
-    const maxForce = Math.max(unit.moveAcceleration, 0);
+    const maxForce = Math.max(unit.moveAcceleration * unit.mass, 0);
     if (magnitude <= 0 || maxForce <= 0) {
       return ZERO_VECTOR;
     }
