@@ -46,7 +46,7 @@ interface ResourceState {
 }
 
 const DEFAULT_RESOURCE_CAP = 10;
-const MANA_REGEN_PER_SECOND = 0.2;
+const MANA_REGEN_PER_SECOND = 0.4;
 const SPAWN_JITTER_RADIUS = 30;
 
 export class NecromancerModule implements GameModule {
