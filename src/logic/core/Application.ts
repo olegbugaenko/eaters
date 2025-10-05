@@ -12,12 +12,14 @@ import { ExplosionModule } from "../modules/ExplosionModule";
 import { MapId } from "../../db/maps-db";
 import { PlayerUnitsModule } from "../modules/PlayerUnitsModule";
 import { MovementService } from "../services/MovementService";
+import { NecromancerModule } from "../modules/NecromancerModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
   private dataBridge = new DataBridge();
   private modules: GameModule[] = [];
   private mapModule: MapModule;
+  private necromancerModule: NecromancerModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -50,11 +52,17 @@ export class Application {
       bridge: this.dataBridge,
       movement: movementService,
     });
+    this.necromancerModule = new NecromancerModule({
+      bridge: this.dataBridge,
+      playerUnits: playerUnitsModule,
+      scene: sceneObjects,
+    });
     this.mapModule = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
       bricks: bricksModule,
       playerUnits: playerUnitsModule,
+      necromancer: this.necromancerModule,
     });
 
     const bulletModule = new BulletModule({
@@ -65,6 +73,7 @@ export class Application {
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
     this.registerModule(playerUnitsModule);
+    this.registerModule(this.necromancerModule);
     this.registerModule(this.mapModule);
     this.registerModule(explosionModule);
     this.registerModule(bulletModule);
@@ -113,6 +122,10 @@ export class Application {
 
   public getSaveManager(): SaveManager {
     return this.serviceContainer.get<SaveManager>("saveManager");
+  }
+
+  public getNecromancer(): NecromancerModule {
+    return this.necromancerModule;
   }
 
   public selectMap(mapId: MapId): void {

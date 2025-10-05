@@ -1,4 +1,5 @@
 import { Button } from "../../shared/Button";
+import { ProgressBar } from "../../shared/ProgressBar";
 import "./SceneToolbar.css";
 
 interface SceneToolbarProps {
@@ -38,8 +39,6 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
   cameraPosition,
 }) => {
   const clampedInitialHp = brickInitialHp > 0 ? brickInitialHp : brickTotalHp;
-  const safeInitialHp = clampedInitialHp > 0 ? clampedInitialHp : 1;
-  const hpPercent = clamp((brickTotalHp / safeInitialHp) * 100, 0, 100);
 
   return (
     <div className="scene-toolbar">
@@ -49,15 +48,14 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
       <div className="scene-toolbar__section scene-toolbar__section--center">
         <div className="scene-toolbar__hp">
           <div className="scene-toolbar__hp-label">Brick Integrity</div>
-          <div className="scene-toolbar__progress">
-            <div
-              className="scene-toolbar__progress-bar"
-              style={{ width: `${hpPercent}%` }}
-            />
-          </div>
-          <div className="scene-toolbar__hp-stats">
-            {Math.round(brickTotalHp)} / {Math.round(clampedInitialHp)}
-          </div>
+          <ProgressBar
+            className="scene-toolbar__hp-bar"
+            current={brickTotalHp}
+            max={clampedInitialHp}
+            formatValue={(current, max) =>
+              `${Math.round(current)} / ${Math.round(max)}`
+            }
+          />
         </div>
         <div className="scene-toolbar__units">
           Units: {unitCount} (HP {Math.round(unitTotalHp)})

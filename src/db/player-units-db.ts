@@ -1,4 +1,5 @@
 import { SceneColor, SceneFill, SceneVector2 } from "../logic/services/SceneObjectManager";
+import { ResourceCost } from "../types/resources";
 
 export type PlayerUnitType = "bluePentagon";
 
@@ -42,6 +43,7 @@ export interface PlayerUnitConfig {
   readonly mass: number;
   readonly physicalSize: number;
   readonly emitter?: PlayerUnitEmitterConfig;
+  readonly cost: ResourceCost;
 }
 
 const BLUE_PENTAGON_VERTICES: readonly SceneVector2[] = [
@@ -85,6 +87,10 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       offset: { x: -0.35, y: 0 },
       color: { r: 0.2, g: 0.85, b: 0.95, a: 0.35 },
       maxParticles: 80,
+    },
+    cost: {
+      mana: 2,
+      sanity: 2,
     },
   },
 };

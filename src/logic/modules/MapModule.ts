@@ -6,6 +6,7 @@ import {
   PlayerUnitsModule,
   PlayerUnitSpawnData,
 } from "./PlayerUnitsModule";
+import { NecromancerModule } from "./NecromancerModule";
 import {
   MapConfig,
   MapId,
@@ -25,6 +26,7 @@ interface MapModuleOptions {
   bridge: DataBridge;
   bricks: BricksModule;
   playerUnits: PlayerUnitsModule;
+  necromancer: NecromancerModule;
 }
 
 interface MapSaveData {
@@ -94,10 +96,16 @@ export class MapModule implements GameModule {
       const bricks = this.generateBricks(config);
       this.options.bricks.setBricks(bricks);
     }
+    const spawnUnits = this.generatePlayerUnits(config);
+
     if (options.generateUnits) {
-      const units = this.generatePlayerUnits(config);
-      this.options.playerUnits.setUnits(units);
+      this.options.playerUnits.setUnits(spawnUnits);
     }
+
+    this.options.necromancer.configureForMap({
+      spawnPoints: spawnUnits.map((unit) => unit.position),
+    });
+
     this.pushSelectedMap();
   }
 

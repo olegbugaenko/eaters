@@ -1,0 +1,34 @@
+.resource-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: #e5ecf4;
+}
+
+.resource-cost__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.resource-cost__item--mana {
+  color: #38bdf8;
+}
+
+.resource-cost__item--sanity {
+  color: #facc15;
+}
+
+.resource-cost__item--missing {
+  color: #f87171;
+}
+
+.resource-cost__missing {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(248, 113, 113, 0.85);
+}

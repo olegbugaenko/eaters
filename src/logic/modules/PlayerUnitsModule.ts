@@ -239,6 +239,13 @@ export class PlayerUnitsModule implements GameModule {
     this.applyUnits(units);
   }
 
+  public spawnUnit(unit: PlayerUnitSpawnData): void {
+    const state = this.createUnitState(unit);
+    this.units.set(state.id, state);
+    this.unitOrder.push(state);
+    this.pushStats();
+  }
+
   public unitStressTest(): void {
     const center: SceneVector2 = { x: 100, y: 100 };
     const spread = 100;

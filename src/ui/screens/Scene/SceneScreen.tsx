@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
@@ -10,6 +10,13 @@ import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/PlayerUnitsModule";
+import {
+  NECROMANCER_RESOURCES_BRIDGE_KEY,
+  NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+  NecromancerResourcesPayload,
+  NecromancerSpawnOption,
+} from "../../../logic/modules/NecromancerModule";
+import { PlayerUnitType } from "../../../db/player-units-db";
 import {
   SceneCameraState,
   SceneObjectManager,
@@ -26,6 +33,7 @@ import {
 } from "../../renderers/objects";
 import { SceneDebugPanel } from "./SceneDebugPanel";
 import { SceneToolbar } from "./SceneToolbar";
+import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 
 const VERTEX_SHADER = `
@@ -206,6 +214,13 @@ const clamp = (value: number, min: number, max: number): number => {
   return value;
 };
 
+const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = Object.freeze({
+  mana: { current: 0, max: 0 },
+  sanity: { current: 0, max: 0 },
+});
+
+const DEFAULT_NECROMANCER_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
+
 interface SceneScreenProps {
   onExit: () => void;
 }
@@ -233,18 +248,29 @@ const cameraEquals = (
 export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const { bridge, scene } = useAppLogic();
+  const { app, bridge, scene } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
   const unitTotalHp = useBridgeValue<number>(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
+  const necromancerResources = useBridgeValue<NecromancerResourcesPayload>(
+    bridge,
+    NECROMANCER_RESOURCES_BRIDGE_KEY,
+    DEFAULT_NECROMANCER_RESOURCES
+  );
+  const necromancerOptions = useBridgeValue<NecromancerSpawnOption[]>(
+    bridge,
+    NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+    DEFAULT_NECROMANCER_SPAWN_OPTIONS
+  );
   const [scale, setScale] = useState(() => scene.getCamera().scale);
   const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
   const cameraInfoRef = useRef(cameraInfo);
   const scaleRef = useRef(scale);
   const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
   const brickInitialHpRef = useRef(0);
+  const necromancer = useMemo(() => app.getNecromancer(), [app]);
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -268,6 +294,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     setScale(current.scale);
     setCameraInfo(current);
   };
+
+  const handleSummonUnit = useCallback(
+    (type: PlayerUnitType) => {
+      necromancer.trySpawnUnit(type);
+    },
+    [necromancer]
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -518,6 +551,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
         cameraPosition={cameraInfo.position}
       />
       <SceneDebugPanel timeMs={timePlayed} brickCount={brickCount} />
+      <SceneSummoningPanel
+        resources={necromancerResources}
+        spawnOptions={necromancerOptions}
+        onSummon={handleSummonUnit}
+      />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
       </div>
