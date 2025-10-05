@@ -67,7 +67,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       },
       offset: { x: 0, y: 0 },
     },
-    maxHp: 10,
+    maxHp: 40,
     armor: 1,
     baseAttackDamage: 2,
     baseAttackInterval: 1,

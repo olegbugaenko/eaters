@@ -12,7 +12,12 @@ import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 
 const createBricksModule = (scene: SceneObjectManager, bridge: DataBridge) => {
   const explosions = new ExplosionModule({ scene });
-  return new BricksModule({ scene, bridge, explosions });
+  const resources = {
+    grantResources: () => {
+      // no-op for tests
+    },
+  };
+  return new BricksModule({ scene, bridge, explosions, resources });
 };
 
 const tickSeconds = (module: PlayerUnitsModule, seconds: number) => {

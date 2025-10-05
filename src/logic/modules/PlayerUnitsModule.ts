@@ -36,6 +36,7 @@ interface PlayerUnitsModuleOptions {
   bricks: BricksModule;
   bridge: DataBridge;
   movement: MovementService;
+  onAllUnitsDefeated?: () => void;
 }
 
 interface PlayerUnitSaveData {
@@ -74,6 +75,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly bricks: BricksModule;
   private readonly bridge: DataBridge;
   private readonly movement: MovementService;
+  private readonly onAllUnitsDefeated?: () => void;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -84,6 +86,7 @@ export class PlayerUnitsModule implements GameModule {
     this.bricks = options.bricks;
     this.bridge = options.bridge;
     this.movement = options.movement;
+    this.onAllUnitsDefeated = options.onAllUnitsDefeated;
   }
 
   public initialize(): void {
@@ -641,6 +644,9 @@ export class PlayerUnitsModule implements GameModule {
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.pushStats();
+    if (this.unitOrder.length === 0) {
+      this.onAllUnitsDefeated?.();
+    }
   }
 
   private clearUnits(): void {

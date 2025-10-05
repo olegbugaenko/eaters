@@ -17,7 +17,12 @@ import { describe, test } from "./testRunner";
 
 const createBricksModule = (scene: SceneObjectManager, bridge: DataBridge) => {
   const explosions = new ExplosionModule({ scene });
-  return new BricksModule({ scene, bridge, explosions });
+  const resources = {
+    grantResources: () => {
+      // no-op for tests
+    },
+  };
+  return new BricksModule({ scene, bridge, explosions, resources });
 };
 
 describe("BricksModule", () => {

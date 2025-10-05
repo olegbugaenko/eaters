@@ -35,6 +35,12 @@ import { SceneDebugPanel } from "./SceneDebugPanel";
 import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
+import {
+  DEFAULT_RESOURCE_RUN_SUMMARY,
+  RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
+  ResourceRunSummaryPayload,
+} from "../../../logic/modules/ResourcesModule";
+import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -223,6 +229,7 @@ const DEFAULT_NECROMANCER_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 
 interface SceneScreenProps {
   onExit: () => void;
+  onLeaveToMapSelect: () => void;
 }
 
 const cameraEquals = (
@@ -245,7 +252,7 @@ const cameraEquals = (
   );
 };
 
-export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
+export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSelect }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
@@ -265,6 +272,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
     DEFAULT_NECROMANCER_SPAWN_OPTIONS
   );
+  const resourceSummary = useBridgeValue<ResourceRunSummaryPayload>(
+    bridge,
+    RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
+    DEFAULT_RESOURCE_RUN_SUMMARY
+  );
   const [scale, setScale] = useState(() => scene.getCamera().scale);
   const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
   const cameraInfoRef = useRef(cameraInfo);
@@ -272,6 +284,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
   const brickInitialHpRef = useRef(0);
   const necromancer = useMemo(() => app.getNecromancer(), [app]);
+  const showRunSummary = resourceSummary.completed;
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -302,6 +315,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     },
     [necromancer]
   );
+
+  const handleRestart = useCallback(() => {
+    app.restartCurrentMap();
+  }, [app]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -584,6 +601,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
       </div>
+      {showRunSummary && (
+        <SceneRunSummaryModal
+          resources={resourceSummary.resources}
+          onLeave={onLeaveToMapSelect}
+          onRestart={handleRestart}
+        />
+      )}
     </div>
   );
 };

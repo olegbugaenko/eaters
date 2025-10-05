@@ -6,6 +6,7 @@ import {
 } from "../logic/services/SceneObjectManager";
 
 import { DestructubleData } from "../logic/interfaces/destructuble";
+import { ResourceAmount } from "./resources-db";
 
 export type BrickType = "classic" | "smallSquareGray" | "smallSquareYellow" | "blueRadial";
 
@@ -43,6 +44,7 @@ export interface BrickConfig {
   fill: BrickFillConfig;
   stroke?: BrickStrokeConfig;
   destructubleData?: DestructubleData;
+  rewards?: ResourceAmount;
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
@@ -122,6 +124,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         radiusMultiplier: 0.95,
       },
     },
+    rewards: {
+      stone: 1,
+    },
   },
   smallSquareYellow: {
     size: { width: 24, height: 24 },
@@ -148,6 +153,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         type: "grayBrickDestroy",
         radiusMultiplier: 0.95,
       },
+    },
+    rewards: {
+      sand: 1,
     },
   },
   blueRadial: {
