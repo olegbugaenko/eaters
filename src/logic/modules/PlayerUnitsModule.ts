@@ -171,6 +171,7 @@ export class PlayerUnitsModule implements GameModule {
       );
       resolvedPosition = collisionResolution.position;
       resolvedVelocity = collisionResolution.velocity;
+      const collidedBrickIds = collisionResolution.collidedBrickIds;
 
       if (!vectorEquals(resolvedPosition, movementState.position)) {
         this.movement.setBodyPosition(unit.movementId, resolvedPosition);
@@ -194,6 +195,19 @@ export class PlayerUnitsModule implements GameModule {
       if (!target) {
         target = this.resolveTarget(unit);
         plannedTargets.set(unit.id, target?.id ?? null);
+      }
+
+      if (collidedBrickIds.length > 0) {
+        for (const brickId of collidedBrickIds) {
+          const collidedBrick = this.bricks.getBrickState(brickId);
+          if (!collidedBrick) {
+            continue;
+          }
+          target = collidedBrick;
+          unit.targetBrickId = collidedBrick.id;
+          plannedTargets.set(unit.id, collidedBrick.id);
+          break;
+        }
       }
 
       const rotation = this.computeRotation(unit, target, resolvedVelocity);
@@ -410,14 +424,19 @@ export class PlayerUnitsModule implements GameModule {
     unit: PlayerUnitState,
     position: SceneVector2,
     velocity: SceneVector2
-  ): { position: SceneVector2; velocity: SceneVector2 } {
+  ): {
+    position: SceneVector2;
+    velocity: SceneVector2;
+    collidedBrickIds: string[];
+  } {
     if (unit.physicalSize <= 0) {
-      return { position, velocity };
+      return { position, velocity, collidedBrickIds: [] };
     }
 
     let resolvedPosition = { ...position };
     let resolvedVelocity = { ...velocity };
     let adjusted = false;
+    const collidedBrickIds = new Set<string>();
 
     for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
       let collided = false;
@@ -453,6 +472,7 @@ export class PlayerUnitsModule implements GameModule {
 
         collided = true;
         adjusted = true;
+        collidedBrickIds.add(brick.id);
       });
 
       if (!collided) {
@@ -461,11 +481,15 @@ export class PlayerUnitsModule implements GameModule {
     }
 
     if (!adjusted) {
-      return { position, velocity };
+      return { position, velocity, collidedBrickIds: [] };
     }
 
     resolvedPosition = this.clampToMap(resolvedPosition);
-    return { position: resolvedPosition, velocity: resolvedVelocity };
+    return {
+      position: resolvedPosition,
+      velocity: resolvedVelocity,
+      collidedBrickIds: [...collidedBrickIds],
+    };
   }
 
   private computeSteeringForce(
