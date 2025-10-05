@@ -89,7 +89,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       maxParticles: 80,
     },
     cost: {
-      mana: 2,
+      mana: 5,
       sanity: 2,
     },
   },
