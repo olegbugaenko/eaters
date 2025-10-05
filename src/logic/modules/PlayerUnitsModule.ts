@@ -383,9 +383,7 @@ export class PlayerUnitsModule implements GameModule {
     }
 
     const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
-    const slowRadius = Math.max(unit.moveSpeed, attackRange);
-    const speedFactor = clampNumber(distanceOutsideRange / slowRadius, 0, 1);
-    const desiredSpeed = unit.moveSpeed * speedFactor;
+    const desiredSpeed = Math.min(unit.moveSpeed, distanceOutsideRange);
     const desiredVelocity = scaleVector(direction, desiredSpeed);
 
     return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
@@ -509,32 +507,22 @@ export class PlayerUnitsModule implements GameModule {
   ): void {
     unit.attackCooldown = unit.baseAttackInterval;
     const result = this.bricks.applyDamage(target.id, unit.baseAttackDamage);
+    const surviving = result.brick ?? target;
+
+    if (surviving) {
+      this.applyKnockBack(unit, direction, distance, surviving);
+    }
 
     if (result.destroyed) {
       unit.targetBrickId = null;
-      if (this.movement.getBodyState(unit.movementId)) {
-        const restoredVelocity = vectorHasLength(unit.lastNonZeroVelocity)
-          ? unit.lastNonZeroVelocity
-          : unit.preCollisionVelocity;
-        this.movement.setBodyVelocity(unit.movementId, {
-          x: restoredVelocity.x,
-          y: restoredVelocity.y,
-        });
-        if (vectorHasLength(restoredVelocity)) {
-          unit.lastNonZeroVelocity = cloneVector(restoredVelocity);
-        }
-      }
       return;
     }
 
-    const surviving = result.brick ?? target;
     const counterDamage = Math.max(surviving.baseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
       this.pushStats();
     }
-
-    this.applyKnockBack(unit, direction, distance, surviving);
 
     if (unit.hp <= 0) {
       this.removeUnit(unit);
