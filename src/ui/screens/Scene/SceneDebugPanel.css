@@ -1,0 +1,29 @@
+.scene-debug-panel {
+  position: fixed;
+  top: 6rem;
+  left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 32, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  color: #e5ecf4;
+  z-index: 15;
+  pointer-events: none;
+}
+
+.scene-debug-panel__item {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .scene-debug-panel {
+    top: auto;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
