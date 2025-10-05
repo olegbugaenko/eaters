@@ -248,6 +248,7 @@ const cameraEquals = (
 export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const { app, bridge, scene } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
@@ -504,22 +505,45 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     frame = window.requestAnimationFrame(render);
     window.addEventListener("resize", resize);
 
+    const clamp = (value: number, min: number, max: number) =>
+      Math.min(Math.max(value, min), max);
+
+    const getOverlayHeight = () => {
+      const panel = summoningPanelRef.current;
+      if (!panel) {
+        return 0;
+      }
+      return panel.getBoundingClientRect().height;
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        pointerState.inside = false;
+        return;
+      }
+
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
-      pointerState.x = (x / rect.width) * canvas.width;
-      pointerState.y = (y / rect.height) * canvas.height;
-      pointerState.inside = x >= 0 && y >= 0 && x <= rect.width && y <= rect.height;
+      const clampedX = clamp(x, 0, rect.width);
+      const clampedY = clamp(y, 0, rect.height);
+      pointerState.x = (clampedX / rect.width) * canvas.width;
+      pointerState.y = (clampedY / rect.height) * canvas.height;
+
+      const overlayHeight = getOverlayHeight();
+      const insideHorizontal = event.clientX >= rect.left && event.clientX <= rect.right;
+      const insideVertical =
+        event.clientY >= rect.top && event.clientY <= rect.bottom + overlayHeight;
+      pointerState.inside = insideHorizontal && insideVertical;
     };
 
     const handlePointerLeave = () => {
       pointerState.inside = false;
     };
 
-    canvas.addEventListener("pointermove", handlePointerMove);
-    canvas.addEventListener("pointerleave", handlePointerLeave);
-    canvas.addEventListener("pointerout", handlePointerLeave);
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("pointerleave", handlePointerLeave, { passive: true });
+    window.addEventListener("pointerout", handlePointerLeave, { passive: true });
 
     return () => {
       window.removeEventListener("resize", resize);
@@ -529,9 +553,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
-      canvas.removeEventListener("pointermove", handlePointerMove);
-      canvas.removeEventListener("pointerleave", handlePointerLeave);
-      canvas.removeEventListener("pointerout", handlePointerLeave);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerleave", handlePointerLeave);
+      window.removeEventListener("pointerout", handlePointerLeave);
     };
   }, [scene]);
 
@@ -552,6 +576,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       />
       <SceneDebugPanel timeMs={timePlayed} brickCount={brickCount} />
       <SceneSummoningPanel
+        ref={summoningPanelRef}
         resources={necromancerResources}
         spawnOptions={necromancerOptions}
         onSummon={handleSummonUnit}
