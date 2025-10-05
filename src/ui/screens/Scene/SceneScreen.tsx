@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
@@ -10,6 +10,13 @@ import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/PlayerUnitsModule";
+import {
+  NECROMANCER_RESOURCES_BRIDGE_KEY,
+  NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+  NecromancerResourcesPayload,
+  NecromancerSpawnOption,
+} from "../../../logic/modules/NecromancerModule";
+import { PlayerUnitType } from "../../../db/player-units-db";
 import {
   SceneCameraState,
   SceneObjectManager,
@@ -24,7 +31,9 @@ import {
   STOP_COLOR_COMPONENTS,
   createObjectsRendererManager,
 } from "../../renderers/objects";
-import { Button } from "../../shared/Button";
+import { SceneDebugPanel } from "./SceneDebugPanel";
+import { SceneToolbar } from "./SceneToolbar";
+import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 
 const VERTEX_SHADER = `
@@ -157,15 +166,6 @@ void main() {
 }
 `;
 
-const formatTime = (timeMs: number): string => {
-  const totalSeconds = Math.floor(timeMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
-};
-
 const createShader = (gl: WebGLRenderingContext, type: number, source: string) => {
   const shader = gl.createShader(type);
   if (!shader) {
@@ -214,6 +214,13 @@ const clamp = (value: number, min: number, max: number): number => {
   return value;
 };
 
+const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = Object.freeze({
+  mana: { current: 0, max: 0 },
+  sanity: { current: 0, max: 0 },
+});
+
+const DEFAULT_NECROMANCER_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
+
 interface SceneScreenProps {
   onExit: () => void;
 }
@@ -241,17 +248,37 @@ const cameraEquals = (
 export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const { bridge, scene } = useAppLogic();
+  const { app, bridge, scene } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
   const unitTotalHp = useBridgeValue<number>(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
-  const formatted = useMemo(() => formatTime(timePlayed), [timePlayed]);
+  const necromancerResources = useBridgeValue<NecromancerResourcesPayload>(
+    bridge,
+    NECROMANCER_RESOURCES_BRIDGE_KEY,
+    DEFAULT_NECROMANCER_RESOURCES
+  );
+  const necromancerOptions = useBridgeValue<NecromancerSpawnOption[]>(
+    bridge,
+    NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+    DEFAULT_NECROMANCER_SPAWN_OPTIONS
+  );
   const [scale, setScale] = useState(() => scene.getCamera().scale);
   const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
   const cameraInfoRef = useRef(cameraInfo);
   const scaleRef = useRef(scale);
+  const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
+  const brickInitialHpRef = useRef(0);
+  const necromancer = useMemo(() => app.getNecromancer(), [app]);
+
+  useEffect(() => {
+    if (brickTotalHp > brickInitialHpRef.current) {
+      brickInitialHpRef.current = brickTotalHp;
+    } else if (brickInitialHpRef.current === 0 && brickTotalHp > 0) {
+      brickInitialHpRef.current = brickTotalHp;
+    }
+  }, [brickTotalHp]);
 
   useEffect(() => {
     cameraInfoRef.current = cameraInfo;
@@ -260,6 +287,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
   useEffect(() => {
     scaleRef.current = scale;
   }, [scale]);
+
+  const handleScaleChange = (nextScale: number) => {
+    scene.setScale(nextScale);
+    const current = scene.getCamera();
+    setScale(current.scale);
+    setCameraInfo(current);
+  };
+
+  const handleSummonUnit = useCallback(
+    (type: PlayerUnitType) => {
+      necromancer.trySpawnUnit(type);
+    },
+    [necromancer]
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -434,24 +475,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       frame = window.requestAnimationFrame(render);
     };
 
-    const baseWidth = canvas.width || 1;
-    const baseHeight = canvas.height || 1;
-    const aspectRatio = baseWidth / baseHeight;
-
     const resize = () => {
       const wrapper = wrapperRef.current ?? canvas.parentElement;
       if (!wrapper) {
         return;
       }
-      const { clientWidth, clientHeight } = wrapper;
-      let targetWidth = clientWidth;
-      let targetHeight = targetWidth / aspectRatio;
-
-      if (targetHeight > clientHeight) {
-        targetHeight = clientHeight;
-        targetWidth = targetHeight * aspectRatio;
-      }
-
+      const targetWidth = Math.max(1, wrapper.clientWidth);
+      const targetHeight = Math.max(1, wrapper.clientHeight);
       const dpr = window.devicePixelRatio || 1;
       canvas.style.width = `${targetWidth}px`;
       canvas.style.height = `${targetHeight}px`;
@@ -505,37 +535,27 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
     };
   }, [scene]);
 
+  const brickInitialHp = brickInitialHpRef.current;
+
   return (
     <div className="scene-screen">
-      <div className="scene-toolbar">
-        <Button onClick={onExit}>Main Menu</Button>
-        <div className="scene-status">
-          <span>Time played: {formatted}</span>
-          <span>Particles: {brickCount}</span>
-          <span>Brick HP: {Math.round(brickTotalHp)}</span>
-          <span>Units: {unitCount} (HP {Math.round(unitTotalHp)})</span>
-          <label className="scene-zoom">
-            Zoom: {scale.toFixed(2)}x
-            <input
-              type="range"
-              min={scene.getScaleRange().min}
-              max={scene.getScaleRange().max}
-              step={0.05}
-              value={scale}
-              onChange={(event) => {
-                const next = Number.parseFloat(event.target.value);
-                scene.setScale(next);
-                const current = scene.getCamera();
-                setScale(current.scale);
-                setCameraInfo(current);
-              }}
-            />
-          </label>
-          <span>
-            Camera: x {cameraInfo.position.x.toFixed(1)}, y {cameraInfo.position.y.toFixed(1)}
-          </span>
-        </div>
-      </div>
+      <SceneToolbar
+        onExit={onExit}
+        brickTotalHp={brickTotalHp}
+        brickInitialHp={brickInitialHp}
+        unitCount={unitCount}
+        unitTotalHp={unitTotalHp}
+        scale={scale}
+        scaleRange={scaleRange}
+        onScaleChange={handleScaleChange}
+        cameraPosition={cameraInfo.position}
+      />
+      <SceneDebugPanel timeMs={timePlayed} brickCount={brickCount} />
+      <SceneSummoningPanel
+        resources={necromancerResources}
+        spawnOptions={necromancerOptions}
+        onSummon={handleSummonUnit}
+      />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
       </div>

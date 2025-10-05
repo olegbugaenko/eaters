@@ -9,6 +9,7 @@ import {
 import { BricksModule, BrickRuntimeState } from "./BricksModule";
 import {
   PlayerUnitType,
+  PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
   PlayerUnitRendererConfig,
   isPlayerUnitType,
@@ -171,6 +172,7 @@ export class PlayerUnitsModule implements GameModule {
       );
       resolvedPosition = collisionResolution.position;
       resolvedVelocity = collisionResolution.velocity;
+      const collidedBrickIds = collisionResolution.collidedBrickIds;
 
       if (!vectorEquals(resolvedPosition, movementState.position)) {
         this.movement.setBodyPosition(unit.movementId, resolvedPosition);
@@ -194,6 +196,19 @@ export class PlayerUnitsModule implements GameModule {
       if (!target) {
         target = this.resolveTarget(unit);
         plannedTargets.set(unit.id, target?.id ?? null);
+      }
+
+      if (collidedBrickIds.length > 0) {
+        for (const brickId of collidedBrickIds) {
+          const collidedBrick = this.bricks.getBrickState(brickId);
+          if (!collidedBrick) {
+            continue;
+          }
+          target = collidedBrick;
+          unit.targetBrickId = collidedBrick.id;
+          plannedTargets.set(unit.id, collidedBrick.id);
+          break;
+        }
       }
 
       const rotation = this.computeRotation(unit, target, resolvedVelocity);
@@ -222,6 +237,42 @@ export class PlayerUnitsModule implements GameModule {
 
   public setUnits(units: PlayerUnitSpawnData[]): void {
     this.applyUnits(units);
+  }
+
+  public spawnUnit(unit: PlayerUnitSpawnData): void {
+    const state = this.createUnitState(unit);
+    this.units.set(state.id, state);
+    this.unitOrder.push(state);
+    this.pushStats();
+  }
+
+  public unitStressTest(): void {
+    const center: SceneVector2 = { x: 100, y: 100 };
+    const spread = 100;
+    const spawnCount = 100;
+    const spawnUnits: PlayerUnitSpawnData[] = [];
+    const availableTypes = PLAYER_UNIT_TYPES;
+
+    if (availableTypes.length === 0) {
+      return;
+    }
+
+    for (let index = 0; index < spawnCount; index += 1) {
+      const unitType = availableTypes[index % availableTypes.length]!;
+      const offsetX = (Math.random() * 2 - 1) * spread;
+      const offsetY = (Math.random() * 2 - 1) * spread;
+      const position = this.clampToMap({
+        x: center.x + offsetX,
+        y: center.y + offsetY,
+      });
+
+      spawnUnits.push({
+        type: unitType,
+        position,
+      });
+    }
+
+    this.applyUnits(spawnUnits);
   }
 
   private pushStats(): void {
@@ -383,9 +434,14 @@ export class PlayerUnitsModule implements GameModule {
     }
 
     const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
-    const slowRadius = Math.max(unit.moveSpeed, attackRange);
-    const speedFactor = clampNumber(distanceOutsideRange / slowRadius, 0, 1);
-    const desiredSpeed = unit.moveSpeed * speedFactor;
+    if (!vectorHasLength(direction)) {
+      return ZERO_VECTOR;
+    }
+
+    const desiredSpeed = Math.max(
+      Math.min(unit.moveSpeed, distanceOutsideRange),
+      unit.moveSpeed * 0.25
+    );
     const desiredVelocity = scaleVector(direction, desiredSpeed);
 
     return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
@@ -405,14 +461,19 @@ export class PlayerUnitsModule implements GameModule {
     unit: PlayerUnitState,
     position: SceneVector2,
     velocity: SceneVector2
-  ): { position: SceneVector2; velocity: SceneVector2 } {
+  ): {
+    position: SceneVector2;
+    velocity: SceneVector2;
+    collidedBrickIds: string[];
+  } {
     if (unit.physicalSize <= 0) {
-      return { position, velocity };
+      return { position, velocity, collidedBrickIds: [] };
     }
 
     let resolvedPosition = { ...position };
     let resolvedVelocity = { ...velocity };
     let adjusted = false;
+    const collidedBrickIds = new Set<string>();
 
     for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
       let collided = false;
@@ -448,6 +509,7 @@ export class PlayerUnitsModule implements GameModule {
 
         collided = true;
         adjusted = true;
+        collidedBrickIds.add(brick.id);
       });
 
       if (!collided) {
@@ -456,11 +518,15 @@ export class PlayerUnitsModule implements GameModule {
     }
 
     if (!adjusted) {
-      return { position, velocity };
+      return { position, velocity, collidedBrickIds: [] };
     }
 
     resolvedPosition = this.clampToMap(resolvedPosition);
-    return { position: resolvedPosition, velocity: resolvedVelocity };
+    return {
+      position: resolvedPosition,
+      velocity: resolvedVelocity,
+      collidedBrickIds: [...collidedBrickIds],
+    };
   }
 
   private computeSteeringForce(
@@ -470,7 +536,7 @@ export class PlayerUnitsModule implements GameModule {
   ): SceneVector2 {
     const steering = subtractVectors(desiredVelocity, currentVelocity);
     const magnitude = vectorLength(steering);
-    const maxForce = Math.max(unit.moveAcceleration, 0);
+    const maxForce = Math.max(unit.moveAcceleration * unit.mass, 0);
     if (magnitude <= 0 || maxForce <= 0) {
       return ZERO_VECTOR;
     }
@@ -509,32 +575,22 @@ export class PlayerUnitsModule implements GameModule {
   ): void {
     unit.attackCooldown = unit.baseAttackInterval;
     const result = this.bricks.applyDamage(target.id, unit.baseAttackDamage);
+    const surviving = result.brick ?? target;
+
+    if (surviving) {
+      this.applyKnockBack(unit, direction, distance, surviving);
+    }
 
     if (result.destroyed) {
       unit.targetBrickId = null;
-      if (this.movement.getBodyState(unit.movementId)) {
-        const restoredVelocity = vectorHasLength(unit.lastNonZeroVelocity)
-          ? unit.lastNonZeroVelocity
-          : unit.preCollisionVelocity;
-        this.movement.setBodyVelocity(unit.movementId, {
-          x: restoredVelocity.x,
-          y: restoredVelocity.y,
-        });
-        if (vectorHasLength(restoredVelocity)) {
-          unit.lastNonZeroVelocity = cloneVector(restoredVelocity);
-        }
-      }
       return;
     }
 
-    const surviving = result.brick ?? target;
     const counterDamage = Math.max(surviving.baseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
       this.pushStats();
     }
-
-    this.applyKnockBack(unit, direction, distance, surviving);
 
     if (unit.hp <= 0) {
       this.removeUnit(unit);

@@ -7,6 +7,7 @@ import { PlayerUnitsModule } from "../src/logic/modules/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
 import { MapModule, PLAYER_UNIT_SPAWN_SAFE_RADIUS } from "../src/logic/modules/MapModule";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
+import { NecromancerModule } from "../src/logic/modules/NecromancerModule";
 
 const distanceSq = (a: { x: number; y: number }, b: { x: number; y: number }): number => {
   const dx = a.x - b.x;
@@ -22,8 +23,14 @@ describe("MapModule", () => {
     const bricks = new BricksModule({ scene, bridge, explosions });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement });
-    const maps = new MapModule({ scene, bridge, bricks, playerUnits });
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits,
+      scene,
+    });
+    const maps = new MapModule({ scene, bridge, bricks, playerUnits, necromancer });
 
+    necromancer.initialize();
     maps.initialize();
     maps.selectMap("initial");
 

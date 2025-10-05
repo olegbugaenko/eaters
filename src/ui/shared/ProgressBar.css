@@ -1,0 +1,58 @@
+.progress-bar {
+  --progress-bar-track-color: rgba(31, 111, 235, 0.25);
+  --progress-bar-fill-color: linear-gradient(90deg, #10b981, #22d3ee);
+  --progress-bar-label-color: #e5ecf4;
+
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.progress-bar__track {
+  position: relative;
+  background: var(--progress-bar-track-color);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar--horizontal .progress-bar__track {
+  width: 100%;
+  height: 1.05rem;
+  position: relative;
+}
+
+.progress-bar--vertical .progress-bar__track {
+  width: 0.85rem;
+  height: 100%;
+  min-height: 5rem;
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+}
+
+.progress-bar__fill {
+  background: var(--progress-bar-fill-color);
+  border-radius: inherit;
+  transition: width 160ms ease-out, height 160ms ease-out;
+}
+
+.progress-bar--horizontal .progress-bar__fill {
+  height: 100%;
+}
+
+.progress-bar--vertical .progress-bar__fill {
+  width: 100%;
+}
+
+.progress-bar__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--progress-bar-label-color);
+  position: absolute;
+  inset: 0;                     /* top:0; right:0; bottom:0; left:0 */
+  display: grid;
+  place-items: center;          /* ідеальне центрування по обох осях */
+  z-index: 1;                   /* над .progress-bar__fill */
+  pointer-events: none;
+}

@@ -1,0 +1,101 @@
+.scene-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1rem 2rem;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+.scene-toolbar__section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.scene-toolbar__section--center {
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.scene-toolbar__section--right {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.scene-toolbar__hp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 220px;
+}
+
+.scene-toolbar__hp-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a5b4c3;
+}
+
+.scene-toolbar__hp-bar {
+  width: 100%;
+  --progress-bar-track-color: rgba(31, 111, 235, 0.2);
+  --progress-bar-fill-color: linear-gradient(90deg, #f02931, #f2a33e);
+  --progress-bar-label-color: #f8fafc;
+}
+
+.scene-toolbar__units {
+  font-size: 0.95rem;
+  color: #ffffff;
+}
+
+.scene-toolbar__zoom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  color: #ffffff;
+}
+
+.scene-toolbar__zoom input[type="range"] {
+  width: 160px;
+}
+
+.scene-toolbar__camera {
+  font-size: 0.9rem;
+  color: #a5b4c3;
+}
+
+@media (max-width: 768px) {
+  .scene-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+
+  .scene-toolbar__section {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .scene-toolbar__section--center {
+    order: 3;
+  }
+
+  .scene-toolbar__section--right {
+    flex-direction: column;
+    align-items: center;
+  }
+}
