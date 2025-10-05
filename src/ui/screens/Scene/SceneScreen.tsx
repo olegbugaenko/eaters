@@ -442,24 +442,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit }) => {
       frame = window.requestAnimationFrame(render);
     };
 
-    const baseWidth = canvas.width || 1;
-    const baseHeight = canvas.height || 1;
-    const aspectRatio = baseWidth / baseHeight;
-
     const resize = () => {
       const wrapper = wrapperRef.current ?? canvas.parentElement;
       if (!wrapper) {
         return;
       }
-      const { clientWidth, clientHeight } = wrapper;
-      let targetWidth = clientWidth;
-      let targetHeight = targetWidth / aspectRatio;
-
-      if (targetHeight > clientHeight) {
-        targetHeight = clientHeight;
-        targetWidth = targetHeight * aspectRatio;
-      }
-
+      const targetWidth = Math.max(1, wrapper.clientWidth);
+      const targetHeight = Math.max(1, wrapper.clientHeight);
       const dpr = window.devicePixelRatio || 1;
       canvas.style.width = `${targetWidth}px`;
       canvas.style.height = `${targetHeight}px`;
