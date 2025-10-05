@@ -50,6 +50,7 @@ export class BrickObjectRenderer extends ObjectRenderer {
       })
     );
 
+    /*
     primitives.push(
       createStaticCirclePrimitive({
         center: instance.data.position,
@@ -59,6 +60,7 @@ export class BrickObjectRenderer extends ObjectRenderer {
         offset: innerOffset,
       })
     );
+    */
 
     return {
       staticPrimitives: primitives,

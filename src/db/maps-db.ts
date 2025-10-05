@@ -1,18 +1,18 @@
 import { BrickType } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/SceneObjectManager";
 import { PlayerUnitType } from "./player-units-db";
+import {
+  BrickShapeBlueprint,
+  buildBricksFromBlueprints,
+  circleWithBricks,
+} from "../logic/services/BrickLayoutService";
 
 export type MapId = "initial";
-
-export interface MapBrickGroupConfig {
-  readonly type: BrickType;
-  readonly count: number;
-}
 
 export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
-  readonly bricks: readonly MapBrickGroupConfig[];
+  readonly bricks: readonly BrickShapeBlueprint[];
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
 }
 
@@ -32,13 +32,70 @@ export interface MapPlayerUnitConfig {
 const MAPS_DB: Record<MapId, MapConfig> = {
   initial: {
     name: "Initial Grounds",
-    size: { width: 4000, height: 4000 },
-    bricks: [
-      {
-        type: "smallSquareGray",
-        count: 2000,
-      },
-    ],
+    size: { width: 3000, height: 3000 },
+    bricks: (() => {
+      const center: SceneVector2 = { x: 1500, y: 1500 };
+      const largeCircle = circleWithBricks("smallSquareGray", {
+        center,
+        innerRadius: 300,
+        outerRadius: 500,
+      });
+
+      const largeYellowCircle = circleWithBricks("smallSquareYellow", {
+        center,
+        innerRadius: 0,
+        outerRadius: 300,
+      });
+
+      const satelliteCount = 10;
+      const satelliteRadius = 125;
+      const orbitRadius = 500 + 200 + satelliteRadius;
+
+      const satellites = Array.from({ length: satelliteCount }, (_, index) => {
+        const angle = (index / satelliteCount) * Math.PI * 2;
+        const position: SceneVector2 = {
+          x: center.x + Math.cos(angle) * orbitRadius,
+          y: center.y + Math.sin(angle) * orbitRadius,
+        };
+        return circleWithBricks("smallSquareGray", {
+          center: position,
+          innerRadius: satelliteRadius*0.5,
+          outerRadius: satelliteRadius,
+        });
+      });
+
+      const satellitesInner = Array.from({ length: satelliteCount }, (_, index) => {
+        const angle = (index / satelliteCount) * Math.PI * 2;
+        const position: SceneVector2 = {
+          x: center.x + Math.cos(angle) * orbitRadius,
+          y: center.y + Math.sin(angle) * orbitRadius,
+        };
+        return circleWithBricks("smallSquareYellow", {
+          center: position,
+          innerRadius: 0,
+          outerRadius: satelliteRadius*0.5,
+        });
+      });
+
+      const satelliteCountOuter = 32;
+      const satelliteRadiusOuter = 100;
+      const orbitRadiusOuter = 500 + 700 + satelliteRadius;
+
+      const satellitesOuter = Array.from({ length: satelliteCountOuter }, (_, index) => {
+        const angle = (index / satelliteCountOuter) * Math.PI * 2;
+        const position: SceneVector2 = {
+          x: center.x + Math.cos(angle) * orbitRadiusOuter,
+          y: center.y + Math.sin(angle) * orbitRadiusOuter,
+        };
+        return circleWithBricks("smallSquareGray", {
+          center: position,
+          innerRadius: 0,
+          outerRadius: satelliteRadiusOuter,
+        });
+      });
+
+      return [largeCircle, largeYellowCircle, ...satellites, ...satellitesInner, ...satellitesOuter];
+    })(),
     playerUnits: [
       {
         type: "bluePentagon",
@@ -64,8 +121,9 @@ export const isMapId = (value: unknown): value is MapId =>
 export const getMapList = (): MapListEntry[] =>
   MAP_IDS.map((mapId) => {
     const config = MAPS_DB[mapId];
-    const brickCount = config.bricks.reduce((total, group) => total + group.count, 0);
-    const brickTypes = Array.from(new Set(config.bricks.map((group) => group.type)));
+    const bricks = buildBricksFromBlueprints(config.bricks);
+    const brickCount = bricks.length;
+    const brickTypes = Array.from(new Set(bricks.map((brick) => brick.type)));
     return {
       id: mapId,
       name: config.name,

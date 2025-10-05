@@ -7,7 +7,7 @@ import {
 
 import { DestructubleData } from "../logic/interfaces/destructuble";
 
-export type BrickType = "classic" | "smallSquareGray" | "blueRadial";
+export type BrickType = "classic" | "smallSquareGray" | "smallSquareYellow" | "blueRadial";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -57,6 +57,12 @@ const SMALL_SQUARE_GRAY_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.45, g: 0.45, b: 0.5, a: 1 } },
 ] as const;
 
+const SMALL_SQUARE_YELLOW_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.75, g: 0.75, b: 0.58, a: 1 } },
+  { offset: 0.55, color: { r: 0.6, g: 0.6, b: 0.45, a: 1 } },
+  { offset: 1, color: { r: 0.45, g: 0.45, b: 0.3, a: 1 } },
+] as const;
+
 const BLUE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.65, g: 0.8, b: 1, a: 1 } },
   { offset: 0.4, color: { r: 0.35, g: 0.6, b: 0.95, a: 0.9 } },
@@ -101,6 +107,33 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
     destructubleData: {
       maxHp: 5,
+      armor: 0,
+      baseDamage: 2,
+      brickKnockBackDistance: 70,
+      brickKnockBackSpeed: 180,
+      physicalSize: 16,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
+    },
+  },
+  smallSquareYellow: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 12,
+      stops: SMALL_SQUARE_YELLOW_GRADIENT,
+    },
+    stroke: { color: { r: 0.3, g: 0.3, b: 0.2, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 25,
       armor: 0,
       baseDamage: 2,
       brickKnockBackDistance: 70,
