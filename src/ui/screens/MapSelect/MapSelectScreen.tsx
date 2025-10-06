@@ -72,7 +72,11 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
           </div>
         </header>
 
-        <div className="map-select-panel">
+        <div
+          className={`map-select-panel${
+            activeTab === "skills" ? " map-select-panel--skills" : ""
+          }`}
+        >
           {activeTab === "maps" ? (
             <>
               <div className="map-select-stats">
