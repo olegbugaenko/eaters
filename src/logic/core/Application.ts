@@ -14,6 +14,7 @@ import { PlayerUnitsModule } from "../modules/PlayerUnitsModule";
 import { MovementService } from "../services/MovementService";
 import { NecromancerModule } from "../modules/NecromancerModule";
 import { ResourcesModule } from "../modules/ResourcesModule";
+import { SkillTreeModule } from "../modules/SkillTreeModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -22,6 +23,7 @@ export class Application {
   private mapModule: MapModule;
   private necromancerModule: NecromancerModule;
   private resourcesModule: ResourcesModule;
+  private skillTreeModule: SkillTreeModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -39,6 +41,12 @@ export class Application {
       bridge: this.dataBridge,
     });
     this.resourcesModule = resourcesModule;
+
+    const skillTreeModule = new SkillTreeModule({
+      bridge: this.dataBridge,
+      resources: resourcesModule,
+    });
+    this.skillTreeModule = skillTreeModule;
 
     const timeModule = new TestTimeModule({
       bridge: this.dataBridge,
@@ -83,6 +91,7 @@ export class Application {
     });
 
     this.registerModule(resourcesModule);
+    this.registerModule(skillTreeModule);
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
     this.registerModule(playerUnitsModule);
@@ -139,6 +148,10 @@ export class Application {
 
   public getNecromancer(): NecromancerModule {
     return this.necromancerModule;
+  }
+
+  public getSkillTree(): SkillTreeModule {
+    return this.skillTreeModule;
   }
 
   public restartCurrentMap(): void {

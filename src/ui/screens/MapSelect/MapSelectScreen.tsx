@@ -14,6 +14,7 @@ import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   ResourceAmountPayload,
 } from "../../../logic/modules/ResourcesModule";
+import { SkillTreeView } from "./SkillTree/SkillTreeView";
 import "./MapSelectScreen.css";
 
 interface MapSelectScreenProps {
@@ -31,13 +32,6 @@ const formatTime = (timeMs: number): string => {
   const seconds = (totalSeconds % 60).toString().padStart(2, "0");
   return `${minutes}:${seconds}`;
 };
-
-const SkillTreePlaceholder: React.FC = () => (
-  <div className="map-select-skill-placeholder">
-    <h2>Skill Tree</h2>
-    <p>Research in progress. Unlocks and upgrades will appear here in a future update.</p>
-  </div>
-);
 
 export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExit }) => {
   const { app, bridge } = useAppLogic();
@@ -57,6 +51,22 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
 
   return (
     <div className="map-select-screen">
+      <aside className="map-select-sidebar">
+        <h2 className="map-select-sidebar__title">Resources</h2>
+        {resources.length > 0 ? (
+          <ul className="map-select-resources">
+            {resources.map((resource) => (
+              <li key={resource.id} className="map-select-resources__item">
+                <span className="map-select-resources__name">{resource.name}</span>
+                <span className="map-select-resources__value">{resource.amount}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="map-select-resources__empty">No resources collected yet.</p>
+        )}
+      </aside>
+
       <div className="map-select-main">
         <header className="map-select-header">
           <h1>Command Center</h1>
@@ -78,7 +88,11 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
           </div>
         </header>
 
-        <div className="map-select-panel">
+        <div
+          className={`map-select-panel${
+            activeTab === "skills" ? " map-select-panel--skills" : ""
+          }`}
+        >
           {activeTab === "maps" ? (
             <>
               <div className="map-select-stats">
@@ -147,26 +161,10 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
               </div>
             </>
           ) : (
-            <SkillTreePlaceholder />
+            <SkillTreeView />
           )}
         </div>
       </div>
-
-      <aside className="map-select-sidebar">
-        <h2 className="map-select-sidebar__title">Resources</h2>
-        {resources.length > 0 ? (
-          <ul className="map-select-resources">
-            {resources.map((resource) => (
-              <li key={resource.id} className="map-select-resources__item">
-                <span className="map-select-resources__name">{resource.name}</span>
-                <span className="map-select-resources__value">{resource.amount}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="map-select-resources__empty">No resources collected yet.</p>
-        )}
-      </aside>
     </div>
   );
 };
