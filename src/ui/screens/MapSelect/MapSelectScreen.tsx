@@ -51,6 +51,22 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
 
   return (
     <div className="map-select-screen">
+      <aside className="map-select-sidebar">
+        <h2 className="map-select-sidebar__title">Resources</h2>
+        {resources.length > 0 ? (
+          <ul className="map-select-resources">
+            {resources.map((resource) => (
+              <li key={resource.id} className="map-select-resources__item">
+                <span className="map-select-resources__name">{resource.name}</span>
+                <span className="map-select-resources__value">{resource.amount}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="map-select-resources__empty">No resources collected yet.</p>
+        )}
+      </aside>
+
       <div className="map-select-main">
         <header className="map-select-header">
           <h1>Command Center</h1>
@@ -149,22 +165,6 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
           )}
         </div>
       </div>
-
-      <aside className="map-select-sidebar">
-        <h2 className="map-select-sidebar__title">Resources</h2>
-        {resources.length > 0 ? (
-          <ul className="map-select-resources">
-            {resources.map((resource) => (
-              <li key={resource.id} className="map-select-resources__item">
-                <span className="map-select-resources__name">{resource.name}</span>
-                <span className="map-select-resources__value">{resource.amount}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="map-select-resources__empty">No resources collected yet.</p>
-        )}
-      </aside>
     </div>
   );
 };
