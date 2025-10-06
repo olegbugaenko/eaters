@@ -23,6 +23,14 @@
   color: #facc15;
 }
 
+.resource-cost__item--stone {
+  color: #cbd5f5;
+}
+
+.resource-cost__item--sand {
+  color: #fbbf24;
+}
+
 .resource-cost__item--missing {
   color: #f87171;
 }

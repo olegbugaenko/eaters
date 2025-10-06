@@ -14,6 +14,7 @@ import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   ResourceAmountPayload,
 } from "../../../logic/modules/ResourcesModule";
+import { SkillTreeView } from "./SkillTree/SkillTreeView";
 import "./MapSelectScreen.css";
 
 interface MapSelectScreenProps {
@@ -31,13 +32,6 @@ const formatTime = (timeMs: number): string => {
   const seconds = (totalSeconds % 60).toString().padStart(2, "0");
   return `${minutes}:${seconds}`;
 };
-
-const SkillTreePlaceholder: React.FC = () => (
-  <div className="map-select-skill-placeholder">
-    <h2>Skill Tree</h2>
-    <p>Research in progress. Unlocks and upgrades will appear here in a future update.</p>
-  </div>
-);
 
 export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExit }) => {
   const { app, bridge } = useAppLogic();
@@ -147,7 +141,7 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ onStart, onExi
               </div>
             </>
           ) : (
-            <SkillTreePlaceholder />
+            <SkillTreeView />
           )}
         </div>
       </div>
