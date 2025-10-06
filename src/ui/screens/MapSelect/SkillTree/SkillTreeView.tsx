@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type {
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from "react";
 import { useAppLogic } from "../../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../../shared/useBridgeValue";
 import {
@@ -25,6 +35,16 @@ import "./SkillTreeView.css";
 const CELL_SIZE_X = 180;
 const CELL_SIZE_Y = 170;
 const TREE_MARGIN = 120;
+const DRAG_THRESHOLD = 3;
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 2.5;
+const ZOOM_SENSITIVITY = 0.0015;
+
+interface ViewTransform {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
 
 interface SkillTreeEdge {
   id: string;
@@ -166,6 +186,24 @@ export const SkillTreeView: React.FC = () => {
     []
   );
   const [hoveredId, setHoveredId] = useState<SkillId | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const panStateRef = useRef({
+    isDown: false,
+    isPanning: false,
+    pointerId: null as number | null,
+    lastX: 0,
+    lastY: 0,
+  });
+  const didPanRef = useRef(false);
+  const hasInitializedViewRef = useRef(false);
+  const previousViewportSizeRef = useRef({ width: 0, height: 0 });
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [viewTransform, setViewTransform] = useState<ViewTransform>({
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+  });
   const skillTreeModule = useMemo(() => app.getSkillTree(), [app]);
 
   const nodes = skillTree.nodes;
@@ -178,6 +216,102 @@ export const SkillTreeView: React.FC = () => {
 
   const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
+
+  useEffect(() => {
+    const element = viewportRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setViewportSize({ width: rect.width, height: rect.height });
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) {
+          const { width, height } = entry.contentRect;
+          setViewportSize({ width, height });
+        }
+      });
+      observer.observe(element);
+      return () => {
+        observer.disconnect();
+      };
+    }
+
+    window.addEventListener("resize", updateSize);
+    return () => {
+      window.removeEventListener("resize", updateSize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hasInitializedViewRef.current) {
+      return;
+    }
+
+    if (!viewportSize.width || !viewportSize.height || layout.positions.size === 0) {
+      return;
+    }
+
+    const originNode = nodes.find(
+      (node) => node.position.x === 0 && node.position.y === 0
+    );
+    const targetPosition = originNode
+      ? layout.positions.get(originNode.id)
+      : null;
+    const fallbackPosition = {
+      x: layout.width / 2,
+      y: layout.height / 2,
+    };
+    const { x, y } = targetPosition ?? fallbackPosition;
+
+    setViewTransform((current) => {
+      const next = {
+        ...current,
+        offsetX: viewportSize.width / 2 - x * current.scale,
+        offsetY: viewportSize.height / 2 - y * current.scale,
+      };
+      return next;
+    });
+    previousViewportSizeRef.current = viewportSize;
+    hasInitializedViewRef.current = true;
+  }, [layout, nodes, viewportSize]);
+
+  useEffect(() => {
+    if (!hasInitializedViewRef.current) {
+      previousViewportSizeRef.current = viewportSize;
+      return;
+    }
+
+    const previousSize = previousViewportSizeRef.current;
+    if (
+      previousSize.width === viewportSize.width &&
+      previousSize.height === viewportSize.height
+    ) {
+      return;
+    }
+
+    setViewTransform((current) => {
+      const focusWorldX =
+        (previousSize.width / 2 - current.offsetX) / current.scale;
+      const focusWorldY =
+        (previousSize.height / 2 - current.offsetY) / current.scale;
+
+      return {
+        ...current,
+        offsetX: viewportSize.width / 2 - focusWorldX * current.scale,
+        offsetY: viewportSize.height / 2 - focusWorldY * current.scale,
+      };
+    });
+
+    previousViewportSizeRef.current = viewportSize;
+  }, [viewportSize]);
 
   const fallbackId: SkillId | null = nodes[0]?.id ?? null;
   const activeId = hoveredId ?? fallbackId;
@@ -199,16 +333,161 @@ export const SkillTreeView: React.FC = () => {
     [skillTreeModule]
   );
 
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+      const state = panStateRef.current;
+      state.isDown = true;
+      state.isPanning = false;
+      state.pointerId = event.pointerId;
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
+      didPanRef.current = false;
+    },
+    []
+  );
+
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const state = panStateRef.current;
+      if (!state.isDown || state.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - state.lastX;
+      const deltaY = event.clientY - state.lastY;
+
+      if (!state.isPanning) {
+        const distanceSquared = deltaX * deltaX + deltaY * deltaY;
+        if (distanceSquared < DRAG_THRESHOLD * DRAG_THRESHOLD) {
+          return;
+        }
+
+        state.isPanning = true;
+        didPanRef.current = true;
+        setIsDragging(true);
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignore pointer capture errors.
+        }
+      }
+
+      if (state.isPanning) {
+        event.preventDefault();
+        setViewTransform((current) => ({
+          ...current,
+          offsetX: current.offsetX + deltaX,
+          offsetY: current.offsetY + deltaY,
+        }));
+      }
+
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
+    },
+    []
+  );
+
+  const endPan = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const state = panStateRef.current;
+    if (!state.isDown || state.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const wasPanning = state.isPanning;
+    if (wasPanning) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Ignore pointer capture errors.
+      }
+    }
+
+    state.isDown = false;
+    state.isPanning = false;
+    state.pointerId = null;
+    state.lastX = 0;
+    state.lastY = 0;
+
+    if (wasPanning) {
+      setIsDragging(false);
+      setTimeout(() => {
+        didPanRef.current = false;
+      }, 0);
+    } else {
+      didPanRef.current = false;
+    }
+  }, []);
+
+  const handleWheel = useCallback(
+    (event: ReactWheelEvent<HTMLDivElement>) => {
+      if (!viewportSize.width || !viewportSize.height) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const zoomFactor = Math.exp(-event.deltaY * ZOOM_SENSITIVITY);
+
+      setViewTransform((current) => {
+        const proposedScale = current.scale * zoomFactor;
+        const nextScale = Math.min(Math.max(proposedScale, MIN_SCALE), MAX_SCALE);
+
+        if (Math.abs(nextScale - current.scale) < 0.0001) {
+          return current;
+        }
+
+        const focusWorldX =
+          (viewportSize.width / 2 - current.offsetX) / current.scale;
+        const focusWorldY =
+          (viewportSize.height / 2 - current.offsetY) / current.scale;
+
+        const offsetX = viewportSize.width / 2 - focusWorldX * nextScale;
+        const offsetY = viewportSize.height / 2 - focusWorldY * nextScale;
+
+        return {
+          scale: nextScale,
+          offsetX,
+          offsetY,
+        };
+      });
+    },
+    [viewportSize]
+  );
+
+  const viewportClassName = useMemo(
+    () =>
+      isDragging
+        ? "skill-tree__viewport skill-tree__viewport--dragging"
+        : "skill-tree__viewport",
+    [isDragging]
+  );
+
+  const canvasStyle = useMemo(
+    () => ({
+      width: `${Math.max(layout.width, 360)}px`,
+      height: `${Math.max(layout.height, 320)}px`,
+      transform: `translate(${viewTransform.offsetX}px, ${viewTransform.offsetY}px) scale(${viewTransform.scale})`,
+      transformOrigin: "0 0",
+    }),
+    [layout.height, layout.width, viewTransform]
+  );
+
   return (
     <div className="skill-tree">
-      <div className="skill-tree__viewport">
-        <div
-          className="skill-tree__canvas"
-          style={{
-            width: `${Math.max(layout.width, 360)}px`,
-            height: `${Math.max(layout.height, 320)}px`,
-          }}
-        >
+      <div
+        ref={viewportRef}
+        className={viewportClassName}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+        onPointerLeave={endPan}
+        onWheel={handleWheel}
+      >
+        <div className="skill-tree__canvas" style={canvasStyle}>
           <svg
             className="skill-tree__links"
             viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
@@ -258,7 +537,7 @@ export const SkillTreeView: React.FC = () => {
                 onFocus={() => setHoveredId(node.id)}
                 onBlur={() => setHoveredId((current) => (current === node.id ? null : current))}
                 onClick={() => {
-                  if (!inactive) {
+                  if (!inactive && !didPanRef.current) {
                     handleNodeClick(node.id);
                   }
                 }}
