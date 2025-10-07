@@ -14,6 +14,7 @@ import {
   normalizeResourceAmount,
 } from "../../db/resources-db";
 import { ResourcesModule } from "./ResourcesModule";
+import { BonusesModule } from "./BonusesModule";
 
 export const SKILL_TREE_STATE_BRIDGE_KEY = "skills/tree";
 
@@ -47,6 +48,7 @@ export const DEFAULT_SKILL_TREE_STATE: SkillTreeBridgePayload = Object.freeze({
 interface SkillTreeModuleOptions {
   bridge: DataBridge;
   resources: ResourcesModule;
+  bonuses: BonusesModule;
 }
 
 interface SkillTreeSaveData {
@@ -76,19 +78,25 @@ export class SkillTreeModule implements GameModule {
 
   private readonly bridge: DataBridge;
   private readonly resources: ResourcesModule;
+  private readonly bonuses: BonusesModule;
   private levels: SkillLevelMap = createDefaultLevels();
 
   constructor(options: SkillTreeModuleOptions) {
     this.bridge = options.bridge;
     this.resources = options.resources;
+    this.bonuses = options.bonuses;
+    this.registerBonusSources();
+    this.syncAllBonusLevels();
   }
 
   public initialize(): void {
+    this.syncAllBonusLevels();
     this.pushState();
   }
 
   public reset(): void {
     this.levels = createDefaultLevels();
+    this.syncAllBonusLevels();
     this.pushState();
   }
 
@@ -97,6 +105,7 @@ export class SkillTreeModule implements GameModule {
     if (parsed) {
       this.levels = parsed;
     }
+    this.syncAllBonusLevels();
     this.pushState();
   }
 
@@ -128,6 +137,7 @@ export class SkillTreeModule implements GameModule {
     }
 
     this.levels[id] = targetLevel;
+    this.syncBonusLevel(id);
     this.pushState();
     return true;
   }
@@ -208,5 +218,27 @@ export class SkillTreeModule implements GameModule {
       }
     });
     return next;
+  }
+
+  private registerBonusSources(): void {
+    SKILL_IDS.forEach((id) => {
+      const config = getSkillConfig(id);
+      const sourceId = this.getBonusSourceId(id);
+      this.bonuses.registerSource(sourceId, config.effects);
+    });
+  }
+
+  private syncAllBonusLevels(): void {
+    SKILL_IDS.forEach((id) => this.syncBonusLevel(id));
+  }
+
+  private syncBonusLevel(id: SkillId): void {
+    const sourceId = this.getBonusSourceId(id);
+    const level = this.levels[id] ?? 0;
+    this.bonuses.setBonusCurrentLevel(sourceId, level);
+  }
+
+  private getBonusSourceId(id: SkillId): string {
+    return `skill_${id}`;
   }
 }

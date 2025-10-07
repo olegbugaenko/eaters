@@ -15,6 +15,7 @@ import { MovementService } from "../services/MovementService";
 import { NecromancerModule } from "../modules/NecromancerModule";
 import { ResourcesModule } from "../modules/ResourcesModule";
 import { SkillTreeModule } from "../modules/SkillTreeModule";
+import { BonusesModule } from "../modules/BonusesModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -24,6 +25,7 @@ export class Application {
   private necromancerModule: NecromancerModule;
   private resourcesModule: ResourcesModule;
   private skillTreeModule: SkillTreeModule;
+  private bonusesModule: BonusesModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -37,6 +39,9 @@ export class Application {
     this.serviceContainer.register("sceneObjects", sceneObjects);
     this.serviceContainer.register("movement", movementService);
 
+    const bonusesModule = new BonusesModule();
+    this.bonusesModule = bonusesModule;
+
     const resourcesModule = new ResourcesModule({
       bridge: this.dataBridge,
     });
@@ -45,6 +50,7 @@ export class Application {
     const skillTreeModule = new SkillTreeModule({
       bridge: this.dataBridge,
       resources: resourcesModule,
+      bonuses: bonusesModule,
     });
     this.skillTreeModule = skillTreeModule;
 
@@ -61,12 +67,14 @@ export class Application {
       bridge: this.dataBridge,
       explosions: explosionModule,
       resources: resourcesModule,
+      bonuses: bonusesModule,
     });
     const playerUnitsModule = new PlayerUnitsModule({
       scene: sceneObjects,
       bricks: bricksModule,
       bridge: this.dataBridge,
       movement: movementService,
+      bonuses: bonusesModule,
       onAllUnitsDefeated: () => {
         this.handleAllUnitsDefeated();
       },
@@ -75,6 +83,7 @@ export class Application {
       bridge: this.dataBridge,
       playerUnits: playerUnitsModule,
       scene: sceneObjects,
+      bonuses: bonusesModule,
     });
     this.mapModule = new MapModule({
       scene: sceneObjects,
@@ -90,6 +99,7 @@ export class Application {
       explosions: explosionModule,
     });
 
+    this.registerModule(bonusesModule);
     this.registerModule(resourcesModule);
     this.registerModule(skillTreeModule);
     this.registerModule(timeModule);
@@ -148,6 +158,10 @@ export class Application {
 
   public getNecromancer(): NecromancerModule {
     return this.necromancerModule;
+  }
+
+  public getBonuses(): BonusesModule {
+    return this.bonusesModule;
   }
 
   public getSkillTree(): SkillTreeModule {

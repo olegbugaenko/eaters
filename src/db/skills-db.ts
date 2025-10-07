@@ -1,4 +1,5 @@
 import { ResourceAmount } from "./resources-db";
+import { BonusEffectMap } from "../types/bonuses";
 
 export interface SkillNodePosition {
   readonly x: number;
@@ -13,7 +14,7 @@ export interface SkillConfig {
   readonly description: string;
   readonly nodePosition: SkillNodePosition;
   readonly maxLevel: number;
-  readonly effects: Record<string, unknown>;
+  readonly effects: BonusEffectMap;
   readonly nodesRequired: Partial<Record<SkillId, number>>;
   readonly cost: SkillCostFunction;
 }
@@ -59,7 +60,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Foundational studies in sorting shattered bricks, enabling steadier stone yields.",
     nodePosition: { x: 0, y: 0 },
     maxLevel: 3,
-    effects: {},
+    effects: {
+      brick_rewards: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
     nodesRequired: {},
     cost: createStoneCost(6, 1.35),
   },
@@ -70,7 +75,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Assign dedicated haulers who keep rubble moving and expose richer stone veins.",
     nodePosition: { x: -1, y: 1 },
     maxLevel: 4,
-    effects: {},
+    effects: {
+      brick_rewards: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
     nodesRequired: { stone_lore: 1 },
     cost: createStoneCost(10, 1.4),
   },
@@ -81,7 +90,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
     nodePosition: { x: -2, y: 2 },
     maxLevel: 3,
-    effects: {},
+    effects: {
+      blue_vanguard_attack_multiplier: {
+        multiplier: (level) => 1 + 0.18 * level,
+      },
+    },
     nodesRequired: { quarry_overseers: 2 },
     cost: createStoneCost(16, 1.5),
   },
@@ -92,7 +105,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Lay channelled footings so every slab stacks true, preparing for future defenses.",
     nodePosition: { x: -1, y: 3 },
     maxLevel: 2,
-    effects: {},
+    effects: {
+      sanity_cap: {
+        income: (level) => 6 * level,
+      },
+    },
     nodesRequired: { granite_bonding: 1 },
     cost: createMixedCost(18, 1.5, 6, 1.25),
   },
@@ -103,7 +120,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Refine sieving rituals that separate glimmering sand from dull dust motes.",
     nodePosition: { x: 1, y: 1 },
     maxLevel: 4,
-    effects: {},
+    effects: {
+      mana_cap: {
+        income: (level) => 4 * level,
+      },
+    },
     nodesRequired: { stone_lore: 1 },
     cost: createSandCost(8, 1.35),
   },
@@ -114,7 +135,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Weave molten filaments into frameworks that stabilize fragile sand constructs.",
     nodePosition: { x: 2, y: 2 },
     maxLevel: 3,
-    effects: {},
+    effects: {
+      mana_regen: {
+        income: (level) => 0.05 * level,
+      },
+    },
     nodesRequired: { sand_scribing: 2 },
     cost: createSandCost(14, 1.45),
   },
@@ -125,7 +150,14 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Channel heat through mirrored chambers, transmuting sand surges into lasting stores.",
     nodePosition: { x: 1, y: 3 },
     maxLevel: 2,
-    effects: {},
+    effects: {
+      mana_cap: {
+        income: (level) => 6 * level,
+      },
+      mana_regen: {
+        income: (level) => 0.08 * level,
+      },
+    },
     nodesRequired: { glass_latticework: 1 },
     cost: createMixedCost(20, 1.55, 12, 1.4),
   },
