@@ -30,6 +30,7 @@ import {
 } from "../../../../db/resources-db";
 import { SkillId, getSkillConfig } from "../../../../db/skills-db";
 import { ResourceCostDisplay } from "../../../shared/ResourceCostDisplay";
+import { BonusEffectsPreviewList } from "../../../shared/BonusEffectsPreviewList";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;
@@ -572,6 +573,14 @@ export const SkillTreeView: React.FC = () => {
               </span>
             </div>
             <p className="skill-tree__details-description">{activeNode.description}</p>
+            <div className="skill-tree__details-section">
+              <h3>Bonuses</h3>
+              <BonusEffectsPreviewList
+                className="skill-tree__bonus-effects"
+                effects={activeNode.bonusEffects}
+                emptyLabel="No bonuses from this skill."
+              />
+            </div>
             <div className="skill-tree__details-section">
               <h3>Requirements</h3>
               {activeNode.requirements.length > 0 ? (

@@ -7,6 +7,7 @@ import {
   SkillNodePosition,
   getSkillConfig,
 } from "../../db/skills-db";
+import { BonusEffectPreview } from "../../types/bonuses";
 import {
   RESOURCE_IDS,
   ResourceStockpile,
@@ -35,6 +36,7 @@ export interface SkillNodeBridgePayload {
   unlocked: boolean;
   maxed: boolean;
   nextCost: ResourceStockpile | null;
+  bonusEffects: BonusEffectPreview[];
 }
 
 export interface SkillTreeBridgePayload {
@@ -181,6 +183,7 @@ export class SkillTreeModule implements GameModule {
       unlocked,
       maxed: level >= config.maxLevel,
       nextCost,
+      bonusEffects: this.bonuses.getBonusEffects(this.getBonusSourceId(id)),
     };
   }
 
