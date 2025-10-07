@@ -9,28 +9,28 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { useAppLogic } from "../../../contexts/AppLogicContext";
-import { useBridgeValue } from "../../../shared/useBridgeValue";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { useBridgeValue } from "@shared/useBridgeValue";
 import {
   DEFAULT_SKILL_TREE_STATE,
   SKILL_TREE_STATE_BRIDGE_KEY,
   SkillNodeBridgePayload,
   SkillTreeBridgePayload,
-} from "../../../../logic/modules/SkillTreeModule";
+} from "@logic/modules/SkillTreeModule";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   ResourceAmountPayload,
-} from "../../../../logic/modules/ResourcesModule";
+} from "@logic/modules/ResourcesModule";
 import {
   RESOURCE_IDS,
   ResourceId,
   ResourceStockpile,
   createEmptyResourceStockpile,
   getResourceConfig,
-} from "../../../../db/resources-db";
-import { SkillId, getSkillConfig } from "../../../../db/skills-db";
-import { ResourceCostDisplay } from "../../../shared/ResourceCostDisplay";
-import { BonusEffectsPreviewList } from "../../../shared/BonusEffectsPreviewList";
+} from "@db/resources-db";
+import { SkillId, getSkillConfig } from "@db/skills-db";
+import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
+import { BonusEffectsPreviewList } from "@shared/BonusEffectsPreviewList";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;

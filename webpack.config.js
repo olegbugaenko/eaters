@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
-  
+
   return {
     entry: './src/index.tsx',
     output: {
@@ -15,6 +15,11 @@ module.exports = (env, argv) => {
       extensions: ['.tsx', '.ts', '.js', '.jsx'],
       alias: {
         '@': path.resolve(__dirname, 'src'),
+        '@ui': path.resolve(__dirname, 'src/ui'),
+        '@screens': path.resolve(__dirname, 'src/ui/screens'),
+        '@shared': path.resolve(__dirname, 'src/ui/shared'),
+        '@logic': path.resolve(__dirname, 'src/logic'),
+        '@db': path.resolve(__dirname, 'src/db'),
       },
     },
     module: {
@@ -27,6 +32,12 @@ module.exports = (env, argv) => {
         {
           test: /\.css$/,
           use: ['style-loader', 'css-loader'],
+          exclude: /theme\.css$/,
+        },
+        {
+          test: /theme\.css$/,
+          use: ['style-loader', 'css-loader'],
+          sideEffects: true,
         },
         {
           test: /\.(png|jpg|jpeg|gif|svg)$/i,

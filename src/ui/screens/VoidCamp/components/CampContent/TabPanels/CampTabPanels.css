@@ -1,0 +1,12 @@
+.camp-tab-panels__skill-tree {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.camp-tab-panels__skill-tree > .skill-tree {
+  flex: 1;
+  min-height: 0;
+}

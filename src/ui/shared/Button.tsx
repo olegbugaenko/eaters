@@ -8,7 +8,7 @@ interface ButtonProps extends PropsWithChildren {
 
 export const Button: React.FC<ButtonProps> = ({ children, onClick, disabled }) => {
   return (
-    <button className="button" onClick={onClick} disabled={disabled}>
+    <button className="button primary-button" onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );

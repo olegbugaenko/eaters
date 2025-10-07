@@ -3,10 +3,10 @@ import "./App.css";
 import { Application } from "./logic/core/Application";
 import { AppLogicContext } from "./ui/contexts/AppLogicContext";
 import { SaveSlotSelectScreen } from "./ui/screens/SaveSlotSelect/SaveSlotSelectScreen";
-import { MapSelectScreen } from "./ui/screens/MapSelect/MapSelectScreen";
+import { VoidCampScreen } from "@screens/VoidCamp/VoidCampScreen";
 import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
 
-type Screen = "save-select" | "map-select" | "scene";
+type Screen = "save-select" | "void-camp" | "scene";
 
 const SAVE_SLOTS = ["1", "2", "3"];
 
@@ -29,17 +29,16 @@ function App(): JSX.Element {
             slots={SAVE_SLOTS}
             onSlotSelect={(slot) => {
               app.selectSlot(slot);
-              setScreen("map-select");
+              setScreen("void-camp");
             }}
           />
         )}
-        {screen === "map-select" && (
-          <MapSelectScreen
+        {screen === "void-camp" && (
+          <VoidCampScreen
             onStart={() => {
               setScreen("scene");
             }}
             onExit={() => {
-              app.returnToMainMenu();
               setScreen("save-select");
             }}
           />
@@ -51,7 +50,7 @@ function App(): JSX.Element {
               setScreen("save-select");
             }}
             onLeaveToMapSelect={() => {
-              setScreen("map-select");
+              setScreen("void-camp");
             }}
           />
         )}
