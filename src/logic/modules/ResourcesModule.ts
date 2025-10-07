@@ -27,11 +27,15 @@ export interface ResourceRunSummaryItem extends ResourceAmountPayload {
 export interface ResourceRunSummaryPayload {
   completed: boolean;
   resources: ResourceRunSummaryItem[];
+  bricksDestroyed: number;
+  totalBricksDestroyed: number;
 }
 
 export const DEFAULT_RESOURCE_RUN_SUMMARY: ResourceRunSummaryPayload = Object.freeze({
   completed: false,
   resources: [],
+  bricksDestroyed: 0,
+  totalBricksDestroyed: 0,
 });
 
 interface ResourcesModuleOptions {
@@ -40,6 +44,7 @@ interface ResourcesModuleOptions {
 
 interface ResourcesSaveData {
   totals: ResourceAmount;
+  bricksDestroyed?: number;
 }
 
 export class ResourcesModule implements GameModule {
@@ -50,6 +55,8 @@ export class ResourcesModule implements GameModule {
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
   private summaryCompleted = false;
+  private totalBricksDestroyed = 0;
+  private runBricksDestroyed = 0;
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
@@ -65,6 +72,8 @@ export class ResourcesModule implements GameModule {
     this.runGains = createEmptyResourceStockpile();
     this.runActive = false;
     this.summaryCompleted = false;
+    this.totalBricksDestroyed = 0;
+    this.runBricksDestroyed = 0;
     this.pushTotals();
     this.pushRunSummary();
   }
@@ -72,7 +81,9 @@ export class ResourcesModule implements GameModule {
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
     if (parsed) {
-      this.totals = parsed;
+      this.totals = parsed.totals;
+      this.totalBricksDestroyed = parsed.bricksDestroyed;
+      this.runBricksDestroyed = 0;
     }
     this.pushTotals();
     this.pushRunSummary();
@@ -81,6 +92,7 @@ export class ResourcesModule implements GameModule {
   public save(): unknown {
     return {
       totals: { ...this.totals },
+      bricksDestroyed: this.totalBricksDestroyed,
     } satisfies ResourcesSaveData;
   }
 
@@ -92,6 +104,7 @@ export class ResourcesModule implements GameModule {
     this.runGains = createEmptyResourceStockpile();
     this.runActive = true;
     this.summaryCompleted = false;
+    this.runBricksDestroyed = 0;
     this.pushRunSummary();
   }
 
@@ -121,6 +134,17 @@ export class ResourcesModule implements GameModule {
       if (this.summaryCompleted || !this.runActive) {
         this.pushRunSummary();
       }
+    }
+  }
+
+  public notifyBrickDestroyed(): void {
+    this.totalBricksDestroyed += 1;
+    if (this.runActive) {
+      this.runBricksDestroyed += 1;
+    }
+
+    if (this.summaryCompleted || !this.runActive) {
+      this.pushRunSummary();
     }
   }
 
@@ -166,6 +190,8 @@ export class ResourcesModule implements GameModule {
     const payload: ResourceRunSummaryPayload = {
       completed: this.summaryCompleted,
       resources: this.createRunSummaryItems(),
+      bricksDestroyed: this.runBricksDestroyed,
+      totalBricksDestroyed: this.totalBricksDestroyed,
     };
     this.bridge.setValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY, payload);
   }
@@ -193,7 +219,9 @@ export class ResourcesModule implements GameModule {
     });
   }
 
-  private parseSaveData(data: unknown): ResourceStockpile | null {
+  private parseSaveData(
+    data: unknown
+  ): { totals: ResourceStockpile; bricksDestroyed: number } | null {
     if (
       typeof data !== "object" ||
       data === null ||
@@ -202,7 +230,17 @@ export class ResourcesModule implements GameModule {
       return null;
     }
 
-    const totals = (data as ResourcesSaveData).totals;
-    return normalizeResourceAmount(totals);
+    const { totals, bricksDestroyed } = data as ResourcesSaveData;
+    return {
+      totals: normalizeResourceAmount(totals),
+      bricksDestroyed: sanitizeBrickCount(bricksDestroyed),
+    };
   }
 }
+
+const sanitizeBrickCount = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+  return Math.floor(value);
+};

@@ -22,6 +22,7 @@ import {
 
 interface ResourceCollector {
   grantResources(amount: ResourceStockpile): void;
+  notifyBrickDestroyed(): void;
 }
 
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
@@ -335,6 +336,7 @@ export class BricksModule implements GameModule {
   }
 
   private destroyBrick(brick: InternalBrickState): void {
+    this.options.resources.notifyBrickDestroyed();
     if (hasAnyResources(brick.rewards)) {
       const rewards = this.applyBrickRewardBonuses(brick.rewards);
       if (hasAnyResources(rewards)) {
