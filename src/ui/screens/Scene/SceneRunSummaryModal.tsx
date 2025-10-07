@@ -4,6 +4,8 @@ import "./SceneRunSummaryModal.css";
 
 interface SceneRunSummaryModalProps {
   resources: ResourceRunSummaryItem[];
+  bricksDestroyed: number;
+  totalBricksDestroyed: number;
   onLeave: () => void;
   onRestart: () => void;
 }
@@ -15,13 +17,21 @@ const formatDelta = (value: number): string => {
   return `(+${value})`;
 };
 
+const formatCount = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+  return Math.max(Math.floor(value), 0).toLocaleString();
+};
+
 export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   resources,
+  bricksDestroyed,
+  totalBricksDestroyed,
   onLeave,
   onRestart,
 }) => {
   const hasResources = resources.length > 0;
-
   return (
     <div className="scene-run-summary">
       <div className="scene-run-summary__backdrop" />
@@ -43,6 +53,15 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
         ) : (
           <p className="scene-run-summary__empty">No resources gathered this time.</p>
         )}
+        <div className="scene-run-summary__stats">
+          <div className="scene-run-summary__stat">
+            <span className="scene-run-summary__stat-label">Bricks Destroyed</span>
+            <span className="scene-run-summary__stat-value">{formatCount(bricksDestroyed)}</span>
+            <span className="scene-run-summary__stat-note">
+              Lifetime total: {formatCount(totalBricksDestroyed)}
+            </span>
+          </div>
+        </div>
         <div className="scene-run-summary__actions">
           <Button onClick={onLeave}>Leave</Button>
           <Button onClick={onRestart}>Restart</Button>

@@ -1,0 +1,12 @@
+.camp-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.camp-content__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+}

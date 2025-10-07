@@ -9,27 +9,28 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { useAppLogic } from "../../../contexts/AppLogicContext";
-import { useBridgeValue } from "../../../shared/useBridgeValue";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { useBridgeValue } from "@shared/useBridgeValue";
 import {
   DEFAULT_SKILL_TREE_STATE,
   SKILL_TREE_STATE_BRIDGE_KEY,
   SkillNodeBridgePayload,
   SkillTreeBridgePayload,
-} from "../../../../logic/modules/SkillTreeModule";
+} from "@logic/modules/SkillTreeModule";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   ResourceAmountPayload,
-} from "../../../../logic/modules/ResourcesModule";
+} from "@logic/modules/ResourcesModule";
 import {
   RESOURCE_IDS,
   ResourceId,
   ResourceStockpile,
   createEmptyResourceStockpile,
   getResourceConfig,
-} from "../../../../db/resources-db";
-import { SkillId, getSkillConfig } from "../../../../db/skills-db";
-import { ResourceCostDisplay } from "../../../shared/ResourceCostDisplay";
+} from "@db/resources-db";
+import { SkillId, getSkillConfig } from "@db/skills-db";
+import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
+import { BonusEffectsPreviewList } from "@shared/BonusEffectsPreviewList";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;
@@ -572,6 +573,14 @@ export const SkillTreeView: React.FC = () => {
               </span>
             </div>
             <p className="skill-tree__details-description">{activeNode.description}</p>
+            <div className="skill-tree__details-section">
+              <h3>Bonuses</h3>
+              <BonusEffectsPreviewList
+                className="skill-tree__bonus-effects"
+                effects={activeNode.bonusEffects}
+                emptyLabel="No bonuses from this skill."
+              />
+            </div>
             <div className="skill-tree__details-section">
               <h3>Requirements</h3>
               {activeNode.requirements.length > 0 ? (

@@ -1,0 +1,16 @@
+.void-camp {
+  padding: 0 var(--spacing-xxl) var(--spacing-xxl) 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.void-camp__sidebar,
+.void-camp__content {
+  min-height: 0;
+}
+
+.void-camp__content {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing-lg);
+}

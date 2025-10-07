@@ -29,7 +29,16 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true
+    "noImplicitOverride": true,
+    "baseUrl": "src",
+    "paths": {
+      "@/*": ["*"],
+      "@ui/*": ["ui/*"],
+      "@screens/*": ["ui/screens/*"],
+      "@shared/*": ["ui/shared/*"],
+      "@logic/*": ["logic/*"],
+      "@db/*": ["db/*"]
+    }
   },
   "include": [
     "src/**/*",

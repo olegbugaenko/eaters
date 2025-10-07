@@ -7,10 +7,12 @@
   align-items: stretch;
   gap: 2rem;
   padding: 1rem 2rem 1.25rem;
+  z-index: 20;
+}
+
+.scene-summoning-panel .with-bg {
   background: linear-gradient(0deg, rgba(10, 13, 20, 0.95), rgba(10, 13, 20, 0.75));
   backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
-  z-index: 20;
 }
 
 .scene-summoning-panel__section {

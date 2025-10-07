@@ -604,6 +604,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
       {showRunSummary && (
         <SceneRunSummaryModal
           resources={resourceSummary.resources}
+          bricksDestroyed={resourceSummary.bricksDestroyed}
+          totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
           onLeave={onLeaveToMapSelect}
           onRestart={handleRestart}
         />

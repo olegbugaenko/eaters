@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { DataBridge } from "../../logic/core/DataBridge";
+import { DataBridge } from "@logic/core/DataBridge";
 
 export const useBridgeValue = <T>(bridge: DataBridge, key: string, fallback: T): T => {
   const subscribe = useCallback(

@@ -9,16 +9,20 @@ import {
   SceneVector2,
 } from "../services/SceneObjectManager";
 import type { ExplosionModule } from "./ExplosionModule";
+import { BonusesModule } from "./BonusesModule";
 import { SpatialGrid } from "../utils/SpatialGrid";
 import {
   ResourceStockpile,
+  RESOURCE_IDS,
   normalizeResourceAmount,
   hasAnyResources,
   cloneResourceStockpile,
+  createEmptyResourceStockpile,
 } from "../../db/resources-db";
 
 interface ResourceCollector {
   grantResources(amount: ResourceStockpile): void;
+  notifyBrickDestroyed(): void;
 }
 
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
@@ -85,6 +89,7 @@ interface BricksModuleOptions {
   bridge: DataBridge;
   explosions: ExplosionModule;
   resources: ResourceCollector;
+  bonuses: BonusesModule;
 }
 
 interface BrickSaveData {
@@ -331,8 +336,12 @@ export class BricksModule implements GameModule {
   }
 
   private destroyBrick(brick: InternalBrickState): void {
+    this.options.resources.notifyBrickDestroyed();
     if (hasAnyResources(brick.rewards)) {
-      this.options.resources.grantResources(brick.rewards);
+      const rewards = this.applyBrickRewardBonuses(brick.rewards);
+      if (hasAnyResources(rewards)) {
+        this.options.resources.grantResources(rewards);
+      }
     }
     this.options.scene.removeObject(brick.sceneObjectId);
     this.bricks.delete(brick.id);
@@ -387,6 +396,22 @@ export class BricksModule implements GameModule {
       physicalSize: state.physicalSize,
       rewards: cloneResourceStockpile(state.rewards),
     };
+  }
+
+  private applyBrickRewardBonuses(rewards: ResourceStockpile): ResourceStockpile {
+    const multiplierRaw = this.options.bonuses.getBonusValue("brick_rewards");
+    const multiplier = Number.isFinite(multiplierRaw) ? multiplierRaw : 1;
+    if (Math.abs(multiplier - 1) < 1e-9) {
+      return cloneResourceStockpile(rewards);
+    }
+
+    const scaled = createEmptyResourceStockpile();
+    RESOURCE_IDS.forEach((id) => {
+      const base = rewards[id] ?? 0;
+      const value = Math.floor(base * multiplier);
+      scaled[id] = value > 0 ? value : 0;
+    });
+    return scaled;
   }
 
   private spawnBrickExplosion(

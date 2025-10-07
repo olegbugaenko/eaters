@@ -8,6 +8,7 @@ import {
 } from "../../db/player-units-db";
 import { SceneObjectManager, SceneVector2 } from "../services/SceneObjectManager";
 import { ResourceAmountMap, normalizeResourceCost } from "../../types/resources";
+import { BonusesModule, BonusValueMap } from "./BonusesModule";
 
 export interface NecromancerResourceMeter {
   current: number;
@@ -32,6 +33,7 @@ interface NecromancerModuleOptions {
   bridge: DataBridge;
   playerUnits: PlayerUnitsModule;
   scene: SceneObjectManager;
+  bonuses: BonusesModule;
 }
 
 interface NecromancerSaveData {
@@ -45,8 +47,6 @@ interface ResourceState {
   regenPerSecond: number;
 }
 
-const DEFAULT_RESOURCE_CAP = 10;
-const MANA_REGEN_PER_SECOND = 0.4;
 const SPAWN_JITTER_RADIUS = 30;
 
 export class NecromancerModule implements GameModule {
@@ -55,11 +55,12 @@ export class NecromancerModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly playerUnits: PlayerUnitsModule;
   private readonly scene: SceneObjectManager;
+  private readonly bonuses: BonusesModule;
 
   private mana: ResourceState = {
     current: 0,
     max: 0,
-    regenPerSecond: MANA_REGEN_PER_SECOND,
+    regenPerSecond: 0,
   };
 
   private sanity: ResourceState = {
@@ -77,9 +78,14 @@ export class NecromancerModule implements GameModule {
     this.bridge = options.bridge;
     this.playerUnits = options.playerUnits;
     this.scene = options.scene;
+    this.bonuses = options.bonuses;
+    this.bonuses.subscribe((values) => {
+      this.handleBonusValuesChanged(values);
+    });
   }
 
   public initialize(): void {
+    this.applyCurrentBonusValues();
     this.pushSpawnOptions();
     this.pushResources();
   }
@@ -90,8 +96,10 @@ export class NecromancerModule implements GameModule {
     this.pendingLoad = null;
     this.mana.current = 0;
     this.mana.max = 0;
+    this.mana.regenPerSecond = 0;
     this.sanity.current = 0;
     this.sanity.max = 0;
+    this.sanity.regenPerSecond = 0;
     this.markResourcesDirty();
     this.pushResources();
   }
@@ -147,9 +155,8 @@ export class NecromancerModule implements GameModule {
     }));
     this.nextSpawnIndex = 0;
 
-    this.mana.max = DEFAULT_RESOURCE_CAP;
+    this.applyCurrentBonusValues();
     this.mana.current = this.mana.max;
-    this.sanity.max = DEFAULT_RESOURCE_CAP;
     this.sanity.current = this.sanity.max;
     this.markResourcesDirty();
 
@@ -254,6 +261,41 @@ export class NecromancerModule implements GameModule {
     return true;
   }
 
+  private applyCurrentBonusValues(): void {
+    this.handleBonusValuesChanged(this.bonuses.getAllValues());
+  }
+
+  private handleBonusValuesChanged(values: BonusValueMap): void {
+    const manaCap = sanitizeBonusValue(values["mana_cap"], 0);
+    const sanityCap = sanitizeBonusValue(values["sanity_cap"], 0);
+    const manaRegen = sanitizeBonusValue(values["mana_regen"], 0);
+
+    const previousManaMax = this.mana.max;
+    const previousSanityMax = this.sanity.max;
+    const previousManaRegen = this.mana.regenPerSecond;
+
+    this.mana.max = Math.max(manaCap, 0);
+    this.sanity.max = Math.max(sanityCap, 0);
+    this.mana.regenPerSecond = Math.max(manaRegen, 0);
+
+    const clampedMana = clampNumber(this.mana.current, 0, this.mana.max);
+    const clampedSanity = clampNumber(this.sanity.current, 0, this.sanity.max);
+
+    const changed =
+      previousManaMax !== this.mana.max ||
+      previousSanityMax !== this.sanity.max ||
+      previousManaRegen !== this.mana.regenPerSecond ||
+      clampedMana !== this.mana.current ||
+      clampedSanity !== this.sanity.current;
+
+    this.mana.current = clampedMana;
+    this.sanity.current = clampedSanity;
+
+    if (changed) {
+      this.markResourcesDirty();
+    }
+  }
+
   private applyPendingLoad(): void {
     if (!this.pendingLoad) {
       return;
@@ -310,6 +352,13 @@ const clampNumber = (value: number, min: number, max: number): number => {
     return min;
   }
   return Math.min(Math.max(value, min), max);
+};
+
+const sanitizeBonusValue = (value: number | undefined, fallback: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return value;
 };
 
 const sanitizeNumber = (value: number): number => {

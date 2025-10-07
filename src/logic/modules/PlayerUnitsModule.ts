@@ -16,6 +16,7 @@ import {
   PlayerUnitEmitterConfig,
 } from "../../db/player-units-db";
 import { MovementService, MovementBodyState } from "../services/MovementService";
+import { BonusesModule } from "./BonusesModule";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -36,6 +37,7 @@ interface PlayerUnitsModuleOptions {
   bricks: BricksModule;
   bridge: DataBridge;
   movement: MovementService;
+  bonuses: BonusesModule;
   onAllUnitsDefeated?: () => void;
 }
 
@@ -75,6 +77,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly bricks: BricksModule;
   private readonly bridge: DataBridge;
   private readonly movement: MovementService;
+  private readonly bonuses: BonusesModule;
   private readonly onAllUnitsDefeated?: () => void;
 
   private units = new Map<string, PlayerUnitState>();
@@ -86,6 +89,7 @@ export class PlayerUnitsModule implements GameModule {
     this.bricks = options.bricks;
     this.bridge = options.bridge;
     this.movement = options.movement;
+    this.bonuses = options.bonuses;
     this.onAllUnitsDefeated = options.onAllUnitsDefeated;
   }
 
@@ -570,6 +574,17 @@ export class PlayerUnitsModule implements GameModule {
     return unit.rotation;
   }
 
+  private getEffectiveAttackDamage(unit: PlayerUnitState): number {
+    let damage = unit.baseAttackDamage;
+    if (unit.type === "bluePentagon") {
+      const multiplier = this.bonuses.getBonusValue("blue_vanguard_attack_multiplier");
+      if (Number.isFinite(multiplier)) {
+        damage *= Math.max(multiplier, 0);
+      }
+    }
+    return Math.max(damage, 0);
+  }
+
   private performAttack(
     unit: PlayerUnitState,
     target: BrickRuntimeState,
@@ -577,7 +592,8 @@ export class PlayerUnitsModule implements GameModule {
     distance: number
   ): void {
     unit.attackCooldown = unit.baseAttackInterval;
-    const result = this.bricks.applyDamage(target.id, unit.baseAttackDamage);
+    const damage = this.getEffectiveAttackDamage(unit);
+    const result = this.bricks.applyDamage(target.id, damage);
     const surviving = result.brick ?? target;
 
     if (surviving) {

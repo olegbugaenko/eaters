@@ -84,6 +84,42 @@
   color: rgba(246, 251, 255, 0.7);
 }
 
+.scene-run-summary__stats {
+  margin: 0 0 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.scene-run-summary__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(9, 17, 32, 0.75);
+  border: 1px solid rgba(97, 218, 251, 0.15);
+  min-width: 220px;
+}
+
+.scene-run-summary__stat-label {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(246, 251, 255, 0.7);
+}
+
+.scene-run-summary__stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f6fbff;
+}
+
+.scene-run-summary__stat-note {
+  font-size: 0.85rem;
+  color: rgba(246, 251, 255, 0.6);
+}
+
 .scene-run-summary__actions {
   display: flex;
   justify-content: center;
