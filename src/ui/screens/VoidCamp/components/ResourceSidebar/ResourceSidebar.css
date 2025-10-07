@@ -1,5 +1,6 @@
 .resource-sidebar {
   min-height: 0;
+  margin-top: var(--spacing-lg);
 }
 
 .resource-sidebar__list {
@@ -12,7 +13,9 @@
   align-items: center;
   gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);
-  border-radius: var(--radius-md);
+  border-radius: 0;
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
   border: 1px solid var(--color-border-soft);
 }
 

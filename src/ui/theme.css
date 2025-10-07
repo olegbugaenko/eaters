@@ -2,7 +2,7 @@
   --color-page-background: radial-gradient(circle at top left, rgba(22, 32, 52, 0.85), rgba(10, 16, 28, 0.95));
   --color-surface-main: rgba(10, 16, 28, 0.75);
   --color-surface-sidebar: rgba(10, 16, 28, 0.65);
-  --color-surface-card: rgba(15, 24, 41, 0.9);
+  --color-surface-card: linear-gradient(rgba(15, 18, 31, 0.95), rgba(19, 38, 51, 0.9), rgba(15, 18, 31, 0.95));
   --color-border-soft: rgba(97, 218, 251, 0.15);
   --color-border-strong: rgba(97, 218, 251, 0.9);
   --color-border-accent: rgba(97, 218, 251, 0.35);
@@ -17,7 +17,9 @@
   --color-button-primary-hover: #265ed0;
   --color-button-disabled: #a0a0a0;
 
-  --font-family-base: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --font-family-base: "Electrolize", Tahoma, sans-serif;
+  --font-family-electrolize: "Electrolize", sans-serif;
+  --font-family-tektur: "Tektur", sans-serif;
   --font-size-heading-1: 2rem;
   --font-size-heading-2: 1.4rem;
   --font-size-heading-3: 1.2rem;
@@ -46,6 +48,14 @@ body {
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
 }
 
 .app-root {

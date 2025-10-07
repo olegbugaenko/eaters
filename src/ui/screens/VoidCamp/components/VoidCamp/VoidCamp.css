@@ -1,5 +1,5 @@
 .void-camp {
-  padding: var(--spacing-xxl);
+  padding: 0 var(--spacing-xxl) var(--spacing-xxl) 0;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -12,4 +12,5 @@
 .void-camp__content {
   display: flex;
   flex-direction: column;
+  margin-top: var(--spacing-lg);
 }

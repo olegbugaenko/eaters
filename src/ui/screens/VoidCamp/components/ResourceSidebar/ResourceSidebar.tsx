@@ -7,13 +7,7 @@ interface ResourceSidebarProps {
 
 export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources }) => {
   return (
-    <div className="resource-sidebar surface-sidebar stack-lg">
-      <div className="stack-sm">
-        <h2 className="heading-2">Resources</h2>
-        <p className="text-muted">
-          Track what you have gathered across your incursions.
-        </p>
-      </div>
+    <div className="resource-sidebar stack-lg">
       {resources.length > 0 ? (
         <ul className="resource-sidebar__list list-reset stack-sm">
           {resources.map((resource) => (
