@@ -27,6 +27,9 @@ export const SKILL_IDS = [
   "sand_scribing",
   "glass_latticework",
   "emberglass_reactors",
+  // "damage_lore",
+  "improved_membranes",
+  "hunger"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -53,19 +56,35 @@ const createMixedCost = (
   });
 
 const SKILL_DB: Record<SkillId, SkillConfig> = {
+  hunger: {
+    id: "hunger",
+    name: "Hunger",
+    description:
+      "You feel hungry...",
+    nodePosition: { x: 0, y: 0 },
+    maxLevel: 3,
+    effects: {
+      blue_vanguard_attack_multiplier: {
+        multiplier: (level) => 1 + 0.3 * level,
+      },
+    },
+    nodesRequired: { },
+    cost: createStoneCost(5, 1.35),
+  },
+  // Bottom branch
   stone_lore: {
     id: "stone_lore",
     name: "Stone Lore",
     description:
       "Foundational studies in sorting shattered bricks, enabling steadier stone yields.",
-    nodePosition: { x: 0, y: 0 },
+    nodePosition: { x: 0, y: 1 },
     maxLevel: 3,
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.1 * level,
+        multiplier: (level) => 1 + 0.2 * level,
       },
     },
-    nodesRequired: {},
+    nodesRequired: { hunger: 1 },
     cost: createStoneCost(6, 1.35),
   },
   quarry_overseers: {
@@ -73,82 +92,38 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Quarry Overseers",
     description:
       "Assign dedicated haulers who keep rubble moving and expose richer stone veins.",
-    nodePosition: { x: -1, y: 1 },
-    maxLevel: 4,
+    nodePosition: { x: 0, y: 2 },
+    maxLevel: 5,
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.12 * level,
+        multiplier: (level) => 1 + 0.2 * level,
       },
     },
     nodesRequired: { stone_lore: 1 },
-    cost: createStoneCost(10, 1.4),
+    cost: createStoneCost(20, 1.4),
   },
-  granite_bonding: {
-    id: "granite_bonding",
-    name: "Granite Bonding",
-    description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
-    nodePosition: { x: -2, y: 2 },
-    maxLevel: 3,
-    effects: {
-      blue_vanguard_attack_multiplier: {
-        multiplier: (level) => 1 + 0.18 * level,
-      },
-    },
-    nodesRequired: { quarry_overseers: 2 },
-    cost: createStoneCost(16, 1.5),
-  },
-  bastion_foundations: {
-    id: "bastion_foundations",
-    name: "Bastion Foundations",
-    description:
-      "Lay channelled footings so every slab stacks true, preparing for future defenses.",
-    nodePosition: { x: -1, y: 3 },
-    maxLevel: 2,
-    effects: {
-      sanity_cap: {
-        income: (level) => 6 * level,
-      },
-    },
-    nodesRequired: { granite_bonding: 1 },
-    cost: createMixedCost(18, 1.5, 6, 1.25),
-  },
-  sand_scribing: {
-    id: "sand_scribing",
-    name: "Sand Scribing",
-    description:
-      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
-    nodePosition: { x: 1, y: 1 },
-    maxLevel: 4,
-    effects: {
-      mana_cap: {
-        income: (level) => 4 * level,
-      },
-    },
-    nodesRequired: { stone_lore: 1 },
-    cost: createSandCost(8, 1.35),
-  },
+  // top
   glass_latticework: {
     id: "glass_latticework",
     name: "Glass Latticework",
     description:
       "Weave molten filaments into frameworks that stabilize fragile sand constructs.",
-    nodePosition: { x: 2, y: 2 },
-    maxLevel: 3,
+    nodePosition: { x: 0, y: -1},
+    maxLevel: 5,
     effects: {
       mana_regen: {
-        income: (level) => 0.05 * level,
+        income: (level) => 0.08 * level,
       },
     },
-    nodesRequired: { sand_scribing: 2 },
-    cost: createSandCost(14, 1.45),
+    nodesRequired: { hunger: 1 },
+    cost: createStoneCost(6, 1.35),
   },
   emberglass_reactors: {
     id: "emberglass_reactors",
     name: "Emberglass Reactors",
     description:
       "Channel heat through mirrored chambers, transmuting sand surges into lasting stores.",
-    nodePosition: { x: 1, y: 3 },
+    nodePosition: { x: -1, y: -2 },
     maxLevel: 2,
     effects: {
       mana_cap: {
@@ -161,6 +136,68 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { glass_latticework: 1 },
     cost: createMixedCost(20, 1.55, 12, 1.4),
   },
+  bastion_foundations: {
+    id: "bastion_foundations",
+    name: "Bastion Foundations",
+    description:
+      "Lay channelled footings so every slab stacks true, preparing for future defenses.",
+    nodePosition: { x: 1, y: -2 },
+    maxLevel: 3,
+    effects: {
+      sanity_cap: {
+        income: (level) => 2 * level,
+      },
+    },
+    nodesRequired: { glass_latticework: 1 },
+    cost: createStoneCost(26, 1.5),
+  },
+  sand_scribing: {
+    id: "sand_scribing",
+    name: "Sand Scribing",
+    description:
+      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+    nodePosition: { x: 2, y: -3 },
+    maxLevel: 4,
+    effects: {
+      mana_cap: {
+        income: (level) => 3 * level,
+      },
+    },
+    nodesRequired: { bastion_foundations: 2 },
+    cost: createSandCost(22, 1.45),
+  },
+  // left
+  granite_bonding: {
+    id: "granite_bonding",
+    name: "Granite Bonding",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -1, y: 0 },
+    maxLevel: 3,
+    effects: {
+      blue_vanguard_attack_multiplier: {
+        multiplier: (level) => 1 + 0.18 * level,
+      },
+    },
+    nodesRequired: { hunger: 2 },
+    cost: createStoneCost(16, 1.5),
+  },
+  // right
+  improved_membranes: {
+    id: "improved_membranes",
+    name: "Improved Membranes",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 1, y: 0 },
+    maxLevel: 3,
+    effects: {
+      blue_vanguard_hp_multiplier: {
+        multiplier: (level) => 1 + 0.18 * level,
+      },
+    },
+    nodesRequired: { hunger: 2 },
+    cost: createStoneCost(16, 1.5),
+  }
 };
 
 export const getSkillConfig = (id: SkillId): SkillConfig => {

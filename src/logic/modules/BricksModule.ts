@@ -408,8 +408,9 @@ export class BricksModule implements GameModule {
     const scaled = createEmptyResourceStockpile();
     RESOURCE_IDS.forEach((id) => {
       const base = rewards[id] ?? 0;
-      const value = Math.floor(base * multiplier);
+      const value = Math.floor(base * multiplier*100)/100;
       scaled[id] = value > 0 ? value : 0;
+      console.log('multiplier: ', id, base, multiplier, multiplierRaw);
     });
     return scaled;
   }

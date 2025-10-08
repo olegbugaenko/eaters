@@ -14,6 +14,7 @@ import {
   PlayerUnitRendererConfig,
   isPlayerUnitType,
   PlayerUnitEmitterConfig,
+  PlayerUnitConfig,
 } from "../../db/player-units-db";
 import { MovementService, MovementBodyState } from "../services/MovementService";
 import { BonusesModule } from "./BonusesModule";
@@ -341,7 +342,8 @@ export class PlayerUnitsModule implements GameModule {
     const config = getPlayerUnitConfig(type);
 
     const position = this.clampToMap(unit.position);
-    const maxHp = Math.max(config.maxHp, 1);
+    const baseMaxHp = Math.max(config.maxHp, 1);
+    const maxHp = this.getEffectiveMaxHpFromConfig(config, type);
     const hp = clampNumber(unit.hp ?? maxHp, 0, maxHp);
     const attackCooldown = clampNumber(unit.attackCooldown ?? 0, 0, config.baseAttackInterval);
 
@@ -576,13 +578,42 @@ export class PlayerUnitsModule implements GameModule {
 
   private getEffectiveAttackDamage(unit: PlayerUnitState): number {
     let damage = unit.baseAttackDamage;
+    
+    // Застосовуємо загальний множник урону для всіх юнітів
+    const allUnitsAttackMultiplier = this.bonuses.getBonusValue("all_units_attack_multiplier");
+    if (Number.isFinite(allUnitsAttackMultiplier)) {
+      damage *= Math.max(allUnitsAttackMultiplier, 0);
+    }
+    
+    // Застосовуємо специфічний множник для bluePentagon
     if (unit.type === "bluePentagon") {
       const multiplier = this.bonuses.getBonusValue("blue_vanguard_attack_multiplier");
       if (Number.isFinite(multiplier)) {
         damage *= Math.max(multiplier, 0);
       }
     }
+    
     return Math.max(damage, 0);
+  }
+
+  private getEffectiveMaxHpFromConfig(config: PlayerUnitConfig, type: PlayerUnitType): number {
+    let maxHp = Math.max(config.maxHp, 1);
+    
+    // Застосовуємо загальний множник HP для всіх юнітів
+    const allUnitsHpMultiplier = this.bonuses.getBonusValue("all_units_hp_multiplier");
+    if (Number.isFinite(allUnitsHpMultiplier)) {
+      maxHp *= Math.max(allUnitsHpMultiplier, 0);
+    }
+    
+    // Застосовуємо специфічний множник для bluePentagon
+    if (type === "bluePentagon") {
+      const multiplier = this.bonuses.getBonusValue("blue_vanguard_hp_multiplier");
+      if (Number.isFinite(multiplier)) {
+        maxHp *= Math.max(multiplier, 0);
+      }
+    }
+    
+    return Math.max(maxHp, 1);
   }
 
   private performAttack(
