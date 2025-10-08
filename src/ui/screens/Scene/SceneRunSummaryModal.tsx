@@ -3,12 +3,19 @@ import { Button } from "../../shared/Button";
 import { formatNumber } from "../../shared/format/number";
 import "./SceneRunSummaryModal.css";
 
+interface SceneRunSummaryModalAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface SceneRunSummaryModalProps {
   resources: ResourceRunSummaryItem[];
   bricksDestroyed: number;
   totalBricksDestroyed: number;
-  onLeave: () => void;
-  onRestart: () => void;
+  primaryAction: SceneRunSummaryModalAction;
+  secondaryAction?: SceneRunSummaryModalAction;
+  title?: string;
+  subtitle?: string;
 }
 
 const formatDelta = (value: number): string => {
@@ -32,16 +39,18 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   resources,
   bricksDestroyed,
   totalBricksDestroyed,
-  onLeave,
-  onRestart,
+  primaryAction,
+  secondaryAction,
+  title = "Run Complete",
+  subtitle = "Resources recovered from the ruins:",
 }) => {
   const hasResources = resources.length > 0;
   return (
     <div className="scene-run-summary">
       <div className="scene-run-summary__backdrop" />
       <div className="scene-run-summary__dialog">
-        <h2 className="scene-run-summary__title">Run Complete</h2>
-        <p className="scene-run-summary__subtitle">Resources recovered from the ruins:</p>
+        <h2 className="scene-run-summary__title">{title}</h2>
+        <p className="scene-run-summary__subtitle">{subtitle}</p>
         {hasResources ? (
           <ul className="scene-run-summary__list">
             {resources.map((resource) => (
@@ -67,8 +76,10 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
           </div>
         </div>
         <div className="scene-run-summary__actions">
-          <Button onClick={onLeave}>Leave</Button>
-          <Button onClick={onRestart}>Restart</Button>
+          <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
+          {secondaryAction ? (
+            <Button onClick={secondaryAction.onClick}>{secondaryAction.label}</Button>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/MapModule";
 import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
@@ -15,6 +15,8 @@ interface CampContentProps {
   onExit: () => void;
   timePlayed: number;
   brickCount: number;
+  initialTab: CampTabKey;
+  onTabChange?: (tab: CampTabKey) => void;
 }
 
 const formatTime = (timeMs: number): string => {
@@ -34,15 +36,27 @@ export const CampContent: React.FC<CampContentProps> = ({
   onExit,
   timePlayed,
   brickCount,
+  initialTab,
+  onTabChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<CampTabKey>("maps");
+  const [activeTab, setActiveTab] = useState<CampTabKey>(initialTab);
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   const formattedTime = useMemo(() => formatTime(timePlayed), [timePlayed]);
+  const handleTabChange = useCallback(
+    (tab: CampTabKey) => {
+      setActiveTab(tab);
+      onTabChange?.(tab);
+    },
+    [onTabChange]
+  );
 
   return (
     <div className="camp-content surface-panel stack-lg">
       <header className="camp-content__header">
         <h1 className="heading-1">Void Camp</h1>
-        <CampTabsMenu activeTab={activeTab} onChange={setActiveTab} />
+        <CampTabsMenu activeTab={activeTab} onChange={handleTabChange} />
       </header>
       <CampTabPanels
         activeTab={activeTab}

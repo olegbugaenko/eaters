@@ -705,12 +705,8 @@ export class PlayerUnitsModule implements GameModule {
       this.applyKnockBack(unit, direction, distance, surviving);
     }
 
-    if (result.destroyed) {
-      unit.targetBrickId = null;
-      return;
-    }
-
-    const counterDamage = Math.max(surviving.baseDamage - unit.armor, 0);
+    const counterSource = surviving ?? target;
+    const counterDamage = Math.max(counterSource.baseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
       this.pushStats();
@@ -719,6 +715,10 @@ export class PlayerUnitsModule implements GameModule {
     if (unit.hp <= 0) {
       this.removeUnit(unit);
       return;
+    }
+
+    if (result.destroyed) {
+      unit.targetBrickId = null;
     }
 
     this.scene.updateObject(unit.objectId, {

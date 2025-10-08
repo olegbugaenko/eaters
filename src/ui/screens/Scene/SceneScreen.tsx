@@ -42,6 +42,7 @@ import {
   ResourceRunSummaryPayload,
 } from "../../../logic/modules/ResourcesModule";
 import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
+import { SceneRunResourcePanel } from "./SceneRunResourcePanel";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
 import { PlayerUnitBlueprintStats } from "../../../types/player-units";
 
@@ -294,6 +295,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const necromancer = useMemo(() => app.getNecromancer(), [app]);
   const showRunSummary = resourceSummary.completed;
   const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
+  const [isPauseOpen, setIsPauseOpen] = useState(false);
 
   useEffect(() => {
     if (unitBlueprints.length === 0) {
@@ -306,6 +308,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
       setHoverContent(null);
     }
   }, [showRunSummary]);
+
+  useEffect(() => {
+    if (showRunSummary) {
+      setIsPauseOpen(false);
+    }
+  }, [showRunSummary]);
+
+  useEffect(() => {
+    if (isPauseOpen) {
+      setHoverContent(null);
+    }
+  }, [isPauseOpen]);
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -322,6 +336,36 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   useEffect(() => {
     scaleRef.current = scale;
   }, [scale]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (showRunSummary) {
+        return;
+      }
+      event.preventDefault();
+      setIsPauseOpen((open) => !open);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showRunSummary]);
+
+  useEffect(() => {
+    const gameLoop = app.getGameLoop();
+    if (isPauseOpen) {
+      gameLoop.stop();
+      return () => {
+        gameLoop.start();
+      };
+    }
+    gameLoop.start();
+    return undefined;
+  }, [app, isPauseOpen]);
 
   const handleScaleChange = (nextScale: number) => {
     scene.setScale(nextScale);
@@ -340,6 +384,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const handleRestart = useCallback(() => {
     app.restartCurrentMap();
   }, [app]);
+
+  const handleResume = useCallback(() => {
+    setIsPauseOpen(false);
+  }, []);
+
+  const handleLeaveToCamp = useCallback(() => {
+    setIsPauseOpen(false);
+    onLeaveToMapSelect();
+  }, [onLeaveToMapSelect]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -612,6 +665,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
         onScaleChange={handleScaleChange}
         cameraPosition={cameraInfo.position}
       />
+      <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneTooltipPanel content={hoverContent} />
       <SceneDebugPanel timeMs={timePlayed} brickCount={brickCount} />
       <SceneSummoningPanel
@@ -630,8 +684,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
           resources={resourceSummary.resources}
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          onLeave={onLeaveToMapSelect}
-          onRestart={handleRestart}
+          primaryAction={{ label: "Leave", onClick: onLeaveToMapSelect }}
+          secondaryAction={{ label: "Restart", onClick: handleRestart }}
+        />
+      )}
+      {isPauseOpen && !showRunSummary && (
+        <SceneRunSummaryModal
+          title="Run Paused"
+          subtitle="Resources recovered so far:"
+          resources={resourceSummary.resources}
+          bricksDestroyed={resourceSummary.bricksDestroyed}
+          totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
+          primaryAction={{ label: "Continue", onClick: handleResume }}
+          secondaryAction={{ label: "Leave", onClick: handleLeaveToCamp }}
         />
       )}
     </div>

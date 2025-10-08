@@ -1,6 +1,9 @@
 import { VoidCamp } from "@screens/VoidCamp/components/VoidCamp/VoidCamp";
 import { ResourceSidebar } from "@screens/VoidCamp/components/ResourceSidebar/ResourceSidebar";
-import { CampContent } from "@screens/VoidCamp/components/CampContent/CampContent";
+import {
+  CampContent,
+  CampTabKey,
+} from "@screens/VoidCamp/components/CampContent/CampContent";
 import { MapId } from "@db/maps-db";
 import { MapListEntry, MAP_LIST_BRIDGE_KEY, MAP_SELECTED_BRIDGE_KEY } from "@logic/modules/MapModule";
 import { TIME_BRIDGE_KEY } from "@logic/modules/TestTimeModule";
@@ -12,9 +15,16 @@ import { useBridgeValue } from "@shared/useBridgeValue";
 interface VoidCampScreenProps {
   onStart: () => void;
   onExit: () => void;
+  initialTab: CampTabKey;
+  onTabChange: (tab: CampTabKey) => void;
 }
 
-export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({ onStart, onExit }) => {
+export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
+  onStart,
+  onExit,
+  initialTab,
+  onTabChange,
+}) => {
   const { app, bridge } = useAppLogic();
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
@@ -47,6 +57,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({ onStart, onExit 
           }}
           timePlayed={timePlayed}
           brickCount={brickCount}
+          initialTab={initialTab}
+          onTabChange={onTabChange}
         />
       }
     />
