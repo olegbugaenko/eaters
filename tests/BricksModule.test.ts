@@ -14,15 +14,24 @@ import {
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { describe, test } from "./testRunner";
+import { BonusesModule } from "../src/logic/modules/BonusesModule";
 
-const createBricksModule = (scene: SceneObjectManager, bridge: DataBridge) => {
+const createBricksModule = (
+  scene: SceneObjectManager,
+  bridge: DataBridge
+) => {
   const explosions = new ExplosionModule({ scene });
   const resources = {
     grantResources: () => {
       // no-op for tests
     },
+    notifyBrickDestroyed: () => {
+      // no-op for tests
+    },
   };
-  return new BricksModule({ scene, bridge, explosions, resources });
+  const bonuses = new BonusesModule();
+  bonuses.initialize();
+  return new BricksModule({ scene, bridge, explosions, resources, bonuses });
 };
 
 describe("BricksModule", () => {

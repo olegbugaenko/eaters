@@ -8,6 +8,7 @@ import { MovementService } from "../src/logic/services/MovementService";
 import { MapModule, PLAYER_UNIT_SPAWN_SAFE_RADIUS } from "../src/logic/modules/MapModule";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { NecromancerModule } from "../src/logic/modules/NecromancerModule";
+import { BonusesModule } from "../src/logic/modules/BonusesModule";
 
 const distanceSq = (a: { x: number; y: number }, b: { x: number; y: number }): number => {
   const dx = a.x - b.x;
@@ -20,6 +21,8 @@ describe("MapModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
     const resources = {
       startRun: () => {
         // no-op for tests
@@ -27,14 +30,18 @@ describe("MapModule", () => {
       grantResources: () => {
         // no-op for tests
       },
+      notifyBrickDestroyed: () => {
+        // no-op for tests
+      },
     };
-    const bricks = new BricksModule({ scene, bridge, explosions, resources });
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
     const movement = new MovementService();
-    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement });
+    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,
       scene,
+      bonuses,
     });
     const maps = new MapModule({
       scene,

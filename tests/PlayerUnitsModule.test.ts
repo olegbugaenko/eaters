@@ -9,15 +9,23 @@ import {
 } from "../src/logic/modules/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
+import { BonusesModule } from "../src/logic/modules/BonusesModule";
 
-const createBricksModule = (scene: SceneObjectManager, bridge: DataBridge) => {
+const createBricksModule = (
+  scene: SceneObjectManager,
+  bridge: DataBridge,
+  bonuses: BonusesModule
+) => {
   const explosions = new ExplosionModule({ scene });
   const resources = {
     grantResources: () => {
       // no-op for tests
     },
+    notifyBrickDestroyed: () => {
+      // no-op for tests
+    },
   };
-  return new BricksModule({ scene, bridge, explosions, resources });
+  return new BricksModule({ scene, bridge, explosions, resources, bonuses });
 };
 
 const tickSeconds = (module: PlayerUnitsModule, seconds: number) => {
@@ -29,8 +37,10 @@ describe("PlayerUnitsModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const movement = new MovementService();
-    const bricks = createBricksModule(scene, bridge);
-    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const bricks = createBricksModule(scene, bridge, bonuses);
+    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
 
     bricks.setBricks([
       {
@@ -71,8 +81,10 @@ describe("PlayerUnitsModule", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const movement = new MovementService();
-    const bricks = createBricksModule(scene, bridge);
-    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const bricks = createBricksModule(scene, bridge, bonuses);
+    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
 
     bricks.setBricks([
       {
