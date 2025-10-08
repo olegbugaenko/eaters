@@ -19,42 +19,31 @@
 }
 
 .scene-toolbar__section--center {
+  --scene-toolbar-center-wing: 60px;
   flex: 1;
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  background: rgba(13, 17, 23, 0.85);
-  margin: 0 20%;
   position: relative;
-  padding: 1rem 2rem;
-  border-top: 1px solid rgba(97, 218, 251, 0.15);
-  border-bottom: 1px solid rgba(97, 218, 251, 0.15);
-  box-shadow: 
-    0 -8px 16px rgba(0, 1, 1, 0.95),
-    0 8px 16px rgba(0, 1, 1, 0.95);
+  margin: 0 20%;
+  padding: 1rem 2.75rem;
+  isolation: isolate;
+  z-index: 0;
 }
 
-.scene-toolbar__section--center::before,
-.scene-toolbar__section--center::after {
-  content: '';
+.scene-toolbar__center-silhouette {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-style: solid;
+  inset: 0;
+  left: calc(-1 * var(--scene-toolbar-center-wing));
+  width: calc(100% + var(--scene-toolbar-center-wing) * 2);
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  overflow: visible;
 }
 
-.scene-toolbar__section--center::before {
-  left: -50px;
-  border-width: 50px 50px 50px 0;
-  border-color: transparent rgba(13, 17, 23, 0.85) transparent transparent;
-}
-
-.scene-toolbar__section--center::after {
-  right: -50px;
-  border-width: 50px 0 50px 50px;
-  border-color: transparent transparent transparent rgba(13, 17, 23, 0.85);
+.scene-toolbar__center-silhouette path {
+  transition: opacity 120ms ease;
 }
 
 .scene-toolbar__section--right {
@@ -123,12 +112,8 @@
   .scene-toolbar__section--center {
     order: 3;
     margin: 0;
-    padding: 1rem;
-  }
-
-  .scene-toolbar__section--center::before,
-  .scene-toolbar__section--center::after {
-    display: none;
+    padding: 1rem 1.5rem;
+    --scene-toolbar-center-wing: 36px;
   }
 
   .scene-toolbar__section--right {

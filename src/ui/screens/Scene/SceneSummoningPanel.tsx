@@ -5,7 +5,7 @@ import {
   NecromancerSpawnOption,
 } from "../../../logic/modules/NecromancerModule";
 import { createEmptyResourceAmount } from "../../../types/resources";
-import { ProgressBar } from "../../shared/ProgressBar";
+import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
 import { ResourceCostDisplay } from "../../shared/ResourceCostDisplay";
 import "./SceneSummoningPanel.css";
 
@@ -15,8 +15,11 @@ interface SceneSummoningPanelProps {
   onSummon: (type: PlayerUnitType) => void;
 }
 
-const formatResourceValue = (current: number, max: number): string =>
-  `${current.toFixed(1)} / ${max.toFixed(1)}`;
+const formatResourceValue = (
+  current: number,
+  max: number,
+  _percent?: number
+): string => `${current.toFixed(1)} / ${max.toFixed(1)}`;
 
 
 export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPanelProps>(
@@ -50,12 +53,19 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
         <div className="scene-summoning-panel__section scene-summoning-panel__section--left">
           <div className={sanityResourceClassName}>
             <div className="scene-summoning-panel__resource-label">Sanity</div>
-            <ProgressBar
-              className="scene-summoning-panel__resource-bar scene-summoning-panel__resource-bar--sanity"
+            <ResourceDiamondMeter
+              id="sanity"
+              className="scene-summoning-panel__resource-meter scene-summoning-panel__resource-meter--sanity"
               current={resources.sanity.current}
               max={resources.sanity.max}
-              formatValue={(current, max) => formatResourceValue(current, max)}
-              orientation="vertical"
+              gradientStops={[
+                { offset: 0, color: "#581c87" },
+                { offset: 0.55, color: "#8b21a8" },
+                { offset: 1, color: "#c084fc" },
+              ]}
+              outlineColor="rgba(236, 72, 153, 0.5)"
+              glowColor="rgba(168, 85, 247, 0.35)"
+              formatValue={formatResourceValue}
             />
           </div>
         </div>
@@ -92,12 +102,19 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
         <div className="scene-summoning-panel__section scene-summoning-panel__section--right">
           <div className={manaResourceClassName}>
             <div className="scene-summoning-panel__resource-label">Mana</div>
-            <ProgressBar
-              className="scene-summoning-panel__resource-bar scene-summoning-panel__resource-bar--mana"
+            <ResourceDiamondMeter
+              id="mana"
+              className="scene-summoning-panel__resource-meter scene-summoning-panel__resource-meter--mana"
               current={resources.mana.current}
               max={resources.mana.max}
-              formatValue={(current, max) => formatResourceValue(current, max)}
-              orientation="vertical"
+              gradientStops={[
+                { offset: 0, color: "#1e3a8a" },
+                { offset: 0.45, color: "#2563eb" },
+                { offset: 1, color: "#22d3ee" },
+              ]}
+              outlineColor="rgba(59, 130, 246, 0.6)"
+              glowColor="rgba(56, 189, 248, 0.35)"
+              formatValue={formatResourceValue}
             />
           </div>
         </div>
