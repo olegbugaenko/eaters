@@ -7,6 +7,7 @@ import {
   BRICK_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/BricksModule";
 import {
+  PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY,
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/PlayerUnitsModule";
@@ -41,6 +42,8 @@ import {
   ResourceRunSummaryPayload,
 } from "../../../logic/modules/ResourcesModule";
 import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
+import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
+import { PlayerUnitBlueprintStats } from "../../../types/player-units";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -272,6 +275,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
     DEFAULT_NECROMANCER_SPAWN_OPTIONS
   );
+  const unitBlueprints = useBridgeValue<PlayerUnitBlueprintStats[]>(
+    bridge,
+    PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY,
+    []
+  );
   const resourceSummary = useBridgeValue<ResourceRunSummaryPayload>(
     bridge,
     RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
@@ -285,6 +293,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const brickInitialHpRef = useRef(0);
   const necromancer = useMemo(() => app.getNecromancer(), [app]);
   const showRunSummary = resourceSummary.completed;
+  const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
+
+  useEffect(() => {
+    if (unitBlueprints.length === 0) {
+      setHoverContent(null);
+    }
+  }, [unitBlueprints.length]);
+
+  useEffect(() => {
+    if (showRunSummary) {
+      setHoverContent(null);
+    }
+  }, [showRunSummary]);
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -591,12 +612,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
         onScaleChange={handleScaleChange}
         cameraPosition={cameraInfo.position}
       />
+      <SceneTooltipPanel content={hoverContent} />
       <SceneDebugPanel timeMs={timePlayed} brickCount={brickCount} />
       <SceneSummoningPanel
         ref={summoningPanelRef}
         resources={necromancerResources}
         spawnOptions={necromancerOptions}
         onSummon={handleSummonUnit}
+        blueprints={unitBlueprints}
+        onHoverInfoChange={setHoverContent}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />

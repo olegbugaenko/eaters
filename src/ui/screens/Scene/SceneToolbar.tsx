@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { Button } from "../../shared/Button";
 import { ProgressBar } from "../../shared/ProgressBar";
+import { formatNumber } from "../../shared/format/number";
 import "./SceneToolbar.css";
 
 interface SceneToolbarProps {
@@ -142,7 +143,9 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
       </div>
       <div className="scene-toolbar__section scene-toolbar__section--right">
         <label className="scene-toolbar__zoom">
-          <span>Zoom: {scale.toFixed(2)}x</span>
+          <span>
+            Zoom: {formatNumber(scale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x
+          </span>
           <input
             type="range"
             min={scaleRange.min}
@@ -156,7 +159,13 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
           />
         </label>
         <div className="scene-toolbar__camera">
-          Camera: x {cameraPosition.x.toFixed(1)}, y {cameraPosition.y.toFixed(1)}
+          Camera: x {formatNumber(cameraPosition.x, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          })}, y {formatNumber(cameraPosition.y, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          })}
         </div>
       </div>
     </div>

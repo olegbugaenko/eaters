@@ -1,4 +1,5 @@
 import { CSSProperties, useId } from "react";
+import { formatNumber } from "../../shared/format/number";
 import "./ResourceDiamondMeter.css";
 
 interface GradientStop {
@@ -39,7 +40,13 @@ export const ResourceDiamondMeter: React.FC<ResourceDiamondMeterProps> = ({
   const percent = safeMax > 0 ? clampValue((safeCurrent / safeMax) * 100, 0, 100) : 0;
   const label = formatValue
     ? formatValue(safeCurrent, safeMax, percent)
-    : `${safeCurrent.toFixed(1)} / ${safeMax.toFixed(1)}`;
+    : `${formatNumber(safeCurrent, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })} / ${formatNumber(safeMax, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}`;
 
   const rawId = useId().replace(/:/g, "");
   const idBase = `${id}-${rawId}`;

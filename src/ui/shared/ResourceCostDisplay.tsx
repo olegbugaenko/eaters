@@ -1,4 +1,5 @@
 import React from "react";
+import { formatNumber } from "./format/number";
 import "./ResourceCostDisplay.css";
 
 export interface ResourceCostDisplayResource {
@@ -13,8 +14,18 @@ export interface ResourceCostDisplayProps {
   resources?: readonly ResourceCostDisplayResource[];
 }
 
-const formatAmount = (value: number): string =>
-  Number.isInteger(value) ? `${value}` : value.toFixed(1);
+const formatAmount = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+  if (Number.isInteger(value)) {
+    return formatNumber(value, { maximumFractionDigits: 0 });
+  }
+  return formatNumber(value, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+};
 
 const DEFAULT_RESOURCES: readonly ResourceCostDisplayResource[] = [
   { id: "mana", label: "Mana" },

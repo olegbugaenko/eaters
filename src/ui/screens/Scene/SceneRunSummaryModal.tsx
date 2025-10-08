@@ -1,5 +1,6 @@
 import { ResourceRunSummaryItem } from "../../../logic/modules/ResourcesModule";
 import { Button } from "../../shared/Button";
+import { formatNumber } from "../../shared/format/number";
 import "./SceneRunSummaryModal.css";
 
 interface SceneRunSummaryModalProps {
@@ -14,14 +15,17 @@ const formatDelta = (value: number): string => {
   if (value <= 0) {
     return `(+0)`;
   }
-  return `(+${value})`;
+  return `(+${formatNumber(value, { maximumFractionDigits: 2 })})`;
 };
 
 const formatCount = (value: number): string => {
   if (!Number.isFinite(value)) {
     return "0";
   }
-  return Math.max(Math.floor(value), 0).toLocaleString();
+  return formatNumber(Math.max(Math.floor(value), 0), {
+    maximumFractionDigits: 0,
+    useGrouping: true,
+  });
 };
 
 export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({

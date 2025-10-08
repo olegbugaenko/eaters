@@ -18,6 +18,7 @@ import {
 } from "../../db/player-units-db";
 import { MovementService, MovementBodyState } from "../services/MovementService";
 import { BonusesModule } from "./BonusesModule";
+import { PlayerUnitBlueprintStats } from "../../types/player-units";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -25,6 +26,7 @@ const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
+export const PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY = "playerUnits/blueprintStats";
 
 export interface PlayerUnitSpawnData {
   readonly type: PlayerUnitType;
@@ -84,6 +86,7 @@ export class PlayerUnitsModule implements GameModule {
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
   private idCounter = 0;
+  private unitBlueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
 
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
@@ -96,16 +99,20 @@ export class PlayerUnitsModule implements GameModule {
 
   public initialize(): void {
     // Units are spawned by the map module.
+    this.pushBlueprintStats();
     this.pushStats();
   }
 
   public reset(): void {
+    this.unitBlueprints.clear();
+    this.pushBlueprintStats();
     this.applyUnits([]);
   }
 
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
     if (parsed) {
+      this.ensureBlueprints();
       this.applyUnits(parsed.units);
     }
   }
@@ -119,6 +126,11 @@ export class PlayerUnitsModule implements GameModule {
         attackCooldown: unit.attackCooldown,
       })),
     } satisfies PlayerUnitSaveData;
+  }
+
+  public prepareForMap(): void {
+    this.unitBlueprints = this.computeBlueprintStats();
+    this.pushBlueprintStats();
   }
 
   public tick(deltaMs: number): void {
@@ -248,6 +260,7 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   public spawnUnit(unit: PlayerUnitSpawnData): void {
+    this.ensureBlueprints();
     const state = this.createUnitState(unit);
     this.units.set(state.id, state);
     this.unitOrder.push(state);
@@ -255,6 +268,7 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   public unitStressTest(): void {
+    this.ensureBlueprints();
     const center: SceneVector2 = { x: 100, y: 100 };
     const spread = 100;
     const spawnCount = 100;
@@ -325,6 +339,7 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private applyUnits(units: PlayerUnitSpawnData[]): void {
+    this.ensureBlueprints();
     this.clearUnits();
     this.idCounter = 0;
 
@@ -337,23 +352,118 @@ export class PlayerUnitsModule implements GameModule {
     this.pushStats();
   }
 
+  private ensureBlueprints(): void {
+    if (this.unitBlueprints.size > 0) {
+      return;
+    }
+    this.unitBlueprints = this.computeBlueprintStats();
+    this.pushBlueprintStats();
+  }
+
+  private computeBlueprintStats(): Map<PlayerUnitType, PlayerUnitBlueprintStats> {
+    const values = this.bonuses.getAllValues();
+    const globalAttackMultiplier = sanitizeMultiplier(
+      values["all_units_attack_multiplier"],
+      1
+    );
+    const globalHpMultiplier = sanitizeMultiplier(values["all_units_hp_multiplier"], 1);
+
+    const blueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
+
+    PLAYER_UNIT_TYPES.forEach((type) => {
+      const config = getPlayerUnitConfig(type);
+      const baseAttack = Math.max(config.baseAttackDamage, 0);
+      const baseHp = Math.max(config.maxHp, 0);
+      const baseInterval = Math.max(config.baseAttackInterval, 0.01);
+      const baseDistance = Math.max(config.baseAttackDistance, 0);
+      const baseMoveSpeed = Math.max(config.moveSpeed, 0);
+      const baseMoveAcceleration = Math.max(config.moveAcceleration, 0);
+      const baseMass = Math.max(config.mass, 0.001);
+      const baseSize = Math.max(config.physicalSize, 0);
+
+      let specificAttackMultiplier = 1;
+      let specificHpMultiplier = 1;
+
+      switch (type) {
+        case "bluePentagon":
+          specificAttackMultiplier = sanitizeMultiplier(
+            values["blue_vanguard_attack_multiplier"],
+            1
+          );
+          specificHpMultiplier = sanitizeMultiplier(
+            values["blue_vanguard_hp_multiplier"],
+            1
+          );
+          break;
+        default:
+          break;
+      }
+
+      const attackMultiplier = Math.max(globalAttackMultiplier, 0) * Math.max(specificAttackMultiplier, 0);
+      const hpMultiplier = Math.max(globalHpMultiplier, 0) * Math.max(specificHpMultiplier, 0);
+
+      const effectiveAttack = roundStat(baseAttack * attackMultiplier);
+      const effectiveHp = roundStat(baseHp * hpMultiplier);
+
+      blueprints.set(type, {
+        type,
+        name: config.name,
+        base: {
+          attackDamage: baseAttack,
+          maxHp: baseHp,
+        },
+        effective: {
+          attackDamage: effectiveAttack,
+          maxHp: Math.max(effectiveHp, 1),
+        },
+        multipliers: {
+          attackDamage: attackMultiplier,
+          maxHp: hpMultiplier,
+        },
+        armor: Math.max(config.armor, 0),
+        baseAttackInterval: baseInterval,
+        baseAttackDistance: baseDistance,
+        moveSpeed: baseMoveSpeed,
+        moveAcceleration: baseMoveAcceleration,
+        mass: baseMass,
+        physicalSize: baseSize,
+      });
+    });
+
+    return blueprints;
+  }
+
+  private pushBlueprintStats(): void {
+    const payload = PLAYER_UNIT_TYPES.map((type) => this.unitBlueprints.get(type)).filter(
+      (stats): stats is PlayerUnitBlueprintStats => Boolean(stats)
+    );
+    this.bridge.setValue(PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY, payload);
+  }
+
   private createUnitState(unit: PlayerUnitSpawnData): PlayerUnitState {
     const type = sanitizeUnitType(unit.type);
     const config = getPlayerUnitConfig(type);
+    const blueprint = this.unitBlueprints.get(type);
+    if (!blueprint) {
+      throw new Error(`Missing blueprint stats for unit type: ${type}`);
+    }
 
     const position = this.clampToMap(unit.position);
-    const baseMaxHp = Math.max(config.maxHp, 1);
-    const maxHp = this.getEffectiveMaxHpFromConfig(config, type);
+    const maxHp = Math.max(blueprint.effective.maxHp, 1);
     const hp = clampNumber(unit.hp ?? maxHp, 0, maxHp);
-    const attackCooldown = clampNumber(unit.attackCooldown ?? 0, 0, config.baseAttackInterval);
+    const attackCooldown = clampNumber(
+      unit.attackCooldown ?? 0,
+      0,
+      blueprint.baseAttackInterval
+    );
 
-    const mass = Math.max(config.mass, 0.001);
-    const moveAcceleration = Math.max(config.moveAcceleration, 0);
-    const physicalSize = Math.max(config.physicalSize, 0);
+    const mass = Math.max(blueprint.mass, 0.001);
+    const moveAcceleration = Math.max(blueprint.moveAcceleration, 0);
+    const physicalSize = Math.max(blueprint.physicalSize, 0);
     const movementId = this.movement.createBody({
       position,
       mass,
-      maxSpeed: Math.max(config.moveSpeed, 0),
+      maxSpeed: Math.max(blueprint.moveSpeed, 0),
     });
 
     const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
@@ -392,11 +502,11 @@ export class PlayerUnitsModule implements GameModule {
       rotation: 0,
       hp,
       maxHp,
-      armor: Math.max(config.armor, 0),
-      baseAttackDamage: Math.max(config.baseAttackDamage, 0),
-      baseAttackInterval: Math.max(config.baseAttackInterval, 0.01),
-      baseAttackDistance: Math.max(config.baseAttackDistance, 0),
-      moveSpeed: Math.max(config.moveSpeed, 0),
+      armor: Math.max(blueprint.armor, 0),
+      baseAttackDamage: Math.max(blueprint.effective.attackDamage, 0),
+      baseAttackInterval: Math.max(blueprint.baseAttackInterval, 0.01),
+      baseAttackDistance: Math.max(blueprint.baseAttackDistance, 0),
+      moveSpeed: Math.max(blueprint.moveSpeed, 0),
       moveAcceleration,
       mass,
       physicalSize,
@@ -577,43 +687,7 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private getEffectiveAttackDamage(unit: PlayerUnitState): number {
-    let damage = unit.baseAttackDamage;
-    
-    // Застосовуємо загальний множник урону для всіх юнітів
-    const allUnitsAttackMultiplier = this.bonuses.getBonusValue("all_units_attack_multiplier");
-    if (Number.isFinite(allUnitsAttackMultiplier)) {
-      damage *= Math.max(allUnitsAttackMultiplier, 0);
-    }
-    
-    // Застосовуємо специфічний множник для bluePentagon
-    if (unit.type === "bluePentagon") {
-      const multiplier = this.bonuses.getBonusValue("blue_vanguard_attack_multiplier");
-      if (Number.isFinite(multiplier)) {
-        damage *= Math.max(multiplier, 0);
-      }
-    }
-    
-    return Math.max(damage, 0);
-  }
-
-  private getEffectiveMaxHpFromConfig(config: PlayerUnitConfig, type: PlayerUnitType): number {
-    let maxHp = Math.max(config.maxHp, 1);
-    
-    // Застосовуємо загальний множник HP для всіх юнітів
-    const allUnitsHpMultiplier = this.bonuses.getBonusValue("all_units_hp_multiplier");
-    if (Number.isFinite(allUnitsHpMultiplier)) {
-      maxHp *= Math.max(allUnitsHpMultiplier, 0);
-    }
-    
-    // Застосовуємо специфічний множник для bluePentagon
-    if (type === "bluePentagon") {
-      const multiplier = this.bonuses.getBonusValue("blue_vanguard_hp_multiplier");
-      if (Number.isFinite(multiplier)) {
-        maxHp *= Math.max(multiplier, 0);
-      }
-    }
-    
-    return Math.max(maxHp, 1);
+    return Math.max(unit.baseAttackDamage, 0);
   }
 
   private performAttack(
@@ -718,6 +792,18 @@ export class PlayerUnitsModule implements GameModule {
     return `player-unit-${this.idCounter}`;
   }
 }
+
+const sanitizeMultiplier = (value: number | undefined, fallback = 1): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  if (value < 0) {
+    return 0;
+  }
+  return value;
+};
+
+const roundStat = (value: number): number => Math.round(value * 100) / 100;
 
 const clampNumber = (value: number | undefined, min: number, max: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {

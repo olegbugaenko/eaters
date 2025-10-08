@@ -73,8 +73,8 @@ describe("PlayerUnitsModule", () => {
     assert.strictEqual(bricks.getBrickStates().length, 0, "brick should be destroyed");
     const save = units.save() as { units?: { hp?: number }[] };
     assert(save.units && save.units[0], "unit should be saved");
-    assert.strictEqual(save.units[0]?.hp, 8);
-    assert.strictEqual(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY), 8);
+    assert.strictEqual(save.units[0]?.hp, 6);
+    assert.strictEqual(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY), 6);
   });
 
   test("unit moves towards brick and gets knocked back on counter damage", () => {
