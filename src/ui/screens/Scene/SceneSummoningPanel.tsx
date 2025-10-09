@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlayerUnitType } from "../../../db/player-units-db";
 import {
   NecromancerResourcesPayload,
@@ -8,29 +8,66 @@ import { createEmptyResourceAmount } from "../../../types/resources";
 import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
 import { ResourceCostDisplay } from "../../shared/ResourceCostDisplay";
 import "./SceneSummoningPanel.css";
+import { PlayerUnitBlueprintStats } from "../../../types/player-units";
+import { SceneTooltipContent } from "./SceneTooltipPanel";
+import { formatNumber } from "../../shared/format/number";
+import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
 
 interface SceneSummoningPanelProps {
   resources: NecromancerResourcesPayload;
   spawnOptions: readonly NecromancerSpawnOption[];
   onSummon: (type: PlayerUnitType) => void;
+  blueprints: readonly PlayerUnitBlueprintStats[];
+  onHoverInfoChange: (content: SceneTooltipContent | null) => void;
 }
 
 const formatResourceValue = (
   current: number,
   max: number,
   _percent?: number
-): string => `${current.toFixed(1)} / ${max.toFixed(1)}`;
+): string =>
+  `${formatNumber(current, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} / ${formatNumber(max, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}`;
 
 
 export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPanelProps>(
-  ({ resources, spawnOptions, onSummon }, ref) => {
+  ({ resources, spawnOptions, onSummon, blueprints, onHoverInfoChange }, ref) => {
     const available = {
       mana: resources.mana.current,
       sanity: resources.sanity.current,
     };
 
+    const blueprintMap = useMemo(() => {
+      const map = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
+      blueprints.forEach((blueprint) => {
+        map.set(blueprint.type, blueprint);
+      });
+      return map;
+    }, [blueprints]);
+
     const sanityConsuming = useResourceConsumptionPulse(resources.sanity.current);
     const manaConsuming = useResourceConsumptionPulse(resources.mana.current);
+
+    const hideTooltip = useCallback(() => {
+      onHoverInfoChange(null);
+    }, [onHoverInfoChange]);
+
+    const showUnitTooltip = useCallback(
+      (type: PlayerUnitType) => {
+        const blueprint = blueprintMap.get(type);
+        if (!blueprint) {
+          onHoverInfoChange(null);
+          return;
+        }
+        onHoverInfoChange(createUnitTooltip(blueprint));
+      },
+      [blueprintMap, onHoverInfoChange]
+    );
 
     const sanityResourceClassName = [
       "scene-summoning-panel__resource",
@@ -49,7 +86,7 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
       .join(" ");
 
     return (
-      <div ref={ref} className="scene-summoning-panel">
+      <div ref={ref} className="scene-summoning-panel" onPointerLeave={hideTooltip}>
         <div className="scene-summoning-panel__section scene-summoning-panel__section--left">
           <div className={sanityResourceClassName}>
             <div className="scene-summoning-panel__resource-label">Sanity</div>
@@ -90,6 +127,10 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                       onSummon(option.type);
                     }
                   }}
+                  onMouseEnter={() => showUnitTooltip(option.type)}
+                  onFocus={() => showUnitTooltip(option.type)}
+                  onMouseLeave={hideTooltip}
+                  onBlur={hideTooltip}
                   disabled={!canAfford}
                 >
                   <div className="scene-summoning-panel__unit-name">{option.name}</div>

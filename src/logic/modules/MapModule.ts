@@ -104,6 +104,7 @@ export class MapModule implements GameModule {
   ): void {
     const config = getMapConfig(mapId);
     this.options.scene.setMapSize(config.size);
+    this.options.playerUnits.prepareForMap();
     if (options.generateBricks) {
       const bricks = this.generateBricks(config);
       this.options.bricks.setBricks(bricks);

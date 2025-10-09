@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { BonusEffectPreview } from "../../types/bonuses";
+import { formatNumber } from "./format/number";
 import "./BonusEffectsPreviewList.css";
 
 export interface BonusEffectsPreviewListProps {
@@ -14,8 +15,7 @@ const formatDecimal = (value: number): string => {
   if (!Number.isFinite(value)) {
     return "-";
   }
-  const fixed = value.toFixed(2);
-  return fixed.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+  return formatNumber(value, { maximumFractionDigits: 2 });
 };
 
 const formatSigned = (value: number): string => {

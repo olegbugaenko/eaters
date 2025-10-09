@@ -4,6 +4,7 @@ import { Application } from "./logic/core/Application";
 import { AppLogicContext } from "./ui/contexts/AppLogicContext";
 import { SaveSlotSelectScreen } from "./ui/screens/SaveSlotSelect/SaveSlotSelectScreen";
 import { VoidCampScreen } from "@screens/VoidCamp/VoidCampScreen";
+import { CampTabKey } from "@screens/VoidCamp/components/CampContent/CampContent";
 import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
 
 type Screen = "save-select" | "void-camp" | "scene";
@@ -12,6 +13,7 @@ const SAVE_SLOTS = ["1", "2", "3"];
 
 function App(): JSX.Element {
   const [screen, setScreen] = useState<Screen>("save-select");
+  const [voidCampTab, setVoidCampTab] = useState<CampTabKey>("maps");
 
   const app = useMemo(() => new Application(), []);
 
@@ -29,6 +31,7 @@ function App(): JSX.Element {
             slots={SAVE_SLOTS}
             onSlotSelect={(slot) => {
               app.selectSlot(slot);
+              setVoidCampTab("maps");
               setScreen("void-camp");
             }}
           />
@@ -39,17 +42,22 @@ function App(): JSX.Element {
               setScreen("scene");
             }}
             onExit={() => {
+              setVoidCampTab("maps");
               setScreen("save-select");
             }}
+            initialTab={voidCampTab}
+            onTabChange={setVoidCampTab}
           />
         )}
         {screen === "scene" && (
           <SceneScreen
             onExit={() => {
               app.returnToMainMenu();
+              setVoidCampTab("maps");
               setScreen("save-select");
             }}
             onLeaveToMapSelect={() => {
+              setVoidCampTab("skills");
               setScreen("void-camp");
             }}
           />

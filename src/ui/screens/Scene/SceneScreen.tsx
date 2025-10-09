@@ -7,6 +7,7 @@ import {
   BRICK_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/BricksModule";
 import {
+  PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY,
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/PlayerUnitsModule";
@@ -41,6 +42,9 @@ import {
   ResourceRunSummaryPayload,
 } from "../../../logic/modules/ResourcesModule";
 import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
+import { SceneRunResourcePanel } from "./SceneRunResourcePanel";
+import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
+import { PlayerUnitBlueprintStats } from "../../../types/player-units";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -272,6 +276,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
     DEFAULT_NECROMANCER_SPAWN_OPTIONS
   );
+  const unitBlueprints = useBridgeValue<PlayerUnitBlueprintStats[]>(
+    bridge,
+    PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY,
+    []
+  );
   const resourceSummary = useBridgeValue<ResourceRunSummaryPayload>(
     bridge,
     RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
@@ -285,6 +294,32 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const brickInitialHpRef = useRef(0);
   const necromancer = useMemo(() => app.getNecromancer(), [app]);
   const showRunSummary = resourceSummary.completed;
+  const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
+  const [isPauseOpen, setIsPauseOpen] = useState(false);
+
+  useEffect(() => {
+    if (unitBlueprints.length === 0) {
+      setHoverContent(null);
+    }
+  }, [unitBlueprints.length]);
+
+  useEffect(() => {
+    if (showRunSummary) {
+      setHoverContent(null);
+    }
+  }, [showRunSummary]);
+
+  useEffect(() => {
+    if (showRunSummary) {
+      setIsPauseOpen(false);
+    }
+  }, [showRunSummary]);
+
+  useEffect(() => {
+    if (isPauseOpen) {
+      setHoverContent(null);
+    }
+  }, [isPauseOpen]);
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -301,6 +336,36 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   useEffect(() => {
     scaleRef.current = scale;
   }, [scale]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (showRunSummary) {
+        return;
+      }
+      event.preventDefault();
+      setIsPauseOpen((open) => !open);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showRunSummary]);
+
+  useEffect(() => {
+    const gameLoop = app.getGameLoop();
+    if (isPauseOpen) {
+      gameLoop.stop();
+      return () => {
+        gameLoop.start();
+      };
+    }
+    gameLoop.start();
+    return undefined;
+  }, [app, isPauseOpen]);
 
   const handleScaleChange = (nextScale: number) => {
     scene.setScale(nextScale);
@@ -319,6 +384,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const handleRestart = useCallback(() => {
     app.restartCurrentMap();
   }, [app]);
+
+  const handleResume = useCallback(() => {
+    setIsPauseOpen(false);
+  }, []);
+
+  const handleLeaveToCamp = useCallback(() => {
+    setIsPauseOpen(false);
+    onLeaveToMapSelect();
+  }, [onLeaveToMapSelect]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -591,12 +665,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
         onScaleChange={handleScaleChange}
         cameraPosition={cameraInfo.position}
       />
+      <SceneRunResourcePanel resources={resourceSummary.resources} />
+      <SceneTooltipPanel content={hoverContent} />
       <SceneDebugPanel timeMs={timePlayed} brickCount={brickCount} />
       <SceneSummoningPanel
         ref={summoningPanelRef}
         resources={necromancerResources}
         spawnOptions={necromancerOptions}
         onSummon={handleSummonUnit}
+        blueprints={unitBlueprints}
+        onHoverInfoChange={setHoverContent}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
@@ -606,8 +684,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
           resources={resourceSummary.resources}
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          onLeave={onLeaveToMapSelect}
-          onRestart={handleRestart}
+          primaryAction={{ label: "Leave", onClick: onLeaveToMapSelect }}
+          secondaryAction={{ label: "Restart", onClick: handleRestart }}
+        />
+      )}
+      {isPauseOpen && !showRunSummary && (
+        <SceneRunSummaryModal
+          title="Run Paused"
+          subtitle="Resources recovered so far:"
+          resources={resourceSummary.resources}
+          bricksDestroyed={resourceSummary.bricksDestroyed}
+          totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
+          primaryAction={{ label: "Continue", onClick: handleResume }}
+          secondaryAction={{ label: "Leave", onClick: handleLeaveToCamp }}
         />
       )}
     </div>

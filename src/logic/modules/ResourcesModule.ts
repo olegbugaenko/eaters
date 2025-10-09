@@ -131,9 +131,7 @@ export class ResourcesModule implements GameModule {
 
     if (changed) {
       this.pushTotals();
-      if (this.summaryCompleted || !this.runActive) {
-        this.pushRunSummary();
-      }
+      this.pushRunSummary();
     }
   }
 
@@ -143,9 +141,7 @@ export class ResourcesModule implements GameModule {
       this.runBricksDestroyed += 1;
     }
 
-    if (this.summaryCompleted || !this.runActive) {
-      this.pushRunSummary();
-    }
+    this.pushRunSummary();
   }
 
   public canAfford(amount: ResourceAmount | ResourceStockpile): boolean {

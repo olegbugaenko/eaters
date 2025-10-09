@@ -36,7 +36,8 @@ const sanitizeResourceValue = (value: unknown): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return 0;
   }
-  return Math.max(Math.floor(value), 0);
+  const clamped = Math.max(value, 0);
+  return Math.round(clamped * 100) / 100;
 };
 
 export const createEmptyResourceStockpile = (): ResourceStockpile => {

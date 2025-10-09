@@ -1,0 +1,63 @@
+.scene-run-resources {
+  position: fixed;
+  top: calc(6rem + 6.5rem);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: 0;
+  pointer-events: none;
+  z-index: 24;
+}
+
+.scene-run-resources__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  pointer-events: none;
+}
+
+.scene-run-resources__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 0.65rem 1.1rem;
+  min-width: 15rem;
+  border-radius: 0;
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  pointer-events: none;
+}
+
+.scene-run-resources__name {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: 0.85rem;
+}
+
+.scene-run-resources__value {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 1024px) {
+  .scene-run-resources {
+    top: calc(6rem + 7.5rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .scene-run-resources {
+    position: absolute;
+    top: var(--spacing-xl);
+    left: var(--spacing-lg);
+  }
+
+  .scene-run-resources__item {
+    min-width: 0;
+  }
+}
