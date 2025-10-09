@@ -110,13 +110,14 @@ export class MapModule implements GameModule {
       this.options.bricks.setBricks(bricks);
     }
     const spawnUnits = this.generatePlayerUnits(config);
+    const spawnPoints = this.getSpawnPoints(config, spawnUnits);
 
     if (options.generateUnits) {
       this.options.playerUnits.setUnits(spawnUnits);
     }
 
     this.options.necromancer.configureForMap({
-      spawnPoints: spawnUnits.map((unit) => unit.position),
+      spawnPoints,
     });
 
     this.options.resources.startRun();
@@ -156,6 +157,18 @@ export class MapModule implements GameModule {
       type: unit.type,
       position: this.clampToMap(unit.position, config.size),
     }));
+  }
+
+  private getSpawnPoints(
+    config: MapConfig,
+    units: PlayerUnitSpawnData[]
+  ): SceneVector2[] {
+    if (config.spawnPoints && config.spawnPoints.length > 0) {
+      return config.spawnPoints.map((point) =>
+        this.clampToMap(point, config.size)
+      );
+    }
+    return units.map((unit) => unit.position);
   }
 
   private clampToMap(position: SceneVector2, size: SceneSize): SceneVector2 {

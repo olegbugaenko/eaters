@@ -15,6 +15,7 @@ export interface MapConfig {
   readonly size: SceneSize;
   readonly bricks: readonly BrickShapeBlueprint[];
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
+  readonly spawnPoints?: readonly SceneVector2[];
 }
 
 export interface MapListEntry {
@@ -30,12 +31,16 @@ export interface MapPlayerUnitConfig {
   readonly position: SceneVector2;
 }
 
+const FOUNDATIONS_CENTER: SceneVector2 = { x: 500, y: 500 };
+const FOUNDATIONS_SPAWN_POINTS: readonly SceneVector2[] = [FOUNDATIONS_CENTER];
+
 const MAPS_DB: Record<MapId, MapConfig> = {
   foundations: {
     name: "Cracked Pentagon",
     size: { width: 1000, height: 1000 },
+    spawnPoints: FOUNDATIONS_SPAWN_POINTS,
     bricks: (() => {
-      const center: SceneVector2 = { x: 500, y: 500 };
+      const center = FOUNDATIONS_CENTER;
       const sides = 5;
       const outerRadius = 360;
       const layerThickness = getBrickConfig("smallSquareGray").size.width * 3;
