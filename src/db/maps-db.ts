@@ -1,13 +1,14 @@
-import { BrickType } from "./bricks-db";
+import { BrickType, getBrickConfig } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/SceneObjectManager";
 import { PlayerUnitType } from "./player-units-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
   circleWithBricks,
+  polygonWithBricks,
 } from "../logic/services/BrickLayoutService";
 
-export type MapId = "initial";
+export type MapId = "foundations" | "initial";
 
 export interface MapConfig {
   readonly name: string;
@@ -30,6 +31,43 @@ export interface MapPlayerUnitConfig {
 }
 
 const MAPS_DB: Record<MapId, MapConfig> = {
+  foundations: {
+    name: "Cracked Pentagon",
+    size: { width: 1000, height: 1000 },
+    bricks: (() => {
+      const center: SceneVector2 = { x: 500, y: 500 };
+      const sides = 5;
+      const outerRadius = 360;
+      const layerThickness = getBrickConfig("smallSquareGray").size.width * 3;
+      const innerRadius = Math.max(outerRadius - layerThickness, 0);
+
+      const createPolygon = (radius: number): SceneVector2[] =>
+        Array.from({ length: sides }, (_, index) => {
+          const angle = (index / sides) * Math.PI * 2 - Math.PI / 2;
+          return {
+            x: center.x + Math.cos(angle) * radius,
+            y: center.y + Math.sin(angle) * radius,
+          };
+        });
+
+      const outerVertices = createPolygon(outerRadius);
+      const innerVertices = createPolygon(innerRadius);
+
+      const ring = polygonWithBricks("smallSquareGray", {
+        vertices: outerVertices,
+        holes: [innerVertices],
+        offsetX: center.x,
+        offsetY: center.y,
+      });
+      return [ring];
+    })(),
+    playerUnits: [
+      {
+        type: "bluePentagon",
+        position: { x: 140, y: 140 },
+      },
+    ],
+  },
   initial: {
     name: "Initial Grounds",
     size: { width: 3000, height: 3000 },

@@ -38,7 +38,7 @@ interface MapSaveData {
   mapId: MapId;
 }
 
-const DEFAULT_MAP_ID: MapId = "initial";
+const DEFAULT_MAP_ID: MapId = "foundations";
 export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
 
 export class MapModule implements GameModule {
