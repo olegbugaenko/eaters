@@ -1,41 +1,13 @@
 .scene-run-resources {
   position: fixed;
-  top: 128px;
-  left: 2rem;
-  width: 280px;
-  padding: 1rem 1.25rem;
-  border-radius: 0.9rem;
-  background: linear-gradient(180deg, rgba(16, 24, 38, 0.9), rgba(8, 12, 20, 0.88));
-  border: 1px solid rgba(62, 162, 214, 0.35);
-  box-shadow: 0 18px 40px rgba(7, 16, 28, 0.42);
-  color: #f8fafc;
+  top: calc(6rem + 6.5rem);
+  left: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--spacing-sm);
+  padding: 0;
   pointer-events: none;
   z-index: 24;
-}
-
-.scene-run-resources__header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.scene-run-resources__title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.scene-run-resources__subtitle {
-  margin: 0;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(148, 187, 233, 0.75);
 }
 
 .scene-run-resources__list {
@@ -44,47 +16,48 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  pointer-events: auto;
+  gap: var(--spacing-sm);
+  pointer-events: none;
 }
 
 .scene-run-resources__item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  background: rgba(13, 20, 32, 0.75);
-  border: 1px solid rgba(62, 162, 214, 0.22);
-  backdrop-filter: blur(6px);
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 0.65rem 1.1rem;
+  min-width: 15rem;
+  border-radius: 0;
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  pointer-events: none;
 }
 
 .scene-run-resources__name {
-  font-size: 0.88rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  font-size: 0.85rem;
 }
 
 .scene-run-resources__value {
-  font-size: 0.95rem;
   font-weight: 700;
-  color: #e2e8f0;
+  font-size: 0.95rem;
 }
 
-.scene-run-resources__empty {
-  margin: 0;
-  font-size: 0.85rem;
-  color: rgba(190, 209, 230, 0.8);
-  pointer-events: none;
+@media (max-width: 1024px) {
+  .scene-run-resources {
+    top: calc(6rem + 7.5rem);
+  }
 }
 
 @media (max-width: 768px) {
   .scene-run-resources {
     position: absolute;
-    top: 70px;
-    left: 1rem;
-    right: 1rem;
-    width: auto;
+    top: var(--spacing-xl);
+    left: var(--spacing-lg);
+  }
+
+  .scene-run-resources__item {
+    min-width: 0;
   }
 }
