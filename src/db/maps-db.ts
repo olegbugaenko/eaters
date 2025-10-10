@@ -70,7 +70,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       playerUnits: [
         {
           type: "bluePentagon",
-          position: { x: 140, y: 140 },
+          position: { ...spawnPoint },
         },
       ],
     } satisfies MapConfig;

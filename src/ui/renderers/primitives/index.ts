@@ -1,4 +1,7 @@
-export { createStaticRectanglePrimitive } from "./RectanglePrimitive";
+export {
+  createStaticRectanglePrimitive,
+  createDynamicRectanglePrimitive,
+} from "./RectanglePrimitive";
 export {
   createStaticCirclePrimitive,
   createDynamicCirclePrimitive,

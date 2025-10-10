@@ -5,66 +5,39 @@ import {
   SceneObjectInstance,
   SceneStroke,
 } from "../../../logic/services/SceneObjectManager";
-import {
-  createStaticCirclePrimitive,
-  createStaticRectanglePrimitive,
-} from "../primitives";
-
-const CIRCLE_SIZE_FACTOR = 0.4;
-const INNER_OFFSET_FACTOR = 0.25;
-const INNER_CIRCLE_COLOR = { r: 0.85, g: 0.85, b: 0.85, a: 1 } as const;
+import { createDynamicRectanglePrimitive } from "../primitives";
 
 export class BrickObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const size = instance.data.size ?? { width: 0, height: 0 };
-    const radius = (Math.min(size.width, size.height) * CIRCLE_SIZE_FACTOR) / 2;
-    const fill = instance.data.fill;
-    const innerFill = {
-      fillType: FILL_TYPES.SOLID,
-      color: { ...INNER_CIRCLE_COLOR },
-    };
-    const rotation = instance.data.rotation ?? 0;
-    const innerOffset = {
-      x: -size.width * INNER_OFFSET_FACTOR,
-      y: 0,
-    };
+    const dynamicPrimitives = [];
 
-    const primitives = [];
     if (hasStroke(instance.data.stroke)) {
-      primitives.push(
-        createStaticRectanglePrimitive({
-          center: instance.data.position,
-          size: expandSize(size, instance.data.stroke.width),
-          fill: createStrokeFill(instance.data.stroke),
-          rotation,
+      const initialStroke = instance.data.stroke;
+      const initialSize = size;
+      dynamicPrimitives.push(
+        createDynamicRectanglePrimitive(instance, {
+          getSize: (target) => {
+            const sizeSource = target.data.size ?? initialSize;
+            const strokeSource = target.data.stroke ?? initialStroke;
+            const strokeWidth = strokeSource?.width ?? initialStroke.width;
+            return expandSize(sizeSource, strokeWidth ?? 0);
+          },
+          getFill: (target) => {
+            const strokeSource = target.data.stroke ?? initialStroke;
+            return strokeSource ? createStrokeFill(strokeSource) : target.data.fill;
+          },
         })
       );
     }
 
-    primitives.push(
-      createStaticRectanglePrimitive({
-        center: instance.data.position,
-        size,
-        fill,
-        rotation,
-      })
+    dynamicPrimitives.push(
+      createDynamicRectanglePrimitive(instance)
     );
-
-    /*
-    primitives.push(
-      createStaticCirclePrimitive({
-        center: instance.data.position,
-        radius,
-        fill: innerFill,
-        rotation,
-        offset: innerOffset,
-      })
-    );
-    */
 
     return {
-      staticPrimitives: primitives,
-      dynamicPrimitives: [],
+      staticPrimitives: [],
+      dynamicPrimitives,
     };
   }
 }

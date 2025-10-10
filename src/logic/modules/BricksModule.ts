@@ -418,8 +418,12 @@ export class BricksModule implements GameModule {
       y: -1,
     };
 
-    const strengthBase = Math.max(Math.min(brick.physicalSize, 40), 8);
-    const offset = scaleVector(direction, strengthBase * 0.5);
+    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
+    const amplitude =
+      knockBackDistance > 0
+        ? clamp(knockBackDistance * 0.15, 4, 12)
+        : clamp(brick.physicalSize * 0.35, 4, 10);
+    const offset = scaleVector(direction, amplitude);
 
     if (vectorHasLength(offset)) {
       let combinedOffset = offset;

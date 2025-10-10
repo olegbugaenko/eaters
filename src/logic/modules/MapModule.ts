@@ -126,8 +126,12 @@ export class MapModule implements GameModule {
   }
 
   private generateBricks(config: MapConfig): BrickData[] {
-    const unitPositions = (config.playerUnits ?? []).map((unit) =>
-      this.clampToMap(unit.position, config.size)
+    const spawnOrigins =
+      config.spawnPoints && config.spawnPoints.length > 0
+        ? config.spawnPoints
+        : (config.playerUnits ?? []).map((unit) => unit.position);
+    const unitPositions = spawnOrigins.map((origin) =>
+      this.clampToMap(origin, config.size)
     );
     const bricks = buildBricksFromBlueprints(config.bricks).map((brick) => ({
       position: this.clampToMap(brick.position, config.size),
@@ -153,10 +157,20 @@ export class MapModule implements GameModule {
     if (!config.playerUnits) {
       return [];
     }
-    return config.playerUnits.map((unit) => ({
-      type: unit.type,
-      position: this.clampToMap(unit.position, config.size),
-    }));
+    const spawnPoints = (config.spawnPoints ?? []).map((point) =>
+      this.clampToMap(point, config.size)
+    );
+    return config.playerUnits.map((unit, index) => {
+      const fallback = this.clampToMap(unit.position, config.size);
+      const spawnPoint =
+        spawnPoints.length > 0
+          ? spawnPoints[index % spawnPoints.length]
+          : undefined;
+      return {
+        type: unit.type,
+        position: spawnPoint ?? fallback,
+      };
+    });
   }
 
   private getSpawnPoints(
