@@ -22,6 +22,7 @@ export interface SkillConfig {
 export const SKILL_IDS = [
   "stone_lore",
   "stone_automatons",
+  "autorestart_rituals",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -107,6 +108,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_lore: 1 },
     cost: createStoneCost(20, 1),
+  },
+  autorestart_rituals: {
+    id: "autorestart_rituals",
+    name: "Autorestart Sigils",
+    description:
+      "Imprint cascading reset sigils so collapse teams can reweave summoning circles without supervision.",
+    nodePosition: { x: -1, y: 3 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { stone_automatons: 1 },
+    cost: createMixedCost(500, 1, 50, 1),
   },
   quarry_overseers: {
     id: "quarry_overseers",

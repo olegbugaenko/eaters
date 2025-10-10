@@ -46,6 +46,11 @@ import {
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
   ResourceRunSummaryPayload,
 } from "../../../logic/modules/ResourcesModule";
+import {
+  DEFAULT_MAP_AUTO_RESTART_STATE,
+  MAP_AUTO_RESTART_BRIDGE_KEY,
+  MapAutoRestartState,
+} from "../../../logic/modules/MapModule";
 import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
 import { SceneRunResourcePanel } from "./SceneRunResourcePanel";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
@@ -181,6 +186,8 @@ void main() {
 }
 `;
 
+const AUTO_RESTART_SECONDS = 5;
+
 const createShader = (gl: WebGLRenderingContext, type: number, source: string) => {
   const shader = gl.createShader(type);
   if (!shader) {
@@ -296,6 +303,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     UNIT_AUTOMATION_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_AUTOMATION_STATE
   );
+  const autoRestartState = useBridgeValue<MapAutoRestartState>(
+    bridge,
+    MAP_AUTO_RESTART_BRIDGE_KEY,
+    DEFAULT_MAP_AUTO_RESTART_STATE
+  );
   const [scale, setScale] = useState(() => scene.getCamera().scale);
   const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
   const cameraInfoRef = useRef(cameraInfo);
@@ -307,6 +319,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const showRunSummary = resourceSummary.completed;
   const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
+  const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
+  const autoRestartHandledRef = useRef(false);
 
   useEffect(() => {
     if (unitBlueprints.length === 0) {
@@ -399,9 +413,21 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     [unitAutomation]
   );
 
-  const handleRestart = useCallback(() => {
+  const restartMap = useCallback(() => {
     app.restartCurrentMap();
   }, [app]);
+
+  const handleToggleAutoRestart = useCallback(
+    (enabled: boolean) => {
+      app.setAutoRestartEnabled(enabled);
+    },
+    [app]
+  );
+
+  const handleRestart = useCallback(() => {
+    autoRestartHandledRef.current = true;
+    restartMap();
+  }, [restartMap]);
 
   const handleResume = useCallback(() => {
     setIsPauseOpen(false);
@@ -411,6 +437,48 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     setIsPauseOpen(false);
     onLeaveToMapSelect();
   }, [onLeaveToMapSelect]);
+
+  useEffect(() => {
+    if (!showRunSummary) {
+      autoRestartHandledRef.current = false;
+      setAutoRestartCountdown(AUTO_RESTART_SECONDS);
+      return;
+    }
+    if (!autoRestartState.unlocked) {
+      autoRestartHandledRef.current = false;
+      setAutoRestartCountdown(AUTO_RESTART_SECONDS);
+      return;
+    }
+    if (!autoRestartState.enabled) {
+      autoRestartHandledRef.current = false;
+      setAutoRestartCountdown(AUTO_RESTART_SECONDS);
+      return;
+    }
+    autoRestartHandledRef.current = false;
+    setAutoRestartCountdown(AUTO_RESTART_SECONDS);
+    let remaining = AUTO_RESTART_SECONDS;
+    const interval = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        window.clearInterval(interval);
+        setAutoRestartCountdown(0);
+        if (!autoRestartHandledRef.current) {
+          autoRestartHandledRef.current = true;
+          restartMap();
+        }
+        return;
+      }
+      setAutoRestartCountdown(remaining);
+    }, 1000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [
+    autoRestartState.enabled,
+    autoRestartState.unlocked,
+    restartMap,
+    showRunSummary,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -706,6 +774,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
           primaryAction={{ label: "Leave", onClick: onLeaveToMapSelect }}
           secondaryAction={{ label: "Restart", onClick: handleRestart }}
+          autoRestart={
+            autoRestartState.unlocked
+              ? {
+                  enabled: autoRestartState.enabled,
+                  countdown: autoRestartCountdown,
+                  onToggle: handleToggleAutoRestart,
+                }
+              : undefined
+          }
         />
       )}
       {isPauseOpen && !showRunSummary && (

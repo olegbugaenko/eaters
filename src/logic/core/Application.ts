@@ -113,6 +113,7 @@ export class Application {
       necromancer: this.necromancerModule,
       resources: resourcesModule,
       unlocks: unlockService,
+      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
     });
     this.mapModule = mapModuleReference;
 
@@ -197,6 +198,10 @@ export class Application {
 
   public restartCurrentMap(): void {
     this.mapModule.restartSelectedMap();
+  }
+
+  public setAutoRestartEnabled(enabled: boolean): void {
+    this.mapModule.setAutoRestartEnabled(enabled);
   }
 
   public selectMap(mapId: MapId): void {

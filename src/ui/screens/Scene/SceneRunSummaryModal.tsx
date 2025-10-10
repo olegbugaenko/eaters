@@ -8,6 +8,12 @@ interface SceneRunSummaryModalAction {
   onClick: () => void;
 }
 
+interface SceneRunSummaryAutoRestartControls {
+  enabled: boolean;
+  countdown: number;
+  onToggle: (enabled: boolean) => void;
+}
+
 interface SceneRunSummaryModalProps {
   resources: ResourceRunSummaryItem[];
   bricksDestroyed: number;
@@ -16,6 +22,7 @@ interface SceneRunSummaryModalProps {
   secondaryAction?: SceneRunSummaryModalAction;
   title?: string;
   subtitle?: string;
+  autoRestart?: SceneRunSummaryAutoRestartControls;
 }
 
 const formatDelta = (value: number): string => {
@@ -41,6 +48,7 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   totalBricksDestroyed,
   primaryAction,
   secondaryAction,
+  autoRestart,
   title = "Run Complete",
   subtitle = "Resources recovered from the ruins:",
 }) => {
@@ -75,6 +83,21 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
             </span>
           </div>
         </div>
+        {autoRestart ? (
+          <div className="scene-run-summary__auto-restart">
+            <label className="scene-run-summary__auto-restart-toggle">
+              <input
+                type="checkbox"
+                checked={autoRestart.enabled}
+                onChange={(event) => autoRestart.onToggle(event.target.checked)}
+              />
+              <span>Autorestart</span>
+            </label>
+            <span className="scene-run-summary__auto-restart-timer">
+              {Math.max(0, Math.ceil(autoRestart.countdown))}s
+            </span>
+          </div>
+        ) : null}
         <div className="scene-run-summary__actions">
           <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
           {secondaryAction ? (

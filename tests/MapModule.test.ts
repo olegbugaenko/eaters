@@ -9,8 +9,14 @@ import {
   MapModule,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
   MAP_LIST_BRIDGE_KEY,
+  DEFAULT_MAP_AUTO_RESTART_STATE,
+  MAP_AUTO_RESTART_BRIDGE_KEY,
 } from "../src/logic/modules/MapModule";
-import type { MapListEntry, MapStats } from "../src/logic/modules/MapModule";
+import type {
+  MapListEntry,
+  MapStats,
+  MapAutoRestartState,
+} from "../src/logic/modules/MapModule";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { NecromancerModule } from "../src/logic/modules/NecromancerModule";
 import { BonusesModule } from "../src/logic/modules/BonusesModule";
@@ -70,6 +76,7 @@ describe("MapModule", () => {
       necromancer,
       resources,
       unlocks,
+      getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
 
@@ -135,6 +142,7 @@ describe("Map unlocking", () => {
       necromancer,
       resources,
       unlocks,
+      getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
 
@@ -205,6 +213,7 @@ describe("Map unlocking", () => {
       necromancer,
       resources,
       unlocks,
+      getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
 
@@ -219,5 +228,97 @@ describe("Map unlocking", () => {
     assert(saved.stats);
     assert.strictEqual(saved.stats?.foundations?.[0]?.success, 1);
     assert.strictEqual(saved.stats?.foundations?.[0]?.failure, 1);
+  });
+});
+
+describe("Map auto restart", () => {
+  test("auto restart unlocks with the corresponding skill and persists", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const explosions = new ExplosionModule({ scene });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const resources = {
+      startRun: () => {},
+      grantResources: () => {},
+      notifyBrickDestroyed: () => {},
+    };
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const movement = new MovementService();
+    const playerUnits = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+    });
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits,
+      scene,
+      bonuses,
+    });
+
+    let mapModuleRef: MapModule | null = null;
+    let skillLevel = 0;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+      unlocks,
+      getSkillLevel: () => skillLevel,
+    });
+    mapModuleRef = maps;
+
+    necromancer.initialize();
+    maps.initialize();
+
+    let state =
+      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
+      DEFAULT_MAP_AUTO_RESTART_STATE;
+    assert.strictEqual(state.unlocked, false);
+    assert.strictEqual(state.enabled, false);
+
+    maps.setAutoRestartEnabled(true);
+    state =
+      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
+      DEFAULT_MAP_AUTO_RESTART_STATE;
+    assert.strictEqual(state.unlocked, false);
+    assert.strictEqual(state.enabled, false);
+
+    skillLevel = 1;
+    maps.tick(0);
+    state =
+      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
+      DEFAULT_MAP_AUTO_RESTART_STATE;
+    assert.strictEqual(state.unlocked, true);
+    assert.strictEqual(state.enabled, false);
+
+    maps.setAutoRestartEnabled(true);
+    state =
+      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
+      DEFAULT_MAP_AUTO_RESTART_STATE;
+    assert.strictEqual(state.unlocked, true);
+    assert.strictEqual(state.enabled, true);
+
+    const saved = maps.save() as { autoRestartEnabled?: boolean };
+    assert.strictEqual(saved.autoRestartEnabled, true);
+
+    skillLevel = 0;
+    maps.tick(0);
+    state =
+      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
+      DEFAULT_MAP_AUTO_RESTART_STATE;
+    assert.strictEqual(state.unlocked, false);
+    assert.strictEqual(state.enabled, false);
   });
 });
