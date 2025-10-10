@@ -14,7 +14,9 @@ export const BONUS_IDS = [
   "blue_vanguard_hp_multiplier",
   "all_units_hp_multiplier",
   "all_units_attack_multiplier",
-  "all_units_armor"
+  "all_units_armor",
+  "all_units_crit_mult",
+  "all_units_crit_chance"
 ] as const;
 
 export type BonusId = (typeof BONUS_IDS)[number];
@@ -64,6 +66,16 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_armor",
     name: "All Units Armor",
     defaultValue: 0,
+  },
+  all_units_crit_chance: {
+    id: "all_units_crit_chance",
+    name: "Critical Chance",
+    defaultValue: 0,
+  },
+  all_units_crit_mult: {
+    id: "all_units_crit_mult",
+    name: "Critical Multiplier",
+    defaultValue: 2,
   }
 };
 

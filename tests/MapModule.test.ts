@@ -142,7 +142,7 @@ describe("Map unlocking", () => {
 
     const foundationsEntry = updatedList.find((entry) => entry.id === "foundations");
     assert.strictEqual(foundationsEntry?.currentLevel, 1);
-    assert.strictEqual(foundationsEntry?.attempts, 0);
+    assert.strictEqual(foundationsEntry?.attempts, 1);
 
     const initialEntry = updatedList.find((entry) => entry.id === "initial");
     assert.strictEqual(initialEntry?.currentLevel, 0);
@@ -187,8 +187,8 @@ describe("Map unlocking", () => {
     });
     mapModuleRef = maps;
 
-    maps.recordRunResult({ mapId: "foundations", success: true });
-    maps.recordRunResult({ mapId: "foundations", success: false });
+    maps.recordRunResult({ mapId: "foundations", level: 0, success: true });
+    maps.recordRunResult({ mapId: "foundations", level: 0, success: false });
 
     const stats = maps.getMapStats();
     assert.strictEqual(stats.foundations?.[0]?.success, 1);

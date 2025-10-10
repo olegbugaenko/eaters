@@ -148,6 +148,7 @@ describe("BricksModule", () => {
       {
         position: { x: 10, y: 10 },
         rotation: 0,
+        level: 0,
         type: "classic",
       },
     ]);
@@ -188,6 +189,7 @@ describe("BricksModule", () => {
       {
         position: { x: 10, y: 10 },
         rotation: 0,
+        level: 0,
         type: "smallSquareGray",
       },
     ]);
@@ -240,6 +242,7 @@ describe("BricksModule", () => {
       {
         position: { x: 10, y: 10 },
         rotation: 0,
+        level: 0,
         type: "classic",
       },
     ]);

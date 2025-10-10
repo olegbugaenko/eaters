@@ -12,10 +12,18 @@ import {
 
 export type MapId = "foundations" | "initial";
 
+export interface MapBrickGeneratorOptions {
+  readonly mapLevel: number;
+}
+
+export type MapBrickGenerator = (
+  options: MapBrickGeneratorOptions
+) => readonly BrickShapeBlueprint[];
+
 export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
-  readonly bricks: readonly BrickShapeBlueprint[];
+  readonly bricks: MapBrickGenerator;
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
   readonly spawnPoints?: readonly SceneVector2[];
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
@@ -58,18 +66,22 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const outerVertices = createPolygon(outerRadius);
     const innerVertices = createPolygon(innerRadius);
 
-    const ring = polygonWithBricks("smallSquareGray", {
-      vertices: outerVertices,
-      holes: [innerVertices],
-      offsetX: center.x,
-      offsetY: center.y,
-    });
-
     return {
       name: "Cracked Pentagon",
       size,
       spawnPoints: [spawnPoint],
-      bricks: [ring],
+      bricks: ({ mapLevel }) => [
+        polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: outerVertices,
+            holes: [innerVertices],
+            offsetX: center.x,
+            offsetY: center.y,
+          },
+          { level: mapLevel }
+        ),
+      ],
       playerUnits: [
         {
           type: "bluePentagon",
@@ -80,7 +92,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   })(),
   initial: {
     name: "Initial Grounds",
-    size: { width: 3000, height: 3000 },
+    size: { width: 2000, height: 2000 },
     unlockedBy: [
       {
         type: "map",
@@ -88,19 +100,29 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         level: 1,
       },
     ],
-    bricks: (() => {
+    bricks: ({ mapLevel }) => {
+      const baseLevel = Math.max(0, Math.floor(mapLevel));
+      const innerLevel = baseLevel + 1;
       const center: SceneVector2 = { x: 1500, y: 1500 };
-      const largeCircle = circleWithBricks("smallSquareGray", {
-        center,
-        innerRadius: 300,
-        outerRadius: 500,
-      });
+      const largeCircle = circleWithBricks(
+        "smallSquareGray",
+        {
+          center,
+          innerRadius: 300,
+          outerRadius: 500,
+        },
+        { level: innerLevel }
+      );
 
-      const largeYellowCircle = circleWithBricks("smallSquareYellow", {
-        center,
-        innerRadius: 0,
-        outerRadius: 300,
-      });
+      const largeYellowCircle = circleWithBricks(
+        "smallSquareYellow",
+        {
+          center,
+          innerRadius: 0,
+          outerRadius: 300,
+        },
+        { level: baseLevel }
+      );
 
       const satelliteCount = 10;
       const satelliteRadius = 125;
@@ -112,11 +134,15 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           x: center.x + Math.cos(angle) * orbitRadius,
           y: center.y + Math.sin(angle) * orbitRadius,
         };
-        return circleWithBricks("smallSquareGray", {
-          center: position,
-          innerRadius: satelliteRadius*0.5,
-          outerRadius: satelliteRadius,
-        });
+        return circleWithBricks(
+          "smallSquareGray",
+          {
+            center: position,
+            innerRadius: satelliteRadius * 0.5,
+            outerRadius: satelliteRadius,
+          },
+          { level: baseLevel + 0.5 }
+        );
       });
 
       const satellitesInner = Array.from({ length: satelliteCount }, (_, index) => {
@@ -125,14 +151,18 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           x: center.x + Math.cos(angle) * orbitRadius,
           y: center.y + Math.sin(angle) * orbitRadius,
         };
-        return circleWithBricks("smallSquareYellow", {
-          center: position,
-          innerRadius: 0,
-          outerRadius: satelliteRadius*0.5,
-        });
+        return circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: position,
+            innerRadius: 0,
+            outerRadius: satelliteRadius * 0.5,
+          },
+          { level: baseLevel }
+        );
       });
 
-      const satelliteCountOuter = 32;
+      /*const satelliteCountOuter = 32;
       const satelliteRadiusOuter = 100;
       const orbitRadiusOuter = 500 + 700 + satelliteRadius;
 
@@ -142,15 +172,19 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           x: center.x + Math.cos(angle) * orbitRadiusOuter,
           y: center.y + Math.sin(angle) * orbitRadiusOuter,
         };
-        return circleWithBricks("smallSquareGray", {
-          center: position,
-          innerRadius: 0,
-          outerRadius: satelliteRadiusOuter,
-        });
+        return circleWithBricks(
+          "smallSquareGray",
+          {
+            center: position,
+            innerRadius: 0,
+            outerRadius: satelliteRadiusOuter,
+          },
+          { level: baseLevel + 0.25 }
+        );
       });
-
-      return [largeCircle, largeYellowCircle, ...satellites, ...satellitesInner, ...satellitesOuter];
-    })(),
+      */
+      return [largeCircle, largeYellowCircle, ...satellites, ...satellitesInner];
+    },
     playerUnits: [
       {
         type: "bluePentagon",
@@ -176,7 +210,7 @@ export const isMapId = (value: unknown): value is MapId =>
 export const getMapList = (): MapListEntry[] =>
   MAP_IDS.map((mapId) => {
     const config = MAPS_DB[mapId];
-    const bricks = buildBricksFromBlueprints(config.bricks);
+    const bricks = buildBricksFromBlueprints(config.bricks({ mapLevel: 0 }));
     const brickCount = bricks.length;
     const brickTypes = Array.from(new Set(bricks.map((brick) => brick.type)));
     return {

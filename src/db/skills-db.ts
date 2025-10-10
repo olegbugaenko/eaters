@@ -32,7 +32,12 @@ export const SKILL_IDS = [
   "improved_membranes",
   "hunger",
   "stone_drill",
-  "stone_armor"
+  "stone_armor",
+  "vitality",
+  "clarity",
+  "mana_reservior",
+  "critical_chance",
+  "damage_lore"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -132,23 +137,53 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { hunger: 1 },
     cost: createStoneCost(6, 1.35),
   },
+  mana_reservior: {
+    id: "mana_reservior",
+    name: "Mana Reservior",
+    description:
+      "Weave molten filaments into frameworks that stabilize fragile sand constructs.",
+    nodePosition: { x: -1, y: -2},
+    maxLevel: 5,
+    effects: {
+      mana_cap: {
+        income: (level) => 3 * level,
+      },
+    },
+    nodesRequired: { glass_latticework: 1 },
+    cost: createStoneCost(15, 1.35),
+  },
   emberglass_reactors: {
     id: "emberglass_reactors",
     name: "Emberglass Reactors",
     description:
       "Channel heat through mirrored chambers, transmuting sand surges into lasting stores.",
-    nodePosition: { x: -1, y: -2 },
-    maxLevel: 2,
+    nodePosition: { x: -2, y: -3 },
+    maxLevel: 5,
     effects: {
       mana_cap: {
-        income: (level) => 6 * level,
+        income: (level) => 2 * level,
       },
       mana_regen: {
-        income: (level) => 0.08 * level,
+        income: (level) => 0.12 * level,
       },
     },
     nodesRequired: { glass_latticework: 1 },
-    cost: createMixedCost(20, 1.55, 12, 1.4),
+    cost: createStoneCost(100, 1.55),
+  },
+  sand_scribing: {
+    id: "sand_scribing",
+    name: "Sand Scribing",
+    description:
+      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+    nodePosition: { x: -3, y: -4 },
+    maxLevel: 4,
+    effects: {
+      mana_cap: {
+        income: (level) => 3 * level,
+      },
+    },
+    nodesRequired: { emberglass_reactors: 2 },
+    cost: createSandCost(22, 1.45),
   },
   bastion_foundations: {
     id: "bastion_foundations",
@@ -165,20 +200,20 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { glass_latticework: 1 },
     cost: createStoneCost(26, 1.5),
   },
-  sand_scribing: {
-    id: "sand_scribing",
-    name: "Sand Scribing",
+  clarity: {
+    id: "clarity",
+    name: "Clarity",
     description:
       "Refine sieving rituals that separate glimmering sand from dull dust motes.",
     nodePosition: { x: 2, y: -3 },
     maxLevel: 4,
     effects: {
-      mana_cap: {
-        income: (level) => 3 * level,
+      sanity_cap: {
+        income: (level) => 2 * level,
       },
     },
     nodesRequired: { bastion_foundations: 2 },
-    cost: createSandCost(22, 1.45),
+    cost: createStoneCost(100, 1.45),
   },
   // left
   granite_bonding: {
@@ -211,6 +246,36 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { granite_bonding: 2 },
     cost: createStoneCost(50, 1.5),
   },
+  damage_lore: {
+    id: "damage_lore",
+    name: "Damage Lore",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -4, y: -1 },
+    maxLevel: 10,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    nodesRequired: { stone_drill: 2 },
+    cost: createSandCost(50, 1.5),
+  },
+  critical_chance: {
+    id: "critical_chance",
+    name: "Critical Chance",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -4, y: 1 },
+    maxLevel: 10,
+    effects: {
+      all_units_crit_chance: {
+        income: (level) => 0.02 * level,
+      },
+    },
+    nodesRequired: { stone_drill: 2 },
+    cost: createMixedCost(500, 1.5, 50, 1.5),
+  },
   // right
   improved_membranes: {
     id: "improved_membranes",
@@ -225,6 +290,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { hunger: 2 },
+    cost: createStoneCost(4, 1.5),
+  },
+  vitality: {
+    id: "vitality",
+    name: "Vitality",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 2, y: 0 },
+    maxLevel: 5,
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.15 * level,
+      },
+    },
+    nodesRequired: { improved_membranes: 2 },
     cost: createStoneCost(16, 1.5),
   },
   stone_armor: {
@@ -239,7 +319,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         income: (level) => 0 + 0.25 * level,
       },
     },
-    nodesRequired: { improved_membranes: 2 },
+    nodesRequired: { vitality: 2 },
     cost: createStoneCost(50, 1.5),
   },
 };

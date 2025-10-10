@@ -44,6 +44,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
           maps={maps}
           selectedMap={selectedMap}
           onSelectMap={(mapId) => app.selectMap(mapId)}
+          onSelectMapLevel={(mapId, level) => app.selectMapLevel(mapId, level)}
           onStart={() => {
             if (maps.length === 0 || selectedMap === null) {
               return;

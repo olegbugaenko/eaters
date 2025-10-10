@@ -7,6 +7,7 @@ interface MapSelectPanelProps {
   maps: MapListEntry[];
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
+  onSelectLevel: (mapId: MapId, level: number) => void;
   onStart: () => void;
   onExit: () => void;
   formattedTime: string;
@@ -17,6 +18,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
   selectedMap,
   onSelectMap,
+  onSelectLevel,
   onStart,
   onExit,
   formattedTime,
@@ -40,6 +42,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       <div className="map-select-panel__list card-list">
         {maps.map((map) => {
           const isSelected = map.id === selectedMap;
+          const canDecrease = map.selectedLevel > 0;
+          const canIncrease = map.selectedLevel < map.currentLevel;
           return (
             <article
               key={map.id}
@@ -61,7 +65,33 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   </dd>
                 </div>
                 <div>
-                  <dt>Level</dt>
+                  <dt>Selected Level</dt>
+                  <dd>
+                    <div className="map-select-card__level-control">
+                      <button
+                        type="button"
+                        className="map-select-card__level-button"
+                        onClick={() => onSelectLevel(map.id, map.selectedLevel - 1)}
+                        disabled={!canDecrease}
+                        aria-label="Decrease map level"
+                      >
+                        -
+                      </button>
+                      <span className="map-select-card__level-value">{map.selectedLevel}</span>
+                      <button
+                        type="button"
+                        className="map-select-card__level-button"
+                        onClick={() => onSelectLevel(map.id, map.selectedLevel + 1)}
+                        disabled={!canIncrease}
+                        aria-label="Increase map level"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Max Level</dt>
                   <dd>{map.currentLevel}</dd>
                 </div>
                 <div>
