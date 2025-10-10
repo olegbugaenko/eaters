@@ -17,6 +17,11 @@ import {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
 } from "../../../logic/modules/NecromancerModule";
+import {
+  DEFAULT_UNIT_AUTOMATION_STATE,
+  UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+  UnitAutomationBridgeState,
+} from "../../../logic/modules/UnitAutomationModule";
 import { PlayerUnitType } from "../../../db/player-units-db";
 import {
   SceneCameraState,
@@ -286,6 +291,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
     DEFAULT_RESOURCE_RUN_SUMMARY
   );
+  const automationState = useBridgeValue<UnitAutomationBridgeState>(
+    bridge,
+    UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_AUTOMATION_STATE
+  );
   const [scale, setScale] = useState(() => scene.getCamera().scale);
   const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
   const cameraInfoRef = useRef(cameraInfo);
@@ -293,6 +303,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
   const brickInitialHpRef = useRef(0);
   const necromancer = useMemo(() => app.getNecromancer(), [app]);
+  const unitAutomation = useMemo(() => app.getUnitAutomation(), [app]);
   const showRunSummary = resourceSummary.completed;
   const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
@@ -379,6 +390,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
       necromancer.trySpawnUnit(type);
     },
     [necromancer]
+  );
+
+  const handleToggleAutomation = useCallback(
+    (type: PlayerUnitType, enabled: boolean) => {
+      unitAutomation.setAutomationEnabled(type, enabled);
+    },
+    [unitAutomation]
   );
 
   const handleRestart = useCallback(() => {
@@ -675,6 +693,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
         onSummon={handleSummonUnit}
         blueprints={unitBlueprints}
         onHoverInfoChange={setHoverContent}
+        automation={automationState}
+        onToggleAutomation={handleToggleAutomation}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />

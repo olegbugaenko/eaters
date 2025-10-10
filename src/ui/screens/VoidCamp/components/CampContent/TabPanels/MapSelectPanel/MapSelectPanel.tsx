@@ -61,8 +61,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   </dd>
                 </div>
                 <div>
-                  <dt>Particles</dt>
-                  <dd>{map.brickCount}</dd>
+                  <dt>Level</dt>
+                  <dd>{map.currentLevel}</dd>
+                </div>
+                <div>
+                  <dt>Attempts</dt>
+                  <dd>{map.attempts}</dd>
                 </div>
                 <div>
                   <dt>Types</dt>

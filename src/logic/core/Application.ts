@@ -17,6 +17,7 @@ import { ResourcesModule } from "../modules/ResourcesModule";
 import { SkillTreeModule } from "../modules/SkillTreeModule";
 import { BonusesModule } from "../modules/BonusesModule";
 import { UnlockService } from "../services/UnlockService";
+import { UnitAutomationModule } from "../modules/UnitAutomationModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -27,6 +28,7 @@ export class Application {
   private resourcesModule: ResourcesModule;
   private skillTreeModule: SkillTreeModule;
   private bonusesModule: BonusesModule;
+  private unitAutomationModule: UnitAutomationModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -86,6 +88,12 @@ export class Application {
       scene: sceneObjects,
       bonuses: bonusesModule,
     });
+    const unitAutomationModule = new UnitAutomationModule({
+      bridge: this.dataBridge,
+      necromancer: this.necromancerModule,
+      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+    });
+    this.unitAutomationModule = unitAutomationModule;
     let mapModuleReference: MapModule | null = null;
     const unlockService = new UnlockService({
       getMapStats: () => mapModuleReference?.getMapStats() ?? {},
@@ -116,6 +124,7 @@ export class Application {
     this.registerModule(bricksModule);
     this.registerModule(playerUnitsModule);
     this.registerModule(this.necromancerModule);
+    this.registerModule(this.unitAutomationModule);
     this.registerModule(this.mapModule);
     this.registerModule(explosionModule);
     this.registerModule(bulletModule);
@@ -176,6 +185,10 @@ export class Application {
 
   public getSkillTree(): SkillTreeModule {
     return this.skillTreeModule;
+  }
+
+  public getUnitAutomation(): UnitAutomationModule {
+    return this.unitAutomationModule;
   }
 
   public restartCurrentMap(): void {

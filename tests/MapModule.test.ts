@@ -130,6 +130,8 @@ describe("Map unlocking", () => {
     const initialList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
     assert.strictEqual(initialList.length, 1);
     assert.strictEqual(initialList[0]!.id, "foundations");
+    assert.strictEqual(initialList[0]!.currentLevel, 0);
+    assert.strictEqual(initialList[0]!.attempts, 0);
 
     maps.recordRunResult({ mapId: "foundations", success: true });
 
@@ -137,6 +139,14 @@ describe("Map unlocking", () => {
     const mapIds = updatedList.map((entry) => entry.id);
     assert(mapIds.includes("foundations"));
     assert(mapIds.includes("initial"));
+
+    const foundationsEntry = updatedList.find((entry) => entry.id === "foundations");
+    assert.strictEqual(foundationsEntry?.currentLevel, 1);
+    assert.strictEqual(foundationsEntry?.attempts, 0);
+
+    const initialEntry = updatedList.find((entry) => entry.id === "initial");
+    assert.strictEqual(initialEntry?.currentLevel, 0);
+    assert.strictEqual(initialEntry?.attempts, 0);
   });
 
   test("run results are stored in map stats", () => {

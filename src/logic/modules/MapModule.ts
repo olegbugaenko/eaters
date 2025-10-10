@@ -11,7 +11,7 @@ import { UnlockService } from "../services/UnlockService";
 import {
   MapConfig,
   MapId,
-  MapListEntry,
+  MapListEntry as MapListEntryConfig,
   getMapConfig,
   getMapList,
   isMapId,
@@ -47,6 +47,11 @@ export interface MapLevelStats {
 }
 
 export type MapStats = Partial<Record<MapId, Record<number, MapLevelStats>>>;
+
+export interface MapListEntry extends MapListEntryConfig {
+  readonly currentLevel: number;
+  readonly attempts: number;
+}
 
 export interface MapRunResult {
   mapId?: MapId;
@@ -275,7 +280,44 @@ export class MapModule implements GameModule {
   }
 
   private getAvailableMaps(): MapListEntry[] {
-    return getMapList().filter((map) => this.isMapSelectable(map.id));
+    return getMapList()
+      .filter((map) => this.isMapSelectable(map.id))
+      .map((map) => this.createListEntry(map));
+  }
+
+  private createListEntry(map: MapListEntryConfig): MapListEntry {
+    const currentLevel = this.getHighestUnlockedLevel(map.id);
+    const attempts = this.getAttemptsForLevel(map.id, currentLevel);
+    return {
+      ...map,
+      currentLevel,
+      attempts,
+    };
+  }
+
+  private getHighestUnlockedLevel(mapId: MapId): number {
+    let level = 0;
+    const maxIterations = 100;
+    while (level < maxIterations) {
+      const nextLevel = level + 1;
+      if (!this.unlocks.isUnlocked({ type: "map", id: mapId, level: nextLevel })) {
+        break;
+      }
+      level = nextLevel;
+    }
+    return level;
+  }
+
+  private getAttemptsForLevel(mapId: MapId, level: number): number {
+    const stats = this.mapStats[mapId];
+    if (!stats) {
+      return 0;
+    }
+    const entry = stats[level];
+    if (!entry) {
+      return 0;
+    }
+    return entry.success + entry.failure;
   }
 
   private parseStats(data: unknown): MapStats {
@@ -342,8 +384,6 @@ export class MapModule implements GameModule {
     return clone;
   }
 }
-
-export type { MapListEntry };
 
 const clamp = (value: number, min: number, max: number): number => {
   if (Number.isFinite(value)) {
