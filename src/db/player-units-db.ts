@@ -93,7 +93,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       fadeStartMs: 300,
       baseSpeed: 0.15,
       speedVariation: 0.03,
-      sizeRange: { min: 1.2, max: 2.4 },
+      sizeRange: { min: 3.2, max: 5.4 },
       spread: Math.PI / 5.5,
       offset: { x: -0.35, y: 0 },
       color: { r: 0.2, g: 0.85, b: 0.95, a: 0.5 },
@@ -101,7 +101,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
         start: { x: 0, y: 0 },
         stops: [
-          { offset: 0, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.5 } },
+          { offset: 0, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.25 } },
           { offset: 1, color: { r: 0.2, g: 0.85, b: 0.95, a: 0 } },
         ],
       },
