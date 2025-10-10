@@ -10,6 +10,7 @@ type CampTabPanelsProps = {
   maps: MapListEntry[];
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
+  onSelectMapLevel: (mapId: MapId, level: number) => void;
   onStart: () => void;
   onExit: () => void;
   formattedTime: string;
@@ -21,6 +22,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   maps,
   selectedMap,
   onSelectMap,
+  onSelectMapLevel,
   onStart,
   onExit,
   formattedTime,
@@ -32,6 +34,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         maps={maps}
         selectedMap={selectedMap}
         onSelectMap={onSelectMap}
+        onSelectLevel={onSelectMapLevel}
         onStart={onStart}
         onExit={onExit}
         formattedTime={formattedTime}

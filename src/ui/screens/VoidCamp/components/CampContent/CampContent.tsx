@@ -11,6 +11,7 @@ interface CampContentProps {
   maps: MapListEntry[];
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
+  onSelectMapLevel: (mapId: MapId, level: number) => void;
   onStart: () => void;
   onExit: () => void;
   timePlayed: number;
@@ -32,6 +33,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   maps,
   selectedMap,
   onSelectMap,
+  onSelectMapLevel,
   onStart,
   onExit,
   timePlayed,
@@ -63,6 +65,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         maps={maps}
         selectedMap={selectedMap}
         onSelectMap={onSelectMap}
+        onSelectMapLevel={onSelectMapLevel}
         onStart={onStart}
         onExit={onExit}
         formattedTime={formattedTime}

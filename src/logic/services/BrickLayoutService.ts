@@ -4,6 +4,17 @@ import { SceneVector2 } from "./SceneObjectManager";
 
 const TAU = Math.PI * 2;
 
+const sanitizeBrickLevel = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+  return Math.floor(value);
+};
+
+export interface BrickGenerationOptions {
+  readonly level?: number;
+}
+
 export interface CircleWithBricksOptions {
   readonly center: SceneVector2;
   readonly innerRadius?: number;
@@ -43,10 +54,30 @@ export interface SquareWithBricksOptions
 }
 
 export type BrickShapeBlueprint =
-  | { readonly shape: "circle"; readonly brickType: BrickType; readonly options: CircleWithBricksOptions }
-  | { readonly shape: "arc"; readonly brickType: BrickType; readonly options: ArcWithBricksOptions }
-  | { readonly shape: "polygon"; readonly brickType: BrickType; readonly options: PolygonWithBricksOptions }
-  | { readonly shape: "square"; readonly brickType: BrickType; readonly options: SquareWithBricksOptions };
+  | {
+      readonly shape: "circle";
+      readonly brickType: BrickType;
+      readonly options: CircleWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "arc";
+      readonly brickType: BrickType;
+      readonly options: ArcWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "polygon";
+      readonly brickType: BrickType;
+      readonly options: PolygonWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "square";
+      readonly brickType: BrickType;
+      readonly options: SquareWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    };
 
 interface BrickSpacing {
   radial: number;
@@ -93,13 +124,15 @@ const GRID_EPSILON = 1e-6;
 
 const generateCircleBricks = (
   brickType: BrickType,
-  options: CircleWithBricksOptions
+  options: CircleWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
 ): BrickData[] => {
   const center = options.center;
   const innerRadius = clampRadius(options.innerRadius ?? 0);
   const outerRadius = Math.max(innerRadius, clampRadius(options.outerRadius));
   const baseAngle = options.angle ?? 0;
   const fillAngle = normalizeFillAngle(options.fillAngle);
+  const level = sanitizeBrickLevel(generationOptions?.level);
 
   if (outerRadius === 0 || fillAngle === 0) {
     return [];
@@ -138,6 +171,7 @@ const generateCircleBricks = (
         position,
         rotation: angle + Math.PI / 2,
         type: brickType,
+        level,
       });
     }
   }
@@ -145,16 +179,24 @@ const generateCircleBricks = (
   return bricks;
 };
 
-const generateArcBricks = (brickType: BrickType, options: ArcWithBricksOptions): BrickData[] =>
-  generateCircleBricks(brickType, {
-    center: options.center,
-    innerRadius: options.innerRadius,
-    outerRadius: options.outerRadius,
-    angle: options.startAngle,
-    fillAngle: options.endAngle - options.startAngle,
-    radialSpacing: options.radialSpacing,
-    tangentialSpacing: options.tangentialSpacing,
-  });
+const generateArcBricks = (
+  brickType: BrickType,
+  options: ArcWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] =>
+  generateCircleBricks(
+    brickType,
+    {
+      center: options.center,
+      innerRadius: options.innerRadius,
+      outerRadius: options.outerRadius,
+      angle: options.startAngle,
+      fillAngle: options.endAngle - options.startAngle,
+      radialSpacing: options.radialSpacing,
+      tangentialSpacing: options.tangentialSpacing,
+    },
+    generationOptions
+  );
 
 const resolveGridSpacing = (
   brickType: BrickType,
@@ -244,7 +286,8 @@ const getPolygonBounds = (vertices: readonly SceneVector2[]) => {
 
 const generatePolygonBricks = (
   brickType: BrickType,
-  options: PolygonWithBricksOptions
+  options: PolygonWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
 ): BrickData[] => {
   if (options.vertices.length < 3) {
     return [];
@@ -252,6 +295,7 @@ const generatePolygonBricks = (
 
   const { stepX, stepY, offsetX, offsetY } = resolveGridSpacing(brickType, options);
   const bounds = getPolygonBounds(options.vertices);
+  const level = sanitizeBrickLevel(generationOptions?.level);
 
   const startX = Math.floor((bounds.minX - offsetX) / stepX) * stepX + offsetX;
   const endX = Math.ceil((bounds.maxX - offsetX) / stepX) * stepX + offsetX;
@@ -278,6 +322,7 @@ const generatePolygonBricks = (
         position,
         rotation,
         type: brickType,
+        level,
       });
     }
   }
@@ -287,7 +332,8 @@ const generatePolygonBricks = (
 
 const generateSquareBricks = (
   brickType: BrickType,
-  options: SquareWithBricksOptions
+  options: SquareWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
 ): BrickData[] => {
   if (!Number.isFinite(options.size) || options.size <= 0) {
     return [];
@@ -308,51 +354,63 @@ const generateSquareBricks = (
     y: options.center.y + corner.x * sin + corner.y * cos,
   }));
 
-  return generatePolygonBricks(brickType, {
-    vertices,
-    spacing: options.spacing,
-    spacingX: options.spacingX,
-    spacingY: options.spacingY,
-    offsetX: options.offsetX,
-    offsetY: options.offsetY,
-    brickRotation: options.brickRotation,
-  });
+  return generatePolygonBricks(
+    brickType,
+    {
+      vertices,
+      spacing: options.spacing,
+      spacingX: options.spacingX,
+      spacingY: options.spacingY,
+      offsetX: options.offsetX,
+      offsetY: options.offsetY,
+      brickRotation: options.brickRotation,
+    },
+    generationOptions
+  );
 };
 
 export const circleWithBricks = (
   brickType: BrickType,
-  options: CircleWithBricksOptions
+  options: CircleWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
 ): BrickShapeBlueprint => ({
   shape: "circle",
   brickType,
   options,
+  generationOptions,
 });
 
 export const arcWithBricks = (
   brickType: BrickType,
-  options: ArcWithBricksOptions
+  options: ArcWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
 ): BrickShapeBlueprint => ({
   shape: "arc",
   brickType,
   options,
+  generationOptions,
 });
 
 export const polygonWithBricks = (
   brickType: BrickType,
-  options: PolygonWithBricksOptions
+  options: PolygonWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
 ): BrickShapeBlueprint => ({
   shape: "polygon",
   brickType,
   options,
+  generationOptions,
 });
 
 export const squareWithBricks = (
   brickType: BrickType,
-  options: SquareWithBricksOptions
+  options: SquareWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
 ): BrickShapeBlueprint => ({
   shape: "square",
   brickType,
   options,
+  generationOptions,
 });
 
 export const buildBricksFromBlueprints = (
@@ -361,13 +419,29 @@ export const buildBricksFromBlueprints = (
   blueprints.flatMap((blueprint) => {
     switch (blueprint.shape) {
       case "circle":
-        return generateCircleBricks(blueprint.brickType, blueprint.options);
+        return generateCircleBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       case "arc":
-        return generateArcBricks(blueprint.brickType, blueprint.options);
+        return generateArcBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       case "polygon":
-        return generatePolygonBricks(blueprint.brickType, blueprint.options);
+        return generatePolygonBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       case "square":
-        return generateSquareBricks(blueprint.brickType, blueprint.options);
+        return generateSquareBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       default:
         return [];
     }

@@ -66,6 +66,7 @@ export interface BrickData {
   position: SceneVector2;
   rotation: number;
   type: BrickType;
+  level: number;
   hp?: number;
 }
 
@@ -74,6 +75,7 @@ export interface BrickRuntimeState {
   type: BrickType;
   position: SceneVector2;
   rotation: number;
+  level: number;
   hp: number;
   maxHp: number;
   armor: number;
@@ -154,6 +156,7 @@ export class BricksModule implements GameModule {
         position: { ...brick.position },
         rotation: brick.rotation,
         type: brick.type,
+        level: brick.level,
         hp: brick.hp,
       })),
     } satisfies BrickSaveData;
@@ -294,13 +297,15 @@ export class BricksModule implements GameModule {
       ) {
         const type = sanitizeBrickType((brick as BrickData).type);
         const config = getBrickConfig(type);
-        const maxHp = Math.max(config.destructubleData?.maxHp ?? 1, 1);
-        const hp = sanitizeHp((brick as BrickData).hp, maxHp);
+        const level = sanitizeBrickLevel((brick as BrickData).level);
+        const stats = calculateBrickStatsForLevel(config, level);
+        const hp = sanitizeHp((brick as BrickData).hp, stats.maxHp);
         sanitized.push({
           position: this.clampToMap(brick.position),
           rotation: sanitizeRotation((brick as BrickData).rotation),
           type,
           hp,
+          level,
         });
       }
     });
@@ -326,14 +331,16 @@ export class BricksModule implements GameModule {
     const type = sanitizeBrickType(brick.type);
     const config = getBrickConfig(type);
     const destructuble = config.destructubleData;
-    const maxHp = Math.max(destructuble?.maxHp ?? 1, 1);
-    const baseDamage = Math.max(destructuble?.baseDamage ?? 0, 0);
+    const level = sanitizeBrickLevel(brick.level);
+    const stats = calculateBrickStatsForLevel(config, level);
+    const maxHp = stats.maxHp;
+    const baseDamage = stats.baseDamage;
     const brickKnockBackDistance = Math.max(destructuble?.brickKnockBackDistance ?? 0, 0);
     const brickKnockBackSpeed = sanitizeKnockBackSpeed(
       destructuble?.brickKnockBackSpeed,
       brickKnockBackDistance
     );
-    const armor = Math.max(destructuble?.armor ?? 0, 0);
+    const armor = stats.armor;
     const physicalSize = Math.max(
       destructuble?.physicalSize ?? Math.max(config.size.width, config.size.height) / 2,
       0
@@ -344,10 +351,14 @@ export class BricksModule implements GameModule {
       config,
       physicalSize
     );
-    const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
+    const baseHp =
+      typeof destructuble?.hp === "number"
+        ? scaleBrickStat(destructuble.hp, getBrickLevelStatMultiplier(level), true)
+        : maxHp;
+    const hp = sanitizeHp(brick.hp ?? baseHp, maxHp);
     const position = this.clampToMap(brick.position);
     const rotation = sanitizeRotation(brick.rotation);
-    const rewards = normalizeResourceAmount(config.rewards);
+    const rewards = stats.rewards;
 
     const id = this.createBrickId();
     const sceneObjectId = this.options.scene.addObject("brick", {
@@ -368,6 +379,7 @@ export class BricksModule implements GameModule {
       type,
       position,
       rotation,
+      level,
       hp,
       maxHp,
       armor,
@@ -494,6 +506,7 @@ export class BricksModule implements GameModule {
       type: state.type,
       position: { ...state.position },
       rotation: state.rotation,
+      level: state.level,
       hp: state.hp,
       maxHp: state.maxHp,
       armor: state.armor,
@@ -660,4 +673,77 @@ const resolveBrickExplosion = (
 
   const initialRadius = Math.max(1, baseRadius * multiplier + offset);
   return { type, initialRadius };
+};
+
+const sanitizeBrickLevel = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+  return Math.floor(value);
+};
+
+const getBrickLevelStatMultiplier = (level: number): number => Math.pow(3, level);
+
+const getBrickLevelRewardMultiplier = (level: number): number => Math.pow(2, level);
+
+const scaleBrickStat = (
+  baseValue: number | undefined,
+  multiplier: number,
+  ensurePositive: boolean
+): number => {
+  if (typeof baseValue !== "number" || !Number.isFinite(baseValue)) {
+    if (!ensurePositive) {
+      return 0;
+    }
+    return multiplier > 1 ? 1 : 0;
+  }
+  const base = Math.max(baseValue, 0);
+  const scaled = Math.round(base * multiplier);
+
+  if (base === 0) {
+    if (!ensurePositive) {
+      return 0;
+    }
+    return multiplier > 1 ? 1 : 0;
+  }
+
+  if (ensurePositive) {
+    return Math.max(1, scaled);
+  }
+
+  return Math.max(0, scaled);
+};
+
+const scaleResourceStockpile = (
+  base: ResourceStockpile,
+  multiplier: number
+): ResourceStockpile => {
+  const scaled = createEmptyResourceStockpile();
+  RESOURCE_IDS.forEach((id) => {
+    const value = base[id] ?? 0;
+    const scaledValue = Math.round(Math.max(value, 0) * multiplier * 100) / 100;
+    scaled[id] = scaledValue > 0 ? scaledValue : 0;
+  });
+  return scaled;
+};
+
+const calculateBrickStatsForLevel = (
+  config: BrickConfig,
+  level: number
+): { maxHp: number; baseDamage: number; armor: number; rewards: ResourceStockpile } => {
+  const sanitizedLevel = sanitizeBrickLevel(level);
+  const statMultiplier = getBrickLevelStatMultiplier(sanitizedLevel);
+  const rewardMultiplier = getBrickLevelRewardMultiplier(sanitizedLevel);
+  const destructuble = config.destructubleData;
+
+  const maxHp = Math.max(
+    scaleBrickStat(destructuble?.maxHp ?? 1, statMultiplier, true),
+    1
+  );
+  const baseDamage = scaleBrickStat(destructuble?.baseDamage ?? 0, statMultiplier, true);
+  const armor = scaleBrickStat(destructuble?.armor ?? 0, statMultiplier, true);
+  const baseRewards = normalizeResourceAmount(config.rewards);
+  const rewards = scaleResourceStockpile(baseRewards, rewardMultiplier);
+
+  return { maxHp, baseDamage, armor, rewards };
 };

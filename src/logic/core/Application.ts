@@ -202,6 +202,10 @@ export class Application {
     this.mapModule.selectMap(mapId);
   }
 
+  public selectMapLevel(mapId: MapId, level: number): void {
+    this.mapModule.selectMapLevel(mapId, level);
+  }
+
   private registerModule(module: GameModule): void {
     const saveManager = this.getSaveManager();
     const gameLoop = this.getGameLoop();

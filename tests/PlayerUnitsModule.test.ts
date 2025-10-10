@@ -46,6 +46,7 @@ describe("PlayerUnitsModule", () => {
       {
         position: { x: 4, y: 0 },
         rotation: 0,
+        level: 0,
         type: "smallSquareGray",
       },
     ]);
@@ -90,6 +91,7 @@ describe("PlayerUnitsModule", () => {
       {
         position: { x: 100, y: 0 },
         rotation: 0,
+        level: 0,
         type: "blueRadial",
       },
     ]);

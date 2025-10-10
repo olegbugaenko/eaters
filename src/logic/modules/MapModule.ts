@@ -25,6 +25,7 @@ interface ResourceRunController {
 
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
+export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
 
 interface MapModuleOptions {
   scene: SceneObjectManager;
@@ -38,7 +39,9 @@ interface MapModuleOptions {
 
 interface MapSaveData {
   mapId: MapId;
+  mapLevel?: number;
   stats?: MapStats;
+  selectedLevels?: Partial<Record<MapId, number>>;
 }
 
 export interface MapLevelStats {
@@ -50,6 +53,7 @@ export type MapStats = Partial<Record<MapId, Record<number, MapLevelStats>>>;
 
 export interface MapListEntry extends MapListEntryConfig {
   readonly currentLevel: number;
+  readonly selectedLevel: number;
   readonly attempts: number;
 }
 
@@ -68,6 +72,9 @@ export class MapModule implements GameModule {
   private selectedMapId: MapId | null = null;
   private readonly unlocks: UnlockService;
   private mapStats: MapStats = {};
+  private selectedMapLevel = 0;
+  private activeMapLevel = 0;
+  private mapSelectedLevels: Partial<Record<MapId, number>> = {};
 
   constructor(private readonly options: MapModuleOptions) {
     this.unlocks = options.unlocks;
@@ -85,17 +92,30 @@ export class MapModule implements GameModule {
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
     this.mapStats = parsed?.stats ?? {};
+    this.mapSelectedLevels = parsed?.selectedLevels ?? {};
     this.pushMapList();
 
     const savedMapId = parsed?.mapId;
-    this.selectedMapId = savedMapId && this.isMapSelectable(savedMapId) ? savedMapId : null;
+    if (savedMapId && this.isMapSelectable(savedMapId)) {
+      this.selectedMapId = savedMapId;
+      if (typeof parsed?.mapLevel === "number") {
+        this.mapSelectedLevels[savedMapId] = this.clampLevelToUnlocked(
+          savedMapId,
+          parsed.mapLevel
+        );
+      }
+    } else {
+      this.selectedMapId = null;
+    }
     this.ensureSelection({ generateBricks: false, generateUnits: false });
   }
 
   public save(): unknown {
     return {
       mapId: this.selectedMapId ?? DEFAULT_MAP_ID,
+      mapLevel: this.selectedMapLevel,
       stats: this.cloneStats(),
+      selectedLevels: this.cloneSelectedLevels(),
     } satisfies MapSaveData;
   }
 
@@ -111,6 +131,27 @@ export class MapModule implements GameModule {
     this.applyMap(mapId, { generateBricks: true, generateUnits: true });
   }
 
+  public selectMapLevel(mapId: MapId, level: number): void {
+    if (!isMapId(mapId) || !this.isMapSelectable(mapId)) {
+      return;
+    }
+    const clamped = this.clampLevelToUnlocked(mapId, level);
+    this.mapSelectedLevels[mapId] = clamped;
+
+    if (this.selectedMapId === mapId) {
+      if (this.selectedMapLevel === clamped && this.activeMapLevel === clamped) {
+        this.pushMapList();
+        this.pushSelectedMapLevel();
+        return;
+      }
+      this.selectedMapLevel = clamped;
+      this.applyMap(mapId, { generateBricks: true, generateUnits: true });
+      return;
+    }
+
+    this.pushMapList();
+  }
+
   public restartSelectedMap(): void {
     if (!this.selectedMapId) {
       return;
@@ -123,7 +164,10 @@ export class MapModule implements GameModule {
     if (!mapId) {
       return;
     }
-    const level = sanitizeLevel(result.level);
+    const level =
+      result.level !== undefined
+        ? sanitizeLevel(result.level)
+        : this.getActiveLevelForMap(mapId);
     const stats = this.ensureLevelStats(mapId, level);
     if (result.success) {
       stats.success += 1;
@@ -132,6 +176,7 @@ export class MapModule implements GameModule {
     }
     this.pushMapList();
     this.pushSelectedMap();
+    this.pushSelectedMapLevel();
   }
 
   public getMapStats(): MapStats {
@@ -142,7 +187,10 @@ export class MapModule implements GameModule {
     const mapId = this.resolveSelectableMapId(this.selectedMapId);
     if (!mapId) {
       this.selectedMapId = null;
+      this.selectedMapLevel = 0;
+      this.activeMapLevel = 0;
       this.options.bridge.setValue<MapId | null>(MAP_SELECTED_BRIDGE_KEY, null);
+      this.options.bridge.setValue<number>(MAP_SELECTED_LEVEL_BRIDGE_KEY, 0);
       return;
     }
     this.selectedMapId = mapId;
@@ -154,10 +202,14 @@ export class MapModule implements GameModule {
     options: { generateBricks: boolean; generateUnits: boolean }
   ): void {
     const config = getMapConfig(mapId);
+    const level = this.getSelectedLevel(mapId);
+    this.mapSelectedLevels[mapId] = level;
+    this.selectedMapLevel = level;
+    this.activeMapLevel = level;
     this.options.scene.setMapSize(config.size);
     this.options.playerUnits.prepareForMap();
     if (options.generateBricks) {
-      const bricks = this.generateBricks(config);
+      const bricks = this.generateBricks(config, level);
       this.options.bricks.setBricks(bricks);
     }
     const spawnUnits = this.generatePlayerUnits(config);
@@ -174,9 +226,11 @@ export class MapModule implements GameModule {
     this.options.resources.startRun();
 
     this.pushSelectedMap();
+    this.pushSelectedMapLevel();
+    this.pushMapList();
   }
 
-  private generateBricks(config: MapConfig): BrickData[] {
+  private generateBricks(config: MapConfig, mapLevel: number): BrickData[] {
     const spawnOrigins =
       config.spawnPoints && config.spawnPoints.length > 0
         ? config.spawnPoints
@@ -184,10 +238,11 @@ export class MapModule implements GameModule {
     const unitPositions = spawnOrigins.map((origin) =>
       this.clampToMap(origin, config.size)
     );
-    const bricks = buildBricksFromBlueprints(config.bricks).map((brick) => ({
+    const bricks = buildBricksFromBlueprints(config.bricks({ mapLevel })).map((brick) => ({
       position: this.clampToMap(brick.position, config.size),
       rotation: brick.rotation,
       type: brick.type,
+      level: brick.level,
     }));
 
     if (unitPositions.length === 0 || PLAYER_UNIT_SPAWN_SAFE_RADIUS <= 0) {
@@ -252,16 +307,28 @@ export class MapModule implements GameModule {
     this.options.bridge.setValue<MapId | null>(MAP_SELECTED_BRIDGE_KEY, this.selectedMapId);
   }
 
+  private pushSelectedMapLevel(): void {
+    const level = this.selectedMapId ? this.selectedMapLevel : 0;
+    this.options.bridge.setValue<number>(MAP_SELECTED_LEVEL_BRIDGE_KEY, level);
+  }
+
   private parseSaveData(data: unknown): MapSaveData | null {
     if (typeof data !== "object" || data === null) {
       return null;
     }
-    const raw = data as { mapId?: unknown; stats?: unknown };
+    const raw = data as {
+      mapId?: unknown;
+      stats?: unknown;
+      mapLevel?: unknown;
+      selectedLevels?: unknown;
+    };
     if (!raw.mapId || !isMapId(raw.mapId)) {
       return null;
     }
     const stats = this.parseStats(raw.stats);
-    return { mapId: raw.mapId, stats };
+    const mapLevel = typeof raw.mapLevel === "number" ? sanitizeLevel(raw.mapLevel) : undefined;
+    const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
+    return { mapId: raw.mapId, mapLevel, stats, selectedLevels };
   }
 
   private resolveSelectableMapId(preferred: MapId | null): MapId | null {
@@ -287,10 +354,12 @@ export class MapModule implements GameModule {
 
   private createListEntry(map: MapListEntryConfig): MapListEntry {
     const currentLevel = this.getHighestUnlockedLevel(map.id);
-    const attempts = this.getAttemptsForLevel(map.id, currentLevel);
+    const selectedLevel = this.getSelectedLevel(map.id);
+    const attempts = this.getAttemptsForLevel(map.id, selectedLevel);
     return {
       ...map,
       currentLevel,
+      selectedLevel,
       attempts,
     };
   }
@@ -308,6 +377,29 @@ export class MapModule implements GameModule {
     return level;
   }
 
+  private getSelectedLevel(mapId: MapId): number {
+    const stored = this.mapSelectedLevels[mapId];
+    const storedLevel = typeof stored === "number" ? sanitizeLevel(stored) : undefined;
+    const highest = this.getHighestUnlockedLevel(mapId);
+    if (storedLevel === undefined) {
+      return highest;
+    }
+    return clamp(storedLevel, 0, highest);
+  }
+
+  private clampLevelToUnlocked(mapId: MapId, level: number): number {
+    const sanitized = sanitizeLevel(level);
+    const highest = this.getHighestUnlockedLevel(mapId);
+    return clamp(sanitized, 0, highest);
+  }
+
+  private getActiveLevelForMap(mapId: MapId): number {
+    if (mapId === this.selectedMapId) {
+      return this.activeMapLevel;
+    }
+    return this.getSelectedLevel(mapId);
+  }
+
   private getAttemptsForLevel(mapId: MapId, level: number): number {
     const stats = this.mapStats[mapId];
     if (!stats) {
@@ -318,6 +410,20 @@ export class MapModule implements GameModule {
       return 0;
     }
     return entry.success + entry.failure;
+  }
+
+  private parseSelectedLevels(data: unknown): Partial<Record<MapId, number>> {
+    if (typeof data !== "object" || data === null) {
+      return {};
+    }
+    const levels: Partial<Record<MapId, number>> = {};
+    Object.entries(data as Record<string, unknown>).forEach(([mapId, value]) => {
+      if (!isMapId(mapId)) {
+        return;
+      }
+      levels[mapId] = sanitizeLevel(value);
+    });
+    return levels;
   }
 
   private parseStats(data: unknown): MapStats {
@@ -362,6 +468,17 @@ export class MapModule implements GameModule {
       mapEntry[sanitizedLevel] = { success: 0, failure: 0 };
     }
     return mapEntry[sanitizedLevel]!;
+  }
+
+  private cloneSelectedLevels(): Partial<Record<MapId, number>> {
+    const clone: Partial<Record<MapId, number>> = {};
+    Object.entries(this.mapSelectedLevels).forEach(([mapId, level]) => {
+      if (!isMapId(mapId) || typeof level !== "number") {
+        return;
+      }
+      clone[mapId as MapId] = sanitizeLevel(level);
+    });
+    return clone;
   }
 
   private cloneStats(): MapStats {

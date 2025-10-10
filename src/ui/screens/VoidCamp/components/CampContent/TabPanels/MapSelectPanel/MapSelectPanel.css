@@ -67,6 +67,41 @@
   color: var(--color-text-subtle);
 }
 
+.map-select-card__level-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.map-select-card__level-button {
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.6rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.map-select-card__level-button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.map-select-card__level-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.map-select-card__level-value {
+  min-width: 2ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-strong);
+}
+
 .map-select-panel__empty {
   grid-column: 1 / -1;
   text-align: center;
