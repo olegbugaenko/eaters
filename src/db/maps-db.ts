@@ -1,6 +1,8 @@
 import { BrickType, getBrickConfig } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/SceneObjectManager";
 import { PlayerUnitType } from "./player-units-db";
+import type { UnlockCondition } from "../types/unlocks";
+import type { SkillId } from "./skills-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
@@ -16,6 +18,7 @@ export interface MapConfig {
   readonly bricks: readonly BrickShapeBlueprint[];
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
   readonly spawnPoints?: readonly SceneVector2[];
+  readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
 }
 
 export interface MapListEntry {
@@ -78,6 +81,13 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   initial: {
     name: "Initial Grounds",
     size: { width: 3000, height: 3000 },
+    unlockedBy: [
+      {
+        type: "map",
+        id: "foundations",
+        level: 1,
+      },
+    ],
     bricks: (() => {
       const center: SceneVector2 = { x: 1500, y: 1500 };
       const largeCircle = circleWithBricks("smallSquareGray", {

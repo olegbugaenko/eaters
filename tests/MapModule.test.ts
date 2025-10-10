@@ -5,10 +5,16 @@ import { DataBridge } from "../src/logic/core/DataBridge";
 import { BricksModule } from "../src/logic/modules/BricksModule";
 import { PlayerUnitsModule } from "../src/logic/modules/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
-import { MapModule, PLAYER_UNIT_SPAWN_SAFE_RADIUS } from "../src/logic/modules/MapModule";
+import {
+  MapModule,
+  PLAYER_UNIT_SPAWN_SAFE_RADIUS,
+  MAP_LIST_BRIDGE_KEY,
+} from "../src/logic/modules/MapModule";
+import type { MapListEntry, MapStats } from "../src/logic/modules/MapModule";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { NecromancerModule } from "../src/logic/modules/NecromancerModule";
 import { BonusesModule } from "../src/logic/modules/BonusesModule";
+import { UnlockService } from "../src/logic/services/UnlockService";
 
 const distanceSq = (a: { x: number; y: number }, b: { x: number; y: number }): number => {
   const dx = a.x - b.x;
@@ -43,6 +49,12 @@ describe("MapModule", () => {
       scene,
       bonuses,
     });
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
     const maps = new MapModule({
       scene,
       bridge,
@@ -50,10 +62,13 @@ describe("MapModule", () => {
       playerUnits,
       necromancer,
       resources,
+      unlocks,
     });
+    mapModuleRef = maps;
 
     necromancer.initialize();
     maps.initialize();
+    maps.recordRunResult({ mapId: "foundations", success: true });
     maps.selectMap("initial");
 
     const unitsSave = playerUnits.save() as { units?: { position?: { x: number; y: number } }[] };
@@ -67,5 +82,121 @@ describe("MapModule", () => {
         "brick should be spawned outside of the safety radius"
       );
     });
+  });
+});
+
+describe("Map unlocking", () => {
+  test("initial map unlocks after completing foundations", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const explosions = new ExplosionModule({ scene });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const resources = {
+      startRun: () => {},
+      grantResources: () => {},
+      notifyBrickDestroyed: () => {},
+    };
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const movement = new MovementService();
+    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits,
+      scene,
+      bonuses,
+    });
+
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+      unlocks,
+    });
+    mapModuleRef = maps;
+
+    necromancer.initialize();
+    maps.initialize();
+
+    const initialList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    assert.strictEqual(initialList.length, 1);
+    assert.strictEqual(initialList[0]!.id, "foundations");
+    assert.strictEqual(initialList[0]!.currentLevel, 0);
+    assert.strictEqual(initialList[0]!.attempts, 0);
+
+    maps.recordRunResult({ mapId: "foundations", success: true });
+
+    const updatedList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const mapIds = updatedList.map((entry) => entry.id);
+    assert(mapIds.includes("foundations"));
+    assert(mapIds.includes("initial"));
+
+    const foundationsEntry = updatedList.find((entry) => entry.id === "foundations");
+    assert.strictEqual(foundationsEntry?.currentLevel, 1);
+    assert.strictEqual(foundationsEntry?.attempts, 0);
+
+    const initialEntry = updatedList.find((entry) => entry.id === "initial");
+    assert.strictEqual(initialEntry?.currentLevel, 0);
+    assert.strictEqual(initialEntry?.attempts, 0);
+  });
+
+  test("run results are stored in map stats", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const explosions = new ExplosionModule({ scene });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const resources = {
+      startRun: () => {},
+      grantResources: () => {},
+      notifyBrickDestroyed: () => {},
+    };
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const movement = new MovementService();
+    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits,
+      scene,
+      bonuses,
+    });
+
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+      unlocks,
+    });
+    mapModuleRef = maps;
+
+    maps.recordRunResult({ mapId: "foundations", success: true });
+    maps.recordRunResult({ mapId: "foundations", success: false });
+
+    const stats = maps.getMapStats();
+    assert.strictEqual(stats.foundations?.[0]?.success, 1);
+    assert.strictEqual(stats.foundations?.[0]?.failure, 1);
+
+    const saved = maps.save() as { stats?: MapStats };
+    assert(saved.stats);
+    assert.strictEqual(saved.stats?.foundations?.[0]?.success, 1);
+    assert.strictEqual(saved.stats?.foundations?.[0]?.failure, 1);
   });
 });

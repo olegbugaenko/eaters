@@ -18,7 +18,8 @@ import { BonusesModule } from "../src/logic/modules/BonusesModule";
 
 const createBricksModule = (
   scene: SceneObjectManager,
-  bridge: DataBridge
+  bridge: DataBridge,
+  onAllBricksDestroyed?: () => void
 ) => {
   const explosions = new ExplosionModule({ scene });
   const resources = {
@@ -31,7 +32,14 @@ const createBricksModule = (
   };
   const bonuses = new BonusesModule();
   bonuses.initialize();
-  return new BricksModule({ scene, bridge, explosions, resources, bonuses });
+  return new BricksModule({
+    scene,
+    bridge,
+    explosions,
+    resources,
+    bonuses,
+    onAllBricksDestroyed,
+  });
 };
 
 describe("BricksModule", () => {
@@ -218,5 +226,29 @@ describe("BricksModule", () => {
       b: 0.92,
       a: 1,
     });
+  });
+
+  test("notifies when the final brick is destroyed", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    let callbackCount = 0;
+    const module = createBricksModule(scene, bridge, () => {
+      callbackCount += 1;
+    });
+
+    module.setBricks([
+      {
+        position: { x: 10, y: 10 },
+        rotation: 0,
+        type: "classic",
+      },
+    ]);
+
+    const [brick] = module.getBrickStates();
+    assert(brick, "expected brick state");
+
+    module.applyDamage(brick.id, 999);
+
+    assert.strictEqual(callbackCount, 1, "should notify once when all bricks are gone");
   });
 });

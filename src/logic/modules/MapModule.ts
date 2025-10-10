@@ -7,10 +7,11 @@ import {
   PlayerUnitSpawnData,
 } from "./PlayerUnitsModule";
 import { NecromancerModule } from "./NecromancerModule";
+import { UnlockService } from "../services/UnlockService";
 import {
   MapConfig,
   MapId,
-  MapListEntry,
+  MapListEntry as MapListEntryConfig,
   getMapConfig,
   getMapList,
   isMapId,
@@ -32,10 +33,30 @@ interface MapModuleOptions {
   playerUnits: PlayerUnitsModule;
   necromancer: NecromancerModule;
   resources: ResourceRunController;
+  unlocks: UnlockService;
 }
 
 interface MapSaveData {
   mapId: MapId;
+  stats?: MapStats;
+}
+
+export interface MapLevelStats {
+  success: number;
+  failure: number;
+}
+
+export type MapStats = Partial<Record<MapId, Record<number, MapLevelStats>>>;
+
+export interface MapListEntry extends MapListEntryConfig {
+  readonly currentLevel: number;
+  readonly attempts: number;
+}
+
+export interface MapRunResult {
+  mapId?: MapId;
+  level?: number;
+  success: boolean;
 }
 
 const DEFAULT_MAP_ID: MapId = "foundations";
@@ -45,8 +66,12 @@ export class MapModule implements GameModule {
   public readonly id = "maps";
 
   private selectedMapId: MapId | null = null;
+  private readonly unlocks: UnlockService;
+  private mapStats: MapStats = {};
 
-  constructor(private readonly options: MapModuleOptions) {}
+  constructor(private readonly options: MapModuleOptions) {
+    this.unlocks = options.unlocks;
+  }
 
   public initialize(): void {
     this.pushMapList();
@@ -59,17 +84,18 @@ export class MapModule implements GameModule {
 
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
-    if (parsed) {
-      this.selectedMapId = parsed.mapId;
-      this.applyMap(parsed.mapId, { generateBricks: false, generateUnits: false });
-      return;
-    }
-    this.pushSelectedMap();
+    this.mapStats = parsed?.stats ?? {};
+    this.pushMapList();
+
+    const savedMapId = parsed?.mapId;
+    this.selectedMapId = savedMapId && this.isMapSelectable(savedMapId) ? savedMapId : null;
+    this.ensureSelection({ generateBricks: false, generateUnits: false });
   }
 
   public save(): unknown {
     return {
       mapId: this.selectedMapId ?? DEFAULT_MAP_ID,
+      stats: this.cloneStats(),
     } satisfies MapSaveData;
   }
 
@@ -78,7 +104,7 @@ export class MapModule implements GameModule {
   }
 
   public selectMap(mapId: MapId): void {
-    if (!isMapId(mapId)) {
+    if (!isMapId(mapId) || !this.isMapSelectable(mapId)) {
       return;
     }
     this.selectedMapId = mapId;
@@ -92,8 +118,33 @@ export class MapModule implements GameModule {
     this.applyMap(this.selectedMapId, { generateBricks: true, generateUnits: true });
   }
 
+  public recordRunResult(result: MapRunResult): void {
+    const mapId = result.mapId && isMapId(result.mapId) ? result.mapId : this.selectedMapId;
+    if (!mapId) {
+      return;
+    }
+    const level = sanitizeLevel(result.level);
+    const stats = this.ensureLevelStats(mapId, level);
+    if (result.success) {
+      stats.success += 1;
+    } else {
+      stats.failure += 1;
+    }
+    this.pushMapList();
+    this.pushSelectedMap();
+  }
+
+  public getMapStats(): MapStats {
+    return this.cloneStats();
+  }
+
   private ensureSelection(options: { generateBricks: boolean; generateUnits: boolean }): void {
-    const mapId = this.selectedMapId ?? DEFAULT_MAP_ID;
+    const mapId = this.resolveSelectableMapId(this.selectedMapId);
+    if (!mapId) {
+      this.selectedMapId = null;
+      this.options.bridge.setValue<MapId | null>(MAP_SELECTED_BRIDGE_KEY, null);
+      return;
+    }
     this.selectedMapId = mapId;
     this.applyMap(mapId, options);
   }
@@ -193,7 +244,7 @@ export class MapModule implements GameModule {
   }
 
   private pushMapList(): void {
-    const list = getMapList();
+    const list = this.getAvailableMaps();
     this.options.bridge.setValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY, list);
   }
 
@@ -202,19 +253,137 @@ export class MapModule implements GameModule {
   }
 
   private parseSaveData(data: unknown): MapSaveData | null {
-    if (
-      typeof data === "object" &&
-      data !== null &&
-      "mapId" in data &&
-      isMapId((data as { mapId: unknown }).mapId)
-    ) {
-      return { mapId: (data as { mapId: MapId }).mapId };
+    if (typeof data !== "object" || data === null) {
+      return null;
     }
-    return null;
+    const raw = data as { mapId?: unknown; stats?: unknown };
+    if (!raw.mapId || !isMapId(raw.mapId)) {
+      return null;
+    }
+    const stats = this.parseStats(raw.stats);
+    return { mapId: raw.mapId, stats };
+  }
+
+  private resolveSelectableMapId(preferred: MapId | null): MapId | null {
+    if (preferred && this.isMapSelectable(preferred)) {
+      return preferred;
+    }
+    if (this.isMapSelectable(DEFAULT_MAP_ID)) {
+      return DEFAULT_MAP_ID;
+    }
+    const available = this.getAvailableMaps();
+    return available.length > 0 ? available[0]!.id : null;
+  }
+
+  private isMapSelectable(mapId: MapId): boolean {
+    return this.unlocks.isUnlocked({ type: "map", id: mapId, level: 0 });
+  }
+
+  private getAvailableMaps(): MapListEntry[] {
+    return getMapList()
+      .filter((map) => this.isMapSelectable(map.id))
+      .map((map) => this.createListEntry(map));
+  }
+
+  private createListEntry(map: MapListEntryConfig): MapListEntry {
+    const currentLevel = this.getHighestUnlockedLevel(map.id);
+    const attempts = this.getAttemptsForLevel(map.id, currentLevel);
+    return {
+      ...map,
+      currentLevel,
+      attempts,
+    };
+  }
+
+  private getHighestUnlockedLevel(mapId: MapId): number {
+    let level = 0;
+    const maxIterations = 100;
+    while (level < maxIterations) {
+      const nextLevel = level + 1;
+      if (!this.unlocks.isUnlocked({ type: "map", id: mapId, level: nextLevel })) {
+        break;
+      }
+      level = nextLevel;
+    }
+    return level;
+  }
+
+  private getAttemptsForLevel(mapId: MapId, level: number): number {
+    const stats = this.mapStats[mapId];
+    if (!stats) {
+      return 0;
+    }
+    const entry = stats[level];
+    if (!entry) {
+      return 0;
+    }
+    return entry.success + entry.failure;
+  }
+
+  private parseStats(data: unknown): MapStats {
+    if (typeof data !== "object" || data === null) {
+      return {};
+    }
+    const result: MapStats = {};
+    Object.entries(data as Record<string, unknown>).forEach(([mapId, value]) => {
+      if (!isMapId(mapId) || typeof value !== "object" || value === null) {
+        return;
+      }
+      const levels: Record<number, MapLevelStats> = {};
+      Object.entries(value as Record<string, unknown>).forEach(([levelKey, statsValue]) => {
+        const parsed = Number(levelKey);
+        if (!Number.isFinite(parsed) || typeof statsValue !== "object" || statsValue === null) {
+          return;
+        }
+        const level = sanitizeLevel(parsed);
+        const stats = this.parseLevelStats(statsValue as Record<string, unknown>);
+        levels[level] = stats;
+      });
+      if (Object.keys(levels).length > 0) {
+        result[mapId as MapId] = levels;
+      }
+    });
+    return result;
+  }
+
+  private parseLevelStats(data: Record<string, unknown>): MapLevelStats {
+    const success = sanitizeCount(data.success);
+    const failure = sanitizeCount(data.failure);
+    return { success, failure };
+  }
+
+  private ensureLevelStats(mapId: MapId, level: number): MapLevelStats {
+    if (!this.mapStats[mapId]) {
+      this.mapStats[mapId] = {};
+    }
+    const sanitizedLevel = sanitizeLevel(level);
+    const mapEntry = this.mapStats[mapId]!;
+    if (!mapEntry[sanitizedLevel]) {
+      mapEntry[sanitizedLevel] = { success: 0, failure: 0 };
+    }
+    return mapEntry[sanitizedLevel]!;
+  }
+
+  private cloneStats(): MapStats {
+    const clone: MapStats = {};
+    Object.entries(this.mapStats).forEach(([mapId, levels]) => {
+      if (!levels) {
+        return;
+      }
+      const levelClone: Record<number, MapLevelStats> = {};
+      Object.entries(levels).forEach(([levelKey, stats]) => {
+        const parsed = Number(levelKey);
+        if (!Number.isFinite(parsed)) {
+          return;
+        }
+        const level = sanitizeLevel(parsed);
+        levelClone[level] = { success: stats.success, failure: stats.failure };
+      });
+      clone[mapId as MapId] = levelClone;
+    });
+    return clone;
   }
 }
-
-export type { MapListEntry };
 
 const clamp = (value: number, min: number, max: number): number => {
   if (Number.isFinite(value)) {
@@ -224,4 +393,19 @@ const clamp = (value: number, min: number, max: number): number => {
     return Math.min(Math.max(value, min), max);
   }
   return min;
+};
+
+const sanitizeLevel = (value: unknown): number => {
+  if (!Number.isFinite(value as number)) {
+    return 0;
+  }
+  const level = Math.floor(Number(value));
+  return Math.max(level, 0);
+};
+
+const sanitizeCount = (value: unknown): number => {
+  if (!Number.isFinite(value as number)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(Number(value)));
 };

@@ -21,6 +21,7 @@ export interface SkillConfig {
 
 export const SKILL_IDS = [
   "stone_lore",
+  "stone_automatons",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -88,6 +89,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { hunger: 1 },
     cost: createStoneCost(6, 1.35),
+  },
+  stone_automatons: {
+    id: "stone_automatons",
+    name: "Stone Automatons",
+    description:
+      "Teach tireless constructs to prepare summoning circles on their own, enabling automated call-ups.",
+    nodePosition: { x: -1, y: 2 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { stone_lore: 1 },
+    cost: createStoneCost(20, 1),
   },
   quarry_overseers: {
     id: "quarry_overseers",
