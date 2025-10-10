@@ -29,7 +29,9 @@ export const SKILL_IDS = [
   "emberglass_reactors",
   // "damage_lore",
   "improved_membranes",
-  "hunger"
+  "hunger",
+  "stone_drill",
+  "stone_armor"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -64,12 +66,12 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 0, y: 0 },
     maxLevel: 3,
     effects: {
-      blue_vanguard_attack_multiplier: {
+      all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.3 * level,
       },
     },
     nodesRequired: { },
-    cost: createStoneCost(5, 1.35),
+    cost: createStoneCost(4, 1.35),
   },
   // Bottom branch
   stone_lore: {
@@ -96,7 +98,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.2 * level,
+        multiplier: (level) => 1 + 0.1 * level,
       },
     },
     nodesRequired: { stone_lore: 1 },
@@ -112,7 +114,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       mana_regen: {
-        income: (level) => 0.08 * level,
+        income: (level) => 0.12 * level,
       },
     },
     nodesRequired: { hunger: 1 },
@@ -175,12 +177,27 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: -1, y: 0 },
     maxLevel: 3,
     effects: {
-      blue_vanguard_attack_multiplier: {
+      all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.18 * level,
       },
     },
     nodesRequired: { hunger: 2 },
     cost: createStoneCost(16, 1.5),
+  },
+  stone_drill: {
+    id: "stone_drill",
+    name: "Stone Drill",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -3, y: 0 },
+    maxLevel: 5,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { granite_bonding: 2 },
+    cost: createStoneCost(50, 1.5),
   },
   // right
   improved_membranes: {
@@ -191,13 +208,28 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 1, y: 0 },
     maxLevel: 3,
     effects: {
-      blue_vanguard_hp_multiplier: {
+      all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.18 * level,
       },
     },
     nodesRequired: { hunger: 2 },
     cost: createStoneCost(16, 1.5),
-  }
+  },
+  stone_armor: {
+    id: "stone_armor",
+    name: "Stone Armor",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 3, y: 0 },
+    maxLevel: 5,
+    effects: {
+      all_units_armor: {
+        income: (level) => 0 + 0.25 * level,
+      },
+    },
+    nodesRequired: { improved_membranes: 2 },
+    cost: createStoneCost(50, 1.5),
+  },
 };
 
 export const getSkillConfig = (id: SkillId): SkillConfig => {

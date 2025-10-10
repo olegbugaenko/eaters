@@ -13,7 +13,8 @@ export const BONUS_IDS = [
   "blue_vanguard_attack_multiplier",
   "blue_vanguard_hp_multiplier",
   "all_units_hp_multiplier",
-  "all_units_attack_multiplier"
+  "all_units_attack_multiplier",
+  "all_units_armor"
 ] as const;
 
 export type BonusId = (typeof BONUS_IDS)[number];
@@ -32,7 +33,7 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
   mana_regen: {
     id: "mana_regen",
     name: "Mana Regeneration",
-    defaultValue: 0.4,
+    defaultValue: 0.6,
   },
   brick_rewards: {
     id: "brick_rewards",
@@ -58,6 +59,11 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_attack_multiplier",
     name: "All Units Attack Multiplier",
     defaultValue: 1,
+  },
+  all_units_armor: {
+    id: "all_units_armor",
+    name: "All Units Armor",
+    defaultValue: 0,
   }
 };
 
