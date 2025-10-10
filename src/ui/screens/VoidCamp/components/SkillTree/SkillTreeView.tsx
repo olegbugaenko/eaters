@@ -66,6 +66,22 @@ const SKILL_TREE_RESOURCES = RESOURCE_IDS.map((id) => {
   return { id: config.id, label: config.name };
 });
 
+const listResources = (names: string[]): string => {
+  if (names.length === 0) {
+    return "";
+  }
+  if (names.length === 1) {
+    return names[0]!;
+  }
+  if (names.length === 2) {
+    const [first, second] = names;
+    return `${first!} and ${second!}`;
+  }
+  const last = names[names.length - 1]!;
+  const others = names.slice(0, -1).map((name) => name!);
+  return `${others.join(", ")}, and ${last}`;
+};
+
 const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   if (nodes.length === 0) {
     return {
@@ -173,6 +189,13 @@ const canAffordCost = (
   }
   return RESOURCE_IDS.every((id) => (totals[id] ?? 0) >= (cost[id] ?? 0));
 };
+
+const getMissingResourceNames = (
+  missing: Record<ResourceId, number>
+): string[] =>
+  RESOURCE_IDS.filter((id) => (missing[id] ?? 0) > 0).map((id) =>
+    getResourceConfig(id).name.toLowerCase()
+  );
 
 export const SkillTreeView: React.FC = () => {
   const { app, bridge } = useAppLogic();
@@ -326,6 +349,16 @@ export const SkillTreeView: React.FC = () => {
     () => canAffordCost(activeNode?.nextCost ?? null, totalsMap),
     [activeNode, totalsMap]
   );
+  const missingResourceNames = useMemo(
+    () => getMissingResourceNames(activeMissing),
+    [activeMissing]
+  );
+  const gatherMoreHint = useMemo(() => {
+    if (missingResourceNames.length === 0) {
+      return "Gather more resources to upgrade.";
+    }
+    return `Gather more ${listResources(missingResourceNames)} to upgrade.`;
+  }, [missingResourceNames]);
 
   const handleNodeClick = useCallback(
     (id: SkillId) => {
@@ -625,7 +658,7 @@ export const SkillTreeView: React.FC = () => {
                 {activeNode.unlocked
                   ? activeAffordable
                     ? "Click a highlighted node to upgrade it."
-                    : "Gather more stone and sand to upgrade."
+                    : gatherMoreHint
                   : "Unlock prerequisites to make this upgrade available."}
               </div>
             )}
