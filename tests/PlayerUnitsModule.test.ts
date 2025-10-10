@@ -1,6 +1,9 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
+import {
+  FILL_TYPES,
+  SceneObjectManager,
+} from "../src/logic/services/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/BricksModule";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
@@ -10,6 +13,7 @@ import {
 import { MovementService } from "../src/logic/services/MovementService";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { BonusesModule } from "../src/logic/modules/BonusesModule";
+import { PlayerUnitEmitterConfig } from "../src/db/player-units-db";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -73,6 +77,16 @@ describe("PlayerUnitsModule", () => {
       physicalSize?: number;
     };
     assert(customData && customData.emitter, "unit should include emitter config");
+    const emitter = customData.emitter as PlayerUnitEmitterConfig;
+    assert.strictEqual(emitter.shape, "circle");
+    assert(emitter.fill, "unit emitter should include gradient fill");
+    assert.strictEqual(emitter.fill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+    const firstStop = emitter.fill.stops[0];
+    const lastStop = emitter.fill.stops[emitter.fill.stops.length - 1];
+    assert(firstStop, "gradient should include a starting stop");
+    assert(lastStop, "gradient should include an ending stop");
+    assert.strictEqual(firstStop!.color.a, 0.5);
+    assert.strictEqual(lastStop!.color.a, 0);
     assert.strictEqual(customData?.physicalSize, 12);
 
     for (let i = 0; i < 16 && bricks.getBrickStates().length > 0; i += 1) {

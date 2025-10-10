@@ -939,6 +939,7 @@ const cloneEmitter = (
     a: config.color.a,
   },
   fill: config.fill ? cloneFill(config.fill) : undefined,
+  shape: config.shape,
   maxParticles: config.maxParticles,
 });
 

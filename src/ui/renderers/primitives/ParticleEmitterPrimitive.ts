@@ -6,6 +6,7 @@ import {
   SceneVector2,
 } from "../../../logic/services/SceneObjectManager";
 import {
+  ParticleEmitterShape,
   cloneSceneFill,
   sanitizeSceneColor,
 } from "../../../logic/services/particles/ParticleEmitterShared";
@@ -29,6 +30,7 @@ export interface ParticleEmitterBaseConfig {
   offset: SceneVector2;
   color: SceneColor;
   fill?: SceneFill;
+  shape: ParticleEmitterShape;
   emissionDurationMs?: number;
   capacity: number;
 }
@@ -78,6 +80,7 @@ export interface ParticleEmitterSanitizerOptions {
   defaultColor?: SceneColor;
   defaultOffset?: SceneVector2;
   minCapacity?: number;
+  defaultShape?: ParticleEmitterShape;
 }
 
 const VERTICES_PER_PARTICLE = 6;
@@ -271,7 +274,7 @@ const createParticleFillComponents = (
   size: number,
   alpha: number
 ): Float32Array => {
-  const fill = config.fill ?? createSolidFill(config.color);
+  const fill = resolveParticleFill(config);
   const effectiveSize = Math.max(size, MIN_PARTICLE_SIZE);
   const fillComponents = createFillVertexComponents({
     fill,
@@ -284,6 +287,17 @@ const createParticleFillComponents = (
   return fillComponents;
 };
 
+const resolveParticleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
+  const shape = config.shape === "circle" ? "circle" : "square";
+  if (config.fill) {
+    return config.fill;
+  }
+  if (shape === "circle") {
+    return createCircularFill(config.color);
+  }
+  return createSolidFill(config.color);
+};
+
 const createSolidFill = (color: SceneColor): SceneFill => ({
   fillType: FILL_TYPES.SOLID,
   color: {
@@ -292,6 +306,31 @@ const createSolidFill = (color: SceneColor): SceneFill => ({
     b: color.b,
     a: typeof color.a === "number" ? color.a : 1,
   },
+});
+
+const createCircularFill = (color: SceneColor): SceneFill => ({
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    {
+      offset: 0,
+      color: {
+        r: color.r,
+        g: color.g,
+        b: color.b,
+        a: typeof color.a === "number" ? color.a : 1,
+      },
+    },
+    {
+      offset: 1,
+      color: {
+        r: color.r,
+        g: color.g,
+        b: color.b,
+        a: 0,
+      },
+    },
+  ],
 });
 
 const computeParticleAlpha = (
@@ -409,6 +448,7 @@ export const sanitizeParticleEmitterConfig = (
     offset?: SceneVector2;
     color?: SceneColor;
     fill?: SceneFill;
+    shape?: ParticleEmitterShape;
     maxParticles?: number;
   },
   options: ParticleEmitterSanitizerOptions = {}
@@ -456,6 +496,9 @@ export const sanitizeParticleEmitterConfig = (
     options.defaultColor ?? { r: 1, g: 1, b: 1, a: 1 }
   );
   const fill = config.fill ? cloneSceneFill(config.fill) : undefined;
+  const defaultShape = options.defaultShape === "circle" ? "circle" : "square";
+  const shape: ParticleEmitterShape =
+    config.shape === "circle" ? "circle" : defaultShape;
   const emissionDurationMs =
     typeof config.emissionDurationMs === "number" &&
     Number.isFinite(config.emissionDurationMs)
@@ -481,6 +524,7 @@ export const sanitizeParticleEmitterConfig = (
     offset,
     color,
     fill,
+    shape,
     emissionDurationMs,
     capacity,
   };
