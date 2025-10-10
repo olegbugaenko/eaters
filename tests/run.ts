@@ -8,5 +8,6 @@ import "./BricksModule.test";
 import "./PlayerUnitsModule.test";
 import "./MapModule.test";
 import "./UnitAutomationModule.test";
+import "./Application.test";
 
 void run();

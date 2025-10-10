@@ -91,6 +91,7 @@ interface BricksModuleOptions {
   explosions: ExplosionModule;
   resources: ResourceCollector;
   bonuses: BonusesModule;
+  onAllBricksDestroyed?: () => void;
 }
 
 interface BrickSaveData {
@@ -405,6 +406,9 @@ export class BricksModule implements GameModule {
     this.spatialIndex.delete(brick.id);
     this.bricksWithKnockback.delete(brick.id);
     this.pushStats();
+    if (this.bricks.size === 0) {
+      this.options.onAllBricksDestroyed?.();
+    }
   }
 
   private clearSceneObjects(): void {

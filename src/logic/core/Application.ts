@@ -71,6 +71,9 @@ export class Application {
       explosions: explosionModule,
       resources: resourcesModule,
       bonuses: bonusesModule,
+      onAllBricksDestroyed: () => {
+        this.handleMapRunCompleted(true);
+      },
     });
     const playerUnitsModule = new PlayerUnitsModule({
       scene: sceneObjects,
@@ -211,6 +214,14 @@ export class Application {
     if (this.necromancerModule.hasSanityForAnySpawn()) {
       return;
     }
+    this.handleMapRunCompleted(false);
+  }
+
+  private handleMapRunCompleted(success: boolean): void {
+    if (this.resourcesModule.isRunSummaryAvailable()) {
+      return;
+    }
+    this.mapModule.recordRunResult({ success });
     this.resourcesModule.finishRun();
   }
 }
