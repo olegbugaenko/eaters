@@ -80,6 +80,7 @@ export interface BrickRuntimeState {
   baseDamage: number;
   brickKnockBackDistance: number;
   brickKnockBackSpeed: number;
+  brickKnockBackAmplitude: number;
   physicalSize: number;
   rewards: ResourceStockpile;
 }
@@ -336,6 +337,12 @@ export class BricksModule implements GameModule {
       destructuble?.physicalSize ?? Math.max(config.size.width, config.size.height) / 2,
       0
     );
+    const brickKnockBackAmplitude = sanitizeKnockBackAmplitude(
+      destructuble?.brickKnockBackAmplitude,
+      brickKnockBackDistance,
+      config,
+      physicalSize
+    );
     const hp = sanitizeHp(brick.hp ?? destructuble?.hp ?? maxHp, maxHp);
     const position = this.clampToMap(brick.position);
     const rotation = sanitizeRotation(brick.rotation);
@@ -366,6 +373,7 @@ export class BricksModule implements GameModule {
       baseDamage,
       brickKnockBackDistance,
       brickKnockBackSpeed,
+      brickKnockBackAmplitude,
       physicalSize,
       rewards,
       sceneObjectId,
@@ -418,11 +426,11 @@ export class BricksModule implements GameModule {
       y: -1,
     };
 
-    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
-    const amplitude =
-      knockBackDistance > 0
-        ? clamp(knockBackDistance * 0.15, 4, 12)
-        : clamp(brick.physicalSize * 0.35, 4, 10);
+    const amplitude = Math.max(brick.brickKnockBackAmplitude, 0);
+    if (amplitude <= KNOCKBACK_EPSILON) {
+      return;
+    }
+
     const offset = scaleVector(direction, amplitude);
 
     if (vectorHasLength(offset)) {
@@ -488,6 +496,7 @@ export class BricksModule implements GameModule {
       baseDamage: state.baseDamage,
       brickKnockBackDistance: state.brickKnockBackDistance,
       brickKnockBackSpeed: state.brickKnockBackSpeed,
+      brickKnockBackAmplitude: state.brickKnockBackAmplitude,
       physicalSize: state.physicalSize,
       rewards: cloneResourceStockpile(state.rewards),
     };
@@ -561,6 +570,24 @@ const sanitizeKnockBackSpeed = (
     return distance * 2;
   }
   return 0;
+};
+
+const sanitizeKnockBackAmplitude = (
+  value: number | undefined,
+  distance: number,
+  config: BrickConfig,
+  physicalSize: number
+): number => {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+
+  if (distance > 0) {
+    return clamp(distance * 0.15, 4, 12);
+  }
+
+  const fallbackSize = Math.max(physicalSize, Math.max(config.size.width, config.size.height) / 2);
+  return clamp(fallbackSize * 0.35, 4, 10);
 };
 
 const clamp = (value: number, min: number, max: number): number => {
