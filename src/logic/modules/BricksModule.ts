@@ -100,12 +100,23 @@ interface InternalBrickState extends BrickRuntimeState {
   sceneObjectId: string;
   damageExplosion?: BrickExplosionState;
   destructionExplosion?: BrickExplosionState;
+  knockback: BrickKnockbackState | null;
 }
 
 interface BrickExplosionState {
   type: ExplosionType;
   initialRadius: number;
 }
+
+interface BrickKnockbackState {
+  initialOffset: SceneVector2;
+  currentOffset: SceneVector2;
+  elapsed: number;
+}
+
+const BRICK_KNOCKBACK_DURATION_MS = 500;
+const KNOCKBACK_EPSILON = 0.001;
+const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
 
 export class BricksModule implements GameModule {
   public readonly id = "bricks";
@@ -114,6 +125,7 @@ export class BricksModule implements GameModule {
   private brickOrder: InternalBrickState[] = [];
   private brickIdCounter = 0;
   private readonly spatialIndex = new SpatialGrid<InternalBrickState>(10);
+  private readonly bricksWithKnockback = new Set<string>();
 
   constructor(private readonly options: BricksModuleOptions) {}
 
@@ -145,8 +157,41 @@ export class BricksModule implements GameModule {
     } satisfies BrickSaveData;
   }
 
-  public tick(_deltaMs: number): void {
-    // Bricks are static for now.
+  public tick(deltaMs: number): void {
+    if (deltaMs <= 0 || this.bricksWithKnockback.size === 0) {
+      return;
+    }
+
+    const finished: string[] = [];
+
+    this.bricksWithKnockback.forEach((brickId) => {
+      const brick = this.bricks.get(brickId);
+      if (!brick || !brick.knockback) {
+        finished.push(brickId);
+        return;
+      }
+
+      const state = brick.knockback;
+      state.elapsed = Math.min(state.elapsed + deltaMs, BRICK_KNOCKBACK_DURATION_MS);
+      const progress = clamp(state.elapsed / BRICK_KNOCKBACK_DURATION_MS, 0, 1);
+      const remaining = 1 - progress;
+      const eased = remaining * remaining;
+
+      if (eased <= KNOCKBACK_EPSILON) {
+        brick.knockback = null;
+        finished.push(brickId);
+        this.updateBrickSceneObject(brick, ZERO_VECTOR);
+        return;
+      }
+
+      const offset = scaleVector(state.initialOffset, eased);
+      state.currentOffset = offset;
+      this.updateBrickSceneObject(brick, offset);
+    });
+
+    if (finished.length > 0) {
+      finished.forEach((brickId) => this.bricksWithKnockback.delete(brickId));
+    }
   }
 
   public setBricks(bricks: BrickData[]): void {
@@ -195,7 +240,8 @@ export class BricksModule implements GameModule {
 
   public applyDamage(
     brickId: string,
-    rawDamage: number
+    rawDamage: number,
+    hitDirection?: SceneVector2
   ): { destroyed: boolean; brick: BrickRuntimeState | null } {
     const brick = this.bricks.get(brickId);
     if (!brick) {
@@ -216,6 +262,7 @@ export class BricksModule implements GameModule {
     }
 
     this.spawnBrickExplosion(brick.damageExplosion, brick);
+    this.applyBrickKnockback(brick, hitDirection);
     this.pushStats();
     return { destroyed: false, brick: this.cloneState(brick) };
   }
@@ -332,6 +379,7 @@ export class BricksModule implements GameModule {
         config,
         physicalSize
       ),
+      knockback: null,
     };
   }
 
@@ -347,6 +395,7 @@ export class BricksModule implements GameModule {
     this.bricks.delete(brick.id);
     this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
     this.spatialIndex.delete(brick.id);
+    this.bricksWithKnockback.delete(brick.id);
     this.pushStats();
   }
 
@@ -357,6 +406,48 @@ export class BricksModule implements GameModule {
     this.bricks.clear();
     this.brickOrder = [];
     this.spatialIndex.clear();
+    this.bricksWithKnockback.clear();
+  }
+
+  private applyBrickKnockback(
+    brick: InternalBrickState,
+    hitDirection: SceneVector2 | undefined
+  ): void {
+    const direction = normalizeVector(hitDirection ?? ZERO_VECTOR) ?? {
+      x: 0,
+      y: -1,
+    };
+
+    const strengthBase = Math.max(Math.min(brick.physicalSize, 40), 8);
+    const offset = scaleVector(direction, strengthBase * 0.5);
+
+    if (vectorHasLength(offset)) {
+      let combinedOffset = offset;
+
+      if (brick.knockback) {
+        const retained = scaleVector(brick.knockback.currentOffset, 0.35);
+        combinedOffset = addVectors(retained, offset);
+      }
+
+      brick.knockback = {
+        initialOffset: combinedOffset,
+        currentOffset: combinedOffset,
+        elapsed: 0,
+      };
+      this.bricksWithKnockback.add(brick.id);
+      this.updateBrickSceneObject(brick, combinedOffset);
+    }
+  }
+
+  private updateBrickSceneObject(
+    brick: InternalBrickState,
+    offset: SceneVector2
+  ): void {
+    const position = addVectors(brick.position, offset);
+    this.options.scene.updateObject(brick.sceneObjectId, {
+      position,
+      rotation: brick.rotation,
+    });
   }
 
   private pushStats(): void {
@@ -428,6 +519,32 @@ export class BricksModule implements GameModule {
     });
   }
 }
+
+const addVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
+  x: a.x + b.x,
+  y: a.y + b.y,
+});
+
+const scaleVector = (vector: SceneVector2, scalar: number): SceneVector2 => ({
+  x: vector.x * scalar,
+  y: vector.y * scalar,
+});
+
+const vectorLength = (vector: SceneVector2): number => Math.hypot(vector.x, vector.y);
+
+const vectorHasLength = (vector: SceneVector2, epsilon = 0.0001): boolean =>
+  Math.abs(vector.x) > epsilon || Math.abs(vector.y) > epsilon;
+
+const normalizeVector = (vector: SceneVector2): SceneVector2 | null => {
+  const length = vectorLength(vector);
+  if (length <= 0.0001) {
+    return null;
+  }
+  return {
+    x: vector.x / length,
+    y: vector.y / length,
+  };
+};
 
 const sanitizeKnockBackSpeed = (
   value: number | undefined,

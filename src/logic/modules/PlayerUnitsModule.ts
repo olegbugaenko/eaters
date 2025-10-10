@@ -698,7 +698,7 @@ export class PlayerUnitsModule implements GameModule {
   ): void {
     unit.attackCooldown = unit.baseAttackInterval;
     const damage = this.getEffectiveAttackDamage(unit);
-    const result = this.bricks.applyDamage(target.id, damage);
+    const result = this.bricks.applyDamage(target.id, damage, direction);
     const surviving = result.brick ?? target;
 
     if (surviving) {

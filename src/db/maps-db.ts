@@ -32,47 +32,49 @@ export interface MapPlayerUnitConfig {
 }
 
 const FOUNDATIONS_CENTER: SceneVector2 = { x: 500, y: 500 };
-const FOUNDATIONS_SPAWN_POINTS: readonly SceneVector2[] = [FOUNDATIONS_CENTER];
 
 const MAPS_DB: Record<MapId, MapConfig> = {
-  foundations: {
-    name: "Cracked Pentagon",
-    size: { width: 1000, height: 1000 },
-    spawnPoints: FOUNDATIONS_SPAWN_POINTS,
-    bricks: (() => {
-      const center = FOUNDATIONS_CENTER;
-      const sides = 5;
-      const outerRadius = 360;
-      const layerThickness = getBrickConfig("smallSquareGray").size.width * 3;
-      const innerRadius = Math.max(outerRadius - layerThickness, 0);
+  foundations: (() => {
+    const center = FOUNDATIONS_CENTER;
+    const size: SceneSize = { width: 1000, height: 1000 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: center.y };
+    const sides = 5;
+    const outerRadius = 360;
+    const layerThickness = getBrickConfig("smallSquareGray").size.width * 3;
+    const innerRadius = Math.max(outerRadius - layerThickness, 0);
 
-      const createPolygon = (radius: number): SceneVector2[] =>
-        Array.from({ length: sides }, (_, index) => {
-          const angle = (index / sides) * Math.PI * 2 - Math.PI / 2;
-          return {
-            x: center.x + Math.cos(angle) * radius,
-            y: center.y + Math.sin(angle) * radius,
-          };
-        });
-
-      const outerVertices = createPolygon(outerRadius);
-      const innerVertices = createPolygon(innerRadius);
-
-      const ring = polygonWithBricks("smallSquareGray", {
-        vertices: outerVertices,
-        holes: [innerVertices],
-        offsetX: center.x,
-        offsetY: center.y,
+    const createPolygon = (radius: number): SceneVector2[] =>
+      Array.from({ length: sides }, (_, index) => {
+        const angle = (index / sides) * Math.PI * 2 - Math.PI / 2;
+        return {
+          x: center.x + Math.cos(angle) * radius,
+          y: center.y + Math.sin(angle) * radius,
+        };
       });
-      return [ring];
-    })(),
-    playerUnits: [
-      {
-        type: "bluePentagon",
-        position: { x: 140, y: 140 },
-      },
-    ],
-  },
+
+    const outerVertices = createPolygon(outerRadius);
+    const innerVertices = createPolygon(innerRadius);
+
+    const ring = polygonWithBricks("smallSquareGray", {
+      vertices: outerVertices,
+      holes: [innerVertices],
+      offsetX: center.x,
+      offsetY: center.y,
+    });
+
+    return {
+      name: "Cracked Pentagon",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: [ring],
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { x: 140, y: 140 },
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
   initial: {
     name: "Initial Grounds",
     size: { width: 3000, height: 3000 },
