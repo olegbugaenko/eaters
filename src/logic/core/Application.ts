@@ -16,6 +16,7 @@ import { NecromancerModule } from "../modules/NecromancerModule";
 import { ResourcesModule } from "../modules/ResourcesModule";
 import { SkillTreeModule } from "../modules/SkillTreeModule";
 import { BonusesModule } from "../modules/BonusesModule";
+import { UnlockService } from "../services/UnlockService";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -85,14 +86,23 @@ export class Application {
       scene: sceneObjects,
       bonuses: bonusesModule,
     });
-    this.mapModule = new MapModule({
+    let mapModuleReference: MapModule | null = null;
+    const unlockService = new UnlockService({
+      getMapStats: () => mapModuleReference?.getMapStats() ?? {},
+      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+    });
+    this.serviceContainer.register("unlocks", unlockService);
+
+    mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
       bricks: bricksModule,
       playerUnits: playerUnitsModule,
       necromancer: this.necromancerModule,
       resources: resourcesModule,
+      unlocks: unlockService,
     });
+    this.mapModule = mapModuleReference;
 
     const bulletModule = new BulletModule({
       scene: sceneObjects,
