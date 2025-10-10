@@ -132,6 +132,11 @@
   min-width: 180px;
 }
 
+.scene-summoning-panel__unit-action-wrapper {
+  display: flex;
+  width: 100%;
+}
+
 .scene-summoning-panel__unit-action {
   display: flex;
   flex-direction: column;

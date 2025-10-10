@@ -148,6 +148,7 @@ const serializeTailEmitterConfig = (
     config.color.a,
     config.capacity,
     serializedFill,
+    config.shape,
   ].join(":");
 };
 

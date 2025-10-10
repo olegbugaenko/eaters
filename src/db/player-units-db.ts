@@ -1,4 +1,10 @@
-import { SceneColor, SceneFill, SceneVector2 } from "../logic/services/SceneObjectManager";
+import {
+  FILL_TYPES,
+  SceneColor,
+  SceneFill,
+  SceneVector2,
+} from "../logic/services/SceneObjectManager";
+import { ParticleEmitterShape } from "../logic/services/particles/ParticleEmitterShared";
 import { ResourceCost } from "../types/resources";
 
 export type PlayerUnitType = "bluePentagon";
@@ -27,6 +33,7 @@ export interface PlayerUnitEmitterConfig {
   offset: SceneVector2;
   color: SceneColor;
   fill?: SceneFill;
+  shape?: ParticleEmitterShape;
   maxParticles?: number;
 }
 
@@ -42,6 +49,8 @@ export interface PlayerUnitConfig {
   readonly moveAcceleration: number; // force units per second^2 before mass
   readonly mass: number;
   readonly physicalSize: number;
+  readonly baseCritChance?: number;
+  readonly baseCritMultiplier?: number;
   readonly emitter?: PlayerUnitEmitterConfig;
   readonly cost: ResourceCost;
 }
@@ -76,16 +85,27 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     moveAcceleration: 40,
     mass: 1.2,
     physicalSize: 12,
+    baseCritChance: 0,
+    baseCritMultiplier: 2,
     emitter: {
       particlesPerSecond: 120,
       particleLifetimeMs: 550,
       fadeStartMs: 300,
       baseSpeed: 0.15,
       speedVariation: 0.03,
-      sizeRange: { min: 1.2, max: 2.4 },
+      sizeRange: { min: 3.2, max: 5.4 },
       spread: Math.PI / 5.5,
       offset: { x: -0.35, y: 0 },
-      color: { r: 0.2, g: 0.85, b: 0.95, a: 0.35 },
+      color: { r: 0.2, g: 0.85, b: 0.95, a: 0.5 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.25 } },
+          { offset: 1, color: { r: 0.2, g: 0.85, b: 0.95, a: 0 } },
+        ],
+      },
+      shape: "circle",
       maxParticles: 80,
     },
     cost: {

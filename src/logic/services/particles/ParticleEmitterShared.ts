@@ -1,5 +1,7 @@
 import { FILL_TYPES, SceneColor, SceneFill } from "../SceneObjectManager";
 
+export type ParticleEmitterShape = "square" | "circle";
+
 export const cloneSceneColor = (color: SceneColor): SceneColor => ({
   r: color.r,
   g: color.g,

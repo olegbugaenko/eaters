@@ -142,23 +142,27 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
               const automationEnabled = automationLookup.get(option.type) ?? false;
               return (
                 <div key={option.type} className="scene-summoning-panel__unit">
-                  <button
-                    type="button"
-                    className={actionClassName}
-                    onClick={() => {
-                      if (canAfford) {
-                        onSummon(option.type);
-                      }
-                    }}
+                  <div
+                    className="scene-summoning-panel__unit-action-wrapper"
                     onMouseEnter={() => showUnitTooltip(option.type)}
-                    onFocus={() => showUnitTooltip(option.type)}
                     onMouseLeave={hideTooltip}
-                    onBlur={hideTooltip}
-                    disabled={!canAfford}
                   >
-                    <div className="scene-summoning-panel__unit-name">{option.name}</div>
-                    <ResourceCostDisplay cost={option.cost} missing={missing} />
-                  </button>
+                    <button
+                      type="button"
+                      className={actionClassName}
+                      onClick={() => {
+                        if (canAfford) {
+                          onSummon(option.type);
+                        }
+                      }}
+                      onFocus={() => showUnitTooltip(option.type)}
+                      onBlur={hideTooltip}
+                      disabled={!canAfford}
+                    >
+                      <div className="scene-summoning-panel__unit-name">{option.name}</div>
+                      <ResourceCostDisplay cost={option.cost} missing={missing} />
+                    </button>
+                  </div>
                   {automation.unlocked && (
                     <label className="scene-summoning-panel__automation-toggle">
                       <input

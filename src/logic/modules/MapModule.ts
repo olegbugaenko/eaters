@@ -17,6 +17,7 @@ import {
   isMapId,
 } from "../../db/maps-db";
 import { SceneVector2 } from "../services/SceneObjectManager";
+import { SkillId } from "../../db/skills-db";
 import { buildBricksFromBlueprints } from "../services/BrickLayoutService";
 
 interface ResourceRunController {
@@ -35,6 +36,7 @@ interface MapModuleOptions {
   necromancer: NecromancerModule;
   resources: ResourceRunController;
   unlocks: UnlockService;
+  getSkillLevel: (id: SkillId) => number;
 }
 
 interface MapSaveData {
@@ -42,6 +44,7 @@ interface MapSaveData {
   mapLevel?: number;
   stats?: MapStats;
   selectedLevels?: Partial<Record<MapId, number>>;
+  autoRestartEnabled?: boolean;
 }
 
 export interface MapLevelStats {
@@ -63,29 +66,51 @@ export interface MapRunResult {
   success: boolean;
 }
 
+export interface MapAutoRestartState {
+  readonly unlocked: boolean;
+  readonly enabled: boolean;
+}
+
+export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
+
+export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze({
+  unlocked: false,
+  enabled: false,
+});
+
 const DEFAULT_MAP_ID: MapId = "foundations";
 export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
+const AUTO_RESTART_SKILL_ID: SkillId = "autorestart_rituals";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
 
   private selectedMapId: MapId | null = null;
   private readonly unlocks: UnlockService;
+  private readonly getSkillLevel: (id: SkillId) => number;
   private mapStats: MapStats = {};
   private selectedMapLevel = 0;
   private activeMapLevel = 0;
   private mapSelectedLevels: Partial<Record<MapId, number>> = {};
+  private autoRestartUnlocked = false;
+  private autoRestartEnabled = false;
 
   constructor(private readonly options: MapModuleOptions) {
     this.unlocks = options.unlocks;
+    this.getSkillLevel = options.getSkillLevel;
   }
 
   public initialize(): void {
+    this.refreshAutoRestartState();
+    this.pushAutoRestartState();
     this.pushMapList();
     this.ensureSelection({ generateBricks: false, generateUnits: false });
   }
 
   public reset(): void {
+    this.autoRestartEnabled = false;
+    this.refreshAutoRestartState();
+    this.pushAutoRestartState();
     this.ensureSelection({ generateBricks: true, generateUnits: true });
   }
 
@@ -93,6 +118,9 @@ export class MapModule implements GameModule {
     const parsed = this.parseSaveData(data);
     this.mapStats = parsed?.stats ?? {};
     this.mapSelectedLevels = parsed?.selectedLevels ?? {};
+    this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
+    this.refreshAutoRestartState();
+    this.pushAutoRestartState();
     this.pushMapList();
 
     const savedMapId = parsed?.mapId;
@@ -116,11 +144,15 @@ export class MapModule implements GameModule {
       mapLevel: this.selectedMapLevel,
       stats: this.cloneStats(),
       selectedLevels: this.cloneSelectedLevels(),
+      autoRestartEnabled: this.autoRestartEnabled,
     } satisfies MapSaveData;
   }
 
   public tick(_deltaMs: number): void {
-    // Map logic is static for now.
+    const changed = this.refreshAutoRestartState();
+    if (changed) {
+      this.pushAutoRestartState();
+    }
   }
 
   public selectMap(mapId: MapId): void {
@@ -157,6 +189,25 @@ export class MapModule implements GameModule {
       return;
     }
     this.applyMap(this.selectedMapId, { generateBricks: true, generateUnits: true });
+  }
+
+  public setAutoRestartEnabled(enabled: boolean): void {
+    const unlockChanged = this.refreshAutoRestartState();
+    if (!this.autoRestartUnlocked) {
+      if (unlockChanged) {
+        this.pushAutoRestartState();
+      }
+      return;
+    }
+    const next = Boolean(enabled);
+    if (this.autoRestartEnabled === next) {
+      if (unlockChanged) {
+        this.pushAutoRestartState();
+      }
+      return;
+    }
+    this.autoRestartEnabled = next;
+    this.pushAutoRestartState();
   }
 
   public recordRunResult(result: MapRunResult): void {
@@ -228,6 +279,30 @@ export class MapModule implements GameModule {
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();
+  }
+
+  private refreshAutoRestartState(): boolean {
+    const unlocked = this.getSkillLevel(AUTO_RESTART_SKILL_ID) > 0;
+    let changed = false;
+    if (this.autoRestartUnlocked !== unlocked) {
+      this.autoRestartUnlocked = unlocked;
+      changed = true;
+    }
+    if (!unlocked && this.autoRestartEnabled) {
+      this.autoRestartEnabled = false;
+      changed = true;
+    }
+    return changed;
+  }
+
+  private pushAutoRestartState(): void {
+    this.options.bridge.setValue<MapAutoRestartState>(
+      MAP_AUTO_RESTART_BRIDGE_KEY,
+      {
+        unlocked: this.autoRestartUnlocked,
+        enabled: this.autoRestartUnlocked && this.autoRestartEnabled,
+      }
+    );
   }
 
   private generateBricks(config: MapConfig, mapLevel: number): BrickData[] {
@@ -321,6 +396,7 @@ export class MapModule implements GameModule {
       stats?: unknown;
       mapLevel?: unknown;
       selectedLevels?: unknown;
+      autoRestartEnabled?: unknown;
     };
     if (!raw.mapId || !isMapId(raw.mapId)) {
       return null;
@@ -328,7 +404,8 @@ export class MapModule implements GameModule {
     const stats = this.parseStats(raw.stats);
     const mapLevel = typeof raw.mapLevel === "number" ? sanitizeLevel(raw.mapLevel) : undefined;
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
-    return { mapId: raw.mapId, mapLevel, stats, selectedLevels };
+    const autoRestartEnabled = raw.autoRestartEnabled === true;
+    return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled };
   }
 
   private resolveSelectableMapId(preferred: MapId | null): MapId | null {

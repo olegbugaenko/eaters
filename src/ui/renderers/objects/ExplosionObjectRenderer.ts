@@ -118,6 +118,7 @@ const serializeExplosionEmitterConfig = (
     config.arc,
     config.direction,
     serializedFill,
+    config.shape,
   ].join(":");
 };
 

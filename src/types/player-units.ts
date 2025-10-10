@@ -10,6 +10,18 @@ export interface PlayerUnitStatMultipliers {
   readonly attackDamage: number;
 }
 
+export interface PlayerUnitCritChanceStats {
+  readonly base: number;
+  readonly bonus: number;
+  readonly effective: number;
+}
+
+export interface PlayerUnitCritMultiplierStats {
+  readonly base: number;
+  readonly multiplier: number;
+  readonly effective: number;
+}
+
 export interface PlayerUnitBlueprintStats {
   readonly type: PlayerUnitType;
   readonly name: string;
@@ -17,6 +29,8 @@ export interface PlayerUnitBlueprintStats {
   readonly base: PlayerUnitStatBlock;
   readonly effective: PlayerUnitStatBlock;
   readonly multipliers: PlayerUnitStatMultipliers;
+  readonly critChance: PlayerUnitCritChanceStats;
+  readonly critMultiplier: PlayerUnitCritMultiplierStats;
   readonly armor: number;
   readonly baseAttackInterval: number;
   readonly baseAttackDistance: number;

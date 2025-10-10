@@ -22,6 +22,7 @@ export interface SkillConfig {
 export const SKILL_IDS = [
   "stone_lore",
   "stone_automatons",
+  "autorestart_rituals",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -39,7 +40,9 @@ export const SKILL_IDS = [
   "critical_chance",
   "damage_lore",
   "armor_lore",
-  "vitality2"
+  "vitality2",
+  "clarity2",
+  "refinement"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -108,6 +111,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { stone_lore: 1 },
     cost: createStoneCost(20, 1),
   },
+  autorestart_rituals: {
+    id: "autorestart_rituals",
+    name: "Autorestart Sigils",
+    description:
+      "Imprint cascading reset sigils so collapse teams can reweave summoning circles without supervision.",
+    nodePosition: { x: -1, y: 3 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { stone_automatons: 1 },
+    cost: createMixedCost(500, 1, 50, 1),
+  },
   quarry_overseers: {
     id: "quarry_overseers",
     name: "Quarry Overseers",
@@ -122,6 +136,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { stone_lore: 1 },
     cost: createStoneCost(20, 1.4),
+  },
+  refinement: {
+    id: "refinement",
+    name: "Refinement",
+    description:
+      "Assign dedicated haulers who keep rubble moving and expose richer stone veins.",
+    nodePosition: { x: 0, y: 3 },
+    maxLevel: 15,
+    effects: {
+      brick_rewards: {
+        multiplier: (level) => 1 + 0.08 * level,
+      },
+    },
+    nodesRequired: { quarry_overseers: 3 },
+    cost: createSandCost(50, 1.5),
   },
   // top
   glass_latticework: {
@@ -216,6 +245,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { bastion_foundations: 2 },
     cost: createStoneCost(100, 1.45),
+  },
+  clarity2: {
+    id: "clarity2",
+    name: "Clarity II",
+    description:
+      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+    nodePosition: { x: 3, y: -4 },
+    maxLevel: 5,
+    effects: {
+      sanity_cap: {
+        income: (level) => 2 * level,
+      },
+    },
+    nodesRequired: { clarity: 3 },
+    cost: createSandCost(50, 1.5),
   },
   // left
   granite_bonding: {

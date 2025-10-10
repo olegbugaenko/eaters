@@ -92,7 +92,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   })(),
   initial: {
     name: "Initial Grounds",
-    size: { width: 2000, height: 2000 },
+    size: { width: 2500, height: 2500 },
     unlockedBy: [
       {
         type: "map",
@@ -103,7 +103,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const innerLevel = baseLevel + 1;
-      const center: SceneVector2 = { x: 1500, y: 1500 };
+      const center: SceneVector2 = { x: 1250, y: 1250 };
       const largeCircle = circleWithBricks(
         "smallSquareGray",
         {

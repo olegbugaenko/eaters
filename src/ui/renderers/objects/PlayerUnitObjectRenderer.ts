@@ -162,6 +162,7 @@ const serializeEmitterConfig = (
     config.spread,
     config.physicalSize,
     serializedFill,
+    config.shape,
   ].join(":");
 };
 
