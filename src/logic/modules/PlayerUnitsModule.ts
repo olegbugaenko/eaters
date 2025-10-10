@@ -19,10 +19,16 @@ import {
 import { MovementService, MovementBodyState } from "../services/MovementService";
 import { BonusesModule } from "./BonusesModule";
 import { PlayerUnitBlueprintStats } from "../../types/player-units";
+import { ExplosionModule } from "./ExplosionModule";
+import { getBonusConfig } from "../../db/bonuses-db";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
 const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
+const CRITICAL_HIT_EXPLOSION_RADIUS = 12;
+const DEFAULT_CRIT_MULTIPLIER_BONUS = getBonusConfig(
+  "all_units_crit_mult"
+).defaultValue;
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
@@ -41,6 +47,7 @@ interface PlayerUnitsModuleOptions {
   bridge: DataBridge;
   movement: MovementService;
   bonuses: BonusesModule;
+  explosions: ExplosionModule;
   onAllUnitsDefeated?: () => void;
 }
 
@@ -64,6 +71,8 @@ interface PlayerUnitState {
   moveAcceleration: number;
   mass: number;
   physicalSize: number;
+  critChance: number;
+  critMultiplier: number;
   attackCooldown: number;
   preCollisionVelocity: SceneVector2;
   lastNonZeroVelocity: SceneVector2;
@@ -81,6 +90,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly movement: MovementService;
   private readonly bonuses: BonusesModule;
+  private readonly explosions: ExplosionModule;
   private readonly onAllUnitsDefeated?: () => void;
 
   private units = new Map<string, PlayerUnitState>();
@@ -94,6 +104,7 @@ export class PlayerUnitsModule implements GameModule {
     this.bridge = options.bridge;
     this.movement = options.movement;
     this.bonuses = options.bonuses;
+    this.explosions = options.explosions;
     this.onAllUnitsDefeated = options.onAllUnitsDefeated;
   }
 
@@ -367,8 +378,16 @@ export class PlayerUnitsModule implements GameModule {
       1
     );
     const globalHpMultiplier = sanitizeMultiplier(values["all_units_hp_multiplier"], 1);
-    const globalArmorBonus = sanitizeMultiplier(values["all_units_armor"], 0);
-    console.log('globalArmorBonus', globalArmorBonus);
+    const globalArmorBonus = sanitizeAdditive(values["all_units_armor"], 0);
+    const globalCritChanceBonus = sanitizeAdditive(values["all_units_crit_chance"], 0);
+    const globalCritMultiplierRaw = sanitizeMultiplier(
+      values["all_units_crit_mult"],
+      DEFAULT_CRIT_MULTIPLIER_BONUS
+    );
+    const globalCritMultiplier = normalizeMultiplier(
+      globalCritMultiplierRaw,
+      DEFAULT_CRIT_MULTIPLIER_BONUS
+    );
 
     const blueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
 
@@ -382,9 +401,16 @@ export class PlayerUnitsModule implements GameModule {
       const baseMoveAcceleration = Math.max(config.moveAcceleration, 0);
       const baseMass = Math.max(config.mass, 0.001);
       const baseSize = Math.max(config.physicalSize, 0);
+      const baseCritChance = clampProbability(config.baseCritChance ?? 0);
+      const baseCritMultiplier = Math.max(
+        config.baseCritMultiplier ?? DEFAULT_CRIT_MULTIPLIER_BONUS,
+        1
+      );
 
       let specificAttackMultiplier = 1;
       let specificHpMultiplier = 1;
+      let specificCritChanceBonus = 0;
+      let specificCritMultiplier = 1;
 
       switch (type) {
         case "bluePentagon":
@@ -403,9 +429,16 @@ export class PlayerUnitsModule implements GameModule {
 
       const attackMultiplier = Math.max(globalAttackMultiplier, 0) * Math.max(specificAttackMultiplier, 0);
       const hpMultiplier = Math.max(globalHpMultiplier, 0) * Math.max(specificHpMultiplier, 0);
+      const critMultiplierMultiplier =
+        Math.max(globalCritMultiplier, 0) * Math.max(specificCritMultiplier, 0);
+      const totalCritChanceBonus = globalCritChanceBonus + specificCritChanceBonus;
 
       const effectiveAttack = roundStat(baseAttack * attackMultiplier);
       const effectiveHp = roundStat(baseHp * hpMultiplier);
+      const effectiveCritMultiplier = roundStat(
+        baseCritMultiplier * Math.max(critMultiplierMultiplier, 0)
+      );
+      const effectiveCritChance = clampProbability(baseCritChance + totalCritChanceBonus);
 
       blueprints.set(type, {
         type,
@@ -421,6 +454,16 @@ export class PlayerUnitsModule implements GameModule {
         multipliers: {
           attackDamage: attackMultiplier,
           maxHp: hpMultiplier,
+        },
+        critChance: {
+          base: baseCritChance,
+          bonus: effectiveCritChance - baseCritChance,
+          effective: effectiveCritChance,
+        },
+        critMultiplier: {
+          base: baseCritMultiplier,
+          multiplier: Math.max(critMultiplierMultiplier, 0),
+          effective: Math.max(effectiveCritMultiplier, 1),
         },
         armor: Math.max(config.armor, 0) + globalArmorBonus,
         baseAttackInterval: baseInterval,
@@ -458,6 +501,8 @@ export class PlayerUnitsModule implements GameModule {
       0,
       blueprint.baseAttackInterval
     );
+    const critChance = clampProbability(blueprint.critChance.effective);
+    const critMultiplier = Math.max(blueprint.critMultiplier.effective, 1);
 
     const mass = Math.max(blueprint.mass, 0.001);
     const moveAcceleration = Math.max(blueprint.moveAcceleration, 0);
@@ -512,6 +557,8 @@ export class PlayerUnitsModule implements GameModule {
       moveAcceleration,
       mass,
       physicalSize,
+      critChance,
+      critMultiplier,
       attackCooldown,
       targetBrickId: null,
       objectId,
@@ -688,8 +735,15 @@ export class PlayerUnitsModule implements GameModule {
     return unit.rotation;
   }
 
-  private getEffectiveAttackDamage(unit: PlayerUnitState): number {
-    return Math.max(unit.baseAttackDamage, 0);
+  private getAttackOutcome(
+    unit: PlayerUnitState
+  ): { damage: number; isCritical: boolean } {
+    const baseDamage = Math.max(unit.baseAttackDamage, 0);
+    const critChance = clampProbability(unit.critChance);
+    const critMultiplier = Math.max(unit.critMultiplier, 1);
+    const isCritical = critChance > 0 && Math.random() < critChance;
+    const damage = isCritical ? baseDamage * critMultiplier : baseDamage;
+    return { damage: roundStat(damage), isCritical };
   }
 
   private performAttack(
@@ -699,9 +753,14 @@ export class PlayerUnitsModule implements GameModule {
     distance: number
   ): void {
     unit.attackCooldown = unit.baseAttackInterval;
-    const damage = this.getEffectiveAttackDamage(unit);
+    const { damage, isCritical } = this.getAttackOutcome(unit);
     const result = this.bricks.applyDamage(target.id, damage, direction);
     const surviving = result.brick ?? target;
+
+    if (isCritical && damage > 0) {
+      const effectPosition = result.brick?.position ?? target.position;
+      this.spawnCriticalHitEffect(effectPosition);
+    }
 
     if (surviving) {
       this.applyKnockBack(unit, direction, distance, surviving);
@@ -726,6 +785,13 @@ export class PlayerUnitsModule implements GameModule {
     this.scene.updateObject(unit.objectId, {
       position: { ...unit.position },
       rotation: unit.rotation,
+    });
+  }
+
+  private spawnCriticalHitEffect(position: SceneVector2): void {
+    this.explosions.spawnExplosionByType("criticalHit", {
+      position: { ...position },
+      initialRadius: CRITICAL_HIT_EXPLOSION_RADIUS,
     });
   }
 
@@ -803,6 +869,30 @@ const sanitizeMultiplier = (value: number | undefined, fallback = 1): number => 
     return 0;
   }
   return value;
+};
+
+const sanitizeAdditive = (value: number | undefined, fallback = 0): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return value;
+};
+
+const normalizeMultiplier = (value: number, baseline: number): number => {
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+  if (!Number.isFinite(baseline) || Math.abs(baseline) < 1e-9) {
+    return Math.max(value, 0);
+  }
+  return Math.max(value, 0) / Math.max(baseline, 1e-9);
+};
+
+const clampProbability = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.min(Math.max(value, 0), 1);
 };
 
 const roundStat = (value: number): number => Math.round(value * 100) / 100;

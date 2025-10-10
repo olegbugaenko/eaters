@@ -42,7 +42,14 @@ describe("MapModule", () => {
     };
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
     const movement = new MovementService();
-    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
+    const playerUnits = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+    });
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,
@@ -99,7 +106,14 @@ describe("Map unlocking", () => {
     };
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
     const movement = new MovementService();
-    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
+    const playerUnits = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+    });
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,
@@ -162,7 +176,14 @@ describe("Map unlocking", () => {
     };
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
     const movement = new MovementService();
-    const playerUnits = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
+    const playerUnits = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+    });
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,

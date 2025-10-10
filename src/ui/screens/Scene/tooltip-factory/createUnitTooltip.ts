@@ -13,13 +13,34 @@ const formatBaseHint = (base: number, multiplier: number): string => {
   })}`;
 };
 
+const formatCritChanceHint = (base: number, bonus: number): string => {
+  const basePercent = formatNumber(base * 100, {
+    maximumFractionDigits: 1,
+  });
+  const bonusPercent = Math.abs(bonus) * 100;
+  if (bonusPercent < 0.0001) {
+    return `Base ${basePercent}%`;
+  }
+  const formattedBonus = formatNumber(bonusPercent, {
+    maximumFractionDigits: 1,
+  });
+  const sign = bonus >= 0 ? "+" : "-";
+  return `Base ${basePercent}% ${sign}${formattedBonus}%`;
+};
+
+const formatCritMultiplierHint = (base: number, multiplier: number): string => {
+  const multiplierDelta = Math.abs(multiplier - 1);
+  if (multiplierDelta < 0.0001) {
+    return `Base ${formatNumber(base, { maximumFractionDigits: 2 })}`;
+  }
+  return `Base ${formatNumber(base, { maximumFractionDigits: 2 })} ×${formatNumber(multiplier, {
+    maximumFractionDigits: 2,
+  })}`;
+};
+
 export const createUnitTooltip = (
   blueprint: PlayerUnitBlueprintStats
 ): SceneTooltipContent => {
-  const dps = blueprint.baseAttackInterval > 0
-    ? blueprint.effective.attackDamage / blueprint.baseAttackInterval
-    : blueprint.effective.attackDamage;
-
   return {
     title: blueprint.name,
     subtitle: "Includes current bonuses",
@@ -38,22 +59,24 @@ export const createUnitTooltip = (
         ),
       },
       {
-        label: "Attack Interval",
-        value: `${formatNumber(blueprint.baseAttackInterval, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} s`,
+        label: "Crit Chance",
+        value: `${formatNumber(blueprint.critChance.effective * 100, {
+          maximumFractionDigits: 1,
+        })}%`,
+        hint: formatCritChanceHint(
+          blueprint.critChance.base,
+          blueprint.critChance.bonus
+        ),
       },
       {
-        label: "Damage / Sec",
-        value: `${formatNumber(dps, {
-          minimumFractionDigits: 2,
+        label: "Crit Multiplier",
+        value: `${formatNumber(blueprint.critMultiplier.effective, {
           maximumFractionDigits: 2,
-        })} dmg/s`,
-        hint: `Interval ${formatNumber(blueprint.baseAttackInterval, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} s`,
+        })}×`,
+        hint: formatCritMultiplierHint(
+          blueprint.critMultiplier.base,
+          blueprint.critMultiplier.multiplier
+        ),
       },
       {
         label: "Armor",

@@ -14,9 +14,9 @@ import { BonusesModule } from "../src/logic/modules/BonusesModule";
 const createBricksModule = (
   scene: SceneObjectManager,
   bridge: DataBridge,
-  bonuses: BonusesModule
+  bonuses: BonusesModule,
+  explosions: ExplosionModule
 ) => {
-  const explosions = new ExplosionModule({ scene });
   const resources = {
     grantResources: () => {
       // no-op for tests
@@ -39,8 +39,16 @@ describe("PlayerUnitsModule", () => {
     const movement = new MovementService();
     const bonuses = new BonusesModule();
     bonuses.initialize();
-    const bricks = createBricksModule(scene, bridge, bonuses);
-    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
+    const explosions = new ExplosionModule({ scene });
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions);
+    const units = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+    });
 
     bricks.setBricks([
       {
@@ -84,8 +92,16 @@ describe("PlayerUnitsModule", () => {
     const movement = new MovementService();
     const bonuses = new BonusesModule();
     bonuses.initialize();
-    const bricks = createBricksModule(scene, bridge, bonuses);
-    const units = new PlayerUnitsModule({ scene, bricks, bridge, movement, bonuses });
+    const explosions = new ExplosionModule({ scene });
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions);
+    const units = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+    });
 
     bricks.setBricks([
       {

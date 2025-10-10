@@ -42,6 +42,8 @@ export interface PlayerUnitConfig {
   readonly moveAcceleration: number; // force units per second^2 before mass
   readonly mass: number;
   readonly physicalSize: number;
+  readonly baseCritChance?: number;
+  readonly baseCritMultiplier?: number;
   readonly emitter?: PlayerUnitEmitterConfig;
   readonly cost: ResourceCost;
 }
@@ -76,6 +78,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     moveAcceleration: 40,
     mass: 1.2,
     physicalSize: 12,
+    baseCritChance: 0,
+    baseCritMultiplier: 2,
     emitter: {
       particlesPerSecond: 120,
       particleLifetimeMs: 550,

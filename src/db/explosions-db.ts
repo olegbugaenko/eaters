@@ -10,7 +10,8 @@ export type ExplosionType =
   | "plasmoid"
   | "magnetic"
   | "grayBrickHit"
-  | "grayBrickDestroy";
+  | "grayBrickDestroy"
+  | "criticalHit";
 
 export interface ExplosionWaveConfig {
   radiusExtension: number;
@@ -86,6 +87,12 @@ const GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.45, g: 0.48, b: 0.52, a: 0 } },
 ] as const;
 
+const CRITICAL_HIT_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 1, g: 0.35, b: 0.35, a: 0.85 } },
+  { offset: 0.4, color: { r: 0.9, g: 0.12, b: 0.12, a: 0.55 } },
+  { offset: 1, color: { r: 0.55, g: 0, b: 0, a: 0 } },
+] as const;
+
 const DEFAULT_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.SOLID,
   color: { r: 1, g: 0.85, b: 0.55, a: 1 },
@@ -110,6 +117,17 @@ const GRAY_BRICK_EMITTER_FILL: SceneFill = {
     { offset: 0, color: { r: 0.9, g: 0.9, b: 0.92, a: 0.85 } },
     { offset: 0.45, color: { r: 0.72, g: 0.74, b: 0.78, a: 0.4 } },
     { offset: 1, color: { r: 0.45, g: 0.48, b: 0.52, a: 0 } },
+  ],
+};
+
+const CRITICAL_HIT_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 1, g: 0.65, b: 0.65, a: 0.95 } },
+    { offset: 0.45, color: { r: 0.95, g: 0.28, b: 0.28, a: 0.5 } },
+    { offset: 1, color: { r: 0.7, g: 0.05, b: 0.05, a: 0 } },
   ],
 };
 
@@ -159,6 +177,22 @@ const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
   arc: Math.PI * 2,
   direction: 0,
   fill: GRAY_BRICK_EMITTER_FILL,
+};
+
+const CRITICAL_HIT_EMITTER: ExplosionEmitterConfig = {
+  emissionDurationMs: 240,
+  particlesPerSecond: 220,
+  baseSpeed: 0.16,
+  speedVariation: 0.05,
+  particleLifetimeMs: 520,
+  fadeStartMs: 220,
+  sizeRange: { min: 0.8, max: 1.6 },
+  spawnRadius: { min: 0, max: 6 },
+  spawnRadiusMultiplier: 1.1,
+  color: { r: 0.95, g: 0.2, b: 0.2, a: 1 },
+  arc: Math.PI * 2,
+  direction: 0,
+  fill: CRITICAL_HIT_EMITTER_FILL,
 };
 
 const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
@@ -211,6 +245,17 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     },
     emitter: GRAY_BRICK_DESTRUCTION_EMITTER,
+  },
+  criticalHit: {
+    lifetimeMs: 900,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 70,
+      startAlpha: 0.8,
+      endAlpha: 0,
+      gradientStops: CRITICAL_HIT_WAVE_GRADIENT_STOPS,
+    },
+    emitter: CRITICAL_HIT_EMITTER,
   },
 };
 

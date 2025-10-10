@@ -81,6 +81,7 @@ export class Application {
       bridge: this.dataBridge,
       movement: movementService,
       bonuses: bonusesModule,
+      explosions: explosionModule,
       onAllUnitsDefeated: () => {
         this.handleAllUnitsDefeated();
       },
