@@ -92,7 +92,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   })(),
   initial: {
     name: "Initial Grounds",
-    size: { width: 3000, height: 3000 },
+    size: { width: 2000, height: 2000 },
     unlockedBy: [
       {
         type: "map",
@@ -102,7 +102,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     ],
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
-      const outerLevel = baseLevel + 1;
+      const innerLevel = baseLevel + 1;
       const center: SceneVector2 = { x: 1500, y: 1500 };
       const largeCircle = circleWithBricks(
         "smallSquareGray",
@@ -111,7 +111,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           innerRadius: 300,
           outerRadius: 500,
         },
-        { level: baseLevel }
+        { level: innerLevel }
       );
 
       const largeYellowCircle = circleWithBricks(
@@ -141,7 +141,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: satelliteRadius * 0.5,
             outerRadius: satelliteRadius,
           },
-          { level: outerLevel }
+          { level: baseLevel + 0.5 }
         );
       });
 
@@ -162,7 +162,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         );
       });
 
-      const satelliteCountOuter = 32;
+      /*const satelliteCountOuter = 32;
       const satelliteRadiusOuter = 100;
       const orbitRadiusOuter = 500 + 700 + satelliteRadius;
 
@@ -179,11 +179,11 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: satelliteRadiusOuter,
           },
-          { level: outerLevel }
+          { level: baseLevel + 0.25 }
         );
       });
-
-      return [largeCircle, largeYellowCircle, ...satellites, ...satellitesInner, ...satellitesOuter];
+      */
+      return [largeCircle, largeYellowCircle, ...satellites, ...satellitesInner];
     },
     playerUnits: [
       {
