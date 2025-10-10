@@ -9,10 +9,40 @@
 
 .resource-cost__item {
   display: inline-flex;
-  align-items: baseline;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.35rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.resource-cost__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.resource-cost__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.resource-cost__icon.resource-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.resource-cost__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.resource-cost__amount {
+  font-variant-numeric: tabular-nums;
 }
 
 .resource-cost__item--mana {

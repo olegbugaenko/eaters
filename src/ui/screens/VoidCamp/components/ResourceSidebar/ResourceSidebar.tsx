@@ -1,5 +1,7 @@
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
+import { ResourceIcon } from "@shared/icons/ResourceIcon";
 import "./ResourceSidebar.css";
+import { formatNumber } from "@shared/format/number";
 
 interface ResourceSidebarProps {
   resources: ResourceAmountPayload[];
@@ -12,8 +14,8 @@ export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources }) =
         <ul className="resource-sidebar__list list-reset stack-sm">
           {resources.map((resource) => (
             <li key={resource.id} className="resource-sidebar__item surface-card">
-              <span className="resource-sidebar__name text-strong">{resource.name}</span>
-              <span className="resource-sidebar__value">{resource.amount}</span>
+              <ResourceIcon resourceId={resource.id} className="resource-sidebar__icon" label={resource.name} />
+              <span className="resource-sidebar__value">{formatNumber(resource.amount)}</span>
             </li>
           ))}
         </ul>

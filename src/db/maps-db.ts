@@ -1,19 +1,21 @@
-import { BrickType } from "./bricks-db";
+import { BrickType, getBrickConfig } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/SceneObjectManager";
 import { PlayerUnitType } from "./player-units-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
   circleWithBricks,
+  polygonWithBricks,
 } from "../logic/services/BrickLayoutService";
 
-export type MapId = "initial";
+export type MapId = "foundations" | "initial";
 
 export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
   readonly bricks: readonly BrickShapeBlueprint[];
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
+  readonly spawnPoints?: readonly SceneVector2[];
 }
 
 export interface MapListEntry {
@@ -29,7 +31,50 @@ export interface MapPlayerUnitConfig {
   readonly position: SceneVector2;
 }
 
+const FOUNDATIONS_CENTER: SceneVector2 = { x: 500, y: 500 };
+
 const MAPS_DB: Record<MapId, MapConfig> = {
+  foundations: (() => {
+    const center = FOUNDATIONS_CENTER;
+    const size: SceneSize = { width: 1000, height: 1000 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: center.y };
+    const sides = 5;
+    const outerRadius = 360;
+    const layerThickness = getBrickConfig("smallSquareGray").size.width * 3;
+    const innerRadius = Math.max(outerRadius - layerThickness, 0);
+
+    const createPolygon = (radius: number): SceneVector2[] =>
+      Array.from({ length: sides }, (_, index) => {
+        const angle = (index / sides) * Math.PI * 2 - Math.PI / 2;
+        return {
+          x: center.x + Math.cos(angle) * radius,
+          y: center.y + Math.sin(angle) * radius,
+        };
+      });
+
+    const outerVertices = createPolygon(outerRadius);
+    const innerVertices = createPolygon(innerRadius);
+
+    const ring = polygonWithBricks("smallSquareGray", {
+      vertices: outerVertices,
+      holes: [innerVertices],
+      offsetX: center.x,
+      offsetY: center.y,
+    });
+
+    return {
+      name: "Cracked Pentagon",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: [ring],
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
   initial: {
     name: "Initial Grounds",
     size: { width: 3000, height: 3000 },

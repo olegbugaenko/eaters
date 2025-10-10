@@ -1,4 +1,6 @@
 import React from "react";
+import { RESOURCE_IDS, ResourceId } from "@db/resources-db";
+import { ResourceIcon } from "./icons/ResourceIcon";
 import { formatNumber } from "./format/number";
 import "./ResourceCostDisplay.css";
 
@@ -37,6 +39,59 @@ const toTitleCase = (value: string): string => {
     return value;
   }
   return value.charAt(0).toUpperCase() + value.slice(1);
+};
+
+const isResourceId = (value: string): value is ResourceId =>
+  RESOURCE_IDS.includes(value as ResourceId);
+
+const renderCostIcon = (id: string, label: string): React.ReactNode => {
+  if (isResourceId(id)) {
+    return <ResourceIcon resourceId={id} className="resource-cost__icon" label={label} />;
+  }
+
+  switch (id) {
+    case "mana":
+      return (
+        <span className="resource-cost__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path
+              d="M12 2C8.5 6.5 6.5 9.5 6.5 12.5c0 3.6 2.9 6.5 6.5 6.5s6.5-2.9 6.5-6.5C19.5 9.5 15.5 4.5 12 2z"
+              fill="#38bdf8"
+              stroke="#0ea5e9"
+              strokeWidth="1.4"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M12 6.5c-1.7 2.5-2.6 4.1-2.6 5.7 0 1.9 1.5 3.4 3.4 3.4s3.4-1.5 3.4-3.4c0-1.6-0.9-3.2-2.6-5.7"
+              fill="none"
+              stroke="#bae6fd"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+      );
+    case "sanity":
+      return (
+        <span className="resource-cost__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="12" cy="12" r="5.5" fill="#facc15" stroke="#d97706" strokeWidth="1.4" />
+            <g stroke="#fef08a" strokeWidth="1.3" strokeLinecap="round">
+              <line x1="12" y1="2" x2="12" y2="5" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+              <line x1="4" y1="12" x2="7" y2="12" />
+              <line x1="17" y1="12" x2="20" y2="12" />
+              <line x1="5.6" y1="5.6" x2="7.8" y2="7.8" />
+              <line x1="16.2" y1="16.2" x2="18.4" y2="18.4" />
+              <line x1="5.6" y1="18.4" x2="7.8" y2="16.2" />
+              <line x1="16.2" y1="7.8" x2="18.4" y2="5.6" />
+            </g>
+          </svg>
+        </span>
+      );
+    default:
+      return null;
+  }
 };
 
 export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
@@ -79,7 +134,11 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
 
         return (
           <span key={resource.id} className={itemClasses}>
-            {formatAmount(amount)} {resource.label}
+            {renderCostIcon(resource.id, resource.label)}
+            <span className="resource-cost__value">
+              <span className="resource-cost__amount">{formatAmount(amount)}</span>
+              <span className="resource-cost__label">{resource.label}</span>
+            </span>
             {missingAmount > 0 ? (
               <span className="resource-cost__missing">
                 (+{formatAmount(missingAmount)} needed)

@@ -24,6 +24,7 @@ export interface DestructubleData {
     baseDamage?: number;
     brickKnockBackDistance?: number;
     brickKnockBackSpeed?: number;
+    brickKnockBackAmplitude?: number;
     physicalSize?: number;
     damageExplosion?: DestructubleExplosionConfig;
     destructionExplosion?: DestructubleExplosionConfig;

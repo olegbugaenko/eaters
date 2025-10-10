@@ -57,7 +57,7 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
               <li key={resource.id} className="scene-run-summary__list-item">
                 <span className="scene-run-summary__resource-name">{resource.name}</span>
                 <span className="scene-run-summary__resource-amount">
-                  {resource.amount}
+                  {formatNumber(resource.amount)}
                   <span className="scene-run-summary__resource-delta">{formatDelta(resource.gained)}</span>
                 </span>
               </li>

@@ -87,6 +87,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       baseDamage: 3,
       brickKnockBackDistance: 40,
       brickKnockBackSpeed: 80,
+      brickKnockBackAmplitude: 6,
       physicalSize: 28,
       damageExplosion: {
         type: "plasmoid",
@@ -113,6 +114,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       baseDamage: 3,
       brickKnockBackDistance: 90,
       brickKnockBackSpeed: 180,
+      brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
         type: "grayBrickHit",
@@ -143,6 +145,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       baseDamage: 2,
       brickKnockBackDistance: 70,
       brickKnockBackSpeed: 180,
+      brickKnockBackAmplitude: 10.5,
       physicalSize: 16,
       damageExplosion: {
         type: "grayBrickHit",
@@ -173,6 +176,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       baseDamage: 10,
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
+      brickKnockBackAmplitude: 4,
       physicalSize: 24,
       damageExplosion: {
         type: "magnetic",

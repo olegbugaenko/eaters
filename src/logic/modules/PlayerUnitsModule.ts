@@ -367,6 +367,8 @@ export class PlayerUnitsModule implements GameModule {
       1
     );
     const globalHpMultiplier = sanitizeMultiplier(values["all_units_hp_multiplier"], 1);
+    const globalArmorBonus = sanitizeMultiplier(values["all_units_armor"], 0);
+    console.log('globalArmorBonus', globalArmorBonus);
 
     const blueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
 
@@ -420,7 +422,7 @@ export class PlayerUnitsModule implements GameModule {
           attackDamage: attackMultiplier,
           maxHp: hpMultiplier,
         },
-        armor: Math.max(config.armor, 0),
+        armor: Math.max(config.armor, 0) + globalArmorBonus,
         baseAttackInterval: baseInterval,
         baseAttackDistance: baseDistance,
         moveSpeed: baseMoveSpeed,
@@ -698,7 +700,7 @@ export class PlayerUnitsModule implements GameModule {
   ): void {
     unit.attackCooldown = unit.baseAttackInterval;
     const damage = this.getEffectiveAttackDamage(unit);
-    const result = this.bricks.applyDamage(target.id, damage);
+    const result = this.bricks.applyDamage(target.id, damage, direction);
     const surviving = result.brick ?? target;
 
     if (surviving) {

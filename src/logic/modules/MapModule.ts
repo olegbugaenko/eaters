@@ -38,7 +38,7 @@ interface MapSaveData {
   mapId: MapId;
 }
 
-const DEFAULT_MAP_ID: MapId = "initial";
+const DEFAULT_MAP_ID: MapId = "foundations";
 export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
 
 export class MapModule implements GameModule {
@@ -110,13 +110,14 @@ export class MapModule implements GameModule {
       this.options.bricks.setBricks(bricks);
     }
     const spawnUnits = this.generatePlayerUnits(config);
+    const spawnPoints = this.getSpawnPoints(config, spawnUnits);
 
     if (options.generateUnits) {
       this.options.playerUnits.setUnits(spawnUnits);
     }
 
     this.options.necromancer.configureForMap({
-      spawnPoints: spawnUnits.map((unit) => unit.position),
+      spawnPoints,
     });
 
     this.options.resources.startRun();
@@ -125,8 +126,12 @@ export class MapModule implements GameModule {
   }
 
   private generateBricks(config: MapConfig): BrickData[] {
-    const unitPositions = (config.playerUnits ?? []).map((unit) =>
-      this.clampToMap(unit.position, config.size)
+    const spawnOrigins =
+      config.spawnPoints && config.spawnPoints.length > 0
+        ? config.spawnPoints
+        : (config.playerUnits ?? []).map((unit) => unit.position);
+    const unitPositions = spawnOrigins.map((origin) =>
+      this.clampToMap(origin, config.size)
     );
     const bricks = buildBricksFromBlueprints(config.bricks).map((brick) => ({
       position: this.clampToMap(brick.position, config.size),
@@ -152,10 +157,32 @@ export class MapModule implements GameModule {
     if (!config.playerUnits) {
       return [];
     }
-    return config.playerUnits.map((unit) => ({
-      type: unit.type,
-      position: this.clampToMap(unit.position, config.size),
-    }));
+    const spawnPoints = (config.spawnPoints ?? []).map((point) =>
+      this.clampToMap(point, config.size)
+    );
+    return config.playerUnits.map((unit, index) => {
+      const fallback = this.clampToMap(unit.position, config.size);
+      const spawnPoint =
+        spawnPoints.length > 0
+          ? spawnPoints[index % spawnPoints.length]
+          : undefined;
+      return {
+        type: unit.type,
+        position: spawnPoint ?? fallback,
+      };
+    });
+  }
+
+  private getSpawnPoints(
+    config: MapConfig,
+    units: PlayerUnitSpawnData[]
+  ): SceneVector2[] {
+    if (config.spawnPoints && config.spawnPoints.length > 0) {
+      return config.spawnPoints.map((point) =>
+        this.clampToMap(point, config.size)
+      );
+    }
+    return units.map((unit) => unit.position);
   }
 
   private clampToMap(position: SceneVector2, size: SceneSize): SceneVector2 {
