@@ -37,7 +37,9 @@ export const SKILL_IDS = [
   "clarity",
   "mana_reservior",
   "critical_chance",
-  "damage_lore"
+  "damage_lore",
+  "armor_lore",
+  "vitality2"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -321,6 +323,36 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { vitality: 2 },
     cost: createStoneCost(50, 1.5),
+  },
+  armor_lore: {
+    id: "armor_lore",
+    name: "Armor Lore",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 4, y: 1 },
+    maxLevel: 10,
+    effects: {
+      all_units_armor: {
+        income: (level) => 0 + 0.4 * level,
+      },
+    },
+    nodesRequired: { stone_armor: 3 },
+    cost: createMixedCost(500, 1.5, 50, 1.5),
+  },
+  vitality2: {
+    id: "vitality2",
+    name: "Vitality II",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 4, y: -1 },
+    maxLevel: 10,
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.16 * level,
+      },
+    },
+    nodesRequired: { stone_armor: 3 },
+    cost: createSandCost(50, 1.5),
   },
 };
 
