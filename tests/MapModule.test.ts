@@ -84,6 +84,7 @@ describe("MapModule", () => {
     maps.initialize();
     maps.recordRunResult({ mapId: "foundations", success: true });
     maps.selectMap("initial");
+    maps.restartSelectedMap();
 
     const unitsSave = playerUnits.save() as { units?: { position?: { x: number; y: number } }[] };
     assert(unitsSave.units && unitsSave.units[0]?.position, "unit should be spawned");
@@ -103,22 +104,26 @@ describe("Map run control", () => {
   test("selecting map does not start run until restart", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    let setBricksCalls = 0;
     const bricks = {
       setBricks: () => {
-        // no-op for tests
+        setBricksCalls += 1;
       },
     } as unknown as BricksModule;
+    let prepareForMapCalls = 0;
+    let setUnitsCalls = 0;
     const playerUnits = {
       prepareForMap: () => {
-        // no-op for tests
+        prepareForMapCalls += 1;
       },
       setUnits: () => {
-        // no-op for tests
+        setUnitsCalls += 1;
       },
     } as unknown as PlayerUnitsModule;
+    let configureForMapCalls = 0;
     const necromancer = {
       configureForMap: () => {
-        // no-op for tests
+        configureForMapCalls += 1;
       },
     } as unknown as NecromancerModule;
 
@@ -149,15 +154,59 @@ describe("Map run control", () => {
 
     maps.initialize();
     assert.strictEqual(startRunCalls, 0, "run should not start on initialize");
+    assert.strictEqual(setBricksCalls, 0, "bricks should not spawn on initialize");
+    assert.strictEqual(prepareForMapCalls, 0, "units should not prepare on initialize");
+    assert.strictEqual(setUnitsCalls, 0, "units should not spawn on initialize");
+    assert.strictEqual(
+      configureForMapCalls,
+      0,
+      "necromancer should not configure a map on initialize"
+    );
 
     maps.selectMap("foundations");
     assert.strictEqual(startRunCalls, 0, "run should not start when selecting a map");
+    assert.strictEqual(setBricksCalls, 0, "bricks should not spawn when selecting a map");
+    assert.strictEqual(
+      prepareForMapCalls,
+      0,
+      "units should not prepare when selecting a map"
+    );
+    assert.strictEqual(setUnitsCalls, 0, "units should not spawn when selecting a map");
+    assert.strictEqual(
+      configureForMapCalls,
+      0,
+      "necromancer should not configure when selecting a map"
+    );
 
     maps.selectMapLevel("foundations", 0);
     assert.strictEqual(startRunCalls, 0, "run should not start when changing map level");
+    assert.strictEqual(setBricksCalls, 0, "bricks should not spawn when changing level");
+    assert.strictEqual(
+      prepareForMapCalls,
+      0,
+      "units should not prepare when changing level"
+    );
+    assert.strictEqual(setUnitsCalls, 0, "units should not spawn when changing level");
+    assert.strictEqual(
+      configureForMapCalls,
+      0,
+      "necromancer should not configure when changing level"
+    );
 
     maps.restartSelectedMap();
     assert.strictEqual(startRunCalls, 1, "run should start when restarting the selected map");
+    assert.strictEqual(setBricksCalls, 1, "bricks should spawn when restarting the map");
+    assert.strictEqual(
+      prepareForMapCalls,
+      1,
+      "units should prepare when restarting the map"
+    );
+    assert.strictEqual(setUnitsCalls, 1, "units should spawn when restarting the map");
+    assert.strictEqual(
+      configureForMapCalls,
+      1,
+      "necromancer should configure when restarting the map"
+    );
   });
 });
 

@@ -85,7 +85,7 @@ describe("PlayerUnitsModule", () => {
     const lastStop = emitter.fill.stops[emitter.fill.stops.length - 1];
     assert(firstStop, "gradient should include a starting stop");
     assert(lastStop, "gradient should include an ending stop");
-    assert.strictEqual(firstStop!.color.a, 0.5);
+    assert.strictEqual(firstStop!.color.a, 0.25);
     assert.strictEqual(lastStop!.color.a, 0);
     assert.strictEqual(customData?.physicalSize, 12);
 
