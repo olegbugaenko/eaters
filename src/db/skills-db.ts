@@ -298,10 +298,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
     nodePosition: { x: -4, y: -1 },
-    maxLevel: 10,
+    maxLevel: 15,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.12 * level,
+        multiplier: (level) => 1 + 0.15 * level,
       },
     },
     nodesRequired: { stone_drill: 2 },
@@ -389,7 +389,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
     nodePosition: { x: 4, y: -1 },
-    maxLevel: 10,
+    maxLevel: 15,
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.16 * level,
