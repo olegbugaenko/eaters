@@ -22,6 +22,7 @@ import { buildBricksFromBlueprints } from "../services/BrickLayoutService";
 
 interface ResourceRunController {
   startRun(): void;
+  cancelRun(): void;
 }
 
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
@@ -189,6 +190,17 @@ export class MapModule implements GameModule {
       return;
     }
     this.startSelectedMap({ generateBricks: true, generateUnits: true });
+  }
+
+  public leaveCurrentMap(): void {
+    this.activeMapLevel = 0;
+    this.options.resources.cancelRun();
+    this.options.playerUnits.setUnits([]);
+    this.options.bricks.setBricks([]);
+    this.options.necromancer.endCurrentMap();
+    this.pushSelectedMap();
+    this.pushSelectedMapLevel();
+    this.pushMapList();
   }
 
   public setAutoRestartEnabled(enabled: boolean): void {

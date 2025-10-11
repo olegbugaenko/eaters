@@ -108,7 +108,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         "smallSquareGray",
         {
           center,
-          innerRadius: 300,
+          innerRadius: 440,
           outerRadius: 500,
         },
         { level: innerLevel }
@@ -118,8 +118,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         "smallSquareYellow",
         {
           center,
-          innerRadius: 0,
-          outerRadius: 300,
+          innerRadius: 240,
+          outerRadius: 440,
         },
         { level: baseLevel }
       );

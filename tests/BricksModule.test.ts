@@ -97,13 +97,11 @@ describe("BricksModule", () => {
     assert.strictEqual(bridge.getValue(BRICK_COUNT_BRIDGE_KEY), 1);
     assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 5);
 
-    const saved = module.save();
-    assert(saved && typeof saved === "object", "save should return an object");
-    const savedBricks = (saved as { bricks?: unknown }).bricks;
-    assert(Array.isArray(savedBricks) && savedBricks.length === 1);
-    const savedBrick = savedBricks[0] as { type?: unknown; hp?: number };
-    assert.strictEqual(savedBrick.type, "smallSquareGray");
-    assert.strictEqual(savedBrick.hp, config.destructubleData?.maxHp);
+    assert.strictEqual(module.save(), null, "save should not persist runtime bricks");
+    const [state] = module.getBrickStates();
+    assert(state, "expected brick state after load");
+    assert.strictEqual(state?.type, "smallSquareGray");
+    assert.strictEqual(state?.hp, config.destructubleData?.maxHp);
   });
 
   test("invalid brick types fallback to classic config", () => {
@@ -124,9 +122,10 @@ describe("BricksModule", () => {
     const objects = scene.getObjects();
     assert.strictEqual(objects.length, 1);
     const instance = objects[0]!;
-    const saved = module.save() as { bricks?: { type?: string }[] };
-    const savedType = (saved.bricks?.[0]?.type as BrickType | undefined) ?? "classic";
-    const config = getBrickConfig(savedType);
+    assert.strictEqual(module.save(), null, "save should not persist brick state");
+    const [state] = module.getBrickStates();
+    const fallbackType = (state?.type as BrickType | undefined) ?? "classic";
+    const config = getBrickConfig(fallbackType);
     assert.deepStrictEqual(instance.data.size, config.size);
     const fill = instance.data.fill as SceneLinearGradientFill;
     assert.strictEqual(fill.fillType, FILL_TYPES.LINEAR_GRADIENT);

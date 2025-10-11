@@ -127,6 +127,18 @@ export class ResourcesModule implements GameModule {
     this.pushRunSummary();
   }
 
+  public cancelRun(): void {
+    if (!this.runActive) {
+      return;
+    }
+    this.runActive = false;
+    this.summaryCompleted = false;
+    this.runGains = createEmptyResourceStockpile();
+    this.runBricksDestroyed = 0;
+    this.runDurationMs = 0;
+    this.pushRunSummary();
+  }
+
   public grantResources(amount: ResourceAmount | ResourceStockpile): void {
     const normalized = normalizeResourceAmount(amount);
     let changed = false;
