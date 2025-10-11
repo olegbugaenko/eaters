@@ -301,7 +301,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 10,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.1 * level,
+        multiplier: (level) => 1 + 0.12 * level,
       },
     },
     nodesRequired: { stone_drill: 2 },
@@ -377,7 +377,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 10,
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.4 * level,
+        income: (level) => 0 + 0.5 * level,
       },
     },
     nodesRequired: { stone_armor: 3 },
