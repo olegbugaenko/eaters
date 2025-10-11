@@ -99,6 +99,68 @@ describe("MapModule", () => {
   });
 });
 
+describe("Map run control", () => {
+  test("selecting map does not start run until restart", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const bricks = {
+      setBricks: () => {
+        // no-op for tests
+      },
+    } as unknown as BricksModule;
+    const playerUnits = {
+      prepareForMap: () => {
+        // no-op for tests
+      },
+      setUnits: () => {
+        // no-op for tests
+      },
+    } as unknown as PlayerUnitsModule;
+    const necromancer = {
+      configureForMap: () => {
+        // no-op for tests
+      },
+    } as unknown as NecromancerModule;
+
+    let startRunCalls = 0;
+    const resources = {
+      startRun: () => {
+        startRunCalls += 1;
+      },
+    };
+
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+      unlocks,
+      getSkillLevel: () => 0,
+    });
+    mapModuleRef = maps;
+
+    maps.initialize();
+    assert.strictEqual(startRunCalls, 0, "run should not start on initialize");
+
+    maps.selectMap("foundations");
+    assert.strictEqual(startRunCalls, 0, "run should not start when selecting a map");
+
+    maps.selectMapLevel("foundations", 0);
+    assert.strictEqual(startRunCalls, 0, "run should not start when changing map level");
+
+    maps.restartSelectedMap();
+    assert.strictEqual(startRunCalls, 1, "run should start when restarting the selected map");
+  });
+});
+
 describe("Map unlocking", () => {
   test("initial map unlocks after completing foundations", () => {
     const scene = new SceneObjectManager();

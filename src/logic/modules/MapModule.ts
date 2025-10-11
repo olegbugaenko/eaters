@@ -160,7 +160,7 @@ export class MapModule implements GameModule {
       return;
     }
     this.selectedMapId = mapId;
-    this.applyMap(mapId, { generateBricks: true, generateUnits: true });
+    this.applyMap(mapId, { generateBricks: true, generateUnits: true, startRun: false });
   }
 
   public selectMapLevel(mapId: MapId, level: number): void {
@@ -177,7 +177,7 @@ export class MapModule implements GameModule {
         return;
       }
       this.selectedMapLevel = clamped;
-      this.applyMap(mapId, { generateBricks: true, generateUnits: true });
+      this.applyMap(mapId, { generateBricks: true, generateUnits: true, startRun: false });
       return;
     }
 
@@ -245,13 +245,14 @@ export class MapModule implements GameModule {
       return;
     }
     this.selectedMapId = mapId;
-    this.applyMap(mapId, options);
+    this.applyMap(mapId, { ...options, startRun: false });
   }
 
   private applyMap(
     mapId: MapId,
-    options: { generateBricks: boolean; generateUnits: boolean }
+    options: { generateBricks: boolean; generateUnits: boolean; startRun?: boolean }
   ): void {
+    const { generateBricks, generateUnits, startRun = true } = options;
     const config = getMapConfig(mapId);
     const level = this.getSelectedLevel(mapId);
     this.mapSelectedLevels[mapId] = level;
@@ -259,14 +260,14 @@ export class MapModule implements GameModule {
     this.activeMapLevel = level;
     this.options.scene.setMapSize(config.size);
     this.options.playerUnits.prepareForMap();
-    if (options.generateBricks) {
+    if (generateBricks) {
       const bricks = this.generateBricks(config, level);
       this.options.bricks.setBricks(bricks);
     }
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
 
-    if (options.generateUnits) {
+    if (generateUnits) {
       this.options.playerUnits.setUnits(spawnUnits);
     }
 
@@ -274,7 +275,9 @@ export class MapModule implements GameModule {
       spawnPoints,
     });
 
-    this.options.resources.startRun();
+    if (startRun) {
+      this.options.resources.startRun();
+    }
 
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
