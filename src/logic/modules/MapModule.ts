@@ -104,14 +104,14 @@ export class MapModule implements GameModule {
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
-    this.ensureSelection({ generateBricks: false, generateUnits: false });
+    this.ensureSelection();
   }
 
   public reset(): void {
     this.autoRestartEnabled = false;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
-    this.ensureSelection({ generateBricks: true, generateUnits: true });
+    this.ensureSelection();
   }
 
   public load(data: unknown | undefined): void {
@@ -135,7 +135,7 @@ export class MapModule implements GameModule {
     } else {
       this.selectedMapId = null;
     }
-    this.ensureSelection({ generateBricks: false, generateUnits: false });
+    this.ensureSelection();
   }
 
   public save(): unknown {
@@ -159,8 +159,7 @@ export class MapModule implements GameModule {
     if (!isMapId(mapId) || !this.isMapSelectable(mapId)) {
       return;
     }
-    this.selectedMapId = mapId;
-    this.applyMap(mapId, { generateBricks: true, generateUnits: true });
+    this.updateSelection(mapId);
   }
 
   public selectMapLevel(mapId: MapId, level: number): void {
@@ -171,13 +170,14 @@ export class MapModule implements GameModule {
     this.mapSelectedLevels[mapId] = clamped;
 
     if (this.selectedMapId === mapId) {
-      if (this.selectedMapLevel === clamped && this.activeMapLevel === clamped) {
+      if (this.selectedMapLevel === clamped) {
         this.pushMapList();
         this.pushSelectedMapLevel();
         return;
       }
       this.selectedMapLevel = clamped;
-      this.applyMap(mapId, { generateBricks: true, generateUnits: true });
+      this.pushSelectedMapLevel();
+      this.pushMapList();
       return;
     }
 
@@ -188,7 +188,7 @@ export class MapModule implements GameModule {
     if (!this.selectedMapId) {
       return;
     }
-    this.applyMap(this.selectedMapId, { generateBricks: true, generateUnits: true });
+    this.startSelectedMap({ generateBricks: true, generateUnits: true });
   }
 
   public setAutoRestartEnabled(enabled: boolean): void {
@@ -234,24 +234,29 @@ export class MapModule implements GameModule {
     return this.cloneStats();
   }
 
-  private ensureSelection(options: { generateBricks: boolean; generateUnits: boolean }): void {
+  private ensureSelection(): void {
     const mapId = this.resolveSelectableMapId(this.selectedMapId);
     if (!mapId) {
       this.selectedMapId = null;
       this.selectedMapLevel = 0;
       this.activeMapLevel = 0;
-      this.options.bridge.setValue<MapId | null>(MAP_SELECTED_BRIDGE_KEY, null);
-      this.options.bridge.setValue<number>(MAP_SELECTED_LEVEL_BRIDGE_KEY, 0);
+      this.pushSelectedMap();
+      this.pushSelectedMapLevel();
+      this.pushMapList();
       return;
     }
-    this.selectedMapId = mapId;
-    this.applyMap(mapId, options);
+    this.updateSelection(mapId);
   }
 
-  private applyMap(
-    mapId: MapId,
-    options: { generateBricks: boolean; generateUnits: boolean }
-  ): void {
+  private startSelectedMap(options: {
+    generateBricks: boolean;
+    generateUnits: boolean;
+  }): void {
+    const mapId = this.selectedMapId;
+    if (!mapId) {
+      return;
+    }
+    const { generateBricks, generateUnits } = options;
     const config = getMapConfig(mapId);
     const level = this.getSelectedLevel(mapId);
     this.mapSelectedLevels[mapId] = level;
@@ -259,14 +264,14 @@ export class MapModule implements GameModule {
     this.activeMapLevel = level;
     this.options.scene.setMapSize(config.size);
     this.options.playerUnits.prepareForMap();
-    if (options.generateBricks) {
+    if (generateBricks) {
       const bricks = this.generateBricks(config, level);
       this.options.bricks.setBricks(bricks);
     }
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
 
-    if (options.generateUnits) {
+    if (generateUnits) {
       this.options.playerUnits.setUnits(spawnUnits);
     }
 
@@ -276,6 +281,16 @@ export class MapModule implements GameModule {
 
     this.options.resources.startRun();
 
+    this.pushSelectedMap();
+    this.pushSelectedMapLevel();
+    this.pushMapList();
+  }
+
+  private updateSelection(mapId: MapId): void {
+    const level = this.getSelectedLevel(mapId);
+    this.selectedMapId = mapId;
+    this.mapSelectedLevels[mapId] = level;
+    this.selectedMapLevel = level;
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();

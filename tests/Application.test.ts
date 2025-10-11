@@ -16,6 +16,8 @@ describe("Application", () => {
 
     const completeRun = getInternalRunHandler(app);
 
+    app.restartCurrentMap();
+
     completeRun(false);
     completeRun(false);
 

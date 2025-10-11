@@ -22,6 +22,7 @@ export interface ResourceAmountPayload {
 
 export interface ResourceRunSummaryItem extends ResourceAmountPayload {
   gained: number;
+  ratePerSecond: number;
 }
 
 export interface ResourceRunSummaryPayload {
@@ -57,6 +58,7 @@ export class ResourcesModule implements GameModule {
   private summaryCompleted = false;
   private totalBricksDestroyed = 0;
   private runBricksDestroyed = 0;
+  private runDurationMs = 0;
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
@@ -74,6 +76,7 @@ export class ResourcesModule implements GameModule {
     this.summaryCompleted = false;
     this.totalBricksDestroyed = 0;
     this.runBricksDestroyed = 0;
+    this.runDurationMs = 0;
     this.pushTotals();
     this.pushRunSummary();
   }
@@ -85,6 +88,7 @@ export class ResourcesModule implements GameModule {
       this.totalBricksDestroyed = parsed.bricksDestroyed;
       this.runBricksDestroyed = 0;
     }
+    this.runDurationMs = 0;
     this.pushTotals();
     this.pushRunSummary();
   }
@@ -97,7 +101,12 @@ export class ResourcesModule implements GameModule {
   }
 
   public tick(_deltaMs: number): void {
-    // No periodic work required for resource bookkeeping.
+    const deltaMs = Math.max(_deltaMs, 0);
+    if (!this.runActive || deltaMs <= 0) {
+      return;
+    }
+    this.runDurationMs += deltaMs;
+    this.pushRunSummary();
   }
 
   public startRun(): void {
@@ -105,6 +114,7 @@ export class ResourcesModule implements GameModule {
     this.runActive = true;
     this.summaryCompleted = false;
     this.runBricksDestroyed = 0;
+    this.runDurationMs = 0;
     this.pushRunSummary();
   }
 
@@ -204,13 +214,17 @@ export class ResourcesModule implements GameModule {
   }
 
   private createRunSummaryItems(): ResourceRunSummaryItem[] {
+    const durationSeconds = this.runDurationMs / 1000;
     return RESOURCE_IDS.map((id) => {
       const config = getResourceConfig(id);
+      const gained = this.runGains[id] ?? 0;
+      const ratePerSecond = durationSeconds > 0 ? gained / durationSeconds : 0;
       return {
         id,
         name: config.name,
         amount: this.totals[id] ?? 0,
-        gained: this.runGains[id] ?? 0,
+        gained,
+        ratePerSecond,
       };
     });
   }
