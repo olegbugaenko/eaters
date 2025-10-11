@@ -27,9 +27,19 @@ interface SceneRunSummaryModalProps {
 
 const formatDelta = (value: number): string => {
   if (value <= 0) {
-    return `(+0)`;
+    return "(+0)";
   }
   return `(+${formatNumber(value, { maximumFractionDigits: 2 })})`;
+};
+
+const formatRate = (value: number): string => {
+  if (value <= 0 || !Number.isFinite(value)) {
+    return "0/s";
+  }
+  return `${formatNumber(value, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: value < 10 ? 2 : 0,
+  })}/s`;
 };
 
 const formatCount = (value: number): string => {
@@ -52,7 +62,8 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   title = "Run Complete",
   subtitle = "Resources recovered from the ruins:",
 }) => {
-  const hasResources = resources.length > 0;
+  const collectedResources = resources.filter((resource) => resource.gained > 0);
+  const hasResources = collectedResources.length > 0;
   return (
     <div className="scene-run-summary">
       <div className="scene-run-summary__backdrop" />
@@ -61,12 +72,17 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
         <p className="scene-run-summary__subtitle">{subtitle}</p>
         {hasResources ? (
           <ul className="scene-run-summary__list">
-            {resources.map((resource) => (
+            {collectedResources.map((resource) => (
               <li key={resource.id} className="scene-run-summary__list-item">
                 <span className="scene-run-summary__resource-name">{resource.name}</span>
                 <span className="scene-run-summary__resource-amount">
                   {formatNumber(resource.amount)}
-                  <span className="scene-run-summary__resource-delta">{formatDelta(resource.gained)}</span>
+                  <span className="scene-run-summary__resource-delta">
+                    {formatDelta(resource.gained)}
+                  </span>
+                  <span className="scene-run-summary__resource-rate">
+                    {formatRate(resource.ratePerSecond)}
+                  </span>
                 </span>
               </li>
             ))}

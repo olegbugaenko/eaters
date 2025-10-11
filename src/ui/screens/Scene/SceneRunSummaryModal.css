@@ -71,11 +71,18 @@
   display: flex;
   gap: 0.5rem;
   align-items: baseline;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .scene-run-summary__resource-delta {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #61dafb;
+}
+
+.scene-run-summary__resource-rate {
+  font-size: 0.85rem;
+  color: rgba(246, 251, 255, 0.7);
 }
 
 .scene-run-summary__empty {

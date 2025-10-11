@@ -9,5 +9,6 @@ import "./PlayerUnitsModule.test";
 import "./MapModule.test";
 import "./UnitAutomationModule.test";
 import "./Application.test";
+import "./ResourcesModule.test";
 
 void run();
