@@ -107,25 +107,29 @@ const ensureStops = (fill: SceneFill): SceneGradientStop[] => {
   return limitStops(fill.stops);
 };
 
-export const createFillVertexComponents = (
+const populateFillVertexComponents = (
+  components: Float32Array,
   options: FillVertexOptions
 ): Float32Array => {
   const { fill, center, rotation, size, radius } = options;
-  const components = new Float32Array(FILL_COMPONENTS);
   let write = 0;
 
   const stops = ensureStops(fill);
-  const effectiveStops = stops.length > 0 ? stops : [{ offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } }];
+  const effectiveStops =
+    stops.length > 0 ? stops : [{ offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } }];
   const stopCount = Math.min(MAX_GRADIENT_STOPS, effectiveStops.length);
-  const activeStops = effectiveStops.slice(0, stopCount);
 
   components[write++] = fill.fillType;
   components[write++] = stopCount;
   components[write++] = 0;
   components[write++] = 0;
 
-  const params0 = new Float32Array(FILL_PARAMS0_COMPONENTS);
-  const params1 = new Float32Array(FILL_PARAMS1_COMPONENTS);
+  const params0Index = write;
+  const params1Index = params0Index + FILL_PARAMS0_COMPONENTS;
+
+  for (let i = 0; i < FILL_PARAMS0_COMPONENTS + FILL_PARAMS1_COMPONENTS; i += 1) {
+    components[params0Index + i] = 0;
+  }
 
   switch (fill.fillType) {
     case FILL_TYPES.LINEAR_GRADIENT: {
@@ -138,49 +142,44 @@ export const createFillVertexComponents = (
         y: endWorld.y - startWorld.y,
       };
       const lengthSq = dir.x * dir.x + dir.y * dir.y;
-      params0[0] = startWorld.x;
-      params0[1] = startWorld.y;
-      params0[2] = endWorld.x;
-      params0[3] = endWorld.y;
-      params1[0] = dir.x;
-      params1[1] = dir.y;
-      params1[2] = lengthSq > 0 ? 1 / lengthSq : 0;
-      params1[3] = 0;
+      components[params0Index + 0] = startWorld.x;
+      components[params0Index + 1] = startWorld.y;
+      components[params0Index + 2] = endWorld.x;
+      components[params0Index + 3] = endWorld.y;
+      components[params1Index + 0] = dir.x;
+      components[params1Index + 1] = dir.y;
+      components[params1Index + 2] = lengthSq > 0 ? 1 / lengthSq : 0;
+      components[params1Index + 3] = 0;
       break;
     }
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT: {
       const startLocal = fill.start ? { ...fill.start } : { x: 0, y: 0 };
       const gradientCenter = addVectors(center, rotateVector(startLocal, rotation));
-      params0[0] = gradientCenter.x;
-      params0[1] = gradientCenter.y;
-      params0[2] = resolveRadius(fill.end, size, radius);
-      params0[3] = 0;
+      components[params0Index + 0] = gradientCenter.x;
+      components[params0Index + 1] = gradientCenter.y;
+      components[params0Index + 2] = resolveRadius(fill.end, size, radius);
+      components[params0Index + 3] = 0;
       break;
     }
     case FILL_TYPES.SOLID:
     default: {
-      params0[0] = center.x;
-      params0[1] = center.y;
-      params0[2] = 0;
-      params0[3] = 0;
+      components[params0Index + 0] = center.x;
+      components[params0Index + 1] = center.y;
       break;
     }
   }
 
-  components.set(params0, write);
-  write += FILL_PARAMS0_COMPONENTS;
-  components.set(params1, write);
-  write += FILL_PARAMS1_COMPONENTS;
+  write = params1Index + FILL_PARAMS1_COMPONENTS;
 
-  const referenceStop = activeStops[Math.max(0, stopCount - 1)]!;
+  const referenceStop = effectiveStops[Math.max(0, stopCount - 1)]!;
   for (let i = 0; i < STOP_OFFSETS_COMPONENTS; i += 1) {
-    const stop = i < stopCount ? activeStops[i]! : referenceStop;
+    const stop = i < stopCount ? effectiveStops[i]! : referenceStop;
     components[write++] = stop.offset;
   }
 
   for (let i = 0; i < MAX_GRADIENT_STOPS; i += 1) {
-    const stop = i < stopCount ? activeStops[i]! : referenceStop;
+    const stop = i < stopCount ? effectiveStops[i]! : referenceStop;
     const color = stop.color;
     components[write++] = color.r;
     components[write++] = color.g;
@@ -190,6 +189,18 @@ export const createFillVertexComponents = (
 
   return components;
 };
+
+export const createFillVertexComponents = (
+  options: FillVertexOptions
+): Float32Array => {
+  const components = new Float32Array(FILL_COMPONENTS);
+  return populateFillVertexComponents(components, options);
+};
+
+export const writeFillVertexComponents = (
+  target: Float32Array,
+  options: FillVertexOptions
+): Float32Array => populateFillVertexComponents(target, options);
 
 export const copyFillComponents = (
   target: Float32Array,

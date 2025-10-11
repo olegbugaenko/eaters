@@ -12,6 +12,7 @@ import {
 } from "../../../logic/services/particles/ParticleEmitterShared";
 import {
   DynamicPrimitive,
+  FILL_COMPONENTS,
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
@@ -20,7 +21,7 @@ import {
   STOP_OFFSETS_COMPONENTS,
   VERTEX_COMPONENTS,
 } from "../objects/ObjectRenderer";
-import { copyFillComponents, createFillVertexComponents } from "./fill";
+import { copyFillComponents, writeFillVertexComponents } from "./fill";
 
 export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;
@@ -86,6 +87,8 @@ export interface ParticleEmitterSanitizerOptions {
 const VERTICES_PER_PARTICLE = 6;
 const MIN_PARTICLE_SIZE = 0.0001;
 const MAX_DELTA_MS = 250;
+const PARTICLE_FILL_SCRATCH = new Float32Array(FILL_COMPONENTS);
+const INACTIVE_PARTICLE_FILL = new Float32Array(FILL_COMPONENTS);
 
 export const createParticleEmitterPrimitive = <
   Config extends ParticleEmitterBaseConfig
@@ -248,14 +251,31 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
   const buffer = state.data;
   const activeCount = Math.min(state.particles.length, capacity);
   let offset = 0;
-  for (let i = 0; i < capacity; i += 1) {
-    const particle = state.particles[i];
-    const isActive = i < activeCount && particle;
-    const center = isActive && particle ? particle.position : origin;
-    const size = isActive && particle ? Math.max(particle.size, 0) : 0;
-    const alpha = isActive && particle ? computeParticleAlpha(particle, config) : 0;
+  const fill = resolveParticleFill(config);
+
+  const inactiveComponents = writeFillVertexComponents(INACTIVE_PARTICLE_FILL, {
+    fill,
+    center: origin,
+    rotation: 0,
+    size: { width: MIN_PARTICLE_SIZE, height: MIN_PARTICLE_SIZE },
+    radius: MIN_PARTICLE_SIZE / 2,
+  });
+  applyParticleAlpha(inactiveComponents, 0);
+
+  for (let i = 0; i < activeCount; i += 1) {
+    const particle = state.particles[i]!;
+    const size = Math.max(particle.size, 0);
+    const effectiveSize = Math.max(size, MIN_PARTICLE_SIZE);
     const halfSize = size / 2;
-    const fillComponents = createParticleFillComponents(config, center, size, alpha);
+    const center = particle.position;
+    const fillComponents = writeFillVertexComponents(PARTICLE_FILL_SCRATCH, {
+      fill,
+      center,
+      rotation: 0,
+      size: { width: effectiveSize, height: effectiveSize },
+      radius: effectiveSize / 2,
+    });
+    applyParticleAlpha(fillComponents, computeParticleAlpha(particle, config));
     offset = writeParticleQuad(
       buffer,
       offset,
@@ -266,25 +286,20 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
       fillComponents
     );
   }
-};
 
-const createParticleFillComponents = (
-  config: ParticleEmitterBaseConfig,
-  center: SceneVector2,
-  size: number,
-  alpha: number
-): Float32Array => {
-  const fill = resolveParticleFill(config);
-  const effectiveSize = Math.max(size, MIN_PARTICLE_SIZE);
-  const fillComponents = createFillVertexComponents({
-    fill,
-    center,
-    rotation: 0,
-    size: { width: effectiveSize, height: effectiveSize },
-    radius: effectiveSize / 2,
-  });
-  applyParticleAlpha(fillComponents, alpha);
-  return fillComponents;
+  if (activeCount < capacity) {
+    for (let i = activeCount; i < capacity; i += 1) {
+      offset = writeParticleQuad(
+        buffer,
+        offset,
+        origin.x,
+        origin.y,
+        origin.x,
+        origin.y,
+        inactiveComponents
+      );
+    }
+  }
 };
 
 const resolveParticleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
