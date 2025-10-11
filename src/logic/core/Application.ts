@@ -160,6 +160,7 @@ export class Application {
     const saveManager = this.getSaveManager();
     const gameLoop = this.getGameLoop();
     gameLoop.stop();
+    this.leaveCurrentMap();
     saveManager.saveActiveSlot();
     saveManager.clearActiveSlot();
   }
@@ -202,6 +203,10 @@ export class Application {
 
   public setAutoRestartEnabled(enabled: boolean): void {
     this.mapModule.setAutoRestartEnabled(enabled);
+  }
+
+  public leaveCurrentMap(): void {
+    this.mapModule.leaveCurrentMap();
   }
 
   public selectMap(mapId: MapId): void {

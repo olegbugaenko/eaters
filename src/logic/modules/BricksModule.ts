@@ -151,15 +151,7 @@ export class BricksModule implements GameModule {
   }
 
   public save(): unknown {
-    return {
-      bricks: this.brickOrder.map((brick) => ({
-        position: { ...brick.position },
-        rotation: brick.rotation,
-        type: brick.type,
-        level: brick.level,
-        hp: brick.hp,
-      })),
-    } satisfies BrickSaveData;
+    return null;
   }
 
   public tick(deltaMs: number): void {

@@ -39,6 +39,9 @@ describe("MapModule", () => {
       startRun: () => {
         // no-op for tests
       },
+      cancelRun: () => {
+        // no-op for tests
+      },
       grantResources: () => {
         // no-op for tests
       },
@@ -86,9 +89,11 @@ describe("MapModule", () => {
     maps.selectMap("initial");
     maps.restartSelectedMap();
 
-    const unitsSave = playerUnits.save() as { units?: { position?: { x: number; y: number } }[] };
-    assert(unitsSave.units && unitsSave.units[0]?.position, "unit should be spawned");
-    const unitPosition = unitsSave.units[0]!.position!;
+    const unitObject = scene
+      .getObjects()
+      .find((object) => object.type === "playerUnit");
+    assert(unitObject, "unit scene object should be spawned");
+    const unitPosition = unitObject!.data.position;
 
     const safetyRadiusSq = PLAYER_UNIT_SPAWN_SAFE_RADIUS * PLAYER_UNIT_SPAWN_SAFE_RADIUS;
     bricks.getBrickStates().forEach((brick) => {
@@ -125,12 +130,18 @@ describe("Map run control", () => {
       configureForMap: () => {
         configureForMapCalls += 1;
       },
+      endCurrentMap: () => {
+        // no-op for tests
+      },
     } as unknown as NecromancerModule;
 
     let startRunCalls = 0;
     const resources = {
       startRun: () => {
         startRunCalls += 1;
+      },
+      cancelRun: () => {
+        // no-op for tests
       },
     };
 
@@ -208,6 +219,80 @@ describe("Map run control", () => {
       "necromancer should configure when restarting the map"
     );
   });
+
+  test("leaving a map clears active run state", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    let lastBricks: unknown = null;
+    const bricks = {
+      setBricks: (input: unknown) => {
+        lastBricks = input;
+      },
+    } as unknown as BricksModule;
+    let lastUnits: unknown = null;
+    const playerUnits = {
+      prepareForMap: () => {
+        // no-op for tests
+      },
+      setUnits: (units: unknown) => {
+        lastUnits = units;
+      },
+    } as unknown as PlayerUnitsModule;
+    let configureForMapCalls = 0;
+    let endCurrentMapCalls = 0;
+    const necromancer = {
+      configureForMap: () => {
+        configureForMapCalls += 1;
+      },
+      endCurrentMap: () => {
+        endCurrentMapCalls += 1;
+      },
+    } as unknown as NecromancerModule;
+    let startRunCalls = 0;
+    let cancelRunCalls = 0;
+    const resources = {
+      startRun: () => {
+        startRunCalls += 1;
+      },
+      cancelRun: () => {
+        cancelRunCalls += 1;
+      },
+    };
+
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+      unlocks,
+      getSkillLevel: () => 0,
+    });
+    mapModuleRef = maps;
+
+    maps.initialize();
+    maps.selectMap("foundations");
+    maps.restartSelectedMap();
+
+    assert.strictEqual(startRunCalls, 1, "run should start when restarting the map");
+    assert.strictEqual(configureForMapCalls, 1, "necromancer should configure for the map");
+    assert(Array.isArray(lastBricks), "bricks should be generated when run starts");
+    assert(Array.isArray(lastUnits), "units should be spawned when run starts");
+
+    maps.leaveCurrentMap();
+
+    assert.strictEqual(cancelRunCalls, 1, "leaving should cancel the active run");
+    assert(Array.isArray(lastBricks) && (lastBricks as unknown[]).length === 0);
+    assert(Array.isArray(lastUnits) && (lastUnits as unknown[]).length === 0);
+    assert.strictEqual(endCurrentMapCalls, 1, "necromancer should be notified when leaving");
+  });
 });
 
 describe("Map unlocking", () => {
@@ -219,6 +304,7 @@ describe("Map unlocking", () => {
     bonuses.initialize();
     const resources = {
       startRun: () => {},
+      cancelRun: () => {},
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };
@@ -290,6 +376,7 @@ describe("Map unlocking", () => {
     bonuses.initialize();
     const resources = {
       startRun: () => {},
+      cancelRun: () => {},
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };
@@ -351,6 +438,7 @@ describe("Map auto restart", () => {
     bonuses.initialize();
     const resources = {
       startRun: () => {},
+      cancelRun: () => {},
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };

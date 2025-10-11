@@ -57,6 +57,7 @@ function App(): JSX.Element {
               setScreen("save-select");
             }}
             onLeaveToMapSelect={() => {
+              app.leaveCurrentMap();
               setVoidCampTab("skills");
               setScreen("void-camp");
             }}

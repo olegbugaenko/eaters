@@ -71,6 +71,7 @@ export class NecromancerModule implements GameModule {
 
   private spawnPoints: SceneVector2[] = [];
   private nextSpawnIndex = 0;
+  private mapActive = false;
   private pendingLoad: ResourceAmountMap | null = null;
   private resourcesDirty = true;
 
@@ -93,6 +94,7 @@ export class NecromancerModule implements GameModule {
   public reset(): void {
     this.spawnPoints = [];
     this.nextSpawnIndex = 0;
+    this.mapActive = false;
     this.pendingLoad = null;
     this.mana.current = 0;
     this.mana.max = 0;
@@ -105,17 +107,14 @@ export class NecromancerModule implements GameModule {
   }
 
   public load(data: unknown | undefined): void {
-    const parsed = this.parseSaveData(data);
-    if (parsed) {
-      this.pendingLoad = parsed;
-    }
+    this.pendingLoad = null;
+    void this.parseSaveData(data);
+    this.markResourcesDirty();
+    this.pushResources();
   }
 
   public save(): unknown {
-    return {
-      mana: clampNumber(this.mana.current, 0, this.mana.max),
-      sanity: clampNumber(this.sanity.current, 0, this.sanity.max),
-    } satisfies NecromancerSaveData;
+    return null;
   }
 
   public tick(deltaMs: number): void {
@@ -154,6 +153,7 @@ export class NecromancerModule implements GameModule {
       y: clampNumber(point.y, 0, mapSize.height),
     }));
     this.nextSpawnIndex = 0;
+    this.mapActive = true;
 
     this.applyCurrentBonusValues();
     this.mana.current = this.mana.max;
@@ -165,6 +165,9 @@ export class NecromancerModule implements GameModule {
   }
 
   public trySpawnUnit(type: PlayerUnitType): boolean {
+    if (!this.mapActive) {
+      return false;
+    }
     const config = getPlayerUnitConfig(type);
     const cost = normalizeResourceCost(config.cost);
 
@@ -186,12 +189,24 @@ export class NecromancerModule implements GameModule {
   }
 
   public hasSanityForAnySpawn(): boolean {
+    if (!this.mapActive) {
+      return false;
+    }
     const currentSanity = this.sanity.current;
     return PLAYER_UNIT_TYPES.some((type) => {
       const config = getPlayerUnitConfig(type);
       const cost = normalizeResourceCost(config.cost);
       return currentSanity >= cost.sanity;
     });
+  }
+
+  public endCurrentMap(): void {
+    this.mapActive = false;
+    this.spawnPoints = [];
+    this.nextSpawnIndex = 0;
+    this.pendingLoad = null;
+    this.markResourcesDirty();
+    this.pushResources();
   }
 
   private pushSpawnOptions(): void {

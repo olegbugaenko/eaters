@@ -129,14 +129,7 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   public save(): unknown {
-    return {
-      units: this.unitOrder.map((unit) => ({
-        type: unit.type,
-        position: { ...unit.position },
-        hp: unit.hp,
-        attackCooldown: unit.attackCooldown,
-      })),
-    } satisfies PlayerUnitSaveData;
+    return null;
   }
 
   public prepareForMap(): void {
