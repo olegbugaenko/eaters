@@ -34,8 +34,7 @@
 }
 
 .map-select-card--selected {
-  border-color: var(--color-border-strong);
-  transform: translateY(-2px);
+  box-shadow: 0 0 16px #49a;
 }
 
 .map-select-card__header {
