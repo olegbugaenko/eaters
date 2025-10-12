@@ -79,7 +79,6 @@ export const CampContent: React.FC<CampContentProps> = ({
   return (
     <div className="camp-content surface-panel stack-lg">
       <header className="camp-content__header">
-        <h1 className="heading-1">Void Camp</h1>
         <CampTabsMenu
           activeTab={activeTab}
           onChange={handleTabChange}

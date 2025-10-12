@@ -134,7 +134,7 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                     >
                       <div className="scene-summoning-panel__unit-name">{option.name}</div>
                       <ResourceCostDisplay cost={option.cost} missing={missing} />
-                      {option.modules.length > 0 ? (
+                      {/* option.modules.length > 0 ? (
                         <ul className="scene-summoning-panel__module-list">
                           {option.modules.map((module) => (
                             <li key={module.id} className="scene-summoning-panel__module">
@@ -145,7 +145,7 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                             </li>
                           ))}
                         </ul>
-                      ) : null}
+                      ) : null */}
                     </button>
                   </div>
                   {automation.unlocked && (

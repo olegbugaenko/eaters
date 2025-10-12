@@ -1,4 +1,4 @@
-export type ResourceId = "stone" | "sand";
+export type ResourceId = "stone" | "sand" | "iron" | "organics";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
@@ -19,6 +19,16 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
     id: "sand",
     name: "Sand",
     description: "Fine grains useful for future construction.",
+  },
+  iron: {
+    id: "iron",
+    name: "Iron",
+    description: "",
+  },
+  organics: {
+    id: "organics",
+    name: "Organics",
+    description: "",
   },
 };
 

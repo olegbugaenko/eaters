@@ -8,7 +8,7 @@ import {
 import { DestructubleData } from "../logic/interfaces/destructuble";
 import { ResourceAmount } from "./resources-db";
 
-export type BrickType = "classic" | "smallSquareGray" | "smallSquareYellow" | "blueRadial";
+export type BrickType = "classic" | "smallSquareGray" | "smallSquareYellow" | "smallIron" | "smallOrganic";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -69,6 +69,19 @@ const BLUE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.65, g: 0.8, b: 1, a: 1 } },
   { offset: 0.4, color: { r: 0.35, g: 0.6, b: 0.95, a: 0.9 } },
   { offset: 1, color: { r: 0.15, g: 0.25, b: 0.7, a: 0.6 } },
+] as const;
+
+const GREEN_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.65, g: 1, b: 0.8, a: 1 } },
+  { offset: 0.4, color: { r: 0.35, g: 1, b: 0.45, a: 0.9 } },
+  { offset: 1, color: { r: 0.15, g: 0.7, b: 0.15, a: 0.6 } },
+] as const;
+
+
+const ORANGE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.95, g: 0.8, b: 0.8, a: 1 } },
+  { offset: 0.4, color: { r: 1, g: 0.75, b: 0.45, a: 0.9 } },
+  { offset: 1, color: { r: 0.7, g: 0.45, b: 0.15, a: 0.6 } },
 ] as const;
 
 const BRICK_DB: Record<BrickType, BrickConfig> = {
@@ -161,31 +174,64 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       sand: 1,
     },
   },
-  blueRadial: {
+  smallOrganic: {
     size: { width: 48, height: 48 },
     fill: {
       type: "radial",
       center: { x: 0, y: 0 },
       radius: 28,
-      stops: BLUE_RADIAL_GRADIENT,
+      stops: GREEN_RADIAL_GRADIENT,
     },
-    stroke: { color: { r: 0.1, g: 0.15, b: 0.45, a: 1 }, width: 2.4 },
+    stroke: { color: { r: 0.1, g: 0.45, b: 0.15, a: 1 }, width: 2.4 },
     destructubleData: {
-      maxHp: 125,
-      armor: 10,
-      baseDamage: 10,
+      maxHp: 75,
+      armor: 6,
+      baseDamage: 14,
       brickKnockBackDistance: 20,
       brickKnockBackSpeed: 40,
       brickKnockBackAmplitude: 4,
       physicalSize: 24,
       damageExplosion: {
-        type: "magnetic",
+        type: "grayBrickHit",
         radiusMultiplier: 0.85,
       },
       destructionExplosion: {
-        type: "magnetic",
+        type: "grayBrickDestroy",
         radiusMultiplier: 1.25,
       },
+    },
+    rewards: {
+      organics: 1,
+    },
+  },
+  smallIron: {
+    size: { width: 48, height: 48 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 28,
+      stops: ORANGE_RADIAL_GRADIENT,
+    },
+    stroke: { color: { r: 0.4, g: 0.35, b: 0.1, a: 1 }, width: 2.4 },
+    destructubleData: {
+      maxHp: 125,
+      armor: 12,
+      baseDamage: 8,
+      brickKnockBackDistance: 20,
+      brickKnockBackSpeed: 40,
+      brickKnockBackAmplitude: 4,
+      physicalSize: 24,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 1.25,
+      },
+    },
+    rewards: {
+      iron: 1,
     },
   },
 };

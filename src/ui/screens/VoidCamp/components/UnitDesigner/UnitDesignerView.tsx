@@ -231,11 +231,11 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   >
                     <div>
                       <div className="unit-designer__selected-name">{module.name}</div>
-                      <div className="unit-designer__selected-meta">
+                      {/*<div className="unit-designer__selected-meta">
                         {formatUnitModuleBonusValue(module.bonusType, module.bonusValue)} · Mana ×
                         {formatNumber(module.manaCostMultiplier, { maximumFractionDigits: 2 })} · +
                         {formatNumber(module.sanityCost, { maximumFractionDigits: 0 })} sanity
-                      </div>
+                      </div>*/}
                     </div>
                     <button
                       type="button"
@@ -311,13 +311,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   manaMultiplier={previewModule.manaCostMultiplier}
                   sanityCost={previewModule.sanityCost}
                 />
-              ) : (
-                <div className="modules-workshop__details unit-designer__module-card unit-designer__module-card--empty">
-                  <div className="modules-workshop__details-empty">
-                    Hover over a module to inspect its details.
-                  </div>
-                </div>
-              )}
+              ) : null}
             </div>
             <section className="unit-designer__cost">
               <h5 className="heading-5">Summoning Cost</h5>

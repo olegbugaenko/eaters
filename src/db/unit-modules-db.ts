@@ -30,7 +30,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseBonusValue: 2,
     bonusPerLevel: 0.1,
     manaCostMultiplier: 1.75,
-    sanityCost: 2,
+    sanityCost: 1,
     baseCost: {
       sand: 200,
     },
@@ -45,7 +45,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseBonusValue: 0.2,
     bonusPerLevel: 0.01,
     manaCostMultiplier: 1.75,
-    sanityCost: 2,
+    sanityCost: 1,
     baseCost: {
       sand: 300,
     },
