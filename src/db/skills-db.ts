@@ -1,4 +1,4 @@
-import { ResourceAmount } from "./resources-db";
+import { ResourceAmount, ResourceId } from "./resources-db";
 import { BonusEffectMap } from "../types/bonuses";
 
 export interface SkillNodePosition {
@@ -43,7 +43,12 @@ export const SKILL_IDS = [
   "armor_lore",
   "vitality2",
   "clarity2",
-  "refinement"
+  "refinement",
+  "vitality3",
+  "restoration",
+  "armor_lore2",
+  "heavy_drill",
+  "penetration"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -56,6 +61,11 @@ const createStoneCost = (base: number, growth: number) =>
 const createSandCost = (base: number, growth: number) =>
   (level: number): ResourceAmount => ({
     sand: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
+  });
+
+const createResourceCost = (id: ResourceId, base: number, growth: number) =>   
+  (level: number): ResourceAmount => ({
+    [id]: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
   });
 
 const createMixedCost = (
@@ -319,6 +329,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { stone_drill: 2 },
     cost: createSandCost(50, 1.5),
   },
+  heavy_drill: {
+    id: "heavy_drill",
+    name: "Heavy Drill",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -6, y: -1 },
+    maxLevel: 15,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { damage_lore: 5 },
+    cost: createResourceCost('iron', 50, 1.5),
+  },
   critical_chance: {
     id: "critical_chance",
     name: "Critical Chance",
@@ -333,6 +358,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { stone_drill: 2 },
     cost: createMixedCost(500, 1.5, 50, 1.5),
+  },
+  penetration: {
+    id: "penetration",
+    name: "Penetration",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -6, y: 1 },
+    maxLevel: 15,
+    effects: {
+      all_units_armor_penetration: {
+        multiplier: (level) => 1 * level,
+      },
+    },
+    nodesRequired: { critical_chance: 5 },
+    cost: createResourceCost('organics', 50, 1.5),
   },
   // right
   improved_membranes: {
@@ -395,6 +435,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { stone_armor: 3 },
     cost: createMixedCost(500, 1.5, 50, 1.5),
   },
+  armor_lore2: {
+    id: "armor_lore2",
+    name: "Armor Lore II",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 6, y: 1 },
+    maxLevel: 10,
+    effects: {
+      all_units_armor: {
+        income: (level) => 0 + 0.5 * level,
+      },
+    },
+    nodesRequired: { armor_lore: 5 },
+    cost: createResourceCost('iron', 50, 1.5),
+  },
   vitality2: {
     id: "vitality2",
     name: "Vitality II",
@@ -409,6 +464,36 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { stone_armor: 3 },
     cost: createSandCost(50, 1.5),
+  },
+  vitality3: {
+    id: "vitality3",
+    name: "Vitality III",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 6, y: -1 },
+    maxLevel: 15,
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { vitality2: 5 },
+    cost: createResourceCost('organics', 50, 1.5),
+  },
+  restoration: {
+    id: "restoration",
+    name: "Restoration",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 7, y: -2 },
+    maxLevel: 10,
+    effects: {
+      all_units_hp_regen_percentage: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { vitality3: 5 },
+    cost: createResourceCost('organics', 150, 1.5),
   },
 };
 

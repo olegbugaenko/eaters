@@ -16,7 +16,9 @@ export const BONUS_IDS = [
   "all_units_attack_multiplier",
   "all_units_armor",
   "all_units_crit_mult",
-  "all_units_crit_chance"
+  "all_units_crit_chance",
+  "all_units_hp_regen_percentage",
+  "all_units_armor_penetration"
 ] as const;
 
 export type BonusId = (typeof BONUS_IDS)[number];
@@ -76,6 +78,16 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_crit_mult",
     name: "Critical Multiplier",
     defaultValue: 2,
+  },
+  all_units_hp_regen_percentage: {
+    id: "all_units_hp_regen_percentage",
+    name: "HP Regeneration",
+    defaultValue: 0,
+  },
+  all_units_armor_penetration: {
+    id: "all_units_armor_penetration",
+    name: "Brick Armor Penetration",
+    defaultValue: 0
   }
 };
 

@@ -208,17 +208,17 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     ];
     const sandVertices = createRectangle(0, size.height - sandHeight, size.width, sandHeight);
     const bushClusters: readonly { center: SceneVector2; radius: number }[] = [
-      { center: { x: 220, y: 760 }, radius: 110 },
-      { center: { x: 400, y: 640 }, radius: 100 },
-      { center: { x: 620, y: 700 }, radius: 105 },
-      { center: { x: 780, y: 560 }, radius: 115 },
-      { center: { x: 520, y: 820 }, radius: 90 },
+      { center: { x: 320, y: 760 }, radius: 110 },
+      { center: { x: 500, y: 640 }, radius: 100 },
+      { center: { x: 720, y: 700 }, radius: 105 },
+      { center: { x: 880, y: 560 }, radius: 115 },
+      { center: { x: 620, y: 820 }, radius: 90 },
     ];
 
     return {
       name: "Overgrown Thicket",
       size,
-      spawnPoints: [{ x: size.width / 2, y: size.height - sandHeight - 80 }],
+      spawnPoints: [{ x: 50, y: size.height - sandHeight - 220 }],
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const sandLevel = baseLevel + 1;
@@ -249,7 +249,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       playerUnits: [
         {
           type: "bluePentagon",
-          position: { x: size.width / 2, y: size.height - sandHeight - 80 },
+          position: { x: 50, y: size.height - sandHeight - 220 },
         },
       ],
       unlockedBy: [
@@ -264,8 +264,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   oldForge: (() => {
     const size: SceneSize = { width: 1000, height: 1000 };
     const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
-    const outerSize = 600;
-    const cavitySize = 300;
+    const outerSize = 700;
+    const cavitySize = 400;
     const createSquareVertices = (squareSize: number): SceneVector2[] => {
       const half = squareSize / 2;
       return [
@@ -284,7 +284,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const walkwayLevel = baseLevel + 1;
         const ironThickness = getBrickConfig("smallIron").size.width;
-        const innerRingSize = Math.max(cavitySize - ironThickness * 2, 0);
+        const innerRingSize = Math.max(cavitySize - ironThickness * 4, 0);
 
         const forgeFloor = polygonWithBricks(
           "smallSquareGray",
@@ -301,7 +301,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             vertices: createSquareVertices(cavitySize),
             holes: innerRingSize > 0 ? [createSquareVertices(innerRingSize)] : undefined,
           },
-          { level: walkwayLevel }
+          { level: baseLevel }
         );
 
         return [forgeFloor, ironLining];
