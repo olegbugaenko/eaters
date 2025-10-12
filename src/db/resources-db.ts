@@ -1,9 +1,14 @@
+import type { MapId } from "./maps-db";
+import type { SkillId } from "./skills-db";
+import type { UnlockCondition } from "../types/unlocks";
+
 export type ResourceId = "stone" | "sand" | "iron" | "organics";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
   readonly name: string;
   readonly description?: string;
+  readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
 }
 
 export type ResourceAmount = Partial<Record<ResourceId, number>>;
@@ -24,11 +29,25 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
     id: "iron",
     name: "Iron",
     description: "",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "initial",
+        level: 1,
+      },
+    ],
   },
   organics: {
     id: "organics",
     name: "Organics",
     description: "",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "initial",
+        level: 1,
+      },
+    ],
   },
 };
 

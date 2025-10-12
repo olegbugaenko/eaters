@@ -49,8 +49,17 @@ export class Application {
     const bonusesModule = new BonusesModule();
     this.bonusesModule = bonusesModule;
 
+    let mapModuleReference: MapModule | null = null;
+    let skillTreeModuleReference: SkillTreeModule | null = null;
+    const unlockService = new UnlockService({
+      getMapStats: () => mapModuleReference?.getMapStats() ?? {},
+      getSkillLevel: (id) => skillTreeModuleReference?.getLevel(id) ?? 0,
+    });
+    this.serviceContainer.register("unlocks", unlockService);
+
     const resourcesModule = new ResourcesModule({
       bridge: this.dataBridge,
+      unlocks: unlockService,
     });
     this.resourcesModule = resourcesModule;
 
@@ -60,6 +69,7 @@ export class Application {
       bonuses: bonusesModule,
     });
     this.skillTreeModule = skillTreeModule;
+    skillTreeModuleReference = skillTreeModule;
 
     const unitModuleWorkshopModule = new UnitModuleWorkshopModule({
       bridge: this.dataBridge,
@@ -118,13 +128,6 @@ export class Application {
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
     });
     this.unitAutomationModule = unitAutomationModule;
-    let mapModuleReference: MapModule | null = null;
-    const unlockService = new UnlockService({
-      getMapStats: () => mapModuleReference?.getMapStats() ?? {},
-      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
-    });
-    this.serviceContainer.register("unlocks", unlockService);
-
     mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
