@@ -238,12 +238,15 @@ export class BricksModule implements GameModule {
   public applyDamage(
     brickId: string,
     rawDamage: number,
-    hitDirection?: SceneVector2
+    hitDirection?: SceneVector2,
+    options?: { rewardMultiplier?: number }
   ): { destroyed: boolean; brick: BrickRuntimeState | null } {
     const brick = this.bricks.get(brickId);
     if (!brick) {
       return { destroyed: false, brick: null };
     }
+
+    const rewardMultiplier = Math.max(options?.rewardMultiplier ?? 1, 0);
 
     const effectiveDamage = Math.max(rawDamage - brick.armor, 0);
     if (effectiveDamage <= 0) {
@@ -254,7 +257,7 @@ export class BricksModule implements GameModule {
 
     if (brick.hp <= 0) {
       this.spawnBrickExplosion(brick.destructionExplosion, brick);
-      this.destroyBrick(brick);
+      this.destroyBrick(brick, rewardMultiplier);
       return { destroyed: true, brick: null };
     }
 
@@ -396,10 +399,13 @@ export class BricksModule implements GameModule {
     };
   }
 
-  private destroyBrick(brick: InternalBrickState): void {
+  private destroyBrick(brick: InternalBrickState, rewardMultiplier = 1): void {
     this.options.resources.notifyBrickDestroyed();
     if (hasAnyResources(brick.rewards)) {
-      const rewards = this.applyBrickRewardBonuses(brick.rewards);
+      let rewards = this.applyBrickRewardBonuses(brick.rewards);
+      if (rewardMultiplier >= 0 && rewardMultiplier !== 1) {
+        rewards = scaleResourceStockpile(rewards, rewardMultiplier);
+      }
       if (hasAnyResources(rewards)) {
         this.options.resources.grantResources(rewards);
       }

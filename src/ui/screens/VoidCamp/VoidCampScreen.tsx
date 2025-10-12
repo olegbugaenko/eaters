@@ -11,6 +11,16 @@ import { BRICK_COUNT_BRIDGE_KEY } from "@logic/modules/BricksModule";
 import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@shared/useBridgeValue";
+import {
+  DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
+  UnitModuleWorkshopBridgeState,
+  UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+} from "@logic/modules/UnitModuleWorkshopModule";
+import {
+  DEFAULT_UNIT_DESIGNER_STATE,
+  UnitDesignerBridgeState,
+  UNIT_DESIGNER_STATE_BRIDGE_KEY,
+} from "@logic/modules/UnitDesignModule";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -34,6 +44,16 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
     []
+  );
+  const moduleWorkshopState = useBridgeValue<UnitModuleWorkshopBridgeState>(
+    bridge,
+    UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_MODULE_WORKSHOP_STATE
+  );
+  const unitDesignerState = useBridgeValue<UnitDesignerBridgeState>(
+    bridge,
+    UNIT_DESIGNER_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_DESIGNER_STATE
   );
 
   return (
@@ -60,6 +80,9 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
           brickCount={brickCount}
           initialTab={initialTab}
           onTabChange={onTabChange}
+          resourceTotals={resources}
+          moduleWorkshopState={moduleWorkshopState}
+          unitDesignerState={unitDesignerState}
         />
       }
     />

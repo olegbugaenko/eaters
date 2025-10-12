@@ -7,7 +7,6 @@ import {
   BRICK_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/BricksModule";
 import {
-  PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY,
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../../../logic/modules/PlayerUnitsModule";
@@ -22,7 +21,7 @@ import {
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
   UnitAutomationBridgeState,
 } from "../../../logic/modules/UnitAutomationModule";
-import { PlayerUnitType } from "../../../db/player-units-db";
+import { UnitDesignId } from "../../../logic/modules/UnitDesignModule";
 import {
   SceneCameraState,
   SceneObjectManager,
@@ -54,7 +53,6 @@ import {
 import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
 import { SceneRunResourcePanel } from "./SceneRunResourcePanel";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
-import { PlayerUnitBlueprintStats } from "../../../types/player-units";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -288,11 +286,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
     DEFAULT_NECROMANCER_SPAWN_OPTIONS
   );
-  const unitBlueprints = useBridgeValue<PlayerUnitBlueprintStats[]>(
-    bridge,
-    PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY,
-    []
-  );
   const resourceSummary = useBridgeValue<ResourceRunSummaryPayload>(
     bridge,
     RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
@@ -321,12 +314,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const [isPauseOpen, setIsPauseOpen] = useState(false);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   const autoRestartHandledRef = useRef(false);
-
-  useEffect(() => {
-    if (unitBlueprints.length === 0) {
-      setHoverContent(null);
-    }
-  }, [unitBlueprints.length]);
 
   useEffect(() => {
     if (showRunSummary) {
@@ -399,16 +386,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     setCameraInfo(current);
   };
 
-  const handleSummonUnit = useCallback(
-    (type: PlayerUnitType) => {
-      necromancer.trySpawnUnit(type);
+  const handleSummonDesign = useCallback(
+    (designId: UnitDesignId) => {
+      necromancer.trySpawnDesign(designId);
     },
     [necromancer]
   );
 
   const handleToggleAutomation = useCallback(
-    (type: PlayerUnitType, enabled: boolean) => {
-      unitAutomation.setAutomationEnabled(type, enabled);
+    (designId: UnitDesignId, enabled: boolean) => {
+      unitAutomation.setAutomationEnabled(designId, enabled);
     },
     [unitAutomation]
   );
@@ -758,8 +745,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
         ref={summoningPanelRef}
         resources={necromancerResources}
         spawnOptions={necromancerOptions}
-        onSummon={handleSummonUnit}
-        blueprints={unitBlueprints}
+        onSummon={handleSummonDesign}
         onHoverInfoChange={setHoverContent}
         automation={automationState}
         onToggleAutomation={handleToggleAutomation}

@@ -1,6 +1,10 @@
 import { GameModule } from "../core/types";
 import { DataBridge } from "../core/DataBridge";
-import { PlayerUnitsModule, PlayerUnitSpawnData } from "./PlayerUnitsModule";
+import {
+  PlayerUnitsModule,
+  PlayerUnitSpawnData,
+  computePlayerUnitBlueprint,
+} from "./PlayerUnitsModule";
 import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,
@@ -9,6 +13,16 @@ import {
 import { SceneObjectManager, SceneVector2 } from "../services/SceneObjectManager";
 import { ResourceAmountMap, normalizeResourceCost } from "../../types/resources";
 import { BonusesModule, BonusValueMap } from "./BonusesModule";
+import {
+  UnitDesignId,
+  UnitDesignModule,
+  UnitDesignerUnitState,
+  UnitDesignModuleDetail,
+} from "./UnitDesignModule";
+import {
+  PlayerUnitBlueprintStats,
+  PlayerUnitRuntimeModifiers,
+} from "../../types/player-units";
 
 export interface NecromancerResourceMeter {
   current: number;
@@ -21,9 +35,13 @@ export interface NecromancerResourcesPayload {
 }
 
 export interface NecromancerSpawnOption {
+  designId: UnitDesignId;
   type: PlayerUnitType;
   name: string;
   cost: ResourceAmountMap;
+  blueprint: PlayerUnitBlueprintStats;
+  modules: readonly UnitDesignModuleDetail[];
+  runtime: PlayerUnitRuntimeModifiers;
 }
 
 export const NECROMANCER_RESOURCES_BRIDGE_KEY = "necromancer/resources";
@@ -34,6 +52,7 @@ interface NecromancerModuleOptions {
   playerUnits: PlayerUnitsModule;
   scene: SceneObjectManager;
   bonuses: BonusesModule;
+  unitDesigns: UnitDesignModule;
 }
 
 interface NecromancerSaveData {
@@ -56,6 +75,7 @@ export class NecromancerModule implements GameModule {
   private readonly playerUnits: PlayerUnitsModule;
   private readonly scene: SceneObjectManager;
   private readonly bonuses: BonusesModule;
+  private readonly unitDesigns: UnitDesignModule;
 
   private mana: ResourceState = {
     current: 0,
@@ -74,14 +94,21 @@ export class NecromancerModule implements GameModule {
   private mapActive = false;
   private pendingLoad: ResourceAmountMap | null = null;
   private resourcesDirty = true;
+  private cachedDesigns: UnitDesignerUnitState[] = [];
+  private unsubscribeDesigns: (() => void) | null = null;
 
   constructor(options: NecromancerModuleOptions) {
     this.bridge = options.bridge;
     this.playerUnits = options.playerUnits;
     this.scene = options.scene;
     this.bonuses = options.bonuses;
+    this.unitDesigns = options.unitDesigns;
     this.bonuses.subscribe((values) => {
       this.handleBonusValuesChanged(values);
+    });
+    this.unsubscribeDesigns = this.unitDesigns.subscribe((designs) => {
+      this.cachedDesigns = [...designs];
+      this.pushSpawnOptions();
     });
   }
 
@@ -104,6 +131,7 @@ export class NecromancerModule implements GameModule {
     this.sanity.regenPerSecond = 0;
     this.markResourcesDirty();
     this.pushResources();
+    this.pushSpawnOptions();
   }
 
   public load(data: unknown | undefined): void {
@@ -165,23 +193,50 @@ export class NecromancerModule implements GameModule {
   }
 
   public trySpawnUnit(type: PlayerUnitType): boolean {
+    const design = this.unitDesigns.getDefaultDesignForType(type);
+    if (design) {
+      return this.trySpawnDesign(design.id);
+    }
     if (!this.mapActive) {
       return false;
     }
     const config = getPlayerUnitConfig(type);
     const cost = normalizeResourceCost(config.cost);
-
     if (!this.canAfford(cost)) {
       return false;
     }
-
     const spawnPosition = this.getNextSpawnPosition();
     const spawnData: PlayerUnitSpawnData = {
       type,
       position: spawnPosition,
     };
-
     this.consumeResources(cost);
+    this.playerUnits.spawnUnit(spawnData);
+    this.markResourcesDirty();
+    this.pushResources();
+    return true;
+  }
+
+  public trySpawnDesign(designId: UnitDesignId): boolean {
+    if (!this.mapActive) {
+      return false;
+    }
+    const design = this.unitDesigns.getDesign(designId);
+    if (!design) {
+      return false;
+    }
+    if (!this.canAfford(design.cost)) {
+      return false;
+    }
+
+    const spawnPosition = this.getNextSpawnPosition();
+    const spawnData: PlayerUnitSpawnData = {
+      type: design.type,
+      position: spawnPosition,
+      runtimeModifiers: design.runtime,
+    };
+
+    this.consumeResources(design.cost);
     this.playerUnits.spawnUnit(spawnData);
     this.markResourcesDirty();
     this.pushResources();
@@ -193,6 +248,9 @@ export class NecromancerModule implements GameModule {
       return false;
     }
     const currentSanity = this.sanity.current;
+    if (this.cachedDesigns.length > 0) {
+      return this.cachedDesigns.some((design) => currentSanity >= design.cost.sanity);
+    }
     return PLAYER_UNIT_TYPES.some((type) => {
       const config = getPlayerUnitConfig(type);
       const cost = normalizeResourceCost(config.cost);
@@ -210,14 +268,29 @@ export class NecromancerModule implements GameModule {
   }
 
   private pushSpawnOptions(): void {
-    const options: NecromancerSpawnOption[] = PLAYER_UNIT_TYPES.map((type) => {
-      const config = getPlayerUnitConfig(type);
-      return {
-        type,
-        name: config.name,
-        cost: normalizeResourceCost(config.cost),
-      };
-    });
+    const options: NecromancerSpawnOption[] = this.cachedDesigns.map((design) => ({
+      designId: design.id,
+      type: design.type,
+      name: design.name,
+      cost: design.cost,
+      blueprint: design.blueprint,
+      modules: design.moduleDetails,
+      runtime: design.runtime,
+    }));
+    if (options.length === 0) {
+      PLAYER_UNIT_TYPES.forEach((type) => {
+        const config = getPlayerUnitConfig(type);
+        options.push({
+          designId: `${type}-default`,
+          type,
+          name: config.name,
+          cost: normalizeResourceCost(config.cost),
+          blueprint: getFallbackBlueprint(type, this.bonuses.getAllValues()),
+          modules: [],
+          runtime: getDefaultRuntime(),
+        });
+      });
+    }
     this.bridge.setValue(NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY, options);
   }
 
@@ -382,3 +455,21 @@ const sanitizeNumber = (value: number): number => {
   }
   return 0;
 };
+
+const DEFAULT_RUNTIME: PlayerUnitRuntimeModifiers = Object.freeze({
+  rewardMultiplier: 1,
+  damageTransferPercent: 0,
+  damageTransferRadius: 0,
+});
+
+const getDefaultRuntime = (): PlayerUnitRuntimeModifiers => ({
+  ...DEFAULT_RUNTIME,
+});
+
+const getFallbackBlueprint = (
+  type: PlayerUnitType,
+  bonusValues: BonusValueMap
+): PlayerUnitBlueprintStats => ({
+  ...computePlayerUnitBlueprint(type, bonusValues),
+  bonuses: [],
+});
