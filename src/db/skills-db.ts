@@ -174,7 +174,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Void Module Fabrication",
     description:
       "Unlock fabrication rites for modular ship augments forged from refracted glass.",
-    nodePosition: { x: -3, y: 0 },
+    nodePosition: { x: 0, y: -3 },
     maxLevel: 1,
     effects: {},
     nodesRequired: { glass_latticework: 5 },

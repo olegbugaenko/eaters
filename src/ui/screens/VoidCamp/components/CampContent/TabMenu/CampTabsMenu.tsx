@@ -12,16 +12,14 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
   onChange,
   modulesUnlocked,
 }) => {
-  const tabs: { key: CampTabKey; label: string; enabled: boolean; lockedReason?: string }[] = [
-    { key: "maps", label: "Map Selector", enabled: true },
-    { key: "skills", label: "Skill Tree", enabled: true },
-    {
-      key: "modules",
-      label: "Modules",
-      enabled: modulesUnlocked,
-      lockedReason: "Reach Void Module Fabrication level 1 to unlock.",
-    },
+  const tabs: { key: CampTabKey; label: string }[] = [
+    { key: "maps", label: "Map Selector" },
+    { key: "skills", label: "Skill Tree" },
   ];
+
+  if (modulesUnlocked) {
+    tabs.push({ key: "modules", label: "Modules" });
+  }
 
   return (
     <div className="camp-tabs-menu">
@@ -31,7 +29,6 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
           const classes = [
             "inline-tabs__button",
             isActive ? "inline-tabs__button--active" : null,
-            !tab.enabled ? "inline-tabs__button--disabled" : null,
           ]
             .filter(Boolean)
             .join(" ");
@@ -42,8 +39,6 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
               type="button"
               className={classes}
               onClick={() => onChange(tab.key)}
-              disabled={!tab.enabled}
-              title={!tab.enabled ? tab.lockedReason : undefined}
             >
               {tab.label}
             </button>
