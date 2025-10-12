@@ -21,6 +21,20 @@ import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { NecromancerModule } from "../src/logic/modules/NecromancerModule";
 import { BonusesModule } from "../src/logic/modules/BonusesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
+import type { UnitDesignModule } from "../src/logic/modules/UnitDesignModule";
+
+const createUnitDesignerStub = (): UnitDesignModule => {
+  const stub = {
+    subscribe: (listener: (designs: never[]) => void) => {
+      listener([]);
+      return () => {};
+    },
+    getDefaultDesignForType: () => null,
+    getDesign: () => null,
+    getAllDesigns: () => [],
+  };
+  return stub as unknown as UnitDesignModule;
+};
 
 const distanceSq = (a: { x: number; y: number }, b: { x: number; y: number }): number => {
   const dx = a.x - b.x;
@@ -59,11 +73,13 @@ describe("MapModule", () => {
       bonuses,
       explosions,
     });
+    const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,
       scene,
       bonuses,
+      unitDesigns,
     });
     let mapModuleRef: MapModule | null = null;
     const unlocks = new UnlockService({
@@ -318,11 +334,13 @@ describe("Map unlocking", () => {
       bonuses,
       explosions,
     });
+    const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,
       scene,
       bonuses,
+      unitDesigns,
     });
 
     let mapModuleRef: MapModule | null = null;
@@ -390,11 +408,13 @@ describe("Map unlocking", () => {
       bonuses,
       explosions,
     });
+    const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,
       scene,
       bonuses,
+      unitDesigns,
     });
 
     let mapModuleRef: MapModule | null = null;
@@ -452,11 +472,13 @@ describe("Map auto restart", () => {
       bonuses,
       explosions,
     });
+    const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
       bridge,
       playerUnits,
       scene,
       bonuses,
+      unitDesigns,
     });
 
     let mapModuleRef: MapModule | null = null;

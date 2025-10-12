@@ -22,6 +22,21 @@ export interface PlayerUnitCritMultiplierStats {
   readonly effective: number;
 }
 
+export type PlayerUnitBonusFormat = "flat" | "percent" | "multiplier";
+
+export interface PlayerUnitBonusLine {
+  readonly label: string;
+  readonly value: number;
+  readonly format: PlayerUnitBonusFormat;
+  readonly hint?: string;
+}
+
+export interface PlayerUnitRuntimeModifiers {
+  readonly rewardMultiplier: number;
+  readonly damageTransferPercent: number;
+  readonly damageTransferRadius: number;
+}
+
 export interface PlayerUnitBlueprintStats {
   readonly type: PlayerUnitType;
   readonly name: string;
@@ -38,4 +53,5 @@ export interface PlayerUnitBlueprintStats {
   readonly moveAcceleration: number;
   readonly mass: number;
   readonly physicalSize: number;
+  readonly bonuses?: readonly PlayerUnitBonusLine[];
 }

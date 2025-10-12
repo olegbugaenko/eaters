@@ -183,6 +183,31 @@
   color: #f8fafc;
 }
 
+.scene-summoning-panel__module-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scene-summoning-panel__module {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #cbd5f5;
+}
+
+.scene-summoning-panel__module-name {
+  font-weight: 600;
+}
+
+.scene-summoning-panel__module-value {
+  color: #94a3b8;
+}
+
 .scene-summoning-panel__automation-toggle {
   display: inline-flex;
   align-items: center;

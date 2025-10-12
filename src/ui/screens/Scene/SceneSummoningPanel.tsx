@@ -8,17 +8,20 @@ import { createEmptyResourceAmount } from "../../../types/resources";
 import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
 import { ResourceCostDisplay } from "../../shared/ResourceCostDisplay";
 import "./SceneSummoningPanel.css";
-import { PlayerUnitBlueprintStats } from "../../../types/player-units";
 import { SceneTooltipContent } from "./SceneTooltipPanel";
 import { formatNumber } from "../../shared/format/number";
 import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
 import { UnitAutomationBridgeState } from "../../../logic/modules/UnitAutomationModule";
+import {
+  UnitDesignId,
+  UnitDesignModuleDetail,
+} from "../../../logic/modules/UnitDesignModule";
+import { formatUnitModuleBonusValue } from "../../shared/format/unitModuleBonus";
 
 interface SceneSummoningPanelProps {
   resources: NecromancerResourcesPayload;
   spawnOptions: readonly NecromancerSpawnOption[];
-  onSummon: (type: PlayerUnitType) => void;
-  blueprints: readonly PlayerUnitBlueprintStats[];
+  onSummon: (designId: UnitDesignId) => void;
   onHoverInfoChange: (content: SceneTooltipContent | null) => void;
   automation: UnitAutomationBridgeState;
   onToggleAutomation: (type: PlayerUnitType, enabled: boolean) => void;
@@ -39,30 +42,11 @@ const formatResourceValue = (
 
 
 export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPanelProps>(
-  (
-    {
-      resources,
-      spawnOptions,
-      onSummon,
-      blueprints,
-      onHoverInfoChange,
-      automation,
-      onToggleAutomation,
-    },
-    ref
-  ) => {
+  ({ resources, spawnOptions, onSummon, onHoverInfoChange, automation, onToggleAutomation }, ref) => {
     const available = {
       mana: resources.mana.current,
       sanity: resources.sanity.current,
     };
-
-    const blueprintMap = useMemo(() => {
-      const map = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
-      blueprints.forEach((blueprint) => {
-        map.set(blueprint.type, blueprint);
-      });
-      return map;
-    }, [blueprints]);
 
     const automationLookup = useMemo(() => {
       const map = new Map<PlayerUnitType, boolean>();
@@ -80,15 +64,10 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
     }, [onHoverInfoChange]);
 
     const showUnitTooltip = useCallback(
-      (type: PlayerUnitType) => {
-        const blueprint = blueprintMap.get(type);
-        if (!blueprint) {
-          onHoverInfoChange(null);
-          return;
-        }
+      (blueprint: NecromancerSpawnOption["blueprint"]) => {
         onHoverInfoChange(createUnitTooltip(blueprint));
       },
-      [blueprintMap, onHoverInfoChange]
+      [onHoverInfoChange]
     );
 
     const sanityResourceClassName = [
@@ -141,10 +120,10 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                 .join(" ");
               const automationEnabled = automationLookup.get(option.type) ?? false;
               return (
-                <div key={option.type} className="scene-summoning-panel__unit">
+                <div key={option.designId} className="scene-summoning-panel__unit">
                   <div
                     className="scene-summoning-panel__unit-action-wrapper"
-                    onMouseEnter={() => showUnitTooltip(option.type)}
+                    onMouseEnter={() => showUnitTooltip(option.blueprint)}
                     onMouseLeave={hideTooltip}
                   >
                     <button
@@ -152,15 +131,27 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                       className={actionClassName}
                       onClick={() => {
                         if (canAfford) {
-                          onSummon(option.type);
+                          onSummon(option.designId);
                         }
                       }}
-                      onFocus={() => showUnitTooltip(option.type)}
+                      onFocus={() => showUnitTooltip(option.blueprint)}
                       onBlur={hideTooltip}
                       disabled={!canAfford}
                     >
                       <div className="scene-summoning-panel__unit-name">{option.name}</div>
                       <ResourceCostDisplay cost={option.cost} missing={missing} />
+                      {option.modules.length > 0 ? (
+                        <ul className="scene-summoning-panel__module-list">
+                          {option.modules.map((module) => (
+                            <li key={module.id} className="scene-summoning-panel__module">
+                              <span className="scene-summoning-panel__module-name">{module.name}</span>
+                              <span className="scene-summoning-panel__module-value">
+                                {formatModuleSummary(module)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </button>
                   </div>
                   {automation.unlocked && (
@@ -215,6 +206,9 @@ const computeMissing = (
   missing.sanity = Math.max(cost.sanity - available.sanity, 0);
   return missing;
 };
+
+const formatModuleSummary = (module: UnitDesignModuleDetail): string =>
+  `${module.bonusLabel}: ${formatUnitModuleBonusValue(module.bonusType, module.bonusValue)}`;
 
 const RESOURCE_CONSUMPTION_THRESHOLD = 0.01;
 const RESOURCE_CONSUMPTION_PULSE_DURATION_MS = 360;

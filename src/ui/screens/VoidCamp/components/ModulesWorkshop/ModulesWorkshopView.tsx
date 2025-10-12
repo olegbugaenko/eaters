@@ -6,6 +6,7 @@ import {
 } from "@logic/modules/UnitModuleWorkshopModule";
 import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
 import { formatNumber } from "@shared/format/number";
+import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { UnitModuleId } from "@db/unit-modules-db";
 import "./ModulesWorkshopView.css";
@@ -14,25 +15,6 @@ interface ModulesWorkshopViewProps {
   state?: UnitModuleWorkshopBridgeState;
   resources: ResourceAmountPayload[];
 }
-
-const BONUS_DISPLAY_PRECISION: Record<string, { minimumFractionDigits: number; maximumFractionDigits: number }> = {
-  multiplier: { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-  percent: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
-};
-
-const formatBonusValue = (type: string, value: number): string => {
-  if (value <= 0) {
-    return type === "percent" ? "0%" : "x0";
-  }
-  const options = BONUS_DISPLAY_PRECISION[type] ?? { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-  switch (type) {
-    case "percent":
-      return `${formatNumber(value * 100, options)}%`;
-    case "multiplier":
-    default:
-      return `x${formatNumber(value, options)}`;
-  }
-};
 
 const computeMissingCost = (
   cost: Record<string, number> | null,
@@ -102,8 +84,11 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
         const buttonLabel = module.level > 0 ? "Upgrade" : "Unlock";
         const currentBonusLabel =
           module.level > 0
-            ? formatBonusValue(module.bonusType, module.currentBonusValue)
-            : formatBonusValue(module.bonusType, computeNextBonusValue(module.baseBonusValue, module.bonusPerLevel, 0));
+            ? formatUnitModuleBonusValue(module.bonusType, module.currentBonusValue)
+            : formatUnitModuleBonusValue(
+                module.bonusType,
+                computeNextBonusValue(module.baseBonusValue, module.bonusPerLevel, 0)
+              );
         const nextBonusValue = computeNextBonusValue(
           module.baseBonusValue,
           module.bonusPerLevel,
@@ -133,7 +118,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                 <dd>
                   <div className="modules-workshop__stat-value">{currentBonusLabel}</div>
                   <div className="modules-workshop__stat-next">
-                    Next level: {formatBonusValue(module.bonusType, nextBonusValue)}
+                    Next level: {formatUnitModuleBonusValue(module.bonusType, nextBonusValue)}
                   </div>
                 </dd>
               </div>

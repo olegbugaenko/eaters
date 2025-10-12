@@ -12,12 +12,8 @@
 }
 
 .camp-tab-panels__modules {
-  flex: 1;
-  display: flex;
-}
-
-.camp-tab-panels__modules > .modules-workshop {
-  flex: 1;
+  display: grid;
+  gap: var(--space-xl);
 }
 
 .camp-tab-panels__modules-locked {

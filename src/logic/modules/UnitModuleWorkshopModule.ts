@@ -97,6 +97,7 @@ export class UnitModuleWorkshopModule implements GameModule {
 
   private unlocked = false;
   private levels: Map<UnitModuleId, number> = createDefaultLevels();
+  private listeners = new Set<() => void>();
 
   constructor(options: UnitModuleWorkshopModuleOptions) {
     this.bridge = options.bridge;
@@ -107,18 +108,21 @@ export class UnitModuleWorkshopModule implements GameModule {
   public initialize(): void {
     this.refreshUnlockState();
     this.pushState();
+    this.notifyListeners();
   }
 
   public reset(): void {
     this.levels = createDefaultLevels();
     this.refreshUnlockState();
     this.pushState();
+    this.notifyListeners();
   }
 
   public load(data: unknown | undefined): void {
     this.levels = this.parseSaveData(data);
     this.refreshUnlockState();
     this.pushState();
+    this.notifyListeners();
   }
 
   public save(): unknown {
@@ -136,6 +140,7 @@ export class UnitModuleWorkshopModule implements GameModule {
   public tick(_deltaMs: number): void {
     if (this.refreshUnlockState()) {
       this.pushState();
+      this.notifyListeners();
     }
   }
 
@@ -154,11 +159,19 @@ export class UnitModuleWorkshopModule implements GameModule {
     const nextLevel = currentLevel + 1;
     this.levels.set(id, nextLevel);
     this.pushState();
+    this.notifyListeners();
     return true;
   }
 
   public getModuleLevel(id: UnitModuleId): number {
     return this.levels.get(id) ?? 0;
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   private refreshUnlockState(): boolean {
@@ -187,6 +200,17 @@ export class UnitModuleWorkshopModule implements GameModule {
         modules,
       }
     );
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("UnitModuleWorkshopModule listener error", error);
+      }
+    });
   }
 
   private createModuleState(id: UnitModuleId): UnitModuleWorkshopItemState {

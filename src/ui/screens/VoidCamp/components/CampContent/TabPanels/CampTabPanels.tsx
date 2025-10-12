@@ -2,10 +2,12 @@ import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/MapModule";
 import { SkillTreeView } from "@screens/VoidCamp/components/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@screens/VoidCamp/components/ModulesWorkshop/ModulesWorkshopView";
+import { UnitDesignerView } from "@screens/VoidCamp/components/UnitDesigner/UnitDesignerView";
 import { CampTabKey } from "../CampContent";
 import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/UnitModuleWorkshopModule";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
+import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -20,6 +22,7 @@ type CampTabPanelsProps = {
   brickCount: number;
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   resourceTotals: ResourceAmountPayload[];
+  unitDesignerState: UnitDesignerBridgeState;
 };
 
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
@@ -34,6 +37,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   brickCount,
   moduleWorkshopState,
   resourceTotals,
+  unitDesignerState,
 }) => {
   if (activeTab === "maps") {
     return (
@@ -65,6 +69,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     return (
       <div className="camp-tab-panels__modules">
         <ModulesWorkshopView state={moduleWorkshopState} resources={resourceTotals} />
+        <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { MapListEntry } from "@logic/modules/MapModule";
 import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
 import { CampTabPanels } from "./TabPanels/CampTabPanels";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/UnitModuleWorkshopModule";
+import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import "./CampContent.css";
 
@@ -22,6 +23,7 @@ interface CampContentProps {
   onTabChange?: (tab: CampTabKey) => void;
   resourceTotals: ResourceAmountPayload[];
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
+  unitDesignerState: UnitDesignerBridgeState;
 }
 
 const formatTime = (timeMs: number): string => {
@@ -46,6 +48,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   onTabChange,
   resourceTotals,
   moduleWorkshopState,
+  unitDesignerState,
 }) => {
   const [activeTab, setActiveTab] = useState<CampTabKey>(initialTab);
   useEffect(() => {
@@ -95,6 +98,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         brickCount={brickCount}
         moduleWorkshopState={moduleWorkshopState}
         resourceTotals={resourceTotals}
+        unitDesignerState={unitDesignerState}
       />
     </div>
   );

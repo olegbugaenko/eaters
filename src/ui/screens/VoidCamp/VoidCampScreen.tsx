@@ -16,6 +16,11 @@ import {
   UnitModuleWorkshopBridgeState,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
 } from "@logic/modules/UnitModuleWorkshopModule";
+import {
+  DEFAULT_UNIT_DESIGNER_STATE,
+  UnitDesignerBridgeState,
+  UNIT_DESIGNER_STATE_BRIDGE_KEY,
+} from "@logic/modules/UnitDesignModule";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -45,6 +50,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_MODULE_WORKSHOP_STATE
   );
+  const unitDesignerState = useBridgeValue<UnitDesignerBridgeState>(
+    bridge,
+    UNIT_DESIGNER_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_DESIGNER_STATE
+  );
 
   return (
     <VoidCamp
@@ -72,6 +82,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
           onTabChange={onTabChange}
           resourceTotals={resources}
           moduleWorkshopState={moduleWorkshopState}
+          unitDesignerState={unitDesignerState}
         />
       }
     />
