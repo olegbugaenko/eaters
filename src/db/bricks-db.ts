@@ -175,7 +175,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
   },
   smallOrganic: {
-    size: { width: 48, height: 48 },
+    size: { width: 32, height: 32 },
     fill: {
       type: "radial",
       center: { x: 0, y: 0 },
@@ -186,9 +186,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     destructubleData: {
       maxHp: 75,
       armor: 6,
-      baseDamage: 14,
-      brickKnockBackDistance: 20,
-      brickKnockBackSpeed: 40,
+      baseDamage: 16,
+      brickKnockBackDistance: 40,
+      brickKnockBackSpeed: 80,
       brickKnockBackAmplitude: 4,
       physicalSize: 24,
       damageExplosion: {
@@ -205,7 +205,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
   },
   smallIron: {
-    size: { width: 48, height: 48 },
+    size: { width: 32, height: 32 },
     fill: {
       type: "radial",
       center: { x: 0, y: 0 },

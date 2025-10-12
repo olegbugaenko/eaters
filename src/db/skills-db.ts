@@ -341,7 +341,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
     nodePosition: { x: 1, y: 0 },
-    maxLevel: 3,
+    maxLevel: 5,
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.18 * level,
