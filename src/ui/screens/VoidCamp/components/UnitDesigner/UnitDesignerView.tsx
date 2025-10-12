@@ -8,6 +8,7 @@ import { buildUnitStatEntries } from "@shared/unitStats";
 import { PlayerUnitType } from "@db/player-units-db";
 import { formatNumber } from "@shared/format/number";
 import { UnitModuleId } from "@db/unit-modules-db";
+import { Button } from "@shared/Button";
 import "./UnitDesignerView.css";
 
 interface UnitDesignerViewProps {
@@ -111,9 +112,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             <h2 className="heading-2">Unit Designer</h2>
             <p className="body-md text-muted">Create units once modules are available.</p>
           </div>
-          <button type="button" className="button button--primary" onClick={handleCreateUnit}>
-            New Unit
-          </button>
+          <Button onClick={handleCreateUnit}>New Unit</Button>
         </header>
         <p className="body-md text-muted">No units available yet.</p>
       </div>
@@ -122,6 +121,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
 
   const selectedModuleIds = selectedUnit.modules;
   const selectedDetails = selectedUnit.moduleDetails;
+  const availableModules = useMemo(
+    () => state.availableModules.filter((module) => module.level > 0),
+    [state.availableModules]
+  );
   const statEntries = buildUnitStatEntries(selectedUnit.blueprint);
   const isAtModuleCap = selectedModuleIds.length >= state.maxModules;
 
@@ -134,9 +137,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             Configure custom ships by slotting modules you have fabricated.
           </p>
         </div>
-        <button type="button" className="button button--primary" onClick={handleCreateUnit}>
-          New Unit
-        </button>
+        <Button onClick={handleCreateUnit}>New Unit</Button>
       </header>
       <div className="unit-designer__content">
         <aside className="unit-designer__list">
@@ -161,7 +162,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   </button>
                   <button
                     type="button"
-                    className="button button--text unit-designer__delete"
+                    className="unit-designer__text-button unit-designer__delete"
                     onClick={() => handleDeleteUnit(unit.id)}
                     aria-label={`Delete ${unit.name}`}
                   >
@@ -203,7 +204,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                     </div>
                     <button
                       type="button"
-                      className="button button--text"
+                      className="unit-designer__text-button"
                       onClick={() => handleRemoveModule(selectedUnit.id, module.id, selectedModuleIds)}
                     >
                       Remove
@@ -215,44 +216,47 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
           </div>
           <div className="unit-designer__available">
             <h4 className="heading-4">Available Modules</h4>
-            <div className="unit-designer__available-grid">
-              {state.availableModules.map((module) => {
-                const isLocked = module.level <= 0;
-                const isSelected = selectedModuleIds.includes(module.id);
-                const disabled = isLocked || isSelected || isAtModuleCap;
-                return (
-                  <article key={module.id} className="unit-designer__available-card surface-panel stack-sm">
-                    <div className="unit-designer__available-header">
-                      <div>
-                        <h5 className="heading-5">{module.name}</h5>
-                        <p className="body-xs text-muted">
-                          {module.level > 0 ? `Level ${module.level}` : "Locked"}
-                        </p>
-                      </div>
-                      <span className="unit-designer__available-bonus">
-                        {formatUnitModuleBonusValue(module.bonusType, module.bonusValue)}
-                      </span>
-                    </div>
-                    <p className="body-sm text-muted">{module.description}</p>
-                    <div className="unit-designer__available-meta body-xs text-muted">
-                      Mana ×{formatNumber(module.manaCostMultiplier, { maximumFractionDigits: 2 })} · +
-                      {formatNumber(module.sanityCost, { maximumFractionDigits: 0 })} sanity
-                    </div>
-                    <button
-                      type="button"
-                      className="button button--secondary"
-                      disabled={disabled}
-                      onClick={() => handleAddModule(selectedUnit.id, module.id, selectedModuleIds)}
-                    >
-                      {isLocked ? "Locked" : isSelected ? "Equipped" : isAtModuleCap ? "Max slots" : "Add"}
-                    </button>
-                  </article>
-                );
-              })}
+            <div className="unit-designer__available-scroll">
+              {availableModules.length === 0 ? (
+                <p className="body-sm text-muted">Fabricate modules to equip them here.</p>
+              ) : (
+                <div className="unit-designer__available-grid">
+                  {availableModules.map((module) => {
+                    const isSelected = selectedModuleIds.includes(module.id);
+                    const disabled = isSelected || isAtModuleCap;
+                    return (
+                      <article key={module.id} className="unit-designer__available-card surface-card stack-sm">
+                        <div className="unit-designer__available-header">
+                          <div>
+                            <h5 className="heading-5">{module.name}</h5>
+                            <p className="body-xs text-muted">Level {module.level}</p>
+                          </div>
+                          <span className="unit-designer__available-bonus">
+                            {formatUnitModuleBonusValue(module.bonusType, module.bonusValue)}
+                          </span>
+                        </div>
+                        <p className="body-sm text-muted">{module.description}</p>
+                        <div className="unit-designer__available-meta body-xs text-muted">
+                          Mana ×{formatNumber(module.manaCostMultiplier, { maximumFractionDigits: 2 })} · +
+                          {formatNumber(module.sanityCost, { maximumFractionDigits: 0 })} sanity
+                        </div>
+                        <button
+                          type="button"
+                          className="unit-designer__equip-button"
+                          disabled={disabled}
+                          onClick={() => handleAddModule(selectedUnit.id, module.id, selectedModuleIds)}
+                        >
+                          {isSelected ? "Equipped" : isAtModuleCap ? "Max slots" : "Add"}
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </section>
-        <aside className="unit-designer__summary">
+        <aside className="unit-designer__summary surface-sidebar stack-md">
           <h4 className="heading-4">Summary</h4>
           <div className="unit-designer__cost">
             <h5 className="heading-5">Summoning Cost</h5>

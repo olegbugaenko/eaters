@@ -12,13 +12,31 @@
 }
 
 .camp-tab-panels__modules {
-  display: grid;
-  gap: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  flex: 1;
+  min-height: 0;
+}
+
+.camp-tab-panels__modules-tabs {
+  align-self: flex-start;
+}
+
+.camp-tab-panels__modules-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.camp-tab-panels__modules-body > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .camp-tab-panels__modules-locked {
-  padding: var(--space-xl);
+  padding: var(--spacing-xl);
   text-align: center;
   display: grid;
-  gap: var(--space-md);
+  gap: var(--spacing-md);
 }

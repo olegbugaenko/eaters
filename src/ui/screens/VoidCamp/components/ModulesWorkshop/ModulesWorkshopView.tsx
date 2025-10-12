@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
@@ -9,6 +9,8 @@ import { formatNumber } from "@shared/format/number";
 import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { UnitModuleId } from "@db/unit-modules-db";
+import { ResourceId, getResourceConfig } from "@db/resources-db";
+import { Button } from "@shared/Button";
 import "./ModulesWorkshopView.css";
 
 interface ModulesWorkshopViewProps {
@@ -60,6 +62,34 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     return map;
   }, [resources]);
 
+  const [selectedId, setSelectedId] = useState<UnitModuleId | null>(state.modules[0]?.id ?? null);
+  const [hoveredId, setHoveredId] = useState<UnitModuleId | null>(null);
+
+  useEffect(() => {
+    const fallback = state.modules[0]?.id ?? null;
+    if (!selectedId) {
+      setSelectedId(fallback);
+      return;
+    }
+    const exists = state.modules.some((module) => module.id === selectedId);
+    if (!exists) {
+      setSelectedId(fallback);
+    }
+  }, [selectedId, state.modules]);
+
+  const activeModule = useMemo(() => {
+    const activeId = hoveredId ?? selectedId ?? state.modules[0]?.id ?? null;
+    if (!activeId) {
+      return null;
+    }
+    return state.modules.find((module) => module.id === activeId) ?? null;
+  }, [hoveredId, selectedId, state.modules]);
+
+  const activeMissing = useMemo(
+    () => (activeModule ? computeMissingCost(activeModule.nextCost, totals) : {}),
+    [activeModule, totals]
+  );
+
   const handleUpgrade = useCallback(
     (id: UnitModuleId) => {
       workshop.tryUpgradeModule(id);
@@ -67,78 +97,164 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     [workshop]
   );
 
+  const formatCostSummary = useCallback((cost: Record<string, number> | null): string => {
+    if (!cost) {
+      return "Unavailable";
+    }
+    const entries = Object.entries(cost).filter(([, amount]) => amount > 0);
+    if (entries.length === 0) {
+      return "Free";
+    }
+    return entries
+      .map(([id, amount]) => {
+        const config = getResourceConfig(id as ResourceId);
+        const label = config ? config.name : id;
+        return `${formatNumber(amount, { maximumFractionDigits: 0 })} ${label}`;
+      })
+      .join(" · ");
+  }, []);
+
   if (!state.modules || state.modules.length === 0) {
     return (
-      <div className="modules-workshop__empty surface-panel">
-        <h2 className="heading-2">Modules</h2>
-        <p>No modules are available yet.</p>
+      <div className="modules-workshop surface-panel stack-lg">
+        <header className="modules-workshop__header">
+          <div>
+            <h2 className="heading-2">Module Shop</h2>
+            <p className="text-muted">Fabricate modules once they become available.</p>
+          </div>
+        </header>
+        <div className="modules-workshop__empty">No modules are available yet.</div>
       </div>
     );
   }
 
   return (
-    <div className="modules-workshop">
-      {state.modules.map((module) => {
-        const missing = computeMissingCost(module.nextCost, totals);
-        const canAfford = Object.keys(missing).length === 0;
-        const buttonLabel = module.level > 0 ? "Upgrade" : "Unlock";
-        const currentBonusLabel =
-          module.level > 0
-            ? formatUnitModuleBonusValue(module.bonusType, module.currentBonusValue)
-            : formatUnitModuleBonusValue(
-                module.bonusType,
-                computeNextBonusValue(module.baseBonusValue, module.bonusPerLevel, 0)
-              );
-        const nextBonusValue = computeNextBonusValue(
-          module.baseBonusValue,
-          module.bonusPerLevel,
-          module.level
-        );
-
-        return (
-          <article key={module.id} className="modules-workshop__card surface-panel stack-md">
-            <header className="modules-workshop__card-header">
-              <div>
-                <h2 className="heading-3">{module.name}</h2>
-                <p className="body-sm text-muted">Level {module.level}</p>
+    <div className="modules-workshop surface-panel stack-lg">
+      <header className="modules-workshop__header">
+        <div>
+          <h2 className="heading-2">Module Shop</h2>
+          <p className="text-muted">Craft ship augments and improve them over time.</p>
+        </div>
+      </header>
+      <div className="modules-workshop__content">
+        <ul className="modules-workshop__list">
+          {state.modules.map((module) => {
+            const isActive = module.id === (hoveredId ?? selectedId ?? module.id);
+            return (
+              <li key={module.id}>
+                <button
+                  type="button"
+                  className={
+                    "modules-workshop__card" + (isActive ? " modules-workshop__card--active" : "")
+                  }
+                  onClick={() => setSelectedId(module.id)}
+                  onMouseEnter={() => setHoveredId(module.id)}
+                  onMouseLeave={() =>
+                    setHoveredId((current) => (current === module.id ? null : current))
+                  }
+                  onFocus={() => setHoveredId(module.id)}
+                  onBlur={() => setHoveredId((current) => (current === module.id ? null : current))}
+                >
+                  <span className="modules-workshop__card-title">{module.name}</span>
+                  <span className="modules-workshop__card-level">Level {module.level}</span>
+                  <p className="modules-workshop__card-description">{module.description}</p>
+                  <span className="modules-workshop__card-cost">
+                    {formatCostSummary(module.nextCost)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <aside className="modules-workshop__details">
+          {activeModule ? (
+            <>
+              <div className="modules-workshop__details-header">
+                <h3 className="heading-3">{activeModule.name}</h3>
+                <span className="modules-workshop__details-level">
+                  Level {activeModule.level}
+                </span>
               </div>
-              <button
-                type="button"
-                className="button button--primary"
-                disabled={!module.nextCost || !canAfford}
-                onClick={() => handleUpgrade(module.id)}
-              >
-                {buttonLabel}
-              </button>
-            </header>
-            <p className="body-md modules-workshop__description">{module.description}</p>
-            <dl className="modules-workshop__stats">
-              <div className="modules-workshop__stat">
-                <dt>{module.bonusLabel}</dt>
-                <dd>
-                  <div className="modules-workshop__stat-value">{currentBonusLabel}</div>
-                  <div className="modules-workshop__stat-next">
-                    Next level: {formatUnitModuleBonusValue(module.bonusType, nextBonusValue)}
+              <p className="modules-workshop__details-description">{activeModule.description}</p>
+              <div className="modules-workshop__details-section">
+                <h4>Effect Preview</h4>
+                <div className="modules-workshop__effect-preview">
+                  <span className="modules-workshop__effect-current">
+                    {activeModule.level > 0
+                      ? formatUnitModuleBonusValue(
+                          activeModule.bonusType,
+                          activeModule.currentBonusValue
+                        )
+                      : "Locked"}
+                  </span>
+                  <span className="modules-workshop__effect-arrow" aria-hidden="true">
+                    →
+                  </span>
+                  <span className="modules-workshop__effect-next">
+                    {formatUnitModuleBonusValue(
+                      activeModule.bonusType,
+                      computeNextBonusValue(
+                        activeModule.baseBonusValue,
+                        activeModule.bonusPerLevel,
+                        activeModule.level
+                      )
+                    )}
+                  </span>
+                </div>
+                <span className="modules-workshop__effect-label">{activeModule.bonusLabel}</span>
+              </div>
+              <div className="modules-workshop__details-section">
+                <h4>Costs</h4>
+                <div className="modules-workshop__cost-row">
+                  <div>
+                    <span className="text-subtle">Mana Multiplier</span>
+                    <span className="modules-workshop__cost-value">
+                      ×
+                      {formatNumber(activeModule.manaCostMultiplier, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
                   </div>
-                </dd>
+                  <div>
+                    <span className="text-subtle">Sanity Increase</span>
+                    <span className="modules-workshop__cost-value">
+                      +
+                      {formatNumber(activeModule.sanityCost, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })}
+                    </span>
+                  </div>
+                </div>
+                {activeModule.nextCost ? (
+                  <ResourceCostDisplay
+                    className="modules-workshop__resource-cost"
+                    cost={activeModule.nextCost}
+                    missing={activeMissing}
+                  />
+                ) : (
+                  <p className="text-muted body-sm">
+                    Unlock the Modules skill to begin fabrication.
+                  </p>
+                )}
               </div>
-              <div className="modules-workshop__stat">
-                <dt>Mana cost multiplier</dt>
-                <dd>x{formatNumber(module.manaCostMultiplier, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+              <div className="modules-workshop__actions">
+                <Button
+                  onClick={() => handleUpgrade(activeModule.id)}
+                  disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
+                >
+                  {activeModule.level > 0 ? "Upgrade" : "Unlock"}
+                </Button>
               </div>
-              <div className="modules-workshop__stat">
-                <dt>Additional sanity cost</dt>
-                <dd>+{formatNumber(module.sanityCost, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</dd>
-              </div>
-            </dl>
-            {module.nextCost ? (
-              <ResourceCostDisplay cost={module.nextCost} missing={missing} />
-            ) : (
-              <p className="text-muted body-sm">Unlock the Modules skill to begin fabrication.</p>
-            )}
-          </article>
-        );
-      })}
+            </>
+          ) : (
+            <div className="modules-workshop__details-empty">
+              Hover over a module to inspect its details.
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 };

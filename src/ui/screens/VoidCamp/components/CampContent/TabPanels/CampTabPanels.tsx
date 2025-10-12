@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/MapModule";
 import { SkillTreeView } from "@screens/VoidCamp/components/SkillTree/SkillTreeView";
@@ -39,6 +40,14 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   resourceTotals,
   unitDesignerState,
 }) => {
+  const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer">("shop");
+
+  useEffect(() => {
+    if (!moduleWorkshopState.unlocked) {
+      setActiveModulesTab("shop");
+    }
+  }, [moduleWorkshopState.unlocked]);
+
   if (activeTab === "maps") {
     return (
       <MapSelectPanel
@@ -68,8 +77,30 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
 
     return (
       <div className="camp-tab-panels__modules">
-        <ModulesWorkshopView state={moduleWorkshopState} resources={resourceTotals} />
-        <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
+        <div className="inline-tabs camp-tab-panels__modules-tabs">
+          {["shop", "designer"].map((tabKey) => {
+            const isActive = activeModulesTab === tabKey;
+            return (
+              <button
+                key={tabKey}
+                type="button"
+                className={
+                  "inline-tabs__button" + (isActive ? " inline-tabs__button--active" : "")
+                }
+                onClick={() => setActiveModulesTab(tabKey as "shop" | "designer")}
+              >
+                {tabKey === "shop" ? "Module Shop" : "Unit Designer"}
+              </button>
+            );
+          })}
+        </div>
+        <div className="camp-tab-panels__modules-body">
+          {activeModulesTab === "shop" ? (
+            <ModulesWorkshopView state={moduleWorkshopState} resources={resourceTotals} />
+          ) : (
+            <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
+          )}
+        </div>
       </div>
     );
   }
