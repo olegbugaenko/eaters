@@ -1,5 +1,6 @@
 import React from "react";
 import { RESOURCE_IDS, ResourceId } from "@db/resources-db";
+import { classNames } from "@shared/classNames";
 import { ResourceIcon } from "./icons/ResourceIcon";
 import { formatNumber } from "./format/number";
 import "./ResourceCostDisplay.css";
@@ -100,7 +101,7 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
   missing,
   resources,
 }) => {
-  const classes = ["resource-cost", className].filter(Boolean).join(" ");
+  const classes = classNames("resource-cost", className);
   const descriptors = (() => {
     const provided = resources ? [...resources] : [...DEFAULT_RESOURCES];
     const known = new Set(provided.map((item) => item.id));
@@ -124,13 +125,11 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
         const missingAmount = missing
           ? Math.max(missing[resource.id] ?? 0, 0)
           : 0;
-        const itemClasses = [
+        const itemClasses = classNames(
           "resource-cost__item",
           `resource-cost__item--${resource.id}`,
-          missingAmount > 0 ? "resource-cost__item--missing" : null,
-        ]
-          .filter(Boolean)
-          .join(" ");
+          missingAmount > 0 && "resource-cost__item--missing"
+        );
 
         return (
           <span key={resource.id} className={itemClasses}>

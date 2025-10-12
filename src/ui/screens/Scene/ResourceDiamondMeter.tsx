@@ -1,4 +1,5 @@
 import { CSSProperties, useId } from "react";
+import { classNames } from "@shared/classNames";
 import { formatNumber } from "../../shared/format/number";
 import "./ResourceDiamondMeter.css";
 
@@ -56,7 +57,7 @@ export const ResourceDiamondMeter: React.FC<ResourceDiamondMeterProps> = ({
   const highlightGradientId = `${idBase}-highlight-gradient`;
 
   const fillHeight = (percent / 100) * DIAMOND_SIZE;
-  const classes = ["resource-diamond-meter", className].filter(Boolean).join(" ");
+  const classes = classNames("resource-diamond-meter", className);
 
   const meterStyle = {
     "--resource-gem-glow": glowColor,

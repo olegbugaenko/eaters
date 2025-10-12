@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { classNames } from "@shared/classNames";
 import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
@@ -173,12 +174,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                 <li key={unit.id}>
                   <button
                     type="button"
-                    className={[
+                    className={classNames(
                       "unit-designer__list-item",
-                      isActive ? "unit-designer__list-item--active" : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
+                      isActive && "unit-designer__list-item--active"
+                    )}
                     onClick={() => handleSelectUnit(unit.id)}
                   >
                     <span className="unit-designer__list-name">{unit.name}</span>

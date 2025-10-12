@@ -1,4 +1,5 @@
 import React from "react";
+import { classNames } from "@shared/classNames";
 import "./ProgressBar.css";
 
 export type ProgressBarOrientation = "horizontal" | "vertical";
@@ -23,13 +24,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const safeMax = sanitizeMax(max);
   const safeCurrent = clampValue(current, 0, safeMax);
   const percent = safeMax > 0 ? clampValue((safeCurrent / safeMax) * 100, 0, 100) : 0;
-  const classes = [
+  const classes = classNames(
     "progress-bar",
     orientation === "vertical" ? "progress-bar--vertical" : "progress-bar--horizontal",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+    className
+  );
 
   const fillStyle =
     orientation === "vertical"

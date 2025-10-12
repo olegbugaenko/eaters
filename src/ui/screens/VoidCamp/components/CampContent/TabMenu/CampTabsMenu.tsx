@@ -1,3 +1,4 @@
+import { classNames } from "@shared/classNames";
 import { CampTabKey } from "../CampContent";
 import "./CampTabsMenu.css";
 
@@ -26,12 +27,10 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
       <div className="inline-tabs">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
-          const classes = [
+          const classes = classNames(
             "inline-tabs__button",
-            isActive ? "inline-tabs__button--active" : null,
-          ]
-            .filter(Boolean)
-            .join(" ");
+            isActive && "inline-tabs__button--active"
+          );
 
           return (
             <button
