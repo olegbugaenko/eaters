@@ -99,6 +99,7 @@ export class UnitModuleWorkshopModule implements GameModule {
   private readonly unlocks: UnlockService;
 
   private unlocked = false;
+  private visibleModuleIds: UnitModuleId[] = [];
   private levels: Map<UnitModuleId, number> = createDefaultLevels();
   private listeners = new Set<() => void>();
 
@@ -155,6 +156,9 @@ export class UnitModuleWorkshopModule implements GameModule {
     if (!UNIT_MODULE_IDS.includes(id)) {
       return false;
     }
+    if (!this.visibleModuleIds.includes(id)) {
+      return false;
+    }
     const currentLevel = this.levels.get(id) ?? 0;
     const cost = this.getUpgradeCost(id, currentLevel);
     if (!this.resources.spendResources(cost)) {
@@ -180,11 +184,31 @@ export class UnitModuleWorkshopModule implements GameModule {
 
   private refreshUnlockState(): boolean {
     const unlocked = this.getSkillLevel(MODULE_UNLOCK_SKILL_ID) > 0;
-    if (this.unlocked === unlocked) {
-      return false;
+    const visibleIds = unlocked
+      ? UNIT_MODULE_IDS.filter((id) =>
+          this.unlocks.areConditionsMet(getUnitModuleConfig(id).unlockedBy)
+        )
+      : [];
+    const visibleSet = new Set<UnitModuleId>(visibleIds);
+    if (unlocked) {
+      this.levels.forEach((level, id) => {
+        if (level > 0) {
+          visibleSet.add(id);
+        }
+      });
     }
-    this.unlocked = unlocked;
-    return true;
+    const orderedVisible = unlocked
+      ? UNIT_MODULE_IDS.filter((id) => visibleSet.has(id))
+      : [];
+
+    const unlockedChanged = this.unlocked !== unlocked;
+    const visibleChanged = !areModuleListsEqual(this.visibleModuleIds, orderedVisible);
+    if (unlockedChanged || visibleChanged) {
+      this.unlocked = unlocked;
+      this.visibleModuleIds = orderedVisible;
+      return true;
+    }
+    return false;
   }
 
   private getUpgradeCost(id: UnitModuleId, level: number): ResourceStockpile {
@@ -196,7 +220,8 @@ export class UnitModuleWorkshopModule implements GameModule {
   }
 
   private pushState(): void {
-    const modules = UNIT_MODULE_IDS.map((id) => this.createModuleState(id));
+    const moduleIds = this.unlocked ? this.visibleModuleIds : [];
+    const modules = moduleIds.map((id) => this.createModuleState(id));
     this.bridge.setValue<UnitModuleWorkshopBridgeState>(
       UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
       {
@@ -220,9 +245,8 @@ export class UnitModuleWorkshopModule implements GameModule {
   private createModuleState(id: UnitModuleId): UnitModuleWorkshopItemState {
     const config = getUnitModuleConfig(id);
     const level = this.levels.get(id) ?? 0;
-    const available =
-      this.unlocked && this.unlocks.areConditionsMet(config.unlockedBy);
-    const costStockpile = available ? this.getUpgradeCost(id, level) : null;
+    const costStockpile = this.getUpgradeCost(id, level);
+    const costRecord = toRecord(costStockpile);
     return {
       id,
       name: config.name,
@@ -235,7 +259,7 @@ export class UnitModuleWorkshopModule implements GameModule {
       manaCostMultiplier: config.manaCostMultiplier,
       sanityCost: config.sanityCost,
       level,
-      nextCost: costStockpile ? toRecord(costStockpile) : null,
+      nextCost: Object.keys(costRecord).length > 0 ? costRecord : null,
     };
   }
 
@@ -266,3 +290,13 @@ export class UnitModuleWorkshopModule implements GameModule {
     return levels;
   }
 }
+
+const areModuleListsEqual = (
+  a: readonly UnitModuleId[],
+  b: readonly UnitModuleId[]
+): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  return a.every((value, index) => value === b[index]);
+};

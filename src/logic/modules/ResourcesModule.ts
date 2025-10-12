@@ -62,6 +62,7 @@ export class ResourcesModule implements GameModule {
   private totalBricksDestroyed = 0;
   private runBricksDestroyed = 0;
   private runDurationMs = 0;
+  private visibleResourceIds: ResourceId[] = [];
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
@@ -69,6 +70,7 @@ export class ResourcesModule implements GameModule {
   }
 
   public initialize(): void {
+    this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
   }
@@ -81,6 +83,7 @@ export class ResourcesModule implements GameModule {
     this.totalBricksDestroyed = 0;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
+    this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
   }
@@ -93,6 +96,7 @@ export class ResourcesModule implements GameModule {
       this.runBricksDestroyed = 0;
     }
     this.runDurationMs = 0;
+    this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
   }
@@ -106,11 +110,21 @@ export class ResourcesModule implements GameModule {
 
   public tick(_deltaMs: number): void {
     const deltaMs = Math.max(_deltaMs, 0);
-    if (!this.runActive || deltaMs <= 0) {
-      return;
+    const visibilityChanged = this.refreshVisibleResourceIds();
+    let summaryChanged = visibilityChanged;
+
+    if (this.runActive && deltaMs > 0) {
+      this.runDurationMs += deltaMs;
+      summaryChanged = true;
     }
-    this.runDurationMs += deltaMs;
-    this.pushRunSummary();
+
+    if (visibilityChanged) {
+      this.pushTotals();
+    }
+
+    if (summaryChanged) {
+      this.pushRunSummary();
+    }
   }
 
   public startRun(): void {
@@ -119,6 +133,8 @@ export class ResourcesModule implements GameModule {
     this.summaryCompleted = false;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
+    this.refreshVisibleResourceIds();
+    this.pushTotals();
     this.pushRunSummary();
   }
 
@@ -128,6 +144,7 @@ export class ResourcesModule implements GameModule {
     }
     this.runActive = false;
     this.summaryCompleted = true;
+    this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
   }
@@ -141,6 +158,8 @@ export class ResourcesModule implements GameModule {
     this.runGains = createEmptyResourceStockpile();
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
+    this.refreshVisibleResourceIds();
+    this.pushTotals();
     this.pushRunSummary();
   }
 
@@ -157,6 +176,7 @@ export class ResourcesModule implements GameModule {
     });
 
     if (changed) {
+      this.refreshVisibleResourceIds();
       this.pushTotals();
       this.pushRunSummary();
     }
@@ -168,6 +188,10 @@ export class ResourcesModule implements GameModule {
       this.runBricksDestroyed += 1;
     }
 
+    const visibilityChanged = this.refreshVisibleResourceIds();
+    if (visibilityChanged) {
+      this.pushTotals();
+    }
     this.pushRunSummary();
   }
 
@@ -186,6 +210,7 @@ export class ResourcesModule implements GameModule {
       this.totals[id] -= normalized[id];
     });
 
+    this.refreshVisibleResourceIds();
     this.pushTotals();
     if (this.summaryCompleted) {
       this.pushRunSummary();
@@ -220,7 +245,7 @@ export class ResourcesModule implements GameModule {
   }
 
   private createTotalsPayload(): ResourceAmountPayload[] {
-    return this.getVisibleResourceIds().map((id) => {
+    return this.visibleResourceIds.map((id) => {
       const config = getResourceConfig(id);
       return {
         id,
@@ -232,7 +257,7 @@ export class ResourcesModule implements GameModule {
 
   private createRunSummaryItems(): ResourceRunSummaryItem[] {
     const durationSeconds = this.runDurationMs / 1000;
-    return this.getVisibleResourceIds().map((id) => {
+    return this.visibleResourceIds.map((id) => {
       const config = getResourceConfig(id);
       const gained = this.runGains[id] ?? 0;
       const ratePerSecond = durationSeconds > 0 ? gained / durationSeconds : 0;
@@ -246,8 +271,13 @@ export class ResourcesModule implements GameModule {
     });
   }
 
-  private getVisibleResourceIds(): ResourceId[] {
-    return RESOURCE_IDS.filter((id) => this.isResourceUnlocked(id));
+  private refreshVisibleResourceIds(): boolean {
+    const visible = RESOURCE_IDS.filter((id) => this.isResourceUnlocked(id));
+    if (areResourceListsEqual(this.visibleResourceIds, visible)) {
+      return false;
+    }
+    this.visibleResourceIds = visible;
+    return true;
   }
 
   private isResourceUnlocked(id: ResourceId): boolean {
@@ -279,4 +309,14 @@ const sanitizeBrickCount = (value: unknown): number => {
     return 0;
   }
   return Math.floor(value);
+};
+
+const areResourceListsEqual = (
+  a: readonly ResourceId[],
+  b: readonly ResourceId[]
+): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  return a.every((value, index) => value === b[index]);
 };
