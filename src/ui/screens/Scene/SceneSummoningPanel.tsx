@@ -4,6 +4,7 @@ import {
   NecromancerSpawnOption,
 } from "../../../logic/modules/NecromancerModule";
 import { createEmptyResourceAmount } from "../../../types/resources";
+import { classNames } from "@shared/classNames";
 import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
 import { ResourceCostDisplay } from "../../shared/ResourceCostDisplay";
 import "./SceneSummoningPanel.css";
@@ -69,21 +70,17 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
       [onHoverInfoChange]
     );
 
-    const sanityResourceClassName = [
+    const sanityResourceClassName = classNames(
       "scene-summoning-panel__resource",
       "scene-summoning-panel__resource--sanity",
-      sanityConsuming ? "scene-summoning-panel__resource--consuming" : null,
-    ]
-      .filter(Boolean)
-      .join(" ");
+      sanityConsuming && "scene-summoning-panel__resource--consuming"
+    );
 
-    const manaResourceClassName = [
+    const manaResourceClassName = classNames(
       "scene-summoning-panel__resource",
       "scene-summoning-panel__resource--mana",
-      manaConsuming ? "scene-summoning-panel__resource--consuming" : null,
-    ]
-      .filter(Boolean)
-      .join(" ");
+      manaConsuming && "scene-summoning-panel__resource--consuming"
+    );
 
     return (
       <div ref={ref} className="scene-summoning-panel" onPointerLeave={hideTooltip}>
@@ -111,12 +108,10 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
             {spawnOptions.map((option) => {
               const missing = computeMissing(option.cost, available);
               const canAfford = missing.mana <= 0 && missing.sanity <= 0;
-              const actionClassName = [
+              const actionClassName = classNames(
                 "scene-summoning-panel__unit-action",
-                !canAfford ? "scene-summoning-panel__unit-action--disabled" : null,
-              ]
-                .filter(Boolean)
-                .join(" ");
+                !canAfford && "scene-summoning-panel__unit-action--disabled"
+              );
               const automationEnabled = automationLookup.get(option.designId) ?? false;
               return (
                 <div key={option.designId} className="scene-summoning-panel__unit">

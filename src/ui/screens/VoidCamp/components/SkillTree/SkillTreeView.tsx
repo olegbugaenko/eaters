@@ -31,6 +31,7 @@ import {
 import { SkillId, getSkillConfig } from "@db/skills-db";
 import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
 import { BonusEffectsPreviewList } from "@shared/BonusEffectsPreviewList";
+import { classNames } from "@shared/classNames";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;
@@ -546,19 +547,15 @@ export const SkillTreeView: React.FC = () => {
             const affordable = canAffordCost(node.nextCost, totalsMap);
             const locked = !node.unlocked;
             const inactive = locked || node.maxed || !affordable;
-            const nodeClasses = [
+            const nodeClasses = classNames(
               "skill-tree-node",
-              node.maxed ? "skill-tree-node--maxed" : null,
+              node.maxed && "skill-tree-node--maxed",
               node.unlocked ? "skill-tree-node--unlocked" : "skill-tree-node--locked",
-              !node.maxed && node.unlocked ? "skill-tree-node--available" : null,
-              !node.maxed && node.unlocked && affordable
-                ? "skill-tree-node--affordable"
-                : null,
-              inactive ? "skill-tree-node--inactive" : null,
-              activeId === node.id ? "skill-tree-node--active" : null,
-            ]
-              .filter(Boolean)
-              .join(" ");
+              !node.maxed && node.unlocked && "skill-tree-node--available",
+              !node.maxed && node.unlocked && affordable && "skill-tree-node--affordable",
+              inactive && "skill-tree-node--inactive",
+              activeId === node.id && "skill-tree-node--active"
+            );
 
             return (
               <button

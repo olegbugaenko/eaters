@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { classNames } from "@shared/classNames";
 import { formatNumber } from "@shared/format/number";
 import "./ModuleDetailsCard.css";
 
@@ -30,9 +31,7 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
   className,
 }) => {
   const effectTitle = nextEffect ? "Effect Preview" : "Effect";
-  const containerClassName = ["modules-workshop__details", className]
-    .filter(Boolean)
-    .join(" ");
+  const containerClassName = classNames("modules-workshop__details", className);
 
   return (
     <div className={containerClassName}>
