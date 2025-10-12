@@ -114,6 +114,7 @@ export class Application {
     const unitAutomationModule = new UnitAutomationModule({
       bridge: this.dataBridge,
       necromancer: this.necromancerModule,
+      unitDesigns: unitDesignModule,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
     });
     this.unitAutomationModule = unitAutomationModule;

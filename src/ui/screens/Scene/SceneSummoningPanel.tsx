@@ -1,5 +1,4 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PlayerUnitType } from "../../../db/player-units-db";
 import {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
@@ -24,7 +23,7 @@ interface SceneSummoningPanelProps {
   onSummon: (designId: UnitDesignId) => void;
   onHoverInfoChange: (content: SceneTooltipContent | null) => void;
   automation: UnitAutomationBridgeState;
-  onToggleAutomation: (type: PlayerUnitType, enabled: boolean) => void;
+  onToggleAutomation: (designId: UnitDesignId, enabled: boolean) => void;
 }
 
 const formatResourceValue = (
@@ -49,9 +48,9 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
     };
 
     const automationLookup = useMemo(() => {
-      const map = new Map<PlayerUnitType, boolean>();
+      const map = new Map<UnitDesignId, boolean>();
       automation.units.forEach((entry) => {
-        map.set(entry.type, entry.enabled);
+        map.set(entry.designId, entry.enabled);
       });
       return map;
     }, [automation]);
@@ -118,7 +117,7 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
               ]
                 .filter(Boolean)
                 .join(" ");
-              const automationEnabled = automationLookup.get(option.type) ?? false;
+              const automationEnabled = automationLookup.get(option.designId) ?? false;
               return (
                 <div key={option.designId} className="scene-summoning-panel__unit">
                   <div
@@ -160,7 +159,7 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                         type="checkbox"
                         checked={automationEnabled}
                         onChange={(event) =>
-                          onToggleAutomation(option.type, event.target.checked)
+                          onToggleAutomation(option.designId, event.target.checked)
                         }
                       />
                       <span>Automate</span>

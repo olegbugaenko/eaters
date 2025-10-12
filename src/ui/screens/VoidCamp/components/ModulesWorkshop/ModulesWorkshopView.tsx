@@ -11,6 +11,7 @@ import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { ResourceId, getResourceConfig } from "@db/resources-db";
 import { Button } from "@shared/Button";
+import { ModuleDetailsCard } from "@shared/ModuleDetailsCard";
 import "./ModulesWorkshopView.css";
 
 interface ModulesWorkshopViewProps {
@@ -166,68 +167,34 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
             );
           })}
         </ul>
-        <aside className="modules-workshop__details">
+        <aside>
           {activeModule ? (
-            <>
-              <div className="modules-workshop__details-header">
-                <h3 className="heading-3">{activeModule.name}</h3>
-                <span className="modules-workshop__details-level">
-                  Level {activeModule.level}
-                </span>
-              </div>
-              <p className="modules-workshop__details-description">{activeModule.description}</p>
-              <div className="modules-workshop__details-section">
-                <h4>Effect Preview</h4>
-                <div className="modules-workshop__effect-preview">
-                  <span className="modules-workshop__effect-current">
-                    {activeModule.level > 0
-                      ? formatUnitModuleBonusValue(
-                          activeModule.bonusType,
-                          activeModule.currentBonusValue
-                        )
-                      : "Locked"}
-                  </span>
-                  <span className="modules-workshop__effect-arrow" aria-hidden="true">
-                    →
-                  </span>
-                  <span className="modules-workshop__effect-next">
-                    {formatUnitModuleBonusValue(
+            <ModuleDetailsCard
+              className="modules-workshop__details--scrollable"
+              name={activeModule.name}
+              level={activeModule.level}
+              description={activeModule.description}
+              effectLabel={activeModule.bonusLabel}
+              currentEffect={
+                activeModule.level > 0
+                  ? formatUnitModuleBonusValue(
                       activeModule.bonusType,
-                      computeNextBonusValue(
-                        activeModule.baseBonusValue,
-                        activeModule.bonusPerLevel,
-                        activeModule.level
-                      )
-                    )}
-                  </span>
-                </div>
-                <span className="modules-workshop__effect-label">{activeModule.bonusLabel}</span>
-              </div>
-              <div className="modules-workshop__details-section">
-                <h4>Costs</h4>
-                <div className="modules-workshop__cost-row">
-                  <div>
-                    <span className="text-subtle">Mana Multiplier</span>
-                    <span className="modules-workshop__cost-value">
-                      ×
-                      {formatNumber(activeModule.manaCostMultiplier, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-subtle">Sanity Increase</span>
-                    <span className="modules-workshop__cost-value">
-                      +
-                      {formatNumber(activeModule.sanityCost, {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                </div>
-                {activeModule.nextCost ? (
+                      activeModule.currentBonusValue
+                    )
+                  : "Locked"
+              }
+              nextEffect={formatUnitModuleBonusValue(
+                activeModule.bonusType,
+                computeNextBonusValue(
+                  activeModule.baseBonusValue,
+                  activeModule.bonusPerLevel,
+                  activeModule.level
+                )
+              )}
+              manaMultiplier={activeModule.manaCostMultiplier}
+              sanityCost={activeModule.sanityCost}
+              costSummary={
+                activeModule.nextCost ? (
                   <ResourceCostDisplay
                     className="modules-workshop__resource-cost"
                     cost={activeModule.nextCost}
@@ -237,20 +204,22 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                   <p className="text-muted body-sm">
                     Unlock the Modules skill to begin fabrication.
                   </p>
-                )}
-              </div>
-              <div className="modules-workshop__actions">
+                )
+              }
+              actions={
                 <Button
                   onClick={() => handleUpgrade(activeModule.id)}
                   disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
                 >
                   {activeModule.level > 0 ? "Upgrade" : "Unlock"}
                 </Button>
-              </div>
-            </>
+              }
+            />
           ) : (
-            <div className="modules-workshop__details-empty">
-              Hover over a module to inspect its details.
+            <div className="modules-workshop__details modules-workshop__details--scrollable">
+              <div className="modules-workshop__details-empty">
+                Hover over a module to inspect its details.
+              </div>
             </div>
           )}
         </aside>

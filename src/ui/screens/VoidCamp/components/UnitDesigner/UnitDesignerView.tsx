@@ -9,6 +9,7 @@ import { PlayerUnitType } from "@db/player-units-db";
 import { formatNumber } from "@shared/format/number";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@shared/Button";
+import { ModuleDetailsCard } from "@shared/ModuleDetailsCard";
 import "./UnitDesignerView.css";
 
 interface UnitDesignerViewProps {
@@ -42,6 +43,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
   const designer = useMemo(() => app.getUnitDesigner(), [app]);
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
+  const [preview, setPreview] = useState<{
+    id: UnitModuleId;
+    origin: "available" | "equipped";
+  } | null>(null);
 
   useEffect(() => {
     if (state.units.length === 0) {
@@ -60,6 +65,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
     () => state.units.find((unit) => unit.id === selectedId) ?? state.units[0] ?? null,
     [state.units, selectedId]
   );
+
+  useEffect(() => {
+    setPreview(null);
+  }, [selectedUnit?.id]);
 
   const missingCost = useMemo(
     () => (selectedUnit ? computeMissing(selectedUnit.cost, totals) : { mana: 0, sanity: 0 }),
@@ -125,6 +134,19 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
     () => state.availableModules.filter((module) => module.level > 0),
     [state.availableModules]
   );
+  const previewModule = useMemo(() => {
+    if (!preview) {
+      return null;
+    }
+    const collection = preview.origin === "available" ? availableModules : selectedDetails;
+    return collection.find((module) => module.id === preview.id) ?? null;
+  }, [preview, availableModules, selectedDetails]);
+
+  useEffect(() => {
+    if (preview && !previewModule) {
+      setPreview(null);
+    }
+  }, [preview, previewModule]);
   const statEntries = buildUnitStatEntries(selectedUnit.blueprint);
   const isAtModuleCap = selectedModuleIds.length >= state.maxModules;
 
@@ -137,11 +159,13 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             Configure custom ships by slotting modules you have fabricated.
           </p>
         </div>
-        <Button onClick={handleCreateUnit}>New Unit</Button>
       </header>
       <div className="unit-designer__content">
         <aside className="unit-designer__list">
-          <h3 className="heading-4">Units</h3>
+          <div className="unit-designer__list-header">
+            <h3 className="heading-4">Units</h3>
+            <Button onClick={handleCreateUnit}>New Unit</Button>
+          </div>
           <ul className="unit-designer__list-items">
             {state.units.map((unit) => {
               const isActive = unit.id === selectedUnit.id;
@@ -193,7 +217,19 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             ) : (
               <ul className="unit-designer__selected-list">
                 {selectedDetails.map((module) => (
-                  <li key={module.id} className="unit-designer__selected-item">
+                  <li
+                    key={module.id}
+                    className="unit-designer__selected-item"
+                    onMouseEnter={() => setPreview({ id: module.id, origin: "equipped" })}
+                    onMouseLeave={() => setPreview(null)}
+                    onFocus={() => setPreview({ id: module.id, origin: "equipped" })}
+                    onBlur={(event) => {
+                      const next = event.relatedTarget as Node | null;
+                      if (!next || !event.currentTarget.contains(next)) {
+                        setPreview(null);
+                      }
+                    }}
+                  >
                     <div>
                       <div className="unit-designer__selected-name">{module.name}</div>
                       <div className="unit-designer__selected-meta">
@@ -220,61 +256,88 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
               {availableModules.length === 0 ? (
                 <p className="body-sm text-muted">Fabricate modules to equip them here.</p>
               ) : (
-                <div className="unit-designer__available-grid">
+                <ul className="unit-designer__available-list">
                   {availableModules.map((module) => {
                     const isSelected = selectedModuleIds.includes(module.id);
                     const disabled = isSelected || isAtModuleCap;
+                    const label = isSelected ? "Equipped" : isAtModuleCap ? "Max slots" : "Add";
                     return (
-                      <article key={module.id} className="unit-designer__available-card surface-card stack-sm">
-                        <div className="unit-designer__available-header">
-                          <div>
-                            <h5 className="heading-5">{module.name}</h5>
-                            <p className="body-xs text-muted">Level {module.level}</p>
-                          </div>
-                          <span className="unit-designer__available-bonus">
-                            {formatUnitModuleBonusValue(module.bonusType, module.bonusValue)}
-                          </span>
-                        </div>
-                        <p className="body-sm text-muted">{module.description}</p>
-                        <div className="unit-designer__available-meta body-xs text-muted">
-                          Mana ×{formatNumber(module.manaCostMultiplier, { maximumFractionDigits: 2 })} · +
-                          {formatNumber(module.sanityCost, { maximumFractionDigits: 0 })} sanity
-                        </div>
+                      <li
+                        key={module.id}
+                        className="unit-designer__available-item"
+                        onMouseEnter={() => setPreview({ id: module.id, origin: "available" })}
+                        onMouseLeave={() => setPreview(null)}
+                        onFocus={() => setPreview({ id: module.id, origin: "available" })}
+                        onBlur={(event) => {
+                          const next = event.relatedTarget as Node | null;
+                          if (!next || !event.currentTarget.contains(next)) {
+                            setPreview(null);
+                          }
+                        }}
+                      >
+                        <button type="button" className="unit-designer__available-info">
+                          <span className="unit-designer__available-name">{module.name}</span>
+                          <span className="unit-designer__available-level">Lv {module.level}</span>
+                        </button>
                         <button
                           type="button"
-                          className="unit-designer__equip-button"
+                          className="unit-designer__available-action"
                           disabled={disabled}
                           onClick={() => handleAddModule(selectedUnit.id, module.id, selectedModuleIds)}
                         >
-                          {isSelected ? "Equipped" : isAtModuleCap ? "Max slots" : "Add"}
+                          {label}
                         </button>
-                      </article>
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
               )}
             </div>
           </div>
         </section>
-        <aside className="unit-designer__summary surface-sidebar stack-md">
-          <h4 className="heading-4">Summary</h4>
-          <div className="unit-designer__cost">
-            <h5 className="heading-5">Summoning Cost</h5>
-            <ResourceCostDisplay cost={selectedUnit.cost} missing={missingCost} />
-          </div>
-          <div className="unit-designer__stats">
-            <h5 className="heading-5">Stats</h5>
-            <dl>
-              {statEntries.map((entry) => (
-                <div key={entry.label} className="unit-designer__stat">
-                  <dt>{entry.label}</dt>
-                  <dd>
-                    <span>{entry.value}</span>
-                    {entry.hint ? <span className="unit-designer__stat-hint">{entry.hint}</span> : null}
-                  </dd>
+        <aside className="unit-designer__summary surface-sidebar">
+          <div className="unit-designer__summary-scroll">
+            <div className="unit-designer__module-preview">
+              {previewModule ? (
+                <ModuleDetailsCard
+                  className="unit-designer__module-card"
+                  name={previewModule.name}
+                  level={previewModule.level}
+                  description={previewModule.description}
+                  effectLabel={previewModule.bonusLabel}
+                  currentEffect={formatUnitModuleBonusValue(
+                    previewModule.bonusType,
+                    previewModule.bonusValue
+                  )}
+                  manaMultiplier={previewModule.manaCostMultiplier}
+                  sanityCost={previewModule.sanityCost}
+                />
+              ) : (
+                <div className="modules-workshop__details unit-designer__module-card unit-designer__module-card--empty">
+                  <div className="modules-workshop__details-empty">
+                    Hover over a module to inspect its details.
+                  </div>
                 </div>
-              ))}
-            </dl>
+              )}
+            </div>
+            <section className="unit-designer__cost">
+              <h5 className="heading-5">Summoning Cost</h5>
+              <ResourceCostDisplay cost={selectedUnit.cost} missing={missingCost} />
+            </section>
+            <section className="unit-designer__stats">
+              <h5 className="heading-5">Stats</h5>
+              <dl>
+                {statEntries.map((entry) => (
+                  <div key={entry.label} className="unit-designer__stat">
+                    <dt>{entry.label}</dt>
+                    <dd>
+                      <span>{entry.value}</span>
+                      {entry.hint ? <span className="unit-designer__stat-hint">{entry.hint}</span> : null}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           </div>
         </aside>
       </div>

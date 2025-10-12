@@ -21,7 +21,6 @@ import {
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
   UnitAutomationBridgeState,
 } from "../../../logic/modules/UnitAutomationModule";
-import { PlayerUnitType } from "../../../db/player-units-db";
 import { UnitDesignId } from "../../../logic/modules/UnitDesignModule";
 import {
   SceneCameraState,
@@ -395,8 +394,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   );
 
   const handleToggleAutomation = useCallback(
-    (type: PlayerUnitType, enabled: boolean) => {
-      unitAutomation.setAutomationEnabled(type, enabled);
+    (designId: UnitDesignId, enabled: boolean) => {
+      unitAutomation.setAutomationEnabled(designId, enabled);
     },
     [unitAutomation]
   );
