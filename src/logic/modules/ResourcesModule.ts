@@ -1,5 +1,6 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
+import { UnlockService } from "../services/UnlockService";
 import {
   RESOURCE_IDS,
   ResourceAmount,
@@ -41,6 +42,7 @@ export const DEFAULT_RESOURCE_RUN_SUMMARY: ResourceRunSummaryPayload = Object.fr
 
 interface ResourcesModuleOptions {
   bridge: DataBridge;
+  unlocks: UnlockService;
 }
 
 interface ResourcesSaveData {
@@ -52,6 +54,7 @@ export class ResourcesModule implements GameModule {
   public readonly id = "resources";
 
   private readonly bridge: DataBridge;
+  private readonly unlocks: UnlockService;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
@@ -62,6 +65,7 @@ export class ResourcesModule implements GameModule {
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
+    this.unlocks = options.unlocks;
   }
 
   public initialize(): void {
@@ -124,6 +128,7 @@ export class ResourcesModule implements GameModule {
     }
     this.runActive = false;
     this.summaryCompleted = true;
+    this.pushTotals();
     this.pushRunSummary();
   }
 
@@ -215,7 +220,7 @@ export class ResourcesModule implements GameModule {
   }
 
   private createTotalsPayload(): ResourceAmountPayload[] {
-    return RESOURCE_IDS.map((id) => {
+    return this.getVisibleResourceIds().map((id) => {
       const config = getResourceConfig(id);
       return {
         id,
@@ -227,7 +232,7 @@ export class ResourcesModule implements GameModule {
 
   private createRunSummaryItems(): ResourceRunSummaryItem[] {
     const durationSeconds = this.runDurationMs / 1000;
-    return RESOURCE_IDS.map((id) => {
+    return this.getVisibleResourceIds().map((id) => {
       const config = getResourceConfig(id);
       const gained = this.runGains[id] ?? 0;
       const ratePerSecond = durationSeconds > 0 ? gained / durationSeconds : 0;
@@ -239,6 +244,15 @@ export class ResourcesModule implements GameModule {
         ratePerSecond,
       };
     });
+  }
+
+  private getVisibleResourceIds(): ResourceId[] {
+    return RESOURCE_IDS.filter((id) => this.isResourceUnlocked(id));
+  }
+
+  private isResourceUnlocked(id: ResourceId): boolean {
+    const config = getResourceConfig(id);
+    return this.unlocks.areConditionsMet(config.unlockedBy);
   }
 
   private parseSaveData(

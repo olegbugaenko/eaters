@@ -5,6 +5,7 @@ import {
   SceneObjectManager,
 } from "../src/logic/services/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/BricksModule";
+import type { BrickData } from "../src/logic/modules/BricksModule";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   PlayerUnitsModule,
@@ -120,7 +121,7 @@ describe("PlayerUnitsModule", () => {
         rotation: 0,
         level: 0,
         type: "blueRadial",
-      },
+      } as unknown as BrickData,
     ]);
 
     units.setUnits([

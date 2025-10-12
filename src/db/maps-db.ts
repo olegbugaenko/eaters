@@ -10,7 +10,7 @@ import {
   polygonWithBricks,
 } from "../logic/services/BrickLayoutService";
 
-export type MapId = "foundations" | "initial";
+export type MapId = "foundations" | "initial" | "thicket" | "oldForge";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
@@ -192,6 +192,135 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       },
     ],
   },
+  thicket: (() => {
+    const size: SceneSize = { width: 1000, height: 1000 };
+    const sandHeight = 60;
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+    const sandVertices = createRectangle(0, size.height - sandHeight, size.width, sandHeight);
+    const bushClusters: readonly { center: SceneVector2; radius: number }[] = [
+      { center: { x: 220, y: 760 }, radius: 110 },
+      { center: { x: 400, y: 640 }, radius: 100 },
+      { center: { x: 620, y: 700 }, radius: 105 },
+      { center: { x: 780, y: 560 }, radius: 115 },
+      { center: { x: 520, y: 820 }, radius: 90 },
+    ];
+
+    return {
+      name: "Overgrown Thicket",
+      size,
+      spawnPoints: [{ x: size.width / 2, y: size.height - sandHeight - 80 }],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const sandLevel = baseLevel + 1;
+        const organicLevel = baseLevel;
+
+        const sandBank = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: sandVertices,
+          },
+          { level: sandLevel }
+        );
+
+        const bushes = bushClusters.map((cluster) =>
+          circleWithBricks(
+            "smallOrganic",
+            {
+              center: cluster.center,
+              innerRadius: 0,
+              outerRadius: cluster.radius,
+            },
+            { level: organicLevel }
+          )
+        );
+
+        return [sandBank, ...bushes];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { x: size.width / 2, y: size.height - sandHeight - 80 },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "initial",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
+  oldForge: (() => {
+    const size: SceneSize = { width: 1000, height: 1000 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const outerSize = 600;
+    const cavitySize = 300;
+    const createSquareVertices = (squareSize: number): SceneVector2[] => {
+      const half = squareSize / 2;
+      return [
+        { x: center.x - half, y: center.y - half },
+        { x: center.x + half, y: center.y - half },
+        { x: center.x + half, y: center.y + half },
+        { x: center.x - half, y: center.y + half },
+      ];
+    };
+
+    return {
+      name: "Old Forge",
+      size,
+      spawnPoints: [{ x: center.x, y: center.y - outerSize / 2 + 80 }],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const walkwayLevel = baseLevel + 1;
+        const ironThickness = getBrickConfig("smallIron").size.width;
+        const innerRingSize = Math.max(cavitySize - ironThickness * 2, 0);
+
+        const forgeFloor = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: createSquareVertices(outerSize),
+            holes: [createSquareVertices(cavitySize)],
+          },
+          { level: walkwayLevel }
+        );
+
+        const ironLining = polygonWithBricks(
+          "smallIron",
+          {
+            vertices: createSquareVertices(cavitySize),
+            holes: innerRingSize > 0 ? [createSquareVertices(innerRingSize)] : undefined,
+          },
+          { level: walkwayLevel }
+        );
+
+        return [forgeFloor, ironLining];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { x: center.x, y: center.y - outerSize / 2 + 80 },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "initial",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
 };
 
 export const MAP_IDS = Object.keys(MAPS_DB) as MapId[];
