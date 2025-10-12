@@ -10,3 +10,19 @@
   flex: 1;
   min-height: 0;
 }
+
+.camp-tab-panels__modules {
+  flex: 1;
+  display: flex;
+}
+
+.camp-tab-panels__modules > .modules-workshop {
+  flex: 1;
+}
+
+.camp-tab-panels__modules-locked {
+  padding: var(--space-xl);
+  text-align: center;
+  display: grid;
+  gap: var(--space-md);
+}

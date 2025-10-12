@@ -1,0 +1,238 @@
+import { DataBridge } from "../core/DataBridge";
+import { GameModule } from "../core/types";
+import {
+  UNIT_MODULE_IDS,
+  UnitModuleId,
+  getUnitModuleConfig,
+  UnitModuleBonusType,
+} from "../../db/unit-modules-db";
+import {
+  ResourceStockpile,
+  createEmptyResourceStockpile,
+  normalizeResourceAmount,
+  RESOURCE_IDS,
+} from "../../db/resources-db";
+import { ResourcesModule } from "./ResourcesModule";
+import { SkillId } from "../../db/skills-db";
+
+export interface UnitModuleWorkshopItemState {
+  readonly id: UnitModuleId;
+  readonly name: string;
+  readonly description: string;
+  readonly bonusLabel: string;
+  readonly bonusType: UnitModuleBonusType;
+  readonly baseBonusValue: number;
+  readonly bonusPerLevel: number;
+  readonly currentBonusValue: number;
+  readonly manaCostMultiplier: number;
+  readonly sanityCost: number;
+  readonly level: number;
+  readonly nextCost: Record<string, number> | null;
+}
+
+export interface UnitModuleWorkshopBridgeState {
+  readonly unlocked: boolean;
+  readonly modules: readonly UnitModuleWorkshopItemState[];
+}
+
+export const DEFAULT_UNIT_MODULE_WORKSHOP_STATE: UnitModuleWorkshopBridgeState = Object.freeze({
+  unlocked: false,
+  modules: [],
+});
+
+export const UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY = "unitModules/workshop";
+
+interface UnitModuleWorkshopModuleOptions {
+  bridge: DataBridge;
+  resources: ResourcesModule;
+  getSkillLevel: (id: SkillId) => number;
+}
+
+interface UnitModuleWorkshopSaveData {
+  readonly levels?: Partial<Record<UnitModuleId, number>>;
+}
+
+const MODULE_UNLOCK_SKILL_ID: SkillId = "void_modules";
+
+const createDefaultLevels = (): Map<UnitModuleId, number> => {
+  const levels = new Map<UnitModuleId, number>();
+  UNIT_MODULE_IDS.forEach((id) => {
+    levels.set(id, 0);
+  });
+  return levels;
+};
+
+const clampLevel = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(value));
+};
+
+const scaleResourceStockpile = (base: ResourceStockpile, factor: number): ResourceStockpile => {
+  const scaled = createEmptyResourceStockpile();
+  RESOURCE_IDS.forEach((id) => {
+    scaled[id] = (base[id] ?? 0) * factor;
+  });
+  return scaled;
+};
+
+const toRecord = (stockpile: ResourceStockpile): Record<string, number> => {
+  const record: Record<string, number> = {};
+  RESOURCE_IDS.forEach((id) => {
+    const value = stockpile[id];
+    if (value > 0) {
+      record[id] = value;
+    }
+  });
+  return record;
+};
+
+export class UnitModuleWorkshopModule implements GameModule {
+  public readonly id = "unitModuleWorkshop";
+
+  private readonly bridge: DataBridge;
+  private readonly resources: ResourcesModule;
+  private readonly getSkillLevel: (id: SkillId) => number;
+
+  private unlocked = false;
+  private levels: Map<UnitModuleId, number> = createDefaultLevels();
+
+  constructor(options: UnitModuleWorkshopModuleOptions) {
+    this.bridge = options.bridge;
+    this.resources = options.resources;
+    this.getSkillLevel = options.getSkillLevel;
+  }
+
+  public initialize(): void {
+    this.refreshUnlockState();
+    this.pushState();
+  }
+
+  public reset(): void {
+    this.levels = createDefaultLevels();
+    this.refreshUnlockState();
+    this.pushState();
+  }
+
+  public load(data: unknown | undefined): void {
+    this.levels = this.parseSaveData(data);
+    this.refreshUnlockState();
+    this.pushState();
+  }
+
+  public save(): unknown {
+    const serialized: Partial<Record<UnitModuleId, number>> = {};
+    this.levels.forEach((level, id) => {
+      if (level > 0) {
+        serialized[id] = level;
+      }
+    });
+    return {
+      levels: serialized,
+    } satisfies UnitModuleWorkshopSaveData;
+  }
+
+  public tick(_deltaMs: number): void {
+    if (this.refreshUnlockState()) {
+      this.pushState();
+    }
+  }
+
+  public tryUpgradeModule(id: UnitModuleId): boolean {
+    if (!this.unlocked) {
+      return false;
+    }
+    if (!UNIT_MODULE_IDS.includes(id)) {
+      return false;
+    }
+    const currentLevel = this.levels.get(id) ?? 0;
+    const cost = this.getUpgradeCost(id, currentLevel);
+    if (!this.resources.spendResources(cost)) {
+      return false;
+    }
+    const nextLevel = currentLevel + 1;
+    this.levels.set(id, nextLevel);
+    this.pushState();
+    return true;
+  }
+
+  public getModuleLevel(id: UnitModuleId): number {
+    return this.levels.get(id) ?? 0;
+  }
+
+  private refreshUnlockState(): boolean {
+    const unlocked = this.getSkillLevel(MODULE_UNLOCK_SKILL_ID) > 0;
+    if (this.unlocked === unlocked) {
+      return false;
+    }
+    this.unlocked = unlocked;
+    return true;
+  }
+
+  private getUpgradeCost(id: UnitModuleId, level: number): ResourceStockpile {
+    const config = getUnitModuleConfig(id);
+    const baseCost = normalizeResourceAmount(config.baseCost);
+    const multiplier = Math.pow(2, Math.max(level, 0));
+    const scaled = scaleResourceStockpile(baseCost, multiplier);
+    return scaled;
+  }
+
+  private pushState(): void {
+    const modules = UNIT_MODULE_IDS.map((id) => this.createModuleState(id));
+    this.bridge.setValue<UnitModuleWorkshopBridgeState>(
+      UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+      {
+        unlocked: this.unlocked,
+        modules,
+      }
+    );
+  }
+
+  private createModuleState(id: UnitModuleId): UnitModuleWorkshopItemState {
+    const config = getUnitModuleConfig(id);
+    const level = this.levels.get(id) ?? 0;
+    const costStockpile = this.unlocked ? this.getUpgradeCost(id, level) : null;
+    return {
+      id,
+      name: config.name,
+      description: config.description,
+      bonusLabel: config.bonusLabel,
+      bonusType: config.bonusType,
+      baseBonusValue: config.baseBonusValue,
+      bonusPerLevel: config.bonusPerLevel,
+      currentBonusValue: this.computeBonusValue(config.baseBonusValue, config.bonusPerLevel, level),
+      manaCostMultiplier: config.manaCostMultiplier,
+      sanityCost: config.sanityCost,
+      level,
+      nextCost: costStockpile ? toRecord(costStockpile) : null,
+    };
+  }
+
+  private computeBonusValue(base: number, perLevel: number, level: number): number {
+    if (level <= 0) {
+      return 0;
+    }
+    if (!Number.isFinite(base) || !Number.isFinite(perLevel)) {
+      return 0;
+    }
+    return base + perLevel * (level - 1);
+  }
+
+  private parseSaveData(data: unknown): Map<UnitModuleId, number> {
+    const levels = createDefaultLevels();
+    if (!data || typeof data !== "object") {
+      return levels;
+    }
+    const rawLevels = (data as UnitModuleWorkshopSaveData).levels;
+    if (!rawLevels || typeof rawLevels !== "object") {
+      return levels;
+    }
+    Object.entries(rawLevels).forEach(([key, value]) => {
+      if (UNIT_MODULE_IDS.includes(key as UnitModuleId)) {
+        levels.set(key as UnitModuleId, clampLevel(value));
+      }
+    });
+    return levels;
+  }
+}

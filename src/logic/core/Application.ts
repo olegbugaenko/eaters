@@ -18,6 +18,7 @@ import { SkillTreeModule } from "../modules/SkillTreeModule";
 import { BonusesModule } from "../modules/BonusesModule";
 import { UnlockService } from "../services/UnlockService";
 import { UnitAutomationModule } from "../modules/UnitAutomationModule";
+import { UnitModuleWorkshopModule } from "../modules/UnitModuleWorkshopModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -29,6 +30,7 @@ export class Application {
   private skillTreeModule: SkillTreeModule;
   private bonusesModule: BonusesModule;
   private unitAutomationModule: UnitAutomationModule;
+  private unitModuleWorkshopModule: UnitModuleWorkshopModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -56,6 +58,13 @@ export class Application {
       bonuses: bonusesModule,
     });
     this.skillTreeModule = skillTreeModule;
+
+    const unitModuleWorkshopModule = new UnitModuleWorkshopModule({
+      bridge: this.dataBridge,
+      resources: resourcesModule,
+      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+    });
+    this.unitModuleWorkshopModule = unitModuleWorkshopModule;
 
     const timeModule = new TestTimeModule({
       bridge: this.dataBridge,
@@ -125,6 +134,7 @@ export class Application {
     this.registerModule(bonusesModule);
     this.registerModule(resourcesModule);
     this.registerModule(skillTreeModule);
+    this.registerModule(unitModuleWorkshopModule);
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
     this.registerModule(playerUnitsModule);
@@ -195,6 +205,10 @@ export class Application {
 
   public getUnitAutomation(): UnitAutomationModule {
     return this.unitAutomationModule;
+  }
+
+  public getUnitModuleWorkshop(): UnitModuleWorkshopModule {
+    return this.unitModuleWorkshopModule;
   }
 
   public restartCurrentMap(): void {

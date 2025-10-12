@@ -28,6 +28,7 @@ export const SKILL_IDS = [
   "bastion_foundations",
   "sand_scribing",
   "glass_latticework",
+  "void_modules",
   "emberglass_reactors",
   // "damage_lore",
   "improved_membranes",
@@ -167,6 +168,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { hunger: 1 },
     cost: createStoneCost(6, 1.35),
+  },
+  void_modules: {
+    id: "void_modules",
+    name: "Void Module Fabrication",
+    description:
+      "Unlock fabrication rites for modular ship augments forged from refracted glass.",
+    nodePosition: { x: -3, y: 0 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { glass_latticework: 5 },
+    cost: createSandCost(250, 1),
   },
   mana_reservior: {
     id: "mana_reservior",
