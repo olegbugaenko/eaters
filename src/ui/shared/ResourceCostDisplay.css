@@ -61,6 +61,14 @@
   color: #fbbf24;
 }
 
+.resource-cost__item--iron {
+  color: #d1d5db;
+}
+
+.resource-cost__item--organics {
+  color: #86efac;
+}
+
 .resource-cost__item--missing {
   color: #f87171;
 }

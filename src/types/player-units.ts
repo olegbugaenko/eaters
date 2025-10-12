@@ -47,6 +47,9 @@ export interface PlayerUnitBlueprintStats {
   readonly critChance: PlayerUnitCritChanceStats;
   readonly critMultiplier: PlayerUnitCritMultiplierStats;
   readonly armor: number;
+  readonly hpRegenPerSecond: number;
+  readonly hpRegenPercentage: number;
+  readonly armorPenetration: number;
   readonly baseAttackInterval: number;
   readonly baseAttackDistance: number;
   readonly moveSpeed: number;

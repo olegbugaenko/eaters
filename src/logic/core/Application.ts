@@ -75,6 +75,7 @@ export class Application {
       bridge: this.dataBridge,
       resources: resourcesModule,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+      unlocks: unlockService,
     });
     this.unitModuleWorkshopModule = unitModuleWorkshopModule;
 

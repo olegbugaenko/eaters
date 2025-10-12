@@ -88,6 +88,25 @@ export const buildUnitStatEntries = (
       }),
     },
     {
+      label: "HP Regen",
+      value: `${formatNumber(blueprint.hpRegenPerSecond, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })} HP/s`,
+      hint: `${formatNumber(blueprint.hpRegenPercentage, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}% of max HP per second`,
+    },
+    {
+      label: "Armor Penetration",
+      value: formatNumber(blueprint.armorPenetration, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      hint: "Reduces brick armor before damage is applied.",
+    },
+    {
       label: "Range",
       value: `${formatNumber(blueprint.baseAttackDistance, {
         minimumFractionDigits: 2,

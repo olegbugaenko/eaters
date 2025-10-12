@@ -14,6 +14,7 @@ import {
 } from "../../db/resources-db";
 import { ResourcesModule } from "./ResourcesModule";
 import { SkillId } from "../../db/skills-db";
+import { UnlockService } from "../services/UnlockService";
 
 export interface UnitModuleWorkshopItemState {
   readonly id: UnitModuleId;
@@ -46,6 +47,7 @@ interface UnitModuleWorkshopModuleOptions {
   bridge: DataBridge;
   resources: ResourcesModule;
   getSkillLevel: (id: SkillId) => number;
+  unlocks: UnlockService;
 }
 
 interface UnitModuleWorkshopSaveData {
@@ -94,6 +96,7 @@ export class UnitModuleWorkshopModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly resources: ResourcesModule;
   private readonly getSkillLevel: (id: SkillId) => number;
+  private readonly unlocks: UnlockService;
 
   private unlocked = false;
   private levels: Map<UnitModuleId, number> = createDefaultLevels();
@@ -103,6 +106,7 @@ export class UnitModuleWorkshopModule implements GameModule {
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.getSkillLevel = options.getSkillLevel;
+    this.unlocks = options.unlocks;
   }
 
   public initialize(): void {
@@ -216,7 +220,9 @@ export class UnitModuleWorkshopModule implements GameModule {
   private createModuleState(id: UnitModuleId): UnitModuleWorkshopItemState {
     const config = getUnitModuleConfig(id);
     const level = this.levels.get(id) ?? 0;
-    const costStockpile = this.unlocked ? this.getUpgradeCost(id, level) : null;
+    const available =
+      this.unlocked && this.unlocks.areConditionsMet(config.unlockedBy);
+    const costStockpile = available ? this.getUpgradeCost(id, level) : null;
     return {
       id,
       name: config.name,
