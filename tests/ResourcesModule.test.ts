@@ -56,10 +56,10 @@ describe("ResourcesModule", () => {
     module.startRun();
     mapStats = {
       foundations: {
-        0: { success: 1, failure: 0 },
+        0: { success: 1, failure: 0, bestTimeMs: null },
       },
       initial: {
-        0: { success: 1, failure: 0 },
+        0: { success: 1, failure: 0, bestTimeMs: null },
       },
     };
     module.finishRun();

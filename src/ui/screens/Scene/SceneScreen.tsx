@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { useBridgeValue } from "../../shared/useBridgeValue";
-import { TIME_BRIDGE_KEY } from "../../../logic/modules/TestTimeModule";
 import {
   BRICK_COUNT_BRIDGE_KEY,
   BRICK_TOTAL_HP_BRIDGE_KEY,
@@ -42,6 +41,7 @@ import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
+  RESOURCE_RUN_DURATION_BRIDGE_KEY,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
   ResourceRunSummaryPayload,
 } from "../../../logic/modules/ResourcesModule";
@@ -271,7 +271,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const { app, bridge, scene } = useAppLogic();
-  const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
+  const mapTimeMs = useBridgeValue<number>(bridge, RESOURCE_RUN_DURATION_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
@@ -740,7 +740,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneTooltipPanel content={hoverContent} />
-      <SceneDebugPanel timeMs={timePlayed} brickCount={brickCount} />
+      <SceneDebugPanel timeMs={mapTimeMs} brickCount={brickCount} />
       <SceneSummoningPanel
         ref={summoningPanelRef}
         resources={necromancerResources}
