@@ -82,6 +82,9 @@ interface PlayerUnitState {
   rewardMultiplier: number;
   damageTransferPercent: number;
   damageTransferRadius: number;
+  attackStackBonusPerHit: number;
+  attackStackBonusCap: number;
+  currentAttackStackBonus: number;
   attackCooldown: number;
   preCollisionVelocity: SceneVector2;
   lastNonZeroVelocity: SceneVector2;
@@ -491,6 +494,9 @@ export class PlayerUnitsModule implements GameModule {
       rewardMultiplier: runtime.rewardMultiplier,
       damageTransferPercent: runtime.damageTransferPercent,
       damageTransferRadius: runtime.damageTransferRadius,
+      attackStackBonusPerHit: runtime.attackStackBonusPerHit,
+      attackStackBonusCap: runtime.attackStackBonusCap,
+      currentAttackStackBonus: 0,
       attackCooldown,
       targetBrickId: null,
       objectId,
@@ -670,7 +676,12 @@ export class PlayerUnitsModule implements GameModule {
   private getAttackOutcome(
     unit: PlayerUnitState
   ): { damage: number; isCritical: boolean } {
-    const baseDamage = Math.max(unit.baseAttackDamage, 0);
+    const cappedStack = Math.min(
+      Math.max(unit.currentAttackStackBonus, 0),
+      Math.max(unit.attackStackBonusCap, 0)
+    );
+    const stackMultiplier = 1 + cappedStack;
+    const baseDamage = Math.max(unit.baseAttackDamage * stackMultiplier, 0);
     const critChance = clampProbability(unit.critChance);
     const critMultiplier = Math.max(unit.critMultiplier, 1);
     const isCritical = critChance > 0 && Math.random() < critChance;
@@ -727,6 +738,11 @@ export class PlayerUnitsModule implements GameModule {
     if (unit.hp <= 0) {
       this.removeUnit(unit);
       return true;
+    }
+
+    if (unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0) {
+      const nextStack = unit.currentAttackStackBonus + unit.attackStackBonusPerHit;
+      unit.currentAttackStackBonus = Math.min(nextStack, unit.attackStackBonusCap);
     }
 
     if (result.destroyed) {
@@ -988,6 +1004,8 @@ const sanitizeRuntimeModifiers = (
   rewardMultiplier: Math.max(modifiers?.rewardMultiplier ?? 1, 0),
   damageTransferPercent: Math.max(modifiers?.damageTransferPercent ?? 0, 0),
   damageTransferRadius: Math.max(modifiers?.damageTransferRadius ?? 0, 0),
+  attackStackBonusPerHit: Math.max(modifiers?.attackStackBonusPerHit ?? 0, 0),
+  attackStackBonusCap: Math.max(modifiers?.attackStackBonusCap ?? 0, 0),
 });
 
 const sanitizeUnitType = (value: PlayerUnitType | undefined): PlayerUnitType => {

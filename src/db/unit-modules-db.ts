@@ -3,7 +3,14 @@ import type { MapId } from "./maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "../types/unlocks";
 
-export const UNIT_MODULE_IDS = ["magnet", "perforator", "vitalHull", "ironForge"] as const;
+export const UNIT_MODULE_IDS = [
+  "magnet",
+  "perforator",
+  "vitalHull",
+  "ironForge",
+  "silverArmor",
+  "internalFurnace",
+] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
 
@@ -94,6 +101,50 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       {
         type: "map",
         id: "initial",
+        level: 1,
+      },
+    ],
+  },
+  silverArmor: {
+    id: "silverArmor",
+    name: "Silver Armor",
+    description:
+      "Interlocking argent plates reinforce the hull, scattering incoming blows across mirrored facets.",
+    bonusLabel: "Armor multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.4,
+    bonusPerLevel: 0.04,
+    manaCostMultiplier: 2.75,
+    sanityCost: 1,
+    baseCost: {
+      silver: 100,
+    },
+    unlockedBy: [
+      {
+        type: "map",
+        id: "wire",
+        level: 1,
+      },
+    ],
+  },
+  internalFurnace: {
+    id: "internalFurnace",
+    name: "Internal Furnace",
+    description:
+      "A coal-fed heart stokes each strike, compounding momentum into a blazing offensive surge.",
+    bonusLabel: "Attack bonus per hit",
+    bonusType: "percent",
+    baseBonusValue: 0.05,
+    bonusPerLevel: 0.005,
+    manaCostMultiplier: 2.85,
+    sanityCost: 1,
+    baseCost: {
+      coal: 100,
+    },
+    unlockedBy: [
+      {
+        type: "map",
+        id: "mine",
         level: 1,
       },
     ],

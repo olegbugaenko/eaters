@@ -460,6 +460,8 @@ const DEFAULT_RUNTIME: PlayerUnitRuntimeModifiers = Object.freeze({
   rewardMultiplier: 1,
   damageTransferPercent: 0,
   damageTransferRadius: 0,
+  attackStackBonusPerHit: 0,
+  attackStackBonusCap: 0,
 });
 
 const getDefaultRuntime = (): PlayerUnitRuntimeModifiers => ({

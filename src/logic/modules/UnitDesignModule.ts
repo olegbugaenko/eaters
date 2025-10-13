@@ -436,6 +436,8 @@ export class UnitDesignModule implements GameModule {
     let rewardMultiplier = 1;
     let damageTransferPercent = 0;
     let damageTransferRadius = PERFORATOR_RADIUS;
+    let attackStackBonusPerHit = 0;
+    let attackStackBonusCap = 0;
 
     modules.forEach((detail) => {
       switch (detail.id) {
@@ -445,6 +447,12 @@ export class UnitDesignModule implements GameModule {
         case "perforator":
           damageTransferPercent = Math.max(detail.bonusValue, 0);
           break;
+        case "internalFurnace": {
+          const level = Math.max(detail.level, 1);
+          attackStackBonusPerHit = Math.max(detail.bonusValue, 0);
+          attackStackBonusCap = Math.max(1 + 0.1 * (level - 1), 0);
+          break;
+        }
         default:
           break;
       }
@@ -454,6 +462,8 @@ export class UnitDesignModule implements GameModule {
       rewardMultiplier,
       damageTransferPercent,
       damageTransferRadius,
+      attackStackBonusPerHit,
+      attackStackBonusCap,
     };
   }
 
@@ -468,6 +478,7 @@ export class UnitDesignModule implements GameModule {
     );
     let hpMultiplier = 1;
     let attackMultiplier = 1;
+    let armorMultiplier = 1;
 
     modules.forEach((detail) => {
       switch (detail.id) {
@@ -477,6 +488,9 @@ export class UnitDesignModule implements GameModule {
         case "ironForge":
           attackMultiplier *= Math.max(detail.bonusValue, 0);
           break;
+        case "silverArmor":
+          armorMultiplier *= Math.max(detail.bonusValue, 0);
+          break;
         default:
           break;
       }
@@ -484,6 +498,7 @@ export class UnitDesignModule implements GameModule {
 
     const appliedHpMultiplier = Math.max(hpMultiplier, 0);
     const appliedAttackMultiplier = Math.max(attackMultiplier, 0);
+    const appliedArmorMultiplier = Math.max(armorMultiplier, 0);
     const effectiveMaxHp = roundStat(blueprint.effective.maxHp * appliedHpMultiplier);
     const effectiveAttackDamage = roundStat(
       blueprint.effective.attackDamage * appliedAttackMultiplier
@@ -491,6 +506,7 @@ export class UnitDesignModule implements GameModule {
     const hpRegenPerSecond = roundStat(
       (blueprint.hpRegenPercentage * 0.01) * effectiveMaxHp
     );
+    const effectiveArmor = roundStat(blueprint.armor * appliedArmorMultiplier);
 
     return {
       ...blueprint,
@@ -503,6 +519,7 @@ export class UnitDesignModule implements GameModule {
         maxHp: blueprint.multipliers.maxHp * appliedHpMultiplier,
       },
       hpRegenPerSecond,
+      armor: Math.max(effectiveArmor, 0),
       bonuses,
     };
   }
@@ -522,6 +539,23 @@ export class UnitDesignModule implements GameModule {
           format: "percent",
           hint: `within ${PERFORATOR_RADIUS} units`,
         };
+      case "silverArmor":
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "multiplier",
+        };
+      case "internalFurnace": {
+        const level = Math.max(detail.level, 1);
+        const capPercent = Math.max(1 + 0.1 * (level - 1), 0) * 100;
+        const roundedCap = Math.round(capPercent * 10) / 10;
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "percent",
+          hint: `Stacks up to +${roundedCap}% attack`,
+        };
+      }
       default:
         return {
           label: detail.bonusLabel,

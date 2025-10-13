@@ -9,7 +9,8 @@ export type ResourceId =
   | "organics"
   | "wood"
   | "copper"
-  | "silver";
+  | "silver"
+  | "coal";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
@@ -88,6 +89,18 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       {
         type: "map",
         id: "wire",
+        level: 1,
+      },
+    ],
+  },
+  coal: {
+    id: "coal",
+    name: "Coal",
+    description: "Dense fuel pried from the deepest seams of the mine.",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "spruce",
         level: 1,
       },
     ],

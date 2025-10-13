@@ -16,7 +16,8 @@ export type BrickType =
   | "smallOrganic"
   | "smallWood"
   | "smallCopper"
-  | "smallSilver";
+  | "smallSilver"
+  | "smallCoal";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -108,6 +109,12 @@ const SILVER_LINEAR_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.92, g: 0.93, b: 0.96, a: 1 } },
   { offset: 0.45, color: { r: 0.82, g: 0.83, b: 0.88, a: 1 } },
   { offset: 1, color: { r: 0.72, g: 0.73, b: 0.78, a: 1 } },
+] as const;
+
+const COAL_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.24, g: 0.24, b: 0.27, a: 1 } },
+  { offset: 0.5, color: { r: 0.12, g: 0.12, b: 0.15, a: 1 } },
+  { offset: 1, color: { r: 0.05, g: 0.05, b: 0.07, a: 1 } },
 ] as const;
 
 const BRICK_DB: Record<BrickType, BrickConfig> = {
@@ -348,6 +355,36 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       silver: 0.5,
+    },
+  },
+  smallCoal: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 12,
+      stops: COAL_RADIAL_GRADIENT,
+    },
+    stroke: { color: { r: 0.08, g: 0.08, b: 0.1, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 520,
+      armor: 110,
+      baseDamage: 60,
+      brickKnockBackDistance: 70,
+      brickKnockBackSpeed: 140,
+      brickKnockBackAmplitude: 6,
+      physicalSize: 18,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.78,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 1.18,
+      },
+    },
+    rewards: {
+      coal: 1,
     },
   },
 };
