@@ -8,7 +8,14 @@ import {
 import { DestructubleData } from "../logic/interfaces/destructuble";
 import { ResourceAmount } from "./resources-db";
 
-export type BrickType = "classic" | "smallSquareGray" | "smallSquareYellow" | "smallIron" | "smallOrganic";
+export type BrickType =
+  | "classic"
+  | "smallSquareGray"
+  | "smallSquareYellow"
+  | "smallIron"
+  | "smallOrganic"
+  | "smallWood"
+  | "smallCopper";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -82,6 +89,18 @@ const ORANGE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.95, g: 0.8, b: 0.8, a: 1 } },
   { offset: 0.4, color: { r: 1, g: 0.75, b: 0.45, a: 0.9 } },
   { offset: 1, color: { r: 0.7, g: 0.45, b: 0.15, a: 0.6 } },
+] as const;
+
+const WOOD_LINEAR_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.55, g: 0.35, b: 0.15, a: 1 } },
+  { offset: 0.5, color: { r: 0.7, g: 0.45, b: 0.2, a: 1 } },
+  { offset: 1, color: { r: 0.45, g: 0.28, b: 0.12, a: 1 } },
+] as const;
+
+const COPPER_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.95, g: 0.65, b: 0.35, a: 1 } },
+  { offset: 0.45, color: { r: 0.85, g: 0.45, b: 0.2, a: 1 } },
+  { offset: 1, color: { r: 0.55, g: 0.25, b: 0.08, a: 1 } },
 ] as const;
 
 const BRICK_DB: Record<BrickType, BrickConfig> = {
@@ -232,6 +251,66 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       iron: 1,
+    },
+  },
+  smallWood: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "linear",
+      start: { x: 0, y: -12 },
+      end: { x: 0, y: 12 },
+      stops: WOOD_LINEAR_GRADIENT,
+    },
+    stroke: { color: { r: 0.25, g: 0.15, b: 0.05, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 35,
+      armor: 2,
+      baseDamage: 6,
+      brickKnockBackDistance: 70,
+      brickKnockBackSpeed: 140,
+      brickKnockBackAmplitude: 7,
+      physicalSize: 18,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.75,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 1.1,
+      },
+    },
+    rewards: {
+      wood: 1,
+    },
+  },
+  smallCopper: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 12,
+      stops: COPPER_RADIAL_GRADIENT,
+    },
+    stroke: { color: { r: 0.4, g: 0.2, b: 0.08, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 55,
+      armor: 4,
+      baseDamage: 8,
+      brickKnockBackDistance: 70,
+      brickKnockBackSpeed: 140,
+      brickKnockBackAmplitude: 7,
+      physicalSize: 18,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.75,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 1.15,
+      },
+    },
+    rewards: {
+      copper: 1,
     },
   },
 };

@@ -2,7 +2,7 @@ import type { MapId } from "./maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "../types/unlocks";
 
-export type ResourceId = "stone" | "sand" | "iron" | "organics";
+export type ResourceId = "stone" | "sand" | "iron" | "organics" | "wood" | "copper";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
@@ -45,6 +45,30 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       {
         type: "map",
         id: "initial",
+        level: 1,
+      },
+    ],
+  },
+  wood: {
+    id: "wood",
+    name: "Wood",
+    description: "Sturdy timber gathered from fallen trunks.",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "thicket",
+        level: 1,
+      },
+    ],
+  },
+  copper: {
+    id: "copper",
+    name: "Copper",
+    description: "Conductive metal reclaimed from twisted wiring.",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "oldForge",
         level: 1,
       },
     ],
