@@ -175,7 +175,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
   },
   smallOrganic: {
-    size: { width: 32, height: 32 },
+    size: { width: 30, height: 30 },
     fill: {
       type: "radial",
       center: { x: 0, y: 0 },
@@ -190,7 +190,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 90,
       brickKnockBackSpeed: 180,
       brickKnockBackAmplitude: 4,
-      physicalSize: 24,
+      physicalSize: 20,
       damageExplosion: {
         type: "grayBrickHit",
         radiusMultiplier: 0.85,
@@ -205,7 +205,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
   },
   smallIron: {
-    size: { width: 32, height: 32 },
+    size: { width: 30, height: 30 },
     fill: {
       type: "radial",
       center: { x: 0, y: 0 },
@@ -220,7 +220,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackDistance: 90,
       brickKnockBackSpeed: 180,
       brickKnockBackAmplitude: 4,
-      physicalSize: 24,
+      physicalSize: 20,
       damageExplosion: {
         type: "grayBrickHit",
         radiusMultiplier: 0.85,

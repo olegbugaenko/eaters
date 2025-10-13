@@ -92,7 +92,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   })(),
   initial: {
     name: "Initial Grounds",
-    size: { width: 2000, height: 2000 },
+    size: { width: 1500, height: 1500 },
     unlockedBy: [
       {
         type: "map",
@@ -103,13 +103,13 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const innerLevel = baseLevel + 1;
-      const center: SceneVector2 = { x: 1000, y: 1000 };
+      const center: SceneVector2 = { x: 750, y: 750 };
       const largeCircle = circleWithBricks(
         "smallSquareGray",
         {
           center,
-          innerRadius: 310,
-          outerRadius: 350,
+          innerRadius: 250,
+          outerRadius: 290,
         },
         { level: innerLevel }
       );
@@ -118,15 +118,15 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         "smallSquareYellow",
         {
           center,
-          innerRadius: 220,
-          outerRadius: 310,
+          innerRadius: 160,
+          outerRadius: 250,
         },
         { level: baseLevel }
       );
 
-      const satelliteCount = 10;
-      const satelliteRadius = 125;
-      const orbitRadius = 500 + satelliteRadius;
+      const satelliteCount = 8;
+      const satelliteRadius = 100;
+      const orbitRadius = 400 + satelliteRadius;
 
       const satellites = Array.from({ length: satelliteCount }, (_, index) => {
         const angle = (index / satelliteCount) * Math.PI * 2;
@@ -138,7 +138,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           "smallSquareGray",
           {
             center: position,
-            innerRadius: satelliteRadius * 0.5,
+            innerRadius: satelliteRadius * 0.6,
             outerRadius: satelliteRadius,
           },
           { level: baseLevel + 0.5 }
@@ -156,7 +156,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             center: position,
             innerRadius: 0,
-            outerRadius: satelliteRadius * 0.5,
+            outerRadius: satelliteRadius * 0.6,
           },
           { level: baseLevel }
         );

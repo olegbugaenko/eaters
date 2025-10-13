@@ -46,12 +46,12 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       "Oscillating drills fracture targets so force ripples outward into the surrounding formation.",
     bonusLabel: "Damage transfer",
     bonusType: "percent",
-    baseBonusValue: 0.2,
+    baseBonusValue: 0.25,
     bonusPerLevel: 0.01,
     manaCostMultiplier: 1.75,
     sanityCost: 1,
     baseCost: {
-      sand: 300,
+      sand: 200,
     },
   },
   vitalHull: {

@@ -188,7 +188,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 1,
     effects: {},
     nodesRequired: { glass_latticework: 5 },
-    cost: createSandCost(250, 1),
+    cost: createSandCost(150, 1),
   },
   mana_reservior: {
     id: "mana_reservior",
@@ -342,7 +342,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { damage_lore: 5 },
-    cost: createResourceCost('iron', 40, 1.5),
+    cost: createResourceCost('iron', 30, 1.5),
   },
   critical_chance: {
     id: "critical_chance",
@@ -368,11 +368,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_armor_penetration: {
-        multiplier: (level) => 1 * level,
+        income: (level) => 1.25 * level,
       },
     },
     nodesRequired: { critical_chance: 5 },
-    cost: createResourceCost('organics', 40, 1.5),
+    cost: createResourceCost('organics', 30, 1.5),
   },
   // right
   improved_membranes: {
@@ -448,7 +448,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { armor_lore: 5 },
-    cost: createResourceCost('iron', 40, 1.5),
+    cost: createResourceCost('iron', 30, 1.5),
   },
   vitality2: {
     id: "vitality2",
@@ -478,7 +478,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality2: 5 },
-    cost: createResourceCost('organics', 40, 1.5),
+    cost: createResourceCost('organics', 30, 1.5),
   },
   restoration: {
     id: "restoration",
