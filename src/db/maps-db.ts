@@ -10,7 +10,7 @@ import {
   polygonWithBricks,
 } from "../logic/services/BrickLayoutService";
 
-export type MapId = "foundations" | "initial" | "thicket" | "oldForge";
+export type MapId = "foundations" | "initial" | "thicket" | "oldForge" | "spruce" | "wire";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
@@ -316,6 +316,252 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         {
           type: "map",
           id: "initial",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
+  spruce: (() => {
+    const size: SceneSize = { width: 1500, height: 1500 };
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+    const createTriangle = (
+      baseCenter: SceneVector2,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x: baseCenter.x, y: baseCenter.y - height },
+      { x: baseCenter.x + width / 2, y: baseCenter.y },
+      { x: baseCenter.x - width / 2, y: baseCenter.y },
+    ];
+
+    const treeConfigs: readonly { base: SceneVector2; scale: number }[] = [
+      { base: { x: 350, y: 1200 }, scale: 1 },
+      { base: { x: 650, y: 1100 }, scale: 0.95 },
+      { base: { x: 950, y: 1250 }, scale: 1.1 },
+      { base: { x: 1230, y: 1150 }, scale: 0.9 },
+      { base: { x: 500, y: 900 }, scale: 0.85 },
+      { base: { x: 1050, y: 880 }, scale: 0.9 },
+    ];
+
+    const spawnPoint: SceneVector2 = { x: 200, y: 1300 };
+
+    return {
+      name: "Forest",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const canopyLevel = baseLevel + 1;
+        const trunkLevel = baseLevel;
+
+        const trees = treeConfigs.flatMap((tree) => {
+          const trunkHeight = 180 * tree.scale;
+          const trunkWidth = 60 * tree.scale;
+          const trunkBottomY = tree.base.y;
+          const trunkTopY = trunkBottomY - trunkHeight;
+
+          const trunk = polygonWithBricks(
+            "smallWood",
+            {
+              vertices: createRectangle(
+                tree.base.x - trunkWidth / 2,
+                trunkTopY,
+                trunkWidth,
+                trunkHeight
+              ),
+            },
+            { level: trunkLevel }
+          );
+
+          const canopyLayers = [
+            { width: 320, height: 260, offset: 20 },
+            { width: 260, height: 220, offset: 120 },
+            { width: 190, height: 180, offset: 210 },
+          ];
+
+          const canopy = canopyLayers.map((layer) => {
+            const baseCenter: SceneVector2 = {
+              x: tree.base.x,
+              y: trunkTopY + layer.offset * tree.scale,
+            };
+            return polygonWithBricks(
+              "smallOrganic",
+              {
+                vertices: createTriangle(
+                  baseCenter,
+                  layer.width * tree.scale,
+                  layer.height * tree.scale
+                ),
+              },
+              { level: canopyLevel }
+            );
+          });
+
+          return [trunk, ...canopy];
+        });
+
+        return trees;
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "thicket",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
+  wire: (() => {
+    const size: SceneSize = { width: 1500, height: 1500 };
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+    const cableCenters: readonly SceneVector2[] = [
+      { x: 250, y: 350 },
+      { x: 520, y: 260 },
+      { x: 780, y: 420 },
+      { x: 1030, y: 360 },
+      { x: 1280, y: 520 },
+      { x: 1120, y: 820 },
+      { x: 860, y: 960 },
+      { x: 620, y: 900 },
+      { x: 420, y: 1080 },
+      { x: 320, y: 1260 },
+    ];
+
+    const createConnector = (
+      start: SceneVector2,
+      end: SceneVector2,
+      halfWidth: number
+    ): SceneVector2[] => {
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.hypot(dx, dy);
+      if (length === 0) {
+        return createRectangle(start.x - halfWidth, start.y - halfWidth, halfWidth * 2, halfWidth * 2);
+      }
+      const ux = dx / length;
+      const uy = dy / length;
+      const px = -uy * halfWidth;
+      const py = ux * halfWidth;
+      return [
+        { x: start.x + px, y: start.y + py },
+        { x: start.x - px, y: start.y - py },
+        { x: end.x - px, y: end.y - py },
+        { x: end.x + px, y: end.y + py },
+      ];
+    };
+
+    const spawnPoint: SceneVector2 = { x: 180, y: 300 };
+
+    return {
+      name: "Wire",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const outerLevel = baseLevel + 2;
+        const outerRadius = 150;
+        const innerRadius = 70;
+
+        const outerSegments = cableCenters.flatMap((center, index) => {
+          const circle = circleWithBricks(
+            "smallSquareGray",
+            {
+              center,
+              innerRadius: 0,
+              outerRadius,
+            },
+            { level: outerLevel }
+          );
+
+          if (index >= cableCenters.length - 1) {
+            return [circle];
+          }
+
+          const nextCenter = cableCenters[index + 1];
+          if (!nextCenter) {
+            return [circle];
+          }
+
+          const connector = polygonWithBricks(
+            "smallSquareGray",
+            {
+              vertices: createConnector(center, nextCenter, outerRadius),
+            },
+            { level: outerLevel }
+          );
+
+          return [circle, connector];
+        });
+
+        const innerSegments = cableCenters.flatMap((center, index) => {
+          const circle = circleWithBricks(
+            "smallCopper",
+            {
+              center,
+              innerRadius: 0,
+              outerRadius: innerRadius,
+            },
+            { level: baseLevel }
+          );
+
+          if (index >= cableCenters.length - 1) {
+            return [circle];
+          }
+
+          const nextCenter = cableCenters[index + 1];
+          if (!nextCenter) {
+            return [circle];
+          }
+
+          const connector = polygonWithBricks(
+            "smallCopper",
+            {
+              vertices: createConnector(center, nextCenter, innerRadius),
+            },
+            { level: baseLevel }
+          );
+
+          return [circle, connector];
+        });
+
+        return [...outerSegments, ...innerSegments];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "oldForge",
           level: 1,
         },
       ],
