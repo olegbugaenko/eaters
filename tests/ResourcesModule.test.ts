@@ -9,6 +9,7 @@ import {
 import type { ResourceRunSummaryPayload } from "../src/logic/modules/ResourcesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
 import type { MapStats } from "../src/logic/modules/MapModule";
+import { BonusesModule } from "../src/logic/modules/BonusesModule";
 
 describe("ResourcesModule", () => {
   test("calculates per-second gain rates for run summary", () => {
@@ -17,7 +18,9 @@ describe("ResourcesModule", () => {
       getMapStats: () => ({}),
       getSkillLevel: () => 0,
     });
-    const module = new ResourcesModule({ bridge, unlocks });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const module = new ResourcesModule({ bridge, unlocks, bonuses });
 
     module.initialize();
     module.startRun();
@@ -43,7 +46,9 @@ describe("ResourcesModule", () => {
       getMapStats: () => mapStats,
       getSkillLevel: () => 0,
     });
-    const module = new ResourcesModule({ bridge, unlocks });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const module = new ResourcesModule({ bridge, unlocks, bonuses });
 
     module.initialize();
 

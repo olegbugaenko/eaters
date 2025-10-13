@@ -23,6 +23,7 @@ export const SKILL_IDS = [
   "stone_lore",
   "stone_automatons",
   "autorestart_rituals",
+  "construction_guild",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -135,6 +136,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_automatons: 1 },
     cost: createMixedCost(500, 1, 50, 1),
+  },
+  construction_guild: {
+    id: "construction_guild",
+    name: "Construction Guild",
+    description:
+      "Establish a guild to coordinate permanent worksites and unlock dedicated building plans.",
+    nodePosition: { x: -1, y: 4 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { autorestart_rituals: 1 },
+    cost: createResourceCost("copper", 50, 1),
   },
   quarry_overseers: {
     id: "quarry_overseers",
