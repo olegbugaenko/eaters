@@ -327,7 +327,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { stone_drill: 2 },
-    cost: createSandCost(50, 1.5),
+    cost: createSandCost(20, 1.5),
   },
   heavy_drill: {
     id: "heavy_drill",
@@ -342,7 +342,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { damage_lore: 5 },
-    cost: createResourceCost('iron', 50, 1.5),
+    cost: createResourceCost('iron', 40, 1.5),
   },
   critical_chance: {
     id: "critical_chance",
@@ -357,7 +357,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { stone_drill: 2 },
-    cost: createMixedCost(500, 1.5, 50, 1.5),
+    cost: createMixedCost(200, 1.5, 20, 1.5),
   },
   penetration: {
     id: "penetration",
@@ -372,7 +372,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { critical_chance: 5 },
-    cost: createResourceCost('organics', 50, 1.5),
+    cost: createResourceCost('organics', 40, 1.5),
   },
   // right
   improved_membranes: {
@@ -433,7 +433,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { stone_armor: 3 },
-    cost: createMixedCost(500, 1.5, 50, 1.5),
+    cost: createMixedCost(200, 1.5, 20, 1.5),
   },
   armor_lore2: {
     id: "armor_lore2",
@@ -444,11 +444,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 10,
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.5 * level,
+        income: (level) => 0 + 0.75 * level,
       },
     },
     nodesRequired: { armor_lore: 5 },
-    cost: createResourceCost('iron', 50, 1.5),
+    cost: createResourceCost('iron', 40, 1.5),
   },
   vitality2: {
     id: "vitality2",
@@ -463,7 +463,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { stone_armor: 3 },
-    cost: createSandCost(50, 1.5),
+    cost: createSandCost(20, 1.5),
   },
   vitality3: {
     id: "vitality3",
@@ -478,7 +478,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality2: 5 },
-    cost: createResourceCost('organics', 50, 1.5),
+    cost: createResourceCost('organics', 40, 1.5),
   },
   restoration: {
     id: "restoration",
