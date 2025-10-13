@@ -369,6 +369,7 @@ describe("Map unlocking", () => {
     assert.strictEqual(initialList[0]!.id, "foundations");
     assert.strictEqual(initialList[0]!.currentLevel, 0);
     assert.strictEqual(initialList[0]!.attempts, 0);
+    assert.strictEqual(initialList[0]!.bestTimeMs, null);
 
     maps.recordRunResult({ mapId: "foundations", success: true });
 
@@ -380,10 +381,12 @@ describe("Map unlocking", () => {
     const foundationsEntry = updatedList.find((entry) => entry.id === "foundations");
     assert.strictEqual(foundationsEntry?.currentLevel, 1);
     assert.strictEqual(foundationsEntry?.attempts, 1);
+    assert.strictEqual(foundationsEntry?.bestTimeMs, null);
 
     const initialEntry = updatedList.find((entry) => entry.id === "initial");
     assert.strictEqual(initialEntry?.currentLevel, 0);
     assert.strictEqual(initialEntry?.attempts, 0);
+    assert.strictEqual(initialEntry?.bestTimeMs, null);
   });
 
   test("run results are stored in map stats", () => {
@@ -441,11 +444,13 @@ describe("Map unlocking", () => {
     const stats = maps.getMapStats();
     assert.strictEqual(stats.foundations?.[0]?.success, 1);
     assert.strictEqual(stats.foundations?.[0]?.failure, 1);
+    assert.strictEqual(stats.foundations?.[0]?.bestTimeMs, null);
 
     const saved = maps.save() as { stats?: MapStats };
     assert(saved.stats);
     assert.strictEqual(saved.stats?.foundations?.[0]?.success, 1);
     assert.strictEqual(saved.stats?.foundations?.[0]?.failure, 1);
+    assert.strictEqual(saved.stats?.foundations?.[0]?.bestTimeMs, null);
   });
 });
 

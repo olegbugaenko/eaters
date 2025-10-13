@@ -20,7 +20,9 @@
 }
 
 .map-select-panel__list {
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .map-select-card {
@@ -31,6 +33,7 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-soft);
   transition: border-color 0.2s ease, transform 0.2s ease;
+  min-width: 320px;
 }
 
 .map-select-card--selected {

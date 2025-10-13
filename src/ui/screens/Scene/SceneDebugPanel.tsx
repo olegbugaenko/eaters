@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { formatTime } from "./formatTime";
+import { formatDuration } from "@ui/utils/formatDuration";
 import "./SceneDebugPanel.css";
 
 interface SceneDebugPanelProps {
@@ -26,11 +26,11 @@ export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickC
   useEffect(() => {
     const update = () => {
       const { timeMs: nextTime, brickCount: nextBricks } = latestValues.current;
-      const formatted = formatTime(nextTime);
+      const formatted = formatDuration(nextTime);
 
       if (lastDisplayedTime.current !== formatted && timeRef.current) {
         lastDisplayedTime.current = formatted;
-        timeRef.current.textContent = `Time: ${formatted}`;
+        timeRef.current.textContent = `Map Time: ${formatted}`;
       }
 
       if (lastDisplayedBricks.current !== nextBricks && brickRef.current) {

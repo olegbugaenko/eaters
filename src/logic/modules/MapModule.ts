@@ -51,6 +51,7 @@ interface MapSaveData {
 export interface MapLevelStats {
   success: number;
   failure: number;
+  bestTimeMs: number | null;
 }
 
 export type MapStats = Partial<Record<MapId, Record<number, MapLevelStats>>>;
@@ -59,12 +60,14 @@ export interface MapListEntry extends MapListEntryConfig {
   readonly currentLevel: number;
   readonly selectedLevel: number;
   readonly attempts: number;
+  readonly bestTimeMs: number | null;
 }
 
 export interface MapRunResult {
   mapId?: MapId;
   level?: number;
   success: boolean;
+  durationMs?: number;
 }
 
 export interface MapAutoRestartState {
@@ -234,6 +237,12 @@ export class MapModule implements GameModule {
     const stats = this.ensureLevelStats(mapId, level);
     if (result.success) {
       stats.success += 1;
+      const duration = sanitizeDuration(result.durationMs);
+      if (duration !== null) {
+        if (stats.bestTimeMs === null || duration < stats.bestTimeMs) {
+          stats.bestTimeMs = duration;
+        }
+      }
     } else {
       stats.failure += 1;
     }
@@ -460,11 +469,13 @@ export class MapModule implements GameModule {
     const currentLevel = this.getHighestUnlockedLevel(map.id);
     const selectedLevel = this.getSelectedLevel(map.id);
     const attempts = this.getAttemptsForLevel(map.id, selectedLevel);
+    const bestTimeMs = this.getBestTimeForLevel(map.id, selectedLevel);
     return {
       ...map,
       currentLevel,
       selectedLevel,
       attempts,
+      bestTimeMs,
     };
   }
 
@@ -509,11 +520,29 @@ export class MapModule implements GameModule {
     if (!stats) {
       return 0;
     }
-    const entry = stats[level];
+    const sanitizedLevel = sanitizeLevel(level);
+    const entry = stats[sanitizedLevel];
     if (!entry) {
       return 0;
     }
     return entry.success + entry.failure;
+  }
+
+  private getBestTimeForLevel(mapId: MapId, level: number): number | null {
+    const stats = this.mapStats[mapId];
+    if (!stats) {
+      return null;
+    }
+    const sanitizedLevel = sanitizeLevel(level);
+    const entry = stats[sanitizedLevel];
+    if (!entry) {
+      return null;
+    }
+    const { bestTimeMs } = entry;
+    if (bestTimeMs === null || bestTimeMs === undefined) {
+      return null;
+    }
+    return bestTimeMs;
   }
 
   private parseSelectedLevels(data: unknown): Partial<Record<MapId, number>> {
@@ -559,7 +588,8 @@ export class MapModule implements GameModule {
   private parseLevelStats(data: Record<string, unknown>): MapLevelStats {
     const success = sanitizeCount(data.success);
     const failure = sanitizeCount(data.failure);
-    return { success, failure };
+    const bestTimeMs = sanitizeDuration(data.bestTimeMs);
+    return { success, failure, bestTimeMs };
   }
 
   private ensureLevelStats(mapId: MapId, level: number): MapLevelStats {
@@ -569,9 +599,14 @@ export class MapModule implements GameModule {
     const sanitizedLevel = sanitizeLevel(level);
     const mapEntry = this.mapStats[mapId]!;
     if (!mapEntry[sanitizedLevel]) {
-      mapEntry[sanitizedLevel] = { success: 0, failure: 0 };
+      mapEntry[sanitizedLevel] = { success: 0, failure: 0, bestTimeMs: null };
+      return mapEntry[sanitizedLevel]!;
     }
-    return mapEntry[sanitizedLevel]!;
+    const entry = mapEntry[sanitizedLevel]!;
+    if (entry.bestTimeMs === undefined) {
+      entry.bestTimeMs = null;
+    }
+    return entry;
   }
 
   private cloneSelectedLevels(): Partial<Record<MapId, number>> {
@@ -598,7 +633,12 @@ export class MapModule implements GameModule {
           return;
         }
         const level = sanitizeLevel(parsed);
-        levelClone[level] = { success: stats.success, failure: stats.failure };
+        levelClone[level] = {
+          success: stats.success,
+          failure: stats.failure,
+          bestTimeMs:
+            stats.bestTimeMs === undefined ? null : stats.bestTimeMs,
+        };
       });
       clone[mapId as MapId] = levelClone;
     });
@@ -629,4 +669,15 @@ const sanitizeCount = (value: unknown): number => {
     return 0;
   }
   return Math.max(0, Math.floor(Number(value)));
+};
+
+const sanitizeDuration = (value: unknown): number | null => {
+  if (!Number.isFinite(value as number)) {
+    return null;
+  }
+  const duration = Math.floor(Number(value));
+  if (duration < 0) {
+    return null;
+  }
+  return duration;
 };

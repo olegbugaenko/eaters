@@ -1,6 +1,7 @@
 import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/MapModule";
 import { Button } from "@shared/Button";
+import { formatDuration } from "@ui/utils/formatDuration";
 import "./MapSelectPanel.css";
 
 interface MapSelectPanelProps {
@@ -97,6 +98,14 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 <div>
                   <dt>Attempts</dt>
                   <dd>{map.attempts}</dd>
+                </div>
+                <div>
+                  <dt>Best Time</dt>
+                  <dd>
+                    {map.bestTimeMs != null
+                      ? formatDuration(map.bestTimeMs)
+                      : "—"}
+                  </dd>
                 </div>
                 <div>
                   <dt>Types</dt>

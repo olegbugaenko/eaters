@@ -6,6 +6,7 @@ import { CampTabPanels } from "./TabPanels/CampTabPanels";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/UnitModuleWorkshopModule";
 import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
+import { formatDuration } from "@ui/utils/formatDuration";
 import "./CampContent.css";
 
 export type CampTabKey = "maps" | "skills" | "modules";
@@ -25,15 +26,6 @@ interface CampContentProps {
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   unitDesignerState: UnitDesignerBridgeState;
 }
-
-const formatTime = (timeMs: number): string => {
-  const totalSeconds = Math.floor(timeMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
-};
 
 export const CampContent: React.FC<CampContentProps> = ({
   maps,
@@ -64,7 +56,7 @@ export const CampContent: React.FC<CampContentProps> = ({
       });
     }
   }, [moduleWorkshopState.unlocked, initialTab]);
-  const formattedTime = useMemo(() => formatTime(timePlayed), [timePlayed]);
+  const formattedTime = useMemo(() => formatDuration(timePlayed), [timePlayed]);
   const handleTabChange = useCallback(
     (tab: CampTabKey) => {
       if (tab === "modules" && !moduleWorkshopState.unlocked) {

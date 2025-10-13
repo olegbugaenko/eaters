@@ -14,6 +14,7 @@ import {
 
 export const RESOURCE_TOTALS_BRIDGE_KEY = "resources/totals";
 export const RESOURCE_RUN_SUMMARY_BRIDGE_KEY = "resources/runSummary";
+export const RESOURCE_RUN_DURATION_BRIDGE_KEY = "resources/runDuration";
 
 export interface ResourceAmountPayload {
   id: ResourceId;
@@ -73,6 +74,7 @@ export class ResourcesModule implements GameModule {
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
+    this.pushRunDuration();
   }
 
   public reset(): void {
@@ -86,6 +88,7 @@ export class ResourcesModule implements GameModule {
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
+    this.pushRunDuration();
   }
 
   public load(data: unknown | undefined): void {
@@ -99,6 +102,7 @@ export class ResourcesModule implements GameModule {
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
+    this.pushRunDuration();
   }
 
   public save(): unknown {
@@ -112,10 +116,12 @@ export class ResourcesModule implements GameModule {
     const deltaMs = Math.max(_deltaMs, 0);
     const visibilityChanged = this.refreshVisibleResourceIds();
     let summaryChanged = visibilityChanged;
+    let durationChanged = false;
 
     if (this.runActive && deltaMs > 0) {
       this.runDurationMs += deltaMs;
       summaryChanged = true;
+      durationChanged = true;
     }
 
     if (visibilityChanged) {
@@ -124,6 +130,10 @@ export class ResourcesModule implements GameModule {
 
     if (summaryChanged) {
       this.pushRunSummary();
+    }
+
+    if (durationChanged) {
+      this.pushRunDuration();
     }
   }
 
@@ -136,6 +146,7 @@ export class ResourcesModule implements GameModule {
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
+    this.pushRunDuration();
   }
 
   public finishRun(): void {
@@ -147,6 +158,7 @@ export class ResourcesModule implements GameModule {
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
+    this.pushRunDuration();
   }
 
   public cancelRun(): void {
@@ -161,6 +173,7 @@ export class ResourcesModule implements GameModule {
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
+    this.pushRunDuration();
   }
 
   public grantResources(amount: ResourceAmount | ResourceStockpile): void {
@@ -193,6 +206,10 @@ export class ResourcesModule implements GameModule {
       this.pushTotals();
     }
     this.pushRunSummary();
+  }
+
+  public getRunDurationMs(): number {
+    return this.runDurationMs;
   }
 
   public canAfford(amount: ResourceAmount | ResourceStockpile): boolean {
@@ -242,6 +259,10 @@ export class ResourcesModule implements GameModule {
       totalBricksDestroyed: this.totalBricksDestroyed,
     };
     this.bridge.setValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY, payload);
+  }
+
+  private pushRunDuration(): void {
+    this.bridge.setValue(RESOURCE_RUN_DURATION_BRIDGE_KEY, this.runDurationMs);
   }
 
   private createTotalsPayload(): ResourceAmountPayload[] {

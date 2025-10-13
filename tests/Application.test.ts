@@ -30,7 +30,9 @@ describe("Application", () => {
     const internalMaps = (app as unknown as { mapModule: { getMapStats: () => unknown } })
       .mapModule;
     const stats = internalMaps.getMapStats() as {
-      foundations?: { [level: number]: { success: number; failure: number } };
+      foundations?: {
+        [level: number]: { success: number; failure: number; bestTimeMs: number | null };
+      };
     };
     assert.strictEqual(stats.foundations?.[0]?.failure, 1);
 
@@ -41,5 +43,6 @@ describe("Application", () => {
     const updatedFoundations = updatedList.find((entry) => entry.id === "foundations");
     assert(updatedFoundations, "expected foundations map after success");
     assert.strictEqual(updatedFoundations?.currentLevel, 1);
+    assert.strictEqual(updatedFoundations?.bestTimeMs, 0);
   });
 });

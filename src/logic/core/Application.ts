@@ -270,7 +270,8 @@ export class Application {
     if (this.resourcesModule.isRunSummaryAvailable()) {
       return;
     }
-    this.mapModule.recordRunResult({ success });
+    const durationMs = this.resourcesModule.getRunDurationMs();
+    this.mapModule.recordRunResult({ success, durationMs });
     this.resourcesModule.finishRun();
   }
 }
