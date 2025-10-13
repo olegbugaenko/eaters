@@ -4,7 +4,7 @@ import type { UnlockCondition } from "../types/unlocks";
 import { RESOURCE_IDS, ResourceAmount, ResourceId } from "./resources-db";
 import { BonusEffectMap } from "../types/bonuses";
 
-export type BuildingId = "quarry" | "well";
+export type BuildingId = "quarry" | "well" | "iron_forest";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -62,7 +62,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
         income: (level) => 2 * level,
       },
     },
-    cost: createScalingCost({ copper: 50, wood: 50 }, 1.5),
+    cost: createScalingCost({ copper: 50, wood: 50 }, 1.75),
     unlockedBy: [
       {
         type: "skill",
@@ -84,8 +84,26 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
         income: (level) => 1 * level,
       },
     },
-    cost: createScalingCost({ stone: 2000, wood: 50 }, 1),
-    maxLevel: 1,
+    cost: createScalingCost({ stone: 2000 }, 1.75),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "construction_guild",
+        level: 1,
+      },
+    ],
+  },
+  iron_forest: {
+    id: "iron_forest",
+    name: "Iron Forest",
+    description:
+      "Forest of steel and soul. Increase your eaters HP",
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      }
+    },
+    cost: createScalingCost({ iron: 200, wood: 100 }, 1.75),
     unlockedBy: [
       {
         type: "skill",

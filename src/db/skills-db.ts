@@ -52,7 +52,8 @@ export const SKILL_IDS = [
   "restoration",
   "armor_lore2",
   "heavy_drill",
-  "penetration"
+  "penetration",
+  "penetration2"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -436,6 +437,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { critical_chance: 5 },
     cost: createResourceCost('organics', 30, 1.5),
+  },
+  penetration2: {
+    id: "penetration2",
+    name: "Penetration II",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -7, y: 2 },
+    maxLevel: 15,
+    effects: {
+      all_units_armor_penetration: {
+        income: (level) => 2 * level,
+      },
+    },
+    nodesRequired: { penetration: 5 },
+    cost: createResourceCost('copper', 60, 1.5),
   },
   // right
   improved_membranes: {
