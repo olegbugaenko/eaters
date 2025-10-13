@@ -265,7 +265,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const size: SceneSize = { width: 1000, height: 1000 };
     const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
     const outerSize = 700;
-    const cavitySize = 400;
+    const cavitySize = 500;
     const createSquareVertices = (squareSize: number): SceneVector2[] => {
       const half = squareSize / 2;
       return [
@@ -284,7 +284,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const walkwayLevel = baseLevel + 1;
         const ironThickness = getBrickConfig("smallIron").size.width;
-        const innerRingSize = Math.max(cavitySize - ironThickness * 4, 0);
+        const innerRingSize = Math.max(cavitySize - ironThickness * 8, 0);
 
         const forgeFloor = polygonWithBricks(
           "smallSquareGray",

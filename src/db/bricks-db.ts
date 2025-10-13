@@ -216,7 +216,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     destructubleData: {
       maxHp: 100,
       armor: 12,
-      baseDamage: 14,
+      baseDamage: 15,
       brickKnockBackDistance: 90,
       brickKnockBackSpeed: 180,
       brickKnockBackAmplitude: 4,

@@ -489,11 +489,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 10,
     effects: {
       all_units_hp_regen_percentage: {
-        multiplier: (level) => 1 + 0.12 * level,
+        income: (level) => 0.5*level,
       },
     },
     nodesRequired: { vitality3: 5 },
-    cost: createResourceCost('organics', 150, 1.5),
+    cost: createResourceCost('organics', 150, 2),
   },
 };
 
