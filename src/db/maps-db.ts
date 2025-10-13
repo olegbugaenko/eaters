@@ -10,7 +10,14 @@ import {
   polygonWithBricks,
 } from "../logic/services/BrickLayoutService";
 
-export type MapId = "foundations" | "initial" | "thicket" | "oldForge" | "spruce" | "wire";
+export type MapId =
+  | "foundations"
+  | "initial"
+  | "thicket"
+  | "oldForge"
+  | "spruce"
+  | "wire"
+  | "silverRing";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
@@ -562,6 +569,60 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         {
           type: "map",
           id: "oldForge",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
+  silverRing: (() => {
+    const size: SceneSize = { width: 1500, height: 1500 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const spawnPoint: SceneVector2 = { x: center.x - 650, y: center.y };
+    const outerRadius = 520;
+    const innerRadius = 360;
+    const gemRadius = 220;
+
+    return {
+      name: "Silver Ring",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const ringLevel = baseLevel + 1;
+        const gemLevel = baseLevel + 2;
+
+        const silverRing = circleWithBricks(
+          "smallSilver",
+          {
+            center,
+            innerRadius,
+            outerRadius,
+          },
+          { level: ringLevel }
+        );
+
+        const copperGem = circleWithBricks(
+          "smallCopper",
+          {
+            center,
+            innerRadius: 0,
+            outerRadius: gemRadius,
+          },
+          { level: gemLevel }
+        );
+
+        return [silverRing, copperGem];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "wire",
           level: 1,
         },
       ],

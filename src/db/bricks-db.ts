@@ -15,7 +15,8 @@ export type BrickType =
   | "smallIron"
   | "smallOrganic"
   | "smallWood"
-  | "smallCopper";
+  | "smallCopper"
+  | "smallSilver";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -101,6 +102,12 @@ const COPPER_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.95, g: 0.65, b: 0.35, a: 1 } },
   { offset: 0.45, color: { r: 0.85, g: 0.45, b: 0.2, a: 1 } },
   { offset: 1, color: { r: 0.55, g: 0.25, b: 0.08, a: 1 } },
+] as const;
+
+const SILVER_LINEAR_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.92, g: 0.93, b: 0.96, a: 1 } },
+  { offset: 0.45, color: { r: 0.82, g: 0.83, b: 0.88, a: 1 } },
+  { offset: 1, color: { r: 0.72, g: 0.73, b: 0.78, a: 1 } },
 ] as const;
 
 const BRICK_DB: Record<BrickType, BrickConfig> = {
@@ -311,6 +318,36 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       copper: 1,
+    },
+  },
+  smallSilver: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "linear",
+      start: { x: 0, y: -12 },
+      end: { x: 0, y: 12 },
+      stops: SILVER_LINEAR_GRADIENT,
+    },
+    stroke: { color: { r: 0.55, g: 0.56, b: 0.62, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 320,
+      armor: 54,
+      baseDamage: 32,
+      brickKnockBackDistance: 75,
+      brickKnockBackSpeed: 150,
+      brickKnockBackAmplitude: 7,
+      physicalSize: 18,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.8,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 1.2,
+      },
+    },
+    rewards: {
+      silver: 1,
     },
   },
 };
