@@ -356,7 +356,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const spawnPoint: SceneVector2 = { x: 200, y: 1300 };
 
     return {
-      name: "Ялинки",
+      name: "Forest",
       size,
       spawnPoints: [spawnPoint],
       bricks: ({ mapLevel }) => {

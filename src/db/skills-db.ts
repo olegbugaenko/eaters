@@ -37,13 +37,16 @@ export const SKILL_IDS = [
   "stone_armor",
   "vitality",
   "clarity",
+  "clarity2",
+  "mana_source",
   "mana_reservior",
   "critical_chance",
   "damage_lore",
   "armor_lore",
   "vitality2",
-  "clarity2",
+  "clarity3",
   "refinement",
+  "refinement2",
   "vitality3",
   "restoration",
   "armor_lore2",
@@ -163,6 +166,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { quarry_overseers: 3 },
     cost: createSandCost(50, 1.5),
   },
+  refinement2: {
+    id: "refinement2",
+    name: "Refinement II",
+    description:
+      "Assign dedicated haulers who keep rubble moving and expose richer stone veins.",
+    nodePosition: { x: 0, y: 5 },
+    maxLevel: 8,
+    effects: {
+      brick_rewards: {
+        multiplier: (level) => 1 + 0.125 * level,
+      },
+    },
+    nodesRequired: { refinement: 7 },
+    cost: createResourceCost('copper', 50, 1.5),
+  },
   // top
   glass_latticework: {
     id: "glass_latticework",
@@ -238,6 +256,24 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { emberglass_reactors: 2 },
     cost: createSandCost(22, 1.45),
   },
+  mana_source: {
+    id: "mana_source",
+    name: "Mana Source",
+    description:
+      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+    nodePosition: { x: -3, y: -5 },
+    maxLevel: 8,
+    effects: {
+      mana_cap: {
+        income: (level) => 2 * level,
+      },
+      mana_regen: {
+        income: (level) => 0.2*level
+      }
+    },
+    nodesRequired: { sand_scribing: 3 },
+    cost: createResourceCost('wood', 20, 1.5),
+  },
   bastion_foundations: {
     id: "bastion_foundations",
     name: "Bastion Foundations",
@@ -282,6 +318,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { clarity: 3 },
     cost: createSandCost(50, 1.5),
+  },
+  clarity3: {
+    id: "clarity3",
+    name: "Clarity III",
+    description:
+      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+    nodePosition: { x: 3, y: -5 },
+    maxLevel: 8,
+    effects: {
+      sanity_cap: {
+        income: (level) => 2 * level,
+      },
+    },
+    nodesRequired: { clarity2: 3 },
+    cost: createResourceCost('wood', 50, 1.5),
   },
   // left
   granite_bonding: {
