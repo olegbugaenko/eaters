@@ -580,7 +580,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const spawnPoint: SceneVector2 = { x: center.x - 650, y: center.y };
     const outerRadius = 520;
     const innerRadius = 360;
-    const gemRadius = 220;
+    const gemRadius = 60;
 
     return {
       name: "Silver Ring",
@@ -588,8 +588,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       spawnPoints: [spawnPoint],
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
-        const ringLevel = baseLevel + 1;
-        const gemLevel = baseLevel + 2;
+        const ringLevel = baseLevel;
+        const gemLevel = baseLevel + 1;
 
         const silverRing = circleWithBricks(
           "smallSilver",
@@ -604,7 +604,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         const copperGem = circleWithBricks(
           "smallCopper",
           {
-            center,
+            center: { x: center.x + outerRadius + 50, y: center.y },
             innerRadius: 0,
             outerRadius: gemRadius,
           },

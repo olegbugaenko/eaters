@@ -330,9 +330,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.55, g: 0.56, b: 0.62, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 320,
-      armor: 54,
-      baseDamage: 32,
+      maxHp: 820,
+      armor: 84,
+      baseDamage: 82,
       brickKnockBackDistance: 75,
       brickKnockBackSpeed: 150,
       brickKnockBackAmplitude: 7,
@@ -347,7 +347,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
     rewards: {
-      silver: 1,
+      silver: 0.5,
     },
   },
 };

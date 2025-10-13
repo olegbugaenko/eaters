@@ -51,7 +51,9 @@ export const SKILL_IDS = [
   "vitality3",
   "restoration",
   "armor_lore2",
+  "armor_lore3",
   "heavy_drill",
+  "silver_drill",
   "penetration",
   "penetration2"
 ] as const;
@@ -408,6 +410,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { damage_lore: 5 },
     cost: createResourceCost('iron', 30, 1.5),
   },
+  silver_drill: {
+    id: "silver_drill",
+    name: "Silver Drill",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: -8, y: -1 },
+    maxLevel: 15,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { damage_lore: 5 },
+    cost: createResourceCost('silver', 60, 1.5),
+  },
   critical_chance: {
     id: "critical_chance",
     name: "Critical Chance",
@@ -528,6 +545,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { armor_lore: 5 },
     cost: createResourceCost('iron', 30, 1.5),
+  },
+  armor_lore3: {
+    id: "armor_lore3",
+    name: "Armor Lore III",
+    description:
+      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+    nodePosition: { x: 7, y: 2 },
+    maxLevel: 15,
+    effects: {
+      all_units_armor: {
+        income: (level) => 1.5*level,
+      },
+    },
+    nodesRequired: { armor_lore2: 5 },
+    cost: createResourceCost('silver', 60, 1.5),
   },
   vitality2: {
     id: "vitality2",
