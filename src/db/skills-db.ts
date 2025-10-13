@@ -426,7 +426,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
     nodePosition: { x: 4, y: 1 },
-    maxLevel: 10,
+    maxLevel: 15,
     effects: {
       all_units_armor: {
         income: (level) => 0 + 0.5 * level,
@@ -441,7 +441,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
     nodePosition: { x: 6, y: 1 },
-    maxLevel: 10,
+    maxLevel: 15,
     effects: {
       all_units_armor: {
         income: (level) => 0 + 0.75 * level,
