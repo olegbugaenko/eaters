@@ -280,7 +280,6 @@ export class ResourcesModule implements GameModule {
       this.passiveIncomeRemainder[id] = pending - granted;
       if (granted > 0) {
         this.totals[id] += granted;
-        this.runGains[id] += granted;
         changed = true;
       }
     });

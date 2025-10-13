@@ -39,6 +39,39 @@ describe("ResourcesModule", () => {
     assert(Math.abs(stone.ratePerSecond - 50) < 1e-6, "stone rate should equal gain per second");
   });
 
+  test("passive income is excluded from run gains", () => {
+    const bridge = new DataBridge();
+    const unlocks = new UnlockService({
+      getMapStats: () => ({}),
+      getSkillLevel: () => 0,
+    });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    bonuses.registerSource("test", {
+      stone_income: {
+        income: () => 2,
+      },
+    });
+    bonuses.setSourceLevel("test", 1);
+    const module = new ResourcesModule({ bridge, unlocks, bonuses });
+
+    module.initialize();
+    module.startRun();
+    module.tick(1000);
+    module.grantResources({ stone: 5 });
+    module.finishRun();
+
+    const payload = bridge.getValue<ResourceRunSummaryPayload>(
+      RESOURCE_RUN_SUMMARY_BRIDGE_KEY
+    );
+    assert(payload, "run summary should be available");
+
+    const stone = payload.resources.find((resource) => resource.id === "stone");
+    assert(stone, "stone resource should be present");
+    assert.strictEqual(stone.amount, 7);
+    assert.strictEqual(stone.gained, 5);
+  });
+
   test("resources unlock after completing required map", () => {
     const bridge = new DataBridge();
     let mapStats: MapStats = {};
