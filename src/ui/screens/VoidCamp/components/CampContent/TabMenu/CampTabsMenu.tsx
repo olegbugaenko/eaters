@@ -6,12 +6,14 @@ type CampTabsMenuProps = {
   activeTab: CampTabKey;
   onChange: (tab: CampTabKey) => void;
   modulesUnlocked: boolean;
+  buildingsUnlocked: boolean;
 };
 
 export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
   activeTab,
   onChange,
   modulesUnlocked,
+  buildingsUnlocked,
 }) => {
   const tabs: { key: CampTabKey; label: string }[] = [
     { key: "maps", label: "Map Selector" },
@@ -20,6 +22,10 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
 
   if (modulesUnlocked) {
     tabs.push({ key: "modules", label: "Modules" });
+  }
+
+  if (buildingsUnlocked) {
+    tabs.push({ key: "buildings", label: "Buildings" });
   }
 
   return (

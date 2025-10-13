@@ -9,6 +9,8 @@ import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/UnitModuleWorkshopModule";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
+import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
+import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWorkshop/BuildingsWorkshopView";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -24,6 +26,7 @@ type CampTabPanelsProps = {
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   resourceTotals: ResourceAmountPayload[];
   unitDesignerState: UnitDesignerBridgeState;
+  buildingsState: BuildingsWorkshopBridgeState;
 };
 
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
@@ -39,6 +42,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   moduleWorkshopState,
   resourceTotals,
   unitDesignerState,
+  buildingsState,
 }) => {
   const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer">("shop");
 
@@ -103,6 +107,21 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         </div>
       </div>
     );
+  }
+
+  if (activeTab === "buildings") {
+    if (!buildingsState.unlocked) {
+      return (
+        <div className="camp-tab-panels__modules-locked surface-panel">
+          <h2 className="heading-2">Buildings Unavailable</h2>
+          <p className="body-md text-muted">
+            Unlock the Construction Guild skill to coordinate permanent structures.
+          </p>
+        </div>
+      );
+    }
+
+    return <BuildingsWorkshopView state={buildingsState} resources={resourceTotals} />;
   }
 
   return (

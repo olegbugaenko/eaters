@@ -79,9 +79,9 @@ const BLUE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const GREEN_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.65, g: 1, b: 0.8, a: 1 } },
-  { offset: 0.4, color: { r: 0.35, g: 1, b: 0.45, a: 0.9 } },
-  { offset: 1, color: { r: 0.15, g: 0.7, b: 0.15, a: 0.6 } },
+  { offset: 0, color: { r: 0.45, g: 0.8, b: 0.5, a: 1 } },
+  { offset: 0.4, color: { r: 0.25, g: 0.8, b: 0.35, a: 0.9 } },
+  { offset: 1, color: { r: 0.05, g: 0.5, b: 0.05, a: 0.6 } },
 ] as const;
 
 

@@ -7,9 +7,10 @@ import { UnitModuleWorkshopBridgeState } from "@logic/modules/UnitModuleWorkshop
 import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { formatDuration } from "@ui/utils/formatDuration";
+import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
 import "./CampContent.css";
 
-export type CampTabKey = "maps" | "skills" | "modules";
+export type CampTabKey = "maps" | "skills" | "modules" | "buildings";
 
 interface CampContentProps {
   maps: MapListEntry[];
@@ -25,6 +26,7 @@ interface CampContentProps {
   resourceTotals: ResourceAmountPayload[];
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   unitDesignerState: UnitDesignerBridgeState;
+  buildingsState: BuildingsWorkshopBridgeState;
 }
 
 export const CampContent: React.FC<CampContentProps> = ({
@@ -41,31 +43,41 @@ export const CampContent: React.FC<CampContentProps> = ({
   resourceTotals,
   moduleWorkshopState,
   unitDesignerState,
+  buildingsState,
 }) => {
   const [activeTab, setActiveTab] = useState<CampTabKey>(initialTab);
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-  useEffect(() => {
-    if (!moduleWorkshopState.unlocked) {
-      setActiveTab((current) => {
-        if (current !== "modules") {
-          return current;
-        }
-        return initialTab === "maps" ? "maps" : "skills";
-      });
+  const fallbackTab = useMemo<CampTabKey>(() => {
+    if (initialTab === "maps" || initialTab === "skills") {
+      return initialTab;
     }
-  }, [moduleWorkshopState.unlocked, initialTab]);
+    return "maps";
+  }, [initialTab]);
+  const sanitizeTab = useCallback(
+    (tab: CampTabKey): CampTabKey => {
+      if (tab === "modules" && !moduleWorkshopState.unlocked) {
+        return fallbackTab;
+      }
+      if (tab === "buildings" && !buildingsState.unlocked) {
+        return fallbackTab;
+      }
+      return tab;
+    },
+    [moduleWorkshopState.unlocked, buildingsState.unlocked, fallbackTab]
+  );
+  useEffect(() => {
+    setActiveTab(sanitizeTab(initialTab));
+  }, [initialTab, sanitizeTab]);
+  useEffect(() => {
+    setActiveTab((current) => sanitizeTab(current));
+  }, [sanitizeTab]);
   const formattedTime = useMemo(() => formatDuration(timePlayed), [timePlayed]);
   const handleTabChange = useCallback(
     (tab: CampTabKey) => {
-      if (tab === "modules" && !moduleWorkshopState.unlocked) {
-        return;
-      }
-      setActiveTab(tab);
-      onTabChange?.(tab);
+      const sanitized = sanitizeTab(tab);
+      setActiveTab(sanitized);
+      onTabChange?.(sanitized);
     },
-    [onTabChange, moduleWorkshopState.unlocked]
+    [onTabChange, sanitizeTab]
   );
 
   return (
@@ -75,6 +87,7 @@ export const CampContent: React.FC<CampContentProps> = ({
           activeTab={activeTab}
           onChange={handleTabChange}
           modulesUnlocked={moduleWorkshopState.unlocked}
+          buildingsUnlocked={buildingsState.unlocked}
         />
       </header>
       <CampTabPanels
@@ -90,6 +103,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         moduleWorkshopState={moduleWorkshopState}
         resourceTotals={resourceTotals}
         unitDesignerState={unitDesignerState}
+        buildingsState={buildingsState}
       />
     </div>
   );

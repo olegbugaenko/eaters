@@ -1,6 +1,8 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
 import { UnlockService } from "../services/UnlockService";
+import { BonusesModule } from "./BonusesModule";
+import { BonusId } from "../../db/bonuses-db";
 import {
   RESOURCE_IDS,
   ResourceAmount,
@@ -15,6 +17,10 @@ import {
 export const RESOURCE_TOTALS_BRIDGE_KEY = "resources/totals";
 export const RESOURCE_RUN_SUMMARY_BRIDGE_KEY = "resources/runSummary";
 export const RESOURCE_RUN_DURATION_BRIDGE_KEY = "resources/runDuration";
+
+const PASSIVE_RESOURCE_BONUS_IDS: Partial<Record<ResourceId, BonusId>> = {
+  stone: "stone_income",
+};
 
 export interface ResourceAmountPayload {
   id: ResourceId;
@@ -44,6 +50,7 @@ export const DEFAULT_RESOURCE_RUN_SUMMARY: ResourceRunSummaryPayload = Object.fr
 interface ResourcesModuleOptions {
   bridge: DataBridge;
   unlocks: UnlockService;
+  bonuses: BonusesModule;
 }
 
 interface ResourcesSaveData {
@@ -56,6 +63,7 @@ export class ResourcesModule implements GameModule {
 
   private readonly bridge: DataBridge;
   private readonly unlocks: UnlockService;
+  private readonly bonuses: BonusesModule;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
@@ -64,10 +72,12 @@ export class ResourcesModule implements GameModule {
   private runBricksDestroyed = 0;
   private runDurationMs = 0;
   private visibleResourceIds: ResourceId[] = [];
+  private passiveIncomeRemainder: ResourceStockpile = createEmptyResourceStockpile();
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
     this.unlocks = options.unlocks;
+    this.bonuses = options.bonuses;
   }
 
   public initialize(): void {
@@ -85,6 +95,7 @@ export class ResourcesModule implements GameModule {
     this.totalBricksDestroyed = 0;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
+    this.passiveIncomeRemainder = createEmptyResourceStockpile();
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
@@ -99,6 +110,7 @@ export class ResourcesModule implements GameModule {
       this.runBricksDestroyed = 0;
     }
     this.runDurationMs = 0;
+    this.passiveIncomeRemainder = createEmptyResourceStockpile();
     this.refreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
@@ -114,8 +126,13 @@ export class ResourcesModule implements GameModule {
 
   public tick(_deltaMs: number): void {
     const deltaMs = Math.max(_deltaMs, 0);
+    const deltaSeconds = deltaMs / 1000;
+    let passiveChanged = false;
+    if (deltaSeconds > 0) {
+      passiveChanged = this.applyPassiveIncome(deltaSeconds);
+    }
     const visibilityChanged = this.refreshVisibleResourceIds();
-    let summaryChanged = visibilityChanged;
+    let summaryChanged = visibilityChanged || passiveChanged;
     let durationChanged = false;
 
     if (this.runActive && deltaMs > 0) {
@@ -124,7 +141,7 @@ export class ResourcesModule implements GameModule {
       durationChanged = true;
     }
 
-    if (visibilityChanged) {
+    if (visibilityChanged || passiveChanged) {
       this.pushTotals();
     }
 
@@ -245,6 +262,40 @@ export class ResourcesModule implements GameModule {
 
   public isRunSummaryAvailable(): boolean {
     return this.summaryCompleted;
+  }
+
+  private applyPassiveIncome(deltaSeconds: number): boolean {
+    if (deltaSeconds <= 0) {
+      return false;
+    }
+    let changed = false;
+    RESOURCE_IDS.forEach((id) => {
+      const rate = this.getPassiveIncomeRate(id);
+      if (rate <= 0) {
+        this.passiveIncomeRemainder[id] = 0;
+        return;
+      }
+      const pending = rate * deltaSeconds + (this.passiveIncomeRemainder[id] ?? 0);
+      const granted = Math.floor(pending * 100) / 100;
+      this.passiveIncomeRemainder[id] = pending - granted;
+      if (granted > 0) {
+        this.totals[id] += granted;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  private getPassiveIncomeRate(resourceId: ResourceId): number {
+    const bonusId = PASSIVE_RESOURCE_BONUS_IDS[resourceId];
+    if (!bonusId) {
+      return 0;
+    }
+    const value = this.bonuses.getBonusValue(bonusId);
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, value);
   }
 
   private pushTotals(): void {

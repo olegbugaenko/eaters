@@ -10,6 +10,7 @@ export const BONUS_IDS = [
   "sanity_cap",
   "mana_regen",
   "brick_rewards",
+  "stone_income",
   "blue_vanguard_attack_multiplier",
   "blue_vanguard_hp_multiplier",
   "all_units_hp_multiplier",
@@ -43,6 +44,11 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "brick_rewards",
     name: "Brick Rewards",
     defaultValue: 1,
+  },
+  stone_income: {
+    id: "stone_income",
+    name: "Stone Passive Income",
+    defaultValue: 0,
   },
   blue_vanguard_attack_multiplier: {
     id: "blue_vanguard_attack_multiplier",

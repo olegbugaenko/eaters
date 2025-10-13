@@ -20,6 +20,7 @@ import { UnlockService } from "../services/UnlockService";
 import { UnitAutomationModule } from "../modules/UnitAutomationModule";
 import { UnitModuleWorkshopModule } from "../modules/UnitModuleWorkshopModule";
 import { UnitDesignModule } from "../modules/UnitDesignModule";
+import { BuildingsModule } from "../modules/BuildingsModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -33,6 +34,7 @@ export class Application {
   private unitAutomationModule: UnitAutomationModule;
   private unitModuleWorkshopModule: UnitModuleWorkshopModule;
   private unitDesignModule: UnitDesignModule;
+  private buildingsModule: BuildingsModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -60,6 +62,7 @@ export class Application {
     const resourcesModule = new ResourcesModule({
       bridge: this.dataBridge,
       unlocks: unlockService,
+      bonuses: bonusesModule,
     });
     this.resourcesModule = resourcesModule;
 
@@ -70,6 +73,15 @@ export class Application {
     });
     this.skillTreeModule = skillTreeModule;
     skillTreeModuleReference = skillTreeModule;
+
+    const buildingsModule = new BuildingsModule({
+      bridge: this.dataBridge,
+      resources: resourcesModule,
+      bonuses: bonusesModule,
+      unlocks: unlockService,
+      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+    });
+    this.buildingsModule = buildingsModule;
 
     const unitModuleWorkshopModule = new UnitModuleWorkshopModule({
       bridge: this.dataBridge,
@@ -149,6 +161,7 @@ export class Application {
     this.registerModule(bonusesModule);
     this.registerModule(resourcesModule);
     this.registerModule(skillTreeModule);
+    this.registerModule(buildingsModule);
     this.registerModule(unitModuleWorkshopModule);
     this.registerModule(unitDesignModule);
     this.registerModule(timeModule);
@@ -229,6 +242,10 @@ export class Application {
 
   public getUnitModuleWorkshop(): UnitModuleWorkshopModule {
     return this.unitModuleWorkshopModule;
+  }
+
+  public getBuildings(): BuildingsModule {
+    return this.buildingsModule;
   }
 
   public restartCurrentMap(): void {
