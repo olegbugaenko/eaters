@@ -1,6 +1,9 @@
 import { ResourceAmount } from "./resources-db";
+import type { MapId } from "./maps-db";
+import type { SkillId } from "./skills-db";
+import type { UnlockCondition } from "../types/unlocks";
 
-export const UNIT_MODULE_IDS = ["magnet", "perforator"] as const;
+export const UNIT_MODULE_IDS = ["magnet", "perforator", "vitalHull", "ironForge"] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
 
@@ -17,6 +20,7 @@ export interface UnitModuleConfig {
   readonly manaCostMultiplier: number;
   readonly sanityCost: number;
   readonly baseCost: ResourceAmount;
+  readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
 }
 
 const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
@@ -49,6 +53,50 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseCost: {
       sand: 300,
     },
+  },
+  vitalHull: {
+    id: "vitalHull",
+    name: "Vital Hull",
+    description:
+      "Bio-reactive plating grafts regenerative tissues that swell the ship's structure.",
+    bonusLabel: "Max HP multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.5,
+    bonusPerLevel: 0.05,
+    manaCostMultiplier: 2.5,
+    sanityCost: 1,
+    baseCost: {
+      organics: 200,
+    },
+    unlockedBy: [
+      {
+        type: "map",
+        id: "initial",
+        level: 1,
+      },
+    ],
+  },
+  ironForge: {
+    id: "ironForge",
+    name: "Iron Forge",
+    description:
+      "Magnetized furnaces overcharge weapon cores to deliver brutally efficient strikes.",
+    bonusLabel: "Damage multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.5,
+    bonusPerLevel: 0.05,
+    manaCostMultiplier: 2.5,
+    sanityCost: 1,
+    baseCost: {
+      iron: 200,
+    },
+    unlockedBy: [
+      {
+        type: "map",
+        id: "initial",
+        level: 1,
+      },
+    ],
   },
 };
 

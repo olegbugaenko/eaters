@@ -202,7 +202,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                   />
                 ) : (
                   <p className="text-muted body-sm">
-                    Unlock the Modules skill to begin fabrication.
+                    Module unavailable. Fulfil its unlock requirements to fabricate.
                   </p>
                 )
               }

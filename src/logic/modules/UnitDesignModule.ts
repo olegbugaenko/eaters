@@ -466,8 +466,43 @@ export class UnitDesignModule implements GameModule {
     const bonuses: PlayerUnitBonusLine[] = modules.map((detail) =>
       this.createBonusLine(detail)
     );
+    let hpMultiplier = 1;
+    let attackMultiplier = 1;
+
+    modules.forEach((detail) => {
+      switch (detail.id) {
+        case "vitalHull":
+          hpMultiplier *= Math.max(detail.bonusValue, 0);
+          break;
+        case "ironForge":
+          attackMultiplier *= Math.max(detail.bonusValue, 0);
+          break;
+        default:
+          break;
+      }
+    });
+
+    const appliedHpMultiplier = Math.max(hpMultiplier, 0);
+    const appliedAttackMultiplier = Math.max(attackMultiplier, 0);
+    const effectiveMaxHp = roundStat(blueprint.effective.maxHp * appliedHpMultiplier);
+    const effectiveAttackDamage = roundStat(
+      blueprint.effective.attackDamage * appliedAttackMultiplier
+    );
+    const hpRegenPerSecond = roundStat(
+      (blueprint.hpRegenPercentage * 0.01) * effectiveMaxHp
+    );
+
     return {
       ...blueprint,
+      effective: {
+        attackDamage: effectiveAttackDamage,
+        maxHp: Math.max(effectiveMaxHp, 1),
+      },
+      multipliers: {
+        attackDamage: blueprint.multipliers.attackDamage * appliedAttackMultiplier,
+        maxHp: blueprint.multipliers.maxHp * appliedHpMultiplier,
+      },
+      hpRegenPerSecond,
       bonuses,
     };
   }

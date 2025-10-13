@@ -68,6 +68,8 @@ interface PlayerUnitState {
   hp: number;
   maxHp: number;
   armor: number;
+  hpRegenPerSecond: number;
+  armorPenetration: number;
   baseAttackDamage: number;
   baseAttackInterval: number;
   baseAttackDistance: number;
@@ -152,6 +154,7 @@ export class PlayerUnitsModule implements GameModule {
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
     const unitsSnapshot = [...this.unitOrder];
     const plannedTargets = new Map<string, string | null>();
+    let statsDirty = false;
 
     unitsSnapshot.forEach((unit) => {
       if (!this.units.has(unit.id)) {
@@ -159,6 +162,18 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       unit.attackCooldown = Math.max(unit.attackCooldown - deltaSeconds, 0);
+
+      if (unit.hpRegenPerSecond > 0 && unit.hp < unit.maxHp) {
+        const previousHp = unit.hp;
+        unit.hp = clampNumber(
+          unit.hp + unit.hpRegenPerSecond * deltaSeconds,
+          0,
+          unit.maxHp
+        );
+        if (unit.hp !== previousHp) {
+          statsDirty = true;
+        }
+      }
 
       const movementState = this.movement.getBodyState(unit.movementId);
       if (!movementState) {
@@ -261,9 +276,16 @@ export class PlayerUnitsModule implements GameModule {
         distance <= attackRange + ATTACK_DISTANCE_EPSILON &&
         unit.attackCooldown <= 0
       ) {
-        this.performAttack(unit, target, direction, distance);
+        const hpChanged = this.performAttack(unit, target, direction, distance);
+        if (hpChanged) {
+          statsDirty = true;
+        }
       }
     });
+
+    if (statsDirty) {
+      this.pushStats();
+    }
   }
 
   public setUnits(units: PlayerUnitSpawnData[]): void {
@@ -455,6 +477,8 @@ export class PlayerUnitsModule implements GameModule {
       hp,
       maxHp,
       armor: Math.max(blueprint.armor, 0),
+      hpRegenPerSecond: Math.max(blueprint.hpRegenPerSecond, 0),
+      armorPenetration: Math.max(blueprint.armorPenetration, 0),
       baseAttackDamage: Math.max(blueprint.effective.attackDamage, 0),
       baseAttackInterval: Math.max(blueprint.baseAttackInterval, 0.01),
       baseAttackDistance: Math.max(blueprint.baseAttackDistance, 0),
@@ -659,11 +683,13 @@ export class PlayerUnitsModule implements GameModule {
     target: BrickRuntimeState,
     direction: SceneVector2,
     distance: number
-  ): void {
+  ): boolean {
+    let hpChanged = false;
     unit.attackCooldown = unit.baseAttackInterval;
     const { damage, isCritical } = this.getAttackOutcome(unit);
     const result = this.bricks.applyDamage(target.id, damage, direction, {
       rewardMultiplier: unit.rewardMultiplier,
+      armorPenetration: unit.armorPenetration,
     });
     const surviving = result.brick ?? target;
 
@@ -681,6 +707,7 @@ export class PlayerUnitsModule implements GameModule {
         nearby.forEach((brick) => {
           this.bricks.applyDamage(brick.id, splashDamage, direction, {
             rewardMultiplier: unit.rewardMultiplier,
+            armorPenetration: unit.armorPenetration,
           });
         });
       }
@@ -694,12 +721,12 @@ export class PlayerUnitsModule implements GameModule {
     const counterDamage = Math.max(counterSource.baseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
-      this.pushStats();
+      hpChanged = true;
     }
 
     if (unit.hp <= 0) {
       this.removeUnit(unit);
-      return;
+      return true;
     }
 
     if (result.destroyed) {
@@ -710,6 +737,7 @@ export class PlayerUnitsModule implements GameModule {
       position: { ...unit.position },
       rotation: unit.rotation,
     });
+    return hpChanged;
   }
 
   private spawnCriticalHitEffect(position: SceneVector2): void {
@@ -756,7 +784,6 @@ export class PlayerUnitsModule implements GameModule {
     this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
-    this.pushStats();
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
@@ -819,6 +846,14 @@ export const computePlayerUnitBlueprint = (
     globalCritMultiplierRaw,
     DEFAULT_CRIT_MULTIPLIER_BONUS
   );
+  const globalHpRegenPercentage = Math.max(
+    sanitizeAdditive(values["all_units_hp_regen_percentage"], 0),
+    0
+  );
+  const globalArmorPenetration = Math.max(
+    sanitizeAdditive(values["all_units_armor_penetration"], 0),
+    0
+  );
 
   let specificAttackMultiplier = 1;
   let specificHpMultiplier = 1;
@@ -852,6 +887,9 @@ export const computePlayerUnitBlueprint = (
     baseCritMultiplier * Math.max(critMultiplierMultiplier, 0)
   );
   const effectiveCritChance = clampProbability(baseCritChance + totalCritChanceBonus);
+  const hpRegenPerSecond = roundStat(
+    Math.max(effectiveHp, 0) * (globalHpRegenPercentage * 0.01)
+  );
 
   return {
     type,
@@ -879,6 +917,9 @@ export const computePlayerUnitBlueprint = (
       effective: Math.max(effectiveCritMultiplier, 1),
     },
     armor: Math.max(config.armor, 0) + globalArmorBonus,
+    hpRegenPerSecond,
+    hpRegenPercentage: globalHpRegenPercentage,
+    armorPenetration: globalArmorPenetration,
     baseAttackInterval: baseInterval,
     baseAttackDistance: baseDistance,
     moveSpeed: baseMoveSpeed,

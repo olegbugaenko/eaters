@@ -239,7 +239,7 @@ export class BricksModule implements GameModule {
     brickId: string,
     rawDamage: number,
     hitDirection?: SceneVector2,
-    options?: { rewardMultiplier?: number }
+    options?: { rewardMultiplier?: number; armorPenetration?: number }
   ): { destroyed: boolean; brick: BrickRuntimeState | null } {
     const brick = this.bricks.get(brickId);
     if (!brick) {
@@ -247,8 +247,9 @@ export class BricksModule implements GameModule {
     }
 
     const rewardMultiplier = Math.max(options?.rewardMultiplier ?? 1, 0);
-
-    const effectiveDamage = Math.max(rawDamage - brick.armor, 0);
+    const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
+    const effectiveArmor = Math.max(brick.armor - armorPenetration, 0);
+    const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0);
     if (effectiveDamage <= 0) {
       return { destroyed: false, brick: this.cloneState(brick) };
     }
