@@ -77,6 +77,8 @@ export interface UnitDesignerBridgeState {
   readonly units: readonly UnitDesignerUnitState[];
   readonly availableModules: readonly UnitDesignerAvailableModuleState[];
   readonly maxModules: number;
+  readonly activeRoster: readonly UnitDesignId[];
+  readonly maxActiveUnits: number;
 }
 
 interface UnitDesignerSaveDataEntry {
@@ -88,6 +90,7 @@ interface UnitDesignerSaveDataEntry {
 
 interface UnitDesignerSaveData {
   readonly units?: UnitDesignerSaveDataEntry[];
+  readonly roster?: UnitDesignId[];
 }
 
 interface UnitDesignModuleOptions {
@@ -99,11 +102,14 @@ interface UnitDesignModuleOptions {
 export const UNIT_DESIGNER_STATE_BRIDGE_KEY = "unitDesigner/state";
 
 export const MAX_MODULES_PER_UNIT = 3;
+export const MAX_ACTIVE_UNITS = 3;
 
 export const DEFAULT_UNIT_DESIGNER_STATE: UnitDesignerBridgeState = Object.freeze({
   units: [],
   availableModules: [],
   maxModules: MAX_MODULES_PER_UNIT,
+  activeRoster: [],
+  maxActiveUnits: MAX_ACTIVE_UNITS,
 });
 
 const DEFAULT_UNIT_NAME_FALLBACK = "Custom Unit";
@@ -127,6 +133,8 @@ export class UnitDesignModule implements GameModule {
   private designOrder: UnitDesignId[] = [];
   private idCounter = 0;
   private cachedComputed = new Map<UnitDesignId, UnitDesignerUnitState>();
+  private activeRoster: UnitDesignId[] = [];
+  private rosterInitialized = false;
   private cachedBonuses: BonusValueMap | null = null;
   private listeners = new Set<UnitDesignerListener>();
   private unsubscribeBonuses: (() => void) | null = null;
@@ -154,6 +162,8 @@ export class UnitDesignModule implements GameModule {
     this.designs.clear();
     this.designOrder = [];
     this.idCounter = 0;
+    this.activeRoster = [];
+    this.rosterInitialized = false;
     this.ensureDefaults();
     this.refreshComputedState();
   }
@@ -162,6 +172,8 @@ export class UnitDesignModule implements GameModule {
     this.designs.clear();
     this.designOrder = [];
     this.idCounter = 0;
+    this.activeRoster = [];
+    this.rosterInitialized = false;
     this.applySaveData(data);
     this.ensureDefaults();
     this.refreshComputedState();
@@ -177,7 +189,8 @@ export class UnitDesignModule implements GameModule {
         name: record.name,
         modules: [...record.modules],
       }));
-    return { units } satisfies UnitDesignerSaveData;
+    const roster = this.activeRoster.slice(0, MAX_ACTIVE_UNITS);
+    return { units, roster } satisfies UnitDesignerSaveData;
   }
 
   public tick(_deltaMs: number): void {
@@ -243,6 +256,16 @@ export class UnitDesignModule implements GameModule {
       .filter((entry): entry is UnitDesignerUnitState => Boolean(entry));
   }
 
+  public getActiveRosterIds(): readonly UnitDesignId[] {
+    return [...this.activeRoster];
+  }
+
+  public getActiveRosterDesigns(): UnitDesignerUnitState[] {
+    return this.activeRoster
+      .map((id) => this.cachedComputed.get(id) ?? null)
+      .filter((entry): entry is UnitDesignerUnitState => Boolean(entry));
+  }
+
   public getDefaultDesignForType(type: PlayerUnitType): UnitDesignerUnitState | null {
     const foundId = this.designOrder.find((id) => {
       const record = this.designs.get(id);
@@ -262,12 +285,30 @@ export class UnitDesignModule implements GameModule {
     };
   }
 
+  public setActiveRoster(roster: readonly UnitDesignId[]): void {
+    const sanitized = this.sanitizeRoster(roster);
+    if (this.areRostersEqual(sanitized, this.activeRoster)) {
+      return;
+    }
+    this.activeRoster = sanitized;
+    this.rosterInitialized = true;
+    const units = this.getAllDesigns();
+    this.emitState(units);
+  }
+
   private applySaveData(data: unknown | undefined): void {
     if (!data || typeof data !== "object") {
       return;
     }
+    let roster: UnitDesignId[] = [];
+    const rosterPayload = (data as UnitDesignerSaveData).roster;
+    if (Array.isArray(rosterPayload)) {
+      roster = rosterPayload.filter((id): id is UnitDesignId => typeof id === "string");
+      this.rosterInitialized = true;
+    }
     const payload = (data as UnitDesignerSaveData).units;
     if (!Array.isArray(payload)) {
+      this.activeRoster = this.sanitizeRoster(roster);
       return;
     }
     payload.forEach((entry) => {
@@ -286,6 +327,7 @@ export class UnitDesignModule implements GameModule {
       this.designOrder.push(id);
       this.idCounter = Math.max(this.idCounter, this.extractCounter(id));
     });
+    this.activeRoster = this.sanitizeRoster(roster);
   }
 
   private ensureDefaults(): void {
@@ -294,10 +336,55 @@ export class UnitDesignModule implements GameModule {
         this.createDefaultDesign(type);
       }
     });
+    if (!this.rosterInitialized && this.activeRoster.length === 0) {
+      this.activeRoster = this.designOrder.slice(0, MAX_ACTIVE_UNITS);
+      this.rosterInitialized = true;
+    } else {
+      this.activeRoster = this.sanitizeRoster(this.activeRoster);
+      if (this.activeRoster.length > 0) {
+        this.rosterInitialized = true;
+      }
+    }
   }
 
   private hasDesignForType(type: PlayerUnitType): boolean {
     return this.designOrder.some((id) => this.designs.get(id)?.type === type);
+  }
+
+  private sanitizeRoster(roster: readonly UnitDesignId[]): UnitDesignId[] {
+    if (this.designOrder.length === 0) {
+      return [];
+    }
+    const availableSet = new Set(this.designOrder);
+    const sanitized: UnitDesignId[] = [];
+    roster.forEach((id) => {
+      if (sanitized.length >= MAX_ACTIVE_UNITS) {
+        return;
+      }
+      if (!availableSet.has(id)) {
+        return;
+      }
+      if (sanitized.includes(id)) {
+        return;
+      }
+      sanitized.push(id);
+    });
+    return sanitized;
+  }
+
+  private areRostersEqual(
+    first: readonly UnitDesignId[],
+    second: readonly UnitDesignId[]
+  ): boolean {
+    if (first.length !== second.length) {
+      return false;
+    }
+    for (let index = 0; index < first.length; index += 1) {
+      if (first[index] !== second[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private createDefaultDesign(type: PlayerUnitType): void {
@@ -332,8 +419,17 @@ export class UnitDesignModule implements GameModule {
       computed.push(unitState);
     });
 
-    this.pushState(computed);
-    this.listeners.forEach((listener) => listener(computed));
+    const sanitizedRoster = this.sanitizeRoster(this.activeRoster);
+    if (!this.areRostersEqual(sanitizedRoster, this.activeRoster)) {
+      this.activeRoster = sanitizedRoster;
+    }
+
+    this.emitState(computed);
+  }
+
+  private emitState(units: UnitDesignerUnitState[]): void {
+    this.pushState(units);
+    this.listeners.forEach((listener) => listener(units));
   }
 
   private computeDesignState(
@@ -362,6 +458,8 @@ export class UnitDesignModule implements GameModule {
       units,
       availableModules,
       maxModules: MAX_MODULES_PER_UNIT,
+      activeRoster: [...this.activeRoster],
+      maxActiveUnits: MAX_ACTIVE_UNITS,
     });
   }
 

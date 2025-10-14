@@ -13,6 +13,7 @@ import {
   ResourceStockpile,
   RESOURCE_IDS,
   normalizeResourceAmount,
+  createEmptyResourceStockpile,
 } from "../../db/resources-db";
 import { BonusEffectPreview } from "../../types/bonuses";
 import { SkillId } from "../../db/skills-db";
@@ -139,7 +140,8 @@ export class BuildingsModule implements GameModule {
       return false;
     }
     const nextLevel = currentLevel + 1;
-    const cost = normalizeResourceAmount(config.cost(nextLevel));
+    const baseCost = normalizeResourceAmount(config.cost(nextLevel));
+    const cost = this.applyCostModifiers(baseCost);
     if (!this.resources.spendResources(cost)) {
       return false;
     }
@@ -223,7 +225,9 @@ export class BuildingsModule implements GameModule {
     const maxed = level >= maxLevelLimit;
     const canUpgrade = available && !maxed;
     const nextCost = canUpgrade
-      ? this.cloneCost(normalizeResourceAmount(config.cost(level + 1)))
+      ? this.cloneCost(
+          this.applyCostModifiers(normalizeResourceAmount(config.cost(level + 1)))
+        )
       : null;
     let bonusEffects = this.bonuses.getBonusEffects(this.getBonusSourceId(id));
     if (maxed) {
@@ -268,6 +272,32 @@ export class BuildingsModule implements GameModule {
       }
     });
     return clone;
+  }
+
+  private getBuildingCostMultiplier(): number {
+    const raw = this.bonuses.getBonusValue("building_cost_multiplier");
+    if (!Number.isFinite(raw) || raw <= 0) {
+      return 1;
+    }
+    return raw;
+  }
+
+  private applyCostModifiers(source: ResourceStockpile): ResourceStockpile {
+    const multiplier = this.getBuildingCostMultiplier();
+    if (Math.abs(multiplier - 1) < 1e-9) {
+      return source;
+    }
+    const adjusted: ResourceStockpile = createEmptyResourceStockpile();
+    RESOURCE_IDS.forEach((id) => {
+      const value = source[id];
+      if (value && value > 0) {
+        const scaled = Math.ceil(value * multiplier);
+        if (scaled > 0) {
+          adjusted[id] = scaled;
+        }
+      }
+    });
+    return adjusted;
   }
 
   private notifyListeners(): void {

@@ -144,7 +144,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     unlockedBy: [
       {
         type: "map",
-        id: "mine",
+        id: "spruce",
         level: 1,
       },
     ],

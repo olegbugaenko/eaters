@@ -11,6 +11,10 @@ import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
 import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWorkshop/BuildingsWorkshopView";
+import { CraftingBridgeState } from "@logic/modules/CraftingModule";
+import { CraftingView } from "@screens/VoidCamp/components/Crafting/CraftingView";
+import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
+import { UnitAutomationBridgeState } from "@logic/modules/UnitAutomationModule";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -26,7 +30,9 @@ type CampTabPanelsProps = {
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   resourceTotals: ResourceAmountPayload[];
   unitDesignerState: UnitDesignerBridgeState;
+  unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
+  craftingState: CraftingBridgeState;
 };
 
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
@@ -42,9 +48,18 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   moduleWorkshopState,
   resourceTotals,
   unitDesignerState,
+  unitAutomationState,
   buildingsState,
+  craftingState,
 }) => {
-  const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer">("shop");
+  const moduleTabs: { key: "shop" | "designer" | "roster"; label: string }[] = [
+    { key: "shop", label: "Module Shop" },
+    { key: "designer", label: "Unit Designer" },
+    { key: "roster", label: "Battle Roster" },
+  ];
+  const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer" | "roster">(
+    "shop"
+  );
 
   useEffect(() => {
     if (!moduleWorkshopState.unlocked) {
@@ -82,18 +97,18 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     return (
       <div className="camp-tab-panels__modules">
         <div className="inline-tabs camp-tab-panels__modules-tabs">
-          {["shop", "designer"].map((tabKey) => {
-            const isActive = activeModulesTab === tabKey;
+          {moduleTabs.map((tab) => {
+            const isActive = activeModulesTab === tab.key;
             return (
               <button
-                key={tabKey}
+                key={tab.key}
                 type="button"
                 className={
                   "inline-tabs__button" + (isActive ? " inline-tabs__button--active" : "")
                 }
-                onClick={() => setActiveModulesTab(tabKey as "shop" | "designer")}
+                onClick={() => setActiveModulesTab(tab.key)}
               >
-                {tabKey === "shop" ? "Module Shop" : "Unit Designer"}
+                {tab.label}
               </button>
             );
           })}
@@ -101,8 +116,10 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         <div className="camp-tab-panels__modules-body">
           {activeModulesTab === "shop" ? (
             <ModulesWorkshopView state={moduleWorkshopState} resources={resourceTotals} />
-          ) : (
+          ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
+          ) : (
+            <UnitRosterView state={unitDesignerState} automation={unitAutomationState} />
           )}
         </div>
       </div>
@@ -122,6 +139,21 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     }
 
     return <BuildingsWorkshopView state={buildingsState} resources={resourceTotals} />;
+  }
+
+  if (activeTab === "crafting") {
+    if (!craftingState.unlocked) {
+      return (
+        <div className="camp-tab-panels__modules-locked surface-panel">
+          <h2 className="heading-2">Crafting Unavailable</h2>
+          <p className="body-md text-muted">
+            Unlock a crafting recipe to begin processing resources into advanced goods.
+          </p>
+        </div>
+      );
+    }
+
+    return <CraftingView state={craftingState} resources={resourceTotals} />;
   }
 
   return (

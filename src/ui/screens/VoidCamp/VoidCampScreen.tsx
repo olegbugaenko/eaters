@@ -26,6 +26,16 @@ import {
   UnitDesignerBridgeState,
   UNIT_DESIGNER_STATE_BRIDGE_KEY,
 } from "@logic/modules/UnitDesignModule";
+import {
+  CraftingBridgeState,
+  CRAFTING_STATE_BRIDGE_KEY,
+  DEFAULT_CRAFTING_STATE,
+} from "@logic/modules/CraftingModule";
+import {
+  DEFAULT_UNIT_AUTOMATION_STATE,
+  UnitAutomationBridgeState,
+  UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+} from "@logic/modules/UnitAutomationModule";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -65,6 +75,16 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     UNIT_DESIGNER_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_DESIGNER_STATE
   );
+  const unitAutomationState = useBridgeValue<UnitAutomationBridgeState>(
+    bridge,
+    UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_AUTOMATION_STATE
+  );
+  const craftingState = useBridgeValue<CraftingBridgeState>(
+    bridge,
+    CRAFTING_STATE_BRIDGE_KEY,
+    DEFAULT_CRAFTING_STATE
+  );
 
   return (
     <VoidCamp
@@ -94,6 +114,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
           moduleWorkshopState={moduleWorkshopState}
           buildingsState={buildingsState}
           unitDesignerState={unitDesignerState}
+          unitAutomationState={unitAutomationState}
+          craftingState={craftingState}
         />
       }
     />

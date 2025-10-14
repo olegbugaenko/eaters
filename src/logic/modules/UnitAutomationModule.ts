@@ -31,7 +31,10 @@ export const DEFAULT_UNIT_AUTOMATION_STATE: UnitAutomationBridgeState = Object.f
 interface UnitAutomationModuleOptions {
   bridge: DataBridge;
   necromancer: Pick<NecromancerModule, "trySpawnDesign">;
-  unitDesigns: Pick<UnitDesignModule, "subscribe" | "getDefaultDesignForType">;
+  unitDesigns: Pick<
+    UnitDesignModule,
+    "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
+  >;
   getSkillLevel: (id: SkillId) => number;
 }
 
@@ -47,7 +50,10 @@ export class UnitAutomationModule implements GameModule {
 
   private readonly bridge: DataBridge;
   private readonly necromancer: Pick<NecromancerModule, "trySpawnDesign">;
-  private readonly unitDesigns: Pick<UnitDesignModule, "subscribe" | "getDefaultDesignForType">;
+  private readonly unitDesigns: Pick<
+    UnitDesignModule,
+    "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
+  >;
   private readonly getSkillLevel: (id: SkillId) => number;
 
   private unlocked = false;
@@ -65,8 +71,8 @@ export class UnitAutomationModule implements GameModule {
   }
 
   public initialize(): void {
-    this.unsubscribeDesigns = this.unitDesigns.subscribe((designs) => {
-      this.handleDesignsChanged(designs);
+    this.unsubscribeDesigns = this.unitDesigns.subscribe(() => {
+      this.handleDesignsChanged();
     });
     this.refreshUnlockState();
     this.pushState();
@@ -199,7 +205,8 @@ export class UnitAutomationModule implements GameModule {
     return result;
   }
 
-  private handleDesignsChanged(designs: readonly UnitDesignerUnitState[]): void {
+  private handleDesignsChanged(): void {
+    const designs: UnitDesignerUnitState[] = this.unitDesigns.getActiveRosterDesigns();
     const knownIds = new Set<UnitDesignId>();
     designs.forEach((design) => {
       knownIds.add(design.id);

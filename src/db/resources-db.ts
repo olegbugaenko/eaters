@@ -10,7 +10,9 @@ export type ResourceId =
   | "wood"
   | "copper"
   | "silver"
-  | "coal";
+  | "coal"
+  | "tools"
+  | "paper";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
@@ -101,6 +103,30 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       {
         type: "map",
         id: "spruce",
+        level: 1,
+      },
+    ],
+  },
+  tools: {
+    id: "tools",
+    name: "Tools",
+    description: "Precision implements forged for advanced fabrication.",
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "tool_fabrication",
+        level: 1,
+      },
+    ],
+  },
+  paper: {
+    id: "paper",
+    name: "Paper",
+    description: "Refined sheets ready for schematics and rituals alike.",
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "paper_milling",
         level: 1,
       },
     ],

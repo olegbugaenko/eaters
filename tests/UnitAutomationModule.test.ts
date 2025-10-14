@@ -66,6 +66,7 @@ describe("UnitAutomationModule", () => {
         return () => undefined;
       },
       getDefaultDesignForType: () => design,
+      getActiveRosterDesigns: () => [design],
     };
     const module = new UnitAutomationModule({
       bridge,

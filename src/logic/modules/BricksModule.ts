@@ -21,7 +21,7 @@ import {
 } from "../../db/resources-db";
 
 interface ResourceCollector {
-  grantResources(amount: ResourceStockpile): void;
+  grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
   notifyBrickDestroyed(): void;
 }
 

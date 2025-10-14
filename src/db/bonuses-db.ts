@@ -19,7 +19,9 @@ export const BONUS_IDS = [
   "all_units_crit_mult",
   "all_units_crit_chance",
   "all_units_hp_regen_percentage",
-  "all_units_armor_penetration"
+  "all_units_armor_penetration",
+  "crafting_speed_mult",
+  "building_cost_multiplier"
 ] as const;
 
 export type BonusId = (typeof BONUS_IDS)[number];
@@ -94,6 +96,16 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_armor_penetration",
     name: "Brick Armor Penetration",
     defaultValue: 0
+  },
+  crafting_speed_mult: {
+    id: "crafting_speed_mult",
+    name: "Crafting Speed Multiplier",
+    defaultValue: 1,
+  },
+  building_cost_multiplier: {
+    id: "building_cost_multiplier",
+    name: "Building Cost Multiplier",
+    defaultValue: 1,
   }
 };
 

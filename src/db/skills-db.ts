@@ -24,6 +24,7 @@ export const SKILL_IDS = [
   "stone_automatons",
   "autorestart_rituals",
   "construction_guild",
+  "construction_ledgers",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -49,10 +50,15 @@ export const SKILL_IDS = [
   "refinement",
   "refinement2",
   "vitality3",
+  "arcane_research",
+  "paper_milling",
   "restoration",
+  "engineered_plating",
   "armor_lore2",
   "armor_lore3",
   "heavy_drill",
+  "tool_fabrication",
+  "forged_strikes",
   "silver_drill",
   "penetration",
   "penetration2",
@@ -72,9 +78,22 @@ const createSandCost = (base: number, growth: number) =>
     sand: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
   });
 
-const createResourceCost = (id: ResourceId, base: number, growth: number) =>   
+const createResourceCost = (id: ResourceId, base: number, growth: number) =>
   (level: number): ResourceAmount => ({
     [id]: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
+  });
+
+const createDualResourceCost = (
+  firstId: ResourceId,
+  firstBase: number,
+  firstGrowth: number,
+  secondId: ResourceId,
+  secondBase: number,
+  secondGrowth: number
+) =>
+  (level: number): ResourceAmount => ({
+    [firstId]: Math.ceil(firstBase * Math.pow(firstGrowth, Math.max(level, 1))),
+    [secondId]: Math.ceil(secondBase * Math.pow(secondGrowth, Math.max(level, 1))),
   });
 
 const createMixedCost = (
@@ -163,6 +182,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { construction_guild: 1 },
     cost: createResourceCost("copper", 5000, 1),
+  },
+  construction_ledgers: {
+    id: "construction_ledgers",
+    name: "Construction Ledgers",
+    description:
+      "Track every shipment and contract, unlocking bulk deals that cut future building costs.",
+    nodePosition: { x: -2, y: 5 },
+    maxLevel: 80,
+    effects: {
+      building_cost_multiplier: {
+        multiplier: (level) => Math.pow(0.95, level),
+      },
+    },
+    nodesRequired: { construction_guild: 1 },
+    cost: createResourceCost("paper", 10, 1.5),
   },
   quarry_overseers: {
     id: "quarry_overseers",
@@ -438,6 +472,31 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { damage_lore: 5 },
     cost: createResourceCost('iron', 30, 1.5),
   },
+  tool_fabrication: {
+    id: "tool_fabrication",
+    name: "Tool Fabrication",
+    description: "Commission specialized implements that unlock advanced crafting techniques.",
+    nodePosition: { x: -7, y: -2 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { heavy_drill: 5 },
+    cost: createDualResourceCost('iron', 120, 1, 'wood', 80, 1),
+  },
+  forged_strikes: {
+    id: "forged_strikes",
+    name: "Forged Strikes",
+    description:
+      "Arm your vanguard with meticulously crafted gear, increasing offensive output.",
+    nodePosition: { x: -8, y: -2 },
+    maxLevel: 80,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.05 * level,
+      },
+    },
+    nodesRequired: { tool_fabrication: 1 },
+    cost: createResourceCost('tools', 10, 1.5),
+  },
   silver_drill: {
     id: "silver_drill",
     name: "Silver Drill",
@@ -619,6 +678,31 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { vitality2: 5 },
     cost: createResourceCost('organics', 30, 1.5),
   },
+  paper_milling: {
+    id: "paper_milling",
+    name: "Paper Milling",
+    description: "Pulp organic matter into disciplined sheets ready for meticulous schematics.",
+    nodePosition: { x: 7, y: 0 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { vitality3: 5 },
+    cost: createDualResourceCost('organics', 120, 1, 'wood', 80, 1),
+  },
+  arcane_research: {
+    id: "arcane_research",
+    name: "Arcane Research",
+    description:
+      "Document mana experiments on resilient paper, compounding regenerative breakthroughs.",
+    nodePosition: { x: -3, y: -6 },
+    maxLevel: 80,
+    effects: {
+      mana_regen: {
+        multiplier: (level) => 1 + 0.08*Math.pow(1.03, level)*level,
+      },
+    },
+    nodesRequired: { mana_source: 5 },
+    cost: createResourceCost('paper', 10, 1.5),
+  },
   restoration: {
     id: "restoration",
     name: "Restoration",
@@ -633,6 +717,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { vitality3: 5 },
     cost: createResourceCost('organics', 150, 2),
+  },
+  engineered_plating: {
+    id: "engineered_plating",
+    name: "Engineered Plating",
+    description:
+      "Outfit constructs with reinforced casings forged from specialized tools, boosting vitality.",
+    nodePosition: { x: 8, y: -3 },
+    maxLevel: 80,
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.05 * level,
+      },
+    },
+    nodesRequired: { restoration: 5 },
+    cost: createResourceCost('tools', 10, 1.5),
   },
 };
 

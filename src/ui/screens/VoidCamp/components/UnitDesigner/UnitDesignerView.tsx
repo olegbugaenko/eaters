@@ -7,7 +7,6 @@ import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
 import { buildUnitStatEntries } from "@shared/unitStats";
 import { PlayerUnitType } from "@db/player-units-db";
-import { formatNumber } from "@shared/format/number";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@shared/Button";
 import { ModuleDetailsCard } from "@shared/ModuleDetailsCard";
@@ -170,27 +169,32 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
           <ul className="unit-designer__list-items">
             {state.units.map((unit) => {
               const isActive = unit.id === selectedUnit.id;
+              const listItemClassName = classNames(
+                "unit-designer__list-item",
+                isActive && "unit-designer__list-item--active"
+              );
               return (
-                <li key={unit.id}>
-                  <button
-                    type="button"
-                    className={classNames(
-                      "unit-designer__list-item",
-                      isActive && "unit-designer__list-item--active"
-                    )}
-                    onClick={() => handleSelectUnit(unit.id)}
-                  >
-                    <span className="unit-designer__list-name">{unit.name}</span>
-                    <span className="unit-designer__list-modules">{unit.modules.length} modules</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="unit-designer__text-button unit-designer__delete"
-                    onClick={() => handleDeleteUnit(unit.id)}
-                    aria-label={`Delete ${unit.name}`}
-                  >
-                    Delete
-                  </button>
+                <li key={unit.id} className="unit-designer__list-entry">
+                  <div className="unit-designer__list-row">
+                    <button
+                      type="button"
+                      className={listItemClassName}
+                      onClick={() => handleSelectUnit(unit.id)}
+                    >
+                      <div className="unit-designer__list-text">
+                        <span className="unit-designer__list-name">{unit.name}</span>
+                        <span className="unit-designer__list-modules">{unit.modules.length} modules</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className="unit-designer__text-button unit-designer__delete"
+                      onClick={() => handleDeleteUnit(unit.id)}
+                      aria-label={`Delete ${unit.name}`}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               );
             })}
@@ -231,11 +235,6 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   >
                     <div>
                       <div className="unit-designer__selected-name">{module.name}</div>
-                      {/*<div className="unit-designer__selected-meta">
-                        {formatUnitModuleBonusValue(module.bonusType, module.bonusValue)} · Mana ×
-                        {formatNumber(module.manaCostMultiplier, { maximumFractionDigits: 2 })} · +
-                        {formatNumber(module.sanityCost, { maximumFractionDigits: 0 })} sanity
-                      </div>*/}
                     </div>
                     <button
                       type="button"
