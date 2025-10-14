@@ -6,10 +6,12 @@ import {
   UnitDesignerUnitState,
 } from "@logic/modules/UnitDesignModule";
 import { Button } from "@shared/Button";
+import { UnitAutomationBridgeState } from "@logic/modules/UnitAutomationModule";
 import "./UnitRosterView.css";
 
 interface UnitRosterViewProps {
   state: UnitDesignerBridgeState;
+  automation: UnitAutomationBridgeState;
 }
 
 const buildUnitMap = (
@@ -22,9 +24,10 @@ const buildUnitMap = (
   return map;
 };
 
-export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state }) => {
+export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automation }) => {
   const { app } = useAppLogic();
   const designer = useMemo(() => app.getUnitDesigner(), [app]);
+  const automationModule = useMemo(() => app.getUnitAutomation(), [app]);
 
   const roster = state.activeRoster;
   const maxSlots = state.maxActiveUnits;
@@ -35,6 +38,13 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state }) => {
     [roster, unitsById]
   );
   const rosterFull = roster.length >= maxSlots;
+  const automationLookup = useMemo(() => {
+    const lookup = new Map<string, boolean>();
+    automation.units.forEach((entry) => {
+      lookup.set(entry.designId, entry.enabled);
+    });
+    return lookup;
+  }, [automation.units]);
 
   const handleAddToRoster = useCallback(
     (unitId: string) => {
@@ -91,6 +101,13 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state }) => {
     designer.setActiveRoster([]);
   }, [designer, roster]);
 
+  const handleToggleAutomation = useCallback(
+    (unitId: string, enabled: boolean) => {
+      automationModule.setAutomationEnabled(unitId, enabled);
+    },
+    [automationModule]
+  );
+
   return (
     <div className="unit-roster surface-panel stack-lg">
       <header className="unit-roster__header">
@@ -129,31 +146,45 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state }) => {
                         </span>
                       </div>
                       <div className="unit-roster__slot-actions">
-                        <button
-                          type="button"
-                          className="unit-roster__slot-button"
-                          onClick={() => handleMove(index, -1)}
-                          disabled={index === 0}
-                          aria-label={`Move ${unit.name} up`}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="unit-roster__slot-button"
-                          onClick={() => handleMove(index, 1)}
-                          disabled={index >= roster.length - 1}
-                          aria-label={`Move ${unit.name} down`}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          className="unit-roster__slot-remove"
-                          onClick={() => handleClearSlot(index)}
-                        >
-                          Remove
-                        </button>
+                        <div className="unit-roster__slot-controls">
+                          <button
+                            type="button"
+                            className="unit-roster__slot-button"
+                            onClick={() => handleMove(index, -1)}
+                            disabled={index === 0}
+                            aria-label={`Move ${unit.name} up`}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="unit-roster__slot-button"
+                            onClick={() => handleMove(index, 1)}
+                            disabled={index >= roster.length - 1}
+                            aria-label={`Move ${unit.name} down`}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="unit-roster__slot-remove"
+                            onClick={() => handleClearSlot(index)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        {automation.unlocked ? (
+                          <label className="unit-roster__automation-toggle">
+                            <input
+                              type="checkbox"
+                              checked={automationLookup.get(unit.id) ?? false}
+                              onChange={(event) =>
+                                handleToggleAutomation(unit.id, event.target.checked)
+                              }
+                            />
+                            Automate
+                          </label>
+                        ) : null}
                       </div>
                     </div>
                   ) : (

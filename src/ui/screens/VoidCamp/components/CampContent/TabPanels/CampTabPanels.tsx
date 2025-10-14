@@ -14,6 +14,7 @@ import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWor
 import { CraftingBridgeState } from "@logic/modules/CraftingModule";
 import { CraftingView } from "@screens/VoidCamp/components/Crafting/CraftingView";
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
+import { UnitAutomationBridgeState } from "@logic/modules/UnitAutomationModule";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -29,6 +30,7 @@ type CampTabPanelsProps = {
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   resourceTotals: ResourceAmountPayload[];
   unitDesignerState: UnitDesignerBridgeState;
+  unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
 };
@@ -46,6 +48,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   moduleWorkshopState,
   resourceTotals,
   unitDesignerState,
+  unitAutomationState,
   buildingsState,
   craftingState,
 }) => {
@@ -116,7 +119,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
           ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
           ) : (
-            <UnitRosterView state={unitDesignerState} />
+            <UnitRosterView state={unitDesignerState} automation={unitAutomationState} />
           )}
         </div>
       </div>

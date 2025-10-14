@@ -96,6 +96,14 @@
 .unit-roster__slot-actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.unit-roster__slot-controls {
+  display: flex;
+  align-items: center;
   gap: var(--spacing-xs);
   flex-wrap: wrap;
 }
@@ -142,6 +150,35 @@
   background: rgba(56, 189, 248, 0.14);
   color: #e0f2fe;
   outline: none;
+}
+
+.unit-roster__automation-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.12);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.unit-roster__automation-toggle:hover,
+.unit-roster__automation-toggle:focus-visible {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(56, 189, 248, 0.2);
+  color: var(--color-text-strong);
+  outline: none;
+}
+
+.unit-roster__automation-toggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-accent);
 }
 
 .unit-roster__slot-empty {

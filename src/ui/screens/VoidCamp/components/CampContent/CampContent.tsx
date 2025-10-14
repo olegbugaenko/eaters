@@ -9,6 +9,7 @@ import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
 import { CraftingBridgeState } from "@logic/modules/CraftingModule";
+import { UnitAutomationBridgeState } from "@logic/modules/UnitAutomationModule";
 import "./CampContent.css";
 
 export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting";
@@ -27,6 +28,7 @@ interface CampContentProps {
   resourceTotals: ResourceAmountPayload[];
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   unitDesignerState: UnitDesignerBridgeState;
+  unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
 }
@@ -45,6 +47,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   resourceTotals,
   moduleWorkshopState,
   unitDesignerState,
+  unitAutomationState,
   buildingsState,
   craftingState,
 }) => {
@@ -110,6 +113,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         moduleWorkshopState={moduleWorkshopState}
         resourceTotals={resourceTotals}
         unitDesignerState={unitDesignerState}
+        unitAutomationState={unitAutomationState}
         buildingsState={buildingsState}
         craftingState={craftingState}
       />

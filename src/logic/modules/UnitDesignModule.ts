@@ -134,6 +134,7 @@ export class UnitDesignModule implements GameModule {
   private idCounter = 0;
   private cachedComputed = new Map<UnitDesignId, UnitDesignerUnitState>();
   private activeRoster: UnitDesignId[] = [];
+  private rosterInitialized = false;
   private cachedBonuses: BonusValueMap | null = null;
   private listeners = new Set<UnitDesignerListener>();
   private unsubscribeBonuses: (() => void) | null = null;
@@ -162,6 +163,7 @@ export class UnitDesignModule implements GameModule {
     this.designOrder = [];
     this.idCounter = 0;
     this.activeRoster = [];
+    this.rosterInitialized = false;
     this.ensureDefaults();
     this.refreshComputedState();
   }
@@ -171,6 +173,7 @@ export class UnitDesignModule implements GameModule {
     this.designOrder = [];
     this.idCounter = 0;
     this.activeRoster = [];
+    this.rosterInitialized = false;
     this.applySaveData(data);
     this.ensureDefaults();
     this.refreshComputedState();
@@ -288,6 +291,7 @@ export class UnitDesignModule implements GameModule {
       return;
     }
     this.activeRoster = sanitized;
+    this.rosterInitialized = true;
     const units = this.getAllDesigns();
     this.emitState(units);
   }
@@ -300,6 +304,7 @@ export class UnitDesignModule implements GameModule {
     const rosterPayload = (data as UnitDesignerSaveData).roster;
     if (Array.isArray(rosterPayload)) {
       roster = rosterPayload.filter((id): id is UnitDesignId => typeof id === "string");
+      this.rosterInitialized = true;
     }
     const payload = (data as UnitDesignerSaveData).units;
     if (!Array.isArray(payload)) {
@@ -331,6 +336,15 @@ export class UnitDesignModule implements GameModule {
         this.createDefaultDesign(type);
       }
     });
+    if (!this.rosterInitialized && this.activeRoster.length === 0) {
+      this.activeRoster = this.designOrder.slice(0, MAX_ACTIVE_UNITS);
+      this.rosterInitialized = true;
+    } else {
+      this.activeRoster = this.sanitizeRoster(this.activeRoster);
+      if (this.activeRoster.length > 0) {
+        this.rosterInitialized = true;
+      }
+    }
   }
 
   private hasDesignForType(type: PlayerUnitType): boolean {
@@ -354,14 +368,6 @@ export class UnitDesignModule implements GameModule {
         return;
       }
       sanitized.push(id);
-    });
-    this.designOrder.forEach((id) => {
-      if (sanitized.length >= MAX_ACTIVE_UNITS) {
-        return;
-      }
-      if (!sanitized.includes(id)) {
-        sanitized.push(id);
-      }
     });
     return sanitized;
   }
