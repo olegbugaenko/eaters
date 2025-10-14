@@ -138,7 +138,8 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
         </div>
       </header>
       <div className="modules-workshop__content">
-        <ul className="modules-workshop__list">
+        <div className="modules-workshop__list-container">
+          <ul className="modules-workshop__list">
           {state.modules.map((module) => {
             const isActive = module.id === (hoveredId ?? selectedId ?? module.id);
             return (
@@ -166,7 +167,8 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </div>
         <aside>
           {activeModule ? (
             <ModuleDetailsCard

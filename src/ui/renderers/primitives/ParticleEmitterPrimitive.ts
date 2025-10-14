@@ -202,12 +202,18 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
 
   const origin = options.getOrigin(instance, config);
 
-  while (state.spawnAccumulator >= 1 && state.capacity > 0) {
-    state.spawnAccumulator -= 1;
-    if (state.particles.length >= state.capacity) {
-      state.particles.shift();
+  if (state.capacity > 0) {
+    const availableSlots = Math.max(0, state.capacity - state.particles.length);
+    const spawnBudget = Math.min(Math.floor(state.spawnAccumulator), availableSlots);
+    if (spawnBudget > 0) {
+      for (let i = 0; i < spawnBudget; i += 1) {
+        state.particles.push(options.spawnParticle(origin, instance, config));
+      }
+      state.spawnAccumulator -= spawnBudget;
     }
-    state.particles.push(options.spawnParticle(origin, instance, config));
+    state.spawnAccumulator = Math.min(state.spawnAccumulator, state.capacity);
+  } else {
+    state.spawnAccumulator = 0;
   }
 
   const survivors: ParticleEmitterParticleState[] = [];
