@@ -21,6 +21,7 @@ import { UnitAutomationModule } from "../modules/UnitAutomationModule";
 import { UnitModuleWorkshopModule } from "../modules/UnitModuleWorkshopModule";
 import { UnitDesignModule } from "../modules/UnitDesignModule";
 import { BuildingsModule } from "../modules/BuildingsModule";
+import { CraftingModule } from "../modules/CraftingModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -35,6 +36,7 @@ export class Application {
   private unitModuleWorkshopModule: UnitModuleWorkshopModule;
   private unitDesignModule: UnitDesignModule;
   private buildingsModule: BuildingsModule;
+  private craftingModule: CraftingModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -73,6 +75,13 @@ export class Application {
     });
     this.skillTreeModule = skillTreeModule;
     skillTreeModuleReference = skillTreeModule;
+
+    const craftingModule = new CraftingModule({
+      bridge: this.dataBridge,
+      resources: resourcesModule,
+      unlocks: unlockService,
+    });
+    this.craftingModule = craftingModule;
 
     const buildingsModule = new BuildingsModule({
       bridge: this.dataBridge,
@@ -161,6 +170,7 @@ export class Application {
     this.registerModule(bonusesModule);
     this.registerModule(resourcesModule);
     this.registerModule(skillTreeModule);
+    this.registerModule(craftingModule);
     this.registerModule(buildingsModule);
     this.registerModule(unitModuleWorkshopModule);
     this.registerModule(unitDesignModule);
@@ -246,6 +256,10 @@ export class Application {
 
   public getBuildings(): BuildingsModule {
     return this.buildingsModule;
+  }
+
+  public getCrafting(): CraftingModule {
+    return this.craftingModule;
   }
 
   public restartCurrentMap(): void {

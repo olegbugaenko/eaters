@@ -49,10 +49,12 @@ export const SKILL_IDS = [
   "refinement",
   "refinement2",
   "vitality3",
+  "paper_milling",
   "restoration",
   "armor_lore2",
   "armor_lore3",
   "heavy_drill",
+  "tool_fabrication",
   "silver_drill",
   "penetration",
   "penetration2",
@@ -72,9 +74,22 @@ const createSandCost = (base: number, growth: number) =>
     sand: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
   });
 
-const createResourceCost = (id: ResourceId, base: number, growth: number) =>   
+const createResourceCost = (id: ResourceId, base: number, growth: number) =>
   (level: number): ResourceAmount => ({
     [id]: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
+  });
+
+const createDualResourceCost = (
+  firstId: ResourceId,
+  firstBase: number,
+  firstGrowth: number,
+  secondId: ResourceId,
+  secondBase: number,
+  secondGrowth: number
+) =>
+  (level: number): ResourceAmount => ({
+    [firstId]: Math.ceil(firstBase * Math.pow(firstGrowth, Math.max(level, 1))),
+    [secondId]: Math.ceil(secondBase * Math.pow(secondGrowth, Math.max(level, 1))),
   });
 
 const createMixedCost = (
@@ -438,6 +453,16 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { damage_lore: 5 },
     cost: createResourceCost('iron', 30, 1.5),
   },
+  tool_fabrication: {
+    id: "tool_fabrication",
+    name: "Tool Fabrication",
+    description: "Commission specialized implements that unlock advanced crafting techniques.",
+    nodePosition: { x: -7, y: -2 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { heavy_drill: 5 },
+    cost: createDualResourceCost('iron', 120, 1, 'wood', 80, 1),
+  },
   silver_drill: {
     id: "silver_drill",
     name: "Silver Drill",
@@ -618,6 +643,16 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { vitality2: 5 },
     cost: createResourceCost('organics', 30, 1.5),
+  },
+  paper_milling: {
+    id: "paper_milling",
+    name: "Paper Milling",
+    description: "Pulp organic matter into disciplined sheets ready for meticulous schematics.",
+    nodePosition: { x: 7, y: 0 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { vitality3: 5 },
+    cost: createDualResourceCost('organics', 120, 1, 'wood', 80, 1),
   },
   restoration: {
     id: "restoration",

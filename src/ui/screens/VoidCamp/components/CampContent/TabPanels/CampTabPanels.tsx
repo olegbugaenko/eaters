@@ -11,6 +11,8 @@ import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
 import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWorkshop/BuildingsWorkshopView";
+import { CraftingBridgeState } from "@logic/modules/CraftingModule";
+import { CraftingView } from "@screens/VoidCamp/components/Crafting/CraftingView";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -27,6 +29,7 @@ type CampTabPanelsProps = {
   resourceTotals: ResourceAmountPayload[];
   unitDesignerState: UnitDesignerBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
+  craftingState: CraftingBridgeState;
 };
 
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
@@ -43,6 +46,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   resourceTotals,
   unitDesignerState,
   buildingsState,
+  craftingState,
 }) => {
   const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer">("shop");
 
@@ -122,6 +126,21 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     }
 
     return <BuildingsWorkshopView state={buildingsState} resources={resourceTotals} />;
+  }
+
+  if (activeTab === "crafting") {
+    if (!craftingState.unlocked) {
+      return (
+        <div className="camp-tab-panels__modules-locked surface-panel">
+          <h2 className="heading-2">Crafting Unavailable</h2>
+          <p className="body-md text-muted">
+            Unlock a crafting recipe to begin processing resources into advanced goods.
+          </p>
+        </div>
+      );
+    }
+
+    return <CraftingView state={craftingState} resources={resourceTotals} />;
   }
 
   return (

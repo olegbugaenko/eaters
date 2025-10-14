@@ -1,0 +1,434 @@
+import { DataBridge } from "../core/DataBridge";
+import { GameModule } from "../core/types";
+import { ResourcesModule } from "./ResourcesModule";
+import { UnlockService } from "../services/UnlockService";
+import {
+  CRAFTING_RECIPE_IDS,
+  CraftingRecipeConfig,
+  CraftingRecipeId,
+  getCraftingRecipeConfig,
+} from "../../db/crafting-recipes-db";
+import {
+  ResourceAmount,
+  ResourceId,
+  ResourceStockpile,
+  getResourceConfig,
+  normalizeResourceAmount,
+} from "../../db/resources-db";
+
+export interface CraftingRecipeBridgeState {
+  readonly id: CraftingRecipeId;
+  readonly name: string;
+  readonly productId: ResourceId;
+  readonly productName: string;
+  readonly productAmount: number;
+  readonly cost: Record<string, number>;
+  readonly queue: number;
+  readonly inProgress: boolean;
+  readonly progress: number;
+  readonly durationMs: number;
+  readonly maxQueue: number;
+  readonly waitingForResources: boolean;
+}
+
+export interface CraftingBridgeState {
+  readonly unlocked: boolean;
+  readonly recipes: readonly CraftingRecipeBridgeState[];
+}
+
+export const DEFAULT_CRAFTING_STATE: CraftingBridgeState = Object.freeze({
+  unlocked: false,
+  recipes: [],
+});
+
+export const CRAFTING_STATE_BRIDGE_KEY = "crafting/state";
+
+interface CraftingModuleOptions {
+  readonly bridge: DataBridge;
+  readonly resources: ResourcesModule;
+  readonly unlocks: UnlockService;
+}
+
+interface CraftingRecipeRuntimeState {
+  queue: number;
+  progressMs: number;
+  inProgress: boolean;
+}
+
+interface CraftingRecipeSaveState {
+  readonly queue?: number;
+  readonly progressMs?: number;
+  readonly inProgress?: boolean;
+}
+
+interface CraftingModuleSaveData {
+  readonly recipes?: Partial<Record<CraftingRecipeId, CraftingRecipeSaveState>>;
+}
+
+const createEmptyRuntimeState = (): CraftingRecipeRuntimeState => ({
+  queue: 0,
+  progressMs: 0,
+  inProgress: false,
+});
+
+const sanitizeQueueValue = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(value));
+};
+
+const sanitizeProgressValue = (value: unknown, durationMs: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  return Math.min(Math.max(0, value), durationMs);
+};
+
+const toCostRecord = (amount: ResourceAmount): Record<string, number> => {
+  const normalized = normalizeResourceAmount(amount);
+  const record: Record<string, number> = {};
+  (Object.keys(normalized) as ResourceId[]).forEach((id) => {
+    const value = normalized[id];
+    if (value > 0) {
+      record[id] = value;
+    }
+  });
+  return record;
+};
+
+const clamp01 = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+};
+
+const createProductAmount = (
+  productId: ResourceId,
+  amount: number
+): ResourceAmount => ({
+  [productId]: amount,
+});
+
+export class CraftingModule implements GameModule {
+  public readonly id = "crafting";
+
+  private readonly bridge: DataBridge;
+  private readonly resources: ResourcesModule;
+  private readonly unlocks: UnlockService;
+
+  private runtimeStates = new Map<CraftingRecipeId, CraftingRecipeRuntimeState>();
+  private visibleRecipeIds: CraftingRecipeId[] = [];
+  private unlocked = false;
+
+  constructor(options: CraftingModuleOptions) {
+    this.bridge = options.bridge;
+    this.resources = options.resources;
+    this.unlocks = options.unlocks;
+    CRAFTING_RECIPE_IDS.forEach((id) => {
+      this.runtimeStates.set(id, createEmptyRuntimeState());
+    });
+  }
+
+  public initialize(): void {
+    this.refreshVisibility();
+    this.pushState();
+  }
+
+  public reset(): void {
+    this.runtimeStates.forEach((state) => {
+      state.queue = 0;
+      state.inProgress = false;
+      state.progressMs = 0;
+    });
+    this.refreshVisibility();
+    this.pushState();
+  }
+
+  public load(data: unknown | undefined): void {
+    this.applySaveData(data);
+    this.refreshVisibility();
+    this.pushState();
+  }
+
+  public save(): unknown {
+    const serialized: Partial<Record<CraftingRecipeId, CraftingRecipeSaveState>> = {};
+    this.runtimeStates.forEach((state, id) => {
+      if (state.queue <= 0 && !state.inProgress) {
+        return;
+      }
+      serialized[id] = {
+        queue: state.queue,
+        progressMs: state.progressMs > 0 ? state.progressMs : undefined,
+        inProgress: state.inProgress || undefined,
+      };
+    });
+    if (Object.keys(serialized).length === 0) {
+      return {} satisfies CraftingModuleSaveData;
+    }
+    return { recipes: serialized } satisfies CraftingModuleSaveData;
+  }
+
+  public tick(deltaMs: number): void {
+    const clampedDelta = Math.max(0, deltaMs);
+    let stateChanged = false;
+
+    CRAFTING_RECIPE_IDS.forEach((id) => {
+      const config = getCraftingRecipeConfig(id);
+      const state = this.getRuntimeState(id);
+      const available = this.unlocks.areConditionsMet(config.unlockedBy ?? []);
+
+      if (state.inProgress) {
+        if (state.queue <= 0) {
+          this.cancelActiveRecipe(id, state, config);
+          stateChanged = true;
+          return;
+        }
+        state.progressMs += clampedDelta;
+        if (state.progressMs >= config.baseDurationMs) {
+          this.completeRecipe(id, state, config);
+          stateChanged = true;
+        }
+        return;
+      }
+
+      if (state.queue > 0) {
+        if (!available) {
+          state.progressMs = 0;
+          return;
+        }
+        if (this.tryStartRecipe(config)) {
+          state.inProgress = true;
+          state.progressMs = 0;
+          stateChanged = true;
+        }
+      } else {
+        state.progressMs = 0;
+      }
+    });
+
+    const visibilityChanged = this.refreshVisibility();
+    if (visibilityChanged || stateChanged) {
+      this.pushState();
+    }
+  }
+
+  public setRecipeQueue(id: CraftingRecipeId, value: number): void {
+    if (!CRAFTING_RECIPE_IDS.includes(id)) {
+      return;
+    }
+    const config = getCraftingRecipeConfig(id);
+    const state = this.getRuntimeState(id);
+    const sanitized = Math.max(0, Math.floor(value));
+
+    if (sanitized === state.queue && !(sanitized === 0 && state.inProgress)) {
+      return;
+    }
+
+    state.queue = sanitized;
+    if (state.queue === 0 && state.inProgress) {
+      this.cancelActiveRecipe(id, state, config, true);
+    }
+
+    this.refreshVisibility();
+    this.pushState();
+  }
+
+  public adjustRecipeQueue(id: CraftingRecipeId, delta: number): void {
+    if (!CRAFTING_RECIPE_IDS.includes(id)) {
+      return;
+    }
+    const state = this.getRuntimeState(id);
+    const sanitizedDelta = Math.trunc(delta);
+    const nextValue = state.queue + sanitizedDelta;
+    this.setRecipeQueue(id, nextValue);
+  }
+
+  public setRecipeQueueToMax(id: CraftingRecipeId): void {
+    if (!CRAFTING_RECIPE_IDS.includes(id)) {
+      return;
+    }
+    const state = this.getRuntimeState(id);
+    const totals = this.resources.getTotals();
+    const maxQueue = this.computeMaxQueue(id, state, totals);
+    this.setRecipeQueue(id, maxQueue);
+  }
+
+  public getRecipeQueue(id: CraftingRecipeId): number {
+    return this.getRuntimeState(id).queue;
+  }
+
+  private tryStartRecipe(config: CraftingRecipeConfig): boolean {
+    return this.resources.spendResources(config.ingredients);
+  }
+
+  private completeRecipe(
+    id: CraftingRecipeId,
+    state: CraftingRecipeRuntimeState,
+    config: CraftingRecipeConfig
+  ): void {
+    const reward = createProductAmount(config.productId, config.productAmount);
+    this.resources.grantResources(reward);
+    state.queue = Math.max(0, state.queue - 1);
+    state.inProgress = false;
+    state.progressMs = 0;
+  }
+
+  private cancelActiveRecipe(
+    id: CraftingRecipeId,
+    state: CraftingRecipeRuntimeState,
+    config: CraftingRecipeConfig,
+    refund = false
+  ): void {
+    state.inProgress = false;
+    state.progressMs = 0;
+    if (refund) {
+      this.resources.grantResources(config.ingredients);
+    }
+  }
+
+  private computeMaxQueue(
+    id: CraftingRecipeId,
+    state: CraftingRecipeRuntimeState,
+    totals: ResourceStockpile
+  ): number {
+    const config = getCraftingRecipeConfig(id);
+    const normalized = normalizeResourceAmount(config.ingredients);
+    let maxAdditional = Infinity;
+    (Object.keys(normalized) as ResourceId[]).forEach((resourceId) => {
+      const cost = normalized[resourceId];
+      if (cost <= 0) {
+        return;
+      }
+      const available = totals[resourceId] ?? 0;
+      const possible = Math.floor(available / cost);
+      if (possible < maxAdditional) {
+        maxAdditional = possible;
+      }
+    });
+    if (!Number.isFinite(maxAdditional)) {
+      maxAdditional = 0;
+    }
+    const active = state.inProgress ? 1 : 0;
+    return Math.max(active, active + Math.max(0, maxAdditional));
+  }
+
+  private refreshVisibility(): boolean {
+    const visible = CRAFTING_RECIPE_IDS.filter((id) => {
+      const config = getCraftingRecipeConfig(id);
+      const state = this.getRuntimeState(id);
+      if (state.queue > 0 || state.inProgress) {
+        return true;
+      }
+      return this.unlocks.areConditionsMet(config.unlockedBy ?? []);
+    });
+    const unlocked = visible.length > 0;
+    const changed =
+      unlocked !== this.unlocked ||
+      visible.length !== this.visibleRecipeIds.length ||
+      visible.some((id, index) => this.visibleRecipeIds[index] !== id);
+    if (changed) {
+      this.unlocked = unlocked;
+      this.visibleRecipeIds = visible;
+    }
+    return changed;
+  }
+
+  private pushState(): void {
+    const totals = this.resources.getTotals();
+    const payload: CraftingBridgeState = {
+      unlocked: this.unlocked,
+      recipes: this.visibleRecipeIds.map((id) => this.createRecipePayload(id, totals)),
+    };
+    this.bridge.setValue(CRAFTING_STATE_BRIDGE_KEY, payload);
+  }
+
+  private createRecipePayload(
+    id: CraftingRecipeId,
+    totals: ResourceStockpile
+  ): CraftingRecipeBridgeState {
+    const config = getCraftingRecipeConfig(id);
+    const state = this.getRuntimeState(id);
+    const cost = toCostRecord(config.ingredients);
+    const progress = state.inProgress
+      ? clamp01(state.progressMs / config.baseDurationMs)
+      : 0;
+    const maxQueue = this.computeMaxQueue(id, state, totals);
+    const available = this.unlocks.areConditionsMet(config.unlockedBy ?? []);
+    const waitingForResources =
+      state.queue > 0 &&
+      !state.inProgress &&
+      (!available || !this.resources.canAfford(config.ingredients));
+
+    const productConfig = getResourceConfig(config.productId);
+
+    return {
+      id,
+      name: config.name,
+      productId: config.productId,
+      productName: productConfig.name,
+      productAmount: config.productAmount,
+      cost,
+      queue: state.queue,
+      inProgress: state.inProgress,
+      progress,
+      durationMs: config.baseDurationMs,
+      maxQueue,
+      waitingForResources,
+    };
+  }
+
+  private getRuntimeState(id: CraftingRecipeId): CraftingRecipeRuntimeState {
+    let state = this.runtimeStates.get(id);
+    if (!state) {
+      state = createEmptyRuntimeState();
+      this.runtimeStates.set(id, state);
+    }
+    return state;
+  }
+
+  private applySaveData(data: unknown | undefined): void {
+    this.runtimeStates.forEach((state) => {
+      state.queue = 0;
+      state.progressMs = 0;
+      state.inProgress = false;
+    });
+
+    if (!data || typeof data !== "object") {
+      return;
+    }
+
+    const raw = data as CraftingModuleSaveData;
+    const recipes = raw.recipes ?? {};
+
+    (Object.keys(recipes) as CraftingRecipeId[]).forEach((id) => {
+      if (!CRAFTING_RECIPE_IDS.includes(id)) {
+        return;
+      }
+      const config = getCraftingRecipeConfig(id);
+      const entry = recipes[id];
+      if (!entry) {
+        return;
+      }
+      const state = this.getRuntimeState(id);
+      const queue = sanitizeQueueValue(entry.queue);
+      const duration = config.baseDurationMs;
+      const progress = sanitizeProgressValue(entry.progressMs, duration);
+      const inProgress = Boolean(entry.inProgress) && queue > 0;
+
+      state.queue = inProgress ? Math.max(queue, 1) : queue;
+      state.inProgress = inProgress;
+      state.progressMs = inProgress ? progress : 0;
+    });
+  }
+}

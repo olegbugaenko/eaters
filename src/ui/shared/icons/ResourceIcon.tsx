@@ -34,6 +34,15 @@ const SILVER_CORE_PATH = "M12 6.2L17.1 12L12 17.8L6.9 12Z";
 const SILVER_SHIMMER_PATH = "M12 4.8L14.8 12L12 17.2L9.6 12Z";
 const COAL_CHUNK_PATH = "M6.2 9.4L10.3 4.2L16.4 5.1L19.3 11.2L15.9 18.1L9.3 19.2L4.7 13.6Z";
 const COAL_FACET_PATH = "M10.7 6.2L15.2 6.8L17.2 11.1L14.6 16.1L9.8 16.9L7.2 13.4Z";
+const TOOLS_HAMMER_PATH =
+  "M5.2 5.5L8 2.7L12.5 7.2L9.7 10L8.4 8.7L6.1 11L4.1 9Z";
+const TOOLS_WRENCH_PATH =
+  "M13.6 4.4C15 3 17.3 3 18.7 4.4C19.9 5.6 20.2 7.4 19.4 8.9L20.8 10.3L18.7 12.4L17.3 11C15.9 11.8 14.1 11.5 12.9 10.3C11.7 9.1 11.4 7.3 12.2 5.8L10.8 4.4L12.9 2.3Z";
+const TOOLS_HANDLE_PATH =
+  "M11.6 11.6L15.8 15.8L12.6 19L8.4 14.8Z";
+const PAPER_BODY_PATH = "M6 3H15.5L20 7.5V21H6Z";
+const PAPER_FOLD_PATH = "M15.5 3V7.5H20";
+
 
 const buildClassName = (base: string, extra?: string): string => {
   if (!extra) {
@@ -120,6 +129,42 @@ const renderIcon = (resourceId: ResourceId): JSX.Element => {
         <svg className="resource-icon__svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d={COAL_CHUNK_PATH} fill="#1f2937" stroke="#0f172a" strokeWidth="1.4" strokeLinejoin="round" />
           <path d={COAL_FACET_PATH} fill="#111827" stroke="#1f2937" strokeWidth="1" strokeLinejoin="round" />
+        </svg>
+      );
+    case "tools":
+      return (
+        <svg className="resource-icon__svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d={TOOLS_HAMMER_PATH} fill="#f97316" stroke="#c2410c" strokeWidth="1.2" strokeLinejoin="round" />
+          <path
+            d={TOOLS_HANDLE_PATH}
+            fill="#92400e"
+            stroke="#7c2d12"
+            strokeWidth="1.1"
+            strokeLinejoin="round"
+          />
+          <path
+            d={TOOLS_WRENCH_PATH}
+            fill="#94a3b8"
+            stroke="#475569"
+            strokeWidth="1.1"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case "paper":
+      return (
+        <svg className="resource-icon__svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d={PAPER_BODY_PATH}
+            fill="#f8fafc"
+            stroke="#cbd5f5"
+            strokeWidth="1.2"
+            strokeLinejoin="round"
+          />
+          <path d={PAPER_FOLD_PATH} fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.1" strokeLinejoin="round" />
+          <line x1="9" y1="11" x2="17" y2="11" stroke="#94a3b8" strokeWidth="1" strokeLinecap="round" />
+          <line x1="9" y1="14" x2="17" y2="14" stroke="#cbd5f5" strokeWidth="1" strokeLinecap="round" />
+          <line x1="9" y1="17" x2="15" y2="17" stroke="#cbd5f5" strokeWidth="1" strokeLinecap="round" />
         </svg>
       );
     default:

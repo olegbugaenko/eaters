@@ -8,9 +8,10 @@ import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
+import { CraftingBridgeState } from "@logic/modules/CraftingModule";
 import "./CampContent.css";
 
-export type CampTabKey = "maps" | "skills" | "modules" | "buildings";
+export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting";
 
 interface CampContentProps {
   maps: MapListEntry[];
@@ -27,6 +28,7 @@ interface CampContentProps {
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   unitDesignerState: UnitDesignerBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
+  craftingState: CraftingBridgeState;
 }
 
 export const CampContent: React.FC<CampContentProps> = ({
@@ -44,6 +46,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   moduleWorkshopState,
   unitDesignerState,
   buildingsState,
+  craftingState,
 }) => {
   const [activeTab, setActiveTab] = useState<CampTabKey>(initialTab);
   const fallbackTab = useMemo<CampTabKey>(() => {
@@ -60,9 +63,12 @@ export const CampContent: React.FC<CampContentProps> = ({
       if (tab === "buildings" && !buildingsState.unlocked) {
         return fallbackTab;
       }
+      if (tab === "crafting" && !craftingState.unlocked) {
+        return fallbackTab;
+      }
       return tab;
     },
-    [moduleWorkshopState.unlocked, buildingsState.unlocked, fallbackTab]
+    [moduleWorkshopState.unlocked, buildingsState.unlocked, craftingState.unlocked, fallbackTab]
   );
   useEffect(() => {
     setActiveTab(sanitizeTab(initialTab));
@@ -88,6 +94,7 @@ export const CampContent: React.FC<CampContentProps> = ({
           onChange={handleTabChange}
           modulesUnlocked={moduleWorkshopState.unlocked}
           buildingsUnlocked={buildingsState.unlocked}
+          craftingUnlocked={craftingState.unlocked}
         />
       </header>
       <CampTabPanels
@@ -104,6 +111,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         resourceTotals={resourceTotals}
         unitDesignerState={unitDesignerState}
         buildingsState={buildingsState}
+        craftingState={craftingState}
       />
     </div>
   );
