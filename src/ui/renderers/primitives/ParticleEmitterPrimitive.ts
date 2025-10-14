@@ -216,15 +216,22 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     state.spawnAccumulator = 0;
   }
 
-  const survivors: ParticleEmitterParticleState[] = [];
   const updateParticle = options.updateParticle ?? defaultUpdateParticle;
-  state.particles.forEach((particle) => {
+  let writeIndex = 0;
+  for (let readIndex = 0; readIndex < state.particles.length; readIndex += 1) {
+    const particle = state.particles[readIndex]!;
     const keep = updateParticle(particle, deltaMs, instance, config);
-    if (keep) {
-      survivors.push(particle);
+    if (!keep) {
+      continue;
     }
-  });
-  state.particles = survivors;
+    if (writeIndex !== readIndex) {
+      state.particles[writeIndex] = particle;
+    }
+    writeIndex += 1;
+  }
+  if (writeIndex < state.particles.length) {
+    state.particles.length = writeIndex;
+  }
 
   writeEmitterBuffer(state, config, origin);
 };
@@ -237,10 +244,8 @@ const defaultUpdateParticle = (
   if (particle.ageMs >= particle.lifetimeMs) {
     return false;
   }
-  particle.position = {
-    x: particle.position.x + particle.velocity.x * deltaMs,
-    y: particle.position.y + particle.velocity.y * deltaMs,
-  };
+  particle.position.x += particle.velocity.x * deltaMs;
+  particle.position.y += particle.velocity.y * deltaMs;
   return true;
 };
 
