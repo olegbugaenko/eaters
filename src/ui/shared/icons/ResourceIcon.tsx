@@ -29,6 +29,11 @@ const COPPER_COIL_PATH =
   "M8 12C8 9.79086 9.79086 8 12 8C13.2091 8 14.3184 8.51281 15.1213 9.32226L13.929 10.5146C13.494 10.0796 12.777 9.8 12 9.8C10.565 9.8 9.4 10.965 9.4 12.4C9.4 13.835 10.565 15 12 15C12.777 15 13.494 14.7204 13.929 14.2854L15.1213 15.4777C14.3184 16.2872 13.2091 16.8 12 16.8C9.79086 16.8 8 15.0091 8 12.8Z";
 const COPPER_SPARK_PATH =
   "M16.4 8.2L18.4 6.2L17.2 10L19.8 11L17.2 12L18.4 15.8L16.4 13.8L15.8 16.4L14.8 13.8L12.8 15.8L14 12L11.4 11L14 10L12.8 6.2L14.8 8.2L15.4 5.6L16.4 8.2Z";
+const SILVER_DIAMOND_PATH = "M12 3.5L20.5 12L12 20.5L3.5 12Z";
+const SILVER_CORE_PATH = "M12 6.2L17.1 12L12 17.8L6.9 12Z";
+const SILVER_SHIMMER_PATH = "M12 4.8L14.8 12L12 17.2L9.6 12Z";
+const COAL_CHUNK_PATH = "M6.2 9.4L10.3 4.2L16.4 5.1L19.3 11.2L15.9 18.1L9.3 19.2L4.7 13.6Z";
+const COAL_FACET_PATH = "M10.7 6.2L15.2 6.8L17.2 11.1L14.6 16.1L9.8 16.9L7.2 13.4Z";
 
 const buildClassName = (base: string, extra?: string): string => {
   if (!extra) {
@@ -100,6 +105,21 @@ const renderIcon = (resourceId: ResourceId): JSX.Element => {
           <path d={COPPER_RING_PATH} fill="#f97316" stroke="#7c2d12" strokeWidth="1.3" strokeLinejoin="round" />
           <path d={COPPER_COIL_PATH} fill="#fb923c" stroke="#7c2d12" strokeWidth="0.9" strokeLinecap="round" />
           <path d={COPPER_SPARK_PATH} fill="#fef3c7" opacity="0.75" stroke="#fcd34d" strokeWidth="0.6" />
+        </svg>
+      );
+    case "silver":
+      return (
+        <svg className="resource-icon__svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d={SILVER_DIAMOND_PATH} fill="#e5e7eb" stroke="#6b7280" strokeWidth="1.3" strokeLinejoin="round" />
+          <path d={SILVER_CORE_PATH} fill="#d1d5db" stroke="#4b5563" strokeWidth="1" strokeLinejoin="round" />
+          <path d={SILVER_SHIMMER_PATH} fill="#f9fafb" opacity="0.8" stroke="none" />
+        </svg>
+      );
+    case "coal":
+      return (
+        <svg className="resource-icon__svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d={COAL_CHUNK_PATH} fill="#1f2937" stroke="#0f172a" strokeWidth="1.4" strokeLinejoin="round" />
+          <path d={COAL_FACET_PATH} fill="#111827" stroke="#1f2937" strokeWidth="1" strokeLinejoin="round" />
         </svg>
       );
     default:

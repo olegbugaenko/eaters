@@ -52,7 +52,13 @@ describe("UnitAutomationModule", () => {
       moduleDetails: [],
       cost: createEmptyResourceAmount(),
       blueprint,
-      runtime: { rewardMultiplier: 1, damageTransferPercent: 0, damageTransferRadius: 0 },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {

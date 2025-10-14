@@ -17,6 +17,7 @@ export type MapId =
   | "oldForge"
   | "spruce"
   | "wire"
+  | "mine"
   | "silverRing";
 
 export interface MapBrickGeneratorOptions {
@@ -429,6 +430,95 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         {
           type: "map",
           id: "thicket",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
+  mine: (() => {
+    const size: SceneSize = { width: 1200, height: 1200 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const shaftRadius = 320;
+    const wallThickness = 120;
+    const entryWidth = 140;
+    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 160 };
+
+    const createSupport = (angle: number, length: number, width: number): SceneVector2[] => {
+      const dx = Math.cos(angle) * length;
+      const dy = Math.sin(angle) * length;
+      const px = -Math.sin(angle) * width;
+      const py = Math.cos(angle) * width;
+      return [
+        { x: center.x - dx + px, y: center.y - dy + py },
+        { x: center.x - dx - px, y: center.y - dy - py },
+        { x: center.x + dx - px, y: center.y + dy - py },
+        { x: center.x + dx + px, y: center.y + dy + py },
+      ];
+    };
+
+    return {
+      name: "Collapsed Mine",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const wallLevel = baseLevel + 1;
+
+        const ironWalls = circleWithBricks(
+          "smallIron",
+          {
+            center,
+            innerRadius: shaftRadius,
+            outerRadius: shaftRadius + wallThickness,
+          },
+          { level: wallLevel }
+        );
+
+        const coalVein = circleWithBricks(
+          "smallCoal",
+          {
+            center,
+            innerRadius: 0,
+            outerRadius: shaftRadius - 40,
+          },
+          { level: baseLevel }
+        );
+
+        const entryTunnel = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: [
+              { x: center.x - entryWidth / 2, y: spawnPoint.y },
+              { x: center.x + entryWidth / 2, y: spawnPoint.y },
+              { x: center.x + entryWidth / 2, y: center.y + shaftRadius - 20 },
+              { x: center.x - entryWidth / 2, y: center.y + shaftRadius - 20 },
+            ],
+          },
+          { level: wallLevel }
+        );
+
+        const supports = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle) =>
+          polygonWithBricks(
+            "smallIron",
+            {
+              vertices: createSupport(angle, shaftRadius + wallThickness * 0.45, 30),
+            },
+            { level: wallLevel }
+          )
+        );
+
+        return [ironWalls, coalVein, entryTunnel, ...supports];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "spruce",
           level: 1,
         },
       ],

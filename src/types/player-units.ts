@@ -35,6 +35,8 @@ export interface PlayerUnitRuntimeModifiers {
   readonly rewardMultiplier: number;
   readonly damageTransferPercent: number;
   readonly damageTransferRadius: number;
+  readonly attackStackBonusPerHit: number;
+  readonly attackStackBonusCap: number;
 }
 
 export interface PlayerUnitBlueprintStats {

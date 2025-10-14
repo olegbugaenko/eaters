@@ -5,6 +5,8 @@ import {
   SceneVector2,
   FILL_TYPES,
   SceneFill,
+  SceneColor,
+  SceneStroke,
 } from "../services/SceneObjectManager";
 import { BricksModule, BrickRuntimeState } from "./BricksModule";
 import {
@@ -24,6 +26,13 @@ import {
 } from "../../types/player-units";
 import { ExplosionModule } from "./ExplosionModule";
 import { getBonusConfig } from "../../db/bonuses-db";
+import {
+  VisualEffectState,
+  createVisualEffectState,
+  setVisualEffectFillOverlay,
+  computeVisualEffectFillColor,
+  computeVisualEffectStrokeColor,
+} from "../visuals/VisualEffectState";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -32,6 +41,15 @@ const CRITICAL_HIT_EXPLOSION_RADIUS = 12;
 const DEFAULT_CRIT_MULTIPLIER_BONUS = getBonusConfig(
   "all_units_crit_mult"
 ).defaultValue;
+const INTERNAL_FURNACE_EFFECT_ID = "internalFurnace/heat";
+const INTERNAL_FURNACE_TINT_COLOR: SceneColor = {
+  r: 0.98,
+  g: 0.35,
+  b: 0.32,
+  a: 1,
+};
+const INTERNAL_FURNACE_MAX_INTENSITY = 0.75;
+const INTERNAL_FURNACE_EFFECT_PRIORITY = 50;
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
@@ -82,6 +100,9 @@ interface PlayerUnitState {
   rewardMultiplier: number;
   damageTransferPercent: number;
   damageTransferRadius: number;
+  attackStackBonusPerHit: number;
+  attackStackBonusCap: number;
+  currentAttackStackBonus: number;
   attackCooldown: number;
   preCollisionVelocity: SceneVector2;
   lastNonZeroVelocity: SceneVector2;
@@ -89,6 +110,12 @@ interface PlayerUnitState {
   objectId: string;
   renderer: PlayerUnitRendererConfig;
   emitter?: PlayerUnitEmitterConfig;
+  baseFillColor: SceneColor;
+  baseStrokeColor?: SceneColor;
+  appliedFillColor: SceneColor;
+  appliedStrokeColor?: SceneColor;
+  visualEffects: VisualEffectState;
+  visualEffectsDirty: boolean;
 }
 
 export class PlayerUnitsModule implements GameModule {
@@ -259,10 +286,7 @@ export class PlayerUnitsModule implements GameModule {
 
       const rotation = this.computeRotation(unit, target, resolvedVelocity);
       unit.rotation = rotation;
-      this.scene.updateObject(unit.objectId, {
-        position: { ...unit.position },
-        rotation,
-      });
+      this.pushUnitSceneState(unit);
 
       if (!target) {
         return;
@@ -441,12 +465,30 @@ export class PlayerUnitsModule implements GameModule {
     });
 
     const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+    const baseFillColor: SceneColor = {
+      r: config.renderer.fill.r,
+      g: config.renderer.fill.g,
+      b: config.renderer.fill.b,
+      a: typeof config.renderer.fill.a === "number" ? config.renderer.fill.a : 1,
+    };
+    const baseStrokeColor = config.renderer.stroke
+      ? {
+          r: config.renderer.stroke.color.r,
+          g: config.renderer.stroke.color.g,
+          b: config.renderer.stroke.color.b,
+          a:
+            typeof config.renderer.stroke.color.a === "number"
+              ? config.renderer.stroke.color.a
+              : 1,
+        }
+      : undefined;
+    const visualEffects = createVisualEffectState();
 
     const objectId = this.scene.addObject("playerUnit", {
       position,
       fill: {
         fillType: FILL_TYPES.SOLID,
-        color: { ...config.renderer.fill },
+        color: { ...baseFillColor },
       },
       stroke: config.renderer.stroke
         ? {
@@ -468,7 +510,7 @@ export class PlayerUnitsModule implements GameModule {
 
     const id = this.createUnitId();
 
-    return {
+    const state: PlayerUnitState = {
       id,
       type,
       position: { ...position },
@@ -491,14 +533,30 @@ export class PlayerUnitsModule implements GameModule {
       rewardMultiplier: runtime.rewardMultiplier,
       damageTransferPercent: runtime.damageTransferPercent,
       damageTransferRadius: runtime.damageTransferRadius,
+      attackStackBonusPerHit: runtime.attackStackBonusPerHit,
+      attackStackBonusCap: runtime.attackStackBonusCap,
+      currentAttackStackBonus: 0,
       attackCooldown,
       targetBrickId: null,
       objectId,
       renderer: config.renderer,
       emitter,
+      baseFillColor,
+      baseStrokeColor,
+      appliedFillColor: { ...baseFillColor },
+      appliedStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
+      visualEffects,
+      visualEffectsDirty: false,
       preCollisionVelocity: { ...ZERO_VECTOR },
       lastNonZeroVelocity: { ...ZERO_VECTOR },
     };
+
+    this.updateInternalFurnaceEffect(state);
+    if (state.visualEffectsDirty) {
+      this.pushUnitSceneState(state, { forceFill: true });
+    }
+
+    return state;
   }
 
   private resolveTarget(unit: PlayerUnitState): BrickRuntimeState | null {
@@ -670,7 +728,12 @@ export class PlayerUnitsModule implements GameModule {
   private getAttackOutcome(
     unit: PlayerUnitState
   ): { damage: number; isCritical: boolean } {
-    const baseDamage = Math.max(unit.baseAttackDamage, 0);
+    const cappedStack = Math.min(
+      Math.max(unit.currentAttackStackBonus, 0),
+      Math.max(unit.attackStackBonusCap, 0)
+    );
+    const stackMultiplier = 1 + cappedStack;
+    const baseDamage = Math.max(unit.baseAttackDamage * stackMultiplier, 0);
     const critChance = clampProbability(unit.critChance);
     const critMultiplier = Math.max(unit.critMultiplier, 1);
     const isCritical = critChance > 0 && Math.random() < critChance;
@@ -729,15 +792,105 @@ export class PlayerUnitsModule implements GameModule {
       return true;
     }
 
+    if (unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0) {
+      const nextStack = unit.currentAttackStackBonus + unit.attackStackBonusPerHit;
+      unit.currentAttackStackBonus = Math.min(nextStack, unit.attackStackBonusCap);
+      this.updateInternalFurnaceEffect(unit);
+    }
+
     if (result.destroyed) {
       unit.targetBrickId = null;
+    }
+
+    this.pushUnitSceneState(unit);
+    return hpChanged;
+  }
+
+  private pushUnitSceneState(
+    unit: PlayerUnitState,
+    options: { forceFill?: boolean; forceStroke?: boolean } = {}
+  ): void {
+    const shouldUpdateFill = options.forceFill || unit.visualEffectsDirty;
+    const shouldUpdateStroke =
+      (options.forceStroke || unit.visualEffectsDirty) && Boolean(unit.baseStrokeColor);
+
+    let fillUpdate: SceneFill | undefined;
+    let strokeUpdate: SceneStroke | undefined;
+
+    if (shouldUpdateFill) {
+      const nextFillColor = computeVisualEffectFillColor(
+        unit.baseFillColor,
+        unit.visualEffects
+      );
+      if (!sceneColorsEqual(nextFillColor, unit.appliedFillColor)) {
+        const sanitized = cloneSceneColor(nextFillColor);
+        unit.appliedFillColor = sanitized;
+        fillUpdate = {
+          fillType: FILL_TYPES.SOLID,
+          color: cloneSceneColor(sanitized),
+        };
+      }
+    }
+
+    if (shouldUpdateStroke && unit.renderer.stroke && unit.baseStrokeColor) {
+      const nextStrokeColor = computeVisualEffectStrokeColor(
+        unit.baseStrokeColor,
+        unit.visualEffects
+      );
+      if (
+        nextStrokeColor &&
+        !sceneColorsEqual(nextStrokeColor, unit.appliedStrokeColor ?? unit.baseStrokeColor)
+      ) {
+        const sanitizedStroke = cloneSceneColor(nextStrokeColor);
+        unit.appliedStrokeColor = sanitizedStroke;
+        strokeUpdate = {
+          color: cloneSceneColor(sanitizedStroke),
+          width: unit.renderer.stroke.width,
+        };
+      }
+    }
+
+    if (shouldUpdateFill || shouldUpdateStroke) {
+      unit.visualEffectsDirty = false;
     }
 
     this.scene.updateObject(unit.objectId, {
       position: { ...unit.position },
       rotation: unit.rotation,
+      ...(fillUpdate ? { fill: fillUpdate } : {}),
+      ...(strokeUpdate ? { stroke: strokeUpdate } : {}),
     });
-    return hpChanged;
+  }
+
+  private updateInternalFurnaceEffect(unit: PlayerUnitState): void {
+    const hasStacks =
+      unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0 && unit.hp > 0;
+    const cap = Math.max(unit.attackStackBonusCap, 1e-6);
+    const ratio = hasStacks
+      ? clampNumber(unit.currentAttackStackBonus / cap, 0, 1)
+      : 0;
+    let intensity = 0;
+    if (ratio > 0) {
+      const normalized = Math.sqrt(ratio);
+      intensity = Math.min(
+        normalized * INTERNAL_FURNACE_MAX_INTENSITY,
+        INTERNAL_FURNACE_MAX_INTENSITY
+      );
+    }
+    const overlayChanged = setVisualEffectFillOverlay(
+      unit.visualEffects,
+      INTERNAL_FURNACE_EFFECT_ID,
+      intensity > 0
+        ? {
+            color: INTERNAL_FURNACE_TINT_COLOR,
+            intensity,
+            priority: INTERNAL_FURNACE_EFFECT_PRIORITY,
+          }
+        : null
+    );
+    if (overlayChanged) {
+      unit.visualEffectsDirty = true;
+    }
   }
 
   private spawnCriticalHitEffect(position: SceneVector2): void {
@@ -988,6 +1141,8 @@ const sanitizeRuntimeModifiers = (
   rewardMultiplier: Math.max(modifiers?.rewardMultiplier ?? 1, 0),
   damageTransferPercent: Math.max(modifiers?.damageTransferPercent ?? 0, 0),
   damageTransferRadius: Math.max(modifiers?.damageTransferRadius ?? 0, 0),
+  attackStackBonusPerHit: Math.max(modifiers?.attackStackBonusPerHit ?? 0, 0),
+  attackStackBonusCap: Math.max(modifiers?.attackStackBonusCap ?? 0, 0),
 });
 
 const sanitizeUnitType = (value: PlayerUnitType | undefined): PlayerUnitType => {
@@ -1018,6 +1173,32 @@ const cloneEmitter = (
   shape: config.shape,
   maxParticles: config.maxParticles,
 });
+
+const cloneSceneColor = (color: SceneColor): SceneColor => ({
+  r: color.r,
+  g: color.g,
+  b: color.b,
+  a: typeof color.a === "number" ? color.a : 1,
+});
+
+const sceneColorsEqual = (
+  a: SceneColor | undefined,
+  b: SceneColor | undefined,
+  epsilon = 1e-3
+): boolean => {
+  if (!a && !b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  return (
+    Math.abs(a.r - b.r) <= epsilon &&
+    Math.abs(a.g - b.g) <= epsilon &&
+    Math.abs(a.b - b.b) <= epsilon &&
+    Math.abs((a.a ?? 1) - (b.a ?? 1)) <= epsilon
+  );
+};
 
 const cloneFill = (fill: SceneFill): SceneFill => {
   switch (fill.fillType) {
