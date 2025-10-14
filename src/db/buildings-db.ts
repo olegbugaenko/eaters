@@ -4,7 +4,12 @@ import type { UnlockCondition } from "../types/unlocks";
 import { RESOURCE_IDS, ResourceAmount, ResourceId } from "./resources-db";
 import { BonusEffectMap } from "../types/bonuses";
 
-export type BuildingId = "quarry" | "well" | "iron_forest" | "mana_plant";
+export type BuildingId =
+  | "quarry"
+  | "well"
+  | "iron_forest"
+  | "mana_plant"
+  | "blacksmith";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -123,6 +128,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       }
     },
     cost: createScalingCost({ organics: 200, copper: 500 }, 1.75),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "advanced_construction",
+        level: 1,
+      },
+    ],
+  },
+  blacksmith: {
+    id: "blacksmith",
+    name: "Blacksmith",
+    description:
+      "Establish an arsenal where master smiths overhaul production lines for faster crafting.",
+    effects: {
+      crafting_speed_mult: {
+        multiplier: (level) => 1 + 0.16 * level,
+      },
+    },
+    cost: createScalingCost({ copper: 400, iron: 300 }, 1.75),
     unlockedBy: [
       {
         type: "skill",

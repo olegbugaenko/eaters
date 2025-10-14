@@ -2,6 +2,8 @@ import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
 import { ResourcesModule } from "./ResourcesModule";
 import { UnlockService } from "../services/UnlockService";
+import { BonusesModule } from "./BonusesModule";
+import type { BonusValueMap } from "./BonusesModule";
 import {
   CRAFTING_RECIPE_IDS,
   CraftingRecipeConfig,
@@ -47,6 +49,7 @@ interface CraftingModuleOptions {
   readonly bridge: DataBridge;
   readonly resources: ResourcesModule;
   readonly unlocks: UnlockService;
+  readonly bonuses: BonusesModule;
 }
 
 interface CraftingRecipeRuntimeState {
@@ -128,16 +131,24 @@ export class CraftingModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly resources: ResourcesModule;
   private readonly unlocks: UnlockService;
+  private readonly bonuses: BonusesModule;
 
   private runtimeStates = new Map<CraftingRecipeId, CraftingRecipeRuntimeState>();
   private visibleRecipeIds: CraftingRecipeId[] = [];
   private unlocked = false;
   private progressBroadcastTimer = 0;
+  private craftingSpeedMultiplier = 1;
+  private craftingSpeedDirty = true;
 
   constructor(options: CraftingModuleOptions) {
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.unlocks = options.unlocks;
+    this.bonuses = options.bonuses;
+    this.craftingSpeedMultiplier = this.sanitizeCraftingSpeedMultiplier(
+      this.bonuses.getBonusValue("crafting_speed_mult")
+    );
+    this.bonuses.subscribe((values) => this.handleBonusValuesUpdated(values));
     CRAFTING_RECIPE_IDS.forEach((id) => {
       this.runtimeStates.set(id, createEmptyRuntimeState());
     });
@@ -156,6 +167,7 @@ export class CraftingModule implements GameModule {
     });
     this.refreshVisibility();
     this.pushState();
+    this.craftingSpeedDirty = true;
   }
 
   public load(data: unknown | undefined): void {
@@ -186,10 +198,16 @@ export class CraftingModule implements GameModule {
     const clampedDelta = Math.max(0, deltaMs);
     let stateChanged = false;
 
+    if (this.craftingSpeedDirty) {
+      stateChanged = true;
+      this.craftingSpeedDirty = false;
+    }
+
     CRAFTING_RECIPE_IDS.forEach((id) => {
       const config = getCraftingRecipeConfig(id);
       const state = this.getRuntimeState(id);
       const available = this.unlocks.areConditionsMet(config.unlockedBy ?? []);
+      const duration = this.getRecipeDuration(config);
 
       if (state.inProgress) {
         if (state.queue <= 0) {
@@ -198,7 +216,7 @@ export class CraftingModule implements GameModule {
           return;
         }
         state.progressMs += clampedDelta;
-        if (state.progressMs >= config.baseDurationMs) {
+        if (state.progressMs >= duration) {
           this.completeRecipe(id, state, config);
           stateChanged = true;
         }
@@ -378,9 +396,8 @@ export class CraftingModule implements GameModule {
     const config = getCraftingRecipeConfig(id);
     const state = this.getRuntimeState(id);
     const cost = toCostRecord(config.ingredients);
-    const progress = state.inProgress
-      ? clamp01(state.progressMs / config.baseDurationMs)
-      : 0;
+    const duration = this.getRecipeDuration(config);
+    const progress = state.inProgress ? clamp01(state.progressMs / duration) : 0;
     const maxQueue = this.computeMaxQueue(id, state, totals);
     const available = this.unlocks.areConditionsMet(config.unlockedBy ?? []);
     const waitingForResources =
@@ -400,7 +417,7 @@ export class CraftingModule implements GameModule {
       queue: state.queue,
       inProgress: state.inProgress,
       progress,
-      durationMs: config.baseDurationMs,
+      durationMs: duration,
       maxQueue,
       waitingForResources,
     };
@@ -440,7 +457,7 @@ export class CraftingModule implements GameModule {
       }
       const state = this.getRuntimeState(id);
       const queue = sanitizeQueueValue(entry.queue);
-      const duration = config.baseDurationMs;
+      const duration = this.getRecipeDuration(config);
       const progress = sanitizeProgressValue(entry.progressMs, duration);
       const inProgress = Boolean(entry.inProgress) && queue > 0;
 
@@ -448,5 +465,48 @@ export class CraftingModule implements GameModule {
       state.inProgress = inProgress;
       state.progressMs = inProgress ? progress : 0;
     });
+  }
+
+  private handleBonusValuesUpdated(values: BonusValueMap): void {
+    const multiplier = this.sanitizeCraftingSpeedMultiplier(
+      values.crafting_speed_mult ?? this.craftingSpeedMultiplier
+    );
+    if (Math.abs(multiplier - this.craftingSpeedMultiplier) < 1e-9) {
+      return;
+    }
+    this.craftingSpeedMultiplier = multiplier;
+    this.onCraftingSpeedMultiplierChanged();
+  }
+
+  private onCraftingSpeedMultiplierChanged(): void {
+    this.craftingSpeedDirty = true;
+    this.progressBroadcastTimer = 0;
+    CRAFTING_RECIPE_IDS.forEach((id) => {
+      const state = this.getRuntimeState(id);
+      if (!state.inProgress) {
+        return;
+      }
+      const config = getCraftingRecipeConfig(id);
+      const duration = this.getRecipeDuration(config);
+      if (state.progressMs > duration) {
+        state.progressMs = duration;
+      }
+    });
+  }
+
+  private getRecipeDuration(config: CraftingRecipeConfig): number {
+    const multiplier = this.craftingSpeedMultiplier;
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
+      return Math.max(1, Math.round(config.baseDurationMs));
+    }
+    const adjusted = config.baseDurationMs / multiplier;
+    return Math.max(1, Math.round(adjusted));
+  }
+
+  private sanitizeCraftingSpeedMultiplier(value: number | undefined): number {
+    if (!Number.isFinite(value) || (value ?? 0) <= 0) {
+      return 1;
+    }
+    return value ?? 1;
   }
 }

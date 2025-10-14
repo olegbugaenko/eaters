@@ -80,6 +80,7 @@ export class Application {
       bridge: this.dataBridge,
       resources: resourcesModule,
       unlocks: unlockService,
+      bonuses: bonusesModule,
     });
     this.craftingModule = craftingModule;
 
