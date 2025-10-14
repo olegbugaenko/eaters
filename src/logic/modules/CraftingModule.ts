@@ -65,6 +65,8 @@ interface CraftingModuleSaveData {
   readonly recipes?: Partial<Record<CraftingRecipeId, CraftingRecipeSaveState>>;
 }
 
+const PROGRESS_PUSH_INTERVAL_MS = 100;
+
 const createEmptyRuntimeState = (): CraftingRecipeRuntimeState => ({
   queue: 0,
   progressMs: 0,
@@ -130,6 +132,7 @@ export class CraftingModule implements GameModule {
   private runtimeStates = new Map<CraftingRecipeId, CraftingRecipeRuntimeState>();
   private visibleRecipeIds: CraftingRecipeId[] = [];
   private unlocked = false;
+  private progressBroadcastTimer = 0;
 
   constructor(options: CraftingModuleOptions) {
     this.bridge = options.bridge;
@@ -218,8 +221,19 @@ export class CraftingModule implements GameModule {
     });
 
     const visibilityChanged = this.refreshVisibility();
-    if (visibilityChanged || stateChanged) {
+    const hasActiveRecipe = this.hasRecipeInProgress();
+    if (hasActiveRecipe) {
+      this.progressBroadcastTimer += clampedDelta;
+    } else {
+      this.progressBroadcastTimer = 0;
+    }
+
+    const periodicUpdate =
+      hasActiveRecipe && this.progressBroadcastTimer >= PROGRESS_PUSH_INTERVAL_MS;
+
+    if (visibilityChanged || stateChanged || periodicUpdate) {
       this.pushState();
+      this.progressBroadcastTimer = 0;
     }
   }
 
@@ -351,6 +365,10 @@ export class CraftingModule implements GameModule {
       recipes: this.visibleRecipeIds.map((id) => this.createRecipePayload(id, totals)),
     };
     this.bridge.setValue(CRAFTING_STATE_BRIDGE_KEY, payload);
+  }
+
+  private hasRecipeInProgress(): boolean {
+    return CRAFTING_RECIPE_IDS.some((id) => this.getRuntimeState(id).inProgress);
   }
 
   private createRecipePayload(
