@@ -11,5 +11,6 @@ import "./UnitAutomationModule.test";
 import "./Application.test";
 import "./ResourcesModule.test";
 import "./UnitModuleWorkshopModule.test";
+import "./formatNumber.test";
 
 void run();
