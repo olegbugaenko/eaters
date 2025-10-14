@@ -2,15 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { classNames } from "@shared/classNames";
 import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
 import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
-import {
-  UnitDesignerBridgeState,
-  UnitDesignerUnitState,
-} from "@logic/modules/UnitDesignModule";
+import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
 import { buildUnitStatEntries } from "@shared/unitStats";
 import { PlayerUnitType } from "@db/player-units-db";
-import { formatNumber } from "@shared/format/number";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@shared/Button";
 import { ModuleDetailsCard } from "@shared/ModuleDetailsCard";
@@ -74,17 +70,6 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
     setPreview(null);
   }, [selectedUnit?.id]);
 
-  const roster = state.activeRoster;
-  const rosterSet = useMemo(() => new Set(roster), [roster]);
-  const rosterUnits = useMemo(
-    () =>
-      roster
-        .map((id) => state.units.find((unit) => unit.id === id) ?? null)
-        .filter((unit): unit is UnitDesignerUnitState => Boolean(unit)),
-    [roster, state.units]
-  );
-  const rosterFull = roster.length >= state.maxActiveUnits;
-
   const missingCost = useMemo(
     () => (selectedUnit ? computeMissing(selectedUnit.cost, totals) : { mana: 0, sanity: 0 }),
     [selectedUnit, totals]
@@ -93,21 +78,6 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
   const handleSelectUnit = useCallback((id: string) => {
     setSelectedId(id);
   }, []);
-
-  const handleToggleActive = useCallback(
-    (id: string) => {
-      const isActive = roster.includes(id);
-      if (isActive) {
-        designer.setActiveRoster(roster.filter((entry) => entry !== id));
-        return;
-      }
-      if (roster.length >= state.maxActiveUnits) {
-        return;
-      }
-      designer.setActiveRoster([...roster, id]);
-    },
-    [designer, roster, state.maxActiveUnits]
-  );
 
   const handleCreateUnit = useCallback(() => {
     const type = selectedUnit?.type ?? getDefaultType(state.units, DEFAULT_UNIT_TYPE);
@@ -199,21 +169,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
           <ul className="unit-designer__list-items">
             {state.units.map((unit) => {
               const isActive = unit.id === selectedUnit.id;
-              const isRostered = rosterSet.has(unit.id);
               const listItemClassName = classNames(
                 "unit-designer__list-item",
-                isActive && "unit-designer__list-item--active",
-                isRostered && "unit-designer__list-item--roster"
+                isActive && "unit-designer__list-item--active"
               );
-              const rosterButtonClassName = classNames(
-                "unit-designer__roster-toggle",
-                isRostered && "unit-designer__roster-toggle--active"
-              );
-              const rosterLabel = isRostered
-                ? "Active"
-                : rosterFull
-                ? "Roster full"
-                : "Add to roster";
               return (
                 <li key={unit.id} className="unit-designer__list-entry">
                   <div className="unit-designer__list-row">
@@ -226,26 +185,15 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                         <span className="unit-designer__list-name">{unit.name}</span>
                         <span className="unit-designer__list-modules">{unit.modules.length} modules</span>
                       </div>
-                      {isRostered ? <span className="unit-designer__list-badge">Active</span> : null}
                     </button>
-                    <div className="unit-designer__list-actions">
-                      <button
-                        type="button"
-                        className={rosterButtonClassName}
-                        onClick={() => handleToggleActive(unit.id)}
-                        disabled={!isRostered && rosterFull}
-                      >
-                        {rosterLabel}
-                      </button>
-                      <button
-                        type="button"
-                        className="unit-designer__text-button unit-designer__delete"
-                        onClick={() => handleDeleteUnit(unit.id)}
-                        aria-label={`Delete ${unit.name}`}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="unit-designer__text-button unit-designer__delete"
+                      onClick={() => handleDeleteUnit(unit.id)}
+                      aria-label={`Delete ${unit.name}`}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               );
@@ -287,11 +235,6 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   >
                     <div>
                       <div className="unit-designer__selected-name">{module.name}</div>
-                      {/*<div className="unit-designer__selected-meta">
-                        {formatUnitModuleBonusValue(module.bonusType, module.bonusValue)} · Mana ×
-                        {formatNumber(module.manaCostMultiplier, { maximumFractionDigits: 2 })} · +
-                        {formatNumber(module.sanityCost, { maximumFractionDigits: 0 })} sanity
-                      </div>*/}
                     </div>
                     <button
                       type="button"
@@ -352,38 +295,6 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
         </section>
         <aside className="unit-designer__summary surface-sidebar">
           <div className="unit-designer__summary-scroll">
-            <section className="unit-designer__roster-summary">
-              <h5 className="heading-5">Battle Roster</h5>
-              <p className="body-sm text-muted">
-                Select up to {state.maxActiveUnits} units to deploy on maps.
-              </p>
-              <ul className="unit-designer__roster-list">
-                {Array.from({ length: state.maxActiveUnits }).map((_, index) => {
-                  const unit = rosterUnits[index] ?? null;
-                  return (
-                    <li
-                      key={`roster-${index}`}
-                      className={classNames(
-                        "unit-designer__roster-slot",
-                        unit && "unit-designer__roster-slot--filled"
-                      )}
-                    >
-                      <span className="unit-designer__roster-slot-index">{index + 1}</span>
-                      {unit ? (
-                        <div className="unit-designer__roster-slot-content">
-                          <span className="unit-designer__roster-slot-name">{unit.name}</span>
-                          <span className="unit-designer__roster-slot-meta">
-                            {unit.modules.length} modules
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="unit-designer__roster-slot-empty">Empty slot</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
             <div className="unit-designer__module-preview">
               {previewModule ? (
                 <ModuleDetailsCard

@@ -13,6 +13,7 @@ import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
 import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWorkshop/BuildingsWorkshopView";
 import { CraftingBridgeState } from "@logic/modules/CraftingModule";
 import { CraftingView } from "@screens/VoidCamp/components/Crafting/CraftingView";
+import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -48,7 +49,14 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   buildingsState,
   craftingState,
 }) => {
-  const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer">("shop");
+  const moduleTabs: { key: "shop" | "designer" | "roster"; label: string }[] = [
+    { key: "shop", label: "Module Shop" },
+    { key: "designer", label: "Unit Designer" },
+    { key: "roster", label: "Battle Roster" },
+  ];
+  const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer" | "roster">(
+    "shop"
+  );
 
   useEffect(() => {
     if (!moduleWorkshopState.unlocked) {
@@ -86,18 +94,18 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     return (
       <div className="camp-tab-panels__modules">
         <div className="inline-tabs camp-tab-panels__modules-tabs">
-          {["shop", "designer"].map((tabKey) => {
-            const isActive = activeModulesTab === tabKey;
+          {moduleTabs.map((tab) => {
+            const isActive = activeModulesTab === tab.key;
             return (
               <button
-                key={tabKey}
+                key={tab.key}
                 type="button"
                 className={
                   "inline-tabs__button" + (isActive ? " inline-tabs__button--active" : "")
                 }
-                onClick={() => setActiveModulesTab(tabKey as "shop" | "designer")}
+                onClick={() => setActiveModulesTab(tab.key)}
               >
-                {tabKey === "shop" ? "Module Shop" : "Unit Designer"}
+                {tab.label}
               </button>
             );
           })}
@@ -105,8 +113,10 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         <div className="camp-tab-panels__modules-body">
           {activeModulesTab === "shop" ? (
             <ModulesWorkshopView state={moduleWorkshopState} resources={resourceTotals} />
-          ) : (
+          ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
+          ) : (
+            <UnitRosterView state={unitDesignerState} />
           )}
         </div>
       </div>
