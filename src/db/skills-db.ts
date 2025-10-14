@@ -192,11 +192,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 80,
     effects: {
       building_cost_multiplier: {
-        multiplier: (level) => Math.pow(0.92, level),
+        multiplier: (level) => Math.pow(0.95, level),
       },
     },
     nodesRequired: { construction_guild: 1 },
-    cost: createResourceCost("paper", 20, 1.5),
+    cost: createResourceCost("paper", 10, 1.5),
   },
   quarry_overseers: {
     id: "quarry_overseers",
@@ -495,7 +495,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { tool_fabrication: 1 },
-    cost: createResourceCost('tools', 20, 1.5),
+    cost: createResourceCost('tools', 10, 1.5),
   },
   silver_drill: {
     id: "silver_drill",
@@ -693,15 +693,15 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Arcane Research",
     description:
       "Document mana experiments on resilient paper, compounding regenerative breakthroughs.",
-    nodePosition: { x: 7, y: -1 },
+    nodePosition: { x: -3, y: -6 },
     maxLevel: 80,
     effects: {
       mana_regen: {
-        multiplier: (level) => Math.pow(1.08, level),
+        multiplier: (level) => 1 + 0.08*Math.pow(1.03, level)*level,
       },
     },
     nodesRequired: { mana_source: 5 },
-    cost: createResourceCost('paper', 20, 1.5),
+    cost: createResourceCost('paper', 10, 1.5),
   },
   restoration: {
     id: "restoration",
@@ -731,7 +731,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { restoration: 5 },
-    cost: createResourceCost('tools', 20, 1.5),
+    cost: createResourceCost('tools', 10, 1.5),
   },
 };
 

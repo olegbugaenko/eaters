@@ -32,7 +32,7 @@ const CRAFTING_RECIPE_DB: Record<CraftingRecipeId, CraftingRecipeConfig> = {
     productId: "tools",
     productAmount: 1,
     ingredients: TOOL_INGREDIENTS,
-    baseDurationMs: 1000,
+    baseDurationMs: 2500,
     unlockedBy: [
       {
         type: "skill",
@@ -47,7 +47,7 @@ const CRAFTING_RECIPE_DB: Record<CraftingRecipeId, CraftingRecipeConfig> = {
     productId: "paper",
     productAmount: 1,
     ingredients: PAPER_INGREDIENTS,
-    baseDurationMs: 1500,
+    baseDurationMs: 3000,
     unlockedBy: [
       {
         type: "skill",
