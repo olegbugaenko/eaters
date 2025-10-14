@@ -193,14 +193,20 @@ export class ResourcesModule implements GameModule {
     this.pushRunDuration();
   }
 
-  public grantResources(amount: ResourceAmount | ResourceStockpile): void {
+  public grantResources(
+    amount: ResourceAmount | ResourceStockpile,
+    options?: { includeInRunSummary?: boolean }
+  ): void {
     const normalized = normalizeResourceAmount(amount);
     let changed = false;
+    const includeInRunSummary = options?.includeInRunSummary ?? true;
     RESOURCE_IDS.forEach((id) => {
       const value = normalized[id];
       if (value > 0) {
         this.totals[id] += value;
-        this.runGains[id] += value;
+        if (includeInRunSummary) {
+          this.runGains[id] += value;
+        }
         changed = true;
       }
     });

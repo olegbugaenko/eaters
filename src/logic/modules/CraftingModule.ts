@@ -310,7 +310,7 @@ export class CraftingModule implements GameModule {
     config: CraftingRecipeConfig
   ): void {
     const reward = createProductAmount(config.productId, config.productAmount);
-    this.resources.grantResources(reward);
+    this.resources.grantResources(reward, { includeInRunSummary: false });
     state.queue = Math.max(0, state.queue - 1);
     state.inProgress = false;
     state.progressMs = 0;
@@ -325,7 +325,7 @@ export class CraftingModule implements GameModule {
     state.inProgress = false;
     state.progressMs = 0;
     if (refund) {
-      this.resources.grantResources(config.ingredients);
+      this.resources.grantResources(config.ingredients, { includeInRunSummary: false });
     }
   }
 

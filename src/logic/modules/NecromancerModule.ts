@@ -106,8 +106,8 @@ export class NecromancerModule implements GameModule {
     this.bonuses.subscribe((values) => {
       this.handleBonusValuesChanged(values);
     });
-    this.unsubscribeDesigns = this.unitDesigns.subscribe((designs) => {
-      this.cachedDesigns = [...designs];
+    this.unsubscribeDesigns = this.unitDesigns.subscribe(() => {
+      this.cachedDesigns = this.unitDesigns.getActiveRosterDesigns();
       this.pushSpawnOptions();
     });
   }
@@ -221,7 +221,7 @@ export class NecromancerModule implements GameModule {
     if (!this.mapActive) {
       return false;
     }
-    const design = this.unitDesigns.getDesign(designId);
+    const design = this.cachedDesigns.find((entry) => entry.id === designId);
     if (!design) {
       return false;
     }

@@ -32,6 +32,7 @@ const createUnitDesignerStub = (): UnitDesignModule => {
     getDefaultDesignForType: () => null,
     getDesign: () => null,
     getAllDesigns: () => [],
+    getActiveRosterDesigns: () => [],
   };
   return stub as unknown as UnitDesignModule;
 };
