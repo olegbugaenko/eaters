@@ -491,7 +491,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 80,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.05 * level,
+        multiplier: (level) => 1 + 0.08 * level,
       },
     },
     nodesRequired: { tool_fabrication: 1 },
@@ -727,7 +727,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 80,
     effects: {
       all_units_hp_multiplier: {
-        multiplier: (level) => 1 + 0.05 * level,
+        multiplier: (level) => 1 + 0.08 * level,
       },
     },
     nodesRequired: { restoration: 5 },

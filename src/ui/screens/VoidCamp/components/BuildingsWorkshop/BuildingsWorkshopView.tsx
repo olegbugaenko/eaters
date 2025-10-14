@@ -130,35 +130,39 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
         </div>
       </header>
       <div className="modules-workshop__content">
-        <ul className="modules-workshop__list">
-          {state.buildings.map((building) => {
-            const isActive = building.id === (hoveredId ?? selectedId ?? building.id);
-            return (
-              <li key={building.id}>
-                <button
-                  type="button"
-                  className={
-                    "modules-workshop__card" + (isActive ? " modules-workshop__card--active" : "")
-                  }
-                  onClick={() => setSelectedId(building.id)}
-                  onMouseEnter={() => setHoveredId(building.id)}
-                  onMouseLeave={() =>
-                    setHoveredId((current) => (current === building.id ? null : current))
-                  }
-                  onFocus={() => setHoveredId(building.id)}
-                  onBlur={() => setHoveredId((current) => (current === building.id ? null : current))}
-                >
-                  <span className="modules-workshop__card-title">{building.name}</span>
-                  <span className="modules-workshop__card-level">Level {building.level}</span>
-                  <p className="modules-workshop__card-description">{building.description}</p>
-                  <span className="modules-workshop__card-cost">
-                    {formatCostSummary(building.nextCost)}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="modules-workshop__list-container">
+          <ul className="modules-workshop__list">
+            {state.buildings.map((building) => {
+              const isActive = building.id === (hoveredId ?? selectedId ?? building.id);
+              return (
+                <li key={building.id}>
+                  <button
+                    type="button"
+                    className={
+                      "modules-workshop__card" + (isActive ? " modules-workshop__card--active" : "")
+                    }
+                    onClick={() => setSelectedId(building.id)}
+                    onMouseEnter={() => setHoveredId(building.id)}
+                    onMouseLeave={() =>
+                      setHoveredId((current) => (current === building.id ? null : current))
+                    }
+                    onFocus={() => setHoveredId(building.id)}
+                    onBlur={() =>
+                      setHoveredId((current) => (current === building.id ? null : current))
+                    }
+                  >
+                    <span className="modules-workshop__card-title">{building.name}</span>
+                    <span className="modules-workshop__card-level">Level {building.level}</span>
+                    <p className="modules-workshop__card-description">{building.description}</p>
+                    <span className="modules-workshop__card-cost">
+                      {formatCostSummary(building.nextCost)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
         <aside>
           {activeBuilding ? (
             <div className="modules-workshop__details modules-workshop__details--scrollable">
