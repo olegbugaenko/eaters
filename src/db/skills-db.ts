@@ -55,7 +55,9 @@ export const SKILL_IDS = [
   "heavy_drill",
   "silver_drill",
   "penetration",
-  "penetration2"
+  "penetration2",
+  "soul_wood",
+  "advanced_construction"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -150,6 +152,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { autorestart_rituals: 1 },
     cost: createResourceCost("copper", 50, 1),
+  },
+  advanced_construction: {
+    id: "advanced_construction",
+    name: "Advanced Construction",
+    description:
+      "Establish a guild to coordinate permanent worksites and unlock dedicated building plans.",
+    nodePosition: { x: -1, y: 5 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { construction_guild: 1 },
+    cost: createResourceCost("copper", 5000, 1),
   },
   quarry_overseers: {
     id: "quarry_overseers",
@@ -262,7 +275,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Refine sieving rituals that separate glimmering sand from dull dust motes.",
     nodePosition: { x: -3, y: -4 },
-    maxLevel: 4,
+    maxLevel: 5,
     effects: {
       mana_cap: {
         income: (level) => 3 * level,
@@ -288,6 +301,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { sand_scribing: 3 },
     cost: createResourceCost('wood', 20, 1.5),
+  },
+  soul_wood: {
+    id: "soul_wood",
+    name: "Soul Wood",
+    description:
+      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+    nodePosition: { x: -4, y: -4 },
+    maxLevel: 8,
+    effects: {
+      mana_cap: {
+        income: (level) => 5 * level,
+      },
+    },
+    nodesRequired: { sand_scribing: 5 },
+    cost: createResourceCost('wood', 60, 1.5),
   },
   bastion_foundations: {
     id: "bastion_foundations",
@@ -551,7 +579,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Armor Lore III",
     description:
       "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
-    nodePosition: { x: 7, y: 2 },
+    nodePosition: { x: 8, y: 1 },
     maxLevel: 15,
     effects: {
       all_units_armor: {

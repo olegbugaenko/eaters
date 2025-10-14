@@ -68,8 +68,8 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       "Bio-reactive plating grafts regenerative tissues that swell the ship's structure.",
     bonusLabel: "Max HP multiplier",
     bonusType: "multiplier",
-    baseBonusValue: 1.5,
-    bonusPerLevel: 0.05,
+    baseBonusValue: 1.8,
+    bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 1,
     baseCost: {
@@ -90,8 +90,8 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       "Magnetized furnaces overcharge weapon cores to deliver brutally efficient strikes.",
     bonusLabel: "Damage multiplier",
     bonusType: "multiplier",
-    baseBonusValue: 1.5,
-    bonusPerLevel: 0.05,
+    baseBonusValue: 1.8,
+    bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 1,
     baseCost: {
@@ -112,8 +112,8 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       "Interlocking argent plates reinforce the hull, scattering incoming blows across mirrored facets.",
     bonusLabel: "Armor multiplier",
     bonusType: "multiplier",
-    baseBonusValue: 1.4,
-    bonusPerLevel: 0.04,
+    baseBonusValue: 1.5,
+    bonusPerLevel: 0.05,
     manaCostMultiplier: 2.75,
     sanityCost: 1,
     baseCost: {

@@ -4,7 +4,7 @@ import type { UnlockCondition } from "../types/unlocks";
 import { RESOURCE_IDS, ResourceAmount, ResourceId } from "./resources-db";
 import { BonusEffectMap } from "../types/bonuses";
 
-export type BuildingId = "quarry" | "well" | "iron_forest";
+export type BuildingId = "quarry" | "well" | "iron_forest" | "mana_plant";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -108,6 +108,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       {
         type: "skill",
         id: "construction_guild",
+        level: 1,
+      },
+    ],
+  },
+  mana_plant: {
+    id: "mana_plant",
+    name: "Mana Plant",
+    description:
+      "Forest of steel and soul. Increase your eaters HP",
+    effects: {
+      mana_regen: {
+        multiplier: (level) => 1 + 0.25 * level,
+      }
+    },
+    cost: createScalingCost({ organics: 200, copper: 500 }, 1.75),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "advanced_construction",
         level: 1,
       },
     ],
