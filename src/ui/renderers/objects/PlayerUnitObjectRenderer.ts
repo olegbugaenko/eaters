@@ -6,28 +6,43 @@ import {
 } from "./ObjectRenderer";
 import {
   FILL_TYPES,
+  SceneColor,
+  SceneFill,
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
 } from "../../../logic/services/SceneObjectManager";
-import { createDynamicPolygonPrimitive, createParticleEmitterPrimitive } from "../primitives";
+import {
+  createDynamicCirclePrimitive,
+  createDynamicPolygonPrimitive,
+  createParticleEmitterPrimitive,
+} from "../primitives";
 import {
   ParticleEmitterBaseConfig,
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
-import type { PlayerUnitEmitterConfig } from "../../../db/player-units-db";
+import { cloneSceneFill, sanitizeSceneColor } from "../../../logic/services/particles/ParticleEmitterShared";
+import type {
+  PlayerUnitEmitterConfig,
+  PlayerUnitRendererConfig,
+  PlayerUnitRendererLayerConfig,
+  PlayerUnitRendererFillConfig,
+  PlayerUnitRendererStrokeConfig,
+} from "../../../db/player-units-db";
 
-interface PlayerUnitRendererPayload {
+interface PlayerUnitRendererLegacyPayload {
   kind?: string;
   vertices?: SceneVector2[];
   offset?: SceneVector2;
 }
 
 interface PlayerUnitCustomData {
-  renderer?: PlayerUnitRendererPayload;
+  renderer?: PlayerUnitRendererConfig | PlayerUnitRendererLegacyPayload;
   emitter?: PlayerUnitEmitterConfig;
   physicalSize?: number;
+  baseFillColor?: SceneColor;
+  baseStrokeColor?: SceneColor;
 }
 
 interface PlayerUnitEmitterRenderConfig extends ParticleEmitterBaseConfig {
@@ -36,6 +51,76 @@ interface PlayerUnitEmitterRenderConfig extends ParticleEmitterBaseConfig {
   spread: number;
   physicalSize: number;
 }
+
+interface CompositeRendererData {
+  kind: "composite";
+  baseFillColor: SceneColor;
+  baseStrokeColor?: SceneColor;
+  layers: RendererLayer[];
+}
+
+interface PolygonRendererData {
+  kind: "polygon";
+  vertices: SceneVector2[];
+  offset?: SceneVector2;
+}
+
+type RendererData = CompositeRendererData | PolygonRendererData;
+
+interface RendererLayerBase {
+  offset?: SceneVector2;
+  fill: RendererLayerFill;
+  stroke?: RendererLayerStroke;
+}
+
+interface RendererPolygonLayer extends RendererLayerBase {
+  shape: "polygon";
+  vertices: SceneVector2[];
+}
+
+interface RendererCircleLayer extends RendererLayerBase {
+  shape: "circle";
+  radius: number;
+  segments: number;
+}
+
+type RendererLayer = RendererPolygonLayer | RendererCircleLayer;
+
+interface RendererLayerFillBase {
+  kind: "base";
+  brightness: number;
+  alphaMultiplier: number;
+}
+
+interface RendererLayerFillSolid {
+  kind: "solid";
+  color: SceneColor;
+}
+
+interface RendererLayerFillGradient {
+  kind: "gradient";
+  fill: SceneFill;
+}
+
+type RendererLayerFill =
+  | RendererLayerFillBase
+  | RendererLayerFillSolid
+  | RendererLayerFillGradient;
+
+interface RendererLayerStrokeBase {
+  kind: "base";
+  width: number;
+  brightness: number;
+  alphaMultiplier: number;
+}
+
+interface RendererLayerStrokeSolid {
+  kind: "solid";
+  width: number;
+  color: SceneColor;
+}
+
+type RendererLayerStroke = RendererLayerStrokeBase | RendererLayerStrokeSolid;
 
 const DEFAULT_VERTICES: SceneVector2[] = [
   { x: 0, y: -18 },
@@ -46,6 +131,8 @@ const DEFAULT_VERTICES: SceneVector2[] = [
 ];
 
 const DEFAULT_EMITTER_COLOR = { r: 0.2, g: 0.45, b: 0.95, a: 0.5 };
+const DEFAULT_BASE_FILL_COLOR: SceneColor = { r: 0.4, g: 0.7, b: 1, a: 1 };
+const MIN_CIRCLE_SEGMENTS = 8;
 
 const isVector = (value: unknown): value is SceneVector2 =>
   typeof value === "object" &&
@@ -66,6 +153,21 @@ const sanitizeVertices = (vertices: SceneVector2[] | undefined): SceneVector2[] 
   return sanitized;
 };
 
+const sanitizeLayerVertices = (
+  vertices: readonly SceneVector2[] | undefined
+): SceneVector2[] | null => {
+  if (!Array.isArray(vertices)) {
+    return null;
+  }
+  const sanitized = vertices
+    .filter((vertex) => isVector(vertex))
+    .map((vertex) => ({ x: vertex.x, y: vertex.y }));
+  if (sanitized.length < 3) {
+    return null;
+  }
+  return sanitized;
+};
+
 const sanitizeOffset = (offset: SceneVector2 | undefined): SceneVector2 | undefined => {
   if (!offset || !isVector(offset)) {
     return undefined;
@@ -73,20 +175,460 @@ const sanitizeOffset = (offset: SceneVector2 | undefined): SceneVector2 | undefi
   return { x: offset.x, y: offset.y };
 };
 
-const extractRendererData = (
-  instance: SceneObjectInstance
-): { vertices: SceneVector2[]; offset?: SceneVector2 } => {
+const extractRendererData = (instance: SceneObjectInstance): RendererData => {
   const payload = instance.data.customData as PlayerUnitCustomData | undefined;
-  if (!payload || typeof payload !== "object") {
-    return { vertices: DEFAULT_VERTICES.map((vertex) => ({ ...vertex })) };
+  if (payload && typeof payload === "object") {
+    const renderer = payload.renderer;
+    if (renderer && typeof renderer === "object") {
+      if ((renderer as PlayerUnitRendererConfig).kind === "composite") {
+        const composite = sanitizeCompositeRenderer(
+          renderer as PlayerUnitRendererConfig,
+          payload
+        );
+        if (composite) {
+          return composite;
+        }
+      }
+      if ((renderer as PlayerUnitRendererLegacyPayload).kind === "polygon") {
+        const legacy = renderer as PlayerUnitRendererLegacyPayload;
+        return {
+          kind: "polygon",
+          vertices: sanitizeVertices(legacy.vertices),
+          offset: sanitizeOffset(legacy.offset),
+        };
+      }
+    }
   }
-  const renderer = payload.renderer;
-  if (!renderer || renderer.kind !== "polygon") {
-    return { vertices: DEFAULT_VERTICES.map((vertex) => ({ ...vertex })) };
+  return { kind: "polygon", vertices: DEFAULT_VERTICES.map((vertex) => ({ ...vertex })) };
+};
+
+const sanitizeCompositeRenderer = (
+  renderer: PlayerUnitRendererConfig,
+  payload: PlayerUnitCustomData | undefined
+): CompositeRendererData | null => {
+  if (renderer.kind !== "composite") {
+    return null;
+  }
+  const fallbackFill = sanitizeSceneColor(renderer.fill, DEFAULT_BASE_FILL_COLOR);
+  const baseFillColor = sanitizeSceneColor(payload?.baseFillColor, fallbackFill);
+  const fallbackStrokeColor = renderer.stroke
+    ? sanitizeSceneColor(renderer.stroke.color, fallbackFill)
+    : undefined;
+  const baseStrokeColor = renderer.stroke
+    ? sanitizeSceneColor(payload?.baseStrokeColor, fallbackStrokeColor!)
+    : undefined;
+
+  const layers = renderer.layers
+    .map((layer) => sanitizeCompositeLayer(layer))
+    .filter((layer): layer is RendererLayer => layer !== null);
+
+  if (layers.length === 0) {
+    return null;
+  }
+
+  return {
+    kind: "composite",
+    baseFillColor,
+    baseStrokeColor,
+    layers,
+  };
+};
+
+const sanitizeCompositeLayer = (
+  layer: PlayerUnitRendererLayerConfig
+): RendererLayer | null => {
+  if (layer.shape === "polygon") {
+    const vertices = sanitizeLayerVertices(layer.vertices);
+    if (!vertices) {
+      return null;
+    }
+    return {
+      shape: "polygon",
+      vertices,
+      offset: sanitizeOffset(layer.offset),
+      fill: sanitizeFillConfig(layer.fill),
+      stroke: sanitizeStrokeConfig(layer.stroke),
+    };
+  }
+
+  const radius =
+    typeof layer.radius === "number" && Number.isFinite(layer.radius) ? layer.radius : 0;
+  if (radius <= 0) {
+    return null;
+  }
+  const segments =
+    typeof layer.segments === "number" && Number.isFinite(layer.segments)
+      ? Math.max(Math.round(layer.segments), MIN_CIRCLE_SEGMENTS)
+      : 32;
+  return {
+    shape: "circle",
+    radius,
+    segments,
+    offset: sanitizeOffset(layer.offset),
+    fill: sanitizeFillConfig(layer.fill),
+    stroke: sanitizeStrokeConfig(layer.stroke),
+  };
+};
+
+const clampBrightness = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= -1) {
+    return -1;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+};
+
+const clampAlphaMultiplier = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 1;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 10) {
+    return 10;
+  }
+  return value;
+};
+
+const sanitizeFillConfig = (
+  fill: PlayerUnitRendererFillConfig | undefined
+): RendererLayerFill => {
+  if (!fill || fill.type === "base") {
+    return {
+      kind: "base",
+      brightness: clampBrightness(fill?.brightness),
+      alphaMultiplier: clampAlphaMultiplier(fill?.alphaMultiplier),
+    };
+  }
+  if (fill.type === "solid") {
+    return {
+      kind: "solid",
+      color: { ...fill.color },
+    };
   }
   return {
-    vertices: sanitizeVertices(renderer.vertices),
-    offset: sanitizeOffset(renderer.offset),
+    kind: "gradient",
+    fill: cloneSceneFill(fill.fill),
+  };
+};
+
+const sanitizeStrokeConfig = (
+  stroke: PlayerUnitRendererStrokeConfig | undefined
+): RendererLayerStroke | undefined => {
+  if (!stroke) {
+    return undefined;
+  }
+  const width = typeof stroke.width === "number" && Number.isFinite(stroke.width)
+    ? stroke.width
+    : 0;
+  if (width <= 0) {
+    return undefined;
+  }
+  if (stroke.type === "solid") {
+    return {
+      kind: "solid",
+      width,
+      color: { ...stroke.color },
+    };
+  }
+  return {
+    kind: "base",
+    width,
+    brightness: clampBrightness(stroke.brightness),
+    alphaMultiplier: clampAlphaMultiplier(stroke.alphaMultiplier),
+  };
+};
+
+const clamp01 = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+};
+
+const applyBrightness = (component: number, brightness: number): number => {
+  if (brightness > 0) {
+    return component + (1 - component) * brightness;
+  }
+  if (brightness < 0) {
+    return component * (1 + brightness);
+  }
+  return component;
+};
+
+const tintColor = (
+  color: SceneColor,
+  brightness: number,
+  alphaMultiplier: number
+): SceneColor => {
+  const r = clamp01(applyBrightness(color.r, brightness));
+  const g = clamp01(applyBrightness(color.g, brightness));
+  const b = clamp01(applyBrightness(color.b, brightness));
+  const baseAlpha = typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1;
+  const a = clamp01(baseAlpha * alphaMultiplier);
+  return { r, g, b, a };
+};
+
+const createSolidFill = (color: SceneColor): SceneFill => ({
+  fillType: FILL_TYPES.SOLID,
+  color: {
+    r: color.r,
+    g: color.g,
+    b: color.b,
+    a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
+  },
+});
+
+const resolveFillColor = (
+  instance: SceneObjectInstance,
+  fallback: SceneColor
+): SceneColor => {
+  const fill = instance.data.fill;
+  if (fill?.fillType === FILL_TYPES.SOLID) {
+    const color = fill.color;
+    return {
+      r: color.r,
+      g: color.g,
+      b: color.b,
+      a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
+    };
+  }
+  return fallback;
+};
+
+const resolveStrokeColor = (
+  instance: SceneObjectInstance,
+  fallbackStroke: SceneColor | undefined,
+  fallbackFill: SceneColor
+): SceneColor => {
+  const stroke = instance.data.stroke;
+  if (stroke && stroke.width > 0) {
+    const color = stroke.color;
+    if (color) {
+      return {
+        r: color.r,
+        g: color.g,
+        b: color.b,
+        a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
+      };
+    }
+  }
+  if (fallbackStroke) {
+    return fallbackStroke;
+  }
+  return fallbackFill;
+};
+
+const resolveLayerFill = (
+  instance: SceneObjectInstance,
+  fill: RendererLayerFill,
+  renderer: CompositeRendererData
+): SceneFill => {
+  switch (fill.kind) {
+    case "solid":
+      return createSolidFill(fill.color);
+    case "gradient":
+      return cloneSceneFill(fill.fill);
+    default: {
+      const baseColor = resolveFillColor(instance, renderer.baseFillColor);
+      const tinted = tintColor(baseColor, fill.brightness, fill.alphaMultiplier);
+      return createSolidFill(tinted);
+    }
+  }
+};
+
+const resolveLayerStrokeFill = (
+  instance: SceneObjectInstance,
+  stroke: RendererLayerStroke,
+  renderer: CompositeRendererData
+): SceneFill => {
+  if (stroke.kind === "solid") {
+    return createSolidFill(stroke.color);
+  }
+  const baseColor = resolveStrokeColor(
+    instance,
+    renderer.baseStrokeColor,
+    renderer.baseFillColor
+  );
+  const tinted = tintColor(baseColor, stroke.brightness, stroke.alphaMultiplier);
+  return createSolidFill(tinted);
+};
+
+const createCompositePrimitives = (
+  instance: SceneObjectInstance,
+  renderer: CompositeRendererData,
+  dynamicPrimitives: DynamicPrimitive[]
+): void => {
+  renderer.layers.forEach((layer) => {
+    if (layer.shape === "polygon") {
+      if (layer.stroke) {
+        const strokeVertices = expandVerticesForStroke(layer.vertices, layer.stroke.width);
+        dynamicPrimitives.push(
+          createDynamicPolygonPrimitive(instance, {
+            vertices: strokeVertices,
+            offset: layer.offset,
+            getFill: (target) => resolveLayerStrokeFill(target, layer.stroke!, renderer),
+          })
+        );
+      }
+      dynamicPrimitives.push(
+        createDynamicPolygonPrimitive(instance, {
+          vertices: layer.vertices,
+          offset: layer.offset,
+          getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
+        })
+      );
+      return;
+    }
+
+    if (layer.stroke) {
+      dynamicPrimitives.push(
+        createDynamicCirclePrimitive(instance, {
+          segments: layer.segments,
+          offset: layer.offset,
+          radius: layer.radius + layer.stroke.width,
+          getFill: (target) => resolveLayerStrokeFill(target, layer.stroke!, renderer),
+        })
+      );
+    }
+    dynamicPrimitives.push(
+      createDynamicCirclePrimitive(instance, {
+        segments: layer.segments,
+        offset: layer.offset,
+        radius: layer.radius,
+        getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
+      })
+    );
+  });
+};
+
+const hasStroke = (stroke: SceneStroke | undefined): stroke is SceneStroke =>
+  !!stroke && typeof stroke.width === "number" && stroke.width > 0;
+
+export class PlayerUnitObjectRenderer extends ObjectRenderer {
+  public register(instance: SceneObjectInstance): ObjectRegistration {
+    const rendererData = extractRendererData(instance);
+
+    const dynamicPrimitives: DynamicPrimitive[] = [];
+
+    const emitterPrimitive = createEmitterPrimitive(instance);
+    if (emitterPrimitive) {
+      dynamicPrimitives.push(emitterPrimitive);
+    }
+
+    if (rendererData.kind === "composite") {
+      createCompositePrimitives(instance, rendererData, dynamicPrimitives);
+    } else {
+      if (hasStroke(instance.data.stroke)) {
+        const strokeVertices = expandVerticesForStroke(
+          rendererData.vertices,
+          instance.data.stroke.width
+        );
+        const strokePrimitive = createDynamicPolygonPrimitive(instance, {
+          vertices: strokeVertices,
+          fill: createStrokeFill(instance.data.stroke),
+          offset: rendererData.offset,
+        });
+        dynamicPrimitives.push(strokePrimitive);
+      }
+
+      dynamicPrimitives.push(
+        createDynamicPolygonPrimitive(instance, {
+          vertices: rendererData.vertices,
+          offset: rendererData.offset,
+        })
+      );
+    }
+
+    return {
+      staticPrimitives: [],
+      dynamicPrimitives,
+    };
+  }
+}
+
+const createStrokeFill = (stroke: SceneStroke) => ({
+  fillType: FILL_TYPES.SOLID,
+  color: {
+    r: stroke.color.r,
+    g: stroke.color.g,
+    b: stroke.color.b,
+    a: typeof stroke.color.a === "number" ? stroke.color.a : 1,
+  },
+});
+
+const expandVerticesForStroke = (vertices: SceneVector2[], strokeWidth: number) => {
+  if (strokeWidth <= 0) {
+    return vertices.map((vertex) => ({ ...vertex }));
+  }
+
+  const center = computeCenter(vertices);
+  return vertices.map((vertex) => {
+    const direction = {
+      x: vertex.x - center.x,
+      y: vertex.y - center.y,
+    };
+    const length = Math.hypot(direction.x, direction.y);
+    if (length === 0) {
+      return {
+        x: vertex.x + strokeWidth,
+        y: vertex.y,
+      };
+    }
+    const scale = (length + strokeWidth) / Math.max(length, 1e-6);
+    return {
+      x: center.x + direction.x * scale,
+      y: center.y + direction.y * scale,
+    };
+  });
+};
+
+const randomBetween = (min: number, max: number): number => {
+  if (max <= min) {
+    return min;
+  }
+  return min + Math.random() * (max - min);
+};
+
+const computeCenter = (vertices: SceneVector2[]): SceneVector2 => {
+  if (vertices.length === 0) {
+    return { x: 0, y: 0 };
+  }
+
+  let minX = vertices[0]!.x;
+  let maxX = vertices[0]!.x;
+  let minY = vertices[0]!.y;
+  let maxY = vertices[0]!.y;
+
+  for (let i = 1; i < vertices.length; i += 1) {
+    const vertex = vertices[i]!;
+    if (vertex.x < minX) {
+      minX = vertex.x;
+    } else if (vertex.x > maxX) {
+      maxX = vertex.x;
+    }
+    if (vertex.y < minY) {
+      minY = vertex.y;
+    } else if (vertex.y > maxY) {
+      maxY = vertex.y;
+    }
+  }
+
+  return {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
   };
 };
 
@@ -215,116 +757,5 @@ const createEmitterParticle = (
     ageMs: 0,
     lifetimeMs: config.particleLifetimeMs,
     size,
-  };
-};
-
-const hasStroke = (stroke: SceneStroke | undefined): stroke is SceneStroke =>
-  !!stroke && typeof stroke.width === "number" && stroke.width > 0;
-
-export class PlayerUnitObjectRenderer extends ObjectRenderer {
-  public register(instance: SceneObjectInstance): ObjectRegistration {
-    const { vertices, offset } = extractRendererData(instance);
-
-    const dynamicPrimitives: DynamicPrimitive[] = [];
-
-    const emitterPrimitive = createEmitterPrimitive(instance);
-    if (emitterPrimitive) {
-      dynamicPrimitives.push(emitterPrimitive);
-    }
-
-    if (hasStroke(instance.data.stroke)) {
-      const strokeVertices = expandVerticesForStroke(vertices, instance.data.stroke.width);
-      const strokePrimitive = createDynamicPolygonPrimitive(instance, {
-        vertices: strokeVertices,
-        fill: createStrokeFill(instance.data.stroke),
-        offset,
-      });
-      dynamicPrimitives.push(strokePrimitive);
-    }
-
-    dynamicPrimitives.push(
-      createDynamicPolygonPrimitive(instance, {
-        vertices,
-        offset,
-      })
-    );
-
-    return {
-      staticPrimitives: [],
-      dynamicPrimitives,
-    };
-  }
-}
-
-const createStrokeFill = (stroke: SceneStroke) => ({
-  fillType: FILL_TYPES.SOLID,
-  color: {
-    r: stroke.color.r,
-    g: stroke.color.g,
-    b: stroke.color.b,
-    a: typeof stroke.color.a === "number" ? stroke.color.a : 1,
-  },
-});
-
-const expandVerticesForStroke = (vertices: SceneVector2[], strokeWidth: number) => {
-  if (strokeWidth <= 0) {
-    return vertices.map((vertex) => ({ ...vertex }));
-  }
-
-  const center = computeCenter(vertices);
-  return vertices.map((vertex) => {
-    const direction = {
-      x: vertex.x - center.x,
-      y: vertex.y - center.y,
-    };
-    const length = Math.hypot(direction.x, direction.y);
-    if (length === 0) {
-      return {
-        x: vertex.x + strokeWidth,
-        y: vertex.y,
-      };
-    }
-    const scale = (length + strokeWidth) / Math.max(length, 1e-6);
-    return {
-      x: center.x + direction.x * scale,
-      y: center.y + direction.y * scale,
-    };
-  });
-};
-
-const randomBetween = (min: number, max: number): number => {
-  if (max <= min) {
-    return min;
-  }
-  return min + Math.random() * (max - min);
-};
-
-const computeCenter = (vertices: SceneVector2[]): SceneVector2 => {
-  if (vertices.length === 0) {
-    return { x: 0, y: 0 };
-  }
-
-  let minX = vertices[0]!.x;
-  let maxX = vertices[0]!.x;
-  let minY = vertices[0]!.y;
-  let maxY = vertices[0]!.y;
-
-  for (let i = 1; i < vertices.length; i += 1) {
-    const vertex = vertices[i]!;
-    if (vertex.x < minX) {
-      minX = vertex.x;
-    } else if (vertex.x > maxX) {
-      maxX = vertex.x;
-    }
-    if (vertex.y < minY) {
-      minY = vertex.y;
-    } else if (vertex.y > maxY) {
-      maxY = vertex.y;
-    }
-  }
-
-  return {
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
   };
 };

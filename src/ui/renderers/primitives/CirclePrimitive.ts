@@ -27,6 +27,10 @@ interface CirclePrimitiveOptions {
 interface DynamicCircleOptions {
   segments?: number;
   offset?: SceneVector2;
+  radius?: number;
+  getRadius?: (instance: SceneObjectInstance, previousRadius: number) => number;
+  fill?: SceneFill;
+  getFill?: (instance: SceneObjectInstance) => SceneFill;
 }
 
 const DEFAULT_SEGMENTS = 24;
@@ -36,6 +40,36 @@ const getRadiusFromSize = (size: SceneSize | undefined, fallback: number): numbe
     return fallback;
   }
   return Math.max(size.width, size.height) / 2;
+};
+
+const resolveRadius = (
+  options: DynamicCircleOptions,
+  instance: SceneObjectInstance,
+  fallback: number
+): number => {
+  if (typeof options.getRadius === "function") {
+    const resolved = options.getRadius(instance, fallback);
+    if (typeof resolved === "number" && Number.isFinite(resolved)) {
+      return resolved;
+    }
+  }
+  if (typeof options.radius === "number" && Number.isFinite(options.radius)) {
+    return options.radius;
+  }
+  return getRadiusFromSize(instance.data.size, fallback);
+};
+
+const resolveFill = (
+  options: DynamicCircleOptions,
+  instance: SceneObjectInstance
+): SceneFill => {
+  if (typeof options.getFill === "function") {
+    return options.getFill(instance);
+  }
+  if (options.fill) {
+    return options.fill;
+  }
+  return instance.data.fill;
 };
 
 const pushVertex = (
@@ -168,12 +202,15 @@ export const createDynamicCirclePrimitive = (
 ): DynamicPrimitive => {
   const segments = options.segments ?? DEFAULT_SEGMENTS;
   const initialCenter = getCenter(instance, options.offset);
-  let radius = getRadiusFromSize(instance.data.size, 0);
+  let radius = Math.max(
+    resolveRadius(options, instance, getRadiusFromSize(instance.data.size, 0)),
+    0
+  );
   const data = buildCircleData(
     initialCenter,
     radius,
     createFillVertexComponents({
-      fill: instance.data.fill,
+      fill: resolveFill(options, instance),
       center: initialCenter,
       rotation: instance.data.rotation ?? 0,
       size: {
@@ -189,9 +226,12 @@ export const createDynamicCirclePrimitive = (
     data,
     update(target: SceneObjectInstance) {
       const nextCenter = getCenter(target, options.offset);
-      const nextRadius = getRadiusFromSize(target.data.size, radius);
+      const nextRadius = Math.max(
+        resolveRadius(options, target, getRadiusFromSize(target.data.size, radius)),
+        0
+      );
       const fillComponents = createFillVertexComponents({
-        fill: target.data.fill,
+        fill: resolveFill(options, target),
         center: nextCenter,
         rotation: target.data.rotation ?? 0,
         size: {
