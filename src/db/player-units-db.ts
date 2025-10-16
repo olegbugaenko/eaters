@@ -9,18 +9,62 @@ import { ResourceCost } from "../types/resources";
 
 export type PlayerUnitType = "bluePentagon";
 
-export interface PlayerUnitRendererPolygonConfig {
-  kind: "polygon";
-  vertices: readonly SceneVector2[];
+export type PlayerUnitRendererFillConfig =
+  | {
+      type: "base";
+      brightness?: number;
+      alphaMultiplier?: number;
+    }
+  | {
+      type: "solid";
+      color: SceneColor;
+    }
+  | {
+      type: "gradient";
+      fill: SceneFill;
+    };
+
+export type PlayerUnitRendererStrokeConfig =
+  | {
+      type: "base";
+      width: number;
+      brightness?: number;
+      alphaMultiplier?: number;
+    }
+  | {
+      type: "solid";
+      width: number;
+      color: SceneColor;
+    };
+
+export type PlayerUnitRendererLayerConfig =
+  | {
+      shape: "polygon";
+      vertices: readonly SceneVector2[];
+      offset?: SceneVector2;
+      fill?: PlayerUnitRendererFillConfig;
+      stroke?: PlayerUnitRendererStrokeConfig;
+    }
+  | {
+      shape: "circle";
+      radius: number;
+      segments?: number;
+      offset?: SceneVector2;
+      fill?: PlayerUnitRendererFillConfig;
+      stroke?: PlayerUnitRendererStrokeConfig;
+    };
+
+export interface PlayerUnitRendererCompositeConfig {
+  kind: "composite";
   fill: SceneColor;
   stroke?: {
     color: SceneColor;
     width: number;
   };
-  offset?: SceneVector2;
+  layers: readonly PlayerUnitRendererLayerConfig[];
 }
 
-export type PlayerUnitRendererConfig = PlayerUnitRendererPolygonConfig;
+export type PlayerUnitRendererConfig = PlayerUnitRendererCompositeConfig;
 
 export interface PlayerUnitEmitterConfig {
   particlesPerSecond: number;
@@ -55,26 +99,135 @@ export interface PlayerUnitConfig {
   readonly cost: ResourceCost;
 }
 
-const BLUE_PENTAGON_VERTICES: readonly SceneVector2[] = [
-  { x: 0, y: -6 },
-  { x: 17/3, y: -2 },
-  { x: 11/3, y: 16/3 },
-  { x: -11/3, y: 16/3 },
-  { x: -17/3, y: -2 },
+const DRILL_BODY_VERTICES: readonly SceneVector2[] = [
+  { x: 0, y: -22 },
+  { x: 7.5, y: -11 },
+  { x: 4.5, y: -3 },
+  { x: 7.2, y: 2.5 },
+  { x: 5.8, y: 18 },
+  { x: -5.8, y: 18 },
+  { x: -7.2, y: 2.5 },
+  { x: -4.5, y: -3 },
+  { x: -7.5, y: -11 },
+];
+
+const DRILL_SPIRAL_VERTICES: readonly SceneVector2[] = [
+  { x: -2.3, y: -18.5 },
+  { x: 1.8, y: -16.5 },
+  { x: 4.6, y: -8.5 },
+  { x: 0.6, y: -1.4 },
+  { x: 3.6, y: 4.2 },
+  { x: 0.4, y: 12.5 },
+  { x: -3.5, y: 6.4 },
+];
+
+const DRILL_SHADOW_VERTICES: readonly SceneVector2[] = [
+  { x: -5.8, y: -11 },
+  { x: -3.4, y: -2.2 },
+  { x: -6.2, y: 3.6 },
+  { x: -4.8, y: 18 },
+  { x: -8.2, y: 18 },
+  { x: -9, y: 5.5 },
+  { x: -8.4, y: -9.8 },
+];
+
+const DRILL_HANDLE_LEFT_VERTICES: readonly SceneVector2[] = [
+  { x: -11.8, y: 4.5 },
+  { x: -6.6, y: 4.5 },
+  { x: -7.4, y: 13.8 },
+  { x: -12.6, y: 13.8 },
+];
+
+const DRILL_HANDLE_RIGHT_VERTICES: readonly SceneVector2[] = [
+  { x: 6.6, y: 4.5 },
+  { x: 11.8, y: 4.5 },
+  { x: 12.6, y: 13.8 },
+  { x: 7.4, y: 13.8 },
+];
+
+const DRILL_TIP_GLEAM_VERTICES: readonly SceneVector2[] = [
+  { x: -1.4, y: -20.5 },
+  { x: 1.8, y: -18.2 },
+  { x: -0.2, y: -13.6 },
+  { x: -2.9, y: -15.8 },
 ];
 
 const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
   bluePentagon: {
     name: "Blue Vanguard",
     renderer: {
-      kind: "polygon",
-      vertices: BLUE_PENTAGON_VERTICES,
+      kind: "composite",
       fill: { r: 0.2, g: 0.75, b: 0.95, a: 1 },
       stroke: {
         color: { r: 0.05, g: 0.15, b: 0.4, a: 1 },
-        width: 2,
+        width: 2.5,
       },
-      offset: { x: 0, y: 0 },
+      layers: [
+        {
+          shape: "circle",
+          radius: 24,
+          segments: 48,
+          offset: { x: 0, y: -2 },
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 1,
+              stops: [
+                { offset: 0, color: { r: 0.3, g: 0.85, b: 1, a: 0.15 } },
+                { offset: 0.55, color: { r: 0.25, g: 0.8, b: 1, a: 0.08 } },
+                { offset: 1, color: { r: 0.2, g: 0.75, b: 0.95, a: 0 } },
+              ],
+            },
+          },
+        },
+        {
+          shape: "polygon",
+          vertices: DRILL_BODY_VERTICES,
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 3.2, brightness: -0.25 },
+        },
+        {
+          shape: "polygon",
+          vertices: DRILL_SPIRAL_VERTICES,
+          fill: { type: "base", brightness: 0.25, alphaMultiplier: 0.9 },
+        },
+        {
+          shape: "polygon",
+          vertices: DRILL_SHADOW_VERTICES,
+          fill: { type: "base", brightness: -0.4, alphaMultiplier: 0.95 },
+        },
+        {
+          shape: "polygon",
+          vertices: DRILL_HANDLE_LEFT_VERTICES,
+          fill: {
+            type: "solid",
+            color: { r: 0.1, g: 0.2, b: 0.45, a: 0.9 },
+          },
+        },
+        {
+          shape: "polygon",
+          vertices: DRILL_HANDLE_RIGHT_VERTICES,
+          fill: {
+            type: "solid",
+            color: { r: 0.1, g: 0.2, b: 0.45, a: 0.9 },
+          },
+        },
+        {
+          shape: "polygon",
+          vertices: DRILL_TIP_GLEAM_VERTICES,
+          fill: { type: "base", brightness: 0.45, alphaMultiplier: 0.8 },
+        },
+        {
+          shape: "circle",
+          radius: 6,
+          segments: 28,
+          offset: { x: 0.4, y: 6 },
+          fill: { type: "base", brightness: 0.35, alphaMultiplier: 0.85 },
+          stroke: { type: "base", width: 1.8, brightness: -0.2, alphaMultiplier: 0.8 },
+        },
+      ],
     },
     maxHp: 10,
     armor: 1,
@@ -101,7 +254,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
         start: { x: 0, y: 0 },
         stops: [
-          { offset: 0, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.15 } },
+          { offset: 0, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.25 } },
           { offset: 1, color: { r: 0.2, g: 0.85, b: 0.95, a: 0 } },
         ],
       },

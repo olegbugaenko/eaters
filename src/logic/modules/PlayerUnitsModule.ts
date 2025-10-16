@@ -14,6 +14,9 @@ import {
   PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
   PlayerUnitRendererConfig,
+  PlayerUnitRendererLayerConfig,
+  PlayerUnitRendererFillConfig,
+  PlayerUnitRendererStrokeConfig,
   isPlayerUnitType,
   PlayerUnitEmitterConfig,
   PlayerUnitConfig,
@@ -498,13 +501,11 @@ export class PlayerUnitsModule implements GameModule {
         : undefined,
       rotation: 0,
       customData: {
-        renderer: {
-          kind: config.renderer.kind,
-          vertices: config.renderer.vertices.map((vertex) => ({ ...vertex })),
-          offset: config.renderer.offset ? { ...config.renderer.offset } : undefined,
-        },
+        renderer: cloneRendererConfigForScene(config.renderer),
         emitter,
         physicalSize,
+        baseFillColor: { ...baseFillColor },
+        baseStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
       },
     });
 
@@ -1198,6 +1199,82 @@ const sceneColorsEqual = (
     Math.abs(a.b - b.b) <= epsilon &&
     Math.abs((a.a ?? 1) - (b.a ?? 1)) <= epsilon
   );
+};
+
+const cloneRendererConfigForScene = (
+  renderer: PlayerUnitRendererConfig
+): PlayerUnitRendererConfig => ({
+  kind: renderer.kind,
+  fill: { ...renderer.fill },
+  stroke: renderer.stroke
+    ? {
+        color: { ...renderer.stroke.color },
+        width: renderer.stroke.width,
+      }
+    : undefined,
+  layers: renderer.layers.map((layer) => cloneRendererLayer(layer)),
+});
+
+const cloneRendererLayer = (
+  layer: PlayerUnitRendererLayerConfig
+): PlayerUnitRendererLayerConfig => {
+  if (layer.shape === "polygon") {
+    return {
+      shape: "polygon",
+      vertices: layer.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y })),
+      offset: layer.offset ? { ...layer.offset } : undefined,
+      fill: cloneRendererFill(layer.fill),
+      stroke: cloneRendererStroke(layer.stroke),
+    };
+  }
+  return {
+    shape: "circle",
+    radius: layer.radius,
+    segments: layer.segments,
+    offset: layer.offset ? { ...layer.offset } : undefined,
+    fill: cloneRendererFill(layer.fill),
+    stroke: cloneRendererStroke(layer.stroke),
+  };
+};
+
+const cloneRendererFill = (
+  fill: PlayerUnitRendererFillConfig | undefined
+): PlayerUnitRendererFillConfig | undefined => {
+  if (!fill) {
+    return undefined;
+  }
+  if (fill.type === "solid") {
+    return { type: "solid", color: { ...fill.color } };
+  }
+  if (fill.type === "gradient") {
+    return { type: "gradient", fill: cloneFill(fill.fill) };
+  }
+  return {
+    type: "base",
+    brightness: fill.brightness,
+    alphaMultiplier: fill.alphaMultiplier,
+  };
+};
+
+const cloneRendererStroke = (
+  stroke: PlayerUnitRendererStrokeConfig | undefined
+): PlayerUnitRendererStrokeConfig | undefined => {
+  if (!stroke) {
+    return undefined;
+  }
+  if (stroke.type === "solid") {
+    return {
+      type: "solid",
+      width: stroke.width,
+      color: { ...stroke.color },
+    };
+  }
+  return {
+    type: "base",
+    width: stroke.width,
+    brightness: stroke.brightness,
+    alphaMultiplier: stroke.alphaMultiplier,
+  };
 };
 
 const cloneFill = (fill: SceneFill): SceneFill => {
