@@ -202,20 +202,20 @@ const Joyride = (props) => {
   const activeIndex = Math.min(stepIndex, steps.length - 1);
   const activeStep = steps[activeIndex];
 
-  const containerRef = React.useRef(null);
+  const [container, setContainer] = React.useState(null);
 
   React.useEffect(() => {
-    if (!containerRef.current && typeof document !== "undefined") {
-      const el = document.createElement("div");
-      containerRef.current = el;
-      document.body.appendChild(el);
-      return () => {
-        if (el.parentNode) {
-          el.parentNode.removeChild(el);
-        }
-      };
+    if (typeof document === "undefined") {
+      return noop;
     }
-    return noop;
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    setContainer(el);
+    return () => {
+      if (el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    };
   }, []);
 
   const { rect } = useHighlightRect(activeStep, activeIndex, run && Boolean(activeStep), callback);
@@ -225,7 +225,7 @@ const Joyride = (props) => {
     [activeStep, rect]
   );
 
-  if (!run || !activeStep || !containerRef.current) {
+  if (!run || !activeStep || !container) {
     return null;
   }
 
@@ -340,7 +340,7 @@ const Joyride = (props) => {
       : null
   );
 
-  return createPortal(overlay, containerRef.current);
+  return createPortal(overlay, container);
 };
 
 module.exports = Joyride;
