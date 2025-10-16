@@ -3,12 +3,110 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
-  padding: 2rem;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  text-align: center;
 }
 
 .save-slot-list {
+  display: grid;
+  gap: var(--spacing-xl);
+  width: min(720px, 100%);
+}
+
+.save-slot-screen__subtitle {
+  margin: 0;
+  max-width: 640px;
+  color: var(--color-text-subtle);
+}
+
+.save-slot-card {
+  padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--spacing-lg);
+  text-align: left;
+}
+
+.save-slot-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+}
+
+.save-slot-card__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.save-slot-card__status {
+  color: var(--color-text-subtle);
+  font-size: 0.9rem;
+  margin-top: var(--spacing-xs);
+}
+
+.save-slot-card__delete {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  align-self: flex-start;
+}
+
+.save-slot-card__delete:hover {
+  background: rgba(76, 133, 187, 0.15);
+  border-color: rgba(76, 133, 187, 0.35);
+}
+
+.save-slot-card__details {
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.save-slot-card__details div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.save-slot-card__details dt {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.save-slot-card__details dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-strong);
+}
+
+.save-slot-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .save-slot-card {
+    padding: var(--spacing-lg);
+  }
+
+  .save-slot-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .save-slot-card__actions {
+    justify-content: stretch;
+  }
+
+  .save-slot-card__actions .button {
+    width: 100%;
+  }
 }

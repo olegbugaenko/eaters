@@ -1,4 +1,15 @@
-import { GameModule, SaveSlotId, StoredSaveData } from "../core/types";
+import {
+  GameModule,
+  SaveSlotId,
+  StoredSaveData,
+} from "../core/types";
+
+export interface SaveSlotSummary {
+  readonly hasSave: boolean;
+  readonly timePlayedMs: number | null;
+  readonly updatedAt: number | null;
+  readonly createdAt: number | null;
+}
 
 const STORAGE_KEY_PREFIX = "eaters-save-slot-";
 
@@ -31,13 +42,52 @@ export class SaveManager {
     if (!this.activeSlot) {
       return;
     }
+    const now = Date.now();
+    const previous = this.readSlotData(this.activeSlot);
     const data: StoredSaveData = {
       modules: {},
+      meta: {
+        createdAt: previous?.meta?.createdAt ?? now,
+        updatedAt: now,
+      },
     };
     this.modules.forEach((module) => {
       data.modules[module.id] = module.save();
     });
     this.writeSlotData(this.activeSlot, data);
+  }
+
+  public getSlotSummary(slot: SaveSlotId): SaveSlotSummary {
+    const stored = this.readSlotData(slot);
+    if (!stored) {
+      return {
+        hasSave: false,
+        timePlayedMs: null,
+        updatedAt: null,
+        createdAt: null,
+      };
+    }
+
+    return {
+      hasSave: true,
+      timePlayedMs: this.extractTimePlayed(stored),
+      updatedAt: typeof stored.meta?.updatedAt === "number" ? stored.meta.updatedAt : null,
+      createdAt: typeof stored.meta?.createdAt === "number"
+        ? stored.meta.createdAt
+        : typeof stored.meta?.updatedAt === "number"
+        ? stored.meta.updatedAt
+        : null,
+    };
+  }
+
+  public deleteSlot(slot: SaveSlotId): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.removeItem(`${STORAGE_KEY_PREFIX}${slot}`);
+    if (this.activeSlot === slot) {
+      this.clearActiveSlot();
+    }
   }
 
   public startAutoSave(intervalMs: number): void {
@@ -82,5 +132,17 @@ export class SaveManager {
     } catch (error) {
       console.error("Failed to write save slot", error);
     }
+  }
+
+  private extractTimePlayed(data: StoredSaveData): number | null {
+    const moduleData = data.modules?.["test-time"];
+    if (typeof moduleData !== "object" || moduleData === null) {
+      return null;
+    }
+    if (!("timePlayedMs" in moduleData)) {
+      return null;
+    }
+    const value = (moduleData as { timePlayedMs?: unknown }).timePlayedMs;
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
   }
 }

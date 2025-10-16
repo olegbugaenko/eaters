@@ -37,7 +37,8 @@
       "@screens/*": ["ui/screens/*"],
       "@shared/*": ["ui/shared/*"],
       "@logic/*": ["logic/*"],
-      "@db/*": ["db/*"]
+      "@db/*": ["db/*"],
+      "react-joyride": ["../vendor/react-joyride"]
     }
   },
   "include": [

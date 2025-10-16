@@ -53,6 +53,11 @@ import {
 import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
 import { SceneRunResourcePanel } from "./SceneRunResourcePanel";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
+import {
+  SceneTutorialConfig,
+  SceneTutorialOverlay,
+  SceneTutorialStep,
+} from "./SceneTutorialOverlay";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -244,6 +249,8 @@ const DEFAULT_NECROMANCER_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 interface SceneScreenProps {
   onExit: () => void;
   onLeaveToMapSelect: () => void;
+  tutorial: SceneTutorialConfig | null;
+  onTutorialComplete?: () => void;
 }
 
 const cameraEquals = (
@@ -266,7 +273,12 @@ const cameraEquals = (
   );
 };
 
-export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSelect }) => {
+export const SceneScreen: React.FC<SceneScreenProps> = ({
+  onExit,
+  onLeaveToMapSelect,
+  tutorial,
+  onTutorialComplete,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
@@ -314,6 +326,70 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
   const [isPauseOpen, setIsPauseOpen] = useState(false);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   const autoRestartHandledRef = useRef(false);
+  const tutorialSteps = useMemo<SceneTutorialStep[]>(() => {
+    if (!tutorial) {
+      return [];
+    }
+    switch (tutorial.type) {
+      case "new-player": {
+        const getResourceElement = (id: string) => {
+          if (typeof document === "undefined") {
+            return null;
+          }
+          return document.getElementById(`${id}-resource`);
+        };
+        return [
+          {
+            id: "intro",
+            title: "The Hunger Awakens",
+            description:
+              "A gnawing hunger and furious urge coil within you. Devour the matter strewn across this place.",
+          },
+          {
+            id: "summoning-panel",
+            title: "Summoning Rituals",
+            description:
+              "Call forth your ravenous creations from this panel. They will shatter bricks and feast on the debris.",
+            getTarget: () => summoningPanelRef.current,
+            highlightPadding: 32,
+          },
+          {
+            id: "mana",
+            title: "Mana Flows",
+            description: "Mana trickles back on its own. Spend it freely to conjure more horrors.",
+            getTarget: () => getResourceElement("mana"),
+            highlightPadding: 24,
+            placement: "top",
+          },
+          {
+            id: "sanity",
+            title: "Fading Sanity",
+            description: "Sanity never returns. Each summon drags you nearer to the void—use it with intent.",
+            getTarget: () => getResourceElement("sanity"),
+            highlightPadding: 24,
+            placement: "top",
+          },
+          {
+            id: "victory",
+            title: "Leave Nothing Behind",
+            description:
+              "The run ends in triumph when no brick remains. If your sanity breaks and your creatures fall, defeat claims you.",
+            getTarget: () => wrapperRef.current,
+            highlightPadding: 48,
+            placement: "center",
+          },
+        ];
+      }
+      default:
+        return [];
+    }
+  }, [tutorial]);
+  const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
+  const showTutorial = tutorialSteps.length > 0;
+
+  useEffect(() => {
+    setTutorialStepIndex(0);
+  }, [tutorial]);
 
   useEffect(() => {
     if (showRunSummary) {
@@ -332,6 +408,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
       setHoverContent(null);
     }
   }, [isPauseOpen]);
+
+  useEffect(() => {
+    if (showTutorial) {
+      setHoverContent(null);
+      setIsPauseOpen(false);
+    }
+  }, [showTutorial]);
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -369,7 +452,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
 
   useEffect(() => {
     const gameLoop = app.getGameLoop();
-    if (isPauseOpen) {
+    if (isPauseOpen || showTutorial) {
       gameLoop.stop();
       return () => {
         gameLoop.start();
@@ -377,7 +460,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     }
     gameLoop.start();
     return undefined;
-  }, [app, isPauseOpen]);
+  }, [app, isPauseOpen, showTutorial]);
 
   const handleScaleChange = (nextScale: number) => {
     scene.setScale(nextScale);
@@ -424,6 +507,22 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
     setIsPauseOpen(false);
     onLeaveToMapSelect();
   }, [onLeaveToMapSelect]);
+
+  const handleTutorialAdvance = useCallback(
+    (nextIndex: number) => {
+      if (tutorialSteps.length === 0) {
+        return;
+      }
+      const clampedIndex = Math.max(0, Math.min(nextIndex, tutorialSteps.length - 1));
+      setTutorialStepIndex(clampedIndex);
+    },
+    [tutorialSteps.length]
+  );
+
+  const handleTutorialClose = useCallback(() => {
+    setTutorialStepIndex(0);
+    onTutorialComplete?.();
+  }, [onTutorialComplete]);
 
   useEffect(() => {
     if (!showRunSummary) {
@@ -780,6 +879,14 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({ onExit, onLeaveToMapSe
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
           primaryAction={{ label: "Continue", onClick: handleResume }}
           secondaryAction={{ label: "Leave", onClick: handleLeaveToCamp }}
+        />
+      )}
+      {showTutorial && (
+        <SceneTutorialOverlay
+          steps={tutorialSteps}
+          activeIndex={tutorialStepIndex}
+          onAdvance={handleTutorialAdvance}
+          onClose={handleTutorialClose}
         />
       )}
     </div>

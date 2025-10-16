@@ -13,6 +13,12 @@ export interface Tickable {
 
 export type SaveSlotId = string;
 
+export interface SaveSlotMetadata {
+  readonly createdAt: number;
+  readonly updatedAt: number;
+}
+
 export interface StoredSaveData {
   modules: Record<string, unknown>;
+  meta?: SaveSlotMetadata;
 }

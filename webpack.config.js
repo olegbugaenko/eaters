@@ -20,6 +20,7 @@ module.exports = (env, argv) => {
         '@shared': path.resolve(__dirname, 'src/ui/shared'),
         '@logic': path.resolve(__dirname, 'src/logic'),
         '@db': path.resolve(__dirname, 'src/db'),
+        'react-joyride': path.resolve(__dirname, 'vendor/react-joyride'),
       },
     },
     module: {
