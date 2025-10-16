@@ -1,0 +1,98 @@
+.scene-tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  padding: var(--spacing-xxl);
+  box-sizing: border-box;
+}
+
+.scene-tutorial-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 20, 0.78);
+  pointer-events: auto;
+}
+
+.scene-tutorial-overlay__highlight {
+  position: fixed;
+  border-radius: var(--radius-lg);
+  border: 2px solid rgba(236, 72, 153, 0.75);
+  box-shadow: 0 0 24px rgba(236, 72, 153, 0.55);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.scene-tutorial-overlay__panel {
+  position: relative;
+  pointer-events: auto;
+  padding: var(--spacing-xl);
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.scene-tutorial-overlay__panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.scene-tutorial-overlay__title {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scene-tutorial-overlay__skip {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.scene-tutorial-overlay__skip:hover {
+  color: var(--color-accent);
+  border-color: rgba(97, 218, 251, 0.3);
+  background: rgba(97, 218, 251, 0.1);
+}
+
+.scene-tutorial-overlay__description {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--color-text-subtle);
+}
+
+.scene-tutorial-overlay__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.scene-tutorial-overlay__target {
+  position: relative;
+  z-index: 61;
+  box-shadow: 0 0 24px rgba(236, 72, 153, 0.55), 0 0 0 4px rgba(236, 72, 153, 0.35);
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 720px) {
+  .scene-tutorial-overlay {
+    align-items: stretch;
+    padding: var(--spacing-lg);
+  }
+
+  .scene-tutorial-overlay__panel {
+    max-width: none;
+  }
+}
