@@ -39,6 +39,7 @@ import { SceneDebugPanel } from "./SceneDebugPanel";
 import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
+import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
@@ -571,10 +572,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     if (!canvas) {
       return;
     }
-    const gl = canvas.getContext("webgl");
+    const webgl2 = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
+    const gl =
+      (webgl2 as WebGL2RenderingContext | WebGLRenderingContext | null) ??
+      canvas.getContext("webgl");
     if (!gl) {
       console.error("WebGL is not supported");
       return;
+    }
+
+    if (webgl2) {
+      setParticleEmitterGlContext(webgl2);
+    } else {
+      setParticleEmitterGlContext(null);
     }
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -809,6 +819,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     window.addEventListener("pointerout", handlePointerLeave, { passive: true });
 
     return () => {
+      setParticleEmitterGlContext(null);
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
       gl.deleteBuffer(staticBuffer);
