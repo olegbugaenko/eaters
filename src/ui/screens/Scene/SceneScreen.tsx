@@ -336,11 +336,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           if (typeof document === "undefined") {
             return null;
           }
-          const meter = document.getElementById(id);
-          if (!meter) {
-            return null;
-          }
-          return meter.closest(".scene-summoning-panel__resource") ?? meter;
+          return document.getElementById(`${id}-resource`);
         };
         return [
           {
@@ -363,6 +359,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
             description: "Mana trickles back on its own. Spend it freely to conjure more horrors.",
             getTarget: () => getResourceElement("mana"),
             highlightPadding: 24,
+            placement: "top",
           },
           {
             id: "sanity",
@@ -370,6 +367,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
             description: "Sanity never returns. Each summon drags you nearer to the void—use it with intent.",
             getTarget: () => getResourceElement("sanity"),
             highlightPadding: 24,
+            placement: "top",
           },
           {
             id: "victory",

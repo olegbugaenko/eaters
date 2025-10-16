@@ -52,18 +52,27 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
 
     const resolveTargets = () => steps.map((step) => step.getTarget?.() ?? null);
 
+    const areEqual = (a: (Element | null)[], b: (Element | null)[]) => {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i += 1) {
+        if (a[i] !== b[i]) return false;
+      }
+      return true;
+    };
+
     const updateTargets = () => {
       if (disposed) {
         return;
       }
-      setTargets(resolveTargets());
+      const next = resolveTargets();
+      setTargets((prev) => (areEqual(prev, next) ? prev : next));
     };
 
     updateTargets();
 
     const interval = window.setInterval(() => {
       updateTargets();
-    }, 250);
+    }, 500);
 
     return () => {
       disposed = true;
@@ -80,9 +89,11 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
       const target = targets[index];
       const resolvedTarget = target ?? document.body;
       const hasTarget = Boolean(target);
+      const resolvedId = (resolvedTarget as HTMLElement | null)?.id;
+      const joyrideTarget = resolvedId ? (`#${resolvedId}` as unknown as Element) : resolvedTarget;
 
       return {
-        target: resolvedTarget,
+        target: joyrideTarget,
         title: step.title,
         content: step.description,
         disableBeacon: true,

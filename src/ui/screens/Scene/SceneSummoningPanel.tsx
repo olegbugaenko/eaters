@@ -85,7 +85,7 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
     return (
       <div ref={ref} className="scene-summoning-panel" onPointerLeave={hideTooltip}>
         <div className="scene-summoning-panel__section scene-summoning-panel__section--left">
-          <div className={sanityResourceClassName}>
+          <div id="sanity-resource" className={sanityResourceClassName}>
             <div className="scene-summoning-panel__resource-label">Sanity</div>
             <ResourceDiamondMeter
               id="sanity"
@@ -166,7 +166,7 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
           </div>
         </div>
         <div className="scene-summoning-panel__section scene-summoning-panel__section--right">
-          <div className={manaResourceClassName}>
+          <div id="mana-resource" className={manaResourceClassName}>
             <div className="scene-summoning-panel__resource-label">Mana</div>
             <ResourceDiamondMeter
               id="mana"
