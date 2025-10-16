@@ -261,7 +261,7 @@ const Joyride = (props) => {
         position: "fixed",
         inset: 0,
         zIndex: mergedStyles.options.zIndex,
-        pointerEvents: "none",
+        pointerEvents: "auto",
       },
     },
     React.createElement("div", {

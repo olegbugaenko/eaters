@@ -19,6 +19,7 @@ export interface SceneTutorialStep {
   readonly description: string;
   readonly getTarget?: () => Element | null;
   readonly highlightPadding?: number;
+  readonly placement?: JoyrideStep["placement"];
 }
 
 interface SceneTutorialOverlayProps {
@@ -85,7 +86,7 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
         title: step.title,
         content: step.description,
         disableBeacon: true,
-        placement: hasTarget ? "auto" : "center",
+        placement: step.placement ?? (hasTarget ? "auto" : "center"),
         spotlightPadding: step.highlightPadding ?? HIGHLIGHT_PADDING_DEFAULT,
         styles: {
           spotlight: {

@@ -378,6 +378,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
               "The run ends in triumph when no brick remains. If your sanity breaks and your creatures fall, defeat claims you.",
             getTarget: () => wrapperRef.current,
             highlightPadding: 48,
+            placement: "center",
           },
         ];
       }
