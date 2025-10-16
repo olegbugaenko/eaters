@@ -35,7 +35,7 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
   onAdvance,
   onClose,
 }) => {
-  const [targets, setTargets] = useState<(Element | string)[]>([]);
+  const [targets, setTargets] = useState<(Element | null)[]>([]);
 
   useEffect(() => {
     if (steps.length === 0) {
@@ -48,8 +48,7 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
 
     let disposed = false;
 
-    const resolveTargets = () =>
-      steps.map((step) => step.getTarget?.() ?? document.body);
+    const resolveTargets = () => steps.map((step) => step.getTarget?.() ?? null);
 
     const updateTargets = () => {
       if (disposed) {
@@ -77,8 +76,8 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
 
     return steps.map((step, index) => {
       const target = targets[index];
-      const resolvedTarget = target ?? "body";
-      const hasTarget = Boolean(target && target !== document.body);
+      const resolvedTarget = target ?? document.body;
+      const hasTarget = Boolean(target);
 
       return {
         target: resolvedTarget,
@@ -95,6 +94,20 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
       } satisfies JoyrideStep;
     });
   }, [steps, targets]);
+
+  const shouldRun = useMemo(() => {
+    if (joyrideSteps.length === 0) {
+      return false;
+    }
+    const currentStep = steps[activeIndex];
+    if (!currentStep) {
+      return false;
+    }
+    if (!currentStep.getTarget) {
+      return true;
+    }
+    return Boolean(targets[activeIndex]);
+  }, [activeIndex, joyrideSteps.length, steps, targets]);
 
   const handleJoyrideCallback = useCallback(
     (data: CallBackProps) => {
@@ -125,7 +138,7 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
     <Joyride
       steps={joyrideSteps}
       stepIndex={activeIndex}
-      run={activeIndex < joyrideSteps.length}
+      run={activeIndex < joyrideSteps.length && shouldRun}
       continuous
       showSkipButton
       disableCloseOnEsc
@@ -148,7 +161,7 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
           zIndex: 60,
         },
       }}
-      tooltipComponent={(props) => <SceneTutorialTooltip {...props} />}
+      tooltipComponent={(props: TooltipRenderProps) => <SceneTutorialTooltip {...props} />}
       callback={handleJoyrideCallback}
     />
   );

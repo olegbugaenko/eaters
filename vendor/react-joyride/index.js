@@ -58,10 +58,7 @@ const useHighlightRect = (step, activeIndex, run, callback) => {
     }
 
     const element = resolveTarget(step.target);
-    const shouldIgnoreBody =
-      element &&
-      element.tagName === "BODY" &&
-      (!step.target || step.placement === "center");
+    const shouldIgnoreBody = element && element.tagName === "BODY" && !step.target;
 
     if (!element || shouldIgnoreBody) {
       setRect(null);
@@ -275,7 +272,7 @@ const Joyride = (props) => {
         pointerEvents: disableOverlayClose ? "auto" : "auto",
       },
     }),
-    rect
+    rect && activeStep.placement !== "center"
       ? React.createElement("div", {
           style: {
             position: "fixed",
