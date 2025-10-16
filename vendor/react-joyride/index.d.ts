@@ -29,7 +29,7 @@ export interface TooltipRenderProps {
 }
 
 export interface CallBackProps {
-  action: string;
+  action: ACTIONS | string;
   index: number;
   status: STATUS;
   step: Step;
@@ -45,6 +45,13 @@ export enum STATUS {
   RUNNING = "running",
   FINISHED = "finished",
   SKIPPED = "skipped",
+}
+
+export enum ACTIONS {
+  NEXT = "next",
+  PREV = "prev",
+  CLOSE = "close",
+  SKIP = "skip",
 }
 
 export interface JoyrideStylesOptions {

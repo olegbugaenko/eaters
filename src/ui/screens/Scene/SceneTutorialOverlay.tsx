@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Joyride, {
+  ACTIONS,
   CallBackProps,
   EVENTS,
   STATUS,
@@ -95,39 +96,29 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
     });
   }, [steps, targets]);
 
-  const shouldRun = useMemo(() => {
-    if (joyrideSteps.length === 0) {
-      return false;
-    }
-    const currentStep = steps[activeIndex];
-    if (!currentStep) {
-      return false;
-    }
-    if (!currentStep.getTarget) {
-      return true;
-    }
-    return Boolean(targets[activeIndex]);
-  }, [activeIndex, joyrideSteps.length, steps, targets]);
-
   const handleJoyrideCallback = useCallback(
     (data: CallBackProps) => {
       const { action, index, status, type } = data;
 
-      if (type === EVENTS.STEP_AFTER) {
-        if (action === "next") {
+      if (type === EVENTS.TARGET_NOT_FOUND) {
+        const step = steps[index];
+        if (!step?.getTarget) {
           onAdvance();
         }
+        return;
       }
 
-      if (type === EVENTS.TARGET_NOT_FOUND) {
-        onAdvance();
+      if (type === EVENTS.STEP_AFTER) {
+        if (action === ACTIONS.NEXT) {
+          onAdvance();
+        }
       }
 
       if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
         onClose();
       }
     },
-    [onAdvance, onClose]
+    [onAdvance, onClose, steps]
   );
 
   if (joyrideSteps.length === 0) {
@@ -138,7 +129,7 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
     <Joyride
       steps={joyrideSteps}
       stepIndex={activeIndex}
-      run={activeIndex < joyrideSteps.length && shouldRun}
+      run={activeIndex < joyrideSteps.length}
       continuous
       showSkipButton
       disableCloseOnEsc
