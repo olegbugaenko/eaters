@@ -157,11 +157,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     name: "Blue Vanguard",
     renderer: {
       kind: "composite",
-      fill: { r: 0.2, g: 0.75, b: 0.95, a: 1 },
-      stroke: {
-        color: { r: 0.05, g: 0.15, b: 0.4, a: 1 },
-        width: 2.5,
-      },
+      fill: { r: 0.4, g: 0.8, b: 0.95, a: 1 },
       layers: [
         {
           shape: "circle",
@@ -173,60 +169,62 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             fill: {
               fillType: FILL_TYPES.RADIAL_GRADIENT,
               start: { x: 0, y: 0 },
-              end: 1,
+              end: 24,
               stops: [
-                { offset: 0, color: { r: 0.3, g: 0.85, b: 1, a: 0.15 } },
-                { offset: 0.55, color: { r: 0.25, g: 0.8, b: 1, a: 0.08 } },
-                { offset: 1, color: { r: 0.2, g: 0.75, b: 0.95, a: 0 } },
+                { offset: 0, color: { r: 0.6, g: 0.85, b: 1, a: 0.25 } },
+                { offset: 0.55, color: { r: 0.5, g: 0.8, b: 1, a: 0.09 } },
+                { offset: 1, color: { r: 0.5, g: 0.75, b: 0.95, a: 0 } },
               ],
             },
           },
         },
         {
           shape: "polygon",
-          vertices: DRILL_BODY_VERTICES,
+          vertices: [
+            {x: 9, y: 0},
+            {x: 1, y: 5},
+            {x: 1, y: 3},
+            {x: -4, y: 4},
+            {x: -4, y: -4},
+            {x: 1, y: -3},
+            {x: 1, y: -5},
+          ],
           fill: { type: "base", brightness: -0.05 },
-          stroke: { type: "base", width: 3.2, brightness: -0.25 },
+          stroke: { type: "base", width: 3.2, brightness: -0.05 },
         },
         {
           shape: "polygon",
-          vertices: DRILL_SPIRAL_VERTICES,
-          fill: { type: "base", brightness: 0.25, alphaMultiplier: 0.9 },
+          vertices: [
+            {x: -4, y: 6},
+            {x: -9, y: 8},
+            {x: -9, y: -8},
+            {x: -4, y: -6}
+          ],
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 3.2, brightness: -0.05 },
         },
         {
           shape: "polygon",
-          vertices: DRILL_SHADOW_VERTICES,
-          fill: { type: "base", brightness: -0.4, alphaMultiplier: 0.95 },
+          vertices: [
+            {x: -9, y: 8},
+            {x: -12, y: 11},
+            {x: -12, y: 7},
+            {x: -9, y: 4}
+          ],
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 3.2, brightness: -0.05 },
         },
         {
           shape: "polygon",
-          vertices: DRILL_HANDLE_LEFT_VERTICES,
-          fill: {
-            type: "solid",
-            color: { r: 0.1, g: 0.2, b: 0.45, a: 0.9 },
-          },
-        },
-        {
-          shape: "polygon",
-          vertices: DRILL_HANDLE_RIGHT_VERTICES,
-          fill: {
-            type: "solid",
-            color: { r: 0.1, g: 0.2, b: 0.45, a: 0.9 },
-          },
-        },
-        {
-          shape: "polygon",
-          vertices: DRILL_TIP_GLEAM_VERTICES,
-          fill: { type: "base", brightness: 0.45, alphaMultiplier: 0.8 },
-        },
-        {
-          shape: "circle",
-          radius: 6,
-          segments: 28,
-          offset: { x: 0.4, y: 6 },
-          fill: { type: "base", brightness: 0.35, alphaMultiplier: 0.85 },
-          stroke: { type: "base", width: 1.8, brightness: -0.2, alphaMultiplier: 0.8 },
-        },
+          vertices: [
+            {x: -9, y: -8},
+            {x: -12, y: -11},
+            {x: -12, y: -7},
+            {x: -9, y: -4}
+          ],
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 3.2, brightness: -0.05 },
+        }
       ],
     },
     maxHp: 10,
