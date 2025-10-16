@@ -16,4 +16,3 @@ export {
   createStaticPolygonStrokePrimitive,
 } from "./PolygonPrimitive";
 export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
-export { createParticleSystemPrimitive } from "./ParticleSystemPrimitive";

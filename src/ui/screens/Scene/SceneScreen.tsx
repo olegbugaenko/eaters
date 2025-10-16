@@ -36,6 +36,8 @@ import {
   createObjectsRendererManager,
 } from "../../renderers/objects";
 import { SceneDebugPanel } from "./SceneDebugPanel";
+import { getInstancedParticlesEnabled, setInstancedParticlesEnabled } from "../../renderers/features";
+import { InstancedParticlesRenderer } from "../../renderers/particles/InstancedParticlesRenderer";
 import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
@@ -581,6 +583,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
     const program = createProgram(gl, vertexShader, fragmentShader);
 
+    // Enable instancing feature flag if extension is available
+    const instancedExtension = gl.getExtension("ANGLE_instanced_arrays");
+    // Temporarily disable instancing until shaders are stabilized
+    setInstancedParticlesEnabled(false);
+    const instancedRenderer = null as InstancedParticlesRenderer | null;
+
     const staticBuffer = gl.createBuffer();
     const dynamicBuffer = gl.createBuffer();
     if (!staticBuffer || !dynamicBuffer) {
@@ -690,7 +698,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       }
     };
 
-    objectsRenderer.applyChanges(scene.flushChanges());
+    const initialChanges = scene.flushChanges();
+    objectsRenderer.applyChanges(initialChanges);
+    instancedRenderer?.bootstrap(initialChanges.added);
     applySync();
 
     const render = (timestamp: number) => {
@@ -705,9 +715,14 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       const cameraState = scene.getCamera();
       const changes = scene.flushChanges();
       objectsRenderer.applyChanges(changes);
+      if (instancedRenderer) {
+        instancedRenderer.applyChanges(changes);
+      }
       applySync();
 
       gl.clear(gl.COLOR_BUFFER_BIT);
+      // Ensure main program is bound before setting its uniforms
+      gl.useProgram(program);
       gl.uniform2f(
         cameraPositionLocation,
         cameraState.position.x,
@@ -729,6 +744,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
       drawBuffer(staticBuffer, objectsRenderer.getStaticVertexCount());
       drawBuffer(dynamicBuffer, objectsRenderer.getDynamicVertexCount());
+      if (instancedRenderer && getInstancedParticlesEnabled()) {
+        instancedRenderer.update(deltaMs);
+        instancedRenderer.render(cameraState);
+        // Restore main program to avoid uniform update errors on next usage
+        gl.useProgram(program);
+      }
 
       if (!cameraEquals(cameraState, cameraInfoRef.current)) {
         setCameraInfo(cameraState);

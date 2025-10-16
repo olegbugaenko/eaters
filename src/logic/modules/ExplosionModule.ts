@@ -227,11 +227,16 @@ const createEmitterCustomData = (
     initialRadius * config.emitter.spawnRadiusMultiplier
   );
 
-  const maxParticles = computeEmitterMaxParticles(
+  const maxParticlesBase = computeEmitterMaxParticles(
     particlesPerSecond,
     emissionDurationMs,
     particleLifetimeMs
   );
+  const maxParticlesCap = 64;
+  const maxParticles =
+    typeof maxParticlesBase === "number"
+      ? Math.min(maxParticlesBase, maxParticlesCap)
+      : undefined;
 
   return {
     particlesPerSecond,

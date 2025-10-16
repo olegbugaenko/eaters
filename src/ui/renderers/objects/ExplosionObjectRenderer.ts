@@ -23,6 +23,7 @@ import {
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
+import { getInstancedParticlesEnabled } from "../features";
 
 interface ExplosionRendererCustomData {
   emitter?: ExplosionRendererEmitterConfig;
@@ -203,9 +204,11 @@ const randomBetween = (min: number, max: number): number => {
 export class ExplosionObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const dynamicPrimitives: DynamicPrimitive[] = [];
-    const emitterPrimitive = createExplosionEmitterPrimitive(instance);
-    if (emitterPrimitive) {
-      dynamicPrimitives.push(emitterPrimitive);
+    if (!getInstancedParticlesEnabled()) {
+      const emitterPrimitive = createExplosionEmitterPrimitive(instance);
+      if (emitterPrimitive) {
+        dynamicPrimitives.push(emitterPrimitive);
+      }
     }
     dynamicPrimitives.push(createDynamicCirclePrimitive(instance));
 

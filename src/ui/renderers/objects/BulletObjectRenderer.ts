@@ -22,6 +22,7 @@ import {
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
+import { getInstancedParticlesEnabled } from "../features";
 
 interface BulletTailRenderConfig {
   lengthMultiplier: number;
@@ -253,10 +254,12 @@ const randomBetween = (min: number, max: number): number => {
 
 export class BulletObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
-    const emitterPrimitive = createTailEmitterPrimitive(instance);
     const dynamicPrimitives: DynamicPrimitive[] = [];
-    if (emitterPrimitive) {
-      dynamicPrimitives.push(emitterPrimitive);
+    if (!getInstancedParticlesEnabled()) {
+      const emitterPrimitive = createTailEmitterPrimitive(instance);
+      if (emitterPrimitive) {
+        dynamicPrimitives.push(emitterPrimitive);
+      }
     }
     dynamicPrimitives.push(
       createDynamicTrianglePrimitive(instance, {

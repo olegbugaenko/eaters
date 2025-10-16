@@ -23,6 +23,7 @@ import {
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
 import { cloneSceneFill, sanitizeSceneColor } from "../../../logic/services/particles/ParticleEmitterShared";
+import { getInstancedParticlesEnabled } from "../features";
 import type {
   PlayerUnitEmitterConfig,
   PlayerUnitRendererConfig,
@@ -523,9 +524,11 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
 
-    const emitterPrimitive = createEmitterPrimitive(instance);
-    if (emitterPrimitive) {
-      dynamicPrimitives.push(emitterPrimitive);
+    if (!getInstancedParticlesEnabled()) {
+      const emitterPrimitive = createEmitterPrimitive(instance);
+      if (emitterPrimitive) {
+        dynamicPrimitives.push(emitterPrimitive);
+      }
     }
 
     if (rendererData.kind === "composite") {
