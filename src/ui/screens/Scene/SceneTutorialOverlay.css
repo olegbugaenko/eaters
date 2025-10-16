@@ -1,43 +1,16 @@
-.scene-tutorial-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  pointer-events: none;
-  padding: var(--spacing-xxl);
-  box-sizing: border-box;
-}
-
-.scene-tutorial-overlay__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 12, 20, 0.78);
-  pointer-events: auto;
-}
-
-.scene-tutorial-overlay__highlight {
-  position: fixed;
-  border-radius: var(--radius-lg);
-  border: 2px solid rgba(236, 72, 153, 0.75);
-  box-shadow: 0 0 24px rgba(236, 72, 153, 0.55);
-  pointer-events: none;
-  mix-blend-mode: screen;
-}
-
-.scene-tutorial-overlay__panel {
-  position: relative;
-  pointer-events: auto;
+.scene-tutorial-overlay__tooltip {
   padding: var(--spacing-xl);
   max-width: 420px;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  background: rgba(7, 12, 24, 0.96);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 48px rgba(8, 12, 20, 0.45);
 }
 
-.scene-tutorial-overlay__panel-header {
+.scene-tutorial-overlay__tooltip-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -46,8 +19,8 @@
 
 .scene-tutorial-overlay__title {
   margin: 0;
-  font-size: 1.4rem;
-  letter-spacing: 0.06em;
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -62,10 +35,11 @@
   transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.scene-tutorial-overlay__skip:hover {
+.scene-tutorial-overlay__skip:hover,
+.scene-tutorial-overlay__back:hover {
   color: var(--color-accent);
   border-color: rgba(97, 218, 251, 0.3);
-  background: rgba(97, 218, 251, 0.1);
+  background: rgba(97, 218, 251, 0.12);
 }
 
 .scene-tutorial-overlay__description {
@@ -77,22 +51,34 @@
 .scene-tutorial-overlay__actions {
   display: flex;
   justify-content: flex-end;
+  gap: var(--spacing-md);
 }
 
-.scene-tutorial-overlay__target {
-  position: relative;
-  z-index: 61;
-  box-shadow: 0 0 24px rgba(236, 72, 153, 0.55), 0 0 0 4px rgba(236, 72, 153, 0.35);
-  border-radius: var(--radius-md);
+.scene-tutorial-overlay__back {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.scene-tutorial-overlay__next {
+  min-width: 144px;
+}
+
+.scene-tutorial-overlay__progress {
+  margin: 0;
+  font-size: 0.85rem;
+  text-align: right;
+  color: var(--color-text-subtle);
+  letter-spacing: 0.08em;
 }
 
 @media (max-width: 720px) {
-  .scene-tutorial-overlay {
-    align-items: stretch;
-    padding: var(--spacing-lg);
-  }
-
-  .scene-tutorial-overlay__panel {
+  .scene-tutorial-overlay__tooltip {
     max-width: none;
   }
 }

@@ -1,10 +1,11 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
-import { Button } from "@ui/shared/Button";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Joyride, {
+  CallBackProps,
+  EVENTS,
+  STATUS,
+  Step as JoyrideStep,
+  TooltipRenderProps,
+} from "react-joyride";
 import "./SceneTutorialOverlay.css";
 
 export interface SceneTutorialConfig {
@@ -17,13 +18,6 @@ export interface SceneTutorialStep {
   readonly description: string;
   readonly getTarget?: () => Element | null;
   readonly highlightPadding?: number;
-}
-
-interface HighlightRect {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
 }
 
 interface SceneTutorialOverlayProps {
@@ -41,119 +35,178 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
   onAdvance,
   onClose,
 }) => {
-  const step = steps[activeIndex];
-  const [highlightRect, setHighlightRect] = useState<HighlightRect | null>(null);
-
-  const isLastStep = useMemo(
-    () => activeIndex >= steps.length - 1,
-    [activeIndex, steps.length]
-  );
-
-  useLayoutEffect(() => {
-    if (!step) {
-      setHighlightRect(null);
-      return;
-    }
-
-    const resolveTarget = () => step.getTarget?.() ?? null;
-    let currentTarget: Element | null = resolveTarget();
-
-    const updateRect = () => {
-      const element = resolveTarget();
-      currentTarget = element;
-      if (!element) {
-        setHighlightRect(null);
-        return;
-      }
-      const rect = element.getBoundingClientRect();
-      const padding = step.highlightPadding ?? HIGHLIGHT_PADDING_DEFAULT;
-      setHighlightRect({
-        top: Math.max(rect.top - padding, 0),
-        left: Math.max(rect.left - padding, 0),
-        width: rect.width + padding * 2,
-        height: rect.height + padding * 2,
-      });
-    };
-
-    updateRect();
-
-    const handleResize = () => updateRect();
-
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleResize, { passive: true });
-
-    let resizeObserver: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== "undefined" && currentTarget) {
-      resizeObserver = new ResizeObserver(() => updateRect());
-      resizeObserver.observe(currentTarget);
-    }
-
-    const animation = window.requestAnimationFrame(() => updateRect());
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleResize);
-      if (resizeObserver && currentTarget) {
-        resizeObserver.disconnect();
-      }
-      window.cancelAnimationFrame(animation);
-    };
-  }, [step]);
+  const [targets, setTargets] = useState<(Element | string)[]>([]);
 
   useEffect(() => {
-    if (!step?.getTarget) {
+    if (steps.length === 0) {
+      setTargets([]);
       return;
     }
-    const element = step.getTarget();
-    if (!element) {
+    if (typeof window === "undefined") {
       return;
     }
-    element.classList.add("scene-tutorial-overlay__target");
-    return () => {
-      element.classList.remove("scene-tutorial-overlay__target");
-    };
-  }, [step]);
 
-  if (!step) {
+    let disposed = false;
+
+    const resolveTargets = () =>
+      steps.map((step) => step.getTarget?.() ?? document.body);
+
+    const updateTargets = () => {
+      if (disposed) {
+        return;
+      }
+      setTargets(resolveTargets());
+    };
+
+    updateTargets();
+
+    const interval = window.setInterval(() => {
+      updateTargets();
+    }, 250);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+    };
+  }, [steps]);
+
+  const joyrideSteps = useMemo<JoyrideStep[]>(() => {
+    if (steps.length === 0) {
+      return [];
+    }
+
+    return steps.map((step, index) => {
+      const target = targets[index];
+      const resolvedTarget = target ?? "body";
+      const hasTarget = Boolean(target && target !== document.body);
+
+      return {
+        target: resolvedTarget,
+        title: step.title,
+        content: step.description,
+        disableBeacon: true,
+        placement: hasTarget ? "auto" : "center",
+        spotlightPadding: step.highlightPadding ?? HIGHLIGHT_PADDING_DEFAULT,
+        styles: {
+          spotlight: {
+            borderRadius: 12,
+          },
+        },
+      } satisfies JoyrideStep;
+    });
+  }, [steps, targets]);
+
+  const handleJoyrideCallback = useCallback(
+    (data: CallBackProps) => {
+      const { action, index, status, type } = data;
+
+      if (type === EVENTS.STEP_AFTER) {
+        if (action === "next") {
+          onAdvance();
+        }
+      }
+
+      if (type === EVENTS.TARGET_NOT_FOUND) {
+        onAdvance();
+      }
+
+      if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+        onClose();
+      }
+    },
+    [onAdvance, onClose]
+  );
+
+  if (joyrideSteps.length === 0) {
     return null;
   }
 
   return (
-    <div className="scene-tutorial-overlay">
-      <div className="scene-tutorial-overlay__backdrop" aria-hidden="true" />
-      {highlightRect && (
-        <div
-          className="scene-tutorial-overlay__highlight"
-          style={{
-            top: `${highlightRect.top}px`,
-            left: `${highlightRect.left}px`,
-            width: `${highlightRect.width}px`,
-            height: `${highlightRect.height}px`,
-          }}
-        />
-      )}
-      <section
-        className="scene-tutorial-overlay__panel surface-card"
-        role="dialog"
-        aria-modal="true"
-      >
-        <header className="scene-tutorial-overlay__panel-header">
-          <h2 className="scene-tutorial-overlay__title">{step.title}</h2>
+    <Joyride
+      steps={joyrideSteps}
+      stepIndex={activeIndex}
+      run={activeIndex < joyrideSteps.length}
+      continuous
+      showSkipButton
+      disableCloseOnEsc
+      disableOverlayClose
+      hideBackButton
+      locale={{
+        back: "Back",
+        close: "Begin the Feast",
+        last: "Begin the Feast",
+        next: "Next",
+        skip: "Skip",
+      }}
+      styles={{
+        options: {
+          arrowColor: "rgba(7, 12, 24, 0.96)",
+          backgroundColor: "rgba(7, 12, 24, 0.96)",
+          overlayColor: "rgba(8, 12, 20, 0.78)",
+          textColor: "var(--color-text-normal)",
+          primaryColor: "var(--color-accent)",
+          zIndex: 60,
+        },
+      }}
+      tooltipComponent={(props) => <SceneTutorialTooltip {...props} />}
+      callback={handleJoyrideCallback}
+    />
+  );
+};
+
+const SceneTutorialTooltip: React.FC<TooltipRenderProps> = ({
+  backProps,
+  continuous,
+  index,
+  primaryProps,
+  size,
+  skipProps,
+  step,
+  tooltipProps,
+}) => {
+  const isLastStep = index === size - 1;
+
+  return (
+    <section
+      {...tooltipProps}
+      className="scene-tutorial-overlay__tooltip surface-card"
+      role="dialog"
+      aria-modal="true"
+    >
+      <header className="scene-tutorial-overlay__tooltip-header">
+        <h2 className="scene-tutorial-overlay__title">{step.title}</h2>
+        {skipProps && (
           <button
+            {...skipProps}
             type="button"
             className="scene-tutorial-overlay__skip"
-            onClick={onClose}
           >
             Skip
           </button>
-        </header>
-        <p className="scene-tutorial-overlay__description">{step.description}</p>
-        <div className="scene-tutorial-overlay__actions">
-          <Button onClick={isLastStep ? onClose : onAdvance}>
-            {isLastStep ? "Begin the Feast" : "Next"}
-          </Button>
-        </div>
-      </section>
-    </div>
+        )}
+      </header>
+      <p className="scene-tutorial-overlay__description">{step.content}</p>
+      <div className="scene-tutorial-overlay__actions">
+        {continuous && backProps && index > 0 && (
+          <button
+            {...backProps}
+            type="button"
+            className="scene-tutorial-overlay__back"
+          >
+            Back
+          </button>
+        )}
+        <button
+          {...primaryProps}
+          type="button"
+          className="button primary-button scene-tutorial-overlay__next"
+        >
+          {isLastStep ? "Begin the Feast" : "Next"}
+        </button>
+      </div>
+      <p className="scene-tutorial-overlay__progress">
+        Step {index + 1} of {size}
+      </p>
+    </section>
   );
 };
