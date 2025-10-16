@@ -509,14 +509,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     onLeaveToMapSelect();
   }, [onLeaveToMapSelect]);
 
-  const handleTutorialAdvance = useCallback(() => {
-    if (tutorialSteps.length === 0) {
-      return;
-    }
-    setTutorialStepIndex((index) =>
-      index >= tutorialSteps.length - 1 ? tutorialSteps.length - 1 : index + 1
-    );
-  }, [tutorialSteps.length]);
+  const handleTutorialAdvance = useCallback(
+    (nextIndex: number) => {
+      if (tutorialSteps.length === 0) {
+        return;
+      }
+      const clampedIndex = Math.max(0, Math.min(nextIndex, tutorialSteps.length - 1));
+      setTutorialStepIndex(clampedIndex);
+    },
+    [tutorialSteps.length]
+  );
 
   const handleTutorialClose = useCallback(() => {
     setTutorialStepIndex(0);

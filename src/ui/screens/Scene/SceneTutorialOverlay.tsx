@@ -24,7 +24,7 @@ export interface SceneTutorialStep {
 interface SceneTutorialOverlayProps {
   readonly steps: readonly SceneTutorialStep[];
   readonly activeIndex: number;
-  readonly onAdvance: () => void;
+  readonly onAdvance: (nextIndex: number) => void;
   readonly onClose: () => void;
 }
 
@@ -103,14 +103,19 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
       if (type === EVENTS.TARGET_NOT_FOUND) {
         const step = steps[index];
         if (!step?.getTarget) {
-          onAdvance();
+          const nextIndex = Math.min(index + 1, steps.length - 1);
+          onAdvance(nextIndex);
         }
         return;
       }
 
       if (type === EVENTS.STEP_AFTER) {
         if (action === ACTIONS.NEXT) {
-          onAdvance();
+          const nextIndex = Math.min(index + 1, steps.length - 1);
+          onAdvance(nextIndex);
+        } else if (action === ACTIONS.PREV) {
+          const previousIndex = Math.max(index - 1, 0);
+          onAdvance(previousIndex);
         }
       }
 
