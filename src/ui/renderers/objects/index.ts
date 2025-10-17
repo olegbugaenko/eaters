@@ -28,7 +28,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["explosion", new ExplosionObjectRenderer()],
     ["polygon", new PolygonObjectRenderer()],
     ["playerUnit", new PlayerUnitObjectRenderer()],
-    // ["portal", new PortalObjectRenderer()],
+    ["portal", new PortalObjectRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };
