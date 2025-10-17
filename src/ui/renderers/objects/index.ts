@@ -5,6 +5,7 @@ import { ObjectRenderer } from "./ObjectRenderer";
 import { ExplosionObjectRenderer } from "./ExplosionObjectRenderer";
 import { PolygonObjectRenderer } from "./PolygonObjectRenderer";
 import { PlayerUnitObjectRenderer } from "./PlayerUnitObjectRenderer";
+import { PortalObjectRenderer } from "./PortalObjectRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
@@ -27,6 +28,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["explosion", new ExplosionObjectRenderer()],
     ["polygon", new PolygonObjectRenderer()],
     ["playerUnit", new PlayerUnitObjectRenderer()],
+    ["portal", new PortalObjectRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };

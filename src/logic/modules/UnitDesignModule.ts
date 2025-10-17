@@ -209,6 +209,11 @@ export class UnitDesignModule implements GameModule {
     };
     this.designs.set(id, record);
     this.designOrder.push(id);
+    // Auto-add to roster if there's a free slot
+    if (this.activeRoster.length < MAX_ACTIVE_UNITS && !this.activeRoster.includes(id)) {
+      this.activeRoster = this.sanitizeRoster([...this.activeRoster, id]);
+      this.rosterInitialized = true;
+    }
     this.refreshComputedState();
     return id;
   }

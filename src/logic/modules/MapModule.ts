@@ -1,6 +1,6 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
-import { SceneObjectManager, SceneSize } from "../services/SceneObjectManager";
+import { SceneObjectManager, SceneSize, FILL_TYPES } from "../services/SceneObjectManager";
 import { BricksModule, BrickData } from "./BricksModule";
 import {
   PlayerUnitsModule,
@@ -98,6 +98,7 @@ export class MapModule implements GameModule {
   private mapSelectedLevels: Partial<Record<MapId, number>> = {};
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
+  private portalObjects: { id: string; position: SceneVector2 }[] = [];
 
   constructor(private readonly options: MapModuleOptions) {
     this.unlocks = options.unlocks;
@@ -157,6 +158,14 @@ export class MapModule implements GameModule {
     if (changed) {
       this.pushAutoRestartState();
     }
+    // Drive portal emitter updates like explosions do (explosions call updateObject every tick)
+    if (this.portalObjects.length > 0) {
+      this.portalObjects.forEach((portal) => {
+        this.options.scene.updateObject(portal.id, {
+          position: { x: portal.position.x, y: portal.position.y },
+        });
+      });
+    }
   }
 
   public selectMap(mapId: MapId): void {
@@ -200,6 +209,9 @@ export class MapModule implements GameModule {
     this.options.resources.cancelRun();
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
+    // Remove portals
+    this.portalObjects.forEach((p) => this.options.scene.removeObject(p.id));
+    this.portalObjects = [];
     this.options.necromancer.endCurrentMap();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
@@ -285,6 +297,11 @@ export class MapModule implements GameModule {
     this.activeMapLevel = level;
     this.options.scene.setMapSize(config.size);
     this.options.playerUnits.prepareForMap();
+    // Clear existing portals if any (e.g., on restart)
+    if (this.portalObjects.length > 0) {
+      this.portalObjects.forEach((p) => this.options.scene.removeObject(p.id));
+      this.portalObjects = [];
+    }
     if (generateBricks) {
       const bricks = this.generateBricks(config, level);
       this.options.bricks.setBricks(bricks);
@@ -298,6 +315,45 @@ export class MapModule implements GameModule {
 
     this.options.necromancer.configureForMap({
       spawnPoints,
+    });
+
+    // Spawn portals at each spawn point as visual indicators
+    spawnPoints.forEach((point) => {
+      const id = this.options.scene.addObject("portal", {
+        position: { x: point.x, y: point.y },
+        size: { width: 90, height: 90 },
+        fill: {
+          fillType: FILL_TYPES.RADIAL_GRADIENT,
+          start: { x: 0, y: 0 },
+          end: 45,
+          stops: [
+            { offset: 0, color: { r: 0.4, g: 0.5, b: 0.6, a: 0.15 } },
+            { offset: 0.55, color: { r: 0.4, g: 0.7, b: 0.7, a: 0.05 } },
+            { offset: 0.65, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.65 } },
+            { offset: 0.75, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.75 } },
+            { offset: 0.8, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
+            { offset: 0.85, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
+            { offset: 1, color: { r: 0.15, g: 0.7, b: 0.7, a: 0 } },
+          ],
+        },
+        rotation: 0,
+        customData: {
+          radius: 45,
+          emitter: {
+            particlesPerSecond: 90,
+            particleLifetimeMs: 900,
+            fadeStartMs: 750,
+            sizeRange: { min: 1, max: 3 },
+            offset: { x: 0, y: 0 },
+            color: { r: 0.4, g: 0.8, b: 0.8, a: 0.6 },
+            shape: "circle",
+            maxParticles: 120,
+            baseSpeed: 0.03,
+            speedVariation: 0.01,
+          },
+        },
+      });
+      this.portalObjects.push({ id, position: { ...point } });
     });
 
     this.options.resources.startRun();
