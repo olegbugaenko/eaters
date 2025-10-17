@@ -13,6 +13,7 @@ import {
 import {
   copyFillComponents,
   createFillVertexComponents,
+  writeFillVertexComponents,
 } from "./fill";
 
 interface RectanglePrimitiveOptions {
@@ -130,6 +131,9 @@ export const createDynamicRectanglePrimitive = (
     fillComponents
   );
 
+  // Reusable scratch buffer to avoid per-frame allocations for fill components
+  const fillScratch = new Float32Array(fillComponents.length);
+
   return {
     data,
     update(target: SceneObjectInstance) {
@@ -141,7 +145,7 @@ export const createDynamicRectanglePrimitive = (
       );
       const nextSize = sanitizeSize(resolveSize(target, options));
       const nextFill = resolveFill(target, options);
-      const fill = createFillVertexComponents({
+      const fill = writeFillVertexComponents(fillScratch, {
         fill: nextFill,
         center: nextCenter,
         rotation: nextRotation,

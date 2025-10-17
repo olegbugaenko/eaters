@@ -24,11 +24,11 @@ export {
 export const createObjectsRendererManager = (): ObjectsRendererManager => {
   const renderers = new Map<string, ObjectRenderer>([
     ["brick", new BrickObjectRenderer()],
-    ["bullet", new BulletObjectRenderer()],
+    // ["bullet", new BulletObjectRenderer()],
     ["explosion", new ExplosionObjectRenderer()],
     ["polygon", new PolygonObjectRenderer()],
     ["playerUnit", new PlayerUnitObjectRenderer()],
-    ["portal", new PortalObjectRenderer()],
+    // ["portal", new PortalObjectRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };

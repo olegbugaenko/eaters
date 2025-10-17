@@ -14,6 +14,7 @@ import {
 import {
   copyFillComponents,
   createFillVertexComponents,
+  writeFillVertexComponents,
 } from "./fill";
 
 interface PolygonPrimitiveOptions {
@@ -346,6 +347,7 @@ export const createDynamicPolygonPrimitive = (
   });
 
   let data = buildPolygonData(origin, rotation, initialVertices, fillComponents);
+  const fillScratch = new Float32Array(fillComponents.length);
 
   const primitive: DynamicPrimitive = {
     get data() {
@@ -358,7 +360,8 @@ export const createDynamicPolygonPrimitive = (
       origin = getCenter(target);
       rotation = target.data.rotation ?? 0;
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-      fillComponents = createFillVertexComponents({
+      // Reuse a single scratch buffer to avoid per-frame allocations
+      fillComponents = writeFillVertexComponents(fillScratch, {
         fill: resolveFill(options, target),
         center: fillCenter,
         rotation,

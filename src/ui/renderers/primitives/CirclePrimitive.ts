@@ -13,6 +13,7 @@ import {
 import {
   copyFillComponents,
   createFillVertexComponents,
+  writeFillVertexComponents,
 } from "./fill";
 
 interface CirclePrimitiveOptions {
@@ -221,6 +222,16 @@ export const createDynamicCirclePrimitive = (
     }),
     segments
   );
+  const fillScratch = new Float32Array(
+    // FILL_COMPONENTS length equals first triangle's fill components size
+    (new Float32Array(0)).length + (createFillVertexComponents({
+      fill: resolveFill(options, instance),
+      center: initialCenter,
+      rotation: instance.data.rotation ?? 0,
+      size: { width: radius * 2, height: radius * 2 },
+      radius,
+    }).length)
+  );
 
   return {
     data,
@@ -230,7 +241,7 @@ export const createDynamicCirclePrimitive = (
         resolveRadius(options, target, getRadiusFromSize(target.data.size, radius)),
         0
       );
-      const fillComponents = createFillVertexComponents({
+      const fillComponents = writeFillVertexComponents(fillScratch, {
         fill: resolveFill(options, target),
         center: nextCenter,
         rotation: target.data.rotation ?? 0,

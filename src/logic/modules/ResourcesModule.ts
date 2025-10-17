@@ -73,6 +73,9 @@ export class ResourcesModule implements GameModule {
   private runDurationMs = 0;
   private visibleResourceIds: ResourceId[] = [];
   private passiveIncomeRemainder: ResourceStockpile = createEmptyResourceStockpile();
+  // Throttle visibility recomputation to avoid hot areConditionsMet calls
+  private lastVisibilityRefreshMs = 0;
+  private static readonly VISIBILITY_REFRESH_INTERVAL_MS = 250; // 4x per second is enough
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
@@ -160,7 +163,7 @@ export class ResourcesModule implements GameModule {
     this.summaryCompleted = false;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
-    this.refreshVisibleResourceIds();
+    this.forceRefreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
     this.pushRunDuration();
@@ -172,7 +175,7 @@ export class ResourcesModule implements GameModule {
     }
     this.runActive = false;
     this.summaryCompleted = true;
-    this.refreshVisibleResourceIds();
+    this.forceRefreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
     this.pushRunDuration();
@@ -187,7 +190,7 @@ export class ResourcesModule implements GameModule {
     this.runGains = createEmptyResourceStockpile();
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
-    this.refreshVisibleResourceIds();
+    this.forceRefreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
     this.pushRunDuration();
@@ -212,7 +215,7 @@ export class ResourcesModule implements GameModule {
     });
 
     if (changed) {
-      this.refreshVisibleResourceIds();
+      this.forceRefreshVisibleResourceIds();
       this.pushTotals();
       this.pushRunSummary();
     }
@@ -250,7 +253,7 @@ export class ResourcesModule implements GameModule {
       this.totals[id] -= normalized[id];
     });
 
-    this.refreshVisibleResourceIds();
+    this.forceRefreshVisibleResourceIds();
     this.pushTotals();
     if (this.summaryCompleted) {
       this.pushRunSummary();
@@ -350,12 +353,23 @@ export class ResourcesModule implements GameModule {
   }
 
   private refreshVisibleResourceIds(): boolean {
+    const now = Date.now();
+    if (now - this.lastVisibilityRefreshMs < ResourcesModule.VISIBILITY_REFRESH_INTERVAL_MS) {
+      return false;
+    }
+    this.lastVisibilityRefreshMs = now;
+    this.unlocks.clearCache();
     const visible = RESOURCE_IDS.filter((id) => this.isResourceUnlocked(id));
     if (areResourceListsEqual(this.visibleResourceIds, visible)) {
       return false;
     }
     this.visibleResourceIds = visible;
     return true;
+  }
+
+  private forceRefreshVisibleResourceIds(): void {
+    this.lastVisibilityRefreshMs = 0;
+    this.refreshVisibleResourceIds();
   }
 
   private isResourceUnlocked(id: ResourceId): boolean {

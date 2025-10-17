@@ -20,6 +20,10 @@ const sanitizeLevel = (value: number): number => {
 export class UnlockService {
   private readonly getMapStats: () => MapStats;
   private readonly getSkillLevel: (id: SkillId) => number;
+  // Short-lived memoization of unlock checks to avoid repeated deep traversals
+  private conditionCache = new Map<string, boolean>();
+  private lastCacheRefreshMs = 0;
+  private static readonly CACHE_TTL_MS = 100; // aligned with game tick (100ms)
 
   constructor(options: UnlockServiceOptions) {
     this.getMapStats = options.getMapStats;
@@ -27,14 +31,33 @@ export class UnlockService {
   }
 
   public isUnlocked(condition: GameUnlockCondition): boolean {
+    // TTL-based cache to keep results fresh while eliminating hot-path repeats
+    const now = Date.now();
+    if (now - this.lastCacheRefreshMs > UnlockService.CACHE_TTL_MS) {
+      this.conditionCache.clear();
+      this.lastCacheRefreshMs = now;
+    }
+
+    const key = this.getConditionKey(condition);
+    const cached = this.conditionCache.get(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    let result = false;
     switch (condition.type) {
       case "map":
-        return this.isMapLevelUnlocked(condition.id, condition.level);
+        result = this.isMapLevelUnlocked(condition.id, condition.level);
+        break;
       case "skill":
-        return this.isSkillLevelUnlocked(condition.id, condition.level);
+        result = this.isSkillLevelUnlocked(condition.id, condition.level);
+        break;
       default:
-        return false;
+        result = false;
+        break;
     }
+    this.conditionCache.set(key, result);
+    return result;
   }
 
   public areConditionsMet(conditions: readonly GameUnlockCondition[] | undefined): boolean {
@@ -45,6 +68,7 @@ export class UnlockService {
   }
 
   private isMapLevelUnlocked(mapId: MapId, requestedLevel: number): boolean {
+    // Iterative form avoids recursion overhead and repeated checks
     const level = sanitizeLevel(requestedLevel);
     const config = getMapConfig(mapId);
     if (!this.areConditionsMet(config.unlockedBy)) {
@@ -53,10 +77,12 @@ export class UnlockService {
     if (level === 0) {
       return true;
     }
-    if (!this.hasCompletedMapLevel(mapId, level - 1)) {
-      return false;
+    for (let prev = level - 1; prev >= 0; prev -= 1) {
+      if (!this.hasCompletedMapLevel(mapId, prev)) {
+        return false;
+      }
     }
-    return this.isMapLevelUnlocked(mapId, level - 1);
+    return true;
   }
 
   private hasCompletedMapLevel(mapId: MapId, level: number): boolean {
@@ -81,5 +107,20 @@ export class UnlockService {
     }
     const currentLevel = this.getSkillLevel(skillId);
     return currentLevel >= level;
+  }
+
+  public clearCache(): void {
+    this.conditionCache.clear();
+    this.lastCacheRefreshMs = Date.now();
+  }
+
+  private getConditionKey(condition: GameUnlockCondition): string {
+    if (condition.type === "map") {
+      return `map:${condition.id}:${sanitizeLevel(condition.level)}`;
+    }
+    if (condition.type === "skill") {
+      return `skill:${condition.id}:${sanitizeLevel(condition.level)}`;
+    }
+    return "unknown";
   }
 }

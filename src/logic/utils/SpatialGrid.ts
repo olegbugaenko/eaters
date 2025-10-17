@@ -116,6 +116,68 @@ export class SpatialGrid<T> {
     return result;
   }
 
+  public queryNearest(position: SceneVector2, options?: { maxLayers?: number }): T | null {
+    if (this.items.size === 0) {
+      return null;
+    }
+
+    const centerCellX = this.coordinateToCell(position.x);
+    const centerCellY = this.coordinateToCell(position.y);
+    const maxLayers = Math.max(0, Math.floor(options?.maxLayers ?? 64));
+
+    let bestId: string | null = null;
+    let bestDistSq = Infinity;
+
+    const considerCell = (cellX: number, cellY: number): void => {
+      const cell = this.cells.get(this.getCellKey(cellX, cellY));
+      if (!cell) {
+        return;
+      }
+      cell.forEach((id) => {
+        const item = this.items.get(id);
+        if (!item) {
+          return;
+        }
+        const dx = item.position.x - position.x;
+        const dy = item.position.y - position.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+          bestDistSq = distSq;
+          bestId = id;
+        }
+      });
+    };
+
+    for (let layer = 0; layer <= maxLayers; layer += 1) {
+      if (layer === 0) {
+        considerCell(centerCellX, centerCellY);
+      } else {
+        const minX = centerCellX - layer;
+        const maxX = centerCellX + layer;
+        const minY = centerCellY - layer;
+        const maxY = centerCellY + layer;
+
+        // top and bottom rows
+        for (let x = minX; x <= maxX; x += 1) {
+          considerCell(x, minY);
+          considerCell(x, maxY);
+        }
+        // left and right columns (excluding corners already handled)
+        for (let y = minY + 1; y <= maxY - 1; y += 1) {
+          considerCell(minX, y);
+          considerCell(maxX, y);
+        }
+      }
+
+      if (bestId !== null) {
+        const best = this.items.get(bestId);
+        return best ? best.payload : null;
+      }
+    }
+
+    return null;
+  }
+
   private insertIntoCells(id: string, position: SceneVector2, radius: number): string[] {
     if (radius <= 0) {
       const cellX = this.coordinateToCell(position.x);

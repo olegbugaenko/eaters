@@ -208,18 +208,8 @@ export class BricksModule implements GameModule {
   }
 
   public findNearestBrick(position: SceneVector2): BrickRuntimeState | null {
-    let best: InternalBrickState | null = null;
-    let bestDistSq = Infinity;
-    this.brickOrder.forEach((brick) => {
-      const dx = brick.position.x - position.x;
-      const dy = brick.position.y - position.y;
-      const distSq = dx * dx + dy * dy;
-      if (distSq < bestDistSq) {
-        bestDistSq = distSq;
-        best = brick;
-      }
-    });
-    return best ? this.cloneState(best) : null;
+    const nearest = this.spatialIndex.queryNearest(position, { maxLayers: 128 });
+    return nearest ? this.cloneState(nearest) : null;
   }
 
   public findBricksNear(position: SceneVector2, radius: number): BrickRuntimeState[] {

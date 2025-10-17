@@ -466,6 +466,8 @@ export class MapModule implements GameModule {
   }
 
   private pushMapList(): void {
+    // Ensure unlock checks are fresh (map stats/skills may have just changed)
+    this.unlocks.clearCache();
     const list = this.getAvailableMaps();
     this.options.bridge.setValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY, list);
   }
