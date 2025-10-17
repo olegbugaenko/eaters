@@ -718,6 +718,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       applySync();
 
       gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(program);
       gl.uniform2f(
         cameraPositionLocation,
         cameraState.position.x,
