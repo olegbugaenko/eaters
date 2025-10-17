@@ -112,7 +112,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "hunger",
     name: "Hunger",
     description:
-      "You feel hungry...",
+      "A gnawing void urges you on. Feed it with matter so your summons strike harder.",
     nodePosition: { x: 0, y: 0 },
     maxLevel: 3,
     effects: {
@@ -128,7 +128,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "stone_lore",
     name: "Stone Lore",
     description:
-      "Foundational studies in sorting shattered bricks, enabling steadier stone yields.",
+      "Teach your swarms to sift shattered bricks with purpose, increasing stone drawn from debris.",
     nodePosition: { x: 0, y: 1 },
     maxLevel: 3,
     effects: {
@@ -143,7 +143,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "stone_automatons",
     name: "Stone Automatons",
     description:
-      "Teach tireless constructs to prepare summoning circles on their own, enabling automated call-ups.",
+      "Bind mindless servitors to repeat simple rites for you, enabling basic ritual automation.",
     nodePosition: { x: -1, y: 2 },
     maxLevel: 1,
     effects: {},
@@ -154,7 +154,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "autorestart_rituals",
     name: "Autorestart Sigils",
     description:
-      "Imprint cascading reset sigils so collapse teams can reweave summoning circles without supervision.",
+      "Engrave restart sigils—summoning resumes on its own when the weave collapses.",
     nodePosition: { x: -1, y: 3 },
     maxLevel: 1,
     effects: {},
@@ -165,7 +165,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "construction_guild",
     name: "Construction Guild",
     description:
-      "Establish a guild to coordinate permanent worksites and unlock dedicated building plans.",
+      "Found a guild to coordinate permanent worksites, unlocking dedicated building plans.",
     nodePosition: { x: -1, y: 4 },
     maxLevel: 1,
     effects: {},
@@ -176,7 +176,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "advanced_construction",
     name: "Advanced Construction",
     description:
-      "Establish a guild to coordinate permanent worksites and unlock dedicated building plans.",
+      "Codify advanced methods for large works—foundation for superior structures.",
     nodePosition: { x: -1, y: 5 },
     maxLevel: 1,
     effects: {},
@@ -187,7 +187,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "construction_ledgers",
     name: "Construction Ledgers",
     description:
-      "Track every shipment and contract, unlocking bulk deals that cut future building costs.",
+      "Account every shard and shipment; precision cuts future building costs.",
     nodePosition: { x: -2, y: 5 },
     maxLevel: 80,
     effects: {
@@ -202,7 +202,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "quarry_overseers",
     name: "Quarry Overseers",
     description:
-      "Assign dedicated haulers who keep rubble moving and expose richer stone veins.",
+      "Assign tireless haulers so rubble never settles—more stone per shattered brick.",
     nodePosition: { x: 0, y: 2 },
     maxLevel: 5,
     effects: {
@@ -217,7 +217,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "refinement",
     name: "Refinement",
     description:
-      "Assign dedicated haulers who keep rubble moving and expose richer stone veins.",
+      "Refine sorting rites; your gatherers pull richer fragments from the wreckage.",
     nodePosition: { x: 0, y: 3 },
     maxLevel: 15,
     effects: {
@@ -232,7 +232,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "refinement2",
     name: "Refinement II",
     description:
-      "Assign dedicated haulers who keep rubble moving and expose richer stone veins.",
+      "Further hone refinement patterns to squeeze even more yield from debris.",
     nodePosition: { x: 0, y: 5 },
     maxLevel: 8,
     effects: {
@@ -248,7 +248,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "glass_latticework",
     name: "Glass Latticework",
     description:
-      "Weave molten filaments into frameworks that stabilize fragile sand constructs.",
+      "Weave emberglass filaments that steady your focus, modestly improving mana flow.",
     nodePosition: { x: 0, y: -1},
     maxLevel: 5,
     effects: {
@@ -263,7 +263,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "void_modules",
     name: "Void Module Fabrication",
     description:
-      "Unlock fabrication rites for modular ship augments forged from refracted glass.",
+      "Unlock fabrication of void‑touched modules that alter and empower your creations.",
     nodePosition: { x: 0, y: -3 },
     maxLevel: 1,
     effects: {},
@@ -272,9 +272,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   },
   mana_reservior: {
     id: "mana_reservior",
-    name: "Mana Reservior",
+    name: "Mana Reservoir",
     description:
-      "Weave molten filaments into frameworks that stabilize fragile sand constructs.",
+      "Shape capacitors of fused glass to store greater tides of mana.",
     nodePosition: { x: -1, y: -2},
     maxLevel: 5,
     effects: {
@@ -289,7 +289,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "emberglass_reactors",
     name: "Emberglass Reactors",
     description:
-      "Channel heat through mirrored chambers, transmuting sand surges into lasting stores.",
+      "Channel heat through mirrored chambers; surging sand becomes lasting mana stores.",
     nodePosition: { x: -2, y: -3 },
     maxLevel: 5,
     effects: {
@@ -307,7 +307,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "sand_scribing",
     name: "Sand Scribing",
     description:
-      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+      "Etch careful scribing to strain the stream of sand, expanding mana reserves.",
     nodePosition: { x: -3, y: -4 },
     maxLevel: 5,
     effects: {
@@ -322,7 +322,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "mana_source",
     name: "Mana Source",
     description:
-      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+      "Tap a steadier vein of power—both reserves and recovery improve.",
     nodePosition: { x: -3, y: -5 },
     maxLevel: 8,
     effects: {
@@ -340,7 +340,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "soul_wood",
     name: "Soul Wood",
     description:
-      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+      "Coax living grain to host stored power, expanding your mana capacity.",
     nodePosition: { x: -4, y: -4 },
     maxLevel: 8,
     effects: {
@@ -355,7 +355,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "bastion_foundations",
     name: "Bastion Foundations",
     description:
-      "Lay channelled footings so every slab stacks true, preparing for future defenses.",
+      "Lay channelled footings for the mind—wider foundations increase sanity reserves.",
     nodePosition: { x: 1, y: -2 },
     maxLevel: 3,
     effects: {
@@ -370,7 +370,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "clarity",
     name: "Clarity",
     description:
-      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+      "Quiet the inner static. Clearer thought lets you endure more before madness sets in.",
     nodePosition: { x: 2, y: -3 },
     maxLevel: 4,
     effects: {
@@ -385,7 +385,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "clarity2",
     name: "Clarity II",
     description:
-      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+      "Deeper stillness and discipline expand your sanity threshold further.",
     nodePosition: { x: 3, y: -4 },
     maxLevel: 5,
     effects: {
@@ -400,7 +400,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "clarity3",
     name: "Clarity III",
     description:
-      "Refine sieving rituals that separate glimmering sand from dull dust motes.",
+      "Mastery of focus—your mind holds fast when the void whispers.",
     nodePosition: { x: 3, y: -5 },
     maxLevel: 8,
     effects: {
@@ -416,7 +416,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "granite_bonding",
     name: "Granite Bonding",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Fuse matter into denser cores your summons can wield—every strike lands heavier.",
     nodePosition: { x: -1, y: 0 },
     maxLevel: 3,
     effects: {
@@ -431,7 +431,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "stone_drill",
     name: "Stone Drill",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Affix crude drills to the forming shells of your entities, boosting their assault.",
     nodePosition: { x: -3, y: 0 },
     maxLevel: 5,
     effects: {
@@ -446,7 +446,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "damage_lore",
     name: "Damage Lore",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Codices of rending—teach your creations how to tear matter more efficiently.",
     nodePosition: { x: -4, y: -1 },
     maxLevel: 15,
     effects: {
@@ -461,7 +461,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "heavy_drill",
     name: "Heavy Drill",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Replace crude bits with heavy augers. Mass and torque translate into damage.",
     nodePosition: { x: -6, y: -1 },
     maxLevel: 15,
     effects: {
@@ -475,7 +475,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   tool_fabrication: {
     id: "tool_fabrication",
     name: "Tool Fabrication",
-    description: "Commission specialized implements that unlock advanced crafting techniques.",
+    description: "Commission specialized implements, unlocking advanced crafting techniques.",
     nodePosition: { x: -7, y: -2 },
     maxLevel: 1,
     effects: {},
@@ -486,7 +486,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "forged_strikes",
     name: "Forged Strikes",
     description:
-      "Arm your vanguard with meticulously crafted gear, increasing offensive output.",
+      "Temper and quench—meticulous armaments push your vanguard's damage higher.",
     nodePosition: { x: -8, y: -2 },
     maxLevel: 80,
     effects: {
@@ -501,7 +501,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "silver_drill",
     name: "Silver Drill",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Silvered bits bite deeper into stubborn matter, further amplifying attacks.",
     nodePosition: { x: -8, y: -1 },
     maxLevel: 15,
     effects: {
@@ -516,7 +516,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "critical_chance",
     name: "Critical Chance",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Sharpen instincts and edges alike—your units find weak points more often.",
     nodePosition: { x: -4, y: 1 },
     maxLevel: 10,
     effects: {
@@ -531,7 +531,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "penetration",
     name: "Penetration",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Hardened tips and angled force let your strikes pierce tougher shells.",
     nodePosition: { x: -6, y: 1 },
     maxLevel: 15,
     effects: {
@@ -546,7 +546,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "penetration2",
     name: "Penetration II",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Refine the geometry of impact; even plated foes yield to your bite.",
     nodePosition: { x: -7, y: 2 },
     maxLevel: 15,
     effects: {
@@ -562,7 +562,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "improved_membranes",
     name: "Improved Membranes",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Stiffen ephemeral skins into resilient membranes—your entities endure more.",
     nodePosition: { x: 1, y: 0 },
     maxLevel: 5,
     effects: {
@@ -577,7 +577,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "vitality",
     name: "Vitality",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Grow thicker layers of living matter around your cores, raising total vitality.",
     nodePosition: { x: 2, y: 0 },
     maxLevel: 5,
     effects: {
@@ -592,7 +592,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "stone_armor",
     name: "Stone Armor",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Bind stone plates over pulsing forms—basic armor that turns glancing blows.",
     nodePosition: { x: 3, y: 0 },
     maxLevel: 5,
     effects: {
@@ -607,7 +607,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "armor_lore",
     name: "Armor Lore",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Treatises on layering and bracing—improve how well armor spreads force.",
     nodePosition: { x: 4, y: 1 },
     maxLevel: 15,
     effects: {
@@ -622,7 +622,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "armor_lore2",
     name: "Armor Lore II",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Advanced schemata: ribbing, overlaps, anchor points—denser protection.",
     nodePosition: { x: 6, y: 1 },
     maxLevel: 15,
     effects: {
@@ -637,7 +637,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "armor_lore3",
     name: "Armor Lore III",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Master forging of living plate—your hosts shrug off punishing blows.",
     nodePosition: { x: 8, y: 1 },
     maxLevel: 15,
     effects: {
@@ -652,7 +652,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "vitality2",
     name: "Vitality II",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Cultivate richer biomass; the flesh‑cores swell with fresh reserves.",
     nodePosition: { x: 4, y: -1 },
     maxLevel: 15,
     effects: {
@@ -667,7 +667,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "vitality3",
     name: "Vitality III",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Engineered organs and redundant latticework markedly raise hit capacity.",
     nodePosition: { x: 6, y: -1 },
     maxLevel: 15,
     effects: {
@@ -681,7 +681,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   paper_milling: {
     id: "paper_milling",
     name: "Paper Milling",
-    description: "Pulp organic matter into disciplined sheets ready for meticulous schematics.",
+    description: "Pulp organics into disciplined sheets fit for resilient schematics.",
     nodePosition: { x: 7, y: 0 },
     maxLevel: 1,
     effects: {},
@@ -692,7 +692,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "arcane_research",
     name: "Arcane Research",
     description:
-      "Document mana experiments on resilient paper, compounding regenerative breakthroughs.",
+      "Document repeatable mana experiments; each insight slightly accelerates regen.",
     nodePosition: { x: -3, y: -6 },
     maxLevel: 80,
     effects: {
@@ -707,7 +707,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "restoration",
     name: "Restoration",
     description:
-      "Fuse heavy chunks together, forming denser stockpiles that resist crumble losses.",
+      "Teach your creations to knit themselves mid‑battle—steady percentage regen.",
     nodePosition: { x: 7, y: -2 },
     maxLevel: 10,
     effects: {
@@ -722,7 +722,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "engineered_plating",
     name: "Engineered Plating",
     description:
-      "Outfit constructs with reinforced casings forged from specialized tools, boosting vitality.",
+      "Outfit constructs with calculated bracing and plates—substantial increase to health.",
     nodePosition: { x: 8, y: -3 },
     maxLevel: 80,
     effects: {

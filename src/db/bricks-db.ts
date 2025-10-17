@@ -194,12 +194,12 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 10.5,
       physicalSize: 16,
       damageExplosion: {
-        type: "grayBrickHit",
+        type: "yellowBrickHit",
         radiusMultiplier: 0.7,
         radiusOffset: -2,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "yellowBrickDestroy",
         radiusMultiplier: 0.95,
       },
     },
@@ -225,11 +225,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
-        type: "grayBrickHit",
+        type: "organicBrickHit",
         radiusMultiplier: 0.85,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "organicBrickDestroy",
         radiusMultiplier: 1.25,
       },
     },
@@ -255,11 +255,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
-        type: "grayBrickHit",
+        type: "ironBrickHit",
         radiusMultiplier: 0.85,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "ironBrickDestroy",
         radiusMultiplier: 1.25,
       },
     },
@@ -285,11 +285,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
-        type: "grayBrickHit",
+        type: "woodBrickHit",
         radiusMultiplier: 0.75,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "woodBrickDestroy",
         radiusMultiplier: 1.1,
       },
     },
@@ -315,11 +315,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
-        type: "grayBrickHit",
+        type: "copperBrickHit",
         radiusMultiplier: 0.75,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "copperBrickDestroy",
         radiusMultiplier: 1.15,
       },
     },
@@ -345,11 +345,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
-        type: "grayBrickHit",
+        type: "silverBrickHit",
         radiusMultiplier: 0.8,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "silverBrickDestroy",
         radiusMultiplier: 1.2,
       },
     },
@@ -375,11 +375,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 6,
       physicalSize: 18,
       damageExplosion: {
-        type: "grayBrickHit",
+        type: "coalBrickHit",
         radiusMultiplier: 0.78,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "coalBrickDestroy",
         radiusMultiplier: 1.18,
       },
     },

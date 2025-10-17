@@ -11,6 +11,20 @@ export type ExplosionType =
   | "magnetic"
   | "grayBrickHit"
   | "grayBrickDestroy"
+  | "yellowBrickHit"
+  | "yellowBrickDestroy"
+  | "organicBrickHit"
+  | "organicBrickDestroy"
+  | "ironBrickHit"
+  | "ironBrickDestroy"
+  | "woodBrickHit"
+  | "woodBrickDestroy"
+  | "copperBrickHit"
+  | "copperBrickDestroy"
+  | "silverBrickHit"
+  | "silverBrickDestroy"
+  | "coalBrickHit"
+  | "coalBrickDestroy"
   | "criticalHit";
 
 export interface ExplosionWaveConfig {
@@ -93,6 +107,73 @@ const CRITICAL_HIT_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.55, g: 0, b: 0, a: 0 } },
 ] as const;
 
+// Color-themed waves for non-gray bricks
+const YELLOW_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.95, g: 0.92, b: 0.55, a: 0.45 } },
+  { offset: 0.4, color: { r: 0.85, g: 0.8, b: 0.35, a: 0.25 } },
+  { offset: 1, color: { r: 0.65, g: 0.6, b: 0.2, a: 0 } },
+] as const;
+const YELLOW_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 1, g: 0.95, b: 0.6, a: 0.6 } },
+  { offset: 0.35, color: { r: 0.9, g: 0.82, b: 0.4, a: 0.35 } },
+  { offset: 1, color: { r: 0.7, g: 0.6, b: 0.25, a: 0 } },
+] as const;
+
+const GREEN_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.6, g: 0.95, b: 0.65, a: 0.45 } },
+  { offset: 0.4, color: { r: 0.35, g: 0.85, b: 0.45, a: 0.25 } },
+  { offset: 1, color: { r: 0.1, g: 0.55, b: 0.15, a: 0 } },
+] as const;
+const GREEN_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.6, g: 1, b: 0.7, a: 0.6 } },
+  { offset: 0.35, color: { r: 0.4, g: 0.9, b: 0.5, a: 0.35 } },
+  { offset: 1, color: { r: 0.1, g: 0.6, b: 0.15, a: 0 } },
+] as const;
+
+const ORANGE_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 1, g: 0.8, b: 0.55, a: 0.5 } },
+  { offset: 0.4, color: { r: 0.95, g: 0.55, b: 0.2, a: 0.28 } },
+  { offset: 1, color: { r: 0.75, g: 0.35, b: 0.1, a: 0 } },
+] as const;
+const ORANGE_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 1, g: 0.85, b: 0.6, a: 0.65 } },
+  { offset: 0.35, color: { r: 0.95, g: 0.6, b: 0.25, a: 0.4 } },
+  { offset: 1, color: { r: 0.8, g: 0.4, b: 0.12, a: 0 } },
+] as const;
+
+const BROWN_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.7, g: 0.5, b: 0.3, a: 0.45 } },
+  { offset: 0.4, color: { r: 0.55, g: 0.4, b: 0.2, a: 0.25 } },
+  { offset: 1, color: { r: 0.35, g: 0.25, b: 0.12, a: 0 } },
+] as const;
+const BROWN_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.6 } },
+  { offset: 0.35, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.35 } },
+  { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0 } },
+] as const;
+
+const SILVER_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.92, g: 0.93, b: 0.96, a: 0.5 } },
+  { offset: 0.45, color: { r: 0.82, g: 0.83, b: 0.88, a: 0.3 } },
+  { offset: 1, color: { r: 0.72, g: 0.73, b: 0.78, a: 0 } },
+] as const;
+const SILVER_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 1, g: 1, b: 1, a: 0.65 } },
+  { offset: 0.45, color: { r: 0.85, g: 0.87, b: 0.9, a: 0.4 } },
+  { offset: 1, color: { r: 0.75, g: 0.76, b: 0.8, a: 0 } },
+] as const;
+
+const COAL_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.3, g: 0.3, b: 0.32, a: 0.5 } },
+  { offset: 0.5, color: { r: 0.18, g: 0.18, b: 0.2, a: 0.3 } },
+  { offset: 1, color: { r: 0.08, g: 0.08, b: 0.1, a: 0 } },
+] as const;
+const COAL_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.36, g: 0.36, b: 0.38, a: 0.65 } },
+  { offset: 0.5, color: { r: 0.22, g: 0.22, b: 0.25, a: 0.4 } },
+  { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0 } },
+] as const;
+
 const DEFAULT_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.SOLID,
   color: { r: 1, g: 0.85, b: 0.55, a: 1 },
@@ -117,6 +198,66 @@ const GRAY_BRICK_EMITTER_FILL: SceneFill = {
     { offset: 0, color: { r: 0.9, g: 0.9, b: 0.92, a: 0.85 } },
     { offset: 0.45, color: { r: 0.72, g: 0.74, b: 0.78, a: 0.4 } },
     { offset: 1, color: { r: 0.45, g: 0.48, b: 0.52, a: 0 } },
+  ],
+};
+const YELLOW_BRICK_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 1, g: 0.95, b: 0.6, a: 0.95 } },
+    { offset: 0.45, color: { r: 0.95, g: 0.85, b: 0.45, a: 0.6 } },
+    { offset: 1, color: { r: 0.8, g: 0.7, b: 0.35, a: 0 } },
+  ],
+};
+const GREEN_BRICK_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 0.6, g: 1, b: 0.7, a: 0.95 } },
+    { offset: 0.45, color: { r: 0.4, g: 0.9, b: 0.5, a: 0.6 } },
+    { offset: 1, color: { r: 0.15, g: 0.65, b: 0.2, a: 0 } },
+  ],
+};
+const ORANGE_BRICK_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 1, g: 0.85, b: 0.6, a: 0.95 } },
+    { offset: 0.45, color: { r: 1, g: 0.6, b: 0.25, a: 0.6 } },
+    { offset: 1, color: { r: 0.85, g: 0.4, b: 0.12, a: 0 } },
+  ],
+};
+const BROWN_BRICK_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.95 } },
+    { offset: 0.45, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.6 } },
+    { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0 } },
+  ],
+};
+const SILVER_BRICK_EMITTER_FILL2: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 0.95, g: 0.96, b: 0.98, a: 0.95 } },
+    { offset: 0.45, color: { r: 0.85, g: 0.86, b: 0.9, a: 0.6 } },
+    { offset: 1, color: { r: 0.75, g: 0.76, b: 0.8, a: 0 } },
+  ],
+};
+const COAL_BRICK_EMITTER_FILL2: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 0.3, g: 0.3, b: 0.32, a: 0.95 } },
+    { offset: 0.45, color: { r: 0.18, g: 0.18, b: 0.2, a: 0.6 } },
+    { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0 } },
   ],
 };
 
@@ -245,6 +386,160 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     },
     emitter: GRAY_BRICK_DESTRUCTION_EMITTER,
+  },
+  yellowBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: YELLOW_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 1, g: 0.95, b: 0.6, a: 1 }, fill: YELLOW_BRICK_EMITTER_FILL },
+  },
+  yellowBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.6,
+      endAlpha: 0,
+      gradientStops: YELLOW_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 1, g: 0.95, b: 0.6, a: 1 }, fill: YELLOW_BRICK_EMITTER_FILL },
+  },
+  organicBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: GREEN_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.6, g: 1, b: 0.7, a: 1 }, fill: GREEN_BRICK_EMITTER_FILL },
+  },
+  organicBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.6,
+      endAlpha: 0,
+      gradientStops: GREEN_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 0.6, g: 1, b: 0.7, a: 1 }, fill: GREEN_BRICK_EMITTER_FILL },
+  },
+  ironBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.5,
+      endAlpha: 0,
+      gradientStops: ORANGE_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 1, g: 0.8, b: 0.55, a: 1 }, fill: ORANGE_BRICK_EMITTER_FILL },
+  },
+  ironBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: ORANGE_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 1, g: 0.8, b: 0.55, a: 1 }, fill: ORANGE_BRICK_EMITTER_FILL },
+  },
+  woodBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: BROWN_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.75, g: 0.55, b: 0.35, a: 1 }, fill: BROWN_BRICK_EMITTER_FILL },
+  },
+  woodBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.6,
+      endAlpha: 0,
+      gradientStops: BROWN_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 0.75, g: 0.55, b: 0.35, a: 1 }, fill: BROWN_BRICK_EMITTER_FILL },
+  },
+  copperBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.5,
+      endAlpha: 0,
+      gradientStops: ORANGE_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.95, g: 0.65, b: 0.35, a: 1 }, fill: ORANGE_BRICK_EMITTER_FILL },
+  },
+  copperBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: ORANGE_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 0.95, g: 0.65, b: 0.35, a: 1 }, fill: ORANGE_BRICK_EMITTER_FILL },
+  },
+  silverBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.5,
+      endAlpha: 0,
+      gradientStops: SILVER_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.92, g: 0.93, b: 0.96, a: 1 }, fill: SILVER_BRICK_EMITTER_FILL2 },
+  },
+  silverBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: SILVER_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 0.92, g: 0.93, b: 0.96, a: 1 }, fill: SILVER_BRICK_EMITTER_FILL2 },
+  },
+  coalBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.5,
+      endAlpha: 0,
+      gradientStops: COAL_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.24, g: 0.24, b: 0.27, a: 1 }, fill: COAL_BRICK_EMITTER_FILL2 },
+  },
+  coalBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: COAL_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 0.24, g: 0.24, b: 0.27, a: 1 }, fill: COAL_BRICK_EMITTER_FILL2 },
   },
   criticalHit: {
     lifetimeMs: 900,
