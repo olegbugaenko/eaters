@@ -112,6 +112,7 @@ interface ParticleEmitterGpuState {
   currentBufferIndex: 0 | 1;
   stateData: Float32Array;
   spawnScratch: Float32Array;
+  pendingReads: Array<{ bufferIndex: 0 | 1; sync: WebGLSync | null }>;
 }
 
 interface ParticleSimulationProgram {
@@ -126,6 +127,58 @@ interface ParticleSimulationProgram {
     isActive: number;
   };
 }
+
+const drainPendingGpuReads = (gpu: ParticleEmitterGpuState): void => {
+  const gl = gpu.gl;
+  while (gpu.pendingReads.length > 0) {
+    const entry = gpu.pendingReads[0]!;
+    const { sync, bufferIndex } = entry;
+    let ready = true;
+    if (sync) {
+      const status = gl.clientWaitSync(sync, 0, 0);
+      if (status === gl.TIMEOUT_EXPIRED) {
+        ready = false;
+      } else {
+        gl.deleteSync(sync);
+        if (status === gl.WAIT_FAILED) {
+          ready = false;
+        }
+      }
+    }
+    if (!ready) {
+      break;
+    }
+    const buffer = gpu.buffers[bufferIndex];
+    if (buffer) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.getBufferSubData(gl.ARRAY_BUFFER, 0, gpu.stateData);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+    gpu.pendingReads.shift();
+  }
+};
+
+const enqueueGpuReadback = (
+  gpu: ParticleEmitterGpuState,
+  bufferIndex: 0 | 1
+): void => {
+  const gl = gpu.gl;
+  const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  if (sync) {
+    gl.flush();
+  }
+  gpu.pendingReads.push({ bufferIndex, sync: sync ?? null });
+};
+
+const clearPendingGpuReads = (gpu: ParticleEmitterGpuState): void => {
+  const gl = gpu.gl;
+  gpu.pendingReads.forEach(({ sync }) => {
+    if (sync) {
+      gl.deleteSync(sync);
+    }
+  });
+  gpu.pendingReads.length = 0;
+};
 
 export const createParticleEmitterPrimitive = <
   Config extends ParticleEmitterBaseConfig
@@ -320,6 +373,8 @@ const advanceParticleEmitterStateGpu = <
     return;
   }
 
+  drainPendingGpuReads(gpu);
+
   const spawnRate = config.particlesPerSecond / 1000;
   const emissionDuration = getEmissionDuration(config);
   const previousAge = state.ageMs;
@@ -383,16 +438,16 @@ const advanceParticleEmitterStateGpu = <
   const remainingCapacity = Math.max(0, freeSlots.length - spawnBudget);
   state.spawnAccumulator = Math.min(state.spawnAccumulator, remainingCapacity);
 
+  let producedBufferIndex: 0 | 1 | null = null;
   if (deltaMs > 0) {
-    stepParticleSimulation(gpu, state.capacity, deltaMs);
+    producedBufferIndex = stepParticleSimulation(gpu, state.capacity, deltaMs);
+    if (producedBufferIndex !== null) {
+      enqueueGpuReadback(gpu, producedBufferIndex);
+    }
   }
 
-  const gl = gpu.gl;
-  const currentBuffer = gpu.buffers[gpu.currentBufferIndex];
-  if (currentBuffer) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, currentBuffer);
-    gl.getBufferSubData(gl.ARRAY_BUFFER, 0, gpu.stateData);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  if (producedBufferIndex !== null) {
+    drainPendingGpuReads(gpu);
   }
 
   writeEmitterBufferFromGpuState(state, config, origin);
@@ -622,7 +677,7 @@ const stepParticleSimulation = (
   gpu: ParticleEmitterGpuState,
   capacity: number,
   deltaMs: number
-): void => {
+): 0 | 1 | null => {
   const gl = gpu.gl;
   const program = gpu.program;
   gl.useProgram(program.program);
@@ -635,7 +690,7 @@ const stepParticleSimulation = (
   const targetTransformFeedback = gpu.transformFeedbacks[targetIndex];
   const targetBuffer = gpu.buffers[targetIndex];
   if (!sourceVao || !targetTransformFeedback || !targetBuffer) {
-    return;
+    return null;
   }
 
   gl.bindVertexArray(sourceVao);
@@ -650,7 +705,8 @@ const stepParticleSimulation = (
   gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
   gl.bindVertexArray(null);
 
-  gpu.currentBufferIndex = (targetIndex === 0 ? 0 : 1);
+  gpu.currentBufferIndex = targetIndex;
+  return targetIndex;
 };
 
 const getSimulationProgram = (
@@ -864,11 +920,13 @@ const createParticleEmitterGpuState = (
     currentBufferIndex: 0,
     stateData,
     spawnScratch: new Float32Array(PARTICLE_STATE_COMPONENTS),
+    pendingReads: [],
   };
 };
 
 const resetParticleEmitterGpuState = (gpu: ParticleEmitterGpuState): void => {
   const gl = gpu.gl;
+  clearPendingGpuReads(gpu);
   gpu.currentBufferIndex = 0;
   gpu.stateData.fill(0);
   for (let i = 0; i < gpu.buffers.length; i += 1) {
@@ -890,6 +948,7 @@ const destroyParticleEmitterGpuState = <
     return;
   }
   const gl = gpu.gl;
+  clearPendingGpuReads(gpu);
   gpu.buffers.forEach((buffer) => {
     if (buffer) {
       gl.deleteBuffer(buffer);
