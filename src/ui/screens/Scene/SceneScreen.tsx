@@ -40,6 +40,7 @@ import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
+import { renderParticleEmitters } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
@@ -740,6 +741,14 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
       drawBuffer(staticBuffer, objectsRenderer.getStaticVertexCount());
       drawBuffer(dynamicBuffer, objectsRenderer.getDynamicVertexCount());
+
+      if (webgl2) {
+        renderParticleEmitters(
+          webgl2,
+          cameraState.position,
+          cameraState.viewportSize
+        );
+      }
 
       if (!cameraEquals(cameraState, cameraInfoRef.current)) {
         setCameraInfo(cameraState);

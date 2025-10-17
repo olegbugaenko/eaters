@@ -2,6 +2,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneGradientStop,
   SceneObjectInstance,
   SceneVector2,
 } from "../../../logic/services/SceneObjectManager";
@@ -23,6 +24,14 @@ import {
 } from "../objects/ObjectRenderer";
 import { copyFillComponents, writeFillVertexComponents } from "./fill";
 import { getParticleEmitterGlContext } from "./gpuContext";
+import {
+  ParticleEmitterGpuDrawHandle,
+  ParticleEmitterGpuRenderUniforms,
+  ParticleRenderResources,
+  getParticleRenderResources,
+  registerParticleEmitterHandle,
+  unregisterParticleEmitterHandle,
+} from "./ParticleEmitterGpuRenderer";
 
 export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;
@@ -103,16 +112,26 @@ const PARTICLE_LIFETIME_INDEX = 5;
 const PARTICLE_SIZE_INDEX = 6;
 const PARTICLE_ACTIVE_INDEX = 7;
 
+interface ParticleEmitterGpuSlot {
+  active: boolean;
+  ageMs: number;
+  lifetimeMs: number;
+}
+
 interface ParticleEmitterGpuState {
   gl: WebGL2RenderingContext;
-  buffers: [WebGLBuffer, WebGLBuffer];
-  transformFeedbacks: [WebGLTransformFeedback, WebGLTransformFeedback];
-  vaos: [WebGLVertexArrayObject, WebGLVertexArrayObject];
+  capacity: number;
+  buffers: [WebGLBuffer | null, WebGLBuffer | null];
+  transformFeedbacks: [WebGLTransformFeedback | null, WebGLTransformFeedback | null];
+  simulationVaos: [WebGLVertexArrayObject | null, WebGLVertexArrayObject | null];
+  renderVaos: [WebGLVertexArrayObject | null, WebGLVertexArrayObject | null];
   program: ParticleSimulationProgram;
+  renderResources: ParticleRenderResources;
   currentBufferIndex: 0 | 1;
-  stateData: Float32Array;
   spawnScratch: Float32Array;
-  pendingReads: Array<{ bufferIndex: 0 | 1; sync: WebGLSync | null }>;
+  slots: ParticleEmitterGpuSlot[];
+  uniforms: ParticleEmitterGpuRenderUniforms;
+  handle: ParticleEmitterGpuDrawHandle;
 }
 
 interface ParticleSimulationProgram {
@@ -127,58 +146,6 @@ interface ParticleSimulationProgram {
     isActive: number;
   };
 }
-
-const drainPendingGpuReads = (gpu: ParticleEmitterGpuState): void => {
-  const gl = gpu.gl;
-  while (gpu.pendingReads.length > 0) {
-    const entry = gpu.pendingReads[0]!;
-    const { sync, bufferIndex } = entry;
-    let ready = true;
-    if (sync) {
-      const status = gl.clientWaitSync(sync, 0, 0);
-      if (status === gl.TIMEOUT_EXPIRED) {
-        ready = false;
-      } else {
-        gl.deleteSync(sync);
-        if (status === gl.WAIT_FAILED) {
-          ready = false;
-        }
-      }
-    }
-    if (!ready) {
-      break;
-    }
-    const buffer = gpu.buffers[bufferIndex];
-    if (buffer) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.getBufferSubData(gl.ARRAY_BUFFER, 0, gpu.stateData);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    gpu.pendingReads.shift();
-  }
-};
-
-const enqueueGpuReadback = (
-  gpu: ParticleEmitterGpuState,
-  bufferIndex: 0 | 1
-): void => {
-  const gl = gpu.gl;
-  const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
-  if (sync) {
-    gl.flush();
-  }
-  gpu.pendingReads.push({ bufferIndex, sync: sync ?? null });
-};
-
-const clearPendingGpuReads = (gpu: ParticleEmitterGpuState): void => {
-  const gl = gpu.gl;
-  gpu.pendingReads.forEach(({ sync }) => {
-    if (sync) {
-      gl.deleteSync(sync);
-    }
-  });
-  gpu.pendingReads.length = 0;
-};
 
 export const createParticleEmitterPrimitive = <
   Config extends ParticleEmitterBaseConfig
@@ -223,8 +190,7 @@ export const createParticleEmitterPrimitive = <
       const deltaMs = Math.max(0, Math.min(now - state.lastTimestamp, MAX_DELTA_MS));
       state.lastTimestamp = now;
 
-      advanceParticleEmitterState(state, target, deltaMs, options);
-      return state.data;
+      return advanceParticleEmitterState(state, target, deltaMs, options);
     },
   };
 
@@ -237,26 +203,29 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
   options: ParticleEmitterPrimitiveOptions<Config>
 ): ParticleEmitterState<Config> => {
   const capacity = Math.max(0, config.capacity);
+  const gl = getParticleEmitterGlContext();
+  const gpu = capacity > 0 && gl ? createParticleEmitterGpuState(gl, capacity) : null;
+
   const state: ParticleEmitterState<Config> = {
     config,
     particles: [],
     spawnAccumulator: 0,
     lastTimestamp: getNowMs(),
     capacity,
-    data: new Float32Array(capacity * VERTICES_PER_PARTICLE * VERTEX_COMPONENTS),
+    data: new Float32Array(
+      gpu ? 0 : capacity * VERTICES_PER_PARTICLE * VERTEX_COMPONENTS
+    ),
     signature: serializeConfig(config, options),
     ageMs: 0,
   };
-  if (capacity > 0) {
-    const gl = getParticleEmitterGlContext();
-    if (gl) {
-      const gpu = createParticleEmitterGpuState(gl, capacity);
-      if (gpu) {
-        state.gpu = gpu;
-      }
-    }
+
+  if (gpu) {
+    state.gpu = gpu;
+    resetParticleEmitterGpuState(gpu);
+    updateParticleEmitterGpuUniforms(gpu, config);
+  } else {
+    writeEmitterBuffer(state, config, options.getOrigin(instance, config));
   }
-  writeEmitterBuffer(state, config, options.getOrigin(instance, config));
   return state;
 };
 
@@ -278,7 +247,7 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
   instance: SceneObjectInstance,
   deltaMs: number,
   options: ParticleEmitterPrimitiveOptions<Config>
-): void => {
+): Float32Array | null => {
   const config = state.config;
   if (!config || state.capacity <= 0) {
     state.particles = [];
@@ -288,12 +257,13 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     if (state.gpu) {
       resetParticleEmitterGpuState(state.gpu);
     }
-    return;
+    return state.data;
   }
 
   if (state.gpu) {
+    updateParticleEmitterGpuUniforms(state.gpu, config);
     advanceParticleEmitterStateGpu(state, instance, deltaMs, options);
-    return;
+    return null;
   }
 
   const spawnRate = config.particlesPerSecond / 1000;
@@ -344,6 +314,7 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
   }
 
   writeEmitterBuffer(state, config, origin);
+  return state.data;
 };
 
 const defaultUpdateParticle = (
@@ -373,8 +344,6 @@ const advanceParticleEmitterStateGpu = <
     return;
   }
 
-  drainPendingGpuReads(gpu);
-
   const spawnRate = config.particlesPerSecond / 1000;
   const emissionDuration = getEmissionDuration(config);
   const previousAge = state.ageMs;
@@ -389,11 +358,33 @@ const advanceParticleEmitterStateGpu = <
   }
 
   const origin = options.getOrigin(instance, config);
+  if (deltaMs > 0) {
+    const slots = gpu.slots;
+    for (let i = 0; i < slots.length; i += 1) {
+      const slot = slots[i];
+      if (!slot || !slot.active) {
+        continue;
+      }
+      if (slot.lifetimeMs > 0) {
+        const nextAge = slot.ageMs + deltaMs;
+        if (nextAge >= slot.lifetimeMs) {
+          slot.active = false;
+          slot.ageMs = 0;
+          slot.lifetimeMs = 0;
+        } else {
+          slot.ageMs = nextAge;
+        }
+      } else {
+        slot.ageMs += deltaMs;
+      }
+    }
+  }
+
+  const slots = gpu.slots;
   const freeSlots: number[] = [];
-  for (let i = 0; i < state.capacity; i += 1) {
-    const base = i * PARTICLE_STATE_COMPONENTS;
-    const active = gpu.stateData[base + PARTICLE_ACTIVE_INDEX] ?? 0;
-    if (active < 0.5) {
+  for (let i = 0; i < slots.length; i += 1) {
+    const slot = slots[i];
+    if (!slot || !slot.active) {
       freeSlots.push(i);
     }
   }
@@ -404,7 +395,7 @@ const advanceParticleEmitterStateGpu = <
     const buffers = gpu.buffers;
     const scratch = gpu.spawnScratch;
     for (let i = 0; i < spawnBudget; i += 1) {
-      const slot = freeSlots[i]!;
+      const slotIndex = freeSlots[i]!;
       const particle = options.spawnParticle(origin, instance, config);
       scratch[PARTICLE_POSITION_X_INDEX] = particle.position.x;
       scratch[PARTICLE_POSITION_Y_INDEX] = particle.position.y;
@@ -422,14 +413,14 @@ const advanceParticleEmitterStateGpu = <
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferSubData(
           gl.ARRAY_BUFFER,
-          slot * PARTICLE_STATE_BYTES,
+          slotIndex * PARTICLE_STATE_BYTES,
           scratch
         );
       }
-      const base = slot * PARTICLE_STATE_COMPONENTS;
-      for (let j = 0; j < PARTICLE_STATE_COMPONENTS; j += 1) {
-        gpu.stateData[base + j] = scratch[j] ?? 0;
-      }
+      const slot = slots[slotIndex]!;
+      slot.active = true;
+      slot.ageMs = 0;
+      slot.lifetimeMs = particle.lifetimeMs;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     state.spawnAccumulator -= spawnBudget;
@@ -438,19 +429,9 @@ const advanceParticleEmitterStateGpu = <
   const remainingCapacity = Math.max(0, freeSlots.length - spawnBudget);
   state.spawnAccumulator = Math.min(state.spawnAccumulator, remainingCapacity);
 
-  let producedBufferIndex: 0 | 1 | null = null;
   if (deltaMs > 0) {
-    producedBufferIndex = stepParticleSimulation(gpu, state.capacity, deltaMs);
-    if (producedBufferIndex !== null) {
-      enqueueGpuReadback(gpu, producedBufferIndex);
-    }
+    stepParticleSimulation(gpu, state.capacity, deltaMs);
   }
-
-  if (producedBufferIndex !== null) {
-    drainPendingGpuReads(gpu);
-  }
-
-  writeEmitterBufferFromGpuState(state, config, origin);
 };
 
 const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
@@ -459,7 +440,9 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
   origin: SceneVector2
 ): void => {
   if (state.gpu) {
-    writeEmitterBufferFromGpuState(state, config, origin);
+    if (state.data.length !== 0) {
+      state.data = new Float32Array(0);
+    }
     return;
   }
 
@@ -509,92 +492,6 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
 
   if (activeCount < capacity) {
     for (let i = activeCount; i < capacity; i += 1) {
-      offset = writeParticleQuad(
-        buffer,
-        offset,
-        origin.x,
-        origin.y,
-        origin.x,
-        origin.y,
-        inactiveComponents
-      );
-    }
-  }
-};
-
-const writeEmitterBufferFromGpuState = <
-  Config extends ParticleEmitterBaseConfig
->(
-  state: ParticleEmitterState<Config>,
-  config: Config,
-  origin: SceneVector2
-): void => {
-  const gpu = state.gpu;
-  if (!gpu) {
-    return;
-  }
-
-  const capacity = Math.max(0, state.capacity);
-  const requiredLength = capacity * VERTICES_PER_PARTICLE * VERTEX_COMPONENTS;
-  if (state.data.length !== requiredLength) {
-    state.data = new Float32Array(requiredLength);
-  }
-
-  const buffer = state.data;
-  const fill = resolveParticleFill(config);
-  const inactiveComponents = writeFillVertexComponents(INACTIVE_PARTICLE_FILL, {
-    fill,
-    center: origin,
-    rotation: 0,
-    size: { width: MIN_PARTICLE_SIZE, height: MIN_PARTICLE_SIZE },
-    radius: MIN_PARTICLE_SIZE / 2,
-  });
-  applyParticleAlpha(inactiveComponents, 0);
-
-  const stateData = gpu.stateData;
-  let offset = 0;
-  let renderedParticles = 0;
-
-  for (let i = 0; i < capacity; i += 1) {
-    const base = i * PARTICLE_STATE_COMPONENTS;
-    const active = stateData[base + PARTICLE_ACTIVE_INDEX] ?? 0;
-    if (active < 0.5) {
-      continue;
-    }
-
-    renderedParticles += 1;
-    const posX = stateData[base + PARTICLE_POSITION_X_INDEX] ?? origin.x;
-    const posY = stateData[base + PARTICLE_POSITION_Y_INDEX] ?? origin.y;
-    const size = Math.max(stateData[base + PARTICLE_SIZE_INDEX] ?? 0, 0);
-    const effectiveSize = Math.max(size, MIN_PARTICLE_SIZE);
-    const halfSize = effectiveSize / 2;
-    const age = stateData[base + PARTICLE_AGE_INDEX] ?? 0;
-    const lifetime = stateData[base + PARTICLE_LIFETIME_INDEX] ?? config.particleLifetimeMs;
-
-    const fillComponents = writeFillVertexComponents(PARTICLE_FILL_SCRATCH, {
-      fill,
-      center: { x: posX, y: posY },
-      rotation: 0,
-      size: { width: effectiveSize, height: effectiveSize },
-      radius: effectiveSize / 2,
-    });
-    applyParticleAlpha(
-      fillComponents,
-      computeParticleAlphaFromValues(age, lifetime, config)
-    );
-    offset = writeParticleQuad(
-      buffer,
-      offset,
-      posX - halfSize,
-      posY - halfSize,
-      posX + halfSize,
-      posY + halfSize,
-      fillComponents
-    );
-  }
-
-  if (renderedParticles < capacity) {
-    for (let i = renderedParticles; i < capacity; i += 1) {
       offset = writeParticleQuad(
         buffer,
         offset,
@@ -686,7 +583,7 @@ const stepParticleSimulation = (
   }
   const sourceIndex = gpu.currentBufferIndex;
   const targetIndex = sourceIndex === 0 ? 1 : 0;
-  const sourceVao = gpu.vaos[sourceIndex];
+  const sourceVao = gpu.simulationVaos[sourceIndex];
   const targetTransformFeedback = gpu.transformFeedbacks[targetIndex];
   const targetBuffer = gpu.buffers[targetIndex];
   if (!sourceVao || !targetTransformFeedback || !targetBuffer) {
@@ -832,26 +729,47 @@ const createParticleEmitterGpuState = (
     return null;
   }
 
+  const renderResources = getParticleRenderResources(gl);
+  if (!renderResources) {
+    return null;
+  }
+
   const bufferA = gl.createBuffer();
   const bufferB = gl.createBuffer();
-  const vaoA = gl.createVertexArray();
-  const vaoB = gl.createVertexArray();
+  const simulationVaoA = gl.createVertexArray();
+  const simulationVaoB = gl.createVertexArray();
   const feedbackA = gl.createTransformFeedback();
   const feedbackB = gl.createTransformFeedback();
+  const renderVaoA = gl.createVertexArray();
+  const renderVaoB = gl.createVertexArray();
 
-  if (!bufferA || !bufferB || !vaoA || !vaoB || !feedbackA || !feedbackB) {
+  if (
+    !bufferA ||
+    !bufferB ||
+    !simulationVaoA ||
+    !simulationVaoB ||
+    !feedbackA ||
+    !feedbackB ||
+    !renderVaoA ||
+    !renderVaoB
+  ) {
     if (bufferA) gl.deleteBuffer(bufferA);
     if (bufferB) gl.deleteBuffer(bufferB);
-    if (vaoA) gl.deleteVertexArray(vaoA);
-    if (vaoB) gl.deleteVertexArray(vaoB);
+    if (simulationVaoA) gl.deleteVertexArray(simulationVaoA);
+    if (simulationVaoB) gl.deleteVertexArray(simulationVaoB);
     if (feedbackA) gl.deleteTransformFeedback(feedbackA);
     if (feedbackB) gl.deleteTransformFeedback(feedbackB);
+    if (renderVaoA) gl.deleteVertexArray(renderVaoA);
+    if (renderVaoB) gl.deleteVertexArray(renderVaoB);
     return null;
   }
 
   const stride = PARTICLE_STATE_BYTES;
 
-  const bindAttributes = (vao: WebGLVertexArrayObject, buffer: WebGLBuffer) => {
+  const bindSimulationAttributes = (
+    vao: WebGLVertexArrayObject,
+    buffer: WebGLBuffer
+  ) => {
     gl.bindVertexArray(vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     enableSimulationAttribute(
@@ -904,38 +822,164 @@ const createParticleEmitterGpuState = (
   gl.bufferData(gl.ARRAY_BUFFER, capacity * PARTICLE_STATE_BYTES, gl.DYNAMIC_COPY);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-  bindAttributes(vaoA, bufferA);
-  bindAttributes(vaoB, bufferB);
+  bindSimulationAttributes(simulationVaoA, bufferA);
+  bindSimulationAttributes(simulationVaoB, bufferB);
   gl.bindVertexArray(null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-  const stateData = new Float32Array(capacity * PARTICLE_STATE_COMPONENTS);
+  const configureRenderVao = (
+    vao: WebGLVertexArrayObject,
+    buffer: WebGLBuffer
+  ) => {
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, renderResources.quadBuffer);
+    gl.enableVertexAttribArray(renderResources.program.attributes.unitPosition);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.unitPosition,
+      2,
+      gl.FLOAT,
+      false,
+      2 * Float32Array.BYTES_PER_ELEMENT,
+      0
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.unitPosition, 0);
 
-  return {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(renderResources.program.attributes.position);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.position,
+      2,
+      gl.FLOAT,
+      false,
+      stride,
+      PARTICLE_POSITION_X_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.position, 1);
+
+    gl.enableVertexAttribArray(renderResources.program.attributes.size);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.size,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      PARTICLE_SIZE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.size, 1);
+
+    gl.enableVertexAttribArray(renderResources.program.attributes.age);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.age,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      PARTICLE_AGE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.age, 1);
+
+    gl.enableVertexAttribArray(renderResources.program.attributes.lifetime);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.lifetime,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      PARTICLE_LIFETIME_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.lifetime, 1);
+
+    gl.enableVertexAttribArray(renderResources.program.attributes.isActive);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.isActive,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      PARTICLE_ACTIVE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.isActive, 1);
+  };
+
+  configureRenderVao(renderVaoA, bufferA);
+  configureRenderVao(renderVaoB, bufferB);
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+  const slots: ParticleEmitterGpuSlot[] = [];
+  for (let i = 0; i < capacity; i += 1) {
+    slots.push({ active: false, ageMs: 0, lifetimeMs: 0 });
+  }
+
+  const uniforms: ParticleEmitterGpuRenderUniforms = {
+    fillType: FILL_TYPES.SOLID,
+    stopCount: 1,
+    stopOffsets: new Float32Array(3),
+    stopColor0: new Float32Array([1, 1, 1, 1]),
+    stopColor1: new Float32Array([1, 1, 1, 0]),
+    stopColor2: new Float32Array([1, 1, 1, 0]),
+    hasLinearStart: false,
+    linearStart: { x: 0, y: 0 },
+    hasLinearEnd: false,
+    linearEnd: { x: 0, y: 0 },
+    hasRadialOffset: false,
+    radialOffset: { x: 0, y: 0 },
+    hasExplicitRadius: false,
+    explicitRadius: 0,
+    fadeStartMs: 0,
+    defaultLifetimeMs: 0,
+    shape: 0,
+    minParticleSize: MIN_PARTICLE_SIZE,
+  };
+
+  const gpu: ParticleEmitterGpuState = {
     gl,
+    capacity,
     buffers: [bufferA, bufferB],
     transformFeedbacks: [feedbackA, feedbackB],
-    vaos: [vaoA, vaoB],
+    simulationVaos: [simulationVaoA, simulationVaoB],
+    renderVaos: [renderVaoA, renderVaoB],
     program,
+    renderResources,
     currentBufferIndex: 0,
-    stateData,
     spawnScratch: new Float32Array(PARTICLE_STATE_COMPONENTS),
-    pendingReads: [],
+    slots,
+    uniforms,
+    handle: null as unknown as ParticleEmitterGpuDrawHandle,
   };
+
+  gpu.handle = {
+    gl,
+    capacity,
+    uniforms,
+    getCurrentVao: () => gpu.renderVaos[gpu.currentBufferIndex],
+  };
+
+  registerParticleEmitterHandle(gpu.handle);
+
+  return gpu;
 };
 
 const resetParticleEmitterGpuState = (gpu: ParticleEmitterGpuState): void => {
   const gl = gpu.gl;
-  clearPendingGpuReads(gpu);
   gpu.currentBufferIndex = 0;
-  gpu.stateData.fill(0);
+  const zero = new Float32Array(gpu.capacity * PARTICLE_STATE_COMPONENTS);
+  for (let i = 0; i < gpu.slots.length; i += 1) {
+    const slot = gpu.slots[i];
+    if (!slot) {
+      continue;
+    }
+    slot.active = false;
+    slot.ageMs = 0;
+    slot.lifetimeMs = 0;
+  }
   for (let i = 0; i < gpu.buffers.length; i += 1) {
     const buffer = gpu.buffers[i];
     if (!buffer) {
       continue;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, gpu.stateData);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, zero);
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 };
@@ -948,7 +992,7 @@ const destroyParticleEmitterGpuState = <
     return;
   }
   const gl = gpu.gl;
-  clearPendingGpuReads(gpu);
+  unregisterParticleEmitterHandle(gpu.handle);
   gpu.buffers.forEach((buffer) => {
     if (buffer) {
       gl.deleteBuffer(buffer);
@@ -959,12 +1003,155 @@ const destroyParticleEmitterGpuState = <
       gl.deleteTransformFeedback(feedback);
     }
   });
-  gpu.vaos.forEach((vao) => {
+  gpu.simulationVaos.forEach((vao) => {
+    if (vao) {
+      gl.deleteVertexArray(vao);
+    }
+  });
+  gpu.renderVaos.forEach((vao) => {
     if (vao) {
       gl.deleteVertexArray(vao);
     }
   });
   state.gpu = undefined;
+};
+
+const sanitizeVector = (value: SceneVector2 | undefined): SceneVector2 => {
+  if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.y)) {
+    return { x: 0, y: 0 };
+  }
+  return { x: value.x, y: value.y };
+};
+
+const assignVector = (target: SceneVector2, source: SceneVector2): void => {
+  target.x = source.x;
+  target.y = source.y;
+};
+
+const limitParticleStops = (stops: SceneGradientStop[]): SceneGradientStop[] => {
+  if (stops.length <= MAX_GRADIENT_STOPS) {
+    return stops.slice();
+  }
+  const limited: SceneGradientStop[] = [];
+  const lastIndex = stops.length - 1;
+  limited.push(stops[0]!);
+  const middleCount = MAX_GRADIENT_STOPS - 2;
+  if (middleCount > 0) {
+    const step = lastIndex / (middleCount + 1);
+    for (let i = 1; i <= middleCount; i += 1) {
+      const rawIndex = Math.round(i * step);
+      const index = Math.min(lastIndex - 1, Math.max(1, rawIndex));
+      const candidate = (stops[index] ?? stops[lastIndex])!;
+      limited.push(candidate);
+    }
+  }
+  limited.push(stops[lastIndex]!);
+  return limited;
+};
+
+const ensureParticleStops = (fill: SceneFill): SceneGradientStop[] => {
+  if (fill.fillType === FILL_TYPES.SOLID) {
+    return [
+      {
+        offset: 0,
+        color: fill.color,
+      },
+    ];
+  }
+  if (!fill.stops || fill.stops.length === 0) {
+    return [
+      {
+        offset: 0,
+        color: { r: 1, g: 1, b: 1, a: 1 },
+      },
+    ];
+  }
+  return limitParticleStops(fill.stops);
+};
+
+const updateParticleEmitterGpuUniforms = <
+  Config extends ParticleEmitterBaseConfig
+>(gpu: ParticleEmitterGpuState, config: Config): void => {
+  const uniforms = gpu.uniforms;
+  uniforms.fadeStartMs = config.fadeStartMs;
+  uniforms.defaultLifetimeMs = config.particleLifetimeMs;
+  uniforms.shape = config.shape === "circle" ? 1 : 0;
+  uniforms.minParticleSize = MIN_PARTICLE_SIZE;
+
+  const fill = resolveParticleFill(config);
+  uniforms.fillType = fill.fillType;
+
+  const stops = ensureParticleStops(fill);
+  const stopCount = Math.min(MAX_GRADIENT_STOPS, stops.length);
+  uniforms.stopCount = stopCount;
+  const effectiveStops = stopCount > 0 ? stops.slice(0, stopCount) : stops;
+  const referenceStop = effectiveStops[Math.max(0, effectiveStops.length - 1)]!;
+  for (let i = 0; i < STOP_OFFSETS_COMPONENTS; i += 1) {
+    const stop = i < effectiveStops.length ? effectiveStops[i]! : referenceStop;
+    uniforms.stopOffsets[i] = clamp01(stop.offset);
+  }
+
+  const applyColor = (target: Float32Array, stop: SceneGradientStop) => {
+    const fallback: SceneColor = {
+      r:
+        typeof stop.color?.r === "number" && Number.isFinite(stop.color.r)
+          ? stop.color.r
+          : 1,
+      g:
+        typeof stop.color?.g === "number" && Number.isFinite(stop.color.g)
+          ? stop.color.g
+          : 1,
+      b:
+        typeof stop.color?.b === "number" && Number.isFinite(stop.color.b)
+          ? stop.color.b
+          : 1,
+      a:
+        typeof stop.color?.a === "number" && Number.isFinite(stop.color.a)
+          ? stop.color.a
+          : 1,
+    };
+    const color = sanitizeSceneColor(stop.color, fallback);
+    target[0] = color.r;
+    target[1] = color.g;
+    target[2] = color.b;
+    target[3] = clamp01(typeof color.a === "number" ? color.a : 1);
+  };
+
+  applyColor(uniforms.stopColor0, effectiveStops[0] ?? referenceStop);
+  applyColor(uniforms.stopColor1, effectiveStops[1] ?? referenceStop);
+  applyColor(uniforms.stopColor2, effectiveStops[2] ?? referenceStop);
+
+  uniforms.hasLinearStart = false;
+  uniforms.hasLinearEnd = false;
+  uniforms.hasRadialOffset = false;
+  uniforms.hasExplicitRadius = false;
+  assignVector(uniforms.linearStart, { x: 0, y: 0 });
+  assignVector(uniforms.linearEnd, { x: 0, y: 0 });
+  assignVector(uniforms.radialOffset, { x: 0, y: 0 });
+  uniforms.explicitRadius = 0;
+
+  if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
+    if (fill.start) {
+      uniforms.hasLinearStart = true;
+      assignVector(uniforms.linearStart, sanitizeVector(fill.start));
+    }
+    if (fill.end) {
+      uniforms.hasLinearEnd = true;
+      assignVector(uniforms.linearEnd, sanitizeVector(fill.end));
+    }
+  } else if (
+    fill.fillType === FILL_TYPES.RADIAL_GRADIENT ||
+    fill.fillType === FILL_TYPES.DIAMOND_GRADIENT
+  ) {
+    if (fill.start) {
+      uniforms.hasRadialOffset = true;
+      assignVector(uniforms.radialOffset, sanitizeVector(fill.start));
+    }
+    const explicitRadius =
+      typeof fill.end === "number" && Number.isFinite(fill.end) ? fill.end : 0;
+    uniforms.hasExplicitRadius = explicitRadius > 0;
+    uniforms.explicitRadius = uniforms.hasExplicitRadius ? explicitRadius : 0;
+  }
 };
 
 const resolveParticleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
@@ -1025,23 +1212,6 @@ const computeParticleAlpha = (
   }
   const fadeDuration = Math.max(1, particle.lifetimeMs - config.fadeStartMs);
   const fadeProgress = clamp01((particle.ageMs - config.fadeStartMs) / fadeDuration);
-  return 1 - fadeProgress;
-};
-
-const computeParticleAlphaFromValues = (
-  ageMs: number,
-  lifetimeMs: number,
-  config: ParticleEmitterBaseConfig
-): number => {
-  const effectiveLifetime = lifetimeMs > 0 ? lifetimeMs : config.particleLifetimeMs;
-  if (config.fadeStartMs >= effectiveLifetime) {
-    return 1;
-  }
-  if (ageMs <= config.fadeStartMs) {
-    return 1;
-  }
-  const fadeDuration = Math.max(1, effectiveLifetime - config.fadeStartMs);
-  const fadeProgress = clamp01((ageMs - config.fadeStartMs) / fadeDuration);
   return 1 - fadeProgress;
 };
 
