@@ -387,10 +387,13 @@ const advanceParticleEmitterStateGpu = <
 
   const slots = gpu.slots;
   const freeSlots: number[] = [];
+  let activeCount = 0;
   for (let i = 0; i < slots.length; i += 1) {
     const slot = slots[i];
     if (!slot || !slot.active) {
       freeSlots.push(i);
+    } else {
+      activeCount += 1;
     }
   }
 
@@ -436,6 +439,11 @@ const advanceParticleEmitterStateGpu = <
 
   if (deltaMs > 0) {
     stepParticleSimulation(gpu, state.capacity, deltaMs);
+  }
+
+  // Update active instance count for renderer
+  if (gpu.handle) {
+    gpu.handle.activeCount = activeCount;
   }
 };
 
@@ -958,6 +966,7 @@ const createParticleEmitterGpuState = (
     capacity,
     uniforms,
     getCurrentVao: () => gpu.renderVaos[gpu.currentBufferIndex],
+    activeCount: 0,
   };
 
   registerParticleEmitterHandle(gpu.handle);

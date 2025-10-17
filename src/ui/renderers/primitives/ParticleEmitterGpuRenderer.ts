@@ -1,18 +1,11 @@
 import { SceneVector2 } from "../../../logic/services/SceneObjectManager";
 
 const UNIT_QUAD_VERTICES = new Float32Array([
-  -0.5,
-  -0.5,
-  0.5,
-  -0.5,
-  0.5,
-  0.5,
-  -0.5,
-  -0.5,
-  0.5,
-  0.5,
-  -0.5,
-  0.5,
+  // TRIANGLE_STRIP order: bottom-left, bottom-right, top-left, top-right
+  -0.5, -0.5,
+   0.5, -0.5,
+  -0.5,  0.5,
+   0.5,  0.5,
 ]);
 
 const PARTICLE_VERTEX_SHADER = `#version 300 es
@@ -299,6 +292,7 @@ export interface ParticleEmitterGpuDrawHandle {
   capacity: number;
   getCurrentVao(): WebGLVertexArrayObject | null;
   uniforms: ParticleEmitterGpuRenderUniforms;
+  activeCount: number;
 }
 
 export interface ParticleRenderResources {
@@ -478,15 +472,147 @@ export const unregisterParticleEmitterHandle = (
   context.emitters.delete(handle);
 };
 
-const applyUniform = (
+type UniformCache = {
+  fadeStartMs?: number;
+  defaultLifetimeMs?: number;
+  minParticleSize?: number;
+  fillType?: number;
+  stopCount?: number;
+  hasLinearStart?: number;
+  hasLinearEnd?: number;
+  hasRadialOffset?: number;
+  hasExplicitRadius?: number;
+  shape?: number;
+  linearStart?: [number, number];
+  linearEnd?: [number, number];
+  radialOffset?: [number, number];
+  explicitRadius?: number;
+  stopOffsets?: string; // serialized to avoid per-element checks cost
+  stopColor0?: string;
+  stopColor1?: string;
+  stopColor2?: string;
+};
+
+const serializeArray = (arr: Float32Array): string => {
+  let s = "";
+  for (let i = 0; i < arr.length; i += 1) s += arr[i] + ",";
+  return s;
+};
+
+const uploadEmitterUniforms = (
   gl: WebGL2RenderingContext,
-  location: WebGLUniformLocation | null,
-  setter: () => void
+  program: ParticleRenderProgram,
+  u: ParticleEmitterGpuRenderUniforms,
+  cache: UniformCache
 ): void => {
-  if (!location) {
-    return;
+  if (program.uniforms.fadeStartMs && cache.fadeStartMs !== u.fadeStartMs) {
+    gl.uniform1f(program.uniforms.fadeStartMs, (cache.fadeStartMs = u.fadeStartMs));
   }
-  setter();
+  if (
+    program.uniforms.defaultLifetimeMs &&
+    cache.defaultLifetimeMs !== u.defaultLifetimeMs
+  ) {
+    gl.uniform1f(
+      program.uniforms.defaultLifetimeMs,
+      (cache.defaultLifetimeMs = u.defaultLifetimeMs)
+    );
+  }
+  if (
+    program.uniforms.minParticleSize &&
+    cache.minParticleSize !== u.minParticleSize
+  ) {
+    gl.uniform1f(
+      program.uniforms.minParticleSize,
+      (cache.minParticleSize = u.minParticleSize)
+    );
+  }
+  if (program.uniforms.fillType && cache.fillType !== u.fillType) {
+    gl.uniform1i(program.uniforms.fillType, (cache.fillType = u.fillType));
+  }
+  if (program.uniforms.stopCount && cache.stopCount !== u.stopCount) {
+    gl.uniform1i(program.uniforms.stopCount, (cache.stopCount = u.stopCount));
+  }
+  const hasStart = u.hasLinearStart ? 1 : 0;
+  if (program.uniforms.hasLinearStart && cache.hasLinearStart !== hasStart) {
+    gl.uniform1i(program.uniforms.hasLinearStart, (cache.hasLinearStart = hasStart));
+  }
+  const hasEnd = u.hasLinearEnd ? 1 : 0;
+  if (program.uniforms.hasLinearEnd && cache.hasLinearEnd !== hasEnd) {
+    gl.uniform1i(program.uniforms.hasLinearEnd, (cache.hasLinearEnd = hasEnd));
+  }
+  const hasRadial = u.hasRadialOffset ? 1 : 0;
+  if (program.uniforms.hasRadialOffset && cache.hasRadialOffset !== hasRadial) {
+    gl.uniform1i(
+      program.uniforms.hasRadialOffset,
+      (cache.hasRadialOffset = hasRadial)
+    );
+  }
+  const hasRadius = u.hasExplicitRadius ? 1 : 0;
+  if (
+    program.uniforms.hasExplicitRadius &&
+    cache.hasExplicitRadius !== hasRadius
+  ) {
+    gl.uniform1i(
+      program.uniforms.hasExplicitRadius,
+      (cache.hasExplicitRadius = hasRadius)
+    );
+  }
+  if (program.uniforms.shape && cache.shape !== u.shape) {
+    gl.uniform1i(program.uniforms.shape, (cache.shape = u.shape));
+  }
+  const ls: [number, number] = [u.linearStart.x, u.linearStart.y];
+  if (
+    program.uniforms.linearStart &&
+    (!cache.linearStart || cache.linearStart[0] !== ls[0] || cache.linearStart[1] !== ls[1])
+  ) {
+    gl.uniform2f(program.uniforms.linearStart, ls[0], ls[1]);
+    cache.linearStart = ls;
+  }
+  const le: [number, number] = [u.linearEnd.x, u.linearEnd.y];
+  if (
+    program.uniforms.linearEnd &&
+    (!cache.linearEnd || cache.linearEnd[0] !== le[0] || cache.linearEnd[1] !== le[1])
+  ) {
+    gl.uniform2f(program.uniforms.linearEnd, le[0], le[1]);
+    cache.linearEnd = le;
+  }
+  const ro: [number, number] = [u.radialOffset.x, u.radialOffset.y];
+  if (
+    program.uniforms.radialOffset &&
+    (!cache.radialOffset || cache.radialOffset[0] !== ro[0] || cache.radialOffset[1] !== ro[1])
+  ) {
+    gl.uniform2f(program.uniforms.radialOffset, ro[0], ro[1]);
+    cache.radialOffset = ro;
+  }
+  if (
+    program.uniforms.explicitRadius &&
+    cache.explicitRadius !== u.explicitRadius
+  ) {
+    gl.uniform1f(
+      program.uniforms.explicitRadius,
+      (cache.explicitRadius = u.explicitRadius)
+    );
+  }
+  const so = serializeArray(u.stopOffsets);
+  if (program.uniforms.stopOffsets && cache.stopOffsets !== so) {
+    gl.uniform3fv(program.uniforms.stopOffsets, u.stopOffsets);
+    cache.stopOffsets = so;
+  }
+  const c0 = serializeArray(u.stopColor0);
+  if (program.uniforms.stopColor0 && cache.stopColor0 !== c0) {
+    gl.uniform4fv(program.uniforms.stopColor0, u.stopColor0);
+    cache.stopColor0 = c0;
+  }
+  const c1 = serializeArray(u.stopColor1);
+  if (program.uniforms.stopColor1 && cache.stopColor1 !== c1) {
+    gl.uniform4fv(program.uniforms.stopColor1, u.stopColor1);
+    cache.stopColor1 = c1;
+  }
+  const c2 = serializeArray(u.stopColor2);
+  if (program.uniforms.stopColor2 && cache.stopColor2 !== c2) {
+    gl.uniform4fv(program.uniforms.stopColor2, u.stopColor2);
+    cache.stopColor2 = c2;
+  }
 };
 
 export const renderParticleEmitters = (
@@ -501,76 +627,28 @@ export const renderParticleEmitters = (
   const { resources, emitters } = context;
   const program = resources.program;
   gl.useProgram(program.program);
-  applyUniform(gl, program.uniforms.cameraPosition, () =>
-    gl.uniform2f(program.uniforms.cameraPosition, cameraPosition.x, cameraPosition.y)
-  );
-  applyUniform(gl, program.uniforms.viewportSize, () =>
-    gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height)
-  );
+  if (program.uniforms.cameraPosition) {
+    gl.uniform2f(program.uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
+  }
+  if (program.uniforms.viewportSize) {
+    gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height);
+  }
 
+  const cache: UniformCache = {};
   emitters.forEach((handle) => {
+    const instanceCount = Math.max(0, Math.min(handle.capacity, handle.activeCount || 0));
+    if (instanceCount <= 0) {
+      return;
+    }
     const vao = handle.getCurrentVao();
     if (!vao) {
       return;
     }
     const uniforms = handle.uniforms;
-    applyUniform(gl, program.uniforms.fadeStartMs, () =>
-      gl.uniform1f(program.uniforms.fadeStartMs, uniforms.fadeStartMs)
-    );
-    applyUniform(gl, program.uniforms.defaultLifetimeMs, () =>
-      gl.uniform1f(program.uniforms.defaultLifetimeMs, uniforms.defaultLifetimeMs)
-    );
-    applyUniform(gl, program.uniforms.minParticleSize, () =>
-      gl.uniform1f(program.uniforms.minParticleSize, uniforms.minParticleSize)
-    );
-    applyUniform(gl, program.uniforms.fillType, () =>
-      gl.uniform1i(program.uniforms.fillType, uniforms.fillType)
-    );
-    applyUniform(gl, program.uniforms.stopCount, () =>
-      gl.uniform1i(program.uniforms.stopCount, uniforms.stopCount)
-    );
-    applyUniform(gl, program.uniforms.hasLinearStart, () =>
-      gl.uniform1i(program.uniforms.hasLinearStart, uniforms.hasLinearStart ? 1 : 0)
-    );
-    applyUniform(gl, program.uniforms.hasLinearEnd, () =>
-      gl.uniform1i(program.uniforms.hasLinearEnd, uniforms.hasLinearEnd ? 1 : 0)
-    );
-    applyUniform(gl, program.uniforms.hasRadialOffset, () =>
-      gl.uniform1i(program.uniforms.hasRadialOffset, uniforms.hasRadialOffset ? 1 : 0)
-    );
-    applyUniform(gl, program.uniforms.hasExplicitRadius, () =>
-      gl.uniform1i(program.uniforms.hasExplicitRadius, uniforms.hasExplicitRadius ? 1 : 0)
-    );
-    applyUniform(gl, program.uniforms.shape, () =>
-      gl.uniform1i(program.uniforms.shape, uniforms.shape)
-    );
-    applyUniform(gl, program.uniforms.linearStart, () =>
-      gl.uniform2f(program.uniforms.linearStart, uniforms.linearStart.x, uniforms.linearStart.y)
-    );
-    applyUniform(gl, program.uniforms.linearEnd, () =>
-      gl.uniform2f(program.uniforms.linearEnd, uniforms.linearEnd.x, uniforms.linearEnd.y)
-    );
-    applyUniform(gl, program.uniforms.radialOffset, () =>
-      gl.uniform2f(program.uniforms.radialOffset, uniforms.radialOffset.x, uniforms.radialOffset.y)
-    );
-    applyUniform(gl, program.uniforms.explicitRadius, () =>
-      gl.uniform1f(program.uniforms.explicitRadius, uniforms.explicitRadius)
-    );
-    applyUniform(gl, program.uniforms.stopOffsets, () =>
-      gl.uniform3fv(program.uniforms.stopOffsets, uniforms.stopOffsets)
-    );
-    applyUniform(gl, program.uniforms.stopColor0, () =>
-      gl.uniform4fv(program.uniforms.stopColor0, uniforms.stopColor0)
-    );
-    applyUniform(gl, program.uniforms.stopColor1, () =>
-      gl.uniform4fv(program.uniforms.stopColor1, uniforms.stopColor1)
-    );
-    applyUniform(gl, program.uniforms.stopColor2, () =>
-      gl.uniform4fv(program.uniforms.stopColor2, uniforms.stopColor2)
-    );
+    uploadEmitterUniforms(gl, program, uniforms, cache);
 
     gl.bindVertexArray(vao);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, handle.capacity);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
   });
 
   gl.bindVertexArray(null);

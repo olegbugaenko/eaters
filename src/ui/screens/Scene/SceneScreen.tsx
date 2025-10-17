@@ -741,7 +741,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
       drawBuffer(staticBuffer, objectsRenderer.getStaticVertexCount());
       drawBuffer(dynamicBuffer, objectsRenderer.getDynamicVertexCount());
-
+      
       if (webgl2) {
         renderParticleEmitters(
           webgl2,
@@ -749,7 +749,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           cameraState.viewportSize
         );
       }
-
+      
       if (!cameraEquals(cameraState, cameraInfoRef.current)) {
         setCameraInfo(cameraState);
       }
