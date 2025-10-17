@@ -167,7 +167,8 @@ export const createParticleEmitterPrimitive = <
     update(target: SceneObjectInstance) {
       const nextConfig = options.getConfig(target);
       if (!nextConfig) {
-        if (state.data.length === 0) {
+        const hadGpu = Boolean(state.gpu);
+        if (!hadGpu && state.data.length === 0) {
           return null;
         }
         destroyParticleEmitterGpuState(state);
