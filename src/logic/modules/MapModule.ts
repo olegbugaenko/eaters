@@ -93,6 +93,9 @@ export class MapModule implements GameModule {
   private readonly unlocks: UnlockService;
   private readonly getSkillLevel: (id: SkillId) => number;
   private mapStats: MapStats = {};
+  // Cached deep-clone of mapStats for read-only consumers (e.g., UnlockService)
+  private statsCloneCache: MapStats | null = null;
+  private statsCloneDirty = true;
   private selectedMapLevel = 0;
   private activeMapLevel = 0;
   private mapSelectedLevels: Partial<Record<MapId, number>> = {};
@@ -124,6 +127,8 @@ export class MapModule implements GameModule {
     this.mapStats = parsed?.stats ?? {};
     this.mapSelectedLevels = parsed?.selectedLevels ?? {};
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
+    // stats changed from save → invalidate cached clone
+    this.statsCloneDirty = true;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
@@ -258,6 +263,8 @@ export class MapModule implements GameModule {
     } else {
       stats.failure += 1;
     }
+    // stats mutated → invalidate cached clone
+    this.statsCloneDirty = true;
     this.pushMapList();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
@@ -679,6 +686,9 @@ export class MapModule implements GameModule {
   }
 
   private cloneStats(): MapStats {
+    if (!this.statsCloneDirty && this.statsCloneCache) {
+      return this.statsCloneCache;
+    }
     const clone: MapStats = {};
     Object.entries(this.mapStats).forEach(([mapId, levels]) => {
       if (!levels) {
@@ -700,6 +710,8 @@ export class MapModule implements GameModule {
       });
       clone[mapId as MapId] = levelClone;
     });
+    this.statsCloneCache = clone;
+    this.statsCloneDirty = false;
     return clone;
   }
 }

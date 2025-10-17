@@ -121,6 +121,7 @@ interface BrickKnockbackState {
 const BRICK_KNOCKBACK_DURATION_MS = 500;
 const KNOCKBACK_EPSILON = 0.001;
 const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
+const TOTAL_HP_RECOMPUTE_INTERVAL_MS = 3000;
 
 export class BricksModule implements GameModule {
   public readonly id = "bricks";
@@ -130,11 +131,13 @@ export class BricksModule implements GameModule {
   private brickIdCounter = 0;
   private readonly spatialIndex = new SpatialGrid<InternalBrickState>(10);
   private readonly bricksWithKnockback = new Set<string>();
+  private totalHpCached = 0;
+  private hpRecomputeElapsedMs = 0;
 
   constructor(private readonly options: BricksModuleOptions) {}
 
   public initialize(): void {
-    this.pushStats();
+    this.recomputeTotalsAndPush();
   }
 
   public reset(): void {
@@ -147,7 +150,7 @@ export class BricksModule implements GameModule {
       this.applyBricks(parsed);
       return;
     }
-    this.pushStats();
+    this.recomputeTotalsAndPush();
   }
 
   public save(): unknown {
@@ -155,6 +158,13 @@ export class BricksModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    if (deltaMs > 0) {
+      this.hpRecomputeElapsedMs += deltaMs;
+      if (this.hpRecomputeElapsedMs >= TOTAL_HP_RECOMPUTE_INTERVAL_MS) {
+        this.hpRecomputeElapsedMs = 0;
+        this.recomputeTotalsAndPush();
+      }
+    }
     if (deltaMs <= 0 || this.bricksWithKnockback.size === 0) {
       return;
     }
@@ -244,7 +254,9 @@ export class BricksModule implements GameModule {
       return { destroyed: false, brick: this.cloneState(brick) };
     }
 
+    const previousHp = brick.hp;
     brick.hp = clamp(brick.hp - effectiveDamage, 0, brick.maxHp);
+    this.totalHpCached += brick.hp - previousHp;
 
     if (brick.hp <= 0) {
       this.spawnBrickExplosion(brick.destructionExplosion, brick);
@@ -302,12 +314,14 @@ export class BricksModule implements GameModule {
   private applyBricks(bricks: BrickData[]): void {
     this.clearSceneObjects();
     this.brickIdCounter = 0;
+    this.totalHpCached = 0;
 
     bricks.forEach((brick) => {
       const state = this.createBrickState(brick);
       this.bricks.set(state.id, state);
       this.brickOrder.push(state);
       this.spatialIndex.set(state.id, state.position, state.physicalSize, state);
+      this.totalHpCached += state.hp;
     });
 
     this.pushStats();
@@ -406,6 +420,7 @@ export class BricksModule implements GameModule {
     this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
     this.spatialIndex.delete(brick.id);
     this.bricksWithKnockback.delete(brick.id);
+    this.totalHpCached -= brick.hp;
     this.pushStats();
     if (this.bricks.size === 0) {
       this.options.onAllBricksDestroyed?.();
@@ -420,6 +435,7 @@ export class BricksModule implements GameModule {
     this.brickOrder = [];
     this.spatialIndex.clear();
     this.bricksWithKnockback.clear();
+    this.totalHpCached = 0;
   }
 
   private applyBrickKnockback(
@@ -468,12 +484,20 @@ export class BricksModule implements GameModule {
   }
 
   private pushStats(): void {
+    this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.size);
+    this.options.bridge.setValue(
+      BRICK_TOTAL_HP_BRIDGE_KEY,
+      Math.max(0, Math.floor(this.totalHpCached))
+    );
+  }
+
+  private recomputeTotalsAndPush(): void {
     let totalHp = 0;
     this.brickOrder.forEach((brick) => {
       totalHp += brick.hp;
     });
-    this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.size);
-    this.options.bridge.setValue(BRICK_TOTAL_HP_BRIDGE_KEY, totalHp);
+    this.totalHpCached = totalHp;
+    this.pushStats();
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {

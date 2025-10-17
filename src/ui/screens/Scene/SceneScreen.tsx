@@ -319,6 +319,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
   const cameraInfoRef = useRef(cameraInfo);
   const scaleRef = useRef(scale);
+  const unitCountRef = useRef(0);
+  const unitTotalHpRef = useRef(0);
+  const brickTotalHpRef2 = useRef(0);
+  const necromancerResourcesRef = useRef<NecromancerResourcesPayload>(DEFAULT_NECROMANCER_RESOURCES);
+  const necromancerOptionsRef = useRef<NecromancerSpawnOption[]>(DEFAULT_NECROMANCER_SPAWN_OPTIONS);
+  const automationStateRef = useRef<UnitAutomationBridgeState>(DEFAULT_UNIT_AUTOMATION_STATE);
   const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
   const brickInitialHpRef = useRef(0);
   const necromancer = useMemo(() => app.getNecromancer(), [app]);
@@ -433,6 +439,30 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   useEffect(() => {
     scaleRef.current = scale;
   }, [scale]);
+
+  useEffect(() => {
+    unitCountRef.current = unitCount;
+  }, [unitCount]);
+
+  useEffect(() => {
+    unitTotalHpRef.current = unitTotalHp;
+  }, [unitTotalHp]);
+
+  useEffect(() => {
+    brickTotalHpRef2.current = brickTotalHp;
+  }, [brickTotalHp]);
+
+  useEffect(() => {
+    necromancerResourcesRef.current = necromancerResources;
+  }, [necromancerResources]);
+
+  useEffect(() => {
+    necromancerOptionsRef.current = necromancerOptions;
+  }, [necromancerOptions]);
+
+  useEffect(() => {
+    automationStateRef.current = automationState;
+  }, [automationState]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -859,6 +889,40 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, [scene]);
 
   const brickInitialHp = brickInitialHpRef.current;
+  const [toolbarState, setToolbarState] = useState(() => ({
+    brickTotalHp,
+    brickInitialHp,
+    unitCount,
+    unitTotalHp,
+    scale,
+    cameraPosition: cameraInfo.position,
+  }));
+
+  const [summoningProps, setSummoningProps] = useState(() => ({
+    resources: necromancerResources,
+    spawnOptions: necromancerOptions,
+    automation: automationState,
+  }));
+
+  // Throttle toolbar updates to at most 5 times per second
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setToolbarState({
+        brickTotalHp: brickTotalHpRef2.current,
+        brickInitialHp: brickInitialHpRef.current,
+        unitCount: unitCountRef.current,
+        unitTotalHp: unitTotalHpRef.current,
+        scale: scaleRef.current,
+        cameraPosition: { ...cameraInfoRef.current.position },
+      });
+      setSummoningProps({
+        resources: necromancerResourcesRef.current,
+        spawnOptions: necromancerOptionsRef.current,
+        automation: automationStateRef.current,
+      });
+    }, 200);
+    return () => window.clearInterval(interval);
+  }, []);
   const [vboStats, setVboStats] = useState<{ bytes: number; reallocs: number }>({ bytes: 0, reallocs: 0 });
   const vboStatsRef = useRef<{ bytes: number; reallocs: number }>({ bytes: 0, reallocs: 0 });
 
@@ -866,14 +930,14 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     <div className="scene-screen">
       <SceneToolbar
         onExit={onExit}
-        brickTotalHp={brickTotalHp}
-        brickInitialHp={brickInitialHp}
-        unitCount={unitCount}
-        unitTotalHp={unitTotalHp}
-        scale={scale}
+        brickTotalHp={toolbarState.brickTotalHp}
+        brickInitialHp={toolbarState.brickInitialHp}
+        unitCount={toolbarState.unitCount}
+        unitTotalHp={toolbarState.unitTotalHp}
+        scale={toolbarState.scale}
         scaleRange={scaleRange}
         onScaleChange={handleScaleChange}
-        cameraPosition={cameraInfo.position}
+        cameraPosition={toolbarState.cameraPosition}
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneTooltipPanel content={hoverContent} />
@@ -885,11 +949,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       />
       <SceneSummoningPanel
         ref={summoningPanelRef}
-        resources={necromancerResources}
-        spawnOptions={necromancerOptions}
+        resources={summoningProps.resources}
+        spawnOptions={summoningProps.spawnOptions}
         onSummon={handleSummonDesign}
         onHoverInfoChange={setHoverContent}
-        automation={automationState}
+        automation={summoningProps.automation}
         onToggleAutomation={handleToggleAutomation}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
