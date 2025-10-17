@@ -126,7 +126,7 @@ export class ObjectsRendererManager {
   private registerObject(instance: SceneObjectInstance): void {
     const renderer = this.renderers.get(instance.type);
     if (!renderer) {
-      console.warn(`No renderer registered for object type "${instance.type}".`);
+      // console.warn(`No renderer registered for object type "${instance.type}".`);
       return;
     }
     const registration = renderer.register(instance);
@@ -200,6 +200,12 @@ export class ObjectsRendererManager {
 
     this.removeStaticEntries(id);
     this.removeDynamicEntries(id);
+
+    managed.registration.dynamicPrimitives.forEach((primitive) => {
+      if (typeof primitive.dispose === "function") {
+        primitive.dispose();
+      }
+    });
 
     managed.renderer.remove(managed.instance, managed.registration);
   }

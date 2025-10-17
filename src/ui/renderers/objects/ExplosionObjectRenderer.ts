@@ -203,12 +203,13 @@ const randomBetween = (min: number, max: number): number => {
 export class ExplosionObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const dynamicPrimitives: DynamicPrimitive[] = [];
+    
     const emitterPrimitive = createExplosionEmitterPrimitive(instance);
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
     }
     dynamicPrimitives.push(createDynamicCirclePrimitive(instance));
-
+    
     return {
       staticPrimitives: [],
       dynamicPrimitives,
