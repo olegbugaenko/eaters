@@ -132,7 +132,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 2,
       baseDamage: 3,
       brickKnockBackDistance: 40,
-      brickKnockBackSpeed: 80,
+      brickKnockBackSpeed: 120,
       brickKnockBackAmplitude: 6,
       physicalSize: 28,
       damageExplosion: {
@@ -159,7 +159,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 0,
       baseDamage: 3,
       brickKnockBackDistance: 60,
-      brickKnockBackSpeed: 120,
+      brickKnockBackSpeed: 150,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -190,7 +190,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 1,
       baseDamage: 5,
       brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 140,
+      brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 10.5,
       physicalSize: 16,
       damageExplosion: {
@@ -281,7 +281,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 20,
       baseDamage: 46,
       brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 140,
+      brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -311,7 +311,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 42,
       baseDamage: 28,
       brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 140,
+      brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -341,7 +341,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 84,
       baseDamage: 82,
       brickKnockBackDistance: 75,
-      brickKnockBackSpeed: 150,
+      brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -370,8 +370,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 520,
       armor: 70,
       baseDamage: 140,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 140,
+      brickKnockBackDistance: 90,
+      brickKnockBackSpeed: 190,
       brickKnockBackAmplitude: 6,
       physicalSize: 18,
       damageExplosion: {
