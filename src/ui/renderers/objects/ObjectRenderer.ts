@@ -26,6 +26,7 @@ export interface StaticPrimitive extends Primitive {}
 
 export interface DynamicPrimitive extends Primitive {
   update(instance: SceneObjectInstance): Float32Array | null;
+  dispose?(): void;
 }
 
 export interface ObjectRegistration {

@@ -193,6 +193,10 @@ export const createParticleEmitterPrimitive = <
 
       return advanceParticleEmitterState(state, target, deltaMs, options);
     },
+    dispose() {
+      destroyParticleEmitterGpuState(state);
+      state = createEmptyParticleEmitterState();
+    },
   };
 
   return primitive;

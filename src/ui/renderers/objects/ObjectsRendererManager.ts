@@ -201,6 +201,12 @@ export class ObjectsRendererManager {
     this.removeStaticEntries(id);
     this.removeDynamicEntries(id);
 
+    managed.registration.dynamicPrimitives.forEach((primitive) => {
+      if (typeof primitive.dispose === "function") {
+        primitive.dispose();
+      }
+    });
+
     managed.renderer.remove(managed.instance, managed.registration);
   }
 
