@@ -133,7 +133,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 3,
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.2 * level,
+        multiplier: (level) => 1 + 0.25 * level,
       },
     },
     nodesRequired: { hunger: 1 },
@@ -207,7 +207,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.1 * level,
+        multiplier: (level) => 1 + 0.2 * level,
       },
     },
     nodesRequired: { stone_lore: 1 },
