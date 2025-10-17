@@ -123,7 +123,7 @@ interface ParticleSimulationProgram {
     age: number;
     lifetime: number;
     size: number;
-    active: number;
+    isActive: number;
   };
 }
 
@@ -561,7 +561,7 @@ in vec2 a_velocity;
 in float a_age;
 in float a_lifetime;
 in float a_size;
-in float a_active;
+in float a_isActive;
 
 uniform float u_deltaMs;
 
@@ -570,16 +570,16 @@ out vec2 v_velocity;
 out float v_age;
 out float v_lifetime;
 out float v_size;
-out float v_active;
+out float v_isActive;
 
 void main() {
-  float active = a_active;
+  float isActive = a_isActive;
   float age = a_age;
   vec2 position = a_position;
-  if (active > 0.5) {
+  if (isActive > 0.5) {
     float nextAge = a_age + u_deltaMs;
     if (a_lifetime > 0.0 && nextAge >= a_lifetime) {
-      active = 0.0;
+      isActive = 0.0;
       age = 0.0;
     } else {
       age = nextAge;
@@ -592,7 +592,7 @@ void main() {
   v_age = age;
   v_lifetime = a_lifetime;
   v_size = a_size;
-  v_active = active;
+  v_isActive = isActive;
 }
 `;
 
@@ -610,7 +610,7 @@ const SIMULATION_VARYINGS = [
   "v_age",
   "v_lifetime",
   "v_size",
-  "v_active",
+  "v_isActive",
 ];
 
 const simulationProgramCache = new WeakMap<
@@ -702,7 +702,7 @@ const getSimulationProgram = (
   const age = gl.getAttribLocation(program, "a_age");
   const lifetime = gl.getAttribLocation(program, "a_lifetime");
   const size = gl.getAttribLocation(program, "a_size");
-  const active = gl.getAttribLocation(program, "a_active");
+  const isActive = gl.getAttribLocation(program, "a_isActive");
 
   if (
     position < 0 ||
@@ -710,7 +710,7 @@ const getSimulationProgram = (
     age < 0 ||
     lifetime < 0 ||
     size < 0 ||
-    active < 0
+    isActive < 0
   ) {
     console.error("Particle simulation attributes are missing");
     gl.deleteProgram(program);
@@ -729,7 +729,7 @@ const getSimulationProgram = (
       age,
       lifetime,
       size,
-      active,
+      isActive,
     },
   };
 
@@ -835,7 +835,7 @@ const createParticleEmitterGpuState = (
     );
     enableSimulationAttribute(
       gl,
-      program.attributes.active,
+      program.attributes.isActive,
       1,
       stride,
       PARTICLE_ACTIVE_INDEX * Float32Array.BYTES_PER_ELEMENT
