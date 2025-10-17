@@ -45,6 +45,7 @@ export interface PlayerUnitBlueprintStats {
   readonly description?: string;
   readonly base: PlayerUnitStatBlock;
   readonly effective: PlayerUnitStatBlock;
+  readonly damageVariance?: { minMultiplier: number; maxMultiplier: number };
   readonly multipliers: PlayerUnitStatMultipliers;
   readonly critChance: PlayerUnitCritChanceStats;
   readonly critMultiplier: PlayerUnitCritMultiplierStats;

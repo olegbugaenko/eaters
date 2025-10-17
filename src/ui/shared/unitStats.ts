@@ -54,7 +54,14 @@ export const buildUnitStatEntries = (
     },
     {
       label: "Attack",
-      value: `${formatNumber(blueprint.effective.attackDamage)} dmg`,
+      value: (() => {
+        const mean = blueprint.effective.attackDamage;
+        const minMul = blueprint.damageVariance?.minMultiplier ?? 1;
+        const maxMul = blueprint.damageVariance?.maxMultiplier ?? 1;
+        const min = mean * Math.max(minMul, 0);
+        const max = mean * Math.max(maxMul, 0);
+        return `${formatNumber(min)}–${formatNumber(max)} dmg`;
+      })(),
       hint: formatBaseHint(
         blueprint.base.attackDamage,
         blueprint.multipliers.attackDamage

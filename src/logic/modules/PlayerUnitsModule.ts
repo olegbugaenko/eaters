@@ -735,10 +735,16 @@ export class PlayerUnitsModule implements GameModule {
     );
     const stackMultiplier = 1 + cappedStack;
     const baseDamage = Math.max(unit.baseAttackDamage * stackMultiplier, 0);
+    // Apply ±20% variance around the mean damage
+    const variance = 0.2;
+    const varianceMultiplier = 1 - variance + Math.random() * (variance * 2); // [0.8; 1.2]
+    let damage = baseDamage * Math.max(varianceMultiplier, 0);
     const critChance = clampProbability(unit.critChance);
     const critMultiplier = Math.max(unit.critMultiplier, 1);
     const isCritical = critChance > 0 && Math.random() < critChance;
-    const damage = isCritical ? baseDamage * critMultiplier : baseDamage;
+    if (isCritical) {
+      damage *= critMultiplier;
+    }
     return { damage: roundStat(damage), isCritical };
   }
 
@@ -1052,6 +1058,7 @@ export const computePlayerUnitBlueprint = (
       attackDamage: baseAttack,
       maxHp: baseHp,
     },
+    damageVariance: { minMultiplier: 0.8, maxMultiplier: 1.2 },
     effective: {
       attackDamage: effectiveAttack,
       maxHp: Math.max(effectiveHp, 1),
