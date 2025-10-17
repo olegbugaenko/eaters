@@ -9,9 +9,11 @@
 }
 
 .save-slot-list {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-xl);
   width: min(720px, 100%);
+  justify-content: center;
 }
 
 .save-slot-screen__subtitle {
@@ -26,6 +28,7 @@
   flex-direction: column;
   gap: var(--spacing-lg);
   text-align: left;
+  width: 340px;
 }
 
 .save-slot-card__header {
