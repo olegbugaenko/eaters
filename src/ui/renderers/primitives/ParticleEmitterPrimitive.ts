@@ -586,6 +586,7 @@ void main() {
       position = a_position + a_velocity * u_deltaMs;
     }
   }
+  gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
   v_position = position;
   v_velocity = a_velocity;
   v_age = age;
