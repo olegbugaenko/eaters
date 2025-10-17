@@ -434,6 +434,25 @@ export const getParticleRenderResources = (
   return resources;
 };
 
+export const disposeParticleRenderResources = (
+  gl: WebGL2RenderingContext
+): void => {
+  const context = rendererContexts.get(gl);
+  if (!context) {
+    return;
+  }
+  // Best effort: ensure no emitters are kept
+  context.emitters.clear();
+  const { program, quadBuffer } = context.resources;
+  if (quadBuffer) {
+    gl.deleteBuffer(quadBuffer);
+  }
+  if (program && program.program) {
+    gl.deleteProgram(program.program);
+  }
+  rendererContexts.delete(gl);
+};
+
 const getRendererContext = (
   gl: WebGL2RenderingContext
 ): ParticleRendererContext | null => {

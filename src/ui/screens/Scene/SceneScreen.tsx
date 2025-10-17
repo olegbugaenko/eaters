@@ -40,7 +40,7 @@ import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
-import { renderParticleEmitters } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
+import { renderParticleEmitters, disposeParticleRenderResources } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
@@ -718,6 +718,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       objectsRenderer.applyChanges(changes);
       applySync();
 
+      // update VBO stats only when changed
+      const dbs = objectsRenderer.getDynamicBufferStats();
+      if (
+        dbs.bytesAllocated !== vboStatsRef.current.bytes ||
+        dbs.reallocations !== vboStatsRef.current.reallocs
+      ) {
+        vboStatsRef.current = { bytes: dbs.bytesAllocated, reallocs: dbs.reallocations };
+        setVboStats({ bytes: dbs.bytesAllocated, reallocs: dbs.reallocations });
+      }
+
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(program);
       gl.uniform2f(
@@ -830,6 +840,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     return () => {
       setParticleEmitterGlContext(null);
+      if (webgl2) {
+        try {
+          disposeParticleRenderResources(webgl2);
+        } catch {}
+      }
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
       gl.deleteBuffer(staticBuffer);
@@ -844,6 +859,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, [scene]);
 
   const brickInitialHp = brickInitialHpRef.current;
+  const [vboStats, setVboStats] = useState<{ bytes: number; reallocs: number }>({ bytes: 0, reallocs: 0 });
+  const vboStatsRef = useRef<{ bytes: number; reallocs: number }>({ bytes: 0, reallocs: 0 });
 
   return (
     <div className="scene-screen">
@@ -860,7 +877,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneTooltipPanel content={hoverContent} />
-      <SceneDebugPanel timeMs={mapTimeMs} brickCount={brickCount} />
+      <SceneDebugPanel
+        timeMs={mapTimeMs}
+        brickCount={brickCount}
+        dynamicBytes={vboStats.bytes}
+        dynamicReallocs={vboStats.reallocs}
+      />
       <SceneSummoningPanel
         ref={summoningPanelRef}
         resources={necromancerResources}

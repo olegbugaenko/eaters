@@ -5,27 +5,32 @@ import "./SceneDebugPanel.css";
 interface SceneDebugPanelProps {
   timeMs: number;
   brickCount: number;
+  dynamicBytes?: number;
+  dynamicReallocs?: number;
+  breakdown?: { type: string; bytes: number; count: number }[];
 }
 
 const UPDATE_INTERVAL_MS = 250;
 const FPS_SAMPLE_MS = 500;
 
-export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickCount }) => {
-  const latestValues = useRef({ timeMs, brickCount });
+export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickCount, dynamicBytes = 0, dynamicReallocs = 0, breakdown = [] }) => {
+  const latestValues = useRef({ timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown });
   const timeRef = useRef<HTMLDivElement | null>(null);
   const brickRef = useRef<HTMLDivElement | null>(null);
   const fpsRef = useRef<HTMLDivElement | null>(null);
+  const vboRef = useRef<HTMLDivElement | null>(null);
   const lastDisplayedTime = useRef<string | null>(null);
   const lastDisplayedBricks = useRef<number | null>(null);
   const lastDisplayedFps = useRef<number | null>(null);
+  const lastDisplayedVbo = useRef<string | null>(null);
 
   useEffect(() => {
-    latestValues.current = { timeMs, brickCount };
-  }, [timeMs, brickCount]);
+    latestValues.current = { timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown } as any;
+  }, [timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown]);
 
   useEffect(() => {
     const update = () => {
-      const { timeMs: nextTime, brickCount: nextBricks } = latestValues.current;
+      const { timeMs: nextTime, brickCount: nextBricks, dynamicBytes: bytes, dynamicReallocs: reallocs } = latestValues.current;
       const formatted = formatDuration(nextTime);
 
       if (lastDisplayedTime.current !== formatted && timeRef.current) {
@@ -36,6 +41,14 @@ export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickC
       if (lastDisplayedBricks.current !== nextBricks && brickRef.current) {
         lastDisplayedBricks.current = nextBricks;
         brickRef.current.textContent = `Particles: ${nextBricks}`;
+      }
+
+      if (vboRef.current) {
+        const next = `Dyn VBO: ${Math.round(bytes / 1024)} KB (${reallocs})`;
+        if (lastDisplayedVbo.current !== next) {
+          lastDisplayedVbo.current = next;
+          vboRef.current.textContent = next;
+        }
       }
     };
 
@@ -89,6 +102,7 @@ export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickC
       <div className="scene-debug-panel__item" ref={timeRef} />
       <div className="scene-debug-panel__item" ref={brickRef} />
       <div className="scene-debug-panel__item" ref={fpsRef} />
+      <div className="scene-debug-panel__item" ref={vboRef} />
     </div>
   );
 };

@@ -106,6 +106,11 @@ export class SceneObjectManager {
   private added = new Map<string, SceneObjectInstance>();
   private updated = new Map<string, SceneObjectInstance>();
   private removed = new Set<string>();
+  // Defer removals to avoid frequent dynamic buffer reallocations in the renderer
+  private pendingRemovals = new Set<string>();
+  private static readonly REMOVALS_PER_FLUSH = 128;
+  private static readonly REMOVAL_FLUSH_INTERVAL_MS = 250;
+  private lastRemovalFlushTimestampMs = 0;
 
   private mapSize: SceneSize = { width: MIN_MAP_SIZE, height: MIN_MAP_SIZE };
   private screenSize: SceneSize = { width: MIN_MAP_SIZE, height: MIN_MAP_SIZE };
@@ -197,21 +202,25 @@ export class SceneObjectManager {
   }
 
   public removeObject(id: string): void {
-    if (!this.objects.has(id)) {
+    const instance = this.objects.get(id);
+    if (!instance) {
       return;
     }
-    this.objects.delete(id);
-    const index = this.ordered.findIndex((object) => object.id === id);
-    if (index >= 0) {
-      this.ordered.splice(index, 1);
-    }
-    if (this.added.delete(id)) {
-      this.updated.delete(id);
-      this.removed.delete(id);
-      return;
-    }
-    this.updated.delete(id);
-    this.removed.add(id);
+    // Mark for deferred removal and hide immediately (alpha = 0)
+    // Forcefully hide via fully transparent SOLID fill to avoid gradient artifacts
+    const transparentFill: SceneFill = {
+      fillType: FILL_TYPES.SOLID,
+      color: { r: 0, g: 0, b: 0, a: 0 },
+    };
+
+    instance.data = {
+      ...instance.data,
+      fill: transparentFill,
+      // hide stroke immediately to avoid visible outlines before batched removal
+      stroke: undefined,
+    } as SceneObjectData & { fill: SceneFill; stroke?: SceneStroke };
+    this.pendingRemovals.add(id);
+    this.updated.set(id, instance);
   }
 
   public clear(): void {
@@ -225,11 +234,15 @@ export class SceneObjectManager {
     for (const id of this.updated.keys()) {
       knownIds.add(id);
     }
+    for (const id of this.pendingRemovals.values()) {
+      knownIds.add(id);
+    }
     this.objects.clear();
     this.ordered.length = 0;
     this.idCounter = 0;
     this.added.clear();
     this.updated.clear();
+    this.pendingRemovals.clear();
     for (const id of knownIds) {
       this.removed.add(id);
     }
@@ -249,18 +262,51 @@ export class SceneObjectManager {
     updated: SceneObjectInstance[];
     removed: string[];
   } {
+    // Gradually apply removals to reduce renderer buffer reallocations
+    const actuallyRemoved: string[] = [];
+    const now = Date.now();
+    const shouldTimeFlush =
+      this.pendingRemovals.size > 0 &&
+      now - this.lastRemovalFlushTimestampMs >= SceneObjectManager.REMOVAL_FLUSH_INTERVAL_MS;
+    if (this.pendingRemovals.size >= SceneObjectManager.REMOVALS_PER_FLUSH || shouldTimeFlush) {
+      const quota = SceneObjectManager.REMOVALS_PER_FLUSH;
+      let processed = 0;
+      const iterator = this.pendingRemovals.values();
+      while (processed < quota) {
+        const next = iterator.next();
+        if (next.done) break;
+        const id = next.value as string;
+        this.pendingRemovals.delete(id);
+        const had = this.objects.delete(id);
+        if (had) {
+          const index = this.ordered.findIndex((object) => object.id === id);
+          if (index >= 0) {
+            this.ordered.splice(index, 1);
+          }
+        }
+        this.added.delete(id);
+        this.updated.delete(id);
+        this.removed.add(id);
+        actuallyRemoved.push(id);
+        processed += 1;
+      }
+      this.lastRemovalFlushTimestampMs = now;
+    }
+
     const added = Array.from(this.added.values()).map((instance) =>
       this.cloneInstance(instance)
     );
     const updated = Array.from(this.updated.values()).map((instance) =>
       this.cloneInstance(instance)
     );
-    const removed = Array.from(this.removed.values());
+    const removed = actuallyRemoved.length > 0
+      ? actuallyRemoved
+      : Array.from(this.removed.values());
 
     this.added.clear();
     this.updated.clear();
     this.removed.clear();
-
+    // Note: pendingRemovals keeps remaining ids if quota wasn't enough
     return { added, updated, removed };
   }
 

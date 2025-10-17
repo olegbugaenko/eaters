@@ -13,18 +13,20 @@ export class BrickObjectRenderer extends ObjectRenderer {
     const dynamicPrimitives = [];
 
     if (hasStroke(instance.data.stroke)) {
-      const initialStroke = instance.data.stroke;
       const initialSize = size;
       dynamicPrimitives.push(
         createDynamicRectanglePrimitive(instance, {
           getSize: (target) => {
             const sizeSource = target.data.size ?? initialSize;
-            const strokeSource = target.data.stroke ?? initialStroke;
-            const strokeWidth = strokeSource?.width ?? initialStroke.width;
-            return expandSize(sizeSource, strokeWidth ?? 0);
+            const strokeSource = target.data.stroke; // rely on current stroke only
+            const strokeWidth = strokeSource?.width ?? 0;
+            if (!strokeSource || strokeWidth <= 0) {
+              return { ...sizeSource };
+            }
+            return expandSize(sizeSource, strokeWidth);
           },
           getFill: (target) => {
-            const strokeSource = target.data.stroke ?? initialStroke;
+            const strokeSource = target.data.stroke; // rely on current stroke only
             return strokeSource ? createStrokeFill(strokeSource) : target.data.fill;
           },
         })

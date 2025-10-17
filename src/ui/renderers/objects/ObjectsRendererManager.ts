@@ -42,6 +42,17 @@ export interface SyncInstructions {
   dynamicUpdates: DynamicBufferUpdate[];
 }
 
+export interface DynamicBufferStats {
+  bytesAllocated: number;
+  reallocations: number;
+}
+
+export interface DynamicBufferBreakdownItem {
+  type: string;
+  bytes: number;
+  count: number;
+}
+
 export class ObjectsRendererManager {
   private readonly objects = new Map<string, ManagedObject>();
   private readonly staticEntries: StaticEntry[] = [];
@@ -57,6 +68,12 @@ export class ObjectsRendererManager {
   private staticDirty = false;
   private dynamicLayoutDirty = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
+
+  // Stats
+  private dynamicBytesAllocated = 0;
+  private dynamicReallocations = 0;
+  private dynamicBytesByType = new Map<string, number>();
+  private dynamicCountByType = new Map<string, number>();
 
   constructor(private readonly renderers: Map<string, ObjectRenderer>) {}
 
@@ -113,6 +130,23 @@ export class ObjectsRendererManager {
 
   public getDynamicVertexCount(): number {
     return this.dynamicVertexCount;
+  }
+
+  public getDynamicBufferStats(): DynamicBufferStats {
+    return {
+      bytesAllocated: this.dynamicBytesAllocated,
+      reallocations: this.dynamicReallocations,
+    };
+  }
+
+  public getDynamicBufferBreakdown(): DynamicBufferBreakdownItem[] {
+    const items: DynamicBufferBreakdownItem[] = [];
+    this.dynamicBytesByType.forEach((bytes, type) => {
+      const count = this.dynamicCountByType.get(type) ?? 0;
+      items.push({ type, bytes, count });
+    });
+    items.sort((a, b) => b.bytes - a.bytes);
+    return items;
   }
 
   private addObject(instance: SceneObjectInstance): void {
@@ -261,6 +295,21 @@ export class ObjectsRendererManager {
     this.dynamicVertexCount = this.dynamicData.length / VERTEX_COMPONENTS;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
+
+    // stats
+    this.dynamicBytesAllocated = this.dynamicData.byteLength;
+    this.dynamicReallocations += 1;
+
+    // per-type breakdown
+    this.dynamicBytesByType.clear();
+    this.dynamicCountByType.clear();
+    this.dynamicEntries.forEach((entry) => {
+      const bytes = entry.primitive.data.length * Float32Array.BYTES_PER_ELEMENT;
+      const managed = this.objects.get(entry.objectId);
+      const type = managed?.instance.type ?? "unknown";
+      this.dynamicBytesByType.set(type, (this.dynamicBytesByType.get(type) ?? 0) + bytes);
+      this.dynamicCountByType.set(type, (this.dynamicCountByType.get(type) ?? 0) + 1);
+    });
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {
