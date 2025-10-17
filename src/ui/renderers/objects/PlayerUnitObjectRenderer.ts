@@ -522,7 +522,7 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     const rendererData = extractRendererData(instance);
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
-
+    
     const emitterPrimitive = createEmitterPrimitive(instance);
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
