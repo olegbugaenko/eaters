@@ -85,12 +85,13 @@ vec2 toClip(vec2 world) {
 
 void main() {
   float isActive = a_isActive;
-  float size = max(a_size, u_minParticleSize);
+  bool active = isActive > 0.5;
+  float size = active ? max(a_size, u_minParticleSize) : 0.0;
   vec2 center = a_position;
   vec2 offset = a_unitPosition * size;
   vec2 world = center + offset;
 
-  float alpha = isActive > 0.5 ? computeAlpha(a_age, a_lifetime) : 0.0;
+  float alpha = active ? computeAlpha(a_age, a_lifetime) : 0.0;
 
   v_worldPosition = world;
   v_stopOffsets = u_stopOffsets;
@@ -130,6 +131,11 @@ void main() {
   v_shape = float(u_shape);
   v_particleCenter = center;
   v_particleRadius = size * 0.5;
+
+  if (!active) {
+    gl_Position = vec4(-2.0, -2.0, 0.0, 1.0);
+    return;
+  }
 
   gl_Position = vec4(toClip(world), 0.0, 1.0);
 }
