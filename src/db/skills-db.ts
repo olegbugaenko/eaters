@@ -540,7 +540,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { critical_chance: 5 },
-    cost: createResourceCost('organics', 30, 1.5),
+    cost: createResourceCost('organics', 50, 1.5),
   },
   penetration2: {
     id: "penetration2",
