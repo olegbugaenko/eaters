@@ -105,6 +105,7 @@ export class MapModule implements GameModule {
   private statsCloneDirty = true;
   private selectedMapLevel = 0;
   private activeMapLevel = 0;
+  private runActive = false;
   private mapSelectedLevels: Partial<Record<MapId, number>> = {};
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
@@ -128,6 +129,7 @@ export class MapModule implements GameModule {
     this.autoRestartEnabled = false;
     this.thresholdEnabled = false;
     this.minEffectiveUnits = 3;
+    this.runActive = false;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.ensureSelection();
@@ -177,17 +179,13 @@ export class MapModule implements GameModule {
       this.pushAutoRestartState();
     }
     // Early end-of-run check: when enabled, if alive + affordable < N, end the run (failure)
-    if (
-      this.autoRestartEnabled &&
-      this.thresholdEnabled &&
-      this.selectedMapId &&
-      this.activeMapLevel > 0
-    ) {
+    if (this.autoRestartEnabled && this.thresholdEnabled && this.selectedMapId && this.runActive) {
       const alive = this.options.playerUnits.getCurrentUnitCount();
       const affordable = this.options.necromancer.getAffordableSpawnCountBySanity();
       const effective = alive + affordable;
       if (effective < Math.max(0, Math.floor(this.minEffectiveUnits))) {
-        // Trigger run completion (failure) via callback to Application
+        // Trigger run completion (failure) once per run
+        this.runActive = false;
         this.options.onRunCompleted(false);
       }
     }
@@ -239,6 +237,7 @@ export class MapModule implements GameModule {
 
   public leaveCurrentMap(): void {
     this.activeMapLevel = 0;
+    this.runActive = false;
     this.options.resources.cancelRun();
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
@@ -354,6 +353,7 @@ export class MapModule implements GameModule {
     this.mapSelectedLevels[mapId] = level;
     this.selectedMapLevel = level;
     this.activeMapLevel = level;
+    this.runActive = true;
     this.options.scene.setMapSize(config.size);
     this.options.playerUnits.prepareForMap();
     // Clear existing portals if any (e.g., on restart)
