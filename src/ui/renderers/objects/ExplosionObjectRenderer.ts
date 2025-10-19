@@ -218,80 +218,84 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
       dynamicPrimitives.push(emitterPrimitive);
     }
 
-    const gl = getParticleEmitterGlContext();
-    if (gl) {
-      // derive fill uniforms and batching key from scene fill
-      const fill = (instance.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
-      const { uniforms, key: fillKey } = toWaveUniformsFromFill(fill);
-      // Ensure wave radius follows instance size over time (do not lock to explicit radius)
-      uniforms.hasExplicitRadius = false;
-      uniforms.explicitRadius = 0;
+    // GPU wave ring primitive (lazy init to avoid races with GL context availability)
+    {
+      let batch: ReturnType<typeof ensureWaveBatch> | null = null;
+      let slotIndex = -1;
+      let age = 0;
+      const lifetime = 800;
+      let lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
 
-      const DEFAULT_CAPACITY = 64;
-      const batch = ensureWaveBatch(gl, fillKey, DEFAULT_CAPACITY, uniforms);
-      if (batch) {
-        // allocate a slot lazily
-        let slotIndex = -1;
-        let age = 0;
-        const lifetime = 800;
-        let lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        dynamicPrimitives.push({
-          data: new Float32Array(0),
-          update(target) {
-            const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-            const dt = Math.max(0, Math.min(now - lastTs, 100));
-            lastTs = now;
-            age = Math.min(lifetime, age + dt);
+      dynamicPrimitives.push({
+        data: new Float32Array(0),
+        update(target) {
+          // Acquire GL and batch lazily
+          if (!batch) {
+            const gl = getParticleEmitterGlContext();
+            if (gl) {
+              const fill = (target.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
+              const { uniforms, key: fillKey } = toWaveUniformsFromFill(fill);
+              uniforms.hasExplicitRadius = false;
+              uniforms.explicitRadius = 0;
+              const DEFAULT_CAPACITY = 64;
+              batch = ensureWaveBatch(gl, fillKey, DEFAULT_CAPACITY, uniforms);
+            }
+            if (!batch) {
+              return null;
+            }
+          }
+
+          const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+          const dt = Math.max(0, Math.min(now - lastTs, 100));
+          lastTs = now;
+          age = Math.min(lifetime, age + dt);
+
+          if (slotIndex < 0) {
+            for (let i = 0; i < batch.capacity; i += 1) {
+              if (!batch.instances[i] || !batch.instances[i]!.active) {
+                slotIndex = i;
+                break;
+              }
+            }
             if (slotIndex < 0) {
-              // find free slot
-              for (let i = 0; i < batch.capacity; i += 1) {
-                if (!batch.instances[i] || !batch.instances[i]!.active) {
-                  slotIndex = i;
-                  break;
-                }
-              }
-              if (slotIndex < 0) {
-                slotIndex = 0; // fallback overwrite
-              }
+              slotIndex = 0;
             }
+          }
 
-            const radius = Math.max(0, Math.max(target.data.size?.width ?? 0, target.data.size?.height ?? 0) / 2);
+          const radius = Math.max(0, Math.max(target.data.size?.width ?? 0, target.data.size?.height ?? 0) / 2);
+          writeWaveInstance(batch, slotIndex, {
+            position: target.data.position,
+            size: radius * 2,
+            age,
+            lifetime,
+            active: age < lifetime,
+          });
+          let activeCount = 0;
+          for (let i = 0; i < batch.capacity; i += 1) {
+            const inst = batch.instances[i];
+            if (inst && inst.active) activeCount += 1;
+          }
+          setWaveBatchActiveCount(batch, activeCount);
+          return null;
+        },
+        dispose() {
+          if (batch && slotIndex >= 0 && slotIndex < batch.capacity) {
             writeWaveInstance(batch, slotIndex, {
-              position: target.data.position,
-              size: radius * 2,
-              age,
-              lifetime,
-              active: age < lifetime,
+              position: { x: 0, y: 0 },
+              size: 0,
+              age: 0,
+              lifetime: 0,
+              active: false,
             });
-            // compute active count (cheap scan up to DEFAULT_CAPACITY)
             let activeCount = 0;
             for (let i = 0; i < batch.capacity; i += 1) {
               const inst = batch.instances[i];
               if (inst && inst.active) activeCount += 1;
             }
             setWaveBatchActiveCount(batch, activeCount);
-            return null;
-          },
-          dispose() {
-            if (slotIndex >= 0 && slotIndex < batch.capacity) {
-              writeWaveInstance(batch, slotIndex, {
-                position: { x: 0, y: 0 },
-                size: 0,
-                age: 0,
-                lifetime: 0,
-                active: false,
-              });
-            }
-            // update active count
-            let activeCount = 0;
-            for (let i = 0; i < batch.capacity; i += 1) {
-              const inst = batch.instances[i];
-              if (inst && inst.active) activeCount += 1;
-            }
-            setWaveBatchActiveCount(batch, activeCount);
-          },
-        });
-      }
+          }
+        },
+      });
     }
     
     return {
