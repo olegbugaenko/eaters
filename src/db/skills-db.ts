@@ -261,9 +261,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   },
   void_modules: {
     id: "void_modules",
-    name: "Void Module Fabrication",
+    name: "Chord",
     description:
-      "Unlock fabrication of void‑touched modules that alter and empower your creations.",
+      "Imprint a structural chord into your entities, enabling attachment of organs and parts.",
     nodePosition: { x: 0, y: -3 },
     maxLevel: 1,
     effects: {},

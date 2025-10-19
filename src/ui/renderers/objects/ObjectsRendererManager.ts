@@ -69,7 +69,7 @@ export class ObjectsRendererManager {
   private dynamicLayoutDirty = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
   private lastDynamicRebuildMs = 0;
-  private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 200;
+  private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
 
   // Stats
   private dynamicBytesAllocated = 0;
@@ -115,15 +115,10 @@ export class ObjectsRendererManager {
     }
 
     if (this.dynamicLayoutDirty) {
-      const now = Date.now();
-      if (now - this.lastDynamicRebuildMs >= ObjectsRendererManager.DYNAMIC_REBUILD_COOLDOWN_MS) {
-        this.rebuildDynamicData();
-        this.lastDynamicRebuildMs = now;
-        result.dynamicData = this.dynamicData;
-      } else if (this.pendingDynamicUpdates.length > 0) {
-        // While layout is dirty but cooldown not expired, still stream per-primitive updates
-        result.dynamicUpdates = this.pendingDynamicUpdates;
-      }
+      // Rebuild immediately when layout is dirty; streaming during this frame is disabled
+      this.rebuildDynamicData();
+      this.lastDynamicRebuildMs = Date.now();
+      result.dynamicData = this.dynamicData;
     } else if (this.pendingDynamicUpdates.length > 0) {
       result.dynamicUpdates = this.pendingDynamicUpdates;
     }
@@ -221,15 +216,13 @@ export class ObjectsRendererManager {
         this.dynamicLayoutDirty = true;
         return;
       }
-      // Even if layout is marked dirty (some entries changed length),
-      // we can continue streaming updates for entries whose length did not change.
-      // Only skip when buffer is not available yet.
+      // Continue streaming updates; offsets remain valid until rebuild happens
       if (!this.dynamicData) {
         return;
       }
       this.dynamicData.set(data, entry.offset);
-      // Avoid per-update allocations: upload the same data buffer this frame
-      this.pendingDynamicUpdates.push({ offset: entry.offset, data });
+      // Use a copy to avoid any subtle aliasing/driver timing issues
+      this.pendingDynamicUpdates.push({ offset: entry.offset, data: data.slice() });
     });
   }
 

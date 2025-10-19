@@ -120,11 +120,11 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
       <div className="modules-workshop surface-panel stack-lg">
         <header className="modules-workshop__header">
           <div>
-            <h2 className="heading-2">Module Shop</h2>
-            <p className="text-muted">Fabricate modules once they become available.</p>
+            <h2 className="heading-2">Organ Workshop</h2>
+            <p className="text-muted">Grow and craft organs once they become available.</p>
           </div>
         </header>
-        <div className="modules-workshop__empty">No modules are available yet.</div>
+        <div className="modules-workshop__empty">No organs are available yet.</div>
       </div>
     );
   }
@@ -133,8 +133,8 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     <div className="modules-workshop surface-panel stack-lg">
       <header className="modules-workshop__header">
         <div>
-          <h2 className="heading-2">Armament Workshop</h2>
-          <p className="text-muted">Forge armaments and manifested parts, then refine them over time.</p>
+          <h2 className="heading-2">Organ Workshop</h2>
+          <p className="text-muted">Cultivate organs and manifested parts, then refine them over time.</p>
         </div>
       </header>
       <div className="modules-workshop__content">
@@ -204,7 +204,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                   />
                 ) : (
                   <p className="text-muted body-sm">
-                    Module unavailable. Fulfil its unlock requirements to fabricate.
+                    Organ unavailable. Fulfil its unlock requirements to cultivate.
                   </p>
                 )
               }
@@ -220,7 +220,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
           ) : (
             <div className="modules-workshop__details modules-workshop__details--scrollable">
               <div className="modules-workshop__details-empty">
-                Hover over a module to inspect its details.
+                Hover over an organ to inspect its details.
               </div>
             </div>
           )}

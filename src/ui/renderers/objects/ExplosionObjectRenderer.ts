@@ -8,11 +8,20 @@ import {
 import {
   SceneObjectInstance,
   SceneVector2,
+  SceneFill,
+  SceneColor,
+  FILL_TYPES,
 } from "../../../logic/services/SceneObjectManager";
+import { createParticleEmitterPrimitive } from "../primitives";
+import { getParticleEmitterGlContext } from "../primitives/gpuContext";
+import { sanitizeSceneColor } from "../../../logic/services/particles/ParticleEmitterShared";
 import {
-  createDynamicCirclePrimitive,
-  createParticleEmitterPrimitive,
-} from "../primitives";
+  WaveUniformConfig,
+  ensureWaveBatch,
+  getWaveBatch,
+  writeWaveInstance,
+  setWaveBatchActiveCount,
+} from "../primitives/ExplosionWaveGpuRenderer";
 import {
   normalizeAngle,
   sanitizeAngle,
@@ -208,7 +217,79 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
     }
-    dynamicPrimitives.push(createDynamicCirclePrimitive(instance));
+
+    const gl = getParticleEmitterGlContext();
+    if (gl) {
+      // derive fill uniforms and batching key from scene fill
+      const fill = (instance.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
+      const { uniforms, key: fillKey } = toWaveUniformsFromFill(fill);
+
+      const DEFAULT_CAPACITY = 64;
+      const batch = ensureWaveBatch(gl, fillKey, DEFAULT_CAPACITY, uniforms);
+      if (batch) {
+        // allocate a slot lazily
+        let slotIndex = -1;
+        let age = 0;
+        const lifetime = 800;
+        let lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        dynamicPrimitives.push({
+          data: new Float32Array(0),
+          update(target) {
+            const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+            const dt = Math.max(0, Math.min(now - lastTs, 100));
+            lastTs = now;
+            age = Math.min(lifetime, age + dt);
+            if (slotIndex < 0) {
+              // find free slot
+              for (let i = 0; i < batch.capacity; i += 1) {
+                if (!batch.instances[i] || !batch.instances[i]!.active) {
+                  slotIndex = i;
+                  break;
+                }
+              }
+              if (slotIndex < 0) {
+                slotIndex = 0; // fallback overwrite
+              }
+            }
+
+            const radius = Math.max(0, Math.max(target.data.size?.width ?? 0, target.data.size?.height ?? 0) / 2);
+            writeWaveInstance(batch, slotIndex, {
+              position: target.data.position,
+              size: radius * 2,
+              age,
+              lifetime,
+              active: age < lifetime,
+            });
+            // compute active count (cheap scan up to DEFAULT_CAPACITY)
+            let activeCount = 0;
+            for (let i = 0; i < batch.capacity; i += 1) {
+              const inst = batch.instances[i];
+              if (inst && inst.active) activeCount += 1;
+            }
+            setWaveBatchActiveCount(batch, activeCount);
+            return null;
+          },
+          dispose() {
+            if (slotIndex >= 0 && slotIndex < batch.capacity) {
+              writeWaveInstance(batch, slotIndex, {
+                position: { x: 0, y: 0 },
+                size: 0,
+                age: 0,
+                lifetime: 0,
+                active: false,
+              });
+            }
+            // update active count
+            let activeCount = 0;
+            for (let i = 0; i < batch.capacity; i += 1) {
+              const inst = batch.instances[i];
+              if (inst && inst.active) activeCount += 1;
+            }
+            setWaveBatchActiveCount(batch, activeCount);
+          },
+        });
+      }
+    }
     
     return {
       staticPrimitives: [],
@@ -216,3 +297,94 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
     };
   }
 }
+
+const toWaveUniformsFromFill = (
+  fill: SceneFill
+): { uniforms: WaveUniformConfig; key: string } => {
+  const key = JSON.stringify(fill);
+  // Default SOLID white
+  let fillType = FILL_TYPES.SOLID as number;
+  const stopOffsets = new Float32Array([0, 1, 1]);
+  const stopColor0 = new Float32Array([1, 1, 1, 1]);
+  const stopColor1 = new Float32Array([1, 1, 1, 0]);
+  const stopColor2 = new Float32Array([1, 1, 1, 0]);
+  let stopCount = 1;
+  let hasLinearStart = false;
+  let hasLinearEnd = false;
+  let hasRadialOffset = false;
+  let hasExplicitRadius = false;
+  let explicitRadius = 0;
+  let linearStart: SceneVector2 | undefined;
+  let linearEnd: SceneVector2 | undefined;
+  let radialOffset: SceneVector2 | undefined;
+
+  if (fill.fillType === FILL_TYPES.SOLID) {
+    const color = sanitizeSceneColor((fill as any).color as any, { r: 1, g: 1, b: 1, a: 1 });
+    stopColor0[0] = color.r; stopColor0[1] = color.g; stopColor0[2] = color.b; stopColor0[3] = color.a ?? 1;
+    stopCount = 1;
+    fillType = FILL_TYPES.SOLID;
+  } else if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
+    const f = fill as any;
+    fillType = FILL_TYPES.LINEAR_GRADIENT;
+    hasLinearStart = Boolean(f.start);
+    hasLinearEnd = Boolean(f.end);
+    if (f.start) linearStart = { x: f.start.x ?? 0, y: f.start.y ?? 0 };
+    if (f.end) linearEnd = { x: f.end.x ?? 0, y: f.end.y ?? 0 };
+    const stops = Array.isArray(f.stops) ? f.stops : [];
+    stopCount = Math.min(3, Math.max(1, stops.length));
+    const s0 = stops[0] ?? { offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } };
+    const s1 = stops[1] ?? s0;
+    const s2 = stops[2] ?? s1;
+    stopOffsets[0] = Math.max(0, Math.min(1, s0.offset ?? 0));
+    stopOffsets[1] = Math.max(0, Math.min(1, s1.offset ?? 1));
+    stopOffsets[2] = Math.max(0, Math.min(1, s2.offset ?? 1));
+    const c0 = sanitizeSceneColor(s0.color, { r: 1, g: 1, b: 1, a: 1 });
+    const c1 = sanitizeSceneColor(s1.color, c0);
+    const c2 = sanitizeSceneColor(s2.color, c1);
+    stopColor0.set([c0.r, c0.g, c0.b, c0.a ?? 1]);
+    stopColor1.set([c1.r, c1.g, c1.b, c1.a ?? 1]);
+    stopColor2.set([c2.r, c2.g, c2.b, c2.a ?? 1]);
+  } else if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT || fill.fillType === FILL_TYPES.DIAMOND_GRADIENT) {
+    const f = fill as any;
+    fillType = fill.fillType;
+    hasRadialOffset = Boolean(f.start);
+    if (f.start) radialOffset = { x: f.start.x ?? 0, y: f.start.y ?? 0 };
+    hasExplicitRadius = typeof f.end === "number" && Number.isFinite(f.end) && f.end > 0;
+    explicitRadius = hasExplicitRadius ? Number(f.end) : 0;
+    const stops = Array.isArray(f.stops) ? f.stops : [];
+    stopCount = Math.min(3, Math.max(1, stops.length));
+    const s0 = stops[0] ?? { offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } };
+    const s1 = stops[1] ?? s0;
+    const s2 = stops[2] ?? s1;
+    stopOffsets[0] = Math.max(0, Math.min(1, s0.offset ?? 0));
+    stopOffsets[1] = Math.max(0, Math.min(1, s1.offset ?? 1));
+    stopOffsets[2] = Math.max(0, Math.min(1, s2.offset ?? 1));
+    const c0 = sanitizeSceneColor(s0.color, { r: 1, g: 1, b: 1, a: 1 });
+    const c1 = sanitizeSceneColor(s1.color, c0);
+    const c2 = sanitizeSceneColor(s2.color, c1);
+    stopColor0.set([c0.r, c0.g, c0.b, c0.a ?? 1]);
+    stopColor1.set([c1.r, c1.g, c1.b, c1.a ?? 1]);
+    stopColor2.set([c2.r, c2.g, c2.b, c2.a ?? 1]);
+  }
+
+  const uniforms: WaveUniformConfig = {
+    fillType,
+    stopCount,
+    stopOffsets,
+    stopColor0,
+    stopColor1,
+    stopColor2,
+    hasLinearStart,
+    linearStart: linearStart ?? { x: 0, y: 0 },
+    hasLinearEnd,
+    linearEnd: linearEnd ?? { x: 0, y: 0 },
+    hasRadialOffset,
+    radialOffset: radialOffset ?? { x: 0, y: 0 },
+    hasExplicitRadius,
+    explicitRadius,
+    fadeStartMs: 0,
+    defaultLifetimeMs: 1000,
+  };
+
+  return { uniforms, key };
+};

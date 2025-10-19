@@ -40,7 +40,7 @@ import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
-import { renderParticleEmitters, disposeParticleRenderResources } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
+import { renderParticleEmitters, disposeParticleRenderResources, getParticleStats } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
@@ -788,6 +788,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           cameraState.position,
           cameraState.viewportSize
         );
+        const ps = getParticleStats(webgl2);
+        particleStatsRef.current = ps;
+        const now = timestamp;
+        if (now - particleStatsLastUpdateRef.current >= 500) {
+          particleStatsLastUpdateRef.current = now;
+          if (
+            ps.active !== particleStatsState.active ||
+            ps.capacity !== particleStatsState.capacity ||
+            ps.emitters !== particleStatsState.emitters
+          ) {
+            setParticleStatsState(ps);
+          }
+        }
       }
       
       if (!cameraEquals(cameraState, cameraInfoRef.current)) {
@@ -925,6 +938,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, []);
   const [vboStats, setVboStats] = useState<{ bytes: number; reallocs: number }>({ bytes: 0, reallocs: 0 });
   const vboStatsRef = useRef<{ bytes: number; reallocs: number }>({ bytes: 0, reallocs: 0 });
+  const [particleStatsState, setParticleStatsState] = useState<{ active: number; capacity: number; emitters: number }>({ active: 0, capacity: 0, emitters: 0 });
+  const particleStatsRef = useRef<{ active: number; capacity: number; emitters: number }>({ active: 0, capacity: 0, emitters: 0 });
+  const particleStatsLastUpdateRef = useRef(0);
 
   return (
     <div className="scene-screen">
@@ -946,6 +962,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         brickCount={brickCount}
         dynamicBytes={vboStats.bytes}
         dynamicReallocs={vboStats.reallocs}
+        particleActive={particleStatsState.active}
+        particleCapacity={particleStatsState.capacity}
+        particleEmitters={particleStatsState.emitters}
       />
       <SceneSummoningPanel
         ref={summoningPanelRef}

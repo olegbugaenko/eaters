@@ -7,6 +7,8 @@ import {
 import { ParticleEmitterShape } from "../logic/services/particles/ParticleEmitterShared";
 import { ResourceCost } from "../types/resources";
 import type { UnitModuleId } from "./unit-modules-db";
+import type { SkillId } from "./skills-db";
+import { mapLineToPolygonShape } from '../utils/paths';
 
 export type PlayerUnitType = "bluePentagon";
 
@@ -46,6 +48,21 @@ export type PlayerUnitRendererLayerConfig =
       fill?: PlayerUnitRendererFillConfig;
       stroke?: PlayerUnitRendererStrokeConfig;
       requiresModule?: UnitModuleId;
+      requiresSkill?: SkillId;
+      // Optional animation and meta for dynamic deformation
+      anim?: {
+        type: "sway" | "pulse";
+        periodMs?: number;
+        amplitude?: number;
+        phase?: number;
+        falloff?: "tip" | "root" | "none";
+        axis?: "normal" | "tangent";
+      };
+      // Meta for line-based shapes (tentacles): original spine and builder opts
+      spine?: { x: number; y: number; width: number }[];
+      segmentIndex?: number;
+      buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+      groupId?: string;
     }
   | {
       shape: "circle";
@@ -55,6 +72,14 @@ export type PlayerUnitRendererLayerConfig =
       fill?: PlayerUnitRendererFillConfig;
       stroke?: PlayerUnitRendererStrokeConfig;
       requiresModule?: UnitModuleId;
+      requiresSkill?: SkillId;
+      anim?: {
+        type: "pulse" | "sway";
+        periodMs?: number;
+        amplitude?: number;
+        phase?: number;
+      };
+      groupId?: string;
     };
 
 export interface PlayerUnitRendererCompositeConfig {
@@ -166,7 +191,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "circle",
           radius: 24,
           segments: 48,
-          offset: { x: 0, y: -2 },
+          offset: { x: 0, y: 0 },
           fill: {
             type: "gradient",
             fill: {
@@ -174,14 +199,127 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
               start: { x: 0, y: 0 },
               end: 24,
               stops: [
-                { offset: 0, color: { r: 0.6, g: 0.85, b: 1, a: 0.25 } },
+                { offset: 0, color: { r: 0.6, g: 0.85, b: 1, a: 0.75 } },
+                { offset: 0.2, color: { r: 0.6, g: 0.85, b: 1, a: 0.25 } },
                 { offset: 0.55, color: { r: 0.5, g: 0.8, b: 1, a: 0.09 } },
                 { offset: 1, color: { r: 0.5, g: 0.75, b: 0.95, a: 0 } },
               ],
             },
           },
         },
+        // Chord base (requires skill void_modules)
         {
+          shape: "polygon",
+          requiresSkill: "void_modules",
+          vertices: [
+            { x: -9, y: -2 },
+            { x: 5, y: -1 },
+            { x: 5, y: 1 },
+            { x: -9, y: 2 },
+          ],
+          fill: { type: "base", brightness: -0.04 },
+          stroke: { type: "base", width: 2.2, brightness: -0.04 },
+        },
+        // Chord spur (requires skill void_modules)
+        {
+          shape: "polygon",
+          requiresSkill: "void_modules",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: 3, y: -4 },
+            { x: 6, y: 0 },
+            { x: 3, y: 4 },
+            { x: 0, y: 4 },
+          ],
+          fill: { type: "base", brightness: -0.06 },
+          stroke: { type: "base", width: 2.0, brightness: -0.06 },
+        },
+        // Tentacles
+
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [{ x: 2.4, y: 3.2, width: 1.6 }, {x: 4.9, y: 9.3, width: 0.7}, { x: 5, y: 12.5, width: 0.3}, { x: 7, y: 16, width: 0.2}],
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5.0, falloff: "tip", axis: "normal", phase: 0 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [{ x: 4.6, y: 1.8, width: 1.6 }, {x: 8.2, y: 3.3, width: 0.7}, { x: 11, y: 7.5, width: 0.3}, { x: 15, y: 8, width: 0.2}],
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5, falloff: "tip", axis: "normal", phase: 0.4 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [{ x: 4.6, y: -1.8, width: 1.6 }, {x: 8.2, y: -3.3, width: 0.7}, { x: 11, y: -7.5, width: 0.3}, { x: 15, y: -8, width: 0.2}],
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5.0, falloff: "tip", axis: "normal", phase: 0.7 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [{ x: 2.4, y: -3.2, width: 1.6 }, {x: 4.9, y: -9.3, width: 0.7}, { x: 5, y: -12.5, width: 0.3}, { x: 7, y: -16, width: 0.2}],
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5, falloff: "tip", axis: "normal", phase: 1.1 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        {
+          shape: "polygon",
+          requiresModule: "ironForge",
+          vertices: [
+            {x: 11, y: 0},
+            {x: 4, y: -2},
+            {x: 4, y: 2},
+          ],
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 3.2, brightness: -0.05 },
+        },
+        {
+          shape: "polygon",
+          requiresModule: "vitalHull",
+          vertices: [
+            {x: -3, y: -2},
+            {x: -6, y: -4},
+            {x: -9, y: -2},
+            {x: -9, y: 2},
+            {x: -6, y: 4},
+            {x: -3, y: 2},
+          ],
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 3.2, brightness: -0.05 },
+        },
+
+        // Верхній вусик (корінь + тіло + гачок)
+        { shape: "polygon", requiresModule: "magnet",
+          // коренева “подушка” на хорді (збільшена)
+          vertices: [ {x: -1.2, y: 0.8}, {x: 1.4, y: 1.0}, {x: 1.4, y: 1.6}, {x: -1.2, y: 1.4} ],
+          fill: { type: "base", brightness: -0.06 },
+          stroke: { type: "base", width: 1.6, brightness: -0.10 }
+        },
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          // тіло: довше й товстіше біля основи, помітніший силует
+          [ {x: 1.2, y: 1.4, width: 2.2}, {x: 5.6, y: 3.4, width: 1.4}, {x: 9.8, y: 4.6, width: 0.8} ],
+          { requiresModule: "magnet", fill: { type: "base", brightness: -0.10 }, stroke: { type: "base", width: 1.4, brightness: -0.12 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        // гачок на кінчику (малий трикутник, “зачеп” до центру)
+        { shape: "polygon", requiresModule: "magnet",
+          vertices: [ {x: 9.2, y: 4.3}, {x: 8.2, y: 4.9}, {x: 8.8, y: 3.7} ],
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 1.1, brightness: -0.10 }
+        },
+
+        // Нижній вусик (корінь + тіло + гачок) — дзеркально вниз
+        { shape: "polygon", requiresModule: "magnet",
+          vertices: [ {x: -1.2, y: -0.8}, {x: 1.4, y: -1.0}, {x: 1.4, y: -1.6}, {x: -1.2, y: -1.4} ],
+          fill: { type: "base", brightness: -0.06 },
+          stroke: { type: "base", width: 1.6, brightness: -0.10 }
+        },
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ {x: 1.2, y: -1.4, width: 2.2}, {x: 5.6, y: -3.4, width: 1.4}, {x: 9.8, y: -4.6, width: 0.8} ],
+          { requiresModule: "magnet", fill: { type: "base", brightness: -0.10 }, stroke: { type: "base", width: 1.4, brightness: -0.12 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        { shape: "polygon", requiresModule: "magnet",
+          vertices: [ {x: 9.2, y: -4.3}, {x: 8.2, y: -4.9}, {x: 8.8, y: -3.7} ],
+          fill: { type: "base", brightness: -0.05 },
+          stroke: { type: "base", width: 1.1, brightness: -0.10 }
+        },
+
+        /*{
           shape: "polygon",
           vertices: [
             {x: 9, y: 0},
@@ -194,40 +332,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           ],
           fill: { type: "base", brightness: -0.05 },
           stroke: { type: "base", width: 3.2, brightness: -0.05 },
-        },
-        {
-          shape: "polygon",
-          vertices: [
-            {x: -4, y: 6},
-            {x: -9, y: 8},
-            {x: -9, y: -8},
-            {x: -4, y: -6}
-          ],
-          fill: { type: "base", brightness: -0.05 },
-          stroke: { type: "base", width: 3.2, brightness: -0.05 },
-        },
-        {
-          shape: "polygon",
-          vertices: [
-            {x: -9, y: 8},
-            {x: -12, y: 11},
-            {x: -12, y: 7},
-            {x: -9, y: 4}
-          ],
-          fill: { type: "base", brightness: -0.05 },
-          stroke: { type: "base", width: 3.2, brightness: -0.05 },
-        },
-        {
-          shape: "polygon",
-          vertices: [
-            {x: -9, y: -8},
-            {x: -12, y: -11},
-            {x: -12, y: -7},
-            {x: -9, y: -4}
-          ],
-          fill: { type: "base", brightness: -0.05 },
-          stroke: { type: "base", width: 3.2, brightness: -0.05 },
-        }
+        },*/
       ],
     },
     maxHp: 10,
@@ -255,7 +360,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
         start: { x: 0, y: 0 },
         stops: [
-          { offset: 0, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.25 } },
+          { offset: 0, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.1 } },
+          { offset: 0.25, color: { r: 0.2, g: 0.85, b: 0.95, a: 0.05 } },
           { offset: 1, color: { r: 0.2, g: 0.85, b: 0.95, a: 0 } },
         ],
       },

@@ -28,6 +28,8 @@ import {
   PlayerUnitRuntimeModifiers,
 } from "../../types/player-units";
 import { ExplosionModule } from "./ExplosionModule";
+import { UNIT_MODULE_IDS, UnitModuleId } from "../../db/unit-modules-db";
+import type { SkillId } from "../../db/skills-db";
 import { getBonusConfig } from "../../db/bonuses-db";
 import {
   VisualEffectState,
@@ -64,6 +66,7 @@ export interface PlayerUnitSpawnData {
   readonly hp?: number;
   readonly attackCooldown?: number;
   readonly runtimeModifiers?: PlayerUnitRuntimeModifiers;
+  readonly equippedModules?: UnitModuleId[];
 }
 
 interface PlayerUnitsModuleOptions {
@@ -74,6 +77,8 @@ interface PlayerUnitsModuleOptions {
   bonuses: BonusesModule;
   explosions: ExplosionModule;
   onAllUnitsDefeated?: () => void;
+  getModuleLevel: (id: UnitModuleId) => number;
+  hasSkill: (id: SkillId) => boolean;
 }
 
 interface PlayerUnitSaveData {
@@ -131,6 +136,8 @@ export class PlayerUnitsModule implements GameModule {
   private readonly bonuses: BonusesModule;
   private readonly explosions: ExplosionModule;
   private readonly onAllUnitsDefeated?: () => void;
+  private readonly getModuleLevel: (id: UnitModuleId) => number;
+  private readonly hasSkill: (id: SkillId) => boolean;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -145,6 +152,8 @@ export class PlayerUnitsModule implements GameModule {
     this.bonuses = options.bonuses;
     this.explosions = options.explosions;
     this.onAllUnitsDefeated = options.onAllUnitsDefeated;
+    this.getModuleLevel = options.getModuleLevel;
+    this.hasSkill = options.hasSkill;
   }
 
   public initialize(): void {
@@ -487,6 +496,14 @@ export class PlayerUnitsModule implements GameModule {
       : undefined;
     const visualEffects = createVisualEffectState();
 
+    const ownedModuleIds = Array.isArray(unit.equippedModules)
+      ? unit.equippedModules.filter((id): id is UnitModuleId => UNIT_MODULE_IDS.includes(id))
+      : [];
+    const ownedSkills: SkillId[] = [];
+    if (this.hasSkill("void_modules")) {
+      ownedSkills.push("void_modules");
+    }
+
     const objectId = this.scene.addObject("playerUnit", {
       position,
       fill: {
@@ -506,6 +523,8 @@ export class PlayerUnitsModule implements GameModule {
         physicalSize,
         baseFillColor: { ...baseFillColor },
         baseStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
+        modules: ownedModuleIds,
+        skills: ownedSkills,
       },
     });
 
@@ -1232,6 +1251,15 @@ const cloneRendererLayer = (
       offset: layer.offset ? { ...layer.offset } : undefined,
       fill: cloneRendererFill(layer.fill),
       stroke: cloneRendererStroke(layer.stroke),
+      // preserve conditional visibility flags
+      requiresModule: (layer as any).requiresModule,
+      requiresSkill: (layer as any).requiresSkill,
+      // animation/meta
+      anim: (layer as any).anim,
+      spine: (layer as any).spine,
+      segmentIndex: (layer as any).segmentIndex,
+      buildOpts: (layer as any).buildOpts,
+      groupId: (layer as any).groupId,
     };
   }
   return {
@@ -1241,6 +1269,12 @@ const cloneRendererLayer = (
     offset: layer.offset ? { ...layer.offset } : undefined,
     fill: cloneRendererFill(layer.fill),
     stroke: cloneRendererStroke(layer.stroke),
+    // preserve conditional visibility flags
+    requiresModule: (layer as any).requiresModule,
+    requiresSkill: (layer as any).requiresSkill,
+    // animation/meta
+    anim: (layer as any).anim,
+    groupId: (layer as any).groupId,
   };
 };
 

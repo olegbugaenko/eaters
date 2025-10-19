@@ -8,29 +8,33 @@ interface SceneDebugPanelProps {
   dynamicBytes?: number;
   dynamicReallocs?: number;
   breakdown?: { type: string; bytes: number; count: number }[];
+  particleActive?: number;
+  particleCapacity?: number;
+  particleEmitters?: number;
 }
 
 const UPDATE_INTERVAL_MS = 1000;
 const FPS_SAMPLE_MS = 1000;
 
-export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickCount, dynamicBytes = 0, dynamicReallocs = 0, breakdown = [] }) => {
-  const latestValues = useRef({ timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown });
+export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickCount, dynamicBytes = 0, dynamicReallocs = 0, breakdown = [], particleActive = 0, particleCapacity = 0, particleEmitters = 0 }) => {
+  const latestValues = useRef({ timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown, particleActive, particleCapacity, particleEmitters });
   const timeRef = useRef<HTMLDivElement | null>(null);
   const brickRef = useRef<HTMLDivElement | null>(null);
   const fpsRef = useRef<HTMLDivElement | null>(null);
   const vboRef = useRef<HTMLDivElement | null>(null);
+  const particlesRef = useRef<HTMLDivElement | null>(null);
   const lastDisplayedTime = useRef<string | null>(null);
   const lastDisplayedBricks = useRef<number | null>(null);
   const lastDisplayedFps = useRef<number | null>(null);
   const lastDisplayedVbo = useRef<string | null>(null);
 
   useEffect(() => {
-    latestValues.current = { timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown } as any;
-  }, [timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown]);
+    latestValues.current = { timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown, particleActive, particleCapacity, particleEmitters } as any;
+  }, [timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown, particleActive, particleCapacity, particleEmitters]);
 
   useEffect(() => {
     const update = () => {
-      const { timeMs: nextTime, brickCount: nextBricks, dynamicBytes: bytes, dynamicReallocs: reallocs } = latestValues.current;
+      const { timeMs: nextTime, brickCount: nextBricks, dynamicBytes: bytes, dynamicReallocs: reallocs, particleActive: pActive, particleCapacity: pCap, particleEmitters: pEmit } = latestValues.current as any;
       const formatted = formatDuration(nextTime);
 
       if (lastDisplayedTime.current !== formatted && timeRef.current) {
@@ -49,6 +53,10 @@ export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickC
           lastDisplayedVbo.current = next;
           vboRef.current.textContent = next;
         }
+      }
+
+      if (particlesRef.current) {
+        particlesRef.current.textContent = `Particles: ${pActive}/${pCap} (emitters: ${pEmit})`;
       }
     };
 
@@ -100,9 +108,10 @@ export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickC
   return (
     <div className="scene-debug-panel">
       <div className="scene-debug-panel__item" ref={timeRef} />
-      <div className="scene-debug-panel__item" ref={brickRef} />
+      {/*<div className="scene-debug-panel__item" ref={brickRef} />*/}
       <div className="scene-debug-panel__item" ref={fpsRef} />
       <div className="scene-debug-panel__item" ref={vboRef} />
+      <div className="scene-debug-panel__item" ref={particlesRef} />
     </div>
   );
 };

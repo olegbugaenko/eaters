@@ -53,7 +53,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   craftingState,
 }) => {
   const moduleTabs: { key: "shop" | "designer" | "roster"; label: string }[] = [
-    { key: "shop", label: "Module Shop" },
+    { key: "shop", label: "Organ Workshop" },
     { key: "designer", label: "Unit Designer" },
     { key: "roster", label: "Battle Roster" },
   ];
@@ -86,9 +86,9 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     if (!moduleWorkshopState.unlocked) {
       return (
         <div className="camp-tab-panels__modules-locked surface-panel">
-          <h2 className="heading-2">Modules Unavailable</h2>
+          <h2 className="heading-2">Organs Unavailable</h2>
           <p className="body-md text-muted">
-            Unlock the Void Module Fabrication skill to access module fabrication and upgrades.
+            Unlock the Chord skill to access organ fabrication and upgrades.
           </p>
         </div>
       );

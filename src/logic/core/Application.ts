@@ -136,6 +136,8 @@ export class Application {
       onAllUnitsDefeated: () => {
         this.handleAllUnitsDefeated();
       },
+      getModuleLevel: (id) => this.unitModuleWorkshopModule.getModuleLevel(id),
+      hasSkill: (id) => this.skillTreeModule.getLevel(id) > 0,
     });
     this.necromancerModule = new NecromancerModule({
       bridge: this.dataBridge,

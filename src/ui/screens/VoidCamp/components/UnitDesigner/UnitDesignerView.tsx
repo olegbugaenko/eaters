@@ -119,7 +119,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
         <header className="unit-designer__header">
           <div>
             <h2 className="heading-2">Unit Designer</h2>
-            <p className="body-md text-muted">Create units once modules are available.</p>
+            <p className="body-md text-muted">Create units once organs are available.</p>
           </div>
           <Button onClick={handleCreateUnit}>New Unit</Button>
         </header>
@@ -214,9 +214,9 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             />
           </div>
           <div className="unit-designer__selected">
-            <h4 className="heading-4">Equipped Modules</h4>
+            <h4 className="heading-4">Equipped Organs</h4>
             {selectedDetails.length === 0 ? (
-              <p className="body-sm text-muted">No modules equipped yet.</p>
+              <p className="body-sm text-muted">No organs equipped yet.</p>
             ) : (
               <ul className="unit-designer__selected-list">
                 {selectedDetails.map((module) => (
@@ -249,10 +249,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             )}
           </div>
           <div className="unit-designer__available">
-            <h4 className="heading-4">Available Modules</h4>
+            <h4 className="heading-4">Available Organs</h4>
             <div className="unit-designer__available-scroll">
               {availableModules.length === 0 ? (
-                <p className="body-sm text-muted">Fabricate modules to equip them here.</p>
+                <p className="body-sm text-muted">Cultivate organs to equip them here.</p>
               ) : (
                 <ul className="unit-designer__available-list">
                   {availableModules.map((module) => {

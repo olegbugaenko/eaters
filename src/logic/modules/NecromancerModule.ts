@@ -234,6 +234,7 @@ export class NecromancerModule implements GameModule {
       type: design.type,
       position: spawnPosition,
       runtimeModifiers: design.runtime,
+      equippedModules: [...design.modules],
     };
 
     this.consumeResources(design.cost);

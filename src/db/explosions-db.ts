@@ -290,10 +290,10 @@ const DEFAULT_EMITTER: ExplosionEmitterConfig = {
 
 const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
   emissionDurationMs: 340,
-  particlesPerSecond: 60,
+  particlesPerSecond: 40,
   baseSpeed: 0.08,
   speedVariation: 0.03,
-  particleLifetimeMs: 550,
+  particleLifetimeMs: 450,
   fadeStartMs: 280,
   sizeRange: { min: 0.6, max: 1.4 },
   spawnRadius: { min: 0, max: 5 },
@@ -306,10 +306,10 @@ const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
 
 const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
   emissionDurationMs: 520,
-  particlesPerSecond: 140,
+  particlesPerSecond: 100,
   baseSpeed: 0.12,
   speedVariation: 0.06,
-  particleLifetimeMs: 750,
+  particleLifetimeMs: 550,
   fadeStartMs: 480,
   sizeRange: { min: 0.8, max: 1.9 },
   spawnRadius: { min: 0, max: 8 },

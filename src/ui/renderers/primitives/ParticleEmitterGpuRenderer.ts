@@ -453,6 +453,24 @@ export const disposeParticleRenderResources = (
   rendererContexts.delete(gl);
 };
 
+export const getParticleStats = (
+  gl: WebGL2RenderingContext
+): { emitters: number; active: number; capacity: number } => {
+  const context = rendererContexts.get(gl);
+  if (!context) {
+    return { emitters: 0, active: 0, capacity: 0 };
+  }
+  let emitters = 0;
+  let active = 0;
+  let capacity = 0;
+  context.emitters.forEach((handle) => {
+    emitters += 1;
+    active += Math.max(0, handle.activeCount || 0);
+    capacity += Math.max(0, handle.capacity || 0);
+  });
+  return { emitters, active, capacity };
+};
+
 const getRendererContext = (
   gl: WebGL2RenderingContext
 ): ParticleRendererContext | null => {
