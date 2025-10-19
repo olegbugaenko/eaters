@@ -30,6 +30,7 @@ import type {
   PlayerUnitRendererFillConfig,
   PlayerUnitRendererStrokeConfig,
 } from "../../../db/player-units-db";
+import type { UnitModuleId } from "../../../db/unit-modules-db";
 
 interface PlayerUnitRendererLegacyPayload {
   kind?: string;
@@ -43,6 +44,7 @@ interface PlayerUnitCustomData {
   physicalSize?: number;
   baseFillColor?: SceneColor;
   baseStrokeColor?: SceneColor;
+  modules?: UnitModuleId[];
 }
 
 interface PlayerUnitEmitterRenderConfig extends ParticleEmitterBaseConfig {
@@ -472,6 +474,12 @@ const createCompositePrimitives = (
   dynamicPrimitives: DynamicPrimitive[]
 ): void => {
   renderer.layers.forEach((layer) => {
+    // If a layer requires a module, render it only when present
+    const payload = instance.data.customData as PlayerUnitCustomData | undefined;
+    const required = (layer as any).requiresModule as UnitModuleId | undefined;
+    if (required && (!payload || !Array.isArray(payload.modules) || !payload.modules.includes(required))) {
+      return;
+    }
     if (layer.shape === "polygon") {
       if (layer.stroke) {
         const strokeVertices = expandVerticesForStroke(layer.vertices, layer.stroke.width);

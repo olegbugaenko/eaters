@@ -156,7 +156,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
         <div>
           <h2 className="heading-2">Unit Designer</h2>
           <p className="body-md text-muted">
-            Configure custom ships by slotting modules you have fabricated.
+            Shape your creatures by slotting crafted armaments and manifested limbs.
           </p>
         </div>
       </header>

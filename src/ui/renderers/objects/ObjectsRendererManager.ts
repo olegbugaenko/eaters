@@ -68,6 +68,8 @@ export class ObjectsRendererManager {
   private staticDirty = false;
   private dynamicLayoutDirty = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
+  private lastDynamicRebuildMs = 0;
+  private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 200;
 
   // Stats
   private dynamicBytesAllocated = 0;
@@ -113,8 +115,15 @@ export class ObjectsRendererManager {
     }
 
     if (this.dynamicLayoutDirty) {
-      this.rebuildDynamicData();
-      result.dynamicData = this.dynamicData;
+      const now = Date.now();
+      if (now - this.lastDynamicRebuildMs >= ObjectsRendererManager.DYNAMIC_REBUILD_COOLDOWN_MS) {
+        this.rebuildDynamicData();
+        this.lastDynamicRebuildMs = now;
+        result.dynamicData = this.dynamicData;
+      } else if (this.pendingDynamicUpdates.length > 0) {
+        // While layout is dirty but cooldown not expired, still stream per-primitive updates
+        result.dynamicUpdates = this.pendingDynamicUpdates;
+      }
     } else if (this.pendingDynamicUpdates.length > 0) {
       result.dynamicUpdates = this.pendingDynamicUpdates;
     }
@@ -212,11 +221,15 @@ export class ObjectsRendererManager {
         this.dynamicLayoutDirty = true;
         return;
       }
-      if (this.dynamicLayoutDirty || !this.dynamicData) {
+      // Even if layout is marked dirty (some entries changed length),
+      // we can continue streaming updates for entries whose length did not change.
+      // Only skip when buffer is not available yet.
+      if (!this.dynamicData) {
         return;
       }
       this.dynamicData.set(data, entry.offset);
-      this.pendingDynamicUpdates.push({ offset: entry.offset, data: data.slice() });
+      // Avoid per-update allocations: upload the same data buffer this frame
+      this.pendingDynamicUpdates.push({ offset: entry.offset, data });
     });
   }
 
@@ -283,7 +296,15 @@ export class ObjectsRendererManager {
       (sum, entry) => sum + entry.primitive.data.length,
       0
     );
-    const data = new Float32Array(totalLength);
+    // Ensure capacity only grows when strictly necessary; keep headroom on growth
+    const currentCapacity = this.dynamicData?.length ?? 0;
+    const needsRealloc = totalLength > currentCapacity || !this.dynamicData;
+    if (needsRealloc) {
+      const newCapacity = Math.ceil(totalLength * 1.5);
+      this.dynamicData = new Float32Array(Math.max(newCapacity, totalLength));
+      this.dynamicReallocations += 1;
+    }
+    const data = this.dynamicData!;
     let offset = 0;
     this.dynamicEntries.forEach((entry) => {
       entry.offset = offset;
@@ -292,13 +313,12 @@ export class ObjectsRendererManager {
       offset += entry.length;
     });
     this.dynamicData = data;
-    this.dynamicVertexCount = this.dynamicData.length / VERTEX_COMPONENTS;
+    this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
 
     // stats
-    this.dynamicBytesAllocated = this.dynamicData.byteLength;
-    this.dynamicReallocations += 1;
+    this.dynamicBytesAllocated = data.byteLength;
 
     // per-type breakdown
     this.dynamicBytesByType.clear();

@@ -133,8 +133,8 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     <div className="modules-workshop surface-panel stack-lg">
       <header className="modules-workshop__header">
         <div>
-          <h2 className="heading-2">Module Shop</h2>
-          <p className="text-muted">Craft ship augments and improve them over time.</p>
+          <h2 className="heading-2">Armament Workshop</h2>
+          <p className="text-muted">Forge armaments and manifested parts, then refine them over time.</p>
         </div>
       </header>
       <div className="modules-workshop__content">

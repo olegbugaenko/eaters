@@ -33,123 +33,88 @@ export interface UnitModuleConfig {
 const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
   magnet: {
     id: "magnet",
-    name: "Magnet",
+    name: "Shard-Lure Tendrils",
     description:
-      "Flux lattice arrays siphon additional shards from every shattered brick this ship claims.",
+      "Filamented feelers thrum with occult magnetism, drawing extra shards from every shattered brick your creature claims.",
     bonusLabel: "Brick reward multiplier",
     bonusType: "multiplier",
     baseBonusValue: 2,
     bonusPerLevel: 0.1,
     manaCostMultiplier: 1.75,
     sanityCost: 1,
-    baseCost: {
-      sand: 200,
-    },
+    baseCost: { sand: 200 },
   },
   perforator: {
     id: "perforator",
-    name: "Perforator",
+    name: "Rending Tentacles",
     description:
-      "Oscillating drills fracture targets so force ripples outward into the surrounding formation.",
-    bonusLabel: "Damage transfer",
+      "Whip-like limbs tear through targets so the force bleeds into adjacent masonry, weakening the formation around the strike.",
+    bonusLabel: "Damage spillover",
     bonusType: "percent",
     baseBonusValue: 0.25,
     bonusPerLevel: 0.01,
     manaCostMultiplier: 1.75,
     sanityCost: 1,
-    baseCost: {
-      sand: 200,
-    },
+    baseCost: { sand: 200 },
   },
   vitalHull: {
     id: "vitalHull",
-    name: "Vital Hull",
+    name: "Vital Flesh",
     description:
-      "Bio-reactive plating grafts regenerative tissues that swell the ship's structure.",
+      "Bio-reactive tissues graft and swell, thickening the creature’s living bulk and knitting wounds as it grows.",
     bonusLabel: "Max HP multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.8,
     bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 1,
-    baseCost: {
-      organics: 200,
-    },
-    unlockedBy: [
-      {
-        type: "map",
-        id: "initial",
-        level: 1,
-      },
-    ],
+    baseCost: { organics: 200 },
+    unlockedBy: [{ type: "map", id: "initial", level: 1 }],
   },
   ironForge: {
     id: "ironForge",
-    name: "Iron Forge",
+    name: "Iron Fangs",
     description:
-      "Magnetized furnaces overcharge weapon cores to deliver brutally efficient strikes.",
+      "Hardened iron fangs and knuckle-spikes bite deeper, turning each swing into a brutal, mauling strike.",
     bonusLabel: "Damage multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.8,
     bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 1,
-    baseCost: {
-      iron: 200,
-    },
-    unlockedBy: [
-      {
-        type: "map",
-        id: "initial",
-        level: 1,
-      },
-    ],
+    baseCost: { iron: 200 },
+    unlockedBy: [{ type: "map", id: "initial", level: 1 }],
   },
   silverArmor: {
     id: "silverArmor",
-    name: "Silver Armor",
+    name: "Silver Carapace",
     description:
-      "Interlocking argent plates reinforce the hull, scattering incoming blows across mirrored facets.",
+      "Interlocking argent scutes sheathe the body, scattering incoming blows across mirrored scales.",
     bonusLabel: "Armor multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.5,
     bonusPerLevel: 0.05,
     manaCostMultiplier: 2.75,
     sanityCost: 1,
-    baseCost: {
-      silver: 100,
-    },
-    unlockedBy: [
-      {
-        type: "map",
-        id: "wire",
-        level: 1,
-      },
-    ],
+    baseCost: { silver: 100 },
+    unlockedBy: [{ type: "map", id: "wire", level: 1 }],
   },
   internalFurnace: {
     id: "internalFurnace",
-    name: "Internal Furnace",
+    name: "Coal Heart",
     description:
-      "A coal-fed heart stokes each strike, compounding momentum into a blazing offensive surge.",
+      "An embered heart pumps heat through sinew—each consecutive hit stokes the blaze, compounding your offensive frenzy.",
     bonusLabel: "Attack bonus per hit",
     bonusType: "percent",
     baseBonusValue: 0.05,
     bonusPerLevel: 0.005,
     manaCostMultiplier: 2.85,
     sanityCost: 1,
-    baseCost: {
-      coal: 100,
-    },
-    unlockedBy: [
-      {
-        type: "map",
-        id: "spruce",
-        level: 1,
-      },
-    ],
+    baseCost: { coal: 100 },
+    unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
   },
 };
+
 
 export const getUnitModuleConfig = (id: UnitModuleId): UnitModuleConfig => {
   const config = UNIT_MODULE_DB[id];

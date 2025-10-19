@@ -176,16 +176,16 @@ export const createParticleEmitterPrimitive = <
         return state.data;
       }
 
-      const nextSignature = serializeConfig(nextConfig, options);
-      if (state.signature !== nextSignature || state.capacity !== nextConfig.capacity) {
+      // Avoid expensive per-frame serialization; only recreate when capacity increases
+      if (nextConfig.capacity > state.capacity) {
         destroyParticleEmitterGpuState(state);
         state = createParticleEmitterState(target, nextConfig, options);
         return state.data;
       }
 
       state.config = nextConfig;
-      state.capacity = nextConfig.capacity;
-      state.signature = nextSignature;
+      // keep buffer capacity stable to prevent frequent reallocations
+      state.capacity = Math.max(state.capacity, nextConfig.capacity);
 
       const now = getNowMs();
       const deltaMs = Math.max(0, Math.min(now - state.lastTimestamp, MAX_DELTA_MS));

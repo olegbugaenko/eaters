@@ -6,6 +6,7 @@ import {
 } from "../logic/services/SceneObjectManager";
 import { ParticleEmitterShape } from "../logic/services/particles/ParticleEmitterShared";
 import { ResourceCost } from "../types/resources";
+import type { UnitModuleId } from "./unit-modules-db";
 
 export type PlayerUnitType = "bluePentagon";
 
@@ -44,6 +45,7 @@ export type PlayerUnitRendererLayerConfig =
       offset?: SceneVector2;
       fill?: PlayerUnitRendererFillConfig;
       stroke?: PlayerUnitRendererStrokeConfig;
+      requiresModule?: UnitModuleId;
     }
   | {
       shape: "circle";
@@ -52,6 +54,7 @@ export type PlayerUnitRendererLayerConfig =
       offset?: SceneVector2;
       fill?: PlayerUnitRendererFillConfig;
       stroke?: PlayerUnitRendererStrokeConfig;
+      requiresModule?: UnitModuleId;
     };
 
 export interface PlayerUnitRendererCompositeConfig {
