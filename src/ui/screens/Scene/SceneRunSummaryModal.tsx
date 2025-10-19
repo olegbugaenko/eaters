@@ -12,6 +12,9 @@ interface SceneRunSummaryAutoRestartControls {
   enabled: boolean;
   countdown: number;
   onToggle: (enabled: boolean) => void;
+  thresholdEnabled: boolean;
+  minEffectiveUnits: number;
+  onUpdateThreshold: (enabled: boolean, minUnits: number) => void;
 }
 
 interface SceneRunSummaryModalProps {
@@ -112,6 +115,23 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
             <span className="scene-run-summary__auto-restart-timer">
               {Math.max(0, Math.ceil(autoRestart.countdown))}s
             </span>
+            <div className="scene-run-summary__threshold">
+              <label className="scene-run-summary__auto-restart-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoRestart.thresholdEnabled}
+                  onChange={(e) => autoRestart.onUpdateThreshold(e.target.checked, autoRestart.minEffectiveUnits)}
+                />
+                <span>Early restart when effective units below</span>
+              </label>
+              <input
+                className="scene-run-summary__threshold-input"
+                type="number"
+                min={0}
+                value={autoRestart.minEffectiveUnits}
+                onChange={(e) => autoRestart.onUpdateThreshold(autoRestart.thresholdEnabled, Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+              />
+            </div>
           </div>
         ) : null}
         <div className="scene-run-summary__actions">

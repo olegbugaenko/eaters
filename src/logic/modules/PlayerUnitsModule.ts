@@ -156,6 +156,10 @@ export class PlayerUnitsModule implements GameModule {
     this.hasSkill = options.hasSkill;
   }
 
+  public getCurrentUnitCount(): number {
+    return this.unitOrder.length;
+  }
+
   public initialize(): void {
     // Units are spawned by the map module.
     this.pushBlueprintStats();

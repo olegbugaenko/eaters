@@ -162,6 +162,7 @@ export class Application {
       resources: resourcesModule,
       unlocks: unlockService,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+      onRunCompleted: (success) => this.handleMapRunCompleted(success),
     });
     this.mapModule = mapModuleReference;
 
@@ -271,6 +272,10 @@ export class Application {
 
   public setAutoRestartEnabled(enabled: boolean): void {
     this.mapModule.setAutoRestartEnabled(enabled);
+  }
+
+  public setAutoRestartThreshold(enabled: boolean, minEffectiveUnits: number): void {
+    this.mapModule.setAutoRestartThreshold(enabled, minEffectiveUnits);
   }
 
   public leaveCurrentMap(): void {

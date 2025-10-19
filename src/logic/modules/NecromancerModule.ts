@@ -259,6 +259,32 @@ export class NecromancerModule implements GameModule {
     });
   }
 
+  public getAffordableSpawnCountBySanity(): number {
+    if (!this.mapActive) {
+      return 0;
+    }
+    const currentSanity = this.sanity.current;
+    // Prefer designed units if present
+    const costs = (this.cachedDesigns.length > 0
+      ? this.cachedDesigns.map((d) => d.cost.sanity)
+      : PLAYER_UNIT_TYPES.map((type) => normalizeResourceCost(getPlayerUnitConfig(type).cost).sanity)
+    ).filter((c) => c > 0)
+     .sort((a, b) => a - b);
+
+    let affordable = 0;
+    let remaining = currentSanity;
+    for (let i = 0; i < costs.length; i += 1) {
+      const c = costs[i]!;
+      if (remaining >= c) {
+        affordable += 1;
+        remaining -= c;
+      } else {
+        break;
+      }
+    }
+    return affordable;
+  }
+
   public endCurrentMap(): void {
     this.mapActive = false;
     this.spawnPoints = [];

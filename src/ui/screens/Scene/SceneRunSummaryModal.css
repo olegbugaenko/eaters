@@ -18,7 +18,7 @@
 
 .scene-run-summary__dialog {
   position: relative;
-  max-width: 420px;
+  max-width: 450px;
   width: calc(100% - 3rem);
   padding: 2rem;
   border-radius: 1rem;
@@ -167,4 +167,9 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: rgba(97, 218, 251, 0.95);
+}
+
+
+.scene-run-summary__threshold-input {
+  margin-top: var(--spacing-md);
 }

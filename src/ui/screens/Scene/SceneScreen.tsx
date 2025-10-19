@@ -333,6 +333,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
+  const [thresholdEnabled, setThresholdEnabled] = useState(
+    DEFAULT_MAP_AUTO_RESTART_STATE.thresholdEnabled ?? false
+  );
+  const [minEffectiveUnits, setMinEffectiveUnits] = useState(
+    DEFAULT_MAP_AUTO_RESTART_STATE.minEffectiveUnits ?? 3
+  );
   const autoRestartHandledRef = useRef(false);
   const tutorialSteps = useMemo<SceneTutorialStep[]>(() => {
     if (!tutorial) {
@@ -522,6 +528,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const handleToggleAutoRestart = useCallback(
     (enabled: boolean) => {
       app.setAutoRestartEnabled(enabled);
+    },
+    [app]
+  );
+
+  const handleUpdateAutoRestartThreshold = useCallback(
+    (enabled: boolean, minUnits: number) => {
+      setThresholdEnabled(enabled);
+      setMinEffectiveUnits(minUnits);
+      app.setAutoRestartThreshold(enabled, minUnits);
     },
     [app]
   );
@@ -991,6 +1006,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
                   enabled: autoRestartState.enabled,
                   countdown: autoRestartCountdown,
                   onToggle: handleToggleAutoRestart,
+                  thresholdEnabled,
+                  minEffectiveUnits,
+                  onUpdateThreshold: handleUpdateAutoRestartThreshold,
                 }
               : undefined
           }
