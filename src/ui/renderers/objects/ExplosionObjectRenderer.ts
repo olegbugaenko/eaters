@@ -308,7 +308,18 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
 const toWaveUniformsFromFill = (
   fill: SceneFill
 ): { uniforms: WaveUniformConfig; key: string } => {
-  const key = JSON.stringify(fill);
+  // Normalize batching key to avoid unique keys per radius/end value
+  const key = JSON.stringify(
+    fill.fillType === FILL_TYPES.SOLID
+      ? { t: FILL_TYPES.SOLID, c: (fill as any).color }
+      : {
+          t: fill.fillType,
+          // ignore start/end (radius/offset), keep gradient color stops only
+          stops: Array.isArray((fill as any).stops)
+            ? (fill as any).stops.map((s: any) => ({ o: s.offset ?? 0, c: s.color }))
+            : [],
+        }
+  );
   // Default SOLID white
   let fillType = FILL_TYPES.SOLID as number;
   const stopOffsets = new Float32Array([0, 1, 1]);
