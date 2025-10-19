@@ -223,6 +223,9 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
       // derive fill uniforms and batching key from scene fill
       const fill = (instance.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
       const { uniforms, key: fillKey } = toWaveUniformsFromFill(fill);
+      // Ensure wave radius follows instance size over time (do not lock to explicit radius)
+      uniforms.hasExplicitRadius = false;
+      uniforms.explicitRadius = 0;
 
       const DEFAULT_CAPACITY = 64;
       const batch = ensureWaveBatch(gl, fillKey, DEFAULT_CAPACITY, uniforms);

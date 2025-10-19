@@ -18,7 +18,9 @@ export class GameLoop {
     this.lastTick = performance.now();
     this.timer = window.setInterval(() => {
       const now = performance.now();
-      const delta = now - this.lastTick;
+      const deltaRaw = now - this.lastTick;
+      // Clamp delta to avoid huge updates after background tab throttling
+      const delta = Math.min(Math.max(deltaRaw, 0), 200);
       this.lastTick = now;
       this.modules.forEach((module) => module.tick(delta));
     }, TICK_INTERVAL);
