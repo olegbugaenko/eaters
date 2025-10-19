@@ -264,25 +264,21 @@ export class NecromancerModule implements GameModule {
       return 0;
     }
     const currentSanity = this.sanity.current;
-    // Prefer designed units if present
+    // Prefer the cheapest available option and assume designs can be summoned repeatedly.
+    // This matches the threshold definition: count of units purchasable with current sanity.
     const costs = (this.cachedDesigns.length > 0
-      ? this.cachedDesigns.map((d) => d.cost.sanity)
-      : PLAYER_UNIT_TYPES.map((type) => normalizeResourceCost(getPlayerUnitConfig(type).cost).sanity)
-    ).filter((c) => c > 0)
-     .sort((a, b) => a - b);
+      ? this.cachedDesigns.map((d) => Math.max(0, d.cost.sanity))
+      : PLAYER_UNIT_TYPES.map((type) => Math.max(0, normalizeResourceCost(getPlayerUnitConfig(type).cost).sanity))
+    ).filter((c) => c > 0);
 
-    let affordable = 0;
-    let remaining = currentSanity;
-    for (let i = 0; i < costs.length; i += 1) {
-      const c = costs[i]!;
-      if (remaining >= c) {
-        affordable += 1;
-        remaining -= c;
-      } else {
-        break;
-      }
+    if (costs.length === 0) {
+      return 0;
     }
-    return affordable;
+    const minCost = costs.reduce((min, c) => (c > 0 && c < min ? c : min), Number.POSITIVE_INFINITY);
+    if (!Number.isFinite(minCost) || minCost <= 0) {
+      return 0;
+    }
+    return Math.max(0, Math.floor(currentSanity / minCost));
   }
 
   public endCurrentMap(): void {
