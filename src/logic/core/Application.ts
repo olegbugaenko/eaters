@@ -22,6 +22,7 @@ import { UnitModuleWorkshopModule } from "../modules/UnitModuleWorkshopModule";
 import { UnitDesignModule } from "../modules/UnitDesignModule";
 import { BuildingsModule } from "../modules/BuildingsModule";
 import { CraftingModule } from "../modules/CraftingModule";
+import { resetAllWaveBatches } from "../../ui/renderers/primitives/ExplosionWaveGpuRenderer";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -196,6 +197,10 @@ export class Application {
     const scene = this.getSceneObjects();
     scene.clear();
     this.modules.forEach((module) => module.reset());
+    // Clear GPU wave instances to avoid lingering artifacts
+    try {
+      resetAllWaveBatches();
+    } catch {}
   }
 
   public selectSlot(slot: SaveSlotId): void {

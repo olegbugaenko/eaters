@@ -221,11 +221,11 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
     // GPU wave ring primitive (lazy init to avoid races with GL context availability)
     {
       let batch: ReturnType<typeof ensureWaveBatch> | null = null;
+      let fillKeyCached: string | null = null;
       let slotIndex = -1;
       let age = 0;
       const lifetime = 800;
       let lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-
       dynamicPrimitives.push({
         data: new Float32Array(0),
         update(target) {
@@ -239,9 +239,47 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
               uniforms.explicitRadius = 0;
               const DEFAULT_CAPACITY = 64;
               batch = ensureWaveBatch(gl, fillKey, DEFAULT_CAPACITY, uniforms);
+              fillKeyCached = batch ? fillKey : null;
             }
             if (!batch) {
               return null;
+            }
+          }
+
+          // If fill changed to a different batching key (unlikely), re-acquire batch
+          const currentFill = (target.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
+          const { key: currentKey } = toWaveUniformsFromFill(currentFill);
+          if (fillKeyCached && currentKey !== fillKeyCached) {
+            // Deactivate previous slot in the old batch before switching
+            if (batch && slotIndex >= 0 && slotIndex < batch.capacity) {
+              writeWaveInstance(batch, slotIndex, {
+                position: { x: 0, y: 0 },
+                size: 0,
+                age: 0,
+                lifetime: 0,
+                active: false,
+              });
+              let activeCount = 0;
+              for (let i = 0; i < batch.capacity; i += 1) {
+                const inst = batch.instances[i];
+                if (inst && inst.active) activeCount += 1;
+              }
+              setWaveBatchActiveCount(batch, activeCount);
+            }
+            const gl = getParticleEmitterGlContext();
+            if (gl) {
+              const { uniforms } = toWaveUniformsFromFill(currentFill);
+              uniforms.hasExplicitRadius = false;
+              uniforms.explicitRadius = 0;
+              const DEFAULT_CAPACITY = 64;
+              const next = ensureWaveBatch(gl, currentKey, DEFAULT_CAPACITY, uniforms);
+              if (next) {
+                batch = next;
+                fillKeyCached = currentKey;
+                slotIndex = -1;
+                age = 0;
+                lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+              }
             }
           }
 
@@ -311,12 +349,25 @@ const toWaveUniformsFromFill = (
   // Normalize batching key to avoid unique keys per radius/end value
   const key = JSON.stringify(
     fill.fillType === FILL_TYPES.SOLID
-      ? { t: FILL_TYPES.SOLID, c: (fill as any).color }
+      ? {
+          t: FILL_TYPES.SOLID,
+          // RGB only; ignore alpha which changes frame-to-frame
+          c: {
+            r: (fill as any).color?.r ?? 1,
+            g: (fill as any).color?.g ?? 1,
+            b: (fill as any).color?.b ?? 1,
+          },
+        }
       : {
           t: fill.fillType,
-          // ignore start/end (radius/offset), keep gradient color stops only
+          // ignore start/end (radius/offset), and ignore alpha; use only offsets + RGB
           stops: Array.isArray((fill as any).stops)
-            ? (fill as any).stops.map((s: any) => ({ o: s.offset ?? 0, c: s.color }))
+            ? (fill as any).stops.map((s: any) => ({
+                o: s?.offset ?? 0,
+                r: s?.color?.r ?? 1,
+                g: s?.color?.g ?? 1,
+                b: s?.color?.b ?? 1,
+              }))
             : [],
         }
   );
