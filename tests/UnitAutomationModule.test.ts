@@ -68,6 +68,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
@@ -156,6 +157,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
@@ -232,6 +234,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const heavyDesign: UnitDesignerUnitState = {
       id: "heavy-design",
@@ -266,6 +269,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const designs: UnitDesignerUnitState[] = [lightDesign, heavyDesign];
     const unitDesigns = {
@@ -362,6 +366,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const expensiveDesign: UnitDesignerUnitState = {
       id: "expensive-design",
@@ -396,6 +401,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const designs: UnitDesignerUnitState[] = [cheapDesign, expensiveDesign];
     const manaCosts = new Map<UnitDesignId, number>([
@@ -504,6 +510,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const expensiveDesign: UnitDesignerUnitState = {
       id: "wait-expensive",
@@ -538,6 +545,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const designs: UnitDesignerUnitState[] = [cheapDesign, expensiveDesign];
     const manaCosts = new Map<UnitDesignId, number>([
@@ -653,6 +661,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const expensiveDesign: UnitDesignerUnitState = {
       id: "fallback-expensive",
@@ -687,6 +696,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
       },
+      targetingMode: "nearest",
     };
     const designs: UnitDesignerUnitState[] = [cheapDesign, expensiveDesign];
     const manaCosts = new Map<UnitDesignId, number>([

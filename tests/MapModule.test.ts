@@ -75,7 +75,7 @@ describe("MapModule", () => {
       explosions,
       getModuleLevel: () => 0,
       hasSkill: () => false,
-      getRosterTargetingMode: () => "nearest",
+      getDesignTargetingMode: () => "nearest",
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
@@ -342,7 +342,7 @@ describe("Map unlocking", () => {
       explosions,
       getModuleLevel: () => 0,
       hasSkill: () => false,
-      getRosterTargetingMode: () => "nearest",
+      getDesignTargetingMode: () => "nearest",
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
@@ -423,7 +423,7 @@ describe("Map unlocking", () => {
       explosions,
       getModuleLevel: () => 0,
       hasSkill: () => false,
-      getRosterTargetingMode: () => "nearest",
+      getDesignTargetingMode: () => "nearest",
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
@@ -493,7 +493,7 @@ describe("Map auto restart", () => {
       explosions,
       getModuleLevel: () => 0,
       hasSkill: () => false,
-      getRosterTargetingMode: () => "nearest",
+      getDesignTargetingMode: () => "nearest",
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({

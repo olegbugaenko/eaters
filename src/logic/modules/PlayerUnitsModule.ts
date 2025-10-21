@@ -39,6 +39,7 @@ import {
   computeVisualEffectStrokeColor,
 } from "../visuals/VisualEffectState";
 import { UnitTargetingMode } from "../../types/unit-targeting";
+import { UnitDesignId } from "./UnitDesignModule";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -73,6 +74,7 @@ export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
 export const PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY = "playerUnits/blueprintStats";
 
 export interface PlayerUnitSpawnData {
+  readonly designId?: UnitDesignId;
   readonly type: PlayerUnitType;
   readonly position: SceneVector2;
   readonly hp?: number;
@@ -91,7 +93,10 @@ interface PlayerUnitsModuleOptions {
   onAllUnitsDefeated?: () => void;
   getModuleLevel: (id: UnitModuleId) => number;
   hasSkill: (id: SkillId) => boolean;
-  getRosterTargetingMode: () => UnitTargetingMode;
+  getDesignTargetingMode: (
+    designId: UnitDesignId | null,
+    type: PlayerUnitType
+  ) => UnitTargetingMode;
 }
 
 interface PlayerUnitSaveData {
@@ -105,6 +110,7 @@ interface PheromoneAttackBonusState {
 
 interface PlayerUnitState {
   id: string;
+  designId: UnitDesignId | null;
   type: PlayerUnitType;
   position: SceneVector2;
   spawnPosition: SceneVector2;
@@ -165,7 +171,10 @@ export class PlayerUnitsModule implements GameModule {
   private readonly onAllUnitsDefeated?: () => void;
   private readonly getModuleLevel: (id: UnitModuleId) => number;
   private readonly hasSkill: (id: SkillId) => boolean;
-  private readonly getRosterTargetingMode: () => UnitTargetingMode;
+  private readonly getDesignTargetingMode: (
+    designId: UnitDesignId | null,
+    type: PlayerUnitType
+  ) => UnitTargetingMode;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -182,7 +191,7 @@ export class PlayerUnitsModule implements GameModule {
     this.onAllUnitsDefeated = options.onAllUnitsDefeated;
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
-    this.getRosterTargetingMode = options.getRosterTargetingMode;
+    this.getDesignTargetingMode = options.getDesignTargetingMode;
   }
 
   public getCurrentUnitCount(): number {
@@ -586,10 +595,9 @@ export class PlayerUnitsModule implements GameModule {
       },
     });
 
-    const id = this.createUnitId();
-
     const state: PlayerUnitState = {
-      id,
+      id: this.createUnitId(),
+      designId: unit.designId ?? null,
       type,
       position: { ...position },
       spawnPosition: { ...position },
@@ -633,7 +641,7 @@ export class PlayerUnitsModule implements GameModule {
       pheromoneHealingMultiplier,
       pheromoneAggressionMultiplier,
       pheromoneAttackBonuses: [],
-      targetingMode: this.getRosterTargetingMode(),
+      targetingMode: this.getDesignTargetingMode(unit.designId ?? null, type),
       wanderTarget: null,
       wanderCooldown: 0,
     };
@@ -667,7 +675,7 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private syncUnitTargetingMode(unit: PlayerUnitState): UnitTargetingMode {
-    const mode = this.getRosterTargetingMode();
+    const mode = this.getDesignTargetingMode(unit.designId, unit.type);
     if (unit.targetingMode !== mode) {
       unit.targetingMode = mode;
       unit.targetBrickId = null;

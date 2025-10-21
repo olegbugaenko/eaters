@@ -52,7 +52,7 @@ describe("PlayerUnitsModule", () => {
       explosions,
       getModuleLevel: () => 0,
       hasSkill: () => false,
-      getRosterTargetingMode: () => "nearest",
+      getDesignTargetingMode: () => "nearest",
     });
 
     bricks.setBricks([
@@ -134,7 +134,7 @@ describe("PlayerUnitsModule", () => {
       explosions,
       getModuleLevel: () => 0,
       hasSkill: () => false,
-      getRosterTargetingMode: () => "nearest",
+      getDesignTargetingMode: () => "nearest",
     });
 
     bricks.setBricks([
