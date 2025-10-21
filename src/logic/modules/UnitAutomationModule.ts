@@ -46,6 +46,7 @@ interface UnitAutomationSaveData {
 
 const AUTOMATION_SKILL_ID: SkillId = "stone_automatons";
 const MAX_AUTOMATION_ITERATIONS = 32;
+const MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK = 32;
 
 export interface AutomationSelectionCandidate {
   readonly designId: UnitDesignId;
@@ -114,6 +115,7 @@ export class UnitAutomationModule implements GameModule {
   private designOrder: UnitDesignId[] = [];
   private pendingTypeEnables = new Map<PlayerUnitType, boolean>();
   private spawnCounts = new Map<UnitDesignId, number>();
+  private failureCounts = new Map<UnitDesignId, number>();
   private unsubscribeDesigns: (() => void) | null = null;
 
   constructor(options: UnitAutomationModuleOptions) {
@@ -135,6 +137,7 @@ export class UnitAutomationModule implements GameModule {
     this.enabled.clear();
     this.weights.clear();
     this.spawnCounts.clear();
+    this.failureCounts.clear();
     this.pendingTypeEnables.clear();
     this.refreshUnlockState();
     this.pushState();
@@ -146,6 +149,7 @@ export class UnitAutomationModule implements GameModule {
     this.weights = parsed.weights;
     this.pendingTypeEnables = parsed.pendingTypes;
     this.spawnCounts.clear();
+    this.failureCounts.clear();
     this.refreshUnlockState();
     this.pushState();
   }
@@ -183,6 +187,7 @@ export class UnitAutomationModule implements GameModule {
     } else {
       this.enabled.set(designId, false);
       this.spawnCounts.delete(designId);
+      this.failureCounts.delete(designId);
     }
     this.pushState();
   }
@@ -208,9 +213,15 @@ export class UnitAutomationModule implements GameModule {
       const success = this.necromancer.trySpawnDesign(designId);
       if (success) {
         this.incrementSpawnCount(designId);
-      } else {
-        skipped.add(designId);
+        this.failureCounts.delete(designId);
+        continue;
       }
+      const failures = (this.failureCounts.get(designId) ?? 0) + 1;
+      this.failureCounts.set(designId, failures);
+      if (failures < MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK) {
+        break;
+      }
+      skipped.add(designId);
     }
   }
 
@@ -360,6 +371,7 @@ export class UnitAutomationModule implements GameModule {
         this.enabled.delete(id);
         this.weights.delete(id);
         this.spawnCounts.delete(id);
+        this.failureCounts.delete(id);
       }
     });
     this.designOrder = designs.map((design) => design.id);

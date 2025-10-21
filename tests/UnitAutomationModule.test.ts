@@ -177,6 +177,403 @@ describe("UnitAutomationModule", () => {
     assert(attempts.length > 0, "automation should attempt spawns");
   });
 
+  test("automation distributes spawns according to weights", () => {
+    const bridge = new DataBridge();
+    const attempts: UnitDesignId[] = [];
+    const necromancer = {
+      trySpawnDesign: (id: UnitDesignId) => {
+        attempts.push(id);
+        return true;
+      },
+    };
+    const unitType = PLAYER_UNIT_TYPES[0];
+    assert(unitType, "expected at least one unit type for automation tests");
+    const lightDesign: UnitDesignerUnitState = {
+      id: "light-design",
+      type: unitType,
+      name: "Light",
+      modules: [],
+      moduleDetails: [],
+      cost: createEmptyResourceAmount(),
+      blueprint: {
+        type: unitType,
+        name: "Light",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const heavyDesign: UnitDesignerUnitState = {
+      id: "heavy-design",
+      type: unitType,
+      name: "Heavy",
+      modules: [],
+      moduleDetails: [],
+      cost: createEmptyResourceAmount(),
+      blueprint: {
+        type: unitType,
+        name: "Heavy",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const designs: UnitDesignerUnitState[] = [lightDesign, heavyDesign];
+    const unitDesigns = {
+      subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
+        listener(designs);
+        return () => undefined;
+      },
+      getDefaultDesignForType: () => lightDesign,
+      getActiveRosterDesigns: () => designs,
+    };
+
+    const module = new UnitAutomationModule({
+      bridge,
+      necromancer,
+      unitDesigns,
+      getSkillLevel: () => 1,
+    });
+
+    module.initialize();
+    module.setAutomationEnabled(lightDesign.id, true);
+    module.setAutomationEnabled(heavyDesign.id, true);
+    module.setAutomationWeight(lightDesign.id, 1);
+    module.setAutomationWeight(heavyDesign.id, 3);
+
+    attempts.length = 0;
+
+    for (let index = 0; index < 10; index += 1) {
+      module.tick(16);
+    }
+
+    const lightCount = attempts.filter((id) => id === lightDesign.id).length;
+    const heavyCount = attempts.filter((id) => id === heavyDesign.id).length;
+    const totalAttempts = lightCount + heavyCount;
+
+    assert(totalAttempts > 0, "expected automation to attempt spawns");
+
+    const lightShare = lightCount / totalAttempts;
+    const heavyShare = heavyCount / totalAttempts;
+
+    const expectedLightShare = 1 / 4;
+    const expectedHeavyShare = 3 / 4;
+
+    assert(
+      Math.abs(lightShare - expectedLightShare) < 0.1,
+      `expected light unit share to be close to ${expectedLightShare}, got ${lightShare}`
+    );
+    assert(
+      Math.abs(heavyShare - expectedHeavyShare) < 0.1,
+      `expected heavy unit share to be close to ${expectedHeavyShare}, got ${heavyShare}`
+    );
+  });
+
+  test("automation eventually summons expensive designs as mana accumulates", () => {
+    const bridge = new DataBridge();
+    const attempts: UnitDesignId[] = [];
+    const unitType = PLAYER_UNIT_TYPES[0];
+    assert(unitType, "expected at least one unit type for automation tests");
+    const makeCost = (manaCost: number) => {
+      const cost = createEmptyResourceAmount();
+      cost.mana = manaCost;
+      return cost;
+    };
+    const cheapDesign: UnitDesignerUnitState = {
+      id: "cheap-design",
+      type: unitType,
+      name: "Cheap",
+      modules: [],
+      moduleDetails: [],
+      cost: makeCost(10),
+      blueprint: {
+        type: unitType,
+        name: "Cheap",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const expensiveDesign: UnitDesignerUnitState = {
+      id: "expensive-design",
+      type: unitType,
+      name: "Expensive",
+      modules: [],
+      moduleDetails: [],
+      cost: makeCost(30),
+      blueprint: {
+        type: unitType,
+        name: "Expensive",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const designs: UnitDesignerUnitState[] = [cheapDesign, expensiveDesign];
+    const manaCosts = new Map<UnitDesignId, number>([
+      [cheapDesign.id, 10],
+      [expensiveDesign.id, 30],
+    ]);
+    let mana = 0;
+    const necromancer = {
+      trySpawnDesign: (id: UnitDesignId) => {
+        const cost = manaCosts.get(id) ?? 0;
+        if (mana < cost) {
+          return false;
+        }
+        mana -= cost;
+        attempts.push(id);
+        return true;
+      },
+    };
+    const unitDesigns = {
+      subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
+        listener(designs);
+        return () => undefined;
+      },
+      getDefaultDesignForType: () => cheapDesign,
+      getActiveRosterDesigns: () => designs,
+    };
+
+    const module = new UnitAutomationModule({
+      bridge,
+      necromancer,
+      unitDesigns,
+      getSkillLevel: () => 1,
+    });
+
+    module.initialize();
+    module.setAutomationEnabled(cheapDesign.id, true);
+    module.setAutomationEnabled(expensiveDesign.id, true);
+    module.setAutomationWeight(cheapDesign.id, 1);
+    module.setAutomationWeight(expensiveDesign.id, 3);
+
+    attempts.length = 0;
+
+    for (let tick = 0; tick < 30; tick += 1) {
+      mana += 5;
+      module.tick(100);
+    }
+
+    const expensiveCount = attempts.filter((id) => id === expensiveDesign.id).length;
+    const cheapCount = attempts.filter((id) => id === cheapDesign.id).length;
+
+    assert(cheapCount > 0, "expected cheaper design to spawn at least once");
+    assert(expensiveCount > 0, "expected expensive design to eventually spawn");
+    assert(
+      expensiveCount > cheapCount,
+      `expected expensive design to spawn more often, got cheap=${cheapCount}, expensive=${expensiveCount}`
+    );
+  });
+
+  test("automation falls back when a design is permanently unaffordable", () => {
+    const bridge = new DataBridge();
+    const attempts: UnitDesignId[] = [];
+    const unitType = PLAYER_UNIT_TYPES[0];
+    assert(unitType, "expected at least one unit type for automation tests");
+    const makeCost = (manaCost: number) => {
+      const cost = createEmptyResourceAmount();
+      cost.mana = manaCost;
+      return cost;
+    };
+    const cheapDesign: UnitDesignerUnitState = {
+      id: "fallback-cheap",
+      type: unitType,
+      name: "Cheap",
+      modules: [],
+      moduleDetails: [],
+      cost: makeCost(10),
+      blueprint: {
+        type: unitType,
+        name: "Cheap",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const expensiveDesign: UnitDesignerUnitState = {
+      id: "fallback-expensive",
+      type: unitType,
+      name: "Expensive",
+      modules: [],
+      moduleDetails: [],
+      cost: makeCost(30),
+      blueprint: {
+        type: unitType,
+        name: "Expensive",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const designs: UnitDesignerUnitState[] = [cheapDesign, expensiveDesign];
+    const manaCosts = new Map<UnitDesignId, number>([
+      [cheapDesign.id, 10],
+      [expensiveDesign.id, 30],
+    ]);
+    let mana = 0;
+    const manaMax = 20;
+    const necromancer = {
+      trySpawnDesign: (id: UnitDesignId) => {
+        const cost = manaCosts.get(id) ?? 0;
+        if (mana < cost) {
+          return false;
+        }
+        mana -= cost;
+        attempts.push(id);
+        return true;
+      },
+    };
+    const unitDesigns = {
+      subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
+        listener(designs);
+        return () => undefined;
+      },
+      getDefaultDesignForType: () => cheapDesign,
+      getActiveRosterDesigns: () => designs,
+    };
+
+    const module = new UnitAutomationModule({
+      bridge,
+      necromancer,
+      unitDesigns,
+      getSkillLevel: () => 1,
+    });
+
+    module.initialize();
+    module.setAutomationEnabled(cheapDesign.id, true);
+    module.setAutomationEnabled(expensiveDesign.id, true);
+    module.setAutomationWeight(cheapDesign.id, 1);
+    module.setAutomationWeight(expensiveDesign.id, 3);
+
+    attempts.length = 0;
+
+    for (let tick = 0; tick < 120; tick += 1) {
+      mana = Math.min(manaMax, mana + 5);
+      module.tick(100);
+    }
+
+    const expensiveCount = attempts.filter((id) => id === expensiveDesign.id).length;
+    const cheapCount = attempts.filter((id) => id === cheapDesign.id).length;
+
+    assert.strictEqual(expensiveCount, 0, "expensive design should never spawn when unaffordable");
+    assert(cheapCount > 0, "cheaper design should still spawn when available");
+  });
+
   test("selectNextAutomationTarget balances according to weights", () => {
     const baseCandidates: Array<Omit<AutomationSelectionCandidate, "spawned">> = [
       { designId: "light", weight: 1, order: 0 },
