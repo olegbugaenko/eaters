@@ -166,14 +166,23 @@ export class UnitAutomationModule implements GameModule {
     } satisfies UnitAutomationSaveData;
   }
 
-  public tick(_deltaMs: number): void {
+  private automationCooldownMs = 0;
+  private static readonly AUTOMATION_INTERVAL_MS = 300;
+
+  public tick(deltaMs: number): void {
     const changed = this.refreshUnlockState();
-    if (this.unlocked) {
-      this.runAutomation();
-    }
     if (changed) {
       this.pushState();
     }
+    if (!this.unlocked) {
+      return;
+    }
+    this.automationCooldownMs = Math.max(0, this.automationCooldownMs - Math.max(0, deltaMs));
+    if (this.automationCooldownMs > 0) {
+      return;
+    }
+    this.automationCooldownMs = UnitAutomationModule.AUTOMATION_INTERVAL_MS;
+    this.runAutomation();
   }
 
   public setAutomationEnabled(designId: UnitDesignId, enabled: boolean): void {
