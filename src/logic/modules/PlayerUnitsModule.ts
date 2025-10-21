@@ -38,6 +38,7 @@ import {
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
 } from "../visuals/VisualEffectState";
+import { UnitTargetingMode } from "../../types/unit-targeting";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -60,6 +61,12 @@ const PHEROMONE_TIMER_CAP_SECONDS = 60;
 const PHEROMONE_BUFF_ATTACKS = 4;
 const PHEROMONE_HEAL_EXPLOSION_RADIUS = 14;
 const PHEROMONE_FRENZY_EXPLOSION_RADIUS = 12;
+const TARGETING_RADIUS_STEP = 250;
+const IDLE_WANDER_RADIUS = 160;
+const IDLE_WANDER_TARGET_EPSILON = 12;
+const IDLE_WANDER_RESEED_INTERVAL = 3;
+const IDLE_WANDER_SPEED_FACTOR = 0.55;
+const TARGETING_SCORE_EPSILON = 1e-3;
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
@@ -84,6 +91,7 @@ interface PlayerUnitsModuleOptions {
   onAllUnitsDefeated?: () => void;
   getModuleLevel: (id: UnitModuleId) => number;
   hasSkill: (id: SkillId) => boolean;
+  getRosterTargetingMode: () => UnitTargetingMode;
 }
 
 interface PlayerUnitSaveData {
@@ -99,6 +107,7 @@ interface PlayerUnitState {
   id: string;
   type: PlayerUnitType;
   position: SceneVector2;
+  spawnPosition: SceneVector2;
   movementId: string;
   rotation: number;
   hp: number;
@@ -125,6 +134,9 @@ interface PlayerUnitState {
   preCollisionVelocity: SceneVector2;
   lastNonZeroVelocity: SceneVector2;
   targetBrickId: string | null;
+  targetingMode: UnitTargetingMode;
+  wanderTarget: SceneVector2 | null;
+  wanderCooldown: number;
   objectId: string;
   renderer: PlayerUnitRendererConfig;
   emitter?: PlayerUnitEmitterConfig;
@@ -153,6 +165,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly onAllUnitsDefeated?: () => void;
   private readonly getModuleLevel: (id: UnitModuleId) => number;
   private readonly hasSkill: (id: SkillId) => boolean;
+  private readonly getRosterTargetingMode: () => UnitTargetingMode;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -169,6 +182,7 @@ export class PlayerUnitsModule implements GameModule {
     this.onAllUnitsDefeated = options.onAllUnitsDefeated;
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
+    this.getRosterTargetingMode = options.getRosterTargetingMode;
   }
 
   public getCurrentUnitCount(): number {
@@ -228,6 +242,7 @@ export class PlayerUnitsModule implements GameModule {
         unit.timeSinceLastSpecial + deltaSeconds,
         PHEROMONE_TIMER_CAP_SECONDS
       );
+      unit.wanderCooldown = Math.max(unit.wanderCooldown - deltaSeconds, 0);
 
       if (unit.hpRegenPerSecond > 0 && unit.hp < unit.maxHp) {
         const previousHp = unit.hp;
@@ -577,6 +592,7 @@ export class PlayerUnitsModule implements GameModule {
       id,
       type,
       position: { ...position },
+      spawnPosition: { ...position },
       movementId,
       rotation: 0,
       hp,
@@ -617,6 +633,9 @@ export class PlayerUnitsModule implements GameModule {
       pheromoneHealingMultiplier,
       pheromoneAggressionMultiplier,
       pheromoneAttackBonuses: [],
+      targetingMode: this.getRosterTargetingMode(),
+      wanderTarget: null,
+      wanderCooldown: 0,
     };
 
     this.updateInternalFurnaceEffect(state);
@@ -628,17 +647,155 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private resolveTarget(unit: PlayerUnitState): BrickRuntimeState | null {
+    const mode = this.syncUnitTargetingMode(unit);
+    if (mode === "none") {
+      unit.targetBrickId = null;
+      return null;
+    }
+
     if (unit.targetBrickId) {
       const current = this.bricks.getBrickState(unit.targetBrickId);
-      if (current) {
+      if (current && current.hp > 0) {
         return current;
       }
       unit.targetBrickId = null;
     }
 
-    const nearest = this.bricks.findNearestBrick(unit.position);
-    unit.targetBrickId = nearest?.id ?? null;
-    return nearest ?? null;
+    const selected = this.selectTargetForMode(unit, mode);
+    unit.targetBrickId = selected?.id ?? null;
+    return selected;
+  }
+
+  private syncUnitTargetingMode(unit: PlayerUnitState): UnitTargetingMode {
+    const mode = this.getRosterTargetingMode();
+    if (unit.targetingMode !== mode) {
+      unit.targetingMode = mode;
+      unit.targetBrickId = null;
+      unit.wanderTarget = null;
+      unit.wanderCooldown = 0;
+    }
+    return unit.targetingMode;
+  }
+
+  private formatUnitLogLabel(unit: PlayerUnitState): string {
+    return `${unit.type}(${unit.id})`;
+  }
+
+  private logPheromoneEvent(message: string): void {
+    console.log(`[Pheromones] ${message}`);
+  }
+
+  private selectTargetForMode(
+    unit: PlayerUnitState,
+    mode: UnitTargetingMode
+  ): BrickRuntimeState | null {
+    if (mode === "nearest") {
+      return this.bricks.findNearestBrick(unit.position);
+    }
+    return this.findBrickByCriterion(unit, mode);
+  }
+
+  private findBrickByCriterion(
+    unit: PlayerUnitState,
+    mode: UnitTargetingMode
+  ): BrickRuntimeState | null {
+    const mapSize = this.scene.getMapSize();
+    const maxRadius = Math.max(Math.hypot(mapSize.width, mapSize.height), TARGETING_RADIUS_STEP);
+    let radius = TARGETING_RADIUS_STEP;
+    while (radius <= maxRadius + TARGETING_RADIUS_STEP) {
+      const bricks = this.bricks.findBricksNear(unit.position, radius);
+      const candidate = this.pickBestBrickCandidate(unit.position, bricks, mode);
+      if (candidate) {
+        return candidate;
+      }
+      radius += TARGETING_RADIUS_STEP;
+    }
+    return this.bricks.findNearestBrick(unit.position);
+  }
+
+  private pickBestBrickCandidate(
+    origin: SceneVector2,
+    bricks: BrickRuntimeState[],
+    mode: UnitTargetingMode
+  ): BrickRuntimeState | null {
+    let best: BrickRuntimeState | null = null;
+    let bestScore = 0;
+    let bestDistanceSq = 0;
+    bricks.forEach((brick) => {
+      if (!brick || brick.hp <= 0) {
+        return;
+      }
+      const score = this.computeBrickScore(brick, mode);
+      if (score === null) {
+        return;
+      }
+      const dx = brick.position.x - origin.x;
+      const dy = brick.position.y - origin.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (!Number.isFinite(distanceSq)) {
+        return;
+      }
+      if (!best) {
+        best = brick;
+        bestScore = score;
+        bestDistanceSq = distanceSq;
+        return;
+      }
+      if (
+        this.isCandidateBetter(mode, score, distanceSq, bestScore, bestDistanceSq)
+      ) {
+        best = brick;
+        bestScore = score;
+        bestDistanceSq = distanceSq;
+      }
+    });
+    return best;
+  }
+
+  private computeBrickScore(
+    brick: BrickRuntimeState,
+    mode: UnitTargetingMode
+  ): number | null {
+    switch (mode) {
+      case "highestHp":
+      case "lowestHp":
+        return Math.max(brick.hp, 0);
+      case "highestDamage":
+      case "lowestDamage":
+        return Math.max(brick.baseDamage, 0);
+      default:
+        return null;
+    }
+  }
+
+  private isCandidateBetter(
+    mode: UnitTargetingMode,
+    candidateScore: number,
+    candidateDistanceSq: number,
+    bestScore: number,
+    bestDistanceSq: number
+  ): boolean {
+    const distanceImproved =
+      candidateDistanceSq + TARGETING_SCORE_EPSILON < bestDistanceSq;
+    if (mode === "highestHp" || mode === "highestDamage") {
+      if (candidateScore > bestScore + TARGETING_SCORE_EPSILON) {
+        return true;
+      }
+      if (Math.abs(candidateScore - bestScore) <= TARGETING_SCORE_EPSILON) {
+        return distanceImproved;
+      }
+      return false;
+    }
+    if (mode === "lowestHp" || mode === "lowestDamage") {
+      if (candidateScore + TARGETING_SCORE_EPSILON < bestScore) {
+        return true;
+      }
+      if (Math.abs(candidateScore - bestScore) <= TARGETING_SCORE_EPSILON) {
+        return distanceImproved;
+      }
+      return false;
+    }
+    return false;
   }
 
   private computeDesiredForce(
@@ -647,6 +804,9 @@ export class PlayerUnitsModule implements GameModule {
     target: BrickRuntimeState | null
   ): SceneVector2 {
     if (!target) {
+      if (unit.targetingMode === "none") {
+        return this.computeIdleWanderForce(unit, movementState);
+      }
       return this.computeBrakingForce(unit, movementState);
     }
 
@@ -681,6 +841,49 @@ export class PlayerUnitsModule implements GameModule {
       return ZERO_VECTOR;
     }
     return this.computeSteeringForce(unit, movementState.velocity, ZERO_VECTOR);
+  }
+
+  private computeIdleWanderForce(
+    unit: PlayerUnitState,
+    movementState: MovementBodyState
+  ): SceneVector2 {
+    const target = this.ensureIdleWanderTarget(unit);
+    const toTarget = subtractVectors(target, unit.position);
+    const distance = vectorLength(toTarget);
+    if (distance <= IDLE_WANDER_TARGET_EPSILON) {
+      unit.wanderTarget = null;
+      unit.wanderCooldown = 0;
+      return this.computeBrakingForce(unit, movementState);
+    }
+    const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
+    if (!vectorHasLength(direction)) {
+      unit.wanderTarget = null;
+      return this.computeBrakingForce(unit, movementState);
+    }
+    const desiredSpeed = Math.max(unit.moveSpeed * IDLE_WANDER_SPEED_FACTOR, unit.moveSpeed * 0.2);
+    const cappedSpeed = Math.min(desiredSpeed, Math.max(distance, unit.moveSpeed * 0.2));
+    const desiredVelocity = scaleVector(direction, cappedSpeed);
+    return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
+  }
+
+  private ensureIdleWanderTarget(unit: PlayerUnitState): SceneVector2 {
+    if (!unit.wanderTarget || unit.wanderCooldown <= 0) {
+      unit.wanderTarget = this.createIdleWanderTarget(unit);
+      unit.wanderCooldown = IDLE_WANDER_RESEED_INTERVAL;
+    }
+    return unit.wanderTarget ?? unit.position;
+  }
+
+  private createIdleWanderTarget(unit: PlayerUnitState): SceneVector2 {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * IDLE_WANDER_RADIUS;
+    const offsetX = Math.cos(angle) * distance;
+    const offsetY = Math.sin(angle) * distance;
+    const candidate = {
+      x: unit.spawnPosition.x + offsetX,
+      y: unit.spawnPosition.y + offsetY,
+    };
+    return this.clampToMap(candidate);
   }
 
   private resolveUnitCollisions(
@@ -1021,15 +1224,26 @@ export class PlayerUnitsModule implements GameModule {
     if (healAmount <= 0) {
       return false;
     }
-    const nextHp = clampNumber(target.hp + healAmount, 0, target.maxHp);
-    if (nextHp <= target.hp) {
+    const previousHp = target.hp;
+    const nextHp = clampNumber(previousHp + healAmount, 0, target.maxHp);
+    if (nextHp <= previousHp) {
       return false;
     }
     target.hp = nextHp;
+    const healedAmount = nextHp - previousHp;
     this.explosions.spawnExplosionByType("plasmoid", {
       position: { ...target.position },
       initialRadius: PHEROMONE_HEAL_EXPLOSION_RADIUS,
     });
+    const multiplier = Math.max(source.pheromoneHealingMultiplier, 0);
+    const attackPower = Math.max(source.baseAttackDamage, 0);
+    this.logPheromoneEvent(
+      `${this.formatUnitLogLabel(source)} healed ${this.formatUnitLogLabel(target)} for ${healedAmount.toFixed(
+        1
+      )} HP (${previousHp.toFixed(1)} -> ${nextHp.toFixed(1)}) using ${attackPower.toFixed(
+        1
+      )} attack × ${multiplier.toFixed(2)} multiplier`
+    );
     return true;
   }
 
@@ -1063,6 +1277,15 @@ export class PlayerUnitsModule implements GameModule {
       position: { ...target.position },
       initialRadius: PHEROMONE_FRENZY_EXPLOSION_RADIUS,
     });
+    const multiplier = Math.max(source.pheromoneAggressionMultiplier, 0);
+    const attackPower = Math.max(source.baseAttackDamage, 0);
+    this.logPheromoneEvent(
+      `${this.formatUnitLogLabel(source)} empowered ${this.formatUnitLogLabel(target)} with +${bonusDamage.toFixed(
+        1
+      )} damage (${attackPower.toFixed(1)} attack × ${multiplier.toFixed(
+        2
+      )} multiplier) for ${PHEROMONE_BUFF_ATTACKS} attacks`
+    );
     return true;
   }
 

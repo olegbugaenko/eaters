@@ -139,6 +139,7 @@ export class Application {
       },
       getModuleLevel: (id) => this.unitModuleWorkshopModule.getModuleLevel(id),
       hasSkill: (id) => this.skillTreeModule.getLevel(id) > 0,
+      getRosterTargetingMode: () => unitDesignModule.getRosterTargetingMode(),
     });
     this.necromancerModule = new NecromancerModule({
       bridge: this.dataBridge,

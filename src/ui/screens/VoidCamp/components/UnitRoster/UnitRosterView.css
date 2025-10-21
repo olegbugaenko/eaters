@@ -32,6 +32,55 @@
   min-height: 0;
 }
 
+.unit-roster__slots-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.unit-roster__strategy-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--color-text-strong);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.unit-roster__strategy-button:hover,
+.unit-roster__strategy-button:focus-visible {
+  border-color: rgba(56, 189, 248, 0.65);
+  background: rgba(56, 189, 248, 0.22);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.unit-roster__strategy-button:focus-visible {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+}
+
+.unit-roster__strategy-button-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.unit-roster__strategy-selected {
+  font-size: 0.8rem;
+  color: var(--color-text-strong);
+}
+
 .unit-roster__slot-list {
   list-style: none;
   margin: 0;
@@ -333,6 +382,126 @@
   color: var(--color-text-muted);
   background: rgba(15, 23, 42, 0.3);
   border-radius: var(--radius-md);
+}
+
+.unit-roster__strategy-layer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+.unit-roster__strategy-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 15, 26, 0.78);
+}
+
+.unit-roster__strategy-dialog {
+  position: relative;
+  width: min(420px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  z-index: 41;
+  box-shadow: 0 24px 60px rgba(10, 18, 32, 0.55);
+}
+
+.unit-roster__strategy-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.unit-roster__strategy-description {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.unit-roster__strategy-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.unit-roster__strategy-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(15, 23, 42, 0.55);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.unit-roster__strategy-option input {
+  margin-top: 0.2rem;
+  accent-color: var(--color-accent);
+}
+
+.unit-roster__strategy-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.unit-roster__strategy-option-label {
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.unit-roster__strategy-option-description {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.unit-roster__strategy-option:hover,
+.unit-roster__strategy-option:focus-within {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.unit-roster__strategy-option--active {
+  border-color: rgba(56, 189, 248, 0.75);
+  background: rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+}
+
+.unit-roster__strategy-option--active .unit-roster__strategy-option-label {
+  color: #e0f2fe;
+}
+
+.unit-roster__strategy-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.unit-roster__strategy-cancel {
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.unit-roster__strategy-cancel:hover,
+.unit-roster__strategy-cancel:focus-visible {
+  color: var(--color-text-strong);
+  background: rgba(56, 189, 248, 0.12);
+  outline: none;
 }
 
 @media (max-width: 1200px) {

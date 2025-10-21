@@ -20,6 +20,11 @@ import {
   PlayerUnitRuntimeModifiers,
 } from "../../types/player-units";
 import {
+  DEFAULT_UNIT_TARGETING_SETTINGS,
+  UnitTargetingMode,
+  UnitTargetingSettings,
+} from "../../types/unit-targeting";
+import {
   ResourceAmountMap,
   createEmptyResourceAmount,
   normalizeResourceCost,
@@ -79,6 +84,7 @@ export interface UnitDesignerBridgeState {
   readonly maxModules: number;
   readonly activeRoster: readonly UnitDesignId[];
   readonly maxActiveUnits: number;
+  readonly rosterStrategy: UnitTargetingSettings;
 }
 
 interface UnitDesignerSaveDataEntry {
@@ -91,6 +97,11 @@ interface UnitDesignerSaveDataEntry {
 interface UnitDesignerSaveData {
   readonly units?: UnitDesignerSaveDataEntry[];
   readonly roster?: UnitDesignId[];
+  readonly strategy?: UnitDesignerStrategySaveData;
+}
+
+interface UnitDesignerStrategySaveData {
+  readonly targetingMode?: UnitTargetingMode;
 }
 
 interface UnitDesignModuleOptions {
@@ -110,6 +121,7 @@ export const DEFAULT_UNIT_DESIGNER_STATE: UnitDesignerBridgeState = Object.freez
   maxModules: MAX_MODULES_PER_UNIT,
   activeRoster: [],
   maxActiveUnits: MAX_ACTIVE_UNITS,
+  rosterStrategy: DEFAULT_UNIT_TARGETING_SETTINGS,
 });
 
 const DEFAULT_UNIT_NAME_FALLBACK = "Custom Unit";
@@ -135,6 +147,7 @@ export class UnitDesignModule implements GameModule {
   private cachedComputed = new Map<UnitDesignId, UnitDesignerUnitState>();
   private activeRoster: UnitDesignId[] = [];
   private rosterInitialized = false;
+  private rosterTargeting: UnitTargetingSettings = DEFAULT_UNIT_TARGETING_SETTINGS;
   private cachedBonuses: BonusValueMap | null = null;
   private listeners = new Set<UnitDesignerListener>();
   private unsubscribeBonuses: (() => void) | null = null;
@@ -164,6 +177,7 @@ export class UnitDesignModule implements GameModule {
     this.idCounter = 0;
     this.activeRoster = [];
     this.rosterInitialized = false;
+    this.rosterTargeting = DEFAULT_UNIT_TARGETING_SETTINGS;
     this.ensureDefaults();
     this.refreshComputedState();
   }
@@ -174,6 +188,7 @@ export class UnitDesignModule implements GameModule {
     this.idCounter = 0;
     this.activeRoster = [];
     this.rosterInitialized = false;
+    this.rosterTargeting = DEFAULT_UNIT_TARGETING_SETTINGS;
     this.applySaveData(data);
     this.ensureDefaults();
     this.refreshComputedState();
@@ -190,7 +205,10 @@ export class UnitDesignModule implements GameModule {
         modules: [...record.modules],
       }));
     const roster = this.activeRoster.slice(0, MAX_ACTIVE_UNITS);
-    return { units, roster } satisfies UnitDesignerSaveData;
+    const strategy: UnitDesignerStrategySaveData = {
+      targetingMode: this.rosterTargeting.mode,
+    };
+    return { units, roster, strategy } satisfies UnitDesignerSaveData;
   }
 
   public tick(_deltaMs: number): void {
@@ -271,6 +289,10 @@ export class UnitDesignModule implements GameModule {
       .filter((entry): entry is UnitDesignerUnitState => Boolean(entry));
   }
 
+  public getRosterTargetingMode(): UnitTargetingMode {
+    return this.rosterTargeting.mode;
+  }
+
   public getDefaultDesignForType(type: PlayerUnitType): UnitDesignerUnitState | null {
     const foundId = this.designOrder.find((id) => {
       const record = this.designs.get(id);
@@ -301,6 +323,16 @@ export class UnitDesignModule implements GameModule {
     this.emitState(units);
   }
 
+  public setRosterTargetingMode(mode: UnitTargetingMode): void {
+    const sanitized = this.sanitizeTargetingMode(mode);
+    if (sanitized === this.rosterTargeting.mode) {
+      return;
+    }
+    this.rosterTargeting = { mode: sanitized };
+    const units = this.getAllDesigns();
+    this.emitState(units);
+  }
+
   private applySaveData(data: unknown | undefined): void {
     if (!data || typeof data !== "object") {
       return;
@@ -310,6 +342,14 @@ export class UnitDesignModule implements GameModule {
     if (Array.isArray(rosterPayload)) {
       roster = rosterPayload.filter((id): id is UnitDesignId => typeof id === "string");
       this.rosterInitialized = true;
+    }
+    const strategyPayload = (data as UnitDesignerSaveData).strategy;
+    if (strategyPayload && typeof strategyPayload === "object") {
+      this.rosterTargeting = {
+        mode: this.sanitizeTargetingMode(strategyPayload.targetingMode),
+      };
+    } else {
+      this.rosterTargeting = DEFAULT_UNIT_TARGETING_SETTINGS;
     }
     const payload = (data as UnitDesignerSaveData).units;
     if (!Array.isArray(payload)) {
@@ -375,6 +415,23 @@ export class UnitDesignModule implements GameModule {
       sanitized.push(id);
     });
     return sanitized;
+  }
+
+  private sanitizeTargetingMode(mode: unknown): UnitTargetingMode {
+    if (typeof mode === "string") {
+      switch (mode) {
+        case "nearest":
+        case "highestHp":
+        case "lowestHp":
+        case "highestDamage":
+        case "lowestDamage":
+        case "none":
+          return mode;
+        default:
+          break;
+      }
+    }
+    return DEFAULT_UNIT_TARGETING_SETTINGS.mode;
   }
 
   private areRostersEqual(
@@ -465,6 +522,7 @@ export class UnitDesignModule implements GameModule {
       maxModules: MAX_MODULES_PER_UNIT,
       activeRoster: [...this.activeRoster],
       maxActiveUnits: MAX_ACTIVE_UNITS,
+      rosterStrategy: this.rosterTargeting,
     });
   }
 
