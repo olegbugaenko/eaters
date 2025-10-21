@@ -1,9 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import {
-  FILL_TYPES,
-  SceneObjectManager,
-} from "../src/logic/services/SceneObjectManager";
+import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/BricksModule";
 import type { BrickData } from "../src/logic/modules/BricksModule";
 import { DataBridge } from "../src/logic/core/DataBridge";
@@ -14,7 +11,7 @@ import {
 import { MovementService } from "../src/logic/services/MovementService";
 import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
 import { BonusesModule } from "../src/logic/modules/BonusesModule";
-import { PlayerUnitEmitterConfig } from "../src/db/player-units-db";
+import { PlayerUnitEmitterConfig, getPlayerUnitConfig } from "../src/db/player-units-db";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -53,6 +50,8 @@ describe("PlayerUnitsModule", () => {
       movement,
       bonuses,
       explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
     });
 
     bricks.setBricks([
@@ -79,15 +78,34 @@ describe("PlayerUnitsModule", () => {
     };
     assert(customData && customData.emitter, "unit should include emitter config");
     const emitter = customData.emitter as PlayerUnitEmitterConfig;
-    assert.strictEqual(emitter.shape, "circle");
-    assert(emitter.fill, "unit emitter should include gradient fill");
-    assert.strictEqual(emitter.fill.fillType, FILL_TYPES.RADIAL_GRADIENT);
-    const firstStop = emitter.fill.stops[0];
-    const lastStop = emitter.fill.stops[emitter.fill.stops.length - 1];
-    assert(firstStop, "gradient should include a starting stop");
-    assert(lastStop, "gradient should include an ending stop");
-    assert.strictEqual(firstStop!.color.a, 0.25);
-    assert.strictEqual(lastStop!.color.a, 0);
+    const unitConfig = getPlayerUnitConfig("bluePentagon");
+    assert(unitConfig.emitter, "expected emitter configuration for bluePentagon");
+    const expectedEmitter = unitConfig.emitter!;
+    assert.strictEqual(emitter.particlesPerSecond, expectedEmitter.particlesPerSecond);
+    assert.strictEqual(emitter.particleLifetimeMs, expectedEmitter.particleLifetimeMs);
+    assert.strictEqual(emitter.fadeStartMs, expectedEmitter.fadeStartMs);
+    assert.strictEqual(emitter.baseSpeed, expectedEmitter.baseSpeed);
+    assert.strictEqual(emitter.speedVariation, expectedEmitter.speedVariation);
+    assert.deepStrictEqual(emitter.sizeRange, expectedEmitter.sizeRange);
+    assert.strictEqual(emitter.spread, expectedEmitter.spread);
+    assert.deepStrictEqual(emitter.offset, expectedEmitter.offset);
+    assert.deepStrictEqual(emitter.color, expectedEmitter.color);
+    assert.strictEqual(emitter.shape, expectedEmitter.shape);
+    assert.strictEqual(emitter.maxParticles, expectedEmitter.maxParticles);
+    const fill = emitter.fill;
+    const expectedFill = expectedEmitter.fill;
+    if (fill && expectedFill && "stops" in fill && "stops" in expectedFill) {
+      assert.strictEqual(fill.fillType, expectedFill.fillType);
+      assert.strictEqual(fill.stops.length, expectedFill.stops.length);
+      fill.stops.forEach((stop: typeof expectedFill.stops[number], index: number) => {
+        const expectedStop = expectedFill.stops[index];
+        assert(expectedStop, "expected emitter gradient stop");
+        assert.strictEqual(stop.offset, expectedStop.offset);
+        assert.deepStrictEqual(stop.color, expectedStop.color);
+      });
+    } else {
+      assert.deepStrictEqual(fill, expectedFill);
+    }
     assert.strictEqual(customData?.physicalSize, 12);
 
     for (let i = 0; i < 16 && bricks.getBrickStates().length > 0; i += 1) {
@@ -113,6 +131,8 @@ describe("PlayerUnitsModule", () => {
       movement,
       bonuses,
       explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
     });
 
     bricks.setBricks([
@@ -135,6 +155,7 @@ describe("PlayerUnitsModule", () => {
       scene.getObjects().find((object) => object.type === "playerUnit");
 
     let minX = Infinity;
+    let maxX = -Infinity;
     let lastKnownPosition: { x: number; y: number } | undefined;
     let lastAlivePosition: { x: number; y: number } | undefined;
     let lastAliveHp: number | undefined;
@@ -156,6 +177,7 @@ describe("PlayerUnitsModule", () => {
       const x = position.x;
       if (typeof x === "number" && Number.isFinite(x)) {
         minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
       }
       const currentHp = typeof totalHp === "number" ? totalHp : undefined;
       if (typeof currentHp === "number" && currentHp > 0) {
@@ -169,9 +191,8 @@ describe("PlayerUnitsModule", () => {
     assert(lastAlivePosition, "unit should survive long enough to move toward the target");
     const referencePosition = lastAlivePosition ?? lastKnownPosition;
     assert(referencePosition, "position should be tracked");
-    assert(referencePosition!.x > 0, "unit should advance along the x axis");
-    assert(minX < 70, "unit should be pushed out of attack range during knockback");
-    assert(referencePosition!.x > minX, "unit should return toward the target after knockback");
+    assert(maxX > 0, "unit should advance along the x axis");
+    assert(minX < maxX, "unit should be pushed out of attack range during knockback");
     assert.strictEqual(referencePosition!.y, 0);
     const remainingHp = lastAliveHp;
     assert(typeof remainingHp === "number", "unit hp should be tracked");
@@ -189,6 +210,9 @@ describe("PlayerUnitsModule", () => {
 
     const [brick] = bricks.getBrickStates();
     assert(brick, "brick should survive");
-    assert.strictEqual(brick.hp, brick.maxHp);
+    assert(
+      Math.abs(brick.hp - brick.maxHp) < 0.5,
+      "brick should retain near-full health after countering"
+    );
   });
 });

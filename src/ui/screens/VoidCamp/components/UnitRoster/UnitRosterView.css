@@ -19,7 +19,7 @@
 
 .unit-roster__content {
   display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr);
+  grid-template-columns: minmax(340px, 1.25fr) minmax(260px, 0.75fr);
   gap: var(--spacing-xl);
   align-items: start;
   min-height: 0;
@@ -101,6 +101,13 @@
   flex-wrap: wrap;
 }
 
+.unit-roster__automation-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 .unit-roster__slot-controls {
   display: flex;
   align-items: center;
@@ -179,6 +186,32 @@
   width: 1rem;
   height: 1rem;
   accent-color: var(--color-accent);
+}
+
+.unit-roster__automation-weight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.unit-roster__automation-weight span {
+  font-weight: 600;
+}
+
+.unit-roster__automation-weight input {
+  width: 4rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(15, 23, 42, 0.45);
+  color: var(--color-text-strong);
+}
+
+.unit-roster__automation-weight input:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.55);
+  outline-offset: 1px;
 }
 
 .unit-roster__slot-empty {

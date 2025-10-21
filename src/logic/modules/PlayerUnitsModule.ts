@@ -193,7 +193,7 @@ export class PlayerUnitsModule implements GameModule {
     if (this.unitOrder.length === 0) {
       return;
     }
-
+    
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
     const unitsSnapshot = [...this.unitOrder];
     const plannedTargets = new Map<string, string | null>();

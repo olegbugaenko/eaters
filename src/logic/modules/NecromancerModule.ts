@@ -34,6 +34,11 @@ export interface NecromancerResourcesPayload {
   sanity: NecromancerResourceMeter;
 }
 
+export interface NecromancerResourceSnapshot {
+  mana: NecromancerResourceMeter & { regenPerSecond: number };
+  sanity: NecromancerResourceMeter;
+}
+
 export interface NecromancerSpawnOption {
   designId: UnitDesignId;
   type: PlayerUnitType;
@@ -96,6 +101,7 @@ export class NecromancerModule implements GameModule {
   private resourcesDirty = true;
   private cachedDesigns: UnitDesignerUnitState[] = [];
   private unsubscribeDesigns: (() => void) | null = null;
+  private minSanityCost: number = Number.POSITIVE_INFINITY;
 
   constructor(options: NecromancerModuleOptions) {
     this.bridge = options.bridge;
@@ -108,14 +114,31 @@ export class NecromancerModule implements GameModule {
     });
     this.unsubscribeDesigns = this.unitDesigns.subscribe(() => {
       this.cachedDesigns = this.unitDesigns.getActiveRosterDesigns();
+      this.recomputeMinSanityCost();
       this.pushSpawnOptions();
     });
   }
 
   public initialize(): void {
     this.applyCurrentBonusValues();
+    this.cachedDesigns = this.unitDesigns.getActiveRosterDesigns();
+    this.recomputeMinSanityCost();
     this.pushSpawnOptions();
     this.pushResources();
+  }
+
+  public getResources(): NecromancerResourceSnapshot {
+    return {
+      mana: {
+        current: this.mana.current,
+        max: this.mana.max,
+        regenPerSecond: this.mana.regenPerSecond,
+      },
+      sanity: {
+        current: this.sanity.current,
+        max: this.sanity.max,
+      },
+    };
   }
 
   public reset(): void {
@@ -132,6 +155,7 @@ export class NecromancerModule implements GameModule {
     this.markResourcesDirty();
     this.pushResources();
     this.pushSpawnOptions();
+    this.minSanityCost = Number.POSITIVE_INFINITY;
   }
 
   public load(data: unknown | undefined): void {
@@ -264,17 +288,7 @@ export class NecromancerModule implements GameModule {
       return 0;
     }
     const currentSanity = this.sanity.current;
-    // Prefer the cheapest available option and assume designs can be summoned repeatedly.
-    // This matches the threshold definition: count of units purchasable with current sanity.
-    const costs = (this.cachedDesigns.length > 0
-      ? this.cachedDesigns.map((d) => Math.max(0, d.cost.sanity))
-      : PLAYER_UNIT_TYPES.map((type) => Math.max(0, normalizeResourceCost(getPlayerUnitConfig(type).cost).sanity))
-    ).filter((c) => c > 0);
-
-    if (costs.length === 0) {
-      return 0;
-    }
-    const minCost = costs.reduce((min, c) => (c > 0 && c < min ? c : min), Number.POSITIVE_INFINITY);
+    const minCost = this.minSanityCost;
     if (!Number.isFinite(minCost) || minCost <= 0) {
       return 0;
     }
@@ -315,6 +329,27 @@ export class NecromancerModule implements GameModule {
       });
     }
     this.bridge.setValue(NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY, options);
+  }
+
+  private recomputeMinSanityCost(): void {
+    let min = Number.POSITIVE_INFINITY;
+    if (this.cachedDesigns.length > 0) {
+      for (let i = 0; i < this.cachedDesigns.length; i += 1) {
+        const c = Math.max(0, this.cachedDesigns[i]!.cost.sanity);
+        if (c > 0 && c < min) {
+          min = c;
+        }
+      }
+    } else {
+      for (let i = 0; i < PLAYER_UNIT_TYPES.length; i += 1) {
+        const type = PLAYER_UNIT_TYPES[i]!;
+        const c = Math.max(0, normalizeResourceCost(getPlayerUnitConfig(type).cost).sanity);
+        if (c > 0 && c < min) {
+          min = c;
+        }
+      }
+    }
+    this.minSanityCost = min;
   }
 
   private getNextSpawnPosition(): SceneVector2 {

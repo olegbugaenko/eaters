@@ -73,6 +73,8 @@ describe("MapModule", () => {
       movement,
       bonuses,
       explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
@@ -97,6 +99,7 @@ describe("MapModule", () => {
       resources,
       unlocks,
       getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -177,6 +180,7 @@ describe("Map run control", () => {
       resources,
       unlocks,
       getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -291,6 +295,7 @@ describe("Map run control", () => {
       resources,
       unlocks,
       getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -334,6 +339,8 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
@@ -359,6 +366,7 @@ describe("Map unlocking", () => {
       resources,
       unlocks,
       getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -411,6 +419,8 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
@@ -436,6 +446,7 @@ describe("Map unlocking", () => {
       resources,
       unlocks,
       getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -477,6 +488,8 @@ describe("Map auto restart", () => {
       movement,
       bonuses,
       explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
     });
     const unitDesigns = createUnitDesignerStub();
     const necromancer = new NecromancerModule({
@@ -503,6 +516,7 @@ describe("Map auto restart", () => {
       resources,
       unlocks,
       getSkillLevel: () => skillLevel,
+      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
