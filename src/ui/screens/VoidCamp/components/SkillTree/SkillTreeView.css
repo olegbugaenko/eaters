@@ -20,7 +20,7 @@
   user-select: none;
   touch-action: none;
   height: 100%;
-  min-height: 0;
+  min-height: 240px;
 }
 
 .skill-tree__viewport--dragging {
@@ -162,6 +162,8 @@
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .skill-tree__details-header {
@@ -259,5 +261,21 @@
 
   .skill-tree__details {
     width: 100%;
+    max-height: calc(100dvh - 540px);
+    overflow-y: auto;
+  }
+}
+
+/* Small height screens: ensure details panel becomes scrollable within viewport */
+@media (max-height: 820px) and (max-width: 1200px) {
+  .skill-tree__details {
+    max-height: calc(100dvh - 540px);
+  }
+}
+
+/* Guard: when toolbar/header add extra vertical padding on very small screens */
+@media (max-height: 640px) and (max-width: 1200px) {
+  .skill-tree__details {
+    max-height: calc(100dvh - 200px);
   }
 }
