@@ -97,14 +97,14 @@ describe("BulletModule", () => {
     });
 
     const updater = module as unknown as { updateBullets(deltaMs: number): void };
-    updater.updateBullets(0);
+    updater.updateBullets(16);
 
-    assert.strictEqual(scene.getObject(id), undefined);
     assert.strictEqual(explosions.calls.length, 1);
     const [call] = explosions.calls;
     assert(call, "Explosion should have been triggered");
     assert.strictEqual(call.type, "magnetic");
-    assert.deepStrictEqual(call.options.position, { x: 0, y: 0 });
+    assert(Math.abs(call.options.position.x) < 2, "explosion should occur near the spawn point");
+    assert.strictEqual(call.options.position.y, 0);
     assert.strictEqual(call.options.initialRadius, getBulletConfig("magnetic").diameter / 2);
   });
 

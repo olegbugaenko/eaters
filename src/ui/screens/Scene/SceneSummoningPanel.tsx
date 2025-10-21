@@ -42,16 +42,26 @@ const formatResourceValue = (
 
 
 export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPanelProps>(
-  ({ resources, spawnOptions, onSummon, onHoverInfoChange, automation, onToggleAutomation }, ref) => {
+  (
+    {
+      resources,
+      spawnOptions,
+      onSummon,
+      onHoverInfoChange,
+      automation,
+      onToggleAutomation,
+    },
+    ref
+  ) => {
     const available = {
       mana: resources.mana.current,
       sanity: resources.sanity.current,
     };
 
     const automationLookup = useMemo(() => {
-      const map = new Map<UnitDesignId, boolean>();
+      const map = new Map<UnitDesignId, { enabled: boolean }>();
       automation.units.forEach((entry) => {
-        map.set(entry.designId, entry.enabled);
+        map.set(entry.designId, { enabled: entry.enabled });
       });
       return map;
     }, [automation]);
@@ -112,7 +122,8 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                 "scene-summoning-panel__unit-action",
                 !canAfford && "scene-summoning-panel__unit-action--disabled"
               );
-              const automationEnabled = automationLookup.get(option.designId) ?? false;
+              const automationEntry = automationLookup.get(option.designId);
+              const automationEnabled = automationEntry?.enabled ?? false;
               return (
                 <div key={option.designId} className="scene-summoning-panel__unit">
                   <div
@@ -149,16 +160,18 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                     </button>
                   </div>
                   {automation.unlocked && (
-                    <label className="scene-summoning-panel__automation-toggle">
-                      <input
-                        type="checkbox"
-                        checked={automationEnabled}
-                        onChange={(event) =>
-                          onToggleAutomation(option.designId, event.target.checked)
-                        }
-                      />
-                      <span>Automate</span>
-                    </label>
+                    <div className="scene-summoning-panel__automation-controls">
+                      <label className="scene-summoning-panel__automation-toggle">
+                        <input
+                          type="checkbox"
+                          checked={automationEnabled}
+                          onChange={(event) =>
+                            onToggleAutomation(option.designId, event.target.checked)
+                          }
+                        />
+                        <span>Automate</span>
+                      </label>
+                    </div>
                   )}
                 </div>
               );

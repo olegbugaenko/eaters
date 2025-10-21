@@ -39,9 +39,15 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
   );
   const rosterFull = roster.length >= maxSlots;
   const automationLookup = useMemo(() => {
-    const lookup = new Map<string, boolean>();
+    const lookup = new Map<
+      string,
+      {
+        enabled: boolean;
+        weight: number;
+      }
+    >();
     automation.units.forEach((entry) => {
-      lookup.set(entry.designId, entry.enabled);
+      lookup.set(entry.designId, { enabled: entry.enabled, weight: entry.weight });
     });
     return lookup;
   }, [automation.units]);
@@ -104,6 +110,13 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
   const handleToggleAutomation = useCallback(
     (unitId: string, enabled: boolean) => {
       automationModule.setAutomationEnabled(unitId, enabled);
+    },
+    [automationModule]
+  );
+
+  const handleAutomationWeightChange = useCallback(
+    (unitId: string, weight: number) => {
+      automationModule.setAutomationWeight(unitId, weight);
     },
     [automationModule]
   );
@@ -174,16 +187,33 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                           </button>
                         </div>
                         {automation.unlocked ? (
-                          <label className="unit-roster__automation-toggle">
-                            <input
-                              type="checkbox"
-                              checked={automationLookup.get(unit.id) ?? false}
-                              onChange={(event) =>
-                                handleToggleAutomation(unit.id, event.target.checked)
-                              }
-                            />
-                            Automate
-                          </label>
+                          <div className="unit-roster__automation-controls">
+                            <label className="unit-roster__automation-toggle">
+                              <input
+                                type="checkbox"
+                                checked={automationLookup.get(unit.id)?.enabled ?? false}
+                                onChange={(event) =>
+                                  handleToggleAutomation(unit.id, event.target.checked)
+                                }
+                              />
+                              Automate
+                            </label>
+                            <label className="unit-roster__automation-weight">
+                              <span>Weight</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={automationLookup.get(unit.id)?.weight ?? 1}
+                                onChange={(event) => {
+                                  const nextValue = Number.parseInt(event.target.value, 10);
+                                  handleAutomationWeightChange(
+                                    unit.id,
+                                    Number.isNaN(nextValue) ? 1 : nextValue
+                                  );
+                                }}
+                              />
+                            </label>
+                          </div>
                         ) : null}
                       </div>
                     </div>

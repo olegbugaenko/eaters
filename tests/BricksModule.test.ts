@@ -170,6 +170,18 @@ describe("BricksModule", () => {
     assert.strictEqual(lethalHit.destroyed, true);
     assert.strictEqual(module.getBrickState(brick.id), null);
 
+    const originalNow = Date.now;
+    try {
+      let fakeNow = originalNow();
+      Date.now = () => {
+        fakeNow += 1000;
+        return fakeNow;
+      };
+      scene.flushChanges();
+    } finally {
+      Date.now = originalNow;
+    }
+
     const remainingObjects = scene.getObjects();
     const brickObjects = remainingObjects.filter((object) => object.type === "brick");
     const explosionObjects = remainingObjects.filter((object) => object.type === "explosion");
