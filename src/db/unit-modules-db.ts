@@ -10,6 +10,8 @@ export const UNIT_MODULE_IDS = [
   "ironForge",
   "silverArmor",
   "internalFurnace",
+  "mendingGland",
+  "frenzyGland",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -112,6 +114,34 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 1,
     baseCost: { coal: 100 },
     unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
+  },
+  mendingGland: {
+    id: "mendingGland",
+    name: "Mending Pheromone Gland",
+    description:
+      "Cultured sacs seep soothing pheromones that ripple through the pack, stitching flesh back together when battle lulls.",
+    bonusLabel: "Healing pulse multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.1,
+    bonusPerLevel: 0.1,
+    manaCostMultiplier: 2.25,
+    sanityCost: 1,
+    baseCost: { organics: 200, sand: 1000 },
+    unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
+  },
+  frenzyGland: {
+    id: "frenzyGland",
+    name: "Frenzy Pheromone Gland",
+    description:
+      "Pressurized nodules burst with acrid signals, goading nearby allies into a sharp, short-lived killing trance.",
+    bonusLabel: "Rally surge multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.1,
+    bonusPerLevel: 0.1,
+    manaCostMultiplier: 2.35,
+    sanityCost: 1,
+    baseCost: { organics: 200, stone: 2000 },
+    unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
   },
 };
 

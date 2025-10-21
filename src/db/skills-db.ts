@@ -31,6 +31,7 @@ export const SKILL_IDS = [
   "sand_scribing",
   "glass_latticework",
   "void_modules",
+  "pheromones",
   "emberglass_reactors",
   // "damage_lore",
   "improved_membranes",
@@ -269,6 +270,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { glass_latticework: 5 },
     cost: createSandCost(150, 1),
+  },
+  pheromones: {
+    id: "pheromones",
+    name: "Pheromones",
+    description:
+      "Seed your chord lattice with signal glands so your beasts can coordinate through scent and surge.",
+    nodePosition: { x: 0, y: -5 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { void_modules: 1 },
+    cost: createResourceCost("organics", 200, 1),
   },
   mana_reservior: {
     id: "mana_reservior",

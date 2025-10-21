@@ -55,6 +55,11 @@ const INTERNAL_FURNACE_TINT_COLOR: SceneColor = {
 };
 const INTERNAL_FURNACE_MAX_INTENSITY = 0.75;
 const INTERNAL_FURNACE_EFFECT_PRIORITY = 50;
+const PHEROMONE_IDLE_THRESHOLD_SECONDS = 2;
+const PHEROMONE_TIMER_CAP_SECONDS = 60;
+const PHEROMONE_BUFF_ATTACKS = 4;
+const PHEROMONE_HEAL_EXPLOSION_RADIUS = 14;
+const PHEROMONE_FRENZY_EXPLOSION_RADIUS = 12;
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
@@ -83,6 +88,11 @@ interface PlayerUnitsModuleOptions {
 
 interface PlayerUnitSaveData {
   readonly units: PlayerUnitSpawnData[];
+}
+
+interface PheromoneAttackBonusState {
+  bonusDamage: number;
+  remainingAttacks: number;
 }
 
 interface PlayerUnitState {
@@ -124,6 +134,11 @@ interface PlayerUnitState {
   appliedStrokeColor?: SceneColor;
   visualEffects: VisualEffectState;
   visualEffectsDirty: boolean;
+  timeSinceLastAttack: number;
+  timeSinceLastSpecial: number;
+  pheromoneHealingMultiplier: number;
+  pheromoneAggressionMultiplier: number;
+  pheromoneAttackBonuses: PheromoneAttackBonusState[];
 }
 
 export class PlayerUnitsModule implements GameModule {
@@ -205,6 +220,14 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       unit.attackCooldown = Math.max(unit.attackCooldown - deltaSeconds, 0);
+      unit.timeSinceLastAttack = Math.min(
+        unit.timeSinceLastAttack + deltaSeconds,
+        PHEROMONE_TIMER_CAP_SECONDS
+      );
+      unit.timeSinceLastSpecial = Math.min(
+        unit.timeSinceLastSpecial + deltaSeconds,
+        PHEROMONE_TIMER_CAP_SECONDS
+      );
 
       if (unit.hpRegenPerSecond > 0 && unit.hp < unit.maxHp) {
         const previousHp = unit.hp;
@@ -216,6 +239,10 @@ export class PlayerUnitsModule implements GameModule {
         if (unit.hp !== previousHp) {
           statsDirty = true;
         }
+      }
+
+      if (this.tryTriggerPheromoneAbilities(unit)) {
+        statsDirty = true;
       }
 
       const movementState = this.movement.getBodyState(unit.movementId);
@@ -507,6 +534,18 @@ export class PlayerUnitsModule implements GameModule {
     if (this.hasSkill("void_modules")) {
       ownedSkills.push("void_modules");
     }
+    if (this.hasSkill("pheromones")) {
+      ownedSkills.push("pheromones");
+    }
+
+    const mendingLevel = ownedModuleIds.includes("mendingGland")
+      ? Math.max(this.getModuleLevel("mendingGland"), 0)
+      : 0;
+    const pheromoneHealingMultiplier = mendingLevel > 0 ? 1 + 0.1 * mendingLevel : 0;
+    const frenzyLevel = ownedModuleIds.includes("frenzyGland")
+      ? Math.max(this.getModuleLevel("frenzyGland"), 0)
+      : 0;
+    const pheromoneAggressionMultiplier = frenzyLevel > 0 ? 1 + 0.1 * frenzyLevel : 0;
 
     const objectId = this.scene.addObject("playerUnit", {
       position,
@@ -573,6 +612,11 @@ export class PlayerUnitsModule implements GameModule {
       visualEffectsDirty: false,
       preCollisionVelocity: { ...ZERO_VECTOR },
       lastNonZeroVelocity: { ...ZERO_VECTOR },
+      timeSinceLastAttack: 0,
+      timeSinceLastSpecial: PHEROMONE_IDLE_THRESHOLD_SECONDS,
+      pheromoneHealingMultiplier,
+      pheromoneAggressionMultiplier,
+      pheromoneAttackBonuses: [],
     };
 
     this.updateInternalFurnaceEffect(state);
@@ -779,20 +823,23 @@ export class PlayerUnitsModule implements GameModule {
   ): boolean {
     let hpChanged = false;
     unit.attackCooldown = unit.baseAttackInterval;
+    unit.timeSinceLastAttack = 0;
     const { damage, isCritical } = this.getAttackOutcome(unit);
-    const result = this.bricks.applyDamage(target.id, damage, direction, {
+    const bonusDamage = this.consumePheromoneAttackBonuses(unit);
+    const totalDamage = Math.max(damage + bonusDamage, 0);
+    const result = this.bricks.applyDamage(target.id, totalDamage, direction, {
       rewardMultiplier: unit.rewardMultiplier,
       armorPenetration: unit.armorPenetration,
     });
     const surviving = result.brick ?? target;
 
-    if (isCritical && damage > 0) {
+    if (isCritical && totalDamage > 0) {
       const effectPosition = result.brick?.position ?? target.position;
       this.spawnCriticalHitEffect(effectPosition);
     }
 
-    if (damage > 0 && unit.damageTransferPercent > 0) {
-      const splashDamage = damage * unit.damageTransferPercent;
+    if (totalDamage > 0 && unit.damageTransferPercent > 0) {
+      const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
         const nearby = this.bricks
           .findBricksNear(target.position, unit.damageTransferRadius)
@@ -890,6 +937,153 @@ export class PlayerUnitsModule implements GameModule {
       ...(fillUpdate ? { fill: fillUpdate } : {}),
       ...(strokeUpdate ? { stroke: strokeUpdate } : {}),
     });
+  }
+
+  private tryTriggerPheromoneAbilities(unit: PlayerUnitState): boolean {
+    if (!this.canUsePheromoneAbility(unit)) {
+      return false;
+    }
+
+    let abilityUsed = false;
+    let healed = false;
+
+    if (unit.pheromoneHealingMultiplier > 0) {
+      const target = this.findPheromoneHealingTarget(unit);
+      if (target) {
+        healed = this.applyPheromoneHealing(unit, target);
+        if (healed) {
+          abilityUsed = true;
+          unit.timeSinceLastSpecial = 0;
+        }
+      }
+    }
+
+    if (!abilityUsed && unit.pheromoneAggressionMultiplier > 0) {
+      const target = this.findPheromoneAggressionTarget(unit);
+      if (target && this.applyPheromoneAggression(unit, target)) {
+        abilityUsed = true;
+        unit.timeSinceLastSpecial = 0;
+      }
+    }
+
+    return healed;
+  }
+
+  private canUsePheromoneAbility(unit: PlayerUnitState): boolean {
+    if (unit.hp <= 0) {
+      return false;
+    }
+    if (
+      unit.pheromoneHealingMultiplier <= 0 &&
+      unit.pheromoneAggressionMultiplier <= 0
+    ) {
+      return false;
+    }
+    if (unit.timeSinceLastAttack < PHEROMONE_IDLE_THRESHOLD_SECONDS) {
+      return false;
+    }
+    if (unit.timeSinceLastSpecial < PHEROMONE_IDLE_THRESHOLD_SECONDS) {
+      return false;
+    }
+    return true;
+  }
+
+  private findPheromoneHealingTarget(
+    source: PlayerUnitState
+  ): PlayerUnitState | null {
+    let best: PlayerUnitState | null = null;
+    let bestRatio = Number.POSITIVE_INFINITY;
+    this.unitOrder.forEach((candidate) => {
+      if (candidate.id === source.id || candidate.hp <= 0) {
+        return;
+      }
+      if (candidate.maxHp <= 0) {
+        return;
+      }
+      const ratio = candidate.hp / candidate.maxHp;
+      if (ratio >= 1) {
+        return;
+      }
+      if (ratio < bestRatio) {
+        bestRatio = ratio;
+        best = candidate;
+      }
+    });
+    return best;
+  }
+
+  private applyPheromoneHealing(
+    source: PlayerUnitState,
+    target: PlayerUnitState
+  ): boolean {
+    const healAmount =
+      Math.max(source.baseAttackDamage, 0) * Math.max(source.pheromoneHealingMultiplier, 0);
+    if (healAmount <= 0) {
+      return false;
+    }
+    const nextHp = clampNumber(target.hp + healAmount, 0, target.maxHp);
+    if (nextHp <= target.hp) {
+      return false;
+    }
+    target.hp = nextHp;
+    this.explosions.spawnExplosionByType("plasmoid", {
+      position: { ...target.position },
+      initialRadius: PHEROMONE_HEAL_EXPLOSION_RADIUS,
+    });
+    return true;
+  }
+
+  private findPheromoneAggressionTarget(
+    source: PlayerUnitState
+  ): PlayerUnitState | null {
+    const candidates = this.unitOrder.filter(
+      (candidate) => candidate.id !== source.id && candidate.hp > 0
+    );
+    if (candidates.length === 0) {
+      return null;
+    }
+    const index = Math.floor(Math.random() * candidates.length);
+    return candidates[index] ?? null;
+  }
+
+  private applyPheromoneAggression(
+    source: PlayerUnitState,
+    target: PlayerUnitState
+  ): boolean {
+    const bonusDamage =
+      Math.max(source.baseAttackDamage, 0) * Math.max(source.pheromoneAggressionMultiplier, 0);
+    if (bonusDamage <= 0) {
+      return false;
+    }
+    target.pheromoneAttackBonuses.push({
+      bonusDamage,
+      remainingAttacks: PHEROMONE_BUFF_ATTACKS,
+    });
+    this.explosions.spawnExplosionByType("magnetic", {
+      position: { ...target.position },
+      initialRadius: PHEROMONE_FRENZY_EXPLOSION_RADIUS,
+    });
+    return true;
+  }
+
+  private consumePheromoneAttackBonuses(unit: PlayerUnitState): number {
+    if (unit.pheromoneAttackBonuses.length === 0) {
+      return 0;
+    }
+    let total = 0;
+    const survivors: PheromoneAttackBonusState[] = [];
+    unit.pheromoneAttackBonuses.forEach((entry) => {
+      if (entry.remainingAttacks <= 0 || entry.bonusDamage <= 0) {
+        return;
+      }
+      total += entry.bonusDamage;
+      const next = entry.remainingAttacks - 1;
+      if (next > 0) {
+        survivors.push({ bonusDamage: entry.bonusDamage, remainingAttacks: next });
+      }
+    });
+    unit.pheromoneAttackBonuses = survivors;
+    return total;
   }
 
   private updateInternalFurnaceEffect(unit: PlayerUnitState): void {
