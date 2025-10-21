@@ -1,7 +1,7 @@
 import { DataBridge } from "../core/DataBridge";
 import { GameModule } from "../core/types";
 import { PLAYER_UNIT_TYPES, PlayerUnitType, isPlayerUnitType } from "../../db/player-units-db";
-import { NecromancerModule } from "./NecromancerModule";
+import { NecromancerModule, NecromancerResourceSnapshot } from "./NecromancerModule";
 import {
   UnitDesignId,
   UnitDesignModule,
@@ -31,12 +31,13 @@ export const DEFAULT_UNIT_AUTOMATION_STATE: UnitAutomationBridgeState = Object.f
 
 interface UnitAutomationModuleOptions {
   bridge: DataBridge;
-  necromancer: Pick<NecromancerModule, "trySpawnDesign">;
+  necromancer: Pick<NecromancerModule, "trySpawnDesign" | "getResources">;
   unitDesigns: Pick<
     UnitDesignModule,
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
   >;
   getSkillLevel: (id: SkillId) => number;
+  isRunActive: () => boolean;
 }
 
 interface UnitAutomationSaveData {
@@ -56,6 +57,8 @@ export interface AutomationSelectionCandidate {
 }
 
 const AUTOMATION_SELECTION_EPSILON = 1e-6;
+
+type AutomationAvailability = "affordable" | "wait" | "skip";
 
 export const selectNextAutomationTarget = (
   candidates: readonly AutomationSelectionCandidate[],
@@ -101,12 +104,13 @@ export class UnitAutomationModule implements GameModule {
   public readonly id = "unitAutomation";
 
   private readonly bridge: DataBridge;
-  private readonly necromancer: Pick<NecromancerModule, "trySpawnDesign">;
+  private readonly necromancer: Pick<NecromancerModule, "trySpawnDesign" | "getResources">;
   private readonly unitDesigns: Pick<
     UnitDesignModule,
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
   >;
   private readonly getSkillLevel: (id: SkillId) => number;
+  private readonly isRunActiveFn: () => boolean;
 
   private unlocked = false;
   private enabled = new Map<UnitDesignId, boolean>();
@@ -123,6 +127,7 @@ export class UnitAutomationModule implements GameModule {
     this.necromancer = options.necromancer;
     this.unitDesigns = options.unitDesigns;
     this.getSkillLevel = options.getSkillLevel;
+    this.isRunActiveFn = options.isRunActive;
   }
 
   public initialize(): void {
@@ -202,6 +207,9 @@ export class UnitAutomationModule implements GameModule {
   }
 
   private runAutomation(): void {
+    if (!this.isRunActiveFn()) {
+      return;
+    }
     let iterations = 0;
     const skipped = new Set<UnitDesignId>();
     while (iterations < MAX_AUTOMATION_ITERATIONS) {
@@ -209,19 +217,40 @@ export class UnitAutomationModule implements GameModule {
       if (!designId) {
         break;
       }
+      const design = this.designLookup.get(designId);
+      if (!design) {
+        skipped.add(designId);
+        continue;
+      }
       iterations += 1;
+      const availability = this.evaluateDesignAvailability(design);
+      if (availability === "wait") {
+        break;
+      }
+      if (availability === "skip") {
+        skipped.add(designId);
+        continue;
+      }
       const success = this.necromancer.trySpawnDesign(designId);
       if (success) {
         this.incrementSpawnCount(designId);
         this.failureCounts.delete(designId);
         continue;
       }
-      const failures = (this.failureCounts.get(designId) ?? 0) + 1;
-      this.failureCounts.set(designId, failures);
-      if (failures < MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK) {
+      const updatedAvailability = this.evaluateDesignAvailability(design);
+      if (updatedAvailability === "wait") {
         break;
       }
-      skipped.add(designId);
+      if (updatedAvailability === "skip") {
+        skipped.add(designId);
+        continue;
+      }
+      const failures = this.incrementFailureCount(designId);
+      if (failures >= MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK) {
+        skipped.add(designId);
+        continue;
+      }
+      break;
     }
   }
 
@@ -263,6 +292,44 @@ export class UnitAutomationModule implements GameModule {
   private incrementSpawnCount(designId: UnitDesignId): void {
     const previous = this.spawnCounts.get(designId) ?? 0;
     this.spawnCounts.set(designId, previous + 1);
+  }
+
+  private incrementFailureCount(designId: UnitDesignId): number {
+    const next = (this.failureCounts.get(designId) ?? 0) + 1;
+    this.failureCounts.set(designId, next);
+    return next;
+  }
+
+  private evaluateDesignAvailability(design: UnitDesignerUnitState): AutomationAvailability {
+    const resources: NecromancerResourceSnapshot = this.necromancer.getResources();
+    const costs = this.getDesignCosts(design);
+    if (costs.sanity > resources.sanity.current) {
+      return "skip";
+    }
+    if (costs.mana > resources.mana.current) {
+      if (costs.mana > resources.mana.max) {
+        return "skip";
+      }
+      if (resources.mana.regenPerSecond <= 0) {
+        return "skip";
+      }
+      return "wait";
+    }
+    return "affordable";
+  }
+
+  private getDesignCosts(design: UnitDesignerUnitState): { mana: number; sanity: number } {
+    return {
+      mana: this.sanitizeCostValue(design.cost?.mana),
+      sanity: this.sanitizeCostValue(design.cost?.sanity),
+    };
+  }
+
+  private sanitizeCostValue(value: unknown): number {
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+    return value;
   }
 
   private refreshUnlockState(): boolean {

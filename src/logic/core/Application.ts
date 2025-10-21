@@ -152,6 +152,7 @@ export class Application {
       necromancer: this.necromancerModule,
       unitDesigns: unitDesignModule,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+      isRunActive: () => mapModuleReference?.isRunActive() ?? false,
     });
     this.unitAutomationModule = unitAutomationModule;
     mapModuleReference = new MapModule({

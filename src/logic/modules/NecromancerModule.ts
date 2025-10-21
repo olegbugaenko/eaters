@@ -34,6 +34,11 @@ export interface NecromancerResourcesPayload {
   sanity: NecromancerResourceMeter;
 }
 
+export interface NecromancerResourceSnapshot {
+  mana: NecromancerResourceMeter & { regenPerSecond: number };
+  sanity: NecromancerResourceMeter;
+}
+
 export interface NecromancerSpawnOption {
   designId: UnitDesignId;
   type: PlayerUnitType;
@@ -116,6 +121,20 @@ export class NecromancerModule implements GameModule {
     this.applyCurrentBonusValues();
     this.pushSpawnOptions();
     this.pushResources();
+  }
+
+  public getResources(): NecromancerResourceSnapshot {
+    return {
+      mana: {
+        current: this.mana.current,
+        max: this.mana.max,
+        regenPerSecond: this.mana.regenPerSecond,
+      },
+      sanity: {
+        current: this.sanity.current,
+        max: this.sanity.max,
+      },
+    };
   }
 
   public reset(): void {

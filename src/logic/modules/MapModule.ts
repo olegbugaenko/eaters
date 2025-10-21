@@ -325,6 +325,10 @@ export class MapModule implements GameModule {
     return this.cloneStats();
   }
 
+  public isRunActive(): boolean {
+    return this.runActive;
+  }
+
   private ensureSelection(): void {
     const mapId = this.resolveSelectableMapId(this.selectedMapId);
     if (!mapId) {

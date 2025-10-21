@@ -11,8 +11,14 @@ import {
 } from "../src/logic/modules/UnitAutomationModule";
 import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
 import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/UnitDesignModule";
+import { NecromancerResourceSnapshot } from "../src/logic/modules/NecromancerModule";
 import { createEmptyResourceAmount } from "../src/types/resources";
 import { PlayerUnitBlueprintStats } from "../src/types/player-units";
+
+const createFullResources = (): NecromancerResourceSnapshot => ({
+  mana: { current: 999, max: 999, regenPerSecond: 10 },
+  sanity: { current: 999, max: 999 },
+});
 
 describe("UnitAutomationModule", () => {
   test("automatically summons enabled units once the skill is unlocked", () => {
@@ -23,6 +29,7 @@ describe("UnitAutomationModule", () => {
         attempts.push(id);
         return true;
       },
+      getResources: () => createFullResources(),
     };
     let skillLevel = 0;
     const unitType = PLAYER_UNIT_TYPES[0];
@@ -75,6 +82,7 @@ describe("UnitAutomationModule", () => {
       necromancer,
       unitDesigns,
       getSkillLevel: () => skillLevel,
+      isRunActive: () => true,
     });
 
     module.initialize();
@@ -111,6 +119,7 @@ describe("UnitAutomationModule", () => {
         attempts.push(id);
         return true;
       },
+      getResources: () => createFullResources(),
     };
     const unitType = PLAYER_UNIT_TYPES[0];
     assert(unitType, "expected at least one unit type for automation tests");
@@ -161,6 +170,7 @@ describe("UnitAutomationModule", () => {
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      isRunActive: () => true,
     });
 
     module.initialize();
@@ -185,6 +195,7 @@ describe("UnitAutomationModule", () => {
         attempts.push(id);
         return true;
       },
+      getResources: () => createFullResources(),
     };
     const unitType = PLAYER_UNIT_TYPES[0];
     assert(unitType, "expected at least one unit type for automation tests");
@@ -271,6 +282,7 @@ describe("UnitAutomationModule", () => {
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      isRunActive: () => true,
     });
 
     module.initialize();
@@ -391,6 +403,8 @@ describe("UnitAutomationModule", () => {
       [expensiveDesign.id, 30],
     ]);
     let mana = 0;
+    const manaMax = 100;
+    const manaRegen = 5;
     const necromancer = {
       trySpawnDesign: (id: UnitDesignId) => {
         const cost = manaCosts.get(id) ?? 0;
@@ -401,6 +415,10 @@ describe("UnitAutomationModule", () => {
         attempts.push(id);
         return true;
       },
+      getResources: () => ({
+        mana: { current: mana, max: manaMax, regenPerSecond: manaRegen },
+        sanity: { current: 999, max: 999 },
+      }),
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
@@ -416,6 +434,7 @@ describe("UnitAutomationModule", () => {
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      isRunActive: () => true,
     });
 
     module.initialize();
@@ -440,6 +459,155 @@ describe("UnitAutomationModule", () => {
       expensiveCount > cheapCount,
       `expected expensive design to spawn more often, got cheap=${cheapCount}, expensive=${expensiveCount}`
     );
+  });
+
+  test("automation waits for mana before spawning the weighted target", () => {
+    const bridge = new DataBridge();
+    const attempts: UnitDesignId[] = [];
+    const unitType = PLAYER_UNIT_TYPES[0];
+    assert(unitType, "expected at least one unit type for automation tests");
+    const makeCost = (manaCost: number) => {
+      const cost = createEmptyResourceAmount();
+      cost.mana = manaCost;
+      return cost;
+    };
+    const cheapDesign: UnitDesignerUnitState = {
+      id: "wait-cheap",
+      type: unitType,
+      name: "Cheap",
+      modules: [],
+      moduleDetails: [],
+      cost: makeCost(10),
+      blueprint: {
+        type: unitType,
+        name: "Cheap",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const expensiveDesign: UnitDesignerUnitState = {
+      id: "wait-expensive",
+      type: unitType,
+      name: "Expensive",
+      modules: [],
+      moduleDetails: [],
+      cost: makeCost(30),
+      blueprint: {
+        type: unitType,
+        name: "Expensive",
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+    };
+    const designs: UnitDesignerUnitState[] = [cheapDesign, expensiveDesign];
+    const manaCosts = new Map<UnitDesignId, number>([
+      [cheapDesign.id, 10],
+      [expensiveDesign.id, 30],
+    ]);
+    let mana = 0;
+    const manaMax = 100;
+    const manaRegen = 10;
+    const necromancer = {
+      trySpawnDesign: (id: UnitDesignId) => {
+        const cost = manaCosts.get(id) ?? 0;
+        if (mana < cost) {
+          return false;
+        }
+        mana -= cost;
+        attempts.push(id);
+        return true;
+      },
+      getResources: () => ({
+        mana: { current: mana, max: manaMax, regenPerSecond: manaRegen },
+        sanity: { current: 999, max: 999 },
+      }),
+    };
+    const unitDesigns = {
+      subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
+        listener(designs);
+        return () => undefined;
+      },
+      getDefaultDesignForType: () => cheapDesign,
+      getActiveRosterDesigns: () => designs,
+    };
+
+    const module = new UnitAutomationModule({
+      bridge,
+      necromancer,
+      unitDesigns,
+      getSkillLevel: () => 1,
+      isRunActive: () => true,
+    });
+
+    module.initialize();
+    module.setAutomationEnabled(cheapDesign.id, true);
+    module.setAutomationEnabled(expensiveDesign.id, true);
+    module.setAutomationWeight(cheapDesign.id, 1);
+    module.setAutomationWeight(expensiveDesign.id, 3);
+
+    const schedule: Array<{ expectedAttempts: number; expectedId?: UnitDesignId }> = [
+      { expectedAttempts: 1, expectedId: cheapDesign.id },
+      { expectedAttempts: 1 },
+      { expectedAttempts: 1 },
+      { expectedAttempts: 2, expectedId: expensiveDesign.id },
+    ];
+
+    schedule.forEach((step, index) => {
+      mana = Math.min(manaMax, mana + manaRegen);
+      module.tick(100);
+      assert.strictEqual(
+        attempts.length,
+        step.expectedAttempts,
+        `tick ${index} should result in ${step.expectedAttempts} spawn attempts`
+      );
+      if (step.expectedId) {
+        assert.strictEqual(
+          attempts[attempts.length - 1],
+          step.expectedId,
+          `tick ${index} should spawn ${step.expectedId}`
+        );
+      }
+    });
   });
 
   test("automation falls back when a design is permanently unaffordable", () => {
@@ -527,6 +695,7 @@ describe("UnitAutomationModule", () => {
     ]);
     let mana = 0;
     const manaMax = 20;
+    const manaRegen = 5;
     const necromancer = {
       trySpawnDesign: (id: UnitDesignId) => {
         const cost = manaCosts.get(id) ?? 0;
@@ -537,6 +706,10 @@ describe("UnitAutomationModule", () => {
         attempts.push(id);
         return true;
       },
+      getResources: () => ({
+        mana: { current: mana, max: manaMax, regenPerSecond: manaRegen },
+        sanity: { current: 999, max: 999 },
+      }),
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
@@ -552,6 +725,7 @@ describe("UnitAutomationModule", () => {
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      isRunActive: () => true,
     });
 
     module.initialize();
