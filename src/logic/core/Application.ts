@@ -9,6 +9,8 @@ import { BricksModule } from "../modules/BricksModule";
 import { MapModule } from "../modules/MapModule";
 import { BulletModule } from "../modules/BulletModule";
 import { ExplosionModule } from "../modules/ExplosionModule";
+import { ArcModule } from "../modules/ArcModule";
+import { EffectsModule } from "../modules/EffectsModule";
 import { MapId } from "../../db/maps-db";
 import { PlayerUnitsModule } from "../modules/PlayerUnitsModule";
 import { MovementService } from "../services/MovementService";
@@ -134,11 +136,15 @@ export class Application {
       movement: movementService,
       bonuses: bonusesModule,
       explosions: explosionModule,
+      arcs: undefined, // will set after ArcModule created
+      effects: undefined, // will set after EffectsModule created
       onAllUnitsDefeated: () => {
         this.handleAllUnitsDefeated();
       },
       getModuleLevel: (id) => this.unitModuleWorkshopModule.getModuleLevel(id),
       hasSkill: (id) => this.skillTreeModule.getLevel(id) > 0,
+      getDesignTargetingMode: (designId, type) =>
+        unitDesignModule.getTargetingModeForDesign(designId, type),
     });
     this.necromancerModule = new NecromancerModule({
       bridge: this.dataBridge,
@@ -155,6 +161,16 @@ export class Application {
       isRunActive: () => mapModuleReference?.isRunActive() ?? false,
     });
     this.unitAutomationModule = unitAutomationModule;
+    const arcModule = new ArcModule({
+      scene: sceneObjects,
+      getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
+    });
+
+    const effectsModule = new EffectsModule({
+      scene: sceneObjects,
+      getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
+    });
+
     mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
@@ -183,10 +199,15 @@ export class Application {
     this.registerModule(timeModule);
     this.registerModule(bricksModule);
     this.registerModule(playerUnitsModule);
+    // now arcs module is ready; link it to playerUnits (optional, legacy code still works without)
+    (playerUnitsModule as any).arcs = arcModule;
+    (playerUnitsModule as any).effects = effectsModule;
     this.registerModule(this.necromancerModule);
     this.registerModule(this.unitAutomationModule);
     this.registerModule(this.mapModule);
     this.registerModule(explosionModule);
+    this.registerModule(arcModule);
+    this.registerModule(effectsModule);
     this.registerModule(bulletModule);
   }
 

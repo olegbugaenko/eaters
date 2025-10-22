@@ -255,6 +255,7 @@ export class NecromancerModule implements GameModule {
 
     const spawnPosition = this.getNextSpawnPosition();
     const spawnData: PlayerUnitSpawnData = {
+      designId: design.id,
       type: design.type,
       position: spawnPosition,
       runtimeModifiers: design.runtime,

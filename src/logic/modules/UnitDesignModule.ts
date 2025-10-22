@@ -20,6 +20,13 @@ import {
   PlayerUnitRuntimeModifiers,
 } from "../../types/player-units";
 import {
+  DEFAULT_UNIT_TARGETING_MODE,
+  DEFAULT_UNIT_TARGETING_SETTINGS,
+  UnitTargetingMode,
+  UnitTargetingSettings,
+  UnitTargetingSettingsMap,
+} from "../../types/unit-targeting";
+import {
   ResourceAmountMap,
   createEmptyResourceAmount,
   normalizeResourceCost,
@@ -59,6 +66,7 @@ export interface UnitDesignerUnitState {
   readonly cost: ResourceAmountMap;
   readonly blueprint: PlayerUnitBlueprintStats;
   readonly runtime: PlayerUnitRuntimeModifiers;
+  readonly targetingMode: UnitTargetingMode;
 }
 
 export interface UnitDesignerAvailableModuleState {
@@ -79,6 +87,7 @@ export interface UnitDesignerBridgeState {
   readonly maxModules: number;
   readonly activeRoster: readonly UnitDesignId[];
   readonly maxActiveUnits: number;
+  readonly targetingByUnit: UnitTargetingSettingsMap;
 }
 
 interface UnitDesignerSaveDataEntry {
@@ -91,6 +100,11 @@ interface UnitDesignerSaveDataEntry {
 interface UnitDesignerSaveData {
   readonly units?: UnitDesignerSaveDataEntry[];
   readonly roster?: UnitDesignId[];
+  readonly strategy?: UnitDesignerStrategySaveData;
+}
+
+interface UnitDesignerStrategySaveData {
+  readonly targetingModes?: Record<string, UnitTargetingMode>;
 }
 
 interface UnitDesignModuleOptions {
@@ -110,6 +124,7 @@ export const DEFAULT_UNIT_DESIGNER_STATE: UnitDesignerBridgeState = Object.freez
   maxModules: MAX_MODULES_PER_UNIT,
   activeRoster: [],
   maxActiveUnits: MAX_ACTIVE_UNITS,
+  targetingByUnit: {},
 });
 
 const DEFAULT_UNIT_NAME_FALLBACK = "Custom Unit";
@@ -135,6 +150,7 @@ export class UnitDesignModule implements GameModule {
   private cachedComputed = new Map<UnitDesignId, UnitDesignerUnitState>();
   private activeRoster: UnitDesignId[] = [];
   private rosterInitialized = false;
+  private designTargeting = new Map<UnitDesignId, UnitTargetingMode>();
   private cachedBonuses: BonusValueMap | null = null;
   private listeners = new Set<UnitDesignerListener>();
   private unsubscribeBonuses: (() => void) | null = null;
@@ -164,6 +180,7 @@ export class UnitDesignModule implements GameModule {
     this.idCounter = 0;
     this.activeRoster = [];
     this.rosterInitialized = false;
+    this.designTargeting.clear();
     this.ensureDefaults();
     this.refreshComputedState();
   }
@@ -174,6 +191,7 @@ export class UnitDesignModule implements GameModule {
     this.idCounter = 0;
     this.activeRoster = [];
     this.rosterInitialized = false;
+    this.designTargeting.clear();
     this.applySaveData(data);
     this.ensureDefaults();
     this.refreshComputedState();
@@ -190,7 +208,15 @@ export class UnitDesignModule implements GameModule {
         modules: [...record.modules],
       }));
     const roster = this.activeRoster.slice(0, MAX_ACTIVE_UNITS);
-    return { units, roster } satisfies UnitDesignerSaveData;
+    const targetingModes: Record<string, UnitTargetingMode> = {};
+    this.designOrder.forEach((id) => {
+      const mode = this.designTargeting.get(id);
+      if (mode) {
+        targetingModes[id] = mode;
+      }
+    });
+    const strategy: UnitDesignerStrategySaveData = { targetingModes };
+    return { units, roster, strategy } satisfies UnitDesignerSaveData;
   }
 
   public tick(_deltaMs: number): void {
@@ -209,6 +235,7 @@ export class UnitDesignModule implements GameModule {
     };
     this.designs.set(id, record);
     this.designOrder.push(id);
+    this.designTargeting.set(id, DEFAULT_UNIT_TARGETING_MODE);
     // Auto-add to roster if there's a free slot
     if (this.activeRoster.length < MAX_ACTIVE_UNITS && !this.activeRoster.includes(id)) {
       this.activeRoster = this.sanitizeRoster([...this.activeRoster, id]);
@@ -245,6 +272,7 @@ export class UnitDesignModule implements GameModule {
     this.designs.delete(id);
     this.designOrder = this.designOrder.filter((entry) => entry !== id);
     this.cachedComputed.delete(id);
+    this.designTargeting.delete(id);
     if (!this.hasDesignForType(type)) {
       this.createDefaultDesign(type);
     }
@@ -269,6 +297,24 @@ export class UnitDesignModule implements GameModule {
     return this.activeRoster
       .map((id) => this.cachedComputed.get(id) ?? null)
       .filter((entry): entry is UnitDesignerUnitState => Boolean(entry));
+  }
+
+  public getDesignTargetingMode(id: UnitDesignId): UnitTargetingMode {
+    return this.ensureDesignTargeting(id);
+  }
+
+  public getTargetingModeForDesign(
+    designId: UnitDesignId | null,
+    type: PlayerUnitType
+  ): UnitTargetingMode {
+    if (designId && this.designs.has(designId)) {
+      return this.ensureDesignTargeting(designId);
+    }
+    const fallback = this.getDefaultDesignForType(type);
+    if (fallback) {
+      return this.ensureDesignTargeting(fallback.id);
+    }
+    return DEFAULT_UNIT_TARGETING_MODE;
   }
 
   public getDefaultDesignForType(type: PlayerUnitType): UnitDesignerUnitState | null {
@@ -301,6 +347,20 @@ export class UnitDesignModule implements GameModule {
     this.emitState(units);
   }
 
+  public setDesignTargetingMode(id: UnitDesignId, mode: UnitTargetingMode): void {
+    if (!this.designs.has(id)) {
+      return;
+    }
+    const sanitized = this.sanitizeTargetingMode(mode);
+    const current = this.ensureDesignTargeting(id);
+    if (sanitized === current) {
+      return;
+    }
+    this.designTargeting.set(id, sanitized);
+    const units = this.getAllDesigns();
+    this.emitState(units);
+  }
+
   private applySaveData(data: unknown | undefined): void {
     if (!data || typeof data !== "object") {
       return;
@@ -310,6 +370,20 @@ export class UnitDesignModule implements GameModule {
     if (Array.isArray(rosterPayload)) {
       roster = rosterPayload.filter((id): id is UnitDesignId => typeof id === "string");
       this.rosterInitialized = true;
+    }
+    const strategyPayload = (data as UnitDesignerSaveData).strategy;
+    if (strategyPayload && typeof strategyPayload === "object") {
+      const targetingModes = strategyPayload.targetingModes;
+      if (targetingModes && typeof targetingModes === "object") {
+        Object.entries(targetingModes).forEach(([id, mode]) => {
+          if (typeof id === "string") {
+            this.designTargeting.set(
+              id,
+              this.sanitizeTargetingMode(mode)
+            );
+          }
+        });
+      }
     }
     const payload = (data as UnitDesignerSaveData).units;
     if (!Array.isArray(payload)) {
@@ -331,6 +405,9 @@ export class UnitDesignModule implements GameModule {
       this.designs.set(id, record);
       this.designOrder.push(id);
       this.idCounter = Math.max(this.idCounter, this.extractCounter(id));
+      if (!this.designTargeting.has(id)) {
+        this.designTargeting.set(id, DEFAULT_UNIT_TARGETING_MODE);
+      }
     });
     this.activeRoster = this.sanitizeRoster(roster);
   }
@@ -350,6 +427,8 @@ export class UnitDesignModule implements GameModule {
         this.rosterInitialized = true;
       }
     }
+    this.pruneOrphanTargetingModes();
+    this.designOrder.forEach((id) => this.ensureDesignTargeting(id));
   }
 
   private hasDesignForType(type: PlayerUnitType): boolean {
@@ -375,6 +454,43 @@ export class UnitDesignModule implements GameModule {
       sanitized.push(id);
     });
     return sanitized;
+  }
+
+  private sanitizeTargetingMode(mode: unknown): UnitTargetingMode {
+    if (typeof mode === "string") {
+      switch (mode) {
+        case "nearest":
+        case "highestHp":
+        case "lowestHp":
+        case "highestDamage":
+        case "lowestDamage":
+        case "none":
+          return mode;
+        default:
+          break;
+      }
+    }
+    return DEFAULT_UNIT_TARGETING_SETTINGS.mode;
+  }
+
+  private ensureDesignTargeting(id: UnitDesignId): UnitTargetingMode {
+    const current = this.designTargeting.get(id);
+    const sanitized = this.sanitizeTargetingMode(
+      current ?? DEFAULT_UNIT_TARGETING_MODE
+    );
+    if (current !== sanitized) {
+      this.designTargeting.set(id, sanitized);
+    }
+    return sanitized;
+  }
+
+  private pruneOrphanTargetingModes(): void {
+    const validIds = new Set(this.designOrder);
+    Array.from(this.designTargeting.keys()).forEach((id) => {
+      if (!validIds.has(id)) {
+        this.designTargeting.delete(id);
+      }
+    });
   }
 
   private areRostersEqual(
@@ -403,6 +519,7 @@ export class UnitDesignModule implements GameModule {
     };
     this.designs.set(id, record);
     this.designOrder.push(id);
+    this.designTargeting.set(id, DEFAULT_UNIT_TARGETING_MODE);
   }
 
   private refreshComputedState(): void {
@@ -445,6 +562,7 @@ export class UnitDesignModule implements GameModule {
     const blueprint = this.createBlueprint(record.type, bonusValues, moduleDetails);
     const cost = this.computeCost(record.type, moduleDetails);
     const runtime = this.computeRuntime(moduleDetails);
+    const targetingMode = this.ensureDesignTargeting(record.id);
     return {
       id: record.id,
       type: record.type,
@@ -454,17 +572,24 @@ export class UnitDesignModule implements GameModule {
       cost,
       blueprint,
       runtime,
+      targetingMode,
     };
   }
 
   private pushState(units: UnitDesignerUnitState[]): void {
     const availableModules = this.createAvailableModules();
+    const targetingByUnit: Record<string, UnitTargetingSettings> = {};
+    this.designOrder.forEach((id) => {
+      const mode = this.ensureDesignTargeting(id);
+      targetingByUnit[id] = { mode };
+    });
     this.bridge.setValue<UnitDesignerBridgeState>(UNIT_DESIGNER_STATE_BRIDGE_KEY, {
       units,
       availableModules,
       maxModules: MAX_MODULES_PER_UNIT,
       activeRoster: [...this.activeRoster],
       maxActiveUnits: MAX_ACTIVE_UNITS,
+      targetingByUnit,
     });
   }
 

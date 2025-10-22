@@ -47,6 +47,7 @@ interface PlayerUnitCustomData {
   baseStrokeColor?: SceneColor;
   modules?: UnitModuleId[];
   skills?: SkillId[];
+  effects?: string[];
 }
 
 interface PlayerUnitEmitterRenderConfig extends ParticleEmitterBaseConfig {
@@ -77,6 +78,7 @@ interface RendererLayerBase {
   stroke?: RendererLayerStroke;
   requiresModule?: UnitModuleId;
   requiresSkill?: SkillId;
+  requiresEffect?: string;
   anim?: {
     type: "sway" | "pulse";
     periodMs?: number;
@@ -270,6 +272,7 @@ const sanitizeCompositeLayer = (
       // preserve conditional flags from DB config
       requiresModule: (layer as any).requiresModule,
       requiresSkill: (layer as any).requiresSkill,
+      requiresEffect: (layer as any).requiresEffect,
       anim: (layer as any).anim,
       spine: (layer as any).spine,
       segmentIndex: (layer as any).segmentIndex,
@@ -297,6 +300,7 @@ const sanitizeCompositeLayer = (
     // preserve conditional flags from DB config
     requiresModule: (layer as any).requiresModule,
     requiresSkill: (layer as any).requiresSkill,
+    requiresEffect: (layer as any).requiresEffect,
     anim: (layer as any).anim,
     groupId: (layer as any).groupId,
   };
@@ -514,6 +518,15 @@ const createCompositePrimitives = (
     const reqSkill = (layer as any).requiresSkill as SkillId | undefined;
     if (reqSkill && (!payload || !Array.isArray(payload.skills) || !payload.skills.includes(reqSkill))) {
       return;
+    }
+    const reqEffect = (layer as any).requiresEffect as string | undefined;
+    if (reqEffect) {
+      const effects: string[] = Array.isArray((payload as any)?.effects)
+        ? ((payload as any).effects as string[])
+        : [];
+      if (!effects.includes(reqEffect)) {
+        return;
+      }
     }
     if (layer.shape === "polygon") {
       // Sway animation for tentacle segments built from a line spine

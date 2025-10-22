@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { classNames } from "@shared/classNames";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import {
@@ -7,6 +7,7 @@ import {
 } from "@logic/modules/UnitDesignModule";
 import { Button } from "@shared/Button";
 import { UnitAutomationBridgeState } from "@logic/modules/UnitAutomationModule";
+import { UnitTargetingMode } from "@/types/unit-targeting";
 import "./UnitRosterView.css";
 
 interface UnitRosterViewProps {
@@ -24,6 +25,45 @@ const buildUnitMap = (
   return map;
 };
 
+const TARGETING_OPTIONS: ReadonlyArray<{
+  mode: UnitTargetingMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    mode: "nearest",
+    label: "Nearest target",
+    description: "Engage the closest brick within reach.",
+  },
+  {
+    mode: "highestHp",
+    label: "Highest HP",
+    description: "Prioritise nearby enemies with the most health.",
+  },
+  {
+    mode: "lowestHp",
+    label: "Lowest HP",
+    description: "Finish off weakened enemies first within range.",
+  },
+  {
+    mode: "highestDamage",
+    label: "Highest damage",
+    description: "Seek nearby threats that deal the most damage.",
+  },
+  {
+    mode: "lowestDamage",
+    label: "Lowest damage",
+    description: "Pick safer targets that hit the weakest nearby.",
+  },
+  {
+    mode: "none",
+    label: "Standby (no attacks)",
+    description: "Do not attack; wander near the spawn point.",
+  },
+];
+
+const DEFAULT_TARGETING_MODE: UnitTargetingMode = TARGETING_OPTIONS[0]!.mode;
+
 export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automation }) => {
   const { app } = useAppLogic();
   const designer = useMemo(() => app.getUnitDesigner(), [app]);
@@ -31,6 +71,14 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
 
   const roster = state.activeRoster;
   const maxSlots = state.maxActiveUnits;
+  const targetingByUnit = state.targetingByUnit ?? {};
+  const targetingLookup = useMemo(() => {
+    const map = new Map<UnitTargetingMode, (typeof TARGETING_OPTIONS)[number]>();
+    TARGETING_OPTIONS.forEach((option) => {
+      map.set(option.mode, option);
+    });
+    return map;
+  }, []);
 
   const unitsById = useMemo(() => buildUnitMap(state.units), [state.units]);
   const rosterUnits = useMemo(
@@ -51,6 +99,21 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
     });
     return lookup;
   }, [automation.units]);
+
+  const resolveTargetingMode = useCallback(
+    (designId: string): UnitTargetingMode => targetingByUnit[designId]?.mode ?? DEFAULT_TARGETING_MODE,
+    [targetingByUnit]
+  );
+
+  const [editingStrategyDesignId, setEditingStrategyDesignId] = useState<string | null>(null);
+  const [draftMode, setDraftMode] = useState<UnitTargetingMode>(DEFAULT_TARGETING_MODE);
+
+  useEffect(() => {
+    if (!editingStrategyDesignId) {
+      return;
+    }
+    setDraftMode(resolveTargetingMode(editingStrategyDesignId));
+  }, [editingStrategyDesignId, resolveTargetingMode]);
 
   const handleAddToRoster = useCallback(
     (unitId: string) => {
@@ -121,6 +184,40 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
     [automationModule]
   );
 
+  const openStrategySettings = useCallback(
+    (designId: string) => {
+      setEditingStrategyDesignId(designId);
+      setDraftMode(resolveTargetingMode(designId));
+    },
+    [resolveTargetingMode]
+  );
+
+  const handleCancelStrategy = useCallback(() => {
+    setEditingStrategyDesignId(null);
+  }, []);
+
+  const handleConfirmStrategy = useCallback(() => {
+    if (!editingStrategyDesignId) {
+      return;
+    }
+    const currentMode = resolveTargetingMode(editingStrategyDesignId);
+    if (draftMode !== currentMode) {
+      designer.setDesignTargetingMode(editingStrategyDesignId, draftMode);
+    }
+    setEditingStrategyDesignId(null);
+  }, [designer, draftMode, editingStrategyDesignId, resolveTargetingMode]);
+
+  const handleSelectStrategy = useCallback((mode: UnitTargetingMode) => {
+    setDraftMode(mode);
+  }, []);
+
+  const isStrategyOpen = editingStrategyDesignId !== null;
+  const editingUnit = useMemo(
+    () => (editingStrategyDesignId ? unitsById.get(editingStrategyDesignId) ?? null : null),
+    [editingStrategyDesignId, unitsById]
+  );
+  const draftOption = targetingLookup.get(draftMode) ?? TARGETING_OPTIONS[0]!;
+
   return (
     <div className="unit-roster surface-panel stack-lg">
       <header className="unit-roster__header">
@@ -137,10 +234,14 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
       </header>
       <div className="unit-roster__content">
         <section className="unit-roster__slots surface-sidebar">
-          <h3 className="heading-4">Active Lineup</h3>
+          <div className="unit-roster__slots-header">
+            <h3 className="heading-4">Active Lineup</h3>
+          </div>
           <ol className="unit-roster__slot-list">
             {Array.from({ length: maxSlots }).map((_, index) => {
               const unit = rosterUnits[index] ?? null;
+              const currentMode = unit ? resolveTargetingMode(unit.id) : DEFAULT_TARGETING_MODE;
+              const currentOption = targetingLookup.get(currentMode) ?? TARGETING_OPTIONS[0]!;
               return (
                 <li
                   key={`roster-slot-${index}`}
@@ -153,7 +254,25 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                   {unit ? (
                     <div className="unit-roster__slot-body">
                       <div className="unit-roster__slot-info">
-                        <span className="unit-roster__slot-name">{unit.name}</span>
+                        <div className="unit-roster__slot-header">
+                          <span className="unit-roster__slot-name">{unit.name}</span>
+                          <button
+                            type="button"
+                            className="unit-roster__slot-strategy-button"
+                            onClick={() => openStrategySettings(unit.id)}
+                            aria-haspopup="dialog"
+                            aria-expanded={
+                              isStrategyOpen && editingStrategyDesignId === unit.id
+                            }
+                          >
+                            <span className="unit-roster__slot-strategy-label">
+                              Strategy
+                            </span>
+                            <span className="unit-roster__slot-strategy-value">
+                              {currentOption.label}
+                            </span>
+                          </button>
+                        </div>
                         <span className="unit-roster__slot-meta">
                           {unit.modules.length} modules
                         </span>
@@ -283,6 +402,79 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
           </ul>
         </section>
       </div>
+      {isStrategyOpen ? (
+        <div className="unit-roster__strategy-layer" role="presentation">
+          <div
+            className="unit-roster__strategy-backdrop"
+            onClick={handleCancelStrategy}
+            role="presentation"
+          />
+          <div
+            className="unit-roster__strategy-dialog surface-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unit-roster-strategy-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="unit-roster__strategy-header">
+              <h3 id="unit-roster-strategy-title">Strategy settings</h3>
+              <p className="unit-roster__strategy-description">
+                {editingUnit ? (
+                  <>
+                    Choose how <strong>{editingUnit.name}</strong> prioritises its
+                    targets during combat. Current selection:
+                    <span className="unit-roster__strategy-current">
+                      {draftOption.label}
+                    </span>
+                  </>
+                ) : (
+                  "Choose how deployed units prioritise their targets during combat."
+                )}
+              </p>
+            </div>
+            <div className="unit-roster__strategy-options">
+              {TARGETING_OPTIONS.map((option) => {
+                const active = draftMode === option.mode;
+                return (
+                  <label
+                    key={option.mode}
+                    className={classNames(
+                      "unit-roster__strategy-option",
+                      active && "unit-roster__strategy-option--active"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="unit-roster-strategy"
+                      value={option.mode}
+                      checked={active}
+                      onChange={() => handleSelectStrategy(option.mode)}
+                    />
+                    <div className="unit-roster__strategy-option-content">
+                      <span className="unit-roster__strategy-option-label">
+                        {option.label}
+                      </span>
+                      <span className="unit-roster__strategy-option-description">
+                        {option.description}
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="unit-roster__strategy-actions">
+              <button
+                type="button"
+                className="unit-roster__strategy-cancel"
+                onClick={handleCancelStrategy}
+              >
+                Cancel
+              </button>
+              <Button onClick={handleConfirmStrategy}>Save</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

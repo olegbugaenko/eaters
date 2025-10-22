@@ -49,6 +49,7 @@ export type PlayerUnitRendererLayerConfig =
       stroke?: PlayerUnitRendererStrokeConfig;
       requiresModule?: UnitModuleId;
       requiresSkill?: SkillId;
+      requiresEffect?: string;
       // Optional animation and meta for dynamic deformation
       anim?: {
         type: "sway" | "pulse";
@@ -73,6 +74,7 @@ export type PlayerUnitRendererLayerConfig =
       stroke?: PlayerUnitRendererStrokeConfig;
       requiresModule?: UnitModuleId;
       requiresSkill?: SkillId;
+      requiresEffect?: string;
       anim?: {
         type: "pulse" | "sway";
         periodMs?: number;
@@ -317,6 +319,30 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           vertices: [ {x: 9.2, y: -4.3}, {x: 8.2, y: -4.9}, {x: 8.8, y: -3.7} ],
           fill: { type: "base", brightness: -0.05 },
           stroke: { type: "base", width: 1.1, brightness: -0.10 }
+        },
+
+        // Effects
+        {
+          shape: "circle",
+          radius: 32,
+          segments: 48,
+          offset: { x: 0, y: 0 },
+          requiresEffect: 'frenzyAura',
+          fill: {
+            type: "gradient",
+
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 24,
+              stops: [
+                { offset: 0, color: { r: 0.6, g: 0.85, b: 1, a: 0.0 } },
+                { offset: 0.6, color: { r: 0.6, g: 0.85, b: 1, a: 0.0 } },
+                { offset: 0.75, color: { r: 1.0, g: 0.8, b: 0.5, a: 0.25 } },
+                { offset: 1, color: { r: 1.0, g: 0.9, b: 0.5, a: 0.0 } },
+              ],
+            },
+          },
         },
 
         /*{

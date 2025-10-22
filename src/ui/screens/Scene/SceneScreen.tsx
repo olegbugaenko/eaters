@@ -41,6 +41,7 @@ import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
 import { renderParticleEmitters, disposeParticleRenderResources, getParticleStats } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
+import { renderArcBatches } from "../../renderers/primitives/ArcGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
@@ -792,6 +793,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       
       if (webgl2) {
         renderParticleEmitters(
+          webgl2,
+          cameraState.position,
+          cameraState.viewportSize
+        );
+        renderArcBatches(
           webgl2,
           cameraState.position,
           cameraState.viewportSize

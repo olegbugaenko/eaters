@@ -9,6 +9,7 @@ import {
 export type ExplosionType =
   | "plasmoid"
   | "magnetic"
+  | "healWave"
   | "grayBrickHit"
   | "grayBrickDestroy"
   | "yellowBrickHit"
@@ -105,6 +106,12 @@ const CRITICAL_HIT_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 1, g: 0.35, b: 0.35, a: 0.85 } },
   { offset: 0.4, color: { r: 0.9, g: 0.12, b: 0.12, a: 0.55 } },
   { offset: 1, color: { r: 0.55, g: 0, b: 0, a: 0 } },
+] as const;
+
+const HEAL_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.55, g: 1.0, b: 0.65, a: 0.85 } },
+  { offset: 0.4, color: { r: 0.35, g: 0.9, b: 0.45, a: 0.55 } },
+  { offset: 1, color: { r: 0.1, g: 0.6, b: 0.15, a: 0 } },
 ] as const;
 
 // Color-themed waves for non-gray bricks
@@ -363,6 +370,30 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       fill: MAGNETIC_EMITTER_FILL,
       arc: Math.PI / 2,
       direction: Math.PI,
+    },
+  },
+  healWave: {
+    lifetimeMs: 1_200,
+    defaultInitialRadius: 12,
+    wave: {
+      radiusExtension: 120,
+      startAlpha: 0.85,
+      endAlpha: 0,
+      gradientStops: HEAL_WAVE_GRADIENT_STOPS,
+    },
+    emitter: {
+      emissionDurationMs: 0,
+      particlesPerSecond: 0,
+      baseSpeed: 0,
+      speedVariation: 0,
+      particleLifetimeMs: 0,
+      fadeStartMs: 0,
+      sizeRange: { min: 0, max: 0 },
+      spawnRadius: { min: 0, max: 0 },
+      spawnRadiusMultiplier: 1,
+      color: { r: 0.6, g: 1, b: 0.7, a: 1 },
+      arc: 0,
+      direction: 0,
     },
   },
   grayBrickHit: {
