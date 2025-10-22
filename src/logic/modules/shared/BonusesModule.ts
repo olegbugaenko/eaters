@@ -1,11 +1,11 @@
-import { GameModule } from "../core/types";
-import { BONUS_IDS, BonusId, getBonusConfig } from "../../db/bonuses-db";
+import { GameModule } from "../../core/types";
+import { BONUS_IDS, BonusId, getBonusConfig } from "../../../db/bonuses-db";
 import {
   BonusEffectFormula,
   BonusEffectMap,
   BonusEffectPreview,
   BonusEffectType,
-} from "../../types/bonuses";
+} from "../../../types/bonuses";
 
 export type BonusValueMap = Record<BonusId, number>;
 

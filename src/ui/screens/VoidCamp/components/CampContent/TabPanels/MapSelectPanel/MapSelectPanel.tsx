@@ -1,5 +1,5 @@
 import { MapId } from "@db/maps-db";
-import { MapListEntry } from "@logic/modules/MapModule";
+import { MapListEntry } from "@logic/modules/active-map/MapModule";
 import { Button } from "@shared/Button";
 import { formatDuration } from "@ui/utils/formatDuration";
 import "./MapSelectPanel.css";

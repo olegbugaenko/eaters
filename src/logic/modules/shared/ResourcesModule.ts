@@ -1,8 +1,8 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
-import { UnlockService } from "../services/UnlockService";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
+import { UnlockService } from "../../services/UnlockService";
 import { BonusesModule } from "./BonusesModule";
-import { BonusId } from "../../db/bonuses-db";
+import { BonusId } from "../../../db/bonuses-db";
 import {
   RESOURCE_IDS,
   ResourceAmount,
@@ -12,7 +12,7 @@ import {
   getResourceConfig,
   normalizeResourceAmount,
   cloneResourceStockpile,
-} from "../../db/resources-db";
+} from "../../../db/resources-db";
 
 export const RESOURCE_TOTALS_BRIDGE_KEY = "resources/totals";
 export const RESOURCE_RUN_SUMMARY_BRIDGE_KEY = "resources/runSummary";

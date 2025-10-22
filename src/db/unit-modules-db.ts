@@ -33,6 +33,7 @@ export interface UnitModuleConfig {
   readonly meta?: {
     readonly cooldownSeconds?: number;
     readonly frenzyAttacks?: number;
+    readonly healCharges?: number;
   };
 }
 
@@ -132,7 +133,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 1,
     baseCost: { organics: 200, sand: 1000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
-    meta: { cooldownSeconds: 4 },
+    meta: { cooldownSeconds: 4, healCharges: 10 },
   },
   frenzyGland: {
     id: "frenzyGland",

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapId } from "@db/maps-db";
-import { MapListEntry } from "@logic/modules/MapModule";
+import { MapListEntry } from "@logic/modules/active-map/MapModule";
 import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
 import { CampTabPanels } from "./TabPanels/CampTabPanels";
-import { UnitModuleWorkshopBridgeState } from "@logic/modules/UnitModuleWorkshopModule";
-import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
-import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
+import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/UnitModuleWorkshopModule";
+import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
+import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import { formatDuration } from "@ui/utils/formatDuration";
-import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
-import { CraftingBridgeState } from "@logic/modules/CraftingModule";
-import { UnitAutomationBridgeState } from "@logic/modules/UnitAutomationModule";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/BuildingsModule";
+import { CraftingBridgeState } from "@logic/modules/camp/CraftingModule";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
 import "./CampContent.css";
 
 export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting";

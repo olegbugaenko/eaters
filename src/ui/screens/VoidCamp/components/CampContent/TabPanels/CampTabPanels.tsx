@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { MapId } from "@db/maps-db";
-import { MapListEntry } from "@logic/modules/MapModule";
+import { MapListEntry } from "@logic/modules/active-map/MapModule";
 import { SkillTreeView } from "@screens/VoidCamp/components/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@screens/VoidCamp/components/ModulesWorkshop/ModulesWorkshopView";
 import { UnitDesignerView } from "@screens/VoidCamp/components/UnitDesigner/UnitDesignerView";
 import { CampTabKey } from "../CampContent";
 import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
-import { UnitModuleWorkshopBridgeState } from "@logic/modules/UnitModuleWorkshopModule";
-import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
-import { UnitDesignerBridgeState } from "@logic/modules/UnitDesignModule";
-import { BuildingsWorkshopBridgeState } from "@logic/modules/BuildingsModule";
+import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/UnitModuleWorkshopModule";
+import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
+import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/BuildingsModule";
 import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWorkshop/BuildingsWorkshopView";
-import { CraftingBridgeState } from "@logic/modules/CraftingModule";
+import { CraftingBridgeState } from "@logic/modules/camp/CraftingModule";
 import { CraftingView } from "@screens/VoidCamp/components/Crafting/CraftingView";
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
-import { UnitAutomationBridgeState } from "@logic/modules/UnitAutomationModule";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {

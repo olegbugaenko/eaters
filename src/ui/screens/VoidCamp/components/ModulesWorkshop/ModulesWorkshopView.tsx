@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
+import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   UnitModuleWorkshopBridgeState,
-} from "@logic/modules/UnitModuleWorkshopModule";
+} from "@logic/modules/camp/UnitModuleWorkshopModule";
 import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
 import { formatNumber } from "@shared/format/number";
 import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";

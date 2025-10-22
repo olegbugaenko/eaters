@@ -8,10 +8,10 @@ import {
   UnitAutomationModule,
   selectNextAutomationTarget,
   AutomationSelectionCandidate,
-} from "../src/logic/modules/UnitAutomationModule";
+} from "../src/logic/modules/active-map/UnitAutomationModule";
 import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
-import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/UnitDesignModule";
-import { NecromancerResourceSnapshot } from "../src/logic/modules/NecromancerModule";
+import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/UnitDesignModule";
+import { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/NecromancerModule";
 import { createEmptyResourceAmount } from "../src/types/resources";
 import { PlayerUnitBlueprintStats } from "../src/types/player-units";
 

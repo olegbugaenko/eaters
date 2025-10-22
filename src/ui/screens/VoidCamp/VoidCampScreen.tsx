@@ -5,37 +5,37 @@ import {
   CampTabKey,
 } from "@screens/VoidCamp/components/CampContent/CampContent";
 import { MapId } from "@db/maps-db";
-import { MapListEntry, MAP_LIST_BRIDGE_KEY, MAP_SELECTED_BRIDGE_KEY } from "@logic/modules/MapModule";
-import { TIME_BRIDGE_KEY } from "@logic/modules/TestTimeModule";
-import { BRICK_COUNT_BRIDGE_KEY } from "@logic/modules/BricksModule";
-import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/ResourcesModule";
+import { MapListEntry, MAP_LIST_BRIDGE_KEY, MAP_SELECTED_BRIDGE_KEY } from "@logic/modules/active-map/MapModule";
+import { TIME_BRIDGE_KEY } from "@logic/modules/shared/TestTimeModule";
+import { BRICK_COUNT_BRIDGE_KEY } from "@logic/modules/active-map/BricksModule";
+import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@shared/useBridgeValue";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   UnitModuleWorkshopBridgeState,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
-} from "@logic/modules/UnitModuleWorkshopModule";
+} from "@logic/modules/camp/UnitModuleWorkshopModule";
 import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
   BuildingsWorkshopBridgeState,
   DEFAULT_BUILDINGS_WORKSHOP_STATE,
-} from "@logic/modules/BuildingsModule";
+} from "@/logic/modules/camp/BuildingsModule";
 import {
   DEFAULT_UNIT_DESIGNER_STATE,
   UnitDesignerBridgeState,
   UNIT_DESIGNER_STATE_BRIDGE_KEY,
-} from "@logic/modules/UnitDesignModule";
+} from "@logic/modules/camp/UnitDesignModule";
 import {
   CraftingBridgeState,
   CRAFTING_STATE_BRIDGE_KEY,
   DEFAULT_CRAFTING_STATE,
-} from "@logic/modules/CraftingModule";
+} from "@logic/modules/camp/CraftingModule";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UnitAutomationBridgeState,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-} from "@logic/modules/UnitAutomationModule";
+} from "@logic/modules/active-map/UnitAutomationModule";
 
 interface VoidCampScreenProps {
   onStart: () => void;

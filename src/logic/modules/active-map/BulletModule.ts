@@ -1,10 +1,10 @@
-import { GameModule } from "../core/types";
+import { GameModule } from "../../core/types";
 import {
   FILL_TYPES,
   SceneFill,
   SceneObjectManager,
   SceneVector2,
-} from "../services/SceneObjectManager";
+} from "../../services/SceneObjectManager";
 import {
   BULLET_TYPES,
   BulletConfig,
@@ -12,9 +12,9 @@ import {
   BulletTailEmitterConfig,
   BulletType,
   getBulletConfig,
-} from "../../db/bullets-db";
-import { ExplosionType } from "../../db/explosions-db";
-import { ExplosionModule, SpawnExplosionByTypeOptions } from "./ExplosionModule";
+} from "../../../db/bullets-db";
+import { ExplosionType } from "../../../db/explosions-db";
+import { ExplosionModule, SpawnExplosionByTypeOptions } from "../scene/ExplosionModule";
 
 interface BulletCustomData {
   type: BulletType;

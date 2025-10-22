@@ -4,23 +4,23 @@ import { useBridgeValue } from "../../shared/useBridgeValue";
 import {
   BRICK_COUNT_BRIDGE_KEY,
   BRICK_TOTAL_HP_BRIDGE_KEY,
-} from "../../../logic/modules/BricksModule";
+} from "../../../logic/modules/active-map/BricksModule";
 import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "../../../logic/modules/PlayerUnitsModule";
+} from "../../../logic/modules/active-map/PlayerUnitsModule";
 import {
   NECROMANCER_RESOURCES_BRIDGE_KEY,
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
-} from "../../../logic/modules/NecromancerModule";
+} from "../../../logic/modules/active-map/NecromancerModule";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
   UnitAutomationBridgeState,
-} from "../../../logic/modules/UnitAutomationModule";
-import { UnitDesignId } from "../../../logic/modules/UnitDesignModule";
+} from "../../../logic/modules/active-map/UnitAutomationModule";
+import { UnitDesignId } from "../../../logic/modules/camp/UnitDesignModule";
 import {
   SceneCameraState,
   SceneObjectManager,
@@ -47,12 +47,12 @@ import {
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
   ResourceRunSummaryPayload,
-} from "../../../logic/modules/ResourcesModule";
+} from "../../../logic/modules/shared/ResourcesModule";
 import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MapAutoRestartState,
-} from "../../../logic/modules/MapModule";
+} from "../../../logic/modules/active-map/MapModule";
 import { SceneRunSummaryModal } from "./SceneRunSummaryModal";
 import { SceneRunResourcePanel } from "./SceneRunResourcePanel";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";

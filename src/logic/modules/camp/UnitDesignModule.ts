@@ -1,40 +1,40 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
 import {
   PLAYER_UNIT_TYPES,
   PlayerUnitType,
   getPlayerUnitConfig,
   isPlayerUnitType,
-} from "../../db/player-units-db";
+} from "../../../db/player-units-db";
 import {
   UNIT_MODULE_IDS,
   UnitModuleId,
   UnitModuleBonusType,
   getUnitModuleConfig,
-} from "../../db/unit-modules-db";
-import { BonusValueMap, BonusesModule } from "./BonusesModule";
+} from "../../../db/unit-modules-db";
+import { BonusValueMap, BonusesModule } from "../shared/BonusesModule";
 import { UnitModuleWorkshopModule } from "./UnitModuleWorkshopModule";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitBonusLine,
   PlayerUnitRuntimeModifiers,
-} from "../../types/player-units";
+} from "../../../types/player-units";
 import {
   DEFAULT_UNIT_TARGETING_MODE,
   DEFAULT_UNIT_TARGETING_SETTINGS,
   UnitTargetingMode,
   UnitTargetingSettings,
   UnitTargetingSettingsMap,
-} from "../../types/unit-targeting";
+} from "../../../types/unit-targeting";
 import {
   ResourceAmountMap,
   createEmptyResourceAmount,
   normalizeResourceCost,
-} from "../../types/resources";
+} from "../../../types/resources";
 import {
   computePlayerUnitBlueprint,
   roundStat,
-} from "./PlayerUnitsModule";
+} from "../active-map/PlayerUnitsModule";
 
 export type UnitDesignId = string;
 

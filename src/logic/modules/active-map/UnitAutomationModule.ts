@@ -1,13 +1,13 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
-import { PLAYER_UNIT_TYPES, PlayerUnitType, isPlayerUnitType } from "../../db/player-units-db";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
+import { PLAYER_UNIT_TYPES, PlayerUnitType, isPlayerUnitType } from "../../../db/player-units-db";
 import { NecromancerModule, NecromancerResourceSnapshot } from "./NecromancerModule";
 import {
   UnitDesignId,
   UnitDesignModule,
   UnitDesignerUnitState,
-} from "./UnitDesignModule";
-import { SkillId } from "../../db/skills-db";
+} from "../camp/UnitDesignModule";
+import { SkillId } from "../../../db/skills-db";
 
 export interface UnitAutomationUnitState {
   readonly designId: UnitDesignId;
@@ -174,6 +174,7 @@ export class UnitAutomationModule implements GameModule {
     if (changed) {
       this.pushState();
     }
+
     if (!this.unlocked) {
       return;
     }
@@ -183,6 +184,18 @@ export class UnitAutomationModule implements GameModule {
     }
     this.automationCooldownMs = UnitAutomationModule.AUTOMATION_INTERVAL_MS;
     this.runAutomation();
+  }
+
+  public onMapStart(): void {
+    this.spawnCounts.clear();
+    this.failureCounts.clear();
+    this.automationCooldownMs = 0;
+  }
+
+  public onMapEnd(): void {
+    this.spawnCounts.clear();
+    this.failureCounts.clear();
+    this.automationCooldownMs = 0;
   }
 
   public setAutomationEnabled(designId: UnitDesignId, enabled: boolean): void {

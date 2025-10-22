@@ -1,13 +1,13 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
-import { SceneObjectManager, SceneSize, FILL_TYPES } from "../services/SceneObjectManager";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
+import { SceneObjectManager, SceneSize, FILL_TYPES } from "../../services/SceneObjectManager";
 import { BricksModule, BrickData } from "./BricksModule";
 import {
   PlayerUnitsModule,
   PlayerUnitSpawnData,
 } from "./PlayerUnitsModule";
 import { NecromancerModule } from "./NecromancerModule";
-import { UnlockService } from "../services/UnlockService";
+import { UnlockService } from "../../services/UnlockService";
 import {
   MapConfig,
   MapId,
@@ -15,10 +15,11 @@ import {
   getMapConfig,
   getMapList,
   isMapId,
-} from "../../db/maps-db";
-import { SceneVector2 } from "../services/SceneObjectManager";
-import { SkillId } from "../../db/skills-db";
-import { buildBricksFromBlueprints } from "../services/BrickLayoutService";
+} from "../../../db/maps-db";
+import { SceneVector2 } from "../../services/SceneObjectManager";
+import { SkillId } from "../../../db/skills-db";
+import { buildBricksFromBlueprints } from "../../services/BrickLayoutService";
+import { UnitAutomationModule } from "./UnitAutomationModule";
 
 interface ResourceRunController {
   startRun(): void;
@@ -37,6 +38,7 @@ interface MapModuleOptions {
   necromancer: NecromancerModule;
   resources: ResourceRunController;
   unlocks: UnlockService;
+  unitsAutomation: UnitAutomationModule;
   getSkillLevel: (id: SkillId) => number;
   onRunCompleted: (success: boolean) => void;
 }
@@ -241,6 +243,7 @@ export class MapModule implements GameModule {
     this.options.resources.cancelRun();
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
+    this.options.unitsAutomation.onMapEnd();
     // Remove portals
     this.portalObjects.forEach((p) => this.options.scene.removeObject(p.id));
     this.portalObjects = [];
@@ -358,6 +361,7 @@ export class MapModule implements GameModule {
     this.selectedMapLevel = level;
     this.activeMapLevel = level;
     this.runActive = true;
+    this.options.unitsAutomation.onMapStart();
     this.options.scene.setMapSize(config.size);
     this.options.playerUnits.prepareForMap();
     // Clear existing portals if any (e.g., on restart)

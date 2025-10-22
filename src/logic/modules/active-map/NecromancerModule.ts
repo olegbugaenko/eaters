@@ -1,5 +1,5 @@
-import { GameModule } from "../core/types";
-import { DataBridge } from "../core/DataBridge";
+import { GameModule } from "../../core/types";
+import { DataBridge } from "../../core/DataBridge";
 import {
   PlayerUnitsModule,
   PlayerUnitSpawnData,
@@ -9,20 +9,20 @@ import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
-} from "../../db/player-units-db";
-import { SceneObjectManager, SceneVector2 } from "../services/SceneObjectManager";
-import { ResourceAmountMap, normalizeResourceCost } from "../../types/resources";
-import { BonusesModule, BonusValueMap } from "./BonusesModule";
+} from "../../../db/player-units-db";
+import { SceneObjectManager, SceneVector2 } from "../../services/SceneObjectManager";
+import { ResourceAmountMap, normalizeResourceCost } from "../../../types/resources";
+import { BonusesModule, BonusValueMap } from "../shared/BonusesModule";
 import {
   UnitDesignId,
   UnitDesignModule,
   UnitDesignerUnitState,
   UnitDesignModuleDetail,
-} from "./UnitDesignModule";
+} from "../camp/UnitDesignModule";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
-} from "../../types/player-units";
+} from "../../../types/player-units";
 
 export interface NecromancerResourceMeter {
   current: number;
