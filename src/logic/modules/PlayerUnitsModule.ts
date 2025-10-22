@@ -28,7 +28,7 @@ import {
   PlayerUnitRuntimeModifiers,
 } from "../../types/player-units";
 import { ExplosionModule } from "./ExplosionModule";
-import { UNIT_MODULE_IDS, UnitModuleId } from "../../db/unit-modules-db";
+import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../db/unit-modules-db";
 import type { SkillId } from "../../db/skills-db";
 import { getBonusConfig } from "../../db/bonuses-db";
 import {
@@ -40,6 +40,9 @@ import {
 } from "../visuals/VisualEffectState";
 import { UnitTargetingMode } from "../../types/unit-targeting";
 import { UnitDesignId } from "./UnitDesignModule";
+import { getArcConfig } from "../../db/arcs-db";
+import { ArcModule } from "./ArcModule";
+import { EffectsModule } from "./EffectsModule";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -57,9 +60,9 @@ const INTERNAL_FURNACE_TINT_COLOR: SceneColor = {
 };
 const INTERNAL_FURNACE_MAX_INTENSITY = 0.75;
 const INTERNAL_FURNACE_EFFECT_PRIORITY = 50;
-const PHEROMONE_IDLE_THRESHOLD_SECONDS = 2;
+const DEFAULT_PHEROMONE_IDLE_THRESHOLD_SECONDS = 2;
 const PHEROMONE_TIMER_CAP_SECONDS = 60;
-const PHEROMONE_BUFF_ATTACKS = 4;
+const DEFAULT_PHEROMONE_BUFF_ATTACKS = 4;
 const PHEROMONE_HEAL_EXPLOSION_RADIUS = 14;
 const PHEROMONE_FRENZY_EXPLOSION_RADIUS = 12;
 const TARGETING_RADIUS_STEP = 250;
@@ -90,6 +93,8 @@ interface PlayerUnitsModuleOptions {
   movement: MovementService;
   bonuses: BonusesModule;
   explosions: ExplosionModule;
+  arcs?: ArcModule;
+  effects?: EffectsModule;
   onAllUnitsDefeated?: () => void;
   getModuleLevel: (id: UnitModuleId) => number;
   hasSkill: (id: SkillId) => boolean;
@@ -168,6 +173,8 @@ export class PlayerUnitsModule implements GameModule {
   private readonly movement: MovementService;
   private readonly bonuses: BonusesModule;
   private readonly explosions: ExplosionModule;
+  private readonly arcs?: ArcModule;
+  private readonly effects?: EffectsModule;
   private readonly onAllUnitsDefeated?: () => void;
   private readonly getModuleLevel: (id: UnitModuleId) => number;
   private readonly hasSkill: (id: SkillId) => boolean;
@@ -180,6 +187,13 @@ export class PlayerUnitsModule implements GameModule {
   private unitOrder: PlayerUnitState[] = [];
   private idCounter = 0;
   private unitBlueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
+  private activeArcEffects: {
+    id: string;
+    remainingMs: number;
+    sourceUnitId: string;
+    targetUnitId: string;
+    arcType: "heal" | "frenzy";
+  }[] = [];
 
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
@@ -188,6 +202,8 @@ export class PlayerUnitsModule implements GameModule {
     this.movement = options.movement;
     this.bonuses = options.bonuses;
     this.explosions = options.explosions;
+    this.arcs = options.arcs;
+    this.effects = options.effects;
     this.onAllUnitsDefeated = options.onAllUnitsDefeated;
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
@@ -228,6 +244,8 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    // legacy local arcs (will be empty once ArcModule is fully used)
+    this.updateArcEffects(deltaMs);
     if (this.unitOrder.length === 0) {
       return;
     }
@@ -378,6 +396,44 @@ export class PlayerUnitsModule implements GameModule {
       this.pushStats();
     }
   }
+
+  private updateArcEffects(deltaMs: number): void {
+    if (this.activeArcEffects.length === 0) return;
+    const survivors: typeof this.activeArcEffects = [];
+    const decrement = Math.max(0, deltaMs);
+    for (let i = 0; i < this.activeArcEffects.length; i += 1) {
+      const entry = this.activeArcEffects[i]!;
+      const next = entry.remainingMs - decrement;
+      const source = this.units.get(entry.sourceUnitId);
+      const target = this.units.get(entry.targetUnitId);
+      if (!source || !target || source.hp <= 0 || target.hp <= 0) {
+        this.scene.removeObject(entry.id);
+        continue;
+      }
+      // Update endpoints to follow units
+      this.scene.updateObject(entry.id, {
+        position: { ...source.position },
+        fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } },
+        customData: {
+          arcType: entry.arcType,
+          from: { ...source.position },
+          to: { ...target.position },
+        },
+      });
+      if (next <= 0) {
+        this.scene.removeObject(entry.id);
+      } else {
+        survivors.push({ ...entry, remainingMs: next });
+      }
+    }
+    this.activeArcEffects = survivors;
+  }
+
+  public getUnitPositionIfAlive = (unitId: string): SceneVector2 | null => {
+    const u = this.units.get(unitId);
+    if (!u || u.hp <= 0) return null;
+    return { ...u.position };
+  };
 
   public setUnits(units: PlayerUnitSpawnData[]): void {
     this.applyUnits(units);
@@ -637,7 +693,7 @@ export class PlayerUnitsModule implements GameModule {
       preCollisionVelocity: { ...ZERO_VECTOR },
       lastNonZeroVelocity: { ...ZERO_VECTOR },
       timeSinceLastAttack: 0,
-      timeSinceLastSpecial: PHEROMONE_IDLE_THRESHOLD_SECONDS,
+      timeSinceLastSpecial: this.getMendingIntervalSeconds(),
       pheromoneHealingMultiplier,
       pheromoneAggressionMultiplier,
       pheromoneAttackBonuses: [],
@@ -1075,11 +1131,6 @@ export class PlayerUnitsModule implements GameModule {
       hpChanged = true;
     }
 
-    if (unit.hp <= 0) {
-      this.removeUnit(unit);
-      return true;
-    }
-
     if (unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0) {
       const nextStack = unit.currentAttackStackBonus + unit.attackStackBonusPerHit;
       unit.currentAttackStackBonus = Math.min(nextStack, unit.attackStackBonusCap);
@@ -1190,10 +1241,10 @@ export class PlayerUnitsModule implements GameModule {
     ) {
       return false;
     }
-    if (unit.timeSinceLastAttack < PHEROMONE_IDLE_THRESHOLD_SECONDS) {
+    if (unit.timeSinceLastAttack < this.getMendingIntervalSeconds()) {
       return false;
     }
-    if (unit.timeSinceLastSpecial < PHEROMONE_IDLE_THRESHOLD_SECONDS) {
+    if (unit.timeSinceLastSpecial < this.getMendingIntervalSeconds()) {
       return false;
     }
     return true;
@@ -1239,10 +1290,36 @@ export class PlayerUnitsModule implements GameModule {
     }
     target.hp = nextHp;
     const healedAmount = nextHp - previousHp;
-    this.explosions.spawnExplosionByType("plasmoid", {
+    this.explosions.spawnExplosionByType("healWave", {
       position: { ...target.position },
       initialRadius: PHEROMONE_HEAL_EXPLOSION_RADIUS,
     });
+    // visual arc: source -> target
+    try {
+      if (this.arcs) {
+        this.arcs.spawnArcBetweenUnits("heal", source.id, target.id);
+      } else {
+        const cfg = getArcConfig("heal");
+        const arcId = this.scene.addObject("arc", {
+          position: { ...source.position },
+          fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } },
+          customData: {
+            arcType: "heal",
+            from: { ...source.position },
+            to: { ...target.position },
+            lifetimeMs: cfg.lifetimeMs,
+            fadeStartMs: cfg.fadeStartMs,
+          },
+        });
+        this.activeArcEffects.push({
+          id: arcId,
+          remainingMs: cfg.lifetimeMs,
+          sourceUnitId: source.id,
+          targetUnitId: target.id,
+          arcType: "heal",
+        });
+      }
+    } catch {}
     const multiplier = Math.max(source.pheromoneHealingMultiplier, 0);
     const attackPower = Math.max(source.baseAttackDamage, 0);
     this.logPheromoneEvent(
@@ -1279,12 +1356,40 @@ export class PlayerUnitsModule implements GameModule {
     }
     target.pheromoneAttackBonuses.push({
       bonusDamage,
-      remainingAttacks: PHEROMONE_BUFF_ATTACKS,
+      remainingAttacks: this.getFrenzyAttacks(),
     });
+    // Spawn aura via EffectsModule
+    this.effects?.applyEffect(target.id, "frenzyAura");
     this.explosions.spawnExplosionByType("magnetic", {
       position: { ...target.position },
       initialRadius: PHEROMONE_FRENZY_EXPLOSION_RADIUS,
     });
+    // visual arc: source -> target
+    try {
+      if (this.arcs) {
+        this.arcs.spawnArcBetweenUnits("frenzy", source.id, target.id);
+      } else {
+        const cfg = getArcConfig("frenzy");
+        const arcId = this.scene.addObject("arc", {
+          position: { ...source.position },
+          fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } },
+          customData: {
+            arcType: "frenzy",
+            from: { ...source.position },
+            to: { ...target.position },
+            lifetimeMs: cfg.lifetimeMs,
+            fadeStartMs: cfg.fadeStartMs,
+          },
+        });
+        this.activeArcEffects.push({
+          id: arcId,
+          remainingMs: cfg.lifetimeMs,
+          sourceUnitId: source.id,
+          targetUnitId: target.id,
+          arcType: "frenzy",
+        });
+      }
+    } catch {}
     const multiplier = Math.max(source.pheromoneAggressionMultiplier, 0);
     const attackPower = Math.max(source.baseAttackDamage, 0);
     this.logPheromoneEvent(
@@ -1292,9 +1397,32 @@ export class PlayerUnitsModule implements GameModule {
         1
       )} damage (${attackPower.toFixed(1)} attack × ${multiplier.toFixed(
         2
-      )} multiplier) for ${PHEROMONE_BUFF_ATTACKS} attacks`
+      )} multiplier) for ${this.getFrenzyAttacks()} attacks`
     );
     return true;
+  }
+
+  private getMendingIntervalSeconds(): number {
+    // Use generic cooldownSeconds from active organs; take min across owned active organs
+    const activeIds = ["mendingGland", "frenzyGland"] as const;
+    let best = Number.POSITIVE_INFINITY;
+    activeIds.forEach((id) => {
+      try {
+        const meta = getUnitModuleConfig(id as any)?.meta;
+        const cd = typeof meta?.cooldownSeconds === "number" ? meta.cooldownSeconds : NaN;
+        if (Number.isFinite(cd) && cd > 0 && cd < best) best = cd;
+      } catch {}
+    });
+    return Number.isFinite(best) ? best : DEFAULT_PHEROMONE_IDLE_THRESHOLD_SECONDS;
+  }
+
+  private getFrenzyAttacks(): number {
+    try {
+      const v = getUnitModuleConfig("frenzyGland").meta?.frenzyAttacks;
+      return typeof v === "number" && v > 0 ? v : DEFAULT_PHEROMONE_BUFF_ATTACKS;
+    } catch {
+      return DEFAULT_PHEROMONE_BUFF_ATTACKS;
+    }
   }
 
   private consumePheromoneAttackBonuses(unit: PlayerUnitState): number {
@@ -1314,6 +1442,9 @@ export class PlayerUnitsModule implements GameModule {
       }
     });
     unit.pheromoneAttackBonuses = survivors;
+    if (survivors.length === 0) {
+      this.effects?.removeEffect(unit.id, "frenzyAura");
+    }
     return total;
   }
 
@@ -1683,6 +1814,7 @@ const cloneRendererLayer = (
       // preserve conditional visibility flags
       requiresModule: (layer as any).requiresModule,
       requiresSkill: (layer as any).requiresSkill,
+      requiresEffect: (layer as any).requiresEffect,
       // animation/meta
       anim: (layer as any).anim,
       spine: (layer as any).spine,
@@ -1701,6 +1833,7 @@ const cloneRendererLayer = (
     // preserve conditional visibility flags
     requiresModule: (layer as any).requiresModule,
     requiresSkill: (layer as any).requiresSkill,
+    requiresEffect: (layer as any).requiresEffect,
     // animation/meta
     anim: (layer as any).anim,
     groupId: (layer as any).groupId,

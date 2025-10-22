@@ -30,6 +30,10 @@ export interface UnitModuleConfig {
   readonly sanityCost: number;
   readonly baseCost: ResourceAmount;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
+  readonly meta?: {
+    readonly cooldownSeconds?: number;
+    readonly frenzyAttacks?: number;
+  };
 }
 
 const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
@@ -119,7 +123,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     id: "mendingGland",
     name: "Mending Pheromone Gland",
     description:
-      "Cultured sacs seep soothing pheromones that ripple through the pack, stitching flesh back together when battle lulls.",
+      "Cultured sacs seep soothing pheromones that ripple through the pack, stitching flesh back together when battle lulls. Healing amount = (unit's attack) × (module multiplier).",
     bonusLabel: "Healing pulse multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.1,
@@ -128,12 +132,13 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 1,
     baseCost: { organics: 200, sand: 1000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
+    meta: { cooldownSeconds: 4 },
   },
   frenzyGland: {
     id: "frenzyGland",
     name: "Frenzy Pheromone Gland",
     description:
-      "Pressurized nodules burst with acrid signals, goading nearby allies into a sharp, short-lived killing trance.",
+      "Pressurized nodules burst with acrid signals, goading nearby allies into a sharp, short-lived killing trance. Bonus damage per attack = (unit's attack) × (module multiplier).",
     bonusLabel: "Rally surge multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.1,
@@ -142,6 +147,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 1,
     baseCost: { organics: 200, stone: 2000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
+    meta: { cooldownSeconds: 5, frenzyAttacks: 4 },
   },
 };
 
