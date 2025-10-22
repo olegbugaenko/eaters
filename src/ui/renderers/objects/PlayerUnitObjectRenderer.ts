@@ -520,7 +520,6 @@ const createCompositePrimitives = (
       return;
     }
     const reqEffect = (layer as any).requiresEffect as string | undefined;
-    console.log('reqEffect: ', layer, reqEffect);
     if (reqEffect) {
       const effects: string[] = Array.isArray((payload as any)?.effects)
         ? ((payload as any).effects as string[])

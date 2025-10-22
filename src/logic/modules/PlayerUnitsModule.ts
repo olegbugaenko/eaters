@@ -1206,29 +1206,64 @@ export class PlayerUnitsModule implements GameModule {
       return false;
     }
 
-    let abilityUsed = false;
-    let healed = false;
+    // Gather candidates
+    const healTarget = unit.pheromoneHealingMultiplier > 0
+      ? this.findPheromoneHealingTarget(unit)
+      : null;
+    const frenzyTarget = unit.pheromoneAggressionMultiplier > 0
+      ? this.findPheromoneAggressionTarget(unit)
+      : null;
 
-    if (unit.pheromoneHealingMultiplier > 0) {
-      const target = this.findPheromoneHealingTarget(unit);
-      if (target) {
-        healed = this.applyPheromoneHealing(unit, target);
-        if (healed) {
-          abilityUsed = true;
-          unit.timeSinceLastSpecial = 0;
-        }
+    // Compute scores [0..1]
+    const healScore = healTarget
+      ? this.computeHealScore(unit, healTarget)
+      : -Infinity;
+    const frenzyScore = frenzyTarget
+      ? this.computeFrenzyScore(unit, frenzyTarget)
+      : -Infinity;
+    // Choose best action
+    let healed = false;
+    if (healScore > frenzyScore && healScore > 0) {
+      healed = this.applyPheromoneHealing(unit, healTarget!);
+      if (healed) {
+        unit.timeSinceLastSpecial = 0;
+        return true;
       }
     }
 
-    if (!abilityUsed && unit.pheromoneAggressionMultiplier > 0) {
-      const target = this.findPheromoneAggressionTarget(unit);
-      if (target && this.applyPheromoneAggression(unit, target)) {
-        abilityUsed = true;
+    if (frenzyScore > 0 && frenzyTarget) {
+      if (this.applyPheromoneAggression(unit, frenzyTarget)) {
         unit.timeSinceLastSpecial = 0;
+        return false;
       }
     }
 
     return healed;
+  }
+
+  private computeHealScore(source: PlayerUnitState, target: PlayerUnitState): number {
+    const missingHp = Math.max(target.maxHp - target.hp, 0);
+    const ratio = target.maxHp > 0 ? missingHp / target.maxHp : 0;
+    const healAmount = Math.max(source.baseAttackDamage, 0) * Math.max(source.pheromoneHealingMultiplier, 0);
+    // Boost score when missingHp is comparable to healAmount (avoid micro heals)
+    const amp = healAmount > 0 ? Math.min(missingHp / (healAmount * 0.75), 1) : 0;
+    const score = Math.max(0, Math.min(1, ratio * Math.max(amp, 0.2)));
+    return score;
+  }
+
+  private computeFrenzyScore(source: PlayerUnitState, target: PlayerUnitState): number {
+    // Base desirability
+    let score = 0.25;
+    // Prefer targets without existing frenzy aura
+    if (!this.effects?.hasEffect(target.id, "frenzyAura")) {
+      score += 0.2;
+    }
+    // Prefer faster attackers (normalize by interval ~ [0.3..2.0])
+    const interval = Math.max(target.baseAttackInterval, 0.1);
+    const rate = Math.min(1, 0.0 + (1 / interval) * 0.15); // adds up to ~0.45 for very fast units
+    score += rate;
+    // Avoid self (already excluded) and clamp
+    return Math.max(0, Math.min(1, score));
   }
 
   private canUsePheromoneAbility(unit: PlayerUnitState): boolean {
@@ -1341,8 +1376,16 @@ export class PlayerUnitsModule implements GameModule {
     if (candidates.length === 0) {
       return null;
     }
-    const index = Math.floor(Math.random() * candidates.length);
-    return candidates[index] ?? null;
+    // Prefer units without frenzy aura
+    const withoutAura: PlayerUnitState[] = [];
+    const withAura: PlayerUnitState[] = [];
+    candidates.forEach((u) => {
+      if (this.effects?.hasEffect(u.id, "frenzyAura")) withAura.push(u);
+      else withoutAura.push(u);
+    });
+    const pool = withoutAura.length > 0 ? withoutAura : withAura;
+    const index = Math.floor(Math.random() * pool.length);
+    return pool[index] ?? null;
   }
 
   private applyPheromoneAggression(

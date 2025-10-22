@@ -92,6 +92,11 @@ export class EffectsModule implements GameModule {
     if (effectsMap.size === 0) this.auraByUnit.delete(unitId);
   }
 
+  public hasEffect(unitId: string, effectId: VisualEffectId): boolean {
+    const effectsMap = this.auraByUnit.get(unitId);
+    return Boolean(effectsMap && effectsMap.has(effectId));
+  }
+
   private clearAll(): void {
     this.auraByUnit.forEach((effectsMap) => {
       effectsMap.forEach((a) => this.scene.removeObject(a.objectId));
