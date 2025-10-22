@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import Joyride, {
   ACTIONS,
   CallBackProps,
@@ -31,7 +31,7 @@ interface SceneTutorialOverlayProps {
 
 const HIGHLIGHT_PADDING_DEFAULT = 16;
 
-export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
+const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
   steps,
   activeIndex,
   onAdvance,
@@ -169,11 +169,25 @@ export const SceneTutorialOverlay: React.FC<SceneTutorialOverlayProps> = ({
           zIndex: 60,
         },
       }}
-      tooltipComponent={(props: TooltipRenderProps) => <SceneTutorialTooltip {...props} />}
+      tooltipComponent={SceneTutorialTooltip}
       callback={handleJoyrideCallback}
     />
   );
 };
+
+const propsAreEqual = (
+  prev: SceneTutorialOverlayProps,
+  next: SceneTutorialOverlayProps
+): boolean => {
+  return (
+    prev.steps === next.steps &&
+    prev.activeIndex === next.activeIndex &&
+    prev.onAdvance === next.onAdvance &&
+    prev.onClose === next.onClose
+  );
+};
+
+export const SceneTutorialOverlay = memo(SceneTutorialOverlayInner, propsAreEqual);
 
 const SceneTutorialTooltip: React.FC<TooltipRenderProps> = ({
   backProps,

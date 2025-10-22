@@ -137,9 +137,19 @@ void main(){
 
   float dist = abs(baseOffset - n);
 
-  // widths
-  float core = u_coreWidth * 0.5;
-  float blur = u_blurWidth;
+  // widths with tapered ends and short-length handling
+  float taperFrac = 0.2; // ~20% of length at each end
+  float endIn  = smoothstep(0.0, taperFrac, t);
+  float endOut = smoothstep(0.0, taperFrac, 1.0 - t);
+  float endTaper = endIn * endOut; // 0 at ends -> 1 in middle
+
+  float nominal = max(u_coreWidth + 2.0 * u_blurWidth, 0.0001);
+  float shortNorm = clamp(len / nominal, 0.0, 1.0);
+  float minShortScale = 0.35; // keep some thickness for tiny arcs
+  float shortScale = mix(minShortScale, 1.0, shortNorm);
+
+  float core = (u_coreWidth * 0.5) * max(0.0, endTaper) * shortScale;
+  float blur = u_blurWidth * max(0.0, endTaper) * shortScale;
 
   float alpha = 0.0;
   if (dist <= core){
@@ -273,10 +283,16 @@ export const ensureArcBatch = (
 ): ArcBatch | null => {
   const existing = batchesByKey.get(key);
   if (existing) {
-    if (capacity > existing.capacity) {
+    // If context changed, dispose stale VAOs and recreate for this GL
+    if (existing.gl !== gl) {
       disposeArcBatch(existing);
-    } else {
+      batchesByKey.delete(key);
+    } else if (capacity <= existing.capacity) {
       return existing;
+    } else {
+      // grow capacity: recreate buffer/vao
+      disposeArcBatch(existing);
+      batchesByKey.delete(key);
     }
   }
 
@@ -366,7 +382,13 @@ export const renderArcBatches = (
   if (program.uniforms.cameraPosition) gl.uniform2f(program.uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
   if (program.uniforms.viewportSize) gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height);
 
-  batchesByKey.forEach((batch) => {
+  batchesByKey.forEach((batch, key) => {
+    if (batch.gl !== gl) {
+      // Stale batch from previous GL context; clean it up lazily
+      disposeArcBatch(batch);
+      batchesByKey.delete(key);
+      return;
+    }
     const vao = batch.vao;
     if (!vao || batch.activeCount <= 0) return;
     const u = batch.uniforms;

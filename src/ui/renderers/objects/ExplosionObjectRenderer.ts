@@ -332,6 +332,7 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
             }
             setWaveBatchActiveCount(batch, activeCount);
           }
+          batch = null;
         },
       });
     }

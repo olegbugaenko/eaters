@@ -66,11 +66,16 @@ export const ensureWaveBatch = (
 ): WaveBatch | null => {
   const existing = batchesByKey.get(key);
   if (existing) {
-    if (capacity > existing.capacity) {
+    // If the GL context changed, recreate the batch for the new context
+    if (existing.gl !== gl) {
+      disposeWaveBatch(existing);
+      batchesByKey.delete(key);
+    } else if (capacity <= existing.capacity) {
+      return existing;
+    } else {
       // grow capacity: recreate buffer/vao
       disposeWaveBatch(existing);
-    } else {
-      return existing;
+      batchesByKey.delete(key);
     }
   }
 

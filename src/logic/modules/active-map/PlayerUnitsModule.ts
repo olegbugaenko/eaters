@@ -205,8 +205,8 @@ export class PlayerUnitsModule implements GameModule {
     });
   }
 
-  public getCurrentUnitCount(): number {
-    return this.unitOrder.length;
+  public getCurrentUnitCount(strategyFilter?: UnitTargetingMode): number {
+    return this.unitOrder.filter(u => !strategyFilter || u.targetingMode !== strategyFilter).length;
   }
 
   public initialize(): void {
@@ -236,6 +236,8 @@ export class PlayerUnitsModule implements GameModule {
   public prepareForMap(): void {
     this.unitBlueprints = this.computeBlueprintStats();
     this.pushBlueprintStats();
+    // Reset per-run ability state (e.g., mending heal charges)
+    (this.abilities as any).resetRun?.();
   }
 
   public tick(deltaMs: number): void {

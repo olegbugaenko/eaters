@@ -9,6 +9,7 @@ import type { PlayerUnitType } from "../../../db/player-units-db";
 const DEFAULT_PHEROMONE_IDLE_THRESHOLD_SECONDS = 2;
 const DEFAULT_PHEROMONE_BUFF_ATTACKS = 4;
 const DEFAULT_MENDING_HEALS_PER_RUN = 10;
+const HEAL_SKIP_RATIO_THRESHOLD = 0.6; // skip micro-heals if target HP > 60%
 const PHEROMONE_HEAL_EXPLOSION_RADIUS = 14;
 const PHEROMONE_FRENZY_EXPLOSION_RADIUS = 12;
 
@@ -76,6 +77,11 @@ export class PlayerUnitAbilities {
     this.getUnitById = options.getUnitById;
   }
 
+  public resetRun(): void {
+    this.activeArcEffects = [];
+    this.healChargesRemaining.clear();
+  }
+
   public update(deltaMs: number): void {
     if (this.activeArcEffects.length === 0) {
       return;
@@ -122,6 +128,8 @@ export class PlayerUnitAbilities {
 
     const healScore = healTarget ? this.computeHealScore(unit, healTarget) : -Infinity;
     const frenzyScore = frenzyTarget ? this.computeFrenzyScore(unit, frenzyTarget) : -Infinity;
+
+    console.log('scores: ', `${healTarget?.hp}/${healTarget?.maxHp}`, healScore, frenzyScore);
 
     if (healScore > frenzyScore && healScore > 0 && healTarget) {
       const healed = this.applyPheromoneHealing(unit, healTarget);
@@ -178,9 +186,6 @@ export class PlayerUnitAbilities {
       return false;
     }
     const cooldown = this.getMendingIntervalSeconds();
-    if (unit.timeSinceLastAttack < cooldown) {
-      return false;
-    }
     if (unit.timeSinceLastSpecial < cooldown) {
       return false;
     }
@@ -240,8 +245,15 @@ export class PlayerUnitAbilities {
     const ratio = target.maxHp > 0 ? missingHp / target.maxHp : 0;
     const healAmount =
       Math.max(source.baseAttackDamage, 0) * Math.max(source.pheromoneHealingMultiplier, 0);
+    // Guard: skip if target has >60% HP and heal would overheal (waste charge)
+    if (target.maxHp > 0) {
+      const currentRatio = target.hp / target.maxHp;
+      if (currentRatio > HEAL_SKIP_RATIO_THRESHOLD && missingHp > 0 && missingHp < healAmount) {
+        return 0;
+      }
+    }
     const amp = healAmount > 0 ? Math.min(missingHp / (healAmount * 0.75), 1) : 0;
-    const score = Math.max(0, Math.min(1, ratio * Math.max(amp, 0.2)));
+    const score = Math.max(0, Math.min(1, Math.pow(ratio, 0.5 ) * Math.max(amp, 0.2)));
     return score;
   }
 
