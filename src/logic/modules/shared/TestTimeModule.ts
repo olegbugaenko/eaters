@@ -1,5 +1,5 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
 
 const BRIDGE_KEY = "time-played";
 

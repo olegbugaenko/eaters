@@ -3,7 +3,7 @@ import { FILL_TYPES, SceneObjectManager } from "../src/logic/services/SceneObjec
 import {
   ExplosionModule,
   ExplosionRendererCustomData,
-} from "../src/logic/modules/ExplosionModule";
+} from "../src/logic/modules/scene/ExplosionModule";
 import { getExplosionConfig } from "../src/db/explosions-db";
 import { describe, test } from "./testRunner";
 

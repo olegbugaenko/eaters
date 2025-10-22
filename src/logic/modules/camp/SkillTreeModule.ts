@@ -1,21 +1,21 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
 import {
   SKILL_IDS,
   SkillConfig,
   SkillId,
   SkillNodePosition,
   getSkillConfig,
-} from "../../db/skills-db";
-import { BonusEffectPreview } from "../../types/bonuses";
+} from "../../../db/skills-db";
+import { BonusEffectPreview } from "../../../types/bonuses";
 import {
   RESOURCE_IDS,
   ResourceStockpile,
   createEmptyResourceStockpile,
   normalizeResourceAmount,
-} from "../../db/resources-db";
-import { ResourcesModule } from "./ResourcesModule";
-import { BonusesModule } from "./BonusesModule";
+} from "../../../db/resources-db";
+import { ResourcesModule } from "../shared/ResourcesModule";
+import { BonusesModule } from "../shared/BonusesModule";
 
 export const SKILL_TREE_STATE_BRIDGE_KEY = "skills/tree";
 

@@ -2,8 +2,8 @@ import assert from "assert";
 import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import { DataBridge } from "../src/logic/core/DataBridge";
-import { BricksModule } from "../src/logic/modules/BricksModule";
-import { PlayerUnitsModule } from "../src/logic/modules/PlayerUnitsModule";
+import { BricksModule } from "../src/logic/modules/active-map/BricksModule";
+import { PlayerUnitsModule } from "../src/logic/modules/active-map/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
 import {
   MapModule,
@@ -11,17 +11,17 @@ import {
   MAP_LIST_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
-} from "../src/logic/modules/MapModule";
+} from "../src/logic/modules/active-map/MapModule";
 import type {
   MapListEntry,
   MapStats,
   MapAutoRestartState,
-} from "../src/logic/modules/MapModule";
-import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
-import { NecromancerModule } from "../src/logic/modules/NecromancerModule";
-import { BonusesModule } from "../src/logic/modules/BonusesModule";
+} from "../src/logic/modules/active-map/MapModule";
+import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
+import { NecromancerModule } from "../src/logic/modules/active-map/NecromancerModule";
+import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
-import type { UnitDesignModule } from "../src/logic/modules/UnitDesignModule";
+import type { UnitDesignModule } from "../src/logic/modules/camp/UnitDesignModule";
 
 const createUnitDesignerStub = (): UnitDesignModule => {
   const stub = {

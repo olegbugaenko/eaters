@@ -16,11 +16,11 @@ import {
   SKILL_TREE_STATE_BRIDGE_KEY,
   SkillNodeBridgePayload,
   SkillTreeBridgePayload,
-} from "@logic/modules/SkillTreeModule";
+} from "@logic/modules/camp/SkillTreeModule";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   ResourceAmountPayload,
-} from "@logic/modules/ResourcesModule";
+} from "@logic/modules/shared/ResourcesModule";
 import {
   RESOURCE_IDS,
   ResourceId,

@@ -1,6 +1,6 @@
-import { GameModule } from "../core/types";
-import { SceneObjectManager } from "../services/SceneObjectManager";
-import { getVisualEffectRenderer, VisualEffectId } from "../../db/effects-db";
+import { GameModule } from "../../core/types";
+import { SceneObjectManager } from "../../services/SceneObjectManager";
+import { getVisualEffectRenderer, VisualEffectId } from "../../../db/effects-db";
 
 interface EffectsModuleOptions {
   scene: SceneObjectManager;

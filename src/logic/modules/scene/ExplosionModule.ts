@@ -1,4 +1,4 @@
-import { GameModule } from "../core/types";
+import { GameModule } from "../../core/types";
 import {
   FILL_TYPES,
   SceneColor,
@@ -6,19 +6,19 @@ import {
   SceneGradientStop,
   SceneObjectManager,
   SceneVector2,
-} from "../services/SceneObjectManager";
+} from "../../services/SceneObjectManager";
 import {
   ExplosionConfig,
   ExplosionRendererEmitterConfig,
   ExplosionType,
   getExplosionConfig,
-} from "../../db/explosions-db";
+} from "../../../db/explosions-db";
 import {
   cloneSceneColor,
   cloneSceneFill,
   sanitizeAngle,
   sanitizeArc,
-} from "../services/particles/ParticleEmitterShared";
+} from "../../services/particles/ParticleEmitterShared";
 
 interface ExplosionModuleOptions {
   scene: SceneObjectManager;

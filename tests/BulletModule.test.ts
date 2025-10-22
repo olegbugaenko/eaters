@@ -1,7 +1,7 @@
 import assert from "assert";
 import { FILL_TYPES, SceneObjectManager } from "../src/logic/services/SceneObjectManager";
-import { BulletModule } from "../src/logic/modules/BulletModule";
-import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modules/ExplosionModule";
+import { BulletModule } from "../src/logic/modules/active-map/BulletModule";
+import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modules/scene/ExplosionModule";
 import { getBulletConfig } from "../src/db/bullets-db";
 import { ExplosionType } from "../src/db/explosions-db";
 import { describe, test } from "./testRunner";

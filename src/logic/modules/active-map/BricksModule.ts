@@ -1,16 +1,16 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
-import { BrickConfig, BrickType, getBrickConfig, isBrickType } from "../../db/bricks-db";
-import type { ExplosionType } from "../../db/explosions-db";
-import type { DestructubleExplosionConfig } from "../interfaces/destructuble";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
+import { BrickConfig, BrickType, getBrickConfig, isBrickType } from "../../../db/bricks-db";
+import type { ExplosionType } from "../../../db/explosions-db";
+import type { DestructubleExplosionConfig } from "../../interfaces/destructuble";
 import {
   FILL_TYPES,
   SceneObjectManager,
   SceneVector2,
-} from "../services/SceneObjectManager";
-import type { ExplosionModule } from "./ExplosionModule";
-import { BonusesModule } from "./BonusesModule";
-import { SpatialGrid } from "../utils/SpatialGrid";
+} from "../../services/SceneObjectManager";
+import type { ExplosionModule } from "../scene/ExplosionModule";
+import { BonusesModule } from "../shared/BonusesModule";
+import { SpatialGrid } from "../../utils/SpatialGrid";
 import {
   ResourceStockpile,
   RESOURCE_IDS,
@@ -18,7 +18,7 @@ import {
   hasAnyResources,
   cloneResourceStockpile,
   createEmptyResourceStockpile,
-} from "../../db/resources-db";
+} from "../../../db/resources-db";
 
 interface ResourceCollector {
   grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;

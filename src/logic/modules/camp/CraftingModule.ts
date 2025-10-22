@@ -1,22 +1,22 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
-import { ResourcesModule } from "./ResourcesModule";
-import { UnlockService } from "../services/UnlockService";
-import { BonusesModule } from "./BonusesModule";
-import type { BonusValueMap } from "./BonusesModule";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
+import { ResourcesModule } from "../shared/ResourcesModule";
+import { UnlockService } from "../../services/UnlockService";
+import { BonusesModule } from "../shared/BonusesModule";
+import type { BonusValueMap } from "../shared/BonusesModule";
 import {
   CRAFTING_RECIPE_IDS,
   CraftingRecipeConfig,
   CraftingRecipeId,
   getCraftingRecipeConfig,
-} from "../../db/crafting-recipes-db";
+} from "../../../db/crafting-recipes-db";
 import {
   ResourceAmount,
   ResourceId,
   ResourceStockpile,
   getResourceConfig,
   normalizeResourceAmount,
-} from "../../db/resources-db";
+} from "../../../db/resources-db";
 
 export interface CraftingRecipeBridgeState {
   readonly id: CraftingRecipeId;

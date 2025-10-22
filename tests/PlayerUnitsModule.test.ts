@@ -1,16 +1,16 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
-import { BricksModule } from "../src/logic/modules/BricksModule";
-import type { BrickData } from "../src/logic/modules/BricksModule";
+import { BricksModule } from "../src/logic/modules/active-map/BricksModule";
+import type { BrickData } from "../src/logic/modules/active-map/BricksModule";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   PlayerUnitsModule,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "../src/logic/modules/PlayerUnitsModule";
+} from "../src/logic/modules/active-map/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
-import { ExplosionModule } from "../src/logic/modules/ExplosionModule";
-import { BonusesModule } from "../src/logic/modules/BonusesModule";
+import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
+import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { PlayerUnitEmitterConfig, getPlayerUnitConfig } from "../src/db/player-units-db";
 
 const createBricksModule = (

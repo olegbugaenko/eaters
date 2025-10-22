@@ -1,6 +1,6 @@
-import { GameModule } from "../core/types";
-import { SceneObjectManager, SceneVector2, FILL_TYPES } from "../services/SceneObjectManager";
-import { ArcType, getArcConfig } from "../../db/arcs-db";
+import { GameModule } from "../../core/types";
+import { SceneObjectManager, SceneVector2, FILL_TYPES } from "../../services/SceneObjectManager";
+import { ArcType, getArcConfig } from "../../../db/arcs-db";
 
 interface ArcModuleOptions {
   scene: SceneObjectManager;

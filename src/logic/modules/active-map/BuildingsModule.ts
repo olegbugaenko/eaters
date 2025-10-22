@@ -1,22 +1,22 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
-import { BonusesModule } from "./BonusesModule";
-import { ResourcesModule } from "./ResourcesModule";
-import { UnlockService } from "../services/UnlockService";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
+import { BonusesModule } from "../shared/BonusesModule";
+import { ResourcesModule } from "../shared/ResourcesModule";
+import { UnlockService } from "../../services/UnlockService";
 import {
   BUILDING_IDS,
   BuildingId,
   getBuildingConfig,
   BuildingConfig,
-} from "../../db/buildings-db";
+} from "../../../db/buildings-db";
 import {
   ResourceStockpile,
   RESOURCE_IDS,
   normalizeResourceAmount,
   createEmptyResourceStockpile,
-} from "../../db/resources-db";
-import { BonusEffectPreview } from "../../types/bonuses";
-import { SkillId } from "../../db/skills-db";
+} from "../../../db/resources-db";
+import { BonusEffectPreview } from "../../../types/bonuses";
+import { SkillId } from "../../../db/skills-db";
 
 export interface BuildingWorkshopItemState {
   readonly id: BuildingId;

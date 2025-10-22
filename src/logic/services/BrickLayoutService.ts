@@ -1,5 +1,5 @@
 import { BrickType, getBrickConfig } from "../../db/bricks-db";
-import { BrickData } from "../modules/BricksModule";
+import { BrickData } from "../modules/active-map/BricksModule";
 import { SceneVector2 } from "./SceneObjectManager";
 
 const TAU = Math.PI * 2;

@@ -1,4 +1,4 @@
-import { ResourceAmountPayload } from "@logic/modules/ResourcesModule";
+import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import { ResourceIcon } from "@shared/icons/ResourceIcon";
 import "./ResourceSidebar.css";
 import { formatNumber } from "@shared/format/number";

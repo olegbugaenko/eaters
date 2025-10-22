@@ -1,20 +1,20 @@
-import { DataBridge } from "../core/DataBridge";
-import { GameModule } from "../core/types";
+import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../core/types";
 import {
   UNIT_MODULE_IDS,
   UnitModuleId,
   getUnitModuleConfig,
   UnitModuleBonusType,
-} from "../../db/unit-modules-db";
+} from "../../../db/unit-modules-db";
 import {
   ResourceStockpile,
   createEmptyResourceStockpile,
   normalizeResourceAmount,
   RESOURCE_IDS,
-} from "../../db/resources-db";
-import { ResourcesModule } from "./ResourcesModule";
-import { SkillId } from "../../db/skills-db";
-import { UnlockService } from "../services/UnlockService";
+} from "../../../db/resources-db";
+import { ResourcesModule } from "../shared/ResourcesModule";
+import { SkillId } from "../../../db/skills-db";
+import { UnlockService } from "../../services/UnlockService";
 
 export interface UnitModuleWorkshopItemState {
   readonly id: UnitModuleId;

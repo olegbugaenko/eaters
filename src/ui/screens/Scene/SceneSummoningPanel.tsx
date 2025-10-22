@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "r
 import {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
-} from "../../../logic/modules/NecromancerModule";
+} from "../../../logic/modules/active-map/NecromancerModule";
 import { createEmptyResourceAmount } from "../../../types/resources";
 import { classNames } from "@shared/classNames";
 import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
@@ -11,11 +11,11 @@ import "./SceneSummoningPanel.css";
 import { SceneTooltipContent } from "./SceneTooltipPanel";
 import { formatNumber } from "../../shared/format/number";
 import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
-import { UnitAutomationBridgeState } from "../../../logic/modules/UnitAutomationModule";
+import { UnitAutomationBridgeState } from "../../../logic/modules/active-map/UnitAutomationModule";
 import {
   UnitDesignId,
   UnitDesignModuleDetail,
-} from "../../../logic/modules/UnitDesignModule";
+} from "../../../logic/modules/camp/UnitDesignModule";
 import { formatUnitModuleBonusValue } from "../../shared/format/unitModuleBonus";
 
 interface SceneSummoningPanelProps {

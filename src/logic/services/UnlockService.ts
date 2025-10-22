@@ -1,6 +1,6 @@
 import { getMapConfig, MapId } from "../../db/maps-db";
 import { SkillId } from "../../db/skills-db";
-import type { MapStats } from "../modules/MapModule";
+import type { MapStats } from "../modules/active-map/MapModule";
 import type { UnlockCondition } from "../../types/unlocks";
 
 interface UnlockServiceOptions {
