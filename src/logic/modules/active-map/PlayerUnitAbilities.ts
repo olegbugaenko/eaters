@@ -8,6 +8,7 @@ import type { PlayerUnitType } from "../../../db/player-units-db";
 
 const DEFAULT_PHEROMONE_IDLE_THRESHOLD_SECONDS = 2;
 const DEFAULT_PHEROMONE_BUFF_ATTACKS = 4;
+const DEFAULT_MENDING_HEALS_PER_RUN = 10;
 const PHEROMONE_HEAL_EXPLOSION_RADIUS = 14;
 const PHEROMONE_FRENZY_EXPLOSION_RADIUS = 12;
 
@@ -62,6 +63,7 @@ export class PlayerUnitAbilities {
   private readonly getUnits: () => readonly PlayerUnitAbilityState[];
   private readonly getUnitById: (id: string) => PlayerUnitAbilityState | undefined;
   private activeArcEffects: AbilityArcEntry[] = [];
+  private healChargesRemaining = new Map<string, number>();
 
   constructor(options: PlayerUnitAbilitiesOptions) {
     this.scene = options.scene;
@@ -112,8 +114,9 @@ export class PlayerUnitAbilities {
       return null;
     }
 
-    const healTarget =
-      unit.pheromoneHealingMultiplier > 0 ? this.findPheromoneHealingTarget(unit) : null;
+    const canHeal =
+      unit.pheromoneHealingMultiplier > 0 && this.getRemainingHealCharges(unit.id) > 0;
+    const healTarget = canHeal ? this.findPheromoneHealingTarget(unit) : null;
     const frenzyTarget =
       unit.pheromoneAggressionMultiplier > 0 ? this.findPheromoneAggressionTarget(unit) : null;
 
@@ -124,6 +127,7 @@ export class PlayerUnitAbilities {
       const healed = this.applyPheromoneHealing(unit, healTarget);
       if (healed) {
         unit.timeSinceLastSpecial = 0;
+        this.consumeHealCharge(unit.id);
         return "heal";
       }
     }
@@ -245,7 +249,7 @@ export class PlayerUnitAbilities {
     source: PlayerUnitAbilityState,
     target: PlayerUnitAbilityState
   ): number {
-    let score = 0.25;
+    let score = 0.15;
     const effects = this.getEffects();
     if (!effects?.hasEffect(target.id, "frenzyAura")) {
       score += 0.2;
@@ -389,6 +393,27 @@ export class PlayerUnitAbilities {
     } catch {
       return DEFAULT_PHEROMONE_BUFF_ATTACKS;
     }
+  }
+
+  private getMendingHealCharges(): number {
+    try {
+      const value = getUnitModuleConfig("mendingGland" as never)?.meta?.healCharges;
+      return typeof value === "number" && value > 0 ? value : DEFAULT_MENDING_HEALS_PER_RUN;
+    } catch {
+      return DEFAULT_MENDING_HEALS_PER_RUN;
+    }
+  }
+
+  private getRemainingHealCharges(unitId: string): number {
+    if (!this.healChargesRemaining.has(unitId)) {
+      this.healChargesRemaining.set(unitId, this.getMendingHealCharges());
+    }
+    return this.healChargesRemaining.get(unitId)!;
+  }
+
+  private consumeHealCharge(unitId: string): void {
+    const left = Math.max(0, (this.healChargesRemaining.get(unitId) ?? this.getMendingHealCharges()) - 1);
+    this.healChargesRemaining.set(unitId, left);
   }
 }
 

@@ -9,7 +9,7 @@ import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/UnitModuleWorkshopModule";
 import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
-import { BuildingsWorkshopBridgeState } from "@logic/modules/active-map/BuildingsModule";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/BuildingsModule";
 import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWorkshop/BuildingsWorkshopView";
 import { CraftingBridgeState } from "@logic/modules/camp/CraftingModule";
 import { CraftingView } from "@screens/VoidCamp/components/Crafting/CraftingView";

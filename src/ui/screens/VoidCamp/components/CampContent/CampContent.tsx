@@ -7,7 +7,7 @@ import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/UnitModuleWor
 import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
 import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import { formatDuration } from "@ui/utils/formatDuration";
-import { BuildingsWorkshopBridgeState } from "@logic/modules/active-map/BuildingsModule";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/BuildingsModule";
 import { CraftingBridgeState } from "@logic/modules/camp/CraftingModule";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
 import "./CampContent.css";

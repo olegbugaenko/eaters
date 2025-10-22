@@ -20,7 +20,7 @@ import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
   BuildingsWorkshopBridgeState,
   DEFAULT_BUILDINGS_WORKSHOP_STATE,
-} from "@logic/modules/active-map/BuildingsModule";
+} from "@/logic/modules/camp/BuildingsModule";
 import {
   DEFAULT_UNIT_DESIGNER_STATE,
   UnitDesignerBridgeState,

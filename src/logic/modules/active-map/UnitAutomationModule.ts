@@ -174,6 +174,7 @@ export class UnitAutomationModule implements GameModule {
     if (changed) {
       this.pushState();
     }
+
     if (!this.unlocked) {
       return;
     }
@@ -183,6 +184,18 @@ export class UnitAutomationModule implements GameModule {
     }
     this.automationCooldownMs = UnitAutomationModule.AUTOMATION_INTERVAL_MS;
     this.runAutomation();
+  }
+
+  public onMapStart(): void {
+    this.spawnCounts.clear();
+    this.failureCounts.clear();
+    this.automationCooldownMs = 0;
+  }
+
+  public onMapEnd(): void {
+    this.spawnCounts.clear();
+    this.failureCounts.clear();
+    this.automationCooldownMs = 0;
   }
 
   public setAutomationEnabled(designId: UnitDesignId, enabled: boolean): void {

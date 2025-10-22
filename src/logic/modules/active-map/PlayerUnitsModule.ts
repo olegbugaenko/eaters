@@ -254,6 +254,12 @@ export class PlayerUnitsModule implements GameModule {
         return;
       }
 
+      if (unit.hp <= 0) {
+        this.removeUnit(unit);
+        statsDirty = true;
+        return;
+      }
+
       unit.attackCooldown = Math.max(unit.attackCooldown - deltaSeconds, 0);
       unit.timeSinceLastAttack = Math.min(
         unit.timeSinceLastAttack + deltaSeconds,
@@ -304,6 +310,12 @@ export class PlayerUnitsModule implements GameModule {
 
     unitsSnapshot.forEach((unit) => {
       if (!this.units.has(unit.id)) {
+        return;
+      }
+
+      if (unit.hp <= 0) {
+        this.removeUnit(unit);
+        statsDirty = true;
         return;
       }
 
@@ -383,6 +395,11 @@ export class PlayerUnitsModule implements GameModule {
         const hpChanged = this.performAttack(unit, target, direction, distance);
         if (hpChanged) {
           statsDirty = true;
+        }
+
+        if (unit.hp <= 0) {
+          this.removeUnit(unit);
+          return;
         }
       }
     });

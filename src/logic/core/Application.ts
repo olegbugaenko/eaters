@@ -22,7 +22,7 @@ import { UnlockService } from "../services/UnlockService";
 import { UnitAutomationModule } from "../modules/active-map/UnitAutomationModule";
 import { UnitModuleWorkshopModule } from "../modules/camp/UnitModuleWorkshopModule";
 import { UnitDesignModule } from "../modules/camp/UnitDesignModule";
-import { BuildingsModule } from "../modules/active-map/BuildingsModule";
+import { BuildingsModule } from "../modules/camp/BuildingsModule";
 import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/ExplosionWaveGpuRenderer";
 
@@ -179,6 +179,7 @@ export class Application {
       necromancer: this.necromancerModule,
       resources: resourcesModule,
       unlocks: unlockService,
+      unitsAutomation: unitAutomationModule,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
       onRunCompleted: (success) => this.handleMapRunCompleted(success),
     });
@@ -340,4 +341,5 @@ export class Application {
     this.mapModule.recordRunResult({ success, durationMs });
     this.resourcesModule.finishRun();
   }
+
 }
