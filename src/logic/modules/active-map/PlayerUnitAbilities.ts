@@ -129,7 +129,7 @@ export class PlayerUnitAbilities {
     const healScore = healTarget ? this.computeHealScore(unit, healTarget) : -Infinity;
     const frenzyScore = frenzyTarget ? this.computeFrenzyScore(unit, frenzyTarget) : -Infinity;
 
-    console.log('scores: ', `${healTarget?.hp}/${healTarget?.maxHp}`, healScore, frenzyScore);
+    // console.log('scores: ', `${healTarget?.hp}/${healTarget?.maxHp}`, healScore, frenzyScore);
 
     if (healScore > frenzyScore && healScore > 0 && healTarget) {
       const healed = this.applyPheromoneHealing(unit, healTarget);
