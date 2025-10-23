@@ -78,8 +78,18 @@ export class PlayerUnitAbilities {
   }
 
   public resetRun(): void {
-    this.activeArcEffects = [];
+    this.clearArcEffects();
     this.healChargesRemaining.clear();
+  }
+
+  public clearArcEffects(): void {
+    if (this.activeArcEffects.length === 0) {
+      return;
+    }
+    this.activeArcEffects.forEach((entry) => {
+      this.scene.removeObject(entry.id);
+    });
+    this.activeArcEffects = [];
   }
 
   public update(deltaMs: number): void {

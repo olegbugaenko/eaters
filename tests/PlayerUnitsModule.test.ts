@@ -10,6 +10,7 @@ import {
 } from "../src/logic/modules/active-map/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
 import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
+import type { EffectsModule } from "../src/logic/modules/scene/EffectsModule";
 import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { PlayerUnitEmitterConfig, getPlayerUnitConfig } from "../src/db/player-units-db";
 
@@ -215,6 +216,59 @@ describe("PlayerUnitsModule", () => {
     assert(
       Math.abs(brick.hp - brick.maxHp) < 0.5,
       "brick should retain near-full health after countering"
+    );
+  });
+
+  test("clearing units removes lingering status effects", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const movement = new MovementService();
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const explosions = new ExplosionModule({ scene });
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions);
+    let clearCalls = 0;
+    const effectsStub = {
+      applyEffect: () => {
+        // no-op for tests
+      },
+      removeEffect: () => {
+        // no-op for tests
+      },
+      hasEffect: () => false,
+      clearAllEffects: () => {
+        clearCalls += 1;
+      },
+    } as unknown as EffectsModule;
+
+    const units = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+      effects: effectsStub,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
+      getDesignTargetingMode: () => "nearest",
+    });
+
+    units.setUnits([
+      {
+        type: "bluePentagon",
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    const baselineCalls = clearCalls;
+
+    units.setUnits([]);
+
+    assert.strictEqual(
+      clearCalls,
+      baselineCalls + 1,
+      "effects should be cleared when units are removed"
     );
   });
 });

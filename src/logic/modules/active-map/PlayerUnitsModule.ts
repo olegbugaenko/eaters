@@ -1265,6 +1265,8 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private clearUnits(): void {
+    this.abilities.clearArcEffects();
+    this.effects?.clearAllEffects();
     this.unitOrder.forEach((unit) => {
       this.scene.removeObject(unit.objectId);
       this.movement.removeBody(unit.movementId);

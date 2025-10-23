@@ -59,6 +59,10 @@ export class EffectsModule implements GameModule {
     });
   }
 
+  public clearAllEffects(): void {
+    this.clearAll();
+  }
+
   public applyEffect(unitId: string, effectId: VisualEffectId): void {
     // If already applied, no-op
     let effectsMap = this.auraByUnit.get(unitId);
