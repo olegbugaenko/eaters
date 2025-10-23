@@ -12,6 +12,7 @@ export const UNIT_MODULE_IDS = [
   "internalFurnace",
   "mendingGland",
   "frenzyGland",
+  "fireballOrgan",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -30,6 +31,7 @@ export interface UnitModuleConfig {
   readonly sanityCost: number;
   readonly baseCost: ResourceAmount;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
+  readonly canAttackDistant?: boolean;
   readonly meta?: {
     readonly cooldownSeconds?: number;
     readonly frenzyAttacks?: number;
@@ -149,6 +151,22 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseCost: { organics: 200, stone: 2000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
     meta: { cooldownSeconds: 5, frenzyAttacks: 8 },
+  },
+  fireballOrgan: {
+    id: "fireballOrgan",
+    name: "Fireball Organ",
+    description:
+      "A blazing core pulses with infernal energy, launching searing fireballs every 4 seconds. Each fireball explodes on impact, dealing (1.75 + 0.075×level) × unit damage to the target brick and all neighbors within 40 pixels. However, each fireball launch causes 75% of the fireball's damage as self-damage to the unit.",
+    bonusLabel: "Fireball damage multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.75,
+    bonusPerLevel: 0.075,
+    manaCostMultiplier: 3.0,
+    sanityCost: 2,
+    baseCost: { coal: 400, wood: 800 },
+    unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
+    canAttackDistant: true,
+    meta: { cooldownSeconds: 4 },
   },
 };
 

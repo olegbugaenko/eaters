@@ -17,6 +17,9 @@ import {
   UnitDesignModuleDetail,
 } from "../../../logic/modules/camp/UnitDesignModule";
 import { formatUnitModuleBonusValue } from "../../shared/format/unitModuleBonus";
+import { useBridgeValue } from "../../shared/useBridgeValue";
+import { useAppLogic } from "../../contexts/AppLogicContext";
+import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "../../../logic/modules/active-map/PlayerUnitsModule";
 
 interface SceneSummoningPanelProps {
   resources: NecromancerResourcesPayload;
@@ -53,6 +56,13 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
     },
     ref
   ) => {
+    const { bridge } = useAppLogic();
+    const unitCountsByDesign = useBridgeValue<Record<string, number>>(
+      bridge,
+      PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
+      {}
+    );
+
     const available = {
       mana: resources.mana.current,
       sanity: resources.sanity.current,
@@ -143,7 +153,14 @@ export const SceneSummoningPanel = forwardRef<HTMLDivElement, SceneSummoningPane
                       onBlur={hideTooltip}
                       disabled={!canAfford}
                     >
-                      <div className="scene-summoning-panel__unit-name">{option.name}</div>
+                      <div className="scene-summoning-panel__unit-name">
+                        {option.name}
+                        {(unitCountsByDesign[option.designId] ?? 0) > 0 && (
+                          <span className="scene-summoning-panel__unit-count">
+                            ({unitCountsByDesign[option.designId]})
+                          </span>
+                        )}
+                      </div>
                       <ResourceCostDisplay cost={option.cost} missing={missing} />
                       {/* option.modules.length > 0 ? (
                         <ul className="scene-summoning-panel__module-list">

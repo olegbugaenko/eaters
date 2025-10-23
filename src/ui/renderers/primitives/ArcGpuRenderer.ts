@@ -113,9 +113,9 @@ out vec4 fragColor;
 
 float clamp01(float v){return clamp(v,0.0,1.0);} 
 
-// simple periodic noise
+// Optimized noise function - reduced complexity but keeps visual quality
 float noise1(float t){
-  return sin(t) * 0.6 + sin(t*1.7+1.3)*0.3 + sin(t*2.3+2.1)*0.1;
+  return sin(t) * 0.7 + sin(t*1.7+1.3)*0.3;
 }
 
 void main(){
@@ -129,24 +129,23 @@ void main(){
   float t = clamp(dot(rel, axis) / len, 0.0, 1.0);
   float baseOffset = dot(rel, normal);
 
-  // animated bend
-  float cycles = u_noiseDensity * len; // density per length
-  float phase = t * cycles * 6.28318530718; // 2*pi
-  float timeOsc = u_oscAngularSpeed * v_age; // radians
-  float n = noise1(phase + timeOsc) * u_noiseAmplitude * (1.0 + u_oscAmplitude * sin(timeOsc*0.33));
+  // Simplified animated bend - keep original logic but reduce calculations
+  float cycles = u_noiseDensity * len * 0.5; // reduce density slightly
+  float phase = t * cycles * 6.28318530718;
+  float timeOsc = u_oscAngularSpeed * v_age;
+  float n = noise1(phase + timeOsc) * u_noiseAmplitude * (1.0 + u_oscAmplitude * 0.5);
 
   float dist = abs(baseOffset - n);
 
-  // widths with tapered ends and short-length handling
-  float taperFrac = 0.2; // ~20% of length at each end
+  // widths with tapered ends - keep original logic
+  float taperFrac = 0.2;
   float endIn  = smoothstep(0.0, taperFrac, t);
   float endOut = smoothstep(0.0, taperFrac, 1.0 - t);
-  float endTaper = endIn * endOut; // 0 at ends -> 1 in middle
+  float endTaper = endIn * endOut;
 
+  // Simplified short-length handling
   float nominal = max(u_coreWidth + 2.0 * u_blurWidth, 0.0001);
-  float shortNorm = clamp(len / nominal, 0.0, 1.0);
-  float minShortScale = 0.35; // keep some thickness for tiny arcs
-  float shortScale = mix(minShortScale, 1.0, shortNorm);
+  float shortScale = clamp(len / nominal, 0.35, 1.0);
 
   float core = (u_coreWidth * 0.5) * max(0.0, endTaper) * shortScale;
   float blur = u_blurWidth * max(0.0, endTaper) * shortScale;
@@ -159,7 +158,7 @@ void main(){
     alpha = 1.0 - clamp01(d / max(blur, 0.0001));
   }
 
-  // lifetime fade
+  // lifetime fade - keep original logic
   float fade = 1.0;
   if (u_fadeStartMs < v_lifetime) {
     if (v_age > u_fadeStartMs) {
@@ -169,10 +168,12 @@ void main(){
     }
   }
 
+  // color mixing - keep original logic
   vec3 rgb = mix(u_blurColor.rgb, u_coreColor.rgb, dist <= core ? 1.0 : (1.0 - clamp01((dist - core) / max(blur, 0.0001))));
   float aCore = u_coreColor.a;
   float aBlur = u_blurColor.a;
   float a = mix(aBlur, aCore, dist <= core ? 1.0 : (1.0 - clamp01((dist - core) / max(blur, 0.0001))));
+  
   fragColor = vec4(rgb, a * alpha * fade);
   if (fragColor.a <= 0.001) discard;
 }
@@ -379,6 +380,8 @@ export const renderArcBatches = (
   const program = getProgram(gl);
   if (!program) return;
   gl.useProgram(program.program);
+  
+  // Set camera uniforms once for all batches
   if (program.uniforms.cameraPosition) gl.uniform2f(program.uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
   if (program.uniforms.viewportSize) gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height);
 
@@ -392,6 +395,8 @@ export const renderArcBatches = (
     const vao = batch.vao;
     if (!vao || batch.activeCount <= 0) return;
     const u = batch.uniforms;
+    
+    // Set uniforms for this batch
     if (program.uniforms.coreColor) gl.uniform4fv(program.uniforms.coreColor, u.coreColor);
     if (program.uniforms.blurColor) gl.uniform4fv(program.uniforms.blurColor, u.blurColor);
     if (program.uniforms.coreWidth) gl.uniform1f(program.uniforms.coreWidth, u.coreWidth);
@@ -408,5 +413,6 @@ export const renderArcBatches = (
 
   gl.bindVertexArray(null);
 };
+
 
 

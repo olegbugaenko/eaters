@@ -10,6 +10,7 @@ export type ExplosionType =
   | "plasmoid"
   | "magnetic"
   | "healWave"
+  | "fireball"
   | "grayBrickHit"
   | "grayBrickDestroy"
   | "yellowBrickHit"
@@ -393,6 +394,34 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       spawnRadiusMultiplier: 1,
       color: { r: 0.6, g: 1, b: 0.7, a: 1 },
       arc: 0,
+      direction: 0,
+    },
+  },
+  fireball: {
+    lifetimeMs: 800,
+    defaultInitialRadius: 15,
+    wave: {
+      radiusExtension: 50,
+      startAlpha: 0.9,
+      endAlpha: 0,
+      gradientStops: [
+        { offset: 0, color: { r: 1, g: 0.4, b: 0.1, a: 0.9 } },
+        { offset: 0.5, color: { r: 1, g: 0.7, b: 0.3, a: 0.6 } },
+        { offset: 1, color: { r: 1, g: 0.9, b: 0.5, a: 0 } },
+      ],
+    },
+    emitter: {
+      emissionDurationMs: 400,
+      particlesPerSecond: 30,
+      baseSpeed: 80,
+      speedVariation: 40,
+      particleLifetimeMs: 400,
+      fadeStartMs: 200,
+      sizeRange: { min: 2, max: 6 },
+      spawnRadius: { min: 0, max: 5 },
+      spawnRadiusMultiplier: 1,
+      color: { r: 1, g: 0.6, b: 0.2, a: 1 },
+      arc: Math.PI * 2,
       direction: 0,
     },
   },

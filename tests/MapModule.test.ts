@@ -18,6 +18,8 @@ import type {
   MapAutoRestartState,
 } from "../src/logic/modules/active-map/MapModule";
 import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
+import type { ArcModule } from "../src/logic/modules/scene/ArcModule";
+import type { UnitAutomationModule } from "../src/logic/modules/active-map/UnitAutomationModule";
 import { NecromancerModule } from "../src/logic/modules/active-map/NecromancerModule";
 import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
@@ -42,6 +44,21 @@ const distanceSq = (a: { x: number; y: number }, b: { x: number; y: number }): n
   const dy = a.y - b.y;
   return dx * dx + dy * dy;
 };
+
+const createArcModuleStub = (): ArcModule => ({
+  clearArcs: () => {
+    // no-op for tests
+  },
+} as unknown as ArcModule);
+
+const createUnitAutomationStub = (): UnitAutomationModule => ({
+  onMapStart: () => {
+    // no-op for tests
+  },
+  onMapEnd: () => {
+    // no-op for tests
+  },
+} as unknown as UnitAutomationModule);
 
 describe("MapModule", () => {
   test("bricks spawn outside of the player unit safe radius", () => {
@@ -99,6 +116,8 @@ describe("MapModule", () => {
       necromancer,
       resources,
       unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
       onRunCompleted: () => undefined,
     });
@@ -180,6 +199,8 @@ describe("Map run control", () => {
       necromancer,
       resources,
       unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
       onRunCompleted: () => undefined,
     });
@@ -295,6 +316,8 @@ describe("Map run control", () => {
       necromancer,
       resources,
       unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
       onRunCompleted: () => undefined,
     });
@@ -367,6 +390,8 @@ describe("Map unlocking", () => {
       necromancer,
       resources,
       unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
       onRunCompleted: () => undefined,
     });
@@ -448,6 +473,8 @@ describe("Map unlocking", () => {
       necromancer,
       resources,
       unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
       onRunCompleted: () => undefined,
     });
@@ -519,6 +546,8 @@ describe("Map auto restart", () => {
       necromancer,
       resources,
       unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
       getSkillLevel: () => skillLevel,
       onRunCompleted: () => undefined,
     });

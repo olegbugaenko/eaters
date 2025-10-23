@@ -104,7 +104,25 @@ export class ArcModule implements GameModule {
     });
   }
 
-  private clearArcs(): void {
+  public clearArcsForUnit(unitId: string): void {
+    if (!unitId || this.arcs.length === 0) {
+      return;
+    }
+    const survivors: ArcState[] = [];
+    for (let i = 0; i < this.arcs.length; i += 1) {
+      const arc = this.arcs[i]!;
+      if (arc.sourceUnitId === unitId || arc.targetUnitId === unitId) {
+        this.scene.removeObject(arc.id);
+        continue;
+      }
+      survivors.push(arc);
+    }
+    if (survivors.length !== this.arcs.length) {
+      this.arcs = survivors;
+    }
+  }
+
+  public clearArcs(): void {
     this.arcs.forEach((a) => this.scene.removeObject(a.id));
     this.arcs = [];
   }

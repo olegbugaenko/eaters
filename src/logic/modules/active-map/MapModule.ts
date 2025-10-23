@@ -8,6 +8,7 @@ import {
 } from "./PlayerUnitsModule";
 import { NecromancerModule } from "./NecromancerModule";
 import { UnlockService } from "../../services/UnlockService";
+import { ArcModule } from "../scene/ArcModule";
 import {
   MapConfig,
   MapId,
@@ -39,6 +40,7 @@ interface MapModuleOptions {
   resources: ResourceRunController;
   unlocks: UnlockService;
   unitsAutomation: UnitAutomationModule;
+  arcs: ArcModule;
   getSkillLevel: (id: SkillId) => number;
   onRunCompleted: (success: boolean) => void;
 }
@@ -182,7 +184,7 @@ export class MapModule implements GameModule {
     }
     // Early end-of-run check: when enabled, if alive + affordable < N, end the run (failure)
     if (this.autoRestartEnabled && this.thresholdEnabled && this.selectedMapId && this.runActive) {
-      const alive = this.options.playerUnits.getCurrentUnitCount('none');
+      const alive = this.options.playerUnits.getEffectiveUnitCount();
       const affordable = this.options.necromancer.getAffordableSpawnCountBySanity();
       const effective = alive + affordable;
       if (effective < Math.max(0, Math.floor(this.minEffectiveUnits))) {
@@ -244,6 +246,7 @@ export class MapModule implements GameModule {
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
     this.options.unitsAutomation.onMapEnd();
+    this.options.arcs.clearArcs();
     // Remove portals
     this.portalObjects.forEach((p) => this.options.scene.removeObject(p.id));
     this.portalObjects = [];
@@ -319,6 +322,7 @@ export class MapModule implements GameModule {
     }
     // stats mutated → invalidate cached clone
     this.statsCloneDirty = true;
+    this.options.arcs.clearArcs();
     this.pushMapList();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();

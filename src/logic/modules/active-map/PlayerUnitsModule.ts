@@ -28,7 +28,7 @@ import {
   PlayerUnitRuntimeModifiers,
 } from "../../../types/player-units";
 import { ExplosionModule } from "../scene/ExplosionModule";
-import { UNIT_MODULE_IDS, UnitModuleId } from "../../../db/unit-modules-db";
+import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../db/unit-modules-db";
 import type { SkillId } from "../../../db/skills-db";
 import { getBonusConfig } from "../../../db/bonuses-db";
 import {
@@ -42,6 +42,7 @@ import { UnitTargetingMode } from "../../../types/unit-targeting";
 import { UnitDesignId } from "../camp/UnitDesignModule";
 import { ArcModule } from "../scene/ArcModule";
 import { EffectsModule } from "../scene/EffectsModule";
+import { FireballModule } from "../scene/FireballModule";
 import { PlayerUnitAbilities, PheromoneAttackBonusState } from "./PlayerUnitAbilities";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
@@ -71,6 +72,7 @@ const TARGETING_SCORE_EPSILON = 1e-3;
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
 export const PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY = "playerUnits/blueprintStats";
+export const PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY = "playerUnits/countsByDesign";
 
 export interface PlayerUnitSpawnData {
   readonly designId?: UnitDesignId;
@@ -91,6 +93,7 @@ interface PlayerUnitsModuleOptions {
   explosions: ExplosionModule;
   arcs?: ArcModule;
   effects?: EffectsModule;
+  fireballs?: FireballModule;
   onAllUnitsDefeated?: () => void;
   getModuleLevel: (id: UnitModuleId) => number;
   hasSkill: (id: SkillId) => boolean;
@@ -153,6 +156,8 @@ interface PlayerUnitState {
   pheromoneHealingMultiplier: number;
   pheromoneAggressionMultiplier: number;
   pheromoneAttackBonuses: PheromoneAttackBonusState[];
+  fireballDamageMultiplier: number;
+  canUnitAttackDistant: boolean;
 }
 
 export class PlayerUnitsModule implements GameModule {
@@ -166,6 +171,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly explosions: ExplosionModule;
   private readonly arcs?: ArcModule;
   private readonly effects?: EffectsModule;
+  private readonly fireballs?: FireballModule;
   private readonly onAllUnitsDefeated?: () => void;
   private readonly getModuleLevel: (id: UnitModuleId) => number;
   private readonly hasSkill: (id: SkillId) => boolean;
@@ -189,6 +195,7 @@ export class PlayerUnitsModule implements GameModule {
     this.explosions = options.explosions;
     this.arcs = options.arcs;
     this.effects = options.effects;
+    this.fireballs = options.fireballs;
     this.onAllUnitsDefeated = options.onAllUnitsDefeated;
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
@@ -198,15 +205,60 @@ export class PlayerUnitsModule implements GameModule {
       explosions: this.explosions,
       getArcs: () => this.arcs,
       getEffects: () => this.effects,
+      getFireballs: () => this.fireballs,
       logEvent: (message) => this.logPheromoneEvent(message),
       formatUnitLabel: (unit) => this.formatUnitLogLabel(unit as PlayerUnitState),
       getUnits: () => this.unitOrder,
       getUnitById: (id) => this.units.get(id),
+      getBrickPosition: (brickId) => {
+        const brick = this.bricks.getBrickState(brickId);
+        return brick?.position || null;
+      },
+      damageBrick: (brickId, damage) => {
+        const brick = this.bricks.getBrickState(brickId);
+        if (brick) {
+          this.bricks.applyDamage(brickId, damage, { x: 0, y: 0 }, {
+            rewardMultiplier: 1,
+            armorPenetration: 0,
+          });
+        }
+      },
+      getBricksInRadius: (position, radius) => {
+        const nearbyBricks = this.bricks.findBricksNear(position, radius);
+        return nearbyBricks.map(brick => brick.id);
+      },
+      damageUnit: (unitId, damage) => {
+        const unit = this.units.get(unitId);
+        if (unit) {
+          unit.hp = Math.max(unit.hp - damage, 0);
+        }
+      },
+      findNearestBrick: (position) => {
+        const brick = this.bricks.findNearestBrick(position);
+        return brick?.id || null;
+      },
     });
   }
 
   public getCurrentUnitCount(strategyFilter?: UnitTargetingMode): number {
     return this.unitOrder.filter(u => !strategyFilter || u.targetingMode !== strategyFilter).length;
+  }
+
+  public getEffectiveUnitCount(): number {
+    // Count units that can attack (either normally or at distance)
+    return this.unitOrder.filter(u => {
+      if (u.hp <= 0) return false;
+      
+      // If unit has targeting mode other than "none", it can attack normally
+      if (u.targetingMode !== "none") return true;
+      
+      // If unit has "none" targeting mode but can attack distant targets, count it
+      return u.canUnitAttackDistant;
+    }).length;
+  }
+
+  public getUnitCountByDesignId(designId: UnitDesignId): number {
+    return this.unitOrder.filter(u => u.designId === designId && u.hp > 0).length;
   }
 
   public initialize(): void {
@@ -462,8 +514,19 @@ export class PlayerUnitsModule implements GameModule {
   private pushStats(): void {
     const units = this.unitOrder;
     const totalHp = units.reduce((sum, unit) => sum + unit.hp, 0);
+    
+    // Count units by design ID
+    const countsByDesign = new Map<UnitDesignId, number>();
+    units.forEach(unit => {
+      if (unit.designId && unit.hp > 0) {
+        const current = countsByDesign.get(unit.designId) || 0;
+        countsByDesign.set(unit.designId, current + 1);
+      }
+    });
+    
     this.bridge.setValue(PLAYER_UNIT_COUNT_BRIDGE_KEY, units.length);
     this.bridge.setValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, totalHp);
+    this.bridge.setValue(PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY, Object.fromEntries(countsByDesign));
   }
 
   private parseSaveData(data: unknown): PlayerUnitSaveData | null {
@@ -608,6 +671,20 @@ export class PlayerUnitsModule implements GameModule {
       ? Math.max(this.getModuleLevel("frenzyGland"), 0)
       : 0;
     const pheromoneAggressionMultiplier = frenzyLevel > 0 ? 1 + 0.1 * frenzyLevel : 0;
+    const fireballLevel = ownedModuleIds.includes("fireballOrgan")
+      ? Math.max(this.getModuleLevel("fireballOrgan"), 0)
+      : 0;
+    const fireballDamageMultiplier = fireballLevel > 0 ? 1.75 + 0.075 * fireballLevel : 0;
+
+    // Check if unit can attack distant targets (has modules with canAttackDistant: true)
+    const canUnitAttackDistant = ownedModuleIds.some(moduleId => {
+      try {
+        const moduleConfig = getUnitModuleConfig(moduleId);
+        return moduleConfig.canAttackDistant === true;
+      } catch {
+        return false;
+      }
+    });
 
     const objectId = this.scene.addObject("playerUnit", {
       position,
@@ -679,6 +756,8 @@ export class PlayerUnitsModule implements GameModule {
       pheromoneHealingMultiplier,
       pheromoneAggressionMultiplier,
       pheromoneAttackBonuses: [],
+      fireballDamageMultiplier: this.computeFireballDamageMultiplier(unit.equippedModules ?? []),
+      canUnitAttackDistant,
       targetingMode: this.getDesignTargetingMode(unit.designId ?? null, type),
       wanderTarget: null,
       wanderCooldown: 0,
@@ -1258,15 +1337,19 @@ export class PlayerUnitsModule implements GameModule {
     this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
+    this.arcs?.clearArcsForUnit(unit.id);
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
   }
 
   private clearUnits(): void {
+    this.abilities.clearArcEffects();
+    this.effects?.clearAllEffects();
     this.unitOrder.forEach((unit) => {
       this.scene.removeObject(unit.objectId);
       this.movement.removeBody(unit.movementId);
+      this.arcs?.clearArcsForUnit(unit.id);
     });
     this.unitOrder = [];
     this.units.clear();
@@ -1283,6 +1366,13 @@ export class PlayerUnitsModule implements GameModule {
   private createUnitId(): string {
     this.idCounter += 1;
     return `player-unit-${this.idCounter}`;
+  }
+
+  private computeFireballDamageMultiplier(equippedModules: UnitModuleId[]): number {
+    const fireballLevel = equippedModules.includes("fireballOrgan")
+      ? Math.max(this.getModuleLevel("fireballOrgan"), 0)
+      : 0;
+    return fireballLevel > 0 ? 1.75 + 0.075 * fireballLevel : 0;
   }
 }
 
