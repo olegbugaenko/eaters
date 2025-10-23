@@ -247,9 +247,7 @@ export class MapModule implements GameModule {
     this.options.bricks.setBricks([]);
     this.options.unitsAutomation.onMapEnd();
     this.options.arcs.clearArcs();
-    // Remove portals
-    this.portalObjects.forEach((p) => this.options.scene.removeObject(p.id));
-    this.portalObjects = [];
+    this.clearPortalObjects();
     this.options.necromancer.endCurrentMap();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
@@ -322,6 +320,12 @@ export class MapModule implements GameModule {
     }
     // stats mutated → invalidate cached clone
     this.statsCloneDirty = true;
+    if (this.runActive) {
+      this.runActive = false;
+      this.options.unitsAutomation.onMapEnd();
+    }
+    this.options.necromancer.endCurrentMap();
+    this.clearPortalObjects();
     this.options.arcs.clearArcs();
     this.pushMapList();
     this.pushSelectedMap();
@@ -370,8 +374,7 @@ export class MapModule implements GameModule {
     this.options.playerUnits.prepareForMap();
     // Clear existing portals if any (e.g., on restart)
     if (this.portalObjects.length > 0) {
-      this.portalObjects.forEach((p) => this.options.scene.removeObject(p.id));
-      this.portalObjects = [];
+      this.clearPortalObjects();
     }
     if (generateBricks) {
       const bricks = this.generateBricks(config, level);
@@ -432,6 +435,14 @@ export class MapModule implements GameModule {
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();
+  }
+
+  private clearPortalObjects(): void {
+    if (this.portalObjects.length === 0) {
+      return;
+    }
+    this.portalObjects.forEach((portal) => this.options.scene.removeObject(portal.id));
+    this.portalObjects = [];
   }
 
   private updateSelection(mapId: MapId): void {
