@@ -122,7 +122,7 @@ export class ArcModule implements GameModule {
     }
   }
 
-  private clearArcs(): void {
+  public clearArcs(): void {
     this.arcs.forEach((a) => this.scene.removeObject(a.id));
     this.arcs = [];
   }
