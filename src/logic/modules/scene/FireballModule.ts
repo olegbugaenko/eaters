@@ -33,8 +33,21 @@ interface FireballState {
 const FIREBALL_SPEED = 150; // pixels per second (reduced from 300 for more realistic movement)
 const FIREBALL_LIFETIME_MS = 5000; // 5 seconds max flight time (increased to compensate for slower speed)
 const FIREBALL_EXPLOSION_RADIUS = 40;
-const FIREBALL_COLOR: SceneColor = { r: 1.0, g: 0.4, b: 0.1, a: 1.0 };
+const FIREBALL_RADIUS = 8;
 const FIREBALL_GLOW_COLOR: SceneColor = { r: 1.0, g: 0.7, b: 0.3, a: 0.8 };
+const FIREBALL_TAIL_LENGTH_MULTIPLIER = 4.5;
+const FIREBALL_TAIL_WIDTH_MULTIPLIER = 1.6;
+
+const createCoreFill = (radius: number): SceneFill => ({
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: radius,
+  stops: [
+    { offset: 0, color: { r: 1, g: 0.94, b: 0.7, a: 1 } },
+    { offset: 0.4, color: { r: 1, g: 0.6, b: 0.2, a: 0.95 } },
+    { offset: 1, color: { r: 0.4, g: 0.05, b: 0, a: 0.85 } },
+  ],
+});
 
 export class FireballModule implements GameModule {
   public readonly id = "fireballs";
@@ -72,18 +85,29 @@ export class FireballModule implements GameModule {
       fireball.position.x += fireball.velocity.x * deltaSeconds;
       fireball.position.y += fireball.velocity.y * deltaSeconds;
 
+      const rotation = Math.atan2(fireball.velocity.y, fireball.velocity.x);
+
+      const speed = Math.hypot(fireball.velocity.x, fireball.velocity.y);
+
       // Update scene object position
       this.options.scene.updateObject(fireball.id, {
         position: { ...fireball.position },
-        fill: { fillType: FILL_TYPES.SOLID, color: FIREBALL_COLOR },
+        size: { width: fireball.radius * 2, height: fireball.radius * 2 },
+        rotation,
+        fill: createCoreFill(fireball.radius),
         customData: {
           fireballId: fireball.id,
           glowColor: FIREBALL_GLOW_COLOR,
           radius: fireball.radius,
+          velocity: { ...fireball.velocity },
+          speed,
+          maxSpeed: FIREBALL_SPEED,
+          tail: {
+            lengthMultiplier: FIREBALL_TAIL_LENGTH_MULTIPLIER,
+            widthMultiplier: FIREBALL_TAIL_WIDTH_MULTIPLIER,
+          },
         },
       });
-      
-      console.log('[FireballModule] Updated fireball position:', fireball.id, fireball.position);
 
       // Check if target brick still exists
       const targetPosition = this.options.getBrickPosition(fireball.targetBrickId);
@@ -188,25 +212,17 @@ export class FireballModule implements GameModule {
     targetBrickId: string,
     damage: number
   ): void {
-    console.log('[FireballModule] Spawning fireball from:', sourcePosition, 'to brick:', targetBrickId);
-    
     const targetPosition = this.options.getBrickPosition(targetBrickId);
     if (!targetPosition) {
-      console.log('[FireballModule] Target brick not found:', targetBrickId);
       return;
     }
-
-    console.log('[FireballModule] Target position:', targetPosition);
 
     // Calculate direction and velocity
     const dx = targetPosition.x - sourcePosition.x;
     const dy = targetPosition.y - sourcePosition.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    console.log('[FireballModule] Distance to target:', distance);
-    
+
     if (distance <= 0) {
-      console.log('[FireballModule] Distance is 0, skipping');
       return;
     }
 
@@ -219,13 +235,24 @@ export class FireballModule implements GameModule {
     };
 
     // Create fireball object
+    const speed = Math.hypot(velocity.x, velocity.y);
+
     const fireballId = this.options.scene.addObject("fireball", {
       position: { ...sourcePosition },
-      fill: { fillType: FILL_TYPES.SOLID, color: FIREBALL_COLOR },
+      size: { width: FIREBALL_RADIUS * 2, height: FIREBALL_RADIUS * 2 },
+      rotation: Math.atan2(velocity.y, velocity.x),
+      fill: createCoreFill(FIREBALL_RADIUS),
       customData: {
         fireballId: "",
         glowColor: FIREBALL_GLOW_COLOR,
-        radius: 8,
+        radius: FIREBALL_RADIUS,
+        velocity: { ...velocity },
+        speed,
+        maxSpeed: FIREBALL_SPEED,
+        tail: {
+          lengthMultiplier: FIREBALL_TAIL_LENGTH_MULTIPLIER,
+          widthMultiplier: FIREBALL_TAIL_WIDTH_MULTIPLIER,
+        },
       },
     });
 
@@ -235,7 +262,7 @@ export class FireballModule implements GameModule {
       velocity,
       targetBrickId,
       damage,
-      radius: 8,
+      radius: FIREBALL_RADIUS,
       elapsedMs: 0,
       lifetimeMs: FIREBALL_LIFETIME_MS,
       sourceUnitId,
@@ -245,15 +272,24 @@ export class FireballModule implements GameModule {
     // Update custom data with actual fireball ID
     this.options.scene.updateObject(fireballId, {
       position: { ...fireball.position },
+      size: { width: fireball.radius * 2, height: fireball.radius * 2 },
+      rotation: Math.atan2(velocity.y, velocity.x),
+      fill: createCoreFill(fireball.radius),
       customData: {
         fireballId: fireball.id,
         glowColor: FIREBALL_GLOW_COLOR,
         radius: fireball.radius,
+        velocity: { ...velocity },
+        speed,
+        maxSpeed: FIREBALL_SPEED,
+        tail: {
+          lengthMultiplier: FIREBALL_TAIL_LENGTH_MULTIPLIER,
+          widthMultiplier: FIREBALL_TAIL_WIDTH_MULTIPLIER,
+        },
       },
     });
 
     this.fireballs.push(fireball);
-    console.log('[FireballModule] Fireball added to array, total count:', this.fireballs.length);
 
     this.options.logEvent(
       `Fireball launched from unit ${sourceUnitId} targeting brick ${targetBrickId}`
@@ -261,8 +297,6 @@ export class FireballModule implements GameModule {
   }
 
   private explodeFireball(fireball: FireballState): void {
-    console.log('[FireballModule] Exploding fireball:', fireball.id, 'at', fireball.position, 'damage:', fireball.damage);
-    
     // Create explosion effect
     this.options.explosions.spawnExplosionByType("fireball", {
       position: { ...fireball.position },
@@ -270,15 +304,12 @@ export class FireballModule implements GameModule {
     });
 
     // Damage target brick
-    console.log('[FireballModule] Damaging target brick:', fireball.targetBrickId, 'damage:', fireball.damage);
     this.options.damageBrick(fireball.targetBrickId, fireball.damage);
 
     // Damage nearby bricks within explosion radius
     const nearbyBrickIds = this.options.getBricksInRadius(fireball.position, FIREBALL_EXPLOSION_RADIUS);
-    console.log('[FireballModule] Nearby bricks:', nearbyBrickIds);
     nearbyBrickIds.forEach((brickId) => {
       if (brickId !== fireball.targetBrickId) {
-        console.log('[FireballModule] Damaging nearby brick:', brickId, 'damage:', fireball.damage);
         this.options.damageBrick(brickId, fireball.damage);
       }
     });
