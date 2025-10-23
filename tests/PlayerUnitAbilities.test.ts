@@ -16,12 +16,22 @@ const createAbilities = () => {
     explosions,
     getArcs: () => undefined,
     getEffects: () => undefined,
+    getFireballs: () => undefined,
     logEvent: () => {
       // no-op for tests
     },
     formatUnitLabel: () => "",
     getUnits: () => [],
     getUnitById: () => undefined,
+    getBrickPosition: () => null,
+    damageBrick: () => {
+      // no-op for tests
+    },
+    getBricksInRadius: () => [],
+    damageUnit: () => {
+      // no-op for tests
+    },
+    findNearestBrick: () => null,
   });
   return { abilities, scene };
 };

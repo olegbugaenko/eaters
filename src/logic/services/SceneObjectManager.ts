@@ -155,41 +155,46 @@ export class SceneObjectManager {
     if (!instance) {
       return;
     }
-    const size = data.size
-      ? { ...data.size }
-      : instance.data.size
-      ? { ...instance.data.size }
-      : { ...DEFAULT_SIZE };
+    const previousData = instance.data;
+    const previousFill = previousData.fill;
+
     const fill = data.fill
       ? sanitizeFill(data.fill)
       : data.color
       ? createSolidFill(data.color)
-      : cloneFill(instance.data.fill);
-    const color = data.color
+      : previousFill;
+    const fillChanged = fill !== previousFill;
+    const colorCandidate = data.color
       ? sanitizeColor(data.color)
-      : extractPrimaryColor(fill);
+      : fillChanged
+      ? extractPrimaryColor(fill)
+      : previousData.color;
+    const color = colorCandidate ?? extractPrimaryColor(fill);
     const stroke =
       typeof data.stroke !== "undefined"
         ? sanitizeStroke(data.stroke)
-        : cloneStroke(instance.data.stroke);
+        : previousData.stroke;
     const rotation =
       typeof data.rotation === "number"
         ? normalizeRotation(data.rotation)
-        : typeof instance.data.rotation === "number"
-        ? normalizeRotation(instance.data.rotation)
+        : typeof previousData.rotation === "number"
+        ? previousData.rotation
         : DEFAULT_ROTATION;
+    const customData =
+      typeof data.customData !== "undefined"
+        ? cloneCustomData(data.customData)
+        : previousData.customData;
+
     instance.data = {
       position: { ...data.position },
-      size,
+      size: data.size
+        ? { ...data.size }
+        : previousData.size ?? { ...DEFAULT_SIZE },
       color,
       fill,
       rotation,
       stroke,
-      customData: cloneCustomData(
-        typeof data.customData !== "undefined"
-          ? data.customData
-          : instance.data.customData
-      ),
+      customData,
     };
     if (this.added.has(id)) {
       this.added.set(id, instance);
