@@ -184,7 +184,7 @@ export class MapModule implements GameModule {
     }
     // Early end-of-run check: when enabled, if alive + affordable < N, end the run (failure)
     if (this.autoRestartEnabled && this.thresholdEnabled && this.selectedMapId && this.runActive) {
-      const alive = this.options.playerUnits.getCurrentUnitCount('none');
+      const alive = this.options.playerUnits.getEffectiveUnitCount();
       const affordable = this.options.necromancer.getAffordableSpawnCountBySanity();
       const effective = alive + affordable;
       if (effective < Math.max(0, Math.floor(this.minEffectiveUnits))) {

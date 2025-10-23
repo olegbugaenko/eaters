@@ -11,6 +11,7 @@ import { BulletModule } from "../modules/active-map/BulletModule";
 import { ExplosionModule } from "../modules/scene/ExplosionModule";
 import { ArcModule } from "../modules/scene/ArcModule";
 import { EffectsModule } from "../modules/scene/EffectsModule";
+import { FireballModule } from "../modules/scene/FireballModule";
 import { MapId } from "../../db/maps-db";
 import { PlayerUnitsModule } from "../modules/active-map/PlayerUnitsModule";
 import { MovementService } from "../services/MovementService";
@@ -171,6 +172,29 @@ export class Application {
       getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
     });
 
+    const fireballModule = new FireballModule({
+      scene: sceneObjects,
+      explosions: explosionModule,
+      getBrickPosition: (brickId) => {
+        const brick = bricksModule.getBrickState(brickId);
+        return brick?.position || null;
+      },
+      damageBrick: (brickId, damage) => {
+        const brick = bricksModule.getBrickState(brickId);
+        if (brick) {
+          bricksModule.applyDamage(brickId, damage, { x: 0, y: 0 }, {
+            rewardMultiplier: 1,
+            armorPenetration: 0,
+          });
+        }
+      },
+      getBricksInRadius: (position, radius) => {
+        const nearbyBricks = bricksModule.findBricksNear(position, radius);
+        return nearbyBricks.map(brick => brick.id);
+      },
+      logEvent: (message) => console.log(`[FireballModule] ${message}`),
+    });
+
     mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
@@ -204,12 +228,14 @@ export class Application {
     // now arcs module is ready; link it to playerUnits (optional, legacy code still works without)
     (playerUnitsModule as any).arcs = arcModule;
     (playerUnitsModule as any).effects = effectsModule;
+    (playerUnitsModule as any).fireballs = fireballModule;
     this.registerModule(this.necromancerModule);
     this.registerModule(this.unitAutomationModule);
     this.registerModule(this.mapModule);
     this.registerModule(explosionModule);
     this.registerModule(arcModule);
     this.registerModule(effectsModule);
+    this.registerModule(fireballModule);
     this.registerModule(bulletModule);
   }
 

@@ -2,6 +2,7 @@ import { SceneObjectManager, SceneVector2, FILL_TYPES } from "../../services/Sce
 import { ExplosionModule } from "../scene/ExplosionModule";
 import { ArcModule } from "../scene/ArcModule";
 import { EffectsModule } from "../scene/EffectsModule";
+import { FireballModule } from "../scene/FireballModule";
 import { getArcConfig } from "../../../db/arcs-db";
 import { getUnitModuleConfig } from "../../../db/unit-modules-db";
 import type { PlayerUnitType } from "../../../db/player-units-db";
@@ -12,6 +13,7 @@ const DEFAULT_MENDING_HEALS_PER_RUN = 10;
 const HEAL_SKIP_RATIO_THRESHOLD = 0.6; // skip micro-heals if target HP > 60%
 const PHEROMONE_HEAL_EXPLOSION_RADIUS = 14;
 const PHEROMONE_FRENZY_EXPLOSION_RADIUS = 12;
+const FIREBALL_SELF_DAMAGE_PERCENT = 1; // 75% of max HP as self-damage
 
 export interface PheromoneAttackBonusState {
   bonusDamage: number;
@@ -31,6 +33,7 @@ export interface PlayerUnitAbilityState {
   pheromoneAttackBonuses: PheromoneAttackBonusState[];
   timeSinceLastAttack: number;
   timeSinceLastSpecial: number;
+  fireballDamageMultiplier: number;
 }
 
 interface AbilityArcEntry {
@@ -50,19 +53,31 @@ interface PlayerUnitAbilitiesOptions {
   formatUnitLabel: (unit: PlayerUnitAbilityState) => string;
   getUnits: () => readonly PlayerUnitAbilityState[];
   getUnitById: (id: string) => PlayerUnitAbilityState | undefined;
+  getFireballs: () => FireballModule | undefined;
+  getBrickPosition: (brickId: string) => SceneVector2 | null;
+  damageBrick: (brickId: string, damage: number) => void;
+  getBricksInRadius: (position: SceneVector2, radius: number) => string[];
+  damageUnit: (unitId: string, damage: number) => void;
+  findNearestBrick: (position: SceneVector2) => string | null;
 }
 
-type AbilityTrigger = "heal" | "frenzy" | null;
+type AbilityTrigger = "heal" | "frenzy" | "fireball" | null;
 
 export class PlayerUnitAbilities {
   private readonly scene: SceneObjectManager;
   private readonly explosions: ExplosionModule;
   private readonly getArcs: () => ArcModule | undefined;
   private readonly getEffects: () => EffectsModule | undefined;
+  private readonly getFireballs: () => FireballModule | undefined;
   private readonly logEvent: (message: string) => void;
   private readonly formatUnitLabel: (unit: PlayerUnitAbilityState) => string;
   private readonly getUnits: () => readonly PlayerUnitAbilityState[];
   private readonly getUnitById: (id: string) => PlayerUnitAbilityState | undefined;
+  private readonly getBrickPosition: (brickId: string) => SceneVector2 | null;
+  private readonly damageBrick: (brickId: string, damage: number) => void;
+  private readonly getBricksInRadius: (position: SceneVector2, radius: number) => string[];
+  private readonly damageUnit: (unitId: string, damage: number) => void;
+  private readonly findNearestBrick: (position: SceneVector2) => string | null;
   private activeArcEffects: AbilityArcEntry[] = [];
   private healChargesRemaining = new Map<string, number>();
 
@@ -71,10 +86,16 @@ export class PlayerUnitAbilities {
     this.explosions = options.explosions;
     this.getArcs = options.getArcs;
     this.getEffects = options.getEffects;
+    this.getFireballs = options.getFireballs;
     this.logEvent = options.logEvent;
     this.formatUnitLabel = options.formatUnitLabel;
     this.getUnits = options.getUnits;
     this.getUnitById = options.getUnitById;
+    this.getBrickPosition = options.getBrickPosition;
+    this.damageBrick = options.damageBrick;
+    this.getBricksInRadius = options.getBricksInRadius;
+    this.damageUnit = options.damageUnit;
+    this.findNearestBrick = options.findNearestBrick;
   }
 
   public resetRun(): void {
@@ -135,11 +156,23 @@ export class PlayerUnitAbilities {
     const healTarget = canHeal ? this.findPheromoneHealingTarget(unit) : null;
     const frenzyTarget =
       unit.pheromoneAggressionMultiplier > 0 ? this.findPheromoneAggressionTarget(unit) : null;
+    const fireballTarget = 
+      unit.fireballDamageMultiplier > 0 ? this.findFireballTarget(unit) : null;
 
     const healScore = healTarget ? this.computeHealScore(unit, healTarget) : -Infinity;
     const frenzyScore = frenzyTarget ? this.computeFrenzyScore(unit, frenzyTarget) : -Infinity;
+    const fireballScore = fireballTarget ? this.computeFireballScore(unit, fireballTarget) : -Infinity;
 
-    // console.log('scores: ', `${healTarget?.hp}/${healTarget?.maxHp}`, healScore, frenzyScore);
+    // console.log('scores: ', `${healTarget?.hp}/${healTarget?.maxHp}`, healScore, frenzyScore, fireballScore);
+
+    // Prioritize fireball if it has a good score
+    if (fireballScore > 0 && fireballScore >= Math.max(healScore, frenzyScore) && fireballTarget) {
+      const launched = this.applyFireball(unit, fireballTarget);
+      if (launched) {
+        unit.timeSinceLastSpecial = 0;
+        return "fireball";
+      }
+    }
 
     if (healScore > frenzyScore && healScore > 0 && healTarget) {
       const healed = this.applyPheromoneHealing(unit, healTarget);
@@ -192,7 +225,7 @@ export class PlayerUnitAbilities {
     if (unit.hp <= 0) {
       return false;
     }
-    if (unit.pheromoneHealingMultiplier <= 0 && unit.pheromoneAggressionMultiplier <= 0) {
+    if (unit.pheromoneHealingMultiplier <= 0 && unit.pheromoneAggressionMultiplier <= 0 && unit.fireballDamageMultiplier <= 0) {
       return false;
     }
     const cooldown = this.getMendingIntervalSeconds();
@@ -436,6 +469,53 @@ export class PlayerUnitAbilities {
   private consumeHealCharge(unitId: string): void {
     const left = Math.max(0, (this.healChargesRemaining.get(unitId) ?? this.getMendingHealCharges()) - 1);
     this.healChargesRemaining.set(unitId, left);
+  }
+
+  // Fireball methods
+  private findFireballTarget(source: PlayerUnitAbilityState): string | null {
+    // Find the nearest brick that can be targeted
+    const units = this.getUnits();
+    const sourceUnit = units.find(u => u.id === source.id);
+    if (!sourceUnit) return null;
+
+    // Use the same targeting logic as normal attacks
+    return this.findNearestBrick(sourceUnit.position);
+  }
+
+  private computeFireballScore(source: PlayerUnitAbilityState, targetBrickId: string): number {
+    // Simple scoring - prioritize fireball when there are targets
+    // Higher score means more likely to be chosen
+    return 0.7; // High priority for fireball
+  }
+
+  private applyFireball(source: PlayerUnitAbilityState, targetBrickId: string): boolean {
+    const fireballModule = this.getFireballs();
+    console.log('fireballModule: ', fireballModule, source.baseAttackDamage, source.fireballDamageMultiplier);
+    if (!fireballModule) {
+      return false;
+    }
+
+    const damage = Math.max(source.baseAttackDamage, 0) * Math.max(source.fireballDamageMultiplier, 0);
+    if (damage <= 0) {
+      return false;
+    }
+
+    fireballModule.spawnFireball(
+      source.id,
+      source.position,
+      targetBrickId,
+      damage
+    );
+
+    // Apply self-damage for using fireball (25% of fireball damage)
+    const selfDamage = Math.max(damage * FIREBALL_SELF_DAMAGE_PERCENT, 1);
+    this.damageUnit(source.id, selfDamage);
+
+    this.logEvent(
+      `${this.formatUnitLabel(source)} launched fireball targeting brick ${targetBrickId} for ${damage.toFixed(1)} damage (self-damage: ${selfDamage.toFixed(1)})`
+    );
+
+    return true;
   }
 }
 

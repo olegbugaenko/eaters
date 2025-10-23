@@ -8,6 +8,7 @@ import { PlayerUnitObjectRenderer } from "./PlayerUnitObjectRenderer";
 import { PortalObjectRenderer } from "./PortalObjectRenderer";
 import { ArcRenderer } from "./ArcRenderer";
 import { AuraRenderer } from "./AuraRenderer";
+import { FireballRenderer } from "./FireballRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
@@ -33,6 +34,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["portal", new PortalObjectRenderer()],
     ["arc", new ArcRenderer()],
     ["aura", new AuraRenderer()],
+    ["fireball", new FireballRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };
