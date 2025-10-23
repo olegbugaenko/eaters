@@ -40,7 +40,6 @@ export class Application {
   private unitDesignModule: UnitDesignModule;
   private buildingsModule: BuildingsModule;
   private craftingModule: CraftingModule;
-  private arcModule: ArcModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -166,7 +165,6 @@ export class Application {
       scene: sceneObjects,
       getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
     });
-    this.arcModule = arcModule;
 
     const effectsModule = new EffectsModule({
       scene: sceneObjects,
@@ -182,6 +180,7 @@ export class Application {
       resources: resourcesModule,
       unlocks: unlockService,
       unitsAutomation: unitAutomationModule,
+      arcs: arcModule,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
       onRunCompleted: (success) => this.handleMapRunCompleted(success),
     });
@@ -310,7 +309,6 @@ export class Application {
 
   public leaveCurrentMap(): void {
     this.mapModule.leaveCurrentMap();
-    this.arcModule.clearArcs();
   }
 
   public selectMap(mapId: MapId): void {
@@ -343,7 +341,6 @@ export class Application {
     const durationMs = this.resourcesModule.getRunDurationMs();
     this.mapModule.recordRunResult({ success, durationMs });
     this.resourcesModule.finishRun();
-    this.arcModule.clearArcs();
   }
 
 }
