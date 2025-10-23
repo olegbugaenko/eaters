@@ -1258,6 +1258,7 @@ export class PlayerUnitsModule implements GameModule {
     this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
+    this.arcs?.clearArcsForUnit(unit.id);
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
@@ -1267,6 +1268,7 @@ export class PlayerUnitsModule implements GameModule {
     this.unitOrder.forEach((unit) => {
       this.scene.removeObject(unit.objectId);
       this.movement.removeBody(unit.movementId);
+      this.arcs?.clearArcsForUnit(unit.id);
     });
     this.unitOrder = [];
     this.units.clear();
