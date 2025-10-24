@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Button } from "../../shared/Button";
+import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { formatDuration } from "@ui/utils/formatDuration";
+import { GAME_VERSIONS } from "@db/version-db";
 import "./SaveSlotSelectScreen.css";
 
 interface SaveSlotViewModel {
@@ -35,6 +38,9 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
   onSlotSelect,
   onSlotDelete,
 }) => {
+  const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const currentVersion = GAME_VERSIONS[0] ?? null;
+
   return (
     <div className="save-slot-screen">
       <h1 className="heading-1">Choose Your Echo</h1>
@@ -83,6 +89,20 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
           );
         })}
       </div>
+      {currentVersion && (
+        <button
+          type="button"
+          className="save-slot-screen__version-button"
+          onClick={() => setVersionHistoryOpen(true)}
+        >
+          {currentVersion.displayName}
+        </button>
+      )}
+      <VersionHistoryModal
+        isOpen={isVersionHistoryOpen}
+        onClose={() => setVersionHistoryOpen(false)}
+        versions={GAME_VERSIONS}
+      />
     </div>
   );
 };
