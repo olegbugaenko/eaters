@@ -55,14 +55,14 @@ uniform float u_noiseAmplitude;
 uniform float u_noiseDensity;
 
 out vec2 v_worldPos;
-out vec2 v_from;
-out float v_age;
-out float v_lifetime;
-out vec2 v_axis;
-out vec2 v_normal;
-out float v_length;
-out float v_noisePhaseScale;
-out float v_shortScale;
+flat out vec2 v_from;
+flat out float v_age;
+flat out float v_lifetime;
+flat out vec2 v_axis;
+flat out vec2 v_normal;
+flat out float v_length;
+flat out float v_noisePhaseScale;
+flat out float v_shortScale;
 
 vec2 toClip(vec2 world) {
   vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
@@ -102,14 +102,14 @@ const ARC_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 
 in vec2 v_worldPos;
-in vec2 v_from;
-in float v_age;
-in float v_lifetime;
-in vec2 v_axis;
-in vec2 v_normal;
-in float v_length;
-in float v_noisePhaseScale;
-in float v_shortScale;
+flat in vec2 v_from;
+flat in float v_age;
+flat in float v_lifetime;
+flat in vec2 v_axis;
+flat in vec2 v_normal;
+flat in float v_length;
+flat in float v_noisePhaseScale;
+flat in float v_shortScale;
 
 uniform vec4 u_coreColor;
 uniform vec4 u_blurColor;
