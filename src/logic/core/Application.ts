@@ -41,6 +41,11 @@ export class Application {
   private unitDesignModule: UnitDesignModule;
   private buildingsModule: BuildingsModule;
   private craftingModule: CraftingModule;
+  private explosionModule: ExplosionModule;
+  private arcModule: ArcModule;
+  private effectsModule: EffectsModule;
+  private fireballModule: FireballModule;
+  private bulletModule: BulletModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -119,6 +124,7 @@ export class Application {
     const explosionModule = new ExplosionModule({
       scene: sceneObjects,
     });
+    this.explosionModule = explosionModule;
 
     const bricksModule = new BricksModule({
       scene: sceneObjects,
@@ -166,11 +172,13 @@ export class Application {
       scene: sceneObjects,
       getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
     });
+    this.arcModule = arcModule;
 
     const effectsModule = new EffectsModule({
       scene: sceneObjects,
       getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
     });
+    this.effectsModule = effectsModule;
 
     const fireballModule = new FireballModule({
       scene: sceneObjects,
@@ -194,6 +202,7 @@ export class Application {
       },
       logEvent: (message) => console.log(`[FireballModule] ${message}`),
     });
+    this.fireballModule = fireballModule;
 
     mapModuleReference = new MapModule({
       scene: sceneObjects,
@@ -214,6 +223,7 @@ export class Application {
       scene: sceneObjects,
       explosions: explosionModule,
     });
+    this.bulletModule = bulletModule;
 
     this.registerModule(bonusesModule);
     this.registerModule(resourcesModule);
@@ -322,6 +332,7 @@ export class Application {
   }
 
   public restartCurrentMap(): void {
+    this.cleanupSceneAfterRun();
     this.mapModule.restartSelectedMap();
   }
 
@@ -335,6 +346,7 @@ export class Application {
 
   public leaveCurrentMap(): void {
     this.mapModule.leaveCurrentMap();
+    this.cleanupSceneAfterRun();
   }
 
   public selectMap(mapId: MapId): void {
@@ -367,6 +379,15 @@ export class Application {
     const durationMs = this.resourcesModule.getRunDurationMs();
     this.mapModule.recordRunResult({ success, durationMs });
     this.resourcesModule.finishRun();
+    this.cleanupSceneAfterRun();
+  }
+
+  private cleanupSceneAfterRun(): void {
+    this.fireballModule.reset();
+    this.bulletModule.reset();
+    this.explosionModule.reset();
+    this.arcModule.reset();
+    this.effectsModule.reset();
   }
 
 }
