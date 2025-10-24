@@ -24,6 +24,7 @@ const batchesByKey = new Map<BatchKey, ArcBatch>();
 
 const INSTANCE_COMPONENTS = 6; // from(2), to(2), age(1), lifetime(1)
 const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+const instanceScratch = new Float32Array(INSTANCE_COMPONENTS);
 
 export type ArcGpuUniforms = {
   coreColor: Float32Array; // vec4
@@ -51,13 +52,18 @@ uniform vec2 u_viewportSize;
 uniform float u_coreWidth;
 uniform float u_blurWidth;
 uniform float u_noiseAmplitude;
+uniform float u_noiseDensity;
+uniform float u_oscAmplitude;
 
 out vec2 v_worldPos;
-out vec2 v_from;
-out vec2 v_to;
-out float v_age;
-out float v_lifetime;
-out float v_halfWidth;
+flat out vec2 v_from;
+flat out float v_age;
+flat out float v_lifetime;
+flat out vec2 v_axis;
+flat out vec2 v_normal;
+flat out float v_length;
+flat out float v_noisePhaseScale;
+flat out float v_shortScale;
 
 vec2 toClip(vec2 world) {
   vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
@@ -66,17 +72,22 @@ vec2 toClip(vec2 world) {
 
 void main() {
   v_from = a_from;
-  v_to = a_to;
   v_age = a_age;
   v_lifetime = a_lifetime;
-  float halfWidth = 0.5 * u_coreWidth + u_blurWidth + u_noiseAmplitude;
-  v_halfWidth = halfWidth;
+  float noiseReach = u_noiseAmplitude * (1.0 + u_oscAmplitude * 0.5);
+  float halfWidth = 0.5 * u_coreWidth + u_blurWidth + noiseReach;
 
   // Build a bounding quad around the segment
   vec2 dir = a_to - a_from;
   float len = max(length(dir), 0.0001);
   vec2 axis = dir / len;
   vec2 normal = vec2(-axis.y, axis.x);
+  float nominal = max(u_coreWidth + 2.0 * u_blurWidth, 0.0001);
+  v_axis = axis;
+  v_normal = normal;
+  v_length = len;
+  v_noisePhaseScale = len * u_noiseDensity * 3.14159265359; // 0.5 * TAU
+  v_shortScale = clamp(len / nominal, 0.35, 1.0);
 
   // a_unitPos.x in [-0.5,0.5] maps along axis from center; a_unitPos.y scales normal
   vec2 center = (a_from + a_to) * 0.5;
@@ -93,11 +104,14 @@ const ARC_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 
 in vec2 v_worldPos;
-in vec2 v_from;
-in vec2 v_to;
-in float v_age;
-in float v_lifetime;
-in float v_halfWidth;
+flat in vec2 v_from;
+flat in float v_age;
+flat in float v_lifetime;
+flat in vec2 v_axis;
+flat in vec2 v_normal;
+flat in float v_length;
+flat in float v_noisePhaseScale;
+flat in float v_shortScale;
 
 uniform vec4 u_coreColor;
 uniform vec4 u_blurColor;
@@ -105,7 +119,6 @@ uniform float u_coreWidth;
 uniform float u_blurWidth;
 uniform float u_fadeStartMs;
 uniform float u_noiseAmplitude;
-uniform float u_noiseDensity;
 uniform float u_oscAmplitude;
 uniform float u_oscAngularSpeed;
 
@@ -119,46 +132,31 @@ float noise1(float t){
 }
 
 void main(){
-  vec2 dir = v_to - v_from;
-  float len = max(length(dir), 0.0001);
-  vec2 axis = dir / len;
-  vec2 normal = vec2(-axis.y, axis.x);
-
-  // project point to axis
+  float len = max(v_length, 0.0001);
   vec2 rel = v_worldPos - v_from;
-  float t = clamp(dot(rel, axis) / len, 0.0, 1.0);
-  float baseOffset = dot(rel, normal);
+  float proj = dot(rel, v_axis);
+  float t = clamp(proj / len, 0.0, 1.0);
+  float baseOffset = dot(rel, v_normal);
 
-  // Simplified animated bend - keep original logic but reduce calculations
-  float cycles = u_noiseDensity * len * 0.5; // reduce density slightly
-  float phase = t * cycles * 6.28318530718;
+  float phase = t * v_noisePhaseScale;
   float timeOsc = u_oscAngularSpeed * v_age;
   float n = noise1(phase + timeOsc) * u_noiseAmplitude * (1.0 + u_oscAmplitude * 0.5);
-
   float dist = abs(baseOffset - n);
 
-  // widths with tapered ends - keep original logic
   float taperFrac = 0.2;
   float endIn  = smoothstep(0.0, taperFrac, t);
   float endOut = smoothstep(0.0, taperFrac, 1.0 - t);
   float endTaper = endIn * endOut;
 
-  // Simplified short-length handling
-  float nominal = max(u_coreWidth + 2.0 * u_blurWidth, 0.0001);
-  float shortScale = clamp(len / nominal, 0.35, 1.0);
-
+  float shortScale = v_shortScale;
   float core = (u_coreWidth * 0.5) * max(0.0, endTaper) * shortScale;
   float blur = u_blurWidth * max(0.0, endTaper) * shortScale;
+  float safeBlur = max(blur, 0.0001);
 
-  float alpha = 0.0;
-  if (dist <= core){
-    alpha = 1.0;
-  } else {
-    float d = dist - core;
-    alpha = 1.0 - clamp01(d / max(blur, 0.0001));
-  }
+  float blend = clamp01((dist - core) / safeBlur);
+  float inside = 1.0 - step(core, dist);
+  float coreBlend = mix(1.0 - blend, 1.0, inside);
 
-  // lifetime fade - keep original logic
   float fade = 1.0;
   if (u_fadeStartMs < v_lifetime) {
     if (v_age > u_fadeStartMs) {
@@ -168,13 +166,11 @@ void main(){
     }
   }
 
-  // color mixing - keep original logic
-  vec3 rgb = mix(u_blurColor.rgb, u_coreColor.rgb, dist <= core ? 1.0 : (1.0 - clamp01((dist - core) / max(blur, 0.0001))));
-  float aCore = u_coreColor.a;
-  float aBlur = u_blurColor.a;
-  float a = mix(aBlur, aCore, dist <= core ? 1.0 : (1.0 - clamp01((dist - core) / max(blur, 0.0001))));
-  
-  fragColor = vec4(rgb, a * alpha * fade);
+  vec3 rgb = mix(u_blurColor.rgb, u_coreColor.rgb, coreBlend);
+  float a = mix(u_blurColor.a, u_coreColor.a, coreBlend);
+  float finalAlpha = a * coreBlend * fade;
+
+  fragColor = vec4(rgb, finalAlpha);
   if (fragColor.a <= 0.001) discard;
 }
 `;
@@ -356,7 +352,7 @@ export const disposeArcBatch = (batch: ArcBatch): void => {
 export const writeArcInstance = (batch: ArcBatch, index: number, instance: ArcInstance): void => {
   if (!batch.instanceBuffer) return;
   const gl = batch.gl;
-  const arr = new Float32Array(INSTANCE_COMPONENTS);
+  const arr = instanceScratch;
   arr[0] = instance.from.x; arr[1] = instance.from.y;
   arr[2] = instance.to.x;   arr[3] = instance.to.y;
   arr[4] = Math.max(0, instance.age);
