@@ -44,8 +44,8 @@ const createCoreFill = (radius: number): SceneFill => ({
   end: radius,
   stops: [
     { offset: 0, color: { r: 1, g: 0.94, b: 0.7, a: 1 } },
-    { offset: 0.4, color: { r: 1, g: 0.6, b: 0.2, a: 0.95 } },
-    { offset: 1, color: { r: 0.4, g: 0.05, b: 0, a: 0.85 } },
+    { offset: 0.4, color: { r: 1, g: 0.8, b: 0.9, a: 0.95 } },
+    { offset: 1, color: { r: 0.9, g: 0.95, b: 0.9, a: 0.95 } },
   ],
 });
 
@@ -291,9 +291,9 @@ export class FireballModule implements GameModule {
 
     this.fireballs.push(fireball);
 
-    this.options.logEvent(
+    /* this.options.logEvent(
       `Fireball launched from unit ${sourceUnitId} targeting brick ${targetBrickId}`
-    );
+    ); */
   }
 
   private explodeFireball(fireball: FireballState): void {
@@ -317,9 +317,9 @@ export class FireballModule implements GameModule {
     // Remove fireball from scene
     this.options.scene.removeObject(fireball.id);
 
-    this.options.logEvent(
+    /* this.options.logEvent(
       `Fireball exploded at (${fireball.position.x.toFixed(1)}, ${fireball.position.y.toFixed(1)}) dealing ${fireball.damage.toFixed(1)} damage to ${nearbyBrickIds.length + 1} bricks`
-    );
+    );*/
   }
 
   private clearFireballs(): void {
