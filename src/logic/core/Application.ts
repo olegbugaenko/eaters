@@ -1,6 +1,6 @@
 import { DataBridge } from "./DataBridge";
 import { ServiceContainer } from "./ServiceContainer";
-import { GameModule, SaveSlotId } from "./types";
+import { GameModule, SaveSlotId, StoredSaveData } from "./types";
 import { SaveManager } from "../services/SaveManager";
 import { GameLoop } from "../services/GameLoop";
 import { TestTimeModule } from "../modules/shared/TestTimeModule";
@@ -355,6 +355,18 @@ export class Application {
 
   public selectMapLevel(mapId: MapId, level: number): void {
     this.mapModule.selectMapLevel(mapId, level);
+  }
+
+  public hasActiveSaveSlot(): boolean {
+    return this.getSaveManager().getActiveSlotId() !== null;
+  }
+
+  public exportActiveSave(): StoredSaveData | null {
+    return this.getSaveManager().exportActiveSlot();
+  }
+
+  public importActiveSave(data: StoredSaveData): void {
+    this.getSaveManager().importToActiveSlot(data);
   }
 
   private registerModule(module: GameModule): void {
