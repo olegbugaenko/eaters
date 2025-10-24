@@ -53,6 +53,7 @@ uniform float u_coreWidth;
 uniform float u_blurWidth;
 uniform float u_noiseAmplitude;
 uniform float u_noiseDensity;
+uniform float u_oscAmplitude;
 
 out vec2 v_worldPos;
 flat out vec2 v_from;
@@ -73,7 +74,8 @@ void main() {
   v_from = a_from;
   v_age = a_age;
   v_lifetime = a_lifetime;
-  float halfWidth = 0.5 * u_coreWidth + u_blurWidth + u_noiseAmplitude;
+  float noiseReach = u_noiseAmplitude * (1.0 + u_oscAmplitude * 0.5);
+  float halfWidth = 0.5 * u_coreWidth + u_blurWidth + noiseReach;
 
   // Build a bounding quad around the segment
   vec2 dir = a_to - a_from;
