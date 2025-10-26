@@ -26,6 +26,8 @@ import { UnitDesignModule } from "../modules/camp/UnitDesignModule";
 import { BuildingsModule } from "../modules/camp/BuildingsModule";
 import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/ExplosionWaveGpuRenderer";
+import { AudioModule } from "../modules/shared/AudioModule";
+import { AudioSettingsPercentages } from "../utils/audioSettings";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -46,6 +48,7 @@ export class Application {
   private effectsModule: EffectsModule;
   private fireballModule: FireballModule;
   private bulletModule: BulletModule;
+  private audioModule: AudioModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -204,6 +207,9 @@ export class Application {
     });
     this.fireballModule = fireballModule;
 
+    const audioModule = new AudioModule();
+    this.audioModule = audioModule;
+
     mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
@@ -247,6 +253,7 @@ export class Application {
     this.registerModule(effectsModule);
     this.registerModule(fireballModule);
     this.registerModule(bulletModule);
+    this.registerModule(audioModule);
   }
 
   public initialize(): void {
@@ -367,6 +374,14 @@ export class Application {
 
   public importActiveSave(data: StoredSaveData): void {
     this.getSaveManager().importToActiveSlot(data);
+  }
+
+  public applyAudioSettings(settings: AudioSettingsPercentages): void {
+    this.audioModule.applyPercentageSettings(settings);
+  }
+
+  public resumeAudio(): void {
+    this.audioModule.resumeMusic();
   }
 
   private registerModule(module: GameModule): void {

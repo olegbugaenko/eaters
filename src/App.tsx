@@ -8,6 +8,7 @@ import { CampTabKey } from "@screens/VoidCamp/components/CampContent/CampContent
 import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
 import { SceneTutorialConfig } from "./ui/screens/Scene/SceneTutorialOverlay";
 import { SaveSlotSummary } from "./logic/services/SaveManager";
+import { readStoredAudioSettings } from "@logic/utils/audioSettings";
 
 type Screen = "save-select" | "void-camp" | "scene";
 
@@ -55,6 +56,9 @@ function App(): JSX.Element {
     (slot: string) => {
       const summary = slotSummaries[slot];
       app.selectSlot(slot);
+      const storedAudio = readStoredAudioSettings();
+      app.applyAudioSettings(storedAudio);
+      app.resumeAudio();
 
       if (!summary || !summary.hasSave) {
         app.selectMap("foundations");

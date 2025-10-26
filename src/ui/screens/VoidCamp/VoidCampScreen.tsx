@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { VoidCamp } from "@screens/VoidCamp/components/VoidCamp/VoidCamp";
 import { ResourceSidebar } from "@screens/VoidCamp/components/ResourceSidebar/ResourceSidebar";
 import {
@@ -47,6 +47,8 @@ import {
   SettingsTab,
 } from "@screens/VoidCamp/components/SettingsModal/SettingsModal";
 import { useAudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
+import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
+import { clampVolumePercentage } from "@logic/utils/audioSettings";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -101,6 +103,28 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     CRAFTING_STATE_BRIDGE_KEY,
     DEFAULT_CRAFTING_STATE
+  );
+
+  useEffect(() => {
+    app.applyAudioSettings(audioSettings);
+  }, [
+    app,
+    audioSettings.masterVolume,
+    audioSettings.effectsVolume,
+    audioSettings.musicVolume,
+  ]);
+
+  const handleAudioSettingChange = useCallback(
+    (key: AudioSettingKey, value: number) => {
+      const clampedValue = clampVolumePercentage(value);
+      const nextSettings: AudioSettings = {
+        ...audioSettings,
+        [key]: clampedValue,
+      };
+      setAudioSetting(key, clampedValue);
+      app.applyAudioSettings(nextSettings);
+    },
+    [app, audioSettings, setAudioSetting],
   );
 
   const handleOpenSettings = useCallback(() => {
@@ -250,7 +274,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         onImport={handleImportSave}
         statusMessage={statusMessage}
         audioSettings={audioSettings}
-        onAudioSettingChange={setAudioSetting}
+        onAudioSettingChange={handleAudioSettingChange}
       />
     </>
   );
