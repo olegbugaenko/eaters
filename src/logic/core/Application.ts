@@ -384,6 +384,14 @@ export class Application {
     this.audioModule.resumeMusic();
   }
 
+  public playCampPlaylist(): void {
+    this.audioModule.playPlaylist("camp");
+  }
+
+  public playMapPlaylist(): void {
+    this.audioModule.playPlaylist("map");
+  }
+
   private registerModule(module: GameModule): void {
     const saveManager = this.getSaveManager();
     const gameLoop = this.getGameLoop();

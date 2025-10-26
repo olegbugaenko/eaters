@@ -6,32 +6,53 @@ import {
   toNormalizedAudioSettings,
 } from "../../utils/audioSettings";
 
-const DEFAULT_MUSIC_TRACKS: readonly string[] = [
-  "/audio/music/background-music-421081.mp3",
-  "/audio/music/calm-soft-background-music-357212.mp3",
-  "/audio/music/corporate-technology-background-music-424595.mp3",
-  "/audio/music/inspiring-inspirational-background-music-412596.mp3",
-  "/audio/music/soft-calm-background-music-416544.mp3",
-  "/audio/music/youtube-background-music-lofi-398315.mp3",
-];
+const DEFAULT_PLAYLISTS = {
+  camp: [
+    "/audio/music/camp-playlist/soft-calm-background-music-416544.mp3",
+    "/audio/music/camp-playlist/youtube-background-music-lofi-398315.mp3",
+  ],
+  map: [
+    "/audio/music/map-playlist/background-music-421081.mp3",
+    "/audio/music/map-playlist/calm-soft-background-music-357212.mp3",
+    "/audio/music/map-playlist/corporate-technology-background-music-424595.mp3",
+    "/audio/music/map-playlist/inspiring-inspirational-background-music-412596.mp3",
+  ],
+} as const satisfies Record<string, readonly string[]>;
+
+export type DefaultAudioPlaylistId = keyof typeof DEFAULT_PLAYLISTS;
 
 interface AudioModuleOptions {
-  musicTracks?: readonly string[];
+  playlists?: Record<string, readonly string[]>;
+  defaultPlaylistId?: string | null;
 }
 
 export class AudioModule implements GameModule {
   public readonly id = "audio";
 
-  private readonly musicTracks: readonly string[];
+  private readonly playlists: Record<string, readonly string[]>;
+  private readonly defaultPlaylistId: string | null;
   private musicElement: HTMLAudioElement | null = null;
   private currentTrackIndex = 0;
   private currentTrackUrl: string | null = null;
+  private currentPlaylistId: string | null = null;
+  private currentPlaylistTracks: readonly string[] = [];
   private masterVolume = 1;
   private musicVolume = 1;
   private effectsVolume = 1;
 
   constructor(options: AudioModuleOptions = {}) {
-    this.musicTracks = options.musicTracks ?? DEFAULT_MUSIC_TRACKS;
+    this.playlists = {
+      ...DEFAULT_PLAYLISTS,
+      ...(options.playlists ?? {}),
+    };
+
+    const requestedDefault = options.defaultPlaylistId;
+    if (requestedDefault && this.playlists[requestedDefault]?.length) {
+      this.defaultPlaylistId = requestedDefault;
+    } else {
+      const firstPlaylistId = Object.keys(this.playlists)[0] ?? null;
+      this.defaultPlaylistId = firstPlaylistId ?? null;
+    }
   }
 
   public initialize(): void {
@@ -51,6 +72,8 @@ export class AudioModule implements GameModule {
     this.stopMusic();
     this.currentTrackIndex = 0;
     this.currentTrackUrl = null;
+    this.currentPlaylistId = null;
+    this.currentPlaylistTracks = [];
     this.ensureMusicElement();
   }
 
@@ -93,8 +116,25 @@ export class AudioModule implements GameModule {
       return;
     }
 
-    if (!this.musicTracks.length) {
+    if (!this.currentPlaylistTracks.length) {
+      if (this.defaultPlaylistId) {
+        const defaultTracks = this.playlists[this.defaultPlaylistId] ?? [];
+        if (defaultTracks.length) {
+          this.currentPlaylistId = this.defaultPlaylistId;
+          this.currentPlaylistTracks = defaultTracks;
+          this.currentTrackUrl = null;
+          this.currentTrackIndex = this.pickRandomTrackIndex(defaultTracks.length);
+        }
+      }
+    }
+
+    if (!this.currentPlaylistTracks.length) {
       return;
+    }
+
+    if (this.currentTrackUrl === null || this.currentTrackIndex >= this.currentPlaylistTracks.length) {
+      this.currentTrackIndex = this.pickRandomTrackIndex(this.currentPlaylistTracks.length);
+      this.currentTrackUrl = null;
     }
 
     const element = this.loadCurrentTrack();
@@ -105,12 +145,36 @@ export class AudioModule implements GameModule {
     this.playElement(element);
   }
 
-  private ensureMusicElement(): HTMLAudioElement | null {
+  public playPlaylist(playlistId: string): void {
     if (typeof window === "undefined") {
-      return null;
+      return;
     }
 
-    if (!this.musicTracks.length) {
+    const tracks = this.playlists[playlistId];
+    if (!tracks || !tracks.length) {
+      console.warn("AudioModule: attempted to play an empty playlist", {
+        playlistId,
+      });
+      return;
+    }
+
+    this.stopMusic();
+    this.currentPlaylistId = playlistId;
+    this.currentPlaylistTracks = tracks;
+    this.currentTrackIndex = this.pickRandomTrackIndex(tracks.length);
+    this.currentTrackUrl = null;
+
+    const element = this.loadCurrentTrack();
+    if (!element) {
+      return;
+    }
+
+    element.currentTime = 0;
+    this.playElement(element);
+  }
+
+  private ensureMusicElement(): HTMLAudioElement | null {
+    if (typeof window === "undefined") {
       return null;
     }
 
@@ -139,8 +203,12 @@ export class AudioModule implements GameModule {
       return null;
     }
 
-    if (!this.musicTracks.length) {
+    if (!this.currentPlaylistTracks.length) {
       return null;
+    }
+
+    if (this.currentTrackIndex >= this.currentPlaylistTracks.length) {
+      this.currentTrackIndex = this.currentPlaylistTracks.length - 1;
     }
 
     const nextUrl = this.resolveTrackUrl(this.currentTrackIndex);
@@ -168,11 +236,11 @@ export class AudioModule implements GameModule {
   };
 
   private advanceTrack(): void {
-    if (!this.musicTracks.length) {
+    if (!this.currentPlaylistTracks.length) {
       return;
     }
 
-    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.musicTracks.length;
+    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.currentPlaylistTracks.length;
     const element = this.loadCurrentTrack();
     if (!element) {
       return;
@@ -211,12 +279,13 @@ export class AudioModule implements GameModule {
   }
 
   private resolveTrackUrl(index: number): string {
-    const fallbackTrack = this.musicTracks[0];
-    const track = this.musicTracks[index] ?? fallbackTrack;
+    const fallbackTrack = this.currentPlaylistTracks[0];
+    const track = this.currentPlaylistTracks[index] ?? fallbackTrack;
     if (!track) {
       console.warn("AudioModule: attempted to resolve an undefined music track", {
         index,
-        tracks: this.musicTracks.length,
+        playlistId: this.currentPlaylistId,
+        tracks: this.currentPlaylistTracks.length,
       });
       return "";
     }
@@ -237,5 +306,15 @@ export class AudioModule implements GameModule {
       return 1;
     }
     return value;
+  }
+
+  private pickRandomTrackIndex(totalTracks: number): number {
+    if (totalTracks <= 0 || !Number.isFinite(totalTracks)) {
+      return 0;
+    }
+    if (totalTracks === 1) {
+      return 0;
+    }
+    return Math.floor(Math.random() * totalTracks);
   }
 }

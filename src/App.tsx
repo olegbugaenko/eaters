@@ -58,9 +58,9 @@ function App(): JSX.Element {
       app.selectSlot(slot);
       const storedAudio = readStoredAudioSettings();
       app.applyAudioSettings(storedAudio);
-      app.resumeAudio();
 
       if (!summary || !summary.hasSave) {
+        app.playMapPlaylist();
         app.selectMap("foundations");
         app.selectMapLevel("foundations", 0);
         app.restartCurrentMap();
@@ -69,6 +69,7 @@ function App(): JSX.Element {
         return;
       }
 
+      app.playCampPlaylist();
       setSceneTutorial(null);
       setVoidCampTab("maps");
       setScreen("void-camp");
@@ -96,6 +97,7 @@ function App(): JSX.Element {
         {screen === "void-camp" && (
           <VoidCampScreen
             onStart={() => {
+              app.playMapPlaylist();
               setScreen("scene");
             }}
             onExit={() => {
@@ -115,6 +117,7 @@ function App(): JSX.Element {
             }}
             onExit={() => {
               app.returnToMainMenu();
+              app.playCampPlaylist();
               setVoidCampTab("maps");
               setScreen("save-select");
               setSceneTutorial(null);
@@ -122,6 +125,7 @@ function App(): JSX.Element {
             }}
             onLeaveToMapSelect={() => {
               app.leaveCurrentMap();
+              app.playCampPlaylist();
               setVoidCampTab("skills");
               setScreen("void-camp");
               setSceneTutorial(null);
