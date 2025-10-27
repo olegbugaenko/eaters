@@ -18,8 +18,8 @@ describe("AudioModule sound throttling", () => {
       public volume = 1;
       public preload = "";
 
-      constructor(src: string) {
-        this.src = src;
+      constructor(src?: string) {
+        this.src = src ?? "";
       }
 
       public cloneNode(_deep?: boolean): FakeAudio {
@@ -38,7 +38,12 @@ describe("AudioModule sound throttling", () => {
       public pause(): void {}
     }
 
-    globals.window = {};
+    globals.window = {
+      localStorage: {
+        getItem: () => null,
+        setItem: () => undefined,
+      },
+    };
     globals.Audio = FakeAudio as unknown as typeof Audio;
     globals.performance = {
       now: () => now,
@@ -120,5 +125,23 @@ describe("AudioModule sound throttling", () => {
     }
 
     assert.deepStrictEqual(plays, ["/audio/sounds/third.mp3"]);
+  });
+
+  test("applies a music volume multiplier when syncing music", () => {
+    const { module, cleanup } = setupEnvironment();
+
+    try {
+      module.initialize();
+      module.applySettings({ masterVolume: 1, musicVolume: 1 });
+
+      const musicElement = (
+        module as unknown as { musicElement: { volume: number } | null }
+      ).musicElement;
+
+      assert(musicElement, "music element should be initialized");
+      assert.strictEqual(musicElement.volume, 0.3);
+    } finally {
+      cleanup();
+    }
   });
 });

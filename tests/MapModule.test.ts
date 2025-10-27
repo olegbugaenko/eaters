@@ -24,6 +24,7 @@ import { NecromancerModule } from "../src/logic/modules/active-map/NecromancerMo
 import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/UnitDesignModule";
+import { getMapConfig } from "../src/db/maps-db";
 
 const createUnitDesignerStub = (): UnitDesignModule => {
   const stub = {
@@ -338,6 +339,81 @@ describe("Map run control", () => {
     assert(Array.isArray(lastBricks) && (lastBricks as unknown[]).length === 0);
     assert(Array.isArray(lastUnits) && (lastUnits as unknown[]).length === 0);
     assert.strictEqual(endCurrentMapCalls, 1, "necromancer should be notified when leaving");
+  });
+
+  test("centers camera on the primary portal when starting a map", () => {
+    const scene = new SceneObjectManager();
+    scene.setViewportScreenSize(800, 600);
+    const bridge = new DataBridge();
+    const explosions = new ExplosionModule({ scene });
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const resources = {
+      startRun: () => {},
+      cancelRun: () => {},
+      grantResources: () => {},
+      notifyBrickDestroyed: () => {},
+    };
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const movement = new MovementService();
+    const playerUnits = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
+      getDesignTargetingMode: () => "nearest",
+    });
+    const unitDesigns = createUnitDesignerStub();
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits,
+      scene,
+      bonuses,
+      unitDesigns,
+    });
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+      unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
+      getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
+    });
+    mapModuleRef = maps;
+
+    necromancer.initialize();
+    maps.initialize();
+
+    maps.selectMap("foundations");
+    maps.restartSelectedMap();
+
+    const config = getMapConfig("foundations");
+    const spawnPoint =
+      (config.spawnPoints && config.spawnPoints.length > 0
+        ? config.spawnPoints[0]
+        : config.playerUnits?.[0]?.position) ?? { x: 0, y: 0 };
+
+    const camera = scene.getCamera();
+    const cameraCenterX = camera.position.x + camera.viewportSize.width / 2;
+    const cameraCenterY = camera.position.y + camera.viewportSize.height / 2;
+
+    assert.strictEqual(cameraCenterX, spawnPoint.x);
+    assert.strictEqual(cameraCenterY, spawnPoint.y);
   });
 });
 

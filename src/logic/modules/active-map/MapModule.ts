@@ -383,6 +383,10 @@ export class MapModule implements GameModule {
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
 
+    if (spawnPoints.length > 0) {
+      this.focusCameraOnPoint(spawnPoints[0]!);
+    }
+
     if (generateUnits) {
       this.options.playerUnits.setUnits(spawnUnits);
     }
@@ -443,6 +447,13 @@ export class MapModule implements GameModule {
     }
     this.portalObjects.forEach((portal) => this.options.scene.removeObject(portal.id));
     this.portalObjects = [];
+  }
+
+  private focusCameraOnPoint(point: SceneVector2): void {
+    const camera = this.options.scene.getCamera();
+    const targetX = point.x - camera.viewportSize.width / 2;
+    const targetY = point.y - camera.viewportSize.height / 2;
+    this.options.scene.setCameraPosition(targetX, targetY);
   }
 
   private updateSelection(mapId: MapId): void {
