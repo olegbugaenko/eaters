@@ -138,7 +138,7 @@ export class FireballRenderer extends ObjectRenderer {
         getConfig: getSmokeEmitterConfig,
         getOrigin: getTrailEmitterOrigin,
         spawnParticle: createTrailParticle,
-        forceGpu: true,
+        serializeConfig: serializeTrailEmitterConfig,
       }
     );
 
@@ -148,7 +148,7 @@ export class FireballRenderer extends ObjectRenderer {
         getConfig: getTrailEmitterConfig,
         getOrigin: getTrailEmitterOrigin,
         spawnParticle: createTrailParticle,
-        forceGpu: true,
+        serializeConfig: serializeTrailEmitterConfig,
       }
     );
 
@@ -721,6 +721,32 @@ const createTrailParticle = (
     lifetimeMs: config.particleLifetimeMs,
     size,
   };
+};
+
+const serializeTrailEmitterConfig = (
+  config: FireballTrailEmitterRenderConfig
+): string => {
+  const serializedFill = config.fill ? JSON.stringify(config.fill) : "";
+  const alpha =
+    typeof config.color.a === "number" ? config.color.a : 1;
+  return [
+    config.particlesPerSecond,
+    config.particleLifetimeMs,
+    config.fadeStartMs,
+    config.sizeRange.min.toFixed(3),
+    config.sizeRange.max.toFixed(3),
+    config.offset.x.toFixed(3),
+    config.offset.y.toFixed(3),
+    config.color.r.toFixed(3),
+    config.color.g.toFixed(3),
+    config.color.b.toFixed(3),
+    alpha.toFixed(3),
+    config.emissionDurationMs ?? -1,
+    config.capacity,
+    config.baseSpeed.toFixed(3),
+    config.lateralJitter.toFixed(3),
+    serializedFill,
+  ].join(":");
 };
 
 const randomBetween = (min: number, max: number): number => {
