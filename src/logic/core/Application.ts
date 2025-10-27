@@ -161,6 +161,7 @@ export class Application {
       explosions: explosionModule,
       arcs: undefined, // will set after ArcModule created
       effects: undefined, // will set after EffectsModule created
+      audio: audioModule,
       onAllUnitsDefeated: () => {
         this.handleAllUnitsDefeated();
       },

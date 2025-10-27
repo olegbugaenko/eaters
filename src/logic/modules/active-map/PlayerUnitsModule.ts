@@ -43,7 +43,11 @@ import { UnitDesignId } from "../camp/UnitDesignModule";
 import { ArcModule } from "../scene/ArcModule";
 import { EffectsModule } from "../scene/EffectsModule";
 import { FireballModule } from "../scene/FireballModule";
-import { PlayerUnitAbilities, PheromoneAttackBonusState } from "./PlayerUnitAbilities";
+import {
+  AbilitySoundPlayer,
+  PlayerUnitAbilities,
+  PheromoneAttackBonusState,
+} from "./PlayerUnitAbilities";
 import type { StatisticsTracker } from "../shared/StatisticsModule";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
@@ -103,6 +107,7 @@ interface PlayerUnitsModuleOptions {
     type: PlayerUnitType
   ) => UnitTargetingMode;
   statistics?: StatisticsTracker;
+  audio?: AbilitySoundPlayer;
 }
 
 interface PlayerUnitSaveData {
@@ -246,6 +251,7 @@ export class PlayerUnitsModule implements GameModule {
         const brick = this.bricks.findNearestBrick(position);
         return brick?.id || null;
       },
+      audio: options.audio,
     });
   }
 
