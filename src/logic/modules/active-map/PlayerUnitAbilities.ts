@@ -27,6 +27,8 @@ const ABILITY_SOUND_URLS: Record<AbilitySoundId, string> = {
   fireball: "/audio/sounds/brick_effects/fireball.mp3",
 };
 
+const ABILITY_SOUND_COOLDOWN_MS = 400;
+
 export interface PheromoneAttackBonusState {
   bonusDamage: number;
   remainingAttacks: number;
@@ -94,6 +96,7 @@ export class PlayerUnitAbilities {
   private readonly audio?: AbilitySoundPlayer;
   private activeArcEffects: AbilityArcEntry[] = [];
   private healChargesRemaining = new Map<string, number>();
+  private readonly lastAbilitySoundTimes = new Map<AbilitySoundId, number>();
 
   constructor(options: PlayerUnitAbilitiesOptions) {
     this.scene = options.scene;
@@ -546,6 +549,13 @@ export class PlayerUnitAbilities {
       return;
     }
 
+    const now = Date.now();
+    const lastTime = this.lastAbilitySoundTimes.get(trigger) ?? Number.NEGATIVE_INFINITY;
+    if (now - lastTime < ABILITY_SOUND_COOLDOWN_MS) {
+      return;
+    }
+
+    this.lastAbilitySoundTimes.set(trigger, now);
     audio.playSoundEffect(url);
   }
 }
