@@ -31,7 +31,7 @@ interface SoundEffectPlayer {
 
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
 const BRICK_HIT_SOUND_URL = "/audio/sounds/brick_effects/hit_v2.mp3";
-const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy.mp3";
+const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy-01.mp3";
 
 const createBrickFill = (config: BrickConfig) => {
   const fill = config.fill;

@@ -42,7 +42,7 @@ export class AudioModule implements GameModule {
   private readonly effectTemplates = new Map<string, HTMLAudioElement>();
   private readonly activeEffectElements = new Set<HTMLAudioElement>();
   private readonly lastEffectPlayTimestamps = new Map<string, number>();
-  private static readonly MIN_EFFECT_INTERVAL_MS = 100;
+  private static readonly MIN_EFFECT_INTERVAL_MS = 200;
 
   constructor(options: AudioModuleOptions = {}) {
     this.playlists = {
