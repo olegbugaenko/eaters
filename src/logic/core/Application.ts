@@ -129,12 +129,16 @@ export class Application {
     });
     this.explosionModule = explosionModule;
 
+    const audioModule = new AudioModule();
+    this.audioModule = audioModule;
+
     const bricksModule = new BricksModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
       explosions: explosionModule,
       resources: resourcesModule,
       bonuses: bonusesModule,
+      audio: audioModule,
       onAllBricksDestroyed: () => {
         this.handleMapRunCompleted(true);
       },
@@ -206,9 +210,6 @@ export class Application {
       logEvent: (message) => console.log(`[FireballModule] ${message}`),
     });
     this.fireballModule = fireballModule;
-
-    const audioModule = new AudioModule();
-    this.audioModule = audioModule;
 
     mapModuleReference = new MapModule({
       scene: sceneObjects,

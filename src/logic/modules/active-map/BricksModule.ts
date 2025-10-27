@@ -25,7 +25,13 @@ interface ResourceCollector {
   notifyBrickDestroyed(): void;
 }
 
+interface SoundEffectPlayer {
+  playSoundEffect(url: string): void;
+}
+
 const DEFAULT_BRICK_TYPE: BrickType = "classic";
+const BRICK_HIT_SOUND_URL = "/audio/sounds/brick_effects/hit_v2.mp3";
+const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy-01.mp3";
 
 const createBrickFill = (config: BrickConfig) => {
   const fill = config.fill;
@@ -94,6 +100,7 @@ interface BricksModuleOptions {
   resources: ResourceCollector;
   bonuses: BonusesModule;
   onAllBricksDestroyed?: () => void;
+  audio?: SoundEffectPlayer;
 }
 
 interface BrickSaveData {
@@ -259,11 +266,13 @@ export class BricksModule implements GameModule {
     this.totalHpCached += brick.hp - previousHp;
 
     if (brick.hp <= 0) {
+      this.playBrickSound("destroy");
       this.spawnBrickExplosion(brick.destructionExplosion, brick);
       this.destroyBrick(brick, rewardMultiplier);
       return { destroyed: true, brick: null };
     }
 
+    this.playBrickSound("hit");
     this.spawnBrickExplosion(brick.damageExplosion, brick);
     this.applyBrickKnockback(brick, hitDirection);
     this.pushStats();
@@ -402,6 +411,20 @@ export class BricksModule implements GameModule {
       ),
       knockback: null,
     };
+  }
+
+  private playBrickSound(type: "hit" | "destroy"): void {
+    const audio = this.options.audio;
+    if (!audio) {
+      return;
+    }
+
+    if (type === "hit") {
+      audio.playSoundEffect(BRICK_HIT_SOUND_URL);
+      return;
+    }
+
+    audio.playSoundEffect(BRICK_DESTROY_SOUND_URL);
   }
 
   private destroyBrick(brick: InternalBrickState, rewardMultiplier = 1): void {

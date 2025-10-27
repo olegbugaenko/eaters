@@ -39,6 +39,10 @@ export class AudioModule implements GameModule {
   private masterVolume = 1;
   private musicVolume = 1;
   private effectsVolume = 1;
+  private readonly effectTemplates = new Map<string, HTMLAudioElement>();
+  private readonly activeEffectElements = new Set<HTMLAudioElement>();
+  private readonly lastEffectPlayTimestamps = new Map<string, number>();
+  private static readonly MIN_EFFECT_INTERVAL_MS = 200;
 
   constructor(options: AudioModuleOptions = {}) {
     this.playlists = {
@@ -74,6 +78,8 @@ export class AudioModule implements GameModule {
     this.currentTrackUrl = null;
     this.currentPlaylistId = null;
     this.currentPlaylistTracks = [];
+    this.stopAllEffects();
+    this.lastEffectPlayTimestamps.clear();
     this.ensureMusicElement();
   }
 
@@ -109,6 +115,50 @@ export class AudioModule implements GameModule {
     }
 
     this.syncMusicVolume();
+    this.syncEffectVolumes();
+  }
+
+  public playSoundEffect(url: string): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const now = this.getNow();
+    const lastPlay = this.lastEffectPlayTimestamps.get(url) ?? -Infinity;
+    if (now - lastPlay < AudioModule.MIN_EFFECT_INTERVAL_MS) {
+      return;
+    }
+
+    const template = this.resolveEffectTemplate(url);
+    if (!template) {
+      return;
+    }
+
+    this.lastEffectPlayTimestamps.set(url, now);
+
+    const element = template.cloneNode(true) as HTMLAudioElement;
+    element.currentTime = 0;
+    element.volume = this.clamp01(this.masterVolume * this.effectsVolume);
+
+    const cleanup = () => {
+      this.activeEffectElements.delete(element);
+      element.removeEventListener("ended", cleanup);
+      element.removeEventListener("pause", cleanup);
+      element.removeEventListener("error", cleanup);
+    };
+
+    element.addEventListener("ended", cleanup);
+    element.addEventListener("pause", cleanup);
+    element.addEventListener("error", cleanup);
+
+    this.activeEffectElements.add(element);
+
+    const playPromise = element.play();
+    if (playPromise && typeof playPromise.then === "function") {
+      playPromise.catch(() => {
+        cleanup();
+      });
+    }
   }
 
   public resumeMusic(): void {
@@ -269,6 +319,13 @@ export class AudioModule implements GameModule {
     this.musicElement.volume = computedVolume;
   }
 
+  private syncEffectVolumes(): void {
+    const computedVolume = this.clamp01(this.masterVolume * this.effectsVolume);
+    this.activeEffectElements.forEach((element) => {
+      element.volume = computedVolume;
+    });
+  }
+
   private stopMusic(): void {
     if (!this.musicElement) {
       return;
@@ -276,6 +333,14 @@ export class AudioModule implements GameModule {
 
     this.musicElement.pause();
     this.musicElement.currentTime = 0;
+  }
+
+  private stopAllEffects(): void {
+    this.activeEffectElements.forEach((element) => {
+      element.pause();
+      element.currentTime = 0;
+    });
+    this.activeEffectElements.clear();
   }
 
   private resolveTrackUrl(index: number): string {
@@ -316,5 +381,27 @@ export class AudioModule implements GameModule {
       return 0;
     }
     return Math.floor(Math.random() * totalTracks);
+  }
+
+  private resolveEffectTemplate(url: string): HTMLAudioElement | null {
+    if (typeof window === "undefined" || typeof Audio === "undefined") {
+      return null;
+    }
+
+    const normalizedUrl = url.startsWith("/") ? url : `/${url}`;
+    let template = this.effectTemplates.get(normalizedUrl);
+    if (!template) {
+      template = new Audio(normalizedUrl);
+      template.preload = "auto";
+      this.effectTemplates.set(normalizedUrl, template);
+    }
+    return template;
+  }
+
+  private getNow(): number {
+    if (typeof performance !== "undefined" && typeof performance.now === "function") {
+      return performance.now();
+    }
+    return Date.now();
   }
 }
