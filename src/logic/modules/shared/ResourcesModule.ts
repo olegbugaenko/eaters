@@ -3,6 +3,7 @@ import { GameModule } from "../../core/types";
 import { UnlockService } from "../../services/UnlockService";
 import { BonusesModule } from "./BonusesModule";
 import { BonusId } from "../../../db/bonuses-db";
+import { StatisticsTracker } from "./StatisticsModule";
 import {
   RESOURCE_IDS,
   ResourceAmount,
@@ -51,6 +52,7 @@ interface ResourcesModuleOptions {
   bridge: DataBridge;
   unlocks: UnlockService;
   bonuses: BonusesModule;
+  statistics?: StatisticsTracker;
 }
 
 interface ResourcesSaveData {
@@ -64,6 +66,7 @@ export class ResourcesModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly unlocks: UnlockService;
   private readonly bonuses: BonusesModule;
+  private readonly statistics?: StatisticsTracker;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
@@ -81,6 +84,7 @@ export class ResourcesModule implements GameModule {
     this.bridge = options.bridge;
     this.unlocks = options.unlocks;
     this.bonuses = options.bonuses;
+    this.statistics = options.statistics;
   }
 
   public initialize(): void {
@@ -111,6 +115,9 @@ export class ResourcesModule implements GameModule {
       this.totals = parsed.totals;
       this.totalBricksDestroyed = parsed.bricksDestroyed;
       this.runBricksDestroyed = 0;
+      if (typeof this.totalBricksDestroyed === "number") {
+        this.statistics?.syncBrickDestroyed(this.totalBricksDestroyed);
+      }
     }
     this.runDurationMs = 0;
     this.passiveIncomeRemainder = createEmptyResourceStockpile();
@@ -226,6 +233,8 @@ export class ResourcesModule implements GameModule {
     if (this.runActive) {
       this.runBricksDestroyed += 1;
     }
+
+    this.statistics?.recordBrickDestroyed();
 
     const visibilityChanged = this.refreshVisibleResourceIds();
     if (visibilityChanged) {

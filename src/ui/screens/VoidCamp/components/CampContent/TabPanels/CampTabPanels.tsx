@@ -23,10 +23,7 @@ type CampTabPanelsProps = {
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
   onSelectMapLevel: (mapId: MapId, level: number) => void;
-  onStart: () => void;
-  onExit: () => void;
-  formattedTime: string;
-  brickCount: number;
+  onStartMap: (mapId: MapId) => void;
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   resourceTotals: ResourceAmountPayload[];
   unitDesignerState: UnitDesignerBridgeState;
@@ -41,10 +38,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   selectedMap,
   onSelectMap,
   onSelectMapLevel,
-  onStart,
-  onExit,
-  formattedTime,
-  brickCount,
+  onStartMap,
   moduleWorkshopState,
   resourceTotals,
   unitDesignerState,
@@ -74,10 +68,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         selectedMap={selectedMap}
         onSelectMap={onSelectMap}
         onSelectLevel={onSelectMapLevel}
-        onStart={onStart}
-        onExit={onExit}
-        formattedTime={formattedTime}
-        brickCount={brickCount}
+        onStartMap={onStartMap}
       />
     );
   }

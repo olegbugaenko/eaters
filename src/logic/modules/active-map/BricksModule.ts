@@ -10,6 +10,7 @@ import {
 } from "../../services/SceneObjectManager";
 import type { ExplosionModule } from "../scene/ExplosionModule";
 import { BonusesModule } from "../shared/BonusesModule";
+import type { StatisticsTracker } from "../shared/StatisticsModule";
 import { SpatialGrid } from "../../utils/SpatialGrid";
 import {
   ResourceStockpile,
@@ -101,6 +102,7 @@ interface BricksModuleOptions {
   bonuses: BonusesModule;
   onAllBricksDestroyed?: () => void;
   audio?: SoundEffectPlayer;
+  statistics?: StatisticsTracker;
 }
 
 interface BrickSaveData {
@@ -263,6 +265,10 @@ export class BricksModule implements GameModule {
 
     const previousHp = brick.hp;
     brick.hp = clamp(brick.hp - effectiveDamage, 0, brick.maxHp);
+    const inflictedDamage = Math.max(0, previousHp - brick.hp);
+    if (inflictedDamage > 0) {
+      this.options.statistics?.recordDamageDealt(inflictedDamage);
+    }
     this.totalHpCached += brick.hp - previousHp;
 
     if (brick.hp <= 0) {

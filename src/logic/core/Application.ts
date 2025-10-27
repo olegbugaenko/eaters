@@ -19,6 +19,7 @@ import { NecromancerModule } from "../modules/active-map/NecromancerModule";
 import { ResourcesModule } from "../modules/shared/ResourcesModule";
 import { SkillTreeModule } from "../modules/camp/SkillTreeModule";
 import { BonusesModule } from "../modules/shared/BonusesModule";
+import { StatisticsModule } from "../modules/shared/StatisticsModule";
 import { UnlockService } from "../services/UnlockService";
 import { UnitAutomationModule } from "../modules/active-map/UnitAutomationModule";
 import { UnitModuleWorkshopModule } from "../modules/camp/UnitModuleWorkshopModule";
@@ -38,6 +39,7 @@ export class Application {
   private resourcesModule: ResourcesModule;
   private skillTreeModule: SkillTreeModule;
   private bonusesModule: BonusesModule;
+  private statisticsModule: StatisticsModule;
   private unitAutomationModule: UnitAutomationModule;
   private unitModuleWorkshopModule: UnitModuleWorkshopModule;
   private unitDesignModule: UnitDesignModule;
@@ -73,10 +75,16 @@ export class Application {
     });
     this.serviceContainer.register("unlocks", unlockService);
 
+    const statisticsModule = new StatisticsModule({
+      bridge: this.dataBridge,
+    });
+    this.statisticsModule = statisticsModule;
+
     const resourcesModule = new ResourcesModule({
       bridge: this.dataBridge,
       unlocks: unlockService,
       bonuses: bonusesModule,
+      statistics: statisticsModule,
     });
     this.resourcesModule = resourcesModule;
 
@@ -142,6 +150,7 @@ export class Application {
       onAllBricksDestroyed: () => {
         this.handleMapRunCompleted(true);
       },
+      statistics: statisticsModule,
     });
     const playerUnitsModule = new PlayerUnitsModule({
       scene: sceneObjects,
@@ -159,6 +168,7 @@ export class Application {
       hasSkill: (id) => this.skillTreeModule.getLevel(id) > 0,
       getDesignTargetingMode: (designId, type) =>
         unitDesignModule.getTargetingModeForDesign(designId, type),
+      statistics: statisticsModule,
     });
     this.necromancerModule = new NecromancerModule({
       bridge: this.dataBridge,
@@ -233,6 +243,7 @@ export class Application {
     this.bulletModule = bulletModule;
 
     this.registerModule(bonusesModule);
+    this.registerModule(statisticsModule);
     this.registerModule(resourcesModule);
     this.registerModule(skillTreeModule);
     this.registerModule(craftingModule);

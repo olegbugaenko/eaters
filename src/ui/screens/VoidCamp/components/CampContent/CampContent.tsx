@@ -6,7 +6,6 @@ import { CampTabPanels } from "./TabPanels/CampTabPanels";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/UnitModuleWorkshopModule";
 import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
 import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
-import { formatDuration } from "@ui/utils/formatDuration";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/BuildingsModule";
 import { CraftingBridgeState } from "@logic/modules/camp/CraftingModule";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
@@ -19,10 +18,7 @@ interface CampContentProps {
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
   onSelectMapLevel: (mapId: MapId, level: number) => void;
-  onStart: () => void;
-  onExit: () => void;
-  timePlayed: number;
-  brickCount: number;
+  onStartMap: (mapId: MapId) => void;
   initialTab: CampTabKey;
   onTabChange?: (tab: CampTabKey) => void;
   resourceTotals: ResourceAmountPayload[];
@@ -38,10 +34,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   selectedMap,
   onSelectMap,
   onSelectMapLevel,
-  onStart,
-  onExit,
-  timePlayed,
-  brickCount,
+  onStartMap,
   initialTab,
   onTabChange,
   resourceTotals,
@@ -79,7 +72,6 @@ export const CampContent: React.FC<CampContentProps> = ({
   useEffect(() => {
     setActiveTab((current) => sanitizeTab(current));
   }, [sanitizeTab]);
-  const formattedTime = useMemo(() => formatDuration(timePlayed), [timePlayed]);
   const handleTabChange = useCallback(
     (tab: CampTabKey) => {
       const sanitized = sanitizeTab(tab);
@@ -106,10 +98,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         selectedMap={selectedMap}
         onSelectMap={onSelectMap}
         onSelectMapLevel={onSelectMapLevel}
-        onStart={onStart}
-        onExit={onExit}
-        formattedTime={formattedTime}
-        brickCount={brickCount}
+        onStartMap={onStartMap}
         moduleWorkshopState={moduleWorkshopState}
         resourceTotals={resourceTotals}
         unitDesignerState={unitDesignerState}
