@@ -6,6 +6,7 @@ import {
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
+import { ParticleEmitterShape } from "../../services/particles/ParticleEmitterShared";
 import { ExplosionModule } from "./ExplosionModule";
 
 interface FireballModuleOptions {
@@ -34,13 +35,15 @@ export interface FireballTrailEmitterConfig {
   particlesPerSecond: number;
   particleLifetimeMs: number;
   fadeStartMs: number;
+  baseSpeed: number;
+  speedVariation: number;
   sizeRange: { min: number; max: number };
-  offsetFactor: number;
+  spread: number;
+  offset: SceneVector2;
   color: SceneColor;
   fill?: SceneFill;
+  shape?: ParticleEmitterShape;
   maxParticles?: number;
-  baseSpeed: number;
-  lateralJitter: number;
 }
 
 const FIREBALL_SPEED = 150; // pixels per second (reduced from 300 for more realistic movement)
@@ -52,47 +55,49 @@ const FIREBALL_TAIL_LENGTH_MULTIPLIER = 4.5;
 const FIREBALL_TAIL_WIDTH_MULTIPLIER = 1.6;
 
 const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
-  particlesPerSecond: 115,
-  particleLifetimeMs: 520,
-  fadeStartMs: 320,
-  sizeRange: { min: 0.55, max: 1.35 },
-  offsetFactor: 0.65,
-  color: { r: 1, g: 0.68, b: 0.28, a: 0.85 },
+  particlesPerSecond: 60,
+  particleLifetimeMs: 750,
+  fadeStartMs: 200,
+  baseSpeed: 0.05,
+  speedVariation: 0.01,
+  sizeRange: { min: 10.2, max: 13.4 },
+  spread: Math.PI / 5.5,
+  offset: { x: -0.35, y: 0 },
+  color: { r: 1, g: 0.7, b: 0.3, a: 0.45 },
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
-    end: 1,
     stops: [
-      { offset: 0, color: { r: 1, g: 0.83, b: 0.55, a: 1 } },
-      { offset: 0.45, color: { r: 1, g: 0.45, b: 0.05, a: 0.75 } },
-      { offset: 1, color: { r: 0.75, g: 0.25, b: 0, a: 0 } },
+      { offset: 0, color: { r: 1, g: 0.85, b: 0.55, a: 0.12 } },
+      { offset: 0.25, color: { r: 1, g: 0.65, b: 0.2, a: 0.08 } },
+      { offset: 1, color: { r: 1, g: 0.4, b: 0.05, a: 0 } },
     ],
   },
-  maxParticles: 160,
-  baseSpeed: 70,
-  lateralJitter: 32,
+  shape: "circle",
+  maxParticles: 60,
 };
 
 const FIREBALL_SMOKE_EMITTER: FireballTrailEmitterConfig = {
-  particlesPerSecond: 65,
-  particleLifetimeMs: 780,
-  fadeStartMs: 560,
-  sizeRange: { min: 0.9, max: 2.1 },
-  offsetFactor: 0.9,
-  color: { r: 0.32, g: 0.24, b: 0.2, a: 0.45 },
+  particlesPerSecond: 48,
+  particleLifetimeMs: 820,
+  fadeStartMs: 320,
+  baseSpeed: 0.04,
+  speedVariation: 0.02,
+  sizeRange: { min: 12, max: 16 },
+  spread: Math.PI / 4,
+  offset: { x: -0.55, y: 0 },
+  color: { r: 0.35, g: 0.24, b: 0.18, a: 0.4 },
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
-    end: 1,
     stops: [
-      { offset: 0, color: { r: 0.6, g: 0.45, b: 0.35, a: 0.5 } },
-      { offset: 0.55, color: { r: 0.3, g: 0.2, b: 0.18, a: 0.32 } },
-      { offset: 1, color: { r: 0.12, g: 0.08, b: 0.08, a: 0 } },
+      { offset: 0, color: { r: 0.6, g: 0.5, b: 0.4, a: 0.12 } },
+      { offset: 0.3, color: { r: 0.4, g: 0.32, b: 0.28, a: 0.08 } },
+      { offset: 1, color: { r: 0.18, g: 0.14, b: 0.12, a: 0 } },
     ],
   },
-  maxParticles: 140,
-  baseSpeed: 38,
-  lateralJitter: 18,
+  shape: "circle",
+  maxParticles: 72,
 };
 
 const createCoreFill = (radius: number): SceneFill => ({
@@ -145,16 +150,15 @@ const cloneTrailEmitterConfig = (
   particlesPerSecond: config.particlesPerSecond,
   particleLifetimeMs: config.particleLifetimeMs,
   fadeStartMs: config.fadeStartMs,
-  sizeRange: {
-    min: config.sizeRange.min,
-    max: config.sizeRange.max,
-  },
-  offsetFactor: config.offsetFactor,
+  baseSpeed: config.baseSpeed,
+  speedVariation: config.speedVariation,
+  sizeRange: { min: config.sizeRange.min, max: config.sizeRange.max },
+  spread: config.spread,
+  offset: { x: config.offset.x, y: config.offset.y },
   color: { ...config.color },
   fill: config.fill ? cloneFill(config.fill) : undefined,
+  shape: config.shape,
   maxParticles: config.maxParticles,
-  baseSpeed: config.baseSpeed,
-  lateralJitter: config.lateralJitter,
 });
 
 export class FireballModule implements GameModule {
