@@ -1,0 +1,45 @@
+import { classNames } from "@ui/shared/classNames";
+import "./VoidCampTopBar.css";
+
+interface VoidCampTopBarProps {
+  readonly versionLabel?: string;
+  readonly onVersionClick?: () => void;
+  readonly onSettingsClick: () => void;
+}
+
+export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
+  versionLabel,
+  onVersionClick,
+  onSettingsClick,
+}) => {
+  return (
+    <div className="void-camp-top-bar">
+      <div className="void-camp-top-bar__left">
+        <span className="void-camp-top-bar__label">Version</span>
+        <button
+          type="button"
+          className={classNames(
+            "void-camp-top-bar__button",
+            "void-camp-top-bar__button--version"
+          )}
+          onClick={onVersionClick}
+          disabled={!onVersionClick}
+        >
+          {versionLabel ?? "Unknown"}
+        </button>
+      </div>
+      <div className="void-camp-top-bar__right">
+        <button
+          type="button"
+          className={classNames(
+            "void-camp-top-bar__button",
+            "void-camp-top-bar__button--settings"
+          )}
+          onClick={onSettingsClick}
+        >
+          Settings
+        </button>
+      </div>
+    </div>
+  );
+};

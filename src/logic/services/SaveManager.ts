@@ -112,6 +112,32 @@ export class SaveManager {
     this.activeSlot = null;
   }
 
+  public getActiveSlotId(): SaveSlotId | null {
+    return this.activeSlot;
+  }
+
+  public exportActiveSlot(): StoredSaveData | null {
+    if (!this.activeSlot) {
+      return null;
+    }
+    return this.readSlotData(this.activeSlot);
+  }
+
+  public importToActiveSlot(data: StoredSaveData): void {
+    if (!this.activeSlot) {
+      throw new Error("Active slot is not selected");
+    }
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid save data");
+    }
+
+    this.writeSlotData(this.activeSlot, data);
+    this.modules.forEach((module) => {
+      const moduleData = data.modules?.[module.id];
+      module.load(moduleData);
+    });
+  }
+
   private readSlotData(slot: SaveSlotId): StoredSaveData | null {
     try {
       const raw = window.localStorage.getItem(`${STORAGE_KEY_PREFIX}${slot}`);

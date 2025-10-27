@@ -8,6 +8,7 @@ import { CampTabKey } from "@screens/VoidCamp/components/CampContent/CampContent
 import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
 import { SceneTutorialConfig } from "./ui/screens/Scene/SceneTutorialOverlay";
 import { SaveSlotSummary } from "./logic/services/SaveManager";
+import { readStoredAudioSettings } from "@logic/utils/audioSettings";
 
 type Screen = "save-select" | "void-camp" | "scene";
 
@@ -55,8 +56,11 @@ function App(): JSX.Element {
     (slot: string) => {
       const summary = slotSummaries[slot];
       app.selectSlot(slot);
+      const storedAudio = readStoredAudioSettings();
+      app.applyAudioSettings(storedAudio);
 
       if (!summary || !summary.hasSave) {
+        app.playMapPlaylist();
         app.selectMap("foundations");
         app.selectMapLevel("foundations", 0);
         app.restartCurrentMap();
@@ -65,6 +69,7 @@ function App(): JSX.Element {
         return;
       }
 
+      app.playCampPlaylist();
       setSceneTutorial(null);
       setVoidCampTab("maps");
       setScreen("void-camp");
@@ -92,6 +97,7 @@ function App(): JSX.Element {
         {screen === "void-camp" && (
           <VoidCampScreen
             onStart={() => {
+              app.playMapPlaylist();
               setScreen("scene");
             }}
             onExit={() => {
@@ -111,6 +117,7 @@ function App(): JSX.Element {
             }}
             onExit={() => {
               app.returnToMainMenu();
+              app.playCampPlaylist();
               setVoidCampTab("maps");
               setScreen("save-select");
               setSceneTutorial(null);
@@ -118,6 +125,7 @@ function App(): JSX.Element {
             }}
             onLeaveToMapSelect={() => {
               app.leaveCurrentMap();
+              app.playCampPlaylist();
               setVoidCampTab("skills");
               setScreen("void-camp");
               setSceneTutorial(null);
