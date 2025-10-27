@@ -5,12 +5,16 @@ interface VoidCampTopBarProps {
   readonly versionLabel?: string;
   readonly onVersionClick?: () => void;
   readonly onSettingsClick: () => void;
+  readonly onStatisticsClick: () => void;
+  readonly onExitClick: () => void;
 }
 
 export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
   versionLabel,
   onVersionClick,
   onSettingsClick,
+  onStatisticsClick,
+  onExitClick,
 }) => {
   return (
     <div className="void-camp-top-bar">
@@ -33,11 +37,31 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           type="button"
           className={classNames(
             "void-camp-top-bar__button",
+            "void-camp-top-bar__button--statistics"
+          )}
+          onClick={onStatisticsClick}
+        >
+          Statistics
+        </button>
+        <button
+          type="button"
+          className={classNames(
+            "void-camp-top-bar__button",
             "void-camp-top-bar__button--settings"
           )}
           onClick={onSettingsClick}
         >
           Settings
+        </button>
+        <button
+          type="button"
+          className={classNames(
+            "void-camp-top-bar__button",
+            "void-camp-top-bar__button--exit"
+          )}
+          onClick={onExitClick}
+        >
+          Exit
         </button>
       </div>
     </div>

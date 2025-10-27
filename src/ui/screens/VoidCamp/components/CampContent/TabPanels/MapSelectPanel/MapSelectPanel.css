@@ -3,22 +3,6 @@
   min-height: 0;
 }
 
-.map-select-panel__stats {
-  align-items: stretch;
-}
-
-.map-select-panel__label {
-  display: block;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.map-select-panel__value {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
 .map-select-panel__list {
   flex: 1;
   min-height: 0;
@@ -35,10 +19,16 @@
   border: 1px solid var(--color-border-soft);
   transition: border-color 0.2s ease, transform 0.2s ease;
   width: 320px;
+  cursor: pointer;
 }
 
 .map-select-card--selected {
   box-shadow: 0 0 16px #49a;
+}
+
+.map-select-card:focus-visible {
+  outline: 2px solid var(--color-border-accent);
+  outline-offset: 4px;
 }
 
 .map-select-card__header {
@@ -46,6 +36,17 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.map-select-card__status {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-subtle);
+  background: rgba(97, 218, 251, 0.12);
+  border: 1px solid rgba(97, 218, 251, 0.2);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
 }
 
 .map-select-card__details {
@@ -103,6 +104,12 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-strong);
+}
+
+.map-select-card__actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .map-select-panel__empty {

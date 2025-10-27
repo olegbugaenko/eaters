@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/MapModule";
 import { Button } from "@shared/Button";
@@ -9,10 +10,7 @@ interface MapSelectPanelProps {
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
   onSelectLevel: (mapId: MapId, level: number) => void;
-  onStart: () => void;
-  onExit: () => void;
-  formattedTime: string;
-  brickCount: number;
+  onStartMap: (mapId: MapId) => void;
 }
 
 export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
@@ -20,43 +18,47 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   selectedMap,
   onSelectMap,
   onSelectLevel,
-  onStart,
-  onExit,
-  formattedTime,
-  brickCount,
+  onStartMap,
 }) => {
-  const canStart = maps.length > 0 && selectedMap !== null;
-
   return (
     <div className="map-select-panel stack-lg">
-      <div className="map-select-panel__stats two-column-grid">
-        <div className="text-block">
-          <span className="map-select-panel__label text-subtle">Time Played</span>
-          <span className="map-select-panel__value text-strong">{formattedTime}</span>
-        </div>
-        <div className="text-block">
-          <span className="map-select-panel__label text-subtle">Particles on Map</span>
-          <span className="map-select-panel__value text-strong">{brickCount}</span>
-        </div>
-      </div>
-
       <div className="map-select-panel__list card-list">
         {maps.map((map) => {
           const isSelected = map.id === selectedMap;
           const canDecrease = map.selectedLevel > 0;
           const canIncrease = map.selectedLevel < map.currentLevel;
+          const handleCardClick = () => {
+            if (!isSelected) {
+              onSelectMap(map.id);
+            }
+          };
+          const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleCardClick();
+            }
+          };
+          const handleStart = () => {
+            onSelectMap(map.id);
+            onStartMap(map.id);
+          };
           return (
             <article
               key={map.id}
               className={`map-select-card surface-card${
                 isSelected ? " map-select-card--selected" : ""
               }`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
+              onClick={handleCardClick}
+              onKeyDown={handleKeyDown}
             >
               <header className="map-select-card__header">
                 <h2 className="heading-3">{map.name}</h2>
-                <Button onClick={() => onSelectMap(map.id)}>
-                  {isSelected ? "Selected" : "Select"}
-                </Button>
+                {isSelected ? (
+                  <span className="map-select-card__status">Selected</span>
+                ) : null}
               </header>
               <dl className="map-select-card__details">
                 <div>
@@ -112,6 +114,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   <dd>{map.brickTypes.join(", ")}</dd>
                 </div>
               </dl>
+              <div className="map-select-card__actions">
+                <Button onClick={handleStart}>Start Map</Button>
+              </div>
             </article>
           );
         })}
@@ -120,13 +125,6 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
             No maps available yet.
           </div>
         )}
-      </div>
-
-      <div className="button-row">
-        <Button onClick={onStart} disabled={!canStart}>
-          Start
-        </Button>
-        <Button onClick={onExit}>Main Menu</Button>
       </div>
     </div>
   );

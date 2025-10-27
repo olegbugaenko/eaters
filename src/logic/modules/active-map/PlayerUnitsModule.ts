@@ -44,6 +44,7 @@ import { ArcModule } from "../scene/ArcModule";
 import { EffectsModule } from "../scene/EffectsModule";
 import { FireballModule } from "../scene/FireballModule";
 import { PlayerUnitAbilities, PheromoneAttackBonusState } from "./PlayerUnitAbilities";
+import type { StatisticsTracker } from "../shared/StatisticsModule";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
 const COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -101,6 +102,7 @@ interface PlayerUnitsModuleOptions {
     designId: UnitDesignId | null,
     type: PlayerUnitType
   ) => UnitTargetingMode;
+  statistics?: StatisticsTracker;
 }
 
 interface PlayerUnitSaveData {
@@ -180,6 +182,7 @@ export class PlayerUnitsModule implements GameModule {
     type: PlayerUnitType
   ) => UnitTargetingMode;
   private readonly abilities: PlayerUnitAbilities;
+  private readonly statistics?: StatisticsTracker;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -200,6 +203,7 @@ export class PlayerUnitsModule implements GameModule {
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
+    this.statistics = options.statistics;
     this.abilities = new PlayerUnitAbilities({
       scene: this.scene,
       explosions: this.explosions,
@@ -230,7 +234,12 @@ export class PlayerUnitsModule implements GameModule {
       damageUnit: (unitId, damage) => {
         const unit = this.units.get(unitId);
         if (unit) {
+          const previousHp = unit.hp;
           unit.hp = Math.max(unit.hp - damage, 0);
+          const taken = Math.max(0, previousHp - unit.hp);
+          if (taken > 0) {
+            this.statistics?.recordDamageTaken(taken);
+          }
         }
       },
       findNearestBrick: (position) => {
@@ -1188,8 +1197,13 @@ export class PlayerUnitsModule implements GameModule {
     const counterSource = surviving ?? target;
     const counterDamage = Math.max(counterSource.baseDamage - unit.armor, 0);
     if (counterDamage > 0) {
+      const previousHp = unit.hp;
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
-      hpChanged = true;
+      const taken = Math.max(0, previousHp - unit.hp);
+      if (taken > 0) {
+        this.statistics?.recordDamageTaken(taken);
+        hpChanged = true;
+      }
     }
 
     if (unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0) {
@@ -1333,6 +1347,9 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private removeUnit(unit: PlayerUnitState): void {
+    if (unit.hp <= 0) {
+      this.statistics?.recordCreatureDeath();
+    }
     this.scene.removeObject(unit.objectId);
     this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);

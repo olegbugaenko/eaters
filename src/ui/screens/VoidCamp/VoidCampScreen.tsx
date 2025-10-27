@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { VoidCamp } from "@screens/VoidCamp/components/VoidCamp/VoidCamp";
 import { ResourceSidebar } from "@screens/VoidCamp/components/ResourceSidebar/ResourceSidebar";
 import {
@@ -9,8 +9,12 @@ import { MapId } from "@db/maps-db";
 import { GAME_VERSIONS } from "@db/version-db";
 import { MapListEntry, MAP_LIST_BRIDGE_KEY, MAP_SELECTED_BRIDGE_KEY } from "@logic/modules/active-map/MapModule";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/TestTimeModule";
-import { BRICK_COUNT_BRIDGE_KEY } from "@logic/modules/active-map/BricksModule";
 import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
+import {
+  CampStatisticsSnapshot,
+  DEFAULT_CAMP_STATISTICS,
+  STATISTICS_BRIDGE_KEY,
+} from "@logic/modules/shared/StatisticsModule";
 import type { StoredSaveData } from "@logic/core/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@shared/useBridgeValue";
@@ -49,6 +53,7 @@ import {
 import { useAudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import { clampVolumePercentage } from "@logic/utils/audioSettings";
+import { StatisticsModal } from "@screens/VoidCamp/components/StatisticsModal/StatisticsModal";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -66,18 +71,23 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const { app, bridge } = useAppLogic();
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isStatisticsOpen, setStatisticsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("game-data");
   const [statusMessage, setStatusMessage] = useState<SettingsMessage | null>(null);
   const { settings: audioSettings, setAudioSetting } = useAudioSettings();
   const currentVersion = GAME_VERSIONS[0] ?? null;
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
-  const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const maps = useBridgeValue<MapListEntry[]>(bridge, MAP_LIST_BRIDGE_KEY, []);
   const selectedMap = useBridgeValue<MapId | null>(bridge, MAP_SELECTED_BRIDGE_KEY, null);
   const resources = useBridgeValue<ResourceAmountPayload[]>(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
     []
+  );
+  const statistics = useBridgeValue<CampStatisticsSnapshot>(
+    bridge,
+    STATISTICS_BRIDGE_KEY,
+    DEFAULT_CAMP_STATISTICS
   );
   const moduleWorkshopState = useBridgeValue<UnitModuleWorkshopBridgeState>(
     bridge,
@@ -135,6 +145,14 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
 
   const handleCloseSettings = useCallback(() => {
     setSettingsOpen(false);
+  }, []);
+
+  const handleOpenStatistics = useCallback(() => {
+    setStatisticsOpen(true);
+  }, []);
+
+  const handleCloseStatistics = useCallback(() => {
+    setStatisticsOpen(false);
   }, []);
 
   const handleExportSave = useCallback(() => {
@@ -216,6 +234,40 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     [app]
   );
 
+  const handleStartMap = useCallback(
+    (mapId: MapId) => {
+      const target = maps.find((entry) => entry.id === mapId);
+      if (!target) {
+        return;
+      }
+      app.selectMap(mapId);
+      app.restartCurrentMap();
+      onStart();
+    },
+    [app, maps, onStart]
+  );
+
+  const handleExit = useCallback(() => {
+    setSettingsOpen(false);
+    setStatisticsOpen(false);
+    setVersionHistoryOpen(false);
+    app.returnToMainMenu();
+    onExit();
+  }, [app, onExit]);
+
+  const favoriteMap = useMemo(() => {
+    let best: { id: MapId; name: string; attempts: number } | null = null;
+    maps.forEach((map) => {
+      if (map.attempts <= 0) {
+        return;
+      }
+      if (!best || map.attempts > best.attempts) {
+        best = { id: map.id, name: map.name, attempts: map.attempts };
+      }
+    });
+    return best;
+  }, [maps]);
+
   return (
     <>
       <VoidCamp
@@ -224,7 +276,9 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
           <VoidCampTopBar
             versionLabel={currentVersion?.displayName}
             onVersionClick={currentVersion ? () => setVersionHistoryOpen(true) : undefined}
+            onStatisticsClick={handleOpenStatistics}
             onSettingsClick={handleOpenSettings}
+            onExitClick={handleExit}
           />
         }
         content={
@@ -233,19 +287,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             selectedMap={selectedMap}
             onSelectMap={(mapId) => app.selectMap(mapId)}
             onSelectMapLevel={(mapId, level) => app.selectMapLevel(mapId, level)}
-            onStart={() => {
-              if (maps.length === 0 || selectedMap === null) {
-                return;
-              }
-              app.restartCurrentMap();
-              onStart();
-            }}
-            onExit={() => {
-              app.returnToMainMenu();
-              onExit();
-            }}
-            timePlayed={timePlayed}
-            brickCount={brickCount}
+            onStartMap={handleStartMap}
             initialTab={initialTab}
             onTabChange={onTabChange}
             resourceTotals={resources}
@@ -275,6 +317,13 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         statusMessage={statusMessage}
         audioSettings={audioSettings}
         onAudioSettingChange={handleAudioSettingChange}
+      />
+      <StatisticsModal
+        isOpen={isStatisticsOpen}
+        onClose={handleCloseStatistics}
+        timePlayedMs={timePlayed}
+        favoriteMap={favoriteMap}
+        statistics={statistics}
       />
     </>
   );
