@@ -55,13 +55,13 @@ const FIREBALL_TAIL_LENGTH_MULTIPLIER = 4.5;
 const FIREBALL_TAIL_WIDTH_MULTIPLIER = 1.6;
 
 const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
-  particlesPerSecond: 60,
+  particlesPerSecond: 90,
   particleLifetimeMs: 750,
   fadeStartMs: 200,
-  baseSpeed: 0.05,
-  speedVariation: 0.01,
-  sizeRange: { min: 10.2, max: 13.4 },
-  spread: Math.PI / 5.5,
+  baseSpeed: 0.02,
+  speedVariation: 0.002,
+  sizeRange: { min: 24.2, max: 28.4 },
+  spread: Math.PI / 1.5,
   offset: { x: -0.35, y: 0 },
   color: { r: 1, g: 0.7, b: 0.3, a: 0.45 },
   fill: {
@@ -74,7 +74,7 @@ const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
     ],
   },
   shape: "circle",
-  maxParticles: 60,
+  maxParticles: 120,
 };
 
 const FIREBALL_SMOKE_EMITTER: FireballTrailEmitterConfig = {
