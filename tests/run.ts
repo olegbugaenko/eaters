@@ -13,5 +13,6 @@ import "./Application.test";
 import "./ResourcesModule.test";
 import "./UnitModuleWorkshopModule.test";
 import "./formatNumber.test";
+import "./ParticleEmitterPrimitive.test";
 
 void run();

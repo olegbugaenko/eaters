@@ -64,6 +64,8 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   signature: string;
   ageMs: number;
   gpu?: ParticleEmitterGpuState;
+  mode: "cpu" | "gpu" | "disabled";
+  requireGpu: boolean;
 }
 
 export interface ParticleEmitterPrimitiveOptions<
@@ -86,6 +88,7 @@ export interface ParticleEmitterPrimitiveOptions<
     instance: SceneObjectInstance,
     config: Config
   ): boolean;
+  forceGpu?: boolean;
 }
 
 export interface ParticleEmitterSanitizerOptions {
@@ -158,7 +161,18 @@ export const createParticleEmitterPrimitive = <
     return null;
   }
 
-  let state = createParticleEmitterState(instance, initialConfig, options);
+  const requireGpu = Boolean(options.forceGpu);
+  const initialGl = getParticleEmitterGlContext();
+  if (requireGpu && (!initialGl || initialConfig.capacity <= 0)) {
+    return null;
+  }
+
+  let state = createParticleEmitterState(
+    instance,
+    initialConfig,
+    options,
+    requireGpu
+  );
 
   const primitive: DynamicPrimitive = {
     get data() {
@@ -172,14 +186,19 @@ export const createParticleEmitterPrimitive = <
           return null;
         }
         destroyParticleEmitterGpuState(state);
-        state = createEmptyParticleEmitterState();
+        state = createEmptyParticleEmitterState(state.requireGpu);
         return state.data;
       }
 
       // Avoid expensive per-frame serialization; only recreate when capacity increases
       if (nextConfig.capacity > state.capacity) {
         destroyParticleEmitterGpuState(state);
-        state = createParticleEmitterState(target, nextConfig, options);
+        state = createParticleEmitterState(
+          target,
+          nextConfig,
+          options,
+          state.requireGpu
+        );
         return state.data;
       }
 
@@ -195,7 +214,7 @@ export const createParticleEmitterPrimitive = <
     },
     dispose() {
       destroyParticleEmitterGpuState(state);
-      state = createEmptyParticleEmitterState();
+      state = createEmptyParticleEmitterState(state.requireGpu);
     },
   };
 
@@ -205,11 +224,28 @@ export const createParticleEmitterPrimitive = <
 const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
   instance: SceneObjectInstance,
   config: Config,
-  options: ParticleEmitterPrimitiveOptions<Config>
+  options: ParticleEmitterPrimitiveOptions<Config>,
+  requireGpu: boolean
 ): ParticleEmitterState<Config> => {
   const capacity = Math.max(0, config.capacity);
   const gl = getParticleEmitterGlContext();
   const gpu = capacity > 0 && gl ? createParticleEmitterGpuState(gl, capacity) : null;
+
+  if (requireGpu && !gpu) {
+    return {
+      config,
+      particles: [],
+      spawnAccumulator: 0,
+      lastTimestamp: getNowMs(),
+      capacity: 0,
+      data: new Float32Array(0),
+      signature: serializeConfig(config, options),
+      ageMs: 0,
+      gpu: undefined,
+      mode: "disabled",
+      requireGpu,
+    };
+  }
 
   const state: ParticleEmitterState<Config> = {
     config,
@@ -222,6 +258,9 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     ),
     signature: serializeConfig(config, options),
     ageMs: 0,
+    gpu: undefined,
+    mode: gpu ? "gpu" : "cpu",
+    requireGpu,
   };
 
   if (gpu) {
@@ -236,7 +275,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
 
 const createEmptyParticleEmitterState = <
   Config extends ParticleEmitterBaseConfig
->(): ParticleEmitterState<Config> => ({
+>(requireGpu: boolean): ParticleEmitterState<Config> => ({
   config: null,
   particles: [],
   spawnAccumulator: 0,
@@ -245,6 +284,9 @@ const createEmptyParticleEmitterState = <
   data: new Float32Array(0),
   signature: "",
   ageMs: 0,
+  gpu: undefined,
+  mode: requireGpu ? "disabled" : "cpu",
+  requireGpu,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -265,10 +307,21 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     return state.data;
   }
 
-  if (state.gpu) {
+  if (state.mode === "disabled") {
+    if (state.data.length !== 0) {
+      state.data = new Float32Array(0);
+    }
+    return state.data;
+  }
+
+  if (state.mode === "gpu" && state.gpu) {
     updateParticleEmitterGpuUniforms(state.gpu, config);
     advanceParticleEmitterStateGpu(state, instance, deltaMs, options);
     return null;
+  }
+
+  if (state.mode !== "cpu") {
+    return state.data;
   }
 
   const spawnRate = config.particlesPerSecond / 1000;
@@ -452,7 +505,7 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
   config: Config,
   origin: SceneVector2
 ): void => {
-  if (state.gpu) {
+  if (state.mode !== "cpu") {
     if (state.data.length !== 0) {
       state.data = new Float32Array(0);
     }

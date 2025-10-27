@@ -138,6 +138,7 @@ export class FireballRenderer extends ObjectRenderer {
         getConfig: getSmokeEmitterConfig,
         getOrigin: getTrailEmitterOrigin,
         spawnParticle: createTrailParticle,
+        forceGpu: true,
       }
     );
 
@@ -147,6 +148,7 @@ export class FireballRenderer extends ObjectRenderer {
         getConfig: getTrailEmitterConfig,
         getOrigin: getTrailEmitterOrigin,
         spawnParticle: createTrailParticle,
+        forceGpu: true,
       }
     );
 
