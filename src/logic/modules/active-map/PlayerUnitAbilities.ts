@@ -15,6 +15,18 @@ const PHEROMONE_HEAL_EXPLOSION_RADIUS = 14;
 const PHEROMONE_FRENZY_EXPLOSION_RADIUS = 12;
 const FIREBALL_SELF_DAMAGE_PERCENT = 1; // 75% of max HP as self-damage
 
+export interface AbilitySoundPlayer {
+  playSoundEffect(url: string): void;
+}
+
+type AbilitySoundId = "heal" | "frenzy" | "fireball";
+
+const ABILITY_SOUND_URLS: Record<AbilitySoundId, string> = {
+  heal: "/audio/sounds/brick_effects/heal.mp3",
+  frenzy: "/audio/sounds/brick_effects/buff.mp3",
+  fireball: "/audio/sounds/brick_effects/fireball.mp3",
+};
+
 export interface PheromoneAttackBonusState {
   bonusDamage: number;
   remainingAttacks: number;
@@ -59,6 +71,7 @@ interface PlayerUnitAbilitiesOptions {
   getBricksInRadius: (position: SceneVector2, radius: number) => string[];
   damageUnit: (unitId: string, damage: number) => void;
   findNearestBrick: (position: SceneVector2) => string | null;
+  audio?: AbilitySoundPlayer;
 }
 
 type AbilityTrigger = "heal" | "frenzy" | "fireball" | null;
@@ -78,6 +91,7 @@ export class PlayerUnitAbilities {
   private readonly getBricksInRadius: (position: SceneVector2, radius: number) => string[];
   private readonly damageUnit: (unitId: string, damage: number) => void;
   private readonly findNearestBrick: (position: SceneVector2) => string | null;
+  private readonly audio?: AbilitySoundPlayer;
   private activeArcEffects: AbilityArcEntry[] = [];
   private healChargesRemaining = new Map<string, number>();
 
@@ -96,6 +110,7 @@ export class PlayerUnitAbilities {
     this.getBricksInRadius = options.getBricksInRadius;
     this.damageUnit = options.damageUnit;
     this.findNearestBrick = options.findNearestBrick;
+    this.audio = options.audio;
   }
 
   public resetRun(): void {
@@ -170,6 +185,7 @@ export class PlayerUnitAbilities {
       const launched = this.applyFireball(unit, fireballTarget);
       if (launched) {
         unit.timeSinceLastSpecial = 0;
+        this.playAbilitySound("fireball");
         return "fireball";
       }
     }
@@ -179,6 +195,7 @@ export class PlayerUnitAbilities {
       if (healed) {
         unit.timeSinceLastSpecial = 0;
         this.consumeHealCharge(unit.id);
+        this.playAbilitySound("heal");
         return "heal";
       }
     }
@@ -187,6 +204,7 @@ export class PlayerUnitAbilities {
       const applied = this.applyPheromoneAggression(unit, frenzyTarget);
       if (applied) {
         unit.timeSinceLastSpecial = 0;
+        this.playAbilitySound("frenzy");
         return "frenzy";
       }
     }
@@ -490,7 +508,6 @@ export class PlayerUnitAbilities {
 
   private applyFireball(source: PlayerUnitAbilityState, targetBrickId: string): boolean {
     const fireballModule = this.getFireballs();
-    console.log('fireballModule: ', fireballModule, source.baseAttackDamage, source.fireballDamageMultiplier);
     if (!fireballModule) {
       return false;
     }
@@ -516,6 +533,20 @@ export class PlayerUnitAbilities {
     );
 
     return true;
+  }
+
+  private playAbilitySound(trigger: AbilitySoundId): void {
+    const audio = this.audio;
+    if (!audio) {
+      return;
+    }
+
+    const url = ABILITY_SOUND_URLS[trigger];
+    if (!url) {
+      return;
+    }
+
+    audio.playSoundEffect(url);
   }
 }
 

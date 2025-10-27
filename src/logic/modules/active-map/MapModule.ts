@@ -96,6 +96,7 @@ export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze
 const DEFAULT_MAP_ID: MapId = "foundations";
 export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
 const AUTO_RESTART_SKILL_ID: SkillId = "autorestart_rituals";
+const CAMERA_FOCUS_TICKS = 6;
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -116,6 +117,7 @@ export class MapModule implements GameModule {
   private thresholdEnabled = false;
   private minEffectiveUnits = 3;
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
+  private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
 
   constructor(private readonly options: MapModuleOptions) {
     this.unlocks = options.unlocks;
@@ -134,6 +136,7 @@ export class MapModule implements GameModule {
     this.thresholdEnabled = false;
     this.minEffectiveUnits = 3;
     this.runActive = false;
+    this.pendingCameraFocus = null;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.ensureSelection();
@@ -178,6 +181,7 @@ export class MapModule implements GameModule {
   }
 
   public tick(_deltaMs: number): void {
+    this.applyPendingCameraFocus();
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
@@ -242,6 +246,7 @@ export class MapModule implements GameModule {
   public leaveCurrentMap(): void {
     this.activeMapLevel = 0;
     this.runActive = false;
+    this.pendingCameraFocus = null;
     this.options.resources.cancelRun();
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
@@ -324,6 +329,7 @@ export class MapModule implements GameModule {
       this.runActive = false;
       this.options.unitsAutomation.onMapEnd();
     }
+    this.pendingCameraFocus = null;
     this.options.necromancer.endCurrentMap();
     this.clearPortalObjects();
     this.options.arcs.clearArcs();
@@ -382,6 +388,12 @@ export class MapModule implements GameModule {
     }
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
+
+    if (spawnPoints.length > 0) {
+      this.setCameraFocus(spawnPoints[0]!);
+    } else {
+      this.pendingCameraFocus = null;
+    }
 
     if (generateUnits) {
       this.options.playerUnits.setUnits(spawnUnits);
@@ -443,6 +455,38 @@ export class MapModule implements GameModule {
     }
     this.portalObjects.forEach((portal) => this.options.scene.removeObject(portal.id));
     this.portalObjects = [];
+  }
+
+  private focusCameraOnPoint(point: SceneVector2): void {
+    const camera = this.options.scene.getCamera();
+    const targetX = point.x - camera.viewportSize.width / 2;
+    const targetY = point.y - camera.viewportSize.height / 2;
+    this.options.scene.setCameraPosition(targetX, targetY);
+  }
+
+  private setCameraFocus(point: SceneVector2): void {
+    const focusPoint = { x: point.x, y: point.y };
+    this.focusCameraOnPoint(focusPoint);
+    this.pendingCameraFocus = {
+      point: focusPoint,
+      ticksRemaining: CAMERA_FOCUS_TICKS,
+    };
+  }
+
+  private applyPendingCameraFocus(): void {
+    const pending = this.pendingCameraFocus;
+    if (!pending) {
+      return;
+    }
+    this.focusCameraOnPoint(pending.point);
+    if (pending.ticksRemaining <= 1) {
+      this.pendingCameraFocus = null;
+      return;
+    }
+    this.pendingCameraFocus = {
+      point: pending.point,
+      ticksRemaining: pending.ticksRemaining - 1,
+    };
   }
 
   private updateSelection(mapId: MapId): void {

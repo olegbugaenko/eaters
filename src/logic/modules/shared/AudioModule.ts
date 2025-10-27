@@ -42,7 +42,8 @@ export class AudioModule implements GameModule {
   private readonly effectTemplates = new Map<string, HTMLAudioElement>();
   private readonly activeEffectElements = new Set<HTMLAudioElement>();
   private readonly lastEffectPlayTimestamps = new Map<string, number>();
-  private static readonly MIN_EFFECT_INTERVAL_MS = 200;
+  private static readonly MIN_EFFECT_INTERVAL_MS = 400;
+  private static readonly MUSIC_VOLUME_MULTIPLIER = 0.3;
 
   constructor(options: AudioModuleOptions = {}) {
     this.playlists = {
@@ -123,18 +124,23 @@ export class AudioModule implements GameModule {
       return;
     }
 
+    const normalizedUrl = this.normalizeEffectUrl(url);
+    if (!normalizedUrl) {
+      return;
+    }
+
     const now = this.getNow();
-    const lastPlay = this.lastEffectPlayTimestamps.get(url) ?? -Infinity;
+    const lastPlay = this.lastEffectPlayTimestamps.get(normalizedUrl) ?? -Infinity;
     if (now - lastPlay < AudioModule.MIN_EFFECT_INTERVAL_MS) {
       return;
     }
 
-    const template = this.resolveEffectTemplate(url);
+    const template = this.resolveEffectTemplate(normalizedUrl);
     if (!template) {
       return;
     }
 
-    this.lastEffectPlayTimestamps.set(url, now);
+    this.lastEffectPlayTimestamps.set(normalizedUrl, now);
 
     const element = template.cloneNode(true) as HTMLAudioElement;
     element.currentTime = 0;
@@ -315,7 +321,9 @@ export class AudioModule implements GameModule {
       return;
     }
 
-    const computedVolume = this.clamp01(this.masterVolume * this.musicVolume);
+    const computedVolume = this.clamp01(
+      this.masterVolume * this.musicVolume * AudioModule.MUSIC_VOLUME_MULTIPLIER,
+    );
     this.musicElement.volume = computedVolume;
   }
 
@@ -388,7 +396,11 @@ export class AudioModule implements GameModule {
       return null;
     }
 
-    const normalizedUrl = url.startsWith("/") ? url : `/${url}`;
+    const normalizedUrl = this.normalizeEffectUrl(url);
+    if (!normalizedUrl) {
+      return null;
+    }
+
     let template = this.effectTemplates.get(normalizedUrl);
     if (!template) {
       template = new Audio(normalizedUrl);
@@ -403,5 +415,12 @@ export class AudioModule implements GameModule {
       return performance.now();
     }
     return Date.now();
+  }
+
+  private normalizeEffectUrl(url: string): string {
+    if (!url) {
+      return "";
+    }
+    return url.startsWith("/") ? url : `/${url}`;
   }
 }

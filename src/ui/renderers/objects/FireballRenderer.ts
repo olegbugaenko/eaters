@@ -22,6 +22,7 @@ import {
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
+import type { FireballTrailEmitterConfig } from "../../../logic/modules/scene/FireballModule";
 
 interface FireballRendererTailData {
   lengthMultiplier?: number;
@@ -36,11 +37,15 @@ interface FireballRendererCustomData {
   speed?: number;
   maxSpeed?: number;
   tail?: FireballRendererTailData;
+  trailEmitter?: FireballTrailEmitterConfig;
+  smokeEmitter?: FireballTrailEmitterConfig;
 }
 
-type FireballTrailEmitterConfig = ParticleEmitterBaseConfig & {
+type FireballEmitterRenderConfig = ParticleEmitterBaseConfig & {
   baseSpeed: number;
-  lateralJitter: number;
+  speedVariation: number;
+  spread: number;
+  physicalSize: number;
 };
 
 const DEFAULT_RADIUS = 8;
@@ -48,15 +53,14 @@ const DEFAULT_GLOW_COLOR: SceneColor = { r: 1, g: 0.7, b: 0.3, a: 0.8 };
 const CORE_INNER_COLOR: SceneColor = { r: 1, g: 0.96, b: 0.8, a: 1 };
 const CORE_MID_COLOR: SceneColor = { r: 1, g: 0.83, b: 0.56, a: 0.95 };
 const CORE_OUTER_COLOR: SceneColor = { r: 0.75, g: 0.55, b: 0.3, a: 0.85 };
-const TAIL_START_COLOR: SceneColor = { r: 1, g: 0.75, b: 0.3, a: 0.7 };
-const TAIL_MID_COLOR: SceneColor = { r: 1, g: 0.45, b: 0.1, a: 0.45 };
+const TAIL_START_COLOR: SceneColor = { r: 1, g: 0.75, b: 0.3, a: 0.3 };
+const TAIL_MID_COLOR: SceneColor = { r: 1, g: 0.45, b: 0.1, a: 0.15 };
 const TAIL_END_COLOR: SceneColor = { r: 0.2, g: 0.02, b: 0, a: 0 };
 const DEFAULT_TAIL_LENGTH_MULTIPLIER = 4.5;
 const DEFAULT_TAIL_WIDTH_MULTIPLIER = 1.6;
 const MIN_SPEED = 0.01;
-const PARTICLE_LIFETIME_MS = 420;
-const PARTICLE_FADE_START_MS = 260;
-const BASE_PARTICLES_PER_SECOND = 70;
+
+type FireballEmitterKey = "trailEmitter" | "smokeEmitter";
 
 export class FireballRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
@@ -75,24 +79,37 @@ export class FireballRenderer extends ObjectRenderer {
       getFill: (target) => createCoreFill(getCoreRadius(target)),
     });
 
-    const emitterPrimitive = createParticleEmitterPrimitive<FireballTrailEmitterConfig>(
+    const smokeEmitterPrimitive = createParticleEmitterPrimitive<FireballEmitterRenderConfig>(
       instance,
       {
-        getConfig: getTrailEmitterConfig,
-        getOrigin: getTrailEmitterOrigin,
-        spawnParticle: createTrailParticle,
+        getConfig: getSmokeEmitterConfig,
+        getOrigin: getEmitterOrigin,
+        spawnParticle: createEmitterParticle,
+        serializeConfig: serializeEmitterConfig,
       }
     );
 
-    const dynamicPrimitives: DynamicPrimitive[] = [
-      tailPrimitive,
-      glowPrimitive,
-      corePrimitive,
-    ];
+    const trailEmitterPrimitive = createParticleEmitterPrimitive<FireballEmitterRenderConfig>(
+      instance,
+      {
+        getConfig: getTrailEmitterConfig,
+        getOrigin: getEmitterOrigin,
+        spawnParticle: createEmitterParticle,
+        serializeConfig: serializeEmitterConfig,
+      }
+    );
 
-    if (emitterPrimitive) {
-      dynamicPrimitives.push(emitterPrimitive);
+    const dynamicPrimitives: DynamicPrimitive[] = [tailPrimitive];
+
+    if (smokeEmitterPrimitive) {
+      dynamicPrimitives.push(smokeEmitterPrimitive);
     }
+
+    if (trailEmitterPrimitive) {
+      dynamicPrimitives.push(trailEmitterPrimitive);
+    }
+
+    dynamicPrimitives.push(glowPrimitive, corePrimitive);
 
     return {
       staticPrimitives: [],
@@ -267,119 +284,126 @@ const createTailFill = (instance: SceneObjectInstance): SceneLinearGradientFill 
 
 const getTrailEmitterConfig = (
   instance: SceneObjectInstance
-): FireballTrailEmitterConfig | null => {
-  const radius = getCoreRadius(instance);
-  if (radius <= 0) {
+): FireballEmitterRenderConfig | null => getEmitterConfig(instance, "trailEmitter");
+
+const getSmokeEmitterConfig = (
+  instance: SceneObjectInstance
+): FireballEmitterRenderConfig | null => getEmitterConfig(instance, "smokeEmitter");
+
+const getEmitterConfig = (
+  instance: SceneObjectInstance,
+  key: FireballEmitterKey
+): FireballEmitterRenderConfig | null => {
+  const data = getCustomData(instance);
+  const raw = key === "trailEmitter" ? data.trailEmitter : data.smokeEmitter;
+  if (!raw) {
     return null;
   }
-  const glowColor = getGlowColor(instance);
-  const intensity = computeTailIntensity(instance);
-  const particlesPerSecond = Math.max(
-    20,
-    Math.round(BASE_PARTICLES_PER_SECOND * (0.6 + intensity * 0.8))
-  );
-  const base = sanitizeParticleEmitterConfig(
-    {
-      particlesPerSecond,
-      particleLifetimeMs: PARTICLE_LIFETIME_MS,
-      fadeStartMs: PARTICLE_FADE_START_MS,
-      sizeRange: {
-        min: Math.max(0.5, radius * 0.3),
-        max: Math.max(0.5, radius * 0.75),
-      },
-      offset: getTrailOffset(instance, radius, intensity),
-      color: { ...glowColor, a: 0.85 },
-      fill: {
-        fillType: FILL_TYPES.RADIAL_GRADIENT,
-        start: { x: 0, y: 0 },
-        end: radius,
-        stops: [
-          {
-            offset: 0,
-            color: { r: glowColor.r, g: glowColor.g, b: glowColor.b, a: 0.9 },
-          },
-          {
-            offset: 1,
-            color: { r: glowColor.r, g: glowColor.g, b: glowColor.b, a: 0 },
-          },
-        ],
-      },
-      shape: "circle",
-      maxParticles: Math.ceil((particlesPerSecond * PARTICLE_LIFETIME_MS) / 1000 * 1.5),
-    },
-    {
-      defaultColor: glowColor,
-      minCapacity: 24,
-      defaultShape: "circle",
-    }
-  );
 
+  const base = sanitizeParticleEmitterConfig(raw, {
+    defaultColor: raw.color,
+    defaultOffset: raw.offset,
+    minCapacity: Math.max(
+      8,
+      Math.ceil((raw.particlesPerSecond * raw.particleLifetimeMs) / 1000)
+    ),
+    defaultShape: raw.shape === "circle" ? "circle" : "square",
+  });
   if (!base) {
     return null;
   }
 
-  const speedScale = computeTrailSpeedScale(instance);
+  const radius = getCoreRadius(instance);
+
+  const baseSpeed =
+    typeof raw.baseSpeed === "number" && Number.isFinite(raw.baseSpeed)
+      ? Math.max(0, raw.baseSpeed)
+      : 0;
+  const speedVariation =
+    typeof raw.speedVariation === "number" && Number.isFinite(raw.speedVariation)
+      ? Math.max(0, raw.speedVariation)
+      : 0;
+  const spread =
+    typeof raw.spread === "number" && Number.isFinite(raw.spread)
+      ? Math.max(0, raw.spread)
+      : 0;
+
   return {
     ...base,
-    baseSpeed: 45 + speedScale * 55,
-    lateralJitter: 25 + speedScale * 25,
+    baseSpeed,
+    speedVariation,
+    spread,
+    physicalSize: Math.max(radius, 1),
   };
 };
 
-const getTrailOffset = (
+const getEmitterOrigin = (
   instance: SceneObjectInstance,
-  radius: number,
-  intensity: number
+  config: FireballEmitterRenderConfig
 ): SceneVector2 => {
-  const rotation = instance.data.rotation ?? 0;
-  const forward = { x: Math.cos(rotation), y: Math.sin(rotation) };
-  const distance = radius * (0.5 + intensity * 0.4);
-  return { x: -forward.x * distance, y: -forward.y * distance };
+  const scale = Math.max(config.physicalSize, 1);
+  const offset = {
+    x: config.offset.x * scale,
+    y: config.offset.y * scale,
+  };
+  return transformObjectPoint(instance.data.position, instance.data.rotation, offset);
 };
 
-const computeTrailSpeedScale = (instance: SceneObjectInstance): number => {
-  const speed = getSpeed(instance);
-  if (speed <= MIN_SPEED) {
-    return 0;
-  }
-  const maxSpeed = getMaxSpeed(instance);
-  if (maxSpeed && maxSpeed > MIN_SPEED) {
-    return clamp(0, 1, speed / maxSpeed);
-  }
-  return clamp(0, 1, speed / 200);
-};
-
-const getTrailEmitterOrigin = (
-  instance: SceneObjectInstance,
-  config: FireballTrailEmitterConfig
-): SceneVector2 => {
-  return transformObjectPoint(instance.data.position, instance.data.rotation, config.offset);
-};
-
-const createTrailParticle = (
+const createEmitterParticle = (
   origin: SceneVector2,
   instance: SceneObjectInstance,
-  config: FireballTrailEmitterConfig
+  config: FireballEmitterRenderConfig
 ): ParticleEmitterParticleState => {
-  const rotation = (instance.data.rotation ?? 0) + Math.PI; // emit backwards
-  const forward = { x: Math.cos(rotation), y: Math.sin(rotation) };
-  const perpendicular = { x: -forward.y, y: forward.x };
-  const baseSpeed = Math.max(0, config.baseSpeed);
-  const jitter = config.lateralJitter;
-  const speed = baseSpeed;
-  const lateral = (Math.random() - 0.5) * jitter;
-  const size = randomBetween(config.sizeRange.min, config.sizeRange.max);
+  const baseDirection = (instance.data.rotation ?? 0) + Math.PI;
+  const halfSpread = config.spread / 2;
+  const direction =
+    baseDirection + (config.spread > 0 ? randomBetween(-halfSpread, halfSpread) : 0);
+  const speed = Math.max(
+    0,
+    config.baseSpeed +
+      (config.speedVariation > 0
+        ? randomBetween(-config.speedVariation, config.speedVariation)
+        : 0)
+  );
+  const size =
+    config.sizeRange.min === config.sizeRange.max
+      ? config.sizeRange.min
+      : randomBetween(config.sizeRange.min, config.sizeRange.max);
 
   return {
     position: { x: origin.x, y: origin.y },
-    velocity: {
-      x: forward.x * speed + perpendicular.x * lateral,
-      y: forward.y * speed + perpendicular.y * lateral,
-    },
+    velocity: { x: Math.cos(direction) * speed, y: Math.sin(direction) * speed },
     ageMs: 0,
     lifetimeMs: config.particleLifetimeMs,
     size,
   };
+};
+
+const serializeEmitterConfig = (
+  config: FireballEmitterRenderConfig
+): string => {
+  const serializedFill = config.fill ? JSON.stringify(config.fill) : "";
+  const alpha = typeof config.color.a === "number" ? config.color.a : 1;
+  return [
+    config.particlesPerSecond,
+    config.particleLifetimeMs,
+    config.fadeStartMs,
+    config.sizeRange.min.toFixed(3),
+    config.sizeRange.max.toFixed(3),
+    config.offset.x.toFixed(3),
+    config.offset.y.toFixed(3),
+    config.color.r.toFixed(3),
+    config.color.g.toFixed(3),
+    config.color.b.toFixed(3),
+    alpha.toFixed(3),
+    config.emissionDurationMs ?? -1,
+    config.capacity,
+    config.baseSpeed.toFixed(3),
+    config.speedVariation.toFixed(3),
+    config.spread.toFixed(3),
+    config.physicalSize.toFixed(3),
+    serializedFill,
+  ].join(":");
 };
 
 const randomBetween = (min: number, max: number): number => {
