@@ -151,14 +151,14 @@
 .skill-tree__details {
   width: 320px;
   flex-shrink: 0;
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 1.25rem;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  padding: 1.5rem;
+  background: rgba(34, 34, 34, 0.45);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-soft);
+  padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
+  gap: var(--spacing-md);
+  box-shadow: var(--shadow-panel);
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
@@ -212,18 +212,17 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(234, 179, 8, 0.35);
-  background: rgba(74, 20, 20, 0.35);
-  color: rgba(252, 211, 77, 0.9);
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: rgba(34, 34, 34, 0.45);
+  color: rgba(255, 184, 184, 0.85);
   font-size: 0.85rem;
 }
 
 .skill-tree__requirement--met {
-  border-color: rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.75);
-  color: rgba(226, 232, 240, 0.9);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
 }
 
 .skill-tree__requirement-name {

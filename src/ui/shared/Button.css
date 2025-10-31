@@ -1,10 +1,12 @@
 .button {
-  padding: var(--spacing-md) var(--spacing-xl);
+  padding: calc(var(--spacing-sm) + 0.1rem) calc(var(--spacing-xl) + 0.35rem);
   border-radius: var(--radius-sm);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: transform 0.16s ease;
 }
 
 .button:disabled {

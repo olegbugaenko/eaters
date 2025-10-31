@@ -19,20 +19,6 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
   return (
     <div className="void-camp-top-bar">
       <div className="void-camp-top-bar__left">
-        <span className="void-camp-top-bar__label">Version</span>
-        <button
-          type="button"
-          className={classNames(
-            "void-camp-top-bar__button",
-            "void-camp-top-bar__button--version"
-          )}
-          onClick={onVersionClick}
-          disabled={!onVersionClick}
-        >
-          {versionLabel ?? "Unknown"}
-        </button>
-      </div>
-      <div className="void-camp-top-bar__right">
         <button
           type="button"
           className={classNames(
@@ -52,6 +38,20 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           onClick={onSettingsClick}
         >
           Settings
+        </button>
+      </div>
+      <div className="void-camp-top-bar__right">
+        <span className="void-camp-top-bar__label">Version</span>
+        <button
+          type="button"
+          className={classNames(
+            "void-camp-top-bar__button",
+            "void-camp-top-bar__button--version"
+          )}
+          onClick={onVersionClick}
+          disabled={!onVersionClick}
+        >
+          {versionLabel ?? "Unknown"}
         </button>
         <button
           type="button"
