@@ -15,6 +15,7 @@
   --color-border-soft: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
   --color-border-accent: rgba(124, 255, 248, 0.13);
+  --popup-bg-color: rgba(34, 34, 34, 0.75);
   --color-text-primary: #ffffff;
   --color-text-muted: rgba(255, 255, 255, 0.7);
   --color-text-subtle: rgba(255, 255, 255, 0.6);

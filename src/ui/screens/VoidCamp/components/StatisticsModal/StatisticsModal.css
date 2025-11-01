@@ -10,13 +10,12 @@
 }
 
 .statistics-modal__dialog {
-  background: rgba(14, 20, 32, 0.95);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-accent);
+  background: var(--popup-bg-color);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
   box-shadow: var(--shadow-panel);
   padding: var(--spacing-xl) var(--spacing-xxl);
-  min-width: min(480px, 100%);
-  max-width: 640px;
+  width: min(720px, 100%);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
@@ -93,7 +92,7 @@
   }
 
   .statistics-modal__dialog {
-    min-width: 100%;
+    width: 100%;
     padding: var(--spacing-lg);
   }
 }
