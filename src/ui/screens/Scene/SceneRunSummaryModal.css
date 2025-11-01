@@ -56,9 +56,9 @@
   align-items: baseline;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  background: rgba(9, 17, 32, 0.75);
-  border: 1px solid rgba(97, 218, 251, 0.15);
+  border-radius: var(--radius-md);
+  background: rgba(34, 34, 34, 0.75);
+  border: 1px solid var(--color-border-soft);
 }
 
 .scene-run-summary__resource-name {
@@ -77,7 +77,7 @@
 
 .scene-run-summary__resource-delta {
   font-size: 0.9rem;
-  color: #61dafb;
+  color: rgba(94, 234, 212, 0.85);
 }
 
 .scene-run-summary__resource-rate {
@@ -103,9 +103,9 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  background: rgba(9, 17, 32, 0.75);
-  border: 1px solid rgba(97, 218, 251, 0.15);
+  border-radius: var(--radius-md);
+  background: rgba(34, 34, 34, 0.75);
+  border: 1px solid var(--color-border-soft);
   min-width: 220px;
 }
 
@@ -117,9 +117,9 @@
 }
 
 .scene-run-summary__stat-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #f6fbff;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.95);
 }
 
 .scene-run-summary__stat-note {
@@ -144,9 +144,9 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  background: rgba(9, 17, 32, 0.75);
-  border: 1px solid rgba(97, 218, 251, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(34, 34, 34, 0.75);
+  border: 1px solid var(--color-border-soft);
 }
 
 .scene-run-summary__auto-restart-toggle {
