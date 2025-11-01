@@ -1,8 +1,8 @@
 .button {
-  padding: calc(var(--spacing-sm) + 0.1rem) calc(var(--spacing-xl) + 0.35rem);
+  padding: calc(var(--spacing-md)) calc(var(--spacing-xl) + 0.35rem);
   border-radius: var(--radius-sm);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;

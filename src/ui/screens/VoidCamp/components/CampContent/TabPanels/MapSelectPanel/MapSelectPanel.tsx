@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/MapModule";
 import { Button } from "@shared/Button";
+import { classNames } from "@shared/classNames";
 import { formatDuration } from "@ui/utils/formatDuration";
 import "./MapSelectPanel.css";
 
@@ -73,7 +74,11 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     <div className="map-select-card__level-control">
                       <button
                         type="button"
-                        className="map-select-card__level-button"
+                        className={classNames(
+                          "secondary-button",
+                          "small-button",
+                          "button"
+                        )}
                         onClick={() => onSelectLevel(map.id, map.selectedLevel - 1)}
                         disabled={!canDecrease}
                         aria-label="Decrease map level"
@@ -83,7 +88,11 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       <span className="map-select-card__level-value">{map.selectedLevel}</span>
                       <button
                         type="button"
-                        className="map-select-card__level-button"
+                        className={classNames(
+                          "secondary-button",
+                          "small-button",
+                          "button"
+                        )}
                         onClick={() => onSelectLevel(map.id, map.selectedLevel + 1)}
                         disabled={!canIncrease}
                         aria-label="Increase map level"
@@ -108,10 +117,6 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       ? formatDuration(map.bestTimeMs)
                       : "—"}
                   </dd>
-                </div>
-                <div>
-                  <dt>Types</dt>
-                  <dd>{map.brickTypes.join(", ")}</dd>
                 </div>
               </dl>
               <div className="map-select-card__actions">

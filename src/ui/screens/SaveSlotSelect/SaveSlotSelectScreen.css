@@ -86,8 +86,9 @@
 }
 
 .save-slot-card__details dt {
-  font-weight: 600;
+  /*font-weight: 400;
   color: var(--color-text-muted);
+  */
 }
 
 .save-slot-card__details dd {

@@ -1,11 +1,17 @@
 .modules-workshop__details {
-  background: rgba(15, 23, 42, 0.88);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: var(--color-surface-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
   padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  height: 100%;
+}
+
+.modules-workshop__details.no-wrapper {
+  border: none;
+  padding: 0;
 }
 
 .modules-workshop__details--scrollable {
@@ -40,48 +46,82 @@
 }
 
 .modules-workshop__details-section h4 {
-  margin: 0;
-  font-size: 0.95rem;
-  letter-spacing: 0.08em;
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(148, 197, 255, 0.9);
 }
 
 .modules-workshop__effect-preview {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-weight: 600;
-}
-
-.modules-workshop__effect-current {
-  color: rgba(248, 250, 252, 0.85);
-}
-
-.modules-workshop__effect-arrow {
-  color: rgba(148, 197, 255, 0.8);
-}
-
-.modules-workshop__effect-next {
-  color: rgba(56, 189, 248, 0.95);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: rgba(34, 34, 34, 0.75);
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 0.9rem;
 }
 
 .modules-workshop__effect-label {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
-.modules-workshop__cost-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--spacing-md);
+.modules-workshop__effect-values {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+}
+
+.modules-workshop__effect-arrow {
+  opacity: 0.65;
+}
+
+.modules-workshop__effect-current {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.modules-workshop__effect-next {
+  color: rgba(94, 234, 212, 0.95);
+  font-weight: 600;
+}
+
+.modules-workshop__cost-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modules-workshop__cost-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: rgba(34, 34, 34, 0.75);
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 0.9rem;
+}
+
+.modules-workshop__cost-label {
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .modules-workshop__cost-value {
-  display: block;
-  font-size: 1.1rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-text-strong);
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .modules-workshop__cost-summary {

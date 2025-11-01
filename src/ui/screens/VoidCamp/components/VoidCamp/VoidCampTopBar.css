@@ -10,7 +10,7 @@
 .void-camp-top-bar__right {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
 }
 
 .void-camp-top-bar__label {

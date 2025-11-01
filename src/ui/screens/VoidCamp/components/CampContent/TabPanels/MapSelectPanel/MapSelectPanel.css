@@ -14,11 +14,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-sxl);
   border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: var(--color-surface-card);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.48);
+  box-shadow: 0 0px 12px rgba(0, 0, 0, 0.48);
   transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   width: 320px;
   cursor: pointer;
@@ -26,8 +26,8 @@
 
 .map-select-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(160, 210, 255, 0.4);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0px 16px rgba(0, 0, 0, 0.55);
 }
 
 .map-select-card--selected {
@@ -70,7 +70,7 @@
 }
 
 .map-select-card__details dt {
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text-strong);
 }
 

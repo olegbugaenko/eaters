@@ -115,7 +115,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
 
   if (!selectedUnit) {
     return (
-      <div className="unit-designer surface-panel stack-lg">
+      <div className="unit-designer stack-lg">
         <header className="unit-designer__header">
           <div>
             <h2 className="heading-2">Unit Designer</h2>
@@ -151,17 +151,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
   const isAtModuleCap = selectedModuleIds.length >= state.maxModules;
 
   return (
-    <div className="unit-designer surface-panel stack-lg">
-      <header className="unit-designer__header">
-        <div>
-          <h2 className="heading-2">Unit Designer</h2>
-          <p className="body-md text-muted">
-            Shape your creatures by slotting crafted armaments and manifested limbs.
-          </p>
-        </div>
-      </header>
+    <div className="unit-designer stack-lg">
       <div className="unit-designer__content">
-        <aside className="unit-designer__list">
+        <div className="unit-designer__main surface-panel">
+          <aside className="unit-designer__list">
           <div className="unit-designer__list-header">
             <h3 className="heading-4">Units</h3>
             <Button onClick={handleCreateUnit}>New Unit</Button>
@@ -175,21 +168,29 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
               );
               return (
                 <li key={unit.id} className="unit-designer__list-entry">
-                  <div className="unit-designer__list-row">
+                  <div
+                    className={listItemClassName}
+                    onClick={() => handleSelectUnit(unit.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectUnit(unit.id);
+                      }
+                    }}
+                  >
+                    <div className="unit-designer__list-text">
+                      <span className="unit-designer__list-name">{unit.name}</span>
+                      <span className="unit-designer__list-modules">{unit.modules.length} modules</span>
+                    </div>
                     <button
                       type="button"
-                      className={listItemClassName}
-                      onClick={() => handleSelectUnit(unit.id)}
-                    >
-                      <div className="unit-designer__list-text">
-                        <span className="unit-designer__list-name">{unit.name}</span>
-                        <span className="unit-designer__list-modules">{unit.modules.length} modules</span>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      className="unit-designer__text-button unit-designer__delete"
-                      onClick={() => handleDeleteUnit(unit.id)}
+                      className={classNames("danger-button", "small-button", "button")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteUnit(unit.id);
+                      }}
                       aria-label={`Delete ${unit.name}`}
                     >
                       Delete
@@ -238,7 +239,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                     </div>
                     <button
                       type="button"
-                      className="unit-designer__text-button"
+                      className={classNames("danger-button", "small-button", "button")}
                       onClick={() => handleRemoveModule(selectedUnit.id, module.id, selectedModuleIds)}
                     >
                       Remove
@@ -279,7 +280,11 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                         </button>
                         <button
                           type="button"
-                          className="unit-designer__available-action"
+                          className={classNames(
+                            "primary-button",
+                            "small-button",
+                            "button"
+                          )}
                           disabled={disabled}
                           onClick={() => handleAddModule(selectedUnit.id, module.id, selectedModuleIds)}
                         >
@@ -293,12 +298,12 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             </div>
           </div>
         </section>
+        </div>
         <aside className="unit-designer__summary surface-sidebar">
-          <div className="unit-designer__summary-scroll">
-            <div className="unit-designer__module-preview">
+          
               {previewModule ? (
                 <ModuleDetailsCard
-                  className="unit-designer__module-card"
+                  className="unit-designer__module-card no-wrapper"
                   name={previewModule.name}
                   level={previewModule.level}
                   description={previewModule.description}
@@ -310,27 +315,27 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   manaMultiplier={previewModule.manaCostMultiplier}
                   sanityCost={previewModule.sanityCost}
                 />
-              ) : null}
-            </div>
-            <section className="unit-designer__cost">
-              <h5 className="heading-5">Summoning Cost</h5>
-              <ResourceCostDisplay cost={selectedUnit.cost} missing={missingCost} />
-            </section>
-            <section className="unit-designer__stats">
-              <h5 className="heading-5">Stats</h5>
-              <dl>
-                {statEntries.map((entry) => (
-                  <div key={entry.label} className="unit-designer__stat">
-                    <dt>{entry.label}</dt>
-                    <dd>
-                      <span>{entry.value}</span>
-                      {entry.hint ? <span className="unit-designer__stat-hint">{entry.hint}</span> : null}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          </div>
+              ) : (<div className="unit-designer__summary-scroll">
+            <div className="unit-designer__module-preview">
+              <section className="unit-designer__cost">
+                <h5 className="heading-5">Summoning Cost</h5>
+                <ResourceCostDisplay cost={selectedUnit.cost} />
+              </section>
+              <section className="unit-designer__stats">
+                <h5 className="heading-5">Stats</h5>
+                <dl>
+                  {statEntries.map((entry) => (
+                    <div key={entry.label} className="unit-designer__stat">
+                      <dt>{entry.label}</dt>
+                      <dd>
+                        <span>{entry.value}</span>
+                        {entry.hint ? <span className="unit-designer__stat-hint">{entry.hint}</span> : null}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section></div></div>)}
+            
         </aside>
       </div>
     </div>

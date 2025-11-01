@@ -130,10 +130,9 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   }
 
   return (
-    <div className="modules-workshop surface-panel stack-lg">
+    <div className="modules-workshop stack-lg">
       <header className="modules-workshop__header">
         <div>
-          <h2 className="heading-2">Organ Workshop</h2>
           <p className="text-muted">Cultivate organs and manifested parts, then refine them over time.</p>
         </div>
       </header>

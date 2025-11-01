@@ -219,24 +219,25 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
   const draftOption = targetingLookup.get(draftMode) ?? TARGETING_OPTIONS[0]!;
 
   return (
-    <div className="unit-roster surface-panel stack-lg">
+    <div className="unit-roster stack-lg">
       <header className="unit-roster__header">
         <div>
-          <h2 className="heading-2">Battle Roster</h2>
           <p className="body-md text-muted">
             Select up to {maxSlots} units to deploy and reorder them to prioritise
             deployment.
           </p>
         </div>
-        <Button onClick={handleClearRoster} disabled={roster.length === 0}>
+        <button
+          type="button"
+          className={classNames("danger-button", "button")}
+          onClick={handleClearRoster}
+          disabled={roster.length === 0}
+        >
           Clear roster
-        </Button>
+        </button>
       </header>
       <div className="unit-roster__content">
-        <section className="unit-roster__slots surface-sidebar">
-          <div className="unit-roster__slots-header">
-            <h3 className="heading-4">Active Lineup</h3>
-          </div>
+        <section className="unit-roster__slots">
           <ol className="unit-roster__slot-list">
             {Array.from({ length: maxSlots }).map((_, index) => {
               const unit = rosterUnits[index] ?? null;
@@ -258,19 +259,18 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                           <span className="unit-roster__slot-name">{unit.name}</span>
                           <button
                             type="button"
-                            className="unit-roster__slot-strategy-button"
+                            className={classNames(
+                              "primary-button",
+                              "small-button",
+                              "button"
+                            )}
                             onClick={() => openStrategySettings(unit.id)}
                             aria-haspopup="dialog"
                             aria-expanded={
                               isStrategyOpen && editingStrategyDesignId === unit.id
                             }
                           >
-                            <span className="unit-roster__slot-strategy-label">
-                              Strategy
-                            </span>
-                            <span className="unit-roster__slot-strategy-value">
-                              {currentOption.label}
-                            </span>
+                            <span>Strategy: {currentOption.label}</span>
                           </button>
                         </div>
                         <span className="unit-roster__slot-meta">
@@ -281,7 +281,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                         <div className="unit-roster__slot-controls">
                           <button
                             type="button"
-                            className="unit-roster__slot-button"
+                            className={classNames(
+                              "secondary-button",
+                              "small-button",
+                              "button"
+                            )}
                             onClick={() => handleMove(index, -1)}
                             disabled={index === 0}
                             aria-label={`Move ${unit.name} up`}
@@ -290,7 +294,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                           </button>
                           <button
                             type="button"
-                            className="unit-roster__slot-button"
+                            className={classNames(
+                              "secondary-button",
+                              "small-button",
+                              "button"
+                            )}
                             onClick={() => handleMove(index, 1)}
                             disabled={index >= roster.length - 1}
                             aria-label={`Move ${unit.name} down`}
@@ -299,7 +307,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                           </button>
                           <button
                             type="button"
-                            className="unit-roster__slot-remove"
+                            className={classNames(
+                              "danger-button",
+                              "small-button",
+                              "button"
+                            )}
                             onClick={() => handleClearSlot(index)}
                           >
                             Remove
@@ -384,7 +396,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                       ) : null}
                       <button
                         type="button"
-                        className="unit-roster__list-button"
+                        className={classNames(
+                          isActive ? "danger-button" : "primary-button",
+                          "small-button",
+                          "button"
+                        )}
                         onClick={() =>
                           isActive
                             ? handleRemoveFromRoster(unit.id)
