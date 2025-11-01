@@ -225,7 +225,7 @@ export const SkillTreeView: React.FC = () => {
   const previousViewportSizeRef = useRef({ width: 0, height: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [viewTransform, setViewTransform] = useState<ViewTransform>({
-    scale: 1,
+    scale: 0.8,
     offsetX: 0,
     offsetY: 0,
   });

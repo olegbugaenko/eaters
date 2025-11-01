@@ -41,25 +41,27 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
       </div>
       <p className="modules-workshop__details-description">{description}</p>
       <div className="modules-workshop__details-section">
-        <h4>{effectTitle}</h4>
+        <h4>{nextEffect ? "Bonuses" : "Effect"}</h4>
         <div className="modules-workshop__effect-preview">
-          <span className="modules-workshop__effect-current">{currentEffect}</span>
-          {nextEffect ? (
-            <>
-              <span className="modules-workshop__effect-arrow" aria-hidden="true">
-                →
-              </span>
-              <span className="modules-workshop__effect-next">{nextEffect}</span>
-            </>
-          ) : null}
+          <span className="modules-workshop__effect-label">{effectLabel}</span>
+          <span className="modules-workshop__effect-values">
+            <span className="modules-workshop__effect-current">{currentEffect}</span>
+            {nextEffect ? (
+              <>
+                <span className="modules-workshop__effect-arrow" aria-hidden="true">
+                  →
+                </span>
+                <span className="modules-workshop__effect-next">{nextEffect}</span>
+              </>
+            ) : null}
+          </span>
         </div>
-        <span className="modules-workshop__effect-label">{effectLabel}</span>
       </div>
       <div className="modules-workshop__details-section">
-        <h4>Costs</h4>
-        <div className="modules-workshop__cost-row">
-          <div>
-            <span className="text-subtle">Mana Multiplier</span>
+        <h4>Unit Costs</h4>
+        <div className="modules-workshop__cost-list">
+          <div className="modules-workshop__cost-item">
+            <span className="modules-workshop__cost-label">Mana Multiplier</span>
             <span className="modules-workshop__cost-value">
               ×
               {formatNumber(manaMultiplier, {
@@ -68,8 +70,8 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
               })}
             </span>
           </div>
-          <div>
-            <span className="text-subtle">Sanity Increase</span>
+          <div className="modules-workshop__cost-item">
+            <span className="modules-workshop__cost-label">Sanity Increase</span>
             <span className="modules-workshop__cost-value">
               +
               {formatNumber(sanityCost, {

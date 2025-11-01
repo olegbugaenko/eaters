@@ -11,9 +11,9 @@
   flex: 1;
   position: relative;
   padding: 1rem;
-  border-radius: 1.25rem;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(148, 163, 184, 0.2);
-  background: radial-gradient(circle at top, rgba(15, 23, 42, 0.85), rgba(8, 13, 25, 0.92));
+  background: rgba(34,34,34,0.7);
   box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   cursor: grab;
@@ -64,8 +64,8 @@
   width: 78px;
   height: 78px;
   border-radius: 50%;
-  border: 2px solid rgba(148, 163, 184, 0.35);
-  background: radial-gradient(circle at 35% 30%, rgba(148, 163, 184, 0.25), rgba(15, 23, 42, 0.9));
+  border: 2px solid rgba(184, 184, 184, 0.35);
+  background: radial-gradient(circle at 35% 30%, rgba(148, 184, 184, 0.5), rgba(15, 15, 15, 1.0));
   color: #e2e8f0;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -104,7 +104,7 @@
 }
 
 .skill-tree-node--unlocked {
-  border-color: rgba(96, 165, 250, 0.45);
+  border-color: rgba(112, 180, 194, 0.85);
 }
 
 .skill-tree-node--available {
@@ -127,12 +127,12 @@
 }
 
 .skill-tree-node--maxed {
-  border-color: rgba(147, 197, 253, 0.85);
+  border-color: rgba(147, 147, 147, 0.85);
   background: radial-gradient(circle at 40% 30%, rgba(191, 219, 254, 0.35), rgba(30, 41, 59, 0.9));
 }
 
 .skill-tree-node--active {
-  box-shadow: 0 0 28px rgba(129, 140, 248, 0.45);
+  box-shadow: 0 0 28px rgba(248, 248, 248, 0.45);
   border-color: rgba(129, 140, 248, 0.85);
 }
 
@@ -151,14 +151,14 @@
 .skill-tree__details {
   width: 320px;
   flex-shrink: 0;
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 1.25rem;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  padding: 1.5rem;
+  background: rgba(34, 34, 34, 0.45);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-soft);
+  padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
+  gap: var(--spacing-md);
+  box-shadow: var(--shadow-panel);
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
@@ -168,21 +168,22 @@
 
 .skill-tree__details-header {
   display: flex;
-  flex-direction: column;
   gap: 0.35rem;
+  justify-content: space-between;
 }
 
 .skill-tree__details-header h2 {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   letter-spacing: 0.06em;
 }
 
 .skill-tree__details-level {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.85);
+  color: rgba(148, 163, 184, 1.0);
+  width: 100px;
 }
 
 .skill-tree__details-description {
@@ -193,10 +194,9 @@
 
 .skill-tree__details-section h3 {
   margin: 0 0 0.5rem;
-  font-size: 1rem;
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(148, 197, 255, 0.95);
 }
 
 .skill-tree__requirements {
@@ -212,18 +212,17 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(234, 179, 8, 0.35);
-  background: rgba(74, 20, 20, 0.35);
-  color: rgba(252, 211, 77, 0.9);
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: rgba(34, 34, 34, 0.45);
+  color: rgba(255, 184, 184, 0.85);
   font-size: 0.85rem;
 }
 
 .skill-tree__requirement--met {
-  border-color: rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.75);
-  color: rgba(226, 232, 240, 0.9);
+  border-color: var(--color-border-soft);
+  color: var(--color-text-primary);
 }
 
 .skill-tree__requirement-name {

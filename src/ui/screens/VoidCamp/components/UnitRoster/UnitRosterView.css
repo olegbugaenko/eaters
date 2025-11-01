@@ -99,16 +99,15 @@
   align-items: flex-start;
   gap: var(--spacing-sm);
   border: 1px dashed var(--color-border-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(34, 34, 34, 0.0);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .unit-roster__slot--filled {
   border-style: solid;
-  border-color: rgba(56, 189, 248, 0.5);
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(34, 34, 34, 0.0);
 }
 
 .unit-roster__slot-index {
@@ -255,16 +254,6 @@
 
 .unit-roster__automation-weight input {
   width: 4rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  background: rgba(15, 23, 42, 0.45);
-  color: var(--color-text-strong);
-}
-
-.unit-roster__automation-weight input:focus-visible {
-  outline: 2px solid rgba(56, 189, 248, 0.55);
-  outline-offset: 1px;
 }
 
 .unit-roster__slot-empty {
