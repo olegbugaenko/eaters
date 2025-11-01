@@ -19,6 +19,7 @@ export interface ResourceDiamondMeterProps {
   glowColor: string;
   showText?: boolean;
   formatValue?: (current: number, max: number, percent: number) => React.ReactNode;
+  title?: string;
 }
 
 const DIAMOND_SIZE = 120;
@@ -35,6 +36,7 @@ export const ResourceDiamondMeter: React.FC<ResourceDiamondMeterProps> = ({
   glowColor,
   showText = true,
   formatValue,
+  title,
 }) => {
   const safeMax = sanitizeMax(max);
   const safeCurrent = clampValue(current, 0, safeMax);
@@ -110,6 +112,7 @@ export const ResourceDiamondMeter: React.FC<ResourceDiamondMeterProps> = ({
         <path d={DIAMOND_PATH} fill="none" stroke={outlineColor} strokeWidth="2" opacity="0.9" />
         <path d={INNER_RIDGE_PATH} fill="none" stroke="rgba(255, 255, 255, 0.35)" strokeWidth="1.5" opacity="0.7" />
       </svg>
+      {title ? <div className="resource-diamond-meter__title">{title}</div> : null}
       {showText ? <div className="resource-diamond-meter__value">{label}</div> : null}
     </div>
   );
