@@ -8,6 +8,7 @@
   );
   --color-surface-base: rgba(34, 34, 34, 0.45);
   --color-surface-main: rgba(34, 34, 34, 0.45);
+  --color-surface-saturated: rgba(34, 34, 34, 0.75);
   --color-surface-sidebar: rgba(34, 34, 34, 0.45);
   --color-surface-card: rgba(34, 34, 34, 0.45);
   --color-surface-elevated: rgba(34, 34, 34, 0.45);

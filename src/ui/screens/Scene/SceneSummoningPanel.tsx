@@ -122,9 +122,6 @@ export const SceneSummoningPanel = forwardRef<
         <div className="scene-summoning-panel__summon">
           <div className="scene-summoning-panel__section scene-summoning-panel__section--left">
             <div id="sanity-resource" className={sanityResourceClassName}>
-              <div className="scene-summoning-panel__resource-label">
-                Sanity
-              </div>
               <ResourceDiamondMeter
                 id="sanity"
                 className="scene-summoning-panel__resource-meter scene-summoning-panel__resource-meter--sanity"
@@ -138,6 +135,7 @@ export const SceneSummoningPanel = forwardRef<
                 outlineColor="rgba(236, 72, 153, 0.5)"
                 glowColor="rgba(168, 85, 247, 0.35)"
                 formatValue={formatResourceValue}
+                title="Sanity"
               />
             </div>
           </div>
@@ -158,23 +156,30 @@ export const SceneSummoningPanel = forwardRef<
                     className="scene-summoning-panel__unit"
                   >
                     <div
-                      className="scene-summoning-panel__unit-action-wrapper"
+                      className={actionClassName}
                       onMouseEnter={() => showUnitTooltip(option.blueprint)}
                       onMouseLeave={hideTooltip}
-                    >
-                      <button
-                        type="button"
-                        className={actionClassName}
-                        onClick={() => {
-                          if (canAfford) {
+                      onClick={(e) => {
+                        if (canAfford && !(e.target as HTMLElement).closest('.scene-summoning-panel__automation-toggle')) {
+                          onSummon(option.designId);
+                        }
+                      }}
+                      onFocus={() => showUnitTooltip(option.blueprint)}
+                      onBlur={hideTooltip}
+                      role="button"
+                      tabIndex={canAfford ? 0 : -1}
+                      onKeyDown={(e) => {
+                        if ((e.key === "Enter" || e.key === " ") && canAfford) {
+                          e.preventDefault();
+                          if (!(e.target as HTMLElement).closest('.scene-summoning-panel__automation-toggle')) {
                             onSummon(option.designId);
                           }
-                        }}
-                        onFocus={() => showUnitTooltip(option.blueprint)}
-                        onBlur={hideTooltip}
-                        disabled={!canAfford}
-                      >
-                        <div className="scene-summoning-panel__unit-header">
+                        }
+                      }}
+                      aria-disabled={!canAfford}
+                    >
+                      <div className="scene-summoning-panel__unit-header">
+                        <div className="scene-summoning-panel__unit-name-wrapper">
                           <span className="scene-summoning-panel__unit-name">
                             {option.name}
                           </span>
@@ -184,57 +189,57 @@ export const SceneSummoningPanel = forwardRef<
                             </span>
                           )}
                         </div>
-                        <div className="scene-summoning-panel__unit-cost">
-                          <ResourceCostDisplay
-                            cost={option.cost}
-                            missing={missing}
-                          />
-                        </div>
-                      </button>
-                      {automation.unlocked && (
-                        <label className="scene-summoning-panel__automation-toggle">
-                          <input
-                            type="checkbox"
-                            checked={automationEnabled}
-                            onChange={(event) =>
-                              onToggleAutomation(
-                                option.designId,
-                                event.target.checked,
-                              )
-                            }
-                          />
-                          <span>Automate</span>
-                        </label>
-                      )}
+                        {automation.unlocked && (
+                          <label className="scene-summoning-panel__automation-toggle" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={automationEnabled}
+                              onChange={(event) =>
+                                onToggleAutomation(
+                                  option.designId,
+                                  event.target.checked,
+                                )
+                              }
+                            />
+                            <span>Automate</span>
+                          </label>
+                        )}
+                      </div>
+                      <div className="scene-summoning-panel__unit-cost">
+                        <ResourceCostDisplay
+                          cost={option.cost}
+                          missing={missing}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
-          <div className="scene-summoning-panel__section scene-summoning-panel__section--right">
-            <div id="mana-resource" className={manaResourceClassName}>
-              <div className="scene-summoning-panel__resource-label">Mana</div>
-              <ResourceDiamondMeter
-                id="mana"
-                className="scene-summoning-panel__resource-meter scene-summoning-panel__resource-meter--mana"
-                current={resources.mana.current}
-                max={resources.mana.max}
-                gradientStops={[
-                  { offset: 0, color: "#1e3a8a" },
-                  { offset: 0.45, color: "#2563eb" },
-                  { offset: 1, color: "#22d3ee" },
-                ]}
-                outlineColor="rgba(59, 130, 246, 0.6)"
-                glowColor="rgba(56, 189, 248, 0.35)"
-                formatValue={formatResourceValue}
-              />
-            </div>
-          </div>
         </div>
         <div className="scene-summoning-panel__spells-area">
           <div className="scene-summoning-panel__spells-placeholder">
             Spellcasting rituals will appear here soon.
+          </div>
+        </div>
+        <div className="scene-summoning-panel__section scene-summoning-panel__section--right">
+          <div id="mana-resource" className={manaResourceClassName}>
+            <ResourceDiamondMeter
+              id="mana"
+              className="scene-summoning-panel__resource-meter scene-summoning-panel__resource-meter--mana"
+              current={resources.mana.current}
+              max={resources.mana.max}
+              gradientStops={[
+                { offset: 0, color: "#1e3a8a" },
+                { offset: 0.45, color: "#2563eb" },
+                { offset: 1, color: "#22d3ee" },
+              ]}
+              outlineColor="rgba(59, 130, 246, 0.6)"
+              glowColor="rgba(56, 189, 248, 0.35)"
+              formatValue={formatResourceValue}
+              title="Mana"
+            />
           </div>
         </div>
       </div>
