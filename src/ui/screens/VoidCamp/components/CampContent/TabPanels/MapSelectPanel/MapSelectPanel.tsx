@@ -77,7 +77,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         className={classNames(
                           "secondary-button",
                           "small-button",
-                          "button"
+                          "button",
+                          "square",
+                          "lg-font"
                         )}
                         onClick={() => onSelectLevel(map.id, map.selectedLevel - 1)}
                         disabled={!canDecrease}
@@ -91,7 +93,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         className={classNames(
                           "secondary-button",
                           "small-button",
-                          "button"
+                          "button",
+                          "square",
+                          "lg-font"
                         )}
                         onClick={() => onSelectLevel(map.id, map.selectedLevel + 1)}
                         disabled={!canIncrease}

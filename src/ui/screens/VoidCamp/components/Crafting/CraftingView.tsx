@@ -6,6 +6,7 @@ import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
 import { ResourceIcon } from "@shared/icons/ResourceIcon";
 import { formatNumber } from "@shared/format/number";
 import { CraftingRecipeId } from "@db/crafting-recipes-db";
+import { classNames } from "@shared/classNames";
 import "./CraftingView.css";
 
 interface CraftingViewProps {
@@ -114,9 +115,8 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
   }
 
   return (
-    <div className="crafting-view surface-panel stack-lg">
+    <div className="crafting-view stack-lg">
       <header className="crafting-view__header">
-        <h2 className="heading-2">Workshop Queue</h2>
         <p className="text-muted">Convert stockpiled resources into advanced materials.</p>
       </header>
       <ul className="crafting-view__list">
@@ -171,7 +171,7 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                     <button
                       key={button.label}
                       type="button"
-                      className="crafting-recipe__quick-button"
+                      className={classNames("secondary-button", "small-button", "button")}
                       onClick={() => handleButtonClick(recipe.id, button.type, button.value)}
                     >
                       {button.label}

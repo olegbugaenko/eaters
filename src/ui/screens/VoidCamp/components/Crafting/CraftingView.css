@@ -100,28 +100,6 @@
   gap: var(--spacing-xs);
 }
 
-.crafting-recipe__quick-button {
-  padding: var(--spacing-2xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-soft);
-  background: var(--color-surface-raised);
-  color: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-}
-
-.crafting-recipe__quick-button:hover {
-  border-color: var(--color-border-strong);
-  background: rgba(56, 189, 248, 0.15);
-}
-
-.crafting-recipe__quick-button:focus {
-  outline: none;
-  border-color: rgba(56, 189, 248, 0.8);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
-}
-
 .crafting-recipe__queue-max {
   font-size: 0.8rem;
 }

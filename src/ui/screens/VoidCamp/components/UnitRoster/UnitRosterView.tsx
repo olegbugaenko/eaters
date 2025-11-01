@@ -284,7 +284,9 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                             className={classNames(
                               "secondary-button",
                               "small-button",
-                              "button"
+                              "button",
+                              "square",
+                              "lg-font"
                             )}
                             onClick={() => handleMove(index, -1)}
                             disabled={index === 0}
@@ -297,7 +299,9 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
                             className={classNames(
                               "secondary-button",
                               "small-button",
-                              "button"
+                              "button",
+                              "square",
+                              "lg-font"
                             )}
                             onClick={() => handleMove(index, 1)}
                             disabled={index >= roster.length - 1}

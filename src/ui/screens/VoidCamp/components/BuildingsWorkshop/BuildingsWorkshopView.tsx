@@ -122,10 +122,9 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   }
 
   return (
-    <div className="modules-workshop surface-panel stack-lg">
+    <div className="modules-workshop stack-lg">
       <header className="modules-workshop__header">
         <div>
-          <h2 className="heading-2">Construction Yard</h2>
           <p className="text-muted">Raise permanent structures that empower your rituals.</p>
         </div>
       </header>

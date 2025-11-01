@@ -14,7 +14,7 @@
   --color-surface-hover: rgba(132, 176, 212, 0.18);
   --color-border-soft: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
-  --color-border-accent: rgba(124, 204, 255, 0.55);
+  --color-border-accent: rgba(124, 255, 248, 0.13);
   --color-text-primary: #ffffff;
   --color-text-muted: rgba(255, 255, 255, 0.7);
   --color-text-subtle: rgba(255, 255, 255, 0.6);
@@ -24,8 +24,8 @@
 
   --color-button-primary: linear-gradient(-35deg, #477A85, #508A95);
   --color-button-primary-hover: linear-gradient(-35deg, #5EABBA, #70B4C2);
-  --color-button-danger: linear-gradient(-35deg, #8B7A47, #958A50);
-  --color-button-danger-hover: linear-gradient(-35deg, #BAAB5E, #C2B470);
+  --color-button-danger: linear-gradient(-35deg, #B79659, #B79659);
+  --color-button-danger-hover: linear-gradient(-35deg, #BAAB5E, #b69b6a);
   --color-button-secondary: rgba(45, 76, 83, 0.92);
   --color-button-secondary-hover: rgba(45, 76, 83, 1);
   --color-button-secondary-border: rgba(122, 173, 184, 0.7);
@@ -78,12 +78,13 @@ input, textarea, select {
 
 input[type="text"],
 input[type="number"] {
-  padding: 0.2rem 0.4rem;
+  padding: 0.35rem 0.4rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-accent);
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(34, 34, 34, 1);
   color: var(--color-text-strong);
   transition: border-color 0.2s ease, outline 0.2s ease;
+  outline: none;
 }
 
 input[type="text"]:focus-visible,
@@ -305,15 +306,10 @@ input[type="number"]:focus-visible {
   font-size: 1rem;
 }
 
-.button.secondary-button.small-button[aria-label*="Decrease"],
-.button.secondary-button.small-button[aria-label*="Increase"] {
+.button.secondary-button.small-button.square[aria-label*="Decrease"],
+.button.secondary-button.small-button.square[aria-label*="Increase"] {
   width: 1.75rem;
   height: 1.75rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
 }
 
 .small-button {
@@ -345,7 +341,7 @@ input[type="number"]:focus-visible {
 
 .secondary-button {
   background: var(--color-button-secondary);
-  color: var(--color-accent);
+  color: #fff;
   border: 1px solid var(--color-button-secondary-border);
   border-radius: var(--radius-sm);
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
@@ -366,13 +362,16 @@ input[type="number"]:focus-visible {
   outline: none;
 }
 
-.button.secondary-button.small-button {
+.button.square {
   width: 2rem;
   height: 2rem;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.button.lg-font {
   font-size: 1rem;
   font-weight: 600;
 }
