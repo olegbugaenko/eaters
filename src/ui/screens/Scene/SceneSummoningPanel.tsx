@@ -119,8 +119,8 @@ export const SceneSummoningPanel = forwardRef<
         className="scene-summoning-panel"
         onPointerLeave={hideTooltip}
       >
-        <div className="scene-summoning-panel__summon-area">
-          <div className="scene-summoning-panel__resources">
+        <div className="scene-summoning-panel__summon">
+          <div className="scene-summoning-panel__section scene-summoning-panel__section--left">
             <div id="sanity-resource" className={sanityResourceClassName}>
               <div className="scene-summoning-panel__resource-label">
                 Sanity
@@ -140,6 +140,79 @@ export const SceneSummoningPanel = forwardRef<
                 formatValue={formatResourceValue}
               />
             </div>
+          </div>
+          <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
+            <div className="scene-summoning-panel__unit-list">
+              {spawnOptions.map((option) => {
+                const missing = computeMissing(option.cost, available);
+                const canAfford = missing.mana <= 0 && missing.sanity <= 0;
+                const actionClassName = classNames(
+                  "scene-summoning-panel__unit-action",
+                  !canAfford && "scene-summoning-panel__unit-action--disabled",
+                );
+                const automationEntry = automationLookup.get(option.designId);
+                const automationEnabled = automationEntry?.enabled ?? false;
+                return (
+                  <div
+                    key={option.designId}
+                    className="scene-summoning-panel__unit"
+                  >
+                    <div
+                      className="scene-summoning-panel__unit-action-wrapper"
+                      onMouseEnter={() => showUnitTooltip(option.blueprint)}
+                      onMouseLeave={hideTooltip}
+                    >
+                      <button
+                        type="button"
+                        className={actionClassName}
+                        onClick={() => {
+                          if (canAfford) {
+                            onSummon(option.designId);
+                          }
+                        }}
+                        onFocus={() => showUnitTooltip(option.blueprint)}
+                        onBlur={hideTooltip}
+                        disabled={!canAfford}
+                      >
+                        <div className="scene-summoning-panel__unit-header">
+                          <span className="scene-summoning-panel__unit-name">
+                            {option.name}
+                          </span>
+                          {(unitCountsByDesign[option.designId] ?? 0) > 0 && (
+                            <span className="scene-summoning-panel__unit-count">
+                              ({unitCountsByDesign[option.designId]})
+                            </span>
+                          )}
+                        </div>
+                        <div className="scene-summoning-panel__unit-cost">
+                          <ResourceCostDisplay
+                            cost={option.cost}
+                            missing={missing}
+                          />
+                        </div>
+                      </button>
+                      {automation.unlocked && (
+                        <label className="scene-summoning-panel__automation-toggle">
+                          <input
+                            type="checkbox"
+                            checked={automationEnabled}
+                            onChange={(event) =>
+                              onToggleAutomation(
+                                option.designId,
+                                event.target.checked,
+                              )
+                            }
+                          />
+                          <span>Automate</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="scene-summoning-panel__section scene-summoning-panel__section--right">
             <div id="mana-resource" className={manaResourceClassName}>
               <div className="scene-summoning-panel__resource-label">Mana</div>
               <ResourceDiamondMeter
@@ -157,75 +230,6 @@ export const SceneSummoningPanel = forwardRef<
                 formatValue={formatResourceValue}
               />
             </div>
-          </div>
-          <div className="scene-summoning-panel__unit-list">
-            {spawnOptions.map((option) => {
-              const missing = computeMissing(option.cost, available);
-              const canAfford = missing.mana <= 0 && missing.sanity <= 0;
-              const actionClassName = classNames(
-                "scene-summoning-panel__unit-action",
-                !canAfford && "scene-summoning-panel__unit-action--disabled",
-              );
-              const automationEntry = automationLookup.get(option.designId);
-              const automationEnabled = automationEntry?.enabled ?? false;
-              return (
-                <div
-                  key={option.designId}
-                  className="scene-summoning-panel__unit"
-                >
-                  <div
-                    className="scene-summoning-panel__unit-content"
-                    onMouseEnter={() => showUnitTooltip(option.blueprint)}
-                    onMouseLeave={hideTooltip}
-                  >
-                    <button
-                      type="button"
-                      className={actionClassName}
-                      onClick={() => {
-                        if (canAfford) {
-                          onSummon(option.designId);
-                        }
-                      }}
-                      onFocus={() => showUnitTooltip(option.blueprint)}
-                      onBlur={hideTooltip}
-                      disabled={!canAfford}
-                    >
-                      <div className="scene-summoning-panel__unit-header">
-                        <span className="scene-summoning-panel__unit-name">
-                          {option.name}
-                        </span>
-                        {(unitCountsByDesign[option.designId] ?? 0) > 0 && (
-                          <span className="scene-summoning-panel__unit-count">
-                            ({unitCountsByDesign[option.designId]})
-                          </span>
-                        )}
-                      </div>
-                      <div className="scene-summoning-panel__unit-cost">
-                        <ResourceCostDisplay
-                          cost={option.cost}
-                          missing={missing}
-                        />
-                      </div>
-                    </button>
-                    {automation.unlocked && (
-                      <label className="scene-summoning-panel__automation-toggle">
-                        <input
-                          type="checkbox"
-                          checked={automationEnabled}
-                          onChange={(event) =>
-                            onToggleAutomation(
-                              option.designId,
-                              event.target.checked,
-                            )
-                          }
-                        />
-                        <span>Automate</span>
-                      </label>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
         <div className="scene-summoning-panel__spells-area">
