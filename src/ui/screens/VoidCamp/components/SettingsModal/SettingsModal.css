@@ -10,11 +10,11 @@
 }
 
 .settings-modal__dialog {
-  width: min(640px, 100%);
+  width: min(720px, 100%);
   max-height: 90vh;
-  background: var(--color-surface-main);
+  background: var(--popup-bg-color);
   border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
   padding: var(--spacing-xl);
   display: flex;

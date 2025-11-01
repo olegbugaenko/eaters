@@ -106,17 +106,19 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
             Close
           </button>
         </header>
-        <ul className="statistics-modal__list">
-          {stats.map((entry) => (
-            <li key={entry.label} className="statistics-modal__item">
-              <span className="statistics-modal__label">{entry.label}</span>
-              <span className="statistics-modal__value">{entry.value}</span>
-              {entry.note ? (
-                <span className="statistics-modal__note">{entry.note}</span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div className="statistics-modal__content">
+          <ul className="statistics-modal__list">
+            {stats.map((entry) => (
+              <li key={entry.label} className="statistics-modal__item">
+                <span className="statistics-modal__label">{entry.label}</span>
+                <span className="statistics-modal__value">{entry.value}</span>
+                {entry.note ? (
+                  <span className="statistics-modal__note">{entry.note}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
