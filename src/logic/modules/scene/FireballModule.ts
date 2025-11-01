@@ -28,7 +28,7 @@ interface FireballState {
   elapsedMs: number;
   lifetimeMs: number;
   sourceUnitId: string;
-  lastKnownTargetPosition: SceneVector2;
+  lastKnownTargetPosition: SceneVector2 | null;
 }
 
 export interface FireballTrailEmitterConfig {
@@ -145,7 +145,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
 };
 
 const cloneTrailEmitterConfig = (
-  config: FireballTrailEmitterConfig
+  config: FireballTrailEmitterConfig,
 ): FireballTrailEmitterConfig => ({
   particlesPerSecond: config.particlesPerSecond,
   particleLifetimeMs: config.particleLifetimeMs,
@@ -191,7 +191,7 @@ export class FireballModule implements GameModule {
 
     this.fireballs.forEach((fireball) => {
       fireball.elapsedMs += deltaMs;
-      
+
       // Update position based on velocity
       const deltaSeconds = deltaMs / 1000;
       fireball.position.x += fireball.velocity.x * deltaSeconds;
@@ -224,24 +224,29 @@ export class FireballModule implements GameModule {
       });
 
       // Check if target brick still exists
-      const targetPosition = this.options.getBrickPosition(fireball.targetBrickId);
+      const targetPosition = this.options.getBrickPosition(
+        fireball.targetBrickId,
+      );
 
       if (targetPosition) {
         fireball.lastKnownTargetPosition = targetPosition;
       } else {
-        // Target brick no longer exists, check for nearby bricks to hit instead
-        const nearbyBricks = this.options.getBricksInRadius(fireball.position, fireball.radius + 20);
+        fireball.lastKnownTargetPosition = null;
+
+        const nearbyBricks = this.options.getBricksInRadius(
+          fireball.position,
+          fireball.radius + 20,
+        );
         if (nearbyBricks.length > 0) {
-          // Find the closest brick
           let closestBrickId: string | null = null;
           let closestDistance = Infinity;
-          
-          nearbyBricks.forEach(brickId => {
+
+          nearbyBricks.forEach((brickId) => {
             const brickPosition = this.options.getBrickPosition(brickId);
             if (brickPosition) {
               const distance = Math.sqrt(
                 Math.pow(fireball.position.x - brickPosition.x, 2) +
-                Math.pow(fireball.position.y - brickPosition.y, 2)
+                  Math.pow(fireball.position.y - brickPosition.y, 2),
               );
               if (distance < closestDistance) {
                 closestDistance = distance;
@@ -251,22 +256,38 @@ export class FireballModule implements GameModule {
           });
 
           if (closestBrickId && closestDistance <= fireball.radius + 20) {
-            // Update target to the closest brick we hit
-            fireball.targetBrickId = closestBrickId;
-            const newTargetPosition = this.options.getBrickPosition(closestBrickId);
+            const newTargetPosition =
+              this.options.getBrickPosition(closestBrickId);
             if (newTargetPosition) {
+              fireball.targetBrickId = closestBrickId;
               fireball.lastKnownTargetPosition = newTargetPosition;
+
+              const currentSpeed =
+                Math.hypot(fireball.velocity.x, fireball.velocity.y) ||
+                FIREBALL_SPEED;
+              const toTargetX = newTargetPosition.x - fireball.position.x;
+              const toTargetY = newTargetPosition.y - fireball.position.y;
+              const distanceToNewTarget = Math.hypot(toTargetX, toTargetY) || 1;
+
+              fireball.velocity.x =
+                (toTargetX / distanceToNewTarget) * currentSpeed;
+              fireball.velocity.y =
+                (toTargetY / distanceToNewTarget) * currentSpeed;
             }
-            this.explodeFireball(fireball);
-            return;
           }
         }
       }
 
       if (fireball.lastKnownTargetPosition) {
         const distanceToTarget = Math.sqrt(
-          Math.pow(fireball.position.x - fireball.lastKnownTargetPosition.x, 2) +
-          Math.pow(fireball.position.y - fireball.lastKnownTargetPosition.y, 2)
+          Math.pow(
+            fireball.position.x - fireball.lastKnownTargetPosition.x,
+            2,
+          ) +
+            Math.pow(
+              fireball.position.y - fireball.lastKnownTargetPosition.y,
+              2,
+            ),
         );
 
         if (distanceToTarget <= fireball.radius + 20) {
@@ -276,18 +297,21 @@ export class FireballModule implements GameModule {
       }
 
       // Check collision with any nearby bricks (in case we're close to other bricks)
-      const nearbyBricks = this.options.getBricksInRadius(fireball.position, fireball.radius + 20);
+      const nearbyBricks = this.options.getBricksInRadius(
+        fireball.position,
+        fireball.radius + 20,
+      );
       if (nearbyBricks.length > 0) {
         // Find the closest brick
         let closestBrickId: string | null = null;
         let closestDistance = Infinity;
-        
-        nearbyBricks.forEach(brickId => {
+
+        nearbyBricks.forEach((brickId) => {
           const brickPosition = this.options.getBrickPosition(brickId);
           if (brickPosition) {
             const distance = Math.sqrt(
               Math.pow(fireball.position.x - brickPosition.x, 2) +
-              Math.pow(fireball.position.y - brickPosition.y, 2)
+                Math.pow(fireball.position.y - brickPosition.y, 2),
             );
             if (distance < closestDistance) {
               closestDistance = distance;
@@ -299,7 +323,8 @@ export class FireballModule implements GameModule {
         if (closestBrickId && closestDistance <= fireball.radius + 20) {
           // Update target to the closest brick we hit
           fireball.targetBrickId = closestBrickId;
-          const closestBrickPosition = this.options.getBrickPosition(closestBrickId);
+          const closestBrickPosition =
+            this.options.getBrickPosition(closestBrickId);
           if (closestBrickPosition) {
             fireball.lastKnownTargetPosition = closestBrickPosition;
           }
@@ -324,7 +349,7 @@ export class FireballModule implements GameModule {
     sourceUnitId: string,
     sourcePosition: SceneVector2,
     targetBrickId: string,
-    damage: number
+    damage: number,
   ): void {
     const targetPosition = this.options.getBrickPosition(targetBrickId);
     if (!targetPosition) {
@@ -342,7 +367,7 @@ export class FireballModule implements GameModule {
 
     const normalizedDx = dx / distance;
     const normalizedDy = dy / distance;
-    
+
     const velocity: SceneVector2 = {
       x: normalizedDx * FIREBALL_SPEED,
       y: normalizedDy * FIREBALL_SPEED,
@@ -425,7 +450,10 @@ export class FireballModule implements GameModule {
     this.options.damageBrick(fireball.targetBrickId, fireball.damage);
 
     // Damage nearby bricks within explosion radius
-    const nearbyBrickIds = this.options.getBricksInRadius(fireball.position, FIREBALL_EXPLOSION_RADIUS);
+    const nearbyBrickIds = this.options.getBricksInRadius(
+      fireball.position,
+      FIREBALL_EXPLOSION_RADIUS,
+    );
     nearbyBrickIds.forEach((brickId) => {
       if (brickId !== fireball.targetBrickId) {
         this.options.damageBrick(brickId, fireball.damage);
