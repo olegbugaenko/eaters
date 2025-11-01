@@ -61,7 +61,7 @@ const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
   baseSpeed: 0.02,
   speedVariation: 0.002,
   sizeRange: { min: 24.2, max: 28.4 },
-  spread: Math.PI / 1.5,
+  spread: Math.PI,
   offset: { x: -0.35, y: 0 },
   color: { r: 1, g: 0.7, b: 0.3, a: 0.45 },
   fill: {

@@ -997,8 +997,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           resources={resourceSummary.resources}
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          primaryAction={{ label: "Leave", onClick: onLeaveToMapSelect }}
-          secondaryAction={{ label: "Restart", onClick: handleRestart }}
+          primaryAction={{ label: "Return to Void Lab", onClick: onLeaveToMapSelect }}
+          secondaryAction={{ label: "Restart Map", onClick: handleRestart }}
           autoRestart={
             autoRestartState.unlocked
               ? {
@@ -1021,7 +1021,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
           primaryAction={{ label: "Continue", onClick: handleResume }}
-          secondaryAction={{ label: "Leave", onClick: handleLeaveToCamp }}
+          secondaryAction={{ label: "Return to Void Lab", onClick: handleLeaveToCamp }}
         />
       )}
       {showTutorial && (

@@ -23,7 +23,7 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
   ];
 
   if (modulesUnlocked) {
-    tabs.push({ key: "modules", label: "Organs" });
+    tabs.push({ key: "modules", label: "Biolab" });
   }
 
   if (craftingUnlocked) {
