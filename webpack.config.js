@@ -1,5 +1,44 @@
 const path = require('path');
+const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+const copyDirectory = async (source, destination) => {
+  await fs.promises.mkdir(destination, { recursive: true });
+  const entries = await fs.promises.readdir(source, { withFileTypes: true });
+
+  await Promise.all(
+    entries.map(async (entry) => {
+      const sourcePath = path.join(source, entry.name);
+      const destinationPath = path.join(destination, entry.name);
+
+      if (entry.isDirectory()) {
+        await copyDirectory(sourcePath, destinationPath);
+        return;
+      }
+
+      if (entry.name === 'index.html') {
+        return;
+      }
+
+      await fs.promises.copyFile(sourcePath, destinationPath);
+    })
+  );
+};
+
+class CopyStaticAssetsPlugin {
+  apply(compiler) {
+    compiler.hooks.afterEmit.tapPromise('CopyStaticAssetsPlugin', async () => {
+      const outputPath = compiler.options.output.path;
+      const publicPath = path.resolve(__dirname, 'public');
+
+      if (!fs.existsSync(publicPath)) {
+        return;
+      }
+
+      await copyDirectory(publicPath, outputPath);
+    });
+  }
+}
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
@@ -51,6 +90,7 @@ module.exports = (env, argv) => {
         template: './public/index.html',
         filename: 'index.html',
       }),
+      new CopyStaticAssetsPlugin(),
     ],
     devServer: {
       static: {
