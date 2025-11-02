@@ -244,11 +244,34 @@ export class BricksModule implements GameModule {
     return bricks.map((brick) => this.cloneState(brick));
   }
 
+  /**
+   * Performance-oriented variant: iterates nearby bricks without allocating
+   * per-brick clones or result arrays for the caller. The callback receives a
+   * read-only view of the internal brick state. Do not mutate it.
+   */
+  public forEachBrickNear(
+    position: SceneVector2,
+    radius: number,
+    visitor: (brick: Readonly<BrickRuntimeState>) => void,
+  ): void {
+    if (radius < 0) {
+      return;
+    }
+    const bricks = this.spatialIndex.queryCircle(position, radius);
+    if (bricks.length === 0) {
+      return;
+    }
+    for (let i = 0; i < bricks.length; i += 1) {
+      // InternalBrickState extends BrickRuntimeState; expose as readonly view
+      visitor(bricks[i]!);
+    }
+  }
+
   public applyDamage(
     brickId: string,
     rawDamage: number,
     hitDirection?: SceneVector2,
-    options?: { rewardMultiplier?: number; armorPenetration?: number }
+    options?: { rewardMultiplier?: number; armorPenetration?: number, overTime?: number }
   ): { destroyed: boolean; brick: BrickRuntimeState | null } {
     const brick = this.bricks.get(brickId);
     if (!brick) {
@@ -257,7 +280,7 @@ export class BricksModule implements GameModule {
 
     const rewardMultiplier = Math.max(options?.rewardMultiplier ?? 1, 0);
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
-    const effectiveArmor = Math.max(brick.armor - armorPenetration, 0);
+    const effectiveArmor = Math.max(brick.armor - armorPenetration, 0)*(options?.overTime ?? 1);
     const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0);
     if (effectiveDamage <= 0) {
       return { destroyed: false, brick: this.cloneState(brick) };

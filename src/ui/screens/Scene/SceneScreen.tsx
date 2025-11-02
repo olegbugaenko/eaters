@@ -47,7 +47,9 @@ import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
+import { setWhirlGlContext } from "../../renderers/primitives/whirlContext";
 import { renderParticleEmitters, disposeParticleRenderResources, getParticleStats } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
+import { renderWhirls, disposeWhirlResources } from "../../renderers/primitives/WhirlGpuRenderer";
 import { renderArcBatches } from "../../renderers/primitives/ArcGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
@@ -671,8 +673,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     if (webgl2) {
       setParticleEmitterGlContext(webgl2);
+      setWhirlGlContext(webgl2);
     } else {
       setParticleEmitterGlContext(null);
+      setWhirlGlContext(null);
     }
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -845,6 +849,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           cameraState.position,
           cameraState.viewportSize
         );
+        renderWhirls(
+          webgl2,
+          cameraState.position,
+          cameraState.viewportSize,
+          timestamp,
+        );
         renderArcBatches(
           webgl2,
           cameraState.position,
@@ -984,11 +994,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     return () => {
       setParticleEmitterGlContext(null);
+      setWhirlGlContext(null);
       if (webgl2) {
         try {
           disposeParticleRenderResources(webgl2);
         } catch {}
       }
+      try {
+        disposeWhirlResources();
+      } catch {}
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
       gl.deleteBuffer(staticBuffer);

@@ -10,6 +10,7 @@ import { ArcRenderer } from "./ArcRenderer";
 import { AuraRenderer } from "./AuraRenderer";
 import { FireballRenderer } from "./FireballRenderer";
 import { SpellProjectileRingRenderer } from "./SpellProjectileRingRenderer";
+import { SandStormRenderer } from "./SandStormRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
@@ -38,6 +39,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["fireball", new FireballRenderer()],
     ["spellProjectile", new BulletObjectRenderer()],
     ["spellProjectileRing", new SpellProjectileRingRenderer()],
+    ["sandStorm", new SandStormRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };

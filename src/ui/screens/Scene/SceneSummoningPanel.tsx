@@ -18,6 +18,7 @@ import "./SceneSummoningPanel.css";
 import { SceneTooltipContent } from "./SceneTooltipPanel";
 import { formatNumber } from "../../shared/format/number";
 import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
+import { createSpellTooltip } from "./tooltip-factory/createSpellTooltip";
 import { UnitAutomationBridgeState } from "../../../logic/modules/active-map/UnitAutomationModule";
 import {
   UnitDesignId,
@@ -105,6 +106,13 @@ export const SceneSummoningPanel = forwardRef<
     const showUnitTooltip = useCallback(
       (blueprint: NecromancerSpawnOption["blueprint"]) => {
         onHoverInfoChange(createUnitTooltip(blueprint));
+      },
+      [onHoverInfoChange],
+    );
+
+    const showSpellTooltip = useCallback(
+      (spell: SpellOption) => {
+        onHoverInfoChange(createSpellTooltip(spell));
       },
       [onHoverInfoChange],
     );
@@ -268,6 +276,10 @@ export const SceneSummoningPanel = forwardRef<
                         onSelectSpell(spell.id);
                       }
                     }}
+                    onMouseEnter={() => showSpellTooltip(spell)}
+                    onMouseLeave={hideTooltip}
+                    onFocus={() => showSpellTooltip(spell)}
+                    onBlur={hideTooltip}
                   >
                     <div className="scene-summoning-panel__spell-header">
                       <span className="scene-summoning-panel__spell-name">{spell.name}</span>
