@@ -148,6 +148,7 @@ export const SceneSummoningPanel = forwardRef<
             </div>
           </div>
           <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
+          <div className="scene-summoning-panel__spells-header">Summoning</div>
             <div className="scene-summoning-panel__unit-list">
               {spawnOptions.map((option) => {
                 const missing = computeMissing(option.cost, available);
