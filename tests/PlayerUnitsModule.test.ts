@@ -7,7 +7,7 @@ import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   PlayerUnitsModule,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/PlayerUnitsModule";
+} from "../src/logic/modules/active-map/units/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
 import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
 import type { EffectsModule } from "../src/logic/modules/scene/EffectsModule";

@@ -3,7 +3,7 @@ import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import { BricksModule } from "../src/logic/modules/active-map/BricksModule";
-import { PlayerUnitsModule } from "../src/logic/modules/active-map/PlayerUnitsModule";
+import { PlayerUnitsModule } from "../src/logic/modules/active-map/units/PlayerUnitsModule";
 import { MovementService } from "../src/logic/services/MovementService";
 import {
   MapModule,

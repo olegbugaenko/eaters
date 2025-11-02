@@ -13,7 +13,7 @@ import { ArcModule } from "../modules/scene/ArcModule";
 import { EffectsModule } from "../modules/scene/EffectsModule";
 import { FireballModule } from "../modules/scene/FireballModule";
 import { MapId } from "../../db/maps-db";
-import { PlayerUnitsModule } from "../modules/active-map/PlayerUnitsModule";
+import { PlayerUnitsModule } from "../modules/active-map/units/PlayerUnitsModule";
 import { MovementService } from "../services/MovementService";
 import { NecromancerModule } from "../modules/active-map/NecromancerModule";
 import { ResourcesModule } from "../modules/shared/ResourcesModule";
@@ -29,7 +29,7 @@ import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/ExplosionWaveGpuRenderer";
 import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
-import { SpellcastingModule } from "../modules/active-map/SpellcastingModule";
+import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();

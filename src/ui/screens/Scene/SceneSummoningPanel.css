@@ -37,6 +37,8 @@
   background: var(--color-surface-saturated);
   padding: 0.85rem 1rem 1rem;
   gap: 0.5rem;
+  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .scene-summoning-panel__resource {

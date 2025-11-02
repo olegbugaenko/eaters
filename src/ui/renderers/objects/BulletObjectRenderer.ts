@@ -33,6 +33,7 @@ interface BulletTailRenderConfig {
 interface BulletRendererCustomData {
   tail?: Partial<BulletTailRenderConfig>;
   tailEmitter?: BulletTailEmitterConfig;
+  shape?: "circle" | "triangle";
 }
 
 type BulletTailEmitterRenderConfig = ParticleEmitterBaseConfig & {
@@ -213,6 +214,22 @@ const getBulletRadius = (instance: SceneObjectInstance): number => {
   return Math.max(size.width, size.height) / 2;
 };
 
+const getProjectileShape = (instance: SceneObjectInstance): "circle" | "triangle" => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  return data?.shape ?? "circle";
+};
+
+const createTriangleVertices = (instance: SceneObjectInstance): [SceneVector2, SceneVector2, SceneVector2] => {
+  const radius = getBulletRadius(instance);
+  // Трикутник, спрямований вершиною вперед (у напрямку руху)
+  // Вершина вперед
+  const tip = { x: radius*2, y: 0 };
+  // Дві задні вершини
+  const baseLeft = { x: -radius * 0.6, y: radius * 0.8 };
+  const baseRight = { x: -radius * 0.6, y: -radius * 0.8 };
+  return [tip, baseLeft, baseRight];
+};
+
 const createTailVertices = (
   instance: SceneObjectInstance
 ): [SceneVector2, SceneVector2, SceneVector2] => {
@@ -264,7 +281,20 @@ export class BulletObjectRenderer extends ObjectRenderer {
         getFill: createTailFill,
       })
     );
-    dynamicPrimitives.push(createDynamicCirclePrimitive(instance));
+    
+    const shape = getProjectileShape(instance);
+    if (shape === "triangle") {
+      // Рендеримо трикутник як основну форму проджектайла
+      dynamicPrimitives.push(
+        createDynamicTrianglePrimitive(instance, {
+          getVertices: createTriangleVertices,
+          getFill: (inst) => inst.data.fill,
+        })
+      );
+    } else {
+      // Рендеримо коло як основну форму проджектайла
+      dynamicPrimitives.push(createDynamicCirclePrimitive(instance));
+    }
 
     return {
       staticPrimitives: [],

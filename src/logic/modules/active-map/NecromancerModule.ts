@@ -4,7 +4,7 @@ import {
   PlayerUnitsModule,
   PlayerUnitSpawnData,
   computePlayerUnitBlueprint,
-} from "./PlayerUnitsModule";
+} from "./units/PlayerUnitsModule";
 import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,

@@ -5,7 +5,7 @@ import { BricksModule, BrickData } from "./BricksModule";
 import {
   PlayerUnitsModule,
   PlayerUnitSpawnData,
-} from "./PlayerUnitsModule";
+} from "./units/PlayerUnitsModule";
 import { NecromancerModule } from "./NecromancerModule";
 import { UnlockService } from "../../services/UnlockService";
 import { ArcModule } from "../scene/ArcModule";

@@ -1,20 +1,20 @@
-import { GameModule } from "../../core/types";
-import { DataBridge } from "../../core/DataBridge";
-import { SceneObjectManager, SceneVector2 } from "../../services/SceneObjectManager";
-import { NecromancerModule } from "./NecromancerModule";
-import { BricksModule } from "./BricksModule";
+import { GameModule } from "../../../core/types";
+import { DataBridge } from "../../../core/DataBridge";
+import { SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
+import { NecromancerModule } from "../NecromancerModule";
+import { BricksModule } from "../BricksModule";
 import {
   SpellConfig,
   SpellId,
   SpellDamageConfig,
   getSpellConfig,
   SPELL_IDS,
-} from "../../../db/spells-db";
-import { ResourceAmountMap } from "../../../types/resources";
-import { BonusesModule, BonusValueMap } from "../shared/BonusesModule";
-import { SkillId } from "../../../db/skills-db";
-import { SpellBehaviorRegistry } from "./spells/SpellBehaviorRegistry";
-import { SpellCastContext, SpellCanCastContext } from "./spells/SpellBehavior";
+} from "../../../../db/spells-db";
+import { ResourceAmountMap } from "../../../../types/resources";
+import { BonusesModule, BonusValueMap } from "../../shared/BonusesModule";
+import { SkillId } from "../../../../db/skills-db";
+import { SpellBehaviorRegistry } from "./SpellBehaviorRegistry";
+import { SpellCastContext, SpellCanCastContext } from "./SpellBehavior";
 
 interface SpellOptionBase {
   id: SpellId;

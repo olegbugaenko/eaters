@@ -32,6 +32,9 @@ export const SKILL_IDS = [
   "glass_latticework",
   "arcane_amplifier",
   "sandstorm_ritual",
+  "black_darts",
+  "sharp_mind",
+  "sharp_mind2",
   "void_modules",
   "pheromones",
   "emberglass_reactors",
@@ -121,6 +124,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.3 * level,
+      },
+      spell_power: {
+        multiplier: (level) => 1 + 0.125 * level,
       },
     },
     nodesRequired: { },
@@ -268,7 +274,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Tune the lattice into a resonant chamber, amplifying the force carried by your spells.",
     nodePosition: { x: 0, y: -2 },
-    maxLevel: 5,
+    maxLevel: 10,
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.15 * level,
@@ -286,7 +292,46 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 1,
     effects: {},
     nodesRequired: { arcane_amplifier: 3 },
-    cost: createSandCost(140, 1.65),
+    cost: createSandCost(100, 1.0),
+  },
+  black_darts: {
+    id: "black_darts",
+    name: "Darts of the Void",
+    description:
+      "Unleash darts of metal and void energy that damage targets.",
+    nodePosition: { x: 1, y: -4 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { sandstorm_ritual: 1 },
+    cost: createResourceCost('iron', 140, 1.65),
+  },
+  sharp_mind: {
+    id: "sharp_mind",
+    name: "Sharp Mind",
+    description: "Increase spell power by 12% per level.",
+    nodePosition: { x: -1, y: -4 },
+    maxLevel: 15,
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { sandstorm_ritual: 1 },
+    cost: createResourceCost('organics', 30, 1.5),
+  },
+  sharp_mind2: {
+    id: "sharp_mind2",
+    name: "Sharp Mind II",
+    description: "Increase spell power by 12% per level.",
+    nodePosition: { x: -1, y: -5 },
+    maxLevel: 20,
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { sharp_mind: 5 },
+    cost: createResourceCost('paper', 5, 1.5),
   },
   void_modules: {
     id: "void_modules",
@@ -321,6 +366,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       mana_cap: {
         income: (level) => 3 * level,
       },
+      spell_power: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
     },
     nodesRequired: { glass_latticework: 1 },
     cost: createStoneCost(15, 1.35),
@@ -353,6 +401,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {
       mana_cap: {
         income: (level) => 3 * level,
+      },
+      spell_power: {
+        multiplier: (level) => 1 + 0.1 * level,
       },
     },
     nodesRequired: { emberglass_reactors: 2 },
