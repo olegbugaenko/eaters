@@ -9,8 +9,16 @@ import {
   BulletTailConfig,
   BulletTailEmitterConfig,
 } from "./bullets-db";
+import { SkillId } from "./skills-db";
 
-export type SpellId = "magic-arrow";
+export type SpellId = "magic-arrow" | "sand-storm";
+
+export type SpellType = "projectile" | "whirl";
+
+export interface SpellUnlockRequirement {
+  skillId: SkillId;
+  level: number;
+}
 
 export interface SpellDamageConfig {
   min: number;
@@ -28,15 +36,33 @@ export interface SpellProjectileConfig {
   ringTrail?: SpellProjectileRingTrailConfig;
 }
 
-export interface SpellConfig {
+export interface SpellWhirlConfig {
+  radius: number;
+  speed: number;
+  damagePerSecond: number;
+  maxHealth: number;
+  spinSpeed?: number;
+}
+
+interface SpellBaseConfig {
   id: SpellId;
   name: string;
   description: string;
   cost: ResourceAmountMap;
   cooldownSeconds: number;
-  damage: SpellDamageConfig;
-  projectile: SpellProjectileConfig;
+  unlock?: SpellUnlockRequirement | null;
 }
+
+export type SpellConfig =
+  | (SpellBaseConfig & {
+      type: "projectile";
+      damage: SpellDamageConfig;
+      projectile: SpellProjectileConfig;
+    })
+  | (SpellBaseConfig & {
+      type: "whirl";
+      whirl: SpellWhirlConfig;
+    });
 
 export interface SpellProjectileRingTrailConfig {
   spawnIntervalMs: number;
@@ -91,6 +117,7 @@ const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
 const SPELL_DB: Record<SpellId, SpellConfig> = {
   "magic-arrow": {
     id: "magic-arrow",
+    type: "projectile",
     name: "Magic Arrow",
     description:
       "Launch a razor of focused mana that slices through the air toward your target.",
@@ -116,6 +143,23 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         color: { r: 0.5, g: 0.7, b: 1, a: 0.1 },
       },
     },
+  },
+  "sand-storm": {
+    id: "sand-storm",
+    type: "whirl",
+    name: "Sand Storm",
+    description:
+      "Summon a whirling storm of scouring grit that grinds forward, shredding bricks until the vortex collapses.",
+    cost: { mana: 6.5, sanity: 1.4 },
+    cooldownSeconds: 12,
+    whirl: {
+      radius: 30,
+      speed: 120,
+      damagePerSecond: 1,
+      maxHealth: 100,
+      spinSpeed: 2.8,
+    },
+    unlock: { skillId: "sandstorm_ritual", level: 1 },
   },
 };
 

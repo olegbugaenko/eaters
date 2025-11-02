@@ -18,17 +18,33 @@ import {
 } from "../../../db/spells-db";
 import { ResourceAmountMap } from "../../../types/resources";
 import { BonusesModule, BonusValueMap } from "../shared/BonusesModule";
+import { SkillId } from "../../../db/skills-db";
 
-export interface SpellOption {
+interface SpellOptionBase {
   id: SpellId;
+  type: SpellConfig["type"];
   name: string;
   description: string;
   cost: ResourceAmountMap;
   cooldownSeconds: number;
   remainingCooldownMs: number;
-  damage: SpellDamageConfig;
   spellPowerMultiplier: number;
 }
+
+export interface ProjectileSpellOption extends SpellOptionBase {
+  type: "projectile";
+  damage: SpellDamageConfig;
+}
+
+export interface WhirlSpellOption extends SpellOptionBase {
+  type: "whirl";
+  damagePerSecond: number;
+  maxHealth: number;
+  radius: number;
+  speed: number;
+}
+
+export type SpellOption = ProjectileSpellOption | WhirlSpellOption;
 
 export const DEFAULT_SPELL_OPTIONS: SpellOption[] = [];
 
@@ -40,6 +56,7 @@ interface SpellcastingModuleOptions {
   necromancer: NecromancerModule;
   bricks: BricksModule;
   bonuses: BonusesModule;
+  getSkillLevel: (id: SkillId) => number;
 }
 
 interface SpellProjectileState {
@@ -51,7 +68,7 @@ interface SpellProjectileState {
   elapsedMs: number;
   lifetimeMs: number;
   direction: SceneVector2;
-  damage: SpellConfig["damage"];
+  damage: Extract<SpellConfig, { type: "projectile" }>["damage"];
   ringTrail?: SpellProjectileRingTrailState;
   damageMultiplier: number;
 }
@@ -64,6 +81,21 @@ interface SpellProjectileRingTrailState {
 interface SpellProjectileRingTrailRuntimeConfig
   extends Omit<SpellProjectileRingTrailConfig, "color"> {
   color: SceneColor;
+}
+
+interface SandStormState {
+  id: string;
+  spellId: SpellId;
+  position: SceneVector2;
+  velocity: SceneVector2;
+  radius: number;
+  baseDamagePerSecond: number;
+  baseMaxHealth: number;
+  maxHealth: number;
+  remainingHealth: number;
+  damageMultiplier: number;
+  phase: number;
+  spinSpeed: number;
 }
 
 interface SpellRingState {
@@ -92,7 +124,9 @@ const cloneCost = (cost: ResourceAmountMap): ResourceAmountMap => ({
 const clampNumber = (value: number, min: number, max: number): number =>
   Math.min(Math.max(Number.isFinite(value) ? value : min, min), max);
 
-const randomDamage = (config: SpellConfig["damage"]): number => {
+const randomDamage = (
+  config: Extract<SpellConfig, { type: "projectile" }>["damage"],
+): number => {
   const min = Math.max(0, Math.floor(config.min));
   const max = Math.max(min, Math.floor(config.max));
   if (max <= min) {
@@ -114,9 +148,12 @@ export class SpellcastingModule implements GameModule {
   private readonly cooldowns = new Map<SpellId, number>();
 
   private projectiles: SpellProjectileState[] = [];
+  private storms: SandStormState[] = [];
   private rings: SpellRingState[] = [];
   private optionsDirty = true;
   private spellPowerMultiplier = 1;
+  private readonly getSkillLevel: (id: SkillId) => number;
+  private readonly unlockedSpells = new Map<SpellId, boolean>();
 
   constructor(options: SpellcastingModuleOptions) {
     this.bridge = options.bridge;
@@ -124,10 +161,13 @@ export class SpellcastingModule implements GameModule {
     this.necromancer = options.necromancer;
     this.bricks = options.bricks;
     this.bonuses = options.bonuses;
+    this.getSkillLevel = options.getSkillLevel;
 
     SPELL_IDS.forEach((id) => {
-      this.configs.set(id, getSpellConfig(id));
+      const config = getSpellConfig(id);
+      this.configs.set(id, config);
       this.cooldowns.set(id, 0);
+      this.unlockedSpells.set(id, false);
     });
 
     this.bonuses.subscribe((values) => {
@@ -137,13 +177,16 @@ export class SpellcastingModule implements GameModule {
 
   public initialize(): void {
     this.handleBonusValuesChanged(this.bonuses.getAllValues());
+    this.refreshSpellUnlocks();
     this.pushSpellOptions();
   }
 
   public reset(): void {
     this.cooldowns.forEach((_, id) => this.cooldowns.set(id, 0));
     this.clearProjectiles();
+    this.clearStorms();
     this.clearRings();
+    this.refreshSpellUnlocks();
     this.markOptionsDirty();
     this.pushSpellOptions();
   }
@@ -151,7 +194,9 @@ export class SpellcastingModule implements GameModule {
   public load(_data: unknown | undefined): void {
     this.cooldowns.forEach((_, id) => this.cooldowns.set(id, 0));
     this.clearProjectiles();
+    this.clearStorms();
     this.clearRings();
+    this.refreshSpellUnlocks();
     this.markOptionsDirty();
     this.pushSpellOptions();
   }
@@ -161,7 +206,14 @@ export class SpellcastingModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    const unlockChanged = this.refreshSpellUnlocks();
     if (deltaMs <= 0) {
+      if (unlockChanged) {
+        this.markOptionsDirty();
+      }
+      if (this.optionsDirty) {
+        this.pushSpellOptions();
+      }
       return;
     }
 
@@ -182,6 +234,9 @@ export class SpellcastingModule implements GameModule {
       if (this.projectiles.length > 0) {
         this.clearProjectiles();
       }
+      if (this.storms.length > 0) {
+        this.clearStorms();
+      }
       if (this.rings.length > 0) {
         this.clearRings();
       }
@@ -189,12 +244,15 @@ export class SpellcastingModule implements GameModule {
       if (this.projectiles.length > 0) {
         this.updateProjectiles(delta);
       }
+      if (this.storms.length > 0) {
+        this.updateStorms(delta);
+      }
       if (this.rings.length > 0) {
         this.updateRings(delta);
       }
     }
 
-    if (cooldownChanged) {
+    if (cooldownChanged || unlockChanged) {
       this.markOptionsDirty();
     }
 
@@ -206,6 +264,10 @@ export class SpellcastingModule implements GameModule {
   public tryCastSpell(spellId: SpellId, rawTarget: SceneVector2): boolean {
     const config = this.configs.get(spellId);
     if (!config) {
+      return false;
+    }
+
+    if (!this.isConfigUnlocked(config)) {
       return false;
     }
 
@@ -237,7 +299,16 @@ export class SpellcastingModule implements GameModule {
       return false;
     }
 
-    this.spawnProjectile(spellId, config, origin, direction);
+    switch (config.type) {
+      case "projectile":
+        this.spawnProjectile(spellId, config, origin, direction);
+        break;
+      case "whirl":
+        this.spawnSandStorm(spellId, config, origin, direction);
+        break;
+      default:
+        return false;
+    }
     this.cooldowns.set(spellId, Math.max(0, config.cooldownSeconds * 1000));
     this.markOptionsDirty();
     return true;
@@ -245,7 +316,7 @@ export class SpellcastingModule implements GameModule {
 
   private spawnProjectile(
     spellId: SpellId,
-    config: SpellConfig,
+    config: Extract<SpellConfig, { type: "projectile" }>,
     origin: SceneVector2,
     direction: SceneVector2,
   ): void {
@@ -293,6 +364,51 @@ export class SpellcastingModule implements GameModule {
     if (ringTrail) {
       this.spawnProjectileRing(projectileState.position, ringTrail.config);
     }
+  }
+
+  private spawnSandStorm(
+    spellId: SpellId,
+    config: Extract<SpellConfig, { type: "whirl" }>,
+    origin: SceneVector2,
+    direction: SceneVector2,
+  ): void {
+    const whirl = config.whirl;
+    const radius = Math.max(1, whirl.radius);
+    const speed = Math.max(0, whirl.speed);
+    const velocity: SceneVector2 = {
+      x: direction.x * speed,
+      y: direction.y * speed,
+    };
+    const position = { ...origin };
+    const damageMultiplier = this.getSpellPowerMultiplier();
+    const baseMaxHealth = Math.max(0, whirl.maxHealth);
+    const maxHealth = baseMaxHealth * damageMultiplier;
+
+    const objectId = this.scene.addObject("sandStorm", {
+      position: { ...position },
+      size: { width: radius * 2, height: radius * 2 },
+      customData: {
+        intensity: maxHealth > 0 ? 1 : 0,
+        phase: 0,
+      },
+    });
+
+    const state: SandStormState = {
+      id: objectId,
+      spellId,
+      position,
+      velocity,
+      radius,
+      baseDamagePerSecond: Math.max(0, whirl.damagePerSecond),
+      baseMaxHealth,
+      maxHealth,
+      remainingHealth: maxHealth,
+      damageMultiplier,
+      phase: 0,
+      spinSpeed: Math.max(0, whirl.spinSpeed ?? 2.5),
+    };
+
+    this.storms.push(state);
   }
 
   private updateProjectiles(deltaMs: number): void {
@@ -378,6 +494,89 @@ export class SpellcastingModule implements GameModule {
     this.projectiles = survivors;
   }
 
+  private updateStorms(deltaMs: number): void {
+    if (deltaMs <= 0) {
+      return;
+    }
+
+    const deltaSeconds = deltaMs / 1000;
+    const mapSize = this.scene.getMapSize();
+    const survivors: SandStormState[] = [];
+
+    this.storms.forEach((storm) => {
+      storm.position = {
+        x: storm.position.x + storm.velocity.x * deltaSeconds,
+        y: storm.position.y + storm.velocity.y * deltaSeconds,
+      };
+      storm.phase += storm.spinSpeed * deltaSeconds;
+
+      const outOfBounds =
+        storm.position.x + storm.radius < 0 ||
+        storm.position.y + storm.radius < 0 ||
+        storm.position.x - storm.radius > mapSize.width ||
+        storm.position.y - storm.radius > mapSize.height;
+
+      if (outOfBounds) {
+        this.scene.removeObject(storm.id);
+        return;
+      }
+
+      const damage = Math.max(
+        0,
+        storm.baseDamagePerSecond * storm.damageMultiplier * deltaSeconds,
+      );
+      let inflictedTotal = 0;
+      if (damage > 0) {
+        const bricks = this.bricks.findBricksNear(storm.position, storm.radius);
+        for (let i = 0; i < bricks.length; i += 1) {
+          const brick = bricks[i]!;
+          const beforeHp = Math.max(brick.hp, 0);
+          if (beforeHp <= 0) {
+            continue;
+          }
+          const direction = this.normalizeDirection({
+            x: brick.position.x - storm.position.x,
+            y: brick.position.y - storm.position.y,
+          });
+          const result = this.bricks.applyDamage(
+            brick.id,
+            damage,
+            direction ?? { x: 0, y: 0 },
+          );
+          const afterHp = result.brick ? Math.max(result.brick.hp, 0) : 0;
+          const inflicted = Math.min(beforeHp, Math.max(beforeHp - afterHp, 0));
+          if (inflicted > 0) {
+            inflictedTotal += inflicted;
+          }
+        }
+      }
+
+      if (inflictedTotal > 0) {
+        storm.remainingHealth = Math.max(0, storm.remainingHealth - inflictedTotal);
+      }
+
+      if (storm.remainingHealth <= 0) {
+        this.scene.removeObject(storm.id);
+        return;
+      }
+
+      const intensityBase = storm.maxHealth > 0 ? storm.remainingHealth / storm.maxHealth : 0;
+      const intensity = clampNumber(intensityBase, 0, 1);
+      this.scene.updateObject(storm.id, {
+        position: { ...storm.position },
+        size: { width: storm.radius * 2, height: storm.radius * 2 },
+        customData: {
+          intensity: Math.max(0.25, intensity),
+          phase: storm.phase,
+        },
+      });
+
+      survivors.push(storm);
+    });
+
+    this.storms = survivors;
+  }
+
   private findHitBrick(position: SceneVector2, radius: number) {
     const candidates = this.bricks.findBricksNear(position, radius + 12);
     if (candidates.length === 0) {
@@ -448,6 +647,13 @@ export class SpellcastingModule implements GameModule {
     this.projectiles = [];
   }
 
+  private clearStorms(): void {
+    this.storms.forEach((storm) => {
+      this.scene.removeObject(storm.id);
+    });
+    this.storms = [];
+  }
+
   private clearRings(): void {
     this.rings.forEach((ring) => {
       this.scene.removeObject(ring.id);
@@ -459,20 +665,66 @@ export class SpellcastingModule implements GameModule {
     this.optionsDirty = true;
   }
 
-  private pushSpellOptions(): void {
-    const payload: SpellOption[] = SPELL_IDS.map((id) => {
-      const config = this.configs.get(id)!;
-      return {
-        id,
-        name: config.name,
-        description: config.description,
-        cost: cloneCost(config.cost),
-        cooldownSeconds: config.cooldownSeconds,
-        remainingCooldownMs: Math.max(0, this.cooldowns.get(id) ?? 0),
-        damage: { ...config.damage },
-        spellPowerMultiplier: this.getSpellPowerMultiplier(),
-      };
+  private refreshSpellUnlocks(): boolean {
+    let changed = false;
+    SPELL_IDS.forEach((id) => {
+      const config = this.configs.get(id);
+      if (!config) {
+        return;
+      }
+      const unlocked = this.isConfigUnlocked(config);
+      if (this.unlockedSpells.get(id) !== unlocked) {
+        this.unlockedSpells.set(id, unlocked);
+        if (!unlocked) {
+          this.cooldowns.set(id, 0);
+        }
+        changed = true;
+      }
     });
+    return changed;
+  }
+
+  private isConfigUnlocked(config: SpellConfig): boolean {
+    const requirement = config.unlock;
+    if (!requirement) {
+      return true;
+    }
+    const level = Math.max(0, Math.floor(requirement.level));
+    return this.getSkillLevel(requirement.skillId) >= level;
+  }
+
+  private pushSpellOptions(): void {
+    const payload: SpellOption[] = SPELL_IDS.filter((id) => this.unlockedSpells.get(id))
+      .map((id) => {
+        const config = this.configs.get(id)!;
+        const base: SpellOptionBase = {
+          id,
+          type: config.type,
+          name: config.name,
+          description: config.description,
+          cost: cloneCost(config.cost),
+          cooldownSeconds: config.cooldownSeconds,
+          remainingCooldownMs: Math.max(0, this.cooldowns.get(id) ?? 0),
+          spellPowerMultiplier: this.getSpellPowerMultiplier(),
+        };
+        if (config.type === "projectile") {
+          const projectileConfig = config as Extract<SpellConfig, { type: "projectile" }>;
+          return {
+            ...base,
+            type: "projectile",
+            damage: { ...projectileConfig.damage },
+          } satisfies ProjectileSpellOption;
+        }
+        const whirlConfig = config as Extract<SpellConfig, { type: "whirl" }>;
+        return {
+          ...base,
+          type: "whirl",
+          damagePerSecond: whirlConfig.whirl.damagePerSecond,
+          maxHealth: whirlConfig.whirl.maxHealth,
+          radius: whirlConfig.whirl.radius,
+          speed: whirlConfig.whirl.speed,
+        } satisfies WhirlSpellOption;
+      });
     this.bridge.setValue(SPELL_OPTIONS_BRIDGE_KEY, payload);
     this.optionsDirty = false;
   }
@@ -601,6 +853,21 @@ export class SpellcastingModule implements GameModule {
     this.spellPowerMultiplier = sanitized;
     this.projectiles.forEach((projectile) => {
       projectile.damageMultiplier = sanitized;
+    });
+    this.storms.forEach((storm) => {
+      const previousMax = storm.maxHealth;
+      storm.damageMultiplier = sanitized;
+      storm.maxHealth = storm.baseMaxHealth * sanitized;
+      if (storm.maxHealth <= 0) {
+        storm.remainingHealth = 0;
+        return;
+      }
+      if (previousMax <= 0) {
+        storm.remainingHealth = storm.maxHealth;
+        return;
+      }
+      const ratio = clampNumber(previousMax > 0 ? storm.remainingHealth / previousMax : 0, 0, 1);
+      storm.remainingHealth = clampNumber(ratio * storm.maxHealth, 0, storm.maxHealth);
     });
     this.markOptionsDirty();
   }
