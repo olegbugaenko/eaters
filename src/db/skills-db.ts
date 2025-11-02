@@ -265,10 +265,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Chord",
     description:
       "Imprint a structural chord into your entities, enabling attachment of organs and parts.",
-    nodePosition: { x: 0, y: -3 },
+    nodePosition: { x: 1, y: 2 },
     maxLevel: 1,
     effects: {},
-    nodesRequired: { glass_latticework: 5 },
+    nodesRequired: { stone_lore: 3 },
     cost: createSandCost(150, 1),
   },
   pheromones: {
@@ -276,7 +276,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Pheromones",
     description:
       "Seed your chord lattice with signal glands so your beasts can coordinate through scent and surge.",
-    nodePosition: { x: 0, y: -5 },
+    nodePosition: { x: 2, y: 3 },
     maxLevel: 1,
     effects: {},
     nodesRequired: { void_modules: 1 },
