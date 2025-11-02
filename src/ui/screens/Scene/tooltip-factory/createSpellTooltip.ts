@@ -2,7 +2,7 @@ import {
   ProjectileSpellOption,
   SpellOption,
   WhirlSpellOption,
-} from "../../../../logic/modules/active-map/SpellcastingModule";
+} from "../../../../logic/modules/active-map/spells/SpellcastingModule";
 import { SceneTooltipContent, SceneTooltipStat } from "../SceneTooltipPanel";
 import { formatNumber } from "../../../shared/format/number";
 

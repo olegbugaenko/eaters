@@ -403,6 +403,47 @@ export const writeWhirlInstance = (
   }
 };
 
+const packActiveInstances = (batch: WhirlBatch): void => {
+  if (!batch.instanceBuffer || batch.activeCount <= 0) {
+    return;
+  }
+
+  // Збираємо всі активні instances з їх оригінальних слотів
+  const activeInstances: WhirlInstance[] = [];
+  for (let i = 0; i < batch.capacity; i += 1) {
+    const inst = batch.instances[i];
+    if (inst && inst.active) {
+      activeInstances.push(inst);
+    }
+  }
+
+  // Оновлюємо лічильник, якщо потрібно
+  batch.activeCount = activeInstances.length;
+
+  if (activeInstances.length === 0) {
+    return;
+  }
+
+  // Перепаковуємо активні instances в початок буфера
+  const scratch = new Float32Array(INSTANCE_COMPONENTS);
+  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
+  for (let i = 0; i < activeInstances.length; i += 1) {
+    const inst = activeInstances[i]!;
+    scratch[0] = inst.position.x;
+    scratch[1] = inst.position.y;
+    scratch[2] = inst.radius;
+    scratch[3] = inst.phase;
+    scratch[4] = inst.intensity;
+    scratch[5] = 1; // active
+    batch.gl.bufferSubData(
+      batch.gl.ARRAY_BUFFER,
+      i * INSTANCE_STRIDE,
+      scratch,
+    );
+  }
+  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
+};
+
 export const renderWhirls = (
   gl: WebGL2RenderingContext,
   cameraPosition: SceneVector2,
@@ -416,6 +457,15 @@ export const renderWhirls = (
 
   const { resources, batch } = context;
   if (!batch.vao) {
+    return;
+  }
+
+  // Перепаковуємо активні instances в початок буфера перед рендерингом
+  // Це необхідно, бо drawArraysInstanced рендерить тільки перші activeCount instances послідовно
+  // Якщо активні instances не послідовні (наприклад, слоти 0, 2, 5), частина не буде рендеритися
+  packActiveInstances(batch);
+
+  if (batch.activeCount <= 0) {
     return;
   }
 

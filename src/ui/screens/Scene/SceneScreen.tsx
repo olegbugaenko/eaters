@@ -8,7 +8,7 @@ import {
 import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "../../../logic/modules/active-map/PlayerUnitsModule";
+} from "../../../logic/modules/active-map/units/PlayerUnitsModule";
 import {
   NECROMANCER_RESOURCES_BRIDGE_KEY,
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
@@ -19,14 +19,14 @@ import {
   DEFAULT_SPELL_OPTIONS,
   SPELL_OPTIONS_BRIDGE_KEY,
   SpellOption,
-} from "../../../logic/modules/active-map/SpellcastingModule";
+} from "../../../logic/modules/active-map/spells/SpellcastingModule";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
   UnitAutomationBridgeState,
 } from "../../../logic/modules/active-map/UnitAutomationModule";
 import { UnitDesignId } from "../../../logic/modules/camp/UnitDesignModule";
-import { SpellId } from "../../../db/spells-db";
+import { SpellId, SPELL_IDS } from "../../../db/spells-db";
 import {
   SceneCameraState,
   SceneObjectManager,
@@ -349,8 +349,23 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const showRunSummary = resourceSummary.completed;
   const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
-  const [selectedSpellId, setSelectedSpellId] = useState<SpellId | null>(null);
+  const [selectedSpellId, setSelectedSpellId] = useState<SpellId | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    try {
+      const stored = localStorage.getItem("selectedSpellId");
+      if (stored && SPELL_IDS.includes(stored as SpellId)) {
+        return stored as SpellId;
+      }
+    } catch {
+      // Ігноруємо помилки localStorage
+    }
+    return null;
+  });
   const selectedSpellIdRef = useRef<SpellId | null>(null);
+  const pointerPressedRef = useRef(false);
+  const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   // Threshold state is sourced from bridge (autoRestartState)
   const autoRestartHandledRef = useRef(false);
@@ -366,6 +381,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           }
           return document.getElementById(`${id}-resource`);
         };
+        const getSummoningUnitList = () => {
+          if (typeof document === "undefined") {
+            return null;
+          }
+          return document.getElementById("summoning-unit-list");
+        };
+        const getSpellbookArea = () => {
+          if (typeof document === "undefined") {
+            return null;
+          }
+          return document.getElementById("spellbook-area");
+        };
         return [
           {
             id: "intro",
@@ -378,7 +405,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
             title: "Summoning Rituals",
             description:
               "Call forth your ravenous creations from this panel. They will shatter bricks and feast on the debris.",
-            getTarget: () => summoningPanelRef.current,
+            getTarget: getSummoningUnitList,
+            highlightPadding: 32,
+          },
+          {
+            id: "spells",
+            title: "Spellcasting",
+            description:
+              "Select a spell from your spellbook, then click on the battlefield to cast it. Spells deal damage directly to bricks and can turn the tide of battle.",
+            getTarget: getSpellbookArea,
             highlightPadding: 32,
           },
           {
@@ -484,28 +519,94 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     spellOptionsRef.current = spellOptions;
   }, [spellOptions]);
 
+  // Періодична перевірка для касту спелів при затиснутій миші (навіть без руху)
+  useEffect(() => {
+    if (isPauseOpen || showTutorial) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      if (!pointerPressedRef.current || !lastPointerPositionRef.current) {
+        return;
+      }
+
+      const spellId = selectedSpellIdRef.current;
+      if (!spellId) {
+        return;
+      }
+
+      const spell = spellOptionsRef.current.find((option) => option.id === spellId);
+      if (!spell || spell.remainingCooldownMs > 0) {
+        return;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        return;
+      }
+
+      // Конвертуємо canvas координати назад в viewport координати
+      const viewportX = (lastPointerPositionRef.current.x / canvas.width) * rect.width;
+      const viewportY = (lastPointerPositionRef.current.y / canvas.height) * rect.height;
+      
+      // Обчислюємо world position напряму
+      const rawX = viewportX / rect.width;
+      const rawY = viewportY / rect.height;
+      if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) {
+        return;
+      }
+      
+      const cameraState = scene.getCamera();
+      const normalizedX = Math.min(Math.max(rawX, 0), 1);
+      const normalizedY = Math.min(Math.max(rawY, 0), 1);
+      const worldPosition = {
+        x: cameraState.position.x + normalizedX * cameraState.viewportSize.width,
+        y: cameraState.position.y + normalizedY * cameraState.viewportSize.height,
+      };
+
+      spellcasting.tryCastSpell(spellId, worldPosition);
+    }, 50); // Перевіряємо кожні 50ms
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isPauseOpen, showTutorial, spellcasting, scene]);
+
   useEffect(() => {
     selectedSpellIdRef.current = selectedSpellId;
+    if (typeof window !== "undefined") {
+      if (selectedSpellId) {
+        localStorage.setItem("selectedSpellId", selectedSpellId);
+      } else {
+        localStorage.removeItem("selectedSpellId");
+      }
+    }
   }, [selectedSpellId]);
 
   useEffect(() => {
-    if (!selectedSpellId) {
-      return;
-    }
-    const stillAvailable = spellOptions.some((spell) => spell.id === selectedSpellId);
-    if (!stillAvailable) {
-      setSelectedSpellId(null);
-    }
-  }, [selectedSpellId, spellOptions]);
-
-  useEffect(() => {
-    if (selectedSpellId) {
-      return;
-    }
+    // Перевіряємо тільки якщо є доступні спели
     if (spellOptions.length === 0) {
       return;
     }
-    setSelectedSpellId(spellOptions[0]!.id);
+    
+    if (!selectedSpellId) {
+      // Якщо немає вибраного спела, вибираємо перший доступний
+      setSelectedSpellId(spellOptions[0]!.id);
+      return;
+    }
+    
+    // Перевіряємо, чи вибраний спел ще є в списку доступних
+    // (навіть якщо не вистачає ресурсів, спел має залишатися вибраним)
+    const stillAvailable = spellOptions.some((spell) => spell.id === selectedSpellId);
+    if (!stillAvailable) {
+      // Якщо вибраний спел більше не існує в списку, вибираємо перший доступний
+      setSelectedSpellId(spellOptions[0]!.id);
+    }
   }, [selectedSpellId, spellOptions]);
 
   useEffect(() => {
@@ -769,6 +870,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       x: 0,
       y: 0,
       inside: false,
+      isPressed: false,
+      lastCastTime: 0,
+    };
+
+    // Синхронізуємо стан з ref для доступу з useEffect
+    const updatePointerPressed = (pressed: boolean) => {
+      pointerState.isPressed = pressed;
+      pointerPressedRef.current = pressed;
+    };
+
+    const updateLastPointerPosition = (x: number, y: number) => {
+      pointerState.x = x;
+      pointerState.y = y;
+      lastPointerPositionRef.current = { x, y };
     };
 
     const applySync = () => {
@@ -954,8 +1069,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       const y = event.clientY - rect.top;
       const clampedX = clamp(x, 0, rect.width);
       const clampedY = clamp(y, 0, rect.height);
-      pointerState.x = (clampedX / rect.width) * canvas.width;
-      pointerState.y = (clampedY / rect.height) * canvas.height;
+      const canvasX = (clampedX / rect.width) * canvas.width;
+      const canvasY = (clampedY / rect.height) * canvas.height;
+      updateLastPointerPosition(canvasX, canvasY);
 
       const overlayHeight = getOverlayHeight();
       const insideHorizontal = event.clientX >= rect.left && event.clientX <= rect.right;
@@ -966,12 +1082,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     const handlePointerLeave = () => {
       pointerState.inside = false;
+      updatePointerPressed(false);
+      lastPointerPositionRef.current = null;
     };
 
-    const handlePointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) {
-        return;
-      }
+    const tryCastSpellAtPosition = (event: PointerEvent) => {
       const spellId = selectedSpellIdRef.current;
       if (!spellId) {
         return;
@@ -980,16 +1095,63 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       if (!spell || spell.remainingCooldownMs > 0) {
         return;
       }
+      // Запобігаємо занадто частому спаму (мінімум 16ms між кастами)
+      const now = Date.now();
+      if (now - pointerState.lastCastTime < 16) {
+        return;
+      }
       const worldPosition = getWorldPosition(event);
       if (!worldPosition) {
         return;
       }
       spellcasting.tryCastSpell(spellId, worldPosition);
+      pointerState.lastCastTime = now;
     };
 
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+      // Оновлюємо позицію при натисканні
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const clampedX = clamp(x, 0, rect.width);
+        const clampedY = clamp(y, 0, rect.height);
+        const canvasX = (clampedX / rect.width) * canvas.width;
+        const canvasY = (clampedY / rect.height) * canvas.height;
+        updateLastPointerPosition(canvasX, canvasY);
+      }
+      updatePointerPressed(true);
+      tryCastSpellAtPosition(event);
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+      updatePointerPressed(false);
+    };
+
+    const handlePointerMoveWithCast = (event: PointerEvent) => {
+      handlePointerMove(event);
+      if (pointerState.isPressed && pointerState.inside) {
+        // Перевіряємо кулдаун перед кастом
+        const spellId = selectedSpellIdRef.current;
+        if (spellId) {
+          const spell = spellOptionsRef.current.find((option) => option.id === spellId);
+          if (spell && spell.remainingCooldownMs <= 0) {
+            tryCastSpellAtPosition(event);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("pointermove", handlePointerMoveWithCast, { passive: true });
     window.addEventListener("pointerleave", handlePointerLeave, { passive: true });
     window.addEventListener("pointerout", handlePointerLeave, { passive: true });
+    window.addEventListener("pointerup", handlePointerUp, { passive: true });
     canvas.addEventListener("pointerdown", handlePointerDown);
 
     return () => {
@@ -1010,9 +1172,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
-      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointermove", handlePointerMoveWithCast);
       window.removeEventListener("pointerleave", handlePointerLeave);
       window.removeEventListener("pointerout", handlePointerLeave);
+      window.removeEventListener("pointerup", handlePointerUp);
       canvas.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [scene, spellcasting]);

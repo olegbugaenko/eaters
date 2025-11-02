@@ -27,8 +27,8 @@ import {
 import { formatUnitModuleBonusValue } from "../../shared/format/unitModuleBonus";
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { useAppLogic } from "../../contexts/AppLogicContext";
-import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "../../../logic/modules/active-map/PlayerUnitsModule";
-import { SpellOption } from "../../../logic/modules/active-map/SpellcastingModule";
+import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "../../../logic/modules/active-map/units/PlayerUnitsModule";
+import { SpellOption } from "../../../logic/modules/active-map/spells/SpellcastingModule";
 import { SpellId } from "../../../db/spells-db";
 
 interface SceneSummoningPanelProps {
@@ -157,7 +157,7 @@ export const SceneSummoningPanel = forwardRef<
           </div>
           <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
           <div className="scene-summoning-panel__spells-header">Summoning</div>
-            <div className="scene-summoning-panel__unit-list">
+            <div id="summoning-unit-list" className="scene-summoning-panel__unit-list">
               {spawnOptions.map((option) => {
                 const missing = computeMissing(option.cost, available);
                 const canAfford = missing.mana <= 0 && missing.sanity <= 0;
@@ -235,7 +235,7 @@ export const SceneSummoningPanel = forwardRef<
             </div>
           </div>
         </div>
-        <div className="scene-summoning-panel__spells-area">
+        <div id="spellbook-area" className="scene-summoning-panel__spells-area">
           <div className="scene-summoning-panel__spells-header">Spellbook</div>
           {spells.length === 0 ? (
             <div className="scene-summoning-panel__spells-placeholder">

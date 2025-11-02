@@ -1,5 +1,5 @@
-import { GameModule } from "../../core/types";
-import { DataBridge } from "../../core/DataBridge";
+import { GameModule } from "../../../core/types";
+import { DataBridge } from "../../../core/DataBridge";
 import {
   SceneObjectManager,
   SceneVector2,
@@ -7,8 +7,8 @@ import {
   SceneFill,
   SceneColor,
   SceneStroke,
-} from "../../services/SceneObjectManager";
-import { BricksModule, BrickRuntimeState } from "./BricksModule";
+} from "../../../services/SceneObjectManager";
+import { BricksModule, BrickRuntimeState } from "../BricksModule";
 import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,
@@ -20,60 +20,61 @@ import {
   isPlayerUnitType,
   PlayerUnitEmitterConfig,
   PlayerUnitConfig,
-} from "../../../db/player-units-db";
-import { MovementService, MovementBodyState } from "../../services/MovementService";
-import { BonusValueMap, BonusesModule } from "../shared/BonusesModule";
+} from "../../../../db/player-units-db";
+import { MovementService, MovementBodyState } from "../../../services/MovementService";
+import { BonusValueMap, BonusesModule } from "../../shared/BonusesModule";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
-} from "../../../types/player-units";
-import { ExplosionModule } from "../scene/ExplosionModule";
-import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../db/unit-modules-db";
-import type { SkillId } from "../../../db/skills-db";
-import { getBonusConfig } from "../../../db/bonuses-db";
+} from "../../../../types/player-units";
+import { ExplosionModule } from "../../scene/ExplosionModule";
+import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
+import type { SkillId } from "../../../../db/skills-db";
+import { getBonusConfig } from "../../../../db/bonuses-db";
 import {
   VisualEffectState,
   createVisualEffectState,
   setVisualEffectFillOverlay,
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
-} from "../../visuals/VisualEffectState";
-import { UnitTargetingMode } from "../../../types/unit-targeting";
-import { UnitDesignId } from "../camp/UnitDesignModule";
-import { ArcModule } from "../scene/ArcModule";
-import { EffectsModule } from "../scene/EffectsModule";
-import { FireballModule } from "../scene/FireballModule";
+} from "../../../visuals/VisualEffectState";
+import { UnitTargetingMode } from "../../../../types/unit-targeting";
+import { UnitDesignId } from "../../camp/UnitDesignModule";
+import { ArcModule } from "../../scene/ArcModule";
+import { EffectsModule } from "../../scene/EffectsModule";
+import { FireballModule } from "../../scene/FireballModule";
 import {
   AbilitySoundPlayer,
   PlayerUnitAbilities,
   PheromoneAttackBonusState,
-} from "./PlayerUnitAbilities";
-import { AbilityVisualService } from "./abilities/AbilityVisualService";
-import type { StatisticsTracker } from "../shared/StatisticsModule";
+} from "../PlayerUnitAbilities";
+import { AbilityVisualService } from "../abilities/AbilityVisualService";
+import type { StatisticsTracker } from "../../shared/StatisticsModule";
+import { UnitStatisticsReporter, UnitStatsSnapshot } from "./UnitStatisticsReporter";
+import { UnitFactory, UnitCreationData } from "./UnitFactory";
+import { UnitRuntimeController } from "./UnitRuntimeController";
+import type { PlayerUnitState } from "./UnitTypes";
+import {
+  ATTACK_DISTANCE_EPSILON,
+  COLLISION_RESOLUTION_ITERATIONS,
+  ZERO_VECTOR,
+  CRITICAL_HIT_EXPLOSION_RADIUS,
+  INTERNAL_FURNACE_EFFECT_ID,
+  INTERNAL_FURNACE_TINT_COLOR,
+  INTERNAL_FURNACE_MAX_INTENSITY,
+  INTERNAL_FURNACE_EFFECT_PRIORITY,
+  PHEROMONE_TIMER_CAP_SECONDS,
+  TARGETING_RADIUS_STEP,
+  IDLE_WANDER_RADIUS,
+  IDLE_WANDER_TARGET_EPSILON,
+  IDLE_WANDER_RESEED_INTERVAL,
+  IDLE_WANDER_SPEED_FACTOR,
+  TARGETING_SCORE_EPSILON,
+} from "./UnitTypes";
 
-const ATTACK_DISTANCE_EPSILON = 0.001;
-const COLLISION_RESOLUTION_ITERATIONS = 4;
-const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
-const CRITICAL_HIT_EXPLOSION_RADIUS = 12;
 const DEFAULT_CRIT_MULTIPLIER_BONUS = getBonusConfig(
   "all_units_crit_mult"
 ).defaultValue;
-const INTERNAL_FURNACE_EFFECT_ID = "internalFurnace/heat";
-const INTERNAL_FURNACE_TINT_COLOR: SceneColor = {
-  r: 0.98,
-  g: 0.35,
-  b: 0.32,
-  a: 1,
-};
-const INTERNAL_FURNACE_MAX_INTENSITY = 0.75;
-const INTERNAL_FURNACE_EFFECT_PRIORITY = 50;
-const PHEROMONE_TIMER_CAP_SECONDS = 60;
-const TARGETING_RADIUS_STEP = 250;
-const IDLE_WANDER_RADIUS = 160;
-const IDLE_WANDER_TARGET_EPSILON = 12;
-const IDLE_WANDER_RESEED_INTERVAL = 3;
-const IDLE_WANDER_SPEED_FACTOR = 0.55;
-const TARGETING_SCORE_EPSILON = 1e-3;
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
@@ -115,61 +116,6 @@ interface PlayerUnitSaveData {
   readonly units: PlayerUnitSpawnData[];
 }
 
-interface PlayerUnitState {
-  id: string;
-  designId: UnitDesignId | null;
-  type: PlayerUnitType;
-  position: SceneVector2;
-  spawnPosition: SceneVector2;
-  movementId: string;
-  rotation: number;
-  hp: number;
-  maxHp: number;
-  armor: number;
-  hpRegenPerSecond: number;
-  armorPenetration: number;
-  baseAttackDamage: number;
-  baseAttackInterval: number;
-  baseAttackDistance: number;
-  moveSpeed: number;
-  moveAcceleration: number;
-  mass: number;
-  physicalSize: number;
-  critChance: number;
-  critMultiplier: number;
-  rewardMultiplier: number;
-  damageTransferPercent: number;
-  damageTransferRadius: number;
-  attackStackBonusPerHit: number;
-  attackStackBonusCap: number;
-  currentAttackStackBonus: number;
-  attackCooldown: number;
-  preCollisionVelocity: SceneVector2;
-  lastNonZeroVelocity: SceneVector2;
-  targetBrickId: string | null;
-  targetingMode: UnitTargetingMode;
-  wanderTarget: SceneVector2 | null;
-  wanderCooldown: number;
-  objectId: string;
-  renderer: PlayerUnitRendererConfig;
-  emitter?: PlayerUnitEmitterConfig;
-  baseFillColor: SceneColor;
-  baseStrokeColor?: SceneColor;
-  appliedFillColor: SceneColor;
-  appliedStrokeColor?: SceneColor;
-  visualEffects: VisualEffectState;
-  visualEffectsDirty: boolean;
-  timeSinceLastAttack: number;
-  timeSinceLastSpecial: number;
-  pheromoneHealingMultiplier: number;
-  pheromoneAggressionMultiplier: number;
-  pheromoneAttackBonuses: PheromoneAttackBonusState[];
-  fireballDamageMultiplier: number;
-  canUnitAttackDistant: boolean;
-  equippedModules: readonly UnitModuleId[];
-  ownedSkills: readonly SkillId[];
-}
-
 export class PlayerUnitsModule implements GameModule {
   public readonly id = "playerUnits";
 
@@ -191,11 +137,13 @@ export class PlayerUnitsModule implements GameModule {
   ) => UnitTargetingMode;
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
+  private readonly unitFactory: UnitFactory;
+  private readonly runtimeController: UnitRuntimeController;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
-  private idCounter = 0;
   private unitBlueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
+  private readonly statsReporter: UnitStatisticsReporter;
 
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
@@ -222,15 +170,15 @@ export class PlayerUnitsModule implements GameModule {
 
     this.abilities = new PlayerUnitAbilities({
       sceneService: abilitySceneService,
-      logEvent: (message) => this.logPheromoneEvent(message),
-      formatUnitLabel: (unit) => this.formatUnitLogLabel(unit as PlayerUnitState),
+      logEvent: (message: string) => this.logPheromoneEvent(message),
+      formatUnitLabel: (unit) => this.formatUnitLogLabel(unit),
       getUnits: () => this.unitOrder,
-      getUnitById: (id) => this.units.get(id),
-      getBrickPosition: (brickId) => {
+      getUnitById: (id: string) => this.units.get(id),
+      getBrickPosition: (brickId: string) => {
         const brick = this.bricks.getBrickState(brickId);
         return brick?.position || null;
       },
-      damageBrick: (brickId, damage) => {
+      damageBrick: (brickId: string, damage: number) => {
         const brick = this.bricks.getBrickState(brickId);
         if (brick) {
           this.bricks.applyDamage(brickId, damage, { x: 0, y: 0 }, {
@@ -239,11 +187,11 @@ export class PlayerUnitsModule implements GameModule {
           });
         }
       },
-      getBricksInRadius: (position, radius) => {
+      getBricksInRadius: (position: SceneVector2, radius: number) => {
         const nearbyBricks = this.bricks.findBricksNear(position, radius);
-        return nearbyBricks.map((brick) => brick.id);
+        return nearbyBricks.map((brick: BrickRuntimeState) => brick.id);
       },
-      damageUnit: (unitId, damage) => {
+      damageUnit: (unitId: string, damage: number) => {
         const unit = this.units.get(unitId);
         if (unit) {
           const previousHp = unit.hp;
@@ -254,11 +202,35 @@ export class PlayerUnitsModule implements GameModule {
           }
         }
       },
-      findNearestBrick: (position) => {
+      findNearestBrick: (position: SceneVector2) => {
         const brick = this.bricks.findNearestBrick(position);
         return brick?.id || null;
       },
       audio: options.audio,
+    });
+
+    this.statsReporter = new UnitStatisticsReporter({ bridge: this.bridge });
+
+    this.unitFactory = new UnitFactory({
+      scene: this.scene,
+      movement: this.movement,
+      getModuleLevel: this.getModuleLevel,
+      hasSkill: this.hasSkill,
+      getDesignTargetingMode: this.getDesignTargetingMode,
+    });
+
+    this.runtimeController = new UnitRuntimeController({
+      scene: this.scene,
+      movement: this.movement,
+      bricks: this.bricks,
+      abilities: this.abilities,
+      statistics: this.statistics,
+      explosions: this.explosions,
+      getDesignTargetingMode: this.getDesignTargetingMode,
+      syncUnitTargetingMode: (unit) => this.syncUnitTargetingMode(unit),
+      removeUnit: (unit) => this.removeUnit(unit),
+      updateSceneState: (unit, options) => this.pushUnitSceneState(unit, options),
+      updateInternalFurnaceEffect: (unit) => this.updateInternalFurnaceEffect(unit),
     });
   }
 
@@ -319,168 +291,11 @@ export class PlayerUnitsModule implements GameModule {
     if (this.unitOrder.length === 0) {
       return;
     }
-    
+
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
-    const unitsSnapshot = [...this.unitOrder];
-    const plannedTargets = new Map<string, string | null>();
-    let statsDirty = false;
+    const result = this.runtimeController.updateUnits(this.unitOrder, deltaSeconds);
 
-    unitsSnapshot.forEach((unit) => {
-      if (!this.units.has(unit.id)) {
-        return;
-      }
-
-      if (unit.hp <= 0) {
-        this.removeUnit(unit);
-        statsDirty = true;
-        return;
-      }
-
-      unit.attackCooldown = Math.max(unit.attackCooldown - deltaSeconds, 0);
-      unit.timeSinceLastAttack = Math.min(
-        unit.timeSinceLastAttack + deltaSeconds,
-        PHEROMONE_TIMER_CAP_SECONDS
-      );
-      unit.timeSinceLastSpecial = Math.min(
-        unit.timeSinceLastSpecial + deltaSeconds,
-        PHEROMONE_TIMER_CAP_SECONDS
-      );
-      unit.wanderCooldown = Math.max(unit.wanderCooldown - deltaSeconds, 0);
-
-      if (unit.hpRegenPerSecond > 0 && unit.hp < unit.maxHp) {
-        const previousHp = unit.hp;
-        unit.hp = clampNumber(
-          unit.hp + unit.hpRegenPerSecond * deltaSeconds,
-          0,
-          unit.maxHp
-        );
-        if (unit.hp !== previousHp) {
-          statsDirty = true;
-        }
-      }
-
-      const abilityResult = this.abilities.processUnitAbilities(unit, deltaSeconds);
-      if (abilityResult?.statsChanged) {
-        statsDirty = true;
-      }
-
-      const movementState = this.movement.getBodyState(unit.movementId);
-      if (!movementState) {
-        return;
-      }
-
-      unit.position = cloneVector(movementState.position);
-
-      if (vectorHasLength(movementState.velocity)) {
-        unit.lastNonZeroVelocity = cloneVector(movementState.velocity);
-      }
-
-      const target = this.resolveTarget(unit);
-      plannedTargets.set(unit.id, target?.id ?? null);
-
-      const force = this.computeDesiredForce(unit, movementState, target);
-      this.movement.setForce(unit.movementId, force);
-    });
-
-    this.movement.update(deltaSeconds);
-
-    unitsSnapshot.forEach((unit) => {
-      if (!this.units.has(unit.id)) {
-        return;
-      }
-
-      if (unit.hp <= 0) {
-        this.removeUnit(unit);
-        statsDirty = true;
-        return;
-      }
-
-      const movementState = this.movement.getBodyState(unit.movementId);
-      if (!movementState) {
-        return;
-      }
-
-      const clampedPosition = this.clampToMap(movementState.position);
-      let resolvedPosition = clampedPosition;
-      let resolvedVelocity = movementState.velocity;
-
-      unit.preCollisionVelocity = cloneVector(movementState.velocity);
-
-      const collisionResolution = this.resolveUnitCollisions(
-        unit,
-        resolvedPosition,
-        resolvedVelocity
-      );
-      resolvedPosition = collisionResolution.position;
-      resolvedVelocity = collisionResolution.velocity;
-      const collidedBrickIds = collisionResolution.collidedBrickIds;
-
-      if (!vectorEquals(resolvedPosition, movementState.position)) {
-        this.movement.setBodyPosition(unit.movementId, resolvedPosition);
-      }
-
-      if (!vectorEquals(resolvedVelocity, movementState.velocity)) {
-        this.movement.setBodyVelocity(unit.movementId, resolvedVelocity);
-      }
-
-      unit.position = { ...resolvedPosition };
-
-      let targetId = plannedTargets.get(unit.id) ?? null;
-      let target: BrickRuntimeState | null = null;
-      if (targetId) {
-        target = this.bricks.getBrickState(targetId);
-        if (!target) {
-          targetId = null;
-          plannedTargets.set(unit.id, null);
-        }
-      }
-      if (!target) {
-        target = this.resolveTarget(unit);
-        plannedTargets.set(unit.id, target?.id ?? null);
-      }
-
-      if (collidedBrickIds.length > 0) {
-        for (const brickId of collidedBrickIds) {
-          const collidedBrick = this.bricks.getBrickState(brickId);
-          if (!collidedBrick) {
-            continue;
-          }
-          target = collidedBrick;
-          unit.targetBrickId = collidedBrick.id;
-          plannedTargets.set(unit.id, collidedBrick.id);
-          break;
-        }
-      }
-
-      const rotation = this.computeRotation(unit, target, resolvedVelocity);
-      unit.rotation = rotation;
-      this.pushUnitSceneState(unit);
-
-      if (!target) {
-        return;
-      }
-
-      const direction = subtractVectors(target.position, unit.position);
-      const distance = Math.hypot(direction.x, direction.y);
-      const attackRange = unit.baseAttackDistance + unit.physicalSize + target.physicalSize;
-
-      if (
-        distance <= attackRange + ATTACK_DISTANCE_EPSILON &&
-        unit.attackCooldown <= 0
-      ) {
-        const hpChanged = this.performAttack(unit, target, direction, distance);
-        if (hpChanged) {
-          statsDirty = true;
-        }
-
-        if (unit.hp <= 0) {
-          this.removeUnit(unit);
-          return;
-        }
-      }
-    });
-
-    if (statsDirty) {
+    if (result.statsChanged) {
       this.pushStats();
     }
   }
@@ -534,21 +349,15 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private pushStats(): void {
-    const units = this.unitOrder;
-    const totalHp = units.reduce((sum, unit) => sum + unit.hp, 0);
-    
-    // Count units by design ID
-    const countsByDesign = new Map<UnitDesignId, number>();
-    units.forEach(unit => {
-      if (unit.designId && unit.hp > 0) {
-        const current = countsByDesign.get(unit.designId) || 0;
-        countsByDesign.set(unit.designId, current + 1);
-      }
+    const snapshot: UnitStatsSnapshot[] = this.unitOrder.map((u) => ({
+      hp: u.hp,
+      designId: u.designId,
+    }));
+    this.statsReporter.pushCounts(snapshot, {
+      countKey: PLAYER_UNIT_COUNT_BRIDGE_KEY,
+      totalHpKey: PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
+      countsByDesignKey: PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
     });
-    
-    this.bridge.setValue(PLAYER_UNIT_COUNT_BRIDGE_KEY, units.length);
-    this.bridge.setValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, totalHp);
-    this.bridge.setValue(PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY, Object.fromEntries(countsByDesign));
   }
 
   private parseSaveData(data: unknown): PlayerUnitSaveData | null {
@@ -588,7 +397,6 @@ export class PlayerUnitsModule implements GameModule {
   private applyUnits(units: PlayerUnitSpawnData[]): void {
     this.ensureBlueprints();
     this.clearUnits();
-    this.idCounter = 0;
 
     units.forEach((unit) => {
       const state = this.createUnitState(unit);
@@ -619,170 +427,85 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private pushBlueprintStats(): void {
-    const payload = PLAYER_UNIT_TYPES.map((type) => this.unitBlueprints.get(type)).filter(
-      (stats): stats is PlayerUnitBlueprintStats => Boolean(stats)
-    );
-    this.bridge.setValue(PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY, payload);
+    const payload = PLAYER_UNIT_TYPES
+      .map((type) => this.unitBlueprints.get(type))
+      .filter((stats): stats is PlayerUnitBlueprintStats => Boolean(stats));
+    this.statsReporter.pushBlueprints(payload, PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY);
   }
 
   private createUnitState(unit: PlayerUnitSpawnData): PlayerUnitState {
     const type = sanitizeUnitType(unit.type);
-    const config = getPlayerUnitConfig(type);
     const blueprint = this.unitBlueprints.get(type);
     if (!blueprint) {
       throw new Error(`Missing blueprint stats for unit type: ${type}`);
     }
 
-    const position = this.clampToMap(unit.position);
-    const maxHp = Math.max(blueprint.effective.maxHp, 1);
-    const hp = clampNumber(unit.hp ?? maxHp, 0, maxHp);
-    const attackCooldown = clampNumber(
-      unit.attackCooldown ?? 0,
-      0,
-      blueprint.baseAttackInterval
+    const unitId = this.unitFactory.createUnitId();
+    const factoryResult = this.unitFactory.createUnit(
+      {
+        designId: unit.designId,
+        type,
+        position: unit.position,
+        hp: unit.hp,
+        attackCooldown: unit.attackCooldown,
+        runtimeModifiers: unit.runtimeModifiers,
+        equippedModules: unit.equippedModules,
+      },
+      blueprint,
+      unitId,
     );
-    const critChance = clampProbability(blueprint.critChance.effective);
-    const critMultiplier = Math.max(blueprint.critMultiplier.effective, 1);
-    const runtime = sanitizeRuntimeModifiers(unit.runtimeModifiers);
-
-    const mass = Math.max(blueprint.mass, 0.001);
-    const moveAcceleration = Math.max(blueprint.moveAcceleration, 0);
-    const physicalSize = Math.max(blueprint.physicalSize, 0);
-    const movementId = this.movement.createBody({
-      position,
-      mass,
-      maxSpeed: Math.max(blueprint.moveSpeed, 0),
-    });
-
-    const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
-    const baseFillColor: SceneColor = {
-      r: config.renderer.fill.r,
-      g: config.renderer.fill.g,
-      b: config.renderer.fill.b,
-      a: typeof config.renderer.fill.a === "number" ? config.renderer.fill.a : 1,
-    };
-    const baseStrokeColor = config.renderer.stroke
-      ? {
-          r: config.renderer.stroke.color.r,
-          g: config.renderer.stroke.color.g,
-          b: config.renderer.stroke.color.b,
-          a:
-            typeof config.renderer.stroke.color.a === "number"
-              ? config.renderer.stroke.color.a
-              : 1,
-        }
-      : undefined;
-    const visualEffects = createVisualEffectState();
-
-    const ownedModuleIds = Array.isArray(unit.equippedModules)
-      ? unit.equippedModules.filter((id): id is UnitModuleId => UNIT_MODULE_IDS.includes(id))
-      : [];
-    const ownedSkills: SkillId[] = [];
-    if (this.hasSkill("void_modules")) {
-      ownedSkills.push("void_modules");
-    }
-    if (this.hasSkill("pheromones")) {
-      ownedSkills.push("pheromones");
-    }
-
-    const mendingLevel = ownedModuleIds.includes("mendingGland")
-      ? Math.max(this.getModuleLevel("mendingGland"), 0)
-      : 0;
-    const pheromoneHealingMultiplier = mendingLevel > 0 ? 1 + 0.1 * mendingLevel : 0;
-    const frenzyLevel = ownedModuleIds.includes("frenzyGland")
-      ? Math.max(this.getModuleLevel("frenzyGland"), 0)
-      : 0;
-    const pheromoneAggressionMultiplier = frenzyLevel > 0 ? 1 + 0.1 * frenzyLevel : 0;
-    const fireballLevel = ownedModuleIds.includes("fireballOrgan")
-      ? Math.max(this.getModuleLevel("fireballOrgan"), 0)
-      : 0;
-    const fireballDamageMultiplier = fireballLevel > 0 ? 1.75 + 0.075 * fireballLevel : 0;
-
-    // Check if unit can attack distant targets (has modules with canAttackDistant: true)
-    const canUnitAttackDistant = ownedModuleIds.some(moduleId => {
-      try {
-        const moduleConfig = getUnitModuleConfig(moduleId);
-        return moduleConfig.canAttackDistant === true;
-      } catch {
-        return false;
-      }
-    });
-
-    const objectId = this.scene.addObject("playerUnit", {
-      position,
-      fill: {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...baseFillColor },
-      },
-      stroke: config.renderer.stroke
-        ? {
-            color: { ...config.renderer.stroke.color },
-            width: config.renderer.stroke.width,
-          }
-        : undefined,
-      rotation: 0,
-      customData: {
-        renderer: cloneRendererConfigForScene(config.renderer),
-        emitter,
-        physicalSize,
-        baseFillColor: { ...baseFillColor },
-        baseStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
-        modules: ownedModuleIds,
-        skills: ownedSkills,
-      },
-    });
 
     const state: PlayerUnitState = {
-      id: this.createUnitId(),
-      designId: unit.designId ?? null,
-      type,
-      position: { ...position },
-      spawnPosition: { ...position },
-      movementId,
+      id: factoryResult.id,
+      designId: factoryResult.designId,
+      type: factoryResult.type,
+      position: { ...factoryResult.position },
+      spawnPosition: { ...factoryResult.spawnPosition },
+      movementId: factoryResult.movementId,
       rotation: 0,
-      hp,
-      maxHp,
-      armor: Math.max(blueprint.armor, 0),
-      hpRegenPerSecond: Math.max(blueprint.hpRegenPerSecond, 0),
-      armorPenetration: Math.max(blueprint.armorPenetration, 0),
-      baseAttackDamage: Math.max(blueprint.effective.attackDamage, 0),
-      baseAttackInterval: Math.max(blueprint.baseAttackInterval, 0.01),
-      baseAttackDistance: Math.max(blueprint.baseAttackDistance, 0),
-      moveSpeed: Math.max(blueprint.moveSpeed, 0),
-      moveAcceleration,
-      mass,
-      physicalSize,
-      critChance,
-      critMultiplier,
-      rewardMultiplier: runtime.rewardMultiplier,
-      damageTransferPercent: runtime.damageTransferPercent,
-      damageTransferRadius: runtime.damageTransferRadius,
-      attackStackBonusPerHit: runtime.attackStackBonusPerHit,
-      attackStackBonusCap: runtime.attackStackBonusCap,
+      hp: factoryResult.hp,
+      maxHp: factoryResult.maxHp,
+      armor: factoryResult.armor,
+      hpRegenPerSecond: factoryResult.hpRegenPerSecond,
+      armorPenetration: factoryResult.armorPenetration,
+      baseAttackDamage: factoryResult.baseAttackDamage,
+      baseAttackInterval: factoryResult.baseAttackInterval,
+      baseAttackDistance: factoryResult.baseAttackDistance,
+      moveSpeed: factoryResult.moveSpeed,
+      moveAcceleration: factoryResult.moveAcceleration,
+      mass: factoryResult.mass,
+      physicalSize: factoryResult.physicalSize,
+      critChance: factoryResult.critChance,
+      critMultiplier: factoryResult.critMultiplier,
+      rewardMultiplier: factoryResult.rewardMultiplier,
+      damageTransferPercent: factoryResult.damageTransferPercent,
+      damageTransferRadius: factoryResult.damageTransferRadius,
+      attackStackBonusPerHit: factoryResult.attackStackBonusPerHit,
+      attackStackBonusCap: factoryResult.attackStackBonusCap,
       currentAttackStackBonus: 0,
-      attackCooldown,
+      attackCooldown: factoryResult.attackCooldown,
       targetBrickId: null,
-      objectId,
-      renderer: config.renderer,
-      emitter,
-      baseFillColor,
-      baseStrokeColor,
-      appliedFillColor: { ...baseFillColor },
-      appliedStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
-      visualEffects,
+      objectId: factoryResult.objectId,
+      renderer: factoryResult.renderer,
+      emitter: factoryResult.emitter,
+      baseFillColor: factoryResult.baseFillColor,
+      baseStrokeColor: factoryResult.baseStrokeColor,
+      appliedFillColor: { ...factoryResult.baseFillColor },
+      appliedStrokeColor: factoryResult.baseStrokeColor ? { ...factoryResult.baseStrokeColor } : undefined,
+      visualEffects: factoryResult.visualEffects,
       visualEffectsDirty: false,
       preCollisionVelocity: { ...ZERO_VECTOR },
       lastNonZeroVelocity: { ...ZERO_VECTOR },
       timeSinceLastAttack: 0,
       timeSinceLastSpecial: this.abilities.getAbilityCooldownSeconds(),
-      pheromoneHealingMultiplier,
-      pheromoneAggressionMultiplier,
+      pheromoneHealingMultiplier: factoryResult.pheromoneHealingMultiplier,
+      pheromoneAggressionMultiplier: factoryResult.pheromoneAggressionMultiplier,
       pheromoneAttackBonuses: [],
-      fireballDamageMultiplier: this.computeFireballDamageMultiplier(unit.equippedModules ?? []),
-      canUnitAttackDistant,
-      equippedModules: ownedModuleIds,
-      ownedSkills,
-      targetingMode: this.getDesignTargetingMode(unit.designId ?? null, type),
+      fireballDamageMultiplier: factoryResult.fireballDamageMultiplier,
+      canUnitAttackDistant: factoryResult.canUnitAttackDistant,
+      equippedModules: factoryResult.abilityContext.equippedModules,
+      ownedSkills: factoryResult.abilityContext.ownedSkills,
+      targetingMode: factoryResult.targetingMode as UnitTargetingMode,
       wanderTarget: null,
       wanderCooldown: 0,
     };
@@ -826,7 +549,7 @@ export class PlayerUnitsModule implements GameModule {
     return unit.targetingMode;
   }
 
-  private formatUnitLogLabel(unit: PlayerUnitState): string {
+  private formatUnitLogLabel(unit: { id: string; type: string }): string {
     return `${unit.type}(${unit.id})`;
   }
 
@@ -870,7 +593,7 @@ export class PlayerUnitsModule implements GameModule {
     let best: BrickRuntimeState | null = null;
     let bestScore = 0;
     let bestDistanceSq = 0;
-    bricks.forEach((brick) => {
+    bricks.forEach((brick: BrickRuntimeState) => {
       if (!brick || brick.hp <= 0) {
         return;
       }
@@ -1060,7 +783,7 @@ export class PlayerUnitsModule implements GameModule {
         break;
       }
 
-      nearbyBricks.forEach((brick) => {
+      nearbyBricks.forEach((brick: BrickRuntimeState) => {
         const brickRadius = Math.max(brick.physicalSize, 0);
         const combinedRadius = unit.physicalSize + brickRadius;
         if (combinedRadius <= 0) {
@@ -1196,7 +919,7 @@ export class PlayerUnitsModule implements GameModule {
         const nearby = this.bricks
           .findBricksNear(target.position, unit.damageTransferRadius)
           .filter((brick) => brick.id !== target.id);
-        nearby.forEach((brick) => {
+        nearby.forEach((brick: BrickRuntimeState) => {
           this.bricks.applyDamage(brick.id, splashDamage, direction, {
             rewardMultiplier: unit.rewardMultiplier,
             armorPenetration: unit.armorPenetration,
@@ -1393,11 +1116,6 @@ export class PlayerUnitsModule implements GameModule {
       x: clampNumber(position.x, 0, mapSize.width),
       y: clampNumber(position.y, 0, mapSize.height),
     };
-  }
-
-  private createUnitId(): string {
-    this.idCounter += 1;
-    return `player-unit-${this.idCounter}`;
   }
 
   private computeFireballDamageMultiplier(equippedModules: UnitModuleId[]): number {
@@ -1655,7 +1373,7 @@ const cloneRendererConfigForScene = (
         width: renderer.stroke.width,
       }
     : undefined,
-  layers: renderer.layers.map((layer) => cloneRendererLayer(layer)),
+  layers: renderer.layers.map((layer: PlayerUnitRendererLayerConfig) => cloneRendererLayer(layer)),
 });
 
 const cloneRendererLayer = (
@@ -1664,7 +1382,7 @@ const cloneRendererLayer = (
   if (layer.shape === "polygon") {
     return {
       shape: "polygon",
-      vertices: layer.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y })),
+      vertices: layer.vertices.map((vertex: { x: number; y: number }) => ({ x: vertex.x, y: vertex.y })),
       offset: layer.offset ? { ...layer.offset } : undefined,
       fill: cloneRendererFill(layer.fill),
       stroke: cloneRendererStroke(layer.stroke),

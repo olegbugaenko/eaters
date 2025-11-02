@@ -34,7 +34,7 @@ import {
 import {
   computePlayerUnitBlueprint,
   roundStat,
-} from "../active-map/PlayerUnitsModule";
+} from "../active-map/units/PlayerUnitsModule";
 
 export type UnitDesignId = string;
 
