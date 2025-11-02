@@ -269,6 +269,32 @@ export class NecromancerModule implements GameModule {
     return true;
   }
 
+  public tryConsumeResources(cost: ResourceAmountMap): boolean {
+    if (!this.mapActive) {
+      return false;
+    }
+    const sanitized: ResourceAmountMap = {
+      mana: Math.max(0, Number.isFinite(cost.mana) ? cost.mana : 0),
+      sanity: Math.max(0, Number.isFinite(cost.sanity) ? cost.sanity : 0),
+    };
+    if (!this.canAfford(sanitized)) {
+      return false;
+    }
+
+    this.consumeResources(sanitized);
+    this.markResourcesDirty();
+    this.pushResources();
+    return true;
+  }
+
+  public isMapActive(): boolean {
+    return this.mapActive;
+  }
+
+  public getSpawnPoints(): SceneVector2[] {
+    return this.spawnPoints.map((point) => ({ ...point }));
+  }
+
   public hasSanityForAnySpawn(): boolean {
     if (!this.mapActive) {
       return false;

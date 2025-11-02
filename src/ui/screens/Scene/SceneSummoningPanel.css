@@ -228,10 +228,18 @@
   flex: 0 0 36%;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  gap: 0.75rem;
   background: var(--color-surface-main);
   padding: 0.85rem 1rem 1rem;
   min-height: 220px;
+}
+
+.scene-summoning-panel__spells-header {
+  font-size: 0.9rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c7d2fe;
+  font-weight: 600;
 }
 
 .scene-summoning-panel__spells-placeholder {
@@ -246,6 +254,88 @@
   font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-align: center;
+  padding: 1.5rem 1rem;
+}
+
+.scene-summoning-panel__spell-list {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.scene-summoning-panel__spell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  min-height: 150px;
+}
+
+.scene-summoning-panel__spell:hover,
+.scene-summoning-panel__spell:focus-visible {
+  border-color: rgba(129, 140, 248, 0.65);
+  box-shadow: 0 0 12px rgba(129, 140, 248, 0.3);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.scene-summoning-panel__spell--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(0.2);
+}
+
+.scene-summoning-panel__spell--disabled:hover,
+.scene-summoning-panel__spell--disabled:focus-visible {
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow: none;
+  transform: none;
+}
+
+.scene-summoning-panel__spell--selected {
+  border-color: rgba(147, 197, 253, 0.85);
+  box-shadow: 0 0 14px rgba(147, 197, 253, 0.35);
+}
+
+.scene-summoning-panel__spell--cooldown .scene-summoning-panel__spell-status {
+  color: #facc15;
+}
+
+.scene-summoning-panel__spell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.scene-summoning-panel__spell-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.scene-summoning-panel__spell-status {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #cbd5f5;
+}
+
+.scene-summoning-panel__spell-cost {
+  font-size: 0.8rem;
+}
+
+.scene-summoning-panel__spell-meta {
+  font-size: 0.75rem;
+  color: #cbd5f5;
+  opacity: 0.85;
 }
 
 @media (max-width: 1400px) {

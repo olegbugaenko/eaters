@@ -29,6 +29,7 @@ import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/ExplosionWaveGpuRenderer";
 import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
+import { SpellcastingModule } from "../modules/active-map/SpellcastingModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -51,6 +52,7 @@ export class Application {
   private fireballModule: FireballModule;
   private bulletModule: BulletModule;
   private audioModule: AudioModule;
+  private spellcastingModule: SpellcastingModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -243,6 +245,14 @@ export class Application {
     });
     this.bulletModule = bulletModule;
 
+    const spellcastingModule = new SpellcastingModule({
+      bridge: this.dataBridge,
+      scene: sceneObjects,
+      necromancer: this.necromancerModule,
+      bricks: bricksModule,
+    });
+    this.spellcastingModule = spellcastingModule;
+
     this.registerModule(bonusesModule);
     this.registerModule(statisticsModule);
     this.registerModule(resourcesModule);
@@ -266,6 +276,7 @@ export class Application {
     this.registerModule(effectsModule);
     this.registerModule(fireballModule);
     this.registerModule(bulletModule);
+    this.registerModule(spellcastingModule);
     this.registerModule(audioModule);
   }
 
@@ -349,6 +360,10 @@ export class Application {
 
   public getCrafting(): CraftingModule {
     return this.craftingModule;
+  }
+
+  public getSpellcasting(): SpellcastingModule {
+    return this.spellcastingModule;
   }
 
   public restartCurrentMap(): void {

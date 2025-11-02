@@ -35,6 +35,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["arc", new ArcRenderer()],
     ["aura", new AuraRenderer()],
     ["fireball", new FireballRenderer()],
+    ["spellProjectile", new BulletObjectRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };
