@@ -58,6 +58,7 @@ interface NecromancerModuleOptions {
   scene: SceneObjectManager;
   bonuses: BonusesModule;
   unitDesigns: UnitDesignModule;
+  onSanityUnavailable?: () => void;
 }
 
 interface NecromancerSaveData {
@@ -81,6 +82,7 @@ export class NecromancerModule implements GameModule {
   private readonly scene: SceneObjectManager;
   private readonly bonuses: BonusesModule;
   private readonly unitDesigns: UnitDesignModule;
+  private readonly onSanityUnavailable?: () => void;
 
   private mana: ResourceState = {
     current: 0,
@@ -109,6 +111,7 @@ export class NecromancerModule implements GameModule {
     this.scene = options.scene;
     this.bonuses = options.bonuses;
     this.unitDesigns = options.unitDesigns;
+    this.onSanityUnavailable = options.onSanityUnavailable;
     this.bonuses.subscribe((values) => {
       this.handleBonusValuesChanged(values);
     });
@@ -284,6 +287,7 @@ export class NecromancerModule implements GameModule {
     this.consumeResources(sanitized);
     this.markResourcesDirty();
     this.pushResources();
+    this.evaluateSanityAfterConsumption();
     return true;
   }
 
@@ -514,6 +518,19 @@ export class NecromancerModule implements GameModule {
 
   private markResourcesDirty(): void {
     this.resourcesDirty = true;
+  }
+
+  private evaluateSanityAfterConsumption(): void {
+    if (!this.mapActive) {
+      return;
+    }
+    if (this.playerUnits.getEffectiveUnitCount() > 0) {
+      return;
+    }
+    if (this.hasSanityForAnySpawn()) {
+      return;
+    }
+    this.onSanityUnavailable?.();
   }
 }
 

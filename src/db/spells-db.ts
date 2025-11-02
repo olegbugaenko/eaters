@@ -1,6 +1,7 @@
 import { ResourceAmountMap } from "../types/resources";
 import {
   FILL_TYPES,
+  SceneColor,
   SceneFill,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
@@ -24,6 +25,7 @@ export interface SpellProjectileConfig {
   tail: BulletTailConfig;
   tailEmitter?: BulletTailEmitterConfig;
   spawnOffset?: SceneVector2;
+  ringTrail?: SpellProjectileRingTrailConfig;
 }
 
 export interface SpellConfig {
@@ -33,6 +35,18 @@ export interface SpellConfig {
   cooldownSeconds: number;
   damage: SpellDamageConfig;
   projectile: SpellProjectileConfig;
+}
+
+export interface SpellProjectileRingTrailConfig {
+  spawnIntervalMs: number;
+  lifetimeMs: number;
+  startRadius: number;
+  endRadius: number;
+  startAlpha: number;
+  endAlpha: number;
+  innerStop: number;
+  outerStop: number;
+  color: SceneColor;
 }
 
 const MAGIC_ARROW_PROJECTILE_FILL: SceneFill = {
@@ -89,6 +103,17 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       fill: MAGIC_ARROW_PROJECTILE_FILL,
       tail: MAGIC_ARROW_TAIL,
       tailEmitter: MAGIC_ARROW_TAIL_EMITTER,
+      ringTrail: {
+        spawnIntervalMs: 140,
+        lifetimeMs: 520,
+        startRadius: 12,
+        endRadius: 42,
+        startAlpha: 0.55,
+        endAlpha: 0,
+        innerStop: 0.52,
+        outerStop: 0.8,
+        color: { r: 0.55, g: 0.7, b: 1, a: 1 },
+      },
     },
   },
 };

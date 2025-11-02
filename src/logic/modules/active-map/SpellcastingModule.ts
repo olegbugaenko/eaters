@@ -1,11 +1,17 @@
 import { GameModule } from "../../core/types";
 import { DataBridge } from "../../core/DataBridge";
-import { SceneObjectManager, SceneVector2 } from "../../services/SceneObjectManager";
+import {
+  FILL_TYPES,
+  SceneColor,
+  SceneObjectManager,
+  SceneVector2,
+} from "../../services/SceneObjectManager";
 import { NecromancerModule } from "./NecromancerModule";
 import { BricksModule } from "./BricksModule";
 import {
   SpellConfig,
   SpellId,
+  SpellProjectileRingTrailConfig,
   getSpellConfig,
   SPELL_IDS,
 } from "../../../db/spells-db";
@@ -40,6 +46,32 @@ interface SpellProjectileState {
   lifetimeMs: number;
   direction: SceneVector2;
   damage: SpellConfig["damage"];
+  ringTrail?: SpellProjectileRingTrailState;
+}
+
+interface SpellProjectileRingTrailState {
+  config: SpellProjectileRingTrailRuntimeConfig;
+  accumulatorMs: number;
+}
+
+interface SpellProjectileRingTrailRuntimeConfig
+  extends Omit<SpellProjectileRingTrailConfig, "color"> {
+  color: SceneColor;
+}
+
+interface SpellRingState {
+  id: string;
+  position: SceneVector2;
+  elapsedMs: number;
+  lifetimeMs: number;
+  startRadius: number;
+  endRadius: number;
+  startAlpha: number;
+  endAlpha: number;
+  innerStop: number;
+  outerStop: number;
+  outerFadeStop: number;
+  color: SceneColor;
 }
 
 const MAX_PROJECTILE_STEPS_PER_TICK = 5;
@@ -74,6 +106,7 @@ export class SpellcastingModule implements GameModule {
   private readonly cooldowns = new Map<SpellId, number>();
 
   private projectiles: SpellProjectileState[] = [];
+  private rings: SpellRingState[] = [];
   private optionsDirty = true;
 
   constructor(options: SpellcastingModuleOptions) {
@@ -95,6 +128,7 @@ export class SpellcastingModule implements GameModule {
   public reset(): void {
     this.cooldowns.forEach((_, id) => this.cooldowns.set(id, 0));
     this.clearProjectiles();
+    this.clearRings();
     this.markOptionsDirty();
     this.pushSpellOptions();
   }
@@ -102,6 +136,7 @@ export class SpellcastingModule implements GameModule {
   public load(_data: unknown | undefined): void {
     this.cooldowns.forEach((_, id) => this.cooldowns.set(id, 0));
     this.clearProjectiles();
+    this.clearRings();
     this.markOptionsDirty();
     this.pushSpellOptions();
   }
@@ -132,8 +167,16 @@ export class SpellcastingModule implements GameModule {
       if (this.projectiles.length > 0) {
         this.clearProjectiles();
       }
-    } else if (this.projectiles.length > 0) {
-      this.updateProjectiles(delta);
+      if (this.rings.length > 0) {
+        this.clearRings();
+      }
+    } else {
+      if (this.projectiles.length > 0) {
+        this.updateProjectiles(delta);
+      }
+      if (this.rings.length > 0) {
+        this.updateRings(delta);
+      }
     }
 
     if (cooldownChanged) {
@@ -212,7 +255,11 @@ export class SpellcastingModule implements GameModule {
       },
     });
 
-    this.projectiles.push({
+    const ringTrail = config.projectile.ringTrail
+      ? this.createRingTrailState(config.projectile.ringTrail)
+      : undefined;
+
+    const projectileState: SpellProjectileState = {
       id: objectId,
       spellId,
       position: { ...position },
@@ -222,7 +269,14 @@ export class SpellcastingModule implements GameModule {
       lifetimeMs: Math.max(0, config.projectile.lifetimeMs),
       direction: { ...direction },
       damage: config.damage,
-    });
+      ringTrail,
+    };
+
+    this.projectiles.push(projectileState);
+
+    if (ringTrail) {
+      this.spawnProjectileRing(projectileState.position, ringTrail.config);
+    }
   }
 
   private updateProjectiles(deltaMs: number): void {
@@ -264,6 +318,9 @@ export class SpellcastingModule implements GameModule {
           const damage = randomDamage(projectile.damage);
           this.bricks.applyDamage(collided.id, damage, projectile.direction);
           this.scene.removeObject(projectile.id);
+          if (projectile.ringTrail) {
+            this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
+          }
           hit = true;
           break;
         }
@@ -293,6 +350,10 @@ export class SpellcastingModule implements GameModule {
         position: { ...projectile.position },
         rotation: Math.atan2(projectile.velocity.y, projectile.velocity.x),
       });
+
+      if (projectile.ringTrail) {
+        this.updateProjectileRingTrail(projectile, deltaMs);
+      }
 
       survivors.push(projectile);
     });
@@ -370,6 +431,13 @@ export class SpellcastingModule implements GameModule {
     this.projectiles = [];
   }
 
+  private clearRings(): void {
+    this.rings.forEach((ring) => {
+      this.scene.removeObject(ring.id);
+    });
+    this.rings = [];
+  }
+
   private markOptionsDirty(): void {
     this.optionsDirty = true;
   }
@@ -388,4 +456,145 @@ export class SpellcastingModule implements GameModule {
     this.bridge.setValue(SPELL_OPTIONS_BRIDGE_KEY, payload);
     this.optionsDirty = false;
   }
+
+  private createRingTrailState(
+    config: SpellProjectileRingTrailConfig
+  ): SpellProjectileRingTrailState {
+    const sanitized: SpellProjectileRingTrailRuntimeConfig = {
+      spawnIntervalMs: Math.max(1, Math.floor(config.spawnIntervalMs)),
+      lifetimeMs: Math.max(1, Math.floor(config.lifetimeMs)),
+      startRadius: Math.max(1, config.startRadius),
+      endRadius: Math.max(Math.max(1, config.startRadius), config.endRadius),
+      startAlpha: clamp01(config.startAlpha),
+      endAlpha: clamp01(config.endAlpha),
+      innerStop: clamp01(config.innerStop),
+      outerStop: clamp01(config.outerStop),
+      color: {
+        r: clamp01(config.color.r ?? 0),
+        g: clamp01(config.color.g ?? 0),
+        b: clamp01(config.color.b ?? 0),
+        a: clamp01(config.color.a ?? 1),
+      },
+    };
+
+    if (sanitized.outerStop <= sanitized.innerStop) {
+      sanitized.outerStop = Math.min(1, sanitized.innerStop + 0.1);
+    }
+
+    return {
+      config: sanitized,
+      accumulatorMs: 0,
+    };
+  }
+
+  private updateProjectileRingTrail(
+    projectile: SpellProjectileState,
+    deltaMs: number
+  ): void {
+    const trail = projectile.ringTrail;
+    if (!trail) {
+      return;
+    }
+    const interval = Math.max(1, trail.config.spawnIntervalMs);
+    trail.accumulatorMs += deltaMs;
+    while (trail.accumulatorMs >= interval) {
+      trail.accumulatorMs -= interval;
+      this.spawnProjectileRing(projectile.position, trail.config);
+    }
+  }
+
+  private spawnProjectileRing(
+    position: SceneVector2,
+    config: SpellProjectileRingTrailRuntimeConfig
+  ): void {
+    const innerStop = clamp01(config.innerStop);
+    let outerStop = clamp01(config.outerStop);
+    if (outerStop <= innerStop) {
+      outerStop = Math.min(1, innerStop + 0.1);
+    }
+    const outerFadeStop = Math.min(1, outerStop + 0.15);
+    const ring: SpellRingState = {
+      id: this.scene.addObject("spellProjectileRing", {
+        position: { ...position },
+        size: {
+          width: config.startRadius * 2,
+          height: config.startRadius * 2,
+        },
+        fill: createRingFill(config.startRadius, config.startAlpha, {
+          color: config.color,
+          innerStop,
+          outerStop,
+          outerFadeStop,
+        }),
+      }),
+      position: { ...position },
+      elapsedMs: 0,
+      lifetimeMs: config.lifetimeMs,
+      startRadius: config.startRadius,
+      endRadius: config.endRadius,
+      startAlpha: config.startAlpha,
+      endAlpha: config.endAlpha,
+      innerStop,
+      outerStop,
+      outerFadeStop,
+      color: { ...config.color },
+    };
+
+    this.rings.push(ring);
+  }
+
+  private updateRings(deltaMs: number): void {
+    if (deltaMs <= 0) {
+      return;
+    }
+    const survivors: SpellRingState[] = [];
+    this.rings.forEach((ring) => {
+      ring.elapsedMs += deltaMs;
+      const lifetime = Math.max(1, ring.lifetimeMs);
+      if (ring.elapsedMs >= lifetime) {
+        this.scene.removeObject(ring.id);
+        return;
+      }
+      const progress = clamp01(ring.elapsedMs / lifetime);
+      const radius = lerp(ring.startRadius, ring.endRadius, progress);
+      const alpha = lerp(ring.startAlpha, ring.endAlpha, progress);
+      if (alpha <= 0.001) {
+        this.scene.removeObject(ring.id);
+        return;
+      }
+      this.scene.updateObject(ring.id, {
+        position: { ...ring.position },
+        size: { width: radius * 2, height: radius * 2 },
+        fill: createRingFill(radius, alpha, ring),
+      });
+      survivors.push(ring);
+    });
+    this.rings = survivors;
+  }
 }
+
+const clamp01 = (value: number): number => clampNumber(value, 0, 1);
+
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * clamp01(t);
+
+const createRingFill = (
+  radius: number,
+  alpha: number,
+  params: {
+    color: SceneColor;
+    innerStop: number;
+    outerStop: number;
+    outerFadeStop: number;
+  }
+) => ({
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: radius,
+  stops: [
+    { offset: 0, color: { ...params.color, a: 0 } },
+    { offset: params.innerStop, color: { ...params.color, a: 0 } },
+    { offset: params.outerStop, color: { ...params.color, a: clamp01(alpha) } },
+    { offset: params.outerFadeStop, color: { ...params.color, a: 0 } },
+    { offset: 1, color: { ...params.color, a: 0 } },
+  ],
+});

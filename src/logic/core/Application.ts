@@ -179,6 +179,9 @@ export class Application {
       scene: sceneObjects,
       bonuses: bonusesModule,
       unitDesigns: unitDesignModule,
+      onSanityUnavailable: () => {
+        this.handleAllUnitsDefeated();
+      },
     });
     const unitAutomationModule = new UnitAutomationModule({
       bridge: this.dataBridge,

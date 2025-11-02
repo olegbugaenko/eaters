@@ -275,9 +275,6 @@ export const SceneSummoningPanel = forwardRef<
                     <div className="scene-summoning-panel__spell-cost">
                       <ResourceCostDisplay cost={spell.cost} missing={missing} />
                     </div>
-                    <div className="scene-summoning-panel__spell-meta">
-                      <span>Cooldown: {formatCooldownSeconds(spell.cooldownSeconds)}</span>
-                    </div>
                   </div>
                 );
               })}
@@ -322,9 +319,6 @@ const computeMissing = (
 
 const formatModuleSummary = (module: UnitDesignModuleDetail): string =>
   `${module.bonusLabel}: ${formatUnitModuleBonusValue(module.bonusType, module.bonusValue)}`;
-
-const formatCooldownSeconds = (value: number): string =>
-  `${formatNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}s`;
 
 const formatCooldownRemaining = (remainingMs: number): string =>
   `${formatNumber(Math.max(remainingMs, 0) / 1000, {
