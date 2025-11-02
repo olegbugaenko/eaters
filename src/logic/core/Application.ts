@@ -253,6 +253,7 @@ export class Application {
       scene: sceneObjects,
       necromancer: this.necromancerModule,
       bricks: bricksModule,
+      bonuses: bonusesModule,
     });
     this.spellcastingModule = spellcastingModule;
 

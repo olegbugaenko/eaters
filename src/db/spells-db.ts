@@ -31,6 +31,7 @@ export interface SpellProjectileConfig {
 export interface SpellConfig {
   id: SpellId;
   name: string;
+  description: string;
   cost: ResourceAmountMap;
   cooldownSeconds: number;
   damage: SpellDamageConfig;
@@ -91,6 +92,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
   "magic-arrow": {
     id: "magic-arrow",
     name: "Magic Arrow",
+    description:
+      "Launch a razor of focused mana that slices through the air toward your target.",
     cost: { mana: 1.0, sanity: 0.2 },
     cooldownSeconds: 0.75,
     damage: { min: 2, max: 4 },

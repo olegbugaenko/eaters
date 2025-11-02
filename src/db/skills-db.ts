@@ -30,6 +30,7 @@ export const SKILL_IDS = [
   "bastion_foundations",
   "sand_scribing",
   "glass_latticework",
+  "arcane_amplifier",
   "void_modules",
   "pheromones",
   "emberglass_reactors",
@@ -259,6 +260,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { hunger: 1 },
     cost: createStoneCost(6, 1.35),
+  },
+  arcane_amplifier: {
+    id: "arcane_amplifier",
+    name: "Arcane Amplifier",
+    description:
+      "Tune the lattice into a resonant chamber, amplifying the force carried by your spells.",
+    nodePosition: { x: 0, y: -2 },
+    maxLevel: 5,
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.15 * level,
+      },
+    },
+    nodesRequired: { glass_latticework: 2 },
+    cost: createSandCost(18, 1.45),
   },
   void_modules: {
     id: "void_modules",

@@ -20,6 +20,7 @@ export const BONUS_IDS = [
   "all_units_crit_chance",
   "all_units_hp_regen_percentage",
   "all_units_armor_penetration",
+  "spell_power",
   "crafting_speed_mult",
   "building_cost_multiplier"
 ] as const;
@@ -96,6 +97,12 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_armor_penetration",
     name: "Brick Armor Penetration",
     defaultValue: 0
+  },
+  spell_power: {
+    id: "spell_power",
+    name: "Spell Power",
+    description: "Multiplies the damage dealt by your spells.",
+    defaultValue: 1,
   },
   crafting_speed_mult: {
     id: "crafting_speed_mult",

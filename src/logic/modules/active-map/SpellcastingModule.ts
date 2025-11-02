@@ -12,17 +12,22 @@ import {
   SpellConfig,
   SpellId,
   SpellProjectileRingTrailConfig,
+  SpellDamageConfig,
   getSpellConfig,
   SPELL_IDS,
 } from "../../../db/spells-db";
 import { ResourceAmountMap } from "../../../types/resources";
+import { BonusesModule, BonusValueMap } from "../shared/BonusesModule";
 
 export interface SpellOption {
   id: SpellId;
   name: string;
+  description: string;
   cost: ResourceAmountMap;
   cooldownSeconds: number;
   remainingCooldownMs: number;
+  damage: SpellDamageConfig;
+  spellPowerMultiplier: number;
 }
 
 export const DEFAULT_SPELL_OPTIONS: SpellOption[] = [];
@@ -34,6 +39,7 @@ interface SpellcastingModuleOptions {
   scene: SceneObjectManager;
   necromancer: NecromancerModule;
   bricks: BricksModule;
+  bonuses: BonusesModule;
 }
 
 interface SpellProjectileState {
@@ -47,6 +53,7 @@ interface SpellProjectileState {
   direction: SceneVector2;
   damage: SpellConfig["damage"];
   ringTrail?: SpellProjectileRingTrailState;
+  damageMultiplier: number;
 }
 
 interface SpellProjectileRingTrailState {
@@ -102,26 +109,34 @@ export class SpellcastingModule implements GameModule {
   private readonly scene: SceneObjectManager;
   private readonly necromancer: NecromancerModule;
   private readonly bricks: BricksModule;
+  private readonly bonuses: BonusesModule;
   private readonly configs = new Map<SpellId, SpellConfig>();
   private readonly cooldowns = new Map<SpellId, number>();
 
   private projectiles: SpellProjectileState[] = [];
   private rings: SpellRingState[] = [];
   private optionsDirty = true;
+  private spellPowerMultiplier = 1;
 
   constructor(options: SpellcastingModuleOptions) {
     this.bridge = options.bridge;
     this.scene = options.scene;
     this.necromancer = options.necromancer;
     this.bricks = options.bricks;
+    this.bonuses = options.bonuses;
 
     SPELL_IDS.forEach((id) => {
       this.configs.set(id, getSpellConfig(id));
       this.cooldowns.set(id, 0);
     });
+
+    this.bonuses.subscribe((values) => {
+      this.handleBonusValuesChanged(values);
+    });
   }
 
   public initialize(): void {
+    this.handleBonusValuesChanged(this.bonuses.getAllValues());
     this.pushSpellOptions();
   }
 
@@ -270,6 +285,7 @@ export class SpellcastingModule implements GameModule {
       direction: { ...direction },
       damage: config.damage,
       ringTrail,
+      damageMultiplier: this.getSpellPowerMultiplier(),
     };
 
     this.projectiles.push(projectileState);
@@ -315,7 +331,8 @@ export class SpellcastingModule implements GameModule {
 
         const collided = this.findHitBrick(projectile.position, projectile.radius);
         if (collided) {
-          const damage = randomDamage(projectile.damage);
+          const baseDamage = randomDamage(projectile.damage);
+          const damage = Math.max(baseDamage * Math.max(projectile.damageMultiplier, 0), 0);
           this.bricks.applyDamage(collided.id, damage, projectile.direction);
           this.scene.removeObject(projectile.id);
           if (projectile.ringTrail) {
@@ -448,9 +465,12 @@ export class SpellcastingModule implements GameModule {
       return {
         id,
         name: config.name,
+        description: config.description,
         cost: cloneCost(config.cost),
         cooldownSeconds: config.cooldownSeconds,
         remainingCooldownMs: Math.max(0, this.cooldowns.get(id) ?? 0),
+        damage: { ...config.damage },
+        spellPowerMultiplier: this.getSpellPowerMultiplier(),
       };
     });
     this.bridge.setValue(SPELL_OPTIONS_BRIDGE_KEY, payload);
@@ -570,6 +590,23 @@ export class SpellcastingModule implements GameModule {
       survivors.push(ring);
     });
     this.rings = survivors;
+  }
+
+  private handleBonusValuesChanged(values: BonusValueMap): void {
+    const raw = values["spell_power"];
+    const sanitized = Number.isFinite(raw) ? Math.max(raw, 0) : 1;
+    if (Math.abs(sanitized - this.spellPowerMultiplier) < 1e-6) {
+      return;
+    }
+    this.spellPowerMultiplier = sanitized;
+    this.projectiles.forEach((projectile) => {
+      projectile.damageMultiplier = sanitized;
+    });
+    this.markOptionsDirty();
+  }
+
+  private getSpellPowerMultiplier(): number {
+    return this.spellPowerMultiplier;
   }
 }
 
