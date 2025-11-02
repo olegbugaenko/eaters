@@ -16,14 +16,21 @@ import {
   NecromancerSpawnOption,
 } from "../../../logic/modules/active-map/NecromancerModule";
 import {
+  DEFAULT_SPELL_OPTIONS,
+  SPELL_OPTIONS_BRIDGE_KEY,
+  SpellOption,
+} from "../../../logic/modules/active-map/SpellcastingModule";
+import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
   UnitAutomationBridgeState,
 } from "../../../logic/modules/active-map/UnitAutomationModule";
 import { UnitDesignId } from "../../../logic/modules/camp/UnitDesignModule";
+import { SpellId } from "../../../db/spells-db";
 import {
   SceneCameraState,
   SceneObjectManager,
+  SceneVector2,
 } from "../../../logic/services/SceneObjectManager";
 import {
   POSITION_COMPONENTS,
@@ -286,6 +293,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const { app, bridge, scene } = useAppLogic();
+  const spellcasting = app.getSpellcasting();
   const mapTimeMs = useBridgeValue<number>(bridge, RESOURCE_RUN_DURATION_BRIDGE_KEY, 0);
   const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
@@ -300,6 +308,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     bridge,
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
     DEFAULT_NECROMANCER_SPAWN_OPTIONS
+  );
+  const spellOptions = useBridgeValue<SpellOption[]>(
+    bridge,
+    SPELL_OPTIONS_BRIDGE_KEY,
+    DEFAULT_SPELL_OPTIONS
   );
   const resourceSummary = useBridgeValue<ResourceRunSummaryPayload>(
     bridge,
@@ -325,6 +338,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const brickTotalHpRef2 = useRef(0);
   const necromancerResourcesRef = useRef<NecromancerResourcesPayload>(DEFAULT_NECROMANCER_RESOURCES);
   const necromancerOptionsRef = useRef<NecromancerSpawnOption[]>(DEFAULT_NECROMANCER_SPAWN_OPTIONS);
+  const spellOptionsRef = useRef<SpellOption[]>(DEFAULT_SPELL_OPTIONS);
   const automationStateRef = useRef<UnitAutomationBridgeState>(DEFAULT_UNIT_AUTOMATION_STATE);
   const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
   const brickInitialHpRef = useRef(0);
@@ -333,6 +347,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const showRunSummary = resourceSummary.completed;
   const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
+  const [selectedSpellId, setSelectedSpellId] = useState<SpellId | null>(null);
+  const selectedSpellIdRef = useRef<SpellId | null>(null);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   // Threshold state is sourced from bridge (autoRestartState)
   const autoRestartHandledRef = useRef(false);
@@ -463,6 +479,34 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, [necromancerOptions]);
 
   useEffect(() => {
+    spellOptionsRef.current = spellOptions;
+  }, [spellOptions]);
+
+  useEffect(() => {
+    selectedSpellIdRef.current = selectedSpellId;
+  }, [selectedSpellId]);
+
+  useEffect(() => {
+    if (!selectedSpellId) {
+      return;
+    }
+    const stillAvailable = spellOptions.some((spell) => spell.id === selectedSpellId);
+    if (!stillAvailable) {
+      setSelectedSpellId(null);
+    }
+  }, [selectedSpellId, spellOptions]);
+
+  useEffect(() => {
+    if (selectedSpellId) {
+      return;
+    }
+    if (spellOptions.length === 0) {
+      return;
+    }
+    setSelectedSpellId(spellOptions[0]!.id);
+  }, [selectedSpellId, spellOptions]);
+
+  useEffect(() => {
     automationStateRef.current = automationState;
   }, [automationState]);
 
@@ -509,6 +553,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     },
     [necromancer]
   );
+
+  const handleSelectSpell = useCallback((spellId: SpellId) => {
+    setSelectedSpellId((current) => (current === spellId ? null : spellId));
+  }, []);
 
   const handleToggleAutomation = useCallback(
     (designId: UnitDesignId, enabled: boolean) => {
@@ -858,6 +906,25 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     const clamp = (value: number, min: number, max: number) =>
       Math.min(Math.max(value, min), max);
 
+    const getWorldPosition = (event: PointerEvent): SceneVector2 | null => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        return null;
+      }
+      const rawX = (event.clientX - rect.left) / rect.width;
+      const rawY = (event.clientY - rect.top) / rect.height;
+      if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) {
+        return null;
+      }
+      const cameraState = scene.getCamera();
+      const normalizedX = clamp(rawX, 0, 1);
+      const normalizedY = clamp(rawY, 0, 1);
+      return {
+        x: cameraState.position.x + normalizedX * cameraState.viewportSize.width,
+        y: cameraState.position.y + normalizedY * cameraState.viewportSize.height,
+      };
+    };
+
     const getOverlayHeight = () => {
       const panel = summoningPanelRef.current;
       if (!panel) {
@@ -891,9 +958,29 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       pointerState.inside = false;
     };
 
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+      const spellId = selectedSpellIdRef.current;
+      if (!spellId) {
+        return;
+      }
+      const spell = spellOptionsRef.current.find((option) => option.id === spellId);
+      if (!spell || spell.remainingCooldownMs > 0) {
+        return;
+      }
+      const worldPosition = getWorldPosition(event);
+      if (!worldPosition) {
+        return;
+      }
+      spellcasting.tryCastSpell(spellId, worldPosition);
+    };
+
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerleave", handlePointerLeave, { passive: true });
     window.addEventListener("pointerout", handlePointerLeave, { passive: true });
+    canvas.addEventListener("pointerdown", handlePointerDown);
 
     return () => {
       setParticleEmitterGlContext(null);
@@ -912,8 +999,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", handlePointerLeave);
       window.removeEventListener("pointerout", handlePointerLeave);
+      canvas.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [scene]);
+  }, [scene, spellcasting]);
 
   const brickInitialHp = brickInitialHpRef.current;
   const [toolbarState, setToolbarState] = useState(() => ({
@@ -929,6 +1017,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     resources: necromancerResources,
     spawnOptions: necromancerOptions,
     automation: automationState,
+    spells: spellOptions,
   }));
 
   // Throttle toolbar updates to at most 5 times per second
@@ -946,6 +1035,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         resources: necromancerResourcesRef.current,
         spawnOptions: necromancerOptionsRef.current,
         automation: automationStateRef.current,
+        spells: spellOptionsRef.current,
       });
     }, 200);
     return () => window.clearInterval(interval);
@@ -984,6 +1074,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         ref={summoningPanelRef}
         resources={summoningProps.resources}
         spawnOptions={summoningProps.spawnOptions}
+        spells={summoningProps.spells}
+        selectedSpellId={selectedSpellId}
+        onSelectSpell={handleSelectSpell}
         onSummon={handleSummonDesign}
         onHoverInfoChange={setHoverContent}
         automation={summoningProps.automation}

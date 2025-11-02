@@ -27,10 +27,15 @@ import { formatUnitModuleBonusValue } from "../../shared/format/unitModuleBonus"
 import { useBridgeValue } from "../../shared/useBridgeValue";
 import { useAppLogic } from "../../contexts/AppLogicContext";
 import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "../../../logic/modules/active-map/PlayerUnitsModule";
+import { SpellOption } from "../../../logic/modules/active-map/SpellcastingModule";
+import { SpellId } from "../../../db/spells-db";
 
 interface SceneSummoningPanelProps {
   resources: NecromancerResourcesPayload;
   spawnOptions: readonly NecromancerSpawnOption[];
+  spells: readonly SpellOption[];
+  selectedSpellId: SpellId | null;
+  onSelectSpell: (spellId: SpellId) => void;
   onSummon: (designId: UnitDesignId) => void;
   onHoverInfoChange: (content: SceneTooltipContent | null) => void;
   automation: UnitAutomationBridgeState;
@@ -58,6 +63,9 @@ export const SceneSummoningPanel = forwardRef<
     {
       resources,
       spawnOptions,
+      spells,
+      selectedSpellId,
+      onSelectSpell,
       onSummon,
       onHoverInfoChange,
       automation,
@@ -140,6 +148,7 @@ export const SceneSummoningPanel = forwardRef<
             </div>
           </div>
           <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
+          <div className="scene-summoning-panel__spells-header">Summoning</div>
             <div className="scene-summoning-panel__unit-list">
               {spawnOptions.map((option) => {
                 const missing = computeMissing(option.cost, available);
@@ -219,9 +228,59 @@ export const SceneSummoningPanel = forwardRef<
           </div>
         </div>
         <div className="scene-summoning-panel__spells-area">
-          <div className="scene-summoning-panel__spells-placeholder">
-            Spellcasting rituals will appear here soon.
-          </div>
+          <div className="scene-summoning-panel__spells-header">Spellbook</div>
+          {spells.length === 0 ? (
+            <div className="scene-summoning-panel__spells-placeholder">
+              Spellcasting rituals will appear here soon.
+            </div>
+          ) : (
+            <div className="scene-summoning-panel__spell-list">
+              {spells.map((spell) => {
+                const missing = computeMissing(spell.cost, available);
+                const canAfford = missing.mana <= 0 && missing.sanity <= 0;
+                const onCooldown = spell.remainingCooldownMs > 0;
+                const isSelected = selectedSpellId === spell.id;
+                const spellClassName = classNames(
+                  "scene-summoning-panel__spell",
+                  !canAfford && "scene-summoning-panel__spell--disabled",
+                  onCooldown && "scene-summoning-panel__spell--cooldown",
+                  isSelected && "scene-summoning-panel__spell--selected",
+                );
+                const statusLabel = onCooldown
+                  ? `Ready in ${formatCooldownRemaining(spell.remainingCooldownMs)}`
+                  : canAfford
+                  ? isSelected
+                    ? "Selected"
+                    : "Ready"
+                  : "Need resources";
+                return (
+                  <div
+                    key={spell.id}
+                    className={spellClassName}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      onSelectSpell(spell.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onSelectSpell(spell.id);
+                      }
+                    }}
+                  >
+                    <div className="scene-summoning-panel__spell-header">
+                      <span className="scene-summoning-panel__spell-name">{spell.name}</span>
+                      <span className="scene-summoning-panel__spell-status">{statusLabel}</span>
+                    </div>
+                    <div className="scene-summoning-panel__spell-cost">
+                      <ResourceCostDisplay cost={spell.cost} missing={missing} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="scene-summoning-panel__section scene-summoning-panel__section--right">
           <div id="mana-resource" className={manaResourceClassName}>
@@ -261,6 +320,12 @@ const computeMissing = (
 
 const formatModuleSummary = (module: UnitDesignModuleDetail): string =>
   `${module.bonusLabel}: ${formatUnitModuleBonusValue(module.bonusType, module.bonusValue)}`;
+
+const formatCooldownRemaining = (remainingMs: number): string =>
+  `${formatNumber(Math.max(remainingMs, 0) / 1000, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}s`;
 
 const RESOURCE_CONSUMPTION_THRESHOLD = 0.01;
 const RESOURCE_CONSUMPTION_PULSE_DURATION_MS = 360;
