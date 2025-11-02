@@ -10,6 +10,7 @@ import type { EffectsModule } from "../src/logic/modules/scene/EffectsModule";
 import type { FireballModule } from "../src/logic/modules/scene/FireballModule";
 import type { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
 import type { PlayerUnitType } from "../src/db/player-units-db";
+import { AbilityVisualService } from "../src/logic/modules/active-map/abilities/AbilityVisualService";
 
 describe("PlayerUnitAbilities sound effects", () => {
   const createBaseState = (overrides: Partial<PlayerUnitAbilityState> = {}): PlayerUnitAbilityState => ({
@@ -26,6 +27,8 @@ describe("PlayerUnitAbilities sound effects", () => {
     timeSinceLastAttack: overrides.timeSinceLastAttack ?? 0,
     timeSinceLastSpecial: overrides.timeSinceLastSpecial ?? 5,
     fireballDamageMultiplier: overrides.fireballDamageMultiplier ?? 0,
+    equippedModules: overrides.equippedModules ?? [],
+    ownedSkills: overrides.ownedSkills ?? [],
   });
 
   const createAbilities = (
@@ -48,12 +51,16 @@ describe("PlayerUnitAbilities sound effects", () => {
     const findNearestBrick = options.findNearestBrick ?? (() => null);
     const damageUnit = options.damageUnit ?? (() => {});
 
-    return new PlayerUnitAbilities({
+    const visuals = new AbilityVisualService({
       scene,
       explosions,
       getArcs: () => undefined,
       getEffects: () => effects,
       getFireballs: () => fireballs,
+    });
+
+    return new PlayerUnitAbilities({
+      sceneService: visuals,
       logEvent: () => {},
       formatUnitLabel: (unit) => unit.id,
       getUnits: () => units,
@@ -76,6 +83,8 @@ describe("PlayerUnitAbilities sound effects", () => {
     const healer = createBaseState({
       id: "healer",
       pheromoneHealingMultiplier: 1,
+      equippedModules: ["mendingGland"],
+      ownedSkills: ["pheromones"],
     });
     const ally = createBaseState({
       id: "ally",
@@ -85,9 +94,9 @@ describe("PlayerUnitAbilities sound effects", () => {
     const units = [healer, ally];
     const abilities = createAbilities(units, { audio });
 
-    const result = abilities.tryTriggerPheromoneAbilities(healer);
+    const result = abilities.processUnitAbilities(healer, 5);
 
-    assert.strictEqual(result, "heal");
+    assert.strictEqual(result?.abilityId, "heal");
     assert.deepStrictEqual(audioCalls, ["/audio/sounds/brick_effects/heal.mp3"]);
   });
 
@@ -106,14 +115,16 @@ describe("PlayerUnitAbilities sound effects", () => {
       id: "buffer",
       pheromoneAggressionMultiplier: 1,
       pheromoneHealingMultiplier: 0,
+      equippedModules: ["frenzyGland"],
+      ownedSkills: ["pheromones"],
     });
     const ally = createBaseState({ id: "ally" });
     const units = [source, ally];
     const abilities = createAbilities(units, { audio, effects });
 
-    const result = abilities.tryTriggerPheromoneAbilities(source);
+    const result = abilities.processUnitAbilities(source, 5);
 
-    assert.strictEqual(result, "frenzy");
+    assert.strictEqual(result?.abilityId, "frenzy");
     assert.deepStrictEqual(audioCalls, ["/audio/sounds/brick_effects/buff.mp3"]);
   });
 
@@ -132,6 +143,8 @@ describe("PlayerUnitAbilities sound effects", () => {
       pheromoneHealingMultiplier: 0,
       pheromoneAggressionMultiplier: 0,
       fireballDamageMultiplier: 1.5,
+      equippedModules: ["fireballOrgan"],
+      ownedSkills: [],
     });
     const units = [source];
     const abilities = createAbilities(units, {
@@ -143,9 +156,9 @@ describe("PlayerUnitAbilities sound effects", () => {
       },
     });
 
-    const result = abilities.tryTriggerPheromoneAbilities(source);
+    const result = abilities.processUnitAbilities(source, 5);
 
-    assert.strictEqual(result, "fireball");
+    assert.strictEqual(result?.abilityId, "fireball");
     assert.strictEqual(audioCalls.length, 1);
     assert.strictEqual(audioCalls[0], "/audio/sounds/brick_effects/fireball.mp3");
     assert(spawnedDamage > 0, "fireball should inflict self-damage");
