@@ -497,6 +497,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, [selectedSpellId, spellOptions]);
 
   useEffect(() => {
+    if (selectedSpellId) {
+      return;
+    }
+    if (spellOptions.length === 0) {
+      return;
+    }
+    setSelectedSpellId(spellOptions[0]!.id);
+  }, [selectedSpellId, spellOptions]);
+
+  useEffect(() => {
     automationStateRef.current = automationState;
   }, [automationState]);
 

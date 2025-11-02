@@ -9,6 +9,7 @@ import { PortalObjectRenderer } from "./PortalObjectRenderer";
 import { ArcRenderer } from "./ArcRenderer";
 import { AuraRenderer } from "./AuraRenderer";
 import { FireballRenderer } from "./FireballRenderer";
+import { SpellProjectileRingRenderer } from "./SpellProjectileRingRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
@@ -36,7 +37,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["aura", new AuraRenderer()],
     ["fireball", new FireballRenderer()],
     ["spellProjectile", new BulletObjectRenderer()],
-    ["spellProjectileRing", new BulletObjectRenderer()],
+    ["spellProjectileRing", new SpellProjectileRingRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };
