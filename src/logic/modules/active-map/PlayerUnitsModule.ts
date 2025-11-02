@@ -48,6 +48,7 @@ import {
   PlayerUnitAbilities,
   PheromoneAttackBonusState,
 } from "./PlayerUnitAbilities";
+import { AbilityVisualService } from "./abilities/AbilityVisualService";
 import type { StatisticsTracker } from "../shared/StatisticsModule";
 
 const ATTACK_DISTANCE_EPSILON = 0.001;
@@ -165,6 +166,8 @@ interface PlayerUnitState {
   pheromoneAttackBonuses: PheromoneAttackBonusState[];
   fireballDamageMultiplier: number;
   canUnitAttackDistant: boolean;
+  equippedModules: readonly UnitModuleId[];
+  ownedSkills: readonly SkillId[];
 }
 
 export class PlayerUnitsModule implements GameModule {
@@ -209,12 +212,16 @@ export class PlayerUnitsModule implements GameModule {
     this.hasSkill = options.hasSkill;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.statistics = options.statistics;
-    this.abilities = new PlayerUnitAbilities({
+    const abilitySceneService = new AbilityVisualService({
       scene: this.scene,
       explosions: this.explosions,
       getArcs: () => this.arcs,
       getEffects: () => this.effects,
       getFireballs: () => this.fireballs,
+    });
+
+    this.abilities = new PlayerUnitAbilities({
+      sceneService: abilitySceneService,
       logEvent: (message) => this.logPheromoneEvent(message),
       formatUnitLabel: (unit) => this.formatUnitLogLabel(unit as PlayerUnitState),
       getUnits: () => this.unitOrder,
@@ -234,7 +241,7 @@ export class PlayerUnitsModule implements GameModule {
       },
       getBricksInRadius: (position, radius) => {
         const nearbyBricks = this.bricks.findBricksNear(position, radius);
-        return nearbyBricks.map(brick => brick.id);
+        return nearbyBricks.map((brick) => brick.id);
       },
       damageUnit: (unitId, damage) => {
         const unit = this.units.get(unitId);
@@ -304,7 +311,7 @@ export class PlayerUnitsModule implements GameModule {
     this.unitBlueprints = this.computeBlueprintStats();
     this.pushBlueprintStats();
     // Reset per-run ability state (e.g., mending heal charges)
-    (this.abilities as any).resetRun?.();
+    this.abilities.resetRun();
   }
 
   public tick(deltaMs: number): void {
@@ -352,8 +359,8 @@ export class PlayerUnitsModule implements GameModule {
         }
       }
 
-      const abilityResult = this.abilities.tryTriggerPheromoneAbilities(unit);
-      if (abilityResult === "heal") {
+      const abilityResult = this.abilities.processUnitAbilities(unit, deltaSeconds);
+      if (abilityResult?.statsChanged) {
         statsDirty = true;
       }
 
@@ -773,6 +780,8 @@ export class PlayerUnitsModule implements GameModule {
       pheromoneAttackBonuses: [],
       fireballDamageMultiplier: this.computeFireballDamageMultiplier(unit.equippedModules ?? []),
       canUnitAttackDistant,
+      equippedModules: ownedModuleIds,
+      ownedSkills,
       targetingMode: this.getDesignTargetingMode(unit.designId ?? null, type),
       wanderTarget: null,
       wanderCooldown: 0,
