@@ -469,12 +469,7 @@ export class SpellcastingModule implements GameModule {
         return;
       }
 
-      if (
-        projectile.position.x + projectile.radius < 0 ||
-        projectile.position.y + projectile.radius < 0 ||
-        projectile.position.x - projectile.radius > mapSize.width ||
-        projectile.position.y - projectile.radius > mapSize.height
-      ) {
+      if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, 50)) {
         this.scene.removeObject(projectile.id);
         return;
       }
@@ -510,13 +505,8 @@ export class SpellcastingModule implements GameModule {
       };
       storm.phase += storm.spinSpeed * deltaSeconds;
 
-      const outOfBounds =
-        storm.position.x + storm.radius < 0 ||
-        storm.position.y + storm.radius < 0 ||
-        storm.position.x - storm.radius > mapSize.width ||
-        storm.position.y - storm.radius > mapSize.height;
-
-      if (outOfBounds) {
+      // Перевірка виходу за межі карти з margin для надійності
+      if (this.isOutOfBounds(storm.position, storm.radius, mapSize, 50)) {
         this.scene.removeObject(storm.id);
         return;
       }
@@ -527,12 +517,10 @@ export class SpellcastingModule implements GameModule {
       );
       let inflictedTotal = 0;
       if (damage > 0) {
-        const bricks = this.bricks.findBricksNear(storm.position, storm.radius);
-        for (let i = 0; i < bricks.length; i += 1) {
-          const brick = bricks[i]!;
+        this.bricks.forEachBrickNear(storm.position, storm.radius, (brick) => {
           const beforeHp = Math.max(brick.hp, 0);
           if (beforeHp <= 0) {
-            continue;
+            return;
           }
           const direction = this.normalizeDirection({
             x: brick.position.x - storm.position.x,
@@ -542,20 +530,29 @@ export class SpellcastingModule implements GameModule {
             brick.id,
             damage,
             direction ?? { x: 0, y: 0 },
+            { overTime: deltaSeconds }
           );
           const afterHp = result.brick ? Math.max(result.brick.hp, 0) : 0;
           const inflicted = Math.min(beforeHp, Math.max(beforeHp - afterHp, 0));
           if (inflicted > 0) {
             inflictedTotal += inflicted;
           }
-        }
+        });
       }
+
+      console.log("inflictedTotal", inflictedTotal, storm.remainingHealth);
 
       if (inflictedTotal > 0) {
         storm.remainingHealth = Math.max(0, storm.remainingHealth - inflictedTotal);
       }
 
       if (storm.remainingHealth <= 0) {
+        this.scene.removeObject(storm.id);
+        return;
+      }
+
+      // Додаткова перевірка перед додаванням до survivors
+      if (this.isOutOfBounds(storm.position, storm.radius, mapSize, 50)) {
         this.scene.removeObject(storm.id);
         return;
       }
@@ -577,15 +574,27 @@ export class SpellcastingModule implements GameModule {
     this.storms = survivors;
   }
 
-  private findHitBrick(position: SceneVector2, radius: number) {
-    const candidates = this.bricks.findBricksNear(position, radius + 12);
-    if (candidates.length === 0) {
-      return null;
-    }
+  private isOutOfBounds(
+    position: SceneVector2,
+    radius: number,
+    mapSize: { width: number; height: number },
+    margin: number = 0,
+  ): boolean {
+    return (
+      position.x + radius < -margin ||
+      position.y + radius < -margin ||
+      position.x - radius > mapSize.width + margin ||
+      position.y - radius > mapSize.height + margin
+    );
+  }
 
+  private findHitBrick(
+    position: SceneVector2,
+    radius: number,
+  ): { id: string; distance: number; size: number } | null {
     let closest: { id: string; distance: number; size: number } | null = null;
-    for (let i = 0; i < candidates.length; i += 1) {
-      const brick = candidates[i]!;
+    const expanded = Math.max(0, radius + 12);
+    this.bricks.forEachBrickNear(position, expanded, (brick) => {
       const dx = brick.position.x - position.x;
       const dy = brick.position.y - position.y;
       const distance = Math.hypot(dx, dy);
@@ -595,7 +604,7 @@ export class SpellcastingModule implements GameModule {
           closest = { id: brick.id, distance, size: combined };
         }
       }
-    }
+    });
 
     return closest;
   }

@@ -121,15 +121,44 @@ void main() {
   float falloff = smoothstep(1.2, 0.0, distance);
   float angle = atan(normalized.y, normalized.x);
   float time = v_time * 0.0025;
-  float swirl = sin(angle * 4.0 + time * 6.0 + v_phase * 0.7);
-  float ripples = cos(angle * 8.0 - time * 4.0 + v_phase);
-  float turbulence = mix(swirl, ripples, 0.35);
-  float alpha = clamp01((0.55 + 0.45 * turbulence) * falloff * max(v_intensity, 0.0));
+  
+  // Spiral arms - основні спіральні лінії
+  float spiralArms = 6.0;
+  float spiralTwist = -distance * 7.0 + time * 16.0 + v_phase * 0.7;
+  float spiral = sin(angle * spiralArms + spiralTwist);
+  float spiralSharp = smoothstep(0.4, 0.7, spiral);
+  
+  // Додаткові спіралі для деталей
+  float spiralArms2 = 12.0;
+  float spiralTwist2 = -distance * 4.0 + time * 12.0 + v_phase;
+  float spiral2 = cos(angle * spiralArms2 + spiralTwist2);
+  float spiralSharp2 = smoothstep(0.3, 0.65, spiral2) * 0.4;
+  
+  // Радіальні смуги для глибини
+  float radialBands = sin(distance * 8.0 - time * 4.0) * 0.3 + 0.7;
+  
+  // Комбінуємо ефекти
+  float whirlPattern = mix(spiralSharp, spiralSharp2, 0.3);
+  whirlPattern = mix(whirlPattern, radialBands, 0.25);
+  
+  // Центр вихору - яскравіший
+  float centerBoost = smoothstep(0.6, 0.0, distance);
+  whirlPattern = mix(whirlPattern, 1.0, centerBoost * 0.4);
+  
+  float alpha = clamp01((0.5 + 0.5 * whirlPattern) * falloff * max(v_intensity, 0.0));
 
-  vec3 innerColor = vec3(0.93, 0.86, 0.68);
+  // Кольори - темніші зовні, світліші всередині
+  vec3 innerColor = vec3(0.95, 0.88, 0.72);
+  vec3 midColor = vec3(0.85, 0.72, 0.58);
   vec3 outerColor = vec3(0.68, 0.55, 0.43);
-  float colorMix = clamp01(0.5 + 0.5 * turbulence);
-  vec3 color = mix(outerColor, innerColor, colorMix);
+  
+  // Міксуємо кольори залежно від відстані та паттерну
+  float distMix = clamp01(distance * 1.2);
+  vec3 baseColor = mix(innerColor, midColor, distMix * 0.6);
+  baseColor = mix(baseColor, outerColor, distMix);
+  
+  // Підсвічуємо спіральні лінії
+  vec3 color = mix(baseColor, innerColor, spiralSharp * 0.3);
 
   fragColor = vec4(color, alpha);
 }
