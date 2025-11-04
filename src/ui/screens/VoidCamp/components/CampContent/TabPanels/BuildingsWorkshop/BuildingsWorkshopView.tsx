@@ -180,13 +180,13 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
               <div className="modules-workshop__details-section">
                 <h4>Construction</h4>
                 <div className="modules-workshop__cost-row">
-                  <div>
+                  <div className="building-row">
                     <span className="text-subtle">Max Level</span>
                     <span className="modules-workshop__cost-value">
                       {activeBuilding.maxLevel !== null ? activeBuilding.maxLevel : "∞"}
                     </span>
                   </div>
-                  <div>
+                  <div className="building-row">
                     <span className="text-subtle">Status</span>
                     <span className="modules-workshop__cost-value">
                       {activeBuilding.maxed

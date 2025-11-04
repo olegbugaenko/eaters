@@ -124,7 +124,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       "Forest of steel and soul. Increase your eaters HP",
     effects: {
       mana_regen: {
-        multiplier: (level) => 1 + 0.125 * level,
+        multiplier: (level) => 1 + 0.075 * level,
       }
     },
     cost: createScalingCost({ organics: 200, copper: 500 }, 1.75),

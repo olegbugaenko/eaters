@@ -123,3 +123,9 @@
     padding-right: 0;
   }
 }
+
+.modules-workshop__cost-row .building-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

@@ -230,7 +230,7 @@
   gap: 0.5rem;
   background: var(--color-surface-saturated);
   padding: 0.85rem 1rem 1rem;
-  min-height: 220px;
+  height: 220px;
 }
 
 .scene-summoning-panel__spells-header {
@@ -265,6 +265,7 @@
   max-height: 235px;
   overflow-y: auto;
   padding-right: 0.35rem;
+  max-height: 235px;
 }
 
 .scene-summoning-panel__spell {
@@ -352,6 +353,10 @@
   }
 
   .scene-summoning-panel__unit-list {
+    max-height: 210px;
+  }
+
+  .scene-summoning-panel__spell-list {
     max-height: 210px;
   }
 }
