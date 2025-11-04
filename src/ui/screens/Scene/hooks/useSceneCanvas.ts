@@ -309,8 +309,10 @@ export const useSceneCanvas = ({
       return;
     }
 
-    const gl = canvas.getContext("webgl");
-    const webgl2 = canvas.getContext("webgl2");
+    const webgl2 = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
+    const gl =
+      (webgl2 as WebGL2RenderingContext | WebGLRenderingContext | null) ??
+      canvas.getContext("webgl");
 
     if (!gl) {
       throw new Error("Unable to acquire WebGL context");
