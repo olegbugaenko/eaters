@@ -318,6 +318,14 @@ export const useSceneCanvas = ({
 
     const objectsRenderer = createObjectsRendererManager();
 
+    clearAllAuraSlots();
+    if (webgl2) {
+      clearPetalAuraInstances(webgl2);
+    } else {
+      clearPetalAuraInstances();
+    }
+    objectsRenderer.bootstrap(scene.getObjects());
+
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
     const program = createProgram(gl, vertexShader, fragmentShader);
