@@ -9,6 +9,7 @@ import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
 import { SceneTutorialConfig } from "./ui/screens/Scene/SceneTutorialOverlay";
 import { SaveSlotSummary } from "./logic/services/SaveManager";
 import { readStoredAudioSettings } from "@logic/utils/audioSettings";
+import { resetPetalAuraRenderState } from "./ui/renderers/petalAuraReset";
 
 type Screen = "save-select" | "void-camp" | "scene";
 
@@ -63,6 +64,7 @@ function App(): JSX.Element {
         app.playMapPlaylist();
         app.selectMap("foundations");
         app.selectMapLevel("foundations", 0);
+        resetPetalAuraRenderState();
         app.restartCurrentMap();
         setSceneTutorial({ type: "new-player" });
         setScreen("scene");
@@ -74,7 +76,7 @@ function App(): JSX.Element {
       setVoidCampTab("maps");
       setScreen("void-camp");
     },
-    [app, slotSummaries]
+    [app, slotSummaries, resetPetalAuraRenderState]
   );
 
   return (
