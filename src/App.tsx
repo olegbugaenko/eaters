@@ -6,7 +6,7 @@ import { SaveSlotSelectScreen } from "./ui/screens/SaveSlotSelect/SaveSlotSelect
 import { VoidCampScreen } from "@screens/VoidCamp/VoidCampScreen";
 import { CampTabKey } from "@screens/VoidCamp/components/CampContent/CampContent";
 import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
-import { SceneTutorialConfig } from "./ui/screens/Scene/SceneTutorialOverlay";
+import { SceneTutorialConfig } from "./ui/screens/Scene/components/overlay/SceneTutorialOverlay";
 import { SaveSlotSummary } from "./logic/services/SaveManager";
 import { readStoredAudioSettings } from "@logic/utils/audioSettings";
 

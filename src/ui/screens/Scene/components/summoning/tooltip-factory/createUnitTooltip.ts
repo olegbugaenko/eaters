@@ -1,6 +1,6 @@
-import { PlayerUnitBlueprintStats } from "../../../../types/player-units";
-import { SceneTooltipContent } from "../SceneTooltipPanel";
-import { buildUnitStatEntries } from "../../../shared/unitStats";
+import { PlayerUnitBlueprintStats } from "@/types/player-units";
+import { SceneTooltipContent } from "../../tooltip/SceneTooltipPanel";
+import { buildUnitStatEntries } from "@shared/unitStats";
 
 export const createUnitTooltip = (
   blueprint: PlayerUnitBlueprintStats
