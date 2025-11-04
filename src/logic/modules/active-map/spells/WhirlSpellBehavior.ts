@@ -1,4 +1,4 @@
-import { SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
+import { SceneObjectManager, SceneVector2, SceneColor } from "../../../services/SceneObjectManager";
 import { BricksModule } from "../BricksModule";
 import {
   SpellBehavior,
@@ -24,6 +24,15 @@ interface WhirlState {
   damageMultiplier: number;
   phase: number;
   spinSpeed: number;
+  // Візуальні параметри
+  rotationSpeedMultiplier: number;
+  spiralArms: number;
+  spiralArms2: number;
+  spiralTwist: number;
+  spiralTwist2: number;
+  colorInner: SceneColor;
+  colorMid: SceneColor;
+  colorOuter: SceneColor;
 }
 
 const clampNumber = (value: number, min: number, max: number): number =>
@@ -77,6 +86,17 @@ export class WhirlSpellBehavior implements SpellBehavior {
       customData: {
         intensity: maxHealth > 0 ? 1 : 0,
         phase: 0,
+        velocity,
+        lastUpdateTime: performance.now(),
+        spinSpeed: Math.max(0, whirl.spinSpeed ?? 2.5),
+        rotationSpeedMultiplier: whirl.rotationSpeedMultiplier ?? 1.0,
+        spiralArms: whirl.spiralArms ?? 6.0,
+        spiralArms2: whirl.spiralArms2 ?? 12.0,
+        spiralTwist: whirl.spiralTwist ?? 7.0,
+        spiralTwist2: whirl.spiralTwist2 ?? 4.0,
+        colorInner: whirl.colorInner ?? { r: 0.95, g: 0.88, b: 0.72, a: 1 },
+        colorMid: whirl.colorMid ?? { r: 0.85, g: 0.72, b: 0.58, a: 1 },
+        colorOuter: whirl.colorOuter ?? { r: 0.68, g: 0.55, b: 0.43, a: 1 },
       },
     });
 
@@ -93,6 +113,14 @@ export class WhirlSpellBehavior implements SpellBehavior {
       damageMultiplier,
       phase: 0,
       spinSpeed: Math.max(0, whirl.spinSpeed ?? 2.5),
+      rotationSpeedMultiplier: whirl.rotationSpeedMultiplier ?? 1.0,
+      spiralArms: whirl.spiralArms ?? 6.0,
+      spiralArms2: whirl.spiralArms2 ?? 12.0,
+      spiralTwist: whirl.spiralTwist ?? 7.0,
+      spiralTwist2: whirl.spiralTwist2 ?? 4.0,
+      colorInner: whirl.colorInner ?? { r: 0.95, g: 0.88, b: 0.72, a: 1 },
+      colorMid: whirl.colorMid ?? { r: 0.85, g: 0.72, b: 0.58, a: 1 },
+      colorOuter: whirl.colorOuter ?? { r: 0.68, g: 0.55, b: 0.43, a: 1 },
     };
 
     this.storms.push(state);
@@ -171,6 +199,17 @@ export class WhirlSpellBehavior implements SpellBehavior {
         customData: {
           intensity: Math.max(0.25, intensity),
           phase: storm.phase,
+          velocity: { ...storm.velocity },
+          lastUpdateTime: performance.now(),
+          spinSpeed: storm.spinSpeed,
+          rotationSpeedMultiplier: storm.rotationSpeedMultiplier,
+          spiralArms: storm.spiralArms,
+          spiralArms2: storm.spiralArms2,
+          spiralTwist: storm.spiralTwist,
+          spiralTwist2: storm.spiralTwist2,
+          colorInner: storm.colorInner,
+          colorMid: storm.colorMid,
+          colorOuter: storm.colorOuter,
         },
       });
 

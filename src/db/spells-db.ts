@@ -47,6 +47,15 @@ export interface SpellWhirlConfig {
   damagePerSecond: number;
   maxHealth: number;
   spinSpeed?: number;
+  // Візуальні параметри
+  rotationSpeedMultiplier?: number; // Множник швидкості обертання (за замовчуванням 1.0)
+  spiralArms?: number; // Кількість основних спіральних рукавів (за замовчуванням 6.0)
+  spiralArms2?: number; // Кількість додаткових спіралей (за замовчуванням 12.0)
+  spiralTwist?: number; // Множник закручення спіралей (за замовчуванням 7.0)
+  spiralTwist2?: number; // Множник закручення додаткових спіралей (за замовчуванням 4.0)
+  colorInner?: SceneColor; // Колір центру вихору (RGB)
+  colorMid?: SceneColor; // Колір середини вихору (RGB)
+  colorOuter?: SceneColor; // Колір краю вихору (RGB)
 }
 
 interface SpellBaseConfig {
@@ -146,7 +155,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Magic Arrow",
     description:
       "Launch a razor of focused mana that slices through the air toward your target.",
-    cost: { mana: 1.0, sanity: 0.1 },
+    cost: { mana: 1.0, sanity: 0.2 },
     cooldownSeconds: 0.75,
     damage: { min: 3, max: 4 },
     projectile: {
@@ -175,14 +184,22 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Sand Storm",
     description:
       "Summon a whirling storm of scouring grit that grinds forward, shredding bricks until the vortex collapses.",
-    cost: { mana: 8, sanity: 0.8 },
+    cost: { mana: 5, sanity: 1 },
     cooldownSeconds: 2,
     whirl: {
       radius: 30,
-      speed: 120,
+      speed: 170,
       damagePerSecond: 4.5,
       maxHealth: 30,
       spinSpeed: 6.8,
+      rotationSpeedMultiplier: 0.5,
+      spiralArms: 6.0,
+      spiralArms2: 12.0,
+      spiralTwist: 7.0,
+      spiralTwist2: 4.0,
+      colorInner: { r: 0.95, g: 0.88, b: 0.72, a: 0.6 },
+      colorMid: { r: 0.85, g: 0.72, b: 0.58, a: 0.5 },
+      colorOuter: { r: 0.68, g: 0.55, b: 0.43, a: 0.4 },
     },
     unlock: { skillId: "sandstorm_ritual", level: 1 },
   },
@@ -192,9 +209,9 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Darts of the Void",
     description:
       "Unleash darts of metal and void energy that damage targets.",
-    cost: { mana: 8.0, sanity: 0.5 },
-    cooldownSeconds: 1.25,
-    damage: { min: 2, max: 3 },
+    cost: { mana: 5.0, sanity: 1 },
+    cooldownSeconds: 1.2,
+    damage: { min: 3, max: 8 },
     projectile: {
       radius: 3,
       speed: 120,
@@ -221,7 +238,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         outerStop: 0.78,
         color: { r: 0.5, g: 0.7, b: 0.7, a: 0.05 },
       },
-      count: 8,
+      count: 10,
       spreadAngle: 15,
       shape: "triangle",
     },

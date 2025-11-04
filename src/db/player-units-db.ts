@@ -40,6 +40,18 @@ export type PlayerUnitRendererStrokeConfig =
       color: SceneColor;
     };
 
+export interface PlayerUnitAuraConfig {
+  petalCount: number;
+  innerRadius: number;
+  outerRadius: number;
+  petalWidth?: number; // Ширина пелюстки (за замовчуванням використовується (outerRadius - innerRadius) * 0.5)
+  rotationSpeed: number;
+  color: SceneColor;
+  alpha: number;
+  requiresModule?: UnitModuleId;
+  pointInward?: boolean; // Якщо true, пелюстки спрямовані всередину (загостренням до центру), інакше назовні (за замовчуванням false)
+}
+
 export type PlayerUnitRendererLayerConfig =
   | {
       shape: "polygon";
@@ -92,6 +104,7 @@ export interface PlayerUnitRendererCompositeConfig {
     width: number;
   };
   layers: readonly PlayerUnitRendererLayerConfig[];
+  auras?: readonly PlayerUnitAuraConfig[];
 }
 
 export type PlayerUnitRendererConfig = PlayerUnitRendererCompositeConfig;
@@ -344,21 +357,29 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             },
           },
         },
-
-        /*{
-          shape: "polygon",
-          vertices: [
-            {x: 9, y: 0},
-            {x: 1, y: 5},
-            {x: 1, y: 3},
-            {x: -4, y: 4},
-            {x: -4, y: -4},
-            {x: 1, y: -3},
-            {x: 1, y: -5},
-          ],
-          fill: { type: "base", brightness: -0.05 },
-          stroke: { type: "base", width: 3.2, brightness: -0.05 },
-        },*/
+      ],
+      auras: [
+        {
+          requiresModule: "mendingGland",
+          petalCount: 12,
+          innerRadius: 12,
+          outerRadius: 36,
+          petalWidth: 12,
+          rotationSpeed: 0.8,
+          color: { r: 0.6, g: 1.0, b: 0.7, a: 0.6 },
+          alpha: 0.45,
+          pointInward: true, // Пелюстки спрямовані всередину
+        },
+        {
+          requiresModule: "frenzyGland",
+          petalCount: 12,
+          innerRadius: 12,
+          outerRadius: 36,
+          petalWidth: 12,
+          rotationSpeed: 1.2,
+          color: { r: 1.0, g: 0.5, b: 0.5, a: 0.6 },
+          alpha: 0.45,
+        },
       ],
     },
     maxHp: 10,

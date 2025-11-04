@@ -438,6 +438,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       mana_cap: {
         income: (level) => 5 * level,
       },
+      spell_power: {
+        multiplier: (level) => 1 + 0.1 * level,
+      }
     },
     nodesRequired: { sand_scribing: 5 },
     cost: createResourceCost('wood', 60, 1.5),

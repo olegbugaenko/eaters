@@ -48,8 +48,12 @@ import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
 import { setWhirlGlContext } from "../../renderers/primitives/whirlContext";
+import { setPetalAuraGlContext } from "../../renderers/primitives/petalAuraContext";
 import { renderParticleEmitters, disposeParticleRenderResources, getParticleStats } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
 import { renderWhirls, disposeWhirlResources } from "../../renderers/primitives/WhirlGpuRenderer";
+import { updateAllWhirlInterpolations } from "../../renderers/objects/SandStormRenderer";
+import { renderPetalAuras, disposePetalAuraResources, clearPetalAuraInstances } from "../../renderers/primitives/PetalAuraGpuRenderer";
+import { clearAllAuraSlots as clearPlayerAuraSlots } from "../../renderers/objects/PlayerUnitObjectRenderer";
 import { renderArcBatches } from "../../renderers/primitives/ArcGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
@@ -775,9 +779,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     if (webgl2) {
       setParticleEmitterGlContext(webgl2);
       setWhirlGlContext(webgl2);
+      setPetalAuraGlContext(webgl2);
     } else {
       setParticleEmitterGlContext(null);
       setWhirlGlContext(null);
+      setPetalAuraGlContext(null);
     }
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -924,6 +930,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       objectsRenderer.applyChanges(changes);
       applySync();
 
+      // If there are no player units present (e.g., after map reset), clear GPU auras immediately
+      const hasUnits = scene.getObjects().some((o) => o.type === "playerUnit");
+      if (!hasUnits) {
+        clearPetalAuraInstances();
+        clearPlayerAuraSlots();
+      }
+
       // update VBO stats only when changed
       const dbs = objectsRenderer.getDynamicBufferStats();
       if (
@@ -964,7 +977,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           cameraState.position,
           cameraState.viewportSize
         );
+        // Оновлюємо інтерпольовані позиції перед рендерингом
+        updateAllWhirlInterpolations();
         renderWhirls(
+          webgl2,
+          cameraState.position,
+          cameraState.viewportSize,
+          timestamp,
+        );
+        renderPetalAuras(
           webgl2,
           cameraState.position,
           cameraState.viewportSize,
@@ -1164,6 +1185,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       }
       try {
         disposeWhirlResources();
+      } catch {}
+      try {
+        disposePetalAuraResources();
       } catch {}
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);

@@ -1,5 +1,6 @@
 import {
   DynamicPrimitive,
+  DynamicPrimitiveUpdate,
   ObjectRegistration,
   ObjectRenderer,
   transformObjectPoint,
@@ -18,6 +19,12 @@ import {
   createParticleEmitterPrimitive,
 } from "../primitives";
 import {
+  ensurePetalAuraBatch,
+  writePetalAuraInstance,
+  PetalAuraInstance,
+} from "../primitives/PetalAuraGpuRenderer";
+import { getPetalAuraGlContext } from "../primitives/petalAuraContext";
+import {
   ParticleEmitterBaseConfig,
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
@@ -29,6 +36,7 @@ import type {
   PlayerUnitRendererLayerConfig,
   PlayerUnitRendererFillConfig,
   PlayerUnitRendererStrokeConfig,
+  PlayerUnitAuraConfig,
 } from "../../../db/player-units-db";
 import type { UnitModuleId } from "../../../db/unit-modules-db";
 import type { SkillId } from "../../../db/skills-db";
@@ -62,6 +70,7 @@ interface CompositeRendererData {
   baseFillColor: SceneColor;
   baseStrokeColor?: SceneColor;
   layers: RendererLayer[];
+  auras?: readonly PlayerUnitAuraConfig[];
 }
 
 interface PolygonRendererData {
@@ -154,6 +163,63 @@ const DEFAULT_VERTICES: SceneVector2[] = [
 const DEFAULT_EMITTER_COLOR = { r: 0.2, g: 0.45, b: 0.95, a: 0.5 };
 const DEFAULT_BASE_FILL_COLOR: SceneColor = { r: 0.4, g: 0.7, b: 1, a: 1 };
 const MIN_CIRCLE_SEGMENTS = 8;
+
+// Глобальний реєстр для зберігання аур юнітів
+const auraInstanceMap = new Map<string, {
+  instanceId: string;
+  slotIndex: number;
+  auraConfig: PlayerUnitAuraConfig;
+  basePhase: number;
+}[]>();
+
+// Allow external systems (e.g., scene reset) to clear all aura slot tracking
+export const clearAllAuraSlots = (): void => {
+  auraInstanceMap.clear();
+};
+
+let currentAuraBatchRef: ReturnType<typeof ensureAuraBatch> | null = null;
+
+const ensureAuraBatch = () => {
+  const gl = getPetalAuraGlContext();
+  if (!gl) {
+    return null;
+  }
+  return ensurePetalAuraBatch(gl, 512); // Достатньо для багатьох юнітів
+};
+
+const acquireAuraSlot = (
+  batch: NonNullable<ReturnType<typeof ensureAuraBatch>>,
+  instanceId: string,
+  petalCount: number,
+  startIndex = 0
+): number => {
+  // Шукаємо вільний блок злотів для всіх пелюсток
+  for (let i = 0; i < batch.capacity - petalCount; i += 1) {
+    const index = (startIndex + i) % (batch.capacity - petalCount);
+    let slotFree = true;
+    for (let j = 0; j < petalCount; j += 1) {
+      const checkIndex = index + j;
+      const inst = batch.instances[checkIndex];
+      if (inst && inst.active) {
+        slotFree = false;
+        break;
+      }
+      // Перевіряємо, чи не зайнято іншим instance
+      for (const [id, slots] of auraInstanceMap.entries()) {
+        if (id !== instanceId && slots.some(s => s.slotIndex === checkIndex)) {
+          slotFree = false;
+          break;
+        }
+      }
+      if (!slotFree) break;
+    }
+    if (slotFree) {
+      return index;
+    }
+  }
+  // Fallback - повертаємо перший доступний
+  return 0;
+};
 
 const isVector = (value: unknown): value is SceneVector2 =>
   typeof value === "object" &&
@@ -252,6 +318,7 @@ const sanitizeCompositeRenderer = (
     baseFillColor,
     baseStrokeColor,
     layers,
+    auras: renderer.auras,
   };
 };
 
@@ -507,6 +574,81 @@ const createCompositePrimitives = (
   renderer: CompositeRendererData,
   dynamicPrimitives: DynamicPrimitive[]
 ): void => {
+  const payload = instance.data.customData as PlayerUnitCustomData | undefined;
+  // Створюємо аури, якщо вони є в конфігу
+  if (renderer.auras && Array.isArray(payload?.modules)) {
+    const instanceId = instance.id;
+    const currentBatch = ensureAuraBatch();
+    
+    if (currentBatch) {
+      if (currentAuraBatchRef !== currentBatch) {
+        auraInstanceMap.clear();
+        currentAuraBatchRef = currentBatch;
+      }
+      
+      // Очищаємо старі аури для цього instance
+      const existingSlots = auraInstanceMap.get(instanceId);
+      if (existingSlots) {
+        existingSlots.forEach(({ slotIndex, auraConfig }) => {
+          // writePetalAuraInstance сама запише всі пелюстки, тому викликаємо один раз
+          writePetalAuraInstance(currentBatch, slotIndex, {
+            position: { x: 0, y: 0 },
+            basePhase: 0,
+            active: false,
+            petalCount: auraConfig.petalCount,
+            innerRadius: auraConfig.innerRadius,
+            outerRadius: auraConfig.outerRadius,
+            petalWidth: auraConfig.petalWidth ?? ((auraConfig.outerRadius - auraConfig.innerRadius) * 0.5),
+            rotationSpeed: auraConfig.rotationSpeed,
+            color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
+            alpha: auraConfig.alpha,
+            pointInward: auraConfig.pointInward ?? false,
+          });
+        });
+      }
+      
+      const newSlots: typeof existingSlots = [];
+      let currentSlotIndex = 0;
+      
+      renderer.auras.forEach((auraConfig) => {
+        if (auraConfig.requiresModule) {
+          if (!payload?.modules?.includes(auraConfig.requiresModule)) {
+            return;
+          }
+        }
+        const petalCount = Math.max(1, Math.floor(auraConfig.petalCount));
+        const slotIndex = acquireAuraSlot(currentBatch, instanceId, petalCount, currentSlotIndex);
+        const basePhase = Math.random() * Math.PI * 2;
+        
+        newSlots.push({
+          instanceId,
+          slotIndex,
+          auraConfig,
+          basePhase,
+        });
+        
+        // Записуємо пелюстки одразу
+        writePetalAuraInstance(currentBatch, slotIndex, {
+          position: { ...instance.data.position },
+          basePhase,
+          active: true,
+          petalCount: auraConfig.petalCount,
+          innerRadius: auraConfig.innerRadius,
+          outerRadius: auraConfig.outerRadius,
+          petalWidth: auraConfig.petalWidth ?? ((auraConfig.outerRadius - auraConfig.innerRadius) * 0.5),
+          rotationSpeed: auraConfig.rotationSpeed,
+          color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
+          alpha: auraConfig.alpha,
+          pointInward: auraConfig.pointInward ?? false,
+        });
+        
+        currentSlotIndex = slotIndex + petalCount;
+      });
+      
+      auraInstanceMap.set(instanceId, newSlots);
+    }
+  }
+  
   // Group tentacle segments by groupId for potential future use (not required to animate basic sway)
   renderer.layers.forEach((layer) => {
     // If a layer requires a module, render it only when present
@@ -674,6 +816,39 @@ const createCompositePrimitives = (
 const hasStroke = (stroke: SceneStroke | undefined): stroke is SceneStroke =>
   !!stroke && typeof stroke.width === "number" && stroke.width > 0;
 
+// Оновлює позиції аур для юніта
+const updateAuraInstances = (instance: SceneObjectInstance): void => {
+  const instanceId = instance.id;
+  const slots = auraInstanceMap.get(instanceId);
+  if (!slots || slots.length === 0) {
+    return;
+  }
+  
+  const currentBatch = ensureAuraBatch();
+  if (!currentBatch) {
+    return;
+  }
+  
+  const position = instance.data.position;
+  
+  slots.forEach(({ slotIndex, auraConfig, basePhase }) => {
+    writePetalAuraInstance(currentBatch, slotIndex, {
+      position: { ...position },
+      basePhase,
+      active: true,
+      petalCount: auraConfig.petalCount,
+      innerRadius: auraConfig.innerRadius,
+      outerRadius: auraConfig.outerRadius,
+      petalWidth: auraConfig.petalWidth ?? ((auraConfig.outerRadius - auraConfig.innerRadius) * 0.5),
+      rotationSpeed: auraConfig.rotationSpeed,
+      color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
+      alpha: auraConfig.alpha,
+      pointInward: auraConfig.pointInward ?? false,
+    });
+  });
+};
+
+
 export class PlayerUnitObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const rendererData = extractRendererData(instance);
@@ -713,6 +888,43 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
       staticPrimitives: [],
       dynamicPrimitives,
     };
+  }
+  
+  public override update(instance: SceneObjectInstance, registration: ObjectRegistration): DynamicPrimitiveUpdate[] {
+    // Оновлюємо позиції аур при зміні позиції юніта
+    updateAuraInstances(instance);
+    
+    // Викликаємо стандартний update
+    return super.update(instance, registration);
+  }
+  
+  public override remove(instance: SceneObjectInstance, registration: ObjectRegistration): void {
+    // Видаляємо аури при видаленні юніта
+    const instanceId = instance.id;
+    const slots = auraInstanceMap.get(instanceId);
+    if (slots) {
+      const currentBatch = ensureAuraBatch();
+      if (currentBatch) {
+        slots.forEach(({ slotIndex, auraConfig }) => {
+          const petalCount = Math.max(1, Math.floor(auraConfig.petalCount));
+          writePetalAuraInstance(currentBatch, slotIndex, {
+            position: { x: 0, y: 0 },
+            basePhase: 0,
+            active: false,
+            petalCount: auraConfig.petalCount,
+            innerRadius: auraConfig.innerRadius,
+            outerRadius: auraConfig.outerRadius,
+            petalWidth: auraConfig.petalWidth ?? ((auraConfig.outerRadius - auraConfig.innerRadius) * 0.5),
+            rotationSpeed: auraConfig.rotationSpeed,
+            color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
+            alpha: auraConfig.alpha,
+            pointInward: auraConfig.pointInward ?? false,
+          });
+        });
+      }
+      auraInstanceMap.delete(instanceId);
+    }
+    super.remove(instance, registration);
   }
 }
 

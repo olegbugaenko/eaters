@@ -6,6 +6,7 @@ import {
   PlayerUnitRendererConfig,
   PlayerUnitEmitterConfig,
   PlayerUnitConfig,
+  PlayerUnitAuraConfig,
 } from "../../../../db/player-units-db";
 import {
   PlayerUnitBlueprintStats,
@@ -146,6 +147,18 @@ const cloneSceneColor = (color: SceneColor): SceneColor => ({
   a: typeof color.a === "number" ? color.a : 1,
 });
 
+const cloneAuraConfig = (aura: PlayerUnitAuraConfig): PlayerUnitAuraConfig => ({
+  petalCount: aura.petalCount,
+  innerRadius: aura.innerRadius,
+  outerRadius: aura.outerRadius,
+  petalWidth: aura.petalWidth,
+  rotationSpeed: aura.rotationSpeed,
+  color: { ...aura.color },
+  alpha: aura.alpha,
+  requiresModule: aura.requiresModule,
+  pointInward: aura.pointInward,
+});
+
 const cloneRendererConfigForScene = (
   renderer: PlayerUnitRendererConfig
 ): PlayerUnitRendererConfig => ({
@@ -158,6 +171,7 @@ const cloneRendererConfigForScene = (
       }
     : undefined,
   layers: renderer.layers.map((layer) => cloneRendererLayer(layer)),
+  auras: renderer.auras ? renderer.auras.map((aura) => cloneAuraConfig(aura)) : undefined,
 });
 
 const cloneRendererLayer = (

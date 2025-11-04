@@ -10,6 +10,14 @@ interface WhirlRendererResources {
     phase: number;
     intensity: number;
     active: number;
+    rotationSpeedMultiplier: number;
+    spiralArms: number;
+    spiralArms2: number;
+    spiralTwist: number;
+    spiralTwist2: number;
+    colorInner: number;
+    colorMid: number;
+    colorOuter: number;
   };
   uniforms: {
     cameraPosition: WebGLUniformLocation | null;
@@ -25,6 +33,15 @@ export interface WhirlInstance {
   phase: number;
   intensity: number;
   active: boolean;
+  // Візуальні параметри
+  rotationSpeedMultiplier: number;
+  spiralArms: number;
+  spiralArms2: number;
+  spiralTwist: number;
+  spiralTwist2: number;
+  colorInner: [number, number, number]; // RGB
+  colorMid: [number, number, number]; // RGB
+  colorOuter: [number, number, number]; // RGB
 }
 
 interface WhirlBatch {
@@ -52,6 +69,14 @@ in float a_radius;
 in float a_phase;
 in float a_intensity;
 in float a_active;
+in float a_rotationSpeedMultiplier;
+in float a_spiralArms;
+in float a_spiralArms2;
+in float a_spiralTwist;
+in float a_spiralTwist2;
+in vec3 a_colorInner;
+in vec3 a_colorMid;
+in vec3 a_colorOuter;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
@@ -62,6 +87,14 @@ out float v_radius;
 out float v_phase;
 out float v_intensity;
 out float v_time;
+out float v_rotationSpeedMultiplier;
+out float v_spiralArms;
+out float v_spiralArms2;
+out float v_spiralTwist;
+out float v_spiralTwist2;
+out vec3 v_colorInner;
+out vec3 v_colorMid;
+out vec3 v_colorOuter;
 
 vec2 toClip(vec2 world) {
   vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
@@ -75,6 +108,14 @@ void main() {
     v_phase = 0.0;
     v_intensity = 0.0;
     v_time = u_time;
+    v_rotationSpeedMultiplier = 1.0;
+    v_spiralArms = 6.0;
+    v_spiralArms2 = 12.0;
+    v_spiralTwist = 7.0;
+    v_spiralTwist2 = 4.0;
+    v_colorInner = vec3(0.95, 0.88, 0.72);
+    v_colorMid = vec3(0.85, 0.72, 0.58);
+    v_colorOuter = vec3(0.68, 0.55, 0.43);
     gl_Position = vec4(-2.0, -2.0, 0.0, 1.0);
     return;
   }
@@ -89,6 +130,14 @@ void main() {
   v_phase = a_phase;
   v_intensity = max(a_intensity, 0.0);
   v_time = u_time;
+  v_rotationSpeedMultiplier = max(a_rotationSpeedMultiplier, 0.0);
+  v_spiralArms = max(a_spiralArms, 1.0);
+  v_spiralArms2 = max(a_spiralArms2, 1.0);
+  v_spiralTwist = a_spiralTwist;
+  v_spiralTwist2 = a_spiralTwist2;
+  v_colorInner = max(a_colorInner, vec3(0.0));
+  v_colorMid = max(a_colorMid, vec3(0.0));
+  v_colorOuter = max(a_colorOuter, vec3(0.0));
 
   gl_Position = vec4(toClip(world), 0.0, 1.0);
 }
@@ -102,6 +151,14 @@ in float v_radius;
 in float v_phase;
 in float v_intensity;
 in float v_time;
+in float v_rotationSpeedMultiplier;
+in float v_spiralArms;
+in float v_spiralArms2;
+in float v_spiralTwist;
+in float v_spiralTwist2;
+in vec3 v_colorInner;
+in vec3 v_colorMid;
+in vec3 v_colorOuter;
 
 out vec4 fragColor;
 
@@ -120,18 +177,16 @@ void main() {
 
   float falloff = smoothstep(1.2, 0.0, distance);
   float angle = atan(normalized.y, normalized.x);
-  float time = v_time * 0.0025;
+  float time = v_time * 0.0025 * v_rotationSpeedMultiplier;
   
   // Spiral arms - основні спіральні лінії
-  float spiralArms = 6.0;
-  float spiralTwist = -distance * 7.0 + time * 16.0 + v_phase * 0.7;
-  float spiral = sin(angle * spiralArms + spiralTwist);
+  float spiralTwist = -distance * v_spiralTwist + time * 16.0 + v_phase * 0.7;
+  float spiral = sin(angle * v_spiralArms + spiralTwist);
   float spiralSharp = smoothstep(0.4, 0.7, spiral);
   
   // Додаткові спіралі для деталей
-  float spiralArms2 = 12.0;
-  float spiralTwist2 = -distance * 4.0 + time * 12.0 + v_phase;
-  float spiral2 = cos(angle * spiralArms2 + spiralTwist2);
+  float spiralTwist2 = -distance * v_spiralTwist2 + time * 12.0 + v_phase;
+  float spiral2 = cos(angle * v_spiralArms2 + spiralTwist2);
   float spiralSharp2 = smoothstep(0.3, 0.65, spiral2) * 0.4;
   
   // Радіальні смуги для глибини
@@ -147,24 +202,22 @@ void main() {
   
   float alpha = clamp01((0.5 + 0.5 * whirlPattern) * falloff * max(v_intensity, 0.0));
 
-  // Кольори - темніші зовні, світліші всередині
-  vec3 innerColor = vec3(0.95, 0.88, 0.72);
-  vec3 midColor = vec3(0.85, 0.72, 0.58);
-  vec3 outerColor = vec3(0.68, 0.55, 0.43);
-  
   // Міксуємо кольори залежно від відстані та паттерну
   float distMix = clamp01(distance * 1.2);
-  vec3 baseColor = mix(innerColor, midColor, distMix * 0.6);
-  baseColor = mix(baseColor, outerColor, distMix);
+  vec3 baseColor = mix(v_colorInner, v_colorMid, distMix * 0.6);
+  baseColor = mix(baseColor, v_colorOuter, distMix);
   
   // Підсвічуємо спіральні лінії
-  vec3 color = mix(baseColor, innerColor, spiralSharp * 0.3);
+  vec3 color = mix(baseColor, v_colorInner, spiralSharp * 0.3);
 
   fragColor = vec4(color, alpha);
 }
 `;
 
-const INSTANCE_COMPONENTS = 6;
+// Структура instance: center(2), radius(1), phase(1), intensity(1), active(1),
+// rotationSpeedMultiplier(1), spiralArms(1), spiralArms2(1), spiralTwist(1), spiralTwist2(1),
+// colorInner(3), colorMid(3), colorOuter(3)
+const INSTANCE_COMPONENTS = 20;
 const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
 
 const rendererContexts = new Map<WebGL2RenderingContext, {
@@ -243,6 +296,14 @@ const createResources = (
     phase: gl.getAttribLocation(program, "a_phase"),
     intensity: gl.getAttribLocation(program, "a_intensity"),
     active: gl.getAttribLocation(program, "a_active"),
+    rotationSpeedMultiplier: gl.getAttribLocation(program, "a_rotationSpeedMultiplier"),
+    spiralArms: gl.getAttribLocation(program, "a_spiralArms"),
+    spiralArms2: gl.getAttribLocation(program, "a_spiralArms2"),
+    spiralTwist: gl.getAttribLocation(program, "a_spiralTwist"),
+    spiralTwist2: gl.getAttribLocation(program, "a_spiralTwist2"),
+    colorInner: gl.getAttribLocation(program, "a_colorInner"),
+    colorMid: gl.getAttribLocation(program, "a_colorMid"),
+    colorOuter: gl.getAttribLocation(program, "a_colorOuter"),
   };
 
   const uniforms = {
@@ -313,6 +374,14 @@ const createWhirlBatch = (
   bindAttribute(resources.attributes.phase, 1, 3 * Float32Array.BYTES_PER_ELEMENT);
   bindAttribute(resources.attributes.intensity, 1, 4 * Float32Array.BYTES_PER_ELEMENT);
   bindAttribute(resources.attributes.active, 1, 5 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.rotationSpeedMultiplier, 1, 6 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.spiralArms, 1, 7 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.spiralArms2, 1, 8 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.spiralTwist, 1, 9 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.spiralTwist2, 1, 10 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.colorInner, 3, 11 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.colorMid, 3, 14 * Float32Array.BYTES_PER_ELEMENT);
+  bindAttribute(resources.attributes.colorOuter, 3, 17 * Float32Array.BYTES_PER_ELEMENT);
 
   gl.bindVertexArray(null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -328,6 +397,14 @@ const createWhirlBatch = (
       phase: 0,
       intensity: 0,
       active: false,
+      rotationSpeedMultiplier: 1.0,
+      spiralArms: 6.0,
+      spiralArms2: 12.0,
+      spiralTwist: 7.0,
+      spiralTwist2: 4.0,
+      colorInner: [0.95, 0.88, 0.72],
+      colorMid: [0.85, 0.72, 0.58],
+      colorOuter: [0.68, 0.55, 0.43],
     })),
     activeCount: 0,
   };
@@ -385,6 +462,20 @@ export const writeWhirlInstance = (
   scratch[3] = instance.phase;
   scratch[4] = instance.intensity;
   scratch[5] = instance.active ? 1 : 0;
+  scratch[6] = instance.rotationSpeedMultiplier;
+  scratch[7] = instance.spiralArms;
+  scratch[8] = instance.spiralArms2;
+  scratch[9] = instance.spiralTwist;
+  scratch[10] = instance.spiralTwist2;
+  scratch[11] = instance.colorInner[0];
+  scratch[12] = instance.colorInner[1];
+  scratch[13] = instance.colorInner[2];
+  scratch[14] = instance.colorMid[0];
+  scratch[15] = instance.colorMid[1];
+  scratch[16] = instance.colorMid[2];
+  scratch[17] = instance.colorOuter[0];
+  scratch[18] = instance.colorOuter[1];
+  scratch[19] = instance.colorOuter[2];
   batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
   batch.gl.bufferSubData(
     batch.gl.ARRAY_BUFFER,
@@ -435,6 +526,20 @@ const packActiveInstances = (batch: WhirlBatch): void => {
     scratch[3] = inst.phase;
     scratch[4] = inst.intensity;
     scratch[5] = 1; // active
+    scratch[6] = inst.rotationSpeedMultiplier;
+    scratch[7] = inst.spiralArms;
+    scratch[8] = inst.spiralArms2;
+    scratch[9] = inst.spiralTwist;
+    scratch[10] = inst.spiralTwist2;
+    scratch[11] = inst.colorInner[0];
+    scratch[12] = inst.colorInner[1];
+    scratch[13] = inst.colorInner[2];
+    scratch[14] = inst.colorMid[0];
+    scratch[15] = inst.colorMid[1];
+    scratch[16] = inst.colorMid[2];
+    scratch[17] = inst.colorOuter[0];
+    scratch[18] = inst.colorOuter[1];
+    scratch[19] = inst.colorOuter[2];
     batch.gl.bufferSubData(
       batch.gl.ARRAY_BUFFER,
       i * INSTANCE_STRIDE,
