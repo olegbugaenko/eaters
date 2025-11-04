@@ -54,6 +54,8 @@ export class AuraLifecycleManager {
       }
     });
 
+    const lostAllPlayerUnits = previouslyHadPlayerUnits && this.playerUnitIds.size === 0;
+
     changes.added.forEach((instance) => {
       if (instance.type === "playerUnit") {
         this.playerUnitIds.add(instance.id);
@@ -62,7 +64,7 @@ export class AuraLifecycleManager {
 
     this.hasPlayerUnits = this.playerUnitIds.size > 0;
 
-    if (previouslyHadPlayerUnits && !this.hasPlayerUnits) {
+    if (lostAllPlayerUnits || (previouslyHadPlayerUnits && !this.hasPlayerUnits)) {
       this.clearPlayerAuraSlots();
       this.clearPetalAuras();
     }

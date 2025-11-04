@@ -97,4 +97,60 @@ describe("AuraLifecycleManager", () => {
       "should clear aura slots when bootstrapped units disappear"
     );
   });
+
+  test("clears aura state when player units are replaced in the same sync", () => {
+    let petalClears = 0;
+    let slotClears = 0;
+    const manager = new AuraLifecycleManager({
+      clearPetalAuras: () => {
+        petalClears += 1;
+      },
+      clearPlayerAuraSlots: () => {
+        slotClears += 1;
+      },
+    });
+
+    manager.bootstrap([createPlayerUnit("playerUnit-1")]);
+
+    manager.onSceneSync({
+      added: [createPlayerUnit("playerUnit-2")],
+      updated: [],
+      removed: ["playerUnit-1"],
+    });
+
+    assert.strictEqual(petalClears, 1, "should clear petals when units are replaced");
+    assert.strictEqual(
+      slotClears,
+      1,
+      "should clear aura slots when units are replaced"
+    );
+  });
+
+  test("does not clear when other player units persist", () => {
+    let petalClears = 0;
+    let slotClears = 0;
+    const manager = new AuraLifecycleManager({
+      clearPetalAuras: () => {
+        petalClears += 1;
+      },
+      clearPlayerAuraSlots: () => {
+        slotClears += 1;
+      },
+    });
+
+    manager.bootstrap([createPlayerUnit("playerUnit-1"), createPlayerUnit("playerUnit-2")]);
+
+    manager.onSceneSync({
+      added: [createPlayerUnit("playerUnit-3")],
+      updated: [],
+      removed: ["playerUnit-1"],
+    });
+
+    assert.strictEqual(petalClears, 0, "should not clear when some units persist");
+    assert.strictEqual(
+      slotClears,
+      0,
+      "should not clear aura slots when some units persist"
+    );
+  });
 });
