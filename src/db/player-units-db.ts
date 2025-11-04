@@ -338,21 +338,27 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         {
           shape: "polygon",
           requiresModule: "burningTail",
+          // Коренева накладка — продовження хорди в напрямку хвоста
           vertices: [
-            { x: -5.2, y: 12.4 },
-            { x: 5.2, y: 12.4 },
-            { x: 6.1, y: 17.4 },
-            { x: -6.1, y: 17.4 },
+            { x: 6.0, y: 0 },
+            { x: 4.6, y: -3.6 },
+            { x: 10.9, y: -2.4 },
+            { x: 15.4, y: -0.8 },
+            { x: 15.4, y: 0.8 },
+            { x: 10.9, y: 2.4 },
+            { x: 4.6, y: 3.6 },
+            { x: 3.6, y: 0 },
           ],
           fill: { type: "solid", color: { r: 0.42, g: 0.08, b: 0.02, a: 1 } },
           stroke: { type: "solid", width: 2.1, color: { r: 0.96, g: 0.46, b: 0.15, a: 1 } },
         },
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [
-            { x: 0, y: 16.2, width: 10.8 },
-            { x: 1.1, y: 26.5, width: 8.2 },
-            { x: 1.7, y: 38.4, width: 5.6 },
-            { x: 1.0, y: 50.2, width: 3.6 },
+            { x: 12.8, y: 0.2, width: 11.0 },
+            { x: 26.4, y: 1.4, width: 8.4 },
+            { x: 40.6, y: 1.8, width: 6.0 },
+            { x: 54.2, y: 0.6, width: 4.2 },
+            { x: 66.8, y: -2.4, width: 2.8 },
           ],
           {
             requiresModule: "burningTail",
@@ -361,14 +367,15 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             anim: { type: "sway", periodMs: 1700, amplitude: 4.2, falloff: "tip", axis: "normal", phase: 0.15 },
             groupId: "burningTail-main",
           },
-          { epsilon: 0.35, winding: "CCW" }
+          { epsilon: 0.3, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [
-            { x: 0.2, y: 18.4, width: 5.6 },
-            { x: 1.0, y: 29.2, width: 4.1 },
-            { x: 1.2, y: 40.6, width: 2.7 },
-            { x: 0.6, y: 49.8, width: 1.7 },
+            { x: 13.4, y: 0.6, width: 6.2 },
+            { x: 27.8, y: 2.1, width: 4.8 },
+            { x: 41.8, y: 2.6, width: 3.3 },
+            { x: 55.6, y: 1.2, width: 2.1 },
+            { x: 67.4, y: -1.8, width: 1.4 },
           ],
           {
             requiresModule: "burningTail",
@@ -382,10 +389,10 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "burningTail",
           vertices: [
-            { x: 0.6, y: 46 },
-            { x: 4.0, y: 55.2 },
-            { x: 0.6, y: 64.6 },
-            { x: -2.2, y: 55.4 },
+            { x: 64.8, y: -5.6 },
+            { x: 74.6, y: -3.2 },
+            { x: 65.2, y: -0.4 },
+            { x: 59.8, y: -2.8 },
           ],
           fill: { type: "solid", color: { r: 1, g: 0.58, b: 0.2, a: 0.85 } },
           stroke: { type: "solid", width: 1.1, color: { r: 0.75, g: 0.22, b: 0.05, a: 1 } },
@@ -394,7 +401,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "circle",
           requiresModule: "burningTail",
           radius: 8,
-          offset: { x: 0.8, y: 54.5 },
+          offset: { x: 71.2, y: -3.6 },
           fill: {
             type: "gradient",
             fill: {
@@ -415,20 +422,25 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "freezingTail",
           vertices: [
-            { x: -5.0, y: 12.2 },
-            { x: 5.0, y: 12.2 },
-            { x: 4.2, y: 16.6 },
-            { x: -4.2, y: 16.6 },
+            { x: 6.0, y: 0 },
+            { x: 4.8, y: -3.4 },
+            { x: 10.6, y: -2.4 },
+            { x: 14.8, y: -0.9 },
+            { x: 14.8, y: 0.9 },
+            { x: 10.6, y: 2.4 },
+            { x: 4.8, y: 3.4 },
+            { x: 3.6, y: 0 },
           ],
           fill: { type: "solid", color: { r: 0.1, g: 0.32, b: 0.62, a: 1 } },
           stroke: { type: "solid", width: 2.0, color: { r: 0.48, g: 0.86, b: 1, a: 1 } },
         },
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [
-            { x: 0, y: 16.2, width: 10.2 },
-            { x: -1.1, y: 26.4, width: 7.8 },
-            { x: -1.7, y: 38.3, width: 5.2 },
-            { x: -1.1, y: 50.4, width: 3.5 },
+            { x: 12.4, y: -0.3, width: 10.4 },
+            { x: 25.6, y: -1.8, width: 7.6 },
+            { x: 38.6, y: -2.6, width: 5.2 },
+            { x: 52.2, y: -2.4, width: 3.4 },
+            { x: 64.4, y: -0.6, width: 2.4 },
           ],
           {
             requiresModule: "freezingTail",
@@ -437,14 +449,15 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             anim: { type: "sway", periodMs: 1950, amplitude: 3.6, falloff: "tip", axis: "normal", phase: 0.2 },
             groupId: "freezingTail-main",
           },
-          { epsilon: 0.35, winding: "CCW" }
+          { epsilon: 0.3, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [
-            { x: -0.1, y: 18.4, width: 5.2 },
-            { x: -0.8, y: 29.1, width: 3.8 },
-            { x: -1.0, y: 40.5, width: 2.4 },
-            { x: -0.4, y: 49.6, width: 1.5 },
+            { x: 12.8, y: 0.1, width: 5.6 },
+            { x: 26.6, y: -1.1, width: 4.0 },
+            { x: 39.8, y: -1.6, width: 2.6 },
+            { x: 53.0, y: -1.2, width: 1.7 },
+            { x: 65.0, y: 0.2, width: 1.1 },
           ],
           {
             requiresModule: "freezingTail",
@@ -458,10 +471,10 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "freezingTail",
           vertices: [
-            { x: -0.6, y: 46 },
-            { x: -3.6, y: 55.2 },
-            { x: -0.6, y: 64.6 },
-            { x: 1.8, y: 55.0 },
+            { x: 62.6, y: -3.8 },
+            { x: 71.4, y: -1.6 },
+            { x: 63.0, y: 0.8 },
+            { x: 57.6, y: -1.4 },
           ],
           fill: { type: "solid", color: { r: 0.66, g: 0.95, b: 1, a: 0.85 } },
           stroke: { type: "solid", width: 1.1, color: { r: 0.24, g: 0.62, b: 0.95, a: 1 } },
@@ -470,7 +483,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "circle",
           requiresModule: "freezingTail",
           radius: 7.5,
-          offset: { x: -0.8, y: 54.3 },
+          offset: { x: 68.2, y: -1.2 },
           fill: {
             type: "gradient",
             fill: {
