@@ -48,12 +48,10 @@ import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
 import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
-import { setWhirlGlContext } from "../../renderers/primitives/whirlContext";
-import { setPetalAuraGlContext } from "../../renderers/primitives/petalAuraContext";
 import { renderParticleEmitters, disposeParticleRenderResources, getParticleStats } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
-import { renderWhirls, disposeWhirlResources } from "../../renderers/primitives/WhirlGpuRenderer";
 import { updateAllWhirlInterpolations } from "../../renderers/objects/SandStormRenderer";
-import { renderPetalAuras, disposePetalAuraResources } from "../../renderers/primitives/PetalAuraGpuRenderer";
+import { whirlEffect } from "../../renderers/primitives/WhirlGpuRenderer";
+import { petalAuraEffect } from "../../renderers/primitives/PetalAuraGpuRenderer";
 import { renderArcBatches } from "../../renderers/primitives/ArcGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
@@ -778,12 +776,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     if (webgl2) {
       setParticleEmitterGlContext(webgl2);
-      setWhirlGlContext(webgl2);
-      setPetalAuraGlContext(webgl2);
+      whirlEffect.onContextAcquired(webgl2);
+      petalAuraEffect.onContextAcquired(webgl2);
     } else {
       setParticleEmitterGlContext(null);
-      setWhirlGlContext(null);
-      setPetalAuraGlContext(null);
+      const whirlContext = whirlEffect.getPrimaryContext();
+      if (whirlContext) {
+        whirlEffect.onContextLost(whirlContext);
+      }
+      const auraContext = petalAuraEffect.getPrimaryContext();
+      if (auraContext) {
+        petalAuraEffect.onContextLost(auraContext);
+      }
     }
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -977,13 +981,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         );
         // Оновлюємо інтерпольовані позиції перед рендерингом
         updateAllWhirlInterpolations();
-        renderWhirls(
+        whirlEffect.beforeRender(webgl2, timestamp);
+        petalAuraEffect.beforeRender(webgl2, timestamp);
+        whirlEffect.render(
           webgl2,
           cameraState.position,
           cameraState.viewportSize,
           timestamp,
         );
-        renderPetalAuras(
+        petalAuraEffect.render(
           webgl2,
           cameraState.position,
           cameraState.viewportSize,
@@ -1175,17 +1181,35 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     return () => {
       setParticleEmitterGlContext(null);
-      setWhirlGlContext(null);
       if (webgl2) {
+        try {
+          whirlEffect.onContextLost(webgl2);
+        } catch {}
+        try {
+          petalAuraEffect.onContextLost(webgl2);
+        } catch {}
         try {
           disposeParticleRenderResources(webgl2);
         } catch {}
+      } else {
+        const whirlContext = whirlEffect.getPrimaryContext();
+        if (whirlContext) {
+          try {
+            whirlEffect.onContextLost(whirlContext);
+          } catch {}
+        }
+        const auraContext = petalAuraEffect.getPrimaryContext();
+        if (auraContext) {
+          try {
+            petalAuraEffect.onContextLost(auraContext);
+          } catch {}
+        }
       }
       try {
-        disposeWhirlResources();
+        whirlEffect.dispose();
       } catch {}
       try {
-        disposePetalAuraResources();
+        petalAuraEffect.dispose();
       } catch {}
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);

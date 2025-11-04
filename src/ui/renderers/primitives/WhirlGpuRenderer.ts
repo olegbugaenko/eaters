@@ -1,4 +1,5 @@
-import { SceneVector2 } from "../../../logic/services/SceneObjectManager";
+import { SceneSize, SceneVector2 } from "../../../logic/services/SceneObjectManager";
+import { GpuInstancedPrimitiveLifecycle } from "./GpuInstancedPrimitiveLifecycle";
 
 interface WhirlRendererResources {
   gl: WebGL2RenderingContext;
@@ -220,10 +221,10 @@ void main() {
 const INSTANCE_COMPONENTS = 20;
 const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
 
-const rendererContexts = new Map<WebGL2RenderingContext, {
+interface WhirlRendererContext {
   resources: WhirlRendererResources;
   batch: WhirlBatch | null;
-}>();
+}
 
 const compileShader = (
   gl: WebGL2RenderingContext,
@@ -410,32 +411,6 @@ const createWhirlBatch = (
   };
 };
 
-export const ensureWhirlBatch = (
-  gl: WebGL2RenderingContext,
-  capacity: number,
-): WhirlBatch | null => {
-  let context = rendererContexts.get(gl);
-  if (!context) {
-    const resources = createResources(gl);
-    if (!resources) {
-      return null;
-    }
-    context = { resources, batch: null };
-    rendererContexts.set(gl, context);
-  }
-
-  const { resources } = context;
-
-  if (!context.batch || capacity > context.batch.capacity) {
-    if (context.batch) {
-      disposeWhirlBatch(context.batch);
-    }
-    context.batch = createWhirlBatch(gl, capacity, resources);
-  }
-
-  return context.batch;
-};
-
 const disposeWhirlBatch = (batch: WhirlBatch): void => {
   const { gl, vao, instanceBuffer } = batch;
   if (vao) {
@@ -446,7 +421,7 @@ const disposeWhirlBatch = (batch: WhirlBatch): void => {
   }
 };
 
-export const writeWhirlInstance = (
+const writeWhirlInstanceInternal = (
   batch: WhirlBatch,
   index: number,
   instance: WhirlInstance,
@@ -549,63 +524,201 @@ const packActiveInstances = (batch: WhirlBatch): void => {
   batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
 };
 
+class WhirlEffect implements GpuInstancedPrimitiveLifecycle<WhirlBatch> {
+  private readonly contexts = new Map<WebGL2RenderingContext, WhirlRendererContext>();
+
+  private primaryContext: WebGL2RenderingContext | null = null;
+
+  public onContextAcquired(gl: WebGL2RenderingContext): void {
+    if (!this.contexts.has(gl)) {
+      const resources = createResources(gl);
+      if (!resources) {
+        return;
+      }
+      this.contexts.set(gl, { resources, batch: null });
+    }
+    this.primaryContext = gl;
+  }
+
+  public onContextLost(gl: WebGL2RenderingContext): void {
+    const context = this.contexts.get(gl);
+    if (context) {
+      if (context.batch) {
+        disposeWhirlBatch(context.batch);
+      }
+      gl.deleteBuffer(context.resources.quadBuffer);
+      gl.deleteProgram(context.resources.program);
+      this.contexts.delete(gl);
+    }
+    if (this.primaryContext === gl) {
+      this.primaryContext = null;
+    }
+  }
+
+  public ensureBatch(
+    gl: WebGL2RenderingContext,
+    capacity: number,
+  ): WhirlBatch | null {
+    this.onContextAcquired(gl);
+    const context = this.contexts.get(gl);
+    if (!context) {
+      return null;
+    }
+    if (!context.batch || capacity > context.batch.capacity) {
+      if (context.batch) {
+        disposeWhirlBatch(context.batch);
+      }
+      context.batch = createWhirlBatch(gl, capacity, context.resources);
+      if (!context.batch) {
+        return null;
+      }
+    }
+    return context.batch;
+  }
+
+  public beforeRender(gl: WebGL2RenderingContext, _timestampMs: number): void {
+    const context = this.contexts.get(gl);
+    if (!context?.batch) {
+      return;
+    }
+    packActiveInstances(context.batch);
+  }
+
+  public render(
+    gl: WebGL2RenderingContext,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    timeMs: number,
+  ): void {
+    const context = this.contexts.get(gl);
+    if (!context?.batch || !context.batch.vao || context.batch.activeCount <= 0) {
+      return;
+    }
+
+    const { resources, batch } = context;
+
+    gl.useProgram(resources.program);
+    if (resources.uniforms.cameraPosition) {
+      gl.uniform2f(
+        resources.uniforms.cameraPosition,
+        cameraPosition.x,
+        cameraPosition.y,
+      );
+    }
+    if (resources.uniforms.viewportSize) {
+      gl.uniform2f(
+        resources.uniforms.viewportSize,
+        viewportSize.width,
+        viewportSize.height,
+      );
+    }
+    if (resources.uniforms.time) {
+      gl.uniform1f(resources.uniforms.time, timeMs);
+    }
+
+    gl.bindVertexArray(batch.vao);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, batch.activeCount);
+    gl.bindVertexArray(null);
+  }
+
+  public clearInstances(gl?: WebGL2RenderingContext): void {
+    if (gl) {
+      const context = this.contexts.get(gl);
+      if (context?.batch) {
+        resetBatch(context.batch);
+      }
+      return;
+    }
+
+    this.contexts.forEach((context) => {
+      if (context.batch) {
+        resetBatch(context.batch);
+      }
+    });
+  }
+
+  public dispose(): void {
+    this.contexts.forEach((context, gl) => {
+      if (context.batch) {
+        disposeWhirlBatch(context.batch);
+      }
+      gl.deleteBuffer(context.resources.quadBuffer);
+      gl.deleteProgram(context.resources.program);
+    });
+    this.contexts.clear();
+    this.primaryContext = null;
+  }
+
+  public writeInstance(
+    batch: WhirlBatch,
+    index: number,
+    instance: WhirlInstance,
+  ): void {
+    writeWhirlInstanceInternal(batch, index, instance);
+  }
+
+  public getPrimaryContext(): WebGL2RenderingContext | null {
+    return this.primaryContext;
+  }
+}
+
+const createInactiveWhirlInstance = (): WhirlInstance => ({
+  position: { x: 0, y: 0 },
+  radius: 0,
+  phase: 0,
+  intensity: 0,
+  active: false,
+  rotationSpeedMultiplier: 1.0,
+  spiralArms: 6.0,
+  spiralArms2: 12.0,
+  spiralTwist: 7.0,
+  spiralTwist2: 4.0,
+  colorInner: [0.95, 0.88, 0.72],
+  colorMid: [0.85, 0.72, 0.58],
+  colorOuter: [0.68, 0.55, 0.43],
+});
+
+const resetBatch = (batch: WhirlBatch): void => {
+  batch.activeCount = 0;
+  for (let i = 0; i < batch.capacity; i += 1) {
+    batch.instances[i] = createInactiveWhirlInstance();
+  }
+  if (batch.instanceBuffer) {
+    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
+    batch.gl.bufferData(
+      batch.gl.ARRAY_BUFFER,
+      batch.capacity * INSTANCE_STRIDE,
+      batch.gl.DYNAMIC_DRAW,
+    );
+    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
+  }
+};
+
+export const whirlEffect = new WhirlEffect();
+
+export const ensureWhirlBatch = (
+  gl: WebGL2RenderingContext,
+  capacity: number,
+): WhirlBatch | null => whirlEffect.ensureBatch(gl, capacity);
+
+export const writeWhirlInstance = (
+  batch: WhirlBatch,
+  index: number,
+  instance: WhirlInstance,
+): void => {
+  whirlEffect.writeInstance(batch, index, instance);
+};
+
 export const renderWhirls = (
   gl: WebGL2RenderingContext,
   cameraPosition: SceneVector2,
-  viewportSize: { width: number; height: number },
+  viewportSize: SceneSize,
   timeMs: number,
-): void => {
-  const context = rendererContexts.get(gl);
-  if (!context || !context.batch || context.batch.activeCount <= 0) {
-    return;
-  }
-
-  const { resources, batch } = context;
-  if (!batch.vao) {
-    return;
-  }
-
-  // Перепаковуємо активні instances в початок буфера перед рендерингом
-  // Це необхідно, бо drawArraysInstanced рендерить тільки перші activeCount instances послідовно
-  // Якщо активні instances не послідовні (наприклад, слоти 0, 2, 5), частина не буде рендеритися
-  packActiveInstances(batch);
-
-  if (batch.activeCount <= 0) {
-    return;
-  }
-
-  gl.useProgram(resources.program);
-  if (resources.uniforms.cameraPosition) {
-    gl.uniform2f(
-      resources.uniforms.cameraPosition,
-      cameraPosition.x,
-      cameraPosition.y,
-    );
-  }
-  if (resources.uniforms.viewportSize) {
-    gl.uniform2f(
-      resources.uniforms.viewportSize,
-      viewportSize.width,
-      viewportSize.height,
-    );
-  }
-  if (resources.uniforms.time) {
-    gl.uniform1f(resources.uniforms.time, timeMs);
-  }
-
-  gl.bindVertexArray(batch.vao);
-  gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, batch.activeCount);
-  gl.bindVertexArray(null);
-};
+): void => whirlEffect.render(gl, cameraPosition, viewportSize, timeMs);
 
 export const disposeWhirlResources = (): void => {
-  rendererContexts.forEach((context) => {
-    const { gl, program, quadBuffer } = context.resources;
-    if (context.batch) {
-      disposeWhirlBatch(context.batch);
-    }
-    gl.deleteBuffer(quadBuffer);
-    gl.deleteProgram(program);
-  });
-  rendererContexts.clear();
+  whirlEffect.dispose();
 };
+
+export const getWhirlGlContext = (): WebGL2RenderingContext | null =>
+  whirlEffect.getPrimaryContext();
