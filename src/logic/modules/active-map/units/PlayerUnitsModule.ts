@@ -10,6 +10,11 @@ import {
 } from "../../../services/SceneObjectManager";
 import { BricksModule, BrickRuntimeState } from "../BricksModule";
 import {
+  BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
+  BURNING_TAIL_DURATION_MS,
+  FREEZING_TAIL_DURATION_MS,
+} from "../BrickEffectsManager";
+import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
@@ -455,6 +460,14 @@ export class PlayerUnitsModule implements GameModule {
       unitId,
     );
 
+    const moduleLevels: Partial<Record<UnitModuleId, number>> = {};
+    factoryResult.abilityContext.equippedModules.forEach((moduleId) => {
+      const level = Math.max(this.getModuleLevel(moduleId), 0);
+      if (level > 0) {
+        moduleLevels[moduleId] = level;
+      }
+    });
+
     const state: PlayerUnitState = {
       id: factoryResult.id,
       designId: factoryResult.designId,
@@ -503,6 +516,7 @@ export class PlayerUnitsModule implements GameModule {
       pheromoneAttackBonuses: [],
       fireballDamageMultiplier: factoryResult.fireballDamageMultiplier,
       canUnitAttackDistant: factoryResult.canUnitAttackDistant,
+      moduleLevels,
       equippedModules: factoryResult.abilityContext.equippedModules,
       ownedSkills: factoryResult.abilityContext.ownedSkills,
       targetingMode: factoryResult.targetingMode as UnitTargetingMode,
@@ -913,6 +927,32 @@ export class PlayerUnitsModule implements GameModule {
       this.spawnCriticalHitEffect(effectPosition);
     }
 
+    if (!result.destroyed && surviving) {
+      const inflictedDamage = result.inflictedDamage;
+      const burningLevel = unit.moduleLevels?.burningTail ?? 0;
+      if (burningLevel > 0 && inflictedDamage > 0) {
+        this.bricks.applyEffect({
+          type: "burningTail",
+          brickId: surviving.id,
+          durationMs: BURNING_TAIL_DURATION_MS,
+          damagePerSecond: inflictedDamage * BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
+          rewardMultiplier: unit.rewardMultiplier,
+          armorPenetration: unit.armorPenetration,
+        });
+      }
+
+      const freezingLevel = unit.moduleLevels?.freezingTail ?? 0;
+      if (freezingLevel > 0 && totalDamage > 0) {
+        const divisor = 1.5 + 0.05 * freezingLevel;
+        this.bricks.applyEffect({
+          type: "freezingTail",
+          brickId: surviving.id,
+          durationMs: FREEZING_TAIL_DURATION_MS,
+          divisor,
+        });
+      }
+    }
+
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
@@ -933,7 +973,9 @@ export class PlayerUnitsModule implements GameModule {
     }
 
     const counterSource = surviving ?? target;
-    const counterDamage = Math.max(counterSource.baseDamage - unit.armor, 0);
+    const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
+    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier, 0);
+    const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       const previousHp = unit.hp;
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);

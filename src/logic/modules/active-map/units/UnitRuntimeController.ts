@@ -1,6 +1,11 @@
 import { SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
 import { MovementService, MovementBodyState } from "../../../services/MovementService";
 import { BricksModule, BrickRuntimeState } from "../BricksModule";
+import {
+  BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
+  BURNING_TAIL_DURATION_MS,
+  FREEZING_TAIL_DURATION_MS,
+} from "../BrickEffectsManager";
 import { PlayerUnitAbilities, AbilityActivationResult } from "../PlayerUnitAbilities";
 import type { UnitTargetingMode } from "../../../../types/unit-targeting";
 import type { StatisticsTracker } from "../../shared/StatisticsModule";
@@ -667,6 +672,32 @@ export class UnitRuntimeController {
       this.spawnCriticalHitEffect(effectPosition);
     }
 
+    if (!result.destroyed && surviving) {
+      const inflictedDamage = result.inflictedDamage;
+      const burningLevel = unit.moduleLevels?.burningTail ?? 0;
+      if (burningLevel > 0 && inflictedDamage > 0) {
+        this.bricks.applyEffect({
+          type: "burningTail",
+          brickId: surviving.id,
+          durationMs: BURNING_TAIL_DURATION_MS,
+          damagePerSecond: inflictedDamage * BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
+          rewardMultiplier: unit.rewardMultiplier,
+          armorPenetration: unit.armorPenetration,
+        });
+      }
+
+      const freezingLevel = unit.moduleLevels?.freezingTail ?? 0;
+      if (freezingLevel > 0 && totalDamage > 0) {
+        const divisor = 1.5 + 0.05 * freezingLevel;
+        this.bricks.applyEffect({
+          type: "freezingTail",
+          brickId: surviving.id,
+          durationMs: FREEZING_TAIL_DURATION_MS,
+          divisor,
+        });
+      }
+    }
+
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
@@ -687,7 +718,9 @@ export class UnitRuntimeController {
     }
 
     const counterSource = surviving ?? target;
-    const counterDamage = Math.max(counterSource.baseDamage - unit.armor, 0);
+    const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
+    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier, 0);
+    const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       const previousHp = unit.hp;
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
