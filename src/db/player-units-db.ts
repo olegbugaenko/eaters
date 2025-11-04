@@ -334,6 +334,158 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           stroke: { type: "base", width: 1.1, brightness: -0.10 }
         },
 
+        // Burning tail (flame spine + glow)
+        {
+          shape: "polygon",
+          requiresModule: "burningTail",
+          vertices: [
+            { x: -5.2, y: 12.4 },
+            { x: 5.2, y: 12.4 },
+            { x: 6.1, y: 17.4 },
+            { x: -6.1, y: 17.4 },
+          ],
+          fill: { type: "solid", color: { r: 0.42, g: 0.08, b: 0.02, a: 1 } },
+          stroke: { type: "solid", width: 2.1, color: { r: 0.96, g: 0.46, b: 0.15, a: 1 } },
+        },
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [
+            { x: 0, y: 16.2, width: 10.8 },
+            { x: 1.1, y: 26.5, width: 8.2 },
+            { x: 1.7, y: 38.4, width: 5.6 },
+            { x: 1.0, y: 50.2, width: 3.6 },
+          ],
+          {
+            requiresModule: "burningTail",
+            fill: { type: "solid", color: { r: 0.92, g: 0.38, b: 0.1, a: 0.92 } },
+            stroke: { type: "solid", width: 1.6, color: { r: 0.55, g: 0.14, b: 0.05, a: 1 } },
+            anim: { type: "sway", periodMs: 1700, amplitude: 4.2, falloff: "tip", axis: "normal", phase: 0.15 },
+            groupId: "burningTail-main",
+          },
+          { epsilon: 0.35, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [
+            { x: 0.2, y: 18.4, width: 5.6 },
+            { x: 1.0, y: 29.2, width: 4.1 },
+            { x: 1.2, y: 40.6, width: 2.7 },
+            { x: 0.6, y: 49.8, width: 1.7 },
+          ],
+          {
+            requiresModule: "burningTail",
+            fill: { type: "solid", color: { r: 1, g: 0.62, b: 0.24, a: 0.75 } },
+            anim: { type: "sway", periodMs: 1700, amplitude: 4.6, falloff: "tip", axis: "normal", phase: 0.45 },
+            groupId: "burningTail-glow",
+          },
+          { epsilon: 0.22, winding: "CCW" }
+        ),
+        {
+          shape: "polygon",
+          requiresModule: "burningTail",
+          vertices: [
+            { x: 0.6, y: 46 },
+            { x: 4.0, y: 55.2 },
+            { x: 0.6, y: 64.6 },
+            { x: -2.2, y: 55.4 },
+          ],
+          fill: { type: "solid", color: { r: 1, g: 0.58, b: 0.2, a: 0.85 } },
+          stroke: { type: "solid", width: 1.1, color: { r: 0.75, g: 0.22, b: 0.05, a: 1 } },
+        },
+        {
+          shape: "circle",
+          requiresModule: "burningTail",
+          radius: 8,
+          offset: { x: 0.8, y: 54.5 },
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 8,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.7, b: 0.25, a: 0.65 } },
+                { offset: 0.55, color: { r: 1, g: 0.42, b: 0.12, a: 0.35 } },
+                { offset: 1, color: { r: 1, g: 0.2, b: 0.05, a: 0 } },
+              ],
+            },
+          },
+        },
+
+        // Freezing tail (crystal spine + glow)
+        {
+          shape: "polygon",
+          requiresModule: "freezingTail",
+          vertices: [
+            { x: -5.0, y: 12.2 },
+            { x: 5.0, y: 12.2 },
+            { x: 4.2, y: 16.6 },
+            { x: -4.2, y: 16.6 },
+          ],
+          fill: { type: "solid", color: { r: 0.1, g: 0.32, b: 0.62, a: 1 } },
+          stroke: { type: "solid", width: 2.0, color: { r: 0.48, g: 0.86, b: 1, a: 1 } },
+        },
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [
+            { x: 0, y: 16.2, width: 10.2 },
+            { x: -1.1, y: 26.4, width: 7.8 },
+            { x: -1.7, y: 38.3, width: 5.2 },
+            { x: -1.1, y: 50.4, width: 3.5 },
+          ],
+          {
+            requiresModule: "freezingTail",
+            fill: { type: "solid", color: { r: 0.42, g: 0.82, b: 1, a: 0.92 } },
+            stroke: { type: "solid", width: 1.6, color: { r: 0.08, g: 0.36, b: 0.58, a: 1 } },
+            anim: { type: "sway", periodMs: 1950, amplitude: 3.6, falloff: "tip", axis: "normal", phase: 0.2 },
+            groupId: "freezingTail-main",
+          },
+          { epsilon: 0.35, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [
+            { x: -0.1, y: 18.4, width: 5.2 },
+            { x: -0.8, y: 29.1, width: 3.8 },
+            { x: -1.0, y: 40.5, width: 2.4 },
+            { x: -0.4, y: 49.6, width: 1.5 },
+          ],
+          {
+            requiresModule: "freezingTail",
+            fill: { type: "solid", color: { r: 0.75, g: 0.95, b: 1, a: 0.78 } },
+            anim: { type: "sway", periodMs: 1950, amplitude: 3.9, falloff: "tip", axis: "normal", phase: 0.5 },
+            groupId: "freezingTail-glow",
+          },
+          { epsilon: 0.22, winding: "CCW" }
+        ),
+        {
+          shape: "polygon",
+          requiresModule: "freezingTail",
+          vertices: [
+            { x: -0.6, y: 46 },
+            { x: -3.6, y: 55.2 },
+            { x: -0.6, y: 64.6 },
+            { x: 1.8, y: 55.0 },
+          ],
+          fill: { type: "solid", color: { r: 0.66, g: 0.95, b: 1, a: 0.85 } },
+          stroke: { type: "solid", width: 1.1, color: { r: 0.24, g: 0.62, b: 0.95, a: 1 } },
+        },
+        {
+          shape: "circle",
+          requiresModule: "freezingTail",
+          radius: 7.5,
+          offset: { x: -0.8, y: 54.3 },
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 7.5,
+              stops: [
+                { offset: 0, color: { r: 0.56, g: 0.92, b: 1, a: 0.62 } },
+                { offset: 0.55, color: { r: 0.34, g: 0.76, b: 1, a: 0.34 } },
+                { offset: 1, color: { r: 0.16, g: 0.52, b: 1, a: 0 } },
+              ],
+            },
+          },
+        },
+
         // Effects
         {
           shape: "circle",
