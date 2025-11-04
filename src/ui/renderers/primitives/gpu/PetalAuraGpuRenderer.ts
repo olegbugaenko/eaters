@@ -1,4 +1,5 @@
-import { SceneVector2 } from "../../../logic/services/SceneObjectManager";
+import { SceneSize, SceneVector2 } from "../../../../logic/services/SceneObjectManager";
+import { GpuInstancedPrimitiveLifecycle } from "./GpuInstancedPrimitiveLifecycle";
 
 interface PetalAuraRendererResources {
   gl: WebGL2RenderingContext;
@@ -222,10 +223,10 @@ void main() {
 const INSTANCE_COMPONENTS = 15;
 const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
 
-const rendererContexts = new Map<WebGL2RenderingContext, {
+interface PetalAuraRendererContext {
   resources: PetalAuraRendererResources;
   batch: PetalAuraBatch | null;
-}>();
+}
 
 const compileShader = (
   gl: WebGL2RenderingContext,
@@ -413,32 +414,6 @@ const createPetalAuraBatch = (
   };
 };
 
-export const ensurePetalAuraBatch = (
-  gl: WebGL2RenderingContext,
-  capacity: number,
-): PetalAuraBatch | null => {
-  let context = rendererContexts.get(gl);
-  if (!context) {
-    const resources = createResources(gl);
-    if (!resources) {
-      return null;
-    }
-    context = { resources, batch: null };
-    rendererContexts.set(gl, context);
-  }
-
-  const { resources } = context;
-
-  if (!context.batch || capacity > context.batch.capacity) {
-    if (context.batch) {
-      disposePetalAuraBatch(context.batch);
-    }
-    context.batch = createPetalAuraBatch(gl, capacity, resources);
-  }
-
-  return context.batch;
-};
-
 const disposePetalAuraBatch = (batch: PetalAuraBatch): void => {
   const { gl, vao, instanceBuffer } = batch;
   if (vao) {
@@ -447,83 +422,6 @@ const disposePetalAuraBatch = (batch: PetalAuraBatch): void => {
   if (instanceBuffer) {
     gl.deleteBuffer(instanceBuffer);
   }
-};
-
-// Записує всі пелюстки для одного об'єкта
-export const writePetalAuraInstance = (
-  batch: PetalAuraBatch,
-  baseIndex: number,
-  instance: PetalAuraInstance,
-): number => {
-  if (!batch.instanceBuffer) {
-    return 0;
-  }
-  
-  const petalCount = Math.max(1, Math.floor(instance.petalCount));
-  const clampedIndex = Math.max(0, Math.min(baseIndex, batch.capacity - petalCount));
-  
-  const scratch = new Float32Array(INSTANCE_COMPONENTS);
-  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
-  
-  let writtenCount = 0;
-  for (let i = 0; i < petalCount; i += 1) {
-    const index = clampedIndex + i;
-    if (index >= batch.capacity) {
-      break;
-    }
-    
-    const prevActive = batch.instances[index]?.active ?? false;
-    
-    scratch[0] = instance.position.x;
-    scratch[1] = instance.position.y;
-    scratch[2] = instance.basePhase;
-    scratch[3] = i; // petalIndex для цієї пелюстки
-    scratch[4] = petalCount;
-    scratch[5] = instance.innerRadius;
-    scratch[6] = instance.outerRadius;
-    scratch[7] = instance.petalWidth;
-    scratch[8] = instance.rotationSpeed;
-    scratch[9] = instance.color[0];
-    scratch[10] = instance.color[1];
-    scratch[11] = instance.color[2];
-    scratch[12] = instance.alpha;
-    scratch[13] = instance.active ? 1 : 0;
-    scratch[14] = instance.pointInward ? 1 : 0;
-    
-    batch.gl.bufferSubData(
-      batch.gl.ARRAY_BUFFER,
-      index * INSTANCE_STRIDE,
-      scratch,
-    );
-    
-    // Оновлюємо activeCount для кожної пелюстки окремо
-    if (instance.active && !prevActive) {
-      batch.activeCount += 1;
-    } else if (!instance.active && prevActive) {
-      batch.activeCount = Math.max(0, batch.activeCount - 1);
-    }
-    
-    batch.instances[index] = {
-      position: { ...instance.position },
-      basePhase: instance.basePhase,
-      active: instance.active,
-      petalIndex: i, // Зберігаємо petalIndex для кожної пелюстки
-      petalCount: instance.petalCount,
-      innerRadius: instance.innerRadius,
-      outerRadius: instance.outerRadius,
-      petalWidth: instance.petalWidth,
-      rotationSpeed: instance.rotationSpeed,
-      color: [...instance.color],
-      alpha: instance.alpha,
-      pointInward: instance.pointInward,
-    };
-    
-    writtenCount += 1;
-  }
-  
-  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
-  
-  return writtenCount;
 };
 
 // Перепаковуємо активні instances в початок буфера перед рендерингом
@@ -628,92 +526,258 @@ const packActiveInstances = (batch: PetalAuraBatch): void => {
   batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
 };
 
+const resetBatch = (batch: PetalAuraBatch): void => {
+  batch.activeCount = 0;
+  for (let i = 0; i < batch.capacity; i += 1) {
+    batch.instances[i] = createInactiveInstance();
+  }
+  if (batch.instanceBuffer) {
+    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
+    batch.gl.bufferData(
+      batch.gl.ARRAY_BUFFER,
+      batch.capacity * INSTANCE_STRIDE,
+      batch.gl.DYNAMIC_DRAW,
+    );
+    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
+  }
+};
+
+class PetalAuraEffect
+  implements GpuInstancedPrimitiveLifecycle<PetalAuraBatch>
+{
+  private readonly contexts = new Map<WebGL2RenderingContext, PetalAuraRendererContext>();
+
+  private primaryContext: WebGL2RenderingContext | null = null;
+
+  public onContextAcquired(gl: WebGL2RenderingContext): void {
+    if (!this.contexts.has(gl)) {
+      const resources = createResources(gl);
+      if (!resources) {
+        return;
+      }
+      this.contexts.set(gl, { resources, batch: null });
+    }
+    this.primaryContext = gl;
+  }
+
+  public onContextLost(gl: WebGL2RenderingContext): void {
+    const context = this.contexts.get(gl);
+    if (context) {
+      if (context.batch) {
+        disposePetalAuraBatch(context.batch);
+      }
+      gl.deleteBuffer(context.resources.quadBuffer);
+      gl.deleteProgram(context.resources.program);
+      this.contexts.delete(gl);
+    }
+    if (this.primaryContext === gl) {
+      this.primaryContext = null;
+    }
+  }
+
+  public ensureBatch(
+    gl: WebGL2RenderingContext,
+    capacity: number,
+  ): PetalAuraBatch | null {
+    this.onContextAcquired(gl);
+    const context = this.contexts.get(gl);
+    if (!context) {
+      return null;
+    }
+    if (!context.batch || capacity > context.batch.capacity) {
+      if (context.batch) {
+        disposePetalAuraBatch(context.batch);
+      }
+      context.batch = createPetalAuraBatch(gl, capacity, context.resources);
+      if (!context.batch) {
+        return null;
+      }
+    }
+    return context.batch;
+  }
+
+  public beforeRender(gl: WebGL2RenderingContext, _timestampMs: number): void {
+    const context = this.contexts.get(gl);
+    if (!context?.batch) {
+      return;
+    }
+    packActiveInstances(context.batch);
+  }
+
+  public render(
+    gl: WebGL2RenderingContext,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    timeMs: number,
+  ): void {
+    const context = this.contexts.get(gl);
+    if (!context?.batch || !context.batch.vao || context.batch.activeCount <= 0) {
+      return;
+    }
+    const { resources, batch } = context;
+
+    gl.useProgram(resources.program);
+    if (resources.uniforms.cameraPosition) {
+      gl.uniform2f(
+        resources.uniforms.cameraPosition,
+        cameraPosition.x,
+        cameraPosition.y,
+      );
+    }
+    if (resources.uniforms.viewportSize) {
+      gl.uniform2f(
+        resources.uniforms.viewportSize,
+        viewportSize.width,
+        viewportSize.height,
+      );
+    }
+    if (resources.uniforms.time) {
+      gl.uniform1f(resources.uniforms.time, timeMs);
+    }
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(batch.vao);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, batch.activeCount);
+    gl.bindVertexArray(null);
+  }
+
+  public clearInstances(gl?: WebGL2RenderingContext): void {
+    if (gl) {
+      const context = this.contexts.get(gl);
+      if (context?.batch) {
+        resetBatch(context.batch);
+      }
+      return;
+    }
+
+    this.contexts.forEach((context) => {
+      if (context.batch) {
+        resetBatch(context.batch);
+      }
+    });
+  }
+
+  public dispose(): void {
+    this.contexts.forEach((context, gl) => {
+      if (context.batch) {
+        disposePetalAuraBatch(context.batch);
+      }
+      gl.deleteBuffer(context.resources.quadBuffer);
+      gl.deleteProgram(context.resources.program);
+    });
+    this.contexts.clear();
+    this.primaryContext = null;
+  }
+
+  public writeInstance(
+    batch: PetalAuraBatch,
+    baseIndex: number,
+    instance: PetalAuraInstance,
+  ): number {
+    if (!batch.instanceBuffer) {
+      return 0;
+    }
+
+    const petalCount = Math.max(1, Math.floor(instance.petalCount));
+    const clampedIndex = Math.max(0, Math.min(baseIndex, batch.capacity - petalCount));
+
+    const scratch = new Float32Array(INSTANCE_COMPONENTS);
+    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
+
+    let writtenCount = 0;
+    for (let i = 0; i < petalCount; i += 1) {
+      const index = clampedIndex + i;
+      if (index >= batch.capacity) {
+        break;
+      }
+
+      const prevActive = batch.instances[index]?.active ?? false;
+
+      scratch[0] = instance.position.x;
+      scratch[1] = instance.position.y;
+      scratch[2] = instance.basePhase;
+      scratch[3] = i;
+      scratch[4] = petalCount;
+      scratch[5] = instance.innerRadius;
+      scratch[6] = instance.outerRadius;
+      scratch[7] = instance.petalWidth;
+      scratch[8] = instance.rotationSpeed;
+      scratch[9] = instance.color[0];
+      scratch[10] = instance.color[1];
+      scratch[11] = instance.color[2];
+      scratch[12] = instance.alpha;
+      scratch[13] = instance.active ? 1 : 0;
+      scratch[14] = instance.pointInward ? 1 : 0;
+
+      batch.gl.bufferSubData(
+        batch.gl.ARRAY_BUFFER,
+        index * INSTANCE_STRIDE,
+        scratch,
+      );
+
+      if (instance.active && !prevActive) {
+        batch.activeCount += 1;
+      } else if (!instance.active && prevActive) {
+        batch.activeCount = Math.max(0, batch.activeCount - 1);
+      }
+
+      batch.instances[index] = {
+        position: { ...instance.position },
+        basePhase: instance.basePhase,
+        active: instance.active,
+        petalIndex: i,
+        petalCount: instance.petalCount,
+        innerRadius: instance.innerRadius,
+        outerRadius: instance.outerRadius,
+        petalWidth: instance.petalWidth,
+        rotationSpeed: instance.rotationSpeed,
+        color: [...instance.color],
+        alpha: instance.alpha,
+        pointInward: instance.pointInward,
+      };
+
+      writtenCount += 1;
+    }
+
+    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
+
+    return writtenCount;
+  }
+
+  public getPrimaryContext(): WebGL2RenderingContext | null {
+    return this.primaryContext;
+  }
+}
+
+export const petalAuraEffect = new PetalAuraEffect();
+
+export const ensurePetalAuraBatch = (
+  gl: WebGL2RenderingContext,
+  capacity: number,
+): PetalAuraBatch | null => petalAuraEffect.ensureBatch(gl, capacity);
+
+export const writePetalAuraInstance = (
+  batch: PetalAuraBatch,
+  baseIndex: number,
+  instance: PetalAuraInstance,
+): number => petalAuraEffect.writeInstance(batch, baseIndex, instance);
+
 export const renderPetalAuras = (
   gl: WebGL2RenderingContext,
   cameraPosition: SceneVector2,
   viewportSize: { width: number; height: number },
   timeMs: number,
-): void => {
-  const context = rendererContexts.get(gl);
-  if (!context || !context.batch) {
-    return;
-  }
-
-  const { resources, batch } = context;
-  if (!batch.vao) {
-    return;
-  }
-
-  // Перепаковуємо активні instances в початок буфера перед рендерингом
-  packActiveInstances(batch);
-
-  if (batch.activeCount <= 0) {
-    return;
-  }
-  
-
-  gl.useProgram(resources.program);
-  if (resources.uniforms.cameraPosition) {
-    gl.uniform2f(
-      resources.uniforms.cameraPosition,
-      cameraPosition.x,
-      cameraPosition.y,
-    );
-  }
-  if (resources.uniforms.viewportSize) {
-    gl.uniform2f(
-      resources.uniforms.viewportSize,
-      viewportSize.width,
-      viewportSize.height,
-    );
-  }
-  if (resources.uniforms.time) {
-    gl.uniform1f(resources.uniforms.time, timeMs);
-  }
-
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.bindVertexArray(batch.vao);
-  // Тепер активні instances перепаковані в початок буфера, тому можемо малювати їх послідовно
-  gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, batch.activeCount);
-  gl.bindVertexArray(null);
-};
+): void => petalAuraEffect.render(gl, cameraPosition, viewportSize, timeMs);
 
 export const disposePetalAuraResources = (): void => {
-  rendererContexts.forEach((context) => {
-    const { gl, program, quadBuffer } = context.resources;
-    if (context.batch) {
-      disposePetalAuraBatch(context.batch);
-    }
-    gl.deleteBuffer(quadBuffer);
-    gl.deleteProgram(program);
-  });
-  rendererContexts.clear();
+  petalAuraEffect.dispose();
 };
 
-// Clears all petal aura GPU instances (used on scene resets/map restart)
-export const clearPetalAuraInstances = (): void => {
-  rendererContexts.forEach((context) => {
-    const batch = context.batch;
-    if (!batch) {
-      return;
-    }
-
-    batch.activeCount = 0;
-
-    for (let i = 0; i < batch.capacity; i += 1) {
-      batch.instances[i] = createInactiveInstance();
-    }
-
-    if (batch.instanceBuffer) {
-      batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
-      batch.gl.bufferData(
-        batch.gl.ARRAY_BUFFER,
-        batch.capacity * INSTANCE_STRIDE,
-        batch.gl.DYNAMIC_DRAW,
-      );
-      batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
-    }
-  });
+export const clearPetalAuraInstances = (gl?: WebGL2RenderingContext): void => {
+  petalAuraEffect.clearInstances(gl);
 };
+
+export const getPetalAuraGlContext = (): WebGL2RenderingContext | null =>
+  petalAuraEffect.getPrimaryContext();
 

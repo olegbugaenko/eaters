@@ -4,18 +4,18 @@ import {
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../../logic/services/SceneObjectManager";
 import {
   DynamicPrimitive,
   StaticPrimitive,
   VERTEX_COMPONENTS,
   transformObjectPoint,
-} from "../objects/ObjectRenderer";
+} from "../../objects/ObjectRenderer";
 import {
   copyFillComponents,
   createFillVertexComponents,
   writeFillVertexComponents,
-} from "./fill";
+} from "../utils/fill";
 
 interface PolygonPrimitiveOptions {
   center: SceneVector2;

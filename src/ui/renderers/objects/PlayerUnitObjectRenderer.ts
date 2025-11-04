@@ -22,8 +22,8 @@ import {
   ensurePetalAuraBatch,
   writePetalAuraInstance,
   PetalAuraInstance,
-} from "../primitives/PetalAuraGpuRenderer";
-import { getPetalAuraGlContext } from "../primitives/petalAuraContext";
+  getPetalAuraGlContext,
+} from "../primitives/gpu/PetalAuraGpuRenderer";
 import {
   ParticleEmitterBaseConfig,
   ParticleEmitterParticleState,

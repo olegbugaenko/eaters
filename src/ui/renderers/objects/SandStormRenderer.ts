@@ -4,8 +4,11 @@ import {
   DynamicPrimitive,
 } from "./ObjectRenderer";
 import { SceneObjectInstance, SceneVector2, SceneColor } from "../../../logic/services/SceneObjectManager";
-import { ensureWhirlBatch, writeWhirlInstance } from "../primitives/WhirlGpuRenderer";
-import { getWhirlGlContext } from "../primitives/whirlContext";
+import {
+  ensureWhirlBatch,
+  writeWhirlInstance,
+  getWhirlGlContext,
+} from "../primitives/gpu/WhirlGpuRenderer";
 
 interface SandStormCustomData {
   intensity?: number;

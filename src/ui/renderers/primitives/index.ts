@@ -1,19 +1,19 @@
 export {
   createStaticRectanglePrimitive,
   createDynamicRectanglePrimitive,
-} from "./RectanglePrimitive";
+} from "./basic/RectanglePrimitive";
 export {
   createStaticCirclePrimitive,
   createDynamicCirclePrimitive,
-} from "./CirclePrimitive";
+} from "./basic/CirclePrimitive";
 export {
   createStaticTrianglePrimitive,
   createDynamicTrianglePrimitive,
-} from "./TrianglePrimitive";
+} from "./basic/TrianglePrimitive";
 export {
   createStaticPolygonPrimitive,
   createDynamicPolygonPrimitive,
   createStaticPolygonStrokePrimitive,
-} from "./PolygonPrimitive";
+} from "./basic/PolygonPrimitive";
 export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
 export { createParticleSystemPrimitive } from "./ParticleSystemPrimitive";

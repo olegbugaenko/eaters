@@ -2,17 +2,17 @@ import {
   SceneFill,
   SceneObjectInstance,
   SceneVector2,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../../logic/services/SceneObjectManager";
 import {
   DynamicPrimitive,
   StaticPrimitive,
   VERTEX_COMPONENTS,
   transformObjectPoint,
-} from "../objects/ObjectRenderer";
+} from "../../objects/ObjectRenderer";
 import {
   copyFillComponents,
   createFillVertexComponents,
-} from "./fill";
+} from "../utils/fill";
 
 interface TrianglePrimitiveOptions {
   center: SceneVector2;

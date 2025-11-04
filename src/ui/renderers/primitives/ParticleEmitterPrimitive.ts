@@ -22,8 +22,8 @@ import {
   STOP_OFFSETS_COMPONENTS,
   VERTEX_COMPONENTS,
 } from "../objects/ObjectRenderer";
-import { copyFillComponents, writeFillVertexComponents } from "./fill";
-import { getParticleEmitterGlContext } from "./gpuContext";
+import { copyFillComponents, writeFillVertexComponents } from "./utils/fill";
+import { getParticleEmitterGlContext } from "./utils/gpuContext";
 import {
   ParticleEmitterGpuDrawHandle,
   ParticleEmitterGpuRenderUniforms,
@@ -31,7 +31,7 @@ import {
   getParticleRenderResources,
   registerParticleEmitterHandle,
   unregisterParticleEmitterHandle,
-} from "./ParticleEmitterGpuRenderer";
+} from "./gpu/ParticleEmitterGpuRenderer";
 
 export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;

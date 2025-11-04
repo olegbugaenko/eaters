@@ -1,13 +1,13 @@
 import { getArcConfig, ArcType } from "../../../db/arcs-db";
 import { SceneObjectInstance, SceneVector2 } from "../../../logic/services/SceneObjectManager";
 import { DynamicPrimitive, ObjectRegistration, ObjectRenderer } from "./ObjectRenderer";
-import { getParticleEmitterGlContext } from "../primitives/gpuContext";
+import { getParticleEmitterGlContext } from "../primitives/utils/gpuContext";
 import {
   ArcGpuUniforms,
   ensureArcBatch,
   writeArcInstance,
   setArcBatchActiveCount,
-} from "../primitives/ArcGpuRenderer";
+} from "../primitives/gpu/ArcGpuRenderer";
 
 interface ArcRendererCustomData {
   arcType: ArcType;

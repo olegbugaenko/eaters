@@ -13,7 +13,7 @@ import {
   FILL_TYPES,
 } from "../../../logic/services/SceneObjectManager";
 import { createParticleEmitterPrimitive } from "../primitives";
-import { getParticleEmitterGlContext } from "../primitives/gpuContext";
+import { getParticleEmitterGlContext } from "../primitives/utils/gpuContext";
 import { sanitizeSceneColor } from "../../../logic/services/particles/ParticleEmitterShared";
 import {
   WaveUniformConfig,
@@ -21,7 +21,7 @@ import {
   getWaveBatch,
   writeWaveInstance,
   setWaveBatchActiveCount,
-} from "../primitives/ExplosionWaveGpuRenderer";
+} from "../primitives/gpu/ExplosionWaveGpuRenderer";
 import {
   normalizeAngle,
   sanitizeAngle,

@@ -4,7 +4,7 @@ import {
   SceneGradientStop,
   SceneSize,
   SceneVector2,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../../logic/services/SceneObjectManager";
 import {
   FILL_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
@@ -12,7 +12,7 @@ import {
   MAX_GRADIENT_STOPS,
   POSITION_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
-} from "../objects/ObjectRenderer";
+} from "../../objects/ObjectRenderer";
 
 interface FillVertexOptions {
   fill: SceneFill;

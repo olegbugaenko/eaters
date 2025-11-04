@@ -46,16 +46,17 @@ import { SceneDebugPanel } from "./SceneDebugPanel";
 import { SceneToolbar } from "./SceneToolbar";
 import { SceneSummoningPanel } from "./SceneSummoningPanel";
 import "./SceneScreen.css";
-import { setParticleEmitterGlContext } from "../../renderers/primitives/gpuContext";
-import { setWhirlGlContext } from "../../renderers/primitives/whirlContext";
-import { setPetalAuraGlContext } from "../../renderers/primitives/petalAuraContext";
-import { renderParticleEmitters, disposeParticleRenderResources, getParticleStats } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
-import { renderWhirls, disposeWhirlResources } from "../../renderers/primitives/WhirlGpuRenderer";
+import { clearAllAuraSlots } from "../../renderers/objects/PlayerUnitObjectRenderer";
+import { setParticleEmitterGlContext } from "../../renderers/primitives/utils/gpuContext";
+import {
+  renderParticleEmitters,
+  disposeParticleRenderResources,
+  getParticleStats,
+} from "../../renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { updateAllWhirlInterpolations } from "../../renderers/objects/SandStormRenderer";
-import { renderPetalAuras, disposePetalAuraResources, clearPetalAuraInstances } from "../../renderers/primitives/PetalAuraGpuRenderer";
-import { clearAllAuraSlots as clearPlayerAuraSlots } from "../../renderers/objects/PlayerUnitObjectRenderer";
-import { resetPetalAuraRenderState } from "../../renderers/petalAuraReset";
-import { renderArcBatches } from "../../renderers/primitives/ArcGpuRenderer";
+import { whirlEffect } from "../../renderers/primitives/gpu/WhirlGpuRenderer";
+import { petalAuraEffect, clearPetalAuraInstances } from "../../renderers/primitives/gpu/PetalAuraGpuRenderer";
+import { renderArcBatches } from "../../renderers/primitives/gpu/ArcGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
@@ -674,9 +675,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   );
 
   const restartMap = useCallback(() => {
-    resetPetalAuraRenderState();
+    clearAllAuraSlots();
+    const auraContext = petalAuraEffect.getPrimaryContext();
+    if (auraContext) {
+      clearPetalAuraInstances(auraContext);
+    } else {
+      clearPetalAuraInstances();
+    }
     app.restartCurrentMap();
-  }, [app, resetPetalAuraRenderState]);
+  }, [app, clearAllAuraSlots, clearPetalAuraInstances]);
 
   const handleToggleAutoRestart = useCallback(
     (enabled: boolean) => {
@@ -780,12 +787,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     if (webgl2) {
       setParticleEmitterGlContext(webgl2);
-      setWhirlGlContext(webgl2);
-      setPetalAuraGlContext(webgl2);
+      whirlEffect.onContextAcquired(webgl2);
+      petalAuraEffect.onContextAcquired(webgl2);
     } else {
       setParticleEmitterGlContext(null);
-      setWhirlGlContext(null);
-      setPetalAuraGlContext(null);
+      const whirlContext = whirlEffect.getPrimaryContext();
+      if (whirlContext) {
+        whirlEffect.onContextLost(whirlContext);
+      }
+      const auraContext = petalAuraEffect.getPrimaryContext();
+      if (auraContext) {
+        petalAuraEffect.onContextLost(auraContext);
+      }
     }
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -799,6 +812,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
 
     const objectsRenderer = createObjectsRendererManager();
+    clearAllAuraSlots();
+    if (webgl2) {
+      clearPetalAuraInstances(webgl2);
+    } else {
+      clearPetalAuraInstances();
+    }
     objectsRenderer.bootstrap(scene.getObjects());
 
     gl.useProgram(program);
@@ -915,7 +934,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       }
     };
 
-    objectsRenderer.applyChanges(scene.flushChanges());
+    const initialChanges = scene.flushChanges();
+    objectsRenderer.applyChanges(initialChanges);
     applySync();
 
     const render = (timestamp: number) => {
@@ -931,13 +951,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       const changes = scene.flushChanges();
       objectsRenderer.applyChanges(changes);
       applySync();
-
-      // If there are no player units present (e.g., after map reset), clear GPU auras immediately
-      const hasUnits = scene.getObjects().some((o) => o.type === "playerUnit");
-      if (!hasUnits) {
-        clearPetalAuraInstances();
-        clearPlayerAuraSlots();
-      }
 
       // update VBO stats only when changed
       const dbs = objectsRenderer.getDynamicBufferStats();
@@ -981,13 +994,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         );
         // Оновлюємо інтерпольовані позиції перед рендерингом
         updateAllWhirlInterpolations();
-        renderWhirls(
+        whirlEffect.beforeRender(webgl2, timestamp);
+        petalAuraEffect.beforeRender(webgl2, timestamp);
+        whirlEffect.render(
           webgl2,
           cameraState.position,
           cameraState.viewportSize,
           timestamp,
         );
-        renderPetalAuras(
+        petalAuraEffect.render(
           webgl2,
           cameraState.position,
           cameraState.viewportSize,
@@ -1179,18 +1194,38 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
     return () => {
       setParticleEmitterGlContext(null);
-      setWhirlGlContext(null);
       if (webgl2) {
+        try {
+          whirlEffect.onContextLost(webgl2);
+        } catch {}
+        try {
+          petalAuraEffect.onContextLost(webgl2);
+        } catch {}
         try {
           disposeParticleRenderResources(webgl2);
         } catch {}
+      } else {
+        const whirlContext = whirlEffect.getPrimaryContext();
+        if (whirlContext) {
+          try {
+            whirlEffect.onContextLost(whirlContext);
+          } catch {}
+        }
+        const auraContext = petalAuraEffect.getPrimaryContext();
+        if (auraContext) {
+          try {
+            petalAuraEffect.onContextLost(auraContext);
+          } catch {}
+        }
       }
       try {
-        disposeWhirlResources();
+        whirlEffect.dispose();
       } catch {}
       try {
-        disposePetalAuraResources();
+        petalAuraEffect.dispose();
       } catch {}
+      clearAllAuraSlots();
+      clearPetalAuraInstances();
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
       gl.deleteBuffer(staticBuffer);
