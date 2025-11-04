@@ -54,6 +54,7 @@ import { renderWhirls, disposeWhirlResources } from "../../renderers/primitives/
 import { updateAllWhirlInterpolations } from "../../renderers/objects/SandStormRenderer";
 import { renderPetalAuras, disposePetalAuraResources, clearPetalAuraInstances } from "../../renderers/primitives/PetalAuraGpuRenderer";
 import { clearAllAuraSlots as clearPlayerAuraSlots } from "../../renderers/objects/PlayerUnitObjectRenderer";
+import { resetPetalAuraRenderState } from "../../renderers/petalAuraReset";
 import { renderArcBatches } from "../../renderers/primitives/ArcGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
@@ -673,8 +674,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   );
 
   const restartMap = useCallback(() => {
+    resetPetalAuraRenderState();
     app.restartCurrentMap();
-  }, [app]);
+  }, [app, resetPetalAuraRenderState]);
 
   const handleToggleAutoRestart = useCallback(
     (enabled: boolean) => {

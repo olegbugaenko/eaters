@@ -51,6 +51,21 @@ interface PetalAuraBatch {
   activeCount: number;
 }
 
+const createInactiveInstance = (): PetalAuraInstance => ({
+  position: { x: 0, y: 0 },
+  basePhase: 0,
+  active: false,
+  petalIndex: 0,
+  petalCount: 8,
+  innerRadius: 20,
+  outerRadius: 30,
+  petalWidth: 8,
+  rotationSpeed: 1.0,
+  color: [1.0, 1.0, 1.0],
+  alpha: 0.5,
+  pointInward: false,
+});
+
 // Unit quad для пелюстки (вертикальний трикутник-пелюстка, більший)
 const PETAL_VERTICES = new Float32Array([
   -0.5, -0.5,  // лівий низ
@@ -393,20 +408,7 @@ const createPetalAuraBatch = (
     vao,
     instanceBuffer,
     capacity,
-    instances: new Array(capacity).fill(null).map(() => ({
-      position: { x: 0, y: 0 },
-      basePhase: 0,
-      active: false,
-      petalIndex: 0,
-      petalCount: 8,
-      innerRadius: 20,
-      outerRadius: 30,
-      petalWidth: 8,
-      rotationSpeed: 1.0,
-      color: [1.0, 1.0, 1.0],
-      alpha: 0.5,
-      pointInward: false,
-    })),
+    instances: new Array(capacity).fill(null).map(() => createInactiveInstance()),
     activeCount: 0,
   };
 };
@@ -612,29 +614,17 @@ const packActiveInstances = (batch: PetalAuraBatch): void => {
     scratch[11] = 0;
     scratch[12] = 0;
     scratch[13] = 0;
-    
+    scratch[14] = 0;
+
     batch.gl.bufferSubData(
       batch.gl.ARRAY_BUFFER,
       i * INSTANCE_STRIDE,
       scratch,
     );
-    
-    batch.instances[i] = {
-      position: { x: 0, y: 0 },
-      basePhase: 0,
-      active: false,
-      petalIndex: 0,
-      petalCount: 8,
-      innerRadius: 20,
-      outerRadius: 30,
-      petalWidth: 8,
-      rotationSpeed: 1.0,
-      color: [1.0, 1.0, 1.0],
-      alpha: 0.5,
-      pointInward: false,
-    };
+
+    batch.instances[i] = createInactiveInstance();
   }
-  
+
   batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
 };
 
@@ -705,18 +695,25 @@ export const disposePetalAuraResources = (): void => {
 export const clearPetalAuraInstances = (): void => {
   rendererContexts.forEach((context) => {
     const batch = context.batch;
-    if (batch && batch.vao) {
-      // Properly dispose the batch
-      const { gl, vao, instanceBuffer } = batch;
-      if (vao) {
-        gl.deleteVertexArray(vao);
-      }
-      if (instanceBuffer) {
-        gl.deleteBuffer(instanceBuffer);
-      }
+    if (!batch) {
+      return;
+    }
+
+    batch.activeCount = 0;
+
+    for (let i = 0; i < batch.capacity; i += 1) {
+      batch.instances[i] = createInactiveInstance();
+    }
+
+    if (batch.instanceBuffer) {
+      batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
+      batch.gl.bufferData(
+        batch.gl.ARRAY_BUFFER,
+        batch.capacity * INSTANCE_STRIDE,
+        batch.gl.DYNAMIC_DRAW,
+      );
+      batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
     }
   });
-  // CRITICAL: Clear the contexts completely (like disposeParticleRenderResources and disposeWhirlResources do)
-  rendererContexts.clear();
 };
 

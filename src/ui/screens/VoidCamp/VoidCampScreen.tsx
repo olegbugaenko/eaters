@@ -54,6 +54,7 @@ import { useAudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import { clampVolumePercentage } from "@logic/utils/audioSettings";
 import { StatisticsModal } from "@screens/VoidCamp/components/StatisticsModal/StatisticsModal";
+import { resetPetalAuraRenderState } from "@ui/renderers/petalAuraReset";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -241,10 +242,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         return;
       }
       app.selectMap(mapId);
+      resetPetalAuraRenderState();
       app.restartCurrentMap();
       onStart();
     },
-    [app, maps, onStart]
+    [app, maps, onStart, resetPetalAuraRenderState]
   );
 
   const handleExit = useCallback(() => {
