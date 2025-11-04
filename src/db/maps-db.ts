@@ -18,7 +18,9 @@ export type MapId =
   | "spruce"
   | "wire"
   | "mine"
-  | "silverRing";
+  | "silverRing"
+  | "frozenForest"
+  | "volcano";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
@@ -713,6 +715,213 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         {
           type: "map",
           id: "wire",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
+  frozenForest: (() => {
+    const size: SceneSize = { width: 1500, height: 1500 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const spawnPoint: SceneVector2 = { x: 200, y: 200 };
+    const lakeRadius = 450;
+
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+
+    const createTriangle = (
+      baseCenter: SceneVector2,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x: baseCenter.x, y: baseCenter.y - height },
+      { x: baseCenter.x + width / 2, y: baseCenter.y },
+      { x: baseCenter.x - width / 2, y: baseCenter.y },
+    ];
+
+    const treeConfigs: readonly { base: SceneVector2; scale: number }[] = [
+      { base: { x: 300, y: 300 }, scale: 0.8 },
+      { base: { x: 1200, y: 400 }, scale: 0.9 },
+      { base: { x: 200, y: 900 }, scale: 0.85 },
+      { base: { x: 1100, y: 1100 }, scale: 0.95 },
+      { base: { x: 1300, y: 800 }, scale: 0.75 },
+      { base: { x: 400, y: 1200 }, scale: 0.8 },
+    ];
+
+    return {
+      name: "Frozen Forest",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const iceLevel = baseLevel;
+        const treeTrunkLevel = baseLevel;
+        const treeCanopyLevel = baseLevel + 1;
+
+        const frozenLake = circleWithBricks(
+          "smallIce",
+          {
+            center,
+            innerRadius: 0,
+            outerRadius: lakeRadius,
+          },
+          { level: iceLevel }
+        );
+
+        const trees = treeConfigs.flatMap((tree) => {
+          const trunkHeight = 180 * tree.scale;
+          const trunkWidth = 60 * tree.scale;
+          const trunkBottomY = tree.base.y;
+          const trunkTopY = trunkBottomY - trunkHeight;
+
+          const trunk = polygonWithBricks(
+            "smallWood",
+            {
+              vertices: createRectangle(
+                tree.base.x - trunkWidth / 2,
+                trunkTopY,
+                trunkWidth,
+                trunkHeight
+              ),
+            },
+            { level: treeTrunkLevel }
+          );
+
+          const canopyLayers = [
+            { width: 320, height: 260, offset: 20 },
+            { width: 260, height: 220, offset: 120 },
+            { width: 190, height: 180, offset: 210 },
+          ];
+
+          const canopy = canopyLayers.map((layer) => {
+            const baseCenter: SceneVector2 = {
+              x: tree.base.x,
+              y: trunkTopY + layer.offset * tree.scale,
+            };
+            return polygonWithBricks(
+              "smallWood",
+              {
+                vertices: createTriangle(
+                  baseCenter,
+                  layer.width * tree.scale,
+                  layer.height * tree.scale
+                ),
+              },
+              { level: treeCanopyLevel }
+            );
+          });
+
+          return [trunk, ...canopy];
+        });
+
+        return [frozenLake, ...trees];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "silverRing",
+          level: 1,
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
+  volcano: (() => {
+    const size: SceneSize = { width: 1500, height: 1500 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const spawnPoint: SceneVector2 = { x: 200, y: size.height - 200 };
+    const volcanoBaseRadius = 400;
+    const volcanoInnerRadius = 200;
+    const magmaFlowRadius = 80;
+
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+
+    const magmaFlowPaths: readonly { center: SceneVector2; length: number; angle: number }[] = [
+      { center: { x: center.x - 300, y: center.y + 200 }, length: 200, angle: 0.5 },
+      { center: { x: center.x + 250, y: center.y + 150 }, length: 180, angle: -0.3 },
+      { center: { x: center.x, y: center.y + 300 }, length: 220, angle: 0 },
+      { center: { x: center.x - 200, y: center.y - 100 }, length: 150, angle: 1.2 },
+      { center: { x: center.x + 300, y: center.y - 150 }, length: 170, angle: -1.0 },
+    ];
+
+    return {
+      name: "Volcano",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const copperLevel = baseLevel + 2;
+        const stoneLevel = baseLevel + 4;
+        const magmaLevel = baseLevel;
+
+        const volcanoBase = circleWithBricks(
+          "smallCopper",
+          {
+            center,
+            innerRadius: volcanoInnerRadius,
+            outerRadius: volcanoBaseRadius,
+          },
+          { level: copperLevel }
+        );
+
+        const volcanoCore = circleWithBricks(
+          "smallSquareGray",
+          {
+            center,
+            innerRadius: 0,
+            outerRadius: volcanoInnerRadius - 40,
+          },
+          { level: stoneLevel }
+        );
+
+        const magmaFlows = magmaFlowPaths.map((flow) =>
+          circleWithBricks(
+            "smallMagma",
+            {
+              center: flow.center,
+              innerRadius: 0,
+              outerRadius: magmaFlowRadius,
+            },
+            { level: magmaLevel }
+          )
+        );
+
+        return [volcanoBase, volcanoCore, ...magmaFlows];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "mine",
           level: 1,
         },
       ],

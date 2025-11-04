@@ -17,7 +17,9 @@ export type BrickType =
   | "smallWood"
   | "smallCopper"
   | "smallSilver"
-  | "smallCoal";
+  | "smallCoal"
+  | "smallIce"
+  | "smallMagma";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -115,6 +117,18 @@ const COAL_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.24, g: 0.24, b: 0.27, a: 1 } },
   { offset: 0.5, color: { r: 0.12, g: 0.12, b: 0.15, a: 1 } },
   { offset: 1, color: { r: 0.05, g: 0.05, b: 0.07, a: 1 } },
+] as const;
+
+const ICE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.85, g: 0.95, b: 1, a: 1 } },
+  { offset: 0.4, color: { r: 0.65, g: 0.85, b: 0.95, a: 0.9 } },
+  { offset: 1, color: { r: 0.4, g: 0.6, b: 0.8, a: 0.6 } },
+] as const;
+
+const MAGMA_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.3, g: 0.1, b: 0.1, a: 1 } },
+  { offset: 0.35, color: { r: 0.2, g: 0.1, b: 0.1, a: 1 } },
+  { offset: 1, color: { r: 0.15, g: 0.07, b: 0.05, a: 1 } },
 ] as const;
 
 const BRICK_DB: Record<BrickType, BrickConfig> = {
@@ -277,9 +291,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.25, g: 0.15, b: 0.05, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 165,
+      maxHp: 205,
       armor: 20,
-      baseDamage: 56,
+      baseDamage: 76,
       brickKnockBackDistance: 70,
       brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
@@ -385,6 +399,66 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       coal: 1,
+    },
+  },
+  smallIce: {
+    size: { width: 30, height: 30 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 28,
+      stops: ICE_RADIAL_GRADIENT,
+    },
+    stroke: { color: { r: 0.5, g: 0.7, b: 0.9, a: 1 }, width: 2.4 },
+    destructubleData: {
+      maxHp: 4750,
+      armor: 370,
+      baseDamage: 355,
+      brickKnockBackDistance: 190,
+      brickKnockBackSpeed: 280,
+      brickKnockBackAmplitude: 4,
+      physicalSize: 20,
+      damageExplosion: {
+        type: "ironBrickHit",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "ironBrickDestroy",
+        radiusMultiplier: 1.25,
+      },
+    },
+    rewards: {
+      ice: 1,
+    },
+  },
+  smallMagma: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 12,
+      stops: MAGMA_RADIAL_GRADIENT,
+    },
+    stroke: { color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 2755,
+      armor: 142,
+      baseDamage: 634,
+      brickKnockBackDistance: 70,
+      brickKnockBackSpeed: 160,
+      brickKnockBackAmplitude: 7,
+      physicalSize: 18,
+      damageExplosion: {
+        type: "copperBrickHit",
+        radiusMultiplier: 0.75,
+      },
+      destructionExplosion: {
+        type: "copperBrickDestroy",
+        radiusMultiplier: 1.15,
+      },
+    },
+    rewards: {
+      magma: 1,
     },
   },
 };

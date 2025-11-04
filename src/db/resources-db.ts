@@ -12,7 +12,9 @@ export type ResourceId =
   | "silver"
   | "coal"
   | "tools"
-  | "paper";
+  | "paper"
+  | "ice"
+  | "magma";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
@@ -127,6 +129,30 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       {
         type: "skill",
         id: "paper_milling",
+        level: 1,
+      },
+    ],
+  },
+  ice: {
+    id: "ice",
+    name: "Ice",
+    description: "Frozen crystalline fragments from the eternal winter.",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "silverRing",
+        level: 1,
+      },
+    ],
+  },
+  magma: {
+    id: "magma",
+    name: "Magma",
+    description: "Molten stone and fire coalesced into a searing substance.",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "mine",
         level: 1,
       },
     ],

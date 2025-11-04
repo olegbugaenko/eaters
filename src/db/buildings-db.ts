@@ -9,7 +9,8 @@ export type BuildingId =
   | "well"
   | "iron_forest"
   | "mana_plant"
-  | "blacksmith";
+  | "blacksmith"
+  | "treasure_vault";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -147,6 +148,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       },
     },
     cost: createScalingCost({ copper: 400, iron: 300 }, 1.75),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "advanced_construction",
+        level: 1,
+      },
+    ],
+  },
+  treasure_vault: {
+    id: "treasure_vault",
+    name: "Treasure Vault",
+    description:
+      "Invent better ways to store and refine your treasures.",
+    effects: {
+      brick_rewards: {
+        multiplier: (level) => 1 + 0.16 * level,
+      },
+    },
+    cost: createScalingCost({ silver: 200, copper: 800 }, 1.75),
     unlockedBy: [
       {
         type: "skill",

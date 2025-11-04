@@ -37,6 +37,8 @@ export const SKILL_IDS = [
   "sharp_mind2",
   "void_modules",
   "pheromones",
+  "ice_mastery",
+  "fire_mastery",
   "emberglass_reactors",
   // "damage_lore",
   "improved_membranes",
@@ -49,6 +51,7 @@ export const SKILL_IDS = [
   "mana_source",
   "mana_reservior",
   "critical_chance",
+  "critical_chance2",
   "damage_lore",
   "armor_lore",
   "vitality2",
@@ -56,6 +59,7 @@ export const SKILL_IDS = [
   "refinement",
   "refinement2",
   "vitality3",
+  "vitality4",
   "arcane_research",
   "paper_milling",
   "restoration",
@@ -69,7 +73,8 @@ export const SKILL_IDS = [
   "penetration",
   "penetration2",
   "soul_wood",
-  "advanced_construction"
+  "advanced_construction",
+  "advanced_crafting"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -191,6 +196,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { construction_guild: 1 },
     cost: createResourceCost("copper", 5000, 1),
+  },
+  advanced_crafting: {
+    id: "advanced_crafting",
+    name: "Advanced Crafting",
+    description:
+      "Improve your crafting speed.",
+    nodePosition: { x: -1, y: 6 },
+    maxLevel: 20,
+    effects: {
+      "crafting_speed_mult": {
+        multiplier: (level) => 1 + 0.125 * level,
+      },
+    },
+    nodesRequired: { advanced_construction: 1 },
+    cost: createResourceCost("silver", 100, 1.5),
   },
   construction_ledgers: {
     id: "construction_ledgers",
@@ -354,6 +374,29 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { void_modules: 1 },
     cost: createResourceCost("organics", 200, 1),
+  },
+  ice_mastery: {
+    id: "ice_mastery",
+    name: "Ice Mastery",
+    description:
+      "Master the art of ice magic, allowing you to freeze enemies.",
+    nodePosition: { x: 2, y: 4 },
+    nodesRequired: { pheromones: 1 },
+    maxLevel: 1,
+    effects: {},
+    cost: createResourceCost("ice", 400, 1),
+  },
+  fire_mastery: {
+    id: "fire_mastery",
+    name: "Fire Mastery",
+    description:
+      "Master the art of fire magic.",
+    nodePosition: { x: 3, y: 3 },
+    nodesRequired: { pheromones: 1 },
+    maxLevel: 1,
+    effects: {
+    },
+    cost: createResourceCost("magma", 400, 1),
   },
   mana_reservior: {
     id: "mana_reservior",
@@ -621,6 +664,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { stone_drill: 2 },
     cost: createMixedCost(200, 1.5, 20, 1.5),
   },
+  critical_chance2: {
+    id: "critical_chance2",
+    name: "Critical Chance II",
+    description:
+      "Deeper instincts and edges—your units find weak points more often.",
+    nodePosition: { x: -5, y: 2 },
+    maxLevel: 10,
+    effects: {
+      all_units_crit_chance: {
+        income: (level) => 0.03 * level,
+      },
+    },
+    nodesRequired: { critical_chance: 5 },
+    cost: createResourceCost('coal', 200, 1.5),
+  },
   penetration: {
     id: "penetration",
     name: "Penetration",
@@ -771,6 +829,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { vitality2: 5 },
     cost: createResourceCost('organics', 30, 1.5),
+  },
+  vitality4: {
+    id: "vitality4",
+    name: "Vitality IV",
+    description:
+      "Use coal to boost creatures body temperature, increase metabolism and increase vitality.",
+    nodePosition: { x: 8, y: -1 },
+    maxLevel: 25,
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    nodesRequired: { vitality3: 5 },
+    cost: createResourceCost('coal', 50, 1.5),
   },
   paper_milling: {
     id: "paper_milling",
