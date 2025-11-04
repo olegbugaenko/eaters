@@ -318,6 +318,22 @@ export const useSceneCanvas = ({
 
     const objectsRenderer = createObjectsRendererManager();
 
+    if (webgl2) {
+      setParticleEmitterGlContext(webgl2);
+      whirlEffect.onContextAcquired(webgl2);
+      petalAuraEffect.onContextAcquired(webgl2);
+    } else {
+      setParticleEmitterGlContext(null);
+      const whirlContext = whirlEffect.getPrimaryContext();
+      if (whirlContext) {
+        whirlEffect.onContextLost(whirlContext);
+      }
+      const auraContext = petalAuraEffect.getPrimaryContext();
+      if (auraContext) {
+        petalAuraEffect.onContextLost(auraContext);
+      }
+    }
+
     clearAllAuraSlots();
     if (webgl2) {
       clearPetalAuraInstances(webgl2);
@@ -746,8 +762,6 @@ export const useSceneCanvas = ({
     window.addEventListener("pointerout", handlePointerLeave, { passive: true });
     window.addEventListener("pointerup", handlePointerUp, { passive: true });
     canvas.addEventListener("pointerdown", handlePointerDown);
-
-    setParticleEmitterGlContext(webgl2);
 
     return () => {
       setParticleEmitterGlContext(null);
