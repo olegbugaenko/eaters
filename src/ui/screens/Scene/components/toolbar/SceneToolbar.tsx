@@ -1,7 +1,7 @@
 import { useId } from "react";
-import { Button } from "../../shared/Button";
-import { ProgressBar } from "../../shared/ProgressBar";
-import { formatNumber } from "../../shared/format/number";
+import { Button } from "@shared/Button";
+import { ProgressBar } from "@shared/ProgressBar";
+import { formatNumber } from "@shared/format/number";
 import "./SceneToolbar.css";
 
 interface SceneToolbarProps {

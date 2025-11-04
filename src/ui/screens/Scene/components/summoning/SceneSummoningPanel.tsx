@@ -9,27 +9,27 @@ import {
 import {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
-} from "../../../logic/modules/active-map/NecromancerModule";
-import { createEmptyResourceAmount } from "../../../types/resources";
-import { classNames } from "@shared/classNames";
-import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
-import { ResourceCostDisplay } from "../../shared/ResourceCostDisplay";
-import "./SceneSummoningPanel.css";
-import { SceneTooltipContent } from "./SceneTooltipPanel";
-import { formatNumber } from "../../shared/format/number";
-import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
-import { createSpellTooltip } from "./tooltip-factory/createSpellTooltip";
-import { UnitAutomationBridgeState } from "../../../logic/modules/active-map/UnitAutomationModule";
+} from "@logic/modules/active-map/NecromancerModule";
+import { createEmptyResourceAmount } from "@/types/resources";
+import { SpellOption } from "@logic/modules/active-map/spells/SpellcastingModule";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
+import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/units/PlayerUnitsModule";
 import {
   UnitDesignId,
   UnitDesignModuleDetail,
-} from "../../../logic/modules/camp/UnitDesignModule";
-import { formatUnitModuleBonusValue } from "../../shared/format/unitModuleBonus";
-import { useBridgeValue } from "../../shared/useBridgeValue";
-import { useAppLogic } from "../../contexts/AppLogicContext";
-import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "../../../logic/modules/active-map/units/PlayerUnitsModule";
-import { SpellOption } from "../../../logic/modules/active-map/spells/SpellcastingModule";
-import { SpellId } from "../../../db/spells-db";
+} from "@logic/modules/camp/UnitDesignModule";
+import { SpellId } from "@db/spells-db";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { classNames } from "@shared/classNames";
+import { formatNumber } from "@shared/format/number";
+import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
+import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
+import { useBridgeValue } from "@shared/useBridgeValue";
+import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
+import "./SceneSummoningPanel.css";
+import { SceneTooltipContent } from "../tooltip/SceneTooltipPanel";
+import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
+import { createSpellTooltip } from "./tooltip-factory/createSpellTooltip";
 
 interface SceneSummoningPanelProps {
   resources: NecromancerResourcesPayload;

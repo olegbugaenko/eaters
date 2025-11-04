@@ -2,9 +2,9 @@ import {
   ProjectileSpellOption,
   SpellOption,
   WhirlSpellOption,
-} from "../../../../logic/modules/active-map/spells/SpellcastingModule";
-import { SceneTooltipContent, SceneTooltipStat } from "../SceneTooltipPanel";
-import { formatNumber } from "../../../shared/format/number";
+} from "@logic/modules/active-map/spells/SpellcastingModule";
+import { SceneTooltipContent, SceneTooltipStat } from "../../tooltip/SceneTooltipPanel";
+import { formatNumber } from "@shared/format/number";
 
 const formatDamageRange = (min: number, max: number): string => {
   const clampedMin = Math.max(min, 0);
