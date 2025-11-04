@@ -9,6 +9,8 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneGradientStop,
+  SceneLinearGradientFill,
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
@@ -163,6 +165,277 @@ const DEFAULT_VERTICES: SceneVector2[] = [
 const DEFAULT_EMITTER_COLOR = { r: 0.2, g: 0.45, b: 0.95, a: 0.5 };
 const DEFAULT_BASE_FILL_COLOR: SceneColor = { r: 0.4, g: 0.7, b: 1, a: 1 };
 const MIN_CIRCLE_SEGMENTS = 8;
+const TAIL_SEGMENT_COUNT = 6;
+const TAIL_BASE_OFFSET = 16;
+
+type TailModuleId = Extract<UnitModuleId, "burningTail" | "freezingTail">;
+
+interface TailVariant {
+  moduleId: TailModuleId;
+  periodMs: number;
+  amplitude: number;
+  secondaryAmplitude: number;
+  secondaryFrequencyMultiplier: number;
+  segmentPhase: number;
+  baseWidth: number;
+  tipWidth: number;
+  length: number;
+  gradientStops: (baseColor: SceneColor) => SceneGradientStop[];
+}
+
+const clampUnit = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 1) {
+    return 1;
+  }
+  return value;
+};
+
+const mixColor = (base: SceneColor, target: SceneColor, factor: number): SceneColor => {
+  const t = clampUnit(factor);
+  const baseAlpha = typeof base.a === "number" ? clampUnit(base.a) : 1;
+  const targetAlpha = typeof target.a === "number" ? clampUnit(target.a) : 1;
+  return {
+    r: clampUnit(base.r + (target.r - base.r) * t),
+    g: clampUnit(base.g + (target.g - base.g) * t),
+    b: clampUnit(base.b + (target.b - base.b) * t),
+    a: clampUnit(baseAlpha + (targetAlpha - baseAlpha) * t),
+  };
+};
+
+const withAlpha = (color: SceneColor, alpha: number): SceneColor => ({
+  r: clampUnit(color.r),
+  g: clampUnit(color.g),
+  b: clampUnit(color.b),
+  a: clampUnit(alpha),
+});
+
+const hashString = (value: string): number => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+};
+
+const hashToUnit = (value: number): number => value / 0xffffffff;
+
+const createBurningGradientStops = (baseColor: SceneColor): SceneGradientStop[] => {
+  const warmBase = mixColor(baseColor, { r: 1, g: 0.55, b: 0.1, a: 1 }, 0.5);
+  const hotCore = { r: 1, g: 0.4, b: 0.1, a: 1 };
+  const ember = { r: 1, g: 0.32, b: 0.05, a: 1 };
+  const brightTip = { r: 1, g: 0.78, b: 0.24, a: 1 };
+  return [
+    { offset: 0, color: withAlpha(warmBase, 0.05) },
+    { offset: 0.18, color: withAlpha(warmBase, 0.4) },
+    { offset: 0.52, color: withAlpha(hotCore, 0.78) },
+    { offset: 0.78, color: withAlpha(ember, 0.92) },
+    { offset: 1, color: withAlpha(brightTip, 0.8) },
+  ];
+};
+
+const createFreezingGradientStops = (baseColor: SceneColor): SceneGradientStop[] => {
+  const coolBase = mixColor(baseColor, { r: 0.45, g: 0.75, b: 1, a: 1 }, 0.6);
+  const icyCore = { r: 0.3, g: 0.82, b: 1, a: 1 };
+  const frosty = { r: 0.2, g: 0.9, b: 1, a: 1 };
+  const brightTip = { r: 0.65, g: 0.95, b: 1, a: 1 };
+  return [
+    { offset: 0, color: withAlpha(coolBase, 0.05) },
+    { offset: 0.22, color: withAlpha(coolBase, 0.45) },
+    { offset: 0.55, color: withAlpha(icyCore, 0.75) },
+    { offset: 0.82, color: withAlpha(frosty, 0.95) },
+    { offset: 1, color: withAlpha(brightTip, 0.78) },
+  ];
+};
+
+const TAIL_VARIANTS: Record<TailModuleId, TailVariant> = {
+  burningTail: {
+    moduleId: "burningTail",
+    periodMs: 1700,
+    amplitude: 4.8,
+    secondaryAmplitude: 1.9,
+    secondaryFrequencyMultiplier: 2.6,
+    segmentPhase: 0.85,
+    baseWidth: 12,
+    tipWidth: 3.4,
+    length: 30,
+    gradientStops: createBurningGradientStops,
+  },
+  freezingTail: {
+    moduleId: "freezingTail",
+    periodMs: 2000,
+    amplitude: 3.6,
+    secondaryAmplitude: 1.6,
+    secondaryFrequencyMultiplier: 2.2,
+    segmentPhase: 0.9,
+    baseWidth: 10,
+    tipWidth: 3.8,
+    length: 32,
+    gradientStops: createFreezingGradientStops,
+  },
+};
+
+const resolveTailVariant = (
+  payload: PlayerUnitCustomData | undefined
+): TailVariant | null => {
+  if (!payload || !Array.isArray(payload.modules) || payload.modules.length === 0) {
+    return null;
+  }
+  if (payload.modules.includes("burningTail")) {
+    return TAIL_VARIANTS.burningTail;
+  }
+  if (payload.modules.includes("freezingTail")) {
+    return TAIL_VARIANTS.freezingTail;
+  }
+  return null;
+};
+
+const createTailPrimitive = (instance: SceneObjectInstance): DynamicPrimitive | null => {
+  const payload = instance.data.customData as PlayerUnitCustomData | undefined;
+  const variant = resolveTailVariant(payload);
+  if (!variant) {
+    return null;
+  }
+
+  const sanitizedBase = sanitizeSceneColor(payload?.baseFillColor, DEFAULT_BASE_FILL_COLOR);
+  const baseColor: SceneColor = {
+    r: clampUnit(sanitizedBase.r),
+    g: clampUnit(sanitizedBase.g),
+    b: clampUnit(sanitizedBase.b),
+    a: clampUnit(typeof sanitizedBase.a === "number" ? sanitizedBase.a : 1),
+  };
+
+  const rawSize =
+    typeof payload?.physicalSize === "number" && Number.isFinite(payload.physicalSize)
+      ? payload.physicalSize
+      : 12;
+  const sizeScale = Math.min(Math.max(rawSize / 12, 0.75), 1.8);
+
+  const amplitudeSeed = hashToUnit(hashString(`${instance.id}:${variant.moduleId}:amp`));
+  const phaseSeed = hashToUnit(hashString(`${instance.id}:${variant.moduleId}:phase`));
+  const secondarySeed = hashToUnit(hashString(`${instance.id}:${variant.moduleId}:secondary`));
+
+  const centers = Array.from({ length: TAIL_SEGMENT_COUNT + 1 }, () => ({ x: 0, y: 0 }));
+  const widths = new Array<number>(TAIL_SEGMENT_COUNT + 1).fill(0);
+  const vertices = Array.from({ length: (TAIL_SEGMENT_COUNT + 1) * 2 }, () => ({ x: 0, y: 0 }));
+  const gradientStart = { x: 0, y: 0 };
+  const gradientEnd = { x: 0, y: 0 };
+
+  const fill: SceneLinearGradientFill = {
+    fillType: FILL_TYPES.LINEAR_GRADIENT,
+    start: gradientStart,
+    end: gradientEnd,
+    stops: variant.gradientStops(baseColor),
+  };
+
+  let cachedBaseColor = { ...baseColor };
+  let lastComputed = -1;
+  let pendingTimestamp = -1;
+
+  const amplitudeScale = 0.85 + amplitudeSeed * 0.35;
+  const basePhase = phaseSeed * Math.PI * 2;
+  const secondaryPhase = secondarySeed * Math.PI * 2;
+
+  const compute = (target: SceneObjectInstance, timestamp: number) => {
+    const targetPayload = target.data.customData as PlayerUnitCustomData | undefined;
+    const sanitized = sanitizeSceneColor(targetPayload?.baseFillColor, DEFAULT_BASE_FILL_COLOR);
+    if (
+      sanitized.r !== cachedBaseColor.r ||
+      sanitized.g !== cachedBaseColor.g ||
+      sanitized.b !== cachedBaseColor.b ||
+      clampUnit(typeof sanitized.a === "number" ? sanitized.a : 1) !== cachedBaseColor.a
+    ) {
+      cachedBaseColor = {
+        r: clampUnit(sanitized.r),
+        g: clampUnit(sanitized.g),
+        b: clampUnit(sanitized.b),
+        a: clampUnit(typeof sanitized.a === "number" ? sanitized.a : 1),
+      };
+      fill.stops = variant.gradientStops(cachedBaseColor);
+    }
+
+    if (timestamp === lastComputed) {
+      return;
+    }
+    lastComputed = timestamp;
+
+    const normalizedTime = timestamp / Math.max(variant.periodMs, 1);
+    const baseOffset = TAIL_BASE_OFFSET * sizeScale;
+    const length = variant.length * sizeScale;
+    const baseWidth = variant.baseWidth * sizeScale;
+    const tipWidth = variant.tipWidth * sizeScale;
+    const amplitude = variant.amplitude * amplitudeScale * sizeScale;
+    const secondaryAmplitude = variant.secondaryAmplitude * amplitudeScale * sizeScale;
+    const flutterAmplitude = amplitude * 0.15;
+
+    for (let i = 0; i <= TAIL_SEGMENT_COUNT; i += 1) {
+      const ratio = i / TAIL_SEGMENT_COUNT;
+      const influence = 0.2 + ratio * 0.8;
+      const eased = Math.pow(ratio, 0.85);
+      const primaryAngle = normalizedTime * Math.PI * 2 + basePhase + ratio * variant.segmentPhase;
+      const secondaryAngle =
+        normalizedTime * Math.PI * 2 * variant.secondaryFrequencyMultiplier +
+        secondaryPhase +
+        ratio * (variant.segmentPhase * 0.6);
+      const flutterAngle = normalizedTime * Math.PI * 2 * 3.2 + ratio * 4;
+
+      const sway =
+        Math.sin(primaryAngle) * amplitude * influence +
+        Math.sin(secondaryAngle) * secondaryAmplitude * influence +
+        Math.sin(flutterAngle) * flutterAmplitude * eased;
+
+      const centerX = sway;
+      const centerY = baseOffset + ratio * length;
+      const width = baseWidth + (tipWidth - baseWidth) * eased;
+
+      centers[i]!.x = centerX;
+      centers[i]!.y = centerY;
+      widths[i] = Math.max(width, 1.2);
+    }
+
+    gradientStart.x = centers[0]!.x;
+    gradientStart.y = centers[0]!.y;
+    gradientEnd.x = centers[TAIL_SEGMENT_COUNT]!.x;
+    gradientEnd.y = centers[TAIL_SEGMENT_COUNT]!.y;
+
+    let writeIndex = 0;
+    for (let i = 0; i <= TAIL_SEGMENT_COUNT; i += 1) {
+      const vertex = vertices[writeIndex++]!;
+      const center = centers[i]!;
+      const width = widths[i]!;
+      vertex.x = center.x - width * 0.5;
+      vertex.y = center.y;
+    }
+    for (let i = TAIL_SEGMENT_COUNT; i >= 0; i -= 1) {
+      const vertex = vertices[writeIndex++]!;
+      const center = centers[i]!;
+      const width = widths[i]!;
+      vertex.x = center.x + width * 0.5;
+      vertex.y = center.y;
+    }
+  };
+
+  return createDynamicPolygonPrimitive(instance, {
+    getVertices: (target) => {
+      const timestamp = Date.now();
+      pendingTimestamp = timestamp;
+      compute(target, timestamp);
+      return vertices;
+    },
+    getFill: (target) => {
+      const timestamp = pendingTimestamp >= 0 ? pendingTimestamp : Date.now();
+      compute(target, timestamp);
+      pendingTimestamp = -1;
+      return fill;
+    },
+  });
+};
 
 // Глобальний реєстр для зберігання аур юнітів
 const auraInstanceMap = new Map<string, {
@@ -854,10 +1127,15 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     const rendererData = extractRendererData(instance);
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
-    
+
     const emitterPrimitive = createEmitterPrimitive(instance);
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
+    }
+
+    const tailPrimitive = createTailPrimitive(instance);
+    if (tailPrimitive) {
+      dynamicPrimitives.push(tailPrimitive);
     }
 
     if (rendererData.kind === "composite") {
