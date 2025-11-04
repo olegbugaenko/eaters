@@ -41,6 +41,7 @@ import {
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
   createObjectsRendererManager,
+  AuraLifecycleManager,
 } from "../../renderers/objects";
 import { SceneDebugPanel } from "./SceneDebugPanel";
 import { SceneToolbar } from "./SceneToolbar";
@@ -52,9 +53,7 @@ import { setPetalAuraGlContext } from "../../renderers/primitives/petalAuraConte
 import { renderParticleEmitters, disposeParticleRenderResources, getParticleStats } from "../../renderers/primitives/ParticleEmitterGpuRenderer";
 import { renderWhirls, disposeWhirlResources } from "../../renderers/primitives/WhirlGpuRenderer";
 import { updateAllWhirlInterpolations } from "../../renderers/objects/SandStormRenderer";
-import { renderPetalAuras, disposePetalAuraResources, clearPetalAuraInstances } from "../../renderers/primitives/PetalAuraGpuRenderer";
-import { clearAllAuraSlots as clearPlayerAuraSlots } from "../../renderers/objects/PlayerUnitObjectRenderer";
-import { resetPetalAuraRenderState } from "../../renderers/petalAuraReset";
+import { renderPetalAuras, disposePetalAuraResources } from "../../renderers/primitives/PetalAuraGpuRenderer";
 import { renderArcBatches } from "../../renderers/primitives/ArcGpuRenderer";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
@@ -674,9 +673,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   );
 
   const restartMap = useCallback(() => {
-    resetPetalAuraRenderState();
     app.restartCurrentMap();
-  }, [app, resetPetalAuraRenderState]);
+  }, [app]);
 
   const handleToggleAutoRestart = useCallback(
     (enabled: boolean) => {
@@ -799,6 +797,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
 
     const objectsRenderer = createObjectsRendererManager();
+    const auraLifecycleManager = new AuraLifecycleManager();
     objectsRenderer.bootstrap(scene.getObjects());
 
     gl.useProgram(program);
@@ -915,7 +914,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       }
     };
 
-    objectsRenderer.applyChanges(scene.flushChanges());
+    const initialChanges = scene.flushChanges();
+    objectsRenderer.applyChanges(initialChanges);
+    auraLifecycleManager.onSceneSync(initialChanges);
     applySync();
 
     const render = (timestamp: number) => {
@@ -930,14 +931,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       const cameraState = scene.getCamera();
       const changes = scene.flushChanges();
       objectsRenderer.applyChanges(changes);
+      auraLifecycleManager.onSceneSync(changes);
       applySync();
-
-      // If there are no player units present (e.g., after map reset), clear GPU auras immediately
-      const hasUnits = scene.getObjects().some((o) => o.type === "playerUnit");
-      if (!hasUnits) {
-        clearPetalAuraInstances();
-        clearPlayerAuraSlots();
-      }
 
       // update VBO stats only when changed
       const dbs = objectsRenderer.getDynamicBufferStats();

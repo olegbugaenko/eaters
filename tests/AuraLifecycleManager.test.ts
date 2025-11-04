@@ -1,0 +1,59 @@
+import assert from "assert";
+import { describe, test } from "./testRunner";
+import { AuraLifecycleManager } from "../src/ui/renderers/objects/AuraLifecycleManager";
+import { FILL_TYPES, SceneObjectInstance } from "../src/logic/services/SceneObjectManager";
+
+describe("AuraLifecycleManager", () => {
+  const createPlayerUnit = (id: string): SceneObjectInstance =>
+    ({
+      id,
+      type: "playerUnit",
+      data: {
+        position: { x: 0, y: 0 },
+        fill: {
+          fillType: FILL_TYPES.SOLID,
+          color: { r: 1, g: 1, b: 1, a: 1 },
+        },
+      },
+    } as SceneObjectInstance);
+
+  test("clears aura state automatically when map restarts", () => {
+    let petalClears = 0;
+    let slotClears = 0;
+    const manager = new AuraLifecycleManager({
+      clearPetalAuras: () => {
+        petalClears += 1;
+      },
+      clearPlayerAuraSlots: () => {
+        slotClears += 1;
+      },
+    });
+
+    manager.onSceneSync({
+      added: [createPlayerUnit("playerUnit-1")],
+      updated: [],
+      removed: [],
+    });
+
+    assert.strictEqual(petalClears, 0, "should not clear while units are present");
+    assert.strictEqual(slotClears, 0, "should not clear while units are present");
+
+    manager.onSceneSync({
+      added: [],
+      updated: [],
+      removed: ["playerUnit-1"],
+    });
+
+    assert.strictEqual(petalClears, 1, "should clear petals when last unit disappears");
+    assert.strictEqual(slotClears, 1, "should clear aura slots when last unit disappears");
+
+    manager.onSceneSync({
+      added: [createPlayerUnit("playerUnit-2")],
+      updated: [],
+      removed: [],
+    });
+
+    assert.strictEqual(petalClears, 1, "should not clear again when units return");
+    assert.strictEqual(slotClears, 1, "should not clear again when units return");
+  });
+});
