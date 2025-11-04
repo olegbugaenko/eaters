@@ -673,7 +673,6 @@ const createCompositePrimitives = (
     if (layer.shape === "polygon") {
       // Sway animation for tentacle segments built from a line spine
       if (Array.isArray((layer as any).spine) && (layer as any).anim?.type === "sway") {
-        console.log('ANIMATE!');
         const spine = ((layer as any).spine as Array<{ x: number; y: number; width: number }>).map((p) => ({ x: p.x, y: p.y, width: p.width }));
         const segIndex = typeof (layer as any).segmentIndex === "number" ? (layer as any).segmentIndex : 0;
         const build = ((layer as any).buildOpts || {}) as { epsilon?: number; winding?: "CW" | "CCW" };
@@ -854,7 +853,7 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     const rendererData = extractRendererData(instance);
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
-    
+
     const emitterPrimitive = createEmitterPrimitive(instance);
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);

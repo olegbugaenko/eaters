@@ -13,6 +13,8 @@ export const UNIT_MODULE_IDS = [
   "mendingGland",
   "frenzyGland",
   "fireballOrgan",
+  "burningTail",
+  "freezingTail",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -36,6 +38,7 @@ export interface UnitModuleConfig {
     readonly cooldownSeconds?: number;
     readonly frenzyAttacks?: number;
     readonly healCharges?: number;
+    readonly areaRadius?: number;
   };
 }
 
@@ -167,6 +170,36 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
     canAttackDistant: true,
     meta: { cooldownSeconds: 4 },
+  },
+  burningTail: {
+    id: "burningTail",
+    name: "Melting Tail",
+    description:
+      "Caustic glands coat struck masonry, making it more vulnerable to subsequent hits for a short time.",
+    bonusLabel: "Incoming damage multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.5,
+    bonusPerLevel: 0.05,
+    manaCostMultiplier: 2.6,
+    sanityCost: 1,
+    baseCost: { magma: 300, organics: 150 },
+    unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
+    meta: { areaRadius: 30 },
+  },
+  freezingTail: {
+    id: "freezingTail",
+    name: "Freezing Tail",
+    description:
+      "Thread cryogenic veins through the tail, letting each blow sheath bricks in biting frost.",
+    bonusLabel: "Enemy damage divisor",
+    bonusType: "multiplier",
+    baseBonusValue: 1.5,
+    bonusPerLevel: 0.05,
+    manaCostMultiplier: 2.6,
+    sanityCost: 1,
+    baseCost: { ice: 300, sand: 300 },
+    unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
+    meta: { areaRadius: 30 },
   },
 };
 

@@ -59,6 +59,7 @@ export interface PlayerUnitState {
   pheromoneAttackBonuses: PheromoneAttackBonusState[];
   fireballDamageMultiplier: number;
   canUnitAttackDistant: boolean;
+  moduleLevels: Partial<Record<UnitModuleId, number>>;
   equippedModules: readonly UnitModuleId[];
   ownedSkills: readonly SkillId[];
 }

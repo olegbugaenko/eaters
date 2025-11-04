@@ -1,11 +1,17 @@
 import { SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
 import { MovementService, MovementBodyState } from "../../../services/MovementService";
 import { BricksModule, BrickRuntimeState } from "../BricksModule";
+import {
+  BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
+  BURNING_TAIL_DURATION_MS,
+  FREEZING_TAIL_DURATION_MS,
+} from "../BrickEffectsManager";
 import { PlayerUnitAbilities, AbilityActivationResult } from "../PlayerUnitAbilities";
 import type { UnitTargetingMode } from "../../../../types/unit-targeting";
 import type { StatisticsTracker } from "../../shared/StatisticsModule";
 import { ExplosionModule } from "../../scene/ExplosionModule";
 import { PlayerUnitType } from "../../../../db/player-units-db";
+import { getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { PlayerUnitState } from "./UnitTypes";
 import {
   ATTACK_DISTANCE_EPSILON,
@@ -667,6 +673,66 @@ export class UnitRuntimeController {
       this.spawnCriticalHitEffect(effectPosition);
     }
 
+    if (!result.destroyed && surviving) {
+      const inflictedDamage = result.inflictedDamage;
+      const meltingLevel = unit.moduleLevels?.burningTail ?? 0;
+      if (meltingLevel > 0 && inflictedDamage > 0) {
+        const meltingConfig = getUnitModuleConfig("burningTail");
+        const meltingRadius = meltingConfig.meta?.areaRadius ?? 0;
+        const base = Number.isFinite(meltingConfig.baseBonusValue) ? meltingConfig.baseBonusValue : 0;
+        const perLevel = Number.isFinite(meltingConfig.bonusPerLevel) ? meltingConfig.bonusPerLevel : 0;
+        const multiplier = Math.max(base + perLevel * Math.max(meltingLevel - 1, 0), 1);
+        // Apply to the main target
+        this.bricks.applyEffect({
+          type: "meltingTail",
+          brickId: surviving.id,
+          durationMs: BURNING_TAIL_DURATION_MS,
+          multiplier,
+        });
+        // Apply to nearby bricks within AoE
+        if (meltingRadius > 0) {
+          const nearbyBricks = this.bricks
+            .findBricksNear(surviving.position, meltingRadius)
+            .filter((b) => b.id !== surviving.id);
+          nearbyBricks.forEach((brick) => {
+            this.bricks.applyEffect({
+              type: "meltingTail",
+              brickId: brick.id,
+              durationMs: BURNING_TAIL_DURATION_MS,
+              multiplier,
+            });
+          });
+        }
+      }
+
+      const freezingLevel = unit.moduleLevels?.freezingTail ?? 0;
+      if (freezingLevel > 0 && totalDamage > 0) {
+        const divisor = 1.5 + 0.05 * freezingLevel;
+        const freezingRadius = getUnitModuleConfig("freezingTail").meta?.areaRadius ?? 0;
+        // Apply to the main target
+        this.bricks.applyEffect({
+          type: "freezingTail",
+          brickId: surviving.id,
+          durationMs: FREEZING_TAIL_DURATION_MS,
+          divisor,
+        });
+        // Apply to nearby bricks within AoE
+        if (freezingRadius > 0) {
+          const nearbyBricks = this.bricks
+            .findBricksNear(surviving.position, freezingRadius)
+            .filter((b) => b.id !== surviving.id);
+          nearbyBricks.forEach((brick) => {
+            this.bricks.applyEffect({
+              type: "freezingTail",
+              brickId: brick.id,
+              durationMs: FREEZING_TAIL_DURATION_MS,
+              divisor,
+            });
+          });
+        }
+      }
+    }
+
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
@@ -687,7 +753,9 @@ export class UnitRuntimeController {
     }
 
     const counterSource = surviving ?? target;
-    const counterDamage = Math.max(counterSource.baseDamage - unit.armor, 0);
+    const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
+    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier, 0);
+    const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       const previousHp = unit.hp;
       unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);

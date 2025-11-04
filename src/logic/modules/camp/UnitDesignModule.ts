@@ -773,6 +773,22 @@ export class UnitDesignModule implements GameModule {
           value: detail.bonusValue,
           format: "multiplier",
         };
+      case "burningTail":
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "percent",
+          hint: "Applies for 4s",
+        };
+      case "freezingTail": {
+        const divisor = Math.max(detail.bonusValue, 0);
+        return {
+          label: detail.bonusLabel,
+          value: divisor,
+          format: "multiplier",
+          hint: "Divides enemy damage for 4s",
+        };
+      }
       case "internalFurnace": {
         const level = Math.max(detail.level, 1);
         const capPercent = Math.max(1 + 0.1 * (level - 1), 0) * 100;

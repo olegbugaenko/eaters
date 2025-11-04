@@ -5,6 +5,8 @@ import type { ExplosionType } from "../../../db/explosions-db";
 import type { DestructubleExplosionConfig } from "../../interfaces/destructuble";
 import {
   FILL_TYPES,
+  SceneColor,
+  SceneFill,
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
@@ -20,6 +22,11 @@ import {
   cloneResourceStockpile,
   createEmptyResourceStockpile,
 } from "../../../db/resources-db";
+import { cloneSceneColor, cloneSceneFill } from "../../services/particles/ParticleEmitterShared";
+import {
+  BrickEffectsManager,
+  BrickEffectApplication,
+} from "./BrickEffectsManager";
 
 interface ResourceCollector {
   grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
@@ -114,6 +121,9 @@ interface InternalBrickState extends BrickRuntimeState {
   damageExplosion?: BrickExplosionState;
   destructionExplosion?: BrickExplosionState;
   knockback: BrickKnockbackState | null;
+  baseFill: SceneFill;
+  appliedFill: SceneFill;
+  activeTint: BrickEffectTint | null;
 }
 
 interface BrickExplosionState {
@@ -125,6 +135,11 @@ interface BrickKnockbackState {
   initialOffset: SceneVector2;
   currentOffset: SceneVector2;
   elapsed: number;
+}
+
+export interface BrickEffectTint {
+  color: SceneColor;
+  intensity: number;
 }
 
 const BRICK_KNOCKBACK_DURATION_MS = 500;
@@ -142,8 +157,23 @@ export class BricksModule implements GameModule {
   private readonly bricksWithKnockback = new Set<string>();
   private totalHpCached = 0;
   private hpRecomputeElapsedMs = 0;
+  private readonly effects: BrickEffectsManager;
 
-  constructor(private readonly options: BricksModuleOptions) {}
+  constructor(private readonly options: BricksModuleOptions) {
+    this.effects = new BrickEffectsManager({
+      hasBrick: (brickId) => this.bricks.has(brickId),
+      dealDamage: (brickId, damage, opts) => {
+        this.applyEffectDamage(brickId, damage, opts);
+      },
+      setTint: (brickId, tint) => {
+        const brick = this.bricks.get(brickId);
+        if (!brick) {
+          return;
+        }
+        this.applyEffectTint(brick, tint);
+      },
+    });
+  }
 
   public initialize(): void {
     this.recomputeTotalsAndPush();
@@ -168,6 +198,7 @@ export class BricksModule implements GameModule {
 
   public tick(deltaMs: number): void {
     if (deltaMs > 0) {
+      this.effects.update(deltaMs);
       this.hpRecomputeElapsedMs += deltaMs;
       if (this.hpRecomputeElapsedMs >= TOTAL_HP_RECOMPUTE_INTERVAL_MS) {
         this.hpRecomputeElapsedMs = 0;
@@ -267,23 +298,38 @@ export class BricksModule implements GameModule {
     }
   }
 
+  public applyEffect(effect: BrickEffectApplication): void {
+    this.effects.applyEffect(effect);
+  }
+
+  public getOutgoingDamageMultiplier(brickId: string): number {
+    return this.effects.getOutgoingDamageMultiplier(brickId);
+  }
+
   public applyDamage(
     brickId: string,
     rawDamage: number,
     hitDirection?: SceneVector2,
-    options?: { rewardMultiplier?: number; armorPenetration?: number, overTime?: number }
-  ): { destroyed: boolean; brick: BrickRuntimeState | null } {
+    options?: {
+      rewardMultiplier?: number;
+      armorPenetration?: number;
+      overTime?: number;
+      skipKnockback?: boolean;
+    }
+  ): { destroyed: boolean; brick: BrickRuntimeState | null; inflictedDamage: number } {
     const brick = this.bricks.get(brickId);
     if (!brick) {
-      return { destroyed: false, brick: null };
+      return { destroyed: false, brick: null, inflictedDamage: 0 };
     }
 
     const rewardMultiplier = Math.max(options?.rewardMultiplier ?? 1, 0);
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
-    const effectiveArmor = Math.max(brick.armor - armorPenetration, 0)*(options?.overTime ?? 1);
-    const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0);
+    const skipKnockback = options?.skipKnockback === true;
+    const effectiveArmor = Math.max(brick.armor - armorPenetration, 0) * (options?.overTime ?? 1);
+    const incomingMultiplier = this.effects.getIncomingDamageMultiplier(brickId);
+    const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0) * Math.max(incomingMultiplier, 1);
     if (effectiveDamage <= 0) {
-      return { destroyed: false, brick: this.cloneState(brick) };
+      return { destroyed: false, brick: this.cloneState(brick), inflictedDamage: 0 };
     }
 
     const previousHp = brick.hp;
@@ -298,14 +344,16 @@ export class BricksModule implements GameModule {
       this.playBrickSound("destroy");
       this.spawnBrickExplosion(brick.destructionExplosion, brick);
       this.destroyBrick(brick, rewardMultiplier);
-      return { destroyed: true, brick: null };
+      return { destroyed: true, brick: null, inflictedDamage };
     }
 
     this.playBrickSound("hit");
     this.spawnBrickExplosion(brick.damageExplosion, brick);
-    this.applyBrickKnockback(brick, hitDirection);
+    if (!skipKnockback) {
+      this.applyBrickKnockback(brick, hitDirection);
+    }
     this.pushStats();
-    return { destroyed: false, brick: this.cloneState(brick) };
+    return { destroyed: false, brick: this.cloneState(brick), inflictedDamage };
   }
 
   private parseSaveData(data: unknown): BrickData[] | null {
@@ -399,10 +447,11 @@ export class BricksModule implements GameModule {
     const rewards = stats.rewards;
 
     const id = this.createBrickId();
+    const baseFill = createBrickFill(config);
     const sceneObjectId = this.options.scene.addObject("brick", {
       position,
       size: { ...config.size },
-      fill: createBrickFill(config),
+      fill: cloneSceneFill(baseFill),
       rotation,
       stroke: config.stroke
         ? {
@@ -439,6 +488,9 @@ export class BricksModule implements GameModule {
         physicalSize
       ),
       knockback: null,
+      baseFill: cloneSceneFill(baseFill),
+      appliedFill: cloneSceneFill(baseFill),
+      activeTint: null,
     };
   }
 
@@ -467,6 +519,7 @@ export class BricksModule implements GameModule {
         this.options.resources.grantResources(rewards);
       }
     }
+    this.effects.clearEffects(brick.id);
     this.options.scene.removeObject(brick.sceneObjectId);
     this.bricks.delete(brick.id);
     this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
@@ -479,6 +532,54 @@ export class BricksModule implements GameModule {
     }
   }
 
+  private applyEffectDamage(
+    brickId: string,
+    damage: number,
+    options: { rewardMultiplier: number; armorPenetration: number; overTime: number }
+  ): void {
+    if (damage <= 0) {
+      return;
+    }
+    this.applyDamage(brickId, damage, undefined, {
+      rewardMultiplier: options.rewardMultiplier,
+      armorPenetration: options.armorPenetration,
+      skipKnockback: true,
+      overTime: Math.max(options.overTime ?? 0, 0),
+    });
+  }
+
+  private applyEffectTint(brick: InternalBrickState, tint: BrickEffectTint | null): void {
+    if (!tint) {
+      if (!brick.activeTint) {
+        return;
+      }
+      const restoredFill = cloneSceneFill(brick.baseFill);
+      brick.appliedFill = restoredFill;
+      brick.activeTint = null;
+      const offset = brick.knockback?.currentOffset ?? ZERO_VECTOR;
+      this.updateBrickSceneObject(brick, offset, { fill: restoredFill });
+      return;
+    }
+
+    const normalizedIntensity = clampNumber(tint.intensity, 0, 1);
+    const hasSameTint =
+      brick.activeTint &&
+      Math.abs(brick.activeTint.intensity - normalizedIntensity) < 1e-3 &&
+      sceneColorsApproximatelyEqual(brick.activeTint.color, tint.color);
+    if (hasSameTint) {
+      return;
+    }
+
+    const tintedFill = tintSceneFill(brick.baseFill, tint.color, normalizedIntensity);
+    brick.appliedFill = tintedFill;
+    brick.activeTint = {
+      color: cloneSceneColor(tint.color),
+      intensity: normalizedIntensity,
+    };
+    const offset = brick.knockback?.currentOffset ?? ZERO_VECTOR;
+    this.updateBrickSceneObject(brick, offset, { fill: tintedFill });
+  }
+
   private clearSceneObjects(): void {
     this.brickOrder.forEach((brick) => {
       this.options.scene.removeObject(brick.sceneObjectId);
@@ -488,6 +589,7 @@ export class BricksModule implements GameModule {
     this.spatialIndex.clear();
     this.bricksWithKnockback.clear();
     this.totalHpCached = 0;
+    this.effects.clearAllEffects();
   }
 
   private applyBrickKnockback(
@@ -526,13 +628,22 @@ export class BricksModule implements GameModule {
 
   private updateBrickSceneObject(
     brick: InternalBrickState,
-    offset: SceneVector2
+    offset: SceneVector2,
+    extras: { fill?: SceneFill } = {}
   ): void {
     const position = addVectors(brick.position, offset);
-    this.options.scene.updateObject(brick.sceneObjectId, {
+    const payload: {
+      position: SceneVector2;
+      rotation: number;
+      fill?: SceneFill;
+    } = {
       position,
       rotation: brick.rotation,
-    });
+    };
+    if (extras.fill) {
+      payload.fill = cloneSceneFill(extras.fill);
+    }
+    this.options.scene.updateObject(brick.sceneObjectId, payload);
   }
 
   private pushStats(): void {
@@ -680,6 +791,86 @@ const clamp = (value: number, min: number, max: number): number => {
     return min;
   }
   return Math.min(Math.max(value, min), max);
+};
+
+const clampNumber = (value: number, min: number, max: number): number => {
+  if (!Number.isFinite(value)) {
+    return clamp(min, min, max);
+  }
+  if (min > max) {
+    return min;
+  }
+  return clamp(value, min, max);
+};
+
+const blendColorComponent = (
+  base: number | undefined,
+  overlay: number | undefined,
+  intensity: number
+): number => {
+  const sanitizedBase = Number.isFinite(base) ? (base as number) : 0;
+  const sanitizedOverlay = Number.isFinite(overlay) ? (overlay as number) : 0;
+  const blended = sanitizedBase + (sanitizedOverlay - sanitizedBase) * intensity;
+  return clamp(blended, 0, 1);
+};
+
+const tintSceneColor = (
+  source: SceneColor,
+  tint: SceneColor,
+  intensity: number
+): SceneColor => ({
+  r: blendColorComponent(source.r, tint.r, intensity),
+  g: blendColorComponent(source.g, tint.g, intensity),
+  b: blendColorComponent(source.b, tint.b, intensity),
+  a: typeof source.a === "number" && Number.isFinite(source.a) ? source.a : 1,
+});
+
+const sceneColorsApproximatelyEqual = (
+  a: SceneColor,
+  b: SceneColor,
+  epsilon = 1e-3
+): boolean =>
+  Math.abs((a.r ?? 0) - (b.r ?? 0)) <= epsilon &&
+  Math.abs((a.g ?? 0) - (b.g ?? 0)) <= epsilon &&
+  Math.abs((a.b ?? 0) - (b.b ?? 0)) <= epsilon &&
+  Math.abs((a.a ?? 1) - (b.a ?? 1)) <= epsilon;
+
+const tintSceneFill = (
+  fill: SceneFill,
+  tint: SceneColor,
+  intensity: number
+): SceneFill => {
+  const ratio = clamp(intensity, 0, 1);
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return {
+        fillType: FILL_TYPES.SOLID,
+        color: tintSceneColor(fill.color, tint, ratio),
+      };
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: tintSceneColor(stop.color, tint, ratio),
+        })),
+      };
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return {
+        fillType: fill.fillType,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: typeof fill.end === "number" ? fill.end : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: tintSceneColor(stop.color, tint, ratio),
+        })),
+      } as SceneFill;
+    default:
+      return cloneSceneFill(fill);
+  }
 };
 
 const sanitizeHp = (value: number | undefined, maxHp: number): number => {
