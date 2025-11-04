@@ -4,7 +4,7 @@
 
 ## Інтерфейс життєвого циклу
 
-У `src/ui/renderers/primitives/GpuInstancedPrimitiveLifecycle.ts` оголошено інтерфейс `GpuInstancedPrimitiveLifecycle<TBatch>`. Він визначає мінімальний набір методів, які повинен реалізовувати менеджер GPU-ефекту:
+У `src/ui/renderers/primitives/gpu/GpuInstancedPrimitiveLifecycle.ts` оголошено інтерфейс `GpuInstancedPrimitiveLifecycle<TBatch>`. Він визначає мінімальний набір методів, які повинен реалізовувати менеджер GPU-ефекту:
 
 - **`onContextAcquired(gl)`** — викликається під час ініціалізації WebGL2-контексту. Реалізація створює або переініціалізує шейдери, буфери та зберігає прив'язку контексту.
 - **`ensureBatch(gl, capacity)`** — гарантує наявність або розширення інстанс-батчу під конкретний ефект і повертає його для запису сценових даних.
@@ -17,14 +17,14 @@
 ## Поточні реалізації
 
 ### PetalAuraEffect
-Файл: `src/ui/renderers/primitives/PetalAuraGpuRenderer.ts`.
+Файл: `src/ui/renderers/primitives/gpu/PetalAuraGpuRenderer.ts`.
 
 - Зберігає мапу `{ gl -> { resources, batch } }` і реалізує всі методи інтерфейсу.
 - `ensureBatch` перевіряє та розширює місткість інстанс-буфера, `beforeRender` перепаковує активні пелюстки, `render` налаштовує blend та викликає `drawArraysInstanced`.
-- Метод `clearInstances` викликається з `AuraLifecycleManager`, щоб очищати пелюстки під час рестарту карти без ручних reset-функцій.
+- `SceneScreen` викликає `clearInstances` під час рестарту карти або перед повторною ініціалізацією сцени, тому немає потреби у додаткових lifecycle-менеджерах.
 
 ### WhirlEffect
-Файл: `src/ui/renderers/primitives/WhirlGpuRenderer.ts`.
+Файл: `src/ui/renderers/primitives/gpu/WhirlGpuRenderer.ts`.
 
 - Має таку саму структуру управління контекстами.
 - `beforeRender` викликається після `updateAllWhirlInterpolations()` і приводить активні інстанси до щільного вигляду, після чого `render` виконує один draw-call.

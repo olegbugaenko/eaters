@@ -23,7 +23,7 @@ import {
   writePetalAuraInstance,
   PetalAuraInstance,
   getPetalAuraGlContext,
-} from "../primitives/PetalAuraGpuRenderer";
+} from "../primitives/gpu/PetalAuraGpuRenderer";
 import {
   ParticleEmitterBaseConfig,
   ParticleEmitterParticleState,

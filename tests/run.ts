@@ -14,6 +14,5 @@ import "./ResourcesModule.test";
 import "./UnitModuleWorkshopModule.test";
 import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
-import "./AuraLifecycleManager.test";
 
 void run();

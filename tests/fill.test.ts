@@ -13,7 +13,7 @@ import {
   STOP_COLOR_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
 } from "../src/ui/renderers/objects/ObjectRenderer";
-import { createFillVertexComponents } from "../src/ui/renderers/primitives/fill";
+import { createFillVertexComponents } from "../src/ui/renderers/primitives/utils/fill";
 import { describe, test } from "./testRunner";
 
 const readComponent = (source: Float32Array, index: number): number => {

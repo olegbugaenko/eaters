@@ -1,4 +1,4 @@
-import { SceneSize, SceneVector2 } from "../../../logic/services/SceneObjectManager";
+import { SceneSize, SceneVector2 } from "../../../../logic/services/SceneObjectManager";
 
 export interface GpuInstancedPrimitiveLifecycle<TBatch> {
   onContextAcquired(gl: WebGL2RenderingContext): void;

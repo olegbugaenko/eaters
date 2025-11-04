@@ -11,7 +11,6 @@ import { AuraRenderer } from "./AuraRenderer";
 import { FireballRenderer } from "./FireballRenderer";
 import { SpellProjectileRingRenderer } from "./SpellProjectileRingRenderer";
 import { SandStormRenderer } from "./SandStormRenderer";
-export { AuraLifecycleManager } from "./AuraLifecycleManager";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";

@@ -8,7 +8,7 @@ import {
   ensureWhirlBatch,
   writeWhirlInstance,
   getWhirlGlContext,
-} from "../primitives/WhirlGpuRenderer";
+} from "../primitives/gpu/WhirlGpuRenderer";
 
 interface SandStormCustomData {
   intensity?: number;

@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../../../logic/services/SceneObjectManager";
+import { SceneVector2 } from "../../../../logic/services/SceneObjectManager";
 import {
   ParticleEmitterGpuRenderUniforms,
   getParticleRenderResources,

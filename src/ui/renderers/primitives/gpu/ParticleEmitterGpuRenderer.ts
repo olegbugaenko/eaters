@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../../../logic/services/SceneObjectManager";
+import { SceneVector2 } from "../../../../logic/services/SceneObjectManager";
 
 const UNIT_QUAD_VERTICES = new Float32Array([
   // TRIANGLE_STRIP order: bottom-left, bottom-right, top-left, top-right
