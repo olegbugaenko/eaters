@@ -326,7 +326,8 @@ export class BricksModule implements GameModule {
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
     const skipKnockback = options?.skipKnockback === true;
     const effectiveArmor = Math.max(brick.armor - armorPenetration, 0) * (options?.overTime ?? 1);
-    const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0);
+    const incomingMultiplier = this.effects.getIncomingDamageMultiplier(brickId);
+    const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0) * Math.max(incomingMultiplier, 1);
     if (effectiveDamage <= 0) {
       return { destroyed: false, brick: this.cloneState(brick), inflictedDamage: 0 };
     }
@@ -534,7 +535,7 @@ export class BricksModule implements GameModule {
   private applyEffectDamage(
     brickId: string,
     damage: number,
-    options: { rewardMultiplier: number; armorPenetration: number }
+    options: { rewardMultiplier: number; armorPenetration: number; overTime: number }
   ): void {
     if (damage <= 0) {
       return;
@@ -543,7 +544,7 @@ export class BricksModule implements GameModule {
       rewardMultiplier: options.rewardMultiplier,
       armorPenetration: options.armorPenetration,
       skipKnockback: true,
-      overTime: 1,
+      overTime: Math.max(options.overTime ?? 0, 0),
     });
   }
 

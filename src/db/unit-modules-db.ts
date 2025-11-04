@@ -38,6 +38,7 @@ export interface UnitModuleConfig {
     readonly cooldownSeconds?: number;
     readonly frenzyAttacks?: number;
     readonly healCharges?: number;
+    readonly areaRadius?: number;
   };
 }
 
@@ -172,17 +173,18 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
   },
   burningTail: {
     id: "burningTail",
-    name: "Burning Tail",
+    name: "Melting Tail",
     description:
-      "Fuse incendiary glands into the unit's tail so every strike brands masonry with lingering flame.",
-    bonusLabel: "Burn damage per second",
-    bonusType: "percent",
-    baseBonusValue: 0.2,
-    bonusPerLevel: 0.02,
+      "Caustic glands coat struck masonry, making it more vulnerable to subsequent hits for a short time.",
+    bonusLabel: "Incoming damage multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.5,
+    bonusPerLevel: 0.05,
     manaCostMultiplier: 2.6,
     sanityCost: 1,
     baseCost: { magma: 300, organics: 150 },
     unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
+    meta: { areaRadius: 30 },
   },
   freezingTail: {
     id: "freezingTail",
@@ -197,6 +199,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 1,
     baseCost: { ice: 300, sand: 300 },
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
+    meta: { areaRadius: 30 },
   },
 };
 

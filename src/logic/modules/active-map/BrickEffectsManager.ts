@@ -5,7 +5,7 @@ interface BrickEffectsDependencies {
   readonly dealDamage: (
     brickId: string,
     amount: number,
-    options: { rewardMultiplier: number; armorPenetration: number },
+    options: { rewardMultiplier: number; armorPenetration: number; overTime: number },
   ) => void;
   readonly setTint: (brickId: string, tint: BrickEffectTint | null) => void;
 }
@@ -17,7 +17,7 @@ export const BURNING_TAIL_DAMAGE_RATIO_PER_SECOND = 0.2;
 const DAMAGE_APPLICATION_THRESHOLD = 0.5;
 
 const EFFECT_TINTS: Record<BrickEffectType, BrickEffectTint & { priority: number }> = {
-  burningTail: {
+  meltingTail: {
     color: { r: 1, g: 0.2, b: 0.1, a: 1 },
     intensity: 0.65,
     priority: 20,
@@ -29,16 +29,14 @@ const EFFECT_TINTS: Record<BrickEffectType, BrickEffectTint & { priority: number
   },
 };
 
-export type BrickEffectType = "burningTail" | "freezingTail";
+export type BrickEffectType = "meltingTail" | "freezingTail";
 
 export type BrickEffectApplication =
   | {
-      readonly type: "burningTail";
+      readonly type: "meltingTail";
       readonly brickId: string;
       readonly durationMs: number;
-      readonly damagePerSecond: number;
-      readonly rewardMultiplier: number;
-      readonly armorPenetration: number;
+      readonly multiplier: number; // incoming damage multiplier (> 1)
     }
   | {
       readonly type: "freezingTail";
@@ -47,13 +45,10 @@ export type BrickEffectApplication =
       readonly divisor: number;
     };
 
-interface BurningEffectState {
-  readonly type: "burningTail";
+interface MeltingEffectState {
+  readonly type: "meltingTail";
   remainingMs: number;
-  pendingDamage: number;
-  damagePerSecond: number;
-  readonly rewardMultiplier: number;
-  readonly armorPenetration: number;
+  multiplier: number;
 }
 
 interface FreezingEffectState {
@@ -62,7 +57,7 @@ interface FreezingEffectState {
   divisor: number;
 }
 
-type BrickEffectState = BurningEffectState | FreezingEffectState;
+type BrickEffectState = MeltingEffectState | FreezingEffectState;
 
 export class BrickEffectsManager {
   private readonly dependencies: BrickEffectsDependencies;
@@ -100,19 +95,19 @@ export class BrickEffectsManager {
 
     const bucket = this.effects.get(effect.brickId) ?? [];
 
-    if (effect.type === "burningTail") {
-      if (effect.damagePerSecond <= 0) {
-        if (bucket.length === 0) {
-          return;
+    if (effect.type === "meltingTail") {
+      const normalizedMultiplier = Math.max(effect.multiplier, 1);
+      const existing = bucket.find((entry): entry is MeltingEffectState => entry.type === "meltingTail");
+      if (existing) {
+        existing.remainingMs = effect.durationMs;
+        if (normalizedMultiplier > existing.multiplier) {
+          existing.multiplier = normalizedMultiplier;
         }
       } else {
         bucket.push({
-          type: "burningTail",
+          type: "meltingTail",
           remainingMs: effect.durationMs,
-          pendingDamage: 0,
-          damagePerSecond: effect.damagePerSecond,
-          rewardMultiplier: Math.max(effect.rewardMultiplier, 0),
-          armorPenetration: Math.max(effect.armorPenetration, 0),
+          multiplier: normalizedMultiplier,
         });
       }
     } else {
@@ -168,20 +163,7 @@ export class BrickEffectsManager {
         const entry = effects[i]!;
         entry.remainingMs = Math.max(entry.remainingMs - deltaMs, 0);
 
-        if (entry.type === "burningTail") {
-          entry.pendingDamage += entry.damagePerSecond * deltaSeconds;
-
-          if (entry.pendingDamage >= DAMAGE_APPLICATION_THRESHOLD || entry.remainingMs <= 0) {
-            const damage = entry.pendingDamage;
-            if (damage > 0) {
-              this.dependencies.dealDamage(brickId, damage, {
-                rewardMultiplier: entry.rewardMultiplier,
-                armorPenetration: entry.armorPenetration,
-              });
-            }
-            entry.pendingDamage = 0;
-          }
-
+        if (entry.type === "meltingTail") {
           if (entry.remainingMs > 0) {
             survivors.push(entry);
           } else {
@@ -226,6 +208,20 @@ export class BrickEffectsManager {
       if (entry.type === "freezingTail") {
         const reduction = 1 / Math.max(entry.divisor, 1);
         multiplier = Math.min(multiplier, reduction);
+      }
+    });
+    return multiplier;
+  }
+
+  public getIncomingDamageMultiplier(brickId: string): number {
+    const effects = this.effects.get(brickId);
+    if (!effects || effects.length === 0) {
+      return 1;
+    }
+    let multiplier = 1;
+    effects.forEach((entry) => {
+      if (entry.type === "meltingTail") {
+        multiplier = Math.max(multiplier, Math.max(entry.multiplier, 1));
       }
     });
     return multiplier;
