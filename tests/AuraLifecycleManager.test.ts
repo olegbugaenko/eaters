@@ -56,4 +56,45 @@ describe("AuraLifecycleManager", () => {
     assert.strictEqual(petalClears, 1, "should not clear again when units return");
     assert.strictEqual(slotClears, 1, "should not clear again when units return");
   });
+
+  test("respects initial scene snapshot", () => {
+    let petalClears = 0;
+    let slotClears = 0;
+    const manager = new AuraLifecycleManager({
+      clearPetalAuras: () => {
+        petalClears += 1;
+      },
+      clearPlayerAuraSlots: () => {
+        slotClears += 1;
+      },
+    });
+
+    manager.bootstrap([createPlayerUnit("playerUnit-1"), createPlayerUnit("playerUnit-2")]);
+
+    manager.onSceneSync({ added: [], updated: [], removed: ["playerUnit-1"] });
+
+    assert.strictEqual(
+      petalClears,
+      0,
+      "should not clear while some bootstrapped units remain"
+    );
+    assert.strictEqual(
+      slotClears,
+      0,
+      "should not clear while some bootstrapped units remain"
+    );
+
+    manager.onSceneSync({ added: [], updated: [], removed: ["playerUnit-2"] });
+
+    assert.strictEqual(
+      petalClears,
+      1,
+      "should clear when bootstrapped units disappear"
+    );
+    assert.strictEqual(
+      slotClears,
+      1,
+      "should clear aura slots when bootstrapped units disappear"
+    );
+  });
 });

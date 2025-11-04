@@ -29,6 +29,16 @@ export class AuraLifecycleManager {
     this.clearPlayerAuraSlots = callbacks.clearPlayerAuraSlots;
   }
 
+  public bootstrap(objects: readonly SceneObjectInstance[]): void {
+    this.playerUnitIds.clear();
+    objects.forEach((instance) => {
+      if (instance.type === "playerUnit") {
+        this.playerUnitIds.add(instance.id);
+      }
+    });
+    this.hasPlayerUnits = this.playerUnitIds.size > 0;
+  }
+
   public onSceneSync(changes: SceneSyncChanges): void {
     const previouslyHadPlayerUnits = this.hasPlayerUnits;
 

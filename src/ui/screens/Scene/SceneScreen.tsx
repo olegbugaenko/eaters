@@ -799,6 +799,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     const objectsRenderer = createObjectsRendererManager();
     const auraLifecycleManager = new AuraLifecycleManager();
     objectsRenderer.bootstrap(scene.getObjects());
+    auraLifecycleManager.bootstrap(scene.getObjects());
 
     gl.useProgram(program);
 
