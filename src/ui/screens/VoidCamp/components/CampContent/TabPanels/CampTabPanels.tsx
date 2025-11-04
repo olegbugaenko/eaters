@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/MapModule";
-import { SkillTreeView } from "@screens/VoidCamp/components/SkillTree/SkillTreeView";
-import { ModulesWorkshopView } from "@screens/VoidCamp/components/ModulesWorkshop/ModulesWorkshopView";
+import { SkillTreeView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/SkillTree/SkillTreeView";
+import { ModulesWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/ModulesWorkshop/ModulesWorkshopView";
 import { UnitDesignerView } from "@screens/VoidCamp/components/UnitDesigner/UnitDesignerView";
 import { CampTabKey } from "../CampContent";
 import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
@@ -10,9 +10,9 @@ import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/UnitModuleWor
 import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/BuildingsModule";
-import { BuildingsWorkshopView } from "@screens/VoidCamp/components/BuildingsWorkshop/BuildingsWorkshopView";
+import { BuildingsWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/BuildingsWorkshop/BuildingsWorkshopView";
 import { CraftingBridgeState } from "@logic/modules/camp/CraftingModule";
-import { CraftingView } from "@screens/VoidCamp/components/Crafting/CraftingView";
+import { CraftingView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/Crafting/CraftingView";
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
 import "./CampTabPanels.css";
