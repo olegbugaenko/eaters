@@ -17,12 +17,15 @@ in float a_size;
 in float a_age;
 in float a_lifetime;
 in float a_isActive;
+in vec2 a_velocity;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
 uniform float u_fadeStartMs;
 uniform float u_defaultLifetimeMs;
 uniform float u_minParticleSize;
+uniform float u_lengthMultiplier;
+uniform int u_alignToVelocity;
 
 uniform int u_fillType;
 uniform int u_stopCount;
@@ -81,8 +84,19 @@ void main() {
   bool alive = isActive > 0.5;
   float size = alive ? max(a_size, u_minParticleSize) : 0.0;
   vec2 center = a_position;
-  vec2 offset = a_unitPosition * size;
-  vec2 world = center + offset;
+  float lengthMul = max(u_lengthMultiplier, 1.0);
+  vec2 baseOffset = vec2(a_unitPosition.x * size * lengthMul, a_unitPosition.y * size);
+  vec2 world;
+  if (u_alignToVelocity == 1) {
+    vec2 dir = a_velocity;
+    float len = length(dir);
+    vec2 ndir = len > 0.0001 ? dir / len : vec2(1.0, 0.0);
+    vec2 perp = vec2(-ndir.y, ndir.x);
+    vec2 rotated = ndir * baseOffset.x + perp * baseOffset.y;
+    world = center + rotated;
+  } else {
+    world = center + baseOffset;
+  }
 
   float alpha = alive ? computeAlpha(a_age, a_lifetime) : 0.0;
 
@@ -102,11 +116,24 @@ void main() {
   v_fillInfo = vec4(float(u_fillType), float(u_stopCount), 0.0, 0.0);
 
   if (u_fillType == 1) {
-    vec2 startLocal = u_hasLinearStart == 1 ? u_linearStart : vec2(-size * 0.5);
-    vec2 endLocal = u_hasLinearEnd == 1 ? u_linearEnd : vec2(size * 0.5);
-    vec2 startWorld = center + startLocal;
-    vec2 endWorld = center + endLocal;
-    vec2 dir = endWorld - startWorld;
+    vec2 startWorld;
+    vec2 endWorld;
+    vec2 dir;
+    if (u_alignToVelocity == 1) {
+      float halfLen = (size * 0.5) * max(u_lengthMultiplier, 1.0);
+      vec2 vdir = a_velocity;
+      float vlen = length(vdir);
+      vec2 ndir = vlen > 0.0001 ? vdir / vlen : vec2(1.0, 0.0);
+      startWorld = center - ndir * halfLen;
+      endWorld = center + ndir * halfLen;
+      dir = endWorld - startWorld;
+    } else {
+      vec2 startLocal = u_hasLinearStart == 1 ? u_linearStart : vec2(-size * 0.5, 0.0);
+      vec2 endLocal = u_hasLinearEnd == 1 ? u_linearEnd : vec2(size * 0.5, 0.0);
+      startWorld = center + startLocal;
+      endWorld = center + endLocal;
+      dir = endWorld - startWorld;
+    }
     float lengthSq = dot(dir, dir);
     v_fillParams0 = vec4(startWorld, endWorld);
     v_fillParams1 = vec4(dir, lengthSq > 0.0 ? 1.0 / lengthSq : 0.0, 0.0);
@@ -209,11 +236,21 @@ void main() {
   if (v_stopColor0.a <= 0.0 && v_stopColor1.a <= 0.0 && v_stopColor2.a <= 0.0) {
     discard;
   }
-  if (v_shape > 0.5) {
+  // v_shape: 0.0=square, 1.0=circle, 2.0=triangle
+  if (v_shape > 0.5 && v_shape < 1.5) {
+    // Circle masking
     float dist = length(v_worldPosition - v_particleCenter);
     if (dist > v_particleRadius) {
       discard;
     }
+  } else if (v_shape > 1.5) {
+    // Triangle masking: pointing in direction of velocity
+    vec2 localPos = (v_worldPosition - v_particleCenter) / max(v_particleRadius, 0.01);
+    // Isosceles triangle: base at x=-0.5, tip at x=0.5, height 1.0
+    float x = localPos.x;
+    float absY = abs(localPos.y);
+    // Triangle edges: |y| < 0.5 * (1.0 - x) for x in [-0.5, 0.5]
+    if (x < -0.5 || x > 0.5 || absY > 0.5 * (1.0 - 2.0 * x)) discard;
   }
   float fillType = v_fillInfo.x;
   if (fillType < 0.5) {
@@ -237,6 +274,7 @@ interface ParticleRenderProgram {
   attributes: {
     unitPosition: number;
     position: number;
+    velocity: number;
     size: number;
     age: number;
     lifetime: number;
@@ -248,6 +286,8 @@ interface ParticleRenderProgram {
     fadeStartMs: WebGLUniformLocation | null;
     defaultLifetimeMs: WebGLUniformLocation | null;
     minParticleSize: WebGLUniformLocation | null;
+    lengthMultiplier: WebGLUniformLocation | null;
+    alignToVelocity: WebGLUniformLocation | null;
     fillType: WebGLUniformLocation | null;
     stopCount: WebGLUniformLocation | null;
     hasLinearStart: WebGLUniformLocation | null;
@@ -285,6 +325,8 @@ export interface ParticleEmitterGpuRenderUniforms {
   defaultLifetimeMs: number;
   shape: number;
   minParticleSize: number;
+  lengthMultiplier: number;
+  alignToVelocity: boolean;
 }
 
 export interface ParticleEmitterGpuDrawHandle {
@@ -355,6 +397,7 @@ const createRenderProgram = (
   const attributes = {
     unitPosition: gl.getAttribLocation(program, "a_unitPosition"),
     position: gl.getAttribLocation(program, "a_position"),
+    velocity: gl.getAttribLocation(program, "a_velocity"),
     size: gl.getAttribLocation(program, "a_size"),
     age: gl.getAttribLocation(program, "a_age"),
     lifetime: gl.getAttribLocation(program, "a_lifetime"),
@@ -363,6 +406,7 @@ const createRenderProgram = (
   if (
     attributes.unitPosition < 0 ||
     attributes.position < 0 ||
+    attributes.velocity < 0 ||
     attributes.size < 0 ||
     attributes.age < 0 ||
     attributes.lifetime < 0 ||
@@ -378,6 +422,8 @@ const createRenderProgram = (
     fadeStartMs: gl.getUniformLocation(program, "u_fadeStartMs"),
     defaultLifetimeMs: gl.getUniformLocation(program, "u_defaultLifetimeMs"),
     minParticleSize: gl.getUniformLocation(program, "u_minParticleSize"),
+    lengthMultiplier: gl.getUniformLocation(program, "u_lengthMultiplier"),
+    alignToVelocity: gl.getUniformLocation(program, "u_alignToVelocity"),
     fillType: gl.getUniformLocation(program, "u_fillType"),
     stopCount: gl.getUniformLocation(program, "u_stopCount"),
     hasLinearStart: gl.getUniformLocation(program, "u_hasLinearStart"),
@@ -513,6 +559,8 @@ type UniformCache = {
   fadeStartMs?: number;
   defaultLifetimeMs?: number;
   minParticleSize?: number;
+  lengthMultiplier?: number;
+  alignToVelocity?: number;
   fillType?: number;
   stopCount?: number;
   hasLinearStart?: number;
@@ -561,6 +609,25 @@ const uploadEmitterUniforms = (
     gl.uniform1f(
       program.uniforms.minParticleSize,
       (cache.minParticleSize = u.minParticleSize)
+    );
+  }
+  if (
+    program.uniforms.lengthMultiplier &&
+    cache.lengthMultiplier !== u.lengthMultiplier
+  ) {
+    gl.uniform1f(
+      program.uniforms.lengthMultiplier,
+      (cache.lengthMultiplier = u.lengthMultiplier)
+    );
+  }
+  const alignVal = u.alignToVelocity ? 1 : 0;
+  if (
+    program.uniforms.alignToVelocity &&
+    cache.alignToVelocity !== alignVal
+  ) {
+    gl.uniform1i(
+      program.uniforms.alignToVelocity,
+      (cache.alignToVelocity = alignVal)
     );
   }
   if (program.uniforms.fillType && cache.fillType !== u.fillType) {

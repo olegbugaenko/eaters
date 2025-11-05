@@ -42,6 +42,9 @@ export interface ParticleEmitterBaseConfig {
   color: SceneColor;
   fill?: SceneFill;
   shape: ParticleEmitterShape;
+  // Optional rendering tweaks
+  aspectRatio?: number; // width/height; 1 = square, >1 stretched along X
+  alignToVelocity?: boolean; // if true, rotate quad to face particle velocity
   emissionDurationMs?: number;
   capacity: number;
 }
@@ -535,25 +538,45 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     const particle = state.particles[i]!;
     const size = Math.max(particle.size, 0);
     const effectiveSize = Math.max(size, MIN_PARTICLE_SIZE);
-    const halfSize = effectiveSize / 2;
+    const aspect = Math.max(config.aspectRatio ?? 1, 0.01);
+    const width = effectiveSize * aspect;
+    const height = effectiveSize;
+    const halfW = Math.max(width / 2, MIN_PARTICLE_SIZE / 2);
+    const halfH = Math.max(height / 2, MIN_PARTICLE_SIZE / 2);
     const center = particle.position;
+    const rotation = config.alignToVelocity === true
+      ? Math.atan2(particle.velocity.y, particle.velocity.x)
+      : 0;
     const fillComponents = writeFillVertexComponents(PARTICLE_FILL_SCRATCH, {
       fill,
       center,
-      rotation: 0,
-      size: { width: effectiveSize, height: effectiveSize },
-      radius: effectiveSize / 2,
+      rotation,
+      size: { width, height },
+      radius: Math.max(width, height) / 2,
     });
     applyParticleAlpha(fillComponents, computeParticleAlpha(particle, config));
-    offset = writeParticleQuad(
-      buffer,
-      offset,
-      center.x - halfSize,
-      center.y - halfSize,
-      center.x + halfSize,
-      center.y + halfSize,
-      fillComponents
-    );
+    if (rotation === 0) {
+      offset = writeParticleQuad(
+        buffer,
+        offset,
+        center.x - halfW,
+        center.y - halfH,
+        center.x + halfW,
+        center.y + halfH,
+        fillComponents
+      );
+    } else {
+      offset = writeRotatedParticleQuad(
+        buffer,
+        offset,
+        center.x,
+        center.y,
+        halfW,
+        halfH,
+        rotation,
+        fillComponents
+      );
+    }
   }
 
   if (activeCount < capacity) {
@@ -922,6 +945,18 @@ const createParticleEmitterGpuState = (
     );
     gl.vertexAttribDivisor(renderResources.program.attributes.position, 1);
 
+    // velocity for GPU-oriented quads
+    gl.enableVertexAttribArray(renderResources.program.attributes.velocity);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.velocity,
+      2,
+      gl.FLOAT,
+      false,
+      stride,
+      PARTICLE_VELOCITY_X_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.velocity, 1);
+
     gl.enableVertexAttribArray(renderResources.program.attributes.size);
     gl.vertexAttribPointer(
       renderResources.program.attributes.size,
@@ -996,6 +1031,8 @@ const createParticleEmitterGpuState = (
     defaultLifetimeMs: 0,
     shape: 0,
     minParticleSize: MIN_PARTICLE_SIZE,
+    lengthMultiplier: 1,
+    alignToVelocity: false,
   };
 
   const gpu: ParticleEmitterGpuState = {
@@ -1142,8 +1179,10 @@ const updateParticleEmitterGpuUniforms = <
   const uniforms = gpu.uniforms;
   uniforms.fadeStartMs = config.fadeStartMs;
   uniforms.defaultLifetimeMs = config.particleLifetimeMs;
-  uniforms.shape = config.shape === "circle" ? 1 : 0;
+  uniforms.shape = config.shape === "circle" ? 1 : config.shape === "triangle" ? 2 : 0;
   uniforms.minParticleSize = MIN_PARTICLE_SIZE;
+  uniforms.lengthMultiplier = Math.max(config.aspectRatio ?? 1, 1);
+  uniforms.alignToVelocity = config.alignToVelocity === true;
 
   const fill = resolveParticleFill(config);
   uniforms.fillType = fill.fillType;
@@ -1222,7 +1261,7 @@ const updateParticleEmitterGpuUniforms = <
 };
 
 const resolveParticleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
-  const shape = config.shape === "circle" ? "circle" : "square";
+  const shape = config.shape === "circle" ? "circle" : "square"; // triangle treated as square in CPU mode
   if (config.fill) {
     return config.fill;
   }
@@ -1320,6 +1359,41 @@ const writeParticleQuad = (
   return offset;
 };
 
+const writeRotatedParticleQuad = (
+  target: Float32Array,
+  offset: number,
+  cx: number,
+  cy: number,
+  halfW: number,
+  halfH: number,
+  rotation: number,
+  fillComponents: Float32Array
+): number => {
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const x0 = -halfW, y0 = -halfH;
+  const x1 =  halfW, y1 = -halfH;
+  const x2 =  halfW, y2 =  halfH;
+  const x3 = -halfW, y3 =  halfH;
+
+  const rx0 = cx + x0 * cos - y0 * sin;
+  const ry0 = cy + x0 * sin + y0 * cos;
+  const rx1 = cx + x1 * cos - y1 * sin;
+  const ry1 = cy + x1 * sin + y1 * cos;
+  const rx2 = cx + x2 * cos - y2 * sin;
+  const ry2 = cy + x2 * sin + y2 * cos;
+  const rx3 = cx + x3 * cos - y3 * sin;
+  const ry3 = cy + x3 * sin + y3 * cos;
+
+  offset = writeParticleVertex(target, offset, rx0, ry0, fillComponents);
+  offset = writeParticleVertex(target, offset, rx1, ry1, fillComponents);
+  offset = writeParticleVertex(target, offset, rx2, ry2, fillComponents);
+  offset = writeParticleVertex(target, offset, rx0, ry0, fillComponents);
+  offset = writeParticleVertex(target, offset, rx2, ry2, fillComponents);
+  offset = writeParticleVertex(target, offset, rx3, ry3, fillComponents);
+  return offset;
+};
+
 const writeParticleVertex = (
   target: Float32Array,
   offset: number,
@@ -1384,6 +1458,8 @@ export const sanitizeParticleEmitterConfig = (
     fill?: SceneFill;
     shape?: ParticleEmitterShape;
     maxParticles?: number;
+    aspectRatio?: number;
+    alignToVelocity?: boolean;
   },
   options: ParticleEmitterSanitizerOptions = {}
 ): ParticleEmitterBaseConfig | null => {
@@ -1430,9 +1506,9 @@ export const sanitizeParticleEmitterConfig = (
     options.defaultColor ?? { r: 1, g: 1, b: 1, a: 1 }
   );
   const fill = config.fill ? cloneSceneFill(config.fill) : undefined;
-  const defaultShape = options.defaultShape === "circle" ? "circle" : "square";
+  const defaultShape = options.defaultShape === "circle" ? "circle" : options.defaultShape === "triangle" ? "triangle" : "square";
   const shape: ParticleEmitterShape =
-    config.shape === "circle" ? "circle" : defaultShape;
+    config.shape === "circle" ? "circle" : config.shape === "triangle" ? "triangle" : defaultShape;
   const emissionDurationMs =
     typeof config.emissionDurationMs === "number" &&
     Number.isFinite(config.emissionDurationMs)
@@ -1461,6 +1537,8 @@ export const sanitizeParticleEmitterConfig = (
     shape,
     emissionDurationMs,
     capacity,
+    aspectRatio: Number.isFinite(config.aspectRatio) ? Math.max(Number(config.aspectRatio), 0.01) : undefined,
+    alignToVelocity: config.alignToVelocity === true,
   };
 };
 

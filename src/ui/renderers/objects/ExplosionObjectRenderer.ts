@@ -454,6 +454,8 @@ const toWaveUniformsFromFill = (
     explicitRadius,
     fadeStartMs: 0,
     defaultLifetimeMs: 1000,
+    lengthMultiplier: 1,
+    alignToVelocity: false,
   };
 
   return { uniforms, key };

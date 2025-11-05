@@ -29,7 +29,9 @@ import {
   renderParticleEmitters,
 } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { whirlEffect } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
+import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import { setParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
+import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -472,6 +474,7 @@ export const useSceneCanvas = ({
     let previousTime: number | null = null;
 
     const render = (timestamp: number) => {
+      setSceneTimelineTimeMs(timestamp);
       if (previousTime === null) {
         previousTime = timestamp;
       }
@@ -552,6 +555,12 @@ export const useSceneCanvas = ({
           webgl2,
           cameraState.position,
           cameraState.viewportSize,
+        );
+        renderFireRings(
+          webgl2,
+          cameraState.position,
+          cameraState.viewportSize,
+          timestamp,
         );
         const stats = getParticleStats(webgl2);
         const now = timestamp;

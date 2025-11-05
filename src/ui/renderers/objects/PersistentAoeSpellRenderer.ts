@@ -8,6 +8,7 @@ import {
 import {
   createDynamicCirclePrimitive,
   createParticleEmitterPrimitive,
+  createFireRingPrimitive,
 } from "../primitives";
 import {
   ParticleEmitterBaseConfig,
@@ -18,6 +19,11 @@ import type {
   PersistentAoeObjectCustomData,
   PersistentAoeParticleCustomData,
 } from "@logic/modules/active-map/spells/PersistentAoeSpellBehavior";
+import {
+  addFireRingInstance,
+  updateFireRing,
+  type FireRingInstance,
+} from "../primitives/gpu/FireRingGpuRenderer";
 
 interface FireRingEmitterConfig extends ParticleEmitterBaseConfig {
   meta: {
@@ -37,30 +43,31 @@ const DEFAULT_CUSTOM_DATA: PersistentAoeObjectCustomData = {
   glowColor: { r: 1, g: 0.45, b: 0.1, a: 0.8 },
   glowAlpha: 0.8,
   particle: null,
+  durationMs: 0,
 };
 
 const MIN_RADIUS = 1;
 
 export class PersistentAoeSpellRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
-    const glowPrimitive = createDynamicCirclePrimitive(instance, {
-      getRadius: (target) => Math.max(getCustomData(target).outerRadius, MIN_RADIUS),
-      getFill: createGlowFill,
+    // Use new fire ring GPU shader instead of particle emitter
+    const fireRingPrimitive = createFireRingPrimitive(instance, {
+      getConfig: (target) => {
+        const data = getCustomData(target);
+        if (data.intensity <= 0) {
+          return null;
+        }
+        return {
+          innerRadius: data.innerRadius,
+          outerRadius: data.outerRadius,
+          thickness: data.thickness,
+          intensity: data.intensity,
+          lifetime: data.durationMs,
+        };
+      },
     });
 
-    const emitterPrimitive = createParticleEmitterPrimitive<FireRingEmitterConfig>(
-      instance,
-      {
-        getConfig: getEmitterConfig,
-        getOrigin: (target) => ({ ...target.data.position }),
-        spawnParticle: spawnParticle,
-        forceGpu: true,
-      },
-    );
-
-    const dynamicPrimitives = emitterPrimitive
-      ? [glowPrimitive, emitterPrimitive]
-      : [glowPrimitive];
+    const dynamicPrimitives = fireRingPrimitive ? [fireRingPrimitive] : [];
 
     return {
       staticPrimitives: [],
@@ -80,6 +87,10 @@ const getCustomData = (
     typeof data.glowAlpha === "number" && Number.isFinite(data.glowAlpha)
       ? Number(data.glowAlpha)
       : DEFAULT_CUSTOM_DATA.glowAlpha;
+  const durationMs =
+    typeof data.durationMs === "number" && Number.isFinite(data.durationMs)
+      ? Math.max(0, Number(data.durationMs))
+      : DEFAULT_CUSTOM_DATA.durationMs;
   return {
     shape: data.shape === "ring" ? "ring" : DEFAULT_CUSTOM_DATA.shape,
     innerRadius: Number.isFinite(data.innerRadius) ? Math.max(0, Number(data.innerRadius)) : 0,
@@ -89,6 +100,7 @@ const getCustomData = (
     glowColor: sanitizeColor(data.glowColor ?? DEFAULT_CUSTOM_DATA.glowColor),
     glowAlpha: clamp01(glowAlphaRaw),
     particle: sanitizeParticleCustomData(data.particle),
+    durationMs,
   };
 };
 
@@ -201,6 +213,19 @@ const getEmitterConfig = (
   if (rate <= 0) {
     return null;
   }
+  const flameFill = {
+    fillType: FILL_TYPES.RADIAL_GRADIENT,
+    start: { x: 0, y: 0 },
+    end: 1.0,
+    stops: [
+      { offset: 0.0, color: { r: 3.0, g: 2.8, b: 2.2, a: 1.0 } }, // очень яркий центр (HDR-like)
+      { offset: 0.25, color: { r: 2.5, g: 2.0, b: 0.8, a: 1.0 } }, // яркий желтый
+      { offset: 0.5, color: { r: 1.8, g: 0.9, b: 0.3, a: 0.9 } }, // оранжевый
+      { offset: 0.75, color: { r: 1.2, g: 0.4, b: 0.1, a: 0.6 } }, // красный
+      { offset: 1.0, color: { r: 0.4, g: 0.05, b: 0.0, a: 0.0 } }, // темно-красный fade
+    ],
+  };
+
   const sanitized = sanitizeParticleEmitterConfig(
     {
       particlesPerSecond: rate,
@@ -208,9 +233,11 @@ const getEmitterConfig = (
       fadeStartMs: particle.fadeStartMs,
       sizeRange: particle.sizeRange,
       color: particle.color,
-      fill: particle.fill,
+      fill: flameFill,
       shape: "circle",
       maxParticles: particle.maxParticles,
+      aspectRatio: 2.2,
+      alignToVelocity: true,
     },
     { defaultColor: particle.color, defaultShape: "circle", minCapacity: 32 },
   );
@@ -234,6 +261,7 @@ const getEmitterConfig = (
       },
       intensity,
     },
+    // GPU stretching/orientation handled via uniforms
   };
 };
 

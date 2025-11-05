@@ -17,3 +17,4 @@ export {
 } from "./basic/PolygonPrimitive";
 export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
 export { createParticleSystemPrimitive } from "./ParticleSystemPrimitive";
+export { createFireRingPrimitive } from "./FireRingPrimitive";

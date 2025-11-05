@@ -85,6 +85,7 @@ export interface PersistentAoeObjectCustomData {
   glowColor: SceneColor;
   glowAlpha: number;
   particle: PersistentAoeParticleCustomData | null;
+  durationMs: number;
 }
 
 export class PersistentAoeSpellBehavior implements SpellBehavior {
@@ -124,6 +125,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       sanitized.ring,
       sanitized.visual,
       initialProgress,
+      sanitized.durationMs,
     );
 
     const objectId = this.scene.addObject("spellPersistentAoe", {
@@ -171,7 +173,12 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       this.scene.updateObject(state.id, {
         position: { ...state.center },
         size: this.createSizeFromRing(state.ring, progress),
-        customData: this.createCustomData(state.ring, state.visual, progress),
+        customData: this.createCustomData(
+          state.ring,
+          state.visual,
+          progress,
+          state.durationMs,
+        ),
       });
 
       survivors.push(state);
@@ -306,6 +313,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     ring: PersistentAoeRingRuntimeConfig,
     visual: PersistentAoeVisualRuntimeConfig,
     progress: number,
+    durationMs: number,
   ): PersistentAoeObjectCustomData {
     const outer = this.getOuterRadius(ring, progress);
     const inner = Math.max(0, outer - ring.thickness);
@@ -319,6 +327,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       intensity,
       glowColor: cloneColor(visual.glowColor),
       glowAlpha: visual.glowAlpha,
+      durationMs,
       particle: visual.particle
         ? {
             baseParticlesPerSecond: visual.particle.baseParticlesPerSecond,
