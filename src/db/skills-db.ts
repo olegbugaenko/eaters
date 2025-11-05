@@ -33,6 +33,7 @@ export const SKILL_IDS = [
   "arcane_amplifier",
   "sandstorm_ritual",
   "black_darts",
+  "ring_of_fire",
   "sharp_mind",
   "sharp_mind2",
   "void_modules",
@@ -324,6 +325,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { sandstorm_ritual: 1 },
     cost: createResourceCost('iron', 140, 1.65),
+  },
+  ring_of_fire: {
+    id: "ring_of_fire",
+    name: "Ring of Fire",
+    description:
+      "Weave a barrier of flame that erupts outward, searing everything it brushes.",
+    nodePosition: { x: 1, y: -5 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { black_darts: 1 },
+    cost: createResourceCost('magma', 500, 1),
   },
   sharp_mind: {
     id: "sharp_mind",

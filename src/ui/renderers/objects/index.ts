@@ -11,6 +11,7 @@ import { AuraRenderer } from "./AuraRenderer";
 import { FireballRenderer } from "./FireballRenderer";
 import { SpellProjectileRingRenderer } from "./SpellProjectileRingRenderer";
 import { SandStormRenderer } from "./SandStormRenderer";
+import { PersistentAoeSpellRenderer } from "./PersistentAoeSpellRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
@@ -40,6 +41,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["spellProjectile", new BulletObjectRenderer()],
     ["spellProjectileRing", new SpellProjectileRingRenderer()],
     ["sandStorm", new SandStormRenderer()],
+    ["spellPersistentAoe", new PersistentAoeSpellRenderer()],
   ]);
   return new ObjectsRendererManager(renderers);
 };
