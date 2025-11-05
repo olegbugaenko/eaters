@@ -395,7 +395,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         {
           shape: "circle",
           requiresModule: "burningTail",
-          radius: 12,
+          radius: 22,
           offset: { x: -36.6, y: -1.4 },
           fill: {
             type: "gradient",
@@ -470,7 +470,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         {
           shape: "circle",
           requiresModule: "freezingTail",
-          radius: 12.0,
+          radius: 22.0,
           offset: { x: -35.2, y: -0.6 },
           fill: {
             type: "gradient",
