@@ -317,7 +317,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
   ): PersistentAoeObjectCustomData {
     const outer = this.getOuterRadius(ring, progress);
     const inner = Math.max(0, outer - ring.thickness);
-    const intensity = clamp01(1 - progress);
+    const intensity = 1; //clamp01(1 - (progress ** 2));
 
     return {
       shape: "ring",
