@@ -26,6 +26,7 @@ interface ProjectileState {
   damage: { min: number; max: number };
   ringTrail?: ProjectileRingTrailState;
   damageMultiplier: number;
+  aoe?: { radius: number; splash: number };
 }
 
 interface ProjectileRingTrailState {
@@ -68,6 +69,16 @@ const randomDamage = (config: { min: number; max: number }): number => {
   }
   const range = max - min + 1;
   return min + Math.floor(Math.random() * range);
+};
+
+const sanitizeAoe = (
+  aoe: { radius: number; splash: number } | undefined,
+): { radius: number; splash: number } | undefined => {
+  if (!aoe || typeof aoe !== "object") return undefined;
+  const radius = Math.max(0, Number(aoe.radius ?? 0));
+  const splash = Math.max(0, Number(aoe.splash ?? 0));
+  if (radius <= 0 || splash <= 0) return undefined;
+  return { radius, splash };
 };
 
 const createRingFill = (
@@ -180,6 +191,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         damage: config.damage,
         ringTrail,
         damageMultiplier: context.spellPowerMultiplier,
+        aoe: sanitizeAoe(config.projectile.aoe),
       };
 
       this.projectiles.push(projectileState);
@@ -232,6 +244,14 @@ export class ProjectileSpellBehavior implements SpellBehavior {
             const baseDamage = randomDamage(projectile.damage);
             const damage = Math.max(baseDamage * Math.max(projectile.damageMultiplier, 0), 0);
             this.bricks.applyDamage(collided.id, damage, projectile.direction);
+            // Config-driven AoE splash
+            const aoe = projectile.aoe;
+            if (aoe && aoe.radius > 0 && aoe.splash > 0 && damage > 0) {
+              this.bricks.forEachBrickNear(projectile.position, aoe.radius, (brick: BrickRuntimeState) => {
+                if (brick.id === collided.id) return;
+                this.bricks.applyDamage(brick.id, damage * aoe.splash, projectile.direction);
+              });
+            }
             this.scene.removeObject(projectile.id);
             if (projectile.ringTrail) {
               this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);

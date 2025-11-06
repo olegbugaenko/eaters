@@ -227,7 +227,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { construction_guild: 1 },
-    cost: createResourceCost("paper", 10, 1.5),
+    cost: createResourceCost("paper", 8, 1.5),
   },
   quarry_overseers: {
     id: "quarry_overseers",
@@ -364,7 +364,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { sharp_mind: 5 },
-    cost: createResourceCost('paper', 5, 1.5),
+    cost: createResourceCost('paper', 8, 1.5),
   },
   void_modules: {
     id: "void_modules",
@@ -645,7 +645,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { tool_fabrication: 1 },
-    cost: createResourceCost('tools', 10, 1.5),
+    cost: createResourceCost('tools', 8, 1.5),
   },
   silver_drill: {
     id: "silver_drill",
@@ -656,7 +656,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.12 * level,
+        multiplier: (level) => 1 + 0.1 * level,
       },
     },
     nodesRequired: { damage_lore: 5 },
@@ -871,7 +871,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality3: 5 },
-    cost: createResourceCost('coal', 50, 1.5),
+    cost: createResourceCost('coal', 60, 1.5),
   },
   paper_milling: {
     id: "paper_milling",
@@ -892,11 +892,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 80,
     effects: {
       mana_regen: {
-        multiplier: (level) => 1 + 0.08*Math.pow(1.03, level)*level,
+        multiplier: (level) => 1 + 0.08*level,
       },
     },
     nodesRequired: { mana_source: 5 },
-    cost: createResourceCost('paper', 10, 1.5),
+    cost: createResourceCost('paper', 8, 1.5),
   },
   restoration: {
     id: "restoration",
@@ -926,7 +926,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { restoration: 5 },
-    cost: createResourceCost('tools', 10, 1.5),
+    cost: createResourceCost('tools', 8, 1.5),
   },
 };
 

@@ -39,6 +39,7 @@ export interface SpellProjectileConfig {
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
+  aoe?: { radius: number; splash: number };
 }
 
 export interface SpellWhirlConfig {
@@ -214,6 +215,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         outerStop: 0.78,
         color: { r: 0.5, g: 0.7, b: 1, a: 0.1 },
       },
+      aoe: { radius: 11, splash: 0.5 },
     },
   },
   "sand-storm": {

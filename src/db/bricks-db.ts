@@ -351,9 +351,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.55, g: 0.56, b: 0.62, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 820,
+      maxHp: 1020,
       armor: 84,
-      baseDamage: 82,
+      baseDamage: 92,
       brickKnockBackDistance: 75,
       brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
@@ -381,9 +381,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.08, g: 0.08, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 520,
+      maxHp: 720,
       armor: 70,
-      baseDamage: 140,
+      baseDamage: 190,
       brickKnockBackDistance: 90,
       brickKnockBackSpeed: 190,
       brickKnockBackAmplitude: 6,

@@ -16,13 +16,13 @@ export interface CraftingRecipeConfig {
 }
 
 const TOOL_INGREDIENTS: ResourceAmount = Object.freeze({
-  iron: 100,
-  wood: 25,
+  iron: 50,
+  wood: 10,
 });
 
 const PAPER_INGREDIENTS: ResourceAmount = Object.freeze({
-  organics: 100,
-  wood: 25,
+  organics: 50,
+  wood: 10,
 });
 
 const CRAFTING_RECIPE_DB: Record<CraftingRecipeId, CraftingRecipeConfig> = {
