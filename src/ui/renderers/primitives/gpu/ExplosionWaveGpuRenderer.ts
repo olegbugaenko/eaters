@@ -193,6 +193,8 @@ export const ensureWaveBatch = (
     defaultLifetimeMs: uniformsInit.defaultLifetimeMs,
     shape: 1, // circle
     minParticleSize: 0.0001,
+    lengthMultiplier: 1,
+    alignToVelocity: false,
   };
 
   const batch: WaveBatch = {

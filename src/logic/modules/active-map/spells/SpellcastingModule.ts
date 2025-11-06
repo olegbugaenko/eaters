@@ -40,7 +40,19 @@ export interface WhirlSpellOption extends SpellOptionBase {
   speed: number;
 }
 
-export type SpellOption = ProjectileSpellOption | WhirlSpellOption;
+export interface PersistentAoeSpellOption extends SpellOptionBase {
+  type: "persistent-aoe";
+  damagePerSecond: number;
+  durationSeconds: number;
+  startRadius: number;
+  endRadius: number;
+  thickness: number;
+}
+
+export type SpellOption =
+  | ProjectileSpellOption
+  | WhirlSpellOption
+  | PersistentAoeSpellOption;
 
 export const DEFAULT_SPELL_OPTIONS: SpellOption[] = [];
 
@@ -331,23 +343,44 @@ export class SpellcastingModule implements GameModule {
           remainingCooldownMs: Math.max(0, this.cooldowns.get(id) ?? 0),
           spellPowerMultiplier: this.getSpellPowerMultiplier(),
         };
-        if (config.type === "projectile") {
-          const projectileConfig = config as Extract<SpellConfig, { type: "projectile" }>;
-          return {
-            ...base,
-            type: "projectile",
-            damage: { ...projectileConfig.damage },
-          } satisfies ProjectileSpellOption;
+
+        switch (config.type) {
+          case "projectile": {
+            const projectileConfig = config as Extract<SpellConfig, { type: "projectile" }>;
+            return {
+              ...base,
+              type: "projectile",
+              damage: { ...projectileConfig.damage },
+            } satisfies ProjectileSpellOption;
+          }
+          case "whirl": {
+            const whirlConfig = config as Extract<SpellConfig, { type: "whirl" }>;
+            return {
+              ...base,
+              type: "whirl",
+              damagePerSecond: whirlConfig.whirl.damagePerSecond,
+              maxHealth: whirlConfig.whirl.maxHealth,
+              radius: whirlConfig.whirl.radius,
+              speed: whirlConfig.whirl.speed,
+            } satisfies WhirlSpellOption;
+          }
+          case "persistent-aoe": {
+            const aoeConfig = config as Extract<SpellConfig, { type: "persistent-aoe" }>;
+            const durationSeconds = Math.max(aoeConfig.persistentAoe.durationMs / 1000, 0);
+            const ring = aoeConfig.persistentAoe.ring;
+            return {
+              ...base,
+              type: "persistent-aoe",
+              damagePerSecond: aoeConfig.persistentAoe.damagePerSecond,
+              durationSeconds,
+              startRadius: ring.startRadius,
+              endRadius: ring.endRadius,
+              thickness: ring.thickness,
+            } satisfies PersistentAoeSpellOption;
+          }
+          default:
+            return base as SpellOption;
         }
-        const whirlConfig = config as Extract<SpellConfig, { type: "whirl" }>;
-        return {
-          ...base,
-          type: "whirl",
-          damagePerSecond: whirlConfig.whirl.damagePerSecond,
-          maxHealth: whirlConfig.whirl.maxHealth,
-          radius: whirlConfig.whirl.radius,
-          speed: whirlConfig.whirl.speed,
-        } satisfies WhirlSpellOption;
       });
     this.bridge.setValue(SPELL_OPTIONS_BRIDGE_KEY, payload);
     this.optionsDirty = false;

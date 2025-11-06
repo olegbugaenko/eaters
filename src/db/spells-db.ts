@@ -11,9 +11,9 @@ import {
 } from "./bullets-db";
 import { SkillId } from "./skills-db";
 
-export type SpellId = "magic-arrow" | "sand-storm" | "void-darts";
+export type SpellId = "magic-arrow" | "sand-storm" | "void-darts" | "ring-of-fire";
 
-export type SpellType = "projectile" | "whirl";
+export type SpellType = "projectile" | "whirl" | "persistent-aoe";
 
 export interface SpellUnlockRequirement {
   skillId: SkillId;
@@ -58,6 +58,39 @@ export interface SpellWhirlConfig {
   colorOuter?: SceneColor; // Колір краю вихору (RGB)
 }
 
+export interface SpellPersistentAoeRingConfig {
+  shape: "ring";
+  startRadius: number;
+  endRadius: number;
+  thickness: number;
+}
+
+export interface SpellPersistentAoeParticleEmitterConfig {
+  particlesPerSecond: number;
+  particleLifetimeMs: number;
+  fadeStartMs: number;
+  sizeRange: { min: number; max: number };
+  color: SceneColor;
+  fill?: SceneFill;
+  maxParticles?: number;
+  radialSpeed: { min: number; max: number };
+  tangentialSpeed: { min: number; max: number };
+  spawnJitter?: { radial?: number; angular?: number };
+}
+
+export interface SpellPersistentAoeVisualConfig {
+  glowColor?: SceneColor;
+  glowAlpha?: number;
+  particleEmitter?: SpellPersistentAoeParticleEmitterConfig;
+}
+
+export interface SpellPersistentAoeConfig {
+  durationMs: number;
+  damagePerSecond: number;
+  ring: SpellPersistentAoeRingConfig;
+  visuals?: SpellPersistentAoeVisualConfig;
+}
+
 interface SpellBaseConfig {
   id: SpellId;
   name: string;
@@ -76,6 +109,10 @@ export type SpellConfig =
   | (SpellBaseConfig & {
       type: "whirl";
       whirl: SpellWhirlConfig;
+    })
+  | (SpellBaseConfig & {
+      type: "persistent-aoe";
+      persistentAoe: SpellPersistentAoeConfig;
     });
 
 export interface SpellProjectileRingTrailConfig {
@@ -243,6 +280,51 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       shape: "triangle",
     },
     unlock: { skillId: "black_darts", level: 1 },
+  },
+  "ring-of-fire": {
+    id: "ring-of-fire",
+    type: "persistent-aoe",
+    name: "Ring of Fire",
+    description:
+      "Conjure an expanding crown of flame that scorches bricks as it races outward.",
+    cost: { mana: 8, sanity: 1.5 },
+    cooldownSeconds: 6,
+    persistentAoe: {
+      durationMs: 3_000,
+      damagePerSecond: 10,
+      ring: {
+        shape: "ring",
+        startRadius: 12,
+        endRadius: 120,
+        thickness: 30,
+      },
+      visuals: {
+        glowColor: { r: 1, g: 0.46, b: 0.13, a: 0.4 },
+        glowAlpha: 0.3,
+        particleEmitter: {
+          particlesPerSecond: 2400,
+          particleLifetimeMs: 650,
+          fadeStartMs: 150,
+          sizeRange: { min: 8, max: 18 },
+          color: { r: 1, g: 0.62, b: 0.24, a: 0.95 },
+          fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            start: { x: 0, y: 0 },
+            end: 18,
+            stops: [
+              { offset: 0, color: { r: 1, g: 0.95, b: 0.75, a: 0.95 } },
+              { offset: 0.55, color: { r: 1, g: 0.65, b: 0.25, a: 0.75 } },
+              { offset: 1, color: { r: 0.95, g: 0.25, b: 0.05, a: 0 } },
+            ],
+          },
+          radialSpeed: { min: 80, max: 150 },
+          tangentialSpeed: { min: 40, max: 120 },
+          spawnJitter: { radial: 8, angular: 0.25 },
+          maxParticles: 2800,
+        },
+      },
+    },
+    unlock: { skillId: "ring_of_fire", level: 1 },
   },
 };
 

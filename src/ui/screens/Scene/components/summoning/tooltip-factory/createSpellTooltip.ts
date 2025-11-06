@@ -1,5 +1,6 @@
 import {
   ProjectileSpellOption,
+  PersistentAoeSpellOption,
   SpellOption,
   WhirlSpellOption,
 } from "@logic/modules/active-map/spells/SpellcastingModule";
@@ -143,6 +144,64 @@ const appendWhirlStats = (
   });
 };
 
+const appendPersistentAoeStats = (
+  spell: PersistentAoeSpellOption,
+  stats: SceneTooltipStat[],
+): void => {
+  const multiplierLabel = formatNumber(spell.spellPowerMultiplier, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    compact: false,
+  });
+  const effectiveDps = spell.damagePerSecond * spell.spellPowerMultiplier;
+
+  stats.push({
+    label: "Damage / s",
+    value: formatNumber(effectiveDps, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      compact: false,
+    }),
+    hint: `Base ${formatNumber(spell.damagePerSecond, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      compact: false,
+    })} · Spell Power ${multiplierLabel}×`,
+  });
+
+  stats.push({
+    label: "Duration",
+    value: `${formatNumber(spell.durationSeconds, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      compact: false,
+    })} s`,
+  });
+
+  stats.push({
+    label: "Radius",
+    value: `${formatNumber(spell.startRadius, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+      compact: false,
+    })} → ${formatNumber(spell.endRadius, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+      compact: false,
+    })} u`,
+    hint: "Ring expands outward from the target.",
+  });
+
+  stats.push({
+    label: "Ring Thickness",
+    value: `${formatNumber(spell.thickness, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+      compact: false,
+    })} u`,
+  });
+};
+
 export const createSpellTooltip = (spell: SpellOption): SceneTooltipContent => {
   const multiplierLabel = formatNumber(spell.spellPowerMultiplier, {
     minimumFractionDigits: 2,
@@ -153,8 +212,10 @@ export const createSpellTooltip = (spell: SpellOption): SceneTooltipContent => {
   const stats: SceneTooltipStat[] = [];
   if (spell.type === "projectile") {
     appendProjectileStats(spell, stats);
-  } else {
+  } else if (spell.type === "whirl") {
     appendWhirlStats(spell, stats);
+  } else {
+    appendPersistentAoeStats(spell, stats);
   }
 
   stats.push({
