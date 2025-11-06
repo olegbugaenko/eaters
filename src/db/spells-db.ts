@@ -227,7 +227,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     whirl: {
       radius: 30,
       speed: 170,
-      damagePerSecond: 4.5,
+      damagePerSecond: 5.0,
       maxHealth: 30,
       spinSpeed: 6.8,
       rotationSpeedMultiplier: 0.5,
