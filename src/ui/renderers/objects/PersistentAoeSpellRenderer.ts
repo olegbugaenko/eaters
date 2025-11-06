@@ -43,6 +43,7 @@ const DEFAULT_CUSTOM_DATA: PersistentAoeObjectCustomData = {
   glowColor: { r: 1, g: 0.45, b: 0.1, a: 0.8 },
   glowAlpha: 0.8,
   particle: null,
+  fireColor: { r: 1, g: 0.58, b: 0.24, a: 1 },
   durationMs: 0,
 };
 
@@ -63,6 +64,12 @@ export class PersistentAoeSpellRenderer extends ObjectRenderer {
           thickness: data.thickness,
           intensity: data.intensity,
           lifetime: data.durationMs,
+          color: {
+            r: data.fireColor.r,
+            g: data.fireColor.g,
+            b: data.fireColor.b,
+            a: data.fireColor.a,
+          },
         };
       },
     });
@@ -91,15 +98,17 @@ const getCustomData = (
     typeof data.durationMs === "number" && Number.isFinite(data.durationMs)
       ? Math.max(0, Number(data.durationMs))
       : DEFAULT_CUSTOM_DATA.durationMs;
+  const fireColor = sanitizeColor(data.fireColor, DEFAULT_CUSTOM_DATA.fireColor);
   return {
     shape: data.shape === "ring" ? "ring" : DEFAULT_CUSTOM_DATA.shape,
     innerRadius: Number.isFinite(data.innerRadius) ? Math.max(0, Number(data.innerRadius)) : 0,
     outerRadius: Number.isFinite(data.outerRadius) ? Math.max(0, Number(data.outerRadius)) : 0,
     thickness: Number.isFinite(data.thickness) ? Math.max(0, Number(data.thickness)) : 1,
     intensity: clamp01(Number(data.intensity)),
-    glowColor: sanitizeColor(data.glowColor ?? DEFAULT_CUSTOM_DATA.glowColor),
+    glowColor: sanitizeColor(data.glowColor, DEFAULT_CUSTOM_DATA.glowColor),
     glowAlpha: clamp01(glowAlphaRaw),
     particle: sanitizeParticleCustomData(data.particle),
+    fireColor,
     durationMs,
   };
 };
@@ -149,7 +158,7 @@ const sanitizeParticleCustomData = (
     particleLifetimeMs: lifetime,
     fadeStartMs: fadeStart,
     sizeRange: { min: sizeMin, max: sizeMax },
-    color: sanitizeColor(data.color),
+    color: sanitizeColor(data.color, DEFAULT_CUSTOM_DATA.glowColor),
     fill: data.fill,
     maxParticles:
       typeof data.maxParticles === "number" && data.maxParticles > 0
@@ -180,7 +189,7 @@ const createGlowFill = (instance: SceneObjectInstance) => {
   const innerRadius = clampNumber(data.innerRadius, 0, outerRadius);
   const ringWidth = Math.max(outerRadius - innerRadius, 1);
   const intensity = clamp01(data.intensity * data.glowAlpha);
-  const color = sanitizeColor(data.glowColor);
+  const color = sanitizeColor(data.glowColor, DEFAULT_CUSTOM_DATA.glowColor);
 
   const innerStop = clamp01(innerRadius / outerRadius);
   const peakStop = clamp01((innerRadius + ringWidth * 0.45) / outerRadius);
@@ -311,13 +320,18 @@ const spawnParticle = (
   };
 };
 
-const sanitizeColor = (color: SceneColor | undefined): SceneColor => ({
-  r: clamp01(color?.r ?? DEFAULT_CUSTOM_DATA.glowColor.r),
-  g: clamp01(color?.g ?? DEFAULT_CUSTOM_DATA.glowColor.g),
-  b: clamp01(color?.b ?? DEFAULT_CUSTOM_DATA.glowColor.b),
+const sanitizeColor = (
+  color: SceneColor | undefined,
+  fallback: SceneColor = DEFAULT_CUSTOM_DATA.glowColor,
+): SceneColor => ({
+  r: clamp01(color?.r ?? fallback.r ?? DEFAULT_CUSTOM_DATA.glowColor.r),
+  g: clamp01(color?.g ?? fallback.g ?? DEFAULT_CUSTOM_DATA.glowColor.g),
+  b: clamp01(color?.b ?? fallback.b ?? DEFAULT_CUSTOM_DATA.glowColor.b),
   a: clamp01(
     typeof color?.a === "number"
       ? Number(color.a)
+      : typeof fallback.a === "number"
+      ? fallback.a
       : DEFAULT_CUSTOM_DATA.glowColor.a ?? 1,
   ),
 });

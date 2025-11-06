@@ -927,63 +927,68 @@ export class PlayerUnitsModule implements GameModule {
       this.spawnCriticalHitEffect(effectPosition);
     }
 
-    if (!result.destroyed && surviving) {
-      const inflictedDamage = result.inflictedDamage;
-      const meltingLevel = unit.moduleLevels?.burningTail ?? 0;
-      if (meltingLevel > 0 && inflictedDamage > 0) {
-        const meltingConfig = getUnitModuleConfig("burningTail");
-        const meltingRadius = meltingConfig.meta?.areaRadius ?? 0;
-        const base = Number.isFinite(meltingConfig.baseBonusValue) ? meltingConfig.baseBonusValue : 0;
-        const perLevel = Number.isFinite(meltingConfig.bonusPerLevel) ? meltingConfig.bonusPerLevel : 0;
-        const multiplier = Math.max(base + perLevel * Math.max(meltingLevel - 1, 0), 1);
-        // Apply to the main target
+    const inflictedDamage = result.inflictedDamage;
+    const effectOrigin = result.brick?.position ?? target.position;
+    const skipBrickId = !result.destroyed && surviving ? surviving.id : null;
+
+    const meltingLevel = unit.moduleLevels?.burningTail ?? 0;
+    if (meltingLevel > 0 && inflictedDamage > 0) {
+      const meltingConfig = getUnitModuleConfig("burningTail");
+      const meltingRadius = meltingConfig.meta?.areaRadius ?? 0;
+      const base = Number.isFinite(meltingConfig.baseBonusValue) ? meltingConfig.baseBonusValue : 0;
+      const perLevel = Number.isFinite(meltingConfig.bonusPerLevel) ? meltingConfig.bonusPerLevel : 0;
+      const multiplier = Math.max(base + perLevel * Math.max(meltingLevel - 1, 0), 1);
+
+      if (!result.destroyed && surviving) {
         this.bricks.applyEffect({
           type: "meltingTail",
           brickId: surviving.id,
           durationMs: BURNING_TAIL_DURATION_MS,
           multiplier,
         });
-        // Apply to nearby bricks within AoE
-        if (meltingRadius > 0) {
-          const nearbyBricks = this.bricks
-            .findBricksNear(surviving.position, meltingRadius)
-            .filter((b) => b.id !== surviving.id);
-          nearbyBricks.forEach((brick: BrickRuntimeState) => {
-            this.bricks.applyEffect({
-              type: "meltingTail",
-              brickId: brick.id,
-              durationMs: BURNING_TAIL_DURATION_MS,
-              multiplier,
-            });
-          });
-        }
       }
 
-      const freezingLevel = unit.moduleLevels?.freezingTail ?? 0;
-      if (freezingLevel > 0 && totalDamage > 0) {
-        const divisor = 1.5 + 0.05 * freezingLevel;
-        const freezingRadius = getUnitModuleConfig("freezingTail").meta?.areaRadius ?? 0;
-        // Apply to the main target
+      if (meltingRadius > 0) {
+        const nearbyBricks = this.bricks
+          .findBricksNear(effectOrigin, meltingRadius)
+          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
+        nearbyBricks.forEach((brick: BrickRuntimeState) => {
+          this.bricks.applyEffect({
+            type: "meltingTail",
+            brickId: brick.id,
+            durationMs: BURNING_TAIL_DURATION_MS,
+            multiplier,
+          });
+        });
+      }
+    }
+
+    const freezingLevel = unit.moduleLevels?.freezingTail ?? 0;
+    if (freezingLevel > 0 && totalDamage > 0) {
+      const divisor = 1.5 + 0.05 * freezingLevel;
+      const freezingRadius = getUnitModuleConfig("freezingTail").meta?.areaRadius ?? 0;
+
+      if (!result.destroyed && surviving) {
         this.bricks.applyEffect({
           type: "freezingTail",
           brickId: surviving.id,
           durationMs: FREEZING_TAIL_DURATION_MS,
           divisor,
         });
-        // Apply to nearby bricks within AoE
-        if (freezingRadius > 0) {
-          const nearbyBricks = this.bricks
-            .findBricksNear(surviving.position, freezingRadius)
-            .filter((b) => b.id !== surviving.id);
-          nearbyBricks.forEach((brick: BrickRuntimeState) => {
-            this.bricks.applyEffect({
-              type: "freezingTail",
-              brickId: brick.id,
-              durationMs: FREEZING_TAIL_DURATION_MS,
-              divisor,
-            });
+      }
+
+      if (freezingRadius > 0) {
+        const nearbyBricks = this.bricks
+          .findBricksNear(effectOrigin, freezingRadius)
+          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
+        nearbyBricks.forEach((brick: BrickRuntimeState) => {
+          this.bricks.applyEffect({
+            type: "freezingTail",
+            brickId: brick.id,
+            durationMs: FREEZING_TAIL_DURATION_MS,
+            divisor,
           });
-        }
+        });
       }
     }
 

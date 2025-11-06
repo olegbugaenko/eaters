@@ -22,15 +22,19 @@ import { renderArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import {
   clearPetalAuraInstances,
   petalAuraEffect,
+  disposePetalAuraResources,
+  getPetalAuraGlContext,
 } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
 import {
   disposeParticleRenderResources,
   getParticleStats,
   renderParticleEmitters,
 } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { whirlEffect } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
+import { whirlEffect, disposeWhirlResources, getWhirlGlContext } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
-import { setParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
+import { getParticleEmitterGlContext, setParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
+import { disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
+import { registerHmrCleanup } from "@ui/shared/hmrCleanup";
 import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
 
 const VERTEX_SHADER = `
@@ -306,6 +310,42 @@ export const useSceneCanvas = ({
   particleStatsLastUpdateRef,
 }: UseSceneCanvasParams) => {
   useEffect(() => {
+    // Register HMR cleanup to avoid accumulating GL resources on hot reloads
+    registerHmrCleanup(() => {
+      try {
+        const gl1 = getParticleEmitterGlContext();
+        if (gl1) {
+          try { disposeParticleRenderResources(gl1); } catch {}
+          try { disposeFireRing(gl1); } catch {}
+          try {
+            const ext = gl1.getExtension('WEBGL_lose_context');
+            ext && ext.loseContext();
+          } catch {}
+        }
+        const gl2 = getWhirlGlContext?.();
+        if (gl2) {
+          try { whirlEffect.onContextLost(gl2); } catch {}
+          try { disposeWhirlResources(); } catch {}
+          try {
+            const ext = gl2.getExtension('WEBGL_lose_context');
+            ext && ext.loseContext();
+          } catch {}
+        }
+        const gl3 = getPetalAuraGlContext?.();
+        if (gl3) {
+          try { petalAuraEffect.onContextLost(gl3); } catch {}
+          try { disposePetalAuraResources(); } catch {}
+          try {
+            const ext = gl3.getExtension('WEBGL_lose_context');
+            ext && ext.loseContext();
+          } catch {}
+        }
+      } finally {
+        try { setParticleEmitterGlContext(null); } catch {}
+        try { clearAllAuraSlots(); } catch {}
+        try { clearPetalAuraInstances(); } catch {}
+      }
+    });
     const canvas = canvasRef.current;
     if (!canvas) {
       return;

@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../../../../logic/services/SceneObjectManager";
+import { SceneColor, SceneVector2 } from "../../../../logic/services/SceneObjectManager";
 
 // ============================================
 // Fire ring — age computed on GPU from birth time
@@ -14,6 +14,7 @@ in float a_outerRadius;
 in float a_birthTimeMs;    // <-- NEW: time of spawn in ms
 in float a_lifetime;       // ms (<=0 => infinite)
 in float a_intensity;
+in vec3  a_color;
 in float a_active;
 
 uniform vec2  u_cameraPosition;
@@ -26,6 +27,7 @@ out float v_outerRadius;
 out float v_birthTimeMs;
 out float v_lifetime;
 out float v_intensity;
+out vec3  v_color;
 out float v_time;
 
 vec2 toClip(vec2 world) {
@@ -49,6 +51,7 @@ void main() {
   v_birthTimeMs   = a_birthTimeMs;
   v_lifetime      = a_lifetime;
   v_intensity     = a_intensity;
+  v_color         = a_color;
   v_time          = u_time;
 
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
@@ -64,6 +67,7 @@ in float v_outerRadius;
 in float v_birthTimeMs;
 in float v_lifetime;
 in float v_intensity;
+in vec3  v_color;
 in float v_time;
 
 out vec4 fragColor;
@@ -169,6 +173,13 @@ void main() {
   }
   vec3 color = mix(base * 0.92, base * 1.08, turb);
 
+  vec3 tint = clamp(v_color, 0.0, 4.0);
+  float luminance = max(0.0001, dot(color, vec3(0.299, 0.587, 0.114)));
+  vec3 tintDir = normalize(tint + vec3(1e-6));
+  vec3 tintTarget = tintDir * luminance * 1.35;
+  color = mix(color, tintTarget, 0.65);
+  color = mix(color, tint, 0.25);
+
   // 5) alpha: flicker + GPU life fade (safe)
   float flicker = 0.86 + 0.14 * fbm(warped * 1.6 + vec2(0.5 * timeS, 0.9 * timeS));
 
@@ -200,6 +211,7 @@ interface FireRingProgram {
     birthTimeMs: number;  // <-- NEW
     lifetime: number;
     intensity: number;
+    color: number;
     active: number;
   };
   uniforms: {
@@ -221,6 +233,7 @@ export interface FireRingInstance {
   birthTimeMs: number; // <-- NEW
   lifetime: number;    // ms (<=0 => infinite)
   intensity: number;
+  color: SceneColor;
   active: boolean;
 }
 
@@ -244,8 +257,8 @@ const UNIT_QUAD = new Float32Array([
    1,  1,
 ]);
 
-// center(2) + inner(1) + outer(1) + birth(1) + lifetime(1) + intensity(1) + active(1)
-const COMPONENTS_PER_INSTANCE = 8;
+// center(2) + inner(1) + outer(1) + birth(1) + lifetime(1) + intensity(1) + active(1) + color(3)
+const COMPONENTS_PER_INSTANCE = 11;
 const BYTES_PER_FLOAT = 4;
 
 const contexts = new WeakMap<WebGL2RenderingContext, FireRingContext>();
@@ -297,6 +310,7 @@ const createProgram = (gl: WebGL2RenderingContext): FireRingProgram | null => {
       birthTimeMs:  gl.getAttribLocation(programObj, "a_birthTimeMs"),
       lifetime:     gl.getAttribLocation(programObj, "a_lifetime"),
       intensity:    gl.getAttribLocation(programObj, "a_intensity"),
+      color:        gl.getAttribLocation(programObj, "a_color"),
       active:       gl.getAttribLocation(programObj, "a_active"),
     },
     uniforms: {
@@ -402,6 +416,10 @@ export const renderFireRings = (
       data[o++] = inst.birthTimeMs; // <-- birth, not age
       data[o++] = inst.lifetime;
       data[o++] = inst.intensity;
+      const color = inst.color;
+      data[o++] = color.r ?? 1.0;
+      data[o++] = color.g ?? 1.0;
+      data[o++] = color.b ?? 1.0;
       data[o++] = inst.active ? 1.0 : 0.0;
     }
   }
@@ -468,6 +486,12 @@ export const renderFireRings = (
       gl.vertexAttribPointer(program.attributes.intensity, 1, gl.FLOAT, false, stride, off);
       gl.vertexAttribDivisor(program.attributes.intensity, 1);
       off += 1 * BYTES_PER_FLOAT;
+    }
+    if (program.attributes.color >= 0) {
+      gl.enableVertexAttribArray(program.attributes.color);
+      gl.vertexAttribPointer(program.attributes.color, 3, gl.FLOAT, false, stride, off);
+      gl.vertexAttribDivisor(program.attributes.color, 1);
+      off += 3 * BYTES_PER_FLOAT;
     }
     if (program.attributes.active >= 0) {
       gl.enableVertexAttribArray(program.attributes.active);

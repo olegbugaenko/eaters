@@ -362,7 +362,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             requiresModule: "burningTail",
             fill: { type: "base", brightness: -0.08 },
             stroke: { type: "base", width: 0.8, brightness: -0.14 },
-            anim: { type: "sway", periodMs: 1650, amplitude: 3.3, falloff: "tip", axis: "normal", phase: 0.12 },
+            anim: { type: "sway", periodMs: 1650, amplitude: 5.3, falloff: "tip", axis: "normal", phase: 0.12 },
             groupId: "burningTail-main",
           },
           { epsilon: 0.28, winding: "CCW" }
@@ -375,7 +375,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           {
             requiresModule: "burningTail",
             fill: { type: "solid", color: { r: 1, g: 0.6, b: 0.24, a: 0.75 } },
-            anim: { type: "sway", periodMs: 1650, amplitude: 3.6, falloff: "tip", axis: "normal", phase: 0.42 },
+            anim: { type: "sway", periodMs: 1650, amplitude: 5.6, falloff: "tip", axis: "normal", phase: 0.42 },
             groupId: "burningTail-glow",
           },
           { epsilon: 0.2, winding: "CCW" }
@@ -437,7 +437,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             requiresModule: "freezingTail",
             fill: { type: "base", brightness: -0.02 },
             stroke: { type: "base", width: 0.8, brightness: -0.08 },
-            anim: { type: "sway", periodMs: 1880, amplitude: 3.1, falloff: "tip", axis: "normal", phase: 0.18 },
+            anim: { type: "sway", periodMs: 1880, amplitude: 5.1, falloff: "tip", axis: "normal", phase: 0.18 },
             groupId: "freezingTail-main",
           },
           { epsilon: 0.28, winding: "CCW" }
@@ -450,7 +450,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           {
             requiresModule: "freezingTail",
             fill: { type: "solid", color: { r: 0.66, g: 0.95, b: 1, a: 0.78 } },
-            anim: { type: "sway", periodMs: 1880, amplitude: 3.4, falloff: "tip", axis: "normal", phase: 0.48 },
+            anim: { type: "sway", periodMs: 1880, amplitude: 5.4, falloff: "tip", axis: "normal", phase: 0.48 },
             groupId: "freezingTail-glow",
           },
           { epsilon: 0.2, winding: "CCW" }

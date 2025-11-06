@@ -1,4 +1,4 @@
-import { SceneObjectInstance } from "../../../logic/services/SceneObjectManager";
+import { SceneColor, SceneObjectInstance } from "../../../logic/services/SceneObjectManager";
 import { DynamicPrimitive } from "../objects/ObjectRenderer";
 import {
   addFireRingInstance,
@@ -14,6 +14,7 @@ export interface FireRingPrimitiveConfig {
   thickness: number;
   intensity: number;
   lifetime?: number;
+  color: SceneColor;
 }
 
 export interface FireRingPrimitiveOptions {
@@ -67,6 +68,12 @@ export const createFireRingPrimitive = (
           birthTimeMs: currentTime,
           lifetime: config.lifetime || 0,
           intensity: config.intensity,
+          color: {
+            r: config.color.r,
+            g: config.color.g,
+            b: config.color.b,
+            a: typeof config.color.a === "number" ? config.color.a : 1,
+          },
           active: true,
         };
         addFireRingInstance(glContext, fireInstance);
@@ -77,6 +84,10 @@ export const createFireRingPrimitive = (
         fireInstance.innerRadius = config.innerRadius;
         fireInstance.outerRadius = config.outerRadius;
         fireInstance.intensity = config.intensity;
+        fireInstance.color.r = config.color.r;
+        fireInstance.color.g = config.color.g;
+        fireInstance.color.b = config.color.b;
+        fireInstance.color.a = typeof config.color.a === "number" ? config.color.a : 1;
 
         if (config.lifetime) {
           fireInstance.lifetime = config.lifetime;

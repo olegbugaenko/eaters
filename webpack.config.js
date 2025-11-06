@@ -99,6 +99,9 @@ module.exports = (env, argv) => {
       compress: true,
       port: 3000,
       hot: true,
+      client: {
+        overlay: true,
+      },
       historyApiFallback: true,
     },
     optimization: {
@@ -106,6 +109,7 @@ module.exports = (env, argv) => {
         chunks: 'all',
       },
     },
-    devtool: isProduction ? 'source-map' : 'eval-source-map',
+    // Avoid eval-based source maps in dev to prevent huge retained string blobs on HMR
+    devtool: isProduction ? 'source-map' : 'cheap-module-source-map',
   };
 };

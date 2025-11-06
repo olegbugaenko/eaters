@@ -82,6 +82,7 @@ export interface SpellPersistentAoeVisualConfig {
   glowColor?: SceneColor;
   glowAlpha?: number;
   particleEmitter?: SpellPersistentAoeParticleEmitterConfig;
+  fireColor?: SceneColor;
 }
 
 export interface SpellPersistentAoeConfig {
@@ -301,6 +302,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       visuals: {
         glowColor: { r: 1, g: 0.46, b: 0.13, a: 0.4 },
         glowAlpha: 0.3,
+        fireColor: { r: 1, g: 0.74, b: 0.54, a: 1 },
         particleEmitter: {
           particlesPerSecond: 2400,
           particleLifetimeMs: 650,

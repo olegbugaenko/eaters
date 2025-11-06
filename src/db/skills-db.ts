@@ -67,6 +67,7 @@ export const SKILL_IDS = [
   "engineered_plating",
   "armor_lore2",
   "armor_lore3",
+  "armor_lore4",
   "heavy_drill",
   "tool_fabrication",
   "forged_strikes",
@@ -802,15 +803,30 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Armor Lore III",
     description:
       "Master forging of living plate—your hosts shrug off punishing blows.",
-    nodePosition: { x: 8, y: 1 },
+    nodePosition: { x: 7, y: 2 },
     maxLevel: 15,
     effects: {
       all_units_armor: {
-        income: (level) => 1.5*level,
+        income: (level) => 2*level,
       },
     },
     nodesRequired: { armor_lore2: 5 },
     cost: createResourceCost('silver', 60, 1.5),
+  },
+  armor_lore4: {
+    id: "armor_lore4",
+    name: "Armor Lore IV",
+    description:
+      "Master forging of living plate—your hosts shrug off punishing blows.",
+    nodePosition: { x: 8, y: 3 },
+    maxLevel: 15,
+    effects: {
+      all_units_armor: {
+        income: (level) => 5*level,
+      },
+    },
+    nodesRequired: { armor_lore3: 5 },
+    cost: createResourceCost('ice', 500, 1.5),
   },
   vitality2: {
     id: "vitality2",

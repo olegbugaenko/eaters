@@ -24,6 +24,7 @@ const MIN_DURATION_MS = 16;
 const DEFAULT_GLOW_COLOR: SceneColor = { r: 1, g: 0.45, b: 0.15, a: 0.9 };
 const DEFAULT_GLOW_ALPHA = 0.85;
 const DEFAULT_PARTICLE_COLOR: SceneColor = { r: 1, g: 0.6, b: 0.3, a: 0.9 };
+const DEFAULT_FIRE_COLOR: SceneColor = { r: 1, g: 0.58, b: 0.24, a: 1 };
 const BRICK_QUERY_MARGIN = 32;
 
 interface PersistentAoeRingRuntimeConfig {
@@ -49,6 +50,7 @@ interface PersistentAoeVisualRuntimeConfig {
   glowColor: SceneColor;
   glowAlpha: number;
   particle: PersistentAoeParticleRuntimeConfig | null;
+  fireColor: SceneColor;
 }
 
 interface PersistentAoeState {
@@ -85,6 +87,7 @@ export interface PersistentAoeObjectCustomData {
   glowColor: SceneColor;
   glowAlpha: number;
   particle: PersistentAoeParticleCustomData | null;
+  fireColor: SceneColor;
   durationMs: number;
 }
 
@@ -250,7 +253,9 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       ? this.sanitizeParticleEmitterConfig(visuals.particleEmitter)
       : null;
 
-    return { glowColor, glowAlpha, particle };
+    const fireColor = sanitizeSceneColor(visuals?.fireColor, DEFAULT_FIRE_COLOR);
+
+    return { glowColor, glowAlpha, particle, fireColor };
   }
 
   private sanitizeParticleEmitterConfig(
@@ -327,6 +332,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       intensity,
       glowColor: cloneColor(visual.glowColor),
       glowAlpha: visual.glowAlpha,
+      fireColor: cloneColor(visual.fireColor),
       durationMs,
       particle: visual.particle
         ? {

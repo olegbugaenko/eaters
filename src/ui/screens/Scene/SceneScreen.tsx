@@ -112,8 +112,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const { app, bridge, scene } = useAppLogic();
   const spellcasting = app.getSpellcasting();
-  const mapTimeMs = useBridgeValue<number>(bridge, RESOURCE_RUN_DURATION_BRIDGE_KEY, 0);
-  const brickCount = useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0);
+  // moved high-frequency debug subscriptions into SceneDebugPanel to avoid rerendering SceneScreen every tick
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
   const unitTotalHp = useBridgeValue<number>(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
@@ -309,7 +308,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       };
 
       spellcasting.tryCastSpell(spellId, worldPosition);
-    }, 50); // Перевіряємо кожні 50ms
+    }, 250); // Перевіряємо кожні 250ms
 
     return () => {
       window.clearInterval(interval);
@@ -575,8 +574,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneTooltipPanel content={hoverContent} />
       <SceneDebugPanel
-        timeMs={mapTimeMs}
-        brickCount={brickCount}
+        bridge={bridge}
         dynamicBytes={vboStats.bytes}
         dynamicReallocs={vboStats.reallocs}
         particleActive={particleStatsState.active}
