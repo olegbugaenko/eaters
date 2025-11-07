@@ -114,6 +114,16 @@ float noise2d(vec2 p) {
   return mix(ab, cd, u.y);
 }
 
+vec2 resolveNoiseAnchor(float fillType) {
+  // v_fillParams0.xy stores the object origin for solid fills, the gradient start
+  // for linear fills, and the gradient center for radial/diamond fills.
+  // Using it as the anchor keeps noise stable in the object's local space.
+  if (fillType < 3.5) {
+    return v_fillParams0.xy;
+  }
+  return v_worldPosition;
+}
+
 vec4 applyFillNoise(vec4 color) {
   float colorAmp = v_fillInfo.z;
   float alphaAmp = v_fillInfo.w;
@@ -122,7 +132,9 @@ vec4 applyFillNoise(vec4 color) {
   }
   float scale = v_fillParams1.w;
   float effectiveScale = scale > 0.0 ? scale : 1.0;
-  float noiseValue = noise2d(v_worldPosition * effectiveScale) * 2.0 - 1.0;
+  float fillType = v_fillInfo.x;
+  vec2 anchor = resolveNoiseAnchor(fillType);
+  float noiseValue = noise2d((v_worldPosition - anchor) * effectiveScale) * 2.0 - 1.0;
   if (colorAmp > 0.0) {
     color.rgb = clamp(color.rgb + noiseValue * colorAmp, 0.0, 1.0);
   }
