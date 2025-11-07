@@ -662,9 +662,7 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     } else if (cache.lastActiveCount > activeCount) {
       endIndex = Math.min(cache.lastActiveCount, capacity);
     }
-    for (let i = startIndex; i < endIndex; i += 1) {
-      buffer.set(cache.inactiveQuad, i * stride);
-    }
+    fillInactiveParticleRange(buffer, startIndex, endIndex, stride, cache.inactiveQuad);
   }
 
   cache.lastActiveCount = activeCount;
@@ -1486,6 +1484,29 @@ const createSolidFillTemplate = (fill: SceneFill): Float32Array | null => {
   }
 
   return template;
+};
+
+const fillInactiveParticleRange = (
+  target: Float32Array,
+  startIndex: number,
+  endIndex: number,
+  stride: number,
+  quad: Float32Array
+): void => {
+  const count = endIndex - startIndex;
+  if (count <= 0) {
+    return;
+  }
+  const offset = startIndex * stride;
+  target.set(quad, offset);
+  let filled = 1;
+  while (filled < count) {
+    const copy = Math.min(filled, count - filled);
+    const sourceStart = offset;
+    const sourceEnd = offset + copy * stride;
+    target.set(target.subarray(sourceStart, sourceEnd), offset + filled * stride);
+    filled += copy;
+  }
 };
 
 const writeParticleQuad = (
