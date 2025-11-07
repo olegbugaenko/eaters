@@ -437,6 +437,11 @@ const toWaveUniformsFromFill = (
     stopColor2.set([c2.r, c2.g, c2.b, c2.a ?? 1]);
   }
 
+  const noise = fill.noise;
+  const noiseColorAmplitude = noise ? Math.max(0, Math.min(1, noise.colorAmplitude)) : 0;
+  const noiseAlphaAmplitude = noise ? Math.max(0, Math.min(1, noise.alphaAmplitude)) : 0;
+  const noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
+
   const uniforms: WaveUniformConfig = {
     fillType,
     stopCount,
@@ -444,6 +449,9 @@ const toWaveUniformsFromFill = (
     stopColor0,
     stopColor1,
     stopColor2,
+    noiseColorAmplitude,
+    noiseAlphaAmplitude,
+    noiseScale,
     hasLinearStart,
     linearStart: linearStart ?? { x: 0, y: 0 },
     hasLinearEnd,
