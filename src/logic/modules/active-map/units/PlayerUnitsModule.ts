@@ -1494,7 +1494,11 @@ const cloneRendererFill = (
     return undefined;
   }
   if (fill.type === "solid") {
-    return { type: "solid", color: { ...fill.color } };
+    return {
+      type: "solid",
+      color: { ...fill.color },
+      ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+    };
   }
   if (fill.type === "gradient") {
     return { type: "gradient", fill: cloneFill(fill.fill) };

@@ -1,4 +1,8 @@
-import type { SceneColor, SceneFill } from "../logic/services/SceneObjectManager";
+import type {
+  SceneColor,
+  SceneFill,
+  SceneFillNoise,
+} from "../logic/services/SceneObjectManager";
 
 export type VisualEffectId = "frenzyAura";
 
@@ -13,7 +17,7 @@ export interface VisualEffectOverlayConfig {
 // Minimal renderer schema for auras (composite like player units)
 export type AuraRendererFillConfig =
   | { type: "base"; brightness?: number; alphaMultiplier?: number }
-  | { type: "solid"; color: SceneColor }
+  | { type: "solid"; color: SceneColor; noise?: SceneFillNoise }
   | { type: "gradient"; fill: SceneFill };
 
 export type AuraRendererStrokeConfig =

@@ -7,6 +7,7 @@ import {
 import {
   SceneObjectInstance,
   SceneFill,
+  SceneFillNoise,
   SceneVector2,
   FILL_TYPES,
 } from "../../../logic/services/SceneObjectManager";
@@ -86,6 +87,10 @@ export class AuraRenderer extends ObjectRenderer {
   }
 }
 
+const cloneFillNoise = (
+  noise: SceneFillNoise | undefined
+): SceneFillNoise | undefined => (noise ? { ...noise } : undefined);
+
 const sanitizeVertices = (
   vertices: readonly SceneVector2[] | undefined
 ): SceneVector2[] => {
@@ -109,7 +114,11 @@ const resolveFill = (fill: AuraRendererFillConfig | undefined): SceneFill => {
     return { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } };
   }
   if (fill.type === "solid") {
-    return { fillType: FILL_TYPES.SOLID, color: { ...fill.color } };
+    return {
+      fillType: FILL_TYPES.SOLID,
+      color: { ...fill.color },
+      ...(fill.noise ? { noise: cloneFillNoise(fill.noise) } : {}),
+    };
   }
   // gradient: incoming is SceneFill-compatible
   return cloneSceneFill(fill.fill as any);

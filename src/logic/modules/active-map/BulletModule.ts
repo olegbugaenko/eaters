@@ -2,6 +2,7 @@ import { GameModule } from "../../core/types";
 import {
   FILL_TYPES,
   SceneFill,
+  SceneFillNoise,
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
@@ -22,6 +23,9 @@ interface BulletCustomData {
   tailEmitter?: BulletTailEmitterConfig;
 }
 
+const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
+  noise ? { ...noise } : undefined;
+
 const createBulletFill = (radius: number, config: BulletConfig) => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
@@ -30,6 +34,7 @@ const createBulletFill = (radius: number, config: BulletConfig) => ({
     offset: stop.offset,
     color: { ...stop.color },
   })),
+  ...(config.noise ? { noise: cloneNoise(config.noise) } : {}),
 });
 
 const createBulletCustomData = (

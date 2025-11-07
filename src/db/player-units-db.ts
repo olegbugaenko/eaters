@@ -2,6 +2,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillNoise,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
 import { ParticleEmitterShape } from "../logic/services/particles/ParticleEmitterShared";
@@ -21,6 +22,7 @@ export type PlayerUnitRendererFillConfig =
   | {
       type: "solid";
       color: SceneColor;
+      noise?: SceneFillNoise;
     }
   | {
       type: "gradient";

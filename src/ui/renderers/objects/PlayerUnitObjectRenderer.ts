@@ -9,6 +9,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillNoise,
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
@@ -130,6 +131,7 @@ interface RendererLayerFillBase {
 interface RendererLayerFillSolid {
   kind: "solid";
   color: SceneColor;
+  noise?: SceneFillNoise;
 }
 
 interface RendererLayerFillGradient {
@@ -168,6 +170,10 @@ const DEFAULT_VERTICES: SceneVector2[] = [
 const DEFAULT_EMITTER_COLOR = { r: 0.2, g: 0.45, b: 0.95, a: 0.5 };
 const DEFAULT_BASE_FILL_COLOR: SceneColor = { r: 0.4, g: 0.7, b: 1, a: 1 };
 const MIN_CIRCLE_SEGMENTS = 8;
+
+const cloneFillNoise = (
+  noise: SceneFillNoise | undefined
+): SceneFillNoise | undefined => (noise ? { ...noise } : undefined);
 
 // Глобальний реєстр для зберігання аур юнітів
 const auraInstanceMap = new Map<string, {
@@ -418,6 +424,7 @@ const sanitizeFillConfig = (
     return {
       kind: "solid",
       color: { ...fill.color },
+      ...(fill.noise ? { noise: cloneFillNoise(fill.noise) } : {}),
     };
   }
   return {
@@ -489,7 +496,10 @@ const tintColor = (
   return { r, g, b, a };
 };
 
-const createSolidFill = (color: SceneColor): SceneFill => ({
+const createSolidFill = (
+  color: SceneColor,
+  noise?: SceneFillNoise
+): SceneFill => ({
   fillType: FILL_TYPES.SOLID,
   color: {
     r: color.r,
@@ -497,6 +507,7 @@ const createSolidFill = (color: SceneColor): SceneFill => ({
     b: color.b,
     a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
   },
+  ...(noise ? { noise: cloneFillNoise(noise) } : {}),
 });
 
 const resolveFillColor = (
@@ -546,13 +557,13 @@ const resolveLayerFill = (
 ): SceneFill => {
   switch (fill.kind) {
     case "solid":
-      return createSolidFill(fill.color);
+      return createSolidFill(fill.color, fill.noise);
     case "gradient":
       return cloneSceneFill(fill.fill);
     default: {
       const baseColor = resolveFillColor(instance, renderer.baseFillColor);
       const tinted = tintColor(baseColor, fill.brightness, fill.alphaMultiplier);
-      return createSolidFill(tinted);
+      return createSolidFill(tinted, instance.data.fill.noise);
     }
   }
 };
@@ -571,7 +582,7 @@ const resolveLayerStrokeFill = (
     renderer.baseFillColor
   );
   const tinted = tintColor(baseColor, stroke.brightness, stroke.alphaMultiplier);
-  return createSolidFill(tinted);
+  return createSolidFill(tinted, instance.data.fill.noise);
 };
 
 const createCompositePrimitives = (

@@ -2,6 +2,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillNoise,
   SceneGradientStop,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
@@ -36,6 +37,7 @@ export interface BulletConfig {
   directionAngleRange: { min: number; max: number };
   lifetimeMsRange: { min: number; max: number };
   gradientStops: readonly SceneGradientStop[];
+  noise?: SceneFillNoise;
   tail: BulletTailConfig;
   tailEmitter?: BulletTailEmitterConfig;
   explosionType?: ExplosionType;
