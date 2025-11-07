@@ -130,8 +130,8 @@ const ICE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const MAGMA_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.3, g: 0.1, b: 0.1, a: 1 } },
-  { offset: 0.35, color: { r: 0.2, g: 0.1, b: 0.1, a: 1 } },
+  { offset: 0, color: { r: 0.4, g: 0.1, b: 0.1, a: 1 } },
+  { offset: 0.35, color: { r: 0.3, g: 0.1, b: 0.1, a: 1 } },
   { offset: 1, color: { r: 0.15, g: 0.07, b: 0.05, a: 1 } },
 ] as const;
 
@@ -478,7 +478,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       radius: 12,
       stops: MAGMA_RADIAL_GRADIENT,
       noise: {
-        colorAmplitude: 0.15,
+        colorAmplitude: 0.03,
         alphaAmplitude: 0.0,
         scale: 0.25,
       },
