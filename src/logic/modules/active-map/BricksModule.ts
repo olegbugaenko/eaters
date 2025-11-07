@@ -158,6 +158,8 @@ export class BricksModule implements GameModule {
   private totalHpCached = 0;
   private hpRecomputeElapsedMs = 0;
   private readonly effects: BrickEffectsManager;
+  private lastPushedBrickCount = -1;
+  private lastPushedTotalHp = -1;
 
   constructor(private readonly options: BricksModuleOptions) {
     this.effects = new BrickEffectsManager({
@@ -288,14 +290,9 @@ export class BricksModule implements GameModule {
     if (radius < 0) {
       return;
     }
-    const bricks = this.spatialIndex.queryCircle(position, radius);
-    if (bricks.length === 0) {
-      return;
-    }
-    for (let i = 0; i < bricks.length; i += 1) {
-      // InternalBrickState extends BrickRuntimeState; expose as readonly view
-      visitor(bricks[i]!);
-    }
+    this.spatialIndex.forEachInCircle(position, radius, (brick) => {
+      visitor(brick);
+    });
   }
 
   public applyEffect(effect: BrickEffectApplication): void {
@@ -401,6 +398,8 @@ export class BricksModule implements GameModule {
     this.clearSceneObjects();
     this.brickIdCounter = 0;
     this.totalHpCached = 0;
+    this.lastPushedBrickCount = -1;
+    this.lastPushedTotalHp = -1;
 
     bricks.forEach((brick) => {
       const state = this.createBrickState(brick);
@@ -647,11 +646,16 @@ export class BricksModule implements GameModule {
   }
 
   private pushStats(): void {
-    this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, this.bricks.size);
-    this.options.bridge.setValue(
-      BRICK_TOTAL_HP_BRIDGE_KEY,
-      Math.max(0, Math.floor(this.totalHpCached))
-    );
+    const brickCount = this.bricks.size;
+    if (brickCount !== this.lastPushedBrickCount) {
+      this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, brickCount);
+      this.lastPushedBrickCount = brickCount;
+    }
+    const totalHp = Math.max(0, Math.floor(this.totalHpCached));
+    if (totalHp !== this.lastPushedTotalHp) {
+      this.options.bridge.setValue(BRICK_TOTAL_HP_BRIDGE_KEY, totalHp);
+      this.lastPushedTotalHp = totalHp;
+    }
   }
 
   private recomputeTotalsAndPush(): void {

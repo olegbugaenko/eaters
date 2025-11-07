@@ -539,12 +539,7 @@ export class UnitRuntimeController {
 
     for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
       let collided = false;
-      const nearbyBricks = this.bricks.findBricksNear(resolvedPosition, unit.physicalSize);
-      if (nearbyBricks.length === 0) {
-        break;
-      }
-
-      nearbyBricks.forEach((brick) => {
+      this.bricks.forEachBrickNear(resolvedPosition, unit.physicalSize, (brick) => {
         const brickRadius = Math.max(brick.physicalSize, 0);
         const combinedRadius = unit.physicalSize + brickRadius;
         if (combinedRadius <= 0) {

@@ -84,7 +84,7 @@ export class ObjectsRendererManager {
       if (this.objects.has(instance.id)) {
         return;
       }
-      this.registerObject(instance);
+      this.registerObject(instance, true);
     });
   }
 
@@ -161,15 +161,16 @@ export class ObjectsRendererManager {
     this.registerObject(instance);
   }
 
-  private registerObject(instance: SceneObjectInstance): void {
+  private registerObject(instance: SceneObjectInstance, cloneInstance = false): void {
     const renderer = this.renderers.get(instance.type);
     if (!renderer) {
       // console.warn(`No renderer registered for object type "${instance.type}".`);
       return;
     }
     const registration = renderer.register(instance);
+    const storedInstance = cloneInstance ? this.cloneInstance(instance) : instance;
     const managed: ManagedObject = {
-      instance: this.cloneInstance(instance),
+      instance: storedInstance,
       renderer,
       registration,
     };
@@ -204,7 +205,7 @@ export class ObjectsRendererManager {
     if (!managed) {
       return;
     }
-    managed.instance = this.cloneInstance(instance);
+    managed.instance = instance;
     const updates = managed.renderer.update(instance, managed.registration);
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);

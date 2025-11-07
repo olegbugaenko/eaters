@@ -116,6 +116,48 @@ export class SpatialGrid<T> {
     return result;
   }
 
+  public forEachInCircle(
+    position: SceneVector2,
+    radius: number,
+    visitor: (payload: T) => void
+  ): void {
+    const safeRadius = clampRadius(radius);
+    if (safeRadius <= 0 && this.items.size === 0) {
+      return;
+    }
+
+    const range = this.computeCellRange(position, safeRadius);
+    const visited = new Set<string>();
+
+    for (let cellY = range.minY; cellY <= range.maxY; cellY += 1) {
+      for (let cellX = range.minX; cellX <= range.maxX; cellX += 1) {
+        const cell = this.cells.get(this.getCellKey(cellX, cellY));
+        if (!cell) {
+          continue;
+        }
+        cell.forEach((id) => {
+          if (visited.has(id)) {
+            return;
+          }
+          visited.add(id);
+          const item = this.items.get(id);
+          if (!item) {
+            return;
+          }
+          const dx = item.position.x - position.x;
+          const dy = item.position.y - position.y;
+          const combinedRadius = item.radius + safeRadius;
+          if (combinedRadius <= 0) {
+            return;
+          }
+          if (dx * dx + dy * dy <= combinedRadius * combinedRadius + 1e-4) {
+            visitor(item.payload);
+          }
+        });
+      }
+    }
+  }
+
   public queryNearest(position: SceneVector2, options?: { maxLayers?: number }): T | null {
     if (this.items.size === 0) {
       return null;
