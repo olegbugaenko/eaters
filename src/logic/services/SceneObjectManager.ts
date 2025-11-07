@@ -82,6 +82,11 @@ export interface SceneObjectInstance {
   data: SceneObjectData & { fill: SceneFill; stroke?: SceneStroke };
 }
 
+type CustomDataCacheEntry = {
+  source: unknown;
+  clone: unknown;
+};
+
 export interface SceneCameraState {
   position: SceneVector2;
   viewportSize: SceneSize;
@@ -102,6 +107,8 @@ export class SceneObjectManager {
   private objects = new Map<string, SceneObjectInstance>();
   private ordered: SceneObjectInstance[] = [];
   private idCounter = 0;
+
+  private customDataCache = new Map<string, CustomDataCacheEntry>();
 
   private added = new Map<string, SceneObjectInstance>();
   private updated = new Map<string, SceneObjectInstance>();
@@ -130,6 +137,10 @@ export class SceneObjectManager {
       ? sanitizeColor(data.color)
       : extractPrimaryColor(fill);
     const stroke = sanitizeStroke(data.stroke);
+    const customData =
+      typeof data.customData !== "undefined"
+        ? this.cloneCustomDataForInstance(id, data.customData)
+        : undefined;
     const instance: SceneObjectInstance = {
       id,
       type,
@@ -140,7 +151,7 @@ export class SceneObjectManager {
         fill,
         rotation: normalizeRotation(data.rotation),
         stroke,
-        customData: cloneCustomData(data.customData),
+        customData,
       },
     };
     this.objects.set(id, instance);
@@ -180,10 +191,10 @@ export class SceneObjectManager {
         : typeof previousData.rotation === "number"
         ? previousData.rotation
         : DEFAULT_ROTATION;
-    const customData =
-      typeof data.customData !== "undefined"
-        ? cloneCustomData(data.customData)
-        : previousData.customData;
+    const hasCustomData = typeof data.customData !== "undefined";
+    const customData = hasCustomData
+      ? this.cloneCustomDataForInstance(id, data.customData)
+      : previousData.customData;
 
     instance.data = {
       position: { ...data.position },
@@ -211,6 +222,7 @@ export class SceneObjectManager {
     if (!instance) {
       return;
     }
+    this.customDataCache.delete(id);
     // Mark for deferred removal and hide immediately (alpha = 0)
     // Forcefully hide via fully transparent SOLID fill to avoid gradient artifacts
     const transparentFill: SceneFill = {
@@ -438,13 +450,40 @@ export class SceneObjectManager {
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
             : DEFAULT_ROTATION,
-        customData: cloneCustomData(instance.data.customData),
+        customData: cloneCustomDataValue(instance.data.customData),
       },
     };
   }
+
+  private cloneCustomDataForInstance<T>(id: string, value: T): T {
+    if (value === undefined || value === null) {
+      this.customDataCache.delete(id);
+      return value;
+    }
+
+    if (typeof value !== "object") {
+      this.customDataCache.delete(id);
+      return value;
+    }
+
+    if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+      const clone = cloneCustomDataValue(value);
+      this.customDataCache.set(id, { source: value, clone });
+      return clone as T;
+    }
+
+    const cached = this.customDataCache.get(id);
+    if (cached && cached.source === value) {
+      return cached.clone as T;
+    }
+
+    const clone = cloneCustomDataValue(value);
+    this.customDataCache.set(id, { source: value, clone });
+    return clone as T;
+  }
 }
 
-function cloneCustomData<T>(value: T): T {
+function cloneCustomDataValue<T>(value: T): T {
   if (value === undefined || value === null) {
     return value;
   }
@@ -465,14 +504,14 @@ function cloneCustomData<T>(value: T): T {
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => cloneCustomData(item)) as T;
+    return value.map((item) => cloneCustomDataValue(item)) as T;
   }
 
   if (typeof value === "object") {
     const source = value as Record<string | number | symbol, unknown>;
     const clone: Record<string | number | symbol, unknown> = {};
     Object.keys(source).forEach((key) => {
-      clone[key] = cloneCustomData(source[key]);
+      clone[key] = cloneCustomDataValue(source[key]);
     });
     return clone as T;
   }

@@ -6,6 +6,8 @@ import {
 } from "../../../../logic/services/SceneObjectManager";
 import {
   DynamicPrimitive,
+  FILL_COMPONENTS,
+  POSITION_COMPONENTS,
   StaticPrimitive,
   VERTEX_COMPONENTS,
   transformObjectPoint,
@@ -35,6 +37,31 @@ interface DynamicCircleOptions {
 }
 
 const DEFAULT_SEGMENTS = 24;
+
+interface CircleTrigLut {
+  cos: Float32Array;
+  sin: Float32Array;
+}
+
+const circleTrigCache = new Map<number, CircleTrigLut>();
+
+const getCircleTrigLut = (segments: number): CircleTrigLut => {
+  const normalized = Math.max(3, Math.floor(segments));
+  const cached = circleTrigCache.get(normalized);
+  if (cached) {
+    return cached;
+  }
+  const cos = new Float32Array(normalized);
+  const sin = new Float32Array(normalized);
+  for (let i = 0; i < normalized; i += 1) {
+    const angle = (i / normalized) * Math.PI * 2;
+    cos[i] = Math.cos(angle);
+    sin[i] = Math.sin(angle);
+  }
+  const lut = { cos, sin };
+  circleTrigCache.set(normalized, lut);
+  return lut;
+};
 
 const getRadiusFromSize = (size: SceneSize | undefined, fallback: number): number => {
   if (!size) {
@@ -86,59 +113,85 @@ const pushVertex = (
   return offset + VERTEX_COMPONENTS;
 };
 
+const areFloatArraysEqual = (a: Float32Array, b: Float32Array): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i += 1) {
+    const av = a[i] ?? 0;
+    const bv = b[i] ?? 0;
+    if (av === bv || (Number.isNaN(av) && Number.isNaN(bv))) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+};
+
 const buildCircleData = (
   position: SceneVector2,
   radius: number,
   fillComponents: Float32Array,
-  segments: number
+  segments: number,
+  trig: CircleTrigLut
 ): Float32Array => {
   const vertexCount = segments * 3;
   const data = new Float32Array(vertexCount * VERTEX_COMPONENTS);
   let offset = 0;
   for (let i = 0; i < segments; i += 1) {
-    const angle1 = (i / segments) * Math.PI * 2;
-    const angle2 = ((i + 1) / segments) * Math.PI * 2;
+    const cos1 = trig.cos[i] ?? 1;
+    const sin1 = trig.sin[i] ?? 0;
+    const nextIndex = (i + 1) % segments;
+    const cos2 = trig.cos[nextIndex] ?? trig.cos[0] ?? 1;
+    const sin2 = trig.sin[nextIndex] ?? trig.sin[0] ?? 0;
     offset = pushVertex(data, offset, position.x, position.y, fillComponents);
     offset = pushVertex(
       data,
       offset,
-      position.x + Math.cos(angle1) * radius,
-      position.y + Math.sin(angle1) * radius,
+      position.x + cos1 * radius,
+      position.y + sin1 * radius,
       fillComponents
     );
     offset = pushVertex(
       data,
       offset,
-      position.x + Math.cos(angle2) * radius,
-      position.y + Math.sin(angle2) * radius,
+      position.x + cos2 * radius,
+      position.y + sin2 * radius,
       fillComponents
     );
   }
   return data;
 };
 
-const assignVertex = (
+const updateVertex = (
   target: Float32Array,
   offset: number,
   x: number,
   y: number,
-  fillComponents: Float32Array
+  fillComponents: Float32Array,
+  updateGeometry: boolean,
+  updateFill: boolean
 ): boolean => {
   let changed = false;
-  if (target[offset + 0] !== x) {
-    target[offset + 0] = x;
-    changed = true;
-  }
-  if (target[offset + 1] !== y) {
-    target[offset + 1] = y;
-    changed = true;
-  }
-  for (let i = 0; i < fillComponents.length; i += 1) {
-    const index = offset + 2 + i;
-    const value = fillComponents[i] ?? 0;
-    if (target[index] !== value) {
-      target[index] = value;
+  if (updateGeometry) {
+    if (target[offset + 0] !== x) {
+      target[offset + 0] = x;
       changed = true;
+    }
+    if (target[offset + 1] !== y) {
+      target[offset + 1] = y;
+      changed = true;
+    }
+  }
+  if (updateFill) {
+    for (let i = 0; i < FILL_COMPONENTS; i += 1) {
+      const index = offset + POSITION_COMPONENTS + i;
+      const value = fillComponents[i] ?? 0;
+      const current = target[index];
+      if (current !== value && !(Number.isNaN(current) && Number.isNaN(value))) {
+        target[index] = value;
+        changed = true;
+      }
     }
   }
   return changed;
@@ -149,27 +202,68 @@ const updateCircleData = (
   position: SceneVector2,
   radius: number,
   fillComponents: Float32Array,
-  segments: number
+  segments: number,
+  trig: CircleTrigLut,
+  updateGeometry: boolean,
+  updateFill: boolean
 ): boolean => {
+  if (!updateGeometry && !updateFill) {
+    return false;
+  }
   let changed = false;
   let offset = 0;
   for (let i = 0; i < segments; i += 1) {
-    const angle1 = (i / segments) * Math.PI * 2;
-    const angle2 = ((i + 1) / segments) * Math.PI * 2;
-
     changed =
-      assignVertex(target, offset, position.x, position.y, fillComponents) ||
-      changed;
+      updateVertex(
+        target,
+        offset,
+        position.x,
+        position.y,
+        fillComponents,
+        updateGeometry,
+        updateFill
+      ) || changed;
     offset += VERTEX_COMPONENTS;
 
-    const x1 = position.x + Math.cos(angle1) * radius;
-    const y1 = position.y + Math.sin(angle1) * radius;
-    changed = assignVertex(target, offset, x1, y1, fillComponents) || changed;
+    const cos1 = trig.cos[i] ?? 1;
+    const sin1 = trig.sin[i] ?? 0;
+    const vertex1X: number = updateGeometry
+      ? position.x + cos1 * radius
+      : target[offset + 0] ?? 0;
+    const vertex1Y: number = updateGeometry
+      ? position.y + sin1 * radius
+      : target[offset + 1] ?? 0;
+    changed =
+      updateVertex(
+        target,
+        offset,
+        vertex1X,
+        vertex1Y,
+        fillComponents,
+        updateGeometry,
+        updateFill
+      ) || changed;
     offset += VERTEX_COMPONENTS;
 
-    const x2 = position.x + Math.cos(angle2) * radius;
-    const y2 = position.y + Math.sin(angle2) * radius;
-    changed = assignVertex(target, offset, x2, y2, fillComponents) || changed;
+    const nextIndex = (i + 1) % segments;
+    const cos2 = trig.cos[nextIndex] ?? trig.cos[0] ?? 1;
+    const sin2 = trig.sin[nextIndex] ?? trig.sin[0] ?? 0;
+    const vertex2X: number = updateGeometry
+      ? position.x + cos2 * radius
+      : target[offset + 0] ?? 0;
+    const vertex2Y: number = updateGeometry
+      ? position.y + sin2 * radius
+      : target[offset + 1] ?? 0;
+    changed =
+      updateVertex(
+        target,
+        offset,
+        vertex2X,
+        vertex2Y,
+        fillComponents,
+        updateGeometry,
+        updateFill
+      ) || changed;
     offset += VERTEX_COMPONENTS;
   }
   return changed;
@@ -178,7 +272,7 @@ const updateCircleData = (
 export const createStaticCirclePrimitive = (
   options: CirclePrimitiveOptions
 ): StaticPrimitive => {
-  const segments = options.segments ?? DEFAULT_SEGMENTS;
+  const segments = Math.max(3, Math.floor(options.segments ?? DEFAULT_SEGMENTS));
   const rotation = options.rotation ?? 0;
   const center = transformObjectPoint(
     options.center,
@@ -193,7 +287,13 @@ export const createStaticCirclePrimitive = (
     radius: options.radius,
   });
   return {
-    data: buildCircleData(center, options.radius, fillComponents, segments),
+    data: buildCircleData(
+      center,
+      options.radius,
+      fillComponents,
+      segments,
+      getCircleTrigLut(segments)
+    ),
   };
 };
 
@@ -201,37 +301,36 @@ export const createDynamicCirclePrimitive = (
   instance: SceneObjectInstance,
   options: DynamicCircleOptions = {}
 ): DynamicPrimitive => {
-  const segments = options.segments ?? DEFAULT_SEGMENTS;
+  const segments = Math.max(3, Math.floor(options.segments ?? DEFAULT_SEGMENTS));
+  const trig = getCircleTrigLut(segments);
   const initialCenter = getCenter(instance, options.offset);
   let radius = Math.max(
     resolveRadius(options, instance, getRadiusFromSize(instance.data.size, 0)),
     0
   );
+  const initialFillComponents = createFillVertexComponents({
+    fill: resolveFill(options, instance),
+    center: initialCenter,
+    rotation: instance.data.rotation ?? 0,
+    size: {
+      width: radius * 2,
+      height: radius * 2,
+    },
+    radius,
+  });
   const data = buildCircleData(
     initialCenter,
     radius,
-    createFillVertexComponents({
-      fill: resolveFill(options, instance),
-      center: initialCenter,
-      rotation: instance.data.rotation ?? 0,
-      size: {
-        width: radius * 2,
-        height: radius * 2,
-      },
-      radius,
-    }),
-    segments
+    initialFillComponents,
+    segments,
+    trig
   );
-  const fillScratch = new Float32Array(
-    // FILL_COMPONENTS length equals first triangle's fill components size
-    (new Float32Array(0)).length + (createFillVertexComponents({
-      fill: resolveFill(options, instance),
-      center: initialCenter,
-      rotation: instance.data.rotation ?? 0,
-      size: { width: radius * 2, height: radius * 2 },
-      radius,
-    }).length)
-  );
+  const fillScratch = new Float32Array(initialFillComponents.length);
+  fillScratch.set(initialFillComponents);
+  const previousFill = new Float32Array(initialFillComponents.length);
+  previousFill.set(initialFillComponents);
+  let previousCenterX = initialCenter.x;
+  let previousCenterY = initialCenter.y;
 
   return {
     data,
@@ -251,15 +350,31 @@ export const createDynamicCirclePrimitive = (
         },
         radius: nextRadius,
       });
+      const geometryChanged =
+        nextRadius !== radius ||
+        nextCenter.x !== previousCenterX ||
+        nextCenter.y !== previousCenterY;
+      const fillChanged = !areFloatArraysEqual(fillComponents, previousFill);
       const changed = updateCircleData(
         data,
         nextCenter,
         nextRadius,
         fillComponents,
-        segments
+        segments,
+        trig,
+        geometryChanged,
+        fillChanged
       );
+      if (!changed) {
+        return null;
+      }
       radius = nextRadius;
-      return changed ? data : null;
+      previousCenterX = nextCenter.x;
+      previousCenterY = nextCenter.y;
+      if (fillChanged) {
+        previousFill.set(fillComponents);
+      }
+      return data;
     },
   };
 };

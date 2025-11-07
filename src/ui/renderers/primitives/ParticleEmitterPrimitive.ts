@@ -69,6 +69,15 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   gpu?: ParticleEmitterGpuState;
   mode: "cpu" | "gpu" | "disabled";
   requireGpu: boolean;
+  cpuCache: ParticleEmitterCpuCache | null;
+}
+
+interface ParticleEmitterCpuCache {
+  lastOrigin: SceneVector2;
+  lastActiveCount: number;
+  lastCapacity: number;
+  inactiveComponents: Float32Array;
+  inactiveQuad: Float32Array;
 }
 
 export interface ParticleEmitterPrimitiveOptions<
@@ -247,6 +256,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
       gpu: undefined,
       mode: "disabled",
       requireGpu,
+      cpuCache: null,
     };
   }
 
@@ -264,6 +274,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     gpu: undefined,
     mode: gpu ? "gpu" : "cpu",
     requireGpu,
+    cpuCache: null,
   };
 
   if (gpu) {
@@ -290,6 +301,7 @@ const createEmptyParticleEmitterState = <
   gpu: undefined,
   mode: requireGpu ? "disabled" : "cpu",
   requireGpu,
+  cpuCache: null,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -307,6 +319,7 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     if (state.gpu) {
       resetParticleEmitterGpuState(state.gpu);
     }
+    state.cpuCache = null;
     return state.data;
   }
 
@@ -314,16 +327,19 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     if (state.data.length !== 0) {
       state.data = new Float32Array(0);
     }
+    state.cpuCache = null;
     return state.data;
   }
 
   if (state.mode === "gpu" && state.gpu) {
     updateParticleEmitterGpuUniforms(state.gpu, config);
     advanceParticleEmitterStateGpu(state, instance, deltaMs, options);
+    state.cpuCache = null;
     return null;
   }
 
   if (state.mode !== "cpu") {
+    state.cpuCache = null;
     return state.data;
   }
 
@@ -512,11 +528,13 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     if (state.data.length !== 0) {
       state.data = new Float32Array(0);
     }
+    state.cpuCache = null;
     return;
   }
 
   const capacity = Math.max(0, state.capacity);
-  const requiredLength = capacity * VERTICES_PER_PARTICLE * VERTEX_COMPONENTS;
+  const stride = VERTICES_PER_PARTICLE * VERTEX_COMPONENTS;
+  const requiredLength = capacity * stride;
   if (state.data.length !== requiredLength) {
     state.data = new Float32Array(requiredLength);
   }
@@ -533,6 +551,41 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     radius: MIN_PARTICLE_SIZE / 2,
   });
   applyParticleAlpha(inactiveComponents, 0);
+
+  const existingCache = state.cpuCache;
+  const cache =
+    existingCache ?? {
+      lastOrigin: { x: origin.x, y: origin.y },
+      lastActiveCount: 0,
+      lastCapacity: capacity,
+      inactiveComponents: new Float32Array(inactiveComponents.length),
+      inactiveQuad: new Float32Array(stride),
+    };
+  if (!existingCache) {
+    state.cpuCache = cache;
+  }
+
+  const originChanged =
+    !existingCache ||
+    cache.lastOrigin.x !== origin.x ||
+    cache.lastOrigin.y !== origin.y;
+  const capacityChanged = !existingCache || cache.lastCapacity !== capacity;
+  const inactiveFillChanged =
+    !existingCache ||
+    !floatArrayEquals(inactiveComponents, cache.inactiveComponents);
+
+  if (inactiveFillChanged || originChanged || capacityChanged) {
+    cache.inactiveComponents.set(inactiveComponents);
+    writeParticleQuad(
+      cache.inactiveQuad,
+      0,
+      origin.x,
+      origin.y,
+      origin.x,
+      origin.y,
+      inactiveComponents
+    );
+  }
 
   for (let i = 0; i < activeCount; i += 1) {
     const particle = state.particles[i]!;
@@ -579,19 +632,23 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     }
   }
 
-  if (activeCount < capacity) {
-    for (let i = activeCount; i < capacity; i += 1) {
-      offset = writeParticleQuad(
-        buffer,
-        offset,
-        origin.x,
-        origin.y,
-        origin.x,
-        origin.y,
-        inactiveComponents
-      );
+  if (capacity > 0) {
+    const startIndex = activeCount;
+    let endIndex = startIndex;
+    if (inactiveFillChanged || originChanged || capacityChanged) {
+      endIndex = capacity;
+    } else if (cache.lastActiveCount > activeCount) {
+      endIndex = Math.min(cache.lastActiveCount, capacity);
+    }
+    for (let i = startIndex; i < endIndex; i += 1) {
+      buffer.set(cache.inactiveQuad, i * stride);
     }
   }
+
+  cache.lastActiveCount = activeCount;
+  cache.lastCapacity = capacity;
+  cache.lastOrigin.x = origin.x;
+  cache.lastOrigin.y = origin.y;
 };
 
 const SIMULATION_VERTEX_SHADER = `#version 300 es
@@ -1339,6 +1396,21 @@ const applyParticleAlpha = (components: Float32Array, alpha: number): void => {
       components[alphaIndex] = current * effectiveAlpha;
     }
   }
+};
+
+const floatArrayEquals = (a: Float32Array, b: Float32Array): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i += 1) {
+    const av = a[i] ?? 0;
+    const bv = b[i] ?? 0;
+    if (av === bv || (Number.isNaN(av) && Number.isNaN(bv))) {
+      continue;
+    }
+    return false;
+  }
+  return true;
 };
 
 const writeParticleQuad = (
