@@ -63,6 +63,7 @@ interface PersistentAoeState {
   baseDamagePerSecond: number;
   damageMultiplier: number;
   visual: PersistentAoeVisualRuntimeConfig;
+  renderData: PersistentAoeObjectCustomData;
 }
 
 export interface PersistentAoeParticleCustomData {
@@ -124,17 +125,16 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     const sanitized = this.sanitizeConfig(context.config.persistentAoe);
     const center = { ...context.target };
     const initialProgress = 0;
-    const customData = this.createCustomData(
+    const renderData = this.initializeCustomData(
       sanitized.ring,
       sanitized.visual,
-      initialProgress,
       sanitized.durationMs,
     );
 
     const objectId = this.scene.addObject("spellPersistentAoe", {
       position: { ...center },
       size: this.createSizeFromRing(sanitized.ring, initialProgress),
-      customData,
+      customData: renderData,
     });
 
     const state: PersistentAoeState = {
@@ -147,6 +147,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       baseDamagePerSecond: sanitized.damagePerSecond,
       damageMultiplier: context.spellPowerMultiplier,
       visual: sanitized.visual,
+      renderData,
     };
 
     this.instances.push(state);
@@ -173,15 +174,12 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
         continue;
       }
 
+      this.updateCustomData(state.renderData, state.ring, progress);
+
       this.scene.updateObject(state.id, {
         position: { ...state.center },
         size: this.createSizeFromRing(state.ring, progress),
-        customData: this.createCustomData(
-          state.ring,
-          state.visual,
-          progress,
-          state.durationMs,
-        ),
+        customData: state.renderData,
       });
 
       survivors.push(state);
@@ -314,22 +312,19 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     return { width: diameter, height: diameter };
   }
 
-  private createCustomData(
+  private initializeCustomData(
     ring: PersistentAoeRingRuntimeConfig,
     visual: PersistentAoeVisualRuntimeConfig,
-    progress: number,
     durationMs: number,
   ): PersistentAoeObjectCustomData {
-    const outer = this.getOuterRadius(ring, progress);
+    const outer = this.getOuterRadius(ring, 0);
     const inner = Math.max(0, outer - ring.thickness);
-    const intensity = 1; //clamp01(1 - (progress ** 2));
-
     return {
       shape: "ring",
       innerRadius: inner,
       outerRadius: outer,
       thickness: ring.thickness,
-      intensity,
+      intensity: 1,
       glowColor: cloneColor(visual.glowColor),
       glowAlpha: visual.glowAlpha,
       fireColor: cloneColor(visual.fireColor),
@@ -349,6 +344,18 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
           }
         : null,
     };
+  }
+
+  private updateCustomData(
+    target: PersistentAoeObjectCustomData,
+    ring: PersistentAoeRingRuntimeConfig,
+    progress: number,
+  ): void {
+    const outer = this.getOuterRadius(ring, progress);
+    target.outerRadius = outer;
+    target.innerRadius = Math.max(0, outer - ring.thickness);
+    target.thickness = ring.thickness;
+    target.intensity = 1;
   }
 
   private applyRingDamage(state: PersistentAoeState, deltaSeconds: number): void {
