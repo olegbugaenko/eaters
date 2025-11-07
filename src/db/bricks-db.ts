@@ -140,7 +140,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       end: { x: 0, y: 15 },
       stops: CLASSIC_GRADIENT,
     },
-    stroke: { color: { r: 0.55, g: 0.4, b: 0.05, a: 1 }, width: 2 },
+    stroke: { color: { r: 0.5, g: 0.65, b: 0.45, a: 1 }, width: 2 },
     destructubleData: {
       maxHp: 25,
       armor: 2,

@@ -43,7 +43,7 @@ export const buildTutorialSteps = (
           id: "spells",
           title: "Spellcasting",
           description:
-            "Select a spell from your spellbook, then click on the battlefield to cast it. Spells deal damage directly to bricks and can turn the tide of battle.",
+            "Select a spell from your spellbook, then click on the battlefield to cast it. Spells deal damage directly to bricks and can turn the tide of battle. Hold the mouse button to cast spell continuously as long as you have enough resources.",
           getTarget: getSpellbookArea,
           highlightPadding: 32,
         },
