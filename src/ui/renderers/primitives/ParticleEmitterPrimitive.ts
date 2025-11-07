@@ -78,6 +78,8 @@ interface ParticleEmitterCpuCache {
   lastCapacity: number;
   inactiveComponents: Float32Array;
   inactiveQuad: Float32Array;
+  fillSignature: string;
+  solidFillTemplate: Float32Array | null;
 }
 
 export interface ParticleEmitterPrimitiveOptions<
@@ -118,6 +120,8 @@ const INACTIVE_PARTICLE_FILL = new Float32Array(FILL_COMPONENTS);
 const PARTICLE_STATE_COMPONENTS = 8;
 const PARTICLE_STATE_BYTES =
   PARTICLE_STATE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+const SOLID_CENTER_X_INDEX = FILL_INFO_COMPONENTS;
+const SOLID_CENTER_Y_INDEX = FILL_INFO_COMPONENTS + 1;
 const PARTICLE_POSITION_X_INDEX = 0;
 const PARTICLE_POSITION_Y_INDEX = 1;
 const PARTICLE_VELOCITY_X_INDEX = 2;
@@ -542,6 +546,7 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
   const activeCount = Math.min(state.particles.length, capacity);
   let offset = 0;
   const fill = resolveParticleFill(config);
+  const fillSignature = serializeSceneFill(fill);
 
   const inactiveComponents = writeFillVertexComponents(INACTIVE_PARTICLE_FILL, {
     fill,
@@ -560,9 +565,18 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
       lastCapacity: capacity,
       inactiveComponents: new Float32Array(inactiveComponents.length),
       inactiveQuad: new Float32Array(stride),
+      fillSignature: "",
+      solidFillTemplate: null,
     };
   if (!existingCache) {
     state.cpuCache = cache;
+  }
+
+  const fillChanged = cache.fillSignature !== fillSignature;
+  if (fillChanged) {
+    cache.fillSignature = fillSignature;
+    cache.solidFillTemplate =
+      fill.fillType === FILL_TYPES.SOLID ? createSolidFillTemplate(fill) : null;
   }
 
   const originChanged =
@@ -571,6 +585,7 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     cache.lastOrigin.y !== origin.y;
   const capacityChanged = !existingCache || cache.lastCapacity !== capacity;
   const inactiveFillChanged =
+    fillChanged ||
     !existingCache ||
     !floatArrayEquals(inactiveComponents, cache.inactiveComponents);
 
@@ -600,13 +615,20 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     const rotation = config.alignToVelocity === true
       ? Math.atan2(particle.velocity.y, particle.velocity.x)
       : 0;
-    const fillComponents = writeFillVertexComponents(PARTICLE_FILL_SCRATCH, {
-      fill,
-      center,
-      rotation,
-      size: { width, height },
-      radius: Math.max(width, height) / 2,
-    });
+    const fillComponents = PARTICLE_FILL_SCRATCH;
+    if (cache.solidFillTemplate) {
+      fillComponents.set(cache.solidFillTemplate);
+      fillComponents[SOLID_CENTER_X_INDEX] = center.x;
+      fillComponents[SOLID_CENTER_Y_INDEX] = center.y;
+    } else {
+      writeFillVertexComponents(fillComponents, {
+        fill,
+        center,
+        rotation,
+        size: { width, height },
+        radius: Math.max(width, height) / 2,
+      });
+    }
     applyParticleAlpha(fillComponents, computeParticleAlpha(particle, config));
     if (rotation === 0) {
       offset = writeParticleQuad(
@@ -1411,6 +1433,59 @@ const floatArrayEquals = (a: Float32Array, b: Float32Array): boolean => {
     return false;
   }
   return true;
+};
+
+const serializeSceneFill = (fill: SceneFill): string => {
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID:
+      return JSON.stringify({
+        fillType: fill.fillType,
+        color: fill.color,
+      });
+    case FILL_TYPES.LINEAR_GRADIENT:
+      return JSON.stringify({
+        fillType: fill.fillType,
+        start: fill.start,
+        end: fill.end,
+        stops: fill.stops,
+      });
+    case FILL_TYPES.RADIAL_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT:
+      return JSON.stringify({
+        fillType: fill.fillType,
+        start: fill.start,
+        end: fill.end,
+        stops: fill.stops,
+      });
+    default:
+      return JSON.stringify(fill);
+  }
+};
+
+const createSolidFillTemplate = (fill: SceneFill): Float32Array | null => {
+  if (fill.fillType !== FILL_TYPES.SOLID) {
+    return null;
+  }
+
+  const template = new Float32Array(FILL_COMPONENTS);
+  template[0] = FILL_TYPES.SOLID;
+  template[1] = 1;
+
+  const color = sanitizeSceneColor(fill.color, fill.color);
+  const colorBase =
+    FILL_INFO_COMPONENTS +
+    FILL_PARAMS0_COMPONENTS +
+    FILL_PARAMS1_COMPONENTS +
+    STOP_OFFSETS_COMPONENTS;
+  for (let i = 0; i < MAX_GRADIENT_STOPS; i += 1) {
+    const base = colorBase + i * STOP_COLOR_COMPONENTS;
+    template[base + 0] = color.r;
+    template[base + 1] = color.g;
+    template[base + 2] = color.b;
+    template[base + 3] = typeof color.a === "number" ? color.a : 1;
+  }
+
+  return template;
 };
 
 const writeParticleQuad = (

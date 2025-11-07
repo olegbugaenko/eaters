@@ -85,6 +85,8 @@ export interface SceneObjectInstance {
 type CustomDataCacheEntry = {
   source: unknown;
   clone: unknown;
+  snapshot: unknown;
+  version: number;
 };
 
 export interface SceneCameraState {
@@ -450,7 +452,7 @@ export class SceneObjectManager {
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
             : DEFAULT_ROTATION,
-        customData: cloneCustomDataValue(instance.data.customData),
+        customData: this.getCustomDataSnapshot(instance.id, instance.data.customData),
       },
     };
   }
@@ -468,7 +470,13 @@ export class SceneObjectManager {
 
     if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
       const clone = cloneCustomDataValue(value);
-      this.customDataCache.set(id, { source: value, clone });
+      const snapshot = cloneCustomDataSnapshot(clone);
+      this.customDataCache.set(id, {
+        source: value,
+        clone,
+        snapshot,
+        version: (this.customDataCache.get(id)?.version ?? 0) + 1,
+      });
       return clone as T;
     }
 
@@ -478,8 +486,51 @@ export class SceneObjectManager {
     }
 
     const clone = cloneCustomDataValue(value);
-    this.customDataCache.set(id, { source: value, clone });
+    const snapshot = cloneCustomDataSnapshot(clone);
+    const version = (cached?.version ?? 0) + 1;
+    this.customDataCache.set(id, { source: value, clone, snapshot, version });
     return clone as T;
+  }
+
+  private getCustomDataSnapshot(id: string, value: unknown): unknown {
+    if (value === undefined || value === null) {
+      return value;
+    }
+
+    if (typeof value !== "object") {
+      return value;
+    }
+
+    const cached = this.customDataCache.get(id);
+    if (!cached) {
+      const clone = cloneCustomDataValue(value);
+      const snapshot = cloneCustomDataSnapshot(clone);
+      this.customDataCache.set(id, {
+        source: value,
+        clone,
+        snapshot,
+        version: 1,
+      });
+      return snapshot;
+    }
+
+    if (cached.clone !== value) {
+      const clone = cloneCustomDataValue(value);
+      const snapshot = cloneCustomDataSnapshot(clone);
+      cached.clone = clone;
+      cached.snapshot = snapshot;
+      cached.source = value;
+      cached.version += 1;
+      this.customDataCache.set(id, cached);
+      return snapshot;
+    }
+
+    if (!cached.snapshot) {
+      cached.snapshot = cloneCustomDataSnapshot(cached.clone);
+      this.customDataCache.set(id, cached);
+    }
+
+    return cached.snapshot;
   }
 }
 
@@ -517,6 +568,49 @@ function cloneCustomDataValue<T>(value: T): T {
   }
 
   return value;
+}
+
+function cloneCustomDataSnapshot<T>(value: T): T {
+  if (value === undefined || value === null) {
+    return value;
+  }
+
+  if (typeof value !== "object") {
+    return value;
+  }
+
+  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+    return value;
+  }
+
+  freezeCustomDataValue(value, new WeakSet<object>());
+  return value;
+}
+
+function freezeCustomDataValue(value: unknown, seen: WeakSet<object>): void {
+  if (!value || typeof value !== "object") {
+    return;
+  }
+
+  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+    return;
+  }
+
+  const objectValue = value as Record<string | number | symbol, unknown>;
+  if (seen.has(objectValue)) {
+    return;
+  }
+  seen.add(objectValue);
+
+  if (Array.isArray(objectValue)) {
+    objectValue.forEach((item) => freezeCustomDataValue(item, seen));
+  } else {
+    Object.keys(objectValue).forEach((key) =>
+      freezeCustomDataValue(objectValue[key], seen)
+    );
+  }
+
+  Object.freeze(objectValue);
 }
 
 function sanitizeColor(color: SceneColor | undefined): SceneColor {
