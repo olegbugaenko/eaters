@@ -198,7 +198,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     cooldownSeconds: 0.75,
     damage: { min: 3, max: 4 },
     projectile: {
-      radius: 4,
+      radius: 7,
+      shape: "triangle",
       speed: 230,
       lifetimeMs: 3_600,
       fill: MAGIC_ARROW_PROJECTILE_FILL,

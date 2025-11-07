@@ -74,6 +74,7 @@ export const SKILL_IDS = [
   "silver_drill",
   "penetration",
   "penetration2",
+  "penetration3",
   "soul_wood",
   "advanced_construction",
   "advanced_crafting"
@@ -336,7 +337,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 1,
     effects: {},
     nodesRequired: { black_darts: 1 },
-    cost: createResourceCost('magma', 500, 1),
+    cost: createResourceCost('magma', 200, 1),
   },
   sharp_mind: {
     id: "sharp_mind",
@@ -722,6 +723,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { penetration: 5 },
     cost: createResourceCost('copper', 60, 1.5),
   },
+  penetration3: {
+    id: "penetration3",
+    name: "Penetration III",
+    description:
+      "Use hot magma to melt through armor.",
+    nodePosition: { x: -8, y: 3 },
+    maxLevel: 15,
+    effects: {
+      all_units_armor_penetration: {
+        income: (level) => 6 * level,
+      },
+    },
+    nodesRequired: { penetration: 5 },
+    cost: createResourceCost('magma', 250, 1.5),
+  },
   // right
   improved_membranes: {
     id: "improved_membranes",
@@ -826,7 +842,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { armor_lore3: 5 },
-    cost: createResourceCost('ice', 500, 1.5),
+    cost: createResourceCost('ice', 200, 1.5),
   },
   vitality2: {
     id: "vitality2",

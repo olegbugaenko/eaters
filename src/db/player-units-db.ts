@@ -253,22 +253,22 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
 
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [{ x: 2.4, y: 3.2, width: 1.6 }, {x: 4.9, y: 9.3, width: 0.7}, { x: 5, y: 12.5, width: 0.3}, { x: 7, y: 16, width: 0.2}],
-          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5.0, falloff: "tip", axis: "normal", phase: 0 } },
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 8.0, falloff: "tip", axis: "normal", phase: 0 } },
           { epsilon: 0.25, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [{ x: 4.6, y: 1.8, width: 1.6 }, {x: 8.2, y: 3.3, width: 0.7}, { x: 11, y: 7.5, width: 0.3}, { x: 15, y: 8, width: 0.2}],
-          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5, falloff: "tip", axis: "normal", phase: 0.4 } },
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 8, falloff: "tip", axis: "normal", phase: 0.4 } },
           { epsilon: 0.25, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [{ x: 4.6, y: -1.8, width: 1.6 }, {x: 8.2, y: -3.3, width: 0.7}, { x: 11, y: -7.5, width: 0.3}, { x: 15, y: -8, width: 0.2}],
-          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5.0, falloff: "tip", axis: "normal", phase: 0.7 } },
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 8.0, falloff: "tip", axis: "normal", phase: 0.7 } },
           { epsilon: 0.25, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [{ x: 2.4, y: -3.2, width: 1.6 }, {x: 4.9, y: -9.3, width: 0.7}, { x: 5, y: -12.5, width: 0.3}, { x: 7, y: -16, width: 0.2}],
-          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 5, falloff: "tip", axis: "normal", phase: 1.1 } },
+          { requiresModule: "perforator", fill: { type: "base", brightness: -0.1 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 8, falloff: "tip", axis: "normal", phase: 1.1 } },
           { epsilon: 0.25, winding: "CCW" }
         ),
         {
