@@ -212,15 +212,15 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     if (this.projectiles.length > 0) {
       const deltaSeconds = deltaMs / 1000;
       const mapSize = this.scene.getMapSize();
-      const survivors: ProjectileState[] = [];
 
-      this.projectiles.forEach((projectile) => {
+      let writeIndex = 0;
+      for (let i = 0; i < this.projectiles.length; i += 1) {
+        const projectile = this.projectiles[i]!;
         let hit = false;
-        const totalMove = {
-          x: projectile.velocity.x * deltaSeconds,
-          y: projectile.velocity.y * deltaSeconds,
-        };
-        const distance = Math.hypot(totalMove.x, totalMove.y);
+
+        const totalMoveX = projectile.velocity.x * deltaSeconds;
+        const totalMoveY = projectile.velocity.y * deltaSeconds;
+        const distance = Math.hypot(totalMoveX, totalMoveY);
         const steps = Math.max(
           1,
           Math.min(
@@ -228,23 +228,18 @@ export class ProjectileSpellBehavior implements SpellBehavior {
             Math.ceil(distance / Math.max(projectile.radius, MIN_MOVEMENT_STEP)),
           ),
         );
-        const stepVector = {
-          x: totalMove.x / steps,
-          y: totalMove.y / steps,
-        };
+        const stepX = totalMoveX / steps;
+        const stepY = totalMoveY / steps;
 
-        for (let i = 0; i < steps; i += 1) {
-          projectile.position = {
-            x: projectile.position.x + stepVector.x,
-            y: projectile.position.y + stepVector.y,
-          };
+        for (let j = 0; j < steps; j += 1) {
+          projectile.position.x += stepX;
+          projectile.position.y += stepY;
 
           const collided = this.findHitBrick(projectile.position, projectile.radius);
           if (collided) {
             const baseDamage = randomDamage(projectile.damage);
             const damage = Math.max(baseDamage * Math.max(projectile.damageMultiplier, 0), 0);
             this.bricks.applyDamage(collided.id, damage, projectile.direction);
-            // Config-driven AoE splash
             const aoe = projectile.aoe;
             if (aoe && aoe.radius > 0 && aoe.splash > 0 && damage > 0) {
               this.bricks.forEachBrickNear(projectile.position, aoe.radius, (brick: BrickRuntimeState) => {
@@ -262,33 +257,31 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         }
 
         if (hit) {
-          return;
+          continue;
         }
 
         projectile.elapsedMs += deltaMs;
         if (projectile.elapsedMs >= projectile.lifetimeMs) {
           this.scene.removeObject(projectile.id);
-          return;
+          continue;
         }
 
         if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
           this.scene.removeObject(projectile.id);
-          return;
+          continue;
         }
 
         this.scene.updateObject(projectile.id, {
           position: { ...projectile.position },
-          rotation: Math.atan2(projectile.velocity.y, projectile.velocity.x),
         });
 
         if (projectile.ringTrail) {
           this.updateProjectileRingTrail(projectile, deltaMs);
         }
 
-        survivors.push(projectile);
-      });
-
-      this.projectiles = survivors;
+        this.projectiles[writeIndex++] = projectile;
+      }
+      this.projectiles.length = writeIndex;
     }
 
     if (this.rings.length > 0) {
@@ -333,11 +326,13 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     this.bricks.forEachBrickNear(position, expanded, (brick: BrickRuntimeState) => {
       const dx = brick.position.x - position.x;
       const dy = brick.position.y - position.y;
-      const distance = Math.hypot(dx, dy);
+      const distanceSq = dx * dx + dy * dy;
       const combined = Math.max(0, (brick.physicalSize ?? 0) + radius);
-      if (distance <= combined) {
-        if (!closest || distance < closest.distance) {
-          closest = { id: brick.id, distance, size: combined };
+      const combinedSq = combined * combined;
+      if (distanceSq <= combinedSq) {
+        if (!closest || distanceSq < closest.distance) {
+          // store squared distance; callers don't depend on exact metric
+          closest = { id: brick.id, distance: distanceSq, size: combined };
         }
       }
     });
@@ -449,29 +444,30 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     if (deltaMs <= 0) {
       return;
     }
-    const survivors: RingState[] = [];
-    this.rings.forEach((ring) => {
+    let writeIndex = 0;
+    for (let i = 0; i < this.rings.length; i += 1) {
+      const ring = this.rings[i]!;
       ring.elapsedMs += deltaMs;
       const lifetime = Math.max(1, ring.lifetimeMs);
       if (ring.elapsedMs >= lifetime) {
         this.scene.removeObject(ring.id);
-        return;
+        continue;
       }
       const progress = clamp01(ring.elapsedMs / lifetime);
       const radius = lerp(ring.startRadius, ring.endRadius, progress);
       const alpha = lerp(ring.startAlpha, ring.endAlpha, progress);
       if (alpha <= 0.001) {
         this.scene.removeObject(ring.id);
-        return;
+        continue;
       }
       this.scene.updateObject(ring.id, {
         position: { ...ring.position },
         size: { width: radius * 2, height: radius * 2 },
         fill: createRingFill(radius, alpha, ring),
       });
-      survivors.push(ring);
-    });
-    this.rings = survivors;
+      this.rings[writeIndex++] = ring;
+    }
+    this.rings.length = writeIndex;
   }
 
   private clearRings(): void {

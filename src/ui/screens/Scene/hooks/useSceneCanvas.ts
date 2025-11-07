@@ -814,6 +814,8 @@ export const useSceneCanvas = ({
     window.addEventListener("pointerup", handlePointerUp, { passive: true });
     canvas.addEventListener("pointerdown", handlePointerDown);
 
+    console.log("useSceneCanvas mounted");
+
     return () => {
       setParticleEmitterGlContext(null);
       if (webgl2) {
