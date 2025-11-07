@@ -55,7 +55,7 @@ import {
 } from "../PlayerUnitAbilities";
 import { AbilityVisualService } from "../abilities/AbilityVisualService";
 import type { StatisticsTracker } from "../../shared/StatisticsModule";
-import { UnitStatisticsReporter, UnitStatsSnapshot } from "./UnitStatisticsReporter";
+import { UnitStatisticsReporter } from "./UnitStatisticsReporter";
 import { UnitFactory, UnitCreationData } from "./UnitFactory";
 import { UnitRuntimeController } from "./UnitRuntimeController";
 import type { PlayerUnitState } from "./UnitTypes";
@@ -354,11 +354,7 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   private pushStats(): void {
-    const snapshot: UnitStatsSnapshot[] = this.unitOrder.map((u) => ({
-      hp: u.hp,
-      designId: u.designId,
-    }));
-    this.statsReporter.pushCounts(snapshot, {
+    this.statsReporter.pushCounts(this.unitOrder, {
       countKey: PLAYER_UNIT_COUNT_BRIDGE_KEY,
       totalHpKey: PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
       countsByDesignKey: PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
@@ -792,12 +788,7 @@ export class PlayerUnitsModule implements GameModule {
 
     for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
       let collided = false;
-      const nearbyBricks = this.bricks.findBricksNear(resolvedPosition, unit.physicalSize);
-      if (nearbyBricks.length === 0) {
-        break;
-      }
-
-      nearbyBricks.forEach((brick: BrickRuntimeState) => {
+      this.bricks.forEachBrickNear(resolvedPosition, unit.physicalSize, (brick) => {
         const brickRadius = Math.max(brick.physicalSize, 0);
         const combinedRadius = unit.physicalSize + brickRadius;
         if (combinedRadius <= 0) {
