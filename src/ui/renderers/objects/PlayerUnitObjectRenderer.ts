@@ -41,6 +41,11 @@ import type {
 import type { UnitModuleId } from "../../../db/unit-modules-db";
 import type { SkillId } from "../../../db/skills-db";
 
+const getTentacleTimeMs = (): number =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+
 interface PlayerUnitRendererLegacyPayload {
   kind?: string;
   vertices?: SceneVector2[];
@@ -673,83 +678,167 @@ const createCompositePrimitives = (
     if (layer.shape === "polygon") {
       // Sway animation for tentacle segments built from a line spine
       if (Array.isArray((layer as any).spine) && (layer as any).anim?.type === "sway") {
-        const spine = ((layer as any).spine as Array<{ x: number; y: number; width: number }>).map((p) => ({ x: p.x, y: p.y, width: p.width }));
+        const rawSpine = (layer as any).spine as Array<{ x: number; y: number; width: number }>;
+        const baseSpine = rawSpine.map((p) => ({ x: p.x, y: p.y, width: p.width }));
         const segIndex = typeof (layer as any).segmentIndex === "number" ? (layer as any).segmentIndex : 0;
         const build = ((layer as any).buildOpts || {}) as { epsilon?: number; winding?: "CW" | "CCW" };
         const winding = build.winding === "CW" ? "CW" : "CCW";
         const epsilon = typeof build.epsilon === "number" && isFinite(build.epsilon) ? build.epsilon : 0.2;
         const anim = (layer as any).anim as { periodMs?: number; amplitude?: number; phase?: number; falloff?: "tip" | "root" | "none"; axis?: "normal" | "tangent" };
         const period = Math.max(anim?.periodMs ?? 1400, 1);
-        const amp = anim?.amplitude ?? 1.0;
+        const amplitude = anim?.amplitude ?? 1.0;
         const phase = anim?.phase ?? 0;
         const falloffKind = anim?.falloff ?? "tip";
         const axis = anim?.axis ?? "normal";
 
-        // working buffers
-        const deformed = spine.map((p) => ({ x: p.x, y: p.y, width: p.width }));
-        const quadVerts: SceneVector2[] = [ { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 } ];
+        const segmentCount = Math.max(baseSpine.length - 1, 0);
+        const deformed = baseSpine.map((p) => ({ x: p.x, y: p.y, width: p.width }));
+        const quadVerts: SceneVector2[] = [
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+        ];
+        let strokeVerts: SceneVector2[] | null = layer.stroke
+          ? [
+              { x: 0, y: 0 },
+              { x: 0, y: 0 },
+              { x: 0, y: 0 },
+              { x: 0, y: 0 },
+            ]
+          : null;
 
-        const deformSpine = (tNow: number) => {
-          const n = spine.length;
-          if (n < 2) return;
-          const omega = (2 * Math.PI) / period;
-          for (let i = 0; i < n; i += 1) {
-            if (i === 0) { deformed[0]!.x = spine[0]!.x; deformed[0]!.y = spine[0]!.y; continue; }
-            const a = spine[i - 1]!; const b = spine[i]!;
-            const tx = b.x - a.x; const ty = b.y - a.y;
-            const len = Math.hypot(tx, ty) || 1;
-            const ux = tx / len; const uy = ty / len;
-            const nx = -uy; const ny = ux;
-            const ratio = i / (n - 1);
-            const falloff = falloffKind === "tip" ? ratio : falloffKind === "root" ? 1 - ratio : 1;
-            const angle = omega * tNow + phase + i * 0.35;
-            const magnitude = amp * falloff;
-            const dx = (axis === "tangent" ? ux : nx) * Math.sin(angle) * magnitude;
-            const dy = (axis === "tangent" ? uy : ny) * Math.sin(angle) * magnitude;
-            deformed[i]!.x = spine[i]!.x + dx;
-            deformed[i]!.y = spine[i]!.y + dy;
+        const falloffFactors = new Float32Array(baseSpine.length);
+        if (baseSpine.length > 1) {
+          for (let i = 1; i < baseSpine.length; i += 1) {
+            const ratio = i / (baseSpine.length - 1);
+            falloffFactors[i] =
+              falloffKind === "tip"
+                ? ratio
+                : falloffKind === "root"
+                ? 1 - ratio
+                : 1;
+          }
+        }
+
+        const axisX = new Float32Array(segmentCount);
+        const axisY = new Float32Array(segmentCount);
+        for (let i = 0; i < segmentCount; i += 1) {
+          const a = baseSpine[i]!;
+          const b = baseSpine[i + 1]!;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const length = Math.hypot(dx, dy) || 1;
+          const tangentX = dx / length;
+          const tangentY = dy / length;
+          const normalX = -tangentY;
+          const normalY = tangentX;
+          axisX[i] = axis === "tangent" ? tangentX : normalX;
+          axisY[i] = axis === "tangent" ? tangentY : normalY;
+        }
+
+        const omega = (2 * Math.PI) / period;
+        const angleStep = 0.35;
+        const sinStep = Math.sin(angleStep);
+        const cosStep = Math.cos(angleStep);
+
+        const deformSpine = (timeMs: number) => {
+          if (baseSpine.length === 0) {
+            return;
+          }
+          deformed[0]!.x = baseSpine[0]!.x;
+          deformed[0]!.y = baseSpine[0]!.y;
+          if (baseSpine.length === 1 || amplitude === 0 || segmentCount === 0) {
+            for (let i = 1; i < baseSpine.length; i += 1) {
+              deformed[i]!.x = baseSpine[i]!.x;
+              deformed[i]!.y = baseSpine[i]!.y;
+            }
+            return;
+          }
+
+          const baseAngle = omega * timeMs + phase;
+          let sinAngle = Math.sin(baseAngle + angleStep);
+          let cosAngle = Math.cos(baseAngle + angleStep);
+
+          for (let i = 1; i < baseSpine.length; i += 1) {
+            const displacement = amplitude * falloffFactors[i]! * sinAngle;
+            const axisXValue = axisX[i - 1] ?? 0;
+            const axisYValue = axisY[i - 1] ?? 0;
+            deformed[i]!.x = baseSpine[i]!.x + axisXValue * displacement;
+            deformed[i]!.y = baseSpine[i]!.y + axisYValue * displacement;
+
+            const nextSin = sinAngle * cosStep + cosAngle * sinStep;
+            const nextCos = cosAngle * cosStep - sinAngle * sinStep;
+            sinAngle = nextSin;
+            cosAngle = nextCos;
           }
         };
 
         const buildQuad = (k: number) => {
-          const a = deformed[k]!; const b = deformed[k + 1]!;
-          const ax = a?.x ?? 0, ay = a?.y ?? 0;
-          const bx = b?.x ?? ax, by = b?.y ?? ay;
-          const tx = bx - ax; const ty = by - ay;
+          const a = deformed[k]!;
+          const b = deformed[k + 1]!;
+          const ax = a?.x ?? 0;
+          const ay = a?.y ?? 0;
+          const bx = b?.x ?? ax;
+          const by = b?.y ?? ay;
+          const tx = bx - ax;
+          const ty = by - ay;
           const len = Math.hypot(tx, ty) || 1;
-          const ux = tx / len; const uy = ty / len;
-          const nx = -uy; const ny = ux;
-          const aCapX = ax - ux * epsilon; const aCapY = ay - uy * epsilon;
-          const bCapX = bx + ux * epsilon; const bCapY = by + uy * epsilon;
-          const wa = ((a?.width) ?? 0) * 0.5; const wb = ((b?.width) ?? 0) * 0.5;
-          const aLx = aCapX + nx * wa; const aLy = aCapY + ny * wa;
-          const aRx = aCapX - nx * wa; const aRy = aCapY - ny * wa;
-          const bLx = bCapX + nx * wb; const bLy = bCapY + ny * wb;
-          const bRx = bCapX - nx * wb; const bRy = bCapY - ny * wb;
+          const ux = tx / len;
+          const uy = ty / len;
+          const nx = -uy;
+          const ny = ux;
+          const aCapX = ax - ux * epsilon;
+          const aCapY = ay - uy * epsilon;
+          const bCapX = bx + ux * epsilon;
+          const bCapY = by + uy * epsilon;
+          const wa = (a?.width ?? 0) * 0.5;
+          const wb = (b?.width ?? 0) * 0.5;
+          const aLx = aCapX + nx * wa;
+          const aLy = aCapY + ny * wa;
+          const aRx = aCapX - nx * wa;
+          const aRy = aCapY - ny * wa;
+          const bLx = bCapX + nx * wb;
+          const bLy = bCapY + ny * wb;
+          const bRx = bCapX - nx * wb;
+          const bRy = bCapY - ny * wb;
           if (winding === "CW") {
-            quadVerts[0]!.x = aRx; quadVerts[0]!.y = aRy;
-            quadVerts[1]!.x = bRx; quadVerts[1]!.y = bRy;
-            quadVerts[2]!.x = bLx; quadVerts[2]!.y = bLy;
-            quadVerts[3]!.x = aLx; quadVerts[3]!.y = aLy;
+            quadVerts[0]!.x = aRx;
+            quadVerts[0]!.y = aRy;
+            quadVerts[1]!.x = bRx;
+            quadVerts[1]!.y = bRy;
+            quadVerts[2]!.x = bLx;
+            quadVerts[2]!.y = bLy;
+            quadVerts[3]!.x = aLx;
+            quadVerts[3]!.y = aLy;
           } else {
-            quadVerts[0]!.x = aLx; quadVerts[0]!.y = aLy;
-            quadVerts[1]!.x = bLx; quadVerts[1]!.y = bLy;
-            quadVerts[2]!.x = bRx; quadVerts[2]!.y = bRy;
-            quadVerts[3]!.x = aRx; quadVerts[3]!.y = aRy;
+            quadVerts[0]!.x = aLx;
+            quadVerts[0]!.y = aLy;
+            quadVerts[1]!.x = bLx;
+            quadVerts[1]!.y = bLy;
+            quadVerts[2]!.x = bRx;
+            quadVerts[2]!.y = bRy;
+            quadVerts[3]!.x = aRx;
+            quadVerts[3]!.y = aRy;
           }
         };
 
-        // Dynamic stroke primitive (optional)
-        if (layer.stroke) {
-          let strokeVerts: SceneVector2[] = [ {x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0} ];
+        const sampleVertices = () => {
+          deformSpine(getTentacleTimeMs());
+          buildQuad(segIndex);
+        };
+
+        if (layer.stroke && strokeVerts) {
           dynamicPrimitives.push(
             createDynamicPolygonPrimitive(instance, {
               getVertices: () => {
-                deformSpine(Date.now());
-                buildQuad(segIndex);
-                // expand for stroke
-                strokeVerts = expandVerticesForStroke(quadVerts, layer.stroke!.width);
-                return strokeVerts;
+                sampleVertices();
+                const strokeVertices = expandVerticesForStroke(
+                  quadVerts,
+                  layer.stroke!.width,
+                );
+                strokeVerts = strokeVertices;
+                return strokeVertices;
               },
               offset: layer.offset,
               getFill: (target) => resolveLayerStrokeFill(target, layer.stroke!, renderer),
@@ -760,8 +849,7 @@ const createCompositePrimitives = (
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: () => {
-              deformSpine(Date.now());
-              buildQuad(segIndex);
+              sampleVertices();
               return quadVerts;
             },
             offset: layer.offset,

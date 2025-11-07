@@ -82,6 +82,14 @@ export interface SceneObjectInstance {
   data: SceneObjectData & { fill: SceneFill; stroke?: SceneStroke };
 }
 
+type CustomDataCacheEntry = {
+  source: unknown;
+  clone: unknown;
+  snapshot: unknown;
+  version: number;
+  snapshotVersion: number;
+};
+
 export interface SceneCameraState {
   position: SceneVector2;
   viewportSize: SceneSize;
@@ -102,6 +110,8 @@ export class SceneObjectManager {
   private objects = new Map<string, SceneObjectInstance>();
   private ordered: SceneObjectInstance[] = [];
   private idCounter = 0;
+
+  private customDataCache = new Map<string, CustomDataCacheEntry>();
 
   private added = new Map<string, SceneObjectInstance>();
   private updated = new Map<string, SceneObjectInstance>();
@@ -130,6 +140,10 @@ export class SceneObjectManager {
       ? sanitizeColor(data.color)
       : extractPrimaryColor(fill);
     const stroke = sanitizeStroke(data.stroke);
+    const customData =
+      typeof data.customData !== "undefined"
+        ? this.cloneCustomDataForInstance(id, data.customData)
+        : undefined;
     const instance: SceneObjectInstance = {
       id,
       type,
@@ -140,7 +154,7 @@ export class SceneObjectManager {
         fill,
         rotation: normalizeRotation(data.rotation),
         stroke,
-        customData: cloneCustomData(data.customData),
+        customData,
       },
     };
     this.objects.set(id, instance);
@@ -180,10 +194,10 @@ export class SceneObjectManager {
         : typeof previousData.rotation === "number"
         ? previousData.rotation
         : DEFAULT_ROTATION;
-    const customData =
-      typeof data.customData !== "undefined"
-        ? cloneCustomData(data.customData)
-        : previousData.customData;
+    const hasCustomData = typeof data.customData !== "undefined";
+    const customData = hasCustomData
+      ? this.cloneCustomDataForInstance(id, data.customData)
+      : previousData.customData;
 
     instance.data = {
       position: { ...data.position },
@@ -211,6 +225,7 @@ export class SceneObjectManager {
     if (!instance) {
       return;
     }
+    this.customDataCache.delete(id);
     // Mark for deferred removal and hide immediately (alpha = 0)
     // Forcefully hide via fully transparent SOLID fill to avoid gradient artifacts
     const transparentFill: SceneFill = {
@@ -438,13 +453,281 @@ export class SceneObjectManager {
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
             : DEFAULT_ROTATION,
-        customData: cloneCustomData(instance.data.customData),
+        customData: this.getCustomDataSnapshot(instance.id, instance.data.customData),
       },
     };
   }
+
+  private cloneCustomDataForInstance<T>(id: string, value: T): T {
+    if (value === undefined || value === null) {
+      this.customDataCache.delete(id);
+      return value;
+    }
+
+    if (typeof value !== "object") {
+      this.customDataCache.delete(id);
+      return value;
+    }
+
+    const cached = this.customDataCache.get(id);
+    const previousClone = cached?.clone;
+    const result = cloneCustomDataMutable(value, previousClone);
+
+    if (!cached) {
+      this.customDataCache.set(id, {
+        source: value,
+        clone: result.clone,
+        snapshot: undefined,
+        version: 1,
+        snapshotVersion: 0,
+      });
+    } else {
+      cached.source = value;
+      cached.clone = result.clone;
+      if (result.changed) {
+        cached.version += 1;
+        cached.snapshot = undefined;
+        cached.snapshotVersion = 0;
+      }
+      this.customDataCache.set(id, cached);
+    }
+
+    return result.clone as T;
+  }
+
+  private getCustomDataSnapshot(id: string, value: unknown): unknown {
+    if (value === undefined || value === null) {
+      return value;
+    }
+
+    if (typeof value !== "object") {
+      return value;
+    }
+
+    const cached = this.customDataCache.get(id);
+    if (!cached) {
+      const { clone } = cloneCustomDataMutable(value, undefined);
+      const snapshot = cloneCustomDataSnapshot(clone);
+      this.customDataCache.set(id, {
+        source: value,
+        clone,
+        snapshot,
+        version: 1,
+        snapshotVersion: 1,
+      });
+      return snapshot;
+    }
+
+    if (cached.clone !== value) {
+      const result = cloneCustomDataMutable(value, cached.clone);
+      cached.clone = result.clone;
+      cached.source = value;
+      if (result.changed) {
+        cached.version += 1;
+        cached.snapshot = undefined;
+        cached.snapshotVersion = 0;
+      }
+      this.customDataCache.set(id, cached);
+    }
+
+    if (!cached.snapshot || cached.snapshotVersion !== cached.version) {
+      cached.snapshot = cloneCustomDataSnapshot(cached.clone);
+      cached.snapshotVersion = cached.version;
+      this.customDataCache.set(id, cached);
+    }
+
+    return cached.snapshot;
+  }
 }
 
-function cloneCustomData<T>(value: T): T {
+type MutableCloneResult<T> = { clone: T; changed: boolean };
+
+function cloneCustomDataMutable<T>(value: T, previous: unknown): MutableCloneResult<T> {
+  return cloneCustomDataMutableInternal(value, previous, new WeakMap<object, unknown>()) as MutableCloneResult<T>;
+}
+
+function cloneCustomDataMutableInternal(
+  value: unknown,
+  previous: unknown,
+  seen: WeakMap<object, unknown>
+): MutableCloneResult<unknown> {
+  if (value === undefined || value === null || typeof value !== "object") {
+    return { clone: value, changed: value !== previous };
+  }
+
+  if (value instanceof ArrayBuffer) {
+    return cloneArrayBufferValue(value, previous);
+  }
+
+  if (ArrayBuffer.isView(value)) {
+    return cloneArrayBufferViewValue(value as ArrayBufferView, previous);
+  }
+
+  if (seen.has(value)) {
+    const cached = seen.get(value)!;
+    return { clone: cached, changed: cached !== previous };
+  }
+
+  if (Array.isArray(value)) {
+    return cloneArrayMutable(value, previous, seen);
+  }
+
+  if (isPlainObject(value)) {
+    return clonePlainObjectMutable(value as Record<string, unknown>, previous, seen);
+  }
+
+  const fallback = cloneCustomDataValue(value);
+  return { clone: fallback, changed: true };
+}
+
+function cloneArrayMutable(
+  source: unknown[],
+  previous: unknown,
+  seen: WeakMap<object, unknown>
+): MutableCloneResult<unknown[]> {
+  const reusable = Array.isArray(previous) && !Object.isFrozen(previous);
+  const previousArray = reusable ? (previous as unknown[]) : null;
+  const target = previousArray ?? new Array(source.length);
+  seen.set(source, target);
+  const previousLength = previousArray ? previousArray.length : 0;
+  let changed = !reusable || previousLength !== source.length;
+
+  if (reusable && previousArray && previousArray.length !== source.length) {
+    previousArray.length = source.length;
+  }
+
+  for (let i = 0; i < source.length; i += 1) {
+    const previousValue = reusable && i < previousLength ? target[i] : undefined;
+    const result = cloneCustomDataMutableInternal(source[i], previousValue, seen);
+    if (!reusable || i >= previousLength || result.clone !== previousValue) {
+      target[i] = result.clone;
+      if (reusable && i < previousLength && result.clone === previousValue && !result.changed) {
+        // no-op
+      } else {
+        changed = true;
+      }
+    } else if (result.changed) {
+      changed = true;
+    }
+  }
+
+  if (reusable && previousLength > source.length && previousArray) {
+    previousArray.length = source.length;
+    changed = true;
+  }
+
+  return { clone: target, changed };
+}
+
+function clonePlainObjectMutable(
+  source: Record<string, unknown>,
+  previous: unknown,
+  seen: WeakMap<object, unknown>
+): MutableCloneResult<Record<string, unknown>> {
+  const prototype = Object.getPrototypeOf(source);
+  const reusable =
+    previous &&
+    typeof previous === "object" &&
+    !Array.isArray(previous) &&
+    !Object.isFrozen(previous) &&
+    Object.getPrototypeOf(previous) === prototype;
+  const target = reusable
+    ? (previous as Record<string, unknown>)
+    : Object.create(prototype === null ? null : prototype);
+  seen.set(source, target);
+  let changed = !reusable;
+
+  if (reusable) {
+    for (const key of Object.keys(target)) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) {
+        delete target[key];
+        changed = true;
+      }
+    }
+  }
+
+  for (const key of Object.keys(source)) {
+    const previousValue = reusable ? target[key] : undefined;
+    const result = cloneCustomDataMutableInternal(source[key], previousValue, seen);
+    if (!reusable || result.clone !== previousValue) {
+      target[key] = result.clone;
+      if (reusable && result.clone === previousValue && !result.changed) {
+        // no-op
+      } else {
+        changed = true;
+      }
+    } else if (result.changed) {
+      changed = true;
+    }
+  }
+
+  return { clone: target, changed };
+}
+
+function cloneArrayBufferValue(
+  buffer: ArrayBufferLike,
+  previous: unknown
+): MutableCloneResult<ArrayBuffer> {
+  const previousBuffer = previous instanceof ArrayBuffer ? previous : null;
+  const sourceView = new Uint8Array(buffer);
+  const targetView =
+    previousBuffer && !Object.isFrozen(previousBuffer) && previousBuffer.byteLength === buffer.byteLength
+      ? new Uint8Array(previousBuffer)
+      : new Uint8Array(buffer.byteLength);
+  let changed = !previousBuffer || previousBuffer.byteLength !== buffer.byteLength;
+  for (let i = 0; i < sourceView.length; i += 1) {
+    const value = sourceView[i]!;
+    if (!changed && targetView[i] !== value) {
+      changed = true;
+    }
+    targetView[i] = value;
+  }
+  return { clone: targetView.buffer, changed };
+}
+
+function cloneArrayBufferViewValue(
+  view: ArrayBufferView,
+  previous: unknown
+): MutableCloneResult<ArrayBufferView> {
+  if (view instanceof DataView) {
+    const previousView = previous instanceof DataView ? previous : null;
+    const previousBuffer = previousView && previousView.buffer instanceof ArrayBuffer ? previousView.buffer : undefined;
+    const result = cloneArrayBufferValue(view.buffer, previousBuffer);
+    const cloneView = new DataView(result.clone, view.byteOffset, view.byteLength);
+    return {
+      clone: cloneView,
+      changed:
+        result.changed ||
+        !previousView ||
+        previousView.byteOffset !== view.byteOffset ||
+        previousView.byteLength !== view.byteLength,
+    };
+  }
+
+  type NumericArrayView = ArrayBufferView & { length: number; [index: number]: number };
+  const sourceArray = view as NumericArrayView;
+  const previousArray =
+    previous &&
+    ArrayBuffer.isView(previous) &&
+    previous.constructor === view.constructor &&
+    !Object.isFrozen(previous)
+      ? (previous as NumericArrayView)
+      : null;
+  const targetArray =
+    previousArray ??
+    (new (view.constructor as unknown as { new (length: number): NumericArrayView })(sourceArray.length) as NumericArrayView);
+  let changed = !previousArray || previousArray.length !== sourceArray.length;
+  for (let i = 0; i < sourceArray.length; i += 1) {
+    const value = sourceArray[i]!;
+    if (!changed && targetArray[i] !== value) {
+      changed = true;
+    }
+    targetArray[i] = value;
+  }
+  return { clone: targetArray, changed };
+}
+
+function cloneCustomDataValue<T>(value: T): T {
   if (value === undefined || value === null) {
     return value;
   }
@@ -465,19 +748,68 @@ function cloneCustomData<T>(value: T): T {
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => cloneCustomData(item)) as T;
+    return value.map((item) => cloneCustomDataValue(item)) as T;
   }
 
   if (typeof value === "object") {
     const source = value as Record<string | number | symbol, unknown>;
     const clone: Record<string | number | symbol, unknown> = {};
     Object.keys(source).forEach((key) => {
-      clone[key] = cloneCustomData(source[key]);
+      clone[key] = cloneCustomDataValue(source[key]);
     });
     return clone as T;
   }
 
   return value;
+}
+
+function cloneCustomDataSnapshot<T>(value: T): T {
+  if (value === undefined || value === null) {
+    return value;
+  }
+
+  if (typeof value !== "object") {
+    return value;
+  }
+
+  const snapshot = cloneCustomDataValue(value);
+  freezeCustomDataValue(snapshot, new WeakSet<object>());
+  return snapshot;
+}
+
+function freezeCustomDataValue(value: unknown, seen: WeakSet<object>): void {
+  if (!value || typeof value !== "object") {
+    return;
+  }
+
+  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+    Object.freeze(value);
+    return;
+  }
+
+  const objectValue = value as Record<string | number | symbol, unknown>;
+  if (seen.has(objectValue)) {
+    return;
+  }
+  seen.add(objectValue);
+
+  if (Array.isArray(objectValue)) {
+    objectValue.forEach((item) => freezeCustomDataValue(item, seen));
+  } else {
+    Object.keys(objectValue).forEach((key) =>
+      freezeCustomDataValue(objectValue[key], seen)
+    );
+  }
+
+  Object.freeze(objectValue);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function sanitizeColor(color: SceneColor | undefined): SceneColor {

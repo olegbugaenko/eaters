@@ -11,6 +11,22 @@ import type { BrickRuntimeState } from "../BricksModule";
 
 const OUT_OF_BOUNDS_MARGIN = 50;
 
+interface SandStormCustomData {
+  intensity: number;
+  phase: number;
+  velocity: SceneVector2;
+  lastUpdateTime: number;
+  spinSpeed: number;
+  rotationSpeedMultiplier: number;
+  spiralArms: number;
+  spiralArms2: number;
+  spiralTwist: number;
+  spiralTwist2: number;
+  colorInner: SceneColor;
+  colorMid: SceneColor;
+  colorOuter: SceneColor;
+}
+
 interface WhirlState {
   id: string;
   spellId: string;
@@ -33,10 +49,16 @@ interface WhirlState {
   colorInner: SceneColor;
   colorMid: SceneColor;
   colorOuter: SceneColor;
+  renderData: SandStormCustomData;
 }
 
 const clampNumber = (value: number, min: number, max: number): number =>
   Math.min(Math.max(Number.isFinite(value) ? value : min, min), max);
+
+const getNowMs = (): number =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 
 export class WhirlSpellBehavior implements SpellBehavior {
   public readonly spellType = "whirl" as const;
@@ -80,24 +102,42 @@ export class WhirlSpellBehavior implements SpellBehavior {
     const baseMaxHealth = Math.max(0, whirl.maxHealth);
     const maxHealth = baseMaxHealth * damageMultiplier;
 
+    const spinSpeed = Math.max(0, whirl.spinSpeed ?? 2.5);
+    const rotationSpeedMultiplier = whirl.rotationSpeedMultiplier ?? 1.0;
+    const spiralArms = whirl.spiralArms ?? 6.0;
+    const spiralArms2 = whirl.spiralArms2 ?? 12.0;
+    const spiralTwist = whirl.spiralTwist ?? 7.0;
+    const spiralTwist2 = whirl.spiralTwist2 ?? 4.0;
+    const colorInner = whirl.colorInner
+      ? { ...whirl.colorInner }
+      : { r: 0.95, g: 0.88, b: 0.72, a: 1 };
+    const colorMid = whirl.colorMid
+      ? { ...whirl.colorMid }
+      : { r: 0.85, g: 0.72, b: 0.58, a: 1 };
+    const colorOuter = whirl.colorOuter
+      ? { ...whirl.colorOuter }
+      : { r: 0.68, g: 0.55, b: 0.43, a: 1 };
+
+    const renderData: SandStormCustomData = {
+      intensity: maxHealth > 0 ? 1 : 0,
+      phase: 0,
+      velocity: { x: velocity.x, y: velocity.y },
+      lastUpdateTime: getNowMs(),
+      spinSpeed,
+      rotationSpeedMultiplier,
+      spiralArms,
+      spiralArms2,
+      spiralTwist,
+      spiralTwist2,
+      colorInner,
+      colorMid,
+      colorOuter,
+    };
+
     const objectId = this.scene.addObject("sandStorm", {
       position: { ...position },
       size: { width: radius * 2, height: radius * 2 },
-      customData: {
-        intensity: maxHealth > 0 ? 1 : 0,
-        phase: 0,
-        velocity,
-        lastUpdateTime: performance.now(),
-        spinSpeed: Math.max(0, whirl.spinSpeed ?? 2.5),
-        rotationSpeedMultiplier: whirl.rotationSpeedMultiplier ?? 1.0,
-        spiralArms: whirl.spiralArms ?? 6.0,
-        spiralArms2: whirl.spiralArms2 ?? 12.0,
-        spiralTwist: whirl.spiralTwist ?? 7.0,
-        spiralTwist2: whirl.spiralTwist2 ?? 4.0,
-        colorInner: whirl.colorInner ?? { r: 0.95, g: 0.88, b: 0.72, a: 1 },
-        colorMid: whirl.colorMid ?? { r: 0.85, g: 0.72, b: 0.58, a: 1 },
-        colorOuter: whirl.colorOuter ?? { r: 0.68, g: 0.55, b: 0.43, a: 1 },
-      },
+      customData: renderData,
     });
 
     const state: WhirlState = {
@@ -112,15 +152,16 @@ export class WhirlSpellBehavior implements SpellBehavior {
       remainingHealth: maxHealth,
       damageMultiplier,
       phase: 0,
-      spinSpeed: Math.max(0, whirl.spinSpeed ?? 2.5),
-      rotationSpeedMultiplier: whirl.rotationSpeedMultiplier ?? 1.0,
-      spiralArms: whirl.spiralArms ?? 6.0,
-      spiralArms2: whirl.spiralArms2 ?? 12.0,
-      spiralTwist: whirl.spiralTwist ?? 7.0,
-      spiralTwist2: whirl.spiralTwist2 ?? 4.0,
-      colorInner: whirl.colorInner ?? { r: 0.95, g: 0.88, b: 0.72, a: 1 },
-      colorMid: whirl.colorMid ?? { r: 0.85, g: 0.72, b: 0.58, a: 1 },
-      colorOuter: whirl.colorOuter ?? { r: 0.68, g: 0.55, b: 0.43, a: 1 },
+      spinSpeed,
+      rotationSpeedMultiplier,
+      spiralArms,
+      spiralArms2,
+      spiralTwist,
+      spiralTwist2,
+      colorInner,
+      colorMid,
+      colorOuter,
+      renderData,
     };
 
     this.storms.push(state);
@@ -193,24 +234,23 @@ export class WhirlSpellBehavior implements SpellBehavior {
 
       const intensityBase = storm.maxHealth > 0 ? storm.remainingHealth / storm.maxHealth : 0;
       const intensity = clampNumber(intensityBase, 0, 1);
+      const renderData = storm.renderData;
+      renderData.intensity = Math.max(0.25, intensity);
+      renderData.phase = storm.phase;
+      renderData.velocity.x = storm.velocity.x;
+      renderData.velocity.y = storm.velocity.y;
+      renderData.lastUpdateTime = getNowMs();
+      renderData.spinSpeed = storm.spinSpeed;
+      renderData.rotationSpeedMultiplier = storm.rotationSpeedMultiplier;
+      renderData.spiralArms = storm.spiralArms;
+      renderData.spiralArms2 = storm.spiralArms2;
+      renderData.spiralTwist = storm.spiralTwist;
+      renderData.spiralTwist2 = storm.spiralTwist2;
+
       this.scene.updateObject(storm.id, {
         position: { ...storm.position },
         size: { width: storm.radius * 2, height: storm.radius * 2 },
-        customData: {
-          intensity: Math.max(0.25, intensity),
-          phase: storm.phase,
-          velocity: { ...storm.velocity },
-          lastUpdateTime: performance.now(),
-          spinSpeed: storm.spinSpeed,
-          rotationSpeedMultiplier: storm.rotationSpeedMultiplier,
-          spiralArms: storm.spiralArms,
-          spiralArms2: storm.spiralArms2,
-          spiralTwist: storm.spiralTwist,
-          spiralTwist2: storm.spiralTwist2,
-          colorInner: storm.colorInner,
-          colorMid: storm.colorMid,
-          colorOuter: storm.colorOuter,
-        },
+        customData: renderData,
       });
 
       survivors.push(storm);
