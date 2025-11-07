@@ -75,9 +75,9 @@ const SMALL_SQUARE_GRAY_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const SMALL_SQUARE_YELLOW_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.75, g: 0.75, b: 0.58, a: 1 } },
-  { offset: 0.55, color: { r: 0.6, g: 0.6, b: 0.45, a: 1 } },
-  { offset: 1, color: { r: 0.45, g: 0.45, b: 0.3, a: 1 } },
+  { offset: 0, color: { r: 0.77, g: 0.77, b: 0.58, a: 1 } },
+  { offset: 0.55, color: { r: 0.7, g: 0.7, b: 0.55, a: 1 } },
+  { offset: 1, color: { r: 0.55, g: 0.55, b: 0.4, a: 1 } },
 ] as const;
 
 const BLUE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
@@ -170,6 +170,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       center: { x: 0, y: 0 },
       radius: 12,
       stops: SMALL_SQUARE_GRAY_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.5,
+      },
     },
     stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
     destructubleData: {
@@ -201,8 +206,13 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       center: { x: 0, y: 0 },
       radius: 12,
       stops: SMALL_SQUARE_YELLOW_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.5,
+      },
     },
-    stroke: { color: { r: 0.3, g: 0.3, b: 0.2, a: 1 }, width: 1.5 },
+    stroke: { color: { r: 0.5, g: 0.5, b: 0.45, a: 1 }, width: 1.5 },
     destructubleData: {
       maxHp: 20,
       armor: 1,
@@ -232,8 +242,13 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       center: { x: 0, y: 0 },
       radius: 28,
       stops: GREEN_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.05,
+        alphaAmplitude: 0.0,
+        scale: 0.15,
+      },
     },
-    stroke: { color: { r: 0.1, g: 0.45, b: 0.15, a: 1 }, width: 2.4 },
+    stroke: { color: { r: 0.05, g: 0.45, b: 0.05, a: 1 }, width: 2.4 },
     destructubleData: {
       maxHp: 90,
       armor: 8,
@@ -292,6 +307,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       start: { x: 0, y: -12 },
       end: { x: 0, y: 12 },
       stops: WOOD_LINEAR_GRADIENT,
+      noise: {
+        colorAmplitude: 0.08,
+        alphaAmplitude: 0.0,
+        scale: 0.45,
+      },
     },
     stroke: { color: { r: 0.25, g: 0.15, b: 0.05, a: 1 }, width: 1.5 },
     destructubleData: {
@@ -322,6 +342,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       center: { x: 0, y: 0 },
       radius: 12,
       stops: COPPER_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.35,
+      },
     },
     stroke: { color: { r: 0.4, g: 0.2, b: 0.08, a: 1 }, width: 1.5 },
     destructubleData: {
@@ -382,6 +407,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       center: { x: 0, y: 0 },
       radius: 12,
       stops: COAL_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.08,
+        alphaAmplitude: 0.0,
+        scale: 0.25,
+      },
     },
     stroke: { color: { r: 0.08, g: 0.08, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
@@ -412,6 +442,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       center: { x: 0, y: 0 },
       radius: 28,
       stops: ICE_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.05,
+        alphaAmplitude: 0.0,
+        scale: 0.15,
+      },
     },
     stroke: { color: { r: 0.5, g: 0.7, b: 0.9, a: 1 }, width: 2.4 },
     destructubleData: {
@@ -442,6 +477,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       center: { x: 0, y: 0 },
       radius: 12,
       stops: MAGMA_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.15,
+        alphaAmplitude: 0.0,
+        scale: 0.25,
+      },
     },
     stroke: { color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
