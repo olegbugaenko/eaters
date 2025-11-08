@@ -75,9 +75,9 @@ const SMALL_SQUARE_GRAY_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const SMALL_SQUARE_YELLOW_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.77, g: 0.77, b: 0.58, a: 1 } },
-  { offset: 0.55, color: { r: 0.7, g: 0.7, b: 0.55, a: 1 } },
-  { offset: 1, color: { r: 0.55, g: 0.55, b: 0.4, a: 1 } },
+  { offset: 0, color: { r: 0.7, g: 0.7, b: 0.54, a: 1 } },
+  { offset: 0.55, color: { r: 0.6, g: 0.6, b: 0.45, a: 1 } },
+  { offset: 1, color: { r: 0.5, g: 0.5, b: 0.35, a: 1 } },
 ] as const;
 
 const BLUE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
@@ -207,12 +207,12 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       radius: 12,
       stops: SMALL_SQUARE_YELLOW_GRADIENT,
       noise: {
-        colorAmplitude: 0.04,
+        colorAmplitude: 0.03,
         alphaAmplitude: 0.0,
         scale: 0.5,
       },
     },
-    stroke: { color: { r: 0.5, g: 0.5, b: 0.45, a: 1 }, width: 1.5 },
+    stroke: { color: { r: 0.4, g: 0.4, b: 0.25, a: 1 }, width: 1.5 },
     destructubleData: {
       maxHp: 20,
       armor: 1,
@@ -243,7 +243,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       radius: 28,
       stops: GREEN_RADIAL_GRADIENT,
       noise: {
-        colorAmplitude: 0.05,
+        colorAmplitude: 0.02,
         alphaAmplitude: 0.0,
         scale: 0.15,
       },
@@ -408,9 +408,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       radius: 12,
       stops: COAL_RADIAL_GRADIENT,
       noise: {
-        colorAmplitude: 0.08,
+        colorAmplitude: 0.01,
         alphaAmplitude: 0.0,
-        scale: 0.25,
+        scale: 0.2,
       },
     },
     stroke: { color: { r: 0.08, g: 0.08, b: 0.1, a: 1 }, width: 1.5 },
@@ -458,11 +458,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
-        type: "ironBrickHit",
+        type: "iceBrickHit",
         radiusMultiplier: 0.85,
       },
       destructionExplosion: {
-        type: "ironBrickDestroy",
+        type: "iceBrickDestroy",
         radiusMultiplier: 1.25,
       },
     },
@@ -478,9 +478,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       radius: 12,
       stops: MAGMA_RADIAL_GRADIENT,
       noise: {
-        colorAmplitude: 0.03,
+        colorAmplitude: 0.02,
         alphaAmplitude: 0.0,
-        scale: 0.25,
+        scale: 0.15,
       },
     },
     stroke: { color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, width: 1.5 },
@@ -493,11 +493,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
-        type: "copperBrickHit",
+        type: "magmaBrickHit",
         radiusMultiplier: 0.75,
       },
       destructionExplosion: {
-        type: "copperBrickDestroy",
+        type: "magmaBrickDestroy",
         radiusMultiplier: 1.15,
       },
     },

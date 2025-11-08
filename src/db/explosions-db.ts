@@ -27,6 +27,10 @@ export type ExplosionType =
   | "silverBrickDestroy"
   | "coalBrickHit"
   | "coalBrickDestroy"
+  | "iceBrickHit"
+  | "iceBrickDestroy"
+  | "magmaBrickHit"
+  | "magmaBrickDestroy"
   | "criticalHit";
 
 export interface ExplosionWaveConfig {
@@ -182,6 +186,30 @@ const COAL_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0 } },
 ] as const;
 
+// Ice-themed waves (cool cyan/white)
+const ICE_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.7, g: 0.9, b: 1.0, a: 0.5 } },
+  { offset: 0.45, color: { r: 0.55, g: 0.8, b: 1.0, a: 0.3 } },
+  { offset: 1, color: { r: 0.35, g: 0.6, b: 0.9, a: 0 } },
+] as const;
+const ICE_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.85, g: 0.95, b: 1.0, a: 0.65 } },
+  { offset: 0.45, color: { r: 0.65, g: 0.85, b: 1.0, a: 0.4 } },
+  { offset: 1, color: { r: 0.4, g: 0.7, b: 1.0, a: 0 } },
+] as const;
+
+// Magma-themed waves (hot orange/red)
+const MAGMA_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 1.0, g: 0.5, b: 0.15, a: 0.5 } },
+  { offset: 0.45, color: { r: 0.9, g: 0.3, b: 0.1, a: 0.28 } },
+  { offset: 1, color: { r: 0.7, g: 0.15, b: 0.05, a: 0 } },
+] as const;
+const MAGMA_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 1.0, g: 0.65, b: 0.2, a: 0.68 } },
+  { offset: 0.45, color: { r: 1.0, g: 0.45, b: 0.15, a: 0.4 } },
+  { offset: 1, color: { r: 0.85, g: 0.25, b: 0.08, a: 0 } },
+] as const;
+
 const DEFAULT_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.SOLID,
   color: { r: 1, g: 0.85, b: 0.55, a: 1 },
@@ -258,6 +286,16 @@ const SILVER_BRICK_EMITTER_FILL2: SceneFill = {
     { offset: 1, color: { r: 0.75, g: 0.76, b: 0.8, a: 0 } },
   ],
 };
+const ICE_BRICK_EMITTER_FILL2: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 0.85, g: 0.95, b: 1.0, a: 0.95 } },
+    { offset: 0.45, color: { r: 0.65, g: 0.85, b: 1.0, a: 0.6 } },
+    { offset: 1, color: { r: 0.45, g: 0.7, b: 1.0, a: 0 } },
+  ],
+};
 const COAL_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
@@ -266,6 +304,16 @@ const COAL_BRICK_EMITTER_FILL2: SceneFill = {
     { offset: 0, color: { r: 0.3, g: 0.3, b: 0.32, a: 0.95 } },
     { offset: 0.45, color: { r: 0.18, g: 0.18, b: 0.2, a: 0.6 } },
     { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0 } },
+  ],
+};
+const MAGMA_BRICK_EMITTER_FILL2: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 6,
+  stops: [
+    { offset: 0, color: { r: 1.0, g: 0.65, b: 0.2, a: 0.95 } },
+    { offset: 0.45, color: { r: 1.0, g: 0.45, b: 0.15, a: 0.6 } },
+    { offset: 1, color: { r: 0.9, g: 0.3, b: 0.1, a: 0 } },
   ],
 };
 
@@ -600,6 +648,50 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       gradientStops: COAL_BRICK_DESTROY_WAVE,
     },
     emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 0.24, g: 0.24, b: 0.27, a: 1 }, fill: COAL_BRICK_EMITTER_FILL2 },
+  },
+  iceBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.5,
+      endAlpha: 0,
+      gradientStops: ICE_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.7, g: 0.9, b: 1.0, a: 1 }, fill: ICE_BRICK_EMITTER_FILL2 },
+  },
+  iceBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: ICE_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 0.85, g: 0.95, b: 1.0, a: 1 }, fill: ICE_BRICK_EMITTER_FILL2 },
+  },
+  magmaBrickHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 6,
+    wave: {
+      radiusExtension: 40,
+      startAlpha: 0.5,
+      endAlpha: 0,
+      gradientStops: MAGMA_BRICK_HIT_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 1.0, g: 0.5, b: 0.15, a: 1 }, fill: MAGMA_BRICK_EMITTER_FILL2 },
+  },
+  magmaBrickDestroy: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 10,
+    wave: {
+      radiusExtension: 90,
+      startAlpha: 0.68,
+      endAlpha: 0,
+      gradientStops: MAGMA_BRICK_DESTROY_WAVE,
+    },
+    emitter: { ...GRAY_BRICK_DESTRUCTION_EMITTER, color: { r: 1.0, g: 0.65, b: 0.2, a: 1 }, fill: MAGMA_BRICK_EMITTER_FILL2 },
   },
   criticalHit: {
     lifetimeMs: 900,
