@@ -1405,7 +1405,7 @@ const getEmitterOrigin = (
 ): SceneVector2 => {
   const scale = Math.max(config.physicalSize, 1);
   const offset = {
-    x: config.offset.x * scale,
+    x: (config.offset.x) * scale - 10,
     y: config.offset.y * scale,
   };
   return transformObjectPoint(instance.data.position, instance.data.rotation, offset);

@@ -137,6 +137,10 @@ input[type="number"]:focus-visible {
   box-shadow: var(--shadow-card);
 }
 
+.surface-card.dark {
+  background: var(--color-surface-saturated);
+}
+
 .heading-1 {
   font-size: var(--font-size-heading-1);
   letter-spacing: 0.04em;
