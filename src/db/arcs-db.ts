@@ -15,8 +15,8 @@ export interface ArcConfig {
   readonly oscillationAmplitude: number;
 }
 
-const HEAL_ARC_COLOR: SceneColor = { r: 0.6, g: 1.0, b: 0.5, a: 1.0 };
-const HEAL_ARC_BLUR: SceneColor = { r: 0.6, g: 0.9, b: 0.3, a: 0.9 };
+const HEAL_ARC_COLOR: SceneColor = { r: 0.6, g: 1.0, b: 0.5, a: 0.65 };
+const HEAL_ARC_BLUR: SceneColor = { r: 0.6, g: 0.9, b: 0.3, a: 0.55 };
 const FRENZY_ARC_COLOR: SceneColor = { r: 1.0, g: 0.9, b: 0.2, a: 1.0 };
 const FRENZY_ARC_BLUR: SceneColor = { r: 1.0, g: 0.4, b: 0.4, a: 0.6 };
 

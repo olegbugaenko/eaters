@@ -388,6 +388,106 @@ export const createDynamicPolygonPrimitive = (
   return primitive;
 };
 
+interface DynamicPolygonStrokePrimitiveOptions {
+  vertices?: SceneVector2[];
+  getVertices?: (instance: SceneObjectInstance) => SceneVector2[];
+  stroke: SceneStroke;
+  offset?: SceneVector2;
+}
+
+const buildStrokeBandData = (
+  center: SceneVector2,
+  rotation: number,
+  inner: PolygonVertices,
+  outer: PolygonVertices,
+  fillComponents: Float32Array
+): Float32Array => {
+  const n = Math.min(inner.length, outer.length);
+  if (n < MIN_VERTEX_COUNT) {
+    return new Float32Array(0);
+  }
+  const innerT = inner.map((v) => transformObjectPoint(center, rotation, v));
+  const outerT = outer.map((v) => transformObjectPoint(center, rotation, v));
+  // Two triangles per edge
+  const triCount = n * 2;
+  const data = new Float32Array(triCount * 3 * VERTEX_COMPONENTS);
+  let write = 0;
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const A = outerT[i]!;
+    const B = outerT[j]!;
+    const a = innerT[i]!;
+    const b = innerT[j]!;
+    // Triangle 1: A, B, a
+    write = pushVertex(data, write, A.x, A.y, fillComponents);
+    write = pushVertex(data, write, B.x, B.y, fillComponents);
+    write = pushVertex(data, write, a.x, a.y, fillComponents);
+    // Triangle 2: a, B, b
+    write = pushVertex(data, write, a.x, a.y, fillComponents);
+    write = pushVertex(data, write, B.x, B.y, fillComponents);
+    write = pushVertex(data, write, b.x, b.y, fillComponents);
+  }
+  return data;
+};
+
+export const createDynamicPolygonStrokePrimitive = (
+  instance: SceneObjectInstance,
+  options: DynamicPolygonStrokePrimitiveOptions
+): DynamicPrimitive => {
+  const resolveVerts = (target: SceneObjectInstance): PolygonVertices => {
+    if (typeof options.getVertices === "function") {
+      return ensureVertices(options.getVertices(target));
+    }
+    if (options.vertices) {
+      return ensureVertices(options.vertices);
+    }
+    const data = target.data.customData as { vertices?: SceneVector2[] } | undefined;
+    return ensureVertices(data?.vertices);
+  };
+  const getCenter = (target: SceneObjectInstance): SceneVector2 =>
+    transformObjectPoint(target.data.position, target.data.rotation, options.offset);
+
+  let inner = resolveVerts(instance);
+  let geometry = computeGeometry(inner);
+  let origin = getCenter(instance);
+  let rotation = instance.data.rotation ?? 0;
+  const strokeFill = createStrokeFill(options.stroke);
+  let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
+  let fillComponents = createFillVertexComponents({
+    fill: strokeFill,
+    center: fillCenter,
+    rotation,
+    size: geometry.size,
+  });
+  let outer = expandVertices(inner, geometry.centerOffset, options.stroke.width);
+  let data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
+  const fillScratch = new Float32Array(fillComponents.length);
+
+  const primitive: DynamicPrimitive = {
+    get data() {
+      return data;
+    },
+    update(target: SceneObjectInstance) {
+      inner = resolveVerts(target);
+      geometry = computeGeometry(inner);
+      origin = getCenter(target);
+      rotation = target.data.rotation ?? 0;
+      fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
+      fillComponents = writeFillVertexComponents(fillScratch, {
+        fill: strokeFill,
+        center: fillCenter,
+        rotation,
+        size: geometry.size,
+      });
+      outer = expandVertices(inner, geometry.centerOffset, options.stroke.width);
+      data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
+      return data;
+    },
+  };
+
+  return primitive;
+};
+
 export const createStaticPolygonStrokePrimitive = (
   options: PolygonStrokeOptions
 ): StaticPrimitive | null => {

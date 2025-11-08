@@ -434,9 +434,23 @@ export class Application {
   }
 
   private handleAllUnitsDefeated(): void {
+    // If auto-restart is enabled, use the original logic (only check spawns)
+    if (this.mapModule.isAutoRestartEnabled()) {
+      if (this.necromancerModule.hasSanityForAnySpawn()) {
+        return;
+      }
+      this.handleMapRunCompleted(false);
+      return;
+    }
+    // If auto-restart is disabled, also check if player can cast any spell
+    // Game should continue as long as there's any form of active interaction
     if (this.necromancerModule.hasSanityForAnySpawn()) {
       return;
     }
+    if (this.spellcastingModule.hasResourcesForAnySpell()) {
+      return;
+    }
+    // No spawns possible and no spells can be cast - end the run
     this.handleMapRunCompleted(false);
   }
 

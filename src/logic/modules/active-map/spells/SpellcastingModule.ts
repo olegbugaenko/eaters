@@ -192,6 +192,42 @@ export class SpellcastingModule implements GameModule {
     }
   }
 
+  public hasResourcesForAnySpell(): boolean {
+    if (!this.necromancer.isMapActive()) {
+      return false;
+    }
+    const resources = this.necromancer.getResources();
+    return SPELL_IDS.some((id) => {
+      const config = this.configs.get(id);
+      if (!config) {
+        return false;
+      }
+      if (!this.isConfigUnlocked(config)) {
+        return false;
+      }
+      const cooldown = this.cooldowns.get(id) ?? 0;
+      if (cooldown > 0) {
+        return false;
+      }
+      const behavior = this.behaviorRegistry.getBehavior(config.type);
+      if (!behavior) {
+        return false;
+      }
+      const canCastContext: SpellCanCastContext = {
+        spellId: id,
+        config,
+        cooldownRemainingMs: cooldown,
+        isMapActive: true,
+        isUnlocked: true,
+      };
+      if (!behavior.canCast(canCastContext)) {
+        return false;
+      }
+      const cost = cloneCost(config.cost);
+      return resources.mana.current >= cost.mana && resources.sanity.current >= cost.sanity;
+    });
+  }
+
   public tryCastSpell(spellId: SpellId, rawTarget: SceneVector2): boolean {
     const config = this.configs.get(spellId);
     if (!config) {

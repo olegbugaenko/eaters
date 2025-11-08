@@ -259,6 +259,10 @@ export class MapModule implements GameModule {
     this.pushMapList();
   }
 
+  public isAutoRestartEnabled(): boolean {
+    return this.autoRestartEnabled;
+  }
+
   public setAutoRestartEnabled(enabled: boolean): void {
     const unlockChanged = this.refreshAutoRestartState();
     if (!this.autoRestartUnlocked) {

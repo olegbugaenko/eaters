@@ -87,16 +87,16 @@ const BLUE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const GREEN_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.45, g: 0.8, b: 0.5, a: 1 } },
-  { offset: 0.4, color: { r: 0.25, g: 0.8, b: 0.35, a: 0.9 } },
-  { offset: 1, color: { r: 0.05, g: 0.5, b: 0.05, a: 0.6 } },
+  { offset: 0, color: { r: 0.35, g: 0.6, b: 0.25, a: 1 } },
+  { offset: 0.4, color: { r: 0.2, g: 0.5, b: 0.1, a: 1.0 } },
+  { offset: 1, color: { r: 0.15, g: 0.4, b: 0.05, a: 1.0 } },
 ] as const;
 
 
 const ORANGE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.95, g: 0.8, b: 0.8, a: 1 } },
-  { offset: 0.4, color: { r: 1, g: 0.75, b: 0.45, a: 0.9 } },
-  { offset: 1, color: { r: 0.7, g: 0.45, b: 0.15, a: 0.6 } },
+  { offset: 0, color: { r: 0.85, g: 0.65, b: 0.45, a: 1 } },
+  { offset: 0.4, color: { r: 0.75, g: 0.55, b: 0.35, a: 1 } },
+  { offset: 1, color: { r: 0.6, g: 0.35, b: 0.05, a: 1 } },
 ] as const;
 
 const WOOD_LINEAR_GRADIENT: readonly SceneGradientStop[] = [
@@ -176,7 +176,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         scale: 0.5,
       },
     },
-    stroke: { color: { r: 0.3, g: 0.3, b: 0.35, a: 1 }, width: 1.5 },
+    stroke: { color: { r: 0.33, g: 0.33, b: 0.38, a: 1 }, width: 1.5 },
     destructubleData: {
       maxHp: 5,
       armor: 0,
@@ -243,12 +243,12 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       radius: 28,
       stops: GREEN_RADIAL_GRADIENT,
       noise: {
-        colorAmplitude: 0.02,
+        colorAmplitude: 0.01,
         alphaAmplitude: 0.0,
         scale: 0.15,
       },
     },
-    stroke: { color: { r: 0.05, g: 0.45, b: 0.05, a: 1 }, width: 2.4 },
+    stroke: { color: { r: 0.1, g: 0.4, b: 0.0, a: 1 }, width: 2.4 },
     destructubleData: {
       maxHp: 90,
       armor: 8,
@@ -278,7 +278,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       radius: 28,
       stops: ORANGE_RADIAL_GRADIENT,
     },
-    stroke: { color: { r: 0.4, g: 0.35, b: 0.1, a: 1 }, width: 2.4 },
+    stroke: { color: { r: 0.6, g: 0.35, b: 0.1, a: 0.9 }, width: 2.4 },
     destructubleData: {
       maxHp: 125,
       armor: 12,

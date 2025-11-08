@@ -68,10 +68,11 @@ export type PlayerUnitRendererLayerConfig =
       anim?: {
         type: "sway" | "pulse";
         periodMs?: number;
-        amplitude?: number;
+        amplitude?: number; // absolute displacement in world units
+        amplitudePercentage?: number; // optional: fraction of perpendicular distance to axis
         phase?: number;
         falloff?: "tip" | "root" | "none";
-        axis?: "normal" | "tangent";
+        axis?: "normal" | "tangent" | "movement-normal" | "movement-tangent";
       };
       // Meta for line-based shapes (tentacles): original spine and builder opts
       spine?: { x: number; y: number; width: number }[];
@@ -93,6 +94,7 @@ export type PlayerUnitRendererLayerConfig =
         type: "pulse" | "sway";
         periodMs?: number;
         amplitude?: number;
+        amplitudePercentage?: number;
         phase?: number;
       };
       groupId?: string;
@@ -223,6 +225,62 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
               ],
             },
           },
+        },
+        // body
+        {
+          shape: "polygon",
+          vertices: [
+            // починаємо з хвоста і йдемо по нижньому контуру до голови
+            { x: -14.4, y:  0.0 },
+            { x: -14.0, y: -1.15 },
+            { x: -13.2, y: -1.80 },
+            { x:  -11.5, y: -3.20 },
+            { x:  -9.0, y: -4.80 },
+            { x:  -6.0, y: -6.30 },
+            { x:  -3.0, y: -6.00 },
+            { x:   0.5, y: -7.40 },
+            { x:   3.8, y: -7.60 },
+            { x:   6.4, y: -6.20 },
+            { x:  8.2, y: -4.60 },
+            { x:  9.2, y: -3.60 },
+            { x:  9.7, y: -1.80 },
+            { x:  10.2, y:  0.0 },  // голова (округлена, не вістря)
+          
+            // верхній контур назад до хвоста — дзеркально по y
+            { x:  9.7, y:  1.80 },
+            { x:  9.2, y:  3.60 },
+            { x:  8.2, y:  4.60 },
+            { x:   6.4, y:  6.20 },
+            { x:   3.8, y:  7.60 },
+            { x:   0.5, y:  7.40 },
+            { x:  -3.0, y:  6.00 },
+            { x:  -6.0, y:  6.30 },
+            { x:  -9.0, y:  4.80 },
+            { x:  -11.5, y:  3.20 },
+            { x: -13.2, y:  1.80 },
+            { x: -14.0, y:  1.15 },
+            { x: -14.4, y:  0.0 },  // замикання хвоста
+          ],
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 12,
+              stops: [
+                { offset: 0, color: { r: 0.8, g: 0.9, b: 1, a: 0.0 } },
+                { offset: 0.2, color: { r: 0.8, g: 0.9, b: 1, a: 0.0 } },
+                { offset: 0.55, color: { r: 0.8, g: 0.9, b: 1, a: 0.05 } },
+                { offset: 1, color: { r: 0.8, g: 0.9, b: 1, a: 0.15 } },
+              ],
+            },
+          },
+          stroke: { 
+            type: "solid", 
+            width: 1.8, 
+            color: { r: 0.55, g: 0.8, b: 0.95, a: 0.2 } 
+          },
+          anim: { type: "sway", periodMs: 1500, amplitudePercentage: 0.1, falloff: "tip", axis: "movement-tangent", phase: 0 }
         },
         // Chord base (requires skill void_modules)
         {
@@ -540,8 +598,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     baseAttackDamage: 2,
     baseAttackInterval: 0.6,
     baseAttackDistance: 5,
-    moveSpeed: 140,
-    moveAcceleration: 140,
+    moveSpeed: 180,
+    moveAcceleration: 180,
     mass: 0.6,
     physicalSize: 12,
     baseCritChance: 0,

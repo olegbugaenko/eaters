@@ -17,6 +17,7 @@ import {
 import {
   createDynamicCirclePrimitive,
   createDynamicPolygonPrimitive,
+  createDynamicPolygonStrokePrimitive,
   createParticleEmitterPrimitive,
 } from "../primitives";
 import {
@@ -840,19 +841,22 @@ const createCompositePrimitives = (
         };
 
         if (layer.stroke && strokeVerts) {
+          const strokeColor =
+            (layer.stroke as any).kind === "solid"
+              ? (layer.stroke as any).color
+              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
+          const sceneStroke: SceneStroke = {
+            width: layer.stroke.width,
+            color: strokeColor,
+          };
           dynamicPrimitives.push(
-            createDynamicPolygonPrimitive(instance, {
+            createDynamicPolygonStrokePrimitive(instance, {
               getVertices: () => {
                 sampleVertices();
-                const strokeVertices = expandVerticesForStroke(
-                  quadVerts,
-                  layer.stroke!.width,
-                );
-                strokeVerts = strokeVertices;
-                return strokeVertices;
+                return quadVerts;
               },
+              stroke: sceneStroke,
               offset: layer.offset,
-              getFill: (target) => resolveLayerStrokeFill(target, layer.stroke!, renderer),
             })
           );
         }
@@ -869,24 +873,163 @@ const createCompositePrimitives = (
         );
         return; // handled animated tentacle layer
       }
-      if (layer.stroke) {
-        const strokeVertices = expandVerticesForStroke(layer.vertices, layer.stroke.width);
+      // Generic polygon layer (no spine). If it has anim.sway/pulse, deform vertices per-frame.
+      const animCfg = (layer as any).anim as
+        | {
+            type: "sway" | "pulse";
+            periodMs?: number;
+            amplitude?: number;
+            phase?: number;
+            axis?: "normal" | "tangent" | "movement-normal" | "movement-tangent";
+          }
+        | undefined;
+
+      if (animCfg && (animCfg.type === "sway" || animCfg.type === "pulse")) {
+        const baseVertices = layer.vertices.map((v) => ({ x: v.x, y: v.y }));
+        const center = baseVertices.reduce(
+          (acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }),
+          { x: 0, y: 0 }
+        );
+        center.x /= baseVertices.length;
+        center.y /= baseVertices.length;
+        const period = Math.max(1, Math.floor(animCfg.periodMs ?? 1500));
+        const amplitude = animCfg.amplitude ?? 6;
+        const phase = animCfg.phase ?? 0;
+        const axis = animCfg.axis ?? "normal";
+        // Movement-aligned axes in LOCAL space (object x-axis is movement tangent before world rotation)
+        const movementTangent = { x: 1, y: 0 };
+        const movementNormal = { x: 0, y: 1 };
+
+        const getDeformedVerticesSway = () => {
+          const t = getTentacleTimeMs();
+          const omega = (Math.PI * 2) / period;
+          const angle = omega * t + phase;
+          const verts = new Array<SceneVector2>(baseVertices.length);
+          const ampPct = (animCfg as any).amplitudePercentage as number | undefined;
+          for (let i = 0; i < baseVertices.length; i += 1) {
+            const v = baseVertices[i]!;
+            const dir = { x: v.x - center.x, y: v.y - center.y };
+            const len = Math.hypot(dir.x, dir.y) || 1;
+            const nx = dir.x / len;
+            const ny = dir.y / len;
+            const localPhase = angle + i * 0.6;
+            // Default per-vertex phase (organic). For movement-locked axes we enforce global phase for symmetry.
+            let base = Math.sin(localPhase);
+            let dx: number;
+            let dy: number;
+            if (axis === "tangent") {
+              const tx = -ny;
+              const ty = nx;
+              const mag = amplitude;
+              dx = tx * mag * base;
+              dy = ty * mag * base;
+            } else if (axis === "movement-tangent" || axis === "movement-normal") {
+              // Strict symmetry about the movement axis: no per-vertex phase, use global phase only
+              base = Math.sin(angle);
+              // Displace ALONG PERPENDICULAR to the selected axis, to move toward the axis
+              const ax = axis === "movement-tangent" ? movementTangent.x : movementNormal.x;
+              const ay = axis === "movement-tangent" ? movementTangent.y : movementNormal.y;
+              const px = -ay;
+              const py = ax; // perpendicular unit
+              const signedDistToAxis = v.x * px + v.y * py; // distance relative to axis through origin
+              const towardAxis = -Math.sign(signedDistToAxis) || 0;
+              const mag = typeof ampPct === "number" ? Math.abs(signedDistToAxis) * ampPct : amplitude;
+              dx = px * mag * base * towardAxis;
+              dy = py * mag * base * towardAxis;
+            } else {
+              const mag = amplitude;
+              dx = nx * mag * base;
+              dy = ny * mag * base;
+            }
+            verts[i] = { x: v.x + dx, y: v.y + dy };
+          }
+          return verts;
+        };
+
+        const getDeformedVerticesPulse = () => {
+          const t = getTentacleTimeMs();
+          const omega = (Math.PI * 2) / period;
+          const angle = omega * t + phase;
+          const s = Math.sin(angle);
+          const verts = new Array<SceneVector2>(baseVertices.length);
+          const ampPct = (animCfg as any).amplitudePercentage as number | undefined;
+          for (let i = 0; i < baseVertices.length; i += 1) {
+            const v = baseVertices[i]!;
+            const dir = { x: v.x - center.x, y: v.y - center.y };
+            const len = Math.hypot(dir.x, dir.y) || 1;
+            const nx = dir.x / len;
+            const ny = dir.y / len;
+            const dAbs = amplitude * s; // fallback absolute amplitude
+            if (axis === "movement-tangent" || axis === "movement-normal") {
+              const ax = axis === "movement-tangent" ? movementTangent.x : movementNormal.x;
+              const ay = axis === "movement-tangent" ? movementTangent.y : movementNormal.y;
+              const px = -ay;
+              const py = ax;
+              const signedDistToAxis = v.x * px + v.y * py;
+              const towardAxis = -Math.sign(signedDistToAxis) || 0;
+              const mag = typeof ampPct === "number" ? Math.abs(signedDistToAxis) * ampPct * s : dAbs;
+              verts[i] = { x: v.x + px * mag * towardAxis, y: v.y + py * mag * towardAxis };
+            } else if (axis === "tangent") {
+              const tx = -ny;
+              const ty = nx;
+              verts[i] = { x: v.x + tx * dAbs, y: v.y + ty * dAbs };
+            } else {
+              verts[i] = { x: v.x + nx * dAbs, y: v.y + ny * dAbs };
+            }
+          }
+          return verts;
+        };
+
+        const getDeformedVertices =
+          animCfg.type === "sway" ? getDeformedVerticesSway : getDeformedVerticesPulse;
+
+        if (layer.stroke) {
+          const strokeColor =
+            (layer.stroke as any).kind === "solid"
+              ? (layer.stroke as any).color
+              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
+          const sceneStroke: SceneStroke = { width: layer.stroke.width, color: strokeColor };
+          dynamicPrimitives.push(
+            createDynamicPolygonStrokePrimitive(instance, {
+              getVertices: () => getDeformedVertices(),
+              stroke: sceneStroke,
+              offset: layer.offset,
+            })
+          );
+        }
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
-            vertices: strokeVertices,
+            getVertices: () => getDeformedVertices(),
             offset: layer.offset,
-            getFill: (target) => resolveLayerStrokeFill(target, layer.stroke!, renderer),
+            getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
+          })
+        );
+      } else {
+        if (layer.stroke) {
+          const strokeColor =
+            (layer.stroke as any).kind === "solid"
+              ? (layer.stroke as any).color
+              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
+          const sceneStroke: SceneStroke = {
+            width: layer.stroke.width,
+            color: strokeColor,
+          };
+          dynamicPrimitives.push(
+            createDynamicPolygonStrokePrimitive(instance, {
+              vertices: layer.vertices,
+              stroke: sceneStroke,
+              offset: layer.offset,
+            })
+          );
+        }
+        dynamicPrimitives.push(
+          createDynamicPolygonPrimitive(instance, {
+            vertices: layer.vertices,
+            offset: layer.offset,
+            getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
           })
         );
       }
-      dynamicPrimitives.push(
-        createDynamicPolygonPrimitive(instance, {
-          // For now we pass static vertices; sway animation will be integrated by writing updated vertices upstream
-          vertices: layer.vertices,
-          offset: layer.offset,
-          getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
-        })
-      );
       return;
     }
 
