@@ -48,10 +48,6 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
         <SaveSlotBackgroundScene />
       </div>
       <div className="save-slot-screen__content">
-        <h1 className="heading-1">Choose Your Echo</h1>
-        <p className="save-slot-screen__subtitle">
-          Continue an existing ritual or open a new void-touched path.
-        </p>
         <div className="save-slot-list">
           {slots.map((slot) => {
             const label = slot.hasSave ? "Continue" : "Start New Game";
@@ -61,11 +57,10 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
             const lastPlayed = slot.hasSave ? formatLastPlayed(slot.updatedAt) : null;
 
             return (
-              <article key={slot.id} className="save-slot-card surface-card">
+              <article key={slot.id} className="save-slot-card surface-card dark">
                 <header className="save-slot-card__header">
                   <div>
                     <div className="save-slot-card__title">Slot {slot.id}</div>
-                    <div className="save-slot-card__status">{statusText}</div>
                   </div>
                   {slot.hasSave && (
                     <button

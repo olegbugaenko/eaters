@@ -56,10 +56,10 @@ import type { UnitModuleId } from "@db/unit-modules-db";
 
 const MAP_SIZE: SceneSize = { width: 1800, height: 1100 };
 const LETTER_HORIZONTAL_GAP = 6;
-const LETTER_VERTICAL_GAP = 6;
+const LETTER_VERTICAL_GAP = 4;
 const LETTER_SPACING = 36;
 const WORD_SPACING = 140;
-const LINE_SPACING = 120;
+const LINE_SPACING = 420;
 const TITLE_LINES = ["VOID", "EATERS"] as const;
 const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
 
@@ -139,13 +139,14 @@ const LETTER_PATTERNS: Record<string, LetterPattern> = {
     "#   #",
   ],
   T: [
-    "#####",
-    "  #  ",
-    "  #  ",
-    "  #  ",
-    "  #  ",
-    "  #  ",
-    "  #  ",
+    "#######",
+    "   #  ",
+    "   #  ",
+    "   #  ",
+    "   #  ",
+    "   #  ",
+    "   #  ",
+    "   #  ",
   ],
   R: [
     "#### ",
@@ -154,6 +155,7 @@ const LETTER_PATTERNS: Record<string, LetterPattern> = {
     "#### ",
     "# #  ",
     "#  # ",
+    "#   #",
     "#   #",
   ],
   S: [
@@ -195,6 +197,7 @@ interface TitleLayoutResult {
     stroke?: SceneStroke;
   }>;
   bounds: { x: number; y: number; width: number; height: number };
+  wordRanges: Array<{ startX: number; endX: number; startY: number; endY: number; centerY: number }>;
 }
 
 const createBrickFill = (config: ReturnType<typeof getBrickConfig>): SceneFill => {
@@ -301,10 +304,13 @@ const computeTitleLayout = (
     0
   );
 
-  const startX = mapWidth / 2 - maxWidth / 2;
+  const startX = Math.max(600, 600 + mapWidth/2 - maxWidth/2);
   const startY = mapHeight / 2 - totalHeight / 2;
 
+  console.log('WD: ', mapWidth, maxWidth, startX, mapWidth/2 - maxWidth*0.5/2);
+
   const bricks: TitleLayoutResult["bricks"] = [];
+  const wordRanges: TitleLayoutResult["wordRanges"] = [];
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
@@ -312,12 +318,24 @@ const computeTitleLayout = (
 
   let cursorY = startY;
 
+
   lineMetrics.forEach((lineMetric, lineIndex) => {
     const lineCenterY = cursorY + lineMetric.height / 2;
-    let cursorX = startX + (maxWidth - lineMetric.width) / 2;
+    let cursorX = startX;
 
     lineMetric.words.forEach((wordMetric, wordIndex) => {
       const wordTop = lineCenterY - wordMetric.height / 2;
+      const wordStartX = cursorX;
+      const wordEndX = cursorX + wordMetric.width;
+      const wordStartY = wordTop;
+      const wordEndY = wordTop + wordMetric.height;
+      wordRanges.push({
+        startX: wordStartX,
+        endX: wordEndX,
+        startY: wordStartY,
+        endY: wordEndY,
+        centerY: lineCenterY,
+      });
 
       wordMetric.letters.forEach((letterMetric, letterIndex) => {
         const columns = letterMetric.layout[0]?.length ?? 0;
@@ -326,6 +344,7 @@ const computeTitleLayout = (
           letterMetric.config.size.width + LETTER_HORIZONTAL_GAP;
         const tileHeight =
           letterMetric.config.size.height + LETTER_VERTICAL_GAP;
+        const betweenSizing = 140;
         const stroke = letterMetric.config.stroke
           ? {
               color: { ...letterMetric.config.stroke.color },
@@ -406,6 +425,7 @@ const computeTitleLayout = (
       width: Math.max(0, maxX - minX),
       height: Math.max(0, maxY - minY),
     },
+    wordRanges,
   };
 };
 
@@ -469,7 +489,8 @@ const deriveRendererStroke = (
 const computeSceneContentBounds = (
   titleBounds: TitleLayoutResult["bounds"],
   creatures: readonly CreatureConfig[],
-  padding: number
+  paddingX: number,
+  paddingY: number
 ): TitleLayoutResult["bounds"] => {
   let minX = titleBounds.x;
   let minY = titleBounds.y;
@@ -486,12 +507,12 @@ const computeSceneContentBounds = (
     maxY = Math.max(maxY, creature.orbitCenter.y + verticalRadius);
   });
 
-  const paddedWidth = Math.max(0, maxX - minX + padding * 2);
-  const paddedHeight = Math.max(0, maxY - minY + padding * 2);
+  const paddedWidth = Math.max(0, maxX - minX + paddingX * 2);
+  const paddedHeight = Math.max(0, maxY - minY + paddingY * 2);
 
   return {
-    x: minX - padding,
-    y: minY - padding,
+    x: minX - paddingX,
+    y: minY - paddingY,
     width: paddedWidth,
     height: paddedHeight,
   };
@@ -996,14 +1017,16 @@ const centerCameraOnBounds = (
 
 const createCreatures = (
   scene: SceneObjectManager,
-  titleBounds: TitleLayoutResult["bounds"]
+  titleLayout: TitleLayoutResult
 ): CreatureState[] => {
+  const titleBounds = titleLayout.bounds;
   const baseY = titleBounds.y + titleBounds.height + 120;
   const centerX = titleBounds.x + titleBounds.width / 2;
+  const firstWordRange = titleLayout.wordRanges[0];
   const creatures: CreatureConfig[] = [
     {
-      modules: ["perforator", "vitalHull", "freezingTail"],
-      orbitCenter: { x: centerX - 260, y: baseY - 40 },
+      modules: ["perforator", "vitalHull", "burningTail"],
+      orbitCenter: { x: (firstWordRange?.startX ?? 0) + 140, y: (firstWordRange?.endY ?? 0) + 110 },
       orbitRadius: 95,
       orbitSpeed: 0.00045,
       phase: 0,
@@ -1017,7 +1040,7 @@ const createCreatures = (
     },
     {
       modules: [],
-      orbitCenter: { x: centerX + 60, y: baseY + 70 },
+      orbitCenter: { x: (firstWordRange?.endX ?? 0) + 160, y: (firstWordRange?.centerY ?? 120) },
       orbitRadius: 70,
       orbitSpeed: 0.00062,
       phase: 2.3,
@@ -1179,11 +1202,12 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       });
     });
 
-    const creatures = createCreatures(scene, titleLayout.bounds);
+    const creatures = createCreatures(scene, titleLayout);
     const contentBounds = computeSceneContentBounds(
       titleLayout.bounds,
       creatures,
-      CONTENT_PADDING
+      500, // paddingX
+      CONTENT_PADDING // paddingY
     );
 
     objectsRenderer.bootstrap(scene.getObjects());
