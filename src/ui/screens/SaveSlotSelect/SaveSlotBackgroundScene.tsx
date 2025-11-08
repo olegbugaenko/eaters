@@ -3,6 +3,10 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneSolidFill,
+  SceneLinearGradientFill,
+  SceneRadialGradientFill,
+  SceneDiamondGradientFill,
   SceneFillNoise,
   SceneGradientStop,
   SceneObjectManager,
@@ -11,7 +15,13 @@ import {
   SceneVector2,
 } from "@logic/services/SceneObjectManager";
 import { BrickType, getBrickConfig } from "@db/bricks-db";
-import { getPlayerUnitConfig, PlayerUnitRendererConfig } from "@db/player-units-db";
+import {
+  getPlayerUnitConfig,
+  PlayerUnitRendererConfig,
+  PlayerUnitRendererLayerConfig,
+  PlayerUnitRendererStrokeConfig,
+  PlayerUnitAuraConfig,
+} from "@db/player-units-db";
 import {
   createObjectsRendererManager,
   POSITION_COMPONENTS,
@@ -489,59 +499,240 @@ const computeSceneContentBounds = (
 const PLAYER_UNIT_CONFIG = getPlayerUnitConfig("bluePentagon");
 const PLAYER_UNIT_BASE_STROKE = deriveRendererStroke(PLAYER_UNIT_CONFIG.renderer);
 
-const cloneRendererConfigForScene = (
-  renderer: PlayerUnitRendererConfig
-): PlayerUnitRendererConfig => {
-  const stroke = deriveRendererStroke(renderer);
+const cloneSceneColor = (color: SceneColor | undefined): SceneColor | undefined => {
+  if (!color) {
+    return undefined;
+  }
+  const cloned: SceneColor = {
+    r: color.r,
+    g: color.g,
+    b: color.b,
+  };
+  if (typeof color.a === "number" && Number.isFinite(color.a)) {
+    cloned.a = color.a;
+  }
+  return cloned;
+};
+
+const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
+  switch (fill.fillType) {
+    case FILL_TYPES.SOLID: {
+      const solid: SceneSolidFill = {
+        fillType: FILL_TYPES.SOLID,
+        color: cloneSceneColor(fill.color) ?? fill.color,
+      };
+      if (fill.noise) {
+        solid.noise = { ...fill.noise };
+      }
+      return solid;
+    }
+    case FILL_TYPES.LINEAR_GRADIENT: {
+      const linear: SceneLinearGradientFill = {
+        fillType: FILL_TYPES.LINEAR_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: fill.end ? { ...fill.end } : undefined,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: cloneSceneColor(stop.color) ?? stop.color,
+        })),
+      };
+      if (fill.noise) {
+        linear.noise = { ...fill.noise };
+      }
+      return linear;
+    }
+    case FILL_TYPES.RADIAL_GRADIENT: {
+      const radial: SceneRadialGradientFill = {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: typeof fill.end === "number" ? fill.end : 0,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: cloneSceneColor(stop.color) ?? stop.color,
+        })),
+      };
+      if (fill.noise) {
+        radial.noise = { ...fill.noise };
+      }
+      return radial;
+    }
+    case FILL_TYPES.DIAMOND_GRADIENT: {
+      const diamond: SceneDiamondGradientFill = {
+        fillType: FILL_TYPES.DIAMOND_GRADIENT,
+        start: fill.start ? { ...fill.start } : undefined,
+        end: typeof fill.end === "number" ? fill.end : 0,
+        stops: fill.stops.map((stop) => ({
+          offset: stop.offset,
+          color: cloneSceneColor(stop.color) ?? stop.color,
+        })),
+      };
+      if (fill.noise) {
+        diamond.noise = { ...fill.noise };
+      }
+      return diamond;
+    }
+    default:
+      return fill;
+  }
+};
+
+const cloneRendererStrokeConfig = (
+  stroke: PlayerUnitRendererStrokeConfig | undefined
+): PlayerUnitRendererStrokeConfig | undefined => {
+  if (!stroke) {
+    return undefined;
+  }
+  if (stroke.type === "solid") {
+    return {
+      type: "solid",
+      width: stroke.width,
+      color: cloneSceneColor(stroke.color) ?? stroke.color,
+    };
+  }
   return {
-    kind: renderer.kind,
-    fill: { ...renderer.fill },
-    stroke: stroke ? { color: { ...stroke.color }, width: stroke.width } : undefined,
-  layers: renderer.layers.map((layer) => {
-    if (layer.shape === "polygon") {
+    type: "base",
+    width: stroke.width,
+    brightness: stroke.brightness,
+    alphaMultiplier: stroke.alphaMultiplier,
+  };
+};
+
+const cloneRendererFillConfig = (
+  fill: PlayerUnitRendererLayerConfig["fill"] | undefined
+): PlayerUnitRendererLayerConfig["fill"] | undefined => {
+  if (!fill) {
+    return undefined;
+  }
+  if (fill.type === "solid") {
+    return {
+      type: "solid",
+      color: cloneSceneColor(fill.color) ?? fill.color,
+      ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+    };
+  }
+  if (fill.type === "gradient") {
+    const gradient = fill.fill;
+    if (gradient.fillType === FILL_TYPES.SOLID) {
       return {
-        shape: "polygon" as const,
-        vertices: layer.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y })),
-        offset: layer.offset ? { ...layer.offset } : undefined,
-        fill: layer.fill ? { ...layer.fill } : undefined,
-        stroke: layer.stroke ? { ...layer.stroke } : undefined,
-        requiresModule: (layer as any).requiresModule,
-        requiresSkill: (layer as any).requiresSkill,
-        requiresEffect: (layer as any).requiresEffect,
-        anim: (layer as any).anim,
-        spine: (layer as any).spine,
-        segmentIndex: (layer as any).segmentIndex,
-        buildOpts: (layer as any).buildOpts,
-        groupId: (layer as any).groupId,
+        type: "gradient",
+        fill: {
+          fillType: gradient.fillType,
+          color: cloneSceneColor(gradient.color) ?? gradient.color,
+          ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+        },
+      };
+    }
+    if (gradient.fillType === FILL_TYPES.LINEAR_GRADIENT) {
+      return {
+        type: "gradient",
+        fill: {
+          fillType: gradient.fillType,
+          start: gradient.start ? { ...gradient.start } : undefined,
+          end: gradient.end ? { ...gradient.end } : undefined,
+          stops: gradient.stops.map((stop) => ({
+            offset: stop.offset,
+            color: cloneSceneColor(stop.color) ?? stop.color,
+          })),
+          ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+        },
+      };
+    }
+    if (
+      gradient.fillType === FILL_TYPES.RADIAL_GRADIENT ||
+      gradient.fillType === FILL_TYPES.DIAMOND_GRADIENT
+    ) {
+      return {
+        type: "gradient",
+        fill: {
+          fillType: gradient.fillType,
+          start: gradient.start ? { ...gradient.start } : undefined,
+          end: typeof gradient.end === "number" ? gradient.end : undefined,
+          stops: gradient.stops.map((stop) => ({
+            offset: stop.offset,
+            color: cloneSceneColor(stop.color) ?? stop.color,
+          })),
+          ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+        },
       };
     }
     return {
-      shape: "circle" as const,
-      radius: layer.radius,
-      segments: layer.segments,
+      type: "gradient",
+      fill: cloneSceneFillDeep(gradient),
+    };
+  }
+  return {
+    type: "base",
+    brightness: fill.brightness,
+    alphaMultiplier: fill.alphaMultiplier,
+  };
+};
+
+const cloneRendererLayer = (
+  layer: PlayerUnitRendererLayerConfig
+): PlayerUnitRendererLayerConfig => {
+  if (layer.shape === "polygon") {
+    return {
+      shape: "polygon",
+      vertices: layer.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y })),
       offset: layer.offset ? { ...layer.offset } : undefined,
-      fill: layer.fill ? { ...layer.fill } : undefined,
-      stroke: layer.stroke ? { ...layer.stroke } : undefined,
+      fill: cloneRendererFillConfig(layer.fill),
+      stroke: cloneRendererStrokeConfig(layer.stroke),
       requiresModule: (layer as any).requiresModule,
       requiresSkill: (layer as any).requiresSkill,
       requiresEffect: (layer as any).requiresEffect,
       anim: (layer as any).anim,
+      spine: (layer as any).spine,
+      segmentIndex: (layer as any).segmentIndex,
+      buildOpts: (layer as any).buildOpts,
       groupId: (layer as any).groupId,
     };
-  }),
-    auras: renderer.auras
-      ? renderer.auras.map((aura) => ({
-          petalCount: aura.petalCount,
-          innerRadius: aura.innerRadius,
-          outerRadius: aura.outerRadius,
-          petalWidth: aura.petalWidth,
-          rotationSpeed: aura.rotationSpeed,
-          color: { ...aura.color },
-          alpha: aura.alpha,
-          requiresModule: aura.requiresModule,
-          pointInward: aura.pointInward,
-        }))
-      : undefined,
+  }
+  return {
+    shape: "circle",
+    radius: layer.radius,
+    segments: layer.segments,
+    offset: layer.offset ? { ...layer.offset } : undefined,
+    fill: cloneRendererFillConfig(layer.fill),
+    stroke: cloneRendererStrokeConfig(layer.stroke),
+    requiresModule: (layer as any).requiresModule,
+    requiresSkill: (layer as any).requiresSkill,
+    requiresEffect: (layer as any).requiresEffect,
+    anim: (layer as any).anim,
+    groupId: (layer as any).groupId,
+  };
+};
+
+const cloneAuraConfig = (
+  aura: PlayerUnitAuraConfig
+): PlayerUnitAuraConfig => ({
+  petalCount: aura.petalCount,
+  innerRadius: aura.innerRadius,
+  outerRadius: aura.outerRadius,
+  petalWidth: aura.petalWidth,
+  rotationSpeed: aura.rotationSpeed,
+  color: cloneSceneColor(aura.color) ?? aura.color,
+  alpha: aura.alpha,
+  requiresModule: aura.requiresModule,
+  pointInward: aura.pointInward,
+});
+
+const cloneRendererConfigForScene = (
+  renderer: PlayerUnitRendererConfig
+): PlayerUnitRendererConfig => {
+  const strokeSource = renderer.stroke ?? deriveRendererStroke(renderer);
+  const stroke = strokeSource
+    ? {
+        color: cloneSceneColor(strokeSource.color) ?? strokeSource.color,
+        width: strokeSource.width,
+      }
+    : undefined;
+
+  return {
+    kind: renderer.kind,
+    fill: cloneSceneColor(renderer.fill) ?? { ...renderer.fill },
+    stroke,
+    layers: renderer.layers.map((layer) => cloneRendererLayer(layer)),
+    auras: renderer.auras ? renderer.auras.map((aura) => cloneAuraConfig(aura)) : undefined,
   };
 };
 
@@ -820,10 +1011,8 @@ const createCreatures = (
       y: config.orbitCenter.y + Math.sin(angle) * config.orbitRadius,
     };
     const renderer = cloneRendererConfigForScene(PLAYER_UNIT_CONFIG.renderer);
-    const baseFillColor = { ...PLAYER_UNIT_CONFIG.renderer.fill };
-    const baseStrokeColor = PLAYER_UNIT_BASE_STROKE
-      ? { ...PLAYER_UNIT_BASE_STROKE.color }
-      : undefined;
+    const baseFillColor = cloneSceneColor(PLAYER_UNIT_CONFIG.renderer.fill)!;
+    const baseStrokeColor = cloneSceneColor(PLAYER_UNIT_BASE_STROKE?.color);
     const objectId = scene.addObject("playerUnit", {
       position: initialPosition,
       fill: {
@@ -832,7 +1021,7 @@ const createCreatures = (
       },
       stroke: PLAYER_UNIT_BASE_STROKE
         ? {
-            color: { ...PLAYER_UNIT_BASE_STROKE.color },
+            color: cloneSceneColor(PLAYER_UNIT_BASE_STROKE.color)!,
             width: PLAYER_UNIT_BASE_STROKE.width,
           }
         : undefined,
