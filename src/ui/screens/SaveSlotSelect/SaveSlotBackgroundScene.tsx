@@ -21,6 +21,7 @@ import {
   PlayerUnitRendererLayerConfig,
   PlayerUnitRendererStrokeConfig,
   PlayerUnitAuraConfig,
+  PlayerUnitEmitterConfig,
 } from "@db/player-units-db";
 import {
   createObjectsRendererManager,
@@ -514,6 +515,29 @@ const cloneSceneColor = (color: SceneColor | undefined): SceneColor | undefined 
   return cloned;
 };
 
+const cloneEmitterConfig = (
+  emitter: PlayerUnitEmitterConfig | undefined
+): PlayerUnitEmitterConfig | undefined => {
+  if (!emitter) {
+    return undefined;
+  }
+
+  return {
+    particlesPerSecond: emitter.particlesPerSecond,
+    particleLifetimeMs: emitter.particleLifetimeMs,
+    fadeStartMs: emitter.fadeStartMs,
+    baseSpeed: emitter.baseSpeed,
+    speedVariation: emitter.speedVariation,
+    sizeRange: { min: emitter.sizeRange.min, max: emitter.sizeRange.max },
+    spread: emitter.spread,
+    offset: { x: emitter.offset.x, y: emitter.offset.y },
+    color: cloneSceneColor(emitter.color) ?? { ...emitter.color },
+    fill: emitter.fill ? cloneSceneFillDeep(emitter.fill) : undefined,
+    shape: emitter.shape,
+    maxParticles: emitter.maxParticles,
+  };
+};
+
 const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
   switch (fill.fillType) {
     case FILL_TYPES.SOLID: {
@@ -953,18 +977,21 @@ void main() {
 }
 `;
 
-const clampCameraToCenter = (scene: SceneObjectManager) => {
+const centerCameraOnBounds = (
+  scene: SceneObjectManager,
+  bounds: { x: number; y: number; width: number; height: number }
+) => {
   const camera = scene.getCamera();
   const mapSize = scene.getMapSize();
-  const centerX = Math.max(
-    0,
-    (mapSize.width - camera.viewportSize.width) / 2
-  );
-  const centerY = Math.max(
-    0,
-    (mapSize.height - camera.viewportSize.height) / 2
-  );
-  scene.setCameraPosition(centerX, centerY);
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
+  const targetX = centerX - camera.viewportSize.width / 2;
+  const targetY = centerY - camera.viewportSize.height / 2;
+  const maxX = Math.max(0, mapSize.width - camera.viewportSize.width);
+  const maxY = Math.max(0, mapSize.height - camera.viewportSize.height);
+  const clampedX = Math.min(Math.max(targetX, 0), maxX);
+  const clampedY = Math.min(Math.max(targetY, 0), maxY);
+  scene.setCameraPosition(clampedX, clampedY);
 };
 
 const createCreatures = (
@@ -1013,6 +1040,7 @@ const createCreatures = (
     const renderer = cloneRendererConfigForScene(PLAYER_UNIT_CONFIG.renderer);
     const baseFillColor = cloneSceneColor(PLAYER_UNIT_CONFIG.renderer.fill)!;
     const baseStrokeColor = cloneSceneColor(PLAYER_UNIT_BASE_STROKE?.color);
+    const emitter = cloneEmitterConfig(PLAYER_UNIT_CONFIG.emitter);
     const objectId = scene.addObject("playerUnit", {
       position: initialPosition,
       fill: {
@@ -1028,7 +1056,7 @@ const createCreatures = (
       rotation: 0,
       customData: {
         renderer,
-        emitter: undefined,
+        emitter,
         physicalSize: PLAYER_UNIT_CONFIG.physicalSize,
         baseFillColor,
         baseStrokeColor,
@@ -1249,7 +1277,7 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       const safeContentHeight = Math.max(contentBounds.height, 1);
       const scale = Math.min(1, width / safeContentWidth, height / safeContentHeight);
       scene.setScale(scale);
-      clampCameraToCenter(scene);
+      centerCameraOnBounds(scene, contentBounds);
     };
 
     handleResize();
