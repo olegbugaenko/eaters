@@ -7,6 +7,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillNoise,
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
@@ -41,6 +42,9 @@ const DEFAULT_BRICK_TYPE: BrickType = "classic";
 const BRICK_HIT_SOUND_URL = "/audio/sounds/brick_effects/hit_v2.mp3";
 const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy-01.mp3";
 
+const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
+  noise ? { ...noise } : undefined;
+
 const createBrickFill = (config: BrickConfig) => {
   const fill = config.fill;
   switch (fill.type) {
@@ -48,6 +52,7 @@ const createBrickFill = (config: BrickConfig) => {
       return {
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
+        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
       };
     case "radial":
       return {
@@ -58,6 +63,7 @@ const createBrickFill = (config: BrickConfig) => {
           offset: stop.offset,
           color: { ...stop.color },
         })),
+        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
       };
     case "linear":
     default:
@@ -69,6 +75,7 @@ const createBrickFill = (config: BrickConfig) => {
           offset: stop.offset,
           color: { ...stop.color },
         })),
+        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
       };
   }
 };
@@ -850,6 +857,7 @@ const tintSceneFill = (
       return {
         fillType: FILL_TYPES.SOLID,
         color: tintSceneColor(fill.color, tint, ratio),
+        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
       return {
@@ -860,6 +868,7 @@ const tintSceneFill = (
           offset: stop.offset,
           color: tintSceneColor(stop.color, tint, ratio),
         })),
+        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -871,6 +880,7 @@ const tintSceneFill = (
           offset: stop.offset,
           color: tintSceneColor(stop.color, tint, ratio),
         })),
+        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
       } as SceneFill;
     default:
       return cloneSceneFill(fill);

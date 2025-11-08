@@ -1096,6 +1096,9 @@ const createParticleEmitterGpuState = (
     stopColor0: new Float32Array([1, 1, 1, 1]),
     stopColor1: new Float32Array([1, 1, 1, 0]),
     stopColor2: new Float32Array([1, 1, 1, 0]),
+    noiseColorAmplitude: 0,
+    noiseAlphaAmplitude: 0,
+    noiseScale: 1,
     hasLinearStart: false,
     linearStart: { x: 0, y: 0 },
     hasLinearEnd: false,
@@ -1263,6 +1266,10 @@ const updateParticleEmitterGpuUniforms = <
 
   const fill = resolveParticleFill(config);
   uniforms.fillType = fill.fillType;
+  const noise = fill.noise;
+  uniforms.noiseColorAmplitude = noise ? clamp01(noise.colorAmplitude) : 0;
+  uniforms.noiseAlphaAmplitude = noise ? clamp01(noise.alphaAmplitude) : 0;
+  uniforms.noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
 
   const stops = ensureParticleStops(fill);
   const stopCount = Math.min(MAX_GRADIENT_STOPS, stops.length);
@@ -1439,6 +1446,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
       return JSON.stringify({
         fillType: fill.fillType,
         color: fill.color,
+        noise: fill.noise,
       });
     case FILL_TYPES.LINEAR_GRADIENT:
       return JSON.stringify({
@@ -1446,6 +1454,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         start: fill.start,
         end: fill.end,
         stops: fill.stops,
+        noise: fill.noise,
       });
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -1454,6 +1463,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         start: fill.start,
         end: fill.end,
         stops: fill.stops,
+        noise: fill.noise,
       });
     default:
       return JSON.stringify(fill);

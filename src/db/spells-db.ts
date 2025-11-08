@@ -163,6 +163,11 @@ const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
       { offset: 0, color: { r: 0.55, g: 0.65, b: 1, a: 0.32 } },
       { offset: 1, color: { r: 0.6, g: 0.65, b: 0.65, a: 0 } },
     ],
+    noise: {
+      colorAmplitude: 0.0,
+      alphaAmplitude: 0.01,
+      scale: 0.15,
+    },
   },
   maxParticles: 90,
 };

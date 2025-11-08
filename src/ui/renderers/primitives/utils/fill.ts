@@ -121,8 +121,9 @@ const populateFillVertexComponents = (
 
   components[write++] = fill.fillType;
   components[write++] = stopCount;
-  components[write++] = 0;
-  components[write++] = 0;
+  const noise = fill.noise;
+  components[write++] = noise ? noise.colorAmplitude : 0;
+  components[write++] = noise ? noise.alphaAmplitude : 0;
 
   const params0Index = write;
   const params1Index = params0Index + FILL_PARAMS0_COMPONENTS;
@@ -169,6 +170,8 @@ const populateFillVertexComponents = (
       break;
     }
   }
+
+  components[params1Index + 3] = noise ? noise.scale : 0;
 
   write = params1Index + FILL_PARAMS1_COMPONENTS;
 

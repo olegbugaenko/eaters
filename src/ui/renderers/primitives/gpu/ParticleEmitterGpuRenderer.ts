@@ -44,6 +44,8 @@ uniform vec3 u_stopOffsets;
 uniform vec4 u_stopColor0;
 uniform vec4 u_stopColor1;
 uniform vec4 u_stopColor2;
+uniform vec2 u_noiseAmplitude;
+uniform float u_noiseScale;
 
 out vec2 v_worldPosition;
 out vec4 v_fillInfo;
@@ -113,7 +115,7 @@ void main() {
   v_stopColor1 = stop1;
   v_stopColor2 = stop2;
 
-  v_fillInfo = vec4(float(u_fillType), float(u_stopCount), 0.0, 0.0);
+  v_fillInfo = vec4(float(u_fillType), float(u_stopCount), u_noiseAmplitude.x, u_noiseAmplitude.y);
 
   if (u_fillType == 1) {
     vec2 startWorld;
@@ -136,16 +138,16 @@ void main() {
     }
     float lengthSq = dot(dir, dir);
     v_fillParams0 = vec4(startWorld, endWorld);
-    v_fillParams1 = vec4(dir, lengthSq > 0.0 ? 1.0 / lengthSq : 0.0, 0.0);
+    v_fillParams1 = vec4(dir, lengthSq > 0.0 ? 1.0 / lengthSq : 0.0, u_noiseScale);
   } else if (u_fillType == 2 || u_fillType == 3) {
     vec2 offsetLocal = u_hasRadialOffset == 1 ? u_radialOffset : vec2(0.0);
     vec2 gradientCenter = center + offsetLocal;
     float radius = u_hasExplicitRadius == 1 ? u_explicitRadius : size * 0.5;
     v_fillParams0 = vec4(gradientCenter, radius, 0.0);
-    v_fillParams1 = vec4(0.0);
+    v_fillParams1 = vec4(0.0, 0.0, 0.0, u_noiseScale);
   } else {
     v_fillParams0 = vec4(center, 0.0, 0.0);
-    v_fillParams1 = vec4(0.0);
+    v_fillParams1 = vec4(0.0, 0.0, 0.0, u_noiseScale);
   }
 
   v_shape = float(u_shape);
@@ -180,6 +182,52 @@ out vec4 fragColor;
 
 float clamp01(float value) {
   return clamp(value, 0.0, 1.0);
+}
+
+float hash21(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float noise2d(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  float ab = mix(a, b, u.x);
+  float cd = mix(c, d, u.x);
+  return mix(ab, cd, u.y);
+}
+
+vec2 resolveNoiseAnchor(float fillType) {
+  if (fillType < 3.5) {
+    return v_fillParams0.xy;
+  }
+  return v_worldPosition;
+}
+
+vec4 applyFillNoise(vec4 color) {
+  float colorAmp = v_fillInfo.z;
+  float alphaAmp = v_fillInfo.w;
+  if (colorAmp <= 0.0 && alphaAmp <= 0.0) {
+    return color;
+  }
+  float scale = v_fillParams1.w;
+  float effectiveScale = scale > 0.0 ? scale : 1.0;
+  float fillType = v_fillInfo.x;
+  vec2 anchor = resolveNoiseAnchor(fillType);
+  float noiseValue = noise2d((v_worldPosition - anchor) * effectiveScale) * 2.0 - 1.0;
+  if (colorAmp > 0.0) {
+    color.rgb = clamp(color.rgb + noiseValue * colorAmp, 0.0, 1.0);
+  }
+  if (alphaAmp > 0.0) {
+    color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
+  }
+  return color;
 }
 
 vec4 sampleGradient(float t) {
@@ -253,19 +301,17 @@ void main() {
     if (x < -0.5 || x > 0.5 || absY > 0.5 * (1.0 - 2.0 * x)) discard;
   }
   float fillType = v_fillInfo.x;
+  vec4 color;
   if (fillType < 0.5) {
-    fragColor = shadeSolid();
-    return;
+    color = shadeSolid();
+  } else if (abs(fillType - 1.0) < 0.5) {
+    color = shadeLinear();
+  } else if (abs(fillType - 2.0) < 0.5 || abs(fillType - 3.0) < 0.5) {
+    color = shadeRadial();
+  } else {
+    color = shadeSolid();
   }
-  if (abs(fillType - 1.0) < 0.5) {
-    fragColor = shadeLinear();
-    return;
-  }
-  if (abs(fillType - 2.0) < 0.5 || abs(fillType - 3.0) < 0.5) {
-    fragColor = shadeRadial();
-    return;
-  }
-  fragColor = shadeSolid();
+  fragColor = applyFillNoise(color);
 }
 `;
 
@@ -303,6 +349,8 @@ interface ParticleRenderProgram {
     stopColor0: WebGLUniformLocation | null;
     stopColor1: WebGLUniformLocation | null;
     stopColor2: WebGLUniformLocation | null;
+    noiseAmplitude: WebGLUniformLocation | null;
+    noiseScale: WebGLUniformLocation | null;
   };
 }
 
@@ -313,6 +361,9 @@ export interface ParticleEmitterGpuRenderUniforms {
   stopColor0: Float32Array;
   stopColor1: Float32Array;
   stopColor2: Float32Array;
+  noiseColorAmplitude: number;
+  noiseAlphaAmplitude: number;
+  noiseScale: number;
   hasLinearStart: boolean;
   linearStart: SceneVector2;
   hasLinearEnd: boolean;
@@ -439,6 +490,8 @@ const createRenderProgram = (
     stopColor0: gl.getUniformLocation(program, "u_stopColor0"),
     stopColor1: gl.getUniformLocation(program, "u_stopColor1"),
     stopColor2: gl.getUniformLocation(program, "u_stopColor2"),
+    noiseAmplitude: gl.getUniformLocation(program, "u_noiseAmplitude"),
+    noiseScale: gl.getUniformLocation(program, "u_noiseScale"),
   };
   return { program, attributes, uniforms };
 };
@@ -576,6 +629,8 @@ type UniformCache = {
   stopColor0?: string;
   stopColor1?: string;
   stopColor2?: string;
+  noiseAmplitude?: [number, number];
+  noiseScale?: number;
 };
 
 const serializeArray = (arr: Float32Array): string => {
@@ -716,6 +771,17 @@ const uploadEmitterUniforms = (
   if (program.uniforms.stopColor2 && cache.stopColor2 !== c2) {
     gl.uniform4fv(program.uniforms.stopColor2, u.stopColor2);
     cache.stopColor2 = c2;
+  }
+  const noiseAmp: [number, number] = [u.noiseColorAmplitude, u.noiseAlphaAmplitude];
+  if (
+    program.uniforms.noiseAmplitude &&
+    (!cache.noiseAmplitude || cache.noiseAmplitude[0] !== noiseAmp[0] || cache.noiseAmplitude[1] !== noiseAmp[1])
+  ) {
+    gl.uniform2f(program.uniforms.noiseAmplitude, noiseAmp[0], noiseAmp[1]);
+    cache.noiseAmplitude = [noiseAmp[0], noiseAmp[1]];
+  }
+  if (program.uniforms.noiseScale && cache.noiseScale !== u.noiseScale) {
+    gl.uniform1f(program.uniforms.noiseScale, (cache.noiseScale = u.noiseScale));
   }
 };
 

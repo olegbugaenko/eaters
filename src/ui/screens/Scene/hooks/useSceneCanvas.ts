@@ -76,7 +76,11 @@ void main() {
 `;
 
 const FRAGMENT_SHADER = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 varying vec2 v_worldPosition;
 varying vec4 v_fillInfo;
@@ -89,6 +93,55 @@ varying vec4 v_stopColor2;
 
 float clamp01(float value) {
   return clamp(value, 0.0, 1.0);
+}
+
+float hash21(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float noise2d(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  float ab = mix(a, b, u.x);
+  float cd = mix(c, d, u.x);
+  return mix(ab, cd, u.y);
+}
+
+vec2 resolveNoiseAnchor(float fillType) {
+  // v_fillParams0.xy stores the object origin for solid fills, the gradient start
+  // for linear fills, and the gradient center for radial/diamond fills.
+  // Using it as the anchor keeps noise stable in the object's local space.
+  if (fillType < 3.5) {
+    return v_fillParams0.xy;
+  }
+  return v_worldPosition;
+}
+
+vec4 applyFillNoise(vec4 color) {
+  float colorAmp = v_fillInfo.z;
+  float alphaAmp = v_fillInfo.w;
+  if (colorAmp <= 0.0 && alphaAmp <= 0.0) {
+    return color;
+  }
+  float scale = v_fillParams1.w;
+  float effectiveScale = scale > 0.0 ? scale : 1.0;
+  float fillType = v_fillInfo.x;
+  vec2 anchor = resolveNoiseAnchor(fillType);
+  float noiseValue = noise2d((v_worldPosition - anchor) * effectiveScale) * 2.0 - 1.0;
+  if (colorAmp > 0.0) {
+    color.rgb = clamp(color.rgb + noiseValue * colorAmp, 0.0, 1.0);
+  }
+  if (alphaAmp > 0.0) {
+    color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
+  }
+  return color;
 }
 
 vec4 sampleGradient(float t) {
@@ -163,6 +216,7 @@ void main() {
     color = sampleGradient(t);
   }
 
+  color = applyFillNoise(color);
   gl_FragColor = color;
 }
 `;

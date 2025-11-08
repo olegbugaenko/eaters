@@ -34,26 +34,36 @@ export interface SceneGradientStop {
   color: SceneColor;
 }
 
-export interface SceneSolidFill {
+export interface SceneFillNoise {
+  colorAmplitude: number;
+  alphaAmplitude: number;
+  scale: number;
+}
+
+interface SceneFillCommon {
+  noise?: SceneFillNoise;
+}
+
+export interface SceneSolidFill extends SceneFillCommon {
   fillType: typeof FILL_TYPES.SOLID;
   color: SceneColor;
 }
 
-export interface SceneLinearGradientFill {
+export interface SceneLinearGradientFill extends SceneFillCommon {
   fillType: typeof FILL_TYPES.LINEAR_GRADIENT;
   start?: SceneVector2;
   end?: SceneVector2;
   stops: SceneGradientStop[];
 }
 
-export interface SceneRadialGradientFill {
+export interface SceneRadialGradientFill extends SceneFillCommon {
   fillType: typeof FILL_TYPES.RADIAL_GRADIENT;
   start?: SceneVector2;
   end?: number;
   stops: SceneGradientStop[];
 }
 
-export interface SceneDiamondGradientFill {
+export interface SceneDiamondGradientFill extends SceneFillCommon {
   fillType: typeof FILL_TYPES.DIAMOND_GRADIENT;
   start?: SceneVector2;
   end?: number;
@@ -102,6 +112,9 @@ const DEFAULT_FILL: SceneSolidFill = {
   fillType: FILL_TYPES.SOLID,
   color: { ...DEFAULT_COLOR },
 };
+const MIN_NOISE_SCALE = 0.0001;
+const MAX_NOISE_SCALE = 2048;
+const DEFAULT_NOISE_SCALE = 1;
 const DEFAULT_ROTATION = 0;
 const MIN_MAP_SIZE = 2000;
 const MAX_SCALE = 4;
@@ -900,6 +913,27 @@ function sanitizeGradientStops(
   return sanitized;
 }
 
+function sanitizeFillNoise(noise: SceneFillNoise | undefined): SceneFillNoise | undefined {
+  if (!noise || typeof noise !== "object") {
+    return undefined;
+  }
+  const colorAmplitude = clamp01(noise.colorAmplitude);
+  const alphaAmplitude = clamp01(noise.alphaAmplitude);
+  if (colorAmplitude <= 0 && alphaAmplitude <= 0) {
+    return undefined;
+  }
+  const scaleRaw =
+    typeof noise.scale === "number" && Number.isFinite(noise.scale)
+      ? Math.abs(noise.scale)
+      : DEFAULT_NOISE_SCALE;
+  const scale = clamp(scaleRaw, MIN_NOISE_SCALE, MAX_NOISE_SCALE);
+  return {
+    colorAmplitude,
+    alphaAmplitude,
+    scale,
+  };
+}
+
 function sanitizeFill(fill: SceneFill | undefined): SceneFill {
   if (!fill) {
     return cloneFill(DEFAULT_FILL);
@@ -909,6 +943,10 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
       return {
         fillType: FILL_TYPES.SOLID,
         color: sanitizeColor(fill.color),
+        ...(() => {
+          const noise = sanitizeFillNoise(fill.noise);
+          return noise ? { noise } : {};
+        })(),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
       return {
@@ -916,6 +954,10 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         start: sanitizeVector(fill.start),
         end: sanitizeVector(fill.end),
         stops: sanitizeGradientStops(fill.stops),
+        ...(() => {
+          const noise = sanitizeFillNoise(fill.noise);
+          return noise ? { noise } : {};
+        })(),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -924,6 +966,10 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         start: sanitizeVector(fill.start),
         end: sanitizeRadius(fill.end),
         stops: sanitizeGradientStops(fill.stops),
+        ...(() => {
+          const noise = sanitizeFillNoise(fill.noise);
+          return noise ? { noise } : {};
+        })(),
       };
     default:
       return cloneFill(DEFAULT_FILL);
@@ -946,31 +992,56 @@ function sanitizeStroke(stroke: SceneStroke | undefined): SceneStroke | undefine
 
 function cloneFill(fill: SceneFill): SceneFill {
   switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
+    case FILL_TYPES.SOLID: {
+      const cloned: SceneSolidFill = {
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
       };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
+      const noise = cloneNoise(fill.noise);
+      if (noise) {
+        cloned.noise = noise;
+      }
+      return cloned;
+    }
+    case FILL_TYPES.LINEAR_GRADIENT: {
+      const cloned: SceneLinearGradientFill = {
         fillType: FILL_TYPES.LINEAR_GRADIENT,
         start: fill.start ? { ...fill.start } : undefined,
         end: fill.end ? { ...fill.end } : undefined,
         stops: cloneStops(fill.stops),
       };
+      const noise = cloneNoise(fill.noise);
+      if (noise) {
+        cloned.noise = noise;
+      }
+      return cloned;
+    }
     case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
+    case FILL_TYPES.DIAMOND_GRADIENT: {
+      const cloned: SceneRadialGradientFill | SceneDiamondGradientFill = {
         fillType: fill.fillType,
         start: fill.start ? { ...fill.start } : undefined,
         end: fill.end,
         stops: cloneStops(fill.stops),
       };
+      const noise = cloneNoise(fill.noise);
+      if (noise) {
+        cloned.noise = noise;
+      }
+      return cloned;
+    }
   }
   return {
     fillType: FILL_TYPES.SOLID,
     color: { ...DEFAULT_COLOR },
   };
+}
+
+function cloneNoise(noise: SceneFillNoise | undefined): SceneFillNoise | undefined {
+  if (!noise) {
+    return undefined;
+  }
+  return { ...noise };
 }
 
 function cloneStroke(stroke: SceneStroke | undefined): SceneStroke | undefined {
