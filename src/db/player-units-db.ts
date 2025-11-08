@@ -333,7 +333,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "ironForge",
           vertices: [
-            {x: 11, y: 0},
+            {x: 15, y: 0},
             {x: 4, y: -2},
             {x: 4, y: 2},
           ],
