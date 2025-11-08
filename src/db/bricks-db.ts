@@ -20,7 +20,8 @@ export type BrickType =
   | "smallSilver"
   | "smallCoal"
   | "smallIce"
-  | "smallMagma";
+  | "smallMagma"
+  | "neutronBrick";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -133,6 +134,12 @@ const MAGMA_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.4, g: 0.1, b: 0.1, a: 1 } },
   { offset: 0.35, color: { r: 0.3, g: 0.1, b: 0.1, a: 1 } },
   { offset: 1, color: { r: 0.15, g: 0.07, b: 0.05, a: 1 } },
+] as const;
+
+const NEUTRON_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.65, g: 0.9, b: 0.95, a: 1 } },
+  { offset: 0.4, color: { r: 0.55, g: 0.9, b: 0.85, a: 1 } },
+  { offset: 1, color: { r: 0.4, g: 0.75, b: 0.7, a: 1 } },
 ] as const;
 
 const BRICK_DB: Record<BrickType, BrickConfig> = {
@@ -488,6 +495,41 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 2755,
       armor: 142,
       baseDamage: 534,
+      brickKnockBackDistance: 70,
+      brickKnockBackSpeed: 160,
+      brickKnockBackAmplitude: 7,
+      physicalSize: 18,
+      damageExplosion: {
+        type: "magmaBrickHit",
+        radiusMultiplier: 0.75,
+      },
+      destructionExplosion: {
+        type: "magmaBrickDestroy",
+        radiusMultiplier: 1.15,
+      },
+    },
+    rewards: {
+      magma: 1,
+    },
+  },
+  neutronBrick: {
+    size: { width: 32, height: 32 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 24,
+      stops: NEUTRON_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.02,
+        alphaAmplitude: 0.0,
+        scale: 0.15,
+      },
+    },
+    stroke: { color: { r: 0.1, g: 0.6, b: 0.6, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 1022755,
+      armor: 10942,
+      baseDamage: 53478,
       brickKnockBackDistance: 70,
       brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 7,

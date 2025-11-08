@@ -65,15 +65,15 @@ const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
 
 // Adjust brick types per letter to quickly experiment with the title palette.
 const LETTER_BRICK_TYPES: Partial<Record<string, BrickType>> = {
-  V: "smallSquareGray",
-  O: "smallSquareYellow",
-  I: "smallSquareGray",
-  D: "smallSquareGray",
-  E: "smallIron",
-  A: "smallOrganic",
-  T: "smallSilver",
-  R: "smallCopper",
-  S: "smallIce",
+  V: "smallIce",
+  O: "smallIce",
+  I: "smallIce",
+  D: "smallIce",
+  E: "neutronBrick",
+  A: "neutronBrick",
+  T: "neutronBrick",
+  R: "neutronBrick",
+  S: "neutronBrick",
 };
 
 const CREATURE_ORBIT_VERTICAL_SQUASH = 0.85;
@@ -146,7 +146,6 @@ const LETTER_PATTERNS: Record<string, LetterPattern> = {
     "   #  ",
     "   #  ",
     "   #  ",
-    "   #  ",
   ],
   R: [
     "#### ",
@@ -155,7 +154,6 @@ const LETTER_PATTERNS: Record<string, LetterPattern> = {
     "#### ",
     "# #  ",
     "#  # ",
-    "#   #",
     "#   #",
   ],
   S: [
@@ -1051,6 +1049,13 @@ const createCreatures = (
       orbitRadius: 60,
       orbitSpeed: -0.00058,
       phase: 3.7,
+    },
+    {
+      modules: ["ironForge", "frenzyGland", "freezingTail"],
+      orbitCenter: { x: 210, y: 150 },
+      orbitRadius: 95,
+      orbitSpeed: 0.00045,
+      phase: 0,
     },
   ];
 
