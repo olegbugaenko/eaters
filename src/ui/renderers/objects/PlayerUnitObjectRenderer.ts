@@ -171,6 +171,8 @@ const DEFAULT_VERTICES: SceneVector2[] = [
 const DEFAULT_EMITTER_COLOR = { r: 0.2, g: 0.45, b: 0.95, a: 0.5 };
 const DEFAULT_BASE_FILL_COLOR: SceneColor = { r: 0.4, g: 0.7, b: 1, a: 1 };
 const MIN_CIRCLE_SEGMENTS = 8;
+const TAU = Math.PI * 2;
+const POLYGON_SWAY_PHASE_STEP = 0.6;
 
 const cloneFillNoise = (
   noise: SceneFillNoise | undefined
@@ -711,14 +713,6 @@ const createCompositePrimitives = (
           { x: 0, y: 0 },
           { x: 0, y: 0 },
         ];
-        let strokeVerts: SceneVector2[] | null = layer.stroke
-          ? [
-              { x: 0, y: 0 },
-              { x: 0, y: 0 },
-              { x: 0, y: 0 },
-              { x: 0, y: 0 },
-            ]
-          : null;
 
         const falloffFactors = new Float32Array(baseSpine.length);
         if (baseSpine.length > 1) {
@@ -835,12 +829,21 @@ const createCompositePrimitives = (
           }
         };
 
-        const sampleVertices = () => {
-          deformSpine(getTentacleTimeMs());
-          buildQuad(segIndex);
-        };
+        const sampleVertices = (() => {
+          let lastSampleTick = -1;
+          return () => {
+            const now = getTentacleTimeMs();
+            const tick = Math.floor(now);
+            if (tick === lastSampleTick) {
+              return;
+            }
+            lastSampleTick = tick;
+            deformSpine(now);
+            buildQuad(segIndex);
+          };
+        })();
 
-        if (layer.stroke && strokeVerts) {
+        if (layer.stroke) {
           const strokeColor =
             (layer.stroke as any).kind === "solid"
               ? (layer.stroke as any).color
@@ -890,98 +893,166 @@ const createCompositePrimitives = (
           (acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }),
           { x: 0, y: 0 }
         );
-        center.x /= baseVertices.length;
-        center.y /= baseVertices.length;
+        const invCount = baseVertices.length > 0 ? 1 / baseVertices.length : 0;
+        center.x *= invCount;
+        center.y *= invCount;
         const period = Math.max(1, Math.floor(animCfg.periodMs ?? 1500));
         const amplitude = animCfg.amplitude ?? 6;
         const phase = animCfg.phase ?? 0;
         const axis = animCfg.axis ?? "normal";
-        // Movement-aligned axes in LOCAL space (object x-axis is movement tangent before world rotation)
-        const movementTangent = { x: 1, y: 0 };
-        const movementNormal = { x: 0, y: 1 };
+        const amplitudePercentage = ((): number | undefined => {
+          const raw = (animCfg as any).amplitudePercentage;
+          return typeof raw === "number" && Number.isFinite(raw) ? raw : undefined;
+        })();
+        const movementPerp =
+          axis === "movement-tangent"
+            ? { x: 0, y: 1 }
+            : axis === "movement-normal"
+            ? { x: -1, y: 0 }
+            : null;
 
-        const getDeformedVerticesSway = () => {
-          const t = getTentacleTimeMs();
-          const omega = (Math.PI * 2) / period;
-          const angle = omega * t + phase;
-          const verts = new Array<SceneVector2>(baseVertices.length);
-          const ampPct = (animCfg as any).amplitudePercentage as number | undefined;
-          for (let i = 0; i < baseVertices.length; i += 1) {
-            const v = baseVertices[i]!;
-            const dir = { x: v.x - center.x, y: v.y - center.y };
-            const len = Math.hypot(dir.x, dir.y) || 1;
-            const nx = dir.x / len;
-            const ny = dir.y / len;
-            const localPhase = angle + i * 0.6;
-            // Default per-vertex phase (organic). For movement-locked axes we enforce global phase for symmetry.
-            let base = Math.sin(localPhase);
-            let dx: number;
-            let dy: number;
-            if (axis === "tangent") {
-              const tx = -ny;
-              const ty = nx;
-              const mag = amplitude;
-              dx = tx * mag * base;
-              dy = ty * mag * base;
-            } else if (axis === "movement-tangent" || axis === "movement-normal") {
-              // Strict symmetry about the movement axis: no per-vertex phase, use global phase only
-              base = Math.sin(angle);
-              // Displace ALONG PERPENDICULAR to the selected axis, to move toward the axis
-              const ax = axis === "movement-tangent" ? movementTangent.x : movementNormal.x;
-              const ay = axis === "movement-tangent" ? movementTangent.y : movementNormal.y;
-              const px = -ay;
-              const py = ax; // perpendicular unit
-              const signedDistToAxis = v.x * px + v.y * py; // distance relative to axis through origin
-              const towardAxis = -Math.sign(signedDistToAxis) || 0;
-              const mag = typeof ampPct === "number" ? Math.abs(signedDistToAxis) * ampPct : amplitude;
-              dx = px * mag * base * towardAxis;
-              dy = py * mag * base * towardAxis;
-            } else {
-              const mag = amplitude;
-              dx = nx * mag * base;
-              dy = ny * mag * base;
-            }
-            verts[i] = { x: v.x + dx, y: v.y + dy };
+        const vertexMeta = baseVertices.map((v) => {
+          const dx = v.x - center.x;
+          const dy = v.y - center.y;
+          const radius = Math.hypot(dx, dy);
+          const invRadius = radius > 1e-6 ? 1 / radius : 0;
+          const normalX = dx * invRadius;
+          const normalY = dy * invRadius;
+          const tangentX = -normalY;
+          const tangentY = normalX;
+          const normalMagnitude =
+            amplitudePercentage !== undefined ? radius * amplitudePercentage : amplitude;
+          return {
+            baseX: v.x,
+            baseY: v.y,
+            normalX,
+            normalY,
+            tangentX,
+            tangentY,
+            normalMagnitude,
+            tangentMagnitude: amplitude,
+          };
+        });
+        const movementMeta = movementPerp
+          ? baseVertices.map((v) => {
+              const signedDist = v.x * movementPerp.x + v.y * movementPerp.y;
+              const toward = -Math.sign(signedDist) || 0;
+              const magnitude =
+                amplitudePercentage !== undefined
+                  ? Math.abs(signedDist) * amplitudePercentage
+                  : amplitude;
+              return {
+                toward,
+                magnitude,
+              };
+            })
+          : null;
+        const hasMovement = Boolean(movementPerp && movementMeta);
+        const sinPhaseStep = Math.sin(POLYGON_SWAY_PHASE_STEP);
+        const cosPhaseStep = Math.cos(POLYGON_SWAY_PHASE_STEP);
+
+        const sampleSway = (timeMs: number): SceneVector2[] => {
+          if (vertexMeta.length === 0) {
+            return [];
           }
-          return verts;
-        };
-
-        const getDeformedVerticesPulse = () => {
-          const t = getTentacleTimeMs();
-          const omega = (Math.PI * 2) / period;
-          const angle = omega * t + phase;
-          const s = Math.sin(angle);
-          const verts = new Array<SceneVector2>(baseVertices.length);
-          const ampPct = (animCfg as any).amplitudePercentage as number | undefined;
-          for (let i = 0; i < baseVertices.length; i += 1) {
-            const v = baseVertices[i]!;
-            const dir = { x: v.x - center.x, y: v.y - center.y };
-            const len = Math.hypot(dir.x, dir.y) || 1;
-            const nx = dir.x / len;
-            const ny = dir.y / len;
-            const dAbs = amplitude * s; // fallback absolute amplitude
-            if (axis === "movement-tangent" || axis === "movement-normal") {
-              const ax = axis === "movement-tangent" ? movementTangent.x : movementNormal.x;
-              const ay = axis === "movement-tangent" ? movementTangent.y : movementNormal.y;
-              const px = -ay;
-              const py = ax;
-              const signedDistToAxis = v.x * px + v.y * py;
-              const towardAxis = -Math.sign(signedDistToAxis) || 0;
-              const mag = typeof ampPct === "number" ? Math.abs(signedDistToAxis) * ampPct * s : dAbs;
-              verts[i] = { x: v.x + px * mag * towardAxis, y: v.y + py * mag * towardAxis };
+          const omega = TAU / period;
+          const baseAngle = omega * timeMs + phase;
+          const globalSin = Math.sin(baseAngle);
+          const usesVertexPhase = !hasMovement;
+          const sinStep = usesVertexPhase ? sinPhaseStep : 0;
+          const cosStep = usesVertexPhase ? cosPhaseStep : 1;
+          let sinValue = globalSin;
+          let cosValue = Math.cos(baseAngle);
+          const deformed = new Array<SceneVector2>(vertexMeta.length);
+          for (let i = 0; i < vertexMeta.length; i += 1) {
+            const meta = vertexMeta[i]!;
+            if (!meta) {
+              deformed[i] = { x: 0, y: 0 };
+              continue;
+            }
+            const sinForVertex = usesVertexPhase ? sinValue : globalSin;
+            if (movementPerp && movementMeta && hasMovement) {
+              const moveInfo = movementMeta[i]!;
+              const magnitude = moveInfo.magnitude * sinForVertex * moveInfo.toward;
+              deformed[i] = {
+                x: meta.baseX + movementPerp.x * magnitude,
+                y: meta.baseY + movementPerp.y * magnitude,
+              };
             } else if (axis === "tangent") {
-              const tx = -ny;
-              const ty = nx;
-              verts[i] = { x: v.x + tx * dAbs, y: v.y + ty * dAbs };
+              const magnitude = meta.tangentMagnitude * sinForVertex;
+              deformed[i] = {
+                x: meta.baseX + meta.tangentX * magnitude,
+                y: meta.baseY + meta.tangentY * magnitude,
+              };
             } else {
-              verts[i] = { x: v.x + nx * dAbs, y: v.y + ny * dAbs };
+              const magnitude = meta.normalMagnitude * sinForVertex;
+              deformed[i] = {
+                x: meta.baseX + meta.normalX * magnitude,
+                y: meta.baseY + meta.normalY * magnitude,
+              };
+            }
+            if (usesVertexPhase) {
+              const prevSin = sinValue;
+              const prevCos = cosValue;
+              sinValue = prevSin * cosStep + prevCos * sinStep;
+              cosValue = prevCos * cosStep - prevSin * sinStep;
             }
           }
-          return verts;
+          return deformed;
         };
 
-        const getDeformedVertices =
-          animCfg.type === "sway" ? getDeformedVerticesSway : getDeformedVerticesPulse;
+        const samplePulse = (timeMs: number): SceneVector2[] => {
+          if (vertexMeta.length === 0) {
+            return [];
+          }
+          const omega = TAU / period;
+          const angle = omega * timeMs + phase;
+          const s = Math.sin(angle);
+          const deformed = new Array<SceneVector2>(vertexMeta.length);
+          for (let i = 0; i < vertexMeta.length; i += 1) {
+            const meta = vertexMeta[i]!;
+            if (!meta) {
+              deformed[i] = { x: 0, y: 0 };
+              continue;
+            }
+            if (movementPerp && movementMeta) {
+              const moveInfo = movementMeta[i]!;
+              const magnitude = moveInfo.magnitude * s * moveInfo.toward;
+              deformed[i] = {
+                x: meta.baseX + movementPerp.x * magnitude,
+                y: meta.baseY + movementPerp.y * magnitude,
+              };
+            } else if (axis === "tangent") {
+              const magnitude = amplitude * s;
+              deformed[i] = {
+                x: meta.baseX + meta.tangentX * magnitude,
+                y: meta.baseY + meta.tangentY * magnitude,
+              };
+            } else {
+              const magnitude = amplitude * s;
+              deformed[i] = {
+                x: meta.baseX + meta.normalX * magnitude,
+                y: meta.baseY + meta.normalY * magnitude,
+              };
+            }
+          }
+          return deformed;
+        };
+
+        const getDeformedVertices = (() => {
+          let lastTick = -1;
+          let lastSample = baseVertices.map((v) => ({ x: v.x, y: v.y }));
+          return () => {
+            const now = getTentacleTimeMs();
+            const tick = Math.floor(now);
+            if (tick !== lastTick) {
+              lastTick = tick;
+              lastSample =
+                animCfg.type === "sway" ? sampleSway(now) : samplePulse(now);
+            }
+            return lastSample;
+          };
+        })();
 
         if (layer.stroke) {
           const strokeColor =
