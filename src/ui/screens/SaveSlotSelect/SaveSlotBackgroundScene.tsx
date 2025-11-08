@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
   FILL_TYPES,
+  SceneColor,
   SceneFill,
   SceneFillNoise,
   SceneGradientStop,
@@ -47,7 +48,8 @@ const LETTER_HORIZONTAL_GAP = 6;
 const LETTER_VERTICAL_GAP = 6;
 const LETTER_SPACING = 36;
 const WORD_SPACING = 140;
-const TITLE_TEXT = "VOID EATERS";
+const LINE_SPACING = 120;
+const TITLE_LINES = ["VOID", "EATERS"] as const;
 const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
 
 // Adjust brick types per letter to quickly experiment with the title palette.
@@ -62,6 +64,11 @@ const LETTER_BRICK_TYPES: Partial<Record<string, BrickType>> = {
   R: "smallCopper",
   S: "smallIce",
 };
+
+const CREATURE_ORBIT_VERTICAL_SQUASH = 0.85;
+const CREATURE_BOB_AMPLITUDE = 8;
+const CREATURE_BOB_SPEED = 0.0005;
+const CONTENT_PADDING = 140;
 
 type LetterPattern = readonly string[];
 
@@ -163,6 +170,12 @@ interface WordMetric {
   height: number;
 }
 
+interface LineMetric {
+  words: WordMetric[];
+  width: number;
+  height: number;
+}
+
 interface TitleLayoutResult {
   bricks: Array<{
     position: SceneVector2;
@@ -225,110 +238,153 @@ const getLetterMetric = (letter: string): LetterMetric | null => {
 };
 
 const computeTitleLayout = (
-  text: string,
+  lines: readonly string[],
   mapWidth: number,
   mapHeight: number
 ): TitleLayoutResult => {
-  const words = text
-    .toUpperCase()
-    .split(" ")
-    .filter((word) => word.length > 0);
+  const sanitizedLines = lines
+    .map((line) =>
+      line
+        .toUpperCase()
+        .split(/\s+/)
+        .filter((word) => word.length > 0)
+    )
+    .filter((words) => words.length > 0);
 
-  const wordMetrics: WordMetric[] = words.map((word) => {
-    const entries = word
-      .split("")
-      .map((letter) => getLetterMetric(letter))
-      .filter((metric): metric is LetterMetric => metric !== null);
-    const width = entries.reduce((acc, metric, index) => {
-      const spacing = index < entries.length - 1 ? LETTER_SPACING : 0;
+  const lineMetrics: LineMetric[] = sanitizedLines.map((words) => {
+    const wordMetrics = words.map((word) => {
+      const entries = word
+        .split("")
+        .map((letter) => getLetterMetric(letter))
+        .filter((metric): metric is LetterMetric => metric !== null);
+      const width = entries.reduce((acc, metric, index) => {
+        const spacing = index < entries.length - 1 ? LETTER_SPACING : 0;
+        return acc + metric.width + spacing;
+      }, 0);
+      const height = entries.reduce(
+        (max, metric) => Math.max(max, metric.height),
+        0
+      );
+      return { letters: entries, width, height };
+    });
+
+    const width = wordMetrics.reduce((acc, metric, index) => {
+      const spacing = index < wordMetrics.length - 1 ? WORD_SPACING : 0;
       return acc + metric.width + spacing;
     }, 0);
-    const height = entries.reduce(
+    const height = wordMetrics.reduce(
       (max, metric) => Math.max(max, metric.height),
       0
     );
-    return { letters: entries, width, height };
+
+    return { words: wordMetrics, width, height };
   });
 
-  const totalWidth = wordMetrics.reduce((acc, metric, index) => {
-    const spacing = index < wordMetrics.length - 1 ? WORD_SPACING : 0;
-    return acc + metric.width + spacing;
+  const totalHeight = lineMetrics.reduce((acc, metric, index) => {
+    const spacing = index > 0 ? LINE_SPACING : 0;
+    return acc + metric.height + spacing;
   }, 0);
-  const totalHeight = wordMetrics.reduce(
-    (max, metric) => Math.max(max, metric.height),
+
+  const maxWidth = lineMetrics.reduce(
+    (max, metric) => Math.max(max, metric.width),
     0
   );
 
-  const startX = mapWidth / 2 - totalWidth / 2;
+  const startX = mapWidth / 2 - maxWidth / 2;
   const startY = mapHeight / 2 - totalHeight / 2;
 
   const bricks: TitleLayoutResult["bricks"] = [];
-  let cursorX = startX;
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
 
-  wordMetrics.forEach((wordMetric, wordIndex) => {
-    const wordBaseY = startY + (totalHeight - wordMetric.height) / 2;
-    wordMetric.letters.forEach((letterMetric, letterIndex) => {
-      const letterTop = wordBaseY + (wordMetric.height - letterMetric.height) / 2;
-      const columns = letterMetric.layout[0]?.length ?? 0;
-      const rows = letterMetric.layout.length;
-      const tileWidth =
-        letterMetric.config.size.width + LETTER_HORIZONTAL_GAP;
-      const tileHeight =
-        letterMetric.config.size.height + LETTER_VERTICAL_GAP;
-      const stroke = letterMetric.config.stroke
-        ? {
-            color: { ...letterMetric.config.stroke.color },
-            width: letterMetric.config.stroke.width,
-          }
-        : undefined;
+  let cursorY = startY;
 
-      for (let row = 0; row < rows; row += 1) {
-        const patternRow = letterMetric.layout[row] ?? "";
-        for (let col = 0; col < columns; col += 1) {
-          if (patternRow[col] !== "#") {
-            continue;
+  lineMetrics.forEach((lineMetric, lineIndex) => {
+    const lineCenterY = cursorY + lineMetric.height / 2;
+    let cursorX = startX + (maxWidth - lineMetric.width) / 2;
+
+    lineMetric.words.forEach((wordMetric, wordIndex) => {
+      const wordTop = lineCenterY - wordMetric.height / 2;
+
+      wordMetric.letters.forEach((letterMetric, letterIndex) => {
+        const columns = letterMetric.layout[0]?.length ?? 0;
+        const rows = letterMetric.layout.length;
+        const tileWidth =
+          letterMetric.config.size.width + LETTER_HORIZONTAL_GAP;
+        const tileHeight =
+          letterMetric.config.size.height + LETTER_VERTICAL_GAP;
+        const stroke = letterMetric.config.stroke
+          ? {
+              color: { ...letterMetric.config.stroke.color },
+              width: letterMetric.config.stroke.width,
+            }
+          : undefined;
+
+        for (let row = 0; row < rows; row += 1) {
+          const patternRow = letterMetric.layout[row] ?? "";
+          for (let col = 0; col < columns; col += 1) {
+            if (patternRow[col] !== "#") {
+              continue;
+            }
+            const centerX =
+              cursorX +
+              col * tileWidth +
+              letterMetric.config.size.width / 2;
+            const centerY =
+              wordTop +
+              row * tileHeight +
+              letterMetric.config.size.height / 2;
+            bricks.push({
+              position: { x: centerX, y: centerY },
+              size: { ...letterMetric.config.size },
+              fill: createBrickFill(letterMetric.config),
+              stroke,
+            });
+            minX = Math.min(
+              minX,
+              centerX - letterMetric.config.size.width / 2
+            );
+            minY = Math.min(
+              minY,
+              centerY - letterMetric.config.size.height / 2
+            );
+            maxX = Math.max(
+              maxX,
+              centerX + letterMetric.config.size.width / 2
+            );
+            maxY = Math.max(
+              maxY,
+              centerY + letterMetric.config.size.height / 2
+            );
           }
-          const centerX =
-            cursorX +
-            col * tileWidth +
-            letterMetric.config.size.width / 2;
-          const centerY =
-            letterTop +
-            row * tileHeight +
-            letterMetric.config.size.height / 2;
-          bricks.push({
-            position: { x: centerX, y: centerY },
-            size: { ...letterMetric.config.size },
-            fill: createBrickFill(letterMetric.config),
-            stroke,
-          });
-          minX = Math.min(minX, centerX - letterMetric.config.size.width / 2);
-          minY = Math.min(minY, centerY - letterMetric.config.size.height / 2);
-          maxX = Math.max(maxX, centerX + letterMetric.config.size.width / 2);
-          maxY = Math.max(maxY, centerY + letterMetric.config.size.height / 2);
         }
-      }
 
-      cursorX += letterMetric.width;
-      if (letterIndex < wordMetric.letters.length - 1) {
-        cursorX += LETTER_SPACING;
+        cursorX += letterMetric.width;
+        if (letterIndex < wordMetric.letters.length - 1) {
+          cursorX += LETTER_SPACING;
+        }
+      });
+
+      if (wordIndex < lineMetric.words.length - 1) {
+        cursorX += WORD_SPACING;
       }
     });
 
-    if (wordIndex < wordMetrics.length - 1) {
-      cursorX += WORD_SPACING;
+    cursorY += lineMetric.height;
+    if (lineIndex < lineMetrics.length - 1) {
+      cursorY += LINE_SPACING;
     }
   });
 
   if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+    const fallbackWidth = Math.max(maxWidth, 0);
+    const fallbackHeight = Math.max(totalHeight, 0);
     minX = startX;
     minY = startY;
-    maxX = startX + totalWidth;
-    maxY = startY + totalHeight;
+    maxX = startX + fallbackWidth;
+    maxY = startY + fallbackHeight;
   }
 
   return {
@@ -355,16 +411,92 @@ interface CreatureState extends CreatureConfig {
   previousPosition: SceneVector2;
 }
 
+const cloneColor = (color: SceneColor | undefined): SceneColor | undefined => {
+  if (!color) {
+    return undefined;
+  }
+  const clone: SceneColor = {
+    r: color.r,
+    g: color.g,
+    b: color.b,
+  };
+  if (typeof color.a === "number" && Number.isFinite(color.a)) {
+    clone.a = color.a;
+  }
+  return clone;
+};
+
+const deriveRendererStroke = (
+  renderer: PlayerUnitRendererConfig
+): SceneStroke | undefined => {
+  if (renderer.stroke) {
+    return {
+      color: cloneColor(renderer.stroke.color) ?? renderer.stroke.color,
+      width: renderer.stroke.width,
+    };
+  }
+
+  for (const layer of renderer.layers) {
+    const layerStroke = (layer as any)?.stroke as
+      | { type?: string; color?: SceneColor; width?: number }
+      | undefined;
+    if (layerStroke?.type === "solid" && layerStroke.color) {
+      const width =
+        typeof layerStroke.width === "number" && Number.isFinite(layerStroke.width)
+          ? layerStroke.width
+          : 2;
+      return {
+        color: cloneColor(layerStroke.color) ?? layerStroke.color,
+        width,
+      };
+    }
+  }
+
+  return undefined;
+};
+
+const computeSceneContentBounds = (
+  titleBounds: TitleLayoutResult["bounds"],
+  creatures: readonly CreatureConfig[],
+  padding: number
+): TitleLayoutResult["bounds"] => {
+  let minX = titleBounds.x;
+  let minY = titleBounds.y;
+  let maxX = titleBounds.x + titleBounds.width;
+  let maxY = titleBounds.y + titleBounds.height;
+
+  creatures.forEach((creature) => {
+    const horizontalRadius = creature.orbitRadius;
+    const verticalRadius =
+      creature.orbitRadius * CREATURE_ORBIT_VERTICAL_SQUASH + CREATURE_BOB_AMPLITUDE;
+    minX = Math.min(minX, creature.orbitCenter.x - horizontalRadius);
+    maxX = Math.max(maxX, creature.orbitCenter.x + horizontalRadius);
+    minY = Math.min(minY, creature.orbitCenter.y - verticalRadius);
+    maxY = Math.max(maxY, creature.orbitCenter.y + verticalRadius);
+  });
+
+  const paddedWidth = Math.max(0, maxX - minX + padding * 2);
+  const paddedHeight = Math.max(0, maxY - minY + padding * 2);
+
+  return {
+    x: minX - padding,
+    y: minY - padding,
+    width: paddedWidth,
+    height: paddedHeight,
+  };
+};
+
 const PLAYER_UNIT_CONFIG = getPlayerUnitConfig("bluePentagon");
+const PLAYER_UNIT_BASE_STROKE = deriveRendererStroke(PLAYER_UNIT_CONFIG.renderer);
 
 const cloneRendererConfigForScene = (
   renderer: PlayerUnitRendererConfig
-): PlayerUnitRendererConfig => ({
-  kind: renderer.kind,
-  fill: { ...renderer.fill },
-  stroke: renderer.stroke
-    ? { color: { ...renderer.stroke.color }, width: renderer.stroke.width }
-    : undefined,
+): PlayerUnitRendererConfig => {
+  const stroke = deriveRendererStroke(renderer);
+  return {
+    kind: renderer.kind,
+    fill: { ...renderer.fill },
+    stroke: stroke ? { color: { ...stroke.color }, width: stroke.width } : undefined,
   layers: renderer.layers.map((layer) => {
     if (layer.shape === "polygon") {
       return {
@@ -397,20 +529,21 @@ const cloneRendererConfigForScene = (
       groupId: (layer as any).groupId,
     };
   }),
-  auras: renderer.auras
-    ? renderer.auras.map((aura) => ({
-        petalCount: aura.petalCount,
-        innerRadius: aura.innerRadius,
-        outerRadius: aura.outerRadius,
-        petalWidth: aura.petalWidth,
-        rotationSpeed: aura.rotationSpeed,
-        color: { ...aura.color },
-        alpha: aura.alpha,
-        requiresModule: aura.requiresModule,
-        pointInward: aura.pointInward,
-      }))
-    : undefined,
-});
+    auras: renderer.auras
+      ? renderer.auras.map((aura) => ({
+          petalCount: aura.petalCount,
+          innerRadius: aura.innerRadius,
+          outerRadius: aura.outerRadius,
+          petalWidth: aura.petalWidth,
+          rotationSpeed: aura.rotationSpeed,
+          color: { ...aura.color },
+          alpha: aura.alpha,
+          requiresModule: aura.requiresModule,
+          pointInward: aura.pointInward,
+        }))
+      : undefined,
+  };
+};
 
 const createShader = (gl: WebGLRenderingContext, type: number, source: string) => {
   const shader = gl.createShader(type);
@@ -631,13 +764,14 @@ void main() {
 
 const clampCameraToCenter = (scene: SceneObjectManager) => {
   const camera = scene.getCamera();
+  const mapSize = scene.getMapSize();
   const centerX = Math.max(
     0,
-    (MAP_SIZE.width - camera.viewportSize.width) / 2
+    (mapSize.width - camera.viewportSize.width) / 2
   );
   const centerY = Math.max(
     0,
-    (MAP_SIZE.height - camera.viewportSize.height) / 2
+    (mapSize.height - camera.viewportSize.height) / 2
   );
   scene.setCameraPosition(centerX, centerY);
 };
@@ -687,8 +821,8 @@ const createCreatures = (
     };
     const renderer = cloneRendererConfigForScene(PLAYER_UNIT_CONFIG.renderer);
     const baseFillColor = { ...PLAYER_UNIT_CONFIG.renderer.fill };
-    const baseStrokeColor = PLAYER_UNIT_CONFIG.renderer.stroke
-      ? { ...PLAYER_UNIT_CONFIG.renderer.stroke.color }
+    const baseStrokeColor = PLAYER_UNIT_BASE_STROKE
+      ? { ...PLAYER_UNIT_BASE_STROKE.color }
       : undefined;
     const objectId = scene.addObject("playerUnit", {
       position: initialPosition,
@@ -696,6 +830,12 @@ const createCreatures = (
         fillType: FILL_TYPES.SOLID,
         color: baseFillColor,
       },
+      stroke: PLAYER_UNIT_BASE_STROKE
+        ? {
+            color: { ...PLAYER_UNIT_BASE_STROKE.color },
+            width: PLAYER_UNIT_BASE_STROKE.width,
+          }
+        : undefined,
       rotation: 0,
       customData: {
         renderer,
@@ -704,7 +844,7 @@ const createCreatures = (
         baseFillColor,
         baseStrokeColor,
         modules: config.modules,
-        skills: [],
+        skills: config.modules.length > 0 ? ["void_modules"] : [],
       },
     });
 
@@ -727,8 +867,9 @@ const updateCreatures = (
       x: creature.orbitCenter.x + Math.cos(angle) * creature.orbitRadius,
       y:
         creature.orbitCenter.y +
-        Math.sin(angle) * creature.orbitRadius * 0.85 +
-        Math.sin(timestamp * 0.0005 + creature.phase) * 8,
+        Math.sin(angle) * creature.orbitRadius * CREATURE_ORBIT_VERTICAL_SQUASH +
+        Math.sin(timestamp * CREATURE_BOB_SPEED + creature.phase) *
+          CREATURE_BOB_AMPLITUDE,
     };
     const dx = nextPosition.x - creature.previousPosition.x;
     const dy = nextPosition.y - creature.previousPosition.y;
@@ -806,7 +947,11 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       clearPetalAuraInstances();
     }
 
-    const titleLayout = computeTitleLayout(TITLE_TEXT, MAP_SIZE.width, MAP_SIZE.height);
+    const titleLayout = computeTitleLayout(
+      TITLE_LINES,
+      MAP_SIZE.width,
+      MAP_SIZE.height
+    );
 
     titleLayout.bricks.forEach((brick) => {
       scene.addObject("brick", {
@@ -818,6 +963,11 @@ export const SaveSlotBackgroundScene: React.FC = () => {
     });
 
     const creatures = createCreatures(scene, titleLayout.bounds);
+    const contentBounds = computeSceneContentBounds(
+      titleLayout.bounds,
+      creatures,
+      CONTENT_PADDING
+    );
 
     objectsRenderer.bootstrap(scene.getObjects());
 
@@ -906,6 +1056,10 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       canvas.height = height;
       gl.viewport(0, 0, width, height);
       scene.setViewportScreenSize(width, height);
+      const safeContentWidth = Math.max(contentBounds.width, 1);
+      const safeContentHeight = Math.max(contentBounds.height, 1);
+      const scale = Math.min(1, width / safeContentWidth, height / safeContentHeight);
+      scene.setScale(scale);
       clampCameraToCenter(scene);
     };
 
