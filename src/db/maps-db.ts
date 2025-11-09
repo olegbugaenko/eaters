@@ -698,12 +698,30 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             center: { x: center.x + outerRadius + 50, y: center.y },
             innerRadius: 0,
+            outerRadius: gemRadius*1.25,
+          },
+          { level: gemLevel }
+        );
+        const copperGem2 = circleWithBricks(
+          "smallCopper",
+          {
+            center: { x: center.x + outerRadius-25, y: center.y + 50 },
+            innerRadius: 0,
+            outerRadius: gemRadius,
+          },
+          { level: gemLevel }
+        );
+        const copperGem3 = circleWithBricks(
+          "smallCopper",
+          {
+            center: { x: center.x + outerRadius-25, y: center.y - 50 },
+            innerRadius: 0,
             outerRadius: gemRadius,
           },
           { level: gemLevel }
         );
 
-        return [silverRing, copperGem];
+        return [silverRing, copperGem, copperGem2, copperGem3];
       },
       playerUnits: [
         {

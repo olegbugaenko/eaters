@@ -103,9 +103,9 @@ const ORANGE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const WOOD_LINEAR_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.55, g: 0.35, b: 0.15, a: 1 } },
-  { offset: 0.5, color: { r: 0.7, g: 0.45, b: 0.2, a: 1 } },
-  { offset: 1, color: { r: 0.45, g: 0.28, b: 0.12, a: 1 } },
+  { offset: 0, color: { r: 0.45, g: 0.3, b: 0.15, a: 1 } },
+  { offset: 0.5, color: { r: 0.5, g: 0.35, b: 0.13, a: 1 } },
+  { offset: 1, color: { r: 0.45, g: 0.3, b: 0.12, a: 1 } },
 ] as const;
 
 const COPPER_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
@@ -133,9 +133,9 @@ const ICE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const MAGMA_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.4, g: 0.1, b: 0.1, a: 1 } },
-  { offset: 0.35, color: { r: 0.3, g: 0.1, b: 0.1, a: 1 } },
-  { offset: 1, color: { r: 0.15, g: 0.07, b: 0.05, a: 1 } },
+  { offset: 0, color: { r: 0.5, g: 0.2, b: 0.2, a: 1 } },
+  { offset: 0.35, color: { r: 0.4, g: 0.12, b: 0.12, a: 1 } },
+  { offset: 1, color: { r: 0.2, g: 0.07, b: 0.05, a: 1 } },
 ] as const;
 
 const NEUTRON_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
@@ -334,7 +334,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         scale: 0.45,
       },
     },
-    stroke: { color: { r: 0.25, g: 0.15, b: 0.05, a: 1 }, width: 1.5 },
+    stroke: { color: { r: 0.3, g: 0.2, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
       maxHp: 265,
       armor: 20,
@@ -501,7 +501,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       noise: {
         colorAmplitude: 0.02,
         alphaAmplitude: 0.0,
-        scale: 0.15,
+        scale: 0.35,
       },
     },
     stroke: { color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, width: 1.5 },
