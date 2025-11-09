@@ -15,6 +15,8 @@ interface ArcState {
   remainingMs: number;
   lifetimeMs: number;
   fadeStartMs: number;
+  lastUpdateTimestampMs: number;
+  lastRealTimestampMs: number;
 }
 
 export class ArcModule implements GameModule {
@@ -47,6 +49,8 @@ export class ArcModule implements GameModule {
     if (this.arcs.length === 0) return;
     const survivors: ArcState[] = [];
     const dec = Math.max(0, deltaMs);
+    const now = this.getTimestamp();
+    const realNow = Date.now();
     for (let i = 0; i < this.arcs.length; i += 1) {
       const a = this.arcs[i]!;
       const from = this.getUnitPositionIfAlive(a.sourceUnitId);
@@ -65,11 +69,17 @@ export class ArcModule implements GameModule {
           to: { ...to },
         },
       });
-      const next = a.remainingMs - dec;
+      const elapsed = Math.max(dec, now - a.lastUpdateTimestampMs, realNow - a.lastRealTimestampMs);
+      const next = a.remainingMs - elapsed;
       if (next <= 0) {
         this.scene.removeObject(a.id);
       } else {
-        survivors.push({ ...a, remainingMs: next });
+        survivors.push({
+          ...a,
+          remainingMs: next,
+          lastUpdateTimestampMs: now,
+          lastRealTimestampMs: realNow,
+        });
       }
     }
     this.arcs = survivors;
@@ -82,6 +92,8 @@ export class ArcModule implements GameModule {
     if (!from || !to) {
       return;
     }
+    const now = this.getTimestamp();
+    const realNow = Date.now();
     const id = this.scene.addObject("arc", {
       position: { ...from },
       fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } },
@@ -101,6 +113,8 @@ export class ArcModule implements GameModule {
       remainingMs: cfg.lifetimeMs,
       lifetimeMs: cfg.lifetimeMs,
       fadeStartMs: cfg.fadeStartMs,
+      lastUpdateTimestampMs: now,
+      lastRealTimestampMs: realNow,
     });
   }
 
@@ -125,6 +139,13 @@ export class ArcModule implements GameModule {
   public clearArcs(): void {
     this.arcs.forEach((a) => this.scene.removeObject(a.id));
     this.arcs = [];
+  }
+
+  private getTimestamp(): number {
+    if (typeof performance !== "undefined" && typeof performance.now === "function") {
+      return performance.now();
+    }
+    return Date.now();
   }
 }
 
