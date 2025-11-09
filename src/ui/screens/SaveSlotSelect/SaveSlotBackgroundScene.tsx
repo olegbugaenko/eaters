@@ -54,21 +54,21 @@ import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRendere
 import { whirlEffect, disposeWhirlResources } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import type { UnitModuleId } from "@db/unit-modules-db";
 
-const MAP_SIZE: SceneSize = { width: 1800, height: 1100 };
-const LETTER_HORIZONTAL_GAP = 6;
-const LETTER_VERTICAL_GAP = 4;
+const MAP_SIZE: SceneSize = { width: 2400, height: 1650 };
+const LETTER_HORIZONTAL_GAP = 1;
+const LETTER_VERTICAL_GAP = 1;
 const LETTER_SPACING = 36;
-const WORD_SPACING = 140;
+const WORD_SPACING = 0;
 const LINE_SPACING = 420;
 const TITLE_LINES = ["VOID", "EATERS"] as const;
 const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
 
 // Adjust brick types per letter to quickly experiment with the title palette.
 const LETTER_BRICK_TYPES: Partial<Record<string, BrickType>> = {
-  V: "smallIce",
-  O: "smallIce",
-  I: "smallIce",
-  D: "smallIce",
+  V: "darkMatterBrick",
+  O: "darkMatterBrick",
+  I: "darkMatterBrick",
+  D: "darkMatterBrick",
   E: "neutronBrick",
   A: "neutronBrick",
   T: "neutronBrick",
@@ -292,6 +292,7 @@ const computeTitleLayout = (
     return { words: wordMetrics, width, height };
   });
 
+  console.log('lineMetrics: ', lineMetrics);
   const totalHeight = lineMetrics.reduce((acc, metric, index) => {
     const spacing = index > 0 ? LINE_SPACING : 0;
     return acc + metric.height + spacing;
@@ -302,10 +303,11 @@ const computeTitleLayout = (
     0
   );
 
-  const startX = Math.max(600, 600 + mapWidth/2 - maxWidth/2);
+  const wW = window.innerWidth;
+  const aR = wW / mapWidth;
+  const boundsX = (mapWidth) - maxWidth - 50;
+  const startX = Math.max(600, boundsX);
   const startY = mapHeight / 2 - totalHeight / 2;
-
-  console.log('WD: ', mapWidth, maxWidth, startX, mapWidth/2 - maxWidth*0.5/2);
 
   const bricks: TitleLayoutResult["bricks"] = [];
   const wordRanges: TitleLayoutResult["wordRanges"] = [];

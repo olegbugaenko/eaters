@@ -477,8 +477,8 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
     wave: {
-      radiusExtension: 40,
-      startAlpha: 0.4,
+      radiusExtension: 50,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: GRAY_BRICK_HIT_WAVE_GRADIENT_STOPS,
     },
@@ -489,7 +489,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.55,
+      startAlpha: 0.75,
       endAlpha: 0,
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     },
@@ -500,7 +500,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.45,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: YELLOW_BRICK_HIT_WAVE,
     },
@@ -511,7 +511,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.6,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: YELLOW_BRICK_DESTROY_WAVE,
     },
@@ -522,7 +522,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.45,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: GREEN_BRICK_HIT_WAVE,
     },
@@ -533,7 +533,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.6,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: GREEN_BRICK_DESTROY_WAVE,
     },
@@ -544,7 +544,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.5,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_HIT_WAVE,
     },
@@ -555,7 +555,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.65,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_DESTROY_WAVE,
     },
@@ -566,7 +566,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.45,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: BROWN_BRICK_HIT_WAVE,
     },
@@ -577,7 +577,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.6,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: BROWN_BRICK_DESTROY_WAVE,
     },
@@ -588,7 +588,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.5,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_HIT_WAVE,
     },
@@ -599,7 +599,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.65,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_DESTROY_WAVE,
     },
@@ -610,7 +610,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.5,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: SILVER_BRICK_HIT_WAVE,
     },
@@ -621,7 +621,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.65,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: SILVER_BRICK_DESTROY_WAVE,
     },
@@ -632,7 +632,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.5,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: COAL_BRICK_HIT_WAVE,
     },
@@ -643,7 +643,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.65,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: COAL_BRICK_DESTROY_WAVE,
     },
@@ -654,7 +654,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.5,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: ICE_BRICK_HIT_WAVE,
     },
@@ -665,7 +665,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.65,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: ICE_BRICK_DESTROY_WAVE,
     },
@@ -676,7 +676,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     wave: {
       radiusExtension: 40,
-      startAlpha: 0.5,
+      startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: MAGMA_BRICK_HIT_WAVE,
     },
@@ -687,7 +687,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.68,
+      startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: MAGMA_BRICK_DESTROY_WAVE,
     },
@@ -698,7 +698,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 70,
-      startAlpha: 0.8,
+      startAlpha: 0.9,
       endAlpha: 0,
       gradientStops: CRITICAL_HIT_WAVE_GRADIENT_STOPS,
     },

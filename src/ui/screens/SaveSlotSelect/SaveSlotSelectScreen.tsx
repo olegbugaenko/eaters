@@ -57,7 +57,7 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
             const lastPlayed = slot.hasSave ? formatLastPlayed(slot.updatedAt) : null;
 
             return (
-              <article key={slot.id} className="save-slot-card surface-card dark">
+              <article key={slot.id} className="save-slot-card surface-card">
                 <header className="save-slot-card__header">
                   <div>
                     <div className="save-slot-card__title">Slot {slot.id}</div>
