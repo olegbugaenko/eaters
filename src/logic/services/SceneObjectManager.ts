@@ -250,6 +250,8 @@ export class SceneObjectManager {
       fill: transparentFill,
       // hide stroke immediately to avoid visible outlines before batched removal
       stroke: undefined,
+      // release any heavy customData payloads while the instance awaits removal
+      customData: undefined,
     } as SceneObjectData & { fill: SceneFill; stroke?: SceneStroke };
     this.pendingRemovals.add(id);
     this.updated.set(id, instance);
