@@ -311,18 +311,7 @@ export class SceneObjectManager {
         const next = iterator.next();
         if (next.done) break;
         const id = next.value as string;
-        this.pendingRemovals.delete(id);
-        const had = this.objects.delete(id);
-        if (had) {
-          const index = this.ordered.findIndex((object) => object.id === id);
-          if (index >= 0) {
-            this.ordered.splice(index, 1);
-          }
-        }
-        this.added.delete(id);
-        this.updated.delete(id);
-        this.removed.add(id);
-        actuallyRemoved.push(id);
+        this.finalizeRemoval(id, actuallyRemoved);
         processed += 1;
       }
       this.lastRemovalFlushTimestampMs = now;
@@ -343,6 +332,18 @@ export class SceneObjectManager {
     this.removed.clear();
     // Note: pendingRemovals keeps remaining ids if quota wasn't enough
     return { added, updated, removed };
+  }
+
+  public flushAllPendingRemovals(): string[] {
+    if (this.pendingRemovals.size === 0) {
+      return [];
+    }
+    const removed: string[] = [];
+    for (const id of Array.from(this.pendingRemovals)) {
+      this.finalizeRemoval(id, removed);
+    }
+    this.lastRemovalFlushTimestampMs = Date.now();
+    return removed;
   }
 
   public getMapSize(): SceneSize {
@@ -449,6 +450,25 @@ export class SceneObjectManager {
     const minScaleHeight = safeScreenHeight / safeMapHeight;
     const minScale = Math.min(minScaleWidth, minScaleHeight);
     return clamp(minScale, 0.1, MAX_SCALE);
+  }
+
+  private finalizeRemoval(id: string, accumulator: string[]): void {
+    if (!this.pendingRemovals.delete(id)) {
+      return;
+    }
+    const had = this.objects.delete(id);
+    if (had) {
+      const index = this.ordered.findIndex((object) => object.id === id);
+      if (index >= 0) {
+        this.ordered.splice(index, 1);
+      }
+    }
+    this.added.delete(id);
+    this.updated.delete(id);
+    if (!this.removed.has(id)) {
+      this.removed.add(id);
+    }
+    accumulator.push(id);
   }
 
   private clampCamera(): void {

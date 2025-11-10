@@ -294,6 +294,7 @@ export class Application {
     const scene = this.getSceneObjects();
     scene.clear();
     this.modules.forEach((module) => module.reset());
+    scene.flushAllPendingRemovals();
     this.resetGpuCaches();
   }
 
@@ -468,6 +469,7 @@ export class Application {
     this.explosionModule.reset();
     this.arcModule.reset();
     this.effectsModule.reset();
+    this.getSceneObjects().flushAllPendingRemovals();
     this.resetGpuCaches();
   }
 
