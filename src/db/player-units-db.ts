@@ -616,9 +616,9 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
         start: { x: 0, y: 0 },
         stops: [
-          { offset: 0, color: { r: 0.5, g: 0.95, b: 0.95, a: 0.1 } },
-          { offset: 0.25, color: { r: 0.5, g: 0.95, b: 0.95, a: 0.05 } },
-          { offset: 1, color: { r: 0.5, g: 0.95, b: 0.95, a: 0 } },
+          { offset: 0, color: { r: 0.5, g: 0.85, b: 0.95, a: 0.1 } },
+          { offset: 0.25, color: { r: 0.5, g: 0.85, b: 0.95, a: 0.05 } },
+          { offset: 1, color: { r: 0.5, g: 0.85, b: 0.95, a: 0 } },
         ],
         noise: {
           colorAmplitude: 0.0,
