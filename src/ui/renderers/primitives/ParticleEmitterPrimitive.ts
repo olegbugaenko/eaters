@@ -286,7 +286,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     resetParticleEmitterGpuState(gpu);
     updateParticleEmitterGpuUniforms(gpu, config);
   } else {
-    writeEmitterBuffer(state, config, options.getOrigin(instance, config));
+    writeEmitterBufferCpu(state, config, options.getOrigin(instance, config));
   }
   return state;
 };
@@ -394,7 +394,7 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     state.particles.length = writeIndex;
   }
 
-  writeEmitterBuffer(state, config, origin);
+  writeEmitterBufferCpu(state, config, origin);
   return state.data;
 };
 
@@ -523,7 +523,9 @@ const advanceParticleEmitterStateGpu = <
   }
 };
 
-const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
+// CPU-only vertex buffer population. Callers only invoke this in CPU mode, but we
+// still guard against accidental reuse from the GPU path.
+const writeEmitterBufferCpu = <Config extends ParticleEmitterBaseConfig>(
   state: ParticleEmitterState<Config>,
   config: Config,
   origin: SceneVector2
@@ -545,7 +547,7 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
   const buffer = state.data;
   const activeCount = Math.min(state.particles.length, capacity);
   let offset = 0;
-  const fill = resolveParticleFill(config);
+  const fill = resolveParticleFillForCpu(config);
   const fillSignature = serializeSceneFill(fill);
 
   const inactiveComponents = writeFillVertexComponents(INACTIVE_PARTICLE_FILL, {
@@ -611,6 +613,11 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
     const height = effectiveSize;
     const halfW = Math.max(width / 2, MIN_PARTICLE_SIZE / 2);
     const halfH = Math.max(height / 2, MIN_PARTICLE_SIZE / 2);
+    const defaultRadius = Math.max(halfW, halfH);
+    const fallbackRadius =
+      !config.fill && fill.fillType === FILL_TYPES.DIAMOND_GRADIENT
+        ? halfW + halfH
+        : defaultRadius;
     const center = particle.position;
     const rotation = config.alignToVelocity === true
       ? Math.atan2(particle.velocity.y, particle.velocity.x)
@@ -626,7 +633,7 @@ const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
         center,
         rotation,
         size: { width, height },
-        radius: Math.max(width, height) / 2,
+        radius: fallbackRadius,
       });
     }
     applyParticleAlpha(fillComponents, computeParticleAlpha(particle, config));
@@ -1345,7 +1352,7 @@ const updateParticleEmitterGpuUniforms = <
 };
 
 const resolveParticleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
-  const shape = config.shape === "circle" ? "circle" : "square"; // triangle treated as square in CPU mode
+  const shape = config.shape === "circle" ? "circle" : "square"; // triangle treated as square in GPU defaults
   if (config.fill) {
     return config.fill;
   }
@@ -1353,6 +1360,77 @@ const resolveParticleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
     return createCircularFill(config.color);
   }
   return createSolidFill(config.color);
+};
+
+const resolveParticleFillForCpu = (
+  config: ParticleEmitterBaseConfig
+): SceneFill => {
+  if (config.fill) {
+    return config.fill;
+  }
+
+  if (config.shape === "circle") {
+    return createCircularFill(config.color);
+  }
+
+  if (config.shape === "triangle") {
+    return createTriangleFill(config);
+  }
+
+  return createDiamondFill(config);
+};
+
+const ensureColorAlpha = (color: SceneColor): number =>
+  typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1;
+
+const cloneColorWithAlpha = (color: SceneColor, alpha: number): SceneColor => ({
+  r: color.r,
+  g: color.g,
+  b: color.b,
+  a: alpha,
+});
+
+const getMaxParticleSize = (config: ParticleEmitterBaseConfig): number =>
+  Math.max(config.sizeRange.max, config.sizeRange.min, MIN_PARTICLE_SIZE);
+
+const getHalfExtents = (
+  config: ParticleEmitterBaseConfig
+): { halfWidth: number; halfHeight: number } => {
+  const maxSize = getMaxParticleSize(config);
+  const halfHeight = Math.max(maxSize / 2, MIN_PARTICLE_SIZE / 2);
+  const aspect = Math.max(config.aspectRatio ?? 1, 0.01);
+  const halfWidth = Math.max(halfHeight * aspect, MIN_PARTICLE_SIZE / 2);
+  return { halfWidth, halfHeight };
+};
+
+const createDiamondFill = (config: ParticleEmitterBaseConfig): SceneFill => {
+  const { halfWidth, halfHeight } = getHalfExtents(config);
+  const baseAlpha = ensureColorAlpha(config.color);
+  return {
+    fillType: FILL_TYPES.DIAMOND_GRADIENT,
+    start: { x: 0, y: 0 },
+    end: halfWidth + halfHeight,
+    stops: [
+      { offset: 0, color: cloneColorWithAlpha(config.color, baseAlpha) },
+      { offset: 0.7, color: cloneColorWithAlpha(config.color, baseAlpha) },
+      { offset: 1, color: cloneColorWithAlpha(config.color, 0) },
+    ],
+  };
+};
+
+const createTriangleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
+  const { halfWidth } = getHalfExtents(config);
+  const baseAlpha = ensureColorAlpha(config.color);
+  return {
+    fillType: FILL_TYPES.LINEAR_GRADIENT,
+    start: { x: -halfWidth, y: 0 },
+    end: { x: halfWidth, y: 0 },
+    stops: [
+      { offset: 0, color: cloneColorWithAlpha(config.color, baseAlpha) },
+      { offset: 0.6, color: cloneColorWithAlpha(config.color, baseAlpha) },
+      { offset: 1, color: cloneColorWithAlpha(config.color, 0) },
+    ],
+  };
 };
 
 const createSolidFill = (color: SceneColor): SceneFill => ({

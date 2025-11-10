@@ -522,14 +522,24 @@ export const renderFireRings = (
   }
 
   gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // soft additive
+  gl.blendFuncSeparate(
+    gl.SRC_ALPHA,
+    gl.ONE,
+    gl.ONE,
+    gl.ONE,
+  ); // soft additive
 
   gl.bindVertexArray(batch.vao);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, batch.instances.length);
   gl.bindVertexArray(null);
 
   // restore default
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.blendFuncSeparate(
+    gl.SRC_ALPHA,
+    gl.ONE_MINUS_SRC_ALPHA,
+    gl.ONE,
+    gl.ONE_MINUS_SRC_ALPHA,
+  );
 };
 
 export const disposeFireRing = (gl: WebGL2RenderingContext): void => {
