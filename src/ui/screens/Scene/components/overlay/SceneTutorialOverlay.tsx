@@ -38,6 +38,7 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
   onClose,
 }) => {
   const [targets, setTargets] = useState<(Element | null)[]>([]);
+  const [spotRect, setSpotRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
   useEffect(() => {
     if (steps.length === 0) {
@@ -138,40 +139,133 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
     [onAdvance, onClose, steps]
   );
 
+  // Track current target rect and update custom overlay "hole"
+  useEffect(() => {
+    if (joyrideSteps.length === 0) {
+      setSpotRect(null);
+      return;
+    }
+    const current = targets[activeIndex];
+    const padding = steps[activeIndex]?.highlightPadding ?? HIGHLIGHT_PADDING_DEFAULT;
+
+    const updateRect = () => {
+      if (!current) {
+        setSpotRect(null);
+        return;
+      }
+      const rect = current.getBoundingClientRect();
+      const x = Math.max(0, rect.left - padding);
+      const y = Math.max(0, rect.top - padding);
+      const w = Math.max(0, rect.width + padding * 2);
+      const h = Math.max(0, rect.height + padding * 2);
+      setSpotRect({ x, y, w, h });
+    };
+
+    updateRect();
+    window.addEventListener("resize", updateRect, { passive: true });
+    window.addEventListener("scroll", updateRect, { passive: true });
+    const interval = window.setInterval(updateRect, 250);
+    return () => {
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect);
+      window.clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, targets, steps, joyrideSteps.length]);
+
   if (joyrideSteps.length === 0) {
     return null;
   }
 
   return (
-    <Joyride
-      steps={joyrideSteps}
-      stepIndex={activeIndex}
-      run={activeIndex < joyrideSteps.length}
-      continuous
-      showSkipButton
-      disableCloseOnEsc
-      disableOverlayClose
-      hideBackButton
-      locale={{
-        back: "Back",
-        close: "Begin the Feast",
-        last: "Begin the Feast",
-        next: "Next",
-        skip: "Skip",
-      }}
-      styles={{
-        options: {
-          arrowColor: "rgba(7, 12, 24, 0.96)",
-          backgroundColor: "rgba(7, 12, 24, 0.96)",
-          overlayColor: "rgba(8, 12, 20, 0.78)",
-          textColor: "var(--color-text-normal)",
-          primaryColor: "var(--color-accent)",
-          zIndex: 60,
-        },
-      }}
-      tooltipComponent={SceneTutorialTooltip}
-      callback={handleJoyrideCallback}
-    />
+    <>
+      {/* Custom non-dimming spotlight overlay: four rectangles around target */}
+      {spotRect && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 59,
+            pointerEvents: "none",
+          }}
+        >
+          {/* top */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: "100%",
+              height: `${Math.max(0, spotRect.y)}px`,
+              background: "rgba(8, 12, 20, 0.78)",
+            }}
+          />
+          {/* bottom */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: `${Math.max(0, spotRect.y + spotRect.h)}px`,
+              width: "100%",
+              height: `calc(100vh - ${Math.max(0, spotRect.y + spotRect.h)}px)`,
+              background: "rgba(8, 12, 20, 0.78)",
+            }}
+          />
+          {/* left */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: `${spotRect.y}px`,
+              width: `${Math.max(0, spotRect.x)}px`,
+              height: `${spotRect.h}px`,
+              background: "rgba(8, 12, 20, 0.78)",
+            }}
+          />
+          {/* right */}
+          <div
+            style={{
+              position: "absolute",
+              left: `${Math.max(0, spotRect.x + spotRect.w)}px`,
+              top: `${spotRect.y}px`,
+              width: `calc(100vw - ${Math.max(0, spotRect.x + spotRect.w)}px)`,
+              height: `${spotRect.h}px`,
+              background: "rgba(8, 12, 20, 0.78)",
+            }}
+          />
+        </div>
+      )}
+
+      <Joyride
+        steps={joyrideSteps}
+        stepIndex={activeIndex}
+        run={activeIndex < joyrideSteps.length}
+        continuous
+        showSkipButton
+        disableCloseOnEsc
+        disableOverlayClose
+        hideBackButton
+        locale={{
+          back: "Back",
+          close: "Begin the Feast",
+          last: "Begin the Feast",
+          next: "Next",
+          skip: "Skip",
+        }}
+        styles={{
+          options: {
+            arrowColor: "rgba(7, 12, 24, 0.96)",
+            backgroundColor: "rgba(7, 12, 24, 0.96)",
+            overlayColor: "transparent",
+            textColor: "var(--color-text-normal)",
+            primaryColor: "var(--color-accent)",
+            zIndex: 60,
+          },
+        }}
+        tooltipComponent={SceneTutorialTooltip}
+        callback={handleJoyrideCallback}
+      />
+    </>
   );
 };
 
