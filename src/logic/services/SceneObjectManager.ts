@@ -93,7 +93,6 @@ export interface SceneObjectInstance {
 }
 
 type CustomDataCacheEntry = {
-  source: unknown;
   clone: unknown;
   snapshot: unknown;
   version: number;
@@ -494,14 +493,12 @@ export class SceneObjectManager {
 
     if (!cached) {
       this.customDataCache.set(id, {
-        source: value,
         clone: result.clone,
         snapshot: undefined,
         version: 1,
         snapshotVersion: 0,
       });
     } else {
-      cached.source = value;
       cached.clone = result.clone;
       if (result.changed) {
         cached.version += 1;
@@ -528,7 +525,6 @@ export class SceneObjectManager {
       const { clone } = cloneCustomDataMutable(value, undefined);
       const snapshot = cloneCustomDataSnapshot(clone);
       this.customDataCache.set(id, {
-        source: value,
         clone,
         snapshot,
         version: 1,
@@ -540,7 +536,6 @@ export class SceneObjectManager {
     if (cached.clone !== value) {
       const result = cloneCustomDataMutable(value, cached.clone);
       cached.clone = result.clone;
-      cached.source = value;
       if (result.changed) {
         cached.version += 1;
         cached.snapshot = undefined;
