@@ -281,6 +281,8 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     cpuCache: null,
   };
 
+  console.log("createParticleEmitterState", state.mode);
+
   if (gpu) {
     state.gpu = gpu;
     resetParticleEmitterGpuState(gpu);
