@@ -1369,6 +1369,7 @@ export const SaveSlotBackgroundScene: React.FC = () => {
     frame = window.requestAnimationFrame(render);
 
     return () => {
+      objectsRenderer.dispose();
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", handleResize);
       const particleGl = getParticleEmitterGlContext();

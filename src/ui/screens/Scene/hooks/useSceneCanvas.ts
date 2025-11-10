@@ -865,6 +865,7 @@ export const useSceneCanvas = ({
     console.log("useSceneCanvas mounted");
 
     return () => {
+      objectsRenderer.dispose();
       setParticleEmitterGlContext(null);
       if (webgl2) {
         try {
