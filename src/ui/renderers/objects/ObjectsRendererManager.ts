@@ -88,6 +88,29 @@ export class ObjectsRendererManager {
     });
   }
 
+  public dispose(): void {
+    Array.from(this.objects.keys()).forEach((id) => {
+      this.removeObject(id);
+    });
+
+    this.objects.clear();
+    this.staticEntries.length = 0;
+    this.dynamicEntries.length = 0;
+    this.dynamicEntryByPrimitive.clear();
+    this.staticData = null;
+    this.dynamicData = null;
+    this.staticVertexCount = 0;
+    this.dynamicVertexCount = 0;
+    this.staticDirty = false;
+    this.dynamicLayoutDirty = false;
+    this.pendingDynamicUpdates = [];
+    this.lastDynamicRebuildMs = 0;
+    this.dynamicBytesAllocated = 0;
+    this.dynamicReallocations = 0;
+    this.dynamicBytesByType.clear();
+    this.dynamicCountByType.clear();
+  }
+
   public applyChanges(
     changes: ReturnType<SceneObjectManager["flushChanges"]>
   ): void {

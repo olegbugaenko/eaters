@@ -93,7 +93,6 @@ export interface SceneObjectInstance {
 }
 
 type CustomDataCacheEntry = {
-  source: unknown;
   clone: unknown;
   snapshot: unknown;
   version: number;
@@ -251,6 +250,8 @@ export class SceneObjectManager {
       fill: transparentFill,
       // hide stroke immediately to avoid visible outlines before batched removal
       stroke: undefined,
+      // release any heavy customData payloads while the instance awaits removal
+      customData: undefined,
     } as SceneObjectData & { fill: SceneFill; stroke?: SceneStroke };
     this.pendingRemovals.add(id);
     this.updated.set(id, instance);
@@ -276,6 +277,7 @@ export class SceneObjectManager {
     this.added.clear();
     this.updated.clear();
     this.pendingRemovals.clear();
+    this.customDataCache.clear();
     for (const id of knownIds) {
       this.removed.add(id);
     }
@@ -309,18 +311,7 @@ export class SceneObjectManager {
         const next = iterator.next();
         if (next.done) break;
         const id = next.value as string;
-        this.pendingRemovals.delete(id);
-        const had = this.objects.delete(id);
-        if (had) {
-          const index = this.ordered.findIndex((object) => object.id === id);
-          if (index >= 0) {
-            this.ordered.splice(index, 1);
-          }
-        }
-        this.added.delete(id);
-        this.updated.delete(id);
-        this.removed.add(id);
-        actuallyRemoved.push(id);
+        this.finalizeRemoval(id, actuallyRemoved);
         processed += 1;
       }
       this.lastRemovalFlushTimestampMs = now;
@@ -341,6 +332,18 @@ export class SceneObjectManager {
     this.removed.clear();
     // Note: pendingRemovals keeps remaining ids if quota wasn't enough
     return { added, updated, removed };
+  }
+
+  public flushAllPendingRemovals(): string[] {
+    if (this.pendingRemovals.size === 0) {
+      return [];
+    }
+    const removed: string[] = [];
+    for (const id of Array.from(this.pendingRemovals)) {
+      this.finalizeRemoval(id, removed);
+    }
+    this.lastRemovalFlushTimestampMs = Date.now();
+    return removed;
   }
 
   public getMapSize(): SceneSize {
@@ -449,6 +452,25 @@ export class SceneObjectManager {
     return clamp(minScale, 0.1, MAX_SCALE);
   }
 
+  private finalizeRemoval(id: string, accumulator: string[]): void {
+    if (!this.pendingRemovals.delete(id)) {
+      return;
+    }
+    const had = this.objects.delete(id);
+    if (had) {
+      const index = this.ordered.findIndex((object) => object.id === id);
+      if (index >= 0) {
+        this.ordered.splice(index, 1);
+      }
+    }
+    this.added.delete(id);
+    this.updated.delete(id);
+    if (!this.removed.has(id)) {
+      this.removed.add(id);
+    }
+    accumulator.push(id);
+  }
+
   private clampCamera(): void {
     const maxX = Math.max(0, this.mapSize.width - this.camera.viewportSize.width);
     const maxY = Math.max(0, this.mapSize.height - this.camera.viewportSize.height);
@@ -493,14 +515,12 @@ export class SceneObjectManager {
 
     if (!cached) {
       this.customDataCache.set(id, {
-        source: value,
         clone: result.clone,
         snapshot: undefined,
         version: 1,
         snapshotVersion: 0,
       });
     } else {
-      cached.source = value;
       cached.clone = result.clone;
       if (result.changed) {
         cached.version += 1;
@@ -527,7 +547,6 @@ export class SceneObjectManager {
       const { clone } = cloneCustomDataMutable(value, undefined);
       const snapshot = cloneCustomDataSnapshot(clone);
       this.customDataCache.set(id, {
-        source: value,
         clone,
         snapshot,
         version: 1,
@@ -539,7 +558,6 @@ export class SceneObjectManager {
     if (cached.clone !== value) {
       const result = cloneCustomDataMutable(value, cached.clone);
       cached.clone = result.clone;
-      cached.source = value;
       if (result.changed) {
         cached.version += 1;
         cached.snapshot = undefined;
