@@ -27,6 +27,7 @@ import { UnitDesignModule } from "../modules/camp/UnitDesignModule";
 import { BuildingsModule } from "../modules/camp/BuildingsModule";
 import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
+import { resetAllArcBatches } from "../../ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
 import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
@@ -293,10 +294,7 @@ export class Application {
     const scene = this.getSceneObjects();
     scene.clear();
     this.modules.forEach((module) => module.reset());
-    // Clear GPU wave caches to avoid lingering artifacts and memory leaks
-    try {
-      resetAllWaveBatches();
-    } catch {}
+    this.resetGpuCaches();
   }
 
   public selectSlot(slot: SaveSlotId): void {
@@ -470,6 +468,17 @@ export class Application {
     this.explosionModule.reset();
     this.arcModule.reset();
     this.effectsModule.reset();
+    this.resetGpuCaches();
+  }
+
+  private resetGpuCaches(): void {
+    // Clear GPU caches to avoid lingering artifacts and memory leaks between runs
+    try {
+      resetAllWaveBatches();
+    } catch {}
+    try {
+      resetAllArcBatches();
+    } catch {}
   }
 
 }

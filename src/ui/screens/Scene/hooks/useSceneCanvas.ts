@@ -18,7 +18,7 @@ import {
 } from "@ui/renderers/objects";
 import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects/SandStormRenderer";
-import { renderArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { renderArcBatches, resetAllArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import {
   clearPetalAuraInstances,
   petalAuraEffect,
@@ -398,6 +398,7 @@ export const useSceneCanvas = ({
         try { setParticleEmitterGlContext(null); } catch {}
         try { clearAllAuraSlots(); } catch {}
         try { clearPetalAuraInstances(); } catch {}
+        try { resetAllArcBatches(); } catch {}
       }
     });
     const canvas = canvasRef.current;
@@ -909,6 +910,7 @@ export const useSceneCanvas = ({
       } catch {}
       clearAllAuraSlots();
       clearPetalAuraInstances();
+      resetAllArcBatches();
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(frame);
       gl.deleteBuffer(staticBuffer);
@@ -916,6 +918,10 @@ export const useSceneCanvas = ({
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
+      try {
+        const loseContextExt = gl.getExtension("WEBGL_lose_context");
+        loseContextExt?.loseContext();
+      } catch {}
       window.removeEventListener("pointermove", handlePointerMoveWithCast);
       window.removeEventListener("pointerleave", handlePointerLeave);
       window.removeEventListener("pointerout", handlePointerLeave);

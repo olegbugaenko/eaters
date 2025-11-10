@@ -349,6 +349,15 @@ export const disposeArcBatch = (batch: ArcBatch): void => {
   if (batch.vao) batch.gl.deleteVertexArray(batch.vao);
 };
 
+export const resetAllArcBatches = (): void => {
+  batchesByKey.forEach((batch) => {
+    disposeArcBatch(batch);
+  });
+  batchesByKey.clear();
+  cachedProgram = new WeakMap();
+  quadBufferCache = new WeakMap();
+};
+
 export const writeArcInstance = (batch: ArcBatch, index: number, instance: ArcInstance): void => {
   if (!batch.instanceBuffer) return;
   const gl = batch.gl;
