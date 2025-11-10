@@ -796,6 +796,13 @@ export const renderParticleEmitters = (
   }
   const { resources, emitters } = context;
   const program = resources.program;
+  gl.enable(gl.BLEND);
+  gl.blendFuncSeparate(
+    gl.SRC_ALPHA,
+    gl.ONE_MINUS_SRC_ALPHA,
+    gl.ONE,
+    gl.ONE_MINUS_SRC_ALPHA,
+  );
   gl.useProgram(program.program);
   if (program.uniforms.cameraPosition) {
     gl.uniform2f(program.uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
