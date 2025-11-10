@@ -116,7 +116,7 @@ const MIN_NOISE_SCALE = 0.0001;
 const MAX_NOISE_SCALE = 2048;
 const DEFAULT_NOISE_SCALE = 1;
 const DEFAULT_ROTATION = 0;
-const MIN_MAP_SIZE = 2000;
+const MIN_MAP_SIZE = 1;
 const MAX_SCALE = 4;
 
 export class SceneObjectManager {
@@ -439,9 +439,14 @@ export class SceneObjectManager {
   }
 
   private computeMinScale(): number {
-    const minScaleWidth = this.screenSize.width / this.mapSize.width;
-    const minScaleHeight = this.screenSize.height / this.mapSize.height;
-    return Math.max(Math.min(minScaleWidth, minScaleHeight, 1), 0.1);
+    const safeScreenWidth = Math.max(1, this.screenSize.width);
+    const safeScreenHeight = Math.max(1, this.screenSize.height);
+    const safeMapWidth = Math.max(1, this.mapSize.width);
+    const safeMapHeight = Math.max(1, this.mapSize.height);
+    const minScaleWidth = safeScreenWidth / safeMapWidth;
+    const minScaleHeight = safeScreenHeight / safeMapHeight;
+    const minScale = Math.min(minScaleWidth, minScaleHeight);
+    return clamp(minScale, 0.1, MAX_SCALE);
   }
 
   private clampCamera(): void {
