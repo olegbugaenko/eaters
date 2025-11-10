@@ -1410,10 +1410,6 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
-      try {
-        const loseContextExt = gl.getExtension("WEBGL_lose_context");
-        loseContextExt?.loseContext();
-      } catch {}
     };
   }, []);
 

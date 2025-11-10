@@ -906,10 +906,6 @@ export const useSceneCanvas = ({
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
-      try {
-        const loseContextExt = gl.getExtension("WEBGL_lose_context");
-        loseContextExt?.loseContext();
-      } catch {}
       window.removeEventListener("pointermove", handlePointerMoveWithCast);
       window.removeEventListener("pointerleave", handlePointerLeave);
       window.removeEventListener("pointerout", handlePointerLeave);
