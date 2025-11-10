@@ -286,7 +286,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     resetParticleEmitterGpuState(gpu);
     updateParticleEmitterGpuUniforms(gpu, config);
   } else {
-    writeEmitterBuffer(state, config, options.getOrigin(instance, config));
+    writeEmitterBufferCpu(state, config, options.getOrigin(instance, config));
   }
   return state;
 };
@@ -394,7 +394,7 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     state.particles.length = writeIndex;
   }
 
-  writeEmitterBuffer(state, config, origin);
+  writeEmitterBufferCpu(state, config, origin);
   return state.data;
 };
 
@@ -523,7 +523,9 @@ const advanceParticleEmitterStateGpu = <
   }
 };
 
-const writeEmitterBuffer = <Config extends ParticleEmitterBaseConfig>(
+// CPU-only vertex buffer population. Callers only invoke this in CPU mode, but we
+// still guard against accidental reuse from the GPU path.
+const writeEmitterBufferCpu = <Config extends ParticleEmitterBaseConfig>(
   state: ParticleEmitterState<Config>,
   config: Config,
   origin: SceneVector2
