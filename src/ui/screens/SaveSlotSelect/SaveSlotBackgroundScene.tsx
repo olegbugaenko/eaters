@@ -44,7 +44,7 @@ import {
   renderParticleEmitters,
   disposeParticleRenderResources,
 } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { renderArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { renderArcBatches, resetAllArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { renderFireRings, disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import {
   setParticleEmitterGlContext,
@@ -1400,6 +1400,7 @@ export const SaveSlotBackgroundScene: React.FC = () => {
         clearAllAuraSlots();
         clearPetalAuraInstances();
         disposePetalAuraResources();
+        resetAllArcBatches();
       } catch {
         // ignore cleanup errors
       }

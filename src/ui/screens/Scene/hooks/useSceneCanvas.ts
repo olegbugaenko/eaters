@@ -371,29 +371,17 @@ export const useSceneCanvas = ({
         if (gl1) {
           try { disposeParticleRenderResources(gl1); } catch {}
           try { disposeFireRing(gl1); } catch {}
-          try {
-            const ext = gl1.getExtension('WEBGL_lose_context');
-            ext && ext.loseContext();
-          } catch {}
         }
         const gl2 = getWhirlGlContext?.();
         if (gl2) {
           try { whirlEffect.onContextLost(gl2); } catch {}
-          try { disposeWhirlResources(); } catch {}
-          try {
-            const ext = gl2.getExtension('WEBGL_lose_context');
-            ext && ext.loseContext();
-          } catch {}
         }
         const gl3 = getPetalAuraGlContext?.();
         if (gl3) {
           try { petalAuraEffect.onContextLost(gl3); } catch {}
-          try { disposePetalAuraResources(); } catch {}
-          try {
-            const ext = gl3.getExtension('WEBGL_lose_context');
-            ext && ext.loseContext();
-          } catch {}
         }
+        try { disposeWhirlResources(); } catch {}
+        try { disposePetalAuraResources(); } catch {}
       } finally {
         try { setParticleEmitterGlContext(null); } catch {}
         try { clearAllAuraSlots(); } catch {}
