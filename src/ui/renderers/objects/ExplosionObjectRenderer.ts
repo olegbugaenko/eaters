@@ -229,6 +229,10 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
       dynamicPrimitives.push({
         data: new Float32Array(0),
         update(target) {
+          if (batch && batch.disposed) {
+            batch = null;
+            slotIndex = -1;
+          }
           // Acquire GL and batch lazily
           if (!batch) {
             const gl = getParticleEmitterGlContext();

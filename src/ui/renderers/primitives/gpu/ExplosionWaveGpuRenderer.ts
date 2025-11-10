@@ -28,6 +28,7 @@ type WaveBatch = {
     uniforms: ParticleEmitterGpuRenderUniforms;
     activeCount: number;
   };
+  disposed: boolean;
 };
 
 type FillKey = string; // serialized fill options key
@@ -36,6 +37,136 @@ const INSTANCE_COMPONENTS = 6; // position(2) + size(1) + age(1) + lifetime(1) +
 const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
 
 const batchesByKey = new Map<FillKey, WaveBatch>();
+
+const createBlankInstances = (capacity: number): WaveInstance[] =>
+  Array.from({ length: capacity }, () => ({
+    position: { x: 0, y: 0 },
+    size: 0,
+    age: 0,
+    lifetime: 0,
+    active: false,
+  }));
+
+const resizeWaveBatch = (batch: WaveBatch, capacity: number): boolean => {
+  const gl = batch.gl;
+  const resources = getParticleRenderResources(gl);
+  if (!resources) {
+    return false;
+  }
+
+  const oldInstances = batch.instances.slice();
+  const oldBuffer = batch.instanceBuffer;
+  const oldVao = batch.vao;
+
+  const instanceBuffer = gl.createBuffer();
+  const vao = gl.createVertexArray();
+  if (!instanceBuffer || !vao) {
+    if (instanceBuffer) gl.deleteBuffer(instanceBuffer);
+    if (vao) gl.deleteVertexArray(vao);
+    return false;
+  }
+
+  gl.bindVertexArray(vao);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, resources.quadBuffer);
+  gl.enableVertexAttribArray(resources.program.attributes.unitPosition);
+  gl.vertexAttribPointer(
+    resources.program.attributes.unitPosition,
+    2,
+    gl.FLOAT,
+    false,
+    2 * Float32Array.BYTES_PER_ELEMENT,
+    0
+  );
+  gl.vertexAttribDivisor(resources.program.attributes.unitPosition, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
+
+  gl.enableVertexAttribArray(resources.program.attributes.position);
+  gl.vertexAttribPointer(
+    resources.program.attributes.position,
+    2,
+    gl.FLOAT,
+    false,
+    INSTANCE_STRIDE,
+    0
+  );
+  gl.vertexAttribDivisor(resources.program.attributes.position, 1);
+
+  gl.enableVertexAttribArray(resources.program.attributes.size);
+  gl.vertexAttribPointer(
+    resources.program.attributes.size,
+    1,
+    gl.FLOAT,
+    false,
+    INSTANCE_STRIDE,
+    2 * Float32Array.BYTES_PER_ELEMENT
+  );
+  gl.vertexAttribDivisor(resources.program.attributes.size, 1);
+
+  gl.enableVertexAttribArray(resources.program.attributes.age);
+  gl.vertexAttribPointer(
+    resources.program.attributes.age,
+    1,
+    gl.FLOAT,
+    false,
+    INSTANCE_STRIDE,
+    3 * Float32Array.BYTES_PER_ELEMENT
+  );
+  gl.vertexAttribDivisor(resources.program.attributes.age, 1);
+
+  gl.enableVertexAttribArray(resources.program.attributes.lifetime);
+  gl.vertexAttribPointer(
+    resources.program.attributes.lifetime,
+    1,
+    gl.FLOAT,
+    false,
+    INSTANCE_STRIDE,
+    4 * Float32Array.BYTES_PER_ELEMENT
+  );
+  gl.vertexAttribDivisor(resources.program.attributes.lifetime, 1);
+
+  gl.enableVertexAttribArray(resources.program.attributes.isActive);
+  gl.vertexAttribPointer(
+    resources.program.attributes.isActive,
+    1,
+    gl.FLOAT,
+    false,
+    INSTANCE_STRIDE,
+    5 * Float32Array.BYTES_PER_ELEMENT
+  );
+  gl.vertexAttribDivisor(resources.program.attributes.isActive, 1);
+
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+  batch.instanceBuffer = instanceBuffer;
+  batch.vao = vao;
+  batch.capacity = capacity;
+  batch.handle.capacity = capacity;
+  batch.instances = createBlankInstances(capacity);
+  batch.disposed = false;
+
+  let activeCount = 0;
+  const copyCount = Math.min(oldInstances.length, capacity);
+  for (let i = 0; i < copyCount; i += 1) {
+    const inst = oldInstances[i];
+    if (!inst) {
+      continue;
+    }
+    if (inst.active) {
+      activeCount += 1;
+    }
+    writeWaveInstance(batch, i, inst);
+  }
+  setWaveBatchActiveCount(batch, activeCount);
+
+  if (oldBuffer) gl.deleteBuffer(oldBuffer);
+  if (oldVao) gl.deleteVertexArray(oldVao);
+
+  return true;
+};
 
 export type WaveUniformConfig = Omit<
   ParticleEmitterGpuRenderUniforms,
@@ -67,13 +198,16 @@ export const ensureWaveBatch = (
   const existing = batchesByKey.get(key);
   if (existing) {
     // If the GL context changed, recreate the batch for the new context
-    if (existing.gl !== gl) {
+    if (existing.gl !== gl || existing.disposed) {
       disposeWaveBatch(existing);
       batchesByKey.delete(key);
     } else if (capacity <= existing.capacity) {
       return existing;
     } else {
-      // grow capacity: recreate buffer/vao
+      // grow capacity in-place so shared handles remain valid
+      if (resizeWaveBatch(existing, capacity)) {
+        return existing;
+      }
       disposeWaveBatch(existing);
       batchesByKey.delete(key);
     }
@@ -205,13 +339,7 @@ export const ensureWaveBatch = (
     vao,
     instanceBuffer,
     capacity,
-    instances: new Array(capacity).fill(null).map(() => ({
-      position: { x: 0, y: 0 },
-      size: 0,
-      age: 0,
-      lifetime: 0,
-      active: false,
-    })),
+    instances: createBlankInstances(capacity),
     uniforms,
     handle: {
       gl,
@@ -220,6 +348,7 @@ export const ensureWaveBatch = (
       getCurrentVao: () => vao,
       activeCount: 0,
     },
+    disposed: false,
   };
 
   registerParticleEmitterHandle(batch.handle);
@@ -228,9 +357,20 @@ export const ensureWaveBatch = (
 };
 
 export const disposeWaveBatch = (batch: WaveBatch): void => {
+  if (batch.disposed) {
+    return;
+  }
+  batch.disposed = true;
   unregisterParticleEmitterHandle(batch.handle);
-  if (batch.instanceBuffer) batch.gl.deleteBuffer(batch.instanceBuffer);
-  if (batch.vao) batch.gl.deleteVertexArray(batch.vao);
+  const { instanceBuffer, vao } = batch;
+  batch.handle.activeCount = 0;
+  batch.handle.capacity = 0;
+  batch.instances = [];
+  batch.instanceBuffer = null;
+  batch.vao = null;
+  batch.capacity = 0;
+  if (instanceBuffer) batch.gl.deleteBuffer(instanceBuffer);
+  if (vao) batch.gl.deleteVertexArray(vao);
 };
 
 export const writeWaveInstance = (
@@ -238,7 +378,7 @@ export const writeWaveInstance = (
   index: number,
   instance: WaveInstance
 ): void => {
-  if (!batch.instanceBuffer) return;
+  if (!batch.instanceBuffer || batch.disposed) return;
   const gl = batch.gl;
   const scratch = new Float32Array(INSTANCE_COMPONENTS);
   scratch[0] = instance.position.x;
@@ -254,6 +394,10 @@ export const writeWaveInstance = (
 };
 
 export const setWaveBatchActiveCount = (batch: WaveBatch, count: number): void => {
+  if (batch.disposed) {
+    batch.handle.activeCount = 0;
+    return;
+  }
   batch.handle.activeCount = Math.max(0, Math.min(count, batch.capacity));
 };
 
