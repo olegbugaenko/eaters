@@ -260,17 +260,17 @@ export const setWaveBatchActiveCount = (batch: WaveBatch, count: number): void =
 export const getWaveBatch = (key: FillKey): WaveBatch | undefined => batchesByKey.get(key);
 
 export const resetAllWaveBatches = (): void => {
-  batchesByKey.forEach((batch) => {
-    // mark all instances inactive and reset activeCount
-    for (let i = 0; i < batch.instances.length; i += 1) {
-      const inst = batch.instances[i];
-      if (inst) {
-        inst.active = false;
-        inst.age = 0;
-      }
-    }
-    if (batch.handle) {
-      batch.handle.activeCount = 0;
+  if (batchesByKey.size === 0) {
+    return;
+  }
+
+  const entries = Array.from(batchesByKey.entries());
+  entries.forEach(([key, batch]) => {
+    try {
+      batch.instances.length = 0;
+      disposeWaveBatch(batch);
+    } finally {
+      batchesByKey.delete(key);
     }
   });
 };

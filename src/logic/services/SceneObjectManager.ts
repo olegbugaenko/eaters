@@ -276,6 +276,7 @@ export class SceneObjectManager {
     this.added.clear();
     this.updated.clear();
     this.pendingRemovals.clear();
+    this.customDataCache.clear();
     for (const id of knownIds) {
       this.removed.add(id);
     }

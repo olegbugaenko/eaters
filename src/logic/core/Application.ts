@@ -293,7 +293,7 @@ export class Application {
     const scene = this.getSceneObjects();
     scene.clear();
     this.modules.forEach((module) => module.reset());
-    // Clear GPU wave instances to avoid lingering artifacts
+    // Clear GPU wave caches to avoid lingering artifacts and memory leaks
     try {
       resetAllWaveBatches();
     } catch {}
