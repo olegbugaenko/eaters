@@ -278,7 +278,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             width: 1.8, 
             color: { r: 0.55, g: 0.8, b: 0.95, a: 0.2 } 
           },
-          anim: { type: "sway", periodMs: 1500, amplitudePercentage: 0.1, falloff: "tip", axis: "movement-tangent", phase: 0 }
+          anim: { type: "sway", periodMs: 1500, amplitudePercentage: 0.13, falloff: "tip", axis: "movement-tangent", phase: 0 }
         },
         // Chord base (requires skill void_modules)
         {

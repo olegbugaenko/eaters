@@ -6,6 +6,15 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.0.3c",
+    releaseDate: "2025-11-11",
+    changes: [
+      "Fixed memory leaks",
+      "Improved some unit parts display",
+      "Fixed particle behaviour on MacOS"
+    ],
+  },
+  {
     displayName: "v0.0.3b",
     releaseDate: "2025-11-09",
     changes: [
