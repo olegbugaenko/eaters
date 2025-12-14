@@ -255,6 +255,7 @@ export class Application {
       necromancer: this.necromancerModule,
       bricks: bricksModule,
       bonuses: bonusesModule,
+      explosions: explosionModule,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
     });
     this.spellcastingModule = spellcastingModule;

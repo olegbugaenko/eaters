@@ -77,7 +77,9 @@ export const SKILL_IDS = [
   "penetration3",
   "soul_wood",
   "advanced_construction",
-  "advanced_crafting"
+  "advanced_crafting",
+  "consiousness",
+  "arcane_awareness"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -122,23 +124,23 @@ const createMixedCost = (
   });
 
 const SKILL_DB: Record<SkillId, SkillConfig> = {
-  hunger: {
-    id: "hunger",
-    name: "Hunger",
+  consiousness: {
+    id: "consiousness",
+    name: "Consiousness",
     description:
-      "A gnawing void urges you on. Feed it with matter so your summons strike harder.",
+      "Increase your max sanity and mana.",
     nodePosition: { x: 0, y: 0 },
-    maxLevel: 3,
+    maxLevel: 5,
     effects: {
-      all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.3 * level,
+      mana_cap: {
+        income: (level) => 2 * level,
       },
-      spell_power: {
-        multiplier: (level) => 1 + 0.125 * level,
+      sanity_cap: {
+        income: (level) => 1 * level,
       },
     },
     nodesRequired: { },
-    cost: createStoneCost(4, 1.35),
+    cost: createStoneCost(2, 1.35),
   },
   // Bottom branch
   stone_lore: {
@@ -153,8 +155,8 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         multiplier: (level) => 1 + 0.25 * level,
       },
     },
-    nodesRequired: { hunger: 1 },
-    cost: createStoneCost(6, 1.35),
+    nodesRequired: { consiousness: 1 },
+    cost: createStoneCost(2, 1.5),
   },
   stone_automatons: {
     id: "stone_automatons",
@@ -165,7 +167,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 1,
     effects: {},
     nodesRequired: { stone_lore: 1 },
-    cost: createStoneCost(20, 1),
+    cost: createStoneCost(10, 1),
   },
   autorestart_rituals: {
     id: "autorestart_rituals",
@@ -176,7 +178,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 1,
     effects: {},
     nodesRequired: { stone_automatons: 1 },
-    cost: createMixedCost(500, 1, 50, 1),
+    cost: createStoneCost(500, 1),
   },
   construction_guild: {
     id: "construction_guild",
@@ -275,98 +277,6 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { refinement: 7 },
     cost: createResourceCost('copper', 50, 1.5),
   },
-  // top
-  glass_latticework: {
-    id: "glass_latticework",
-    name: "Glass Latticework",
-    description:
-      "Weave emberglass filaments that steady your focus, modestly improving mana flow.",
-    nodePosition: { x: 0, y: -1},
-    maxLevel: 5,
-    effects: {
-      mana_regen: {
-        income: (level) => 0.12 * level,
-      },
-    },
-    nodesRequired: { hunger: 1 },
-    cost: createStoneCost(6, 1.35),
-  },
-  arcane_amplifier: {
-    id: "arcane_amplifier",
-    name: "Arcane Amplifier",
-    description:
-      "Tune the lattice into a resonant chamber, amplifying the force carried by your spells.",
-    nodePosition: { x: 0, y: -2 },
-    maxLevel: 10,
-    effects: {
-      spell_power: {
-        multiplier: (level) => 1 + 0.15 * level,
-      },
-    },
-    nodesRequired: { glass_latticework: 2 },
-    cost: createSandCost(18, 1.45),
-  },
-  sandstorm_ritual: {
-    id: "sandstorm_ritual",
-    name: "Sandstorm Ritual",
-    description:
-      "Bind the lattice to desert winds, unlocking the rite to conjure devastating sand storms.",
-    nodePosition: { x: 0, y: -3 },
-    maxLevel: 1,
-    effects: {},
-    nodesRequired: { arcane_amplifier: 3 },
-    cost: createSandCost(100, 1.0),
-  },
-  black_darts: {
-    id: "black_darts",
-    name: "Darts of the Void",
-    description:
-      "Unleash darts of metal and void energy that damage targets.",
-    nodePosition: { x: 1, y: -4 },
-    maxLevel: 1,
-    effects: {},
-    nodesRequired: { sandstorm_ritual: 1 },
-    cost: createResourceCost('iron', 140, 1.65),
-  },
-  ring_of_fire: {
-    id: "ring_of_fire",
-    name: "Ring of Fire",
-    description:
-      "Weave a barrier of flame that erupts outward, searing everything it brushes.",
-    nodePosition: { x: 1, y: -5 },
-    maxLevel: 1,
-    effects: {},
-    nodesRequired: { black_darts: 1 },
-    cost: createResourceCost('magma', 200, 1),
-  },
-  sharp_mind: {
-    id: "sharp_mind",
-    name: "Sharp Mind",
-    description: "Increase spell power by 12% per level.",
-    nodePosition: { x: -1, y: -4 },
-    maxLevel: 15,
-    effects: {
-      spell_power: {
-        multiplier: (level) => 1 + 0.12 * level,
-      },
-    },
-    nodesRequired: { sandstorm_ritual: 1 },
-    cost: createResourceCost('organics', 30, 1.5),
-  },
-  sharp_mind2: {
-    id: "sharp_mind2",
-    name: "Sharp Mind II",
-    description: "Increase spell power by 12% per level.",
-    nodePosition: { x: -1, y: -5 },
-    maxLevel: 20,
-    effects: {
-      spell_power: {
-        multiplier: (level) => 1 + 0.12 * level,
-      },
-    },
-    nodesRequired: { sharp_mind: 5 },
-    cost: createResourceCost('paper', 8, 1.5),
-  },
   void_modules: {
     id: "void_modules",
     name: "Chord",
@@ -412,6 +322,113 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     cost: createResourceCost("magma", 400, 1),
   },
+  // top
+  glass_latticework: {
+    id: "glass_latticework",
+    name: "Glass Latticework",
+    description:
+      "Weave emberglass filaments that steady your focus, modestly improving mana flow.",
+    nodePosition: { x: 0, y: -1},
+    maxLevel: 5,
+    effects: {
+      mana_regen: {
+        income: (level) => 0.12 * level,
+      },
+    },
+    nodesRequired: { consiousness: 1 },
+    cost: createStoneCost(2, 1.5),
+  },
+  arcane_awareness: {
+    id: "arcane_awareness",
+    name: "Arcane Awareness",
+    description:
+      "Increase your spell power.",
+    nodePosition: { x: 0, y: -2 },
+    maxLevel: 5,
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.2 * level,
+      },
+    },
+    nodesRequired: { glass_latticework: 1 },
+    cost: createStoneCost(8, 1.35),
+  },
+  arcane_amplifier: {
+    id: "arcane_amplifier",
+    name: "Arcane Amplifier",
+    description:
+      "Tune the lattice into a resonant chamber, amplifying the force carried by your spells.",
+    nodePosition: { x: 0, y: -3 },
+    maxLevel: 10,
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.15 * level,
+      },
+    },
+    nodesRequired: { arcane_awareness: 2 },
+    cost: createSandCost(18, 1.45),
+  },
+  sandstorm_ritual: {
+    id: "sandstorm_ritual",
+    name: "Sandstorm Ritual",
+    description:
+      "Bind the lattice to desert winds, unlocking the rite to conjure devastating sand storms.",
+    nodePosition: { x: 0, y: -4 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { arcane_amplifier: 3 },
+    cost: createSandCost(100, 1.0),
+  },
+  black_darts: {
+    id: "black_darts",
+    name: "Darts of the Void",
+    description:
+      "Unleash darts of metal and void energy that damage targets.",
+    nodePosition: { x: 1, y: -5 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { sandstorm_ritual: 1 },
+    cost: createResourceCost('iron', 140, 1.65),
+  },
+  ring_of_fire: {
+    id: "ring_of_fire",
+    name: "Ring of Fire",
+    description:
+      "Weave a barrier of flame that erupts outward, searing everything it brushes.",
+    nodePosition: { x: 1, y: -6 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { black_darts: 1 },
+    cost: createResourceCost('magma', 200, 1),
+  },
+  sharp_mind: {
+    id: "sharp_mind",
+    name: "Sharp Mind",
+    description: "Increase spell power by 12% per level.",
+    nodePosition: { x: -1, y: -5 },
+    maxLevel: 15,
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { sandstorm_ritual: 1 },
+    cost: createResourceCost('organics', 30, 1.5),
+  },
+  sharp_mind2: {
+    id: "sharp_mind2",
+    name: "Sharp Mind II",
+    description: "Increase spell power by 12% per level.",
+    nodePosition: { x: -1, y: -6 },
+    maxLevel: 20,
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.12 * level,
+      },
+    },
+    nodesRequired: { sharp_mind: 5 },
+    cost: createResourceCost('paper', 8, 1.5),
+  },
   mana_reservior: {
     id: "mana_reservior",
     name: "Mana Reservoir",
@@ -428,7 +445,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { glass_latticework: 1 },
-    cost: createStoneCost(15, 1.35),
+    cost: createStoneCost(15, 1.5),
   },
   emberglass_reactors: {
     id: "emberglass_reactors",
@@ -446,7 +463,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { glass_latticework: 1 },
-    cost: createStoneCost(100, 1.55),
+    cost: createStoneCost(100, 1.5),
   },
   sand_scribing: {
     id: "sand_scribing",
@@ -464,7 +481,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { emberglass_reactors: 2 },
-    cost: createSandCost(22, 1.45),
+    cost: createSandCost(22, 1.5),
   },
   mana_source: {
     id: "mana_source",
@@ -515,7 +532,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { glass_latticework: 1 },
-    cost: createStoneCost(26, 1.5),
+    cost: createStoneCost(15, 1.5),
   },
   clarity: {
     id: "clarity",
@@ -563,16 +580,31 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     cost: createResourceCost('wood', 50, 1.5),
   },
   // left
+  hunger: {
+    id: "hunger",
+    name: "Hunger",
+    description:
+      "A gnawing void urges you on. Feed it with matter so your summons strike harder.",
+    nodePosition: { x: -1, y: 0 },
+    maxLevel: 5,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.2 * level,
+      }
+    },
+    nodesRequired: { consiousness: 1 },
+    cost: createStoneCost(2, 1.5),
+  },
   granite_bonding: {
     id: "granite_bonding",
     name: "Granite Bonding",
     description:
       "Fuse matter into denser cores your summons can wield—every strike lands heavier.",
-    nodePosition: { x: -1, y: 0 },
-    maxLevel: 3,
+    nodePosition: { x: -2, y: 0 },
+    maxLevel: 5,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.18 * level,
+        multiplier: (level) => 1 + 0.15 * level,
       },
     },
     nodesRequired: { hunger: 2 },
@@ -580,9 +612,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   },
   stone_drill: {
     id: "stone_drill",
-    name: "Stone Drill",
+    name: "Stone Teeth",
     description:
-      "Affix crude drills to the forming shells of your entities, boosting their assault.",
+      "Affix crude teeth to the forming shells of your entities, boosting their assault.",
     nodePosition: { x: -3, y: 0 },
     maxLevel: 5,
     effects: {
@@ -748,11 +780,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       all_units_hp_multiplier: {
-        multiplier: (level) => 1 + 0.18 * level,
+        multiplier: (level) => 1 + 0.2 * level,
       },
     },
-    nodesRequired: { hunger: 2 },
-    cost: createStoneCost(4, 1.5),
+    nodesRequired: { consiousness: 1 },
+    cost: createStoneCost(2, 1.5),
   },
   vitality: {
     id: "vitality",

@@ -15,6 +15,7 @@ import { BonusesModule, BonusValueMap } from "../../shared/BonusesModule";
 import { SkillId } from "../../../../db/skills-db";
 import { SpellBehaviorRegistry } from "./SpellBehaviorRegistry";
 import { SpellCastContext, SpellCanCastContext } from "./SpellBehavior";
+import { ExplosionModule } from "../../scene/ExplosionModule";
 
 interface SpellOptionBase {
   id: SpellId;
@@ -64,6 +65,7 @@ interface SpellcastingModuleOptions {
   necromancer: NecromancerModule;
   bricks: BricksModule;
   bonuses: BonusesModule;
+  explosions?: ExplosionModule;
   getSkillLevel: (id: SkillId) => number;
 }
 
@@ -110,6 +112,7 @@ export class SpellcastingModule implements GameModule {
       scene: this.scene,
       bricks: this.bricks,
       bonuses: this.bonuses,
+      explosions: options.explosions,
       getSpellPowerMultiplier: () => this.spellPowerMultiplier,
     });
 

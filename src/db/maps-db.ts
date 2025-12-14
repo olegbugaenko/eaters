@@ -11,6 +11,7 @@ import {
 } from "../logic/services/BrickLayoutService";
 
 export type MapId =
+  | "trainingGrounds"
   | "foundations"
   | "initial"
   | "thicket"
@@ -55,14 +56,107 @@ export interface MapPlayerUnitConfig {
 const FOUNDATIONS_CENTER: SceneVector2 = { x: 500, y: 500 };
 
 const MAPS_DB: Record<MapId, MapConfig> = {
+  trainingGrounds: (() => {
+    const center: SceneVector2 = { x: 500, y: 600 };
+    const size: SceneSize = { width: 1000, height: 1000 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 500 };
+
+    // Голова смайлика
+    const headRadius = 280;
+    const headThickness = 20;
+
+    // Очі
+    const eyeRadius = 35;
+    const eyeOffsetY = -60;
+    const eyeOffsetX = 80;
+
+    // Рот (дуга) - створюємо через сегменти кіл
+    const mouthRadius = 120;
+    const mouthThickness = headThickness;
+    const mouthCenterY = center.y + 50;
+    const mouthStartAngle = Math.PI * 0.25; // ~45 градусів
+    const mouthEndAngle = Math.PI * 0.75; // ~135 градусів
+    const mouthSegments = 8; // кількість сегментів для рота
+
+    return {
+      name: "Training Grounds",
+      size,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+
+        // Голова (зовнішнє коло)
+        const headOuter = circleWithBricks(
+          "smallTrainingBrick",
+          {
+            center,
+            innerRadius: headRadius - headThickness,
+            outerRadius: headRadius,
+          },
+          { level: baseLevel }
+        );
+
+        // Ліве око
+        const leftEye = circleWithBricks(
+          "smallTrainingBrick",
+          {
+            center: { x: center.x - eyeOffsetX, y: center.y + eyeOffsetY },
+            innerRadius: 0,
+            outerRadius: eyeRadius,
+          },
+          { level: baseLevel }
+        );
+
+        // Праве око
+        const rightEye = circleWithBricks(
+          "smallTrainingBrick",
+          {
+            center: { x: center.x + eyeOffsetX, y: center.y + eyeOffsetY },
+            innerRadius: 0,
+            outerRadius: eyeRadius,
+          },
+          { level: baseLevel }
+        );
+
+        // Рот (дуга) - створюємо через сегменти кіл
+        const mouthSegmentsArray = Array.from({ length: mouthSegments }, (_, i) => {
+          const t = i / (mouthSegments - 1);
+          const angle = mouthStartAngle + (mouthEndAngle - mouthStartAngle) * t;
+          const segmentCenter: SceneVector2 = {
+            x: center.x + Math.cos(angle) * mouthRadius,
+            y: mouthCenterY + Math.sin(angle) * mouthRadius,
+          };
+          return circleWithBricks(
+            "smallTrainingBrick",
+            {
+              center: segmentCenter,
+              innerRadius: 0,
+              outerRadius: mouthThickness,
+            },
+            { level: baseLevel }
+          );
+        });
+
+        return [headOuter, leftEye, rightEye, ...mouthSegmentsArray];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+    } satisfies MapConfig;
+  })(),
   foundations: (() => {
     const center = FOUNDATIONS_CENTER;
     const size: SceneSize = { width: 1000, height: 1000 };
     const spawnPoint: SceneVector2 = { x: center.x, y: center.y };
     const sides = 5;
     const outerRadius = 360;
-    const layerThickness = getBrickConfig("smallSquareGray").size.width * 3;
-    const innerRadius = Math.max(outerRadius - layerThickness, 0);
+    const layerThicknessTraining = getBrickConfig("smallTrainingBrick").size.width * 2;
+    const layerThicknessGray = getBrickConfig("smallSquareGray").size.width;
+    const innerRadius = Math.max(outerRadius - layerThicknessTraining - layerThicknessGray, 0);
+    const middleRadius = Math.max(outerRadius - layerThicknessGray, 0);
 
     const createPolygon = (radius: number): SceneVector2[] =>
       Array.from({ length: sides }, (_, index) => {
@@ -75,22 +169,50 @@ const MAPS_DB: Record<MapId, MapConfig> = {
 
     const outerVertices = createPolygon(outerRadius);
     const innerVertices = createPolygon(innerRadius);
+    const middleVertices = createPolygon(middleRadius);
+    const expandedVertices = createPolygon(outerRadius + getBrickConfig("smallSquareGray").size.width * 1.5);
 
     return {
       name: "Cracked Pentagon",
       size,
       spawnPoints: [spawnPoint],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "trainingGrounds",
+          level: 1,
+        },
+      ],
       bricks: ({ mapLevel }) => [
         polygonWithBricks(
-          "smallSquareGray",
+          "smallTrainingBrick",
           {
-            vertices: outerVertices,
+            vertices: middleVertices,
             holes: [innerVertices],
             offsetX: center.x,
             offsetY: center.y,
           },
           { level: mapLevel }
         ),
+        polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: outerVertices,
+            holes: [middleVertices],
+            offsetX: center.x,
+            offsetY: center.y,
+          },
+          { level: mapLevel }
+        ),
+        ...expandedVertices.map((vertex) => circleWithBricks(
+          "smallSquareGray",
+          {
+            center: vertex,
+            innerRadius: 0,
+            outerRadius: getBrickConfig("smallSquareGray").size.width * 3,
+          },
+          { level: mapLevel }
+        ))
       ],
       playerUnits: [
         {

@@ -57,6 +57,7 @@ export interface ExplosionEmitterConfig {
   arc?: number;
   direction?: number;
   fill?: SceneFill;
+  shape?: "circle" | "square"; // Форма частинок (за замовчуванням "square")
 }
 
 export interface ExplosionRendererEmitterConfig {
@@ -74,6 +75,7 @@ export interface ExplosionRendererEmitterConfig {
   direction: number;
   offset?: SceneVector2;
   maxParticles?: number;
+  shape?: "circle" | "square";
 }
 
 export interface ExplosionConfig {
@@ -220,21 +222,30 @@ const MAGNETIC_EMITTER_FILL: SceneFill = {
   start: { x: 0, y: 0 },
   end: 8,
   stops: [
-    { offset: 0, color: { r: 1, g: 1, b: 1, a: 0.95 } },
-    { offset: 0.4, color: { r: 0.7, g: 0.6, b: 1, a: 0.6 } },
-    { offset: 1, color: { r: 0.4, g: 0.2, b: 0.9, a: 0 } },
+    { offset: 0, color: { r: 1, g: 1, b: 1, a: 0.25 } },
+    { offset: 0.4, color: { r: 0.8, g: 0.6, b: 1, a: 0.2 } },
+    { offset: 1, color: { r: 0.6, g: 0.4, b: 0.9, a: 0.05 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.05,
+    scale: 0.3,
+  },
 };
 
 const GRAY_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 5,
   stops: [
-    { offset: 0, color: { r: 0.9, g: 0.9, b: 0.92, a: 0.85 } },
-    { offset: 0.45, color: { r: 0.72, g: 0.74, b: 0.78, a: 0.4 } },
-    { offset: 1, color: { r: 0.45, g: 0.48, b: 0.52, a: 0 } },
+    { offset: 0, color: { r: 0.9, g: 0.9, b: 0.92, a: 0.2 } },
+    { offset: 0.45, color: { r: 0.72, g: 0.74, b: 0.78, a: 0.1 } },
+    { offset: 1, color: { r: 0.45, g: 0.48, b: 0.52, a: 0.05 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.3,
+  },
 };
 const YELLOW_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -345,35 +356,37 @@ const DEFAULT_EMITTER: ExplosionEmitterConfig = {
 };
 
 const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
-  emissionDurationMs: 340,
-  particlesPerSecond: 40,
-  baseSpeed: 0.08,
-  speedVariation: 0.03,
-  particleLifetimeMs: 450,
+  emissionDurationMs: 240,
+  particlesPerSecond: 24,
+  baseSpeed: 0.04,
+  speedVariation: 0.01,
+  particleLifetimeMs: 650,
   fadeStartMs: 280,
-  sizeRange: { min: 0.6, max: 1.4 },
+  sizeRange: { min: 16, max: 31.2 },
   spawnRadius: { min: 0, max: 5 },
   spawnRadiusMultiplier: 1.2,
   color: { r: 0.82, g: 0.84, b: 0.88, a: 1 },
   arc: Math.PI * 2,
   direction: 0,
   fill: GRAY_BRICK_EMITTER_FILL,
+  shape: "circle",
 };
 
 const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
-  emissionDurationMs: 520,
-  particlesPerSecond: 100,
-  baseSpeed: 0.12,
-  speedVariation: 0.06,
-  particleLifetimeMs: 550,
+  emissionDurationMs: 320,
+  particlesPerSecond: 32,
+  baseSpeed: 0.05,
+  speedVariation: 0.01,
+  particleLifetimeMs: 750,
   fadeStartMs: 480,
-  sizeRange: { min: 0.8, max: 1.9 },
+  sizeRange: { min: 26, max: 49 },
   spawnRadius: { min: 0, max: 8 },
   spawnRadiusMultiplier: 1.5,
   color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
   arc: Math.PI * 2,
   direction: 0,
   fill: GRAY_BRICK_EMITTER_FILL,
+  shape: "circle",
 };
 
 const CRITICAL_HIT_EMITTER: ExplosionEmitterConfig = {
@@ -409,16 +422,20 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 12,
     wave: {
       radiusExtension: 180,
-      startAlpha: 0.85,
+      startAlpha: 0.45,
       endAlpha: 0,
       gradientStops: MAGNETIC_WAVE_GRADIENT_STOPS,
     },
     emitter: {
       ...DEFAULT_EMITTER,
-      color: { r: 1, g: 1, b: 1, a: 1 },
+      emissionDurationMs: 100,
+      particlesPerSecond: 300,
+      baseSpeed: 0.06,
+      speedVariation: 0.02,
+      particleLifetimeMs: 1_000,
+      sizeRange: { min: 25.6, max: 47.2 },
+      // color: { r: 1, g: 1, b: 1, a: 1 },
       fill: MAGNETIC_EMITTER_FILL,
-      arc: Math.PI / 2,
-      direction: Math.PI,
     },
   },
   healWave: {
@@ -477,9 +494,9 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
     wave: {
-      radiusExtension: 50,
-      startAlpha: 0.6,
-      endAlpha: 0,
+      radiusExtension: 70,
+      startAlpha: 0.7,
+      endAlpha: 0.15,
       gradientStops: GRAY_BRICK_HIT_WAVE_GRADIENT_STOPS,
     },
     emitter: GRAY_BRICK_DAMAGE_EMITTER,
@@ -489,8 +506,8 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     wave: {
       radiusExtension: 90,
-      startAlpha: 0.75,
-      endAlpha: 0,
+      startAlpha: 0.8,
+      endAlpha: 0.2,
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     },
     emitter: GRAY_BRICK_DESTRUCTION_EMITTER,

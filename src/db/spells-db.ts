@@ -10,6 +10,7 @@ import {
   BulletTailEmitterConfig,
 } from "./bullets-db";
 import { SkillId } from "./skills-db";
+import { ExplosionType } from "./explosions-db";
 
 export type SpellId = "magic-arrow" | "sand-storm" | "void-darts" | "ring-of-fire";
 
@@ -40,6 +41,7 @@ export interface SpellProjectileConfig {
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
   aoe?: { radius: number; splash: number };
+  explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
 }
 
 export interface SpellWhirlConfig {
@@ -199,9 +201,9 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Magic Arrow",
     description:
       "Launch a razor of focused mana that slices through the air toward your target.",
-    cost: { mana: 1.0, sanity: 0.2 },
+    cost: { mana: 1.0, sanity: 0.25 },
     cooldownSeconds: 0.75,
-    damage: { min: 3, max: 4 },
+    damage: { min: 1, max: 3 },
     projectile: {
       radius: 7,
       shape: "triangle",
@@ -221,7 +223,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         outerStop: 0.78,
         color: { r: 0.5, g: 0.7, b: 1, a: 0.1 },
       },
-      aoe: { radius: 11, splash: 0.5 },
+      aoe: { radius: 13, splash: 0.5 },
+      explosion: "magnetic",
     },
   },
   "sand-storm": {
@@ -235,7 +238,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     whirl: {
       radius: 30,
       speed: 170,
-      damagePerSecond: 5.0,
+      damagePerSecond: 3.0,
       maxHealth: 30,
       spinSpeed: 6.8,
       rotationSpeedMultiplier: 0.5,
@@ -257,7 +260,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       "Unleash darts of metal and void energy that damage targets.",
     cost: { mana: 5.0, sanity: 1 },
     cooldownSeconds: 1.2,
-    damage: { min: 3, max: 8 },
+    damage: { min: 1, max: 4 },
     projectile: {
       radius: 3,
       speed: 120,
@@ -300,7 +303,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     cooldownSeconds: 6,
     persistentAoe: {
       durationMs: 3_000,
-      damagePerSecond: 10,
+      damagePerSecond: 5,
       ring: {
         shape: "ring",
         startRadius: 12,

@@ -593,7 +593,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     },
     maxHp: 10,
     armor: 1,
-    baseAttackDamage: 2,
+    baseAttackDamage: 1.25,
     baseAttackInterval: 0.6,
     baseAttackDistance: 5,
     moveSpeed: 180,
