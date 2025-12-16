@@ -103,6 +103,9 @@ describe("ExplosionModule", () => {
       (firstWaveFill as any).stops.length,
       firstConfig.gradientStops.length
     );
+    assert(firstWaveFill.fibers, "First wave should propagate fiber settings");
+    assert.strictEqual(firstWaveFill.fibers?.colorAmplitude, 0.12);
+    assert.strictEqual(firstWaveFill.fibers?.density, 0.55);
 
     const secondWave = objects[1]!;
     assert.strictEqual(secondWave.data.size?.width, 40);
@@ -121,5 +124,8 @@ describe("ExplosionModule", () => {
     );
     assert(firstColoredStop, "Gradient should resume after the inner radius");
     assert(firstColoredStop.offset >= 0.5);
+    assert(secondWaveFill.fibers, "Second wave should include fiber data");
+    assert.strictEqual(secondWaveFill.fibers?.alphaAmplitude, 0.12);
+    assert.strictEqual(secondWaveFill.fibers?.width, 0.5);
   });
 });

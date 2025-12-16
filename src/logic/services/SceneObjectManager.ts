@@ -40,8 +40,17 @@ export interface SceneFillNoise {
   scale: number;
 }
 
+export interface SceneFillFibers {
+  colorAmplitude: number;
+  alphaAmplitude: number;
+  density: number;
+  width: number;
+  clarity: number;
+}
+
 interface SceneFillCommon {
   noise?: SceneFillNoise;
+  fibers?: SceneFillFibers;
 }
 
 export interface SceneSolidFill extends SceneFillCommon {
@@ -114,6 +123,11 @@ const DEFAULT_FILL: SceneSolidFill = {
 const MIN_NOISE_SCALE = 0.0001;
 const MAX_NOISE_SCALE = 2048;
 const DEFAULT_NOISE_SCALE = 1;
+const MIN_FIBER_DENSITY = 0.0001;
+const MIN_FIBER_WIDTH = 0.0001;
+const DEFAULT_FIBER_DENSITY = 1;
+const DEFAULT_FIBER_WIDTH = 1;
+const DEFAULT_FIBER_CLARITY = 0.5;
 const DEFAULT_ROTATION = 0;
 const MIN_MAP_SIZE = 1;
 const MAX_SCALE = 4;
@@ -957,6 +971,42 @@ function sanitizeFillNoise(noise: SceneFillNoise | undefined): SceneFillNoise | 
   };
 }
 
+function sanitizeFillFibers(
+  fibers: SceneFillFibers | undefined
+): SceneFillFibers | undefined {
+  if (!fibers || typeof fibers !== "object") {
+    return undefined;
+  }
+
+  const colorAmplitude = clamp01(fibers.colorAmplitude);
+  const alphaAmplitude = clamp01(fibers.alphaAmplitude);
+  if (colorAmplitude <= 0 && alphaAmplitude <= 0) {
+    return undefined;
+  }
+
+  const densityRaw =
+    typeof fibers.density === "number" && Number.isFinite(fibers.density)
+      ? Math.abs(fibers.density)
+      : DEFAULT_FIBER_DENSITY;
+  const widthRaw =
+    typeof fibers.width === "number" && Number.isFinite(fibers.width)
+      ? Math.abs(fibers.width)
+      : DEFAULT_FIBER_WIDTH;
+  const clarity = clamp01(
+    typeof fibers.clarity === "number" && Number.isFinite(fibers.clarity)
+      ? fibers.clarity
+      : DEFAULT_FIBER_CLARITY
+  );
+
+  return {
+    colorAmplitude,
+    alphaAmplitude,
+    density: Math.max(densityRaw, MIN_FIBER_DENSITY),
+    width: Math.max(widthRaw, MIN_FIBER_WIDTH),
+    clarity,
+  };
+}
+
 function sanitizeFill(fill: SceneFill | undefined): SceneFill {
   if (!fill) {
     return cloneFill(DEFAULT_FILL);
@@ -968,7 +1018,8 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         color: sanitizeColor(fill.color),
         ...(() => {
           const noise = sanitizeFillNoise(fill.noise);
-          return noise ? { noise } : {};
+          const fibers = sanitizeFillFibers(fill.fibers);
+          return { ...(noise ? { noise } : {}), ...(fibers ? { fibers } : {}) };
         })(),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
@@ -979,7 +1030,8 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         stops: sanitizeGradientStops(fill.stops),
         ...(() => {
           const noise = sanitizeFillNoise(fill.noise);
-          return noise ? { noise } : {};
+          const fibers = sanitizeFillFibers(fill.fibers);
+          return { ...(noise ? { noise } : {}), ...(fibers ? { fibers } : {}) };
         })(),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
@@ -991,7 +1043,8 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         stops: sanitizeGradientStops(fill.stops),
         ...(() => {
           const noise = sanitizeFillNoise(fill.noise);
-          return noise ? { noise } : {};
+          const fibers = sanitizeFillFibers(fill.fibers);
+          return { ...(noise ? { noise } : {}), ...(fibers ? { fibers } : {}) };
         })(),
       };
     default:
@@ -1021,8 +1074,12 @@ function cloneFill(fill: SceneFill): SceneFill {
         color: { ...fill.color },
       };
       const noise = cloneNoise(fill.noise);
+      const fibers = cloneFibers(fill.fibers);
       if (noise) {
         cloned.noise = noise;
+      }
+      if (fibers) {
+        cloned.fibers = fibers;
       }
       return cloned;
     }
@@ -1034,8 +1091,12 @@ function cloneFill(fill: SceneFill): SceneFill {
         stops: cloneStops(fill.stops),
       };
       const noise = cloneNoise(fill.noise);
+      const fibers = cloneFibers(fill.fibers);
       if (noise) {
         cloned.noise = noise;
+      }
+      if (fibers) {
+        cloned.fibers = fibers;
       }
       return cloned;
     }
@@ -1048,8 +1109,12 @@ function cloneFill(fill: SceneFill): SceneFill {
         stops: cloneStops(fill.stops),
       };
       const noise = cloneNoise(fill.noise);
+      const fibers = cloneFibers(fill.fibers);
       if (noise) {
         cloned.noise = noise;
+      }
+      if (fibers) {
+        cloned.fibers = fibers;
       }
       return cloned;
     }
@@ -1065,6 +1130,15 @@ function cloneNoise(noise: SceneFillNoise | undefined): SceneFillNoise | undefin
     return undefined;
   }
   return { ...noise };
+}
+
+function cloneFibers(
+  fibers: SceneFillFibers | undefined
+): SceneFillFibers | undefined {
+  if (!fibers) {
+    return undefined;
+  }
+  return { ...fibers };
 }
 
 function cloneStroke(stroke: SceneStroke | undefined): SceneStroke | undefined {

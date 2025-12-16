@@ -4,6 +4,7 @@ import {
   SceneColor,
   SceneFill,
   SceneGradientStop,
+  SceneFillFibers,
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
@@ -34,6 +35,7 @@ interface WaveState {
   startAlpha: number;
   endAlpha: number;
   gradientStops: readonly SceneGradientStop[];
+  fibers?: SceneFillFibers;
 }
 
 interface ExplosionState {
@@ -173,6 +175,7 @@ export class ExplosionModule implements GameModule {
         startAlpha: waveConfig.startAlpha,
         endAlpha: waveConfig.endAlpha,
         gradientStops: waveConfig.gradientStops,
+        fibers: sanitizeWaveFibers(waveConfig.fibers),
       };
 
       const customData: ExplosionRendererCustomData = {
@@ -187,7 +190,8 @@ export class ExplosionModule implements GameModule {
           startInnerRadius,
           startOuterRadius,
           wave.startAlpha,
-          wave.gradientStops
+          wave.gradientStops,
+          wave.fibers
         ),
         customData,
       });
@@ -231,7 +235,8 @@ export class ExplosionModule implements GameModule {
           clampedInnerRadius,
           clampedOuterRadius,
           waveAlpha,
-          wave.gradientStops
+          wave.gradientStops,
+          wave.fibers
         ),
       });
     });
@@ -255,7 +260,8 @@ const createWaveFill = (
   innerRadius: number,
   outerRadius: number,
   alpha: number,
-  gradientStops: readonly SceneGradientStop[]
+  gradientStops: readonly SceneGradientStop[],
+  fibers: SceneFillFibers | undefined
 ): SceneFill => {
   const safeOuterRadius = Math.max(outerRadius, 0);
   const normalizedInnerRadius = safeOuterRadius <= 0
@@ -292,6 +298,45 @@ const createWaveFill = (
     start: { x: 0, y: 0 },
     end: safeOuterRadius,
     stops,
+    ...(fibers ? { fibers } : {}),
+  };
+};
+
+const sanitizeWaveFibers = (
+  fibers: SceneFillFibers | undefined
+): SceneFillFibers | undefined => {
+  if (!fibers) {
+    return undefined;
+  }
+  const colorAmplitude = clamp01(fibers.colorAmplitude);
+  const alphaAmplitude = clamp01(fibers.alphaAmplitude);
+  if (colorAmplitude <= 0 && alphaAmplitude <= 0) {
+    return undefined;
+  }
+  const density = Math.max(
+    0.0001,
+    typeof fibers.density === "number" && Number.isFinite(fibers.density)
+      ? Math.abs(fibers.density)
+      : 1
+  );
+  const width = Math.max(
+    0.0001,
+    typeof fibers.width === "number" && Number.isFinite(fibers.width)
+      ? Math.abs(fibers.width)
+      : 1
+  );
+  const clarity = clamp01(
+    typeof fibers.clarity === "number" && Number.isFinite(fibers.clarity)
+      ? fibers.clarity
+      : 0.5
+  );
+
+  return {
+    colorAmplitude,
+    alphaAmplitude,
+    density,
+    width,
+    clarity,
   };
 };
 

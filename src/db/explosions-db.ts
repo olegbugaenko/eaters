@@ -3,6 +3,7 @@ import {
   SceneColor,
   SceneFill,
   SceneGradientStop,
+  SceneFillFibers,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
 
@@ -43,6 +44,7 @@ export interface ExplosionWaveConfig {
   startAlpha: number;
   endAlpha: number;
   gradientStops: readonly SceneGradientStop[];
+  fibers?: SceneFillFibers;
 }
 
 export interface ExplosionEmitterConfig {
@@ -807,6 +809,13 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
           { offset: 0.75, color: { r: 0.5, g: 0.2, b: 0.6, a: 0.7 } },
           { offset: 1, color: { r: 0.45, g: 0.25, b: 0.5, a: 0.0 } },
         ] as const,
+        fibers: {
+          colorAmplitude: 0.12,
+          alphaAmplitude: 0.08,
+          density: 0.55,
+          width: 0.35,
+          clarity: 0.65,
+        },
       },
       {
         radiusInitial: 20,
@@ -820,6 +829,13 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
           { offset: 0.45, color: { r: 0.38, g: 0.12, b: 0.48, a: 0.32 } },
           { offset: 1, color: { r: 0.42, g: 0.2, b: 0.5, a: 0.0 } },
         ] as const,
+        fibers: {
+          colorAmplitude: 0.08,
+          alphaAmplitude: 0.12,
+          density: 0.35,
+          width: 0.5,
+          clarity: 0.45,
+        },
       },
     ],
     emitter: {

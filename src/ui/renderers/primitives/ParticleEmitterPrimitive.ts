@@ -1110,6 +1110,11 @@ const createParticleEmitterGpuState = (
     noiseColorAmplitude: 0,
     noiseAlphaAmplitude: 0,
     noiseScale: 1,
+    fiberColorAmplitude: 0,
+    fiberAlphaAmplitude: 0,
+    fiberDensity: 1,
+    fiberWidth: 1,
+    fiberClarity: 0.5,
     hasLinearStart: false,
     linearStart: { x: 0, y: 0 },
     hasLinearEnd: false,
@@ -1283,6 +1288,12 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.noiseColorAmplitude = noise ? clamp01(noise.colorAmplitude) : 0;
   uniforms.noiseAlphaAmplitude = noise ? clamp01(noise.alphaAmplitude) : 0;
   uniforms.noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
+  const fibers = (fill as any).fibers;
+  uniforms.fiberColorAmplitude = fibers ? clamp01(fibers.colorAmplitude) : 0;
+  uniforms.fiberAlphaAmplitude = fibers ? clamp01(fibers.alphaAmplitude) : 0;
+  uniforms.fiberDensity = fibers ? Math.max(fibers.density ?? 0, 0.0001) : 1;
+  uniforms.fiberWidth = fibers ? Math.max(fibers.width ?? 0, 0.0001) : 1;
+  uniforms.fiberClarity = fibers ? clamp01(fibers.clarity ?? 0.5) : 0.5;
 
   const stops = ensureParticleStops(fill);
   const stopCount = Math.min(MAX_GRADIENT_STOPS, stops.length);

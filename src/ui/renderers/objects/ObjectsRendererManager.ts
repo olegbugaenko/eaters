@@ -375,6 +375,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.fibers ? { fibers: { ...fill.fibers } } : {}),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
       return {
@@ -386,6 +387,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.fibers ? { fibers: { ...fill.fibers } } : {}),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -398,6 +400,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.fibers ? { fibers: { ...fill.fibers } } : {}),
       };
     default:
       return {

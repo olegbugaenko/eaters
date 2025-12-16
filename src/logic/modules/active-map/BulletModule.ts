@@ -3,6 +3,7 @@ import {
   FILL_TYPES,
   SceneFill,
   SceneFillNoise,
+  SceneFillFibers,
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
@@ -25,6 +26,9 @@ interface BulletCustomData {
 
 const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
   noise ? { ...noise } : undefined;
+const cloneFibers = (
+  fibers: SceneFillFibers | undefined
+): SceneFillFibers | undefined => (fibers ? { ...fibers } : undefined);
 
 const createBulletFill = (radius: number, config: BulletConfig) => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -35,6 +39,7 @@ const createBulletFill = (radius: number, config: BulletConfig) => ({
     color: { ...stop.color },
   })),
   ...(config.noise ? { noise: cloneNoise(config.noise) } : {}),
+  ...(config.fibers ? { fibers: cloneFibers(config.fibers) } : {}),
 });
 
 const createBulletCustomData = (
@@ -75,6 +80,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.fibers ? { fibers: cloneFibers(fill.fibers) } : {}),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
       return {
@@ -86,6 +92,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.fibers ? { fibers: cloneFibers(fill.fibers) } : {}),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -98,6 +105,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.fibers ? { fibers: cloneFibers(fill.fibers) } : {}),
       } as SceneFill;
     default:
       return fill;

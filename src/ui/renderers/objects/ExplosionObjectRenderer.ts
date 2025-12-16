@@ -354,6 +354,30 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
 const toWaveUniformsFromFill = (
   fill: SceneFill
 ): { uniforms: WaveUniformConfig; key: string } => {
+  const noise = fill.noise;
+  const noiseColorAmplitude = noise ? Math.max(0, Math.min(1, noise.colorAmplitude)) : 0;
+  const noiseAlphaAmplitude = noise ? Math.max(0, Math.min(1, noise.alphaAmplitude)) : 0;
+  const noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
+  const fibers = (fill as any).fibers;
+  const fiberColorAmplitude = fibers
+    ? Math.max(0, Math.min(1, fibers.colorAmplitude))
+    : 0;
+  const fiberAlphaAmplitude = fibers
+    ? Math.max(0, Math.min(1, fibers.alphaAmplitude))
+    : 0;
+  const fiberDensity = fibers ? Math.max(0.0001, fibers.density ?? 0) : 1;
+  const fiberWidth = fibers ? Math.max(0.0001, fibers.width ?? 0) : 1;
+  const fiberClarity = fibers ? Math.max(0, Math.min(1, fibers.clarity ?? 0.5)) : 0.5;
+  const sharedTextureProps = {
+    n: { c: noiseColorAmplitude, a: noiseAlphaAmplitude, s: noiseScale },
+    f: {
+      c: fiberColorAmplitude,
+      a: fiberAlphaAmplitude,
+      d: fiberDensity,
+      w: fiberWidth,
+      cl: fiberClarity,
+    },
+  } as const;
   // Normalize batching key to avoid unique keys per radius/end value
   const key = JSON.stringify(
     fill.fillType === FILL_TYPES.SOLID
@@ -365,6 +389,7 @@ const toWaveUniformsFromFill = (
             g: (fill as any).color?.g ?? 1,
             b: (fill as any).color?.b ?? 1,
           },
+          ...sharedTextureProps,
         }
       : {
           t: fill.fillType,
@@ -377,6 +402,7 @@ const toWaveUniformsFromFill = (
                 b: s?.color?.b ?? 1,
               }))
             : [],
+          ...sharedTextureProps,
         }
   );
   // Default SOLID white
@@ -441,11 +467,6 @@ const toWaveUniformsFromFill = (
     }
   }
 
-  const noise = fill.noise;
-  const noiseColorAmplitude = noise ? Math.max(0, Math.min(1, noise.colorAmplitude)) : 0;
-  const noiseAlphaAmplitude = noise ? Math.max(0, Math.min(1, noise.alphaAmplitude)) : 0;
-  const noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
-
   const uniforms: WaveUniformConfig = {
     fillType,
     stopCount,
@@ -458,6 +479,11 @@ const toWaveUniformsFromFill = (
     noiseColorAmplitude,
     noiseAlphaAmplitude,
     noiseScale,
+    fiberColorAmplitude,
+    fiberAlphaAmplitude,
+    fiberDensity,
+    fiberWidth,
+    fiberClarity,
     hasLinearStart,
     linearStart: linearStart ?? { x: 0, y: 0 },
     hasLinearEnd,

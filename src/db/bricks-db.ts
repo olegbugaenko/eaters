@@ -1,6 +1,7 @@
 import {
   SceneColor,
   SceneFillNoise,
+  SceneFillFibers,
   SceneGradientStop,
   SceneSize,
   SceneVector2,
@@ -37,6 +38,7 @@ export interface BrickLinearFillConfig {
   end?: SceneVector2;
   stops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
+  fibers?: SceneFillFibers;
 }
 
 export interface BrickRadialFillConfig {
@@ -45,12 +47,14 @@ export interface BrickRadialFillConfig {
   radius?: number;
   stops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
+  fibers?: SceneFillFibers;
 }
 
 export interface BrickSolidFillConfig {
   type: "solid";
   color: SceneColor;
   noise?: SceneFillNoise;
+  fibers?: SceneFillFibers;
 }
 
 export type BrickFillConfig =
