@@ -221,6 +221,12 @@ float hash21(vec2 p) {
   return fract((p3.x + p3.y) * p3.z);
 }
 
+vec2 hash22(vec2 p) {
+  float n = sin(dot(p, vec2(127.1, 311.7)));
+  float m = sin(dot(p, vec2(269.5, 183.3)));
+  return fract(vec2(n, m) * 43758.5453);
+}
+
 float noise2d(vec2 p) {
   vec2 i = floor(p);
   vec2 f = fract(p);
@@ -274,14 +280,29 @@ vec4 applyFillFibers(vec4 color) {
 
   vec2 fiberCoord = v_worldPosition * density;
   vec2 cell = floor(fiberCoord);
-  vec2 local = fract(fiberCoord) - 0.5;
-  float angle = hash21(cell) * 6.28318530718; // TAU
-  vec2 dir = vec2(cos(angle), sin(angle));
-  float dist = abs(dot(local, vec2(-dir.y, dir.x)));
-  float softness = width * mix(0.65, 0.08, clarity);
-  float filament = 1.0 - smoothstep(width, width + softness, dist);
-  float jitter = (hash21(cell + vec2(5.2, 1.3)) - 0.5) * 0.3;
-  float fiberSignal = clamp(filament + jitter, 0.0, 1.0) * 2.0 - 1.0;
+  float nearest = 1e6;
+  float second = 1e6;
+
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 neighbor = cell + vec2(float(i), float(j));
+      vec2 featurePoint = neighbor + hash22(neighbor);
+      float dist = length(featurePoint - fiberCoord);
+      if (dist < nearest) {
+        second = nearest;
+        nearest = dist;
+      } else if (dist < second) {
+        second = dist;
+      }
+    }
+  }
+
+  float edgeDelta = max(second - nearest, 0.0);
+  float thickness = width * 0.5;
+  float softness = thickness * mix(0.9, 0.2, clarity);
+  float crack = 1.0 - smoothstep(thickness, thickness + softness, edgeDelta);
+  float jitter = (hash21(cell * 1.7 + vec2(3.1, 7.3)) - 0.5) * 0.3;
+  float fiberSignal = clamp(crack + jitter, 0.0, 1.0) * 2.0 - 1.0;
 
   if (colorAmp > 0.0) {
     color.rgb = clamp(color.rgb + fiberSignal * colorAmp, 0.0, 1.0);
