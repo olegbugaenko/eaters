@@ -249,6 +249,7 @@ const createEmitterCustomData = (
     offset: { x: 0, y: 0 },
     maxParticles,
     shape: config.emitter.shape,
+    sizeGrowthRate: config.emitter.sizeGrowthRate,
   };
 };
 

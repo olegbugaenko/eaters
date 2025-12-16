@@ -179,6 +179,7 @@ export type WaveUniformConfig = Omit<
   | "linearStart"
   | "linearEnd"
   | "radialOffset"
+  | "sizeGrowthRate"
 > & {
   stopOffsets: Float32Array;
   stopColor0: Float32Array;
@@ -332,6 +333,7 @@ export const ensureWaveBatch = (
     minParticleSize: 0.0001,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    sizeGrowthRate: 1.0,
   };
 
   const batch: WaveBatch = {

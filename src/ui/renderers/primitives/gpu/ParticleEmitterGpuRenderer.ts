@@ -26,6 +26,7 @@ uniform float u_defaultLifetimeMs;
 uniform float u_minParticleSize;
 uniform float u_lengthMultiplier;
 uniform int u_alignToVelocity;
+uniform float u_sizeGrowthRate;
 
 uniform int u_fillType;
 uniform int u_stopCount;
@@ -84,7 +85,11 @@ vec2 toClip(vec2 world) {
 void main() {
   float isActive = a_isActive;
   bool alive = isActive > 0.5;
-  float size = alive ? max(a_size, u_minParticleSize) : 0.0;
+  float baseSize = a_size;
+  // Apply size growth: size = baseSize * growthRate^(age/1000)
+  float ageSeconds = a_age * 0.001;
+  float growthMultiplier = u_sizeGrowthRate > 0.0 ? pow(u_sizeGrowthRate, ageSeconds) : 1.0;
+  float size = alive ? max(baseSize * growthMultiplier, u_minParticleSize) : 0.0;
   vec2 center = a_position;
   float lengthMul = max(u_lengthMultiplier, 1.0);
   vec2 baseOffset = vec2(a_unitPosition.x * size * lengthMul, a_unitPosition.y * size);
@@ -334,6 +339,7 @@ interface ParticleRenderProgram {
     minParticleSize: WebGLUniformLocation | null;
     lengthMultiplier: WebGLUniformLocation | null;
     alignToVelocity: WebGLUniformLocation | null;
+    sizeGrowthRate: WebGLUniformLocation | null;
     fillType: WebGLUniformLocation | null;
     stopCount: WebGLUniformLocation | null;
     hasLinearStart: WebGLUniformLocation | null;
@@ -378,6 +384,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   minParticleSize: number;
   lengthMultiplier: number;
   alignToVelocity: boolean;
+  sizeGrowthRate: number;
 }
 
 export interface ParticleEmitterGpuDrawHandle {
@@ -475,6 +482,7 @@ const createRenderProgram = (
     minParticleSize: gl.getUniformLocation(program, "u_minParticleSize"),
     lengthMultiplier: gl.getUniformLocation(program, "u_lengthMultiplier"),
     alignToVelocity: gl.getUniformLocation(program, "u_alignToVelocity"),
+    sizeGrowthRate: gl.getUniformLocation(program, "u_sizeGrowthRate"),
     fillType: gl.getUniformLocation(program, "u_fillType"),
     stopCount: gl.getUniformLocation(program, "u_stopCount"),
     hasLinearStart: gl.getUniformLocation(program, "u_hasLinearStart"),
@@ -614,6 +622,7 @@ type UniformCache = {
   minParticleSize?: number;
   lengthMultiplier?: number;
   alignToVelocity?: number;
+  sizeGrowthRate?: number;
   fillType?: number;
   stopCount?: number;
   hasLinearStart?: number;
@@ -683,6 +692,15 @@ const uploadEmitterUniforms = (
     gl.uniform1i(
       program.uniforms.alignToVelocity,
       (cache.alignToVelocity = alignVal)
+    );
+  }
+  if (
+    program.uniforms.sizeGrowthRate &&
+    cache.sizeGrowthRate !== u.sizeGrowthRate
+  ) {
+    gl.uniform1f(
+      program.uniforms.sizeGrowthRate,
+      (cache.sizeGrowthRate = u.sizeGrowthRate)
     );
   }
   if (program.uniforms.fillType && cache.fillType !== u.fillType) {

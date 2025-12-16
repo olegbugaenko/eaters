@@ -79,7 +79,8 @@ export const SKILL_IDS = [
   "advanced_construction",
   "advanced_crafting",
   "consiousness",
-  "arcane_awareness"
+  "arcane_awareness",
+  "weaken_curse"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -353,6 +354,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { glass_latticework: 1 },
     cost: createStoneCost(8, 1.35),
   },
+  weaken_curse: {
+    id: "weaken_curse",
+    name: "Weaken Curse",
+    description:
+      "Weaken bricks, increasing damage they get.",
+    nodePosition: { x: 1, y: -3 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { arcane_awareness: 1 },
+    cost: createStoneCost(45, 1.0),
+  },
   arcane_amplifier: {
     id: "arcane_amplifier",
     name: "Arcane Amplifier",
@@ -462,7 +474,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         income: (level) => 0.12 * level,
       },
     },
-    nodesRequired: { glass_latticework: 1 },
+    nodesRequired: { mana_reservior: 2 },
     cost: createStoneCost(100, 1.5),
   },
   sand_scribing: {

@@ -58,6 +58,7 @@ export interface ExplosionEmitterConfig {
   direction?: number;
   fill?: SceneFill;
   shape?: "circle" | "square"; // Форма частинок (за замовчуванням "square")
+  sizeGrowthRate?: number;
 }
 
 export interface ExplosionRendererEmitterConfig {
@@ -76,6 +77,7 @@ export interface ExplosionRendererEmitterConfig {
   offset?: SceneVector2;
   maxParticles?: number;
   shape?: "circle" | "square";
+  sizeGrowthRate?: number;
 }
 
 export interface ExplosionConfig {
@@ -237,95 +239,127 @@ const GRAY_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 0.9, g: 0.9, b: 0.92, a: 0.2 } },
-    { offset: 0.45, color: { r: 0.72, g: 0.74, b: 0.78, a: 0.1 } },
-    { offset: 1, color: { r: 0.45, g: 0.48, b: 0.52, a: 0.05 } },
+    { offset: 0, color: { r: 0.9, g: 0.9, b: 0.92, a: 0.12 } },
+    { offset: 0.45, color: { r: 0.72, g: 0.74, b: 0.78, a: 0.06 } },
+    { offset: 1, color: { r: 0.45, g: 0.48, b: 0.52, a: 0.03 } },
   ],
   noise: {
     colorAmplitude: 0.04,
-    alphaAmplitude: 0.09,
-    scale: 0.3,
+    alphaAmplitude: 0.075,
+    scale: 0.5,
   },
 };
 const YELLOW_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 1, g: 0.95, b: 0.6, a: 0.95 } },
-    { offset: 0.45, color: { r: 0.95, g: 0.85, b: 0.45, a: 0.6 } },
-    { offset: 1, color: { r: 0.8, g: 0.7, b: 0.35, a: 0 } },
+    { offset: 0, color: { r: 1, g: 0.95, b: 0.6, a: 0.09 } },
+    { offset: 0.45, color: { r: 0.95, g: 0.85, b: 0.45, a: 0.05 } },
+    { offset: 1, color: { r: 0.8, g: 0.7, b: 0.35, a: 0.02 } },
   ],
+  noise: {
+    colorAmplitude: 0.02,
+    alphaAmplitude: 0.06,
+    scale: 0.9,
+  },
 };
 const GREEN_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 0.6, g: 1, b: 0.7, a: 0.95 } },
-    { offset: 0.45, color: { r: 0.4, g: 0.9, b: 0.5, a: 0.6 } },
-    { offset: 1, color: { r: 0.15, g: 0.65, b: 0.2, a: 0 } },
+    { offset: 0, color: { r: 0.4, g: 0.8, b: 0.5, a: 0.12 } },
+    { offset: 0.45, color: { r: 0.2, g: 0.6, b: 0.3, a: 0.06 } },
+    { offset: 1, color: { r: 0.05, g: 0.45, b: 0.1, a: 0.03 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.5,
+  },
 };
 const ORANGE_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 1, g: 0.85, b: 0.6, a: 0.95 } },
-    { offset: 0.45, color: { r: 1, g: 0.6, b: 0.25, a: 0.6 } },
-    { offset: 1, color: { r: 0.85, g: 0.4, b: 0.12, a: 0 } },
+    { offset: 0, color: { r: 1, g: 0.85, b: 0.6, a: 0.12 } },
+    { offset: 0.45, color: { r: 1, g: 0.6, b: 0.25, a: 0.06 } },
+    { offset: 1, color: { r: 0.85, g: 0.4, b: 0.12, a: 0.03 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.5,
+  },
 };
 const BROWN_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.95 } },
-    { offset: 0.45, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.6 } },
-    { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0 } },
+    { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.12 } },
+    { offset: 0.45, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.06 } },
+    { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0.03 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.5,
+  },
 };
 const SILVER_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 0.95, g: 0.96, b: 0.98, a: 0.95 } },
-    { offset: 0.45, color: { r: 0.85, g: 0.86, b: 0.9, a: 0.6 } },
-    { offset: 1, color: { r: 0.75, g: 0.76, b: 0.8, a: 0 } },
+    { offset: 0, color: { r: 0.95, g: 0.96, b: 0.98, a: 0.12 } },
+    { offset: 0.45, color: { r: 0.85, g: 0.86, b: 0.9, a: 0.06 } },
+    { offset: 1, color: { r: 0.75, g: 0.76, b: 0.8, a: 0.03 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.5,
+  },
 };
 const ICE_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 0.85, g: 0.95, b: 1.0, a: 0.95 } },
-    { offset: 0.45, color: { r: 0.65, g: 0.85, b: 1.0, a: 0.6 } },
-    { offset: 1, color: { r: 0.45, g: 0.7, b: 1.0, a: 0 } },
+    { offset: 0, color: { r: 0.85, g: 0.95, b: 1.0, a: 0.12 } },
+    { offset: 0.45, color: { r: 0.65, g: 0.85, b: 1.0, a: 0.06 } },
+    { offset: 1, color: { r: 0.45, g: 0.7, b: 1.0, a: 0.03 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.5,
+  },
 };
 const COAL_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 0.3, g: 0.3, b: 0.32, a: 0.95 } },
-    { offset: 0.45, color: { r: 0.18, g: 0.18, b: 0.2, a: 0.6 } },
-    { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0 } },
+    { offset: 0, color: { r: 0.3, g: 0.3, b: 0.32, a: 0.12 } },
+    { offset: 0.45, color: { r: 0.18, g: 0.18, b: 0.2, a: 0.06 } },
+    { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0.03 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.5,
+  },
 };
 const MAGMA_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
-  end: 6,
   stops: [
-    { offset: 0, color: { r: 1.0, g: 0.65, b: 0.2, a: 0.95 } },
-    { offset: 0.45, color: { r: 1.0, g: 0.45, b: 0.15, a: 0.6 } },
-    { offset: 1, color: { r: 0.9, g: 0.3, b: 0.1, a: 0 } },
+    { offset: 0, color: { r: 1.0, g: 0.65, b: 0.2, a: 0.12 } },
+    { offset: 0.45, color: { r: 1.0, g: 0.45, b: 0.15, a: 0.06 } },
+    { offset: 1, color: { r: 0.9, g: 0.3, b: 0.1, a: 0.03 } },
   ],
+  noise: {
+    colorAmplitude: 0.04,
+    alphaAmplitude: 0.09,
+    scale: 0.5,
+  },
 };
 
 const CRITICAL_HIT_EMITTER_FILL: SceneFill = {
@@ -356,8 +390,8 @@ const DEFAULT_EMITTER: ExplosionEmitterConfig = {
 };
 
 const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
-  emissionDurationMs: 240,
-  particlesPerSecond: 24,
+  emissionDurationMs: 140,
+  particlesPerSecond: 34,
   baseSpeed: 0.04,
   speedVariation: 0.01,
   particleLifetimeMs: 650,
@@ -370,11 +404,12 @@ const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
   direction: 0,
   fill: GRAY_BRICK_EMITTER_FILL,
   shape: "circle",
+  sizeGrowthRate: 1.35,
 };
 
 const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
-  emissionDurationMs: 320,
-  particlesPerSecond: 32,
+  emissionDurationMs: 220,
+  particlesPerSecond: 42,
   baseSpeed: 0.05,
   speedVariation: 0.01,
   particleLifetimeMs: 750,
@@ -387,6 +422,7 @@ const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
   direction: 0,
   fill: GRAY_BRICK_EMITTER_FILL,
   shape: "circle",
+  sizeGrowthRate: 1.35,
 };
 
 const CRITICAL_HIT_EMITTER: ExplosionEmitterConfig = {

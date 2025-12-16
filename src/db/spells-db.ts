@@ -223,7 +223,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         outerStop: 0.78,
         color: { r: 0.5, g: 0.7, b: 1, a: 0.1 },
       },
-      aoe: { radius: 13, splash: 0.5 },
+      aoe: { radius: 15, splash: 0.5 },
       explosion: "magnetic",
     },
   },

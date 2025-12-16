@@ -47,6 +47,7 @@ export interface ParticleEmitterBaseConfig {
   alignToVelocity?: boolean; // if true, rotate quad to face particle velocity
   emissionDurationMs?: number;
   capacity: number;
+  sizeGrowthRate?: number; // Multiplier per second: 1.0 = no growth, 2.0 = doubles per second
 }
 
 export interface ParticleEmitterParticleState {
@@ -439,6 +440,9 @@ const advanceParticleEmitterStateGpu = <
   }
 
   const origin = options.getOrigin(instance, config);
+  
+  // Update CPU slots to track which are free (based on spawn time, not incremental age)
+  const currentTimeMs = state.ageMs;
   if (deltaMs > 0) {
     const slots = gpu.slots;
     for (let i = 0; i < slots.length; i += 1) {
@@ -447,16 +451,10 @@ const advanceParticleEmitterStateGpu = <
         continue;
       }
       if (slot.lifetimeMs > 0) {
-        const nextAge = slot.ageMs + deltaMs;
-        if (nextAge >= slot.lifetimeMs) {
+        const age = currentTimeMs - slot.ageMs; // ageMs stores spawnTime
+        if (age >= slot.lifetimeMs) {
           slot.active = false;
-          slot.ageMs = 0;
-          slot.lifetimeMs = 0;
-        } else {
-          slot.ageMs = nextAge;
         }
-      } else {
-        slot.ageMs += deltaMs;
       }
     }
   }
@@ -503,7 +501,7 @@ const advanceParticleEmitterStateGpu = <
       }
       const slot = slots[slotIndex]!;
       slot.active = true;
-      slot.ageMs = 0;
+      slot.ageMs = currentTimeMs; // Store spawn time, not age
       slot.lifetimeMs = particle.lifetimeMs;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -513,13 +511,17 @@ const advanceParticleEmitterStateGpu = <
   const remainingCapacity = Math.max(0, freeSlots.length - spawnBudget);
   state.spawnAccumulator = Math.min(state.spawnAccumulator, remainingCapacity);
 
+  // Run GPU simulation to update particle ages and positions
   if (deltaMs > 0) {
     stepParticleSimulation(gpu, state.capacity, deltaMs);
   }
 
   // Update active instance count for renderer
+  // Note: This is an approximation - GPU may have deactivated some particles,
+  // but reading back from GPU buffer would be too slow. The renderer will skip
+  // invisible particles via alpha=0 anyway.
   if (gpu.handle) {
-    gpu.handle.activeCount = activeCount;
+    gpu.handle.activeCount = Math.min(activeCount + spawnBudget, state.capacity);
   }
 };
 
@@ -1120,6 +1122,7 @@ const createParticleEmitterGpuState = (
     minParticleSize: MIN_PARTICLE_SIZE,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    sizeGrowthRate: 1.0,
   };
 
   const gpu: ParticleEmitterGpuState = {
@@ -1270,6 +1273,7 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.minParticleSize = MIN_PARTICLE_SIZE;
   uniforms.lengthMultiplier = Math.max(config.aspectRatio ?? 1, 1);
   uniforms.alignToVelocity = config.alignToVelocity === true;
+  uniforms.sizeGrowthRate = typeof config.sizeGrowthRate === "number" && Number.isFinite(config.sizeGrowthRate) ? config.sizeGrowthRate : 1.0;
 
   const fill = resolveParticleFill(config);
   uniforms.fillType = fill.fillType;
