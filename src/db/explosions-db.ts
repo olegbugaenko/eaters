@@ -776,7 +776,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
         ] as const,
       },
       {
-        outerRadius: 170,
+        radiusExtension: 160,
         startAlpha: 0.4,
         endAlpha: 0,
         gradientStops: [
