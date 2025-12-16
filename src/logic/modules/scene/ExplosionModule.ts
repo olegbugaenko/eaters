@@ -3,6 +3,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillNoise,
   SceneGradientStop,
   SceneObjectManager,
   SceneVector2,
@@ -33,6 +34,7 @@ interface WaveState {
   startAlpha: number;
   endAlpha: number;
   gradientStops: readonly SceneGradientStop[];
+  noise?: SceneFillNoise;
 }
 
 interface ExplosionState {
@@ -157,6 +159,7 @@ export class ExplosionModule implements GameModule {
         startAlpha: waveConfig.startAlpha,
         endAlpha: waveConfig.endAlpha,
         gradientStops: waveConfig.gradientStops,
+        noise: waveConfig.noise,
       };
     });
 
@@ -182,7 +185,8 @@ export class ExplosionModule implements GameModule {
         wave.startInnerRadius,
         wave.startOuterRadius,
         wave.startAlpha,
-        wave.gradientStops
+        wave.gradientStops,
+        wave.noise
       );
 
       const id = this.options.scene.addObject("explosion", {
@@ -227,7 +231,7 @@ export class ExplosionModule implements GameModule {
       this.options.scene.updateObject(wave.id, {
         position: { ...explosion.position },
         size: { width: outerRadius * 2, height: outerRadius * 2 },
-        fill: createWaveFill(innerRadius, outerRadius, waveAlpha, wave.gradientStops),
+        fill: createWaveFill(innerRadius, outerRadius, waveAlpha, wave.gradientStops, wave.noise),
       });
     });
   }
@@ -244,7 +248,8 @@ const createWaveFill = (
   innerRadius: number,
   outerRadius: number,
   alpha: number,
-  gradientStops: readonly SceneGradientStop[]
+  gradientStops: readonly SceneGradientStop[],
+  noise?: SceneFillNoise
 ): SceneFill => {
   const radius = Math.max(outerRadius, 0.0001);
   const normalizedInnerRadius = clamp01(innerRadius / radius);
@@ -291,6 +296,7 @@ const createWaveFill = (
     start: { x: 0, y: 0 },
     end: radius,
     stops,
+    ...(noise && { noise }),
   };
 };
 

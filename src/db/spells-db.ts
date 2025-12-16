@@ -260,7 +260,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Weaken Curse",
     description:
       "Unfurl a rippling curse that saps the strength of bricks caught in its wave.",
-    cost: { mana: 7, sanity: 1.2 },
+    cost: { mana: 7, sanity: 0.2 },
     cooldownSeconds: 4,
     persistentAoe: {
       durationMs: 2_500,
