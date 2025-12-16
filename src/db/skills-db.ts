@@ -358,7 +358,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "weaken_curse",
     name: "Weaken Curse",
     description:
-      "Weaken bricks, increasing damage they get.",
+      "Unlock the Weaken Curse spell to sap bricks' strength and dampen their blows.",
     nodePosition: { x: 1, y: -3 },
     maxLevel: 1,
     effects: {},
