@@ -18,8 +18,10 @@ import {
   SpellPersistentAoeVisualConfig,
   SpellPersistentAoeEffectConfig,
 } from "../../../../db/spells-db";
+import { ExplosionType } from "../../../../db/explosions-db";
 import { BonusValueMap } from "../../shared/BonusesModule";
 import { cloneSceneFill, sanitizeSceneColor } from "../../../services/particles/ParticleEmitterShared";
+import type { ExplosionModule } from "../../scene/ExplosionModule";
 
 const MIN_DURATION_MS = 16;
 const DEFAULT_GLOW_COLOR: SceneColor = { r: 1, g: 0.45, b: 0.15, a: 0.9 };
@@ -48,6 +50,7 @@ interface PersistentAoeParticleRuntimeConfig {
 }
 
 interface PersistentAoeVisualRuntimeConfig {
+  explosion: ExplosionType | null;
   glowColor: SceneColor;
   glowAlpha: number;
   particle: PersistentAoeParticleRuntimeConfig | null;
@@ -68,12 +71,19 @@ interface PersistentAoeState {
   renderData: PersistentAoeObjectCustomData;
 }
 
-interface PersistentAoeEffectRuntimeConfig {
-  type: "outgoing-damage-multiplier";
-  durationMs: number;
-  multiplier: number;
-  tint: BrickEffectTint | null;
-}
+type PersistentAoeEffectRuntimeConfig =
+  | {
+      type: "outgoing-damage-multiplier";
+      durationMs: number;
+      multiplier: number;
+      tint: BrickEffectTint | null;
+    }
+  | {
+      type: "outgoing-damage-flat-reduction";
+      durationMs: number;
+      reductionValue: number; // Will be multiplied by spell power when applied
+      tint: BrickEffectTint | null;
+    };
 
 export interface PersistentAoeParticleCustomData {
   baseParticlesPerSecond: number;
@@ -90,6 +100,7 @@ export interface PersistentAoeParticleCustomData {
 
 export interface PersistentAoeObjectCustomData {
   shape: "ring";
+  explosion: ExplosionType | null;
   innerRadius: number;
   outerRadius: number;
   thickness: number;
@@ -106,6 +117,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
 
   private readonly scene: SceneObjectManager;
   private readonly bricks: BricksModule;
+  private readonly explosions: ExplosionModule | undefined;
   private readonly getSpellPowerMultiplier: () => number;
 
   private readonly instances: PersistentAoeState[] = [];
@@ -114,6 +126,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
   constructor(dependencies: SpellBehaviorDependencies) {
     this.scene = dependencies.scene;
     this.bricks = dependencies.bricks;
+    this.explosions = dependencies.explosions;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
@@ -139,6 +152,14 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       sanitized.visual,
       sanitized.durationMs,
     );
+
+    // Spawn explosion for visual effect if configured
+    if (sanitized.visual.explosion && this.explosions) {
+      this.explosions.spawnExplosionByType(sanitized.visual.explosion, {
+        position: { ...center },
+        initialRadius: sanitized.ring.startRadius,
+      });
+    }
 
     const objectId = this.scene.addObject("spellPersistentAoe", {
       position: { ...center },
@@ -262,6 +283,15 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
           multiplier,
           tint: this.sanitizeEffectTint(effect.tint),
         });
+      } else if (effect.type === "outgoing-damage-flat-reduction") {
+        const durationMs = Math.max(MIN_DURATION_MS, Math.floor(effect.durationMs));
+        const reductionValue = Math.max(0, effect.reductionValue);
+        sanitized.push({
+          type: effect.type,
+          durationMs,
+          reductionValue,
+          tint: this.sanitizeEffectTint(effect.tint),
+        });
       }
     }
 
@@ -288,6 +318,8 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
   private sanitizeVisualConfig(
     visuals: SpellPersistentAoeVisualConfig | undefined,
   ): PersistentAoeVisualRuntimeConfig {
+    const explosion = visuals?.explosion ?? null;
+    
     const glowColor = sanitizeSceneColor(visuals?.glowColor, DEFAULT_GLOW_COLOR);
     const glowAlphaRaw = typeof visuals?.glowAlpha === "number" ? visuals.glowAlpha : undefined;
     const glowAlpha = clamp01(
@@ -302,7 +334,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
 
     const fireColor = sanitizeSceneColor(visuals?.fireColor, DEFAULT_FIRE_COLOR);
 
-    return { glowColor, glowAlpha, particle, fireColor };
+    return { explosion, glowColor, glowAlpha, particle, fireColor };
   }
 
   private sanitizeParticleEmitterConfig(
@@ -370,6 +402,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     const inner = Math.max(0, outer - ring.thickness);
     return {
       shape: "ring",
+      explosion: visual.explosion,
       innerRadius: inner,
       outerRadius: outer,
       thickness: ring.thickness,
@@ -438,6 +471,16 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
             brickId: brick.id,
             durationMs: effect.durationMs,
             multiplier: effect.multiplier,
+            tint: effect.tint,
+          });
+        } else if (effect.type === "outgoing-damage-flat-reduction") {
+          // Multiply reduction value by spell power
+          const flatReduction = effect.reductionValue * state.damageMultiplier;
+          this.bricks.applyEffect({
+            type: "weakeningCurseFlat",
+            brickId: brick.id,
+            durationMs: effect.durationMs,
+            flatReduction,
             tint: effect.tint,
           });
         }

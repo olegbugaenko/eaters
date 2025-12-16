@@ -310,6 +310,10 @@ export class BricksModule implements GameModule {
     return this.effects.getOutgoingDamageMultiplier(brickId);
   }
 
+  public getOutgoingDamageFlatReduction(brickId: string): number {
+    return this.effects.getOutgoingDamageFlatReduction(brickId);
+  }
+
   public applyDamage(
     brickId: string,
     rawDamage: number,

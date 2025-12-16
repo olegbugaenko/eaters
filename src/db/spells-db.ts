@@ -78,12 +78,19 @@ export interface SpellBrickEffectTintConfig {
   intensity: number;
 }
 
-export type SpellPersistentAoeEffectConfig = {
-  type: "outgoing-damage-multiplier";
-  durationMs: number;
-  multiplier: number;
-  tint?: SpellBrickEffectTintConfig;
-};
+export type SpellPersistentAoeEffectConfig =
+  | {
+      type: "outgoing-damage-multiplier";
+      durationMs: number;
+      multiplier: number;
+      tint?: SpellBrickEffectTintConfig;
+    }
+  | {
+      type: "outgoing-damage-flat-reduction";
+      durationMs: number;
+      reductionValue: number; // Flat value to subtract from damage (typically spell power)
+      tint?: SpellBrickEffectTintConfig;
+    };
 
 export interface SpellPersistentAoeParticleEmitterConfig {
   particlesPerSecond: number;
@@ -99,6 +106,8 @@ export interface SpellPersistentAoeParticleEmitterConfig {
 }
 
 export interface SpellPersistentAoeVisualConfig {
+  /** If set, spawns this explosion type instead of fire ring. Use for non-fire effects. */
+  explosion?: ExplosionType;
   glowColor?: SceneColor;
   glowAlpha?: number;
   particleEmitter?: SpellPersistentAoeParticleEmitterConfig;
@@ -245,6 +254,39 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       explosion: "magnetic",
     },
   },
+  "weaken-curse": {
+    id: "weaken-curse",
+    type: "persistent-aoe",
+    name: "Weaken Curse",
+    description:
+      "Unfurl a rippling curse that saps the strength of bricks caught in its wave.",
+    cost: { mana: 7, sanity: 1.2 },
+    cooldownSeconds: 4,
+    persistentAoe: {
+      durationMs: 2_500,
+      damagePerSecond: 0,
+      ring: {
+        shape: "ring",
+        startRadius: 10,
+        endRadius: 115,
+        thickness: 26,
+      },
+      visuals: {
+        explosion: "weakenCurse",
+        glowColor: { r: 0.6, g: 0.52, b: 1, a: 0.55 },
+        glowAlpha: 0.5,
+      },
+      effects: [
+        {
+          type: "outgoing-damage-flat-reduction",
+          durationMs: 4_000,
+          reductionValue: 0.75, // Will be multiplied by spell power when applied
+          tint: { color: { r: 0.55, g: 0.45, b: 0.95, a: 1 }, intensity: 0.5 },
+        },
+      ],
+    },
+    unlock: { skillId: "weaken_curse", level: 1 },
+  },
   "sand-storm": {
     id: "sand-storm",
     type: "whirl",
@@ -356,61 +398,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
     },
     unlock: { skillId: "ring_of_fire", level: 1 },
-  },
-  "weaken-curse": {
-    id: "weaken-curse",
-    type: "persistent-aoe",
-    name: "Weaken Curse",
-    description:
-      "Unfurl a rippling curse that saps the strength of bricks caught in its wave.",
-    cost: { mana: 7, sanity: 1.2 },
-    cooldownSeconds: 7,
-    persistentAoe: {
-      durationMs: 3_500,
-      damagePerSecond: 0,
-      ring: {
-        shape: "ring",
-        startRadius: 10,
-        endRadius: 115,
-        thickness: 26,
-      },
-      visuals: {
-        glowColor: { r: 0.6, g: 0.52, b: 1, a: 0.55 },
-        glowAlpha: 0.5,
-        fireColor: { r: 0.42, g: 0.25, b: 0.7, a: 0.9 },
-        particleEmitter: {
-          particlesPerSecond: 1400,
-          particleLifetimeMs: 820,
-          fadeStartMs: 260,
-          sizeRange: { min: 10, max: 20 },
-          color: { r: 0.6, g: 0.5, b: 0.95, a: 0.75 },
-          fill: {
-            fillType: FILL_TYPES.RADIAL_GRADIENT,
-            start: { x: 0, y: 0 },
-            end: 16,
-            stops: [
-              { offset: 0, color: { r: 0.95, g: 0.9, b: 1, a: 0.9 } },
-              { offset: 0.5, color: { r: 0.65, g: 0.55, b: 1, a: 0.8 } },
-              { offset: 1, color: { r: 0.35, g: 0.25, b: 0.65, a: 0 } },
-            ],
-          },
-          radialSpeed: { min: 60, max: 120 },
-          tangentialSpeed: { min: 25, max: 80 },
-          spawnJitter: { radial: 6, angular: 0.25 },
-          maxParticles: 2200,
-        },
-      },
-      effects: [
-        {
-          type: "outgoing-damage-multiplier",
-          durationMs: 3_500,
-          multiplier: 0.7,
-          tint: { color: { r: 0.55, g: 0.45, b: 0.95, a: 1 }, intensity: 0.5 },
-        },
-      ],
-    },
-    unlock: { skillId: "weaken_curse", level: 1 },
-  },
+  }
 };
 
 export const SPELL_IDS = Object.keys(SPELL_DB) as SpellId[];

@@ -28,13 +28,18 @@ const EFFECT_TINTS: Partial<Record<BrickEffectType, BrickEffectTint & { priority
     priority: 10,
   },
   weakeningCurse: {
-    color: { r: 0.55, g: 0.45, b: 0.95, a: 1 },
+    color: { r: 0.55, g: 0.25, b: 0.55, a: 1 },
     intensity: 0.65,
+    priority: 15,
+  },
+  weakeningCurseFlat: {
+    color: { r: 0.55, g: 0.15, b: 0.45, a: 1 },
+    intensity: 0.5,
     priority: 15,
   },
 };
 
-export type BrickEffectType = "meltingTail" | "freezingTail" | "weakeningCurse";
+export type BrickEffectType = "meltingTail" | "freezingTail" | "weakeningCurse" | "weakeningCurseFlat";
 
 export type BrickEffectApplication =
   | {
@@ -56,6 +61,13 @@ export type BrickEffectApplication =
       readonly brickId: string;
       readonly durationMs: number;
       readonly multiplier: number; // outgoing damage multiplier (< 1)
+      readonly tint?: BrickEffectTint | null;
+    }
+  | {
+      readonly type: "weakeningCurseFlat";
+      readonly brickId: string;
+      readonly durationMs: number;
+      readonly flatReduction: number; // flat damage reduction value
       readonly tint?: BrickEffectTint | null;
     };
 
@@ -80,7 +92,12 @@ interface WeakeningCurseEffectState extends BaseEffectState {
   multiplier: number;
 }
 
-type BrickEffectState = MeltingEffectState | FreezingEffectState | WeakeningCurseEffectState;
+interface WeakeningCurseFlatEffectState extends BaseEffectState {
+  readonly type: "weakeningCurseFlat";
+  flatReduction: number;
+}
+
+type BrickEffectState = MeltingEffectState | FreezingEffectState | WeakeningCurseEffectState | WeakeningCurseFlatEffectState;
 
 export class BrickEffectsManager {
   private readonly dependencies: BrickEffectsDependencies;
@@ -152,7 +169,7 @@ export class BrickEffectsManager {
           tint: effect.tint ?? null,
         });
       }
-    } else {
+    } else if (effect.type === "weakeningCurse") {
       const normalizedMultiplier = clampNumber(effect.multiplier, 0, 1);
       const existing = bucket.find(
         (entry): entry is WeakeningCurseEffectState => entry.type === "weakeningCurse",
@@ -168,6 +185,25 @@ export class BrickEffectsManager {
           type: "weakeningCurse",
           remainingMs: effect.durationMs,
           multiplier: normalizedMultiplier,
+          tint: effect.tint ?? null,
+        });
+      }
+    } else if (effect.type === "weakeningCurseFlat") {
+      const normalizedReduction = Math.max(0, effect.flatReduction);
+      const existing = bucket.find(
+        (entry): entry is WeakeningCurseFlatEffectState => entry.type === "weakeningCurseFlat",
+      );
+      if (existing) {
+        existing.remainingMs = effect.durationMs;
+        if (normalizedReduction > existing.flatReduction) {
+          existing.flatReduction = normalizedReduction;
+        }
+        existing.tint = effect.tint ?? existing.tint;
+      } else {
+        bucket.push({
+          type: "weakeningCurseFlat",
+          remainingMs: effect.durationMs,
+          flatReduction: normalizedReduction,
           tint: effect.tint ?? null,
         });
       }
@@ -259,6 +295,20 @@ export class BrickEffectsManager {
       }
     });
     return multiplier;
+  }
+
+  public getOutgoingDamageFlatReduction(brickId: string): number {
+    const effects = this.effects.get(brickId);
+    if (!effects || effects.length === 0) {
+      return 0;
+    }
+    let flatReduction = 0;
+    effects.forEach((entry) => {
+      if (entry.type === "weakeningCurseFlat") {
+        flatReduction = Math.max(flatReduction, entry.flatReduction);
+      }
+    });
+    return flatReduction;
   }
 
   public getIncomingDamageMultiplier(brickId: string): number {

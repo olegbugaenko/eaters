@@ -6,7 +6,6 @@ import {
   FILL_TYPES,
 } from "../../../logic/services/SceneObjectManager";
 import {
-  createDynamicCirclePrimitive,
   createParticleEmitterPrimitive,
   createFireRingPrimitive,
 } from "../primitives";
@@ -19,6 +18,7 @@ import type {
   PersistentAoeObjectCustomData,
   PersistentAoeParticleCustomData,
 } from "@logic/modules/active-map/spells/PersistentAoeSpellBehavior";
+import { DynamicPrimitive } from "./ObjectRenderer";
 import {
   addFireRingInstance,
   updateFireRing,
@@ -36,6 +36,7 @@ interface FireRingEmitterConfig extends ParticleEmitterBaseConfig {
 
 const DEFAULT_CUSTOM_DATA: PersistentAoeObjectCustomData = {
   shape: "ring",
+  explosion: null,
   innerRadius: 0,
   outerRadius: 0,
   thickness: 1,
@@ -51,7 +52,18 @@ const MIN_RADIUS = 1;
 
 export class PersistentAoeSpellRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
-    // Use new fire ring GPU shader instead of particle emitter
+    const initialData = getCustomData(instance);
+    const dynamicPrimitives: DynamicPrimitive[] = [];
+
+    // If explosion mode - no rendering here (explosions render via ExplosionRenderer)
+    if (initialData.explosion) {
+      return {
+        staticPrimitives: [],
+        dynamicPrimitives: [],
+      };
+    }
+
+    // Fire mode: GPU fire ring shader
     const fireRingPrimitive = createFireRingPrimitive(instance, {
       getConfig: (target) => {
         const data = getCustomData(target);
@@ -73,8 +85,9 @@ export class PersistentAoeSpellRenderer extends ObjectRenderer {
         };
       },
     });
-
-    const dynamicPrimitives = fireRingPrimitive ? [fireRingPrimitive] : [];
+    if (fireRingPrimitive) {
+      dynamicPrimitives.push(fireRingPrimitive);
+    }
 
     return {
       staticPrimitives: [],
@@ -99,8 +112,10 @@ const getCustomData = (
       ? Math.max(0, Number(data.durationMs))
       : DEFAULT_CUSTOM_DATA.durationMs;
   const fireColor = sanitizeColor(data.fireColor, DEFAULT_CUSTOM_DATA.fireColor);
+  
   return {
     shape: data.shape === "ring" ? "ring" : DEFAULT_CUSTOM_DATA.shape,
+    explosion: data.explosion ?? null,
     innerRadius: Number.isFinite(data.innerRadius) ? Math.max(0, Number(data.innerRadius)) : 0,
     outerRadius: Number.isFinite(data.outerRadius) ? Math.max(0, Number(data.outerRadius)) : 0,
     thickness: Number.isFinite(data.thickness) ? Math.max(0, Number(data.thickness)) : 1,

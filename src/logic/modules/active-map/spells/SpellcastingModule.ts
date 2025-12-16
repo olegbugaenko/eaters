@@ -48,6 +48,8 @@ export interface PersistentAoeSpellOption extends SpellOptionBase {
   startRadius: number;
   endRadius: number;
   thickness: number;
+  damageReduction?: number; // Flat damage reduction from effects
+  effectDurationSeconds?: number; // Duration of the effect on bricks
 }
 
 export type SpellOption =
@@ -407,6 +409,20 @@ export class SpellcastingModule implements GameModule {
             const aoeConfig = config as Extract<SpellConfig, { type: "persistent-aoe" }>;
             const durationSeconds = Math.max(aoeConfig.persistentAoe.durationMs / 1000, 0);
             const ring = aoeConfig.persistentAoe.ring;
+            // Calculate damage reduction and effect duration from effects
+            let damageReduction = 0;
+            let effectDurationMs = 0;
+            const effects = aoeConfig.persistentAoe.effects;
+            if (effects) {
+              for (const effect of effects) {
+                if (effect.type === "outgoing-damage-flat-reduction") {
+                  damageReduction += effect.reductionValue;
+                  effectDurationMs = Math.max(effectDurationMs, effect.durationMs);
+                } else if (effect.type === "outgoing-damage-multiplier") {
+                  effectDurationMs = Math.max(effectDurationMs, effect.durationMs);
+                }
+              }
+            }
             return {
               ...base,
               type: "persistent-aoe",
@@ -415,6 +431,8 @@ export class SpellcastingModule implements GameModule {
               startRadius: ring.startRadius,
               endRadius: ring.endRadius,
               thickness: ring.thickness,
+              damageReduction: damageReduction > 0 ? damageReduction : undefined,
+              effectDurationSeconds: effectDurationMs > 0 ? effectDurationMs / 1000 : undefined,
             } satisfies PersistentAoeSpellOption;
           }
           default:

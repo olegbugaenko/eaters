@@ -1101,10 +1101,12 @@ const createParticleEmitterGpuState = (
   const uniforms: ParticleEmitterGpuRenderUniforms = {
     fillType: FILL_TYPES.SOLID,
     stopCount: 1,
-    stopOffsets: new Float32Array(3),
+    stopOffsets: new Float32Array(5),
     stopColor0: new Float32Array([1, 1, 1, 1]),
     stopColor1: new Float32Array([1, 1, 1, 0]),
     stopColor2: new Float32Array([1, 1, 1, 0]),
+    stopColor3: new Float32Array([1, 1, 1, 0]),
+    stopColor4: new Float32Array([1, 1, 1, 0]),
     noiseColorAmplitude: 0,
     noiseAlphaAmplitude: 0,
     noiseScale: 1,
