@@ -8,6 +8,7 @@ import {
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
   SceneFillNoise,
+  SceneFillFibers,
   SceneGradientStop,
   SceneObjectManager,
   SceneSize,
@@ -206,6 +207,7 @@ const createBrickFill = (config: ReturnType<typeof getBrickConfig>): SceneFill =
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.fibers ? { fibers: cloneFibers(fill.fibers) } : {}),
       };
     case "radial":
       return {
@@ -214,6 +216,7 @@ const createBrickFill = (config: ReturnType<typeof getBrickConfig>): SceneFill =
         end: fill.radius,
         stops: cloneStops(fill.stops),
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.fibers ? { fibers: cloneFibers(fill.fibers) } : {}),
       };
     case "linear":
     default:
@@ -223,12 +226,17 @@ const createBrickFill = (config: ReturnType<typeof getBrickConfig>): SceneFill =
         end: fill.end ? { ...fill.end } : undefined,
         stops: cloneStops(fill.stops),
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.fibers ? { fibers: cloneFibers(fill.fibers) } : {}),
       };
   }
 };
 
 const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
   noise ? { ...noise } : undefined;
+
+const cloneFibers = (
+  fibers: SceneFillFibers | undefined
+): SceneFillFibers | undefined => (fibers ? { ...fibers } : undefined);
 
 const cloneStops = (stops: readonly SceneGradientStop[]): SceneGradientStop[] =>
   stops.map((stop) => ({ offset: stop.offset, color: { ...stop.color } }));
@@ -569,6 +577,9 @@ const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       if (fill.noise) {
         solid.noise = { ...fill.noise };
       }
+      if (fill.fibers) {
+        solid.fibers = { ...fill.fibers };
+      }
       return solid;
     }
     case FILL_TYPES.LINEAR_GRADIENT: {
@@ -583,6 +594,9 @@ const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       };
       if (fill.noise) {
         linear.noise = { ...fill.noise };
+      }
+      if (fill.fibers) {
+        linear.fibers = { ...fill.fibers };
       }
       return linear;
     }
@@ -599,6 +613,9 @@ const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       if (fill.noise) {
         radial.noise = { ...fill.noise };
       }
+      if (fill.fibers) {
+        radial.fibers = { ...fill.fibers };
+      }
       return radial;
     }
     case FILL_TYPES.DIAMOND_GRADIENT: {
@@ -613,6 +630,9 @@ const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       };
       if (fill.noise) {
         diamond.noise = { ...fill.noise };
+      }
+      if (fill.fibers) {
+        diamond.fibers = { ...fill.fibers };
       }
       return diamond;
     }
@@ -653,6 +673,7 @@ const cloneRendererFillConfig = (
       type: "solid",
       color: cloneSceneColor(fill.color) ?? fill.color,
       ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+      ...(fill.fibers ? { fibers: { ...fill.fibers } } : {}),
     };
   }
   if (fill.type === "gradient") {
@@ -664,6 +685,7 @@ const cloneRendererFillConfig = (
           fillType: gradient.fillType,
           color: cloneSceneColor(gradient.color) ?? gradient.color,
           ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+          ...(gradient.fibers ? { fibers: { ...gradient.fibers } } : {}),
         },
       };
     }
@@ -679,6 +701,7 @@ const cloneRendererFillConfig = (
             color: cloneSceneColor(stop.color) ?? stop.color,
           })),
           ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+          ...(gradient.fibers ? { fibers: { ...gradient.fibers } } : {}),
         },
       };
     }
@@ -697,6 +720,7 @@ const cloneRendererFillConfig = (
             color: cloneSceneColor(stop.color) ?? stop.color,
           })),
           ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+          ...(gradient.fibers ? { fibers: { ...gradient.fibers } } : {}),
         },
       };
     }

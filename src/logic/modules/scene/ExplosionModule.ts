@@ -4,12 +4,14 @@ import {
   SceneColor,
   SceneFill,
   SceneGradientStop,
+  SceneFillFibers,
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
 import {
   ExplosionConfig,
   ExplosionRendererEmitterConfig,
+  ExplosionWaveConfig,
   ExplosionType,
   getExplosionConfig,
 } from "../../../db/explosions-db";
@@ -25,20 +27,23 @@ interface ExplosionModuleOptions {
 }
 
 interface WaveState {
-  startRadius: number;
-  endRadius: number;
+  id: string;
+  startOuterRadius: number;
+  endOuterRadius: number;
+  startInnerRadius: number;
+  endInnerRadius: number;
   startAlpha: number;
   endAlpha: number;
   gradientStops: readonly SceneGradientStop[];
+  fibers?: SceneFillFibers;
 }
 
 interface ExplosionState {
-  id: string;
   position: SceneVector2;
   elapsedMs: number;
   waveLifetimeMs: number;
   effectLifetimeMs: number;
-  wave: WaveState;
+  waves: WaveState[];
 }
 
 export interface SpawnExplosionOptions {
@@ -89,7 +94,7 @@ export class ExplosionModule implements GameModule {
       this.updateExplosion(explosion);
 
       if (explosion.elapsedMs >= explosion.effectLifetimeMs) {
-        this.options.scene.removeObject(explosion.id);
+        this.removeExplosionObjects(explosion);
         return;
       }
 
@@ -122,40 +127,84 @@ export class ExplosionModule implements GameModule {
     config: ExplosionConfig,
     options: SpawnExplosionOptions
   ): void {
-    const startRadius = Math.max(1, options.initialRadius);
-    const endRadius = startRadius + config.wave.radiusExtension;
+    const baseInitialRadius = Math.max(1, options.initialRadius);
 
-    const wave: WaveState = {
-      startRadius,
-      endRadius,
-      startAlpha: config.wave.startAlpha,
-      endAlpha: config.wave.endAlpha,
-      gradientStops: config.wave.gradientStops,
-    };
+    const waveConfigs = getWaveConfigs(config);
+    if (waveConfigs.length === 0) {
+      return;
+    }
+    const firstWaveConfig = waveConfigs[0]!;
 
-    const emitter = createEmitterCustomData(config, startRadius);
+    const emitter = createEmitterCustomData(
+      config,
+      computeWaveStartRadius(firstWaveConfig, baseInitialRadius)
+    );
     const effectLifetimeMs = computeEffectLifetime(config, emitter);
     const waveLifetimeMs = Math.max(1, config.lifetimeMs);
 
-    const customData: ExplosionRendererCustomData = {
-      waveLifetimeMs,
-      emitter,
-    };
+    const waves: WaveState[] = waveConfigs.map((waveConfig, index) => {
+      const startOuterRadius = computeWaveStartRadius(
+        waveConfig,
+        baseInitialRadius
+      );
+      const startInnerRadius = computeWaveStartInnerRadius(
+        waveConfig,
+        startOuterRadius
+      );
+      const { innerExtension, outerExtension } = computeWaveExtensions(
+        waveConfig,
+        config.defaultExtensionRadius
+      );
+      const endOuterRadius = computeWaveEndRadius(
+        waveConfig,
+        startOuterRadius,
+        outerExtension
+      );
+      const endInnerRadius = computeWaveInnerEndRadius(
+        startInnerRadius,
+        endOuterRadius,
+        innerExtension
+      );
 
-    const id = this.options.scene.addObject("explosion", {
-      position: { ...options.position },
-      size: { width: startRadius * 2, height: startRadius * 2 },
-      fill: createWaveFill(startRadius, wave.startAlpha, wave.gradientStops),
-      customData,
+      const wave: WaveState = {
+        id: "",
+        startOuterRadius,
+        endOuterRadius,
+        startInnerRadius,
+        endInnerRadius,
+        startAlpha: waveConfig.startAlpha,
+        endAlpha: waveConfig.endAlpha,
+        gradientStops: waveConfig.gradientStops,
+        fibers: sanitizeWaveFibers(waveConfig.fibers),
+      };
+
+      const customData: ExplosionRendererCustomData = {
+        waveLifetimeMs,
+        emitter: index === 0 ? emitter : undefined,
+      };
+
+      wave.id = this.options.scene.addObject("explosion", {
+        position: { ...options.position },
+        size: { width: startOuterRadius * 2, height: startOuterRadius * 2 },
+        fill: createWaveFill(
+          startInnerRadius,
+          startOuterRadius,
+          wave.startAlpha,
+          wave.gradientStops,
+          wave.fibers
+        ),
+        customData,
+      });
+
+      return wave;
     });
 
     this.explosions.push({
-      id,
       position: { ...options.position },
       elapsedMs: 0,
       waveLifetimeMs: Math.max(1, config.lifetimeMs),
       effectLifetimeMs,
-      wave,
+      waves,
     });
   }
 
@@ -163,50 +212,183 @@ export class ExplosionModule implements GameModule {
     const waveProgress = clamp01(
       explosion.elapsedMs / Math.max(1, explosion.waveLifetimeMs)
     );
-    const radius = lerp(
-      explosion.wave.startRadius,
-      explosion.wave.endRadius,
-      waveProgress
-    );
-    const waveAlpha = lerp(
-      explosion.wave.startAlpha,
-      explosion.wave.endAlpha,
-      waveProgress
-    );
 
-    this.options.scene.updateObject(explosion.id, {
-      position: { ...explosion.position },
-      size: { width: radius * 2, height: radius * 2 },
-      fill: createWaveFill(radius, waveAlpha, explosion.wave.gradientStops),
+    explosion.waves.forEach((wave) => {
+      const outerRadius = lerp(
+        wave.startOuterRadius,
+        wave.endOuterRadius,
+        waveProgress
+      );
+      const innerRadius = lerp(
+        wave.startInnerRadius,
+        wave.endInnerRadius,
+        waveProgress
+      );
+      const clampedOuterRadius = Math.max(0, outerRadius);
+      const clampedInnerRadius = clamp(innerRadius, 0, clampedOuterRadius);
+      const waveAlpha = lerp(wave.startAlpha, wave.endAlpha, waveProgress);
+
+      this.options.scene.updateObject(wave.id, {
+        position: { ...explosion.position },
+        size: { width: clampedOuterRadius * 2, height: clampedOuterRadius * 2 },
+        fill: createWaveFill(
+          clampedInnerRadius,
+          clampedOuterRadius,
+          waveAlpha,
+          wave.gradientStops,
+          wave.fibers
+        ),
+      });
     });
   }
 
   private clearExplosions(): void {
     this.explosions.forEach((explosion) => {
-      this.options.scene.removeObject(explosion.id);
+      this.removeExplosionObjects(explosion);
     });
     this.explosions = [];
+  }
+
+  private removeExplosionObjects(explosion: ExplosionState): void {
+    explosion.waves.forEach((wave) => {
+      this.options.scene.removeObject(wave.id);
+    });
   }
 }
 
 const createWaveFill = (
-  radius: number,
+  innerRadius: number,
+  outerRadius: number,
   alpha: number,
-  gradientStops: readonly SceneGradientStop[]
-): SceneFill => ({
-  fillType: FILL_TYPES.RADIAL_GRADIENT,
-  start: { x: 0, y: 0 },
-  end: radius,
-  stops: gradientStops.map((stop) => ({
-    offset: stop.offset,
+  gradientStops: readonly SceneGradientStop[],
+  fibers: SceneFillFibers | undefined
+): SceneFill => {
+  const safeOuterRadius = Math.max(outerRadius, 0);
+  const normalizedInnerRadius = safeOuterRadius <= 0
+    ? 0
+    : clamp01(innerRadius / safeOuterRadius);
+  const colorizeStop = (stop: SceneGradientStop): SceneGradientStop => ({
+    offset: normalizedInnerRadius + (1 - normalizedInnerRadius) * clamp01(stop.offset),
     color: {
       r: stop.color.r,
       g: stop.color.g,
       b: stop.color.b,
       a: clamp01((typeof stop.color.a === "number" ? stop.color.a : 1) * alpha),
     },
-  })),
-});
+  });
+
+  const normalizedStops = gradientStops.map(colorizeStop);
+  const firstColor = normalizedStops[0]?.color ?? {
+    r: 1,
+    g: 1,
+    b: 1,
+    a: 0,
+  };
+
+  const stops: SceneGradientStop[] = [];
+  if (normalizedInnerRadius > 0) {
+    const transparentColor = { ...firstColor, a: 0 };
+    stops.push({ offset: 0, color: transparentColor });
+    stops.push({ offset: normalizedInnerRadius, color: transparentColor });
+  }
+  stops.push(...normalizedStops);
+
+  return {
+    fillType: FILL_TYPES.RADIAL_GRADIENT,
+    start: { x: 0, y: 0 },
+    end: safeOuterRadius,
+    stops,
+    ...(fibers ? { fibers } : {}),
+  };
+};
+
+const sanitizeWaveFibers = (
+  fibers: SceneFillFibers | undefined
+): SceneFillFibers | undefined => {
+  if (!fibers) {
+    return undefined;
+  }
+  const colorAmplitude = clamp01(fibers.colorAmplitude);
+  const alphaAmplitude = clamp01(fibers.alphaAmplitude);
+  if (colorAmplitude <= 0 && alphaAmplitude <= 0) {
+    return undefined;
+  }
+  const density = Math.max(
+    0.0001,
+    typeof fibers.density === "number" && Number.isFinite(fibers.density)
+      ? Math.abs(fibers.density)
+      : 1
+  );
+  const width = Math.max(
+    0.0001,
+    typeof fibers.width === "number" && Number.isFinite(fibers.width)
+      ? Math.abs(fibers.width)
+      : 1
+  );
+  const clarity = clamp01(
+    typeof fibers.clarity === "number" && Number.isFinite(fibers.clarity)
+      ? fibers.clarity
+      : 0.5
+  );
+
+  return {
+    colorAmplitude,
+    alphaAmplitude,
+    density,
+    width,
+    clarity,
+  };
+};
+
+const computeWaveStartRadius = (
+  waveConfig: ExplosionWaveConfig,
+  fallbackRadius: number
+): number => Math.max(1, waveConfig.radiusInitial ?? fallbackRadius);
+
+const computeWaveStartInnerRadius = (
+  waveConfig: ExplosionWaveConfig,
+  outerStartRadius: number
+): number => clamp(Math.max(0, waveConfig.radiusInnerInitial ?? 0), 0, outerStartRadius);
+
+const computeWaveExtensions = (
+  waveConfig: ExplosionWaveConfig,
+  defaultExtensionRadius: number
+): { innerExtension: number; outerExtension: number } => {
+  const useDefaultExtension =
+    typeof waveConfig.radiusExtension !== "number" &&
+    typeof waveConfig.radiusInnerExtension !== "number";
+
+  const outerExtension = Math.max(
+    0,
+    waveConfig.radiusExtension ?? (useDefaultExtension ? defaultExtensionRadius : 0)
+  );
+  const innerExtension = Math.max(
+    0,
+    waveConfig.radiusInnerExtension ?? (useDefaultExtension ? defaultExtensionRadius : 0)
+  );
+
+  return { innerExtension, outerExtension };
+};
+
+const computeWaveEndRadius = (
+  waveConfig: ExplosionWaveConfig,
+  startRadius: number,
+  extension: number
+): number => {
+  if (typeof waveConfig.outerRadius === "number") {
+    return Math.max(startRadius, waveConfig.outerRadius);
+  }
+  return startRadius + Math.max(0, extension);
+};
+
+const computeWaveInnerEndRadius = (
+  startInnerRadius: number,
+  maxOuterRadius: number,
+  extension: number
+): number => {
+  const endInnerRadius = startInnerRadius + Math.max(0, extension);
+  return clamp(endInnerRadius, 0, maxOuterRadius);
+};
 
 const createEmitterCustomData = (
   config: ExplosionConfig,
@@ -266,6 +448,18 @@ const computeEffectLifetime = (
   }
   const emitterLifetime = emitter.emissionDurationMs + emitter.particleLifetimeMs;
   return Math.max(waveLifetime, emitterLifetime);
+};
+
+const getWaveConfigs = (
+  config: ExplosionConfig
+): readonly ExplosionWaveConfig[] => {
+  if (Array.isArray(config.waves) && config.waves.length > 0) {
+    return config.waves;
+  }
+  if (config.wave) {
+    return [config.wave];
+  }
+  return [];
 };
 
 const computeEmitterMaxParticles = (

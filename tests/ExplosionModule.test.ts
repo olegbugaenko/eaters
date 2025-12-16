@@ -20,13 +20,15 @@ describe("ExplosionModule", () => {
     assert(explosion, "Explosion should be present in the scene");
 
     const config = getExplosionConfig("magnetic");
+    const wave = config.waves?.[0] ?? config.wave;
+    assert(wave, "Explosion wave configuration should be defined");
     const fill = explosion.data.fill;
     assert.strictEqual(fill.fillType, FILL_TYPES.RADIAL_GRADIENT);
-    assert.strictEqual(fill.stops.length, config.wave.gradientStops.length);
+    assert.strictEqual(fill.stops.length, wave.gradientStops.length);
 
     const expectedAlpha = Math.min(
       1,
-      (config.wave.gradientStops[0]?.color.a ?? 1) * config.wave.startAlpha
+      (wave.gradientStops[0]?.color.a ?? 1) * wave.startAlpha
     );
     const firstStop = fill.stops[0];
     assert(firstStop, "Explosion wave should have a first stop");
@@ -81,5 +83,49 @@ describe("ExplosionModule", () => {
       40 * config.emitter.spawnRadiusMultiplier
     );
     assert.strictEqual(emitter.spawnRadius.max, expectedSpawnMax);
+  });
+
+  test("weaken curse waves support inner radius gradients", () => {
+    const scene = new SceneObjectManager();
+    const module = new ExplosionModule({ scene });
+
+    module.spawnExplosionByType("weakenCurse", { position: { x: 0, y: 0 } });
+
+    const objects = scene.getObjects();
+    assert.strictEqual(objects.length, 2);
+
+    const firstWave = objects[0]!;
+    const firstConfig = getExplosionConfig("weakenCurse").waves?.[0];
+    assert(firstConfig, "Weaken curse first wave should be configured");
+    const firstWaveFill = firstWave.data.fill;
+    assert.strictEqual(firstWaveFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+    assert.strictEqual(
+      (firstWaveFill as any).stops.length,
+      firstConfig.gradientStops.length
+    );
+    assert(firstWaveFill.fibers, "First wave should propagate fiber settings");
+    assert.strictEqual(firstWaveFill.fibers?.colorAmplitude, 0.12);
+    assert.strictEqual(firstWaveFill.fibers?.density, 0.55);
+
+    const secondWave = objects[1]!;
+    assert.strictEqual(secondWave.data.size?.width, 40);
+    assert.strictEqual(secondWave.data.size?.height, 40);
+
+    const secondWaveFill = secondWave.data.fill;
+    assert.strictEqual(secondWaveFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+    const firstStop = secondWaveFill.stops[0];
+    assert(firstStop, "Second wave should start with a transparent stop");
+    assert.strictEqual(firstStop.color.a, 0);
+    const innerGapStop = secondWaveFill.stops.find((stop) => stop.offset === 0.5);
+    assert(innerGapStop, "Inner radius stop should be present");
+    assert.strictEqual(innerGapStop.color.a, 0);
+    const firstColoredStop = secondWaveFill.stops.find(
+      (stop) => (stop.color.a ?? 1) > 0
+    );
+    assert(firstColoredStop, "Gradient should resume after the inner radius");
+    assert(firstColoredStop.offset >= 0.5);
+    assert(secondWaveFill.fibers, "Second wave should include fiber data");
+    assert.strictEqual(secondWaveFill.fibers?.alphaAmplitude, 0.12);
+    assert.strictEqual(secondWaveFill.fibers?.width, 0.5);
   });
 });

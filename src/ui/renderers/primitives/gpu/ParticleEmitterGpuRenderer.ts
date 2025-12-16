@@ -49,6 +49,8 @@ uniform vec4 u_stopColor3;
 uniform vec4 u_stopColor4;
 uniform vec2 u_noiseAmplitude;
 uniform float u_noiseScale;
+uniform vec2 u_fiberAmplitude;
+uniform vec3 u_fiberParams;
 
 out vec2 v_worldPosition;
 out vec4 v_fillInfo;
@@ -63,6 +65,8 @@ out vec4 v_stopColor4;
 out float v_shape;
 out vec2 v_particleCenter;
 out float v_particleRadius;
+out vec2 v_fiberAmplitude;
+out vec3 v_fiberParams;
 
 float clamp01(float value) {
   return clamp(value, 0.0, 1.0);
@@ -133,6 +137,12 @@ void main() {
   v_stopColor4 = stop4;
 
   v_fillInfo = vec4(float(u_fillType), float(u_stopCount), u_noiseAmplitude.x, u_noiseAmplitude.y);
+  v_fiberAmplitude = vec2(clamp01(u_fiberAmplitude.x), clamp01(u_fiberAmplitude.y));
+  v_fiberParams = vec3(
+    max(u_fiberParams.x, 0.0001),
+    max(u_fiberParams.y, 0.0001),
+    clamp01(u_fiberParams.z)
+  );
 
   if (u_fillType == 1) {
     vec2 startWorld;
@@ -196,6 +206,8 @@ in vec4 v_stopColor4;
 in float v_shape;
 in vec2 v_particleCenter;
 in float v_particleRadius;
+in vec2 v_fiberAmplitude;
+in vec3 v_fiberParams;
 
 out vec4 fragColor;
 
@@ -207,6 +219,12 @@ float hash21(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
+}
+
+vec2 hash22(vec2 p) {
+  float n = sin(dot(p, vec2(127.1, 311.7)));
+  float m = sin(dot(p, vec2(269.5, 183.3)));
+  return fract(vec2(n, m) * 43758.5453);
 }
 
 float noise2d(vec2 p) {
@@ -229,6 +247,31 @@ vec2 resolveNoiseAnchor(float fillType) {
   return v_worldPosition;
 }
 
+vec2 fiberAnchor(vec2 cell) {
+  return cell + hash22(cell);
+}
+
+float fiberSegmentDistance(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float len2 = dot(ba, ba);
+  float t = len2 > 0.0001 ? clamp(dot(pa, ba) / len2, 0.0, 1.0) : 0.0;
+  vec2 proj = a + ba * t;
+  return length(p - proj);
+}
+
+vec2 fiberNeighborOffset(vec2 cell) {
+  float h = hash21(cell * 5.173);
+  if (h < 0.125) return vec2(1.0, 0.0);
+  if (h < 0.25) return vec2(-1.0, 0.0);
+  if (h < 0.375) return vec2(0.0, 1.0);
+  if (h < 0.5) return vec2(0.0, -1.0);
+  if (h < 0.625) return vec2(1.0, 1.0);
+  if (h < 0.75) return vec2(-1.0, 1.0);
+  if (h < 0.875) return vec2(1.0, -1.0);
+  return vec2(-1.0, -1.0);
+}
+
 vec4 applyFillNoise(vec4 color) {
   float colorAmp = v_fillInfo.z;
   float alphaAmp = v_fillInfo.w;
@@ -245,6 +288,57 @@ vec4 applyFillNoise(vec4 color) {
   }
   if (alphaAmp > 0.0) {
     color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
+  }
+  return color;
+}
+
+vec4 applyFillFibers(vec4 color) {
+  float colorAmp = v_fiberAmplitude.x;
+  float alphaAmp = v_fiberAmplitude.y;
+  if (colorAmp <= 0.0 && alphaAmp <= 0.0) {
+    return color;
+  }
+
+  float density = max(v_fiberParams.x, 0.0001);
+  float width = max(v_fiberParams.y, 0.0001);
+  float clarity = clamp01(v_fiberParams.z);
+
+  vec2 fiberCoord = v_worldPosition * density;
+  vec2 cell = floor(fiberCoord);
+
+  float nearest = 1e6;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 c = cell + vec2(float(i), float(j));
+      vec2 a = fiberAnchor(c);
+      vec2 neighbor = c + fiberNeighborOffset(c);
+      vec2 b = fiberAnchor(neighbor);
+
+      // Slightly stretch or shrink segment length for variation.
+      float span = 0.65 + hash21(c * 7.91) * 0.5;
+      vec2 mid = mix(a, b, 0.5);
+      vec2 dir = normalize(b - a);
+      vec2 half = dir * span * 0.5;
+      vec2 start = mid - half;
+      vec2 end = mid + half;
+
+      nearest = min(nearest, fiberSegmentDistance(fiberCoord, start, end));
+    }
+  }
+
+  float thickness = width * 0.5;
+  float softness = mix(thickness * 1.25, thickness * 0.15, clarity);
+  float crack = 1.0 - smoothstep(thickness, thickness + softness, nearest);
+
+  // Break up perfectly clean lines without devolving into blotches.
+  float fineNoise = hash21(floor(fiberCoord * vec2(2.0, 3.0)) * 3.3) - 0.5;
+  float fiberSignal = clamp(crack + fineNoise * (1.0 - clarity) * 0.35, 0.0, 1.0) * 2.0 - 1.0;
+
+  if (colorAmp > 0.0) {
+    color.rgb = clamp(color.rgb + fiberSignal * colorAmp, 0.0, 1.0);
+  }
+  if (alphaAmp > 0.0) {
+    color.a = clamp(color.a + fiberSignal * alphaAmp, 0.0, 1.0);
   }
   return color;
 }
@@ -328,7 +422,8 @@ void main() {
   } else {
     color = shadeSolid();
   }
-  fragColor = applyFillNoise(color);
+  color = applyFillNoise(color);
+  fragColor = applyFillFibers(color);
 }
 `;
 
@@ -371,6 +466,8 @@ interface ParticleRenderProgram {
     stopColor4: WebGLUniformLocation | null;
     noiseAmplitude: WebGLUniformLocation | null;
     noiseScale: WebGLUniformLocation | null;
+    fiberAmplitude: WebGLUniformLocation | null;
+    fiberParams: WebGLUniformLocation | null;
   };
 }
 
@@ -386,6 +483,11 @@ export interface ParticleEmitterGpuRenderUniforms {
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
+  fiberColorAmplitude: number;
+  fiberAlphaAmplitude: number;
+  fiberDensity: number;
+  fiberWidth: number;
+  fiberClarity: number;
   hasLinearStart: boolean;
   linearStart: SceneVector2;
   hasLinearEnd: boolean;
@@ -518,6 +620,8 @@ const createRenderProgram = (
     stopColor4: gl.getUniformLocation(program, "u_stopColor4"),
     noiseAmplitude: gl.getUniformLocation(program, "u_noiseAmplitude"),
     noiseScale: gl.getUniformLocation(program, "u_noiseScale"),
+    fiberAmplitude: gl.getUniformLocation(program, "u_fiberAmplitude"),
+    fiberParams: gl.getUniformLocation(program, "u_fiberParams"),
   };
   return { program, attributes, uniforms };
 };
@@ -660,6 +764,8 @@ type UniformCache = {
   stopColor4?: string;
   noiseAmplitude?: [number, number];
   noiseScale?: number;
+  fiberAmplitude?: [number, number];
+  fiberParams?: [number, number, number];
 };
 
 const serializeArray = (arr: Float32Array): string => {
@@ -830,6 +936,34 @@ const uploadEmitterUniforms = (
   }
   if (program.uniforms.noiseScale && cache.noiseScale !== u.noiseScale) {
     gl.uniform1f(program.uniforms.noiseScale, (cache.noiseScale = u.noiseScale));
+  }
+  const fiberAmp: [number, number] = [u.fiberColorAmplitude, u.fiberAlphaAmplitude];
+  if (
+    program.uniforms.fiberAmplitude &&
+    (!cache.fiberAmplitude || cache.fiberAmplitude[0] !== fiberAmp[0] || cache.fiberAmplitude[1] !== fiberAmp[1])
+  ) {
+    gl.uniform2f(program.uniforms.fiberAmplitude, fiberAmp[0], fiberAmp[1]);
+    cache.fiberAmplitude = [fiberAmp[0], fiberAmp[1]];
+  }
+  const fiberParams: [number, number, number] = [
+    u.fiberDensity,
+    u.fiberWidth,
+    u.fiberClarity,
+  ];
+  if (
+    program.uniforms.fiberParams &&
+    (!cache.fiberParams ||
+      cache.fiberParams[0] !== fiberParams[0] ||
+      cache.fiberParams[1] !== fiberParams[1] ||
+      cache.fiberParams[2] !== fiberParams[2])
+  ) {
+    gl.uniform3f(
+      program.uniforms.fiberParams,
+      fiberParams[0],
+      fiberParams[1],
+      fiberParams[2]
+    );
+    cache.fiberParams = [fiberParams[0], fiberParams[1], fiberParams[2]];
   }
 };
 

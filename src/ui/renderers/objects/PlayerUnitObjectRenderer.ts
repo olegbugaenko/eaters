@@ -10,6 +10,7 @@ import {
   SceneColor,
   SceneFill,
   SceneFillNoise,
+  SceneFillFibers,
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
@@ -177,6 +178,10 @@ const POLYGON_SWAY_PHASE_STEP = 0.6;
 const cloneFillNoise = (
   noise: SceneFillNoise | undefined
 ): SceneFillNoise | undefined => (noise ? { ...noise } : undefined);
+
+const cloneFillFibers = (
+  fibers: SceneFillFibers | undefined
+): SceneFillFibers | undefined => (fibers ? { ...fibers } : undefined);
 
 // Глобальний реєстр для зберігання аур юнітів
 const auraInstanceMap = new Map<string, {
@@ -428,6 +433,7 @@ const sanitizeFillConfig = (
       kind: "solid",
       color: { ...fill.color },
       ...(fill.noise ? { noise: cloneFillNoise(fill.noise) } : {}),
+      ...(fill.fibers ? { fibers: cloneFillFibers(fill.fibers) } : {}),
     };
   }
   return {

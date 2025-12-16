@@ -3,6 +3,7 @@ import {
   SceneColor,
   SceneFill,
   SceneFillNoise,
+  SceneFillFibers,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
 import { ParticleEmitterShape } from "../logic/services/particles/ParticleEmitterShared";
@@ -23,6 +24,7 @@ export type PlayerUnitRendererFillConfig =
       type: "solid";
       color: SceneColor;
       noise?: SceneFillNoise;
+      fibers?: SceneFillFibers;
     }
   | {
       type: "gradient";
