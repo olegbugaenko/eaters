@@ -278,30 +278,44 @@ vec4 applyFillFibers(vec4 color) {
   float width = max(v_fiberParams.y, 0.0001);
   float clarity = clamp01(v_fiberParams.z);
 
+  // Generate inexpensive crack-like filaments by placing one random
+  // oriented segment per grid cell. Sampling the surrounding cells keeps
+  // cracks visually continuous across borders without heavy noise calls.
   vec2 fiberCoord = v_worldPosition * density;
   vec2 cell = floor(fiberCoord);
   float nearest = 1e6;
-  float second = 1e6;
 
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 neighbor = cell + vec2(float(i), float(j));
-      vec2 featurePoint = neighbor + hash22(neighbor);
-      float dist = length(featurePoint - fiberCoord);
-      if (dist < nearest) {
-        second = nearest;
-        nearest = dist;
-      } else if (dist < second) {
-        second = dist;
+      // Stable pseudo-random orientation and anchor inside the neighbor cell
+      float angle = hash21(neighbor * 2.37) * 6.28318530718;
+      vec2 dir = vec2(cos(angle), sin(angle));
+      vec2 perp = vec2(-dir.y, dir.x);
+      vec2 anchor = neighbor + hash22(neighbor);
+
+      // Allow segments to cross cell borders by extending beyond the cell
+      float halfLength = 0.65 + hash21(neighbor * 3.71) * 0.75;
+
+      vec2 rel = fiberCoord - anchor;
+      float along = dot(rel, dir);
+
+      // Ignore points that fall far outside this segment's span
+      if (abs(along) > halfLength) {
+        continue;
       }
+
+      float dist = abs(dot(rel, perp));
+      nearest = min(nearest, dist);
     }
   }
 
-  float edgeDelta = max(second - nearest, 0.0);
   float thickness = width * 0.5;
-  float softness = thickness * mix(0.9, 0.2, clarity);
-  float crack = 1.0 - smoothstep(thickness, thickness + softness, edgeDelta);
-  float jitter = (hash21(cell * 1.7 + vec2(3.1, 7.3)) - 0.5) * 0.3;
+  float softness = mix(thickness * 1.4, thickness * 0.2, clarity);
+  float crack = 1.0 - smoothstep(thickness, thickness + softness, nearest);
+
+  // Small per-cell jitter to break up perfectly uniform streaks
+  float jitter = (hash21(cell * 1.91 + vec2(3.1, 7.3)) - 0.5) * 0.25;
   float fiberSignal = clamp(crack + jitter, 0.0, 1.0) * 2.0 - 1.0;
 
   if (colorAmp > 0.0) {
