@@ -10,6 +10,7 @@ import {
 import {
   ExplosionConfig,
   ExplosionRendererEmitterConfig,
+  ExplosionWaveConfig,
   ExplosionType,
   getExplosionConfig,
 } from "../../../db/explosions-db";
@@ -25,6 +26,7 @@ interface ExplosionModuleOptions {
 }
 
 interface WaveState {
+  id: string;
   startRadius: number;
   endRadius: number;
   startAlpha: number;
@@ -33,12 +35,11 @@ interface WaveState {
 }
 
 interface ExplosionState {
-  id: string;
   position: SceneVector2;
   elapsedMs: number;
   waveLifetimeMs: number;
   effectLifetimeMs: number;
-  wave: WaveState;
+  waves: WaveState[];
 }
 
 export interface SpawnExplosionOptions {
@@ -89,7 +90,7 @@ export class ExplosionModule implements GameModule {
       this.updateExplosion(explosion);
 
       if (explosion.elapsedMs >= explosion.effectLifetimeMs) {
-        this.options.scene.removeObject(explosion.id);
+        this.removeExplosionObjects(explosion);
         return;
       }
 
@@ -123,39 +124,47 @@ export class ExplosionModule implements GameModule {
     options: SpawnExplosionOptions
   ): void {
     const startRadius = Math.max(1, options.initialRadius);
-    const endRadius = startRadius + config.wave.radiusExtension;
 
-    const wave: WaveState = {
-      startRadius,
-      endRadius,
-      startAlpha: config.wave.startAlpha,
-      endAlpha: config.wave.endAlpha,
-      gradientStops: config.wave.gradientStops,
-    };
+    const waveConfigs = getWaveConfigs(config);
+    if (waveConfigs.length === 0) {
+      return;
+    }
 
     const emitter = createEmitterCustomData(config, startRadius);
     const effectLifetimeMs = computeEffectLifetime(config, emitter);
     const waveLifetimeMs = Math.max(1, config.lifetimeMs);
 
-    const customData: ExplosionRendererCustomData = {
-      waveLifetimeMs,
-      emitter,
-    };
+    const waves: WaveState[] = waveConfigs.map((waveConfig, index) => {
+      const wave: WaveState = {
+        id: "",
+        startRadius,
+        endRadius: computeWaveEndRadius(waveConfig, startRadius),
+        startAlpha: waveConfig.startAlpha,
+        endAlpha: waveConfig.endAlpha,
+        gradientStops: waveConfig.gradientStops,
+      };
 
-    const id = this.options.scene.addObject("explosion", {
-      position: { ...options.position },
-      size: { width: startRadius * 2, height: startRadius * 2 },
-      fill: createWaveFill(startRadius, wave.startAlpha, wave.gradientStops),
-      customData,
+      const customData: ExplosionRendererCustomData = {
+        waveLifetimeMs,
+        emitter: index === 0 ? emitter : undefined,
+      };
+
+      wave.id = this.options.scene.addObject("explosion", {
+        position: { ...options.position },
+        size: { width: startRadius * 2, height: startRadius * 2 },
+        fill: createWaveFill(startRadius, wave.startAlpha, wave.gradientStops),
+        customData,
+      });
+
+      return wave;
     });
 
     this.explosions.push({
-      id,
       position: { ...options.position },
       elapsedMs: 0,
       waveLifetimeMs: Math.max(1, config.lifetimeMs),
       effectLifetimeMs,
-      wave,
+      waves,
     });
   }
 
@@ -163,29 +172,30 @@ export class ExplosionModule implements GameModule {
     const waveProgress = clamp01(
       explosion.elapsedMs / Math.max(1, explosion.waveLifetimeMs)
     );
-    const radius = lerp(
-      explosion.wave.startRadius,
-      explosion.wave.endRadius,
-      waveProgress
-    );
-    const waveAlpha = lerp(
-      explosion.wave.startAlpha,
-      explosion.wave.endAlpha,
-      waveProgress
-    );
 
-    this.options.scene.updateObject(explosion.id, {
-      position: { ...explosion.position },
-      size: { width: radius * 2, height: radius * 2 },
-      fill: createWaveFill(radius, waveAlpha, explosion.wave.gradientStops),
+    explosion.waves.forEach((wave) => {
+      const radius = lerp(wave.startRadius, wave.endRadius, waveProgress);
+      const waveAlpha = lerp(wave.startAlpha, wave.endAlpha, waveProgress);
+
+      this.options.scene.updateObject(wave.id, {
+        position: { ...explosion.position },
+        size: { width: radius * 2, height: radius * 2 },
+        fill: createWaveFill(radius, waveAlpha, wave.gradientStops),
+      });
     });
   }
 
   private clearExplosions(): void {
     this.explosions.forEach((explosion) => {
-      this.options.scene.removeObject(explosion.id);
+      this.removeExplosionObjects(explosion);
     });
     this.explosions = [];
+  }
+
+  private removeExplosionObjects(explosion: ExplosionState): void {
+    explosion.waves.forEach((wave) => {
+      this.options.scene.removeObject(wave.id);
+    });
   }
 }
 
@@ -266,6 +276,29 @@ const computeEffectLifetime = (
   }
   const emitterLifetime = emitter.emissionDurationMs + emitter.particleLifetimeMs;
   return Math.max(waveLifetime, emitterLifetime);
+};
+
+const computeWaveEndRadius = (
+  waveConfig: ExplosionWaveConfig,
+  startRadius: number
+): number => {
+  if (typeof waveConfig.outerRadius === "number") {
+    return Math.max(startRadius, waveConfig.outerRadius);
+  }
+  const extension = Math.max(0, waveConfig.radiusExtension ?? 0);
+  return startRadius + extension;
+};
+
+const getWaveConfigs = (
+  config: ExplosionConfig
+): readonly ExplosionWaveConfig[] => {
+  if (Array.isArray(config.waves) && config.waves.length > 0) {
+    return config.waves;
+  }
+  if (config.wave) {
+    return [config.wave];
+  }
+  return [];
 };
 
 const computeEmitterMaxParticles = (

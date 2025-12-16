@@ -35,7 +35,8 @@ export type ExplosionType =
   | "weakenCurse";
 
 export interface ExplosionWaveConfig {
-  radiusExtension: number;
+  radiusExtension?: number;
+  outerRadius?: number;
   startAlpha: number;
   endAlpha: number;
   gradientStops: readonly SceneGradientStop[];
@@ -84,7 +85,8 @@ export interface ExplosionRendererEmitterConfig {
 export interface ExplosionConfig {
   lifetimeMs: number;
   defaultInitialRadius: number;
-  wave: ExplosionWaveConfig;
+  wave?: ExplosionWaveConfig;
+  waves?: readonly ExplosionWaveConfig[];
   emitter: ExplosionEmitterConfig;
 }
 
@@ -761,17 +763,29 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   weakenCurse: {
     lifetimeMs: 3_600,
     defaultInitialRadius: 10,
-    wave: {
-      radiusExtension: 120,
-      startAlpha: 0.9,
-      endAlpha: 0.1,
-      gradientStops: [
-        { offset: 0, color: { r: 0.4, g: 0.1, b: 0.5, a: 0.2 } },
-        { offset: 0.35, color: { r: 0.45, g: 0.15, b: 0.55, a: 0.5 } },
-        { offset: 0.75, color: { r: 0.5, g: 0.2, b: 0.6, a: 0.7 } },
-        { offset: 1, color: { r: 0.45, g: 0.25, b: 0.5, a: 0.0 } },
-      ] as const,
-    },
+    waves: [
+      {
+        radiusExtension: 120,
+        startAlpha: 0.9,
+        endAlpha: 0.1,
+        gradientStops: [
+          { offset: 0, color: { r: 0.4, g: 0.1, b: 0.5, a: 0.2 } },
+          { offset: 0.35, color: { r: 0.45, g: 0.15, b: 0.55, a: 0.5 } },
+          { offset: 0.75, color: { r: 0.5, g: 0.2, b: 0.6, a: 0.7 } },
+          { offset: 1, color: { r: 0.45, g: 0.25, b: 0.5, a: 0.0 } },
+        ] as const,
+      },
+      {
+        outerRadius: 170,
+        startAlpha: 0.4,
+        endAlpha: 0,
+        gradientStops: [
+          { offset: 0, color: { r: 0.3, g: 0.08, b: 0.4, a: 0.12 } },
+          { offset: 0.45, color: { r: 0.38, g: 0.12, b: 0.48, a: 0.32 } },
+          { offset: 1, color: { r: 0.42, g: 0.2, b: 0.5, a: 0.0 } },
+        ] as const,
+      },
+    ],
     emitter: {
       emissionDurationMs: 0.220,
       particlesPerSecond: 62,
