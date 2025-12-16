@@ -247,6 +247,31 @@ vec2 resolveNoiseAnchor(float fillType) {
   return v_worldPosition;
 }
 
+vec2 fiberAnchor(vec2 cell) {
+  return cell + hash22(cell);
+}
+
+float fiberSegmentDistance(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float len2 = dot(ba, ba);
+  float t = len2 > 0.0001 ? clamp(dot(pa, ba) / len2, 0.0, 1.0) : 0.0;
+  vec2 proj = a + ba * t;
+  return length(p - proj);
+}
+
+vec2 fiberNeighborOffset(vec2 cell) {
+  float h = hash21(cell * 5.173);
+  if (h < 0.125) return vec2(1.0, 0.0);
+  if (h < 0.25) return vec2(-1.0, 0.0);
+  if (h < 0.375) return vec2(0.0, 1.0);
+  if (h < 0.5) return vec2(0.0, -1.0);
+  if (h < 0.625) return vec2(1.0, 1.0);
+  if (h < 0.75) return vec2(-1.0, 1.0);
+  if (h < 0.875) return vec2(1.0, -1.0);
+  return vec2(-1.0, -1.0);
+}
+
 vec4 applyFillNoise(vec4 color) {
   float colorAmp = v_fillInfo.z;
   float alphaAmp = v_fillInfo.w;
@@ -278,45 +303,36 @@ vec4 applyFillFibers(vec4 color) {
   float width = max(v_fiberParams.y, 0.0001);
   float clarity = clamp01(v_fiberParams.z);
 
-  // Generate inexpensive crack-like filaments by placing one random
-  // oriented segment per grid cell. Sampling the surrounding cells keeps
-  // cracks visually continuous across borders without heavy noise calls.
   vec2 fiberCoord = v_worldPosition * density;
   vec2 cell = floor(fiberCoord);
-  float nearest = 1e6;
 
+  float nearest = 1e6;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
-      vec2 neighbor = cell + vec2(float(i), float(j));
-      // Stable pseudo-random orientation and anchor inside the neighbor cell
-      float angle = hash21(neighbor * 2.37) * 6.28318530718;
-      vec2 dir = vec2(cos(angle), sin(angle));
-      vec2 perp = vec2(-dir.y, dir.x);
-      vec2 anchor = neighbor + hash22(neighbor);
+      vec2 c = cell + vec2(float(i), float(j));
+      vec2 a = fiberAnchor(c);
+      vec2 neighbor = c + fiberNeighborOffset(c);
+      vec2 b = fiberAnchor(neighbor);
 
-      // Allow segments to cross cell borders by extending beyond the cell
-      float halfLength = 0.65 + hash21(neighbor * 3.71) * 0.75;
+      // Slightly stretch or shrink segment length for variation.
+      float span = 0.65 + hash21(c * 7.91) * 0.5;
+      vec2 mid = mix(a, b, 0.5);
+      vec2 dir = normalize(b - a);
+      vec2 half = dir * span * 0.5;
+      vec2 start = mid - half;
+      vec2 end = mid + half;
 
-      vec2 rel = fiberCoord - anchor;
-      float along = dot(rel, dir);
-
-      // Ignore points that fall far outside this segment's span
-      if (abs(along) > halfLength) {
-        continue;
-      }
-
-      float dist = abs(dot(rel, perp));
-      nearest = min(nearest, dist);
+      nearest = min(nearest, fiberSegmentDistance(fiberCoord, start, end));
     }
   }
 
   float thickness = width * 0.5;
-  float softness = mix(thickness * 1.4, thickness * 0.2, clarity);
+  float softness = mix(thickness * 1.25, thickness * 0.15, clarity);
   float crack = 1.0 - smoothstep(thickness, thickness + softness, nearest);
 
-  // Small per-cell jitter to break up perfectly uniform streaks
-  float jitter = (hash21(cell * 1.91 + vec2(3.1, 7.3)) - 0.5) * 0.25;
-  float fiberSignal = clamp(crack + jitter, 0.0, 1.0) * 2.0 - 1.0;
+  // Break up perfectly clean lines without devolving into blotches.
+  float fineNoise = hash21(floor(fiberCoord * vec2(2.0, 3.0)) * 3.3) - 0.5;
+  float fiberSignal = clamp(crack + fineNoise * (1.0 - clarity) * 0.35, 0.0, 1.0) * 2.0 - 1.0;
 
   if (colorAmp > 0.0) {
     color.rgb = clamp(color.rgb + fiberSignal * colorAmp, 0.0, 1.0);
