@@ -34,6 +34,7 @@ import {
 } from "../primitives/ParticleEmitterPrimitive";
 
 interface ExplosionRendererCustomData {
+  waveLifetimeMs?: number;
   emitter?: ExplosionRendererEmitterConfig;
 }
 
@@ -224,7 +225,9 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
       let fillKeyCached: string | null = null;
       let slotIndex = -1;
       let age = 0;
-      const lifetime = 800;
+      // Get wave lifetime from customData, fallback to 800ms
+      const customData = instance.data.customData as ExplosionRendererCustomData | undefined;
+      const lifetime = customData?.waveLifetimeMs ?? 800;
       let lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
       dynamicPrimitives.push({
         data: new Float32Array(0),
@@ -378,10 +381,12 @@ const toWaveUniformsFromFill = (
   );
   // Default SOLID white
   let fillType = FILL_TYPES.SOLID as number;
-  const stopOffsets = new Float32Array([0, 1, 1]);
+  const stopOffsets = new Float32Array([0, 1, 1, 1, 1]);
   const stopColor0 = new Float32Array([1, 1, 1, 1]);
   const stopColor1 = new Float32Array([1, 1, 1, 0]);
   const stopColor2 = new Float32Array([1, 1, 1, 0]);
+  const stopColor3 = new Float32Array([1, 1, 1, 0]);
+  const stopColor4 = new Float32Array([1, 1, 1, 0]);
   let stopCount = 1;
   let hasLinearStart = false;
   let hasLinearEnd = false;
@@ -392,8 +397,11 @@ const toWaveUniformsFromFill = (
   let linearEnd: SceneVector2 | undefined;
   let radialOffset: SceneVector2 | undefined;
 
+  const defaultColor = { r: 1, g: 1, b: 1, a: 1 };
+  const stopColors = [stopColor0, stopColor1, stopColor2, stopColor3, stopColor4];
+
   if (fill.fillType === FILL_TYPES.SOLID) {
-    const color = sanitizeSceneColor((fill as any).color as any, { r: 1, g: 1, b: 1, a: 1 });
+    const color = sanitizeSceneColor((fill as any).color as any, defaultColor);
     stopColor0[0] = color.r; stopColor0[1] = color.g; stopColor0[2] = color.b; stopColor0[3] = color.a ?? 1;
     stopCount = 1;
     fillType = FILL_TYPES.SOLID;
@@ -405,19 +413,15 @@ const toWaveUniformsFromFill = (
     if (f.start) linearStart = { x: f.start.x ?? 0, y: f.start.y ?? 0 };
     if (f.end) linearEnd = { x: f.end.x ?? 0, y: f.end.y ?? 0 };
     const stops = Array.isArray(f.stops) ? f.stops : [];
-    stopCount = Math.min(3, Math.max(1, stops.length));
-    const s0 = stops[0] ?? { offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } };
-    const s1 = stops[1] ?? s0;
-    const s2 = stops[2] ?? s1;
-    stopOffsets[0] = Math.max(0, Math.min(1, s0.offset ?? 0));
-    stopOffsets[1] = Math.max(0, Math.min(1, s1.offset ?? 1));
-    stopOffsets[2] = Math.max(0, Math.min(1, s2.offset ?? 1));
-    const c0 = sanitizeSceneColor(s0.color, { r: 1, g: 1, b: 1, a: 1 });
-    const c1 = sanitizeSceneColor(s1.color, c0);
-    const c2 = sanitizeSceneColor(s2.color, c1);
-    stopColor0.set([c0.r, c0.g, c0.b, c0.a ?? 1]);
-    stopColor1.set([c1.r, c1.g, c1.b, c1.a ?? 1]);
-    stopColor2.set([c2.r, c2.g, c2.b, c2.a ?? 1]);
+    stopCount = Math.min(5, Math.max(1, stops.length));
+    let prevColor = defaultColor;
+    for (let i = 0; i < 5; i++) {
+      const s = stops[i] ?? stops[stops.length - 1] ?? { offset: 1, color: prevColor };
+      stopOffsets[i] = Math.max(0, Math.min(1, s.offset ?? (i / 4)));
+      const c = sanitizeSceneColor(s.color, prevColor);
+      stopColors[i]!.set([c.r, c.g, c.b, c.a ?? 1]);
+      prevColor = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+    }
   } else if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT || fill.fillType === FILL_TYPES.DIAMOND_GRADIENT) {
     const f = fill as any;
     fillType = fill.fillType;
@@ -426,19 +430,15 @@ const toWaveUniformsFromFill = (
     hasExplicitRadius = typeof f.end === "number" && Number.isFinite(f.end) && f.end > 0;
     explicitRadius = hasExplicitRadius ? Number(f.end) : 0;
     const stops = Array.isArray(f.stops) ? f.stops : [];
-    stopCount = Math.min(3, Math.max(1, stops.length));
-    const s0 = stops[0] ?? { offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } };
-    const s1 = stops[1] ?? s0;
-    const s2 = stops[2] ?? s1;
-    stopOffsets[0] = Math.max(0, Math.min(1, s0.offset ?? 0));
-    stopOffsets[1] = Math.max(0, Math.min(1, s1.offset ?? 1));
-    stopOffsets[2] = Math.max(0, Math.min(1, s2.offset ?? 1));
-    const c0 = sanitizeSceneColor(s0.color, { r: 1, g: 1, b: 1, a: 1 });
-    const c1 = sanitizeSceneColor(s1.color, c0);
-    const c2 = sanitizeSceneColor(s2.color, c1);
-    stopColor0.set([c0.r, c0.g, c0.b, c0.a ?? 1]);
-    stopColor1.set([c1.r, c1.g, c1.b, c1.a ?? 1]);
-    stopColor2.set([c2.r, c2.g, c2.b, c2.a ?? 1]);
+    stopCount = Math.min(5, Math.max(1, stops.length));
+    let prevColor = defaultColor;
+    for (let i = 0; i < 5; i++) {
+      const s = stops[i] ?? stops[stops.length - 1] ?? { offset: 1, color: prevColor };
+      stopOffsets[i] = Math.max(0, Math.min(1, s.offset ?? (i / 4)));
+      const c = sanitizeSceneColor(s.color, prevColor);
+      stopColors[i]!.set([c.r, c.g, c.b, c.a ?? 1]);
+      prevColor = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+    }
   }
 
   const noise = fill.noise;
@@ -453,6 +453,8 @@ const toWaveUniformsFromFill = (
     stopColor0,
     stopColor1,
     stopColor2,
+    stopColor3,
+    stopColor4,
     noiseColorAmplitude,
     noiseAlphaAmplitude,
     noiseScale,

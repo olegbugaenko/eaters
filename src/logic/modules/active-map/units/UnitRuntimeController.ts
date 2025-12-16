@@ -754,7 +754,8 @@ export class UnitRuntimeController {
 
     const counterSource = surviving ?? target;
     const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
-    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier, 0);
+    const flatReduction = this.bricks.getOutgoingDamageFlatReduction(counterSource.id);
+    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
     const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       const previousHp = unit.hp;

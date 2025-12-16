@@ -41,10 +41,12 @@ uniform vec2 u_linearEnd;
 uniform vec2 u_radialOffset;
 uniform float u_explicitRadius;
 
-uniform vec3 u_stopOffsets;
+uniform float u_stopOffsets[5];
 uniform vec4 u_stopColor0;
 uniform vec4 u_stopColor1;
 uniform vec4 u_stopColor2;
+uniform vec4 u_stopColor3;
+uniform vec4 u_stopColor4;
 uniform vec2 u_noiseAmplitude;
 uniform float u_noiseScale;
 
@@ -52,10 +54,12 @@ out vec2 v_worldPosition;
 out vec4 v_fillInfo;
 out vec4 v_fillParams0;
 out vec4 v_fillParams1;
-out vec3 v_stopOffsets;
+out float v_stopOffsets[5];
 out vec4 v_stopColor0;
 out vec4 v_stopColor1;
 out vec4 v_stopColor2;
+out vec4 v_stopColor3;
+out vec4 v_stopColor4;
 out float v_shape;
 out vec2 v_particleCenter;
 out float v_particleRadius;
@@ -108,17 +112,25 @@ void main() {
   float alpha = alive ? computeAlpha(a_age, a_lifetime) : 0.0;
 
   v_worldPosition = world;
-  v_stopOffsets = u_stopOffsets;
+  for (int i = 0; i < 5; i++) {
+    v_stopOffsets[i] = u_stopOffsets[i];
+  }
 
   vec4 stop0 = u_stopColor0;
   vec4 stop1 = u_stopColor1;
   vec4 stop2 = u_stopColor2;
+  vec4 stop3 = u_stopColor3;
+  vec4 stop4 = u_stopColor4;
   stop0.a *= alpha;
   stop1.a *= alpha;
   stop2.a *= alpha;
+  stop3.a *= alpha;
+  stop4.a *= alpha;
   v_stopColor0 = stop0;
   v_stopColor1 = stop1;
   v_stopColor2 = stop2;
+  v_stopColor3 = stop3;
+  v_stopColor4 = stop4;
 
   v_fillInfo = vec4(float(u_fillType), float(u_stopCount), u_noiseAmplitude.x, u_noiseAmplitude.y);
 
@@ -175,10 +187,12 @@ in vec2 v_worldPosition;
 in vec4 v_fillInfo;
 in vec4 v_fillParams0;
 in vec4 v_fillParams1;
-in vec3 v_stopOffsets;
+in float v_stopOffsets[5];
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
 in vec4 v_stopColor2;
+in vec4 v_stopColor3;
+in vec4 v_stopColor4;
 in float v_shape;
 in vec2 v_particleCenter;
 in float v_particleRadius;
@@ -236,29 +250,27 @@ vec4 applyFillNoise(vec4 color) {
 }
 
 vec4 sampleGradient(float t) {
-  float stopCount = v_fillInfo.y;
-  vec4 color0 = v_stopColor0;
-  if (stopCount < 1.5) {
-    return color0;
+  int stopCount = int(v_fillInfo.y);
+  vec4 colors[5] = vec4[5](v_stopColor0, v_stopColor1, v_stopColor2, v_stopColor3, v_stopColor4);
+  
+  if (stopCount <= 1) {
+    return colors[0];
   }
-  vec4 color1 = v_stopColor1;
-  if (stopCount < 2.5) {
-    float blend = clamp01((t - v_stopOffsets.x) / max(0.00001, v_stopOffsets.y - v_stopOffsets.x));
-    return mix(color0, color1, blend);
+  
+  // Clamp t to valid range
+  t = clamp(t, 0.0, 1.0);
+  
+  // Find the segment t falls into
+  for (int i = 0; i < stopCount - 1; i++) {
+    float offset0 = v_stopOffsets[i];
+    float offset1 = v_stopOffsets[i + 1];
+    if (t <= offset1 || i == stopCount - 2) {
+      float blend = clamp01((t - offset0) / max(0.00001, offset1 - offset0));
+      return mix(colors[i], colors[i + 1], blend);
+    }
   }
-  vec4 color2 = v_stopColor2;
-  if (t <= v_stopOffsets.x) {
-    return color0;
-  }
-  if (t >= v_stopOffsets.z) {
-    return color2;
-  }
-  if (t <= v_stopOffsets.y) {
-    float blend = clamp01((t - v_stopOffsets.x) / max(0.00001, v_stopOffsets.y - v_stopOffsets.x));
-    return mix(color0, color1, blend);
-  }
-  float blend = clamp01((t - v_stopOffsets.y) / max(0.00001, v_stopOffsets.z - v_stopOffsets.y));
-  return mix(color1, color2, blend);
+  
+  return colors[stopCount - 1];
 }
 
 vec4 shadeSolid() {
@@ -286,7 +298,7 @@ vec4 shadeRadial() {
 }
 
 void main() {
-  if (v_stopColor0.a <= 0.0 && v_stopColor1.a <= 0.0 && v_stopColor2.a <= 0.0) {
+  if (v_stopColor0.a <= 0.0 && v_stopColor1.a <= 0.0 && v_stopColor2.a <= 0.0 && v_stopColor3.a <= 0.0 && v_stopColor4.a <= 0.0) {
     discard;
   }
   // v_shape: 0.0=square, 1.0=circle, 2.0=triangle
@@ -355,6 +367,8 @@ interface ParticleRenderProgram {
     stopColor0: WebGLUniformLocation | null;
     stopColor1: WebGLUniformLocation | null;
     stopColor2: WebGLUniformLocation | null;
+    stopColor3: WebGLUniformLocation | null;
+    stopColor4: WebGLUniformLocation | null;
     noiseAmplitude: WebGLUniformLocation | null;
     noiseScale: WebGLUniformLocation | null;
   };
@@ -367,6 +381,8 @@ export interface ParticleEmitterGpuRenderUniforms {
   stopColor0: Float32Array;
   stopColor1: Float32Array;
   stopColor2: Float32Array;
+  stopColor3: Float32Array;
+  stopColor4: Float32Array;
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
@@ -498,6 +514,8 @@ const createRenderProgram = (
     stopColor0: gl.getUniformLocation(program, "u_stopColor0"),
     stopColor1: gl.getUniformLocation(program, "u_stopColor1"),
     stopColor2: gl.getUniformLocation(program, "u_stopColor2"),
+    stopColor3: gl.getUniformLocation(program, "u_stopColor3"),
+    stopColor4: gl.getUniformLocation(program, "u_stopColor4"),
     noiseAmplitude: gl.getUniformLocation(program, "u_noiseAmplitude"),
     noiseScale: gl.getUniformLocation(program, "u_noiseScale"),
   };
@@ -638,6 +656,8 @@ type UniformCache = {
   stopColor0?: string;
   stopColor1?: string;
   stopColor2?: string;
+  stopColor3?: string;
+  stopColor4?: string;
   noiseAmplitude?: [number, number];
   noiseScale?: number;
 };
@@ -772,7 +792,7 @@ const uploadEmitterUniforms = (
   }
   const so = serializeArray(u.stopOffsets);
   if (program.uniforms.stopOffsets && cache.stopOffsets !== so) {
-    gl.uniform3fv(program.uniforms.stopOffsets, u.stopOffsets);
+    gl.uniform1fv(program.uniforms.stopOffsets, u.stopOffsets);
     cache.stopOffsets = so;
   }
   const c0 = serializeArray(u.stopColor0);
@@ -789,6 +809,16 @@ const uploadEmitterUniforms = (
   if (program.uniforms.stopColor2 && cache.stopColor2 !== c2) {
     gl.uniform4fv(program.uniforms.stopColor2, u.stopColor2);
     cache.stopColor2 = c2;
+  }
+  const c3 = serializeArray(u.stopColor3);
+  if (program.uniforms.stopColor3 && cache.stopColor3 !== c3) {
+    gl.uniform4fv(program.uniforms.stopColor3, u.stopColor3);
+    cache.stopColor3 = c3;
+  }
+  const c4 = serializeArray(u.stopColor4);
+  if (program.uniforms.stopColor4 && cache.stopColor4 !== c4) {
+    gl.uniform4fv(program.uniforms.stopColor4, u.stopColor4);
+    cache.stopColor4 = c4;
   }
   const noiseAmp: [number, number] = [u.noiseColorAmplitude, u.noiseAlphaAmplitude];
   if (

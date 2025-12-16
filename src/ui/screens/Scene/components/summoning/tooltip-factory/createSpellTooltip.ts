@@ -148,67 +148,57 @@ const appendPersistentAoeStats = (
   spell: PersistentAoeSpellOption,
   stats: SceneTooltipStat[],
 ): void => {
-  const multiplierLabel = formatNumber(spell.spellPowerMultiplier, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    compact: false,
-  });
   const effectiveDps = spell.damagePerSecond * spell.spellPowerMultiplier;
 
-  stats.push({
-    label: "Damage / s",
-    value: formatNumber(effectiveDps, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-      compact: false,
-    }),
-    hint: `Base ${formatNumber(spell.damagePerSecond, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-      compact: false,
-    })} · Spell Power ${multiplierLabel}×`,
-  });
+  // Only show damage if it's > 0
+  if (effectiveDps > 0) {
+    stats.push({
+      label: "Damage / s",
+      value: formatNumber(effectiveDps, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+        compact: false,
+      }),
+    });
+  }
 
-  stats.push({
-    label: "Duration",
-    value: `${formatNumber(spell.durationSeconds, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-      compact: false,
-    })} s`,
-  });
+  // Show damage reduction if present
+  if (spell.damageReduction && spell.damageReduction > 0) {
+    const effectiveReduction = spell.damageReduction * spell.spellPowerMultiplier;
+    stats.push({
+      label: "Damage Reduction",
+      value: formatNumber(effectiveReduction, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+        compact: false,
+      }),
+    });
+  }
+
+  // Show effect duration if present, otherwise spell duration
+  const durationSeconds = spell.effectDurationSeconds ?? spell.durationSeconds;
+  if (durationSeconds > 0) {
+    stats.push({
+      label: "Effect Duration",
+      value: `${formatNumber(durationSeconds, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+        compact: false,
+      })} s`,
+    });
+  }
 
   stats.push({
     label: "Radius",
-    value: `${formatNumber(spell.startRadius, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-      compact: false,
-    })} → ${formatNumber(spell.endRadius, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-      compact: false,
-    })} u`,
-    hint: "Ring expands outward from the target.",
-  });
-
-  stats.push({
-    label: "Ring Thickness",
-    value: `${formatNumber(spell.thickness, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
+    value: `${formatNumber(spell.endRadius, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
       compact: false,
     })} u`,
   });
 };
 
 export const createSpellTooltip = (spell: SpellOption): SceneTooltipContent => {
-  const multiplierLabel = formatNumber(spell.spellPowerMultiplier, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    compact: false,
-  });
-
   const stats: SceneTooltipStat[] = [];
   if (spell.type === "projectile") {
     appendProjectileStats(spell, stats);
@@ -221,29 +211,15 @@ export const createSpellTooltip = (spell: SpellOption): SceneTooltipContent => {
   stats.push({
     label: "Cooldown",
     value: `${formatNumber(spell.cooldownSeconds, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
       compact: false,
     })} s`,
   });
-
-  stats.push({
-    label: "Cost",
-    value: formatSpellCost(spell.cost),
-  });
-
-  if (spell.spellPowerMultiplier > 0) {
-    stats.push({
-      label: "Spell Power",
-      value: `${multiplierLabel}×`,
-      hint: "Applies to all spells.",
-    });
-  }
 
   return {
     title: spell.name,
     subtitle: spell.description,
     stats,
-    footer: "Spell stats include current bonuses.",
   };
 };

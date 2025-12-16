@@ -52,6 +52,7 @@ export interface SpawnExplosionByTypeOptions {
 }
 
 export interface ExplosionRendererCustomData {
+  waveLifetimeMs?: number;
   emitter?: ExplosionRendererEmitterConfig;
 }
 
@@ -134,10 +135,12 @@ export class ExplosionModule implements GameModule {
 
     const emitter = createEmitterCustomData(config, startRadius);
     const effectLifetimeMs = computeEffectLifetime(config, emitter);
+    const waveLifetimeMs = Math.max(1, config.lifetimeMs);
 
-    const customData: ExplosionRendererCustomData | undefined = emitter
-      ? { emitter }
-      : undefined;
+    const customData: ExplosionRendererCustomData = {
+      waveLifetimeMs,
+      emitter,
+    };
 
     const id = this.options.scene.addObject("explosion", {
       position: { ...options.position },

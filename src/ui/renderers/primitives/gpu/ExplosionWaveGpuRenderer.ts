@@ -176,6 +176,8 @@ export type WaveUniformConfig = Omit<
   | "stopColor0"
   | "stopColor1"
   | "stopColor2"
+  | "stopColor3"
+  | "stopColor4"
   | "linearStart"
   | "linearEnd"
   | "radialOffset"
@@ -185,6 +187,8 @@ export type WaveUniformConfig = Omit<
   stopColor0: Float32Array;
   stopColor1: Float32Array;
   stopColor2: Float32Array;
+  stopColor3: Float32Array;
+  stopColor4: Float32Array;
   linearStart?: SceneVector2;
   linearEnd?: SceneVector2;
   radialOffset?: SceneVector2;
@@ -316,6 +320,8 @@ export const ensureWaveBatch = (
     stopColor0: uniformsInit.stopColor0,
     stopColor1: uniformsInit.stopColor1,
     stopColor2: uniformsInit.stopColor2,
+    stopColor3: uniformsInit.stopColor3,
+    stopColor4: uniformsInit.stopColor4,
     noiseColorAmplitude: uniformsInit.noiseColorAmplitude,
     noiseAlphaAmplitude: uniformsInit.noiseAlphaAmplitude,
     noiseScale: uniformsInit.noiseScale,

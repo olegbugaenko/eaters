@@ -12,7 +12,12 @@ import {
 import { SkillId } from "./skills-db";
 import { ExplosionType } from "./explosions-db";
 
-export type SpellId = "magic-arrow" | "sand-storm" | "void-darts" | "ring-of-fire";
+export type SpellId =
+  | "magic-arrow"
+  | "sand-storm"
+  | "void-darts"
+  | "ring-of-fire"
+  | "weaken-curse";
 
 export type SpellType = "projectile" | "whirl" | "persistent-aoe";
 
@@ -68,6 +73,25 @@ export interface SpellPersistentAoeRingConfig {
   thickness: number;
 }
 
+export interface SpellBrickEffectTintConfig {
+  color: SceneColor;
+  intensity: number;
+}
+
+export type SpellPersistentAoeEffectConfig =
+  | {
+      type: "outgoing-damage-multiplier";
+      durationMs: number;
+      multiplier: number;
+      tint?: SpellBrickEffectTintConfig;
+    }
+  | {
+      type: "outgoing-damage-flat-reduction";
+      durationMs: number;
+      reductionValue: number; // Flat value to subtract from damage (typically spell power)
+      tint?: SpellBrickEffectTintConfig;
+    };
+
 export interface SpellPersistentAoeParticleEmitterConfig {
   particlesPerSecond: number;
   particleLifetimeMs: number;
@@ -82,6 +106,8 @@ export interface SpellPersistentAoeParticleEmitterConfig {
 }
 
 export interface SpellPersistentAoeVisualConfig {
+  /** If set, spawns this explosion type instead of fire ring. Use for non-fire effects. */
+  explosion?: ExplosionType;
   glowColor?: SceneColor;
   glowAlpha?: number;
   particleEmitter?: SpellPersistentAoeParticleEmitterConfig;
@@ -93,6 +119,7 @@ export interface SpellPersistentAoeConfig {
   damagePerSecond: number;
   ring: SpellPersistentAoeRingConfig;
   visuals?: SpellPersistentAoeVisualConfig;
+  effects?: SpellPersistentAoeEffectConfig[];
 }
 
 interface SpellBaseConfig {
@@ -227,6 +254,39 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       explosion: "magnetic",
     },
   },
+  "weaken-curse": {
+    id: "weaken-curse",
+    type: "persistent-aoe",
+    name: "Weaken Curse",
+    description:
+      "Unfurl a rippling curse that saps the strength of bricks caught in its wave.",
+    cost: { mana: 7, sanity: 1.2 },
+    cooldownSeconds: 4,
+    persistentAoe: {
+      durationMs: 2_500,
+      damagePerSecond: 0,
+      ring: {
+        shape: "ring",
+        startRadius: 10,
+        endRadius: 115,
+        thickness: 26,
+      },
+      visuals: {
+        explosion: "weakenCurse",
+        glowColor: { r: 0.6, g: 0.52, b: 1, a: 0.55 },
+        glowAlpha: 0.5,
+      },
+      effects: [
+        {
+          type: "outgoing-damage-flat-reduction",
+          durationMs: 4_000,
+          reductionValue: 0.75, // Will be multiplied by spell power when applied
+          tint: { color: { r: 0.55, g: 0.45, b: 0.95, a: 1 }, intensity: 0.5 },
+        },
+      ],
+    },
+    unlock: { skillId: "weaken_curse", level: 1 },
+  },
   "sand-storm": {
     id: "sand-storm",
     type: "whirl",
@@ -338,7 +398,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
     },
     unlock: { skillId: "ring_of_fire", level: 1 },
-  },
+  }
 };
 
 export const SPELL_IDS = Object.keys(SPELL_DB) as SpellId[];
