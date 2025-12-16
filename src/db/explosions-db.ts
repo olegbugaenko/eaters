@@ -35,7 +35,10 @@ export type ExplosionType =
   | "weakenCurse";
 
 export interface ExplosionWaveConfig {
+  radiusInitial?: number;
+  radiusInnerInitial?: number;
   radiusExtension?: number;
+  radiusInnerExtension?: number;
   outerRadius?: number;
   startAlpha: number;
   endAlpha: number;
@@ -85,6 +88,7 @@ export interface ExplosionRendererEmitterConfig {
 export interface ExplosionConfig {
   lifetimeMs: number;
   defaultInitialRadius: number;
+  defaultExtensionRadius: number;
   wave?: ExplosionWaveConfig;
   waves?: readonly ExplosionWaveConfig[];
   emitter: ExplosionEmitterConfig;
@@ -448,6 +452,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   plasmoid: {
     lifetimeMs: 3_000,
     defaultInitialRadius: 12,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 180,
       startAlpha: 0.85,
@@ -459,6 +464,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   magnetic: {
     lifetimeMs: 3_000,
     defaultInitialRadius: 12,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 180,
       startAlpha: 0.45,
@@ -480,6 +486,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   healWave: {
     lifetimeMs: 1_200,
     defaultInitialRadius: 12,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 120,
       startAlpha: 0.85,
@@ -504,6 +511,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   fireball: {
     lifetimeMs: 800,
     defaultInitialRadius: 15,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 50,
       startAlpha: 0.9,
@@ -532,6 +540,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   grayBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 70,
       startAlpha: 0.7,
@@ -543,6 +552,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   grayBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -554,6 +564,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   yellowBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -565,6 +576,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   yellowBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -576,6 +588,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   organicBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -587,6 +600,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   organicBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -598,6 +612,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   ironBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -609,6 +624,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   ironBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -620,6 +636,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   woodBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -631,6 +648,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   woodBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -642,6 +660,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   copperBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -653,6 +672,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   copperBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -664,6 +684,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   silverBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -675,6 +696,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   silverBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -686,6 +708,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   coalBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -697,6 +720,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   coalBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -708,6 +732,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   iceBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -719,6 +744,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   iceBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -730,6 +756,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   magmaBrickHit: {
     lifetimeMs: 1_000,
     defaultInitialRadius: 6,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 40,
       startAlpha: 0.6,
@@ -741,6 +768,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   magmaBrickDestroy: {
     lifetimeMs: 1_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 90,
       startAlpha: 0.8,
@@ -752,6 +780,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   criticalHit: {
     lifetimeMs: 900,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     wave: {
       radiusExtension: 70,
       startAlpha: 0.9,
@@ -763,9 +792,13 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   weakenCurse: {
     lifetimeMs: 3_600,
     defaultInitialRadius: 10,
+    defaultExtensionRadius: 0,
     waves: [
       {
-        radiusExtension: 120,
+        radiusInitial: 10,
+        radiusInnerInitial: 0,
+        radiusExtension: 80,
+        radiusInnerExtension: 0,
         startAlpha: 0.9,
         endAlpha: 0.1,
         gradientStops: [
@@ -776,7 +809,10 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
         ] as const,
       },
       {
-        radiusExtension: 160,
+        radiusInitial: 20,
+        radiusInnerInitial: 10,
+        radiusExtension: 120,
+        radiusInnerExtension: 100,
         startAlpha: 0.4,
         endAlpha: 0,
         gradientStops: [

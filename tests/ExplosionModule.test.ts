@@ -84,4 +84,42 @@ describe("ExplosionModule", () => {
     );
     assert.strictEqual(emitter.spawnRadius.max, expectedSpawnMax);
   });
+
+  test("weaken curse waves support inner radius gradients", () => {
+    const scene = new SceneObjectManager();
+    const module = new ExplosionModule({ scene });
+
+    module.spawnExplosionByType("weakenCurse", { position: { x: 0, y: 0 } });
+
+    const objects = scene.getObjects();
+    assert.strictEqual(objects.length, 2);
+
+    const firstWave = objects[0]!;
+    const firstConfig = getExplosionConfig("weakenCurse").waves?.[0];
+    assert(firstConfig, "Weaken curse first wave should be configured");
+    const firstWaveFill = firstWave.data.fill;
+    assert.strictEqual(firstWaveFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+    assert.strictEqual(
+      (firstWaveFill as any).stops.length,
+      firstConfig.gradientStops.length
+    );
+
+    const secondWave = objects[1]!;
+    assert.strictEqual(secondWave.data.size?.width, 40);
+    assert.strictEqual(secondWave.data.size?.height, 40);
+
+    const secondWaveFill = secondWave.data.fill;
+    assert.strictEqual(secondWaveFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
+    const firstStop = secondWaveFill.stops[0];
+    assert(firstStop, "Second wave should start with a transparent stop");
+    assert.strictEqual(firstStop.color.a, 0);
+    const innerGapStop = secondWaveFill.stops.find((stop) => stop.offset === 0.5);
+    assert(innerGapStop, "Inner radius stop should be present");
+    assert.strictEqual(innerGapStop.color.a, 0);
+    const firstColoredStop = secondWaveFill.stops.find(
+      (stop) => (stop.color.a ?? 1) > 0
+    );
+    assert(firstColoredStop, "Gradient should resume after the inner radius");
+    assert(firstColoredStop.offset >= 0.5);
+  });
 });

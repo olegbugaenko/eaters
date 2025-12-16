@@ -27,8 +27,10 @@ interface ExplosionModuleOptions {
 
 interface WaveState {
   id: string;
-  startRadius: number;
-  endRadius: number;
+  startOuterRadius: number;
+  endOuterRadius: number;
+  startInnerRadius: number;
+  endInnerRadius: number;
   startAlpha: number;
   endAlpha: number;
   gradientStops: readonly SceneGradientStop[];
@@ -123,22 +125,51 @@ export class ExplosionModule implements GameModule {
     config: ExplosionConfig,
     options: SpawnExplosionOptions
   ): void {
-    const startRadius = Math.max(1, options.initialRadius);
+    const baseInitialRadius = Math.max(1, options.initialRadius);
 
     const waveConfigs = getWaveConfigs(config);
     if (waveConfigs.length === 0) {
       return;
     }
+    const firstWaveConfig = waveConfigs[0]!;
 
-    const emitter = createEmitterCustomData(config, startRadius);
+    const emitter = createEmitterCustomData(
+      config,
+      computeWaveStartRadius(firstWaveConfig, baseInitialRadius)
+    );
     const effectLifetimeMs = computeEffectLifetime(config, emitter);
     const waveLifetimeMs = Math.max(1, config.lifetimeMs);
 
     const waves: WaveState[] = waveConfigs.map((waveConfig, index) => {
+      const startOuterRadius = computeWaveStartRadius(
+        waveConfig,
+        baseInitialRadius
+      );
+      const startInnerRadius = computeWaveStartInnerRadius(
+        waveConfig,
+        startOuterRadius
+      );
+      const { innerExtension, outerExtension } = computeWaveExtensions(
+        waveConfig,
+        config.defaultExtensionRadius
+      );
+      const endOuterRadius = computeWaveEndRadius(
+        waveConfig,
+        startOuterRadius,
+        outerExtension
+      );
+      const endInnerRadius = computeWaveInnerEndRadius(
+        startInnerRadius,
+        endOuterRadius,
+        innerExtension
+      );
+
       const wave: WaveState = {
         id: "",
-        startRadius,
-        endRadius: computeWaveEndRadius(waveConfig, startRadius),
+        startOuterRadius,
+        endOuterRadius,
+        startInnerRadius,
+        endInnerRadius,
         startAlpha: waveConfig.startAlpha,
         endAlpha: waveConfig.endAlpha,
         gradientStops: waveConfig.gradientStops,
@@ -151,8 +182,13 @@ export class ExplosionModule implements GameModule {
 
       wave.id = this.options.scene.addObject("explosion", {
         position: { ...options.position },
-        size: { width: startRadius * 2, height: startRadius * 2 },
-        fill: createWaveFill(startRadius, wave.startAlpha, wave.gradientStops),
+        size: { width: startOuterRadius * 2, height: startOuterRadius * 2 },
+        fill: createWaveFill(
+          startInnerRadius,
+          startOuterRadius,
+          wave.startAlpha,
+          wave.gradientStops
+        ),
         customData,
       });
 
@@ -174,13 +210,29 @@ export class ExplosionModule implements GameModule {
     );
 
     explosion.waves.forEach((wave) => {
-      const radius = lerp(wave.startRadius, wave.endRadius, waveProgress);
+      const outerRadius = lerp(
+        wave.startOuterRadius,
+        wave.endOuterRadius,
+        waveProgress
+      );
+      const innerRadius = lerp(
+        wave.startInnerRadius,
+        wave.endInnerRadius,
+        waveProgress
+      );
+      const clampedOuterRadius = Math.max(0, outerRadius);
+      const clampedInnerRadius = clamp(innerRadius, 0, clampedOuterRadius);
       const waveAlpha = lerp(wave.startAlpha, wave.endAlpha, waveProgress);
 
       this.options.scene.updateObject(wave.id, {
         position: { ...explosion.position },
-        size: { width: radius * 2, height: radius * 2 },
-        fill: createWaveFill(radius, waveAlpha, wave.gradientStops),
+        size: { width: clampedOuterRadius * 2, height: clampedOuterRadius * 2 },
+        fill: createWaveFill(
+          clampedInnerRadius,
+          clampedOuterRadius,
+          waveAlpha,
+          wave.gradientStops
+        ),
       });
     });
   }
@@ -200,23 +252,98 @@ export class ExplosionModule implements GameModule {
 }
 
 const createWaveFill = (
-  radius: number,
+  innerRadius: number,
+  outerRadius: number,
   alpha: number,
   gradientStops: readonly SceneGradientStop[]
-): SceneFill => ({
-  fillType: FILL_TYPES.RADIAL_GRADIENT,
-  start: { x: 0, y: 0 },
-  end: radius,
-  stops: gradientStops.map((stop) => ({
-    offset: stop.offset,
+): SceneFill => {
+  const safeOuterRadius = Math.max(outerRadius, 0);
+  const normalizedInnerRadius = safeOuterRadius <= 0
+    ? 0
+    : clamp01(innerRadius / safeOuterRadius);
+  const colorizeStop = (stop: SceneGradientStop): SceneGradientStop => ({
+    offset: normalizedInnerRadius + (1 - normalizedInnerRadius) * clamp01(stop.offset),
     color: {
       r: stop.color.r,
       g: stop.color.g,
       b: stop.color.b,
       a: clamp01((typeof stop.color.a === "number" ? stop.color.a : 1) * alpha),
     },
-  })),
-});
+  });
+
+  const normalizedStops = gradientStops.map(colorizeStop);
+  const firstColor = normalizedStops[0]?.color ?? {
+    r: 1,
+    g: 1,
+    b: 1,
+    a: 0,
+  };
+
+  const stops: SceneGradientStop[] = [];
+  if (normalizedInnerRadius > 0) {
+    const transparentColor = { ...firstColor, a: 0 };
+    stops.push({ offset: 0, color: transparentColor });
+    stops.push({ offset: normalizedInnerRadius, color: transparentColor });
+  }
+  stops.push(...normalizedStops);
+
+  return {
+    fillType: FILL_TYPES.RADIAL_GRADIENT,
+    start: { x: 0, y: 0 },
+    end: safeOuterRadius,
+    stops,
+  };
+};
+
+const computeWaveStartRadius = (
+  waveConfig: ExplosionWaveConfig,
+  fallbackRadius: number
+): number => Math.max(1, waveConfig.radiusInitial ?? fallbackRadius);
+
+const computeWaveStartInnerRadius = (
+  waveConfig: ExplosionWaveConfig,
+  outerStartRadius: number
+): number => clamp(Math.max(0, waveConfig.radiusInnerInitial ?? 0), 0, outerStartRadius);
+
+const computeWaveExtensions = (
+  waveConfig: ExplosionWaveConfig,
+  defaultExtensionRadius: number
+): { innerExtension: number; outerExtension: number } => {
+  const useDefaultExtension =
+    typeof waveConfig.radiusExtension !== "number" &&
+    typeof waveConfig.radiusInnerExtension !== "number";
+
+  const outerExtension = Math.max(
+    0,
+    waveConfig.radiusExtension ?? (useDefaultExtension ? defaultExtensionRadius : 0)
+  );
+  const innerExtension = Math.max(
+    0,
+    waveConfig.radiusInnerExtension ?? (useDefaultExtension ? defaultExtensionRadius : 0)
+  );
+
+  return { innerExtension, outerExtension };
+};
+
+const computeWaveEndRadius = (
+  waveConfig: ExplosionWaveConfig,
+  startRadius: number,
+  extension: number
+): number => {
+  if (typeof waveConfig.outerRadius === "number") {
+    return Math.max(startRadius, waveConfig.outerRadius);
+  }
+  return startRadius + Math.max(0, extension);
+};
+
+const computeWaveInnerEndRadius = (
+  startInnerRadius: number,
+  maxOuterRadius: number,
+  extension: number
+): number => {
+  const endInnerRadius = startInnerRadius + Math.max(0, extension);
+  return clamp(endInnerRadius, 0, maxOuterRadius);
+};
 
 const createEmitterCustomData = (
   config: ExplosionConfig,
@@ -276,17 +403,6 @@ const computeEffectLifetime = (
   }
   const emitterLifetime = emitter.emissionDurationMs + emitter.particleLifetimeMs;
   return Math.max(waveLifetime, emitterLifetime);
-};
-
-const computeWaveEndRadius = (
-  waveConfig: ExplosionWaveConfig,
-  startRadius: number
-): number => {
-  if (typeof waveConfig.outerRadius === "number") {
-    return Math.max(startRadius, waveConfig.outerRadius);
-  }
-  const extension = Math.max(0, waveConfig.radiusExtension ?? 0);
-  return startRadius + extension;
 };
 
 const getWaveConfigs = (
