@@ -30,6 +30,8 @@ import {
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
+  FILL_FILAMENTS0_COMPONENTS,
+  FILL_FILAMENTS1_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
 } from "@ui/renderers/objects";
@@ -821,6 +823,8 @@ attribute vec2 a_position;
 attribute vec4 a_fillInfo;
 attribute vec4 a_fillParams0;
 attribute vec4 a_fillParams1;
+attribute vec4 a_filaments0;
+attribute float a_filamentEdgeBlur;
 attribute vec3 a_stopOffsets;
 attribute vec4 a_stopColor0;
 attribute vec4 a_stopColor1;
@@ -831,6 +835,8 @@ varying vec2 v_worldPosition;
 varying vec4 v_fillInfo;
 varying vec4 v_fillParams0;
 varying vec4 v_fillParams1;
+varying vec4 v_filaments0;
+varying float v_filamentEdgeBlur;
 varying vec3 v_stopOffsets;
 varying vec4 v_stopColor0;
 varying vec4 v_stopColor1;
@@ -847,6 +853,8 @@ void main() {
   v_fillInfo = a_fillInfo;
   v_fillParams0 = a_fillParams0;
   v_fillParams1 = a_fillParams1;
+  v_filaments0 = a_filaments0;
+  v_filamentEdgeBlur = a_filamentEdgeBlur;
   v_stopOffsets = a_stopOffsets;
   v_stopColor0 = a_stopColor0;
   v_stopColor1 = a_stopColor1;
@@ -865,6 +873,8 @@ varying vec2 v_worldPosition;
 varying vec4 v_fillInfo;
 varying vec4 v_fillParams0;
 varying vec4 v_fillParams1;
+varying vec4 v_filaments0;
+varying float v_filamentEdgeBlur;
 varying vec3 v_stopOffsets;
 varying vec4 v_stopColor0;
 varying vec4 v_stopColor1;
@@ -917,6 +927,39 @@ vec4 applyFillNoise(vec4 color) {
   if (alphaAmp > 0.0) {
     color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
   }
+  return color;
+}
+
+vec4 applyFillFilaments(vec4 color) {
+  float colorContrast = v_filaments0.x;
+  float alphaContrast = v_filaments0.y;
+  float width = clamp01(v_filaments0.z);
+  float density = v_filaments0.w;
+  float edgeBlur = clamp01(v_filamentEdgeBlur);
+
+  if ((colorContrast <= 0.0 && alphaContrast <= 0.0) || width <= 0.0 || density <= 0.0) {
+    return color;
+  }
+
+  vec2 anchor = resolveNoiseAnchor(v_fillInfo.x);
+  float angle = hash21(anchor) * 6.2831853; // TAU
+  vec2 dir = vec2(cos(angle), sin(angle));
+  float filamentPhase = fract(dot(v_worldPosition - anchor, dir) * density);
+  float distToCenter = abs(filamentPhase - 0.5);
+  float halfWidth = clamp(width * 0.5, 0.0001, 0.5);
+  float blur = min(edgeBlur, 0.5);
+  float falloffStart = halfWidth;
+  float falloffEnd = min(0.5, halfWidth + blur);
+  float intensity = 1.0 - smoothstep(falloffStart, falloffEnd, distToCenter);
+  float signed = (intensity - 0.5) * 2.0;
+
+  if (colorContrast > 0.0) {
+    color.rgb = clamp(color.rgb + signed * colorContrast, 0.0, 1.0);
+  }
+  if (alphaContrast > 0.0) {
+    color.a = clamp(color.a + signed * alphaContrast, 0.0, 1.0);
+  }
+
   return color;
 }
 
@@ -994,7 +1037,7 @@ void main() {
     color = sampleGradient(t);
   }
 
-  gl_FragColor = applyFillNoise(color);
+  gl_FragColor = applyFillNoise(applyFillFilaments(color));
 }
 `;
 
@@ -1227,6 +1270,11 @@ export const SaveSlotBackgroundScene: React.FC = () => {
     const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
     const fillParams0Location = gl.getAttribLocation(program, "a_fillParams0");
     const fillParams1Location = gl.getAttribLocation(program, "a_fillParams1");
+    const filaments0Location = gl.getAttribLocation(program, "a_filaments0");
+    const filamentEdgeBlurLocation = gl.getAttribLocation(
+      program,
+      "a_filamentEdgeBlur",
+    );
     const stopOffsetsLocation = gl.getAttribLocation(program, "a_stopOffsets");
     const stopColor0Location = gl.getAttribLocation(program, "a_stopColor0");
     const stopColor1Location = gl.getAttribLocation(program, "a_stopColor1");
@@ -1237,6 +1285,8 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       fillInfoLocation,
       fillParams0Location,
       fillParams1Location,
+      filaments0Location,
+      filamentEdgeBlurLocation,
       stopOffsetsLocation,
       stopColor0Location,
       stopColor1Location,
@@ -1259,6 +1309,8 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       push(fillInfoLocation, FILL_INFO_COMPONENTS);
       push(fillParams0Location, FILL_PARAMS0_COMPONENTS);
       push(fillParams1Location, FILL_PARAMS1_COMPONENTS);
+      push(filaments0Location, FILL_FILAMENTS0_COMPONENTS);
+      push(filamentEdgeBlurLocation, FILL_FILAMENTS1_COMPONENTS);
       push(stopOffsetsLocation, STOP_OFFSETS_COMPONENTS);
       push(stopColor0Location, STOP_COLOR_COMPONENTS);
       push(stopColor1Location, STOP_COLOR_COMPONENTS);

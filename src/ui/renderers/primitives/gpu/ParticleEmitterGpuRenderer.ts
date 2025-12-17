@@ -49,11 +49,15 @@ uniform vec4 u_stopColor3;
 uniform vec4 u_stopColor4;
 uniform vec2 u_noiseAmplitude;
 uniform float u_noiseScale;
+uniform vec4 u_filaments0;
+uniform float u_filamentEdgeBlur;
 
 out vec2 v_worldPosition;
 out vec4 v_fillInfo;
 out vec4 v_fillParams0;
 out vec4 v_fillParams1;
+out vec4 v_filaments0;
+out float v_filamentEdgeBlur;
 out float v_stopOffsets[5];
 out vec4 v_stopColor0;
 out vec4 v_stopColor1;
@@ -133,6 +137,8 @@ void main() {
   v_stopColor4 = stop4;
 
   v_fillInfo = vec4(float(u_fillType), float(u_stopCount), u_noiseAmplitude.x, u_noiseAmplitude.y);
+  v_filaments0 = u_filaments0;
+  v_filamentEdgeBlur = u_filamentEdgeBlur;
 
   if (u_fillType == 1) {
     vec2 startWorld;
@@ -187,6 +193,8 @@ in vec2 v_worldPosition;
 in vec4 v_fillInfo;
 in vec4 v_fillParams0;
 in vec4 v_fillParams1;
+in vec4 v_filaments0;
+in float v_filamentEdgeBlur;
 in float v_stopOffsets[5];
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
@@ -246,6 +254,39 @@ vec4 applyFillNoise(vec4 color) {
   if (alphaAmp > 0.0) {
     color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
   }
+  return color;
+}
+
+vec4 applyFillFilaments(vec4 color) {
+  float colorContrast = v_filaments0.x;
+  float alphaContrast = v_filaments0.y;
+  float width = clamp01(v_filaments0.z);
+  float density = v_filaments0.w;
+  float edgeBlur = clamp01(v_filamentEdgeBlur);
+
+  if ((colorContrast <= 0.0 && alphaContrast <= 0.0) || width <= 0.0 || density <= 0.0) {
+    return color;
+  }
+
+  vec2 anchor = resolveNoiseAnchor(v_fillInfo.x);
+  float angle = hash21(anchor) * 6.2831853; // TAU
+  vec2 dir = vec2(cos(angle), sin(angle));
+  float filamentPhase = fract(dot(v_worldPosition - anchor, dir) * density);
+  float distToCenter = abs(filamentPhase - 0.5);
+  float halfWidth = clamp(width * 0.5, 0.0001, 0.5);
+  float blur = min(edgeBlur, 0.5);
+  float falloffStart = halfWidth;
+  float falloffEnd = min(0.5, halfWidth + blur);
+  float intensity = 1.0 - smoothstep(falloffStart, falloffEnd, distToCenter);
+  float signed = (intensity - 0.5) * 2.0;
+
+  if (colorContrast > 0.0) {
+    color.rgb = clamp(color.rgb + signed * colorContrast, 0.0, 1.0);
+  }
+  if (alphaContrast > 0.0) {
+    color.a = clamp(color.a + signed * alphaContrast, 0.0, 1.0);
+  }
+
   return color;
 }
 
@@ -328,7 +369,7 @@ void main() {
   } else {
     color = shadeSolid();
   }
-  fragColor = applyFillNoise(color);
+  fragColor = applyFillNoise(applyFillFilaments(color));
 }
 `;
 
@@ -371,6 +412,8 @@ interface ParticleRenderProgram {
     stopColor4: WebGLUniformLocation | null;
     noiseAmplitude: WebGLUniformLocation | null;
     noiseScale: WebGLUniformLocation | null;
+    filaments0: WebGLUniformLocation | null;
+    filamentEdgeBlur: WebGLUniformLocation | null;
   };
 }
 
@@ -386,6 +429,11 @@ export interface ParticleEmitterGpuRenderUniforms {
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
+  filamentColorContrast: number;
+  filamentAlphaContrast: number;
+  filamentWidth: number;
+  filamentDensity: number;
+  filamentEdgeBlur: number;
   hasLinearStart: boolean;
   linearStart: SceneVector2;
   hasLinearEnd: boolean;
@@ -518,6 +566,8 @@ const createRenderProgram = (
     stopColor4: gl.getUniformLocation(program, "u_stopColor4"),
     noiseAmplitude: gl.getUniformLocation(program, "u_noiseAmplitude"),
     noiseScale: gl.getUniformLocation(program, "u_noiseScale"),
+    filaments0: gl.getUniformLocation(program, "u_filaments0"),
+    filamentEdgeBlur: gl.getUniformLocation(program, "u_filamentEdgeBlur"),
   };
   return { program, attributes, uniforms };
 };
@@ -660,6 +710,8 @@ type UniformCache = {
   stopColor4?: string;
   noiseAmplitude?: [number, number];
   noiseScale?: number;
+  filaments0?: [number, number, number, number];
+  filamentEdgeBlur?: number;
 };
 
 const serializeArray = (arr: Float32Array): string => {
@@ -830,6 +882,38 @@ const uploadEmitterUniforms = (
   }
   if (program.uniforms.noiseScale && cache.noiseScale !== u.noiseScale) {
     gl.uniform1f(program.uniforms.noiseScale, (cache.noiseScale = u.noiseScale));
+  }
+  const filaments0: [number, number, number, number] = [
+    u.filamentColorContrast,
+    u.filamentAlphaContrast,
+    u.filamentWidth,
+    u.filamentDensity,
+  ];
+  if (
+    program.uniforms.filaments0 &&
+    (!cache.filaments0 ||
+      cache.filaments0[0] !== filaments0[0] ||
+      cache.filaments0[1] !== filaments0[1] ||
+      cache.filaments0[2] !== filaments0[2] ||
+      cache.filaments0[3] !== filaments0[3])
+  ) {
+    gl.uniform4f(
+      program.uniforms.filaments0,
+      filaments0[0],
+      filaments0[1],
+      filaments0[2],
+      filaments0[3]
+    );
+    cache.filaments0 = [...filaments0];
+  }
+  if (
+    program.uniforms.filamentEdgeBlur &&
+    cache.filamentEdgeBlur !== u.filamentEdgeBlur
+  ) {
+    gl.uniform1f(
+      program.uniforms.filamentEdgeBlur,
+      (cache.filamentEdgeBlur = u.filamentEdgeBlur)
+    );
   }
 };
 

@@ -2,6 +2,7 @@ import { GameModule } from "../../core/types";
 import {
   FILL_TYPES,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneObjectManager,
   SceneVector2,
@@ -26,6 +27,10 @@ interface BulletCustomData {
 const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
   noise ? { ...noise } : undefined;
 
+const cloneFilaments = (
+  filaments: SceneFillFilaments | undefined
+): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
+
 const createBulletFill = (radius: number, config: BulletConfig) => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
@@ -35,6 +40,7 @@ const createBulletFill = (radius: number, config: BulletConfig) => ({
     color: { ...stop.color },
   })),
   ...(config.noise ? { noise: cloneNoise(config.noise) } : {}),
+  ...(config.filaments ? { filaments: cloneFilaments(config.filaments) } : {}),
 });
 
 const createBulletCustomData = (
@@ -75,6 +81,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
       return {
@@ -86,6 +93,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -98,6 +106,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
       } as SceneFill;
     default:
       return fill;

@@ -7,6 +7,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneObjectManager,
   SceneVector2,
@@ -45,6 +46,10 @@ const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy-01.mp3";
 const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
   noise ? { ...noise } : undefined;
 
+const cloneFilaments = (
+  filaments: SceneFillFilaments | undefined
+): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
+
 const createBrickFill = (config: BrickConfig) => {
   const fill = config.fill;
   switch (fill.type) {
@@ -53,6 +58,7 @@ const createBrickFill = (config: BrickConfig) => {
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
       };
     case "radial":
       return {
@@ -64,6 +70,7 @@ const createBrickFill = (config: BrickConfig) => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
       };
     case "linear":
     default:
@@ -76,6 +83,7 @@ const createBrickFill = (config: BrickConfig) => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
       };
   }
 };
@@ -862,6 +870,7 @@ const tintSceneFill = (
         fillType: FILL_TYPES.SOLID,
         color: tintSceneColor(fill.color, tint, ratio),
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
       return {
@@ -873,6 +882,7 @@ const tintSceneFill = (
           color: tintSceneColor(stop.color, tint, ratio),
         })),
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -885,6 +895,7 @@ const tintSceneFill = (
           color: tintSceneColor(stop.color, tint, ratio),
         })),
         ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
+        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
       } as SceneFill;
     default:
       return cloneSceneFill(fill);

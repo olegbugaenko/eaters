@@ -14,6 +14,7 @@ import {
 import {
   DynamicPrimitive,
   FILL_COMPONENTS,
+  FILL_FILAMENTS_COMPONENTS,
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
@@ -1110,6 +1111,11 @@ const createParticleEmitterGpuState = (
     noiseColorAmplitude: 0,
     noiseAlphaAmplitude: 0,
     noiseScale: 1,
+    filamentColorContrast: 0,
+    filamentAlphaContrast: 0,
+    filamentWidth: 0,
+    filamentDensity: 0,
+    filamentEdgeBlur: 0,
     hasLinearStart: false,
     linearStart: { x: 0, y: 0 },
     hasLinearEnd: false,
@@ -1283,6 +1289,17 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.noiseColorAmplitude = noise ? clamp01(noise.colorAmplitude) : 0;
   uniforms.noiseAlphaAmplitude = noise ? clamp01(noise.alphaAmplitude) : 0;
   uniforms.noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
+
+  const filaments = fill.filaments;
+  uniforms.filamentColorContrast = filaments
+    ? clamp01(filaments.colorContrast)
+    : 0;
+  uniforms.filamentAlphaContrast = filaments
+    ? clamp01(filaments.alphaContrast)
+    : 0;
+  uniforms.filamentWidth = filaments ? clamp01(filaments.width) : 0;
+  uniforms.filamentDensity = filaments ? Math.max(filaments.density, 0) : 0;
+  uniforms.filamentEdgeBlur = filaments ? clamp01(filaments.edgeBlur) : 0;
 
   const stops = ensureParticleStops(fill);
   const stopCount = Math.min(MAX_GRADIENT_STOPS, stops.length);
@@ -1498,6 +1515,7 @@ const applyParticleAlpha = (components: Float32Array, alpha: number): void => {
     FILL_INFO_COMPONENTS +
     FILL_PARAMS0_COMPONENTS +
     FILL_PARAMS1_COMPONENTS +
+    FILL_FILAMENTS_COMPONENTS +
     STOP_OFFSETS_COMPONENTS;
   for (let i = 0; i < MAX_GRADIENT_STOPS; i += 1) {
     const base = colorsOffset + i * STOP_COLOR_COMPONENTS;
@@ -1531,6 +1549,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         fillType: fill.fillType,
         color: fill.color,
         noise: fill.noise,
+        filaments: fill.filaments,
       });
     case FILL_TYPES.LINEAR_GRADIENT:
       return JSON.stringify({
@@ -1539,6 +1558,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         end: fill.end,
         stops: fill.stops,
         noise: fill.noise,
+        filaments: fill.filaments,
       });
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -1548,6 +1568,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         end: fill.end,
         stops: fill.stops,
         noise: fill.noise,
+        filaments: fill.filaments,
       });
     default:
       return JSON.stringify(fill);
@@ -1568,6 +1589,7 @@ const createSolidFillTemplate = (fill: SceneFill): Float32Array | null => {
     FILL_INFO_COMPONENTS +
     FILL_PARAMS0_COMPONENTS +
     FILL_PARAMS1_COMPONENTS +
+    FILL_FILAMENTS_COMPONENTS +
     STOP_OFFSETS_COMPONENTS;
   for (let i = 0; i < MAX_GRADIENT_STOPS; i += 1) {
     const base = colorBase + i * STOP_COLOR_COMPONENTS;
