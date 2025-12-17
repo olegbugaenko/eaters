@@ -56,6 +56,7 @@ import {
   setParticleEmitterGlContext,
   getParticleEmitterGlContext,
 } from "@ui/renderers/primitives/utils/gpuContext";
+import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
 import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
 import { whirlEffect, disposeWhirlResources } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import type { UnitModuleId } from "@db/unit-modules-db";
@@ -787,41 +788,6 @@ const cloneRendererConfigForScene = (
   };
 };
 
-const createShader = (gl: WebGLRenderingContext, type: number, source: string) => {
-  const shader = gl.createShader(type);
-  if (!shader) {
-    throw new Error("Unable to create shader");
-  }
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const info = gl.getShaderInfoLog(shader);
-    gl.deleteShader(shader);
-    throw new Error(`Failed to compile shader: ${info ?? "unknown"}`);
-  }
-  return shader;
-};
-
-const createProgram = (
-  gl: WebGLRenderingContext,
-  vertexShader: WebGLShader,
-  fragmentShader: WebGLShader
-) => {
-  const program = gl.createProgram();
-  if (!program) {
-    throw new Error("Unable to create program");
-  }
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const info = gl.getProgramInfoLog(program);
-    gl.deleteProgram(program);
-    throw new Error(`Failed to link program: ${info ?? "unknown"}`);
-  }
-  return program;
-};
-
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -958,7 +924,7 @@ const updateCreatures = (
 };
 
 const applySyncInstructions = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   objectsRenderer: ReturnType<typeof createObjectsRendererManager>,
   staticBuffer: WebGLBuffer,
   dynamicBuffer: WebGLBuffer
@@ -1037,9 +1003,9 @@ export const SaveSlotBackgroundScene: React.FC = () => {
 
     objectsRenderer.bootstrap(scene.getObjects());
 
-    const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    const program = createProgram(gl, vertexShader, fragmentShader);
+    const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
+    const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+    const program = linkProgram(gl, vertexShader, fragmentShader);
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
     const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
