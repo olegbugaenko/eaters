@@ -2,6 +2,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
   SceneVector2,
@@ -44,6 +45,7 @@ export interface ExplosionWaveConfig {
   endAlpha: number;
   gradientStops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
+  filaments?: SceneFillFilaments;
 }
 
 export interface ExplosionEmitterConfig {
@@ -838,10 +840,12 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
           { offset: 0.75, color: { r: 0.5, g: 0.2, b: 0.6, a: 0.7 } },
           { offset: 1, color: { r: 0.45, g: 0.25, b: 0.5, a: 0.0 } },
         ] as const,
-        noise: {
-          colorAmplitude: 0.04,
-          alphaAmplitude: 0.05,
-          scale: 0.3,
+        filaments: {
+          colorContrast: 0.1,
+          alphaContrast: 0.08,
+          width: 0.35,
+          density: 6.1,
+          edgeBlur: 0.35,
         },
       },
     ],

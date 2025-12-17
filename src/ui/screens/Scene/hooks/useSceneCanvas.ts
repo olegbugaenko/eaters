@@ -12,6 +12,8 @@ import {
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
+  FILL_FILAMENTS0_COMPONENTS,
+  FILL_FILAMENTS1_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
   createObjectsRendererManager,
@@ -42,6 +44,8 @@ attribute vec2 a_position;
 attribute vec4 a_fillInfo;
 attribute vec4 a_fillParams0;
 attribute vec4 a_fillParams1;
+attribute vec4 a_filaments0;
+attribute float a_filamentEdgeBlur;
 attribute vec3 a_stopOffsets;
 attribute vec4 a_stopColor0;
 attribute vec4 a_stopColor1;
@@ -52,6 +56,8 @@ varying vec2 v_worldPosition;
 varying vec4 v_fillInfo;
 varying vec4 v_fillParams0;
 varying vec4 v_fillParams1;
+varying vec4 v_filaments0;
+varying float v_filamentEdgeBlur;
 varying vec3 v_stopOffsets;
 varying vec4 v_stopColor0;
 varying vec4 v_stopColor1;
@@ -68,6 +74,8 @@ void main() {
   v_fillInfo = a_fillInfo;
   v_fillParams0 = a_fillParams0;
   v_fillParams1 = a_fillParams1;
+  v_filaments0 = a_filaments0;
+  v_filamentEdgeBlur = a_filamentEdgeBlur;
   v_stopOffsets = a_stopOffsets;
   v_stopColor0 = a_stopColor0;
   v_stopColor1 = a_stopColor1;
@@ -86,6 +94,8 @@ varying vec2 v_worldPosition;
 varying vec4 v_fillInfo;
 varying vec4 v_fillParams0;
 varying vec4 v_fillParams1;
+varying vec4 v_filaments0;
+varying float v_filamentEdgeBlur;
 varying vec3 v_stopOffsets;
 varying vec4 v_stopColor0;
 varying vec4 v_stopColor1;
@@ -141,6 +151,69 @@ vec4 applyFillNoise(vec4 color) {
   if (alphaAmp > 0.0) {
     color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
   }
+  return color;
+}
+
+float ridgeNoise(vec2 p) {
+  // Ridge noise creates vein-like structures
+  return 1.0 - abs(noise2d(p) * 2.0 - 1.0);
+}
+
+float filamentNoise(vec2 p, float density) {
+  float scale = density * 0.03;
+  vec2 sp = p * scale;
+  
+  // Domain warping - warp coordinates with noise for organic flow
+  vec2 warp = vec2(
+    noise2d(sp + vec2(0.0, 0.0)),
+    noise2d(sp + vec2(5.2, 1.3))
+  );
+  vec2 warped = sp + warp * 0.5;
+  
+  // Layered ridge noise for filament structure
+  float n = 0.0;
+  n += ridgeNoise(warped * 1.0) * 0.6;
+  n += ridgeNoise(warped * 2.0) * 0.3;
+  n += ridgeNoise(warped * 4.0) * 0.1;
+  
+  return n;
+}
+
+vec4 applyFillFilaments(vec4 color) {
+  float colorContrast = v_filaments0.x;
+  float alphaContrast = v_filaments0.y;
+  float width = clamp01(v_filaments0.z);
+  float density = v_filaments0.w;
+  float edgeBlur = clamp01(v_filamentEdgeBlur);
+
+  if ((colorContrast <= 0.0 && alphaContrast <= 0.0) || density <= 0.0) {
+    return color;
+  }
+
+  vec2 anchor = resolveNoiseAnchor(v_fillInfo.x);
+  vec2 pos = v_worldPosition - anchor;
+  
+  // Get filament pattern
+  float n = filamentNoise(pos, density);
+  
+  // width controls how much of the filament is visible
+  // Higher width = thicker filaments
+  float threshold = 1.0 - width;
+  float edge = threshold - edgeBlur * 0.3;
+  
+  // Create filament with smooth edges
+  float filament = smoothstep(edge, threshold, n);
+  
+  // Convert to signed value
+  float signed = (filament - 0.5) * 2.0;
+
+  if (colorContrast > 0.0) {
+    color.rgb = clamp(color.rgb + signed * colorContrast, 0.0, 1.0);
+  }
+  if (alphaContrast > 0.0) {
+    color.a = clamp(color.a + signed * alphaContrast, 0.0, 1.0);
+  }
+
   return color;
 }
 
@@ -216,7 +289,7 @@ void main() {
     color = sampleGradient(t);
   }
 
-  color = applyFillNoise(color);
+  color = applyFillNoise(applyFillFilaments(color));
   gl_FragColor = color;
 }
 `;
@@ -437,6 +510,11 @@ export const useSceneCanvas = ({
     const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
     const fillParams0Location = gl.getAttribLocation(program, "a_fillParams0");
     const fillParams1Location = gl.getAttribLocation(program, "a_fillParams1");
+    const filaments0Location = gl.getAttribLocation(program, "a_filaments0");
+    const filamentEdgeBlurLocation = gl.getAttribLocation(
+      program,
+      "a_filamentEdgeBlur",
+    );
     const stopOffsetsLocation = gl.getAttribLocation(program, "a_stopOffsets");
     const stopColor0Location = gl.getAttribLocation(program, "a_stopColor0");
     const stopColor1Location = gl.getAttribLocation(program, "a_stopColor1");
@@ -449,6 +527,8 @@ export const useSceneCanvas = ({
       fillInfoLocation,
       fillParams0Location,
       fillParams1Location,
+      filaments0Location,
+      filamentEdgeBlurLocation,
       stopOffsetsLocation,
       stopColor0Location,
       stopColor1Location,
@@ -470,6 +550,8 @@ export const useSceneCanvas = ({
       pushConfig(fillInfoLocation, FILL_INFO_COMPONENTS);
       pushConfig(fillParams0Location, FILL_PARAMS0_COMPONENTS);
       pushConfig(fillParams1Location, FILL_PARAMS1_COMPONENTS);
+      pushConfig(filaments0Location, FILL_FILAMENTS0_COMPONENTS);
+      pushConfig(filamentEdgeBlurLocation, FILL_FILAMENTS1_COMPONENTS);
       pushConfig(stopOffsetsLocation, STOP_OFFSETS_COMPONENTS);
       pushConfig(stopColor0Location, STOP_COLOR_COMPONENTS);
       pushConfig(stopColor1Location, STOP_COLOR_COMPONENTS);

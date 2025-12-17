@@ -48,6 +48,15 @@ type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {
 
 const DEFAULT_COLOR = { r: 1, g: 1, b: 1, a: 1 } as const;
 
+const clamp01 = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  if (value <= 0) return 0;
+  if (value >= 1) return 1;
+  return value;
+};
+
 const createExplosionEmitterPrimitive = (
   instance: SceneObjectInstance
 ): DynamicPrimitive | null =>
@@ -446,6 +455,13 @@ const toWaveUniformsFromFill = (
   const noiseAlphaAmplitude = noise ? Math.max(0, Math.min(1, noise.alphaAmplitude)) : 0;
   const noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
 
+  const filaments = (fill as any).filaments;
+  const filamentColorContrast = filaments ? clamp01(filaments.colorContrast) : 0;
+  const filamentAlphaContrast = filaments ? clamp01(filaments.alphaContrast) : 0;
+  const filamentWidth = filaments ? clamp01(filaments.width) : 0;
+  const filamentDensity = filaments ? Math.max(filaments.density ?? 0, 0) : 0;
+  const filamentEdgeBlur = filaments ? clamp01(filaments.edgeBlur) : 0;
+
   const uniforms: WaveUniformConfig = {
     fillType,
     stopCount,
@@ -458,6 +474,11 @@ const toWaveUniformsFromFill = (
     noiseColorAmplitude,
     noiseAlphaAmplitude,
     noiseScale,
+    filamentColorContrast,
+    filamentAlphaContrast,
+    filamentWidth,
+    filamentDensity,
+    filamentEdgeBlur,
     hasLinearStart,
     linearStart: linearStart ?? { x: 0, y: 0 },
     hasLinearEnd,

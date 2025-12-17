@@ -2,6 +2,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
@@ -23,6 +24,7 @@ export type PlayerUnitRendererFillConfig =
       type: "solid";
       color: SceneColor;
       noise?: SceneFillNoise;
+      filaments?: SceneFillFilaments;
     }
   | {
       type: "gradient";
