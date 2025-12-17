@@ -38,261 +38,14 @@ import { getParticleEmitterGlContext, setParticleEmitterGlContext } from "@ui/re
 import { disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import { registerHmrCleanup } from "@ui/shared/hmrCleanup";
 import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
+import {
+  SCENE_VERTEX_SHADER,
+  createSceneFragmentShader,
+} from "@ui/renderers/shaders/fillEffects.glsl";
 
-const VERTEX_SHADER = `
-attribute vec2 a_position;
-attribute vec4 a_fillInfo;
-attribute vec4 a_fillParams0;
-attribute vec4 a_fillParams1;
-attribute vec4 a_filaments0;
-attribute float a_filamentEdgeBlur;
-attribute vec3 a_stopOffsets;
-attribute vec4 a_stopColor0;
-attribute vec4 a_stopColor1;
-attribute vec4 a_stopColor2;
-uniform vec2 u_cameraPosition;
-uniform vec2 u_viewportSize;
-varying vec2 v_worldPosition;
-varying vec4 v_fillInfo;
-varying vec4 v_fillParams0;
-varying vec4 v_fillParams1;
-varying vec4 v_filaments0;
-varying float v_filamentEdgeBlur;
-varying vec3 v_stopOffsets;
-varying vec4 v_stopColor0;
-varying vec4 v_stopColor1;
-varying vec4 v_stopColor2;
+const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 
-vec2 toClip(vec2 world) {
-  vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
-  return vec2(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0);
-}
-
-void main() {
-  gl_Position = vec4(toClip(a_position), 0.0, 1.0);
-  v_worldPosition = a_position;
-  v_fillInfo = a_fillInfo;
-  v_fillParams0 = a_fillParams0;
-  v_fillParams1 = a_fillParams1;
-  v_filaments0 = a_filaments0;
-  v_filamentEdgeBlur = a_filamentEdgeBlur;
-  v_stopOffsets = a_stopOffsets;
-  v_stopColor0 = a_stopColor0;
-  v_stopColor1 = a_stopColor1;
-  v_stopColor2 = a_stopColor2;
-}
-`;
-
-const FRAGMENT_SHADER = `
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-
-varying vec2 v_worldPosition;
-varying vec4 v_fillInfo;
-varying vec4 v_fillParams0;
-varying vec4 v_fillParams1;
-varying vec4 v_filaments0;
-varying float v_filamentEdgeBlur;
-varying vec3 v_stopOffsets;
-varying vec4 v_stopColor0;
-varying vec4 v_stopColor1;
-varying vec4 v_stopColor2;
-
-float clamp01(float value) {
-  return clamp(value, 0.0, 1.0);
-}
-
-float hash21(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
-
-float noise2d(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  float a = hash21(i);
-  float b = hash21(i + vec2(1.0, 0.0));
-  float c = hash21(i + vec2(0.0, 1.0));
-  float d = hash21(i + vec2(1.0, 1.0));
-  float ab = mix(a, b, u.x);
-  float cd = mix(c, d, u.x);
-  return mix(ab, cd, u.y);
-}
-
-vec2 resolveNoiseAnchor(float fillType) {
-  // v_fillParams0.xy stores the object origin for solid fills, the gradient start
-  // for linear fills, and the gradient center for radial/diamond fills.
-  // Using it as the anchor keeps noise stable in the object's local space.
-  if (fillType < 3.5) {
-    return v_fillParams0.xy;
-  }
-  return v_worldPosition;
-}
-
-vec4 applyFillNoise(vec4 color) {
-  float colorAmp = v_fillInfo.z;
-  float alphaAmp = v_fillInfo.w;
-  if (colorAmp <= 0.0 && alphaAmp <= 0.0) {
-    return color;
-  }
-  float scale = v_fillParams1.w;
-  float effectiveScale = scale > 0.0 ? scale : 1.0;
-  float fillType = v_fillInfo.x;
-  vec2 anchor = resolveNoiseAnchor(fillType);
-  float noiseValue = noise2d((v_worldPosition - anchor) * effectiveScale) * 2.0 - 1.0;
-  if (colorAmp > 0.0) {
-    color.rgb = clamp(color.rgb + noiseValue * colorAmp, 0.0, 1.0);
-  }
-  if (alphaAmp > 0.0) {
-    color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
-  }
-  return color;
-}
-
-float ridgeNoise(vec2 p) {
-  // Ridge noise creates vein-like structures
-  return 1.0 - abs(noise2d(p) * 2.0 - 1.0);
-}
-
-float filamentNoise(vec2 p, float density) {
-  float scale = density * 0.03;
-  vec2 sp = p * scale;
-  
-  // Domain warping - warp coordinates with noise for organic flow
-  vec2 warp = vec2(
-    noise2d(sp + vec2(0.0, 0.0)),
-    noise2d(sp + vec2(5.2, 1.3))
-  );
-  vec2 warped = sp + warp * 0.5;
-  
-  // Layered ridge noise for filament structure
-  float n = 0.0;
-  n += ridgeNoise(warped * 1.0) * 0.6;
-  n += ridgeNoise(warped * 2.0) * 0.3;
-  n += ridgeNoise(warped * 4.0) * 0.1;
-  
-  return n;
-}
-
-vec4 applyFillFilaments(vec4 color) {
-  float colorContrast = v_filaments0.x;
-  float alphaContrast = v_filaments0.y;
-  float width = clamp01(v_filaments0.z);
-  float density = v_filaments0.w;
-  float edgeBlur = clamp01(v_filamentEdgeBlur);
-
-  if ((colorContrast <= 0.0 && alphaContrast <= 0.0) || density <= 0.0) {
-    return color;
-  }
-
-  vec2 anchor = resolveNoiseAnchor(v_fillInfo.x);
-  vec2 pos = v_worldPosition - anchor;
-  
-  // Get filament pattern
-  float n = filamentNoise(pos, density);
-  
-  // width controls how much of the filament is visible
-  // Higher width = thicker filaments
-  float threshold = 1.0 - width;
-  float edge = threshold - edgeBlur * 0.3;
-  
-  // Create filament with smooth edges
-  float filament = smoothstep(edge, threshold, n);
-  
-  // Convert to signed value
-  float signed = (filament - 0.5) * 2.0;
-
-  if (colorContrast > 0.0) {
-    color.rgb = clamp(color.rgb + signed * colorContrast, 0.0, 1.0);
-  }
-  if (alphaContrast > 0.0) {
-    color.a = clamp(color.a + signed * alphaContrast, 0.0, 1.0);
-  }
-
-  return color;
-}
-
-vec4 sampleGradient(float t) {
-  float stopCount = v_fillInfo.y;
-  vec4 color0 = v_stopColor0;
-  if (stopCount < 1.5) {
-    return color0;
-  }
-
-  float offset0 = v_stopOffsets.x;
-  float offset1 = v_stopOffsets.y;
-  vec4 color1 = v_stopColor1;
-
-  if (stopCount < 2.5) {
-    if (t <= offset0) {
-      return color0;
-    }
-    if (t >= offset1) {
-      return color1;
-    }
-    float range = max(offset1 - offset0, 0.0001);
-    float factor = clamp((t - offset0) / range, 0.0, 1.0);
-    return mix(color0, color1, factor);
-  }
-
-  float offset2 = v_stopOffsets.z;
-  vec4 color2 = v_stopColor2;
-
-  if (t <= offset0) {
-    return color0;
-  }
-  if (t >= offset2) {
-    return color2;
-  }
-  if (t <= offset1) {
-    float range = max(offset1 - offset0, 0.0001);
-    float factor = clamp((t - offset0) / range, 0.0, 1.0);
-    return mix(color0, color1, factor);
-  }
-
-  float range = max(offset2 - offset1, 0.0001);
-  float factor = clamp((t - offset1) / range, 0.0, 1.0);
-  return mix(color1, color2, factor);
-}
-
-void main() {
-  float fillType = v_fillInfo.x;
-  vec4 color = v_stopColor0;
-
-  if (fillType >= 0.5) {
-    float t = 0.0;
-    if (fillType < 1.5) {
-      vec2 start = v_fillParams0.xy;
-      vec2 dir = v_fillParams1.xy;
-      float invLenSq = v_fillParams1.z;
-      if (invLenSq > 0.0) {
-        float projection = dot(v_worldPosition - start, dir) * invLenSq;
-        t = clamp01(projection);
-      }
-    } else if (fillType < 2.5) {
-      vec2 center = v_fillParams0.xy;
-      float radius = max(v_fillParams0.z, 0.000001);
-      float dist = length(v_worldPosition - center);
-      t = clamp01(dist / radius);
-    } else {
-      vec2 center = v_fillParams0.xy;
-      float radius = max(v_fillParams0.z, 0.000001);
-      vec2 diff = v_worldPosition - center;
-      float dist = abs(diff.x) + abs(diff.y);
-      t = clamp01(dist / radius);
-    }
-    color = sampleGradient(t);
-  }
-
-  color = applyFillNoise(applyFillFilaments(color));
-  gl_FragColor = color;
-}
-`;
+const FRAGMENT_SHADER = createSceneFragmentShader();
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
@@ -467,36 +220,21 @@ export const useSceneCanvas = ({
       return;
     }
 
-    const webgl2 = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
-    const gl =
-      (webgl2 as WebGL2RenderingContext | WebGLRenderingContext | null) ??
-      canvas.getContext("webgl");
+    const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
 
     if (!gl) {
-      throw new Error("Unable to acquire WebGL context");
+      throw new Error("WebGL 2 is required but not available");
     }
 
     const objectsRenderer = createObjectsRendererManager();
 
-    if (webgl2) {
-      setParticleEmitterGlContext(webgl2);
-      whirlEffect.onContextAcquired(webgl2);
-      petalAuraEffect.onContextAcquired(webgl2);
-    } else {
-      setParticleEmitterGlContext(null);
-      const whirlContext = whirlEffect.getPrimaryContext();
-      if (whirlContext) {
-        whirlEffect.onContextLost(whirlContext);
-      }
-      const auraContext = petalAuraEffect.getPrimaryContext();
-      if (auraContext) {
-        petalAuraEffect.onContextLost(auraContext);
-      }
-    }
+    setParticleEmitterGlContext(gl);
+    whirlEffect.onContextAcquired(gl);
+    petalAuraEffect.onContextAcquired(gl);
 
     clearAllAuraSlots();
-    if (webgl2) {
-      clearPetalAuraInstances(webgl2);
+    if (gl) {
+      clearPetalAuraInstances(gl);
     } else {
       clearPetalAuraInstances();
     }
@@ -700,39 +438,39 @@ export const useSceneCanvas = ({
       drawBuffer(staticBuffer, objectsRenderer.getStaticVertexCount());
       drawBuffer(dynamicBuffer, objectsRenderer.getDynamicVertexCount());
 
-      if (webgl2) {
+      if (gl) {
         renderParticleEmitters(
-          webgl2,
+          gl,
           cameraState.position,
           cameraState.viewportSize,
         );
         updateAllWhirlInterpolations();
-        whirlEffect.beforeRender(webgl2, timestamp);
-        petalAuraEffect.beforeRender(webgl2, timestamp);
+        whirlEffect.beforeRender(gl, timestamp);
+        petalAuraEffect.beforeRender(gl, timestamp);
         whirlEffect.render(
-          webgl2,
+          gl,
           cameraState.position,
           cameraState.viewportSize,
           timestamp,
         );
         petalAuraEffect.render(
-          webgl2,
+          gl,
           cameraState.position,
           cameraState.viewportSize,
           timestamp,
         );
         renderArcBatches(
-          webgl2,
+          gl,
           cameraState.position,
           cameraState.viewportSize,
         );
         renderFireRings(
-          webgl2,
+          gl,
           cameraState.position,
           cameraState.viewportSize,
           timestamp,
         );
-        const stats = getParticleStats(webgl2);
+        const stats = getParticleStats(gl);
         const now = timestamp;
         if (now - particleStatsLastUpdateRef.current >= 500) {
           particleStatsLastUpdateRef.current = now;
@@ -949,15 +687,15 @@ export const useSceneCanvas = ({
     return () => {
       objectsRenderer.dispose();
       setParticleEmitterGlContext(null);
-      if (webgl2) {
+      if (gl) {
         try {
-          whirlEffect.onContextLost(webgl2);
+          whirlEffect.onContextLost(gl);
         } catch {}
         try {
-          petalAuraEffect.onContextLost(webgl2);
+          petalAuraEffect.onContextLost(gl);
         } catch {}
         try {
-          disposeParticleRenderResources(webgl2);
+          disposeParticleRenderResources(gl);
         } catch {}
       } else {
         const whirlContext = whirlEffect.getPrimaryContext();
