@@ -42,6 +42,7 @@ import {
   SCENE_VERTEX_SHADER,
   createSceneFragmentShader,
 } from "@ui/renderers/shaders/fillEffects.glsl";
+import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 
@@ -49,41 +50,6 @@ const FRAGMENT_SHADER = createSceneFragmentShader();
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
-
-const createShader = (gl: WebGLRenderingContext, type: number, source: string) => {
-  const shader = gl.createShader(type);
-  if (!shader) {
-    throw new Error("Unable to create shader");
-  }
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const message = gl.getShaderInfoLog(shader) ?? "Unknown shader error";
-    gl.deleteShader(shader);
-    throw new Error(message);
-  }
-  return shader;
-};
-
-const createProgram = (
-  gl: WebGLRenderingContext,
-  vertexShader: WebGLShader,
-  fragmentShader: WebGLShader,
-) => {
-  const program = gl.createProgram();
-  if (!program) {
-    throw new Error("Unable to create program");
-  }
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const message = gl.getProgramInfoLog(program) ?? "Unknown program error";
-    gl.deleteProgram(program);
-    throw new Error(message);
-  }
-  return program;
-};
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -240,9 +206,9 @@ export const useSceneCanvas = ({
     }
     objectsRenderer.bootstrap(scene.getObjects());
 
-    const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    const program = createProgram(gl, vertexShader, fragmentShader);
+    const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
+    const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+    const program = linkProgram(gl, vertexShader, fragmentShader);
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
     const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
