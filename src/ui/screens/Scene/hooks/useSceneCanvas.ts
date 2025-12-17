@@ -154,6 +154,31 @@ vec4 applyFillNoise(vec4 color) {
   return color;
 }
 
+float ridgeNoise(vec2 p) {
+  // Ridge noise creates vein-like structures
+  return 1.0 - abs(noise2d(p) * 2.0 - 1.0);
+}
+
+float filamentNoise(vec2 p, float density) {
+  float scale = density * 0.03;
+  vec2 sp = p * scale;
+  
+  // Domain warping - warp coordinates with noise for organic flow
+  vec2 warp = vec2(
+    noise2d(sp + vec2(0.0, 0.0)),
+    noise2d(sp + vec2(5.2, 1.3))
+  );
+  vec2 warped = sp + warp * 0.5;
+  
+  // Layered ridge noise for filament structure
+  float n = 0.0;
+  n += ridgeNoise(warped * 1.0) * 0.6;
+  n += ridgeNoise(warped * 2.0) * 0.3;
+  n += ridgeNoise(warped * 4.0) * 0.1;
+  
+  return n;
+}
+
 vec4 applyFillFilaments(vec4 color) {
   float colorContrast = v_filaments0.x;
   float alphaContrast = v_filaments0.y;
@@ -161,21 +186,26 @@ vec4 applyFillFilaments(vec4 color) {
   float density = v_filaments0.w;
   float edgeBlur = clamp01(v_filamentEdgeBlur);
 
-  if ((colorContrast <= 0.0 && alphaContrast <= 0.0) || width <= 0.0 || density <= 0.0) {
+  if ((colorContrast <= 0.0 && alphaContrast <= 0.0) || density <= 0.0) {
     return color;
   }
 
   vec2 anchor = resolveNoiseAnchor(v_fillInfo.x);
-  float angle = hash21(anchor) * 6.2831853; // TAU
-  vec2 dir = vec2(cos(angle), sin(angle));
-  float filamentPhase = fract(dot(v_worldPosition - anchor, dir) * density);
-  float distToCenter = abs(filamentPhase - 0.5);
-  float halfWidth = clamp(width * 0.5, 0.0001, 0.5);
-  float blur = min(edgeBlur, 0.5);
-  float falloffStart = halfWidth;
-  float falloffEnd = min(0.5, halfWidth + blur);
-  float intensity = 1.0 - smoothstep(falloffStart, falloffEnd, distToCenter);
-  float signed = (intensity - 0.5) * 2.0;
+  vec2 pos = v_worldPosition - anchor;
+  
+  // Get filament pattern
+  float n = filamentNoise(pos, density);
+  
+  // width controls how much of the filament is visible
+  // Higher width = thicker filaments
+  float threshold = 1.0 - width;
+  float edge = threshold - edgeBlur * 0.3;
+  
+  // Create filament with smooth edges
+  float filament = smoothstep(edge, threshold, n);
+  
+  // Convert to signed value
+  float signed = (filament - 0.5) * 2.0;
 
   if (colorContrast > 0.0) {
     color.rgb = clamp(color.rgb + signed * colorContrast, 0.0, 1.0);

@@ -844,7 +844,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
           colorContrast: 0.1,
           alphaContrast: 0.08,
           width: 0.35,
-          density: 1.1,
+          density: 6.1,
           edgeBlur: 0.35,
         },
       },
