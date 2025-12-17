@@ -1499,6 +1499,7 @@ const cloneRendererFill = (
       type: "solid",
       color: { ...fill.color },
       ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
     };
   }
   if (fill.type === "gradient") {

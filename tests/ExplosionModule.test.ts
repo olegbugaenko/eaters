@@ -22,12 +22,10 @@ describe("ExplosionModule", () => {
     const config = getExplosionConfig("magnetic");
     const fill = explosion.data.fill;
     assert.strictEqual(fill.fillType, FILL_TYPES.RADIAL_GRADIENT);
-    assert.strictEqual(fill.stops.length, config.wave.gradientStops.length);
+    const wave = config.waves[0]!;
+    assert.strictEqual(fill.stops.length, wave.gradientStops.length);
 
-    const expectedAlpha = Math.min(
-      1,
-      (config.wave.gradientStops[0]?.color.a ?? 1) * config.wave.startAlpha
-    );
+    const expectedAlpha = Math.min(1, (wave.gradientStops[0]?.color.a ?? 1) * wave.startAlpha);
     const firstStop = fill.stops[0];
     assert(firstStop, "Explosion wave should have a first stop");
     assert.strictEqual(firstStop.color.a, expectedAlpha);
