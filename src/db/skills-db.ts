@@ -129,13 +129,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "consiousness",
     name: "Consiousness",
     description:
-      "Increase your max sanity and mana.",
+      "Increase your max sanity.",
     nodePosition: { x: 0, y: 0 },
     maxLevel: 5,
     effects: {
-      mana_cap: {
-        income: (level) => 2 * level,
-      },
       sanity_cap: {
         income: (level) => 1 * level,
       },
