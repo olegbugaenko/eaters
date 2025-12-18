@@ -4,18 +4,29 @@
 
 ## Навігація
 
+### Камп та прогресія
 - [bonuses.md](bonuses.md)
-- [bricks.md](bricks.md)
-- [buildings.md](buildings.md)
-- [bullet.md](bullet.md)
-- [crafting.md](crafting.md)
-- [explosions.md](explosions.md)
-- [map.md](map.md)
-- [necromancer.md](necromancer.md)
-- [player-units.md](player-units.md)
 - [resources.md](resources.md)
 - [skill-tree.md](skill-tree.md)
-- [test-time.md](test-time.md)
-- [unit-automation.md](unit-automation.md)
+- [crafting.md](crafting.md)
+- [buildings.md](buildings.md)
 - [unit-design.md](unit-design.md)
 - [unit-module-workshop.md](unit-module-workshop.md)
+- [statistics.md](statistics.md)
+- [audio.md](audio.md)
+- [test-time.md](test-time.md)
+
+### Активна карта та бойова логіка
+- [map.md](map.md)
+- [bricks.md](bricks.md)
+- [player-units.md](player-units.md)
+- [unit-automation.md](unit-automation.md)
+- [necromancer.md](necromancer.md)
+- [bullet.md](bullet.md)
+- [fireballs.md](fireballs.md)
+- [spellcasting.md](spellcasting.md)
+
+### Візуальні ефекти
+- [explosions.md](explosions.md)
+- [arcs.md](arcs.md)
+- [effects.md](effects.md)
