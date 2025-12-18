@@ -380,10 +380,6 @@ export class Application {
     this.mapModule.setAutoRestartEnabled(enabled);
   }
 
-  public setAutoRestartThreshold(enabled: boolean, minEffectiveUnits: number): void {
-    this.mapModule.setAutoRestartThreshold(enabled, minEffectiveUnits);
-  }
-
   public leaveCurrentMap(): void {
     this.mapModule.leaveCurrentMap();
     this.cleanupSceneAfterRun();

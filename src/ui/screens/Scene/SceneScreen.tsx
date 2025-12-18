@@ -182,7 +182,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const pointerPressedRef = useRef(false);
   const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
-  // Threshold state is sourced from bridge (autoRestartState)
   const autoRestartHandledRef = useRef(false);
   const {
     tutorialSteps,
@@ -424,13 +423,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     [app]
   );
 
-  const handleUpdateAutoRestartThreshold = useCallback(
-    (enabled: boolean, minUnits: number) => {
-      app.setAutoRestartThreshold(enabled, minUnits);
-    },
-    [app]
-  );
-
   const handleRestart = useCallback(() => {
     autoRestartHandledRef.current = true;
     restartMap();
@@ -612,9 +604,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
                   enabled: autoRestartState.enabled,
                   countdown: autoRestartCountdown,
                   onToggle: handleToggleAutoRestart,
-                  thresholdEnabled: autoRestartState.thresholdEnabled ?? false,
-                  minEffectiveUnits: autoRestartState.minEffectiveUnits ?? 3,
-                  onUpdateThreshold: handleUpdateAutoRestartThreshold,
                 }
               : undefined
           }

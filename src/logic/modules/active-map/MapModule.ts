@@ -51,8 +51,6 @@ interface MapSaveData {
   stats?: MapStats;
   selectedLevels?: Partial<Record<MapId, number>>;
   autoRestartEnabled?: boolean;
-  autoRestartThresholdEnabled?: boolean;
-  autoRestartMinEffectiveUnits?: number;
 }
 
 export interface MapLevelStats {
@@ -80,8 +78,6 @@ export interface MapRunResult {
 export interface MapAutoRestartState {
   readonly unlocked: boolean;
   readonly enabled: boolean;
-  readonly thresholdEnabled?: boolean; // enable early restart logic
-  readonly minEffectiveUnits?: number; // restart if alive + affordable < N
 }
 
 export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
@@ -89,8 +85,6 @@ export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
 export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze({
   unlocked: false,
   enabled: false,
-  thresholdEnabled: false,
-  minEffectiveUnits: 3,
 });
 
 const DEFAULT_MAP_ID: MapId = "foundations";
@@ -114,8 +108,6 @@ export class MapModule implements GameModule {
   private mapSelectedLevels: Partial<Record<MapId, number>> = {};
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
-  private thresholdEnabled = false;
-  private minEffectiveUnits = 3;
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
   private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
 
@@ -133,8 +125,6 @@ export class MapModule implements GameModule {
 
   public reset(): void {
     this.autoRestartEnabled = false;
-    this.thresholdEnabled = false;
-    this.minEffectiveUnits = 3;
     this.runActive = false;
     this.pendingCameraFocus = null;
     this.refreshAutoRestartState();
@@ -175,8 +165,6 @@ export class MapModule implements GameModule {
       stats: this.cloneStats(),
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
-      autoRestartThresholdEnabled: this.thresholdEnabled,
-      autoRestartMinEffectiveUnits: this.minEffectiveUnits,
     } satisfies MapSaveData;
   }
 
@@ -185,17 +173,6 @@ export class MapModule implements GameModule {
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
-    }
-    // Early end-of-run check: when enabled, if alive + affordable < N, end the run (failure)
-    if (this.autoRestartEnabled && this.thresholdEnabled && this.selectedMapId && this.runActive) {
-      const alive = this.options.playerUnits.getEffectiveUnitCount();
-      const affordable = this.options.necromancer.getAffordableSpawnCount();
-      const effective = alive + affordable;
-      if (effective < Math.max(0, Math.floor(this.minEffectiveUnits))) {
-        // Trigger run completion (failure) once per run
-        this.runActive = false;
-        this.options.onRunCompleted(false);
-      }
     }
     // Drive portal emitter updates like explosions do (explosions call updateObject every tick)
     if (this.portalObjects.length > 0) {
@@ -280,30 +257,6 @@ export class MapModule implements GameModule {
     }
     this.autoRestartEnabled = next;
     this.pushAutoRestartState();
-  }
-
-  public setAutoRestartThreshold(enabled: boolean, minEffectiveUnits: number): void {
-    const unlockChanged = this.refreshAutoRestartState();
-    if (!this.autoRestartUnlocked) {
-      if (unlockChanged) {
-        this.pushAutoRestartState();
-      }
-      return;
-    }
-    const nextEnabled = Boolean(enabled);
-    const nextMin = Math.max(0, Math.floor(minEffectiveUnits));
-    let changed = unlockChanged;
-    if (this.thresholdEnabled !== nextEnabled) {
-      this.thresholdEnabled = nextEnabled;
-      changed = true;
-    }
-    if (this.minEffectiveUnits !== nextMin) {
-      this.minEffectiveUnits = nextMin;
-      changed = true;
-    }
-    if (changed) {
-      this.pushAutoRestartState();
-    }
   }
 
   public recordRunResult(result: MapRunResult): void {
@@ -526,8 +479,6 @@ export class MapModule implements GameModule {
       {
         unlocked: this.autoRestartUnlocked,
         enabled: this.autoRestartUnlocked && this.autoRestartEnabled,
-        thresholdEnabled: this.thresholdEnabled,
-        minEffectiveUnits: this.minEffectiveUnits,
       }
     );
   }
@@ -626,8 +577,6 @@ export class MapModule implements GameModule {
       mapLevel?: unknown;
       selectedLevels?: unknown;
       autoRestartEnabled?: unknown;
-      autoRestartThresholdEnabled?: unknown;
-      autoRestartMinEffectiveUnits?: unknown;
     };
     if (!raw.mapId || !isMapId(raw.mapId)) {
       return null;
@@ -636,12 +585,6 @@ export class MapModule implements GameModule {
     const mapLevel = typeof raw.mapLevel === "number" ? sanitizeLevel(raw.mapLevel) : undefined;
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
     const autoRestartEnabled = raw.autoRestartEnabled === true;
-    const autoRestartThresholdEnabled = raw.autoRestartThresholdEnabled === true;
-    this.thresholdEnabled = autoRestartThresholdEnabled;
-    if (Object.prototype.hasOwnProperty.call(raw, "autoRestartMinEffectiveUnits")) {
-      const autoRestartMinEffectiveUnits = sanitizeLevel(raw.autoRestartMinEffectiveUnits);
-      this.minEffectiveUnits = Math.max(0, autoRestartMinEffectiveUnits);
-    }
     return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled };
   }
 
