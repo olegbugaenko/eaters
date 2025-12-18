@@ -505,6 +505,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     spawnOptions: necromancerOptions,
     automation: automationState,
     spells: spellOptions,
+    unitCount,
   }));
 
   // Throttle toolbar updates to at most 5 times per second
@@ -523,6 +524,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         spawnOptions: necromancerOptionsRef.current,
         automation: automationStateRef.current,
         spells: spellOptionsRef.current,
+        unitCount: unitCountRef.current,
       });
     }, 200);
     return () => window.clearInterval(interval);
@@ -592,6 +594,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         onHoverInfoChange={setHoverContent}
         automation={summoningProps.automation}
         onToggleAutomation={handleToggleAutomation}
+        unitCount={summoningProps.unitCount}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />

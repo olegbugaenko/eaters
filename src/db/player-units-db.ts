@@ -633,7 +633,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     },
     cost: {
       mana: 5,
-      sanity: 2,
+      sanity: 0,
     },
   },
 };

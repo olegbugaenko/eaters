@@ -243,6 +243,10 @@ export class PlayerUnitsModule implements GameModule {
     return this.unitOrder.filter(u => !strategyFilter || u.targetingMode !== strategyFilter).length;
   }
 
+  public getActiveUnitCount(): number {
+    return this.unitOrder.length;
+  }
+
   public getEffectiveUnitCount(): number {
     // Count units that can attack (either normally or at distance)
     return this.unitOrder.filter(u => {

@@ -9,6 +9,7 @@ import {
 import {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
+  MAX_UNITS_ON_MAP,
 } from "@logic/modules/active-map/NecromancerModule";
 import { createEmptyResourceAmount } from "@/types/resources";
 import { SpellOption } from "@logic/modules/active-map/spells/SpellcastingModule";
@@ -41,6 +42,7 @@ interface SceneSummoningPanelProps {
   onHoverInfoChange: (content: SceneTooltipContent | null) => void;
   automation: UnitAutomationBridgeState;
   onToggleAutomation: (designId: UnitDesignId, enabled: boolean) => void;
+  unitCount: number;
 }
 
 const formatResourceValue = (
@@ -71,6 +73,7 @@ export const SceneSummoningPanel = forwardRef<
       onHoverInfoChange,
       automation,
       onToggleAutomation,
+      unitCount,
     },
     ref,
   ) => {
@@ -85,6 +88,8 @@ export const SceneSummoningPanel = forwardRef<
       mana: resources.mana.current,
       sanity: resources.sanity.current,
     };
+    const remainingUnitSlots = Math.max(MAX_UNITS_ON_MAP - unitCount, 0);
+    const atUnitCap = remainingUnitSlots <= 0;
 
     const automationLookup = useMemo(() => {
       const map = new Map<UnitDesignId, { enabled: boolean }>();
@@ -157,10 +162,19 @@ export const SceneSummoningPanel = forwardRef<
           </div>
           <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
           <div className="scene-summoning-panel__spells-header">Summoning</div>
+            <div className="scene-summoning-panel__unit-cap-indicator">
+              Units: {unitCount}/{MAX_UNITS_ON_MAP} ·{" "}
+              {atUnitCap ? "Cap reached" : `${remainingUnitSlots} slots left`}
+            </div>
+            {atUnitCap && (
+              <div className="scene-summoning-panel__unit-cap-warning">
+                Unit cap reached. Let creatures fall before summoning more.
+              </div>
+            )}
             <div id="summoning-unit-list" className="scene-summoning-panel__unit-list">
               {spawnOptions.map((option) => {
                 const missing = computeMissing(option.cost, available);
-                const canAfford = missing.mana <= 0 && missing.sanity <= 0;
+                const canAfford = !atUnitCap && missing.mana <= 0 && missing.sanity <= 0;
                 const actionClassName = classNames(
                   "scene-summoning-panel__unit-action",
                   !canAfford && "scene-summoning-panel__unit-action--disabled",

@@ -41,6 +41,21 @@
   align-items: flex-start;
 }
 
+.scene-summoning-panel__unit-cap-indicator {
+  color: #cbd5f5;
+  font-size: 0.9rem;
+}
+
+.scene-summoning-panel__unit-cap-warning {
+  color: #fb923c;
+  font-size: 0.85rem;
+  background: rgba(251, 146, 60, 0.12);
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
 .scene-summoning-panel__resource {
   display: flex;
   flex-direction: column;

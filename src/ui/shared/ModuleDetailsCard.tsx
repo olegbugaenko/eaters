@@ -32,6 +32,13 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
 }) => {
   const effectTitle = nextEffect ? "Effect Preview" : "Effect";
   const containerClassName = classNames("modules-workshop__details", className);
+  const sanityImpactLabel =
+    sanityCost > 0
+      ? `+${formatNumber(sanityCost, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        })}`
+      : "None";
 
   return (
     <div className={containerClassName}>
@@ -71,14 +78,8 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
             </span>
           </div>
           <div className="modules-workshop__cost-item">
-            <span className="modules-workshop__cost-label">Sanity Increase</span>
-            <span className="modules-workshop__cost-value">
-              +
-              {formatNumber(sanityCost, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
-            </span>
+            <span className="modules-workshop__cost-label">Sanity Impact</span>
+            <span className="modules-workshop__cost-value">{sanityImpactLabel}</span>
           </div>
         </div>
         {costSummary ? <div className="modules-workshop__cost-summary">{costSummary}</div> : null}

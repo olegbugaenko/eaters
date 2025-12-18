@@ -229,7 +229,7 @@ export class SpellcastingModule implements GameModule {
         return false;
       }
       const cost = cloneCost(config.cost);
-      return resources.mana.current >= cost.mana && resources.sanity.current >= cost.sanity;
+      return resources.mana.current >= cost.mana;
     });
   }
 

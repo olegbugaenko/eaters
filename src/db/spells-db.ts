@@ -228,7 +228,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Magic Arrow",
     description:
       "Launch a razor of focused mana that slices through the air toward your target.",
-    cost: { mana: 1.0, sanity: 0.25 },
+    cost: { mana: 1.0, sanity: 0 },
     cooldownSeconds: 0.75,
     damage: { min: 1, max: 3 },
     projectile: {
@@ -260,7 +260,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Weaken Curse",
     description:
       "Unfurl a rippling curse that saps the strength of bricks caught in its wave.",
-    cost: { mana: 7, sanity: 0.2 },
+    cost: { mana: 7, sanity: 0 },
     cooldownSeconds: 4,
     persistentAoe: {
       durationMs: 2_500,
@@ -293,7 +293,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Sand Storm",
     description:
       "Summon a whirling storm of scouring grit that grinds forward, shredding bricks until the vortex collapses.",
-    cost: { mana: 5, sanity: 1 },
+    cost: { mana: 5, sanity: 0 },
     cooldownSeconds: 2,
     whirl: {
       radius: 30,
@@ -318,7 +318,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Darts of the Void",
     description:
       "Unleash darts of metal and void energy that damage targets.",
-    cost: { mana: 5.0, sanity: 1 },
+    cost: { mana: 5.0, sanity: 0 },
     cooldownSeconds: 1.2,
     damage: { min: 1, max: 4 },
     projectile: {
@@ -359,7 +359,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Ring of Fire",
     description:
       "Conjure an expanding crown of flame that scorches bricks as it races outward.",
-    cost: { mana: 8, sanity: 1.5 },
+    cost: { mana: 8, sanity: 0 },
     cooldownSeconds: 6,
     persistentAoe: {
       durationMs: 3_000,
