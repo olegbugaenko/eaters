@@ -208,10 +208,7 @@ export class NecromancerModule implements GameModule {
       }
     }
 
-    if (this.mapActive && this.sanity.current <= 0 && !this.sanityDepleted) {
-      this.sanityDepleted = true;
-      this.onSanityDepleted?.();
-    }
+    this.checkSanityDepleted();
 
     if (changed) {
       this.markResourcesDirty();
@@ -238,6 +235,7 @@ export class NecromancerModule implements GameModule {
     this.markResourcesDirty();
 
     this.applyPendingLoad();
+    this.checkSanityDepleted();
     this.pushResources();
   }
 
@@ -540,6 +538,16 @@ export class NecromancerModule implements GameModule {
       mana: Math.max(0, Number.isFinite(cost.mana) ? cost.mana : 0),
       sanity: 0,
     };
+  }
+
+  private checkSanityDepleted(): void {
+    if (!this.mapActive || this.sanityDepleted) {
+      return;
+    }
+    if (this.sanity.current <= 0) {
+      this.sanityDepleted = true;
+      this.onSanityDepleted?.();
+    }
   }
 }
 
