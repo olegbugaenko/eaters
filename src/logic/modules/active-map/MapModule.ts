@@ -333,6 +333,9 @@ export class MapModule implements GameModule {
       this.runActive = false;
       this.options.unitsAutomation.onMapEnd();
     }
+    // Clear active entities to prevent ongoing actions while the run summary is shown
+    this.options.playerUnits.setUnits([]);
+    this.options.bricks.setBricks([]);
     this.pendingCameraFocus = null;
     this.options.necromancer.endCurrentMap();
     this.clearPortalObjects();
