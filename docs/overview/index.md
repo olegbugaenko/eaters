@@ -12,4 +12,6 @@
 
 - [runtime.md](runtime.md) — ServiceContainer, Application, DataBridge та івент-цикл.
 - [services.md](services.md) — SaveManager, GameLoop, SceneObjectManager та допоміжні сервіси.
+- [interfaces.md](interfaces.md) — ключові інтерфейси для модулів, юнітів, ресурсів та умов відкриття.
+- [file-structure.md](file-structure.md) — стислий огляд директорій і точок входу в код.
 - [ui-integration.md](ui-integration.md) — як React підписується на логіку та взаємодіє зі сценою.
