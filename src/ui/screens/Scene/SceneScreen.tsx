@@ -236,8 +236,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setCanAdvancePlayStep(false);
       return;
     }
-    const currentStepId = tutorialSteps[tutorialStepIndex]?.id;
-    if (currentStepId === "summon-blue-vanguard") {
+    const currentStep = tutorialSteps[tutorialStepIndex];
+    if (currentStep?.id === "summon-blue-vanguard" && currentStep.isLocked) {
       setTutorialSummonDone(false);
       setCanAdvancePlayStep(false);
       setIsPauseOpen(false);
@@ -446,7 +446,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     if (canAdvancePlayStep) {
       return;
     }
-    if (!tutorialSummonDone) {
+    if (activeTutorialStep?.isLocked && !tutorialSummonDone) {
       return;
     }
     const mana = necromancerResources.mana.current;
