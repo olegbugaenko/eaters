@@ -473,6 +473,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   ]);
 
   useEffect(() => {
+    if (!showTutorial) {
+      return;
+    }
+    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
+      return;
+    }
+    const sanityLow = necromancerResources.sanity.current <= 1;
+    if (sanityLow && tutorialSummonDone) {
+      setCanAdvancePlayStep(true);
+      setIsPauseOpen(true);
+    }
+  }, [activeTutorialStep?.id, necromancerResources.sanity.current, showTutorial, tutorialSummonDone]);
+
+  useEffect(() => {
     if (!canAdvancePlayStep) {
       return;
     }
