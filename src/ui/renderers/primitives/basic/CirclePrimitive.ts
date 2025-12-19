@@ -6,7 +6,6 @@ import {
 } from "../../../../logic/services/SceneObjectManager";
 import {
   DynamicPrimitive,
-  FILL_COMPONENTS,
   POSITION_COMPONENTS,
   StaticPrimitive,
   VERTEX_COMPONENTS,
@@ -163,40 +162,7 @@ const buildCircleData = (
   return data;
 };
 
-const updateVertex = (
-  target: Float32Array,
-  offset: number,
-  x: number,
-  y: number,
-  fillComponents: Float32Array,
-  updateGeometry: boolean,
-  updateFill: boolean
-): boolean => {
-  let changed = false;
-  if (updateGeometry) {
-    if (target[offset + 0] !== x) {
-      target[offset + 0] = x;
-      changed = true;
-    }
-    if (target[offset + 1] !== y) {
-      target[offset + 1] = y;
-      changed = true;
-    }
-  }
-  if (updateFill) {
-    for (let i = 0; i < FILL_COMPONENTS; i += 1) {
-      const index = offset + POSITION_COMPONENTS + i;
-      const value = fillComponents[i] ?? 0;
-      const current = target[index];
-      if (current !== value && !(Number.isNaN(current) && Number.isNaN(value))) {
-        target[index] = value;
-        changed = true;
-      }
-    }
-  }
-  return changed;
-};
-
+// Optimized: skip work when nothing changes, write data in bulk
 const updateCircleData = (
   target: Float32Array,
   position: SceneVector2,
@@ -210,63 +176,49 @@ const updateCircleData = (
   if (!updateGeometry && !updateFill) {
     return false;
   }
-  let changed = false;
+  const posX = position.x;
+  const posY = position.y;
+  const cosArr = trig.cos;
+  const sinArr = trig.sin;
   let offset = 0;
+
   for (let i = 0; i < segments; i += 1) {
-    changed =
-      updateVertex(
-        target,
-        offset,
-        position.x,
-        position.y,
-        fillComponents,
-        updateGeometry,
-        updateFill
-      ) || changed;
+    // Center vertex
+    if (updateGeometry) {
+      target[offset] = posX;
+      target[offset + 1] = posY;
+    }
+    if (updateFill) {
+      target.set(fillComponents, offset + POSITION_COMPONENTS);
+    }
     offset += VERTEX_COMPONENTS;
 
-    const cos1 = trig.cos[i] ?? 1;
-    const sin1 = trig.sin[i] ?? 0;
-    const vertex1X: number = updateGeometry
-      ? position.x + cos1 * radius
-      : target[offset + 0] ?? 0;
-    const vertex1Y: number = updateGeometry
-      ? position.y + sin1 * radius
-      : target[offset + 1] ?? 0;
-    changed =
-      updateVertex(
-        target,
-        offset,
-        vertex1X,
-        vertex1Y,
-        fillComponents,
-        updateGeometry,
-        updateFill
-      ) || changed;
+    // First edge vertex
+    const cos1 = cosArr[i]!;
+    const sin1 = sinArr[i]!;
+    if (updateGeometry) {
+      target[offset] = posX + cos1 * radius;
+      target[offset + 1] = posY + sin1 * radius;
+    }
+    if (updateFill) {
+      target.set(fillComponents, offset + POSITION_COMPONENTS);
+    }
     offset += VERTEX_COMPONENTS;
 
+    // Second edge vertex
     const nextIndex = (i + 1) % segments;
-    const cos2 = trig.cos[nextIndex] ?? trig.cos[0] ?? 1;
-    const sin2 = trig.sin[nextIndex] ?? trig.sin[0] ?? 0;
-    const vertex2X: number = updateGeometry
-      ? position.x + cos2 * radius
-      : target[offset + 0] ?? 0;
-    const vertex2Y: number = updateGeometry
-      ? position.y + sin2 * radius
-      : target[offset + 1] ?? 0;
-    changed =
-      updateVertex(
-        target,
-        offset,
-        vertex2X,
-        vertex2Y,
-        fillComponents,
-        updateGeometry,
-        updateFill
-      ) || changed;
+    const cos2 = cosArr[nextIndex]!;
+    const sin2 = sinArr[nextIndex]!;
+    if (updateGeometry) {
+      target[offset] = posX + cos2 * radius;
+      target[offset + 1] = posY + sin2 * radius;
+    }
+    if (updateFill) {
+      target.set(fillComponents, offset + POSITION_COMPONENTS);
+    }
     offset += VERTEX_COMPONENTS;
   }
-  return changed;
+  return true;
 };
 
 export const createStaticCirclePrimitive = (

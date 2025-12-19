@@ -38,10 +38,21 @@ export interface SceneFillNoise {
   colorAmplitude: number;
   alphaAmplitude: number;
   scale: number;
+  /** Controls sparsity of noise (0-1). Lower = fewer visible fluctuations. Default 1. */
+  density?: number;
+}
+
+export interface SceneFillFilaments {
+  colorContrast: number;
+  alphaContrast: number;
+  width: number;
+  density: number;
+  edgeBlur: number;
 }
 
 interface SceneFillCommon {
   noise?: SceneFillNoise;
+  filaments?: SceneFillFilaments;
 }
 
 export interface SceneSolidFill extends SceneFillCommon {
@@ -114,6 +125,11 @@ const DEFAULT_FILL: SceneSolidFill = {
 const MIN_NOISE_SCALE = 0.0001;
 const MAX_NOISE_SCALE = 2048;
 const DEFAULT_NOISE_SCALE = 1;
+const MIN_FILAMENT_DENSITY = 0.0001;
+const MAX_FILAMENT_DENSITY = 2048;
+const DEFAULT_FILAMENT_WIDTH = 0.5;
+const DEFAULT_FILAMENT_DENSITY = 1;
+const DEFAULT_FILAMENT_EDGE_BLUR = 0.25;
 const DEFAULT_ROTATION = 0;
 const MIN_MAP_SIZE = 1;
 const MAX_SCALE = 4;
@@ -957,6 +973,45 @@ function sanitizeFillNoise(noise: SceneFillNoise | undefined): SceneFillNoise | 
   };
 }
 
+function sanitizeFillFilaments(
+  filaments: SceneFillFilaments | undefined
+): SceneFillFilaments | undefined {
+  if (!filaments || typeof filaments !== "object") {
+    return undefined;
+  }
+  const colorContrast = clamp01(filaments.colorContrast);
+  const alphaContrast = clamp01(filaments.alphaContrast);
+  if (colorContrast <= 0 && alphaContrast <= 0) {
+    return undefined;
+  }
+  const width = clamp01(
+    typeof filaments.width === "number" && Number.isFinite(filaments.width)
+      ? filaments.width
+      : DEFAULT_FILAMENT_WIDTH
+  );
+  if (width <= 0) {
+    return undefined;
+  }
+  const densityRaw =
+    typeof filaments.density === "number" && Number.isFinite(filaments.density)
+      ? Math.abs(filaments.density)
+      : DEFAULT_FILAMENT_DENSITY;
+  const density = clamp(densityRaw, MIN_FILAMENT_DENSITY, MAX_FILAMENT_DENSITY);
+  const edgeBlurRaw =
+    typeof filaments.edgeBlur === "number" && Number.isFinite(filaments.edgeBlur)
+      ? Math.abs(filaments.edgeBlur)
+      : DEFAULT_FILAMENT_EDGE_BLUR;
+  const edgeBlur = clamp01(edgeBlurRaw);
+
+  return {
+    colorContrast,
+    alphaContrast,
+    width,
+    density,
+    edgeBlur,
+  };
+}
+
 function sanitizeFill(fill: SceneFill | undefined): SceneFill {
   if (!fill) {
     return cloneFill(DEFAULT_FILL);
@@ -968,7 +1023,11 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         color: sanitizeColor(fill.color),
         ...(() => {
           const noise = sanitizeFillNoise(fill.noise);
-          return noise ? { noise } : {};
+          const filaments = sanitizeFillFilaments(fill.filaments);
+          return {
+            ...(noise ? { noise } : {}),
+            ...(filaments ? { filaments } : {}),
+          };
         })(),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
@@ -979,7 +1038,11 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         stops: sanitizeGradientStops(fill.stops),
         ...(() => {
           const noise = sanitizeFillNoise(fill.noise);
-          return noise ? { noise } : {};
+          const filaments = sanitizeFillFilaments(fill.filaments);
+          return {
+            ...(noise ? { noise } : {}),
+            ...(filaments ? { filaments } : {}),
+          };
         })(),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
@@ -991,7 +1054,11 @@ function sanitizeFill(fill: SceneFill | undefined): SceneFill {
         stops: sanitizeGradientStops(fill.stops),
         ...(() => {
           const noise = sanitizeFillNoise(fill.noise);
-          return noise ? { noise } : {};
+          const filaments = sanitizeFillFilaments(fill.filaments);
+          return {
+            ...(noise ? { noise } : {}),
+            ...(filaments ? { filaments } : {}),
+          };
         })(),
       };
     default:
@@ -1021,8 +1088,12 @@ function cloneFill(fill: SceneFill): SceneFill {
         color: { ...fill.color },
       };
       const noise = cloneNoise(fill.noise);
+      const filaments = cloneFilaments(fill.filaments);
       if (noise) {
         cloned.noise = noise;
+      }
+      if (filaments) {
+        cloned.filaments = filaments;
       }
       return cloned;
     }
@@ -1034,8 +1105,12 @@ function cloneFill(fill: SceneFill): SceneFill {
         stops: cloneStops(fill.stops),
       };
       const noise = cloneNoise(fill.noise);
+      const filaments = cloneFilaments(fill.filaments);
       if (noise) {
         cloned.noise = noise;
+      }
+      if (filaments) {
+        cloned.filaments = filaments;
       }
       return cloned;
     }
@@ -1048,8 +1123,12 @@ function cloneFill(fill: SceneFill): SceneFill {
         stops: cloneStops(fill.stops),
       };
       const noise = cloneNoise(fill.noise);
+      const filaments = cloneFilaments(fill.filaments);
       if (noise) {
         cloned.noise = noise;
+      }
+      if (filaments) {
+        cloned.filaments = filaments;
       }
       return cloned;
     }
@@ -1065,6 +1144,15 @@ function cloneNoise(noise: SceneFillNoise | undefined): SceneFillNoise | undefin
     return undefined;
   }
   return { ...noise };
+}
+
+function cloneFilaments(
+  filaments: SceneFillFilaments | undefined
+): SceneFillFilaments | undefined {
+  if (!filaments) {
+    return undefined;
+  }
+  return { ...filaments };
 }
 
 function cloneStroke(stroke: SceneStroke | undefined): SceneStroke | undefined {

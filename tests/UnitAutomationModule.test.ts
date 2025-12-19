@@ -30,6 +30,7 @@ describe("UnitAutomationModule", () => {
         return true;
       },
       getResources: () => createFullResources(),
+      getRemainingUnitCapacity: () => 99,
     };
     let skillLevel = 0;
     const unitType = PLAYER_UNIT_TYPES[0];
@@ -121,6 +122,7 @@ describe("UnitAutomationModule", () => {
         return true;
       },
       getResources: () => createFullResources(),
+      getRemainingUnitCapacity: () => 99,
     };
     const unitType = PLAYER_UNIT_TYPES[0];
     assert(unitType, "expected at least one unit type for automation tests");
@@ -198,6 +200,7 @@ describe("UnitAutomationModule", () => {
         return true;
       },
       getResources: () => createFullResources(),
+      getRemainingUnitCapacity: () => 99,
     };
     const unitType = PLAYER_UNIT_TYPES[0];
     assert(unitType, "expected at least one unit type for automation tests");
@@ -425,6 +428,7 @@ describe("UnitAutomationModule", () => {
         mana: { current: mana, max: manaMax, regenPerSecond: manaRegen },
         sanity: { current: 999, max: 999 },
       }),
+      getRemainingUnitCapacity: () => 99,
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
@@ -569,6 +573,7 @@ describe("UnitAutomationModule", () => {
         mana: { current: mana, max: manaMax, regenPerSecond: manaRegen },
         sanity: { current: 999, max: 999 },
       }),
+      getRemainingUnitCapacity: () => 99,
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
@@ -720,6 +725,7 @@ describe("UnitAutomationModule", () => {
         mana: { current: mana, max: manaMax, regenPerSecond: manaRegen },
         sanity: { current: 999, max: 999 },
       }),
+      getRemainingUnitCapacity: () => 99,
     };
     const unitDesigns = {
       subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {

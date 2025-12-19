@@ -1,6 +1,7 @@
 import type {
   SceneColor,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
 } from "../logic/services/SceneObjectManager";
 
@@ -17,7 +18,7 @@ export interface VisualEffectOverlayConfig {
 // Minimal renderer schema for auras (composite like player units)
 export type AuraRendererFillConfig =
   | { type: "base"; brightness?: number; alphaMultiplier?: number }
-  | { type: "solid"; color: SceneColor; noise?: SceneFillNoise }
+  | { type: "solid"; color: SceneColor; noise?: SceneFillNoise; filaments?: SceneFillFilaments }
   | { type: "gradient"; fill: SceneFill };
 
 export type AuraRendererStrokeConfig =

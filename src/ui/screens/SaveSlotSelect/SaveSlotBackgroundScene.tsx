@@ -30,6 +30,8 @@ import {
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
+  FILL_FILAMENTS0_COMPONENTS,
+  FILL_FILAMENTS1_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
 } from "@ui/renderers/objects";
@@ -47,9 +49,14 @@ import {
 import { renderArcBatches, resetAllArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { renderFireRings, disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import {
+  SCENE_VERTEX_SHADER,
+  createSceneFragmentShader,
+} from "@ui/renderers/shaders/fillEffects.glsl";
+import {
   setParticleEmitterGlContext,
   getParticleEmitterGlContext,
 } from "@ui/renderers/primitives/utils/gpuContext";
+import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
 import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
 import { whirlEffect, disposeWhirlResources } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import type { UnitModuleId } from "@db/unit-modules-db";
@@ -781,222 +788,9 @@ const cloneRendererConfigForScene = (
   };
 };
 
-const createShader = (gl: WebGLRenderingContext, type: number, source: string) => {
-  const shader = gl.createShader(type);
-  if (!shader) {
-    throw new Error("Unable to create shader");
-  }
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const info = gl.getShaderInfoLog(shader);
-    gl.deleteShader(shader);
-    throw new Error(`Failed to compile shader: ${info ?? "unknown"}`);
-  }
-  return shader;
-};
+const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 
-const createProgram = (
-  gl: WebGLRenderingContext,
-  vertexShader: WebGLShader,
-  fragmentShader: WebGLShader
-) => {
-  const program = gl.createProgram();
-  if (!program) {
-    throw new Error("Unable to create program");
-  }
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const info = gl.getProgramInfoLog(program);
-    gl.deleteProgram(program);
-    throw new Error(`Failed to link program: ${info ?? "unknown"}`);
-  }
-  return program;
-};
-
-const VERTEX_SHADER = `
-attribute vec2 a_position;
-attribute vec4 a_fillInfo;
-attribute vec4 a_fillParams0;
-attribute vec4 a_fillParams1;
-attribute vec3 a_stopOffsets;
-attribute vec4 a_stopColor0;
-attribute vec4 a_stopColor1;
-attribute vec4 a_stopColor2;
-uniform vec2 u_cameraPosition;
-uniform vec2 u_viewportSize;
-varying vec2 v_worldPosition;
-varying vec4 v_fillInfo;
-varying vec4 v_fillParams0;
-varying vec4 v_fillParams1;
-varying vec3 v_stopOffsets;
-varying vec4 v_stopColor0;
-varying vec4 v_stopColor1;
-varying vec4 v_stopColor2;
-
-vec2 toClip(vec2 world) {
-  vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
-  return vec2(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0);
-}
-
-void main() {
-  gl_Position = vec4(toClip(a_position), 0.0, 1.0);
-  v_worldPosition = a_position;
-  v_fillInfo = a_fillInfo;
-  v_fillParams0 = a_fillParams0;
-  v_fillParams1 = a_fillParams1;
-  v_stopOffsets = a_stopOffsets;
-  v_stopColor0 = a_stopColor0;
-  v_stopColor1 = a_stopColor1;
-  v_stopColor2 = a_stopColor2;
-}
-`;
-
-const FRAGMENT_SHADER = `
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-
-varying vec2 v_worldPosition;
-varying vec4 v_fillInfo;
-varying vec4 v_fillParams0;
-varying vec4 v_fillParams1;
-varying vec3 v_stopOffsets;
-varying vec4 v_stopColor0;
-varying vec4 v_stopColor1;
-varying vec4 v_stopColor2;
-
-float clamp01(float value) {
-  return clamp(value, 0.0, 1.0);
-}
-
-float hash21(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
-
-float noise2d(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  float a = hash21(i);
-  float b = hash21(i + vec2(1.0, 0.0));
-  float c = hash21(i + vec2(0.0, 1.0));
-  float d = hash21(i + vec2(1.0, 1.0));
-  float ab = mix(a, b, u.x);
-  float cd = mix(c, d, u.x);
-  return mix(ab, cd, u.y);
-}
-
-vec2 resolveNoiseAnchor(float fillType) {
-  if (fillType < 3.5) {
-    return v_fillParams0.xy;
-  }
-  return v_worldPosition;
-}
-
-vec4 applyFillNoise(vec4 color) {
-  float colorAmp = v_fillInfo.z;
-  float alphaAmp = v_fillInfo.w;
-  if (colorAmp <= 0.0 && alphaAmp <= 0.0) {
-    return color;
-  }
-  float scale = v_fillParams1.w;
-  float effectiveScale = scale > 0.0 ? scale : 1.0;
-  float fillType = v_fillInfo.x;
-  vec2 anchor = resolveNoiseAnchor(fillType);
-  float noiseValue = noise2d((v_worldPosition - anchor) * effectiveScale) * 2.0 - 1.0;
-  if (colorAmp > 0.0) {
-    color.rgb = clamp(color.rgb + noiseValue * colorAmp, 0.0, 1.0);
-  }
-  if (alphaAmp > 0.0) {
-    color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
-  }
-  return color;
-}
-
-vec4 sampleGradient(float t) {
-  float stopCount = v_fillInfo.y;
-  vec4 color0 = v_stopColor0;
-  if (stopCount < 1.5) {
-    return color0;
-  }
-
-  float offset0 = v_stopOffsets.x;
-  float offset1 = v_stopOffsets.y;
-  vec4 color1 = v_stopColor1;
-
-  if (stopCount < 2.5) {
-    if (t <= offset0) {
-      return color0;
-    }
-    if (t >= offset1) {
-      return color1;
-    }
-    float range = max(offset1 - offset0, 0.0001);
-    float factor = clamp((t - offset0) / range, 0.0, 1.0);
-    return mix(color0, color1, factor);
-  }
-
-  float offset2 = v_stopOffsets.z;
-  vec4 color2 = v_stopColor2;
-
-  if (t <= offset0) {
-    return color0;
-  }
-  if (t >= offset2) {
-    return color2;
-  }
-  if (t <= offset1) {
-    float range = max(offset1 - offset0, 0.0001);
-    float factor = clamp((t - offset0) / range, 0.0, 1.0);
-    return mix(color0, color1, factor);
-  }
-
-  float range = max(offset2 - offset1, 0.0001);
-  float factor = clamp((t - offset1) / range, 0.0, 1.0);
-  return mix(color1, color2, factor);
-}
-
-void main() {
-  float fillType = v_fillInfo.x;
-  vec4 color = v_stopColor0;
-
-  if (fillType >= 0.5) {
-    float t = 0.0;
-    if (fillType < 1.5) {
-      vec2 start = v_fillParams0.xy;
-      vec2 dir = v_fillParams1.xy;
-      float invLenSq = v_fillParams1.z;
-      if (invLenSq > 0.0) {
-        t = clamp01(dot(v_worldPosition - start, dir) * invLenSq);
-      }
-    } else if (fillType < 2.5) {
-      vec2 center = v_fillParams0.xy;
-      float radius = v_fillParams0.z;
-      if (radius > 0.0) {
-        float dist = distance(v_worldPosition, center);
-        t = clamp01(dist / radius);
-      }
-    } else {
-      vec2 center = v_fillParams0.xy;
-      float radius = v_fillParams0.z;
-      if (radius > 0.0) {
-        float dist = abs(v_worldPosition.x - center.x) + abs(v_worldPosition.y - center.y);
-        t = clamp01(dist / radius);
-      }
-    }
-    color = sampleGradient(t);
-  }
-
-  gl_FragColor = applyFillNoise(color);
-}
-`;
+const FRAGMENT_SHADER = createSceneFragmentShader();
 
 const centerCameraOnBounds = (
   scene: SceneObjectManager,
@@ -1130,7 +924,7 @@ const updateCreatures = (
 };
 
 const applySyncInstructions = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   objectsRenderer: ReturnType<typeof createObjectsRendererManager>,
   staticBuffer: WebGLBuffer,
   dynamicBuffer: WebGLBuffer
@@ -1165,12 +959,10 @@ export const SaveSlotBackgroundScene: React.FC = () => {
     }
 
     const wrapper = canvas.parentElement as HTMLElement | null;
-    const webgl2 = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
-    const gl =
-      (webgl2 as WebGLRenderingContext | WebGL2RenderingContext | null) ??
-      canvas.getContext("webgl");
+    const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
 
     if (!gl) {
+      console.error("WebGL 2 is required but not available");
       return undefined;
     }
 
@@ -1179,20 +971,12 @@ export const SaveSlotBackgroundScene: React.FC = () => {
 
     const objectsRenderer = createObjectsRendererManager();
 
-    if (webgl2) {
-      setParticleEmitterGlContext(webgl2);
-      whirlEffect.onContextAcquired(webgl2);
-      petalAuraEffect.onContextAcquired(webgl2);
-    } else {
-      setParticleEmitterGlContext(null);
-    }
+    setParticleEmitterGlContext(gl);
+    whirlEffect.onContextAcquired(gl);
+    petalAuraEffect.onContextAcquired(gl);
 
     clearAllAuraSlots();
-    if (webgl2) {
-      clearPetalAuraInstances(webgl2);
-    } else {
-      clearPetalAuraInstances();
-    }
+    clearPetalAuraInstances(gl);
 
     const titleLayout = computeTitleLayout(
       TITLE_LINES,
@@ -1219,14 +1003,19 @@ export const SaveSlotBackgroundScene: React.FC = () => {
 
     objectsRenderer.bootstrap(scene.getObjects());
 
-    const vertexShader = createShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    const program = createProgram(gl, vertexShader, fragmentShader);
+    const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
+    const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+    const program = linkProgram(gl, vertexShader, fragmentShader);
 
     const positionLocation = gl.getAttribLocation(program, "a_position");
     const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
     const fillParams0Location = gl.getAttribLocation(program, "a_fillParams0");
     const fillParams1Location = gl.getAttribLocation(program, "a_fillParams1");
+    const filaments0Location = gl.getAttribLocation(program, "a_filaments0");
+    const filamentEdgeBlurLocation = gl.getAttribLocation(
+      program,
+      "a_filamentEdgeBlur",
+    );
     const stopOffsetsLocation = gl.getAttribLocation(program, "a_stopOffsets");
     const stopColor0Location = gl.getAttribLocation(program, "a_stopColor0");
     const stopColor1Location = gl.getAttribLocation(program, "a_stopColor1");
@@ -1237,6 +1026,8 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       fillInfoLocation,
       fillParams0Location,
       fillParams1Location,
+      filaments0Location,
+      filamentEdgeBlurLocation,
       stopOffsetsLocation,
       stopColor0Location,
       stopColor1Location,
@@ -1259,6 +1050,8 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       push(fillInfoLocation, FILL_INFO_COMPONENTS);
       push(fillParams0Location, FILL_PARAMS0_COMPONENTS);
       push(fillParams1Location, FILL_PARAMS1_COMPONENTS);
+      push(filaments0Location, FILL_FILAMENTS0_COMPONENTS);
+      push(filamentEdgeBlurLocation, FILL_FILAMENTS1_COMPONENTS);
       push(stopOffsetsLocation, STOP_OFFSETS_COMPONENTS);
       push(stopColor0Location, STOP_COLOR_COMPONENTS);
       push(stopColor1Location, STOP_COLOR_COMPONENTS);
@@ -1352,16 +1145,14 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       drawBuffer(staticBuffer, objectsRenderer.getStaticVertexCount());
       drawBuffer(dynamicBuffer, objectsRenderer.getDynamicVertexCount());
 
-      if (webgl2) {
-        renderParticleEmitters(webgl2, cameraState.position, cameraState.viewportSize);
-        updateAllWhirlInterpolations();
-        whirlEffect.beforeRender(webgl2, timestamp);
-        petalAuraEffect.beforeRender(webgl2, timestamp);
-        whirlEffect.render(webgl2, cameraState.position, cameraState.viewportSize, timestamp);
-        petalAuraEffect.render(webgl2, cameraState.position, cameraState.viewportSize, timestamp);
-        renderArcBatches(webgl2, cameraState.position, cameraState.viewportSize);
-        renderFireRings(webgl2, cameraState.position, cameraState.viewportSize, timestamp);
-      }
+      renderParticleEmitters(gl, cameraState.position, cameraState.viewportSize);
+      updateAllWhirlInterpolations();
+      whirlEffect.beforeRender(gl, timestamp);
+      petalAuraEffect.beforeRender(gl, timestamp);
+      whirlEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+      petalAuraEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+      renderArcBatches(gl, cameraState.position, cameraState.viewportSize);
+      renderFireRings(gl, cameraState.position, cameraState.viewportSize, timestamp);
 
       frame = window.requestAnimationFrame(render);
     };
@@ -1390,12 +1181,10 @@ export const SaveSlotBackgroundScene: React.FC = () => {
           // ignore cleanup errors
         }
       }
-      if (webgl2) {
-        try {
-          petalAuraEffect.onContextLost(webgl2);
-        } catch {
-          // ignore cleanup errors
-        }
+      try {
+        petalAuraEffect.onContextLost(gl);
+      } catch {
+        // ignore cleanup errors
       }
       try {
         clearAllAuraSlots();

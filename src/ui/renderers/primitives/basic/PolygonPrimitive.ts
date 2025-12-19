@@ -184,6 +184,7 @@ const assignVertex = (
   return changed;
 };
 
+// Optimized: inline transform, avoid .map() allocations
 const buildPolygonData = (
   center: SceneVector2,
   rotation: number,
@@ -194,34 +195,47 @@ const buildPolygonData = (
   if (triangleCount <= 0) {
     return new Float32Array(0);
   }
-  const transformed = vertices.map((vertex) =>
-    transformObjectPoint(center, rotation, vertex)
-  );
+  const cx = center.x;
+  const cy = center.y;
+  const hasRotation = rotation !== 0;
+  const cos = hasRotation ? Math.cos(rotation) : 1;
+  const sin = hasRotation ? Math.sin(rotation) : 0;
+
+  // Inline transform helper
+  const transformX = (v: SceneVector2): number =>
+    hasRotation ? cx + v.x * cos - v.y * sin : cx + v.x;
+  const transformY = (v: SceneVector2): number =>
+    hasRotation ? cy + v.x * sin + v.y * cos : cy + v.y;
+
   const data = new Float32Array(triangleCount * 3 * VERTEX_COMPONENTS);
   let writeOffset = 0;
-  const anchor = transformed[0]!;
-  for (let i = 1; i < transformed.length - 1; i += 1) {
+  const anchor = vertices[0]!;
+  const anchorX = transformX(anchor);
+  const anchorY = transformY(anchor);
+
+  for (let i = 1; i < vertices.length - 1; i += 1) {
+    writeOffset = pushVertex(data, writeOffset, anchorX, anchorY, fillComponents);
+    const current = vertices[i]!;
     writeOffset = pushVertex(
       data,
       writeOffset,
-      anchor.x,
-      anchor.y,
+      transformX(current),
+      transformY(current),
       fillComponents
     );
-    const current = transformed[i]!;
+    const next = vertices[i + 1]!;
     writeOffset = pushVertex(
       data,
       writeOffset,
-      current.x,
-      current.y,
+      transformX(next),
+      transformY(next),
       fillComponents
     );
-    const next = transformed[i + 1]!;
-    writeOffset = pushVertex(data, writeOffset, next.x, next.y, fillComponents);
   }
   return data;
 };
 
+// Optimized: inline transform, avoid .map() allocations
 const updatePolygonData = (
   target: Float32Array,
   center: SceneVector2,
@@ -241,57 +255,91 @@ const updatePolygonData = (
     }
     return true;
   }
-  const transformed = vertices.map((vertex) =>
-    transformObjectPoint(center, rotation, vertex)
-  );
+  const cx = center.x;
+  const cy = center.y;
+  const hasRotation = rotation !== 0;
+  const cos = hasRotation ? Math.cos(rotation) : 1;
+  const sin = hasRotation ? Math.sin(rotation) : 0;
+
+  // Inline transform helper
+  const transformX = (v: SceneVector2): number =>
+    hasRotation ? cx + v.x * cos - v.y * sin : cx + v.x;
+  const transformY = (v: SceneVector2): number =>
+    hasRotation ? cy + v.x * sin + v.y * cos : cy + v.y;
+
   let offset = 0;
   let changed = false;
-  const anchor = transformed[0]!;
-  for (let i = 1; i < transformed.length - 1; i += 1) {
-    changed =
-      assignVertex(target, offset, anchor.x, anchor.y, fillComponents) || changed;
+  const anchor = vertices[0]!;
+  const anchorX = transformX(anchor);
+  const anchorY = transformY(anchor);
+
+  for (let i = 1; i < vertices.length - 1; i += 1) {
+    changed = assignVertex(target, offset, anchorX, anchorY, fillComponents) || changed;
     offset += VERTEX_COMPONENTS;
 
-    const current = transformed[i]!;
+    const current = vertices[i]!;
     changed =
-      assignVertex(target, offset, current.x, current.y, fillComponents) ||
+      assignVertex(target, offset, transformX(current), transformY(current), fillComponents) ||
       changed;
     offset += VERTEX_COMPONENTS;
 
-    const next = transformed[i + 1]!;
+    const next = vertices[i + 1]!;
     changed =
-      assignVertex(target, offset, next.x, next.y, fillComponents) || changed;
+      assignVertex(target, offset, transformX(next), transformY(next), fillComponents) || changed;
     offset += VERTEX_COMPONENTS;
   }
   return changed;
 };
 
+// Optimized: reuse output array when size matches
 const expandVertices = (
   vertices: PolygonVertices,
   centerOffset: SceneVector2,
-  strokeWidth: number
+  strokeWidth: number,
+  output?: PolygonVertices
 ): PolygonVertices => {
+  const n = vertices.length;
   if (strokeWidth <= 0) {
+    // When no stroke, just copy
+    if (output && output.length === n) {
+      for (let i = 0; i < n; i++) {
+        const src = vertices[i]!;
+        const dst = output[i]!;
+        dst.x = src.x;
+        dst.y = src.y;
+      }
+      return output;
+    }
     return cloneVertices(vertices);
   }
-  return vertices.map((vertex) => {
-    const dir = {
-      x: vertex.x - centerOffset.x,
-      y: vertex.y - centerOffset.y,
-    };
-    const length = Math.hypot(dir.x, dir.y);
-    if (length === 0) {
-      return {
-        x: vertex.x + strokeWidth,
-        y: vertex.y,
-      };
+  // Reuse or create output array
+  let result: PolygonVertices;
+  if (output && output.length === n) {
+    result = output;
+  } else {
+    result = new Array(n);
+    for (let i = 0; i < n; i++) {
+      result[i] = { x: 0, y: 0 };
     }
-    const scale = (length + strokeWidth) / Math.max(length, 1e-6);
-    return {
-      x: centerOffset.x + dir.x * scale,
-      y: centerOffset.y + dir.y * scale,
-    };
-  });
+  }
+  const cox = centerOffset.x;
+  const coy = centerOffset.y;
+  for (let i = 0; i < n; i++) {
+    const vertex = vertices[i]!;
+    const dirX = vertex.x - cox;
+    const dirY = vertex.y - coy;
+    const length = Math.hypot(dirX, dirY);
+    const out = result[i]!;
+    if (length === 0) {
+      out.x = vertex.x + strokeWidth;
+      out.y = vertex.y;
+    } else {
+      const scale = (length + strokeWidth) / Math.max(length, 1e-6);
+      out.x = cox + dirX * scale;
+      out.y = coy + dirY * scale;
+    }
+  }
+  return result;
 };
 
 const createStrokeFill = (stroke: SceneStroke): SceneFill => ({
@@ -395,37 +443,65 @@ interface DynamicPolygonStrokePrimitiveOptions {
   offset?: SceneVector2;
 }
 
+// Optimized: inline transform, no allocations, reuse target buffer when possible
 const buildStrokeBandData = (
   center: SceneVector2,
   rotation: number,
   inner: PolygonVertices,
   outer: PolygonVertices,
-  fillComponents: Float32Array
+  fillComponents: Float32Array,
+  existingData?: Float32Array
 ): Float32Array => {
   const n = Math.min(inner.length, outer.length);
   if (n < MIN_VERTEX_COUNT) {
     return new Float32Array(0);
   }
-  const innerT = inner.map((v) => transformObjectPoint(center, rotation, v));
-  const outerT = outer.map((v) => transformObjectPoint(center, rotation, v));
-  // Two triangles per edge
+  // Two triangles per edge, 3 vertices each
   const triCount = n * 2;
-  const data = new Float32Array(triCount * 3 * VERTEX_COMPONENTS);
+  const requiredSize = triCount * 3 * VERTEX_COMPONENTS;
+  const data =
+    existingData && existingData.length === requiredSize
+      ? existingData
+      : new Float32Array(requiredSize);
+
+  const cx = center.x;
+  const cy = center.y;
+  const hasRotation = rotation !== 0;
+  const cos = hasRotation ? Math.cos(rotation) : 1;
+  const sin = hasRotation ? Math.sin(rotation) : 0;
+
+  // Inline transform helper - calculates world position without allocation
+  const transformX = (v: SceneVector2): number =>
+    hasRotation ? cx + v.x * cos - v.y * sin : cx + v.x;
+  const transformY = (v: SceneVector2): number =>
+    hasRotation ? cy + v.x * sin + v.y * cos : cy + v.y;
+
   let write = 0;
   for (let i = 0; i < n; i += 1) {
     const j = (i + 1) % n;
-    const A = outerT[i]!;
-    const B = outerT[j]!;
-    const a = innerT[i]!;
-    const b = innerT[j]!;
+    const outerI = outer[i]!;
+    const outerJ = outer[j]!;
+    const innerI = inner[i]!;
+    const innerJ = inner[j]!;
+
+    // Transform inline
+    const Ax = transformX(outerI);
+    const Ay = transformY(outerI);
+    const Bx = transformX(outerJ);
+    const By = transformY(outerJ);
+    const ax = transformX(innerI);
+    const ay = transformY(innerI);
+    const bx = transformX(innerJ);
+    const by = transformY(innerJ);
+
     // Triangle 1: A, B, a
-    write = pushVertex(data, write, A.x, A.y, fillComponents);
-    write = pushVertex(data, write, B.x, B.y, fillComponents);
-    write = pushVertex(data, write, a.x, a.y, fillComponents);
+    write = pushVertex(data, write, Ax, Ay, fillComponents);
+    write = pushVertex(data, write, Bx, By, fillComponents);
+    write = pushVertex(data, write, ax, ay, fillComponents);
     // Triangle 2: a, B, b
-    write = pushVertex(data, write, a.x, a.y, fillComponents);
-    write = pushVertex(data, write, B.x, B.y, fillComponents);
-    write = pushVertex(data, write, b.x, b.y, fillComponents);
+    write = pushVertex(data, write, ax, ay, fillComponents);
+    write = pushVertex(data, write, Bx, By, fillComponents);
+    write = pushVertex(data, write, bx, by, fillComponents);
   }
   return data;
 };
@@ -479,8 +555,10 @@ export const createDynamicPolygonStrokePrimitive = (
         rotation,
         size: geometry.size,
       });
-      outer = expandVertices(inner, geometry.centerOffset, options.stroke.width);
-      data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
+      // Reuse outer buffer when possible
+      outer = expandVertices(inner, geometry.centerOffset, options.stroke.width, outer);
+      // Reuse existing data buffer when possible
+      data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents, data);
       return data;
     },
   };

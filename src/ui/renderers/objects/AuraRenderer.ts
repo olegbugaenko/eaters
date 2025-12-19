@@ -7,6 +7,7 @@ import {
 import {
   SceneObjectInstance,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneVector2,
   FILL_TYPES,
@@ -91,6 +92,10 @@ const cloneFillNoise = (
   noise: SceneFillNoise | undefined
 ): SceneFillNoise | undefined => (noise ? { ...noise } : undefined);
 
+const cloneFillFilaments = (
+  filaments: SceneFillFilaments | undefined
+): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
+
 const sanitizeVertices = (
   vertices: readonly SceneVector2[] | undefined
 ): SceneVector2[] => {
@@ -118,6 +123,7 @@ const resolveFill = (fill: AuraRendererFillConfig | undefined): SceneFill => {
       fillType: FILL_TYPES.SOLID,
       color: { ...fill.color },
       ...(fill.noise ? { noise: cloneFillNoise(fill.noise) } : {}),
+      ...(fill.filaments ? { filaments: cloneFillFilaments(fill.filaments) } : {}),
     };
   }
   // gradient: incoming is SceneFill-compatible

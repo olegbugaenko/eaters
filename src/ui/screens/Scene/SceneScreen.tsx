@@ -182,7 +182,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const pointerPressedRef = useRef(false);
   const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
-  // Threshold state is sourced from bridge (autoRestartState)
   const autoRestartHandledRef = useRef(false);
   const {
     tutorialSteps,
@@ -424,13 +423,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     [app]
   );
 
-  const handleUpdateAutoRestartThreshold = useCallback(
-    (enabled: boolean, minUnits: number) => {
-      app.setAutoRestartThreshold(enabled, minUnits);
-    },
-    [app]
-  );
-
   const handleRestart = useCallback(() => {
     autoRestartHandledRef.current = true;
     restartMap();
@@ -505,6 +497,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     spawnOptions: necromancerOptions,
     automation: automationState,
     spells: spellOptions,
+    unitCount,
   }));
 
   // Throttle toolbar updates to at most 5 times per second
@@ -523,6 +516,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         spawnOptions: necromancerOptionsRef.current,
         automation: automationStateRef.current,
         spells: spellOptionsRef.current,
+        unitCount: unitCountRef.current,
       });
     }, 200);
     return () => window.clearInterval(interval);
@@ -592,6 +586,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         onHoverInfoChange={setHoverContent}
         automation={summoningProps.automation}
         onToggleAutomation={handleToggleAutomation}
+        unitCount={summoningProps.unitCount}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
@@ -609,9 +604,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
                   enabled: autoRestartState.enabled,
                   countdown: autoRestartCountdown,
                   onToggle: handleToggleAutoRestart,
-                  thresholdEnabled: autoRestartState.thresholdEnabled ?? false,
-                  minEffectiveUnits: autoRestartState.minEffectiveUnits ?? 3,
-                  onUpdateThreshold: handleUpdateAutoRestartThreshold,
                 }
               : undefined
           }

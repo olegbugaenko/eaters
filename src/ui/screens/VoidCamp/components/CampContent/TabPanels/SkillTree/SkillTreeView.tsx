@@ -83,8 +83,28 @@ const listResources = (names: string[]): string => {
   return `${others.join(", ")}, and ${last}`;
 };
 
+/**
+ * Determines if a skill node should be visible based on prerequisites.
+ * A node is hidden if ALL of its prerequisites have currentLevel === 0.
+ * A node is visible if:
+ * - It has no prerequisites, OR
+ * - At least one prerequisite has currentLevel > 0
+ */
+const isNodeVisible = (node: SkillNodeBridgePayload): boolean => {
+  // Nodes with no requirements are always visible
+  if (node.requirements.length === 0) {
+    return true;
+  }
+  // Node is visible if at least one prerequisite has any level invested
+  return node.requirements.some((req) => req.currentLevel > 0);
+};
+
 const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
-  if (nodes.length === 0) {
+  // Filter to only visible nodes for layout calculations
+  const visibleNodes = nodes.filter(isNodeVisible);
+  const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
+
+  if (visibleNodes.length === 0) {
     return {
       width: 0,
       height: 0,
@@ -93,7 +113,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
     };
   }
 
-  const first = nodes[0];
+  const first = visibleNodes[0];
   if (!first) {
     return {
       width: 0,
@@ -108,7 +128,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   let minY = first.position.y;
   let maxY = first.position.y;
 
-  nodes.forEach((node) => {
+  visibleNodes.forEach((node) => {
     minX = Math.min(minX, node.position.x);
     maxX = Math.max(maxX, node.position.x);
     minY = Math.min(minY, node.position.y);
@@ -121,7 +141,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   const offsetY = TREE_MARGIN - minY * CELL_SIZE_Y;
 
   const positions = new Map<SkillId, { x: number; y: number }>();
-  nodes.forEach((node) => {
+  visibleNodes.forEach((node) => {
     positions.set(node.id, {
       x: offsetX + node.position.x * CELL_SIZE_X,
       y: offsetY + node.position.y * CELL_SIZE_Y,
@@ -129,12 +149,16 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   });
 
   const edges: SkillTreeEdge[] = [];
-  nodes.forEach((node) => {
+  visibleNodes.forEach((node) => {
     const to = positions.get(node.id);
     if (!to) {
       return;
     }
     node.requirements.forEach((requirement) => {
+      // Only show edges to visible prerequisite nodes
+      if (!visibleNodeIds.has(requirement.id)) {
+        return;
+      }
       const from = positions.get(requirement.id);
       if (!from) {
         return;
@@ -232,12 +256,13 @@ export const SkillTreeView: React.FC = () => {
   const skillTreeModule = useMemo(() => app.getSkillTree(), [app]);
 
   const nodes = skillTree.nodes;
+  const visibleNodes = useMemo(() => nodes.filter(isNodeVisible), [nodes]);
 
   useEffect(() => {
-    if (hoveredId && !nodes.some((node) => node.id === hoveredId)) {
+    if (hoveredId && !visibleNodes.some((node) => node.id === hoveredId)) {
       setHoveredId(null);
     }
-  }, [hoveredId, nodes]);
+  }, [hoveredId, visibleNodes]);
 
   const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
@@ -284,7 +309,7 @@ export const SkillTreeView: React.FC = () => {
       return;
     }
 
-    const originNode = nodes.find(
+    const originNode = visibleNodes.find(
       (node) => node.position.x === 0 && node.position.y === 0
     );
     const targetPosition = originNode
@@ -306,7 +331,7 @@ export const SkillTreeView: React.FC = () => {
     });
     previousViewportSizeRef.current = viewportSize;
     hasInitializedViewRef.current = true;
-  }, [layout, nodes, viewportSize]);
+  }, [layout, visibleNodes, viewportSize]);
 
   useEffect(() => {
     if (!hasInitializedViewRef.current) {
@@ -338,9 +363,9 @@ export const SkillTreeView: React.FC = () => {
     previousViewportSizeRef.current = viewportSize;
   }, [viewportSize]);
 
-  const fallbackId: SkillId | null = nodes[0]?.id ?? null;
+  const fallbackId: SkillId | null = visibleNodes[0]?.id ?? null;
   const activeId = hoveredId ?? fallbackId;
-  const activeNode = nodes.find((node) => node.id === activeId) ?? null;
+  const activeNode = visibleNodes.find((node) => node.id === activeId) ?? null;
 
   const activeMissing = useMemo(
     () => computeMissing(activeNode?.nextCost ?? null, totalsMap),
@@ -539,7 +564,7 @@ export const SkillTreeView: React.FC = () => {
               />
             ))}
           </svg>
-          {nodes.map((node) => {
+          {visibleNodes.map((node) => {
             const position = layout.positions.get(node.id);
             if (!position) {
               return null;
@@ -588,7 +613,7 @@ export const SkillTreeView: React.FC = () => {
               </button>
             );
           })}
-          {nodes.length === 0 && (
+          {visibleNodes.length === 0 && (
             <div className="skill-tree__empty">No skills available yet.</div>
           )}
         </div>

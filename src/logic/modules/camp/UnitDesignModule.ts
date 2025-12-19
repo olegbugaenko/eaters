@@ -648,13 +648,11 @@ export class UnitDesignModule implements GameModule {
     const baseCost = normalizeResourceCost(getPlayerUnitConfig(type).cost);
     const result = createEmptyResourceAmount();
     let manaMultiplier = 1;
-    let sanityBonus = 0;
     modules.forEach((detail) => {
       manaMultiplier *= detail.manaCostMultiplier;
-      sanityBonus += detail.sanityCost;
     });
     result.mana = roundStat(baseCost.mana * Math.max(manaMultiplier, 0));
-    result.sanity = roundStat(baseCost.sanity + sanityBonus);
+    result.sanity = 0;
     return result;
   }
 

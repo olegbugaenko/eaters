@@ -8,6 +8,7 @@ import {
 } from "./units/PlayerUnitsModule";
 import { NecromancerModule } from "./NecromancerModule";
 import { UnlockService } from "../../services/UnlockService";
+import { BonusesModule } from "../shared/BonusesModule";
 import { ArcModule } from "../scene/ArcModule";
 import {
   MapConfig,
@@ -30,10 +31,12 @@ interface ResourceRunController {
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
+export const MAP_CLEARED_LEVELS_BRIDGE_KEY = "maps/clearedLevelsTotal";
 
 interface MapModuleOptions {
   scene: SceneObjectManager;
   bridge: DataBridge;
+  bonuses: BonusesModule;
   bricks: BricksModule;
   playerUnits: PlayerUnitsModule;
   necromancer: NecromancerModule;
@@ -51,8 +54,6 @@ interface MapSaveData {
   stats?: MapStats;
   selectedLevels?: Partial<Record<MapId, number>>;
   autoRestartEnabled?: boolean;
-  autoRestartThresholdEnabled?: boolean;
-  autoRestartMinEffectiveUnits?: number;
 }
 
 export interface MapLevelStats {
@@ -80,8 +81,6 @@ export interface MapRunResult {
 export interface MapAutoRestartState {
   readonly unlocked: boolean;
   readonly enabled: boolean;
-  readonly thresholdEnabled?: boolean; // enable early restart logic
-  readonly minEffectiveUnits?: number; // restart if alive + affordable < N
 }
 
 export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
@@ -89,14 +88,13 @@ export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
 export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze({
   unlocked: false,
   enabled: false,
-  thresholdEnabled: false,
-  minEffectiveUnits: 3,
 });
 
 const DEFAULT_MAP_ID: MapId = "foundations";
 export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
 const AUTO_RESTART_SKILL_ID: SkillId = "autorestart_rituals";
 const CAMERA_FOCUS_TICKS = 6;
+const BONUS_CONTEXT_CLEARED_LEVELS = "clearedMapLevelsTotal";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -114,8 +112,6 @@ export class MapModule implements GameModule {
   private mapSelectedLevels: Partial<Record<MapId, number>> = {};
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
-  private thresholdEnabled = false;
-  private minEffectiveUnits = 3;
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
   private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
 
@@ -133,8 +129,6 @@ export class MapModule implements GameModule {
 
   public reset(): void {
     this.autoRestartEnabled = false;
-    this.thresholdEnabled = false;
-    this.minEffectiveUnits = 3;
     this.runActive = false;
     this.pendingCameraFocus = null;
     this.refreshAutoRestartState();
@@ -175,8 +169,6 @@ export class MapModule implements GameModule {
       stats: this.cloneStats(),
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
-      autoRestartThresholdEnabled: this.thresholdEnabled,
-      autoRestartMinEffectiveUnits: this.minEffectiveUnits,
     } satisfies MapSaveData;
   }
 
@@ -185,17 +177,6 @@ export class MapModule implements GameModule {
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
-    }
-    // Early end-of-run check: when enabled, if alive + affordable < N, end the run (failure)
-    if (this.autoRestartEnabled && this.thresholdEnabled && this.selectedMapId && this.runActive) {
-      const alive = this.options.playerUnits.getEffectiveUnitCount();
-      const affordable = this.options.necromancer.getAffordableSpawnCountBySanity();
-      const effective = alive + affordable;
-      if (effective < Math.max(0, Math.floor(this.minEffectiveUnits))) {
-        // Trigger run completion (failure) once per run
-        this.runActive = false;
-        this.options.onRunCompleted(false);
-      }
     }
     // Drive portal emitter updates like explosions do (explosions call updateObject every tick)
     if (this.portalObjects.length > 0) {
@@ -282,30 +263,6 @@ export class MapModule implements GameModule {
     this.pushAutoRestartState();
   }
 
-  public setAutoRestartThreshold(enabled: boolean, minEffectiveUnits: number): void {
-    const unlockChanged = this.refreshAutoRestartState();
-    if (!this.autoRestartUnlocked) {
-      if (unlockChanged) {
-        this.pushAutoRestartState();
-      }
-      return;
-    }
-    const nextEnabled = Boolean(enabled);
-    const nextMin = Math.max(0, Math.floor(minEffectiveUnits));
-    let changed = unlockChanged;
-    if (this.thresholdEnabled !== nextEnabled) {
-      this.thresholdEnabled = nextEnabled;
-      changed = true;
-    }
-    if (this.minEffectiveUnits !== nextMin) {
-      this.minEffectiveUnits = nextMin;
-      changed = true;
-    }
-    if (changed) {
-      this.pushAutoRestartState();
-    }
-  }
-
   public recordRunResult(result: MapRunResult): void {
     const mapId = result.mapId && isMapId(result.mapId) ? result.mapId : this.selectedMapId;
     if (!mapId) {
@@ -333,6 +290,9 @@ export class MapModule implements GameModule {
       this.runActive = false;
       this.options.unitsAutomation.onMapEnd();
     }
+    // Clear active entities to prevent ongoing actions while the run summary is shown
+    this.options.playerUnits.setUnits([]);
+    this.options.bricks.setBricks([]);
     this.pendingCameraFocus = null;
     this.options.necromancer.endCurrentMap();
     this.clearPortalObjects();
@@ -523,8 +483,6 @@ export class MapModule implements GameModule {
       {
         unlocked: this.autoRestartUnlocked,
         enabled: this.autoRestartUnlocked && this.autoRestartEnabled,
-        thresholdEnabled: this.thresholdEnabled,
-        minEffectiveUnits: this.minEffectiveUnits,
       }
     );
   }
@@ -597,10 +555,19 @@ export class MapModule implements GameModule {
     };
   }
 
+  private pushClearedLevelsTotal(): void {
+    const total = this.getTotalClearedLevels();
+    this.options.bridge.setValue<number>(MAP_CLEARED_LEVELS_BRIDGE_KEY, total);
+    this.options.bonuses.setEffectContext({
+      [BONUS_CONTEXT_CLEARED_LEVELS]: total,
+    });
+  }
+
   private pushMapList(): void {
     // Ensure unlock checks are fresh (map stats/skills may have just changed)
     this.unlocks.clearCache();
     const list = this.getAvailableMaps();
+    this.pushClearedLevelsTotal();
     this.options.bridge.setValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY, list);
   }
 
@@ -623,8 +590,6 @@ export class MapModule implements GameModule {
       mapLevel?: unknown;
       selectedLevels?: unknown;
       autoRestartEnabled?: unknown;
-      autoRestartThresholdEnabled?: unknown;
-      autoRestartMinEffectiveUnits?: unknown;
     };
     if (!raw.mapId || !isMapId(raw.mapId)) {
       return null;
@@ -633,12 +598,6 @@ export class MapModule implements GameModule {
     const mapLevel = typeof raw.mapLevel === "number" ? sanitizeLevel(raw.mapLevel) : undefined;
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
     const autoRestartEnabled = raw.autoRestartEnabled === true;
-    const autoRestartThresholdEnabled = raw.autoRestartThresholdEnabled === true;
-    this.thresholdEnabled = autoRestartThresholdEnabled;
-    if (Object.prototype.hasOwnProperty.call(raw, "autoRestartMinEffectiveUnits")) {
-      const autoRestartMinEffectiveUnits = sanitizeLevel(raw.autoRestartMinEffectiveUnits);
-      this.minEffectiveUnits = Math.max(0, autoRestartMinEffectiveUnits);
-    }
     return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled };
   }
 
@@ -741,6 +700,32 @@ export class MapModule implements GameModule {
       return null;
     }
     return bestTimeMs;
+  }
+
+  private getTotalClearedLevels(): number {
+    return Object.values(this.mapStats).reduce(
+      (total, levels) => total + this.getClearedLevelCount(levels),
+      0
+    );
+  }
+
+  private getClearedLevelCount(levels: Record<number, MapLevelStats> | undefined): number {
+    if (!levels) {
+      return 0;
+    }
+    const successful = new Set<number>();
+    Object.entries(levels).forEach(([rawLevel, stats]) => {
+      const level = Number(rawLevel);
+      if (Number.isFinite(level) && stats?.success > 0) {
+        successful.add(level);
+      }
+    });
+
+    let cleared = 0;
+    while (successful.has(cleared)) {
+      cleared += 1;
+    }
+    return cleared;
   }
 
   private parseSelectedLevels(data: unknown): Partial<Record<MapId, number>> {

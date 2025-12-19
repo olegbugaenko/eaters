@@ -2,6 +2,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
@@ -23,6 +24,7 @@ export type PlayerUnitRendererFillConfig =
       type: "solid";
       color: SceneColor;
       noise?: SceneFillNoise;
+      filaments?: SceneFillFilaments;
     }
   | {
       type: "gradient";
@@ -593,7 +595,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     },
     maxHp: 10,
     armor: 1,
-    baseAttackDamage: 2,
+    baseAttackDamage: 1.25,
     baseAttackInterval: 0.6,
     baseAttackDistance: 5,
     moveSpeed: 180,
@@ -631,7 +633,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     },
     cost: {
       mana: 5,
-      sanity: 2,
+      sanity: 0,
     },
   },
 };

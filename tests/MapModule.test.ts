@@ -61,13 +61,18 @@ const createUnitAutomationStub = (): UnitAutomationModule => ({
   },
 } as unknown as UnitAutomationModule);
 
+const createBonuses = (): BonusesModule => {
+  const bonuses = new BonusesModule();
+  bonuses.initialize();
+  return bonuses;
+};
+
 describe("MapModule", () => {
   test("bricks spawn outside of the player unit safe radius", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
+    const bonuses = createBonuses();
     const resources = {
       startRun: () => {
         // no-op for tests
@@ -112,6 +117,7 @@ describe("MapModule", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,
@@ -191,10 +197,12 @@ describe("Map run control", () => {
       getMapStats: () => mapModuleRef?.getMapStats() ?? {},
       getSkillLevel: () => 0,
     });
+    const bonuses = createBonuses();
 
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,
@@ -308,10 +316,12 @@ describe("Map run control", () => {
       getMapStats: () => mapModuleRef?.getMapStats() ?? {},
       getSkillLevel: () => 0,
     });
+    const bonuses = createBonuses();
 
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,
@@ -346,8 +356,7 @@ describe("Map run control", () => {
     scene.setViewportScreenSize(800, 600);
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
+    const bonuses = createBonuses();
     const resources = {
       startRun: () => {},
       cancelRun: () => {},
@@ -384,6 +393,7 @@ describe("Map run control", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,
@@ -421,8 +431,7 @@ describe("Map run control", () => {
     scene.setViewportScreenSize(600, 400);
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
+    const bonuses = createBonuses();
     const resources = {
       startRun: () => {},
       cancelRun: () => {},
@@ -459,6 +468,7 @@ describe("Map run control", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,
@@ -503,8 +513,7 @@ describe("Map unlocking", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
+    const bonuses = createBonuses();
     const resources = {
       startRun: () => {},
       cancelRun: () => {},
@@ -542,6 +551,7 @@ describe("Map unlocking", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,
@@ -586,8 +596,7 @@ describe("Map unlocking", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
+    const bonuses = createBonuses();
     const resources = {
       startRun: () => {},
       cancelRun: () => {},
@@ -625,6 +634,7 @@ describe("Map unlocking", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,
@@ -658,8 +668,7 @@ describe("Map auto restart", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const explosions = new ExplosionModule({ scene });
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
+    const bonuses = createBonuses();
     const resources = {
       startRun: () => {},
       cancelRun: () => {},
@@ -698,6 +707,7 @@ describe("Map auto restart", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      bonuses,
       bricks,
       playerUnits,
       necromancer,

@@ -7,7 +7,12 @@ import {
 } from "@screens/VoidCamp/components/CampContent/CampContent";
 import { MapId } from "@db/maps-db";
 import { GAME_VERSIONS } from "@db/version-db";
-import { MapListEntry, MAP_LIST_BRIDGE_KEY, MAP_SELECTED_BRIDGE_KEY } from "@logic/modules/active-map/MapModule";
+import {
+  MAP_CLEARED_LEVELS_BRIDGE_KEY,
+  MapListEntry,
+  MAP_LIST_BRIDGE_KEY,
+  MAP_SELECTED_BRIDGE_KEY,
+} from "@logic/modules/active-map/MapModule";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/TestTimeModule";
 import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import {
@@ -79,6 +84,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
   const maps = useBridgeValue<MapListEntry[]>(bridge, MAP_LIST_BRIDGE_KEY, []);
   const selectedMap = useBridgeValue<MapId | null>(bridge, MAP_SELECTED_BRIDGE_KEY, null);
+  const clearedLevelsTotal = useBridgeValue<number>(
+    bridge,
+    MAP_CLEARED_LEVELS_BRIDGE_KEY,
+    0
+  );
   const resources = useBridgeValue<ResourceAmountPayload[]>(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
@@ -284,6 +294,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         content={
           <CampContent
             maps={maps}
+            clearedLevelsTotal={clearedLevelsTotal}
             selectedMap={selectedMap}
             onSelectMap={(mapId) => app.selectMap(mapId)}
             onSelectMapLevel={(mapId, level) => app.selectMapLevel(mapId, level)}

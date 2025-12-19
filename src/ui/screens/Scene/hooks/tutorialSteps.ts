@@ -60,7 +60,7 @@ export const buildTutorialSteps = (
           id: "sanity",
           title: "Fading Sanity",
           description:
-            "Sanity never returns. Each summon pulls you deeper into the void — use it wisely.",
+            "Your sanity slowly drains over time (0.25 per second). Keep pressing forward—when it hits zero, the run collapses.",
           getTarget: () => getResourceElement("sanity"),
           highlightPadding: 24,
           placement: "top",

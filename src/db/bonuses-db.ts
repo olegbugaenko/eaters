@@ -36,7 +36,7 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
   sanity_cap: {
     id: "sanity_cap",
     name: "Maximum Sanity",
-    defaultValue: 10,
+    defaultValue: 5,
   },
   mana_regen: {
     id: "mana_regen",

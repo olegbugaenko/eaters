@@ -95,7 +95,10 @@ describe("BricksModule", () => {
     assert.strictEqual(instance.data.stroke?.width, config.stroke?.width);
 
     assert.strictEqual(bridge.getValue(BRICK_COUNT_BRIDGE_KEY), 1);
-    assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 5);
+    assert.strictEqual(
+      bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY),
+      config.destructubleData?.maxHp
+    );
 
     assert.strictEqual(module.save(), null, "save should not persist runtime bricks");
     const [state] = module.getBrickStates();

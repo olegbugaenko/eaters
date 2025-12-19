@@ -10,8 +10,14 @@ import {
   BulletTailEmitterConfig,
 } from "./bullets-db";
 import { SkillId } from "./skills-db";
+import { ExplosionType } from "./explosions-db";
 
-export type SpellId = "magic-arrow" | "sand-storm" | "void-darts" | "ring-of-fire";
+export type SpellId =
+  | "magic-arrow"
+  | "sand-storm"
+  | "void-darts"
+  | "ring-of-fire"
+  | "weaken-curse";
 
 export type SpellType = "projectile" | "whirl" | "persistent-aoe";
 
@@ -40,6 +46,7 @@ export interface SpellProjectileConfig {
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
   aoe?: { radius: number; splash: number };
+  explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
 }
 
 export interface SpellWhirlConfig {
@@ -66,6 +73,25 @@ export interface SpellPersistentAoeRingConfig {
   thickness: number;
 }
 
+export interface SpellBrickEffectTintConfig {
+  color: SceneColor;
+  intensity: number;
+}
+
+export type SpellPersistentAoeEffectConfig =
+  | {
+      type: "outgoing-damage-multiplier";
+      durationMs: number;
+      multiplier: number;
+      tint?: SpellBrickEffectTintConfig;
+    }
+  | {
+      type: "outgoing-damage-flat-reduction";
+      durationMs: number;
+      reductionValue: number; // Flat value to subtract from damage (typically spell power)
+      tint?: SpellBrickEffectTintConfig;
+    };
+
 export interface SpellPersistentAoeParticleEmitterConfig {
   particlesPerSecond: number;
   particleLifetimeMs: number;
@@ -80,6 +106,8 @@ export interface SpellPersistentAoeParticleEmitterConfig {
 }
 
 export interface SpellPersistentAoeVisualConfig {
+  /** If set, spawns this explosion type instead of fire ring. Use for non-fire effects. */
+  explosion?: ExplosionType;
   glowColor?: SceneColor;
   glowAlpha?: number;
   particleEmitter?: SpellPersistentAoeParticleEmitterConfig;
@@ -91,6 +119,7 @@ export interface SpellPersistentAoeConfig {
   damagePerSecond: number;
   ring: SpellPersistentAoeRingConfig;
   visuals?: SpellPersistentAoeVisualConfig;
+  effects?: SpellPersistentAoeEffectConfig[];
 }
 
 interface SpellBaseConfig {
@@ -199,9 +228,9 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Magic Arrow",
     description:
       "Launch a razor of focused mana that slices through the air toward your target.",
-    cost: { mana: 1.0, sanity: 0.2 },
+    cost: { mana: 1.0, sanity: 0 },
     cooldownSeconds: 0.75,
-    damage: { min: 3, max: 4 },
+    damage: { min: 1, max: 3 },
     projectile: {
       radius: 7,
       shape: "triangle",
@@ -221,8 +250,42 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         outerStop: 0.78,
         color: { r: 0.5, g: 0.7, b: 1, a: 0.1 },
       },
-      aoe: { radius: 11, splash: 0.5 },
+      aoe: { radius: 15, splash: 0.5 },
+      explosion: "magnetic",
     },
+  },
+  "weaken-curse": {
+    id: "weaken-curse",
+    type: "persistent-aoe",
+    name: "Weaken Curse",
+    description:
+      "Unfurl a rippling curse that saps the strength of bricks caught in its wave.",
+    cost: { mana: 7, sanity: 0 },
+    cooldownSeconds: 4,
+    persistentAoe: {
+      durationMs: 2_500,
+      damagePerSecond: 0,
+      ring: {
+        shape: "ring",
+        startRadius: 10,
+        endRadius: 115,
+        thickness: 26,
+      },
+      visuals: {
+        explosion: "weakenCurse",
+        glowColor: { r: 0.6, g: 0.52, b: 1, a: 0.55 },
+        glowAlpha: 0.5,
+      },
+      effects: [
+        {
+          type: "outgoing-damage-flat-reduction",
+          durationMs: 4_000,
+          reductionValue: 0.75, // Will be multiplied by spell power when applied
+          tint: { color: { r: 0.55, g: 0.45, b: 0.95, a: 1 }, intensity: 0.5 },
+        },
+      ],
+    },
+    unlock: { skillId: "weaken_curse", level: 1 },
   },
   "sand-storm": {
     id: "sand-storm",
@@ -230,12 +293,12 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Sand Storm",
     description:
       "Summon a whirling storm of scouring grit that grinds forward, shredding bricks until the vortex collapses.",
-    cost: { mana: 5, sanity: 1 },
+    cost: { mana: 10, sanity: 0 },
     cooldownSeconds: 2,
     whirl: {
       radius: 30,
       speed: 170,
-      damagePerSecond: 5.0,
+      damagePerSecond: 3.0,
       maxHealth: 30,
       spinSpeed: 6.8,
       rotationSpeedMultiplier: 0.5,
@@ -255,9 +318,9 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Darts of the Void",
     description:
       "Unleash darts of metal and void energy that damage targets.",
-    cost: { mana: 5.0, sanity: 1 },
+    cost: { mana: 5.0, sanity: 0 },
     cooldownSeconds: 1.2,
-    damage: { min: 3, max: 8 },
+    damage: { min: 1, max: 4 },
     projectile: {
       radius: 3,
       speed: 120,
@@ -296,11 +359,11 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Ring of Fire",
     description:
       "Conjure an expanding crown of flame that scorches bricks as it races outward.",
-    cost: { mana: 8, sanity: 1.5 },
+    cost: { mana: 8, sanity: 0 },
     cooldownSeconds: 6,
     persistentAoe: {
       durationMs: 3_000,
-      damagePerSecond: 10,
+      damagePerSecond: 5,
       ring: {
         shape: "ring",
         startRadius: 12,
@@ -335,7 +398,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
     },
     unlock: { skillId: "ring_of_fire", level: 1 },
-  },
+  }
 };
 
 export const SPELL_IDS = Object.keys(SPELL_DB) as SpellId[];

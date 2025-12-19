@@ -1,4 +1,11 @@
 import { SceneVector2 } from "../../../../logic/services/SceneObjectManager";
+import {
+  CORE_NOISE_GLSL,
+  APPLY_FILL_NOISE_GLSL,
+  APPLY_FILL_FILAMENTS_GLSL,
+  DEFAULT_NOISE_ANCHOR,
+  createNoiseAnchorGLSL,
+} from "../../shaders/fillEffects.glsl";
 
 const UNIT_QUAD_VERTICES = new Float32Array([
   // TRIANGLE_STRIP order: bottom-left, bottom-right, top-left, top-right
@@ -26,6 +33,7 @@ uniform float u_defaultLifetimeMs;
 uniform float u_minParticleSize;
 uniform float u_lengthMultiplier;
 uniform int u_alignToVelocity;
+uniform float u_sizeGrowthRate;
 
 uniform int u_fillType;
 uniform int u_stopCount;
@@ -40,21 +48,30 @@ uniform vec2 u_linearEnd;
 uniform vec2 u_radialOffset;
 uniform float u_explicitRadius;
 
-uniform vec3 u_stopOffsets;
+uniform float u_stopOffsets[5];
 uniform vec4 u_stopColor0;
 uniform vec4 u_stopColor1;
 uniform vec4 u_stopColor2;
+uniform vec4 u_stopColor3;
+uniform vec4 u_stopColor4;
 uniform vec2 u_noiseAmplitude;
 uniform float u_noiseScale;
+uniform float u_noiseDensity;
+uniform vec4 u_filaments0;
+uniform float u_filamentEdgeBlur;
 
 out vec2 v_worldPosition;
 out vec4 v_fillInfo;
 out vec4 v_fillParams0;
 out vec4 v_fillParams1;
-out vec3 v_stopOffsets;
+out vec4 v_filaments0;
+out float v_filamentEdgeBlur;
+out float v_stopOffsets[5];
 out vec4 v_stopColor0;
 out vec4 v_stopColor1;
 out vec4 v_stopColor2;
+out vec4 v_stopColor3;
+out vec4 v_stopColor4;
 out float v_shape;
 out vec2 v_particleCenter;
 out float v_particleRadius;
@@ -84,7 +101,11 @@ vec2 toClip(vec2 world) {
 void main() {
   float isActive = a_isActive;
   bool alive = isActive > 0.5;
-  float size = alive ? max(a_size, u_minParticleSize) : 0.0;
+  float baseSize = a_size;
+  // Apply size growth: size = baseSize * growthRate^(age/1000)
+  float ageSeconds = a_age * 0.001;
+  float growthMultiplier = u_sizeGrowthRate > 0.0 ? pow(u_sizeGrowthRate, ageSeconds) : 1.0;
+  float size = alive ? max(baseSize * growthMultiplier, u_minParticleSize) : 0.0;
   vec2 center = a_position;
   float lengthMul = max(u_lengthMultiplier, 1.0);
   vec2 baseOffset = vec2(a_unitPosition.x * size * lengthMul, a_unitPosition.y * size);
@@ -103,19 +124,29 @@ void main() {
   float alpha = alive ? computeAlpha(a_age, a_lifetime) : 0.0;
 
   v_worldPosition = world;
-  v_stopOffsets = u_stopOffsets;
+  for (int i = 0; i < 5; i++) {
+    v_stopOffsets[i] = u_stopOffsets[i];
+  }
 
   vec4 stop0 = u_stopColor0;
   vec4 stop1 = u_stopColor1;
   vec4 stop2 = u_stopColor2;
+  vec4 stop3 = u_stopColor3;
+  vec4 stop4 = u_stopColor4;
   stop0.a *= alpha;
   stop1.a *= alpha;
   stop2.a *= alpha;
+  stop3.a *= alpha;
+  stop4.a *= alpha;
   v_stopColor0 = stop0;
   v_stopColor1 = stop1;
   v_stopColor2 = stop2;
+  v_stopColor3 = stop3;
+  v_stopColor4 = stop4;
 
   v_fillInfo = vec4(float(u_fillType), float(u_stopCount), u_noiseAmplitude.x, u_noiseAmplitude.y);
+  v_filaments0 = u_filaments0;
+  v_filamentEdgeBlur = u_filamentEdgeBlur;
 
   if (u_fillType == 1) {
     vec2 startWorld;
@@ -144,10 +175,10 @@ void main() {
     vec2 gradientCenter = center + offsetLocal;
     float radius = u_hasExplicitRadius == 1 ? u_explicitRadius : size * 0.5;
     v_fillParams0 = vec4(gradientCenter, radius, 0.0);
-    v_fillParams1 = vec4(0.0, 0.0, 0.0, u_noiseScale);
+    v_fillParams1 = vec4(0.0, u_noiseDensity, 0.0, u_noiseScale);
   } else {
     v_fillParams0 = vec4(center, 0.0, 0.0);
-    v_fillParams1 = vec4(0.0, 0.0, 0.0, u_noiseScale);
+    v_fillParams1 = vec4(0.0, u_noiseDensity, 0.0, u_noiseScale);
   }
 
   v_shape = float(u_shape);
@@ -170,10 +201,14 @@ in vec2 v_worldPosition;
 in vec4 v_fillInfo;
 in vec4 v_fillParams0;
 in vec4 v_fillParams1;
-in vec3 v_stopOffsets;
+in vec4 v_filaments0;
+in float v_filamentEdgeBlur;
+in float v_stopOffsets[5];
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
 in vec4 v_stopColor2;
+in vec4 v_stopColor3;
+in vec4 v_stopColor4;
 in float v_shape;
 in vec2 v_particleCenter;
 in float v_particleRadius;
@@ -184,76 +219,30 @@ float clamp01(float value) {
   return clamp(value, 0.0, 1.0);
 }
 
-float hash21(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
-
-float noise2d(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  float a = hash21(i);
-  float b = hash21(i + vec2(1.0, 0.0));
-  float c = hash21(i + vec2(0.0, 1.0));
-  float d = hash21(i + vec2(1.0, 1.0));
-  float ab = mix(a, b, u.x);
-  float cd = mix(c, d, u.x);
-  return mix(ab, cd, u.y);
-}
-
-vec2 resolveNoiseAnchor(float fillType) {
-  if (fillType < 3.5) {
-    return v_fillParams0.xy;
-  }
-  return v_worldPosition;
-}
-
-vec4 applyFillNoise(vec4 color) {
-  float colorAmp = v_fillInfo.z;
-  float alphaAmp = v_fillInfo.w;
-  if (colorAmp <= 0.0 && alphaAmp <= 0.0) {
-    return color;
-  }
-  float scale = v_fillParams1.w;
-  float effectiveScale = scale > 0.0 ? scale : 1.0;
-  float fillType = v_fillInfo.x;
-  vec2 anchor = resolveNoiseAnchor(fillType);
-  float noiseValue = noise2d((v_worldPosition - anchor) * effectiveScale) * 2.0 - 1.0;
-  if (colorAmp > 0.0) {
-    color.rgb = clamp(color.rgb + noiseValue * colorAmp, 0.0, 1.0);
-  }
-  if (alphaAmp > 0.0) {
-    color.a = clamp(color.a + noiseValue * alphaAmp, 0.0, 1.0);
-  }
-  return color;
-}
+` + CORE_NOISE_GLSL + createNoiseAnchorGLSL(DEFAULT_NOISE_ANCHOR) + APPLY_FILL_NOISE_GLSL + APPLY_FILL_FILAMENTS_GLSL + `
 
 vec4 sampleGradient(float t) {
-  float stopCount = v_fillInfo.y;
-  vec4 color0 = v_stopColor0;
-  if (stopCount < 1.5) {
-    return color0;
+  int stopCount = int(v_fillInfo.y);
+  vec4 colors[5] = vec4[5](v_stopColor0, v_stopColor1, v_stopColor2, v_stopColor3, v_stopColor4);
+  
+  if (stopCount <= 1) {
+    return colors[0];
   }
-  vec4 color1 = v_stopColor1;
-  if (stopCount < 2.5) {
-    float blend = clamp01((t - v_stopOffsets.x) / max(0.00001, v_stopOffsets.y - v_stopOffsets.x));
-    return mix(color0, color1, blend);
+  
+  // Clamp t to valid range
+  t = clamp(t, 0.0, 1.0);
+  
+  // Find the segment t falls into
+  for (int i = 0; i < stopCount - 1; i++) {
+    float offset0 = v_stopOffsets[i];
+    float offset1 = v_stopOffsets[i + 1];
+    if (t <= offset1 || i == stopCount - 2) {
+      float blend = clamp01((t - offset0) / max(0.00001, offset1 - offset0));
+      return mix(colors[i], colors[i + 1], blend);
+    }
   }
-  vec4 color2 = v_stopColor2;
-  if (t <= v_stopOffsets.x) {
-    return color0;
-  }
-  if (t >= v_stopOffsets.z) {
-    return color2;
-  }
-  if (t <= v_stopOffsets.y) {
-    float blend = clamp01((t - v_stopOffsets.x) / max(0.00001, v_stopOffsets.y - v_stopOffsets.x));
-    return mix(color0, color1, blend);
-  }
-  float blend = clamp01((t - v_stopOffsets.y) / max(0.00001, v_stopOffsets.z - v_stopOffsets.y));
-  return mix(color1, color2, blend);
+  
+  return colors[stopCount - 1];
 }
 
 vec4 shadeSolid() {
@@ -281,7 +270,7 @@ vec4 shadeRadial() {
 }
 
 void main() {
-  if (v_stopColor0.a <= 0.0 && v_stopColor1.a <= 0.0 && v_stopColor2.a <= 0.0) {
+  if (v_stopColor0.a <= 0.0 && v_stopColor1.a <= 0.0 && v_stopColor2.a <= 0.0 && v_stopColor3.a <= 0.0 && v_stopColor4.a <= 0.0) {
     discard;
   }
   // v_shape: 0.0=square, 1.0=circle, 2.0=triangle
@@ -311,7 +300,7 @@ void main() {
   } else {
     color = shadeSolid();
   }
-  fragColor = applyFillNoise(color);
+  fragColor = applyFillNoise(applyFillFilaments(color));
 }
 `;
 
@@ -334,6 +323,7 @@ interface ParticleRenderProgram {
     minParticleSize: WebGLUniformLocation | null;
     lengthMultiplier: WebGLUniformLocation | null;
     alignToVelocity: WebGLUniformLocation | null;
+    sizeGrowthRate: WebGLUniformLocation | null;
     fillType: WebGLUniformLocation | null;
     stopCount: WebGLUniformLocation | null;
     hasLinearStart: WebGLUniformLocation | null;
@@ -349,8 +339,13 @@ interface ParticleRenderProgram {
     stopColor0: WebGLUniformLocation | null;
     stopColor1: WebGLUniformLocation | null;
     stopColor2: WebGLUniformLocation | null;
+    stopColor3: WebGLUniformLocation | null;
+    stopColor4: WebGLUniformLocation | null;
     noiseAmplitude: WebGLUniformLocation | null;
     noiseScale: WebGLUniformLocation | null;
+    noiseDensity: WebGLUniformLocation | null;
+    filaments0: WebGLUniformLocation | null;
+    filamentEdgeBlur: WebGLUniformLocation | null;
   };
 }
 
@@ -361,9 +356,17 @@ export interface ParticleEmitterGpuRenderUniforms {
   stopColor0: Float32Array;
   stopColor1: Float32Array;
   stopColor2: Float32Array;
+  stopColor3: Float32Array;
+  stopColor4: Float32Array;
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
+  noiseDensity: number;
+  filamentColorContrast: number;
+  filamentAlphaContrast: number;
+  filamentWidth: number;
+  filamentDensity: number;
+  filamentEdgeBlur: number;
   hasLinearStart: boolean;
   linearStart: SceneVector2;
   hasLinearEnd: boolean;
@@ -378,6 +381,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   minParticleSize: number;
   lengthMultiplier: number;
   alignToVelocity: boolean;
+  sizeGrowthRate: number;
 }
 
 export interface ParticleEmitterGpuDrawHandle {
@@ -475,6 +479,7 @@ const createRenderProgram = (
     minParticleSize: gl.getUniformLocation(program, "u_minParticleSize"),
     lengthMultiplier: gl.getUniformLocation(program, "u_lengthMultiplier"),
     alignToVelocity: gl.getUniformLocation(program, "u_alignToVelocity"),
+    sizeGrowthRate: gl.getUniformLocation(program, "u_sizeGrowthRate"),
     fillType: gl.getUniformLocation(program, "u_fillType"),
     stopCount: gl.getUniformLocation(program, "u_stopCount"),
     hasLinearStart: gl.getUniformLocation(program, "u_hasLinearStart"),
@@ -490,8 +495,13 @@ const createRenderProgram = (
     stopColor0: gl.getUniformLocation(program, "u_stopColor0"),
     stopColor1: gl.getUniformLocation(program, "u_stopColor1"),
     stopColor2: gl.getUniformLocation(program, "u_stopColor2"),
+    stopColor3: gl.getUniformLocation(program, "u_stopColor3"),
+    stopColor4: gl.getUniformLocation(program, "u_stopColor4"),
     noiseAmplitude: gl.getUniformLocation(program, "u_noiseAmplitude"),
     noiseScale: gl.getUniformLocation(program, "u_noiseScale"),
+    noiseDensity: gl.getUniformLocation(program, "u_noiseDensity"),
+    filaments0: gl.getUniformLocation(program, "u_filaments0"),
+    filamentEdgeBlur: gl.getUniformLocation(program, "u_filamentEdgeBlur"),
   };
   return { program, attributes, uniforms };
 };
@@ -614,6 +624,7 @@ type UniformCache = {
   minParticleSize?: number;
   lengthMultiplier?: number;
   alignToVelocity?: number;
+  sizeGrowthRate?: number;
   fillType?: number;
   stopCount?: number;
   hasLinearStart?: number;
@@ -629,8 +640,13 @@ type UniformCache = {
   stopColor0?: string;
   stopColor1?: string;
   stopColor2?: string;
+  stopColor3?: string;
+  stopColor4?: string;
   noiseAmplitude?: [number, number];
   noiseScale?: number;
+  noiseDensity?: number;
+  filaments0?: [number, number, number, number];
+  filamentEdgeBlur?: number;
 };
 
 const serializeArray = (arr: Float32Array): string => {
@@ -683,6 +699,15 @@ const uploadEmitterUniforms = (
     gl.uniform1i(
       program.uniforms.alignToVelocity,
       (cache.alignToVelocity = alignVal)
+    );
+  }
+  if (
+    program.uniforms.sizeGrowthRate &&
+    cache.sizeGrowthRate !== u.sizeGrowthRate
+  ) {
+    gl.uniform1f(
+      program.uniforms.sizeGrowthRate,
+      (cache.sizeGrowthRate = u.sizeGrowthRate)
     );
   }
   if (program.uniforms.fillType && cache.fillType !== u.fillType) {
@@ -754,7 +779,7 @@ const uploadEmitterUniforms = (
   }
   const so = serializeArray(u.stopOffsets);
   if (program.uniforms.stopOffsets && cache.stopOffsets !== so) {
-    gl.uniform3fv(program.uniforms.stopOffsets, u.stopOffsets);
+    gl.uniform1fv(program.uniforms.stopOffsets, u.stopOffsets);
     cache.stopOffsets = so;
   }
   const c0 = serializeArray(u.stopColor0);
@@ -772,6 +797,16 @@ const uploadEmitterUniforms = (
     gl.uniform4fv(program.uniforms.stopColor2, u.stopColor2);
     cache.stopColor2 = c2;
   }
+  const c3 = serializeArray(u.stopColor3);
+  if (program.uniforms.stopColor3 && cache.stopColor3 !== c3) {
+    gl.uniform4fv(program.uniforms.stopColor3, u.stopColor3);
+    cache.stopColor3 = c3;
+  }
+  const c4 = serializeArray(u.stopColor4);
+  if (program.uniforms.stopColor4 && cache.stopColor4 !== c4) {
+    gl.uniform4fv(program.uniforms.stopColor4, u.stopColor4);
+    cache.stopColor4 = c4;
+  }
   const noiseAmp: [number, number] = [u.noiseColorAmplitude, u.noiseAlphaAmplitude];
   if (
     program.uniforms.noiseAmplitude &&
@@ -782,6 +817,41 @@ const uploadEmitterUniforms = (
   }
   if (program.uniforms.noiseScale && cache.noiseScale !== u.noiseScale) {
     gl.uniform1f(program.uniforms.noiseScale, (cache.noiseScale = u.noiseScale));
+  }
+  if (program.uniforms.noiseDensity && cache.noiseDensity !== u.noiseDensity) {
+    gl.uniform1f(program.uniforms.noiseDensity, (cache.noiseDensity = u.noiseDensity));
+  }
+  const filaments0: [number, number, number, number] = [
+    u.filamentColorContrast,
+    u.filamentAlphaContrast,
+    u.filamentWidth,
+    u.filamentDensity,
+  ];
+  if (
+    program.uniforms.filaments0 &&
+    (!cache.filaments0 ||
+      cache.filaments0[0] !== filaments0[0] ||
+      cache.filaments0[1] !== filaments0[1] ||
+      cache.filaments0[2] !== filaments0[2] ||
+      cache.filaments0[3] !== filaments0[3])
+  ) {
+    gl.uniform4f(
+      program.uniforms.filaments0,
+      filaments0[0],
+      filaments0[1],
+      filaments0[2],
+      filaments0[3]
+    );
+    cache.filaments0 = [...filaments0];
+  }
+  if (
+    program.uniforms.filamentEdgeBlur &&
+    cache.filamentEdgeBlur !== u.filamentEdgeBlur
+  ) {
+    gl.uniform1f(
+      program.uniforms.filamentEdgeBlur,
+      (cache.filamentEdgeBlur = u.filamentEdgeBlur)
+    );
   }
 };
 

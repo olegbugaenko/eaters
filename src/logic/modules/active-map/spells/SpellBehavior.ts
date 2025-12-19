@@ -23,6 +23,7 @@ export interface SpellBehaviorDependencies {
   readonly scene: any; // SceneObjectManager
   readonly bricks: any; // BricksModule
   readonly bonuses: any; // BonusesModule
+  readonly explosions?: any; // ExplosionModule (опціонально)
   readonly getSpellPowerMultiplier: () => number;
 }
 

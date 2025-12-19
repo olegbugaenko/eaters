@@ -11,14 +11,17 @@ import {
   SceneFill,
 } from "../../../services/SceneObjectManager";
 import { BricksModule } from "../BricksModule";
-import type { BrickRuntimeState } from "../BricksModule";
+import type { BrickRuntimeState, BrickEffectTint } from "../BricksModule";
 import {
   SpellPersistentAoeConfig,
   SpellPersistentAoeParticleEmitterConfig,
   SpellPersistentAoeVisualConfig,
+  SpellPersistentAoeEffectConfig,
 } from "../../../../db/spells-db";
+import { ExplosionType } from "../../../../db/explosions-db";
 import { BonusValueMap } from "../../shared/BonusesModule";
 import { cloneSceneFill, sanitizeSceneColor } from "../../../services/particles/ParticleEmitterShared";
+import type { ExplosionModule } from "../../scene/ExplosionModule";
 
 const MIN_DURATION_MS = 16;
 const DEFAULT_GLOW_COLOR: SceneColor = { r: 1, g: 0.45, b: 0.15, a: 0.9 };
@@ -47,6 +50,7 @@ interface PersistentAoeParticleRuntimeConfig {
 }
 
 interface PersistentAoeVisualRuntimeConfig {
+  explosion: ExplosionType | null;
   glowColor: SceneColor;
   glowAlpha: number;
   particle: PersistentAoeParticleRuntimeConfig | null;
@@ -62,9 +66,24 @@ interface PersistentAoeState {
   ring: PersistentAoeRingRuntimeConfig;
   baseDamagePerSecond: number;
   damageMultiplier: number;
+  effects: PersistentAoeEffectRuntimeConfig[];
   visual: PersistentAoeVisualRuntimeConfig;
   renderData: PersistentAoeObjectCustomData;
 }
+
+type PersistentAoeEffectRuntimeConfig =
+  | {
+      type: "outgoing-damage-multiplier";
+      durationMs: number;
+      multiplier: number;
+      tint: BrickEffectTint | null;
+    }
+  | {
+      type: "outgoing-damage-flat-reduction";
+      durationMs: number;
+      reductionValue: number; // Will be multiplied by spell power when applied
+      tint: BrickEffectTint | null;
+    };
 
 export interface PersistentAoeParticleCustomData {
   baseParticlesPerSecond: number;
@@ -81,6 +100,7 @@ export interface PersistentAoeParticleCustomData {
 
 export interface PersistentAoeObjectCustomData {
   shape: "ring";
+  explosion: ExplosionType | null;
   innerRadius: number;
   outerRadius: number;
   thickness: number;
@@ -97,6 +117,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
 
   private readonly scene: SceneObjectManager;
   private readonly bricks: BricksModule;
+  private readonly explosions: ExplosionModule | undefined;
   private readonly getSpellPowerMultiplier: () => number;
 
   private readonly instances: PersistentAoeState[] = [];
@@ -105,6 +126,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
   constructor(dependencies: SpellBehaviorDependencies) {
     this.scene = dependencies.scene;
     this.bricks = dependencies.bricks;
+    this.explosions = dependencies.explosions;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
@@ -131,6 +153,14 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       sanitized.durationMs,
     );
 
+    // Spawn explosion for visual effect if configured
+    if (sanitized.visual.explosion && this.explosions) {
+      this.explosions.spawnExplosionByType(sanitized.visual.explosion, {
+        position: { ...center },
+        initialRadius: sanitized.ring.startRadius,
+      });
+    }
+
     const objectId = this.scene.addObject("spellPersistentAoe", {
       position: { ...center },
       size: this.createSizeFromRing(sanitized.ring, initialProgress),
@@ -146,6 +176,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       ring: sanitized.ring,
       baseDamagePerSecond: sanitized.damagePerSecond,
       damageMultiplier: context.spellPowerMultiplier,
+      effects: sanitized.effects,
       visual: sanitized.visual,
       renderData,
     };
@@ -168,6 +199,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       const progress = clamp01(state.elapsedMs / Math.max(state.durationMs, MIN_DURATION_MS));
 
       this.applyRingDamage(state, deltaSeconds);
+      this.applyRingEffects(state);
 
       if (state.elapsedMs >= state.durationMs) {
         this.scene.removeObject(state.id);
@@ -220,13 +252,60 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     durationMs: number;
     damagePerSecond: number;
     ring: PersistentAoeRingRuntimeConfig;
+    effects: PersistentAoeEffectRuntimeConfig[];
     visual: PersistentAoeVisualRuntimeConfig;
   } {
     const durationMs = Math.max(MIN_DURATION_MS, Math.floor(config.durationMs));
     const damagePerSecond = Math.max(0, config.damagePerSecond);
     const ring = this.sanitizeRingConfig(config.ring);
     const visual = this.sanitizeVisualConfig(config.visuals);
-    return { durationMs, damagePerSecond, ring, visual };
+    const effects = this.sanitizeEffects(config.effects);
+    return { durationMs, damagePerSecond, ring, visual, effects };
+  }
+
+  private sanitizeEffects(
+    effects: SpellPersistentAoeConfig["effects"],
+  ): PersistentAoeEffectRuntimeConfig[] {
+    if (!effects || effects.length === 0) {
+      return [];
+    }
+
+    const sanitized: PersistentAoeEffectRuntimeConfig[] = [];
+
+    for (let i = 0; i < effects.length; i += 1) {
+      const effect = effects[i]!;
+      if (effect.type === "outgoing-damage-multiplier") {
+        const durationMs = Math.max(MIN_DURATION_MS, Math.floor(effect.durationMs));
+        const multiplier = clampNumber(effect.multiplier, 0, 1);
+        sanitized.push({
+          type: effect.type,
+          durationMs,
+          multiplier,
+          tint: this.sanitizeEffectTint(effect.tint),
+        });
+      } else if (effect.type === "outgoing-damage-flat-reduction") {
+        const durationMs = Math.max(MIN_DURATION_MS, Math.floor(effect.durationMs));
+        const reductionValue = Math.max(0, effect.reductionValue);
+        sanitized.push({
+          type: effect.type,
+          durationMs,
+          reductionValue,
+          tint: this.sanitizeEffectTint(effect.tint),
+        });
+      }
+    }
+
+    return sanitized;
+  }
+
+  private sanitizeEffectTint(tint: SpellPersistentAoeEffectConfig["tint"]): BrickEffectTint | null {
+    if (!tint) {
+      return null;
+    }
+    return {
+      color: sanitizeSceneColor(tint.color, tint.color),
+      intensity: clamp01(tint.intensity),
+    };
   }
 
   private sanitizeRingConfig(ring: SpellPersistentAoeConfig["ring"]): PersistentAoeRingRuntimeConfig {
@@ -239,6 +318,8 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
   private sanitizeVisualConfig(
     visuals: SpellPersistentAoeVisualConfig | undefined,
   ): PersistentAoeVisualRuntimeConfig {
+    const explosion = visuals?.explosion ?? null;
+    
     const glowColor = sanitizeSceneColor(visuals?.glowColor, DEFAULT_GLOW_COLOR);
     const glowAlphaRaw = typeof visuals?.glowAlpha === "number" ? visuals.glowAlpha : undefined;
     const glowAlpha = clamp01(
@@ -253,7 +334,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
 
     const fireColor = sanitizeSceneColor(visuals?.fireColor, DEFAULT_FIRE_COLOR);
 
-    return { glowColor, glowAlpha, particle, fireColor };
+    return { explosion, glowColor, glowAlpha, particle, fireColor };
   }
 
   private sanitizeParticleEmitterConfig(
@@ -321,6 +402,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     const inner = Math.max(0, outer - ring.thickness);
     return {
       shape: "ring",
+      explosion: visual.explosion,
       innerRadius: inner,
       outerRadius: outer,
       thickness: ring.thickness,
@@ -367,6 +449,49 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       return;
     }
 
+    this.forEachBrickInRing(state, (brick, direction) => {
+      this.bricks.applyDamage(brick.id, damage, direction, {
+        overTime: deltaSeconds,
+        skipKnockback: true,
+      });
+    });
+  }
+
+  private applyRingEffects(state: PersistentAoeState): void {
+    if (state.effects.length === 0) {
+      return;
+    }
+
+    this.forEachBrickInRing(state, (brick) => {
+      for (let i = 0; i < state.effects.length; i += 1) {
+        const effect = state.effects[i]!;
+        if (effect.type === "outgoing-damage-multiplier") {
+          this.bricks.applyEffect({
+            type: "weakeningCurse",
+            brickId: brick.id,
+            durationMs: effect.durationMs,
+            multiplier: effect.multiplier,
+            tint: effect.tint,
+          });
+        } else if (effect.type === "outgoing-damage-flat-reduction") {
+          // Multiply reduction value by spell power
+          const flatReduction = effect.reductionValue * state.damageMultiplier;
+          this.bricks.applyEffect({
+            type: "weakeningCurseFlat",
+            brickId: brick.id,
+            durationMs: effect.durationMs,
+            flatReduction,
+            tint: effect.tint,
+          });
+        }
+      }
+    });
+  }
+
+  private forEachBrickInRing(
+    state: PersistentAoeState,
+    visitor: (brick: BrickRuntimeState, direction: SceneVector2) => void,
+  ): void {
     const progress = clamp01(state.elapsedMs / Math.max(state.durationMs, MIN_DURATION_MS));
     const outerRadius = this.getOuterRadius(state.ring, progress);
     const innerRadius = Math.max(0, outerRadius - state.ring.thickness);
@@ -390,10 +515,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
         ? { x: dx / distance, y: dy / distance }
         : { x: 0, y: 0 };
 
-      this.bricks.applyDamage(brick.id, damage, direction, {
-        overTime: deltaSeconds,
-        skipKnockback: true,
-      });
+      visitor(brick, direction);
     });
   }
 

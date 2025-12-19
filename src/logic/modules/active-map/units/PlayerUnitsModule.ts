@@ -243,6 +243,10 @@ export class PlayerUnitsModule implements GameModule {
     return this.unitOrder.filter(u => !strategyFilter || u.targetingMode !== strategyFilter).length;
   }
 
+  public getActiveUnitCount(): number {
+    return this.unitOrder.length;
+  }
+
   public getEffectiveUnitCount(): number {
     // Count units that can attack (either normally or at distance)
     return this.unitOrder.filter(u => {
@@ -1004,7 +1008,8 @@ export class PlayerUnitsModule implements GameModule {
 
     const counterSource = surviving ?? target;
     const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
-    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier, 0);
+    const flatReduction = this.bricks.getOutgoingDamageFlatReduction(counterSource.id);
+    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
     const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
     if (counterDamage > 0) {
       const previousHp = unit.hp;
@@ -1498,6 +1503,7 @@ const cloneRendererFill = (
       type: "solid",
       color: { ...fill.color },
       ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
     };
   }
   if (fill.type === "gradient") {
@@ -1538,6 +1544,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
         fillType: FILL_TYPES.SOLID,
         color: { ...fill.color },
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
       };
     case FILL_TYPES.LINEAR_GRADIENT:
       return {
@@ -1549,6 +1556,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
       };
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -1561,6 +1569,7 @@ const cloneFill = (fill: SceneFill): SceneFill => {
           color: { ...stop.color },
         })),
         ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
       } as SceneFill;
     default:
       return fill;

@@ -2,6 +2,7 @@ import {
   FILL_TYPES,
   SceneColor,
   SceneFill,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
   SceneVector2,
@@ -38,6 +39,7 @@ export interface BulletConfig {
   lifetimeMsRange: { min: number; max: number };
   gradientStops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
+  filaments?: SceneFillFilaments;
   tail: BulletTailConfig;
   tailEmitter?: BulletTailEmitterConfig;
   explosionType?: ExplosionType;

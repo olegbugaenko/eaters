@@ -9,6 +9,8 @@ import {
 import { SpellConfig, SpellProjectileRingTrailConfig } from "../../../../db/spells-db";
 import { BonusValueMap } from "../../shared/BonusesModule";
 import type { BrickRuntimeState } from "../BricksModule";
+import type { ExplosionModule } from "../../scene/ExplosionModule";
+import type { ExplosionType } from "../../../../db/explosions-db";
 
 const MAX_PROJECTILE_STEPS_PER_TICK = 5;
 const MIN_MOVEMENT_STEP = 2;
@@ -27,6 +29,7 @@ interface ProjectileState {
   ringTrail?: ProjectileRingTrailState;
   damageMultiplier: number;
   aoe?: { radius: number; splash: number };
+  explosion?: ExplosionType;
 }
 
 interface ProjectileRingTrailState {
@@ -108,6 +111,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
   private readonly scene: SceneObjectManager;
   private readonly bricks: BricksModule;
+  private readonly explosions?: ExplosionModule;
   private readonly getSpellPowerMultiplier: () => number;
 
   private projectiles: ProjectileState[] = [];
@@ -117,6 +121,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
   constructor(dependencies: SpellBehaviorDependencies) {
     this.scene = dependencies.scene;
     this.bricks = dependencies.bricks;
+    this.explosions = dependencies.explosions;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
@@ -192,6 +197,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         ringTrail,
         damageMultiplier: context.spellPowerMultiplier,
         aoe: sanitizeAoe(config.projectile.aoe),
+        explosion: config.projectile.explosion,
       };
 
       this.projectiles.push(projectileState);
@@ -245,6 +251,12 @@ export class ProjectileSpellBehavior implements SpellBehavior {
               this.bricks.forEachBrickNear(projectile.position, aoe.radius, (brick: BrickRuntimeState) => {
                 if (brick.id === collided.id) return;
                 this.bricks.applyDamage(brick.id, damage * aoe.splash, projectile.direction);
+              });
+            }
+            // Вибух при влучанні
+            if (projectile.explosion && this.explosions) {
+              this.explosions.spawnExplosionByType(projectile.explosion, {
+                position: { ...projectile.position },
               });
             }
             this.scene.removeObject(projectile.id);

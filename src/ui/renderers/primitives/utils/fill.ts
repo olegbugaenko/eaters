@@ -1,12 +1,15 @@
 import {
   FILL_TYPES,
   SceneFill,
+  SceneFillFilaments,
   SceneGradientStop,
   SceneSize,
   SceneVector2,
 } from "../../../../logic/services/SceneObjectManager";
 import {
   FILL_COMPONENTS,
+  FILL_FILAMENTS1_COMPONENTS,
+  FILL_FILAMENTS0_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
   MAX_GRADIENT_STOPS,
@@ -127,9 +130,16 @@ const populateFillVertexComponents = (
 
   const params0Index = write;
   const params1Index = params0Index + FILL_PARAMS0_COMPONENTS;
+  const filaments0Index = params1Index + FILL_PARAMS1_COMPONENTS;
+  const filaments1Index = filaments0Index + FILL_FILAMENTS0_COMPONENTS;
+  const stopOffsetsIndex = filaments1Index + FILL_FILAMENTS1_COMPONENTS;
 
   for (let i = 0; i < FILL_PARAMS0_COMPONENTS + FILL_PARAMS1_COMPONENTS; i += 1) {
     components[params0Index + i] = 0;
+  }
+
+  for (let i = 0; i < FILL_FILAMENTS0_COMPONENTS + FILL_FILAMENTS1_COMPONENTS; i += 1) {
+    components[filaments0Index + i] = 0;
   }
 
   switch (fill.fillType) {
@@ -172,8 +182,19 @@ const populateFillVertexComponents = (
   }
 
   components[params1Index + 3] = noise ? noise.scale : 0;
+  // For non-linear fills, store noiseDensity in params1[1] (unused for radial/diamond/solid)
+  if (fill.fillType !== FILL_TYPES.LINEAR_GRADIENT) {
+    components[params1Index + 1] = noise?.density ?? 1;
+  }
 
-  write = params1Index + FILL_PARAMS1_COMPONENTS;
+  const filaments: SceneFillFilaments | undefined = fill.filaments;
+  components[filaments0Index + 0] = filaments ? filaments.colorContrast : 0;
+  components[filaments0Index + 1] = filaments ? filaments.alphaContrast : 0;
+  components[filaments0Index + 2] = filaments ? filaments.width : 0;
+  components[filaments0Index + 3] = filaments ? filaments.density : 0;
+  components[filaments1Index + 0] = filaments ? filaments.edgeBlur : 0;
+
+  write = stopOffsetsIndex;
 
   const referenceStop = effectiveStops[Math.max(0, stopCount - 1)]!;
   for (let i = 0; i < STOP_OFFSETS_COMPONENTS; i += 1) {

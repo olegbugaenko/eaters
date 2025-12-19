@@ -216,6 +216,7 @@ const cloneFill = (fill: any): any => {
       fillType: FILL_TYPES.SOLID,
       color: { ...fill.color },
       ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
     };
   }
   if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
@@ -228,6 +229,7 @@ const cloneFill = (fill: any): any => {
         color: { ...stop.color },
       })),
       ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
     };
   }
   if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT || fill.fillType === FILL_TYPES.DIAMOND_GRADIENT) {
@@ -240,6 +242,7 @@ const cloneFill = (fill: any): any => {
         color: { ...stop.color },
       })),
       ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
     };
   }
   return fill;

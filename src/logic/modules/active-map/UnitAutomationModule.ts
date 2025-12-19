@@ -31,7 +31,10 @@ export const DEFAULT_UNIT_AUTOMATION_STATE: UnitAutomationBridgeState = Object.f
 
 interface UnitAutomationModuleOptions {
   bridge: DataBridge;
-  necromancer: Pick<NecromancerModule, "trySpawnDesign" | "getResources">;
+  necromancer: Pick<
+    NecromancerModule,
+    "trySpawnDesign" | "getResources" | "getRemainingUnitCapacity"
+  >;
   unitDesigns: Pick<
     UnitDesignModule,
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
@@ -104,7 +107,10 @@ export class UnitAutomationModule implements GameModule {
   public readonly id = "unitAutomation";
 
   private readonly bridge: DataBridge;
-  private readonly necromancer: Pick<NecromancerModule, "trySpawnDesign" | "getResources">;
+  private readonly necromancer: Pick<
+    NecromancerModule,
+    "trySpawnDesign" | "getResources" | "getRemainingUnitCapacity"
+  >;
   private readonly unitDesigns: Pick<
     UnitDesignModule,
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
@@ -324,10 +330,11 @@ export class UnitAutomationModule implements GameModule {
 
   private evaluateDesignAvailability(design: UnitDesignerUnitState): AutomationAvailability {
     const resources: NecromancerResourceSnapshot = this.necromancer.getResources();
-    const costs = this.getDesignCosts(design);
-    if (costs.sanity > resources.sanity.current) {
+    const remainingCapacity = this.necromancer.getRemainingUnitCapacity();
+    if (remainingCapacity <= 0) {
       return "skip";
     }
+    const costs = this.getDesignCosts(design);
     if (costs.mana > resources.mana.current) {
       if (costs.mana > resources.mana.max) {
         return "skip";
@@ -343,7 +350,7 @@ export class UnitAutomationModule implements GameModule {
   private getDesignCosts(design: UnitDesignerUnitState): { mana: number; sanity: number } {
     return {
       mana: this.sanitizeCostValue(design.cost?.mana),
-      sanity: this.sanitizeCostValue(design.cost?.sanity),
+      sanity: 0,
     };
   }
 

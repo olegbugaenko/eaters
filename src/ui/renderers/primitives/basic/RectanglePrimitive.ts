@@ -133,28 +133,99 @@ export const createDynamicRectanglePrimitive = (
 
   // Reusable scratch buffer to avoid per-frame allocations for fill components
   const fillScratch = new Float32Array(fillComponents.length);
+  // Track previous state to skip updates when nothing changed
+  let prevCenterX = initialCenter.x;
+  let prevCenterY = initialCenter.y;
+  let prevWidth = initialSize.width;
+  let prevHeight = initialSize.height;
+  let prevRotation = initialRotation;
+
+  // Reusable center object to avoid allocations
+  const centerScratch: SceneVector2 = { x: initialCenter.x, y: initialCenter.y };
 
   return {
     data,
     update(target: SceneObjectInstance) {
       const nextRotation = resolveRotation(target, options);
-      const nextCenter = transformObjectPoint(
-        target.data.position,
-        nextRotation,
-        options.offset
-      );
+      // Inline transformObjectPoint to avoid object allocation
+      const pos = target.data.position;
+      const offset = options.offset;
+      let nextCenterX: number;
+      let nextCenterY: number;
+      if (!offset) {
+        nextCenterX = pos.x;
+        nextCenterY = pos.y;
+      } else {
+        const angle = nextRotation;
+        if (angle === 0) {
+          nextCenterX = pos.x + offset.x;
+          nextCenterY = pos.y + offset.y;
+        } else {
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          nextCenterX = pos.x + offset.x * cos - offset.y * sin;
+          nextCenterY = pos.y + offset.x * sin + offset.y * cos;
+        }
+      }
       const nextSize = sanitizeSize(resolveSize(target, options));
+      
+      // Early bail if nothing changed geometrically
+      const geometryChanged =
+        nextCenterX !== prevCenterX ||
+        nextCenterY !== prevCenterY ||
+        nextSize.width !== prevWidth ||
+        nextSize.height !== prevHeight ||
+        nextRotation !== prevRotation;
+
+      if (!geometryChanged) {
+        // Still check fill - but skip geometry recalc
+        centerScratch.x = nextCenterX;
+        centerScratch.y = nextCenterY;
+        const nextFill = resolveFill(target, options);
+        const fill = writeFillVertexComponents(fillScratch, {
+          fill: nextFill,
+          center: centerScratch,
+          rotation: nextRotation,
+          size: nextSize,
+        });
+        // Just check if fill changed
+        let fillChanged = false;
+        const fillLen = fill.length;
+        for (let i = 0; i < fillLen && !fillChanged; i++) {
+          if (data[2 + i] !== fill[i]) {
+            fillChanged = true;
+          }
+        }
+        if (!fillChanged) {
+          return null;
+        }
+        // Update fill only for all vertices
+        for (let v = 0; v < VERTEX_COUNT; v++) {
+          data.set(fill, v * VERTEX_COMPONENTS + 2);
+        }
+        return data;
+      }
+
+      // Full update
+      prevCenterX = nextCenterX;
+      prevCenterY = nextCenterY;
+      prevWidth = nextSize.width;
+      prevHeight = nextSize.height;
+      prevRotation = nextRotation;
+
+      centerScratch.x = nextCenterX;
+      centerScratch.y = nextCenterY;
       const nextFill = resolveFill(target, options);
       const fill = writeFillVertexComponents(fillScratch, {
         fill: nextFill,
-        center: nextCenter,
+        center: centerScratch,
         rotation: nextRotation,
         size: nextSize,
       });
 
       const changed = updateRectangleData(
         data,
-        nextCenter,
+        centerScratch,
         nextSize,
         nextRotation,
         fill
@@ -186,6 +257,7 @@ const buildRectangleData = (
   return data;
 };
 
+// Optimized: zero allocations, inline corner writes
 const updateRectangleData = (
   target: Float32Array,
   center: SceneVector2,
@@ -197,28 +269,57 @@ const updateRectangleData = (
   const halfHeight = size.height / 2;
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
+  const cx = center.x;
+  const cy = center.y;
 
-  const bottomLeft = transformCorner(-halfWidth, halfHeight, center, cos, sin);
-  const bottomRight = transformCorner(halfWidth, halfHeight, center, cos, sin);
-  const topLeft = transformCorner(-halfWidth, -halfHeight, center, cos, sin);
-  const topRight = transformCorner(halfWidth, -halfHeight, center, cos, sin);
-
-  const vertices = [
-    bottomLeft,
-    bottomRight,
-    topLeft,
-    topLeft,
-    bottomRight,
-    topRight,
-  ];
+  // Pre-compute transformed corners inline (avoid object allocation)
+  const negHalfW = -halfWidth;
+  const negHalfH = -halfHeight;
+  // bottomLeft: (-halfWidth, halfHeight)
+  const blX = cx + negHalfW * cos - halfHeight * sin;
+  const blY = cy + negHalfW * sin + halfHeight * cos;
+  // bottomRight: (halfWidth, halfHeight)
+  const brX = cx + halfWidth * cos - halfHeight * sin;
+  const brY = cy + halfWidth * sin + halfHeight * cos;
+  // topLeft: (-halfWidth, -halfHeight)
+  const tlX = cx + negHalfW * cos - negHalfH * sin;
+  const tlY = cy + negHalfW * sin + negHalfH * cos;
+  // topRight: (halfWidth, -halfHeight)
+  const trX = cx + halfWidth * cos - negHalfH * sin;
+  const trY = cy + halfWidth * sin + negHalfH * cos;
 
   let changed = false;
-  let offset = 0;
-  vertices.forEach((vertex) => {
-    changed =
-      assignVertex(target, offset, vertex.x, vertex.y, fillComponents) || changed;
-    offset += VERTEX_COMPONENTS;
-  });
+  const fillLen = fillComponents.length;
+
+  // Helper to write vertex inline
+  const writeVert = (offset: number, x: number, y: number): void => {
+    if (target[offset] !== x) {
+      target[offset] = x;
+      changed = true;
+    }
+    if (target[offset + 1] !== y) {
+      target[offset + 1] = y;
+      changed = true;
+    }
+    const fillOffset = offset + 2;
+    for (let j = 0; j < fillLen; j++) {
+      const value = fillComponents[j]!;
+      if (target[fillOffset + j] !== value) {
+        target[fillOffset + j] = value;
+        changed = true;
+      }
+    }
+  };
+
+  // Triangle 1: bottomLeft, bottomRight, topLeft
+  writeVert(0, blX, blY);
+  writeVert(VERTEX_COMPONENTS, brX, brY);
+  writeVert(VERTEX_COMPONENTS * 2, tlX, tlY);
+  // Triangle 2: topLeft, bottomRight, topRight
+  writeVert(VERTEX_COMPONENTS * 3, tlX, tlY);
+  writeVert(VERTEX_COMPONENTS * 4, brX, brY);
+  writeVert(VERTEX_COMPONENTS * 5, trX, trY);
+
   return changed;
 };
 

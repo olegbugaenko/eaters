@@ -168,8 +168,3 @@
   font-variant-numeric: tabular-nums;
   color: rgba(97, 218, 251, 0.95);
 }
-
-
-.scene-run-summary__threshold-input {
-  margin-top: var(--spacing-md);
-}

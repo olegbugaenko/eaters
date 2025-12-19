@@ -180,8 +180,8 @@ export class Application {
       scene: sceneObjects,
       bonuses: bonusesModule,
       unitDesigns: unitDesignModule,
-      onSanityUnavailable: () => {
-        this.handleAllUnitsDefeated();
+      onSanityDepleted: () => {
+        this.handleMapRunCompleted(false);
       },
     });
     const unitAutomationModule = new UnitAutomationModule({
@@ -231,6 +231,7 @@ export class Application {
     mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
+      bonuses: bonusesModule,
       bricks: bricksModule,
       playerUnits: playerUnitsModule,
       necromancer: this.necromancerModule,
@@ -255,6 +256,7 @@ export class Application {
       necromancer: this.necromancerModule,
       bricks: bricksModule,
       bonuses: bonusesModule,
+      explosions: explosionModule,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
     });
     this.spellcastingModule = spellcastingModule;
@@ -379,10 +381,6 @@ export class Application {
     this.mapModule.setAutoRestartEnabled(enabled);
   }
 
-  public setAutoRestartThreshold(enabled: boolean, minEffectiveUnits: number): void {
-    this.mapModule.setAutoRestartThreshold(enabled, minEffectiveUnits);
-  }
-
   public leaveCurrentMap(): void {
     this.mapModule.leaveCurrentMap();
     this.cleanupSceneAfterRun();
@@ -433,24 +431,9 @@ export class Application {
   }
 
   private handleAllUnitsDefeated(): void {
-    // If auto-restart is enabled, use the original logic (only check spawns)
-    if (this.mapModule.isAutoRestartEnabled()) {
-      if (this.necromancerModule.hasSanityForAnySpawn()) {
-        return;
-      }
+    if (this.necromancerModule.isSanityDepleted()) {
       this.handleMapRunCompleted(false);
-      return;
     }
-    // If auto-restart is disabled, also check if player can cast any spell
-    // Game should continue as long as there's any form of active interaction
-    if (this.necromancerModule.hasSanityForAnySpawn()) {
-      return;
-    }
-    if (this.spellcastingModule.hasResourcesForAnySpell()) {
-      return;
-    }
-    // No spawns possible and no spells can be cast - end the run
-    this.handleMapRunCompleted(false);
   }
 
   private handleMapRunCompleted(success: boolean): void {

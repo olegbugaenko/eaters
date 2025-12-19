@@ -1,5 +1,6 @@
 import {
   SceneColor,
+  SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
   SceneSize,
@@ -11,6 +12,7 @@ import { ResourceAmount } from "./resources-db";
 
 export type BrickType =
   | "classic"
+  | "smallTrainingBrick"
   | "smallSquareGray"
   | "smallSquareYellow"
   | "smallIron"
@@ -36,6 +38,7 @@ export interface BrickLinearFillConfig {
   end?: SceneVector2;
   stops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
+  filaments?: SceneFillFilaments;
 }
 
 export interface BrickRadialFillConfig {
@@ -44,12 +47,14 @@ export interface BrickRadialFillConfig {
   radius?: number;
   stops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
+  filaments?: SceneFillFilaments;
 }
 
 export interface BrickSolidFillConfig {
   type: "solid";
   color: SceneColor;
   noise?: SceneFillNoise;
+  filaments?: SceneFillFilaments;
 }
 
 export type BrickFillConfig =
@@ -69,6 +74,11 @@ const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.9, g: 0.7, b: 0.1, a: 1 } },
   { offset: 0.5, color: { r: 1, g: 0.85, b: 0.3, a: 1 } },
   { offset: 1, color: { r: 0.9, g: 0.7, b: 0.1, a: 1 } },
+] as const;
+
+const SMALL_SQUARE_TRAINING_BRICK_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.75, g: 0.75, b: 0.75, a: 1 } },
+  { offset: 1, color: { r: 0.65, g: 0.65, b: 0.65, a: 1 } },
 ] as const;
 
 const SMALL_SQUARE_GRAY_GRADIENT: readonly SceneGradientStop[] = [
@@ -184,6 +194,42 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
   },
+  smallTrainingBrick: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 12,
+      stops: SMALL_SQUARE_TRAINING_BRICK_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.5,
+      },
+    },
+    stroke: { color: { r: 0.37, g: 0.37, b: 0.38, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 3,
+      armor: 0,
+      baseDamage: 2,
+      brickKnockBackDistance: 60,
+      brickKnockBackSpeed: 150,
+      brickKnockBackAmplitude: 6,
+      physicalSize: 16,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
+    },
+    rewards: {
+      stone: 0.5,
+    },
+  },
   smallSquareGray: {
     size: { width: 24, height: 24 },
     fill: {
@@ -199,7 +245,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.33, g: 0.33, b: 0.38, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 5,
+      maxHp: 6,
       armor: 0,
       baseDamage: 3,
       brickKnockBackDistance: 60,

@@ -14,6 +14,7 @@ import {
 import {
   DynamicPrimitive,
   FILL_COMPONENTS,
+  FILL_FILAMENTS_COMPONENTS,
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
@@ -47,6 +48,7 @@ export interface ParticleEmitterBaseConfig {
   alignToVelocity?: boolean; // if true, rotate quad to face particle velocity
   emissionDurationMs?: number;
   capacity: number;
+  sizeGrowthRate?: number; // Multiplier per second: 1.0 = no growth, 2.0 = doubles per second
 }
 
 export interface ParticleEmitterParticleState {
@@ -439,6 +441,9 @@ const advanceParticleEmitterStateGpu = <
   }
 
   const origin = options.getOrigin(instance, config);
+  
+  // Update CPU slots to track which are free (based on spawn time, not incremental age)
+  const currentTimeMs = state.ageMs;
   if (deltaMs > 0) {
     const slots = gpu.slots;
     for (let i = 0; i < slots.length; i += 1) {
@@ -447,16 +452,10 @@ const advanceParticleEmitterStateGpu = <
         continue;
       }
       if (slot.lifetimeMs > 0) {
-        const nextAge = slot.ageMs + deltaMs;
-        if (nextAge >= slot.lifetimeMs) {
+        const age = currentTimeMs - slot.ageMs; // ageMs stores spawnTime
+        if (age >= slot.lifetimeMs) {
           slot.active = false;
-          slot.ageMs = 0;
-          slot.lifetimeMs = 0;
-        } else {
-          slot.ageMs = nextAge;
         }
-      } else {
-        slot.ageMs += deltaMs;
       }
     }
   }
@@ -503,7 +502,7 @@ const advanceParticleEmitterStateGpu = <
       }
       const slot = slots[slotIndex]!;
       slot.active = true;
-      slot.ageMs = 0;
+      slot.ageMs = currentTimeMs; // Store spawn time, not age
       slot.lifetimeMs = particle.lifetimeMs;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -513,13 +512,17 @@ const advanceParticleEmitterStateGpu = <
   const remainingCapacity = Math.max(0, freeSlots.length - spawnBudget);
   state.spawnAccumulator = Math.min(state.spawnAccumulator, remainingCapacity);
 
+  // Run GPU simulation to update particle ages and positions
   if (deltaMs > 0) {
     stepParticleSimulation(gpu, state.capacity, deltaMs);
   }
 
   // Update active instance count for renderer
+  // Note: This is an approximation - GPU may have deactivated some particles,
+  // but reading back from GPU buffer would be too slow. The renderer will skip
+  // invisible particles via alpha=0 anyway.
   if (gpu.handle) {
-    gpu.handle.activeCount = activeCount;
+    gpu.handle.activeCount = Math.min(activeCount + spawnBudget, state.capacity);
   }
 };
 
@@ -1099,13 +1102,21 @@ const createParticleEmitterGpuState = (
   const uniforms: ParticleEmitterGpuRenderUniforms = {
     fillType: FILL_TYPES.SOLID,
     stopCount: 1,
-    stopOffsets: new Float32Array(3),
+    stopOffsets: new Float32Array(5),
     stopColor0: new Float32Array([1, 1, 1, 1]),
     stopColor1: new Float32Array([1, 1, 1, 0]),
     stopColor2: new Float32Array([1, 1, 1, 0]),
+    stopColor3: new Float32Array([1, 1, 1, 0]),
+    stopColor4: new Float32Array([1, 1, 1, 0]),
     noiseColorAmplitude: 0,
     noiseAlphaAmplitude: 0,
     noiseScale: 1,
+    noiseDensity: 1,
+    filamentColorContrast: 0,
+    filamentAlphaContrast: 0,
+    filamentWidth: 0,
+    filamentDensity: 0,
+    filamentEdgeBlur: 0,
     hasLinearStart: false,
     linearStart: { x: 0, y: 0 },
     hasLinearEnd: false,
@@ -1120,6 +1131,7 @@ const createParticleEmitterGpuState = (
     minParticleSize: MIN_PARTICLE_SIZE,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    sizeGrowthRate: 1.0,
   };
 
   const gpu: ParticleEmitterGpuState = {
@@ -1270,6 +1282,7 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.minParticleSize = MIN_PARTICLE_SIZE;
   uniforms.lengthMultiplier = Math.max(config.aspectRatio ?? 1, 1);
   uniforms.alignToVelocity = config.alignToVelocity === true;
+  uniforms.sizeGrowthRate = typeof config.sizeGrowthRate === "number" && Number.isFinite(config.sizeGrowthRate) ? config.sizeGrowthRate : 1.0;
 
   const fill = resolveParticleFill(config);
   uniforms.fillType = fill.fillType;
@@ -1277,6 +1290,18 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.noiseColorAmplitude = noise ? clamp01(noise.colorAmplitude) : 0;
   uniforms.noiseAlphaAmplitude = noise ? clamp01(noise.alphaAmplitude) : 0;
   uniforms.noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
+  uniforms.noiseDensity = noise?.density ?? 1;
+
+  const filaments = fill.filaments;
+  uniforms.filamentColorContrast = filaments
+    ? clamp01(filaments.colorContrast)
+    : 0;
+  uniforms.filamentAlphaContrast = filaments
+    ? clamp01(filaments.alphaContrast)
+    : 0;
+  uniforms.filamentWidth = filaments ? clamp01(filaments.width) : 0;
+  uniforms.filamentDensity = filaments ? Math.max(filaments.density, 0) : 0;
+  uniforms.filamentEdgeBlur = filaments ? clamp01(filaments.edgeBlur) : 0;
 
   const stops = ensureParticleStops(fill);
   const stopCount = Math.min(MAX_GRADIENT_STOPS, stops.length);
@@ -1492,6 +1517,7 @@ const applyParticleAlpha = (components: Float32Array, alpha: number): void => {
     FILL_INFO_COMPONENTS +
     FILL_PARAMS0_COMPONENTS +
     FILL_PARAMS1_COMPONENTS +
+    FILL_FILAMENTS_COMPONENTS +
     STOP_OFFSETS_COMPONENTS;
   for (let i = 0; i < MAX_GRADIENT_STOPS; i += 1) {
     const base = colorsOffset + i * STOP_COLOR_COMPONENTS;
@@ -1525,6 +1551,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         fillType: fill.fillType,
         color: fill.color,
         noise: fill.noise,
+        filaments: fill.filaments,
       });
     case FILL_TYPES.LINEAR_GRADIENT:
       return JSON.stringify({
@@ -1533,6 +1560,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         end: fill.end,
         stops: fill.stops,
         noise: fill.noise,
+        filaments: fill.filaments,
       });
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT:
@@ -1542,6 +1570,7 @@ const serializeSceneFill = (fill: SceneFill): string => {
         end: fill.end,
         stops: fill.stops,
         noise: fill.noise,
+        filaments: fill.filaments,
       });
     default:
       return JSON.stringify(fill);
@@ -1562,6 +1591,7 @@ const createSolidFillTemplate = (fill: SceneFill): Float32Array | null => {
     FILL_INFO_COMPONENTS +
     FILL_PARAMS0_COMPONENTS +
     FILL_PARAMS1_COMPONENTS +
+    FILL_FILAMENTS_COMPONENTS +
     STOP_OFFSETS_COMPONENTS;
   for (let i = 0; i < MAX_GRADIENT_STOPS; i += 1) {
     const base = colorBase + i * STOP_COLOR_COMPONENTS;

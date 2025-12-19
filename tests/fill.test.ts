@@ -9,6 +9,7 @@ import {
   FILL_INFO_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
+  FILL_FILAMENTS_COMPONENTS,
   MAX_GRADIENT_STOPS,
   STOP_COLOR_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
@@ -69,7 +70,8 @@ describe("createFillVertexComponents", () => {
 
     const params0Offset = FILL_INFO_COMPONENTS;
     const params1Offset = params0Offset + FILL_PARAMS0_COMPONENTS;
-    const offsetsOffset = params1Offset + FILL_PARAMS1_COMPONENTS;
+    const filamentsOffset = params1Offset + FILL_PARAMS1_COMPONENTS;
+    const offsetsOffset = filamentsOffset + FILL_FILAMENTS_COMPONENTS;
     const colorsOffset = offsetsOffset + STOP_OFFSETS_COMPONENTS;
 
     const startX = readComponent(components, params0Offset + 0);
@@ -141,7 +143,10 @@ describe("createFillVertexComponents", () => {
 
     const params0Offset = FILL_INFO_COMPONENTS;
     const offsetsOffset =
-      params0Offset + FILL_PARAMS0_COMPONENTS + FILL_PARAMS1_COMPONENTS;
+      params0Offset +
+      FILL_PARAMS0_COMPONENTS +
+      FILL_PARAMS1_COMPONENTS +
+      FILL_FILAMENTS_COMPONENTS;
     const colorsOffset = offsetsOffset + STOP_OFFSETS_COMPONENTS;
 
     assert.strictEqual(components[0], FILL_TYPES.RADIAL_GRADIENT);
