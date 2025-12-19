@@ -101,6 +101,7 @@ export class NecromancerModule implements GameModule {
   private spawnPoints: SceneVector2[] = [];
   private nextSpawnIndex = 0;
   private mapActive = false;
+  private sanityCheckArmed = false;
   private pendingLoad: ResourceAmountMap | null = null;
   private resourcesDirty = true;
   private cachedDesigns: UnitDesignerUnitState[] = [];
@@ -151,6 +152,7 @@ export class NecromancerModule implements GameModule {
     this.spawnPoints = [];
     this.nextSpawnIndex = 0;
     this.mapActive = false;
+    this.sanityCheckArmed = false;
     this.pendingLoad = null;
     this.mana.current = 0;
     this.mana.max = 0;
@@ -168,6 +170,7 @@ export class NecromancerModule implements GameModule {
   public load(data: unknown | undefined): void {
     this.pendingLoad = this.parseSaveData(data);
     this.sanityDepleted = false;
+    this.sanityCheckArmed = false;
     this.markResourcesDirty();
     this.pushResources();
   }
@@ -227,6 +230,7 @@ export class NecromancerModule implements GameModule {
     }));
     this.nextSpawnIndex = 0;
     this.mapActive = true;
+    this.sanityCheckArmed = true;
     this.sanityDepleted = false;
 
     this.applyCurrentBonusValues();
@@ -351,6 +355,7 @@ export class NecromancerModule implements GameModule {
     this.nextSpawnIndex = 0;
     this.pendingLoad = null;
     this.sanityDepleted = false;
+    this.sanityCheckArmed = false;
     this.markResourcesDirty();
     this.pushResources();
   }
@@ -541,12 +546,10 @@ export class NecromancerModule implements GameModule {
   }
 
   private checkSanityDepleted(): void {
-    if (!this.mapActive || this.sanityDepleted) {
-      console.warn("EXIT EARLY: ", this.mapActive, this.sanityDepleted);
+    if (this.sanityDepleted || !this.sanityCheckArmed) {
       return;
     }
     if (this.sanity.current <= 1.e-8) {
-      console.warn("Sanity depleted");
       this.sanityDepleted = true;
       this.onSanityDepleted?.();
     }
