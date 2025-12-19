@@ -32,6 +32,7 @@ export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
 export const MAP_CLEARED_LEVELS_BRIDGE_KEY = "maps/clearedLevelsTotal";
+export const MAP_LAST_PLAYED_BRIDGE_KEY = "maps/lastPlayed";
 
 interface MapModuleOptions {
   scene: SceneObjectManager;
@@ -54,6 +55,7 @@ interface MapSaveData {
   stats?: MapStats;
   selectedLevels?: Partial<Record<MapId, number>>;
   autoRestartEnabled?: boolean;
+  lastPlayedMap?: { mapId: MapId; level: number };
 }
 
 export interface MapLevelStats {
@@ -114,6 +116,7 @@ export class MapModule implements GameModule {
   private autoRestartEnabled = false;
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
   private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
+  private lastPlayedMap: { mapId: MapId; level: number } | null = null;
 
   constructor(private readonly options: MapModuleOptions) {
     this.unlocks = options.unlocks;
@@ -141,11 +144,17 @@ export class MapModule implements GameModule {
     this.mapStats = parsed?.stats ?? {};
     this.mapSelectedLevels = parsed?.selectedLevels ?? {};
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
+    if (parsed?.lastPlayedMap) {
+      this.lastPlayedMap = parsed.lastPlayedMap;
+    } else {
+      this.lastPlayedMap = null;
+    }
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
+    this.pushLastPlayedMap();
 
     const savedMapId = parsed?.mapId;
     if (savedMapId && this.isMapSelectable(savedMapId)) {
@@ -169,6 +178,7 @@ export class MapModule implements GameModule {
       stats: this.cloneStats(),
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
+      lastPlayedMap: this.lastPlayedMap ?? undefined,
     } satisfies MapSaveData;
   }
 
@@ -225,6 +235,12 @@ export class MapModule implements GameModule {
   }
 
   public leaveCurrentMap(): void {
+    // Save last played map before leaving
+    if (this.selectedMapId !== null) {
+      const level = this.activeMapLevel > 0 ? this.activeMapLevel : this.selectedMapLevel;
+      this.lastPlayedMap = { mapId: this.selectedMapId, level };
+      this.pushLastPlayedMap();
+    }
     this.activeMapLevel = 0;
     this.runActive = false;
     this.pendingCameraFocus = null;
@@ -272,6 +288,9 @@ export class MapModule implements GameModule {
       result.level !== undefined
         ? sanitizeLevel(result.level)
         : this.getActiveLevelForMap(mapId);
+    // Save last played map
+    this.lastPlayedMap = { mapId, level };
+    this.pushLastPlayedMap();
     const stats = this.ensureLevelStats(mapId, level);
     if (result.success) {
       stats.success += 1;
@@ -338,6 +357,8 @@ export class MapModule implements GameModule {
     this.mapSelectedLevels[mapId] = level;
     this.selectedMapLevel = level;
     this.activeMapLevel = level;
+    this.lastPlayedMap = { mapId, level };
+    this.pushLastPlayedMap();
     this.runActive = true;
     this.options.unitsAutomation.onMapStart();
     this.options.scene.setMapSize(config.size);
@@ -578,6 +599,13 @@ export class MapModule implements GameModule {
   private pushSelectedMapLevel(): void {
     const level = this.selectedMapId ? this.selectedMapLevel : 0;
     this.options.bridge.setValue<number>(MAP_SELECTED_LEVEL_BRIDGE_KEY, level);
+  }
+
+  private pushLastPlayedMap(): void {
+    this.options.bridge.setValue<{ mapId: MapId; level: number } | null>(
+      MAP_LAST_PLAYED_BRIDGE_KEY,
+      this.lastPlayedMap
+    );
   }
 
   private parseSaveData(data: unknown): MapSaveData | null {

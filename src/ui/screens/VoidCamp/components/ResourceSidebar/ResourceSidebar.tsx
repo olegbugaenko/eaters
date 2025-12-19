@@ -2,12 +2,37 @@ import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
 import { ResourceIcon } from "@shared/icons/ResourceIcon";
 import "./ResourceSidebar.css";
 import { formatNumber } from "@shared/format/number";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { useBridgeValue } from "@ui/shared/useBridgeValue";
+import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/MapModule";
+import { getMapConfig, MapId } from "@db/maps-db";
+import { useCallback } from "react";
 
 interface ResourceSidebarProps {
   resources: ResourceAmountPayload[];
+  onStart?: () => void;
 }
 
-export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources }) => {
+export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onStart }) => {
+  const { app, bridge } = useAppLogic();
+  const lastPlayedMap = useBridgeValue<{ mapId: MapId; level: number } | null>(
+    bridge,
+    MAP_LAST_PLAYED_BRIDGE_KEY,
+    null
+  );
+
+  const handleQuickStart = useCallback(() => {
+    if (!lastPlayedMap) {
+      return;
+    }
+    app.selectMap(lastPlayedMap.mapId);
+    app.selectMapLevel(lastPlayedMap.mapId, lastPlayedMap.level);
+    app.restartCurrentMap();
+    onStart?.();
+  }, [app, lastPlayedMap, onStart]);
+
+  const mapName = lastPlayedMap ? getMapConfig(lastPlayedMap.mapId).name : null;
+
   return (
     <div className="resource-sidebar stack-lg">
       {resources.length > 0 ? (
@@ -21,6 +46,15 @@ export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources }) =
         </ul>
       ) : (
         <p className="text-muted">No resources collected yet.</p>
+      )}
+      {lastPlayedMap && mapName && (
+        <button
+          className="primary-button button pinned-bottom"
+          onClick={handleQuickStart}
+          type="button"
+        >
+          {mapName} ({lastPlayedMap.level})
+        </button>
       )}
     </div>
   );
