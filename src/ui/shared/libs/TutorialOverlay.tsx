@@ -327,7 +327,7 @@ export function TutorialOverlay({
             type="button"
             onClick={goBack}
             disabled={!canBack || busy}
-            style={btnStyle("ghost")}
+            className="button small-button"
           >
             Back
           </button>
@@ -338,7 +338,7 @@ export function TutorialOverlay({
             type="button"
             onClick={close}
             disabled={busy}
-            style={btnStyle("ghost")}
+            className="button danger-button small-button"
           >
             Skip
           </button>
@@ -347,7 +347,6 @@ export function TutorialOverlay({
             type="button"
             onClick={goNext}
             disabled={busy || nextDisabled}
-            style={btnStyle("solid")}
             className="button primary-button small-button"
           >
             {step.nextLabel ?? (isLast ? "Finish" : "Next")}
@@ -365,26 +364,4 @@ export function TutorialOverlay({
       </div>
     </>
   );
-}
-
-function btnStyle(kind: "solid" | "ghost"): React.CSSProperties {
-  const base: React.CSSProperties = {
-    borderRadius: 10,
-    padding: "8px 10px",
-    fontSize: 13,
-    cursor: "pointer",
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "transparent",
-    color: "#fff",
-  };
-
-  if (kind === "solid") {
-    return {
-      ...base,
-      background: "rgba(255,255,255,0.12)",
-      border: "1px solid rgba(255,255,255,0.22)",
-    };
-  }
-
-  return base;
 }
