@@ -231,6 +231,7 @@ export class Application {
     mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
+      bonuses: bonusesModule,
       bricks: bricksModule,
       playerUnits: playerUnitsModule,
       necromancer: this.necromancerModule,

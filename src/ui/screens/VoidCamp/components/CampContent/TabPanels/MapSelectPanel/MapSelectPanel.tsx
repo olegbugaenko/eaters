@@ -9,6 +9,7 @@ import { formatNumber } from "@shared/format/number";
 
 interface MapSelectPanelProps {
   maps: MapListEntry[];
+  clearedLevelsTotal: number;
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
   onSelectLevel: (mapId: MapId, level: number) => void;
@@ -17,6 +18,7 @@ interface MapSelectPanelProps {
 
 export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
+  clearedLevelsTotal,
   selectedMap,
   onSelectMap,
   onSelectLevel,
@@ -25,7 +27,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   return (
     <div className="map-select-panel stack-lg">
       <div className="map-select-panel__header">
-        <p>Map Levels Cleared: {formatNumber(6)}</p>
+        <p>Map Levels Cleared: {formatNumber(clearedLevelsTotal)}</p>
       </div>
       <div className="map-select-panel__list card-list">
         {maps.map((map) => {

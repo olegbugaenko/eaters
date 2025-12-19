@@ -326,23 +326,24 @@ const BROWN_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.12 } },
-    { offset: 0.45, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.06 } },
-    { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0.03 } },
+    { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.09 } },
+    { offset: 0.45, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.05 } },
+    { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0.02 } },
   ],
   noise: {
     colorAmplitude: 0.04,
     alphaAmplitude: 0.09,
     scale: 0.5,
+    density: 0.3,
   },
 };
 const SILVER_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 0.95, g: 0.96, b: 0.98, a: 0.12 } },
-    { offset: 0.45, color: { r: 0.85, g: 0.86, b: 0.9, a: 0.06 } },
-    { offset: 1, color: { r: 0.75, g: 0.76, b: 0.8, a: 0.03 } },
+    { offset: 0, color: { r: 0.95, g: 0.96, b: 0.98, a: 0.09 } },
+    { offset: 0.45, color: { r: 0.85, g: 0.86, b: 0.9, a: 0.05 } },
+    { offset: 1, color: { r: 0.75, g: 0.76, b: 0.8, a: 0.02 } },
   ],
   noise: {
     colorAmplitude: 0.04,
@@ -354,9 +355,9 @@ const ICE_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 0.85, g: 0.95, b: 1.0, a: 0.12 } },
-    { offset: 0.45, color: { r: 0.65, g: 0.85, b: 1.0, a: 0.06 } },
-    { offset: 1, color: { r: 0.45, g: 0.7, b: 1.0, a: 0.03 } },
+    { offset: 0, color: { r: 0.85, g: 0.95, b: 1.0, a: 0.09 } },
+    { offset: 0.45, color: { r: 0.65, g: 0.85, b: 1.0, a: 0.05 } },
+    { offset: 1, color: { r: 0.45, g: 0.7, b: 1.0, a: 0.02 } },
   ],
   noise: {
     colorAmplitude: 0.04,
@@ -368,9 +369,9 @@ const COAL_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 0.3, g: 0.3, b: 0.32, a: 0.12 } },
-    { offset: 0.45, color: { r: 0.18, g: 0.18, b: 0.2, a: 0.06 } },
-    { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0.03 } },
+    { offset: 0, color: { r: 0.3, g: 0.3, b: 0.32, a: 0.09 } },
+    { offset: 0.45, color: { r: 0.18, g: 0.18, b: 0.2, a: 0.05 } },
+    { offset: 1, color: { r: 0.1, g: 0.1, b: 0.12, a: 0.02 } },
   ],
   noise: {
     colorAmplitude: 0.04,
@@ -382,9 +383,9 @@ const MAGMA_BRICK_EMITTER_FILL2: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 1.0, g: 0.65, b: 0.2, a: 0.12 } },
-    { offset: 0.45, color: { r: 1.0, g: 0.45, b: 0.15, a: 0.06 } },
-    { offset: 1, color: { r: 0.9, g: 0.3, b: 0.1, a: 0.03 } },
+    { offset: 0, color: { r: 1.0, g: 0.65, b: 0.2, a: 0.09 } },
+    { offset: 0.45, color: { r: 1.0, g: 0.45, b: 0.15, a: 0.05 } },
+    { offset: 1, color: { r: 0.9, g: 0.3, b: 0.1, a: 0.02 } },
   ],
   noise: {
     colorAmplitude: 0.04,
@@ -398,8 +399,8 @@ const CRITICAL_HIT_EMITTER_FILL: SceneFill = {
   start: { x: 0, y: 0 },
   end: 6,
   stops: [
-    { offset: 0, color: { r: 1, g: 0.65, b: 0.65, a: 0.95 } },
-    { offset: 0.45, color: { r: 0.95, g: 0.28, b: 0.28, a: 0.5 } },
+    { offset: 0, color: { r: 1, g: 0.65, b: 0.65, a: 0.4 } },
+    { offset: 0.45, color: { r: 0.95, g: 0.28, b: 0.28, a: 0.3 } },
     { offset: 1, color: { r: 0.7, g: 0.05, b: 0.05, a: 0 } },
   ],
 };
@@ -662,7 +663,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: BROWN_BRICK_HIT_WAVE,
@@ -670,11 +671,11 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.75, g: 0.55, b: 0.35, a: 1 }, fill: BROWN_BRICK_EMITTER_FILL },
   },
   woodBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
+      radiusExtension: 50,
       startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: BROWN_BRICK_DESTROY_WAVE,
@@ -686,20 +687,20 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
-      startAlpha: 0.6,
+      radiusExtension: 30,
+      startAlpha: 0.5,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_HIT_WAVE,
     }),
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.95, g: 0.65, b: 0.35, a: 1 }, fill: ORANGE_BRICK_EMITTER_FILL },
   },
   copperBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
-      startAlpha: 0.8,
+      radiusExtension: 50,
+      startAlpha: 0.7,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_DESTROY_WAVE,
     }),
@@ -710,7 +711,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: SILVER_BRICK_HIT_WAVE,
@@ -718,11 +719,11 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.92, g: 0.93, b: 0.96, a: 1 }, fill: SILVER_BRICK_EMITTER_FILL2 },
   },
   silverBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
+      radiusExtension: 50,
       startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: SILVER_BRICK_DESTROY_WAVE,
@@ -734,7 +735,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: COAL_BRICK_HIT_WAVE,
@@ -742,11 +743,11 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.24, g: 0.24, b: 0.27, a: 1 }, fill: COAL_BRICK_EMITTER_FILL2 },
   },
   coalBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
+      radiusExtension: 50,
       startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: COAL_BRICK_DESTROY_WAVE,
@@ -758,7 +759,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: ICE_BRICK_HIT_WAVE,
@@ -766,11 +767,11 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.7, g: 0.9, b: 1.0, a: 1 }, fill: ICE_BRICK_EMITTER_FILL2 },
   },
   iceBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
+      radiusExtension: 50,
       startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: ICE_BRICK_DESTROY_WAVE,
@@ -782,7 +783,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: MAGMA_BRICK_HIT_WAVE,
@@ -790,11 +791,11 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 1.0, g: 0.5, b: 0.15, a: 1 }, fill: MAGMA_BRICK_EMITTER_FILL2 },
   },
   magmaBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
+      radiusExtension: 50,
       startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: MAGMA_BRICK_DESTROY_WAVE,

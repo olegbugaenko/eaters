@@ -1,5 +1,5 @@
 import { ResourceAmount, ResourceId } from "./resources-db";
-import { BonusEffectMap } from "../types/bonuses";
+import { BonusEffectContext, BonusEffectMap } from "../types/bonuses";
 
 export interface SkillNodePosition {
   readonly x: number;
@@ -86,6 +86,11 @@ export const SKILL_IDS = [
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
+
+const getClearedLevelsTotal = (context?: BonusEffectContext, level?: number): number => {
+  console.log("context", context, level);
+  return Math.max(0, context?.clearedMapLevelsTotal ?? 0);
+}
 
 const createStoneCost = (base: number, growth: number) =>
   (level: number): ResourceAmount => ({
@@ -660,7 +665,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.01 * level, // multiply by levels cleared total
+        multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context, level),
       },
     },
     nodesRequired: { damage_lore: 2 },
@@ -926,7 +931,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       all_units_hp_multiplier: {
-        multiplier: (level) => 1 + 0.01 * level, // multiply by levels cleared total
+        multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context),
       },
     },
     nodesRequired: { vitality2: 5 },

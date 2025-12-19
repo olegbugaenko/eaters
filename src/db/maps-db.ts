@@ -662,7 +662,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       { x, y: y + height },
     ];
     const cableCenters: readonly SceneVector2[] = [
-      { x: 250, y: 350 },
+      { x: 350, y: 350 },
       { x: 520, y: 260 },
       { x: 780, y: 420 },
       { x: 1030, y: 360 },
@@ -670,8 +670,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       { x: 1120, y: 820 },
       { x: 860, y: 960 },
       { x: 620, y: 900 },
-      { x: 420, y: 1080 },
-      { x: 320, y: 1260 },
+      { x: 420, y: 1080 }
     ];
 
     const createConnector = (
@@ -706,8 +705,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const outerLevel = baseLevel + 2;
-        const outerRadius = 150;
-        const innerRadius = 70;
+        const outerRadius = 90;
+        const innerRadius = 40;
 
         const outerSegments = cableCenters.flatMap((center, index) => {
           const circle = circleWithBricks(

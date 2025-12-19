@@ -82,6 +82,7 @@ export class SkillTreeModule implements GameModule {
   private readonly resources: ResourcesModule;
   private readonly bonuses: BonusesModule;
   private levels: SkillLevelMap = createDefaultLevels();
+  private unsubscribeBonuses: (() => void) | null = null;
 
   constructor(options: SkillTreeModuleOptions) {
     this.bridge = options.bridge;
@@ -89,6 +90,9 @@ export class SkillTreeModule implements GameModule {
     this.bonuses = options.bonuses;
     this.registerBonusSources();
     this.syncAllBonusLevels();
+    this.unsubscribeBonuses = this.bonuses.subscribe(() => {
+      this.pushState();
+    });
   }
 
   public initialize(): void {

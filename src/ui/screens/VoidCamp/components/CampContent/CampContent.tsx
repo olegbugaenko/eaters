@@ -15,6 +15,7 @@ export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting
 
 interface CampContentProps {
   maps: MapListEntry[];
+  clearedLevelsTotal: number;
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
   onSelectMapLevel: (mapId: MapId, level: number) => void;
@@ -31,6 +32,7 @@ interface CampContentProps {
 
 export const CampContent: React.FC<CampContentProps> = ({
   maps,
+  clearedLevelsTotal,
   selectedMap,
   onSelectMap,
   onSelectMapLevel,
@@ -95,6 +97,7 @@ export const CampContent: React.FC<CampContentProps> = ({
       <CampTabPanels
         activeTab={activeTab}
         maps={maps}
+        clearedLevelsTotal={clearedLevelsTotal}
         selectedMap={selectedMap}
         onSelectMap={onSelectMap}
         onSelectMapLevel={onSelectMapLevel}
