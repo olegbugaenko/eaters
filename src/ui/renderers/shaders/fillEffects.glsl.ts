@@ -166,8 +166,21 @@ vec4 applyFillNoise(vec4 color) {
   float scale = v_fillParams1.w;
   float effectiveScale = scale > 0.0 ? scale : 1.0;
   float fillType = v_fillInfo.x;
+  
+  // noiseDensity is stored in v_fillParams1.y for non-linear fills
+  // For linear gradient (fillType ~1), params1.y is dir.y, so use default 1.0
+  float noiseDensity = (fillType > 0.5 && fillType < 1.5) ? 1.0 : v_fillParams1.y;
+  noiseDensity = noiseDensity > 0.0 ? noiseDensity : 1.0;
+  
   vec2 anchor = resolveNoiseAnchor(fillType);
-  float noiseValue = noise2d((v_worldPosition - anchor) * effectiveScale) * 2.0 - 1.0;
+  float rawNoise = noise2d((v_worldPosition - anchor) * effectiveScale);
+  
+  // Apply density: sparse out fluctuations when density < 1
+  // density=1 -> all noise visible, density=0.1 -> only 10% visible
+  float threshold = 1.0 - noiseDensity;
+  float sparsedNoise = rawNoise > threshold ? (rawNoise - threshold) / max(noiseDensity, 0.001) : 0.0;
+  float noiseValue = sparsedNoise * 2.0 - 1.0;
+  
   if (colorAmp > 0.0) {
     color.rgb = clamp(color.rgb + noiseValue * colorAmp, 0.0, 1.0);
   }

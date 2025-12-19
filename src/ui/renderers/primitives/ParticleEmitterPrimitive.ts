@@ -1111,6 +1111,7 @@ const createParticleEmitterGpuState = (
     noiseColorAmplitude: 0,
     noiseAlphaAmplitude: 0,
     noiseScale: 1,
+    noiseDensity: 1,
     filamentColorContrast: 0,
     filamentAlphaContrast: 0,
     filamentWidth: 0,
@@ -1289,6 +1290,7 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.noiseColorAmplitude = noise ? clamp01(noise.colorAmplitude) : 0;
   uniforms.noiseAlphaAmplitude = noise ? clamp01(noise.alphaAmplitude) : 0;
   uniforms.noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
+  uniforms.noiseDensity = noise?.density ?? 1;
 
   const filaments = fill.filaments;
   uniforms.filamentColorContrast = filaments

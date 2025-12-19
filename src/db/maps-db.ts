@@ -224,7 +224,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   })(),
   initial: {
     name: "Initial Grounds",
-    size: { width: 1500, height: 1500 },
+    size: { width: 1200, height: 1200 },
     unlockedBy: [
       {
         type: "map",
@@ -235,13 +235,13 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const innerLevel = baseLevel + 1;
-      const center: SceneVector2 = { x: 750, y: 750 };
+      const center: SceneVector2 = { x: 600, y: 600 };
       const largeCircle = circleWithBricks(
         "smallSquareGray",
         {
           center,
-          innerRadius: 250,
-          outerRadius: 290,
+          innerRadius: 210,
+          outerRadius: 250,
         },
         { level: innerLevel }
       );
@@ -250,15 +250,15 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         "smallSquareYellow",
         {
           center,
-          innerRadius: 160,
-          outerRadius: 250,
+          innerRadius: 130,
+          outerRadius: 210,
         },
         { level: baseLevel }
       );
 
       const satelliteCount = 8;
-      const satelliteRadius = 100;
-      const orbitRadius = 400 + satelliteRadius;
+      const satelliteRadius = 80;
+      const orbitRadius = 350 + satelliteRadius;
 
       const satellites = Array.from({ length: satelliteCount }, (_, index) => {
         const angle = (index / satelliteCount) * Math.PI * 2;

@@ -56,6 +56,7 @@ uniform vec4 u_stopColor3;
 uniform vec4 u_stopColor4;
 uniform vec2 u_noiseAmplitude;
 uniform float u_noiseScale;
+uniform float u_noiseDensity;
 uniform vec4 u_filaments0;
 uniform float u_filamentEdgeBlur;
 
@@ -174,10 +175,10 @@ void main() {
     vec2 gradientCenter = center + offsetLocal;
     float radius = u_hasExplicitRadius == 1 ? u_explicitRadius : size * 0.5;
     v_fillParams0 = vec4(gradientCenter, radius, 0.0);
-    v_fillParams1 = vec4(0.0, 0.0, 0.0, u_noiseScale);
+    v_fillParams1 = vec4(0.0, u_noiseDensity, 0.0, u_noiseScale);
   } else {
     v_fillParams0 = vec4(center, 0.0, 0.0);
-    v_fillParams1 = vec4(0.0, 0.0, 0.0, u_noiseScale);
+    v_fillParams1 = vec4(0.0, u_noiseDensity, 0.0, u_noiseScale);
   }
 
   v_shape = float(u_shape);
@@ -342,6 +343,7 @@ interface ParticleRenderProgram {
     stopColor4: WebGLUniformLocation | null;
     noiseAmplitude: WebGLUniformLocation | null;
     noiseScale: WebGLUniformLocation | null;
+    noiseDensity: WebGLUniformLocation | null;
     filaments0: WebGLUniformLocation | null;
     filamentEdgeBlur: WebGLUniformLocation | null;
   };
@@ -359,6 +361,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
+  noiseDensity: number;
   filamentColorContrast: number;
   filamentAlphaContrast: number;
   filamentWidth: number;
@@ -496,6 +499,7 @@ const createRenderProgram = (
     stopColor4: gl.getUniformLocation(program, "u_stopColor4"),
     noiseAmplitude: gl.getUniformLocation(program, "u_noiseAmplitude"),
     noiseScale: gl.getUniformLocation(program, "u_noiseScale"),
+    noiseDensity: gl.getUniformLocation(program, "u_noiseDensity"),
     filaments0: gl.getUniformLocation(program, "u_filaments0"),
     filamentEdgeBlur: gl.getUniformLocation(program, "u_filamentEdgeBlur"),
   };
@@ -640,6 +644,7 @@ type UniformCache = {
   stopColor4?: string;
   noiseAmplitude?: [number, number];
   noiseScale?: number;
+  noiseDensity?: number;
   filaments0?: [number, number, number, number];
   filamentEdgeBlur?: number;
 };
@@ -812,6 +817,9 @@ const uploadEmitterUniforms = (
   }
   if (program.uniforms.noiseScale && cache.noiseScale !== u.noiseScale) {
     gl.uniform1f(program.uniforms.noiseScale, (cache.noiseScale = u.noiseScale));
+  }
+  if (program.uniforms.noiseDensity && cache.noiseDensity !== u.noiseDensity) {
+    gl.uniform1f(program.uniforms.noiseDensity, (cache.noiseDensity = u.noiseDensity));
   }
   const filaments0: [number, number, number, number] = [
     u.filamentColorContrast,

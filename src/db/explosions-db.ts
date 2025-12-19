@@ -274,6 +274,7 @@ const GRAY_BRICK_EMITTER_FILL: SceneFill = {
     colorAmplitude: 0.04,
     alphaAmplitude: 0.075,
     scale: 0.5,
+    density: 0.3,
   },
 };
 const YELLOW_BRICK_EMITTER_FILL: SceneFill = {
@@ -287,7 +288,8 @@ const YELLOW_BRICK_EMITTER_FILL: SceneFill = {
   noise: {
     colorAmplitude: 0.02,
     alphaAmplitude: 0.06,
-    scale: 0.9,
+    scale: 0.5,
+    density: 0.3,
   },
 };
 const GREEN_BRICK_EMITTER_FILL: SceneFill = {
@@ -562,20 +564,20 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 70,
-      startAlpha: 0.7,
+      radiusExtension: 40,
+      startAlpha: 0.6,
       endAlpha: 0.15,
       gradientStops: GRAY_BRICK_HIT_WAVE_GRADIENT_STOPS,
     }),
     emitter: GRAY_BRICK_DAMAGE_EMITTER,
   },
   grayBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
-      startAlpha: 0.8,
+      radiusExtension: 60,
+      startAlpha: 0.7,
       endAlpha: 0.2,
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     }),
@@ -594,12 +596,12 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 1, g: 0.95, b: 0.6, a: 1 }, fill: YELLOW_BRICK_EMITTER_FILL },
   },
   yellowBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
-      startAlpha: 0.8,
+      radiusExtension: 60,
+      startAlpha: 0.7,
       endAlpha: 0,
       gradientStops: YELLOW_BRICK_DESTROY_WAVE,
     }),
@@ -618,12 +620,12 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.6, g: 1, b: 0.7, a: 1 }, fill: GREEN_BRICK_EMITTER_FILL },
   },
   organicBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
-      startAlpha: 0.8,
+      radiusExtension: 60,
+      startAlpha: 0.7,
       endAlpha: 0,
       gradientStops: GREEN_BRICK_DESTROY_WAVE,
     }),
@@ -642,12 +644,12 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 1, g: 0.8, b: 0.55, a: 1 }, fill: ORANGE_BRICK_EMITTER_FILL },
   },
   ironBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
-      startAlpha: 0.8,
+      radiusExtension: 60,
+      startAlpha: 0.7,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_DESTROY_WAVE,
     }),

@@ -330,7 +330,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       mana_regen: {
-        income: (level) => 0.12 * level,
+        income: (level) => 0.08 * level,
       },
     },
     nodesRequired: { consiousness: 1 },
@@ -468,7 +468,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         income: (level) => 2 * level,
       },
       mana_regen: {
-        income: (level) => 0.12 * level,
+        income: (level) => 0.1 * level,
       },
     },
     nodesRequired: { mana_reservior: 2 },
@@ -504,7 +504,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         income: (level) => 2 * level,
       },
       mana_regen: {
-        income: (level) => 0.2*level
+        income: (level) => 0.15*level
       }
     },
     nodesRequired: { sand_scribing: 3 },
@@ -537,7 +537,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 3,
     effects: {
       sanity_cap: {
-        income: (level) => 2 * level,
+        income: (level) => 1 * level,
       },
     },
     nodesRequired: { glass_latticework: 1 },
@@ -552,7 +552,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 4,
     effects: {
       sanity_cap: {
-        income: (level) => 2 * level,
+        income: (level) => 1 * level,
       },
     },
     nodesRequired: { bastion_foundations: 2 },
@@ -567,7 +567,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       sanity_cap: {
-        income: (level) => 2 * level,
+        income: (level) => 1 * level,
       },
     },
     nodesRequired: { clarity: 3 },
@@ -582,7 +582,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 8,
     effects: {
       sanity_cap: {
-        income: (level) => 2 * level,
+        income: (level) => 1 * level,
       },
     },
     nodesRequired: { clarity2: 3 },

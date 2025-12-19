@@ -490,9 +490,12 @@ export const useSceneCanvas = ({
       canvas.width = Math.max(1, Math.round(targetWidth * dpr));
       canvas.height = Math.max(1, Math.round(targetHeight * dpr));
 
+      
       gl.viewport(0, 0, canvas.width, canvas.height);
       scene.setViewportScreenSize(canvas.width, canvas.height);
       const currentMapSize = scene.getMapSize();
+      console.log('CanvasDIM: ', canvas.width, canvas.height, currentMapSize.width, currentMapSize.height);
+      
       scene.setMapSize({
         width: Math.max(
           currentMapSize.width,

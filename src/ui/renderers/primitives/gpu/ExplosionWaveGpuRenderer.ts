@@ -325,6 +325,7 @@ export const ensureWaveBatch = (
     noiseColorAmplitude: uniformsInit.noiseColorAmplitude,
     noiseAlphaAmplitude: uniformsInit.noiseAlphaAmplitude,
     noiseScale: uniformsInit.noiseScale,
+    noiseDensity: uniformsInit.noiseDensity ?? 1,
     filamentColorContrast: uniformsInit.filamentColorContrast ?? 0,
     filamentAlphaContrast: uniformsInit.filamentAlphaContrast ?? 0,
     filamentWidth: uniformsInit.filamentWidth ?? 0,

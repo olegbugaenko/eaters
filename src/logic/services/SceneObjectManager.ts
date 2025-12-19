@@ -38,6 +38,8 @@ export interface SceneFillNoise {
   colorAmplitude: number;
   alphaAmplitude: number;
   scale: number;
+  /** Controls sparsity of noise (0-1). Lower = fewer visible fluctuations. Default 1. */
+  density?: number;
 }
 
 export interface SceneFillFilaments {

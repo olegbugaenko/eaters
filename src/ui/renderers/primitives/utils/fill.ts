@@ -182,6 +182,10 @@ const populateFillVertexComponents = (
   }
 
   components[params1Index + 3] = noise ? noise.scale : 0;
+  // For non-linear fills, store noiseDensity in params1[1] (unused for radial/diamond/solid)
+  if (fill.fillType !== FILL_TYPES.LINEAR_GRADIENT) {
+    components[params1Index + 1] = noise?.density ?? 1;
+  }
 
   const filaments: SceneFillFilaments | undefined = fill.filaments;
   components[filaments0Index + 0] = filaments ? filaments.colorContrast : 0;

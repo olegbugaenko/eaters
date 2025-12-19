@@ -454,6 +454,7 @@ const toWaveUniformsFromFill = (
   const noiseColorAmplitude = noise ? Math.max(0, Math.min(1, noise.colorAmplitude)) : 0;
   const noiseAlphaAmplitude = noise ? Math.max(0, Math.min(1, noise.alphaAmplitude)) : 0;
   const noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
+  const noiseDensity = noise?.density ?? 1;
 
   const filaments = (fill as any).filaments;
   const filamentColorContrast = filaments ? clamp01(filaments.colorContrast) : 0;
@@ -474,6 +475,7 @@ const toWaveUniformsFromFill = (
     noiseColorAmplitude,
     noiseAlphaAmplitude,
     noiseScale,
+    noiseDensity,
     filamentColorContrast,
     filamentAlphaContrast,
     filamentWidth,
