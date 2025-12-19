@@ -15,6 +15,7 @@ export type TutorialStep = {
   nextLabel?: string;
   nextDisabled?: boolean;
   footer?: React.ReactNode;
+  backDisabled?: boolean;
 
   // optional hooks
   onBefore?: () => void | Promise<void>;
@@ -167,7 +168,7 @@ export function TutorialOverlay({
   }, [run, stepIndex]); // intentionally only changes per step
 
   const isLast = stepIndex >= steps.length - 1;
-  const canBack = stepIndex > 0;
+  const canBack = stepIndex > 0 && !(step?.backDisabled ?? false);
 
   const nextDisabled = step?.nextDisabled ?? false;
 

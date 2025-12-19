@@ -27,6 +27,7 @@ export interface SceneTutorialStep {
   readonly onAction?: () => void;
   readonly allowGameplay?: boolean;
   readonly blockOutsideClicks?: boolean;
+  readonly backDisabled?: boolean;
 }
 
 interface SceneTutorialOverlayProps {
@@ -50,6 +51,7 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
     return steps.map((step, index) => {
       const targetResolver = step.getTarget ?? (() => document.body);
       const hasTarget = Boolean(step.getTarget?.());
+      const prevStepRequiresAction = index > 0 ? Boolean(steps[index - 1]?.requiredAction) : false;
 
       const content = (
         <div className="scene-tutorial-overlay__content">
@@ -80,6 +82,7 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
         allowSpotlightClicks: true,
         nextLabel: step.nextLabel,
         nextDisabled: step.isLocked,
+        backDisabled: step.backDisabled ?? prevStepRequiresAction,
         footer: (
           <div className="scene-tutorial-overlay__progress">
             Step {index + 1} of {steps.length}
