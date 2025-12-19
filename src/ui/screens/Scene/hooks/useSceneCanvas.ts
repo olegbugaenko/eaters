@@ -1,4 +1,4 @@
-import { MutableRefObject, useEffect } from "react";
+import { MutableRefObject, useEffect, useRef } from "react";
 import { SpellId } from "@db/spells-db";
 import { SpellOption, SpellcastingModule } from "@logic/modules/active-map/spells/SpellcastingModule";
 import {
@@ -6,6 +6,7 @@ import {
   SceneObjectManager,
   SceneVector2,
 } from "@logic/services/SceneObjectManager";
+import { GameLoop, TICK_INTERVAL } from "@logic/services/GameLoop";
 import {
   POSITION_COMPONENTS,
   VERTEX_COMPONENTS,
@@ -50,6 +51,7 @@ const FRAGMENT_SHADER = createSceneFragmentShader();
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
+const DRIFT_SNAP_THRESHOLD = TICK_INTERVAL * 1.25;
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -63,6 +65,14 @@ const clamp = (value: number, min: number, max: number): number => {
   }
   return value;
 };
+
+const lerp = (from: number, to: number, alpha: number): number =>
+  from + (to - from) * alpha;
+
+const lerpVector = (from: SceneVector2, to: SceneVector2, alpha: number): SceneVector2 => ({
+  x: lerp(from.x, to.x, alpha),
+  y: lerp(from.y, to.y, alpha),
+});
 
 interface PointerState {
   x: number;
@@ -114,9 +124,16 @@ export interface ParticleStatsState {
   emitters: number;
 }
 
+interface UnitRenderSnapshot {
+  prev: SceneVector2;
+  next: SceneVector2;
+  lastTickAt: number;
+}
+
 export interface UseSceneCanvasParams {
   scene: SceneObjectManager;
   spellcasting: SpellcastingModule;
+  gameLoop: GameLoop;
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
   summoningPanelRef: MutableRefObject<HTMLDivElement | null>;
@@ -138,6 +155,7 @@ export interface UseSceneCanvasParams {
 export const useSceneCanvas = ({
   scene,
   spellcasting,
+  gameLoop,
   canvasRef,
   wrapperRef,
   summoningPanelRef,
@@ -155,6 +173,63 @@ export const useSceneCanvas = ({
   particleStatsRef,
   particleStatsLastUpdateRef,
 }: UseSceneCanvasParams) => {
+  const unitSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
+  const getNow = () =>
+    typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now();
+
+  useEffect(() => {
+    const syncUnitSnapshots = (timestamp: number) => {
+      const nextIds = new Set<string>();
+      const snapshots = unitSnapshotsRef.current;
+      scene
+        .getObjects()
+        .filter((instance) => instance.type === "playerUnit")
+        .forEach((instance) => {
+          nextIds.add(instance.id);
+          const existing = snapshots.get(instance.id);
+          const previous = existing?.next ?? { ...instance.data.position };
+          snapshots.set(instance.id, {
+            prev: previous,
+            next: { ...instance.data.position },
+            lastTickAt: timestamp,
+          });
+        });
+      Array.from(snapshots.keys()).forEach((id) => {
+        if (!nextIds.has(id)) {
+          snapshots.delete(id);
+        }
+      });
+    };
+
+    syncUnitSnapshots(gameLoop.getLastTickTimestamp() || getNow());
+    const unsubscribe = gameLoop.addTickListener(({ timestamp }) =>
+      syncUnitSnapshots(timestamp)
+    );
+    return () => {
+      unsubscribe();
+    };
+  }, [gameLoop, scene]);
+
+  const getInterpolatedUnitPositions = () => {
+    const snapshots = unitSnapshotsRef.current;
+    if (snapshots.size === 0) {
+      return new Map<string, SceneVector2>();
+    }
+    const now = getNow();
+    const positions = new Map<string, SceneVector2>();
+    snapshots.forEach((snapshot, id) => {
+      const elapsed = Math.max(now - snapshot.lastTickAt, 0);
+      const alpha =
+        elapsed > DRIFT_SNAP_THRESHOLD
+          ? 1
+          : clamp(elapsed / TICK_INTERVAL, 0, 1);
+      positions.set(id, lerpVector(snapshot.prev, snapshot.next, alpha));
+    });
+    return positions;
+  };
+
   useEffect(() => {
     // Register HMR cleanup to avoid accumulating GL resources on hot reloads
     registerHmrCleanup(() => {
@@ -366,6 +441,10 @@ export const useSceneCanvas = ({
       const cameraState = scene.getCamera();
       const changes = scene.flushChanges();
       objectsRenderer.applyChanges(changes);
+      const interpolatedUnitPositions = getInterpolatedUnitPositions();
+      if (interpolatedUnitPositions.size > 0) {
+        objectsRenderer.applyInterpolatedPositions(interpolatedUnitPositions);
+      }
       applySync();
 
       const dbs = objectsRenderer.getDynamicBufferStats();

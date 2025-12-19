@@ -119,6 +119,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const { app, bridge, scene } = useAppLogic();
   const spellcasting = app.getSpellcasting();
+  const gameLoop = useMemo(() => app.getGameLoop(), [app]);
   // moved high-frequency debug subscriptions into SceneDebugPanel to avoid rerendering SceneScreen every tick
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
@@ -413,7 +414,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, [showRunSummary]);
 
   useEffect(() => {
-    const gameLoop = app.getGameLoop();
     const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
     if (isPauseOpen || shouldPauseForTutorial) {
       gameLoop.stop();
@@ -423,7 +423,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
     gameLoop.start();
     return undefined;
-  }, [allowTutorialGameplay, app, isPauseOpen, showTutorial]);
+  }, [allowTutorialGameplay, gameLoop, isPauseOpen, showTutorial]);
 
   const handleScaleChange = (nextScale: number) => {
     scene.setScale(nextScale);
@@ -657,6 +657,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   useSceneCanvas({
     scene,
     spellcasting,
+    gameLoop,
     canvasRef,
     wrapperRef,
     summoningPanelRef,

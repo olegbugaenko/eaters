@@ -11,6 +11,7 @@ import {
   SceneObjectInstance,
   SceneObjectManager,
   SceneStroke,
+  SceneVector2,
 } from "../../../logic/services/SceneObjectManager";
 
 interface ManagedObject {
@@ -122,6 +123,43 @@ export class ObjectsRendererManager {
     });
     changes.updated.forEach((instance) => {
       this.updateObject(instance);
+    });
+  }
+
+  public applyInterpolatedPositions(positions: Map<string, SceneVector2>): void {
+    if (positions.size === 0) {
+      return;
+    }
+    positions.forEach((position, objectId) => {
+      const managed = this.objects.get(objectId);
+      if (!managed) {
+        return;
+      }
+      const interpolatedInstance: SceneObjectInstance = {
+        ...managed.instance,
+        data: {
+          ...managed.instance.data,
+          position: { ...position },
+        },
+      };
+      const updates = managed.renderer.update(
+        interpolatedInstance,
+        managed.registration
+      );
+      updates.forEach(({ primitive, data }) => {
+        const entry = this.dynamicEntryByPrimitive.get(primitive);
+        if (!entry || entry.length !== data.length) {
+          return;
+        }
+        if (!this.dynamicData) {
+          return;
+        }
+        this.dynamicData.set(data, entry.offset);
+        this.pendingDynamicUpdates.push({
+          offset: entry.offset,
+          data: data.slice(),
+        });
+      });
     });
   }
 
