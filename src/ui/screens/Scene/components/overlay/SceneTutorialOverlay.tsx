@@ -25,6 +25,8 @@ export interface SceneTutorialStep {
   readonly isLocked?: boolean;
   readonly actionLabel?: string;
   readonly onAction?: () => void;
+  readonly allowGameplay?: boolean;
+  readonly blockOutsideClicks?: boolean;
 }
 
 interface SceneTutorialOverlayProps {
@@ -95,6 +97,8 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
     [onAdvance, tutorialSteps.length],
   );
 
+  const activeStep = steps[activeIndex];
+
   if (tutorialSteps.length === 0) return null;
 
   return (
@@ -108,7 +112,7 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
       zIndex={60}
       dimColor="rgba(8, 12, 20, 0.78)"
       tooltipClassName="scene-tutorial-overlay__tooltip"
-      blockOutsideClicks
+      blockOutsideClicks={activeStep?.blockOutsideClicks ?? true}
       closeOnOutsideClick={false}
     />
   );

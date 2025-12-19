@@ -4,13 +4,14 @@ import {
   SceneTutorialConfig,
   SceneTutorialStep,
 } from "../components/overlay/SceneTutorialOverlay";
-import { buildTutorialSteps, SceneTutorialActions } from "./tutorialSteps";
+import { buildTutorialSteps, SceneTutorialActions, SceneTutorialLocks } from "./tutorialSteps";
 
 interface UseSceneTutorialParams {
   tutorial: SceneTutorialConfig | null;
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
   onTutorialComplete?: () => void;
   actions?: SceneTutorialActions;
+  locks?: SceneTutorialLocks;
 }
 
 export const useSceneTutorial = ({
@@ -18,10 +19,11 @@ export const useSceneTutorial = ({
   wrapperRef,
   onTutorialComplete,
   actions,
+  locks,
 }: UseSceneTutorialParams) => {
   const tutorialSteps = useMemo<SceneTutorialStep[]>(
-    () => buildTutorialSteps(tutorial, () => wrapperRef.current, actions),
-    [actions, tutorial, wrapperRef],
+    () => buildTutorialSteps(tutorial, () => wrapperRef.current, actions, locks),
+    [actions, locks, tutorial, wrapperRef],
   );
 
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
@@ -32,7 +34,9 @@ export const useSceneTutorial = ({
       return [];
     }
     return tutorialSteps.map((step) => {
-      const isLocked = step.requiredAction ? !completedActions.has(step.requiredAction) : false;
+      const actionLocked = step.requiredAction ? !completedActions.has(step.requiredAction) : false;
+      const manualLock = step.isLocked ?? false;
+      const isLocked = manualLock || actionLocked;
       return { ...step, isLocked };
     });
   }, [completedActions, tutorialSteps]);

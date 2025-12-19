@@ -4,6 +4,10 @@ export interface SceneTutorialActions {
   summonBlueVanguard?: () => void;
 }
 
+export interface SceneTutorialLocks {
+  playStepLocked?: boolean;
+}
+
 type TargetResolver = () => HTMLElement | null;
 
 const getElementById = (id: string): HTMLElement | null => {
@@ -17,6 +21,7 @@ export const buildTutorialSteps = (
   tutorial: SceneTutorialConfig | null,
   getCanvasWrapper: TargetResolver,
   actions?: SceneTutorialActions,
+  locks?: SceneTutorialLocks,
 ): SceneTutorialStep[] => {
   if (!tutorial) {
     return [];
@@ -42,14 +47,18 @@ export const buildTutorialSteps = (
           id: "summon-blue-vanguard",
           title: "First Summon",
           description:
-            "Click the “Blue Vanguard” card to launch your first unit. We’ll remember this interaction for future runs, so do it now.",
+            "Spawn as many creatures as you can by spamming Blue Vanguard. When you run out of mana or your sanity drops, we’ll pause and continue.",
           getTarget: getBlueVanguardCard,
           highlightPadding: 32,
+          placement: "bottom",
           requiredAction: "summon-blue-vanguard",
           nextLabel: "Summon Blue Vanguard",
-          lockMessage: "Click Blue Vanguard or use the button below to continue",
+          lockMessage: "Spend your mana on summons to continue",
           actionLabel: "Summon Blue Vanguard",
           onAction: actions?.summonBlueVanguard,
+          allowGameplay: true,
+          blockOutsideClicks: false,
+          isLocked: locks?.playStepLocked ?? false,
         },
         {
           id: "mana",

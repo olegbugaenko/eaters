@@ -185,6 +185,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   const autoRestartHandledRef = useRef(false);
   const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
+  const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
+  const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
   const {
     tutorialSteps,
     tutorialStepIndex,
@@ -197,7 +199,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     wrapperRef,
     onTutorialComplete,
     actions: tutorialActions,
+    locks: { playStepLocked: !canAdvancePlayStep },
   });
+
+  const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
+  const allowTutorialGameplay = Boolean(activeTutorialStep?.allowGameplay);
 
   useEffect(() => {
     if (showRunSummary) {
@@ -223,6 +229,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setIsPauseOpen(false);
     }
   }, [showTutorial]);
+
+  useEffect(() => {
+    if (!showTutorial) {
+      setTutorialSummonDone(false);
+      setCanAdvancePlayStep(false);
+      return;
+    }
+    const currentStepId = tutorialSteps[tutorialStepIndex]?.id;
+    if (currentStepId === "summon-blue-vanguard") {
+      setTutorialSummonDone(false);
+      setCanAdvancePlayStep(false);
+      setIsPauseOpen(false);
+    }
+  }, [showTutorial, tutorialStepIndex, tutorialSteps]);
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -378,7 +398,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   useEffect(() => {
     const gameLoop = app.getGameLoop();
-    if (isPauseOpen || showTutorial) {
+    const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
+    if (isPauseOpen || shouldPauseForTutorial) {
       gameLoop.stop();
       return () => {
         gameLoop.start();
@@ -386,7 +407,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
     gameLoop.start();
     return undefined;
-  }, [app, isPauseOpen, showTutorial]);
+  }, [allowTutorialGameplay, app, isPauseOpen, showTutorial]);
 
   const handleScaleChange = (nextScale: number) => {
     scene.setScale(nextScale);
@@ -402,6 +423,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         const option = necromancerOptionsRef.current.find((entry) => entry.designId === designId);
         if (option?.type === "bluePentagon") {
           registerTutorialAction("summon-blue-vanguard");
+          setTutorialSummonDone(true);
         }
       }
     },
@@ -413,6 +435,49 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       summonBlueVanguard: () => handleSummonDesign("bluePentagon"),
     });
   }, [handleSummonDesign]);
+
+  useEffect(() => {
+    if (!showTutorial) {
+      return;
+    }
+    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
+      return;
+    }
+    if (canAdvancePlayStep) {
+      return;
+    }
+    if (!tutorialSummonDone) {
+      return;
+    }
+    const mana = necromancerResources.mana.current;
+    const sanity = necromancerResources.sanity.current;
+    const hasAffordableSpawn = necromancerOptions.some(
+      (option) => option.cost.mana <= mana && option.cost.sanity <= sanity,
+    );
+    const sanityLow = sanity <= 1;
+
+    if (!hasAffordableSpawn || sanityLow) {
+      setCanAdvancePlayStep(true);
+      setIsPauseOpen(true);
+    }
+  }, [
+    activeTutorialStep?.id,
+    canAdvancePlayStep,
+    necromancerOptions,
+    necromancerResources,
+    showTutorial,
+    tutorialSummonDone,
+  ]);
+
+  useEffect(() => {
+    if (!canAdvancePlayStep) {
+      return;
+    }
+    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
+      return;
+    }
+    handleTutorialAdvance(tutorialStepIndex + 1);
+  }, [activeTutorialStep?.id, canAdvancePlayStep, handleTutorialAdvance, tutorialStepIndex]);
 
   const handleSelectSpell = useCallback((spellId: SpellId) => {
     setSelectedSpellId((current) => (current === spellId ? null : spellId));
