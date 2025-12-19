@@ -189,6 +189,7 @@ const Joyride = (props) => {
     showSkipButton = false,
     hideBackButton = false,
     disableOverlayClose = false,
+    spotlightClicks = false,
     locale = {},
     styles = {},
     tooltipComponent: TooltipComponent,
@@ -254,6 +255,8 @@ const Joyride = (props) => {
     }
   };
 
+  const allowSpotlightClicks = Boolean(spotlightClicks);
+
   const overlay = React.createElement(
     "div",
     {
@@ -261,7 +264,7 @@ const Joyride = (props) => {
         position: "fixed",
         inset: 0,
         zIndex: mergedStyles.options.zIndex,
-        pointerEvents: "auto",
+        pointerEvents: allowSpotlightClicks ? "none" : "auto",
       },
     },
     React.createElement("div", {
@@ -269,7 +272,7 @@ const Joyride = (props) => {
         position: "fixed",
         inset: 0,
         background: mergedStyles.options.overlayColor,
-        pointerEvents: disableOverlayClose ? "auto" : "auto",
+        pointerEvents: disableOverlayClose || !allowSpotlightClicks ? "auto" : "none",
       },
     }),
     rect && activeStep.placement !== "center"
