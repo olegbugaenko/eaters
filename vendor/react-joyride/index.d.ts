@@ -84,6 +84,7 @@ export interface JoyrideProps {
   hideBackButton?: boolean;
   disableCloseOnEsc?: boolean;
   disableOverlayClose?: boolean;
+  spotlightClicks?: boolean;
   locale?: LocaleStrings;
   styles?: JoyrideStyles;
   tooltipComponent?: React.ComponentType<TooltipRenderProps>;
