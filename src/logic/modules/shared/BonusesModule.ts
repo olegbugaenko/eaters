@@ -237,6 +237,7 @@ export class BonusesModule implements GameModule {
     this.effectContext = nextContext;
     this.markDirty();
     this.ensureValues();
+    this.notifyListeners();
   }
 
   private notifyListeners(): void {
