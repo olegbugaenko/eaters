@@ -186,6 +186,7 @@ export class Application {
         this.handleMapRunCompleted(false);
       },
     });
+    playerUnitsModule.setSanityGuard(() => this.necromancerModule.enforceSanityBoundary());
     const unitAutomationModule = new UnitAutomationModule({
       bridge: this.dataBridge,
       necromancer: this.necromancerModule,

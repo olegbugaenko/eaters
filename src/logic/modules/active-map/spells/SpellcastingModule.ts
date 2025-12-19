@@ -234,6 +234,9 @@ export class SpellcastingModule implements GameModule {
   }
 
   public tryCastSpell(spellId: SpellId, rawTarget: SceneVector2): boolean {
+    if (!this.necromancer.enforceSanityBoundary()) {
+      return false;
+    }
     const config = this.configs.get(spellId);
     if (!config) {
       return false;

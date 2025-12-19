@@ -13,6 +13,7 @@ import "./NecromancerModule.test";
 import "./Application.test";
 import "./ResourcesModule.test";
 import "./UnitModuleWorkshopModule.test";
+import "./SpellcastingModule.test";
 import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
 

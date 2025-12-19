@@ -46,6 +46,7 @@ export interface UnitRuntimeControllerOptions {
     options?: { forceFill?: boolean; forceStroke?: boolean }
   ) => void;
   updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
+  ensureRunAllowed: () => boolean;
 }
 
 
@@ -119,6 +120,7 @@ export class UnitRuntimeController {
     options?: { forceFill?: boolean; forceStroke?: boolean }
   ) => void;
   private readonly updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
+  private readonly ensureRunAllowed: () => boolean;
 
   constructor(options: UnitRuntimeControllerOptions) {
     this.scene = options.scene;
@@ -132,12 +134,16 @@ export class UnitRuntimeController {
     this.removeUnit = options.removeUnit;
     this.updateSceneState = options.updateSceneState;
     this.updateInternalFurnaceEffect = options.updateInternalFurnaceEffect;
+    this.ensureRunAllowed = options.ensureRunAllowed;
   }
 
   public updateUnits(
     units: readonly PlayerUnitState[],
     deltaSeconds: number
   ): UnitUpdateResult {
+    if (!this.ensureRunAllowed()) {
+      return { statsChanged: false, unitsRemoved: [] };
+    }
     const unitsSnapshot = [...units];
     const plannedTargets = new Map<string, string | null>();
     let statsDirty = false;
@@ -282,6 +288,9 @@ export class UnitRuntimeController {
         distance <= attackRange + ATTACK_DISTANCE_EPSILON &&
         unit.attackCooldown <= 0
       ) {
+        if (!this.ensureRunAllowed()) {
+          return;
+        }
         const hpChanged = this.performAttack(unit, target, direction, distance);
         if (hpChanged) {
           statsDirty = true;
@@ -828,4 +837,3 @@ export class UnitRuntimeController {
     };
   }
 }
-

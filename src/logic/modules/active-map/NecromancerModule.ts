@@ -148,6 +148,19 @@ export class NecromancerModule implements GameModule {
     };
   }
 
+  public enforceSanityBoundary(): boolean {
+    if (this.sanityDepleted) {
+      return false;
+    }
+    if (this.sanity.current <= 1.e-8) {
+      this.sanity.current = 0;
+      this.sanityDepleted = true;
+      this.onSanityDepleted?.();
+      return false;
+    }
+    return true;
+  }
+
   public reset(): void {
     this.spawnPoints = [];
     this.nextSpawnIndex = 0;
@@ -550,13 +563,10 @@ export class NecromancerModule implements GameModule {
   }
 
   private checkSanityDepleted(): void {
-    if (this.sanityDepleted || !this.sanityCheckArmed) {
+    if (!this.sanityCheckArmed) {
       return;
     }
-    if (this.sanity.current <= 1.e-8) {
-      this.sanityDepleted = true;
-      this.onSanityDepleted?.();
-    }
+    this.enforceSanityBoundary();
   }
 }
 
