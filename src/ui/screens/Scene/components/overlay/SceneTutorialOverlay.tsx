@@ -262,6 +262,7 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
         disableCloseOnEsc
         disableOverlayClose
         hideBackButton
+        spotlightClicks
         locale={{
           back: "Back",
           close: "Begin",

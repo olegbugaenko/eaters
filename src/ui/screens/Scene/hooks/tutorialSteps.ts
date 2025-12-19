@@ -29,9 +29,9 @@ export const buildTutorialSteps = (
           title: "Welcome",
           description:
             "Your goal is simple: smash as many bricks as possible before your sanity runs out. Sanity is your mental stamina—it drains over time, so start breaking immediately.",
-          getTarget: getCanvasWrapper,
-          highlightPadding: 48,
-          placement: "center",
+          getTarget: () => getResourceElement("sanity"),
+          highlightPadding: 32,
+          placement: "top",
         },
         {
           id: "summon-blue-vanguard",
