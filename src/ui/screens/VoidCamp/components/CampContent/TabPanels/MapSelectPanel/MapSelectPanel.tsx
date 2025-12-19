@@ -5,6 +5,7 @@ import { Button } from "@shared/Button";
 import { classNames } from "@shared/classNames";
 import { formatDuration } from "@ui/utils/formatDuration";
 import "./MapSelectPanel.css";
+import { formatNumber } from "@shared/format/number";
 
 interface MapSelectPanelProps {
   maps: MapListEntry[];
@@ -23,6 +24,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
 }) => {
   return (
     <div className="map-select-panel stack-lg">
+      <div className="map-select-panel__header">
+        <p>Map Levels Cleared: {formatNumber(6)}</p>
+      </div>
       <div className="map-select-panel__list card-list">
         {maps.map((map) => {
           const isSelected = map.id === selectedMap;

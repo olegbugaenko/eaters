@@ -80,7 +80,9 @@ export const SKILL_IDS = [
   "advanced_crafting",
   "consiousness",
   "arcane_awareness",
-  "weaken_curse"
+  "weaken_curse",
+  "perseverance",
+  "inspiration"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -649,6 +651,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { stone_drill: 2 },
     cost: createSandCost(20, 1.5),
   },
+  inspiration: {
+    id: "inspiration",
+    name: "Inspiration",
+    description:
+      "Increase the damage of your units by 1% per map levels cleared per level.",
+    nodePosition: { x: -5, y: -2 },
+    maxLevel: 5,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.01 * level, // multiply by levels cleared total
+      },
+    },
+    nodesRequired: { damage_lore: 2 },
+    cost: createSandCost(200, 2),
+  },
   heavy_drill: {
     id: "heavy_drill",
     name: "Heavy Drill",
@@ -899,6 +916,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { stone_armor: 3 },
     cost: createSandCost(20, 1.5),
+  },
+  perseverance: {
+    id: "perseverance",
+    name: "Perseverance",
+    description:
+      "Increase the health of your units by 1% per maximum map level cleared per level.",
+    nodePosition: { x: 5, y: -2 },
+    maxLevel: 5,
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.01 * level, // multiply by levels cleared total
+      },
+    },
+    nodesRequired: { vitality2: 5 },
+    cost: createResourceCost('sand', 200, 2),
   },
   vitality3: {
     id: "vitality3",
