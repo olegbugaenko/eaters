@@ -1,8 +1,16 @@
 import { SceneTutorialConfig, SceneTutorialStep } from "../components/overlay/SceneTutorialOverlay";
 
-type TargetResolver = () => Element | null;
+export interface SceneTutorialActions {
+  summonBlueVanguard?: () => void;
+}
 
-const getElementById = (id: string): Element | null => {
+export interface SceneTutorialLocks {
+  playStepLocked?: boolean;
+}
+
+type TargetResolver = () => HTMLElement | null;
+
+const getElementById = (id: string): HTMLElement | null => {
   if (typeof document === "undefined") {
     return null;
   }
@@ -12,6 +20,8 @@ const getElementById = (id: string): Element | null => {
 export const buildTutorialSteps = (
   tutorial: SceneTutorialConfig | null,
   getCanvasWrapper: TargetResolver,
+  actions?: SceneTutorialActions,
+  locks?: SceneTutorialLocks,
 ): SceneTutorialStep[] => {
   if (!tutorial) {
     return [];
@@ -37,12 +47,16 @@ export const buildTutorialSteps = (
           id: "summon-blue-vanguard",
           title: "First Summon",
           description:
-            "Click the “Blue Vanguard” card to launch your first unit. We’ll remember this interaction for future runs, so do it now.",
+            "Spawn as many creatures as you can by spamming Blue Vanguard. When you run out of mana or your sanity drops after cracking a few bricks, we’ll pause and continue.",
           getTarget: getBlueVanguardCard,
           highlightPadding: 32,
+          placement: "top",
           requiredAction: "summon-blue-vanguard",
           nextLabel: "Summon Blue Vanguard",
-          lockMessage: "Click Blue Vanguard to continue",
+          lockMessage: "Spend your mana on summons and break a few bricks to continue",
+          allowGameplay: true,
+          blockOutsideClicks: false,
+          isLocked: locks?.playStepLocked ?? false,
         },
         {
           id: "mana",

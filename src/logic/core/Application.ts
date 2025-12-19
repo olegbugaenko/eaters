@@ -31,6 +31,7 @@ import { resetAllArcBatches } from "../../ui/renderers/primitives/gpu/ArcGpuRend
 import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
 import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
+import { TutorialMonitorModule } from "../modules/active-map/TutorialMonitorModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -54,6 +55,7 @@ export class Application {
   private bulletModule: BulletModule;
   private audioModule: AudioModule;
   private spellcastingModule: SpellcastingModule;
+  private tutorialMonitorModule: TutorialMonitorModule;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -261,6 +263,13 @@ export class Application {
     });
     this.spellcastingModule = spellcastingModule;
 
+    const tutorialMonitorModule = new TutorialMonitorModule({
+      bridge: this.dataBridge,
+      necromancer: this.necromancerModule,
+      resources: resourcesModule,
+    });
+    this.tutorialMonitorModule = tutorialMonitorModule;
+
     this.registerModule(bonusesModule);
     this.registerModule(statisticsModule);
     this.registerModule(resourcesModule);
@@ -285,6 +294,7 @@ export class Application {
     this.registerModule(fireballModule);
     this.registerModule(bulletModule);
     this.registerModule(spellcastingModule);
+    this.registerModule(tutorialMonitorModule);
     this.registerModule(audioModule);
   }
 
