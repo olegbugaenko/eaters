@@ -20,6 +20,7 @@ import "./CampTabPanels.css";
 type CampTabPanelsProps = {
   activeTab: CampTabKey;
   maps: MapListEntry[];
+  clearedLevelsTotal: number;
   selectedMap: MapId | null;
   onSelectMap: (mapId: MapId) => void;
   onSelectMapLevel: (mapId: MapId, level: number) => void;
@@ -35,6 +36,7 @@ type CampTabPanelsProps = {
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   activeTab,
   maps,
+  clearedLevelsTotal,
   selectedMap,
   onSelectMap,
   onSelectMapLevel,
@@ -65,6 +67,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     return (
       <MapSelectPanel
         maps={maps}
+        clearedLevelsTotal={clearedLevelsTotal}
         selectedMap={selectedMap}
         onSelectMap={onSelectMap}
         onSelectLevel={onSelectMapLevel}

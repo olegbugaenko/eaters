@@ -2,7 +2,9 @@ import { BonusId } from "../db/bonuses-db";
 
 export type BonusEffectType = "income" | "multiplier" | "base";
 
-export type BonusEffectFormula = (level: number) => number;
+export type BonusEffectContext = Record<string, number>;
+
+export type BonusEffectFormula = (level: number, context?: BonusEffectContext) => number;
 
 export type BonusEffectTypeMap = Partial<Record<BonusEffectType | string, BonusEffectFormula>>;
 

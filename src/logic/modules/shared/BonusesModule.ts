@@ -1,6 +1,7 @@
 import { GameModule } from "../../core/types";
 import { BONUS_IDS, BonusId, getBonusConfig } from "../../../db/bonuses-db";
 import {
+  BonusEffectContext,
   BonusEffectFormula,
   BonusEffectMap,
   BonusEffectPreview,
@@ -26,6 +27,7 @@ export class BonusesModule implements GameModule {
   private cachedValues: BonusValueMap = createBonusValueMap((config) => config.defaultValue);
   private dirty = true;
   private listeners = new Set<BonusValuesListener>();
+  private effectContext: BonusEffectContext = {};
 
   public initialize(): void {
     this.ensureValues();
@@ -110,8 +112,14 @@ export class BonusesModule implements GameModule {
       }
       const config = getBonusConfig(bonusId as BonusId);
       Object.entries(effectTypes).forEach(([effectType, formula]) => {
-        const currentValue = sanitizeEffectValue(formula(level), effectType);
-        const nextValue = sanitizeEffectValue(formula(nextLevel), effectType);
+        const currentValue = sanitizeEffectValue(
+          formula(level, this.effectContext),
+          effectType
+        );
+        const nextValue = sanitizeEffectValue(
+          formula(nextLevel, this.effectContext),
+          effectType
+        );
         previews.push({
           bonusId: config.id,
           bonusName: config.name,
@@ -181,7 +189,7 @@ export class BonusesModule implements GameModule {
         }
         const id = bonusId as BonusId;
         Object.entries(effectTypes).forEach(([effectType, formula]) => {
-          const value = sanitizeEffectValue(formula(level), effectType);
+          const value = sanitizeEffectValue(formula(level, this.effectContext), effectType);
           switch (effectType as BonusEffectType) {
             case "income":
               incomes[id] += value;
@@ -216,6 +224,19 @@ export class BonusesModule implements GameModule {
 
   private markDirty(): void {
     this.dirty = true;
+  }
+
+  public setEffectContext(context: BonusEffectContext): void {
+    const sanitized = context ?? {};
+    const nextContext = { ...this.effectContext, ...sanitized };
+    const keys = new Set([...Object.keys(this.effectContext), ...Object.keys(nextContext)]);
+    const changed = Array.from(keys).some((key) => this.effectContext[key] !== nextContext[key]);
+    if (!changed) {
+      return;
+    }
+    this.effectContext = nextContext;
+    this.markDirty();
+    this.ensureValues();
   }
 
   private notifyListeners(): void {

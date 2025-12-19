@@ -8,6 +8,7 @@ import {
 } from "./units/PlayerUnitsModule";
 import { NecromancerModule } from "./NecromancerModule";
 import { UnlockService } from "../../services/UnlockService";
+import { BonusesModule } from "../shared/BonusesModule";
 import { ArcModule } from "../scene/ArcModule";
 import {
   MapConfig,
@@ -30,10 +31,12 @@ interface ResourceRunController {
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
+export const MAP_CLEARED_LEVELS_BRIDGE_KEY = "maps/clearedLevelsTotal";
 
 interface MapModuleOptions {
   scene: SceneObjectManager;
   bridge: DataBridge;
+  bonuses: BonusesModule;
   bricks: BricksModule;
   playerUnits: PlayerUnitsModule;
   necromancer: NecromancerModule;
@@ -91,6 +94,7 @@ const DEFAULT_MAP_ID: MapId = "foundations";
 export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
 const AUTO_RESTART_SKILL_ID: SkillId = "autorestart_rituals";
 const CAMERA_FOCUS_TICKS = 6;
+const BONUS_CONTEXT_CLEARED_LEVELS = "clearedMapLevelsTotal";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -551,10 +555,19 @@ export class MapModule implements GameModule {
     };
   }
 
+  private pushClearedLevelsTotal(): void {
+    const total = this.getTotalClearedLevels();
+    this.options.bridge.setValue<number>(MAP_CLEARED_LEVELS_BRIDGE_KEY, total);
+    this.options.bonuses.setEffectContext({
+      [BONUS_CONTEXT_CLEARED_LEVELS]: total,
+    });
+  }
+
   private pushMapList(): void {
     // Ensure unlock checks are fresh (map stats/skills may have just changed)
     this.unlocks.clearCache();
     const list = this.getAvailableMaps();
+    this.pushClearedLevelsTotal();
     this.options.bridge.setValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY, list);
   }
 
@@ -687,6 +700,32 @@ export class MapModule implements GameModule {
       return null;
     }
     return bestTimeMs;
+  }
+
+  private getTotalClearedLevels(): number {
+    return Object.values(this.mapStats).reduce(
+      (total, levels) => total + this.getClearedLevelCount(levels),
+      0
+    );
+  }
+
+  private getClearedLevelCount(levels: Record<number, MapLevelStats> | undefined): number {
+    if (!levels) {
+      return 0;
+    }
+    const successful = new Set<number>();
+    Object.entries(levels).forEach(([rawLevel, stats]) => {
+      const level = Number(rawLevel);
+      if (Number.isFinite(level) && stats?.success > 0) {
+        successful.add(level);
+      }
+    });
+
+    let cleared = 0;
+    while (successful.has(cleared)) {
+      cleared += 1;
+    }
+    return cleared;
   }
 
   private parseSelectedLevels(data: unknown): Partial<Record<MapId, number>> {
