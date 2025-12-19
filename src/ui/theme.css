@@ -324,6 +324,18 @@ input[type="number"]:focus-visible {
   letter-spacing: 0.04em;
 }
 
+.button {
+  background-color: #101216;
+  color: #fff;
+  border: 1px solid var(--color-button-secondary-border);
+  border-radius: var(--radius-sm);
+}
+
+.button:disabled {
+  background-color: #293A3D;
+  border-color: #222;
+}
+
 .danger-button {
   background: var(--color-button-danger);
   color: var(--color-text-primary);

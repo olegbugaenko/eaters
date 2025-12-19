@@ -63,7 +63,14 @@ import {
   ParticleStatsState,
   useSceneCanvas,
 } from "./hooks/useSceneCanvas";
+import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";
+import {
+  DEFAULT_TUTORIAL_MONITOR_STATUS,
+  TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
+  TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
+  TutorialMonitorStatus,
+} from "@logic/modules/active-map/TutorialMonitorModule";
 
 const AUTO_RESTART_SECONDS = 5;
 
@@ -112,6 +119,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const { app, bridge, scene } = useAppLogic();
   const spellcasting = app.getSpellcasting();
+  const gameLoop = useMemo(() => app.getGameLoop(), [app]);
   // moved high-frequency debug subscriptions into SceneDebugPanel to avoid rerendering SceneScreen every tick
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
@@ -140,6 +148,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     bridge,
     UNIT_AUTOMATION_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_AUTOMATION_STATE
+  );
+  const tutorialMonitorStatus = useBridgeValue<TutorialMonitorStatus>(
+    bridge,
+    TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
+    DEFAULT_TUTORIAL_MONITOR_STATUS
   );
   const autoRestartState = useBridgeValue<MapAutoRestartState>(
     bridge,
@@ -183,13 +196,32 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   const autoRestartHandledRef = useRef(false);
+  const tutorialMonitorVersionRef = useRef(0);
+  const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
+  const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
+  const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
   const {
     tutorialSteps,
     tutorialStepIndex,
     showTutorial,
     handleTutorialAdvance,
     handleTutorialClose,
-  } = useSceneTutorial({ tutorial, wrapperRef, onTutorialComplete });
+    registerTutorialAction,
+  } = useSceneTutorial({
+    tutorial,
+    wrapperRef,
+    onTutorialComplete,
+    actions: tutorialActions,
+    locks: { playStepLocked: !canAdvancePlayStep },
+  });
+
+  const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
+  const allowTutorialGameplay = Boolean(activeTutorialStep?.allowGameplay);
+
+  const handlePlayStepAdvance = useCallback(() => {
+    setCanAdvancePlayStep(true);
+    handleTutorialAdvance(tutorialStepIndex + 1);
+  }, [handleTutorialAdvance, tutorialStepIndex]);
 
   useEffect(() => {
     if (showRunSummary) {
@@ -215,6 +247,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setIsPauseOpen(false);
     }
   }, [showTutorial]);
+
+  useEffect(() => {
+    if (!showTutorial) {
+      setTutorialSummonDone(false);
+      setCanAdvancePlayStep(false);
+      return;
+    }
+    const currentStep = tutorialSteps[tutorialStepIndex];
+    if (currentStep?.id === "summon-blue-vanguard" && currentStep.isLocked) {
+      setCanAdvancePlayStep(false);
+      setIsPauseOpen(false);
+    }
+  }, [showTutorial, tutorialStepIndex, tutorialSteps]);
 
   useEffect(() => {
     if (brickTotalHp > brickInitialHpRef.current) {
@@ -369,8 +414,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, [showRunSummary]);
 
   useEffect(() => {
-    const gameLoop = app.getGameLoop();
-    if (isPauseOpen || showTutorial) {
+    const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
+    if (isPauseOpen || shouldPauseForTutorial) {
       gameLoop.stop();
       return () => {
         gameLoop.start();
@@ -378,7 +423,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
     gameLoop.start();
     return undefined;
-  }, [app, isPauseOpen, showTutorial]);
+  }, [allowTutorialGameplay, gameLoop, isPauseOpen, showTutorial]);
 
   const handleScaleChange = (nextScale: number) => {
     scene.setScale(nextScale);
@@ -389,10 +434,88 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   const handleSummonDesign = useCallback(
     (designId: UnitDesignId) => {
-      necromancer.trySpawnDesign(designId);
+      const wasSummoned = necromancer.trySpawnDesign(designId);
+      if (wasSummoned) {
+        const option = necromancerOptionsRef.current.find((entry) => entry.designId === designId);
+        if (option?.type === "bluePentagon") {
+          registerTutorialAction("summon-blue-vanguard");
+          setTutorialSummonDone(true);
+        }
+      }
     },
-    [necromancer]
+    [necromancer, registerTutorialAction]
   );
+
+  useEffect(() => {
+    setTutorialActions({
+      summonBlueVanguard: () => handleSummonDesign("bluePentagon"),
+    });
+  }, [handleSummonDesign]);
+
+  useEffect(() => {
+    if (!showTutorial || activeTutorialStep?.id !== "summon-blue-vanguard") {
+      bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, { active: false });
+      return;
+    }
+    bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, {
+      active: true,
+      stepId: "summon-blue-vanguard",
+      actionCompleted: tutorialSummonDone,
+      bricksRequired: 3,
+    });
+  }, [activeTutorialStep?.id, bridge, showTutorial, tutorialSummonDone]);
+
+  useEffect(() => {
+    if (!showTutorial) {
+      return;
+    }
+    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
+      return;
+    }
+    if (!tutorialMonitorStatus.ready) {
+      return;
+    }
+    if (tutorialMonitorStatus.stepId !== "summon-blue-vanguard") {
+      return;
+    }
+    if (tutorialMonitorVersionRef.current === tutorialMonitorStatus.version) {
+      return;
+    }
+    tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
+    handlePlayStepAdvance();
+  }, [
+    activeTutorialStep?.id,
+    handlePlayStepAdvance,
+    handleTutorialAdvance,
+    showTutorial,
+    tutorialMonitorStatus.ready,
+    tutorialMonitorStatus.stepId,
+    tutorialMonitorStatus.version,
+    tutorialStepIndex,
+  ]);
+
+  useEffect(() => {
+    if (!showTutorial) {
+      return;
+    }
+    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
+      return;
+    }
+    if (!tutorialSummonDone || canAdvancePlayStep) {
+      return;
+    }
+    if (necromancerResources.sanity.current > 1) {
+      return;
+    }
+    handlePlayStepAdvance();
+  }, [
+    activeTutorialStep?.id,
+    canAdvancePlayStep,
+    handlePlayStepAdvance,
+    necromancerResources.sanity.current,
+    showTutorial,
+    tutorialSummonDone,
+  ]);
 
   const handleSelectSpell = useCallback((spellId: SpellId) => {
     setSelectedSpellId((current) => (current === spellId ? null : spellId));
@@ -534,6 +657,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   useSceneCanvas({
     scene,
     spellcasting,
+    gameLoop,
     canvasRef,
     wrapperRef,
     summoningPanelRef,

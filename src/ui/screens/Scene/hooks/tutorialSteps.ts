@@ -1,8 +1,16 @@
 import { SceneTutorialConfig, SceneTutorialStep } from "../components/overlay/SceneTutorialOverlay";
 
-type TargetResolver = () => Element | null;
+export interface SceneTutorialActions {
+  summonBlueVanguard?: () => void;
+}
 
-const getElementById = (id: string): Element | null => {
+export interface SceneTutorialLocks {
+  playStepLocked?: boolean;
+}
+
+type TargetResolver = () => HTMLElement | null;
+
+const getElementById = (id: string): HTMLElement | null => {
   if (typeof document === "undefined") {
     return null;
   }
@@ -12,6 +20,8 @@ const getElementById = (id: string): Element | null => {
 export const buildTutorialSteps = (
   tutorial: SceneTutorialConfig | null,
   getCanvasWrapper: TargetResolver,
+  actions?: SceneTutorialActions,
+  locks?: SceneTutorialLocks,
 ): SceneTutorialStep[] => {
   if (!tutorial) {
     return [];
@@ -21,64 +31,47 @@ export const buildTutorialSteps = (
     case "new-player": {
       const getResourceElement = (resourceId: string) =>
         getElementById(`${resourceId}-resource`);
-      const getSummoningUnitList = () => getElementById("summoning-unit-list");
-      const getSpellbookArea = () => getElementById("spellbook-area");
-  
+      const getBlueVanguardCard = () => getElementById("summon-option-bluePentagon");
+
       return [
         {
           id: "intro",
-          title: "The Hunger Awakens",
+          title: "Welcome",
           description:
-            "A gnawing hunger coils within you. Your purpose is simple: erase all matter from existence. Every shattered brick feeds your cause, granting resources to strengthen your swarm.",
+            "Your goal is simple: smash as many bricks as possible before your sanity runs out. Sanity is your mental stamina—it drains over time, so start breaking immediately.",
+          getTarget: () => getResourceElement("sanity"),
+          highlightPadding: 32,
+          placement: "top",
         },
         {
-          id: "summoning-panel",
-          title: "Summoning Rituals",
+          id: "summon-blue-vanguard",
+          title: "First Summon",
           description:
-            "Summon your ravenous creations here. They will crash into matter and devour the remains. Beware — your creatures take damage and can perish upon collision. They are fragile now, but you will evolve them into true horrors.",
-          getTarget: getSummoningUnitList,
+            "Spawn as many creatures as you can by spamming Blue Vanguard. When you run out of mana or your sanity drops after cracking a few bricks, we’ll pause and continue.",
+          getTarget: getBlueVanguardCard,
           highlightPadding: 32,
-        },
-        {
-          id: "spells",
-          title: "Spellcasting",
-          description:
-            "Select a spell from your spellbook and click on the battlefield to unleash it. Spells deal direct damage to matter and can shift the tide of battle. Hold the mouse button to channel continuously, as long as your mana lasts.",
-          getTarget: getSpellbookArea,
-          highlightPadding: 32,
+          placement: "top",
+          requiredAction: "summon-blue-vanguard",
+          nextLabel: "Summon Blue Vanguard",
+          lockMessage: "Spend your mana on summons and break a few bricks to continue",
+          allowGameplay: true,
+          blockOutsideClicks: false,
+          isLocked: locks?.playStepLocked ?? false,
         },
         {
           id: "mana",
-          title: "Mana Flows",
+          title: "Mana for Rituals",
           description:
-            "Mana slowly regenerates on its own. Spend it freely to conjure more destruction.",
+            "Mana fuels both summons and spells. It regenerates on its own—spend it freely to break more bricks before sanity fades.",
           getTarget: () => getResourceElement("mana"),
           highlightPadding: 24,
           placement: "top",
         },
         {
-          id: "sanity",
-          title: "Fading Sanity",
-          description:
-            "Your sanity slowly drains over time (0.25 per second). Keep pressing forward—when it hits zero, the run collapses.",
-          getTarget: () => getResourceElement("sanity"),
-          highlightPadding: 24,
-          placement: "top",
-        },
-        {
           id: "progress",
-          title: "Growth Through Destruction",
+          title: "Don’t Fear Failure",
           description:
-            "You don’t need to clear the map in one run. Every brick you destroy grants resources, whether you win or fall. Use them to evolve your army, unlock new powers, and return stronger. Progress is eternal — each run builds upon the last.",
-          getTarget: getCanvasWrapper,
-          highlightPadding: 48,
-          placement: "center",
-        },
-        {
-          id: "victory",
-          title: "Leave Nothing Behind",
-          description:
-            "Triumph comes when no brick remains. Should your sanity fade and your creatures fall, defeat will claim you — yet even in failure, your hunger grows. Every run brings you closer to total annihilation.",
+            "If you can’t shatter every brick, that’s fine. Every brick you destroy drops resources—use them to return stronger next time.",
           getTarget: getCanvasWrapper,
           highlightPadding: 48,
           placement: "center",

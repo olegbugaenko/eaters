@@ -247,6 +247,10 @@ export class ResourcesModule implements GameModule {
     return this.runDurationMs;
   }
 
+  public getRunBricksDestroyed(): number {
+    return this.runBricksDestroyed;
+  }
+
   public canAfford(amount: ResourceAmount | ResourceStockpile): boolean {
     const normalized = normalizeResourceAmount(amount);
     return RESOURCE_IDS.every((id) => this.totals[id] >= normalized[id]);
