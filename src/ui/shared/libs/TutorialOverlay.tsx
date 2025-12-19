@@ -348,6 +348,7 @@ export function TutorialOverlay({
             onClick={goNext}
             disabled={busy || nextDisabled}
             style={btnStyle("solid")}
+            className="button primary-button small-button"
           >
             {step.nextLabel ?? (isLast ? "Finish" : "Next")}
           </button>

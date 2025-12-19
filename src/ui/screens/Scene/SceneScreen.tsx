@@ -455,8 +455,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       (option) => option.cost.mana <= mana && option.cost.sanity <= sanity,
     );
     const sanityLow = sanity <= 1;
-    const brokeAnyBrick = resourceSummary.bricksDestroyed > 0;
-    const manaDepletedWithProgress = !hasAffordableSpawn && brokeAnyBrick;
+    const brokeEnoughBricks = resourceSummary.bricksDestroyed >= 3;
+    const manaDepletedWithProgress = !hasAffordableSpawn && brokeEnoughBricks;
 
     if (sanityLow || manaDepletedWithProgress) {
       setCanAdvancePlayStep(true);
