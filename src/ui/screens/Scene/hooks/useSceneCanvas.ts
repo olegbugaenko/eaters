@@ -498,7 +498,7 @@ export const useSceneCanvas = ({
       
       scene.setMapSize({
         width: Math.max(currentMapSize.width, canvas.width, 1000),
-        height: Math.max(currentMapSize.height, canvas.height, 1000),
+        height: Math.max(currentMapSize.height + 150, canvas.height, 1000),
       });
       const current = scene.getCamera();
       scaleRef.current = current.scale;
