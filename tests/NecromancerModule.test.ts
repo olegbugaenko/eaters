@@ -79,4 +79,20 @@ describe("NecromancerModule", () => {
       "sanity should be marked as depleted"
     );
   });
+
+  test("keeps sanity checks armed after loading during an active map", () => {
+    let depletionCalls = 0;
+    const necromancer = createNecromancer(() => {
+      depletionCalls += 1;
+    });
+    necromancer.initialize();
+    necromancer.configureForMap({ spawnPoints: [{ x: 0, y: 0 }] });
+
+    necromancer.load({ mana: 1, sanity: 1 });
+    (necromancer as unknown as { sanity: { current: number } }).sanity.current = 0;
+
+    necromancer.tick(16);
+
+    assert.strictEqual(depletionCalls, 1, "sanity depletion should trigger after load");
+  });
 });

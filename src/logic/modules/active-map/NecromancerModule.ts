@@ -170,7 +170,9 @@ export class NecromancerModule implements GameModule {
   public load(data: unknown | undefined): void {
     this.pendingLoad = this.parseSaveData(data);
     this.sanityDepleted = false;
-    this.sanityCheckArmed = false;
+    if (this.mapActive) {
+      this.sanityCheckArmed = true;
+    }
     this.markResourcesDirty();
     this.pushResources();
   }
@@ -488,6 +490,7 @@ export class NecromancerModule implements GameModule {
 
     if (changed) {
       this.markResourcesDirty();
+      this.checkSanityDepleted();
     }
   }
 
@@ -503,6 +506,7 @@ export class NecromancerModule implements GameModule {
   }
 
   private pushResources(): void {
+    this.checkSanityDepleted();
     const payload: NecromancerResourcesPayload = {
       mana: {
         current: clampNumber(this.mana.current, 0, this.mana.max),
