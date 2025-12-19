@@ -219,7 +219,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   const handlePlayStepAdvance = useCallback(() => {
     setCanAdvancePlayStep(true);
-    setIsPauseOpen(true);
     handleTutorialAdvance(tutorialStepIndex + 1);
   }, [handleTutorialAdvance, tutorialStepIndex]);
 
