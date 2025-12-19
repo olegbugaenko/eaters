@@ -1,8 +1,12 @@
 import { SceneTutorialConfig, SceneTutorialStep } from "../components/overlay/SceneTutorialOverlay";
 
-type TargetResolver = () => Element | null;
+export interface SceneTutorialActions {
+  summonBlueVanguard?: () => void;
+}
 
-const getElementById = (id: string): Element | null => {
+type TargetResolver = () => HTMLElement | null;
+
+const getElementById = (id: string): HTMLElement | null => {
   if (typeof document === "undefined") {
     return null;
   }
@@ -12,6 +16,7 @@ const getElementById = (id: string): Element | null => {
 export const buildTutorialSteps = (
   tutorial: SceneTutorialConfig | null,
   getCanvasWrapper: TargetResolver,
+  actions?: SceneTutorialActions,
 ): SceneTutorialStep[] => {
   if (!tutorial) {
     return [];
@@ -42,7 +47,9 @@ export const buildTutorialSteps = (
           highlightPadding: 32,
           requiredAction: "summon-blue-vanguard",
           nextLabel: "Summon Blue Vanguard",
-          lockMessage: "Click Blue Vanguard to continue",
+          lockMessage: "Click Blue Vanguard or use the button below to continue",
+          actionLabel: "Summon Blue Vanguard",
+          onAction: actions?.summonBlueVanguard,
         },
         {
           id: "mana",

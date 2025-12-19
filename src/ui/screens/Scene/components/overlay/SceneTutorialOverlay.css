@@ -1,74 +1,19 @@
 .scene-tutorial-overlay__tooltip {
   padding: var(--spacing-xl);
-  max-width: 320px;
+  max-width: 360px;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
   background: rgba(7, 12, 24, 0.96);
   border-radius: var(--radius-lg);
   box-shadow: 0 18px 48px rgba(8, 12, 20, 0.45);
+  border: 1px solid rgba(97, 218, 251, 0.15);
 }
 
-/* Фікси для react-joyride контейнерів */
-:global(.react-joyride__tooltip) {
-  max-width: min(320px, calc(100vw - 40px)) !important;
-  padding: 0 !important;
-}
-
-:global(.react-joyride__tooltip > div) {
-  overflow: visible !important;
-}
-
-/* Переконатися що кнопки кликабельні */
-.scene-tutorial-overlay__tooltip button {
-  position: relative;
-  z-index: 10000;
-  pointer-events: auto;
-}
-
-/* Дозволити кліки на overlay */
-:global(.react-joyride__overlay) {
-  pointer-events: auto !important;
-}
-
-/* Tooltip має бути над overlay */
-:global(.react-joyride__tooltip),
-:global([data-test-id="react-joyride-tooltip"]) {
-  z-index: 10001 !important;
-  pointer-events: auto !important;
-}
-
-.scene-tutorial-overlay__tooltip-header {
+.scene-tutorial-overlay__content {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--spacing-md);
-}
-
-.scene-tutorial-overlay__title {
-  margin: 0;
-  font-size: 1.35rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.scene-tutorial-overlay__skip {
-  background: none;
-  border: 1px solid transparent;
-  color: var(--color-text-subtle);
-  cursor: pointer;
-  font-weight: 600;
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius-sm);
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.scene-tutorial-overlay__skip:hover,
-.scene-tutorial-overlay__back:hover {
-  color: var(--color-accent);
-  border-color: rgba(97, 218, 251, 0.3);
-  background: rgba(97, 218, 251, 0.12);
+  flex-direction: column;
+  gap: var(--spacing-lg);
 }
 
 .scene-tutorial-overlay__description {
@@ -77,21 +22,19 @@
   color: var(--color-text-subtle);
 }
 
-.scene-tutorial-overlay__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-md);
+.scene-tutorial-overlay__lock {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-accent);
+  background: rgba(97, 218, 251, 0.08);
+  border: 1px solid rgba(97, 218, 251, 0.28);
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-md);
+  line-height: 1.4;
 }
 
-.scene-tutorial-overlay__back {
-  background: none;
-  border: 1px solid transparent;
-  color: var(--color-text-subtle);
-  cursor: pointer;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+.scene-tutorial-overlay__cta {
+  align-self: flex-start;
 }
 
 .scene-tutorial-overlay__next {

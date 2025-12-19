@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-type Placement = "top" | "bottom" | "left" | "right" | "center";
+export type TutorialOverlayPlacement = "top" | "bottom" | "left" | "right" | "center";
 
 export type TutorialStep = {
   id: string;
@@ -8,10 +8,13 @@ export type TutorialStep = {
   title?: string;
   content: React.ReactNode;
 
-  placement?: Placement;
+  placement?: TutorialOverlayPlacement;
   padding?: number;     // px around target
   radius?: number;      // for visual only (outline)
   allowSpotlightClicks?: boolean;
+  nextLabel?: string;
+  nextDisabled?: boolean;
+  footer?: React.ReactNode;
 
   // optional hooks
   onBefore?: () => void | Promise<void>;
@@ -32,6 +35,8 @@ type Props = {
 
   zIndex?: number;
   dimColor?: string;              // rgba(...)
+
+  tooltipClassName?: string;
 };
 
 type Rect = { x: number; y: number; w: number; h: number };
@@ -84,6 +89,7 @@ export function TutorialOverlay({
 
   zIndex = 10000,
   dimColor = "rgba(0,0,0,0.6)",
+  tooltipClassName,
 }: Props) {
   const step = steps[stepIndex];
   const [targetEl, setTargetEl] = useState<HTMLElement | null>(null);
@@ -163,7 +169,10 @@ export function TutorialOverlay({
   const isLast = stepIndex >= steps.length - 1;
   const canBack = stepIndex > 0;
 
+  const nextDisabled = step?.nextDisabled ?? false;
+
   const goNext = () => {
+    if (nextDisabled) return;
     if (isLast) {
       onClose?.();
       return;
@@ -304,7 +313,7 @@ export function TutorialOverlay({
       )}
 
       {/* Tooltip */}
-      <div style={tooltipStyle}>
+      <div style={tooltipStyle} className={tooltipClassName}>
         {step.title && (
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
             {step.title}
@@ -337,19 +346,18 @@ export function TutorialOverlay({
           <button
             type="button"
             onClick={goNext}
-            disabled={busy}
+            disabled={busy || nextDisabled}
             style={btnStyle("solid")}
           >
-            {isLast ? "Finish" : "Next"}
+            {step.nextLabel ?? (isLast ? "Finish" : "Next")}
           </button>
         </div>
 
-        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.65 }}>
-          {stepIndex + 1} / {steps.length}
-          {rect && (
+        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
+          {step.footer ?? (
             <>
-              {" • "}
-              spotlight clicks: {allowSpotlightClicks ? "allowed" : "blocked"}
+              {stepIndex + 1} / {steps.length}
+              {rect && allowSpotlightClicks && " • spotlight clickable"}
             </>
           )}
         </div>

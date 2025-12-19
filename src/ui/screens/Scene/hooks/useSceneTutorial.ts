@@ -4,22 +4,24 @@ import {
   SceneTutorialConfig,
   SceneTutorialStep,
 } from "../components/overlay/SceneTutorialOverlay";
-import { buildTutorialSteps } from "./tutorialSteps";
+import { buildTutorialSteps, SceneTutorialActions } from "./tutorialSteps";
 
 interface UseSceneTutorialParams {
   tutorial: SceneTutorialConfig | null;
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
   onTutorialComplete?: () => void;
+  actions?: SceneTutorialActions;
 }
 
 export const useSceneTutorial = ({
   tutorial,
   wrapperRef,
   onTutorialComplete,
+  actions,
 }: UseSceneTutorialParams) => {
   const tutorialSteps = useMemo<SceneTutorialStep[]>(
-    () => buildTutorialSteps(tutorial, () => wrapperRef.current),
-    [tutorial, wrapperRef],
+    () => buildTutorialSteps(tutorial, () => wrapperRef.current, actions),
+    [actions, tutorial, wrapperRef],
   );
 
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0);

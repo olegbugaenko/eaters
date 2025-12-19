@@ -63,6 +63,7 @@ import {
   ParticleStatsState,
   useSceneCanvas,
 } from "./hooks/useSceneCanvas";
+import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";
 
 const AUTO_RESTART_SECONDS = 5;
@@ -183,6 +184,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   const autoRestartHandledRef = useRef(false);
+  const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
   const {
     tutorialSteps,
     tutorialStepIndex,
@@ -190,7 +192,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     handleTutorialAdvance,
     handleTutorialClose,
     registerTutorialAction,
-  } = useSceneTutorial({ tutorial, wrapperRef, onTutorialComplete });
+  } = useSceneTutorial({
+    tutorial,
+    wrapperRef,
+    onTutorialComplete,
+    actions: tutorialActions,
+  });
 
   useEffect(() => {
     if (showRunSummary) {
@@ -400,6 +407,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     },
     [necromancer, registerTutorialAction]
   );
+
+  useEffect(() => {
+    setTutorialActions({
+      summonBlueVanguard: () => handleSummonDesign("bluePentagon"),
+    });
+  }, [handleSummonDesign]);
 
   const handleSelectSpell = useCallback((spellId: SpellId) => {
     setSelectedSpellId((current) => (current === spellId ? null : spellId));
