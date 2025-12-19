@@ -134,9 +134,9 @@ const createMixedCost = (
 const SKILL_DB: Record<SkillId, SkillConfig> = {
   consiousness: {
     id: "consiousness",
-    name: "Consiousness",
+    name: "Consciousness",
     description:
-      "Increase your max sanity.",
+      "Strengthen your mental fortitude, expanding the limits of your consciousness to endure longer on the map.",
     nodePosition: { x: 0, y: 0 },
     maxLevel: 5,
     effects: {
@@ -539,7 +539,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "bastion_foundations",
     name: "Bastion Foundations",
     description:
-      "Lay channelled footings for the mind—wider foundations increase sanity reserves.",
+      "Build mental fortifications—deeper foundations of consciousness allow you to maintain presence on the map longer.",
     nodePosition: { x: 1, y: -2 },
     maxLevel: 3,
     effects: {
@@ -554,7 +554,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "clarity",
     name: "Clarity",
     description:
-      "Quiet the inner static. Clearer thought lets you endure more before madness sets in.",
+      "Quiet the inner static. Clearer thought and mental clarity extend your ability to remain conscious on the map.",
     nodePosition: { x: 2, y: -3 },
     maxLevel: 4,
     effects: {
@@ -569,7 +569,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "clarity2",
     name: "Clarity II",
     description:
-      "Deeper stillness and discipline expand your sanity threshold further.",
+      "Deeper stillness and mental discipline further expand your consciousness, allowing extended presence on the map.",
     nodePosition: { x: 3, y: -4 },
     maxLevel: 5,
     effects: {
@@ -584,7 +584,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "clarity3",
     name: "Clarity III",
     description:
-      "Mastery of focus—your mind holds fast when the void whispers.",
+      "Mastery of mental focus—your consciousness remains unshaken, enabling you to persist on the map even when the void whispers.",
     nodePosition: { x: 3, y: -5 },
     maxLevel: 8,
     effects: {
@@ -723,7 +723,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         multiplier: (level) => 1 + 0.1 * level,
       },
     },
-    nodesRequired: { damage_lore: 5 },
+    nodesRequired: { heavy_drill: 5 },
     cost: createResourceCost('silver', 60, 1.5),
   },
   critical_chance: {

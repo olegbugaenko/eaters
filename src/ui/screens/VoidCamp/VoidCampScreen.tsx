@@ -281,7 +281,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   return (
     <>
       <VoidCamp
-        sidebar={<ResourceSidebar resources={resources} />}
+        sidebar={<ResourceSidebar resources={resources} onStart={onStart} />}
         topBar={
           <VoidCampTopBar
             versionLabel={currentVersion?.displayName}

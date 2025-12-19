@@ -27,3 +27,8 @@
 .resource-sidebar__value {
   font-weight: 500;
 }
+
+.resource-sidebar .pinned-bottom {
+  position: fixed;
+  bottom: 12px;
+}
