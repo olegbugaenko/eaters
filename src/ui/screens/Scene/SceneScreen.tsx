@@ -217,6 +217,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
   const allowTutorialGameplay = Boolean(activeTutorialStep?.allowGameplay);
 
+  const handlePlayStepAdvance = useCallback(() => {
+    setCanAdvancePlayStep(true);
+    handleTutorialAdvance(tutorialStepIndex + 1);
+  }, [handleTutorialAdvance, tutorialStepIndex]);
+
   useEffect(() => {
     if (showRunSummary) {
       setHoverContent(null);
@@ -250,7 +255,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
     const currentStep = tutorialSteps[tutorialStepIndex];
     if (currentStep?.id === "summon-blue-vanguard" && currentStep.isLocked) {
-      setTutorialSummonDone(false);
       setCanAdvancePlayStep(false);
       setIsPauseOpen(false);
     }
@@ -478,17 +482,39 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       return;
     }
     tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
-    setCanAdvancePlayStep(true);
-    setIsPauseOpen(true);
-    handleTutorialAdvance(tutorialStepIndex + 1);
+    handlePlayStepAdvance();
   }, [
     activeTutorialStep?.id,
+    handlePlayStepAdvance,
     handleTutorialAdvance,
     showTutorial,
     tutorialMonitorStatus.ready,
     tutorialMonitorStatus.stepId,
     tutorialMonitorStatus.version,
     tutorialStepIndex,
+  ]);
+
+  useEffect(() => {
+    if (!showTutorial) {
+      return;
+    }
+    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
+      return;
+    }
+    if (!tutorialSummonDone || canAdvancePlayStep) {
+      return;
+    }
+    if (necromancerResources.sanity.current > 1) {
+      return;
+    }
+    handlePlayStepAdvance();
+  }, [
+    activeTutorialStep?.id,
+    canAdvancePlayStep,
+    handlePlayStepAdvance,
+    necromancerResources.sanity.current,
+    showTutorial,
+    tutorialSummonDone,
   ]);
 
   const handleSelectSpell = useCallback((spellId: SpellId) => {
