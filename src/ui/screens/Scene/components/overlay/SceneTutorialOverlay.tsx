@@ -263,11 +263,11 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
         disableOverlayClose
         hideBackButton
         locale={{
-          back: "Назад",
-          close: "Почати",
-          last: "Почати",
-          next: "Далі",
-          skip: "Пропустити",
+          back: "Back",
+          close: "Begin",
+          last: "Begin",
+          next: "Next",
+          skip: "Skip",
         }}
         styles={{
           options: {
@@ -314,7 +314,7 @@ const SceneTutorialTooltip: React.FC<TooltipRenderProps> = ({
   const typedStep = step as SceneTutorialJoyrideStep;
   const isLocked = Boolean(typedStep.isLocked && !isLastStep);
   const lockMessage = typedStep.lockMessage;
-  const nextLabel = typedStep.nextLabel ?? (isLastStep ? "Почати" : "Далі");
+  const nextLabel = typedStep.nextLabel ?? (isLastStep ? "Begin" : "Next");
 
   const { onClick: primaryOnClick, ...restPrimaryProps } = primaryProps;
   const handlePrimaryClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -353,7 +353,7 @@ const SceneTutorialTooltip: React.FC<TooltipRenderProps> = ({
             type="button"
             className="scene-tutorial-overlay__back"
           >
-            Назад
+            Back
           </button>
         )}
         <button
@@ -370,7 +370,7 @@ const SceneTutorialTooltip: React.FC<TooltipRenderProps> = ({
         <p className="scene-tutorial-overlay__description">{lockMessage}</p>
       )}
       <p className="scene-tutorial-overlay__progress">
-        Крок {index + 1} із {size}
+        Step {index + 1} of {size}
       </p>
     </section>
   );
