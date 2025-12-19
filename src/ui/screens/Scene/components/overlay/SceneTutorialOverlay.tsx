@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Joyride, {
   ACTIONS,
   CallBackProps,
@@ -13,6 +13,8 @@ export interface SceneTutorialConfig {
   readonly type: "new-player";
 }
 
+export type SceneTutorialAction = "summon-blue-vanguard";
+
 export interface SceneTutorialStep {
   readonly id: string;
   readonly title: string;
@@ -20,6 +22,10 @@ export interface SceneTutorialStep {
   readonly getTarget?: () => Element | null;
   readonly highlightPadding?: number;
   readonly placement?: JoyrideStep["placement"];
+  readonly requiredAction?: SceneTutorialAction;
+  readonly nextLabel?: string;
+  readonly lockMessage?: string;
+  readonly isLocked?: boolean;
 }
 
 interface SceneTutorialOverlayProps {
@@ -30,6 +36,12 @@ interface SceneTutorialOverlayProps {
 }
 
 const HIGHLIGHT_PADDING_DEFAULT = 16;
+
+interface SceneTutorialJoyrideStep extends JoyrideStep {
+  isLocked?: boolean;
+  nextLabel?: string;
+  lockMessage?: string;
+}
 
 const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
   steps,
@@ -81,7 +93,7 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
     };
   }, [steps]);
 
-  const joyrideSteps = useMemo<JoyrideStep[]>(() => {
+  const joyrideSteps = useMemo<SceneTutorialJoyrideStep[]>(() => {
     if (steps.length === 0) {
       return [];
     }
@@ -93,19 +105,24 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
       const resolvedId = (resolvedTarget as HTMLElement | null)?.id;
       const joyrideTarget = resolvedId ? (`#${resolvedId}` as unknown as Element) : resolvedTarget;
 
-      return {
+      const next: SceneTutorialJoyrideStep = {
         target: joyrideTarget,
         title: step.title,
         content: step.description,
         disableBeacon: true,
         placement: step.placement ?? (hasTarget ? "auto" : "center"),
         spotlightPadding: step.highlightPadding ?? HIGHLIGHT_PADDING_DEFAULT,
+        isLocked: step.isLocked,
+        nextLabel: step.nextLabel,
+        lockMessage: step.lockMessage,
         styles: {
           spotlight: {
             borderRadius: 12,
           },
         },
-      } satisfies JoyrideStep;
+      };
+
+      return next satisfies SceneTutorialJoyrideStep;
     });
   }, [steps, targets]);
 
@@ -245,10 +262,11 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
         disableCloseOnEsc
         disableOverlayClose
         hideBackButton
+        spotlightClicks
         locale={{
           back: "Back",
-          close: "Begin the Feast",
-          last: "Begin the Feast",
+          close: "Begin",
+          last: "Begin",
           next: "Next",
           skip: "Skip",
         }}
@@ -294,6 +312,20 @@ const SceneTutorialTooltip: React.FC<TooltipRenderProps> = ({
   tooltipProps,
 }) => {
   const isLastStep = index === size - 1;
+  const typedStep = step as SceneTutorialJoyrideStep;
+  const isLocked = Boolean(typedStep.isLocked && !isLastStep);
+  const lockMessage = typedStep.lockMessage;
+  const nextLabel = typedStep.nextLabel ?? (isLastStep ? "Begin" : "Next");
+
+  const { onClick: primaryOnClick, ...restPrimaryProps } = primaryProps;
+  const handlePrimaryClick = (event: MouseEvent<HTMLButtonElement>) => {
+    if (isLocked) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    primaryOnClick?.(event);
+  };
 
   return (
     <section
@@ -326,13 +358,18 @@ const SceneTutorialTooltip: React.FC<TooltipRenderProps> = ({
           </button>
         )}
         <button
-          {...primaryProps}
+          {...restPrimaryProps}
+          onClick={handlePrimaryClick}
           type="button"
+          disabled={isLocked}
           className="button primary-button scene-tutorial-overlay__next"
         >
-          {isLastStep ? "Begin the Feast" : "Next"}
+          {nextLabel}
         </button>
       </div>
+      {isLocked && lockMessage && (
+        <p className="scene-tutorial-overlay__description">{lockMessage}</p>
+      )}
       <p className="scene-tutorial-overlay__progress">
         Step {index + 1} of {size}
       </p>
