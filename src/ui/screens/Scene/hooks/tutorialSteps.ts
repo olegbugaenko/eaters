@@ -21,64 +21,43 @@ export const buildTutorialSteps = (
     case "new-player": {
       const getResourceElement = (resourceId: string) =>
         getElementById(`${resourceId}-resource`);
-      const getSummoningUnitList = () => getElementById("summoning-unit-list");
-      const getSpellbookArea = () => getElementById("spellbook-area");
-  
+      const getBlueVanguardCard = () => getElementById("summon-option-bluePentagon");
+
       return [
         {
           id: "intro",
-          title: "The Hunger Awakens",
+          title: "Ласкаво просимо",
           description:
-            "A gnawing hunger coils within you. Your purpose is simple: erase all matter from existence. Every shattered brick feeds your cause, granting resources to strengthen your swarm.",
-        },
-        {
-          id: "summoning-panel",
-          title: "Summoning Rituals",
-          description:
-            "Summon your ravenous creations here. They will crash into matter and devour the remains. Beware — your creatures take damage and can perish upon collision. They are fragile now, but you will evolve them into true horrors.",
-          getTarget: getSummoningUnitList,
-          highlightPadding: 32,
-        },
-        {
-          id: "spells",
-          title: "Spellcasting",
-          description:
-            "Select a spell from your spellbook and click on the battlefield to unleash it. Spells deal direct damage to matter and can shift the tide of battle. Hold the mouse button to channel continuously, as long as your mana lasts.",
-          getTarget: getSpellbookArea,
-          highlightPadding: 32,
-        },
-        {
-          id: "mana",
-          title: "Mana Flows",
-          description:
-            "Mana slowly regenerates on its own. Spend it freely to conjure more destruction.",
-          getTarget: () => getResourceElement("mana"),
-          highlightPadding: 24,
-          placement: "top",
-        },
-        {
-          id: "sanity",
-          title: "Fading Sanity",
-          description:
-            "Your sanity slowly drains over time (0.25 per second). Keep pressing forward—when it hits zero, the run collapses.",
-          getTarget: () => getResourceElement("sanity"),
-          highlightPadding: 24,
-          placement: "top",
-        },
-        {
-          id: "progress",
-          title: "Growth Through Destruction",
-          description:
-            "You don’t need to clear the map in one run. Every brick you destroy grants resources, whether you win or fall. Use them to evolve your army, unlock new powers, and return stronger. Progress is eternal — each run builds upon the last.",
+            "Твоя ціль — розбити якнайбільше цеглин, поки не згасає саніті. Це ментальний ресурс: він повільно тане сам по собі, тож часу мало — атакуй одразу.",
           getTarget: getCanvasWrapper,
           highlightPadding: 48,
           placement: "center",
         },
         {
-          id: "victory",
-          title: "Leave Nothing Behind",
+          id: "summon-blue-vanguard",
+          title: "Перший призив",
           description:
-            "Triumph comes when no brick remains. Should your sanity fade and your creatures fall, defeat will claim you — yet even in failure, your hunger grows. Every run brings you closer to total annihilation.",
+            "Натисни на картку «Blue Vanguard», щоб випустити першу істоту. Ми запам’ятаємо цей клік для майбутніх боїв, тож зроби його зараз.",
+          getTarget: getBlueVanguardCard,
+          highlightPadding: 32,
+          requiredAction: "summon-blue-vanguard",
+          nextLabel: "Призови Blue Vanguard",
+          lockMessage: "Натисни на Blue Vanguard, щоб продовжити",
+        },
+        {
+          id: "mana",
+          title: "Мана для ритуалів",
+          description:
+            "Мана потрібна для призову істот і застосування магії. Вона регенерується автоматично — не накопичуй її, витрачай, щоб дробити більше цеглин.",
+          getTarget: () => getResourceElement("mana"),
+          highlightPadding: 24,
+          placement: "top",
+        },
+        {
+          id: "progress",
+          title: "Не бійся програти",
+          description:
+            "Якщо не встигнеш розбити всі цеглини — нічого страшного. Кожна зруйнована цегла дає ресурси, з якими ти повернешся сильнішим.",
           getTarget: getCanvasWrapper,
           highlightPadding: 48,
           placement: "center",

@@ -181,9 +181,14 @@ export const SceneSummoningPanel = forwardRef<
                 );
                 const automationEntry = automationLookup.get(option.designId);
                 const automationEnabled = automationEntry?.enabled ?? false;
+                const optionElementId =
+                  option.type === "bluePentagon"
+                    ? "summon-option-bluePentagon"
+                    : `summon-option-${option.designId}`;
                 return (
                   <div
                     key={option.designId}
+                    id={optionElementId}
                     className="scene-summoning-panel__unit"
                   >
                     <div

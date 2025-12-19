@@ -189,6 +189,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     showTutorial,
     handleTutorialAdvance,
     handleTutorialClose,
+    registerTutorialAction,
   } = useSceneTutorial({ tutorial, wrapperRef, onTutorialComplete });
 
   useEffect(() => {
@@ -389,9 +390,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   const handleSummonDesign = useCallback(
     (designId: UnitDesignId) => {
-      necromancer.trySpawnDesign(designId);
+      const wasSummoned = necromancer.trySpawnDesign(designId);
+      if (wasSummoned) {
+        const option = necromancerOptionsRef.current.find((entry) => entry.designId === designId);
+        if (option?.type === "bluePentagon") {
+          registerTutorialAction("summon-blue-vanguard");
+        }
+      }
     },
-    [necromancer]
+    [necromancer, registerTutorialAction]
   );
 
   const handleSelectSpell = useCallback((spellId: SpellId) => {
