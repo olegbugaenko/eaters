@@ -95,4 +95,22 @@ describe("NecromancerModule", () => {
 
     assert.strictEqual(depletionCalls, 1, "sanity depletion should trigger after load");
   });
+
+  test("enforces depletion without map activation gates", () => {
+    let depletionCalls = 0;
+    const necromancer = createNecromancer(() => {
+      depletionCalls += 1;
+    });
+    necromancer.initialize();
+    necromancer.configureForMap({ spawnPoints: [{ x: 0, y: 0 }] });
+    (necromancer as unknown as { sanity: { current: number } }).sanity.current = 0;
+
+    necromancer.tick(16);
+
+    assert.strictEqual(depletionCalls, 1, "sanity enforcement should ignore map flag gates");
+    assert.strictEqual(
+      (necromancer as unknown as { sanityDepleted: boolean }).sanityDepleted,
+      true
+    );
+  });
 });

@@ -101,7 +101,7 @@ export class NecromancerModule implements GameModule {
   private spawnPoints: SceneVector2[] = [];
   private nextSpawnIndex = 0;
   private mapActive = false;
-  private sanityCheckArmed = false;
+  private sanityCallbacksEnabled = false;
   private pendingLoad: ResourceAmountMap | null = null;
   private resourcesDirty = true;
   private cachedDesigns: UnitDesignerUnitState[] = [];
@@ -155,7 +155,9 @@ export class NecromancerModule implements GameModule {
     if (this.sanity.current <= 1.e-8) {
       this.sanity.current = 0;
       this.sanityDepleted = true;
-      this.onSanityDepleted?.();
+      if (this.sanityCallbacksEnabled) {
+        this.onSanityDepleted?.();
+      }
       return false;
     }
     return true;
@@ -165,7 +167,7 @@ export class NecromancerModule implements GameModule {
     this.spawnPoints = [];
     this.nextSpawnIndex = 0;
     this.mapActive = false;
-    this.sanityCheckArmed = false;
+    this.sanityCallbacksEnabled = false;
     this.pendingLoad = null;
     this.mana.current = 0;
     this.mana.max = 0;
@@ -183,9 +185,6 @@ export class NecromancerModule implements GameModule {
   public load(data: unknown | undefined): void {
     this.pendingLoad = this.parseSaveData(data);
     this.sanityDepleted = false;
-    if (this.mapActive) {
-      this.sanityCheckArmed = true;
-    }
     this.markResourcesDirty();
     this.pushResources();
   }
@@ -245,7 +244,7 @@ export class NecromancerModule implements GameModule {
     }));
     this.nextSpawnIndex = 0;
     this.mapActive = true;
-    this.sanityCheckArmed = true;
+    this.sanityCallbacksEnabled = true;
     this.sanityDepleted = false;
 
     this.applyCurrentBonusValues();
@@ -366,11 +365,11 @@ export class NecromancerModule implements GameModule {
 
   public endCurrentMap(): void {
     this.mapActive = false;
+    this.sanityCallbacksEnabled = false;
     this.spawnPoints = [];
     this.nextSpawnIndex = 0;
     this.pendingLoad = null;
     this.sanityDepleted = false;
-    this.sanityCheckArmed = false;
     this.markResourcesDirty();
     this.pushResources();
   }
@@ -563,9 +562,6 @@ export class NecromancerModule implements GameModule {
   }
 
   private checkSanityDepleted(): void {
-    if (!this.sanityCheckArmed) {
-      return;
-    }
     this.enforceSanityBoundary();
   }
 }
