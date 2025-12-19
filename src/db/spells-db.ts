@@ -293,7 +293,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Sand Storm",
     description:
       "Summon a whirling storm of scouring grit that grinds forward, shredding bricks until the vortex collapses.",
-    cost: { mana: 5, sanity: 0 },
+    cost: { mana: 10, sanity: 0 },
     cooldownSeconds: 2,
     whirl: {
       radius: 30,

@@ -134,7 +134,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       sanity_cap: {
-        income: (level) => 1 * level,
+        income: (level) => 0.5 * level,
       },
     },
     nodesRequired: { },

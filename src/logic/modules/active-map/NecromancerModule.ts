@@ -542,9 +542,11 @@ export class NecromancerModule implements GameModule {
 
   private checkSanityDepleted(): void {
     if (!this.mapActive || this.sanityDepleted) {
+      console.warn("EXIT EARLY: ", this.mapActive, this.sanityDepleted);
       return;
     }
-    if (this.sanity.current <= 0) {
+    if (this.sanity.current <= 1.e-8) {
+      console.warn("Sanity depleted");
       this.sanityDepleted = true;
       this.onSanityDepleted?.();
     }

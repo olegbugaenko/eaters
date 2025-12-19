@@ -163,13 +163,13 @@ const YELLOW_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
 ] as const;
 
 const GREEN_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.6, g: 0.95, b: 0.65, a: 0.3 } },
-  { offset: 0.4, color: { r: 0.35, g: 0.85, b: 0.45, a: 0.5 } },
+  { offset: 0, color: { r: 0.6, g: 0.95, b: 0.65, a: 0.15 } },
+  { offset: 0.4, color: { r: 0.35, g: 0.85, b: 0.45, a: 0.4 } },
   { offset: 1, color: { r: 0.1, g: 0.55, b: 0.15, a: 0 } },
 ] as const;
 const GREEN_BRICK_DESTROY_WAVE: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.6, g: 1, b: 0.7, a: 0.5 } },
-  { offset: 0.35, color: { r: 0.4, g: 0.9, b: 0.5, a: 0.8 } },
+  { offset: 0, color: { r: 0.6, g: 1, b: 0.7, a: 0.3 } },
+  { offset: 0.35, color: { r: 0.4, g: 0.9, b: 0.5, a: 0.5 } },
   { offset: 1, color: { r: 0.1, g: 0.6, b: 0.15, a: 0 } },
 ] as const;
 
@@ -304,6 +304,7 @@ const GREEN_BRICK_EMITTER_FILL: SceneFill = {
     colorAmplitude: 0.04,
     alphaAmplitude: 0.09,
     scale: 0.5,
+    density: 0.2,
   },
 };
 const ORANGE_BRICK_EMITTER_FILL: SceneFill = {
@@ -318,6 +319,7 @@ const ORANGE_BRICK_EMITTER_FILL: SceneFill = {
     colorAmplitude: 0.04,
     alphaAmplitude: 0.09,
     scale: 0.5,
+    density: 0.2,
   },
 };
 const BROWN_BRICK_EMITTER_FILL: SceneFill = {
@@ -612,7 +614,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: GREEN_BRICK_HIT_WAVE,
@@ -624,7 +626,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 60,
+      radiusExtension: 50,
       startAlpha: 0.7,
       endAlpha: 0,
       gradientStops: GREEN_BRICK_DESTROY_WAVE,
@@ -636,7 +638,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_HIT_WAVE,
@@ -648,7 +650,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 60,
+      radiusExtension: 50,
       startAlpha: 0.7,
       endAlpha: 0,
       gradientStops: ORANGE_BRICK_DESTROY_WAVE,
