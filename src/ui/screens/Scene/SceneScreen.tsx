@@ -455,8 +455,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       (option) => option.cost.mana <= mana && option.cost.sanity <= sanity,
     );
     const sanityLow = sanity <= 1;
+    const brokeAnyBrick = resourceSummary.bricksDestroyed > 0;
+    const manaDepletedWithProgress = !hasAffordableSpawn && brokeAnyBrick;
 
-    if (!hasAffordableSpawn || sanityLow) {
+    if (sanityLow || manaDepletedWithProgress) {
       setCanAdvancePlayStep(true);
       setIsPauseOpen(true);
     }
@@ -465,6 +467,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     canAdvancePlayStep,
     necromancerOptions,
     necromancerResources,
+    resourceSummary.bricksDestroyed,
     showTutorial,
     tutorialSummonDone,
   ]);
