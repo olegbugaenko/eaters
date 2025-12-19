@@ -65,6 +65,12 @@ import {
 } from "./hooks/useSceneCanvas";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";
+import {
+  DEFAULT_TUTORIAL_MONITOR_STATUS,
+  TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
+  TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
+  TutorialMonitorStatus,
+} from "@logic/modules/active-map/TutorialMonitorModule";
 
 const AUTO_RESTART_SECONDS = 5;
 
@@ -142,6 +148,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     UNIT_AUTOMATION_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_AUTOMATION_STATE
   );
+  const tutorialMonitorStatus = useBridgeValue<TutorialMonitorStatus>(
+    bridge,
+    TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
+    DEFAULT_TUTORIAL_MONITOR_STATUS
+  );
   const autoRestartState = useBridgeValue<MapAutoRestartState>(
     bridge,
     MAP_AUTO_RESTART_BRIDGE_KEY,
@@ -184,6 +195,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   const autoRestartHandledRef = useRef(false);
+  const tutorialMonitorVersionRef = useRef(0);
   const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
   const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
@@ -437,87 +449,47 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, [handleSummonDesign]);
 
   useEffect(() => {
+    if (!showTutorial || activeTutorialStep?.id !== "summon-blue-vanguard") {
+      bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, { active: false });
+      return;
+    }
+    bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, {
+      active: true,
+      stepId: "summon-blue-vanguard",
+      actionCompleted: tutorialSummonDone,
+      bricksRequired: 3,
+    });
+  }, [activeTutorialStep?.id, bridge, showTutorial, tutorialSummonDone]);
+
+  useEffect(() => {
     if (!showTutorial) {
       return;
     }
     if (activeTutorialStep?.id !== "summon-blue-vanguard") {
       return;
     }
-    if (canAdvancePlayStep) {
+    if (!tutorialMonitorStatus.ready) {
       return;
     }
-    if (activeTutorialStep?.isLocked && !tutorialSummonDone) {
+    if (tutorialMonitorStatus.stepId !== "summon-blue-vanguard") {
       return;
     }
-    const mana = necromancerResources.mana.current;
-    const sanity = necromancerResources.sanity.current;
-    const hasAffordableSpawn = necromancerOptions.some(
-      (option) => option.cost.mana <= mana && option.cost.sanity <= sanity,
-    );
-    const sanityLow = sanity <= 1;
-    const brokeEnoughBricks = resourceSummary.bricksDestroyed >= 3;
-    const manaDepletedWithProgress = !hasAffordableSpawn && brokeEnoughBricks;
-
-    if (sanityLow || manaDepletedWithProgress) {
-      setCanAdvancePlayStep(true);
-      setIsPauseOpen(true);
+    if (tutorialMonitorVersionRef.current === tutorialMonitorStatus.version) {
+      return;
     }
+    tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
+    setCanAdvancePlayStep(true);
+    setIsPauseOpen(true);
+    handleTutorialAdvance(tutorialStepIndex + 1);
   }, [
     activeTutorialStep?.id,
-    canAdvancePlayStep,
-    necromancerOptions,
-    necromancerResources,
-    resourceSummary.bricksDestroyed,
+    handleTutorialAdvance,
     showTutorial,
-    tutorialSummonDone,
+    tutorialMonitorStatus.ready,
+    tutorialMonitorStatus.stepId,
+    tutorialMonitorStatus.version,
+    tutorialStepIndex,
   ]);
-
-  useEffect(() => {
-    if (!showTutorial) {
-      return;
-    }
-    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
-      return;
-    }
-    const interval = window.setInterval(() => {
-      if (!tutorialSummonDone) {
-        return;
-      }
-      const sanity = necromancerResourcesRef.current?.sanity.current ?? necromancerResources.sanity.current;
-      if (sanity <= 1) {
-        setCanAdvancePlayStep(true);
-        setIsPauseOpen(true);
-      }
-    }, 200);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [activeTutorialStep?.id, necromancerResources.sanity.current, showTutorial, tutorialSummonDone]);
-
-  useEffect(() => {
-    if (!showTutorial) {
-      return;
-    }
-    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
-      return;
-    }
-    const sanityLow = necromancerResources.sanity.current <= 1;
-    if (sanityLow && tutorialSummonDone) {
-      setCanAdvancePlayStep(true);
-      setIsPauseOpen(true);
-    }
-  }, [activeTutorialStep?.id, necromancerResources.sanity.current, showTutorial, tutorialSummonDone]);
-
-  useEffect(() => {
-    if (!canAdvancePlayStep) {
-      return;
-    }
-    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
-      return;
-    }
-    handleTutorialAdvance(tutorialStepIndex + 1);
-  }, [activeTutorialStep?.id, canAdvancePlayStep, handleTutorialAdvance, tutorialStepIndex]);
 
   const handleSelectSpell = useCallback((spellId: SpellId) => {
     setSelectedSpellId((current) => (current === spellId ? null : spellId));
