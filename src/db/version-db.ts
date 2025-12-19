@@ -6,6 +6,15 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.0.4",
+    releaseDate: "2025-12-19",
+    changes: [
+      "Re-worked how sanity works",
+      "Added new skills",
+      "Significant rebalances"
+    ],
+  },
+  {
     displayName: "v0.0.3c",
     releaseDate: "2025-11-11",
     changes: [

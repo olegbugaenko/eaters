@@ -326,14 +326,15 @@ const BROWN_BRICK_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.12 } },
-    { offset: 0.45, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.06 } },
-    { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0.03 } },
+    { offset: 0, color: { r: 0.75, g: 0.55, b: 0.35, a: 0.09 } },
+    { offset: 0.45, color: { r: 0.6, g: 0.45, b: 0.25, a: 0.05 } },
+    { offset: 1, color: { r: 0.4, g: 0.3, b: 0.15, a: 0.02 } },
   ],
   noise: {
     colorAmplitude: 0.04,
     alphaAmplitude: 0.09,
     scale: 0.5,
+    density: 0.3,
   },
 };
 const SILVER_BRICK_EMITTER_FILL2: SceneFill = {
@@ -662,7 +663,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 6,
     waves: createSimpleWave({
       defaultInitialRadius: 6,
-      radiusExtension: 40,
+      radiusExtension: 30,
       startAlpha: 0.6,
       endAlpha: 0,
       gradientStops: BROWN_BRICK_HIT_WAVE,
@@ -670,11 +671,11 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: { ...GRAY_BRICK_DAMAGE_EMITTER, color: { r: 0.75, g: 0.55, b: 0.35, a: 1 }, fill: BROWN_BRICK_EMITTER_FILL },
   },
   woodBrickDestroy: {
-    lifetimeMs: 1_600,
+    lifetimeMs: 1_200,
     defaultInitialRadius: 10,
     waves: createSimpleWave({
       defaultInitialRadius: 10,
-      radiusExtension: 90,
+      radiusExtension: 60,
       startAlpha: 0.8,
       endAlpha: 0,
       gradientStops: BROWN_BRICK_DESTROY_WAVE,

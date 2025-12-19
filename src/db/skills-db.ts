@@ -87,8 +87,10 @@ export const SKILL_IDS = [
 
 export type SkillId = (typeof SKILL_IDS)[number];
 
-const getClearedLevelsTotal = (context?: BonusEffectContext): number =>
-  Math.max(0, context?.clearedMapLevelsTotal ?? 0);
+const getClearedLevelsTotal = (context?: BonusEffectContext, level?: number): number => {
+  console.log("context", context, level);
+  return Math.max(0, context?.clearedMapLevelsTotal ?? 0);
+}
 
 const createStoneCost = (base: number, growth: number) =>
   (level: number): ResourceAmount => ({
@@ -663,7 +665,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context),
+        multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context, level),
       },
     },
     nodesRequired: { damage_lore: 2 },
