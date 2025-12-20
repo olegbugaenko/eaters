@@ -944,10 +944,10 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       if (meltingRadius > 0) {
-        const nearbyBricks = this.bricks
-          .findBricksNear(effectOrigin, meltingRadius)
-          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
-        nearbyBricks.forEach((brick: BrickRuntimeState) => {
+        this.bricks.forEachBrickNear(effectOrigin, meltingRadius, (brick) => {
+          if (skipBrickId && brick.id === skipBrickId) {
+            return;
+          }
           this.bricks.applyEffect({
             type: "meltingTail",
             brickId: brick.id,
@@ -973,10 +973,10 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       if (freezingRadius > 0) {
-        const nearbyBricks = this.bricks
-          .findBricksNear(effectOrigin, freezingRadius)
-          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
-        nearbyBricks.forEach((brick: BrickRuntimeState) => {
+        this.bricks.forEachBrickNear(effectOrigin, freezingRadius, (brick) => {
+          if (skipBrickId && brick.id === skipBrickId) {
+            return;
+          }
           this.bricks.applyEffect({
             type: "freezingTail",
             brickId: brick.id,
@@ -990,10 +990,10 @@ export class PlayerUnitsModule implements GameModule {
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
-        const nearby = this.bricks
-          .findBricksNear(target.position, unit.damageTransferRadius)
-          .filter((brick) => brick.id !== target.id);
-        nearby.forEach((brick: BrickRuntimeState) => {
+        this.bricks.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
+          if (brick.id === target.id) {
+            return;
+          }
           this.bricks.applyDamage(brick.id, splashDamage, direction, {
             rewardMultiplier: unit.rewardMultiplier,
             armorPenetration: unit.armorPenetration,
