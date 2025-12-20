@@ -13,6 +13,8 @@ import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
 import type { EffectsModule } from "../src/logic/modules/scene/EffectsModule";
 import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { PlayerUnitEmitterConfig, getPlayerUnitConfig } from "../src/db/player-units-db";
+import { NecromancerModule } from "../src/logic/modules/active-map/NecromancerModule";
+import type { UnitDesignModule } from "../src/logic/modules/camp/UnitDesignModule";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -30,6 +32,18 @@ const createBricksModule = (
   };
   return new BricksModule({ scene, bridge, explosions, resources, bonuses });
 };
+
+const createUnitDesignerStub = (): UnitDesignModule =>
+  ({
+    subscribe: (listener: (designs: never[]) => void) => {
+      listener([]);
+      return () => {};
+    },
+    getDefaultDesignForType: () => null,
+    getDesign: () => null,
+    getAllDesigns: () => [],
+    getActiveRosterDesigns: () => [],
+  }) as unknown as UnitDesignModule;
 
 const tickSeconds = (module: PlayerUnitsModule, seconds: number) => {
   module.tick(seconds * 1000);
@@ -270,5 +284,66 @@ describe("PlayerUnitsModule", () => {
       baselineCalls + 1,
       "effects should be cleared when units are removed"
     );
+  });
+
+  test("ends the run instead of attacking when sanity is depleted", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const movement = new MovementService();
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const explosions = new ExplosionModule({ scene });
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions);
+    const units = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
+      getDesignTargetingMode: () => "nearest",
+    });
+
+    let sanityDepletedCalls = 0;
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits: units,
+      scene,
+      bonuses,
+      unitDesigns: createUnitDesignerStub(),
+      onSanityDepleted: () => {
+        sanityDepletedCalls += 1;
+      },
+    });
+    necromancer.initialize();
+    units.setSanityGuard(() => necromancer.enforceSanityBoundary());
+    necromancer.configureForMap({ spawnPoints: [{ x: 0, y: 0 }] });
+
+    bricks.setBricks([
+      {
+        position: { x: 4, y: 0 },
+        rotation: 0,
+        level: 0,
+        type: "smallSquareGray",
+      },
+    ]);
+
+    units.setUnits([
+      {
+        type: "bluePentagon",
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    const initialHp = bricks.getBrickStates()[0]?.hp;
+    (necromancer as unknown as { sanity: { current: number } }).sanity.current = 0;
+
+    units.tick(500);
+
+    const remainingHp = bricks.getBrickStates()[0]?.hp;
+    assert.strictEqual(sanityDepletedCalls, 1, "sanity depletion should stop the run");
+    assert.strictEqual(initialHp, remainingHp, "attack should not proceed when sanity is 0");
   });
 });

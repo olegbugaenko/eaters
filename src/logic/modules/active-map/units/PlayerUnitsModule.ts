@@ -144,6 +144,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly statistics?: StatisticsTracker;
   private readonly unitFactory: UnitFactory;
   private readonly runtimeController: UnitRuntimeController;
+  private sanityGuard: (() => boolean) | null = null;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -236,6 +237,7 @@ export class PlayerUnitsModule implements GameModule {
       removeUnit: (unit) => this.removeUnit(unit),
       updateSceneState: (unit, options) => this.pushUnitSceneState(unit, options),
       updateInternalFurnaceEffect: (unit) => this.updateInternalFurnaceEffect(unit),
+      ensureRunAllowed: () => this.ensureRunAllowed(),
     });
   }
 
@@ -295,7 +297,14 @@ export class PlayerUnitsModule implements GameModule {
     this.abilities.resetRun();
   }
 
+  public setSanityGuard(guard: () => boolean): void {
+    this.sanityGuard = guard;
+  }
+
   public tick(deltaMs: number): void {
+    if (!this.ensureRunAllowed()) {
+      return;
+    }
     this.abilities.update(deltaMs);
     if (this.unitOrder.length === 0) {
       return;
@@ -314,6 +323,10 @@ export class PlayerUnitsModule implements GameModule {
     if (!u || u.hp <= 0) return null;
     return { ...u.position };
   };
+
+  private ensureRunAllowed(): boolean {
+    return this.sanityGuard ? this.sanityGuard() : true;
+  }
 
   public setUnits(units: PlayerUnitSpawnData[]): void {
     this.applyUnits(units);

@@ -101,6 +101,7 @@ export class NecromancerModule implements GameModule {
   private spawnPoints: SceneVector2[] = [];
   private nextSpawnIndex = 0;
   private mapActive = false;
+  private sanityCallbacksEnabled = false;
   private pendingLoad: ResourceAmountMap | null = null;
   private resourcesDirty = true;
   private cachedDesigns: UnitDesignerUnitState[] = [];
@@ -147,10 +148,26 @@ export class NecromancerModule implements GameModule {
     };
   }
 
+  public enforceSanityBoundary(): boolean {
+    if (this.sanityDepleted) {
+      return false;
+    }
+    if (this.sanity.current <= 1.e-8) {
+      this.sanity.current = 0;
+      this.sanityDepleted = true;
+      if (this.sanityCallbacksEnabled) {
+        this.onSanityDepleted?.();
+      }
+      return false;
+    }
+    return true;
+  }
+
   public reset(): void {
     this.spawnPoints = [];
     this.nextSpawnIndex = 0;
     this.mapActive = false;
+    this.sanityCallbacksEnabled = false;
     this.pendingLoad = null;
     this.mana.current = 0;
     this.mana.max = 0;
@@ -227,6 +244,7 @@ export class NecromancerModule implements GameModule {
     }));
     this.nextSpawnIndex = 0;
     this.mapActive = true;
+    this.sanityCallbacksEnabled = true;
     this.sanityDepleted = false;
 
     this.applyCurrentBonusValues();
@@ -347,6 +365,7 @@ export class NecromancerModule implements GameModule {
 
   public endCurrentMap(): void {
     this.mapActive = false;
+    this.sanityCallbacksEnabled = false;
     this.spawnPoints = [];
     this.nextSpawnIndex = 0;
     this.pendingLoad = null;
@@ -483,6 +502,7 @@ export class NecromancerModule implements GameModule {
 
     if (changed) {
       this.markResourcesDirty();
+      this.checkSanityDepleted();
     }
   }
 
@@ -498,6 +518,7 @@ export class NecromancerModule implements GameModule {
   }
 
   private pushResources(): void {
+    this.checkSanityDepleted();
     const payload: NecromancerResourcesPayload = {
       mana: {
         current: clampNumber(this.mana.current, 0, this.mana.max),
@@ -541,15 +562,7 @@ export class NecromancerModule implements GameModule {
   }
 
   private checkSanityDepleted(): void {
-    if (!this.mapActive || this.sanityDepleted) {
-      console.warn("EXIT EARLY: ", this.mapActive, this.sanityDepleted);
-      return;
-    }
-    if (this.sanity.current <= 1.e-8) {
-      console.warn("Sanity depleted");
-      this.sanityDepleted = true;
-      this.onSanityDepleted?.();
-    }
+    this.enforceSanityBoundary();
   }
 }
 
