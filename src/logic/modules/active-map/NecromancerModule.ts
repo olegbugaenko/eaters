@@ -74,7 +74,7 @@ interface ResourceState {
 
 const SPAWN_JITTER_RADIUS = 30;
 const SANITY_DECAY_PER_SECOND = 0.25;
-const SANITY_DEPLETION_THRESHOLD = 1e-8;
+const SANITY_DEPLETION_THRESHOLD = 1e-5;
 export const MAX_UNITS_ON_MAP = 25;
 
 export class NecromancerModule implements GameModule {
@@ -197,7 +197,7 @@ export class NecromancerModule implements GameModule {
       }
     }
 
-    if (this.mapActive && this.sanity.current > SANITY_DEPLETION_THRESHOLD) {
+    if (this.mapActive && this.sanity.current > -2) {
       const nextSanity = clampNumber(
         this.sanity.current - SANITY_DECAY_PER_SECOND * deltaSeconds,
         0,
@@ -543,9 +543,11 @@ export class NecromancerModule implements GameModule {
 
   private checkSanityDepleted(): void {
     if (!this.mapActive || this.sanityDepleted) {
+      console.warn("Exiting early");
       return;
     }
     if (this.sanity.current <= SANITY_DEPLETION_THRESHOLD) {
+      console.log("Sanity depleted");
       this.sanity.current = 0;
       this.markResourcesDirty();
       this.sanityDepleted = true;
