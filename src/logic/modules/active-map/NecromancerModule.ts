@@ -23,6 +23,7 @@ import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
 } from "../../../types/player-units";
+import { MapRunState } from "./MapRunState";
 
 export interface NecromancerResourceMeter {
   current: number;
@@ -58,6 +59,7 @@ interface NecromancerModuleOptions {
   scene: SceneObjectManager;
   bonuses: BonusesModule;
   unitDesigns: UnitDesignModule;
+  runState: MapRunState;
   onSanityDepleted?: () => void;
 }
 
@@ -86,6 +88,7 @@ export class NecromancerModule implements GameModule {
   private readonly bonuses: BonusesModule;
   private readonly unitDesigns: UnitDesignModule;
   private readonly onSanityDepleted?: () => void;
+  private readonly runState: MapRunState;
 
   private mana: ResourceState = {
     current: 0,
@@ -115,6 +118,7 @@ export class NecromancerModule implements GameModule {
     this.scene = options.scene;
     this.bonuses = options.bonuses;
     this.unitDesigns = options.unitDesigns;
+    this.runState = options.runState;
     this.onSanityDepleted = options.onSanityDepleted;
     this.bonuses.subscribe((values) => {
       this.handleBonusValuesChanged(values);
@@ -178,6 +182,9 @@ export class NecromancerModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     if (deltaMs <= 0) {
       return;
     }
@@ -227,7 +234,7 @@ export class NecromancerModule implements GameModule {
       y: clampNumber(point.y, 0, mapSize.height),
     }));
     this.nextSpawnIndex = 0;
-    this.mapActive = true;
+    this.mapActive = this.runState.isRunning();
     this.sanityDepleted = false;
 
     this.applyCurrentBonusValues();
@@ -241,11 +248,14 @@ export class NecromancerModule implements GameModule {
   }
 
   public trySpawnUnit(type: PlayerUnitType): boolean {
+    if (!this.runState.shouldProcessTick() || !this.mapActive) {
+      return false;
+    }
     const design = this.unitDesigns.getDefaultDesignForType(type);
     if (design) {
       return this.trySpawnDesign(design.id);
     }
-    if (!this.mapActive || !this.hasUnitCapacity()) {
+    if (!this.hasUnitCapacity()) {
       return false;
     }
     const config = getPlayerUnitConfig(type);
@@ -266,7 +276,7 @@ export class NecromancerModule implements GameModule {
   }
 
   public trySpawnDesign(designId: UnitDesignId): boolean {
-    if (!this.mapActive || !this.hasUnitCapacity()) {
+    if (!this.runState.shouldProcessTick() || !this.mapActive || !this.hasUnitCapacity()) {
       return false;
     }
     const design = this.cachedDesigns.find((entry) => entry.id === designId);
@@ -294,7 +304,7 @@ export class NecromancerModule implements GameModule {
   }
 
   public tryConsumeResources(cost: ResourceAmountMap): boolean {
-    if (!this.mapActive) {
+    if (!this.runState.shouldProcessTick() || !this.mapActive) {
       return false;
     }
     const sanitized = this.sanitizeCost(cost);
@@ -309,7 +319,7 @@ export class NecromancerModule implements GameModule {
   }
 
   public isMapActive(): boolean {
-    return this.mapActive;
+    return this.mapActive && this.runState.shouldProcessTick();
   }
 
   public isSanityDepleted(): boolean {
@@ -325,7 +335,7 @@ export class NecromancerModule implements GameModule {
   }
 
   public getAffordableSpawnCount(): number {
-    if (!this.mapActive) {
+    if (!this.runState.shouldProcessTick() || !this.mapActive) {
       return 0;
     }
     const remainingCapacity = this.getRemainingUnitCapacity();
@@ -352,6 +362,21 @@ export class NecromancerModule implements GameModule {
     this.nextSpawnIndex = 0;
     this.pendingLoad = null;
     this.sanityDepleted = false;
+    this.markResourcesDirty();
+    this.pushResources();
+  }
+
+  public pauseMap(): void {
+    this.mapActive = false;
+    this.markResourcesDirty();
+    this.pushResources();
+  }
+
+  public resumeMap(): void {
+    if (this.runState.isCompleted()) {
+      return;
+    }
+    this.mapActive = true;
     this.markResourcesDirty();
     this.pushResources();
   }
@@ -543,7 +568,6 @@ export class NecromancerModule implements GameModule {
 
   private checkSanityDepleted(): void {
     if (!this.mapActive || this.sanityDepleted) {
-      console.warn("Exiting early");
       return;
     }
     if (this.sanity.current <= SANITY_DEPLETION_THRESHOLD) {

@@ -415,15 +415,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   useEffect(() => {
     const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
-    if (isPauseOpen || shouldPauseForTutorial) {
+    const shouldPause = isPauseOpen || shouldPauseForTutorial || showRunSummary;
+    if (shouldPause) {
+      app.pauseCurrentMap();
       gameLoop.stop();
       return () => {
+        app.resumeCurrentMap();
         gameLoop.start();
       };
     }
+    app.resumeCurrentMap();
     gameLoop.start();
     return undefined;
-  }, [allowTutorialGameplay, gameLoop, isPauseOpen, showTutorial]);
+  }, [allowTutorialGameplay, app, gameLoop, isPauseOpen, showRunSummary, showTutorial]);
 
   const handleScaleChange = (nextScale: number) => {
     scene.setScale(nextScale);

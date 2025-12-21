@@ -2,6 +2,7 @@ import { DataBridge } from "../../core/DataBridge";
 import { GameModule } from "../../core/types";
 import { NecromancerModule } from "./NecromancerModule";
 import { ResourcesModule } from "../shared/ResourcesModule";
+import { MapRunState } from "./MapRunState";
 
 export const TUTORIAL_MONITOR_INPUT_BRIDGE_KEY = "tutorial/monitor/input";
 export const TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY = "tutorial/monitor/output";
@@ -30,6 +31,7 @@ interface TutorialMonitorModuleOptions {
   readonly bridge: DataBridge;
   readonly necromancer: NecromancerModule;
   readonly resources: ResourcesModule;
+  readonly runState: MapRunState;
 }
 
 const DEFAULT_BRICKS_REQUIRED = 3;
@@ -40,6 +42,7 @@ export class TutorialMonitorModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly necromancer: NecromancerModule;
   private readonly resources: ResourcesModule;
+  private readonly runState: MapRunState;
 
   private watch: TutorialMonitorInput = { active: false };
   private status: TutorialMonitorStatus = DEFAULT_TUTORIAL_MONITOR_STATUS;
@@ -48,6 +51,7 @@ export class TutorialMonitorModule implements GameModule {
     this.bridge = options.bridge;
     this.necromancer = options.necromancer;
     this.resources = options.resources;
+    this.runState = options.runState;
 
     this.bridge.subscribe<TutorialMonitorInput>(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, (next) => {
       this.handleInput(next);
@@ -74,6 +78,9 @@ export class TutorialMonitorModule implements GameModule {
   }
 
   public tick(_deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     if (!this.watch.active || !this.watch.stepId) {
       return;
     }

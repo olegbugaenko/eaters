@@ -15,6 +15,7 @@ import { BrickType, getBrickConfig } from "../src/db/bricks-db";
 import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
 import { describe, test } from "./testRunner";
 import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
+import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -22,6 +23,8 @@ const createBricksModule = (
   onAllBricksDestroyed?: () => void
 ) => {
   const explosions = new ExplosionModule({ scene });
+  const runState = new MapRunState();
+  runState.start();
   const resources = {
     grantResources: () => {
       // no-op for tests
@@ -38,6 +41,7 @@ const createBricksModule = (
     explosions,
     resources,
     bonuses,
+    runState,
     onAllBricksDestroyed,
   });
 };

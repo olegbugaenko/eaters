@@ -1,5 +1,6 @@
 import { DataBridge } from "../../core/DataBridge";
 import { GameModule } from "../../core/types";
+import { MapRunState } from "../active-map/MapRunState";
 import { UnlockService } from "../../services/UnlockService";
 import { BonusesModule } from "./BonusesModule";
 import { BonusId } from "../../../db/bonuses-db";
@@ -52,6 +53,7 @@ interface ResourcesModuleOptions {
   bridge: DataBridge;
   unlocks: UnlockService;
   bonuses: BonusesModule;
+  runState: MapRunState;
   statistics?: StatisticsTracker;
 }
 
@@ -66,6 +68,7 @@ export class ResourcesModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly unlocks: UnlockService;
   private readonly bonuses: BonusesModule;
+  private readonly runState: MapRunState;
   private readonly statistics?: StatisticsTracker;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
@@ -84,6 +87,7 @@ export class ResourcesModule implements GameModule {
     this.bridge = options.bridge;
     this.unlocks = options.unlocks;
     this.bonuses = options.bonuses;
+    this.runState = options.runState;
     this.statistics = options.statistics;
   }
 
@@ -137,15 +141,16 @@ export class ResourcesModule implements GameModule {
   public tick(_deltaMs: number): void {
     const deltaMs = Math.max(_deltaMs, 0);
     const deltaSeconds = deltaMs / 1000;
+    const allowTimeProgress = this.canAdvanceRunClock();
     let passiveChanged = false;
-    if (deltaSeconds > 0) {
+    if (deltaSeconds > 0 && allowTimeProgress) {
       passiveChanged = this.applyPassiveIncome(deltaSeconds);
     }
     const visibilityChanged = this.refreshVisibleResourceIds();
     let summaryChanged = visibilityChanged || passiveChanged;
     let durationChanged = false;
 
-    if (this.runActive && deltaMs > 0) {
+    if (this.runActive && deltaMs > 0 && allowTimeProgress) {
       this.runDurationMs += deltaMs;
       summaryChanged = true;
       durationChanged = true;
@@ -162,6 +167,10 @@ export class ResourcesModule implements GameModule {
     if (durationChanged) {
       this.pushRunDuration();
     }
+  }
+
+  private canAdvanceRunClock(): boolean {
+    return this.runState.shouldProcessTick();
   }
 
   public startRun(): void {

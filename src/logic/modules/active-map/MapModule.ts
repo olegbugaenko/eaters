@@ -22,6 +22,7 @@ import { SceneVector2 } from "../../services/SceneObjectManager";
 import { SkillId } from "../../../db/skills-db";
 import { buildBricksFromBlueprints } from "../../services/BrickLayoutService";
 import { UnitAutomationModule } from "./UnitAutomationModule";
+import { MapRunState } from "./MapRunState";
 
 interface ResourceRunController {
   startRun(): void;
@@ -37,6 +38,7 @@ export const MAP_LAST_PLAYED_BRIDGE_KEY = "maps/lastPlayed";
 interface MapModuleOptions {
   scene: SceneObjectManager;
   bridge: DataBridge;
+  runState: MapRunState;
   bonuses: BonusesModule;
   bricks: BricksModule;
   playerUnits: PlayerUnitsModule;
@@ -104,6 +106,7 @@ export class MapModule implements GameModule {
   private selectedMapId: MapId | null = null;
   private readonly unlocks: UnlockService;
   private readonly getSkillLevel: (id: SkillId) => number;
+  private readonly runState: MapRunState;
   private mapStats: MapStats = {};
   // Cached deep-clone of mapStats for read-only consumers (e.g., UnlockService)
   private statsCloneCache: MapStats | null = null;
@@ -121,9 +124,11 @@ export class MapModule implements GameModule {
   constructor(private readonly options: MapModuleOptions) {
     this.unlocks = options.unlocks;
     this.getSkillLevel = options.getSkillLevel;
+    this.runState = options.runState;
   }
 
   public initialize(): void {
+    this.runState.reset();
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
@@ -131,6 +136,7 @@ export class MapModule implements GameModule {
   }
 
   public reset(): void {
+    this.runState.reset();
     this.autoRestartEnabled = false;
     this.runActive = false;
     this.pendingCameraFocus = null;
@@ -183,6 +189,9 @@ export class MapModule implements GameModule {
   }
 
   public tick(_deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     this.applyPendingCameraFocus();
     const changed = this.refreshAutoRestartState();
     if (changed) {
@@ -231,6 +240,8 @@ export class MapModule implements GameModule {
     if (!this.selectedMapId) {
       return;
     }
+    this.cleanupActiveMap();
+    this.runState.reset();
     this.startSelectedMap({ generateBricks: true, generateUnits: true });
   }
 
@@ -241,23 +252,45 @@ export class MapModule implements GameModule {
       this.lastPlayedMap = { mapId: this.selectedMapId, level };
       this.pushLastPlayedMap();
     }
+    this.cleanupActiveMap();
+    this.runState.reset();
     this.activeMapLevel = 0;
     this.runActive = false;
     this.pendingCameraFocus = null;
-    this.options.resources.cancelRun();
+    this.pushSelectedMap();
+    this.pushSelectedMapLevel();
+    this.pushMapList();
+  }
+
+  private cleanupActiveMap(): void {
+    if (this.runState.isIdle() && !this.runActive && this.portalObjects.length === 0) {
+      return;
+    }
+    if (!this.runState.isIdle() && !this.runState.isCompleted()) {
+      this.options.resources.cancelRun();
+    }
+    this.runActive = false;
+    this.pendingCameraFocus = null;
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
     this.options.unitsAutomation.onMapEnd();
     this.options.arcs.clearArcs();
     this.clearPortalObjects();
     this.options.necromancer.endCurrentMap();
-    this.pushSelectedMap();
-    this.pushSelectedMapLevel();
-    this.pushMapList();
   }
 
   public isAutoRestartEnabled(): boolean {
     return this.autoRestartEnabled;
+  }
+
+  public pauseActiveMap(): void {
+    this.runState.pause();
+    this.options.necromancer.pauseMap();
+  }
+
+  public resumeActiveMap(): void {
+    this.runState.resume();
+    this.options.necromancer.resumeMap();
   }
 
   public setAutoRestartEnabled(enabled: boolean): void {
@@ -280,6 +313,10 @@ export class MapModule implements GameModule {
   }
 
   public recordRunResult(result: MapRunResult): void {
+    const completedNow = this.runState.complete();
+    if (!completedNow) {
+      return;
+    }
     const mapId = result.mapId && isMapId(result.mapId) ? result.mapId : this.selectedMapId;
     if (!mapId) {
       return;
@@ -305,17 +342,10 @@ export class MapModule implements GameModule {
     }
     // stats mutated → invalidate cached clone
     this.statsCloneDirty = true;
-    if (this.runActive) {
-      this.runActive = false;
-      this.options.unitsAutomation.onMapEnd();
-    }
-    // Clear active entities to prevent ongoing actions while the run summary is shown
-    this.options.playerUnits.setUnits([]);
-    this.options.bricks.setBricks([]);
+    this.runActive = false;
+    this.options.unitsAutomation.onMapEnd();
     this.pendingCameraFocus = null;
-    this.options.necromancer.endCurrentMap();
-    this.clearPortalObjects();
-    this.options.arcs.clearArcs();
+    this.options.necromancer.pauseMap();
     this.pushMapList();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
@@ -326,7 +356,7 @@ export class MapModule implements GameModule {
   }
 
   public isRunActive(): boolean {
-    return this.runActive;
+    return this.runState.isRunning();
   }
 
   private ensureSelection(): void {
@@ -360,6 +390,7 @@ export class MapModule implements GameModule {
     this.lastPlayedMap = { mapId, level };
     this.pushLastPlayedMap();
     this.runActive = true;
+    this.runState.start();
     this.options.unitsAutomation.onMapStart();
     this.options.scene.setMapSize(config.size);
     this.options.playerUnits.prepareForMap();

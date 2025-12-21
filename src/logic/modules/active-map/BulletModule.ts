@@ -17,6 +17,7 @@ import {
 } from "../../../db/bullets-db";
 import { ExplosionType } from "../../../db/explosions-db";
 import { ExplosionModule, SpawnExplosionByTypeOptions } from "../scene/ExplosionModule";
+import { MapRunState } from "./MapRunState";
 
 interface BulletCustomData {
   type: BulletType;
@@ -135,14 +136,18 @@ export interface SpawnBulletByTypeOptions {
 interface BulletModuleOptions {
   scene: SceneObjectManager;
   explosions: ExplosionModule;
+  runState: MapRunState;
 }
 
 export class BulletModule implements GameModule {
   public readonly id = "bullet";
 
   private bullets: BulletState[] = [];
+  private readonly runState: MapRunState;
 
-  constructor(private readonly options: BulletModuleOptions) {}
+  constructor(private readonly options: BulletModuleOptions) {
+    this.runState = options.runState;
+  }
 
   public initialize(): void {}
 
@@ -159,6 +164,9 @@ export class BulletModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     if (deltaMs <= 0) {
       return;
     }

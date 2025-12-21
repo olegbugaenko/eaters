@@ -29,6 +29,7 @@ import {
   BrickEffectsManager,
   BrickEffectApplication,
 } from "./BrickEffectsManager";
+import { MapRunState } from "./MapRunState";
 
 interface ResourceCollector {
   grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
@@ -122,6 +123,7 @@ interface BricksModuleOptions {
   explosions: ExplosionModule;
   resources: ResourceCollector;
   bonuses: BonusesModule;
+  runState: MapRunState;
   onAllBricksDestroyed?: () => void;
   audio?: SoundEffectPlayer;
   statistics?: StatisticsTracker;
@@ -175,8 +177,10 @@ export class BricksModule implements GameModule {
   private readonly effects: BrickEffectsManager;
   private lastPushedBrickCount = -1;
   private lastPushedTotalHp = -1;
+  private readonly runState: MapRunState;
 
   constructor(private readonly options: BricksModuleOptions) {
+    this.runState = options.runState;
     this.effects = new BrickEffectsManager({
       hasBrick: (brickId) => this.bricks.has(brickId),
       dealDamage: (brickId, damage, opts) => {
@@ -214,6 +218,9 @@ export class BricksModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     if (deltaMs > 0) {
       this.effects.update(deltaMs);
       this.hpRecomputeElapsedMs += deltaMs;

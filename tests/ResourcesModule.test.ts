@@ -6,6 +6,7 @@ import {
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
   RESOURCE_TOTALS_BRIDGE_KEY,
 } from "../src/logic/modules/shared/ResourcesModule";
+import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
 import type { ResourceRunSummaryPayload } from "../src/logic/modules/shared/ResourcesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
 import type { MapStats } from "../src/logic/modules/active-map/MapModule";
@@ -20,7 +21,9 @@ describe("ResourcesModule", () => {
     });
     const bonuses = new BonusesModule();
     bonuses.initialize();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses });
+    const runState = new MapRunState();
+    runState.start();
+    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
 
     module.initialize();
     module.startRun();
@@ -53,7 +56,9 @@ describe("ResourcesModule", () => {
       },
     });
     bonuses.setSourceLevel("test", 1);
-    const module = new ResourcesModule({ bridge, unlocks, bonuses });
+    const runState = new MapRunState();
+    runState.start();
+    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
 
     module.initialize();
     module.startRun();
@@ -81,7 +86,9 @@ describe("ResourcesModule", () => {
     });
     const bonuses = new BonusesModule();
     bonuses.initialize();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses });
+    const runState = new MapRunState();
+    runState.start();
+    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
 
     module.initialize();
 
@@ -93,6 +100,9 @@ describe("ResourcesModule", () => {
 
     module.startRun();
     mapStats = {
+      trainingGrounds: {
+        0: { success: 1, failure: 0, bestTimeMs: null },
+      },
       foundations: {
         0: { success: 1, failure: 0, bestTimeMs: null },
       },

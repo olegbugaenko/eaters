@@ -16,6 +16,7 @@ import { SkillId } from "../../../../db/skills-db";
 import { SpellBehaviorRegistry } from "./SpellBehaviorRegistry";
 import { SpellCastContext, SpellCanCastContext } from "./SpellBehavior";
 import { ExplosionModule } from "../../scene/ExplosionModule";
+import { MapRunState } from "../MapRunState";
 
 interface SpellOptionBase {
   id: SpellId;
@@ -69,6 +70,7 @@ interface SpellcastingModuleOptions {
   bonuses: BonusesModule;
   explosions?: ExplosionModule;
   getSkillLevel: (id: SkillId) => number;
+  runState: MapRunState;
 }
 
 const cloneCost = (cost: ResourceAmountMap): ResourceAmountMap => ({
@@ -94,6 +96,7 @@ export class SpellcastingModule implements GameModule {
   private spellPowerMultiplier = 1;
   private readonly getSkillLevel: (id: SkillId) => number;
   private readonly unlockedSpells = new Map<SpellId, boolean>();
+  private readonly runState: MapRunState;
 
   constructor(options: SpellcastingModuleOptions) {
     this.bridge = options.bridge;
@@ -101,6 +104,7 @@ export class SpellcastingModule implements GameModule {
     this.necromancer = options.necromancer;
     this.bricks = options.bricks;
     this.bonuses = options.bonuses;
+    this.runState = options.runState;
     this.getSkillLevel = options.getSkillLevel;
 
     SPELL_IDS.forEach((id) => {
@@ -155,6 +159,15 @@ export class SpellcastingModule implements GameModule {
 
   public tick(deltaMs: number): void {
     const unlockChanged = this.refreshSpellUnlocks();
+    if (!this.runState.shouldProcessTick()) {
+      if (unlockChanged) {
+        this.markOptionsDirty();
+      }
+      if (this.optionsDirty) {
+        this.pushSpellOptions();
+      }
+      return;
+    }
     if (deltaMs <= 0) {
       if (unlockChanged) {
         this.markOptionsDirty();
