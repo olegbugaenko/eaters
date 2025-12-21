@@ -40,6 +40,7 @@ interface WaveState {
 }
 
 interface ExplosionState {
+  type: ExplosionType;
   position: SceneVector2;
   elapsedMs: number;
   waveLifetimeMs: number;
@@ -66,6 +67,10 @@ export class ExplosionModule implements GameModule {
   public readonly id = "explosions";
 
   private explosions: ExplosionState[] = [];
+  private static readonly NEARBY_LIMIT_RADIUS = 40;
+  private static readonly NEARBY_LIMIT_RADIUS_SQ =
+    ExplosionModule.NEARBY_LIMIT_RADIUS * ExplosionModule.NEARBY_LIMIT_RADIUS;
+  private static readonly NEARBY_LIMIT_COUNT = 2;
 
   constructor(private readonly options: ExplosionModuleOptions) {}
 
@@ -84,7 +89,7 @@ export class ExplosionModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
-    if (deltaMs <= 0) {
+    if (deltaMs <= 0 || this.explosions.length === 0) {
       return;
     }
 
@@ -115,18 +120,22 @@ export class ExplosionModule implements GameModule {
     type: ExplosionType,
     options: SpawnExplosionByTypeOptions
   ): void {
+    if (this.hasTooManyNearbyExplosions(type, options.position)) {
+      return;
+    }
     const config = getExplosionConfig(type);
     const initialRadius = Math.max(
       1,
       options.initialRadius ?? config.defaultInitialRadius
     );
-    this.spawnConfiguredExplosion(config, {
+    this.spawnConfiguredExplosion(type, config, {
       position: options.position,
       initialRadius,
     });
   }
 
   private spawnConfiguredExplosion(
+    type: ExplosionType,
     config: ExplosionConfig,
     options: SpawnExplosionOptions
   ): void {
@@ -206,12 +215,35 @@ export class ExplosionModule implements GameModule {
     });
 
     this.explosions.push({
+      type,
       position: { ...options.position },
       elapsedMs: 0,
       waveLifetimeMs: Math.max(1, config.lifetimeMs),
       effectLifetimeMs,
       waves,
     });
+  }
+
+  private hasTooManyNearbyExplosions(
+    type: ExplosionType,
+    position: SceneVector2
+  ): boolean {
+    let nearbyCount = 0;
+    for (const explosion of this.explosions) {
+      if (explosion.type !== type) {
+        continue;
+      }
+      const dx = explosion.position.x - position.x;
+      const dy = explosion.position.y - position.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= ExplosionModule.NEARBY_LIMIT_RADIUS_SQ) {
+        nearbyCount += 1;
+        if (nearbyCount >= ExplosionModule.NEARBY_LIMIT_COUNT) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private updateExplosion(explosion: ExplosionState): void {
@@ -417,4 +449,3 @@ const clamp = (value: number, min: number, max: number): number => {
   }
   return value;
 };
-
