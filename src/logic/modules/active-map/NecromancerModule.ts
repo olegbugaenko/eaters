@@ -210,7 +210,7 @@ export class NecromancerModule implements GameModule {
         0,
         this.sanity.max
       );
-      if (Math.abs(nextSanity - this.sanity.current) > 0.0001) {
+      if (Math.abs(nextSanity - this.sanity.current) > SANITY_DEPLETION_THRESHOLD) {
         this.sanity.current = nextSanity;
         changed = true;
       }
