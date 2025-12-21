@@ -67,10 +67,10 @@ export class ExplosionModule implements GameModule {
   public readonly id = "explosions";
 
   private explosions: ExplosionState[] = [];
-  private static readonly NEARBY_LIMIT_RADIUS = 20;
+  private static readonly NEARBY_LIMIT_RADIUS = 40;
   private static readonly NEARBY_LIMIT_RADIUS_SQ =
     ExplosionModule.NEARBY_LIMIT_RADIUS * ExplosionModule.NEARBY_LIMIT_RADIUS;
-  private static readonly NEARBY_LIMIT_COUNT = 3;
+  private static readonly NEARBY_LIMIT_COUNT = 2;
 
   constructor(private readonly options: ExplosionModuleOptions) {}
 
