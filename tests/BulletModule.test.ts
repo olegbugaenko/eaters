@@ -5,6 +5,7 @@ import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modul
 import { getBulletConfig } from "../src/db/bullets-db";
 import { ExplosionType } from "../src/db/explosions-db";
 import { describe, test } from "./testRunner";
+import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
 
 class ExplosionStub implements Pick<ExplosionModule, "spawnExplosionByType"> {
   public readonly calls: Array<{
@@ -24,9 +25,12 @@ describe("BulletModule", () => {
   test("spawnBulletByType uses database-driven fill and tail data", () => {
     const scene = new SceneObjectManager();
     const explosions = new ExplosionStub();
+    const runState = new MapRunState();
+    runState.start();
     const module = new BulletModule({
       scene,
       explosions: explosions as unknown as ExplosionModule,
+      runState,
     });
 
     const id = module.spawnBulletByType("plasmoid", {
@@ -60,9 +64,12 @@ describe("BulletModule", () => {
   test("magnetic bullets carry tail emitter configuration", () => {
     const scene = new SceneObjectManager();
     const explosions = new ExplosionStub();
+    const runState = new MapRunState();
+    runState.start();
     const module = new BulletModule({
       scene,
       explosions: explosions as unknown as ExplosionModule,
+      runState,
     });
 
     const id = module.spawnBulletByType("magnetic", {
@@ -85,9 +92,12 @@ describe("BulletModule", () => {
   test("spawnBulletByType triggers explosion based on bullet type", () => {
     const scene = new SceneObjectManager();
     const explosions = new ExplosionStub();
+    const runState = new MapRunState();
+    runState.start();
     const module = new BulletModule({
       scene,
       explosions: explosions as unknown as ExplosionModule,
+      runState,
     });
 
     const id = module.spawnBulletByType("magnetic", {
@@ -111,9 +121,12 @@ describe("BulletModule", () => {
   test("spawnBulletByType respects bullets without explosion types", () => {
     const scene = new SceneObjectManager();
     const explosions = new ExplosionStub();
+    const runState = new MapRunState();
+    runState.start();
     const module = new BulletModule({
       scene,
       explosions: explosions as unknown as ExplosionModule,
+      runState,
     });
 
     module.spawnBulletByType("mechanical", {

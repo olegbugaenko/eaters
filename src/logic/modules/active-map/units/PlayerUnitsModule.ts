@@ -54,6 +54,7 @@ import {
   PheromoneAttackBonusState,
 } from "../PlayerUnitAbilities";
 import { AbilityVisualService } from "../abilities/AbilityVisualService";
+import { MapRunState } from "../MapRunState";
 import type { StatisticsTracker } from "../../shared/StatisticsModule";
 import { UnitStatisticsReporter } from "./UnitStatisticsReporter";
 import { UnitFactory, UnitCreationData } from "./UnitFactory";
@@ -115,6 +116,7 @@ interface PlayerUnitsModuleOptions {
   ) => UnitTargetingMode;
   statistics?: StatisticsTracker;
   audio?: AbilitySoundPlayer;
+  runState: MapRunState;
 }
 
 interface PlayerUnitSaveData {
@@ -144,6 +146,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly statistics?: StatisticsTracker;
   private readonly unitFactory: UnitFactory;
   private readonly runtimeController: UnitRuntimeController;
+  private readonly runState: MapRunState;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -165,6 +168,7 @@ export class PlayerUnitsModule implements GameModule {
     this.hasSkill = options.hasSkill;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.statistics = options.statistics;
+    this.runState = options.runState;
     const abilitySceneService = new AbilityVisualService({
       scene: this.scene,
       explosions: this.explosions,
@@ -296,6 +300,9 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     this.abilities.update(deltaMs);
     if (this.unitOrder.length === 0) {
       return;

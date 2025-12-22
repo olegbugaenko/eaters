@@ -14,6 +14,7 @@ import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/U
 import { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/NecromancerModule";
 import { createEmptyResourceAmount } from "../src/types/resources";
 import { PlayerUnitBlueprintStats } from "../src/types/player-units";
+import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
 
 const createFullResources = (): NecromancerResourceSnapshot => ({
   mana: { current: 999, max: 999, regenPerSecond: 10 },
@@ -79,11 +80,14 @@ describe("UnitAutomationModule", () => {
       getDefaultDesignForType: () => design,
       getActiveRosterDesigns: () => [design],
     };
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
       getSkillLevel: () => skillLevel,
+      runState,
       isRunActive: () => true,
     });
 
@@ -169,11 +173,14 @@ describe("UnitAutomationModule", () => {
       getDefaultDesignForType: () => design,
       getActiveRosterDesigns: () => [design],
     };
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -284,11 +291,14 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -439,11 +449,14 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -584,11 +597,14 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -736,11 +752,14 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 

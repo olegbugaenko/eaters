@@ -8,6 +8,7 @@ import {
   UnitDesignerUnitState,
 } from "../camp/UnitDesignModule";
 import { SkillId } from "../../../db/skills-db";
+import { MapRunState } from "./MapRunState";
 
 export interface UnitAutomationUnitState {
   readonly designId: UnitDesignId;
@@ -40,6 +41,7 @@ interface UnitAutomationModuleOptions {
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
   >;
   getSkillLevel: (id: SkillId) => number;
+  runState: MapRunState;
   isRunActive: () => boolean;
 }
 
@@ -116,6 +118,7 @@ export class UnitAutomationModule implements GameModule {
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
   >;
   private readonly getSkillLevel: (id: SkillId) => number;
+  private readonly runState: MapRunState;
   private readonly isRunActiveFn: () => boolean;
 
   private unlocked = false;
@@ -133,6 +136,7 @@ export class UnitAutomationModule implements GameModule {
     this.necromancer = options.necromancer;
     this.unitDesigns = options.unitDesigns;
     this.getSkillLevel = options.getSkillLevel;
+    this.runState = options.runState;
     this.isRunActiveFn = options.isRunActive;
   }
 
@@ -176,6 +180,9 @@ export class UnitAutomationModule implements GameModule {
   private static readonly AUTOMATION_INTERVAL_MS = 300;
 
   public tick(deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     const changed = this.refreshUnlockState();
     if (changed) {
       this.pushState();
