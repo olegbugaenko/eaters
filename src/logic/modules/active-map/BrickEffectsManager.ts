@@ -1,3 +1,4 @@
+import { clampNumber } from "@/utils/helpers/numbers";
 import type { BrickEffectTint } from "./BricksModule";
 
 interface BrickEffectsDependencies {
@@ -348,17 +349,3 @@ export class BrickEffectsManager {
     return { color: { ...selected.color }, intensity: selected.intensity };
   }
 }
-
-const clampNumber = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-  if (value <= min) {
-    return min;
-  }
-  if (value >= max) {
-    return max;
-  }
-  return value;
-};
-

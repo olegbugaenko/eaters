@@ -43,6 +43,7 @@ import {
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
 } from "../../../visuals/VisualEffectState";
+import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import { UnitTargetingMode } from "../../../../types/unit-targeting";
 import { UnitDesignId } from "../../camp/UnitDesignModule";
 import { ArcModule } from "../../scene/ArcModule";
@@ -1355,24 +1356,9 @@ export const normalizeMultiplier = (value: number, baseline: number): number => 
   return Math.max(value, 0) / Math.max(baseline, 1e-9);
 };
 
-export const clampProbability = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.min(Math.max(value, 0), 1);
-};
-
 export const roundStat = (value: number): number => Math.round(value * 100) / 100;
 
-export const clampNumber = (value: number | undefined, min: number, max: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return min;
-  }
-  if (min > max) {
-    return min;
-  }
-  return Math.min(Math.max(value, min), max);
-};
+export { clampProbability, clampNumber } from "@/utils/helpers/numbers";
 
 const sanitizeNumber = (value: number | undefined): number | undefined => {
   if (typeof value === "number" && Number.isFinite(value)) {

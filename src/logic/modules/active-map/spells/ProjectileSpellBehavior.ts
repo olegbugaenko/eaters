@@ -11,6 +11,7 @@ import { BonusValueMap } from "../../shared/BonusesModule";
 import type { BrickRuntimeState } from "../BricksModule";
 import type { ExplosionModule } from "../../scene/ExplosionModule";
 import type { ExplosionType } from "../../../../db/explosions-db";
+import { clampNumber } from "@/utils/helpers/numbers";
 
 const MAX_PROJECTILE_STEPS_PER_TICK = 5;
 const MIN_MOVEMENT_STEP = 2;
@@ -56,9 +57,6 @@ interface RingState {
   outerFadeStop: number;
   color: SceneColor;
 }
-
-const clampNumber = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(Number.isFinite(value) ? value : min, min), max);
 
 const clamp01 = (value: number): number => clampNumber(value, 0, 1);
 
@@ -489,4 +487,3 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     this.rings = [];
   }
 }
-

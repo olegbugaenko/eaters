@@ -17,6 +17,7 @@ import { SpellBehaviorRegistry } from "./SpellBehaviorRegistry";
 import { SpellCastContext, SpellCanCastContext } from "./SpellBehavior";
 import { ExplosionModule } from "../../scene/ExplosionModule";
 import { MapRunState } from "../MapRunState";
+import { clampNumber } from "@/utils/helpers/numbers";
 
 interface SpellOptionBase {
   id: SpellId;
@@ -77,9 +78,6 @@ const cloneCost = (cost: ResourceAmountMap): ResourceAmountMap => ({
   mana: Number.isFinite(cost.mana) ? cost.mana : 0,
   sanity: Number.isFinite(cost.sanity) ? cost.sanity : 0,
 });
-
-const clampNumber = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(Number.isFinite(value) ? value : min, min), max);
 
 export class SpellcastingModule implements GameModule {
   public readonly id = "spellcasting";

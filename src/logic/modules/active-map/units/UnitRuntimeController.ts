@@ -13,6 +13,7 @@ import { ExplosionModule } from "../../scene/ExplosionModule";
 import { PlayerUnitType } from "../../../../db/player-units-db";
 import { getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { PlayerUnitState } from "./UnitTypes";
+import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -53,23 +54,6 @@ export interface UnitUpdateResult {
   statsChanged: boolean;
   unitsRemoved: PlayerUnitState[];
 }
-
-const clampNumber = (value: number, min: number, max: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return min;
-  }
-  if (min > max) {
-    return min;
-  }
-  return Math.min(Math.max(value, min), max);
-};
-
-const clampProbability = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.min(Math.max(value, 0), 1);
-};
 
 const roundStat = (value: number): number => Math.round(value * 100) / 100;
 

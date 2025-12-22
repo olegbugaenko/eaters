@@ -16,6 +16,7 @@ import type { ExplosionModule } from "../scene/ExplosionModule";
 import { BonusesModule } from "../shared/BonusesModule";
 import type { StatisticsTracker } from "../shared/StatisticsModule";
 import { SpatialGrid } from "../../utils/SpatialGrid";
+import { clampNumber } from "@/utils/helpers/numbers";
 import {
   ResourceStockpile,
   RESOURCE_IDS,
@@ -821,16 +822,6 @@ const clamp = (value: number, min: number, max: number): number => {
     return min;
   }
   return Math.min(Math.max(value, min), max);
-};
-
-const clampNumber = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return clamp(min, min, max);
-  }
-  if (min > max) {
-    return min;
-  }
-  return clamp(value, min, max);
 };
 
 const blendColorComponent = (

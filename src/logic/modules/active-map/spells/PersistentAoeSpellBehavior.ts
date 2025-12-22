@@ -18,6 +18,7 @@ import {
   SpellPersistentAoeVisualConfig,
   SpellPersistentAoeEffectConfig,
 } from "../../../../db/spells-db";
+import { clampNumber } from "@/utils/helpers/numbers";
 import { ExplosionType } from "../../../../db/explosions-db";
 import { BonusValueMap } from "../../shared/BonusesModule";
 import { cloneSceneFill, sanitizeSceneColor } from "../../../services/particles/ParticleEmitterShared";
@@ -524,19 +525,6 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     return lerp(ring.startRadius, ring.endRadius, clamped);
   }
 }
-
-const clampNumber = (value: number | undefined, min: number, max: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return min;
-  }
-  if (value <= min) {
-    return min;
-  }
-  if (value >= max) {
-    return max;
-  }
-  return value;
-};
 
 const clamp01 = (value: number): number => clampNumber(value, 0, 1);
 
