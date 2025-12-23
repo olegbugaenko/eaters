@@ -27,8 +27,18 @@ interface FireballState {
   radius: number;
   elapsedMs: number;
   lifetimeMs: number;
+  explosionRadius: number;
   sourceUnitId: string;
   lastKnownTargetPosition: SceneVector2 | null;
+}
+
+interface FireballSpawnOptions {
+  sourceUnitId: string;
+  sourcePosition: SceneVector2;
+  targetBrickId: string;
+  damage: number;
+  explosionRadius: number;
+  maxDistance: number;
 }
 
 export interface FireballTrailEmitterConfig {
@@ -47,8 +57,9 @@ export interface FireballTrailEmitterConfig {
 }
 
 const FIREBALL_SPEED = 150; // pixels per second (reduced from 300 for more realistic movement)
-const FIREBALL_LIFETIME_MS = 5000; // 5 seconds max flight time (increased to compensate for slower speed)
-const FIREBALL_EXPLOSION_RADIUS = 40;
+const DEFAULT_FIREBALL_LIFETIME_MS = 5000; // 5 seconds max flight time (increased to compensate for slower speed)
+const DEFAULT_FIREBALL_EXPLOSION_RADIUS = 40;
+const DEFAULT_FIREBALL_MAX_DISTANCE = (FIREBALL_SPEED * DEFAULT_FIREBALL_LIFETIME_MS) / 1000;
 const FIREBALL_RADIUS = 8;
 const FIREBALL_GLOW_COLOR: SceneColor = { r: 1.0, g: 0.7, b: 0.3, a: 0.8 };
 const FIREBALL_TAIL_LENGTH_MULTIPLIER = 4.5;
@@ -351,16 +362,17 @@ export class FireballModule implements GameModule {
     this.fireballs = survivors;
   }
 
-  public spawnFireball(
-    sourceUnitId: string,
-    sourcePosition: SceneVector2,
-    targetBrickId: string,
-    damage: number,
-  ): void {
+  public spawnFireball(options: FireballSpawnOptions): void {
+    const { sourceUnitId, sourcePosition, targetBrickId, damage } = options;
     const targetPosition = this.options.getBrickPosition(targetBrickId);
     if (!targetPosition) {
       return;
     }
+
+    const explosionRadius =
+      options.explosionRadius > 0 ? options.explosionRadius : DEFAULT_FIREBALL_EXPLOSION_RADIUS;
+    const maxDistance =
+      options.maxDistance > 0 ? options.maxDistance : DEFAULT_FIREBALL_MAX_DISTANCE;
 
     // Calculate direction and velocity
     const dx = targetPosition.x - sourcePosition.x;
@@ -411,7 +423,8 @@ export class FireballModule implements GameModule {
       damage,
       radius: FIREBALL_RADIUS,
       elapsedMs: 0,
-      lifetimeMs: FIREBALL_LIFETIME_MS,
+      lifetimeMs: (maxDistance / FIREBALL_SPEED) * 1000,
+      explosionRadius,
       sourceUnitId,
       lastKnownTargetPosition: { ...targetPosition },
     };
@@ -449,7 +462,7 @@ export class FireballModule implements GameModule {
     // Create explosion effect
     this.options.explosions.spawnExplosionByType("fireball", {
       position: { ...fireball.position },
-      initialRadius: FIREBALL_EXPLOSION_RADIUS,
+      initialRadius: fireball.explosionRadius,
     });
 
     // Damage target brick
@@ -458,7 +471,7 @@ export class FireballModule implements GameModule {
     // Damage nearby bricks within explosion radius
     const nearbyBrickIds = this.options.getBricksInRadius(
       fireball.position,
-      FIREBALL_EXPLOSION_RADIUS,
+      fireball.explosionRadius,
     );
     nearbyBrickIds.forEach((brickId) => {
       if (brickId !== fireball.targetBrickId) {

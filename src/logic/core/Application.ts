@@ -197,6 +197,8 @@ export class Application {
       bridge: this.dataBridge,
       necromancer: this.necromancerModule,
       unitDesigns: unitDesignModule,
+      getUnitCountByDesignId: (designId) =>
+        playerUnitsModule.getUnitCountByDesignId(designId),
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
       runState: this.mapRunState,
       isRunActive: () => mapModuleReference?.isRunActive() ?? false,

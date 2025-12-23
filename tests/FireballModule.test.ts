@@ -21,7 +21,14 @@ describe("FireballModule", () => {
       logEvent: () => undefined,
     });
 
-    module.spawnFireball("unit-1", { x: 120, y: 180 }, "target", 42);
+    module.spawnFireball({
+      sourceUnitId: "unit-1",
+      sourcePosition: { x: 120, y: 180 },
+      targetBrickId: "target",
+      damage: 42,
+      explosionRadius: 40,
+      maxDistance: 750,
+    });
 
     const fireball = scene
       .getObjects()

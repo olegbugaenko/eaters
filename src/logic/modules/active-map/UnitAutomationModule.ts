@@ -40,6 +40,7 @@ interface UnitAutomationModuleOptions {
     UnitDesignModule,
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
   >;
+  getUnitCountByDesignId: (designId: UnitDesignId) => number;
   getSkillLevel: (id: SkillId) => number;
   runState: MapRunState;
   isRunActive: () => boolean;
@@ -57,7 +58,7 @@ const MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK = 32;
 export interface AutomationSelectionCandidate {
   readonly designId: UnitDesignId;
   readonly weight: number;
-  readonly spawned: number;
+  readonly activeCount: number;
   readonly order: number;
 }
 
@@ -80,7 +81,7 @@ export const selectNextAutomationTarget = (
     if (!fallback) {
       fallback = candidate;
     }
-    const normalizedSpawned = candidate.spawned > 0 ? candidate.spawned : 0;
+    const normalizedSpawned = candidate.activeCount > 0 ? candidate.activeCount : 0;
     const effectiveWeight = candidate.weight > 0 ? candidate.weight : 1;
     const score = normalizedSpawned / effectiveWeight;
     if (!best) {
@@ -117,6 +118,7 @@ export class UnitAutomationModule implements GameModule {
     UnitDesignModule,
     "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
   >;
+  private readonly getUnitCountByDesignId: (designId: UnitDesignId) => number;
   private readonly getSkillLevel: (id: SkillId) => number;
   private readonly runState: MapRunState;
   private readonly isRunActiveFn: () => boolean;
@@ -127,7 +129,6 @@ export class UnitAutomationModule implements GameModule {
   private designLookup = new Map<UnitDesignId, UnitDesignerUnitState>();
   private designOrder: UnitDesignId[] = [];
   private pendingTypeEnables = new Map<PlayerUnitType, boolean>();
-  private spawnCounts = new Map<UnitDesignId, number>();
   private failureCounts = new Map<UnitDesignId, number>();
   private unsubscribeDesigns: (() => void) | null = null;
 
@@ -135,6 +136,7 @@ export class UnitAutomationModule implements GameModule {
     this.bridge = options.bridge;
     this.necromancer = options.necromancer;
     this.unitDesigns = options.unitDesigns;
+    this.getUnitCountByDesignId = options.getUnitCountByDesignId;
     this.getSkillLevel = options.getSkillLevel;
     this.runState = options.runState;
     this.isRunActiveFn = options.isRunActive;
@@ -151,7 +153,6 @@ export class UnitAutomationModule implements GameModule {
   public reset(): void {
     this.enabled.clear();
     this.weights.clear();
-    this.spawnCounts.clear();
     this.failureCounts.clear();
     this.pendingTypeEnables.clear();
     this.refreshUnlockState();
@@ -163,7 +164,6 @@ export class UnitAutomationModule implements GameModule {
     this.enabled = parsed.enabled;
     this.weights = parsed.weights;
     this.pendingTypeEnables = parsed.pendingTypes;
-    this.spawnCounts.clear();
     this.failureCounts.clear();
     this.refreshUnlockState();
     this.pushState();
@@ -200,13 +200,11 @@ export class UnitAutomationModule implements GameModule {
   }
 
   public onMapStart(): void {
-    this.spawnCounts.clear();
     this.failureCounts.clear();
     this.automationCooldownMs = 0;
   }
 
   public onMapEnd(): void {
-    this.spawnCounts.clear();
     this.failureCounts.clear();
     this.automationCooldownMs = 0;
   }
@@ -226,7 +224,6 @@ export class UnitAutomationModule implements GameModule {
       }
     } else {
       this.enabled.set(designId, false);
-      this.spawnCounts.delete(designId);
       this.failureCounts.delete(designId);
     }
     this.pushState();
@@ -268,7 +265,6 @@ export class UnitAutomationModule implements GameModule {
       }
       const success = this.necromancer.trySpawnDesign(designId);
       if (success) {
-        this.incrementSpawnCount(designId);
         this.failureCounts.delete(designId);
         continue;
       }
@@ -315,8 +311,8 @@ export class UnitAutomationModule implements GameModule {
       if (weight <= 0) {
         return;
       }
-      const spawned = this.spawnCounts.get(designId) ?? 0;
-      candidates.push({ designId, weight, spawned, order });
+      const activeCount = this.getActiveUnitCount(designId);
+      candidates.push({ designId, weight, activeCount, order });
     });
     if (candidates.length === 0) {
       return null;
@@ -324,9 +320,16 @@ export class UnitAutomationModule implements GameModule {
     return selectNextAutomationTarget(candidates, skipped);
   }
 
-  private incrementSpawnCount(designId: UnitDesignId): void {
-    const previous = this.spawnCounts.get(designId) ?? 0;
-    this.spawnCounts.set(designId, previous + 1);
+  private getActiveUnitCount(designId: UnitDesignId): number {
+    try {
+      const value = this.getUnitCountByDesignId(designId);
+      if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+        return Math.floor(value);
+      }
+    } catch {
+      // ignore errors in consumer-supplied getter
+    }
+    return 0;
   }
 
   private incrementFailureCount(designId: UnitDesignId): number {
@@ -473,7 +476,6 @@ export class UnitAutomationModule implements GameModule {
         this.designLookup.delete(id);
         this.enabled.delete(id);
         this.weights.delete(id);
-        this.spawnCounts.delete(id);
         this.failureCounts.delete(id);
       }
     });

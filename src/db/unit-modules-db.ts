@@ -39,6 +39,9 @@ export interface UnitModuleConfig {
     readonly frenzyAttacks?: number;
     readonly healCharges?: number;
     readonly areaRadius?: number;
+    readonly fireballExplosionRadius?: number;
+    readonly fireballSelfDamagePercent?: number;
+    readonly fireballMaxDistance?: number;
   };
 }
 
@@ -169,7 +172,12 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseCost: { coal: 400, wood: 800 },
     unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
     canAttackDistant: true,
-    meta: { cooldownSeconds: 4 },
+    meta: {
+      cooldownSeconds: 4,
+      fireballExplosionRadius: 40,
+      fireballSelfDamagePercent: 0.75,
+      fireballMaxDistance: 750,
+    },
   },
   burningTail: {
     id: "burningTail",
