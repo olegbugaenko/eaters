@@ -41,11 +41,12 @@ const DRAG_THRESHOLD = 3;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
 const ZOOM_SENSITIVITY = 0.0015;
+const NODE_RADIUS = 39; // Skill node is 78px wide with a -50% translate to center it
 const WOBBLE_RADIUS = 5;
 const WOBBLE_SPEED = 0.003;
-// Keep proximity threshold aligned with wobble radius so motion stops as soon as
-// the pointer reaches the area the node traverses.
-const HOVER_SNAP_RADIUS = WOBBLE_RADIUS;
+// Use node hit radius plus wobble amplitude so the wobble halts as soon as the
+// cursor enters the node area or the wobble path around it.
+const HOVER_SNAP_RADIUS = NODE_RADIUS + WOBBLE_RADIUS;
 
 interface ViewTransform {
   scale: number;
