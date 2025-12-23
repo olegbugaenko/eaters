@@ -23,6 +23,7 @@ import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
 } from "../../../types/player-units";
+import { clampNumber } from "@/utils/helpers/numbers";
 import { MapRunState } from "./MapRunState";
 
 export interface NecromancerResourceMeter {
@@ -579,16 +580,6 @@ export class NecromancerModule implements GameModule {
     }
   }
 }
-
-const clampNumber = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-  if (min > max) {
-    return min;
-  }
-  return Math.min(Math.max(value, min), max);
-};
 
 const sanitizeBonusValue = (value: number | undefined, fallback: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {

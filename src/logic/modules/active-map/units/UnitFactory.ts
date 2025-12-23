@@ -21,6 +21,7 @@ import { UnitModuleId, UNIT_MODULE_IDS, getUnitModuleConfig } from "../../../../
 import type { SkillId } from "../../../../db/skills-db";
 import { PLAYER_UNIT_ABILITY_DEFINITIONS } from "../abilities";
 import type { AbilityDescription } from "../abilities/AbilityTypes";
+import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 
 export interface UnitFactoryOptions {
   scene: SceneObjectManager;
@@ -90,23 +91,6 @@ export interface UnitFactoryResult {
   readonly fireballDamageMultiplier: number;
   readonly canUnitAttackDistant: boolean;
 }
-
-const clampNumber = (value: number | undefined, min: number, max: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return min;
-  }
-  if (min > max) {
-    return min;
-  }
-  return Math.min(Math.max(value, min), max);
-};
-
-const clampProbability = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.min(Math.max(value, 0), 1);
-};
 
 const sanitizeRuntimeModifiers = (
   modifiers: PlayerUnitRuntimeModifiers | undefined
@@ -464,4 +448,3 @@ export class UnitFactory {
     };
   }
 }
-
