@@ -159,7 +159,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     id: "fireballOrgan",
     name: "Fireball Organ",
     description:
-      "A blazing core pulses with infernal energy, launching searing fireballs every 4 seconds. Each fireball explodes on impact, dealing (1.75 + 0.075×level) × unit damage to the target brick and all neighbors within 40 pixels. However, each fireball launch causes 75% of the fireball's damage as self-damage to the unit.",
+      "A blazing core pulses with infernal energy, launching searing fireballs every 4 seconds. Each fireball explodes on impact, dealing (0.75 + 0.075×level) × unit damage to the target brick and all neighbors within 40 pixels. However, each fireball launch causes 75% of the fireball's damage as self-damage to the unit.",
     bonusLabel: "Fireball damage multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.75,
