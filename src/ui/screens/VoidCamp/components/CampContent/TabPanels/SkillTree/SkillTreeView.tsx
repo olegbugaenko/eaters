@@ -41,6 +41,9 @@ const DRAG_THRESHOLD = 3;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
 const ZOOM_SENSITIVITY = 0.0015;
+const WOBBLE_RADIUS = 5;
+const WOBBLE_SPEED = 0.003;
+const HOVER_SNAP_RADIUS = 10;
 
 interface ViewTransform {
   scale: number;
@@ -50,6 +53,8 @@ interface ViewTransform {
 
 interface SkillTreeEdge {
   id: string;
+  fromId: SkillId;
+  toId: SkillId;
   from: { x: number; y: number };
   to: { x: number; y: number };
   fulfilled: boolean;
@@ -97,6 +102,11 @@ const getSkillIconPath = (icon?: string): string | null => {
   const hasExtension = icon.includes(".");
   return `/images/skills/${hasExtension ? icon : `${icon}.svg`}`;
 };
+
+const getWobblePhaseSeed = (id: SkillId): number =>
+  id
+    .split("")
+    .reduce((acc, char, index) => acc + char.charCodeAt(0) * (index + 1), 0) * 0.001;
 
 /**
  * Determines if a skill node should be visible based on prerequisites.
@@ -180,6 +190,8 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
       }
       edges.push({
         id: `${requirement.id}->${node.id}`,
+        fromId: requirement.id,
+        toId: node.id,
         from,
         to,
         fulfilled: requirement.currentLevel >= requirement.requiredLevel,
@@ -249,7 +261,8 @@ export const SkillTreeView: React.FC = () => {
     RESOURCE_TOTALS_BRIDGE_KEY,
     []
   );
-  const [hoveredId, setHoveredId] = useState<SkillId | null>(null);
+  const [pointerHoveredId, setPointerHoveredId] = useState<SkillId | null>(null);
+  const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const panStateRef = useRef({
@@ -268,19 +281,93 @@ export const SkillTreeView: React.FC = () => {
     offsetX: 0,
     offsetY: 0,
   });
+  const [animatedOffsets, setAnimatedOffsets] = useState<
+    Map<SkillId, { x: number; y: number }>
+  >(new Map());
+  const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
   const skillTreeModule = useMemo(() => app.getSkillTree(), [app]);
 
   const nodes = skillTree.nodes;
   const visibleNodes = useMemo(() => nodes.filter(isNodeVisible), [nodes]);
 
   useEffect(() => {
-    if (hoveredId && !visibleNodes.some((node) => node.id === hoveredId)) {
-      setHoveredId(null);
+    if (pointerHoveredId && !visibleNodes.some((node) => node.id === pointerHoveredId)) {
+      setPointerHoveredId(null);
     }
-  }, [hoveredId, visibleNodes]);
+    if (focusHoveredId && !visibleNodes.some((node) => node.id === focusHoveredId)) {
+      setFocusHoveredId(null);
+    }
+  }, [focusHoveredId, pointerHoveredId, visibleNodes]);
+
+  useEffect(() => {
+    visibleNodes.forEach((node) => {
+      if (!wobblePhaseSeedsRef.current.has(node.id)) {
+        wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
+      }
+    });
+  }, [visibleNodes]);
 
   const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
+  const hoveredId = pointerHoveredId ?? focusHoveredId;
+
+  const nodeAffordability = useMemo(() => {
+    const map = new Map<SkillId, { affordable: boolean; purchasable: boolean }>();
+    visibleNodes.forEach((node) => {
+      const affordable = canAffordCost(node.nextCost, totalsMap);
+      const purchasable = node.unlocked && !node.maxed && affordable;
+      map.set(node.id, { affordable, purchasable });
+    });
+    return map;
+  }, [totalsMap, visibleNodes]);
+
+  const wobbleNodeIds = useMemo(() => {
+    const ids = new Set<SkillId>();
+    nodeAffordability.forEach((value, id) => {
+      if (value.purchasable) {
+        ids.add(id);
+      }
+    });
+    return ids;
+  }, [nodeAffordability]);
+
+  useEffect(() => {
+    if (wobbleNodeIds.size === 0) {
+      setAnimatedOffsets(new Map());
+      return undefined;
+    }
+
+    const step = (timestamp: number) => {
+      const nextOffsets = new Map<SkillId, { x: number; y: number }>();
+
+      visibleNodes.forEach((node) => {
+        const shouldWobble = wobbleNodeIds.has(node.id) && hoveredId !== node.id;
+        if (!shouldWobble) {
+          nextOffsets.set(node.id, { x: 0, y: 0 });
+          return;
+        }
+
+        const seed = wobblePhaseSeedsRef.current.get(node.id) ?? 0;
+        const angle = seed + timestamp * WOBBLE_SPEED;
+        nextOffsets.set(node.id, {
+          x: Math.cos(angle) * WOBBLE_RADIUS,
+          y: Math.sin(angle) * WOBBLE_RADIUS,
+        });
+      });
+
+      setAnimatedOffsets(nextOffsets);
+      animationFrameRef.current = requestAnimationFrame(step);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(step);
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [hoveredId, visibleNodes, wobbleNodeIds]);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -408,6 +495,49 @@ export const SkillTreeView: React.FC = () => {
     [skillTreeModule]
   );
 
+  const updatePointerHover = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType !== "mouse") {
+        return;
+      }
+
+      const viewport = viewportRef.current;
+      if (!viewport) {
+        return;
+      }
+
+      const rect = viewport.getBoundingClientRect();
+      const worldX = (event.clientX - rect.left - viewTransform.offsetX) / viewTransform.scale;
+      const worldY = (event.clientY - rect.top - viewTransform.offsetY) / viewTransform.scale;
+      pointerWorldRef.current = { x: worldX, y: worldY };
+
+      let closestId: SkillId | null = null;
+      let closestDistanceSquared = HOVER_SNAP_RADIUS * HOVER_SNAP_RADIUS;
+
+      visibleNodes.forEach((node) => {
+        const position = layout.positions.get(node.id);
+        if (!position) {
+          return;
+        }
+        const dx = worldX - position.x;
+        const dy = worldY - position.y;
+        const distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared <= closestDistanceSquared) {
+          closestId = node.id;
+          closestDistanceSquared = distanceSquared;
+        }
+      });
+
+      setPointerHoveredId(closestId);
+    },
+    [layout.positions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
+  );
+
+  const clearPointerHover = useCallback(() => {
+    pointerWorldRef.current = null;
+    setPointerHoveredId(null);
+  }, []);
+
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) {
@@ -420,14 +550,20 @@ export const SkillTreeView: React.FC = () => {
       state.lastX = event.clientX;
       state.lastY = event.clientY;
       didPanRef.current = false;
+      if (event.pointerType === "mouse") {
+        updatePointerHover(event);
+      } else {
+        clearPointerHover();
+      }
     },
-    []
+    [clearPointerHover, updatePointerHover]
   );
 
   const handlePointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const state = panStateRef.current;
       if (!state.isDown || state.pointerId !== event.pointerId) {
+        updatePointerHover(event);
         return;
       }
 
@@ -437,6 +573,7 @@ export const SkillTreeView: React.FC = () => {
       if (!state.isPanning) {
         const distanceSquared = deltaX * deltaX + deltaY * deltaY;
         if (distanceSquared < DRAG_THRESHOLD * DRAG_THRESHOLD) {
+          updatePointerHover(event);
           return;
         }
 
@@ -457,12 +594,14 @@ export const SkillTreeView: React.FC = () => {
           offsetX: current.offsetX + deltaX,
           offsetY: current.offsetY + deltaY,
         }));
+      } else {
+        updatePointerHover(event);
       }
 
       state.lastX = event.clientX;
       state.lastY = event.clientY;
     },
-    []
+    [updatePointerHover]
   );
 
   const endPan = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -495,6 +634,14 @@ export const SkillTreeView: React.FC = () => {
       didPanRef.current = false;
     }
   }, []);
+
+  const handlePointerLeave = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      clearPointerHover();
+      endPan(event);
+    },
+    [clearPointerHover, endPan]
+  );
 
   const handleWheel = useCallback(
     (event: ReactWheelEvent<HTMLDivElement>) => {
@@ -550,6 +697,29 @@ export const SkillTreeView: React.FC = () => {
     [layout.height, layout.width, viewTransform]
   );
 
+  const renderPositions = useMemo(() => {
+    const map = new Map<SkillId, { x: number; y: number }>();
+    visibleNodes.forEach((node) => {
+      const base = layout.positions.get(node.id);
+      if (!base) {
+        return;
+      }
+      const offset = animatedOffsets.get(node.id) ?? { x: 0, y: 0 };
+      map.set(node.id, { x: base.x + offset.x, y: base.y + offset.y });
+    });
+    return map;
+  }, [animatedOffsets, layout.positions, visibleNodes]);
+
+  const renderEdges = useMemo(
+    () =>
+      layout.edges.map((edge) => {
+        const from = renderPositions.get(edge.fromId) ?? edge.from;
+        const to = renderPositions.get(edge.toId) ?? edge.to;
+        return { ...edge, from, to };
+      }),
+    [layout.edges, renderPositions]
+  );
+
   return (
     <div className="skill-tree">
       <div
@@ -558,8 +728,8 @@ export const SkillTreeView: React.FC = () => {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endPan}
-        onPointerCancel={endPan}
-        onPointerLeave={endPan}
+        onPointerCancel={handlePointerLeave}
+        onPointerLeave={handlePointerLeave}
         onWheel={handleWheel}
       >
         <div className="skill-tree__canvas" style={canvasStyle}>
@@ -568,7 +738,7 @@ export const SkillTreeView: React.FC = () => {
             viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
             preserveAspectRatio="xMidYMid meet"
           >
-            {layout.edges.map((edge) => (
+            {renderEdges.map((edge) => (
               <line
                 key={edge.id}
                 x1={edge.from.x}
@@ -580,11 +750,12 @@ export const SkillTreeView: React.FC = () => {
             ))}
           </svg>
           {visibleNodes.map((node) => {
-            const position = layout.positions.get(node.id);
+            const position = renderPositions.get(node.id);
             if (!position) {
               return null;
             }
-            const affordable = canAffordCost(node.nextCost, totalsMap);
+            const affordability = nodeAffordability.get(node.id);
+            const affordable = affordability?.affordable ?? false;
             const locked = !node.unlocked;
             const inactive = locked || node.maxed || !affordable;
             const nodeClasses = classNames(
@@ -605,10 +776,18 @@ export const SkillTreeView: React.FC = () => {
                 type="button"
                 className={nodeClasses}
                 style={{ left: `${position.x}px`, top: `${position.y}px` }}
-                onMouseEnter={() => setHoveredId(node.id)}
-                onMouseLeave={() => setHoveredId((current) => (current === node.id ? null : current))}
-                onFocus={() => setHoveredId(node.id)}
-                onBlur={() => setHoveredId((current) => (current === node.id ? null : current))}
+                onMouseEnter={() => setPointerHoveredId(node.id)}
+                onMouseLeave={() =>
+                  setPointerHoveredId((current) =>
+                    current === node.id ? null : current
+                  )
+                }
+                onFocus={() => setFocusHoveredId(node.id)}
+                onBlur={() =>
+                  setFocusHoveredId((current) =>
+                    current === node.id ? null : current
+                  )
+                }
                 onClick={() => {
                   if (!inactive && !didPanRef.current) {
                     handleNodeClick(node.id);
