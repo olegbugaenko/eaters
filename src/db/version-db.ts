@@ -6,6 +6,14 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.0.4b",
+    releaseDate: "2025-12-23",
+    changes: [
+      "Fixed bug where game run might continue after sanity is depleted",
+      "Fixed some performance issues"
+    ],
+  },
+  {
     displayName: "v0.0.4a",
     releaseDate: "2025-12-19",
     changes: [
