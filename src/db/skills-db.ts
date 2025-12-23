@@ -12,6 +12,7 @@ export interface SkillConfig {
   readonly id: SkillId;
   readonly name: string;
   readonly description: string;
+  readonly icon?: string;
   readonly nodePosition: SkillNodePosition;
   readonly maxLevel: number;
   readonly effects: BonusEffectMap;
@@ -138,6 +139,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Strengthen your mental fortitude, expanding the limits of your consciousness to endure longer on the map.",
     nodePosition: { x: 0, y: 0 },
+    icon: "consiousnes_1.png",
     maxLevel: 5,
     effects: {
       sanity_cap: {
@@ -542,6 +544,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Build mental fortifications—deeper foundations of consciousness allow you to maintain presence on the map longer.",
     nodePosition: { x: 1, y: -2 },
     maxLevel: 3,
+    icon: "consiousnes_2.png",
     effects: {
       sanity_cap: {
         income: (level) => 1 * level,
@@ -557,6 +560,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Quiet the inner static. Clearer thought and mental clarity extend your ability to remain conscious on the map.",
     nodePosition: { x: 2, y: -3 },
     maxLevel: 4,
+    icon: "consiousnes_3.png",
     effects: {
       sanity_cap: {
         income: (level) => 1 * level,
@@ -572,6 +576,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Deeper stillness and mental discipline further expand your consciousness, allowing extended presence on the map.",
     nodePosition: { x: 3, y: -4 },
     maxLevel: 5,
+    icon: "consiousnes_4.png",
     effects: {
       sanity_cap: {
         income: (level) => 1 * level,
@@ -587,6 +592,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Mastery of mental focus—your consciousness remains unshaken, enabling you to persist on the map even when the void whispers.",
     nodePosition: { x: 3, y: -5 },
     maxLevel: 8,
+    icon: "consiousnes_5.png",
     effects: {
       sanity_cap: {
         income: (level) => 1 * level,
@@ -809,6 +815,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Stiffen ephemeral skins into resilient membranes—your entities endure more.",
     nodePosition: { x: 1, y: 0 },
     maxLevel: 5,
+    icon: "health_1.png",
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.2 * level,
@@ -824,6 +831,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Grow thicker layers of living matter around your cores, raising total vitality.",
     nodePosition: { x: 2, y: 0 },
     maxLevel: 5,
+    icon: "health_2.png",
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.15 * level,
@@ -839,6 +847,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Bind stone plates over pulsing forms—basic armor that turns glancing blows.",
     nodePosition: { x: 3, y: 0 },
     maxLevel: 5,
+    icon: "armor1.png",
     effects: {
       all_units_armor: {
         income: (level) => 0 + 0.25 * level,
@@ -854,6 +863,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Treatises on layering and bracing—improve how well armor spreads force.",
     nodePosition: { x: 4, y: 1 },
     maxLevel: 15,
+    icon: "armor2.png",
     effects: {
       all_units_armor: {
         income: (level) => 0 + 0.5 * level,
@@ -865,6 +875,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   armor_lore2: {
     id: "armor_lore2",
     name: "Armor Lore II",
+    icon: "armor3.png",
     description:
       "Advanced schemata: ribbing, overlaps, anchor points—denser protection.",
     nodePosition: { x: 6, y: 1 },
@@ -880,6 +891,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   armor_lore3: {
     id: "armor_lore3",
     name: "Armor Lore III",
+    icon: "armor4.png",
     description:
       "Master forging of living plate—your hosts shrug off punishing blows.",
     nodePosition: { x: 7, y: 2 },
@@ -899,6 +911,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Master forging of living plate—your hosts shrug off punishing blows.",
     nodePosition: { x: 8, y: 3 },
     maxLevel: 15,
+    icon: "armor5.png",
     effects: {
       all_units_armor: {
         income: (level) => 5*level,
@@ -914,6 +927,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Cultivate richer biomass; the flesh‑cores swell with fresh reserves.",
     nodePosition: { x: 4, y: -1 },
     maxLevel: 15,
+    icon: "health_2_5.png",
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.16 * level,
@@ -944,6 +958,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Engineered organs and redundant latticework markedly raise hit capacity.",
     nodePosition: { x: 6, y: -1 },
     maxLevel: 15,
+    icon: "health_3.png",
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.12 * level,
@@ -955,6 +970,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   vitality4: {
     id: "vitality4",
     name: "Vitality IV",
+    icon: "health_4.png",
     description:
       "Use coal to boost creatures body temperature, increase metabolism and increase vitality.",
     nodePosition: { x: 8, y: -1 },

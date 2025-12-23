@@ -95,6 +95,19 @@
 
 .skill-tree-node__icon {
   font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.skill-tree-node__image {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
+  pointer-events: none;
 }
 
 .skill-tree-node--locked {
