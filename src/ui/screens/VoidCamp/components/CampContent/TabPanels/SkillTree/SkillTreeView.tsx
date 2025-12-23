@@ -83,6 +83,21 @@ const listResources = (names: string[]): string => {
   return `${others.join(", ")}, and ${last}`;
 };
 
+const getSkillInitials = (name: string): string =>
+  name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2);
+
+const getSkillIconPath = (icon?: string): string | null => {
+  if (!icon) {
+    return null;
+  }
+  const hasExtension = icon.includes(".");
+  return `/images/skills/${hasExtension ? icon : `${icon}.svg`}`;
+};
+
 /**
  * Determines if a skill node should be visible based on prerequisites.
  * A node is hidden if ALL of its prerequisites have currentLevel === 0.
@@ -581,6 +596,8 @@ export const SkillTreeView: React.FC = () => {
               inactive && "skill-tree-node--inactive",
               activeId === node.id && "skill-tree-node--active"
             );
+            const iconSrc = getSkillIconPath(node.icon);
+            const nodeInitials = getSkillInitials(node.name);
 
             return (
               <button
@@ -604,11 +621,16 @@ export const SkillTreeView: React.FC = () => {
                   {node.level} / {node.maxLevel}
                 </div>
                 <div className="skill-tree-node__icon">
-                  {node.name
-                    .split(" ")
-                    .map((part) => part[0])
-                    .join("")
-                    .slice(0, 2)}
+                  {iconSrc ? (
+                    <img
+                      src={iconSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className="skill-tree-node__image"
+                    />
+                  ) : (
+                    nodeInitials
+                  )}
                 </div>
               </button>
             );

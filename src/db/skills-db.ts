@@ -12,6 +12,7 @@ export interface SkillConfig {
   readonly id: SkillId;
   readonly name: string;
   readonly description: string;
+  readonly icon?: string;
   readonly nodePosition: SkillNodePosition;
   readonly maxLevel: number;
   readonly effects: BonusEffectMap;
