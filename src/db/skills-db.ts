@@ -337,6 +337,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Weave emberglass filaments that steady your focus, modestly improving mana flow.",
     nodePosition: { x: 0, y: -1},
     maxLevel: 5,
+    icon: "mana_regen_1.png",
     effects: {
       mana_regen: {
         income: (level) => 0.08 * level,
@@ -454,6 +455,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Shape capacitors of fused glass to store greater tides of mana.",
     nodePosition: { x: -1, y: -2},
     maxLevel: 5,
+    icon: "mana_cap_1.png",
     effects: {
       mana_cap: {
         income: (level) => 3 * level,
@@ -472,6 +474,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Channel heat through mirrored chambers; surging sand becomes lasting mana stores.",
     nodePosition: { x: -2, y: -3 },
     maxLevel: 5,
+    icon: "mana_regen_2.png",
     effects: {
       mana_cap: {
         income: (level) => 2 * level,
@@ -490,6 +493,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Etch careful scribing to strain the stream of sand, expanding mana reserves.",
     nodePosition: { x: -3, y: -4 },
     maxLevel: 5,
+    icon: "mana_cap_2.png",
     effects: {
       mana_cap: {
         income: (level) => 3 * level,
@@ -508,6 +512,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Tap a steadier vein of power—both reserves and recovery improve.",
     nodePosition: { x: -3, y: -5 },
     maxLevel: 8,
+    icon: "mana_regen_3.png",
     effects: {
       mana_cap: {
         income: (level) => 2 * level,
@@ -526,6 +531,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Coax living grain to host stored power, expanding your mana capacity.",
     nodePosition: { x: -4, y: -4 },
     maxLevel: 8,
+    icon: "mana_cap_3.png",
     effects: {
       mana_cap: {
         income: (level) => 5 * level,
@@ -609,6 +615,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "A gnawing void urges you on. Feed it with matter so your summons strike harder.",
     nodePosition: { x: -1, y: 0 },
     maxLevel: 5,
+    icon: "attack1.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.2 * level,
@@ -624,6 +631,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Fuse matter into denser cores your summons can wield—every strike lands heavier.",
     nodePosition: { x: -2, y: 0 },
     maxLevel: 5,
+    icon: "attack2.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.15 * level,
@@ -639,6 +647,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Affix crude teeth to the forming shells of your entities, boosting their assault.",
     nodePosition: { x: -3, y: 0 },
     maxLevel: 5,
+    icon: "attack3.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.12 * level,
@@ -654,6 +663,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Codices of rending—teach your creations how to tear matter more efficiently.",
     nodePosition: { x: -4, y: -1 },
     maxLevel: 15,
+    icon: "attack4.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.15 * level,
@@ -684,6 +694,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Replace crude bits with heavy augers. Mass and torque translate into damage.",
     nodePosition: { x: -6, y: -1 },
     maxLevel: 15,
+    icon: "iron_drill.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.12 * level,
@@ -698,6 +709,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description: "Commission specialized implements, unlocking advanced crafting techniques.",
     nodePosition: { x: -7, y: -2 },
     maxLevel: 1,
+    icon: "tools.png",
     effects: {},
     nodesRequired: { heavy_drill: 5 },
     cost: createDualResourceCost('iron', 120, 1, 'wood', 80, 1),
@@ -709,6 +721,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Temper and quench—meticulous armaments push your vanguard's damage higher.",
     nodePosition: { x: -8, y: -2 },
     maxLevel: 80,
+    icon: "iron_tools.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.08 * level,
@@ -724,6 +737,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Silvered bits bite deeper into stubborn matter, further amplifying attacks.",
     nodePosition: { x: -8, y: -1 },
     maxLevel: 15,
+    icon: "silver_drill.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -739,6 +753,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Sharpen instincts and edges alike—your units find weak points more often.",
     nodePosition: { x: -4, y: 1 },
     maxLevel: 10,
+    icon: "crit_chance_1.png",
     effects: {
       all_units_crit_chance: {
         income: (level) => 0.02 * level,
@@ -754,6 +769,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Deeper instincts and edges—your units find weak points more often.",
     nodePosition: { x: -5, y: 2 },
     maxLevel: 10,
+    icon: "crit_chance_2.png",
     effects: {
       all_units_crit_chance: {
         income: (level) => 0.03 * level,
@@ -769,6 +785,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Hardened tips and angled force let your strikes pierce tougher shells.",
     nodePosition: { x: -6, y: 1 },
     maxLevel: 15,
+    icon: "penetration_1.png",
     effects: {
       all_units_armor_penetration: {
         income: (level) => 1.25 * level,
@@ -784,6 +801,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Refine the geometry of impact; even plated foes yield to your bite.",
     nodePosition: { x: -7, y: 2 },
     maxLevel: 15,
+    icon: "penetration_2.png",
     effects: {
       all_units_armor_penetration: {
         income: (level) => 2 * level,
@@ -799,6 +817,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Use hot magma to melt through armor.",
     nodePosition: { x: -8, y: 3 },
     maxLevel: 15,
+    icon: "penetration_3.png",
     effects: {
       all_units_armor_penetration: {
         income: (level) => 6 * level,
@@ -1015,6 +1034,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Teach your creations to knit themselves mid‑battle—steady percentage regen.",
     nodePosition: { x: 7, y: -2 },
     maxLevel: 10,
+    icon: "health_regen_1.png",
     effects: {
       all_units_hp_regen_percentage: {
         income: (level) => 0.5*level,
@@ -1030,6 +1050,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Outfit constructs with calculated bracing and plates—substantial increase to health.",
     nodePosition: { x: 8, y: -3 },
     maxLevel: 80,
+    icon: "health_tools.png",
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.08 * level,
