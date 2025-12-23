@@ -43,7 +43,9 @@ const MAX_SCALE = 2.5;
 const ZOOM_SENSITIVITY = 0.0015;
 const WOBBLE_RADIUS = 5;
 const WOBBLE_SPEED = 0.003;
-const HOVER_SNAP_RADIUS = 10;
+// Keep proximity threshold aligned with wobble radius so motion stops as soon as
+// the pointer reaches the area the node traverses.
+const HOVER_SNAP_RADIUS = WOBBLE_RADIUS;
 
 interface ViewTransform {
   scale: number;
