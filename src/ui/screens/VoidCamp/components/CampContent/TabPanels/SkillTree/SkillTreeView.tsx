@@ -335,6 +335,19 @@ export const SkillTreeView: React.FC = () => {
     return ids;
   }, [nodeAffordability]);
 
+  const renderPositions = useMemo(() => {
+    const map = new Map<SkillId, { x: number; y: number }>();
+    visibleNodes.forEach((node) => {
+      const base = layout.positions.get(node.id);
+      if (!base) {
+        return;
+      }
+      const offset = animatedOffsets.get(node.id) ?? { x: 0, y: 0 };
+      map.set(node.id, { x: base.x + offset.x, y: base.y + offset.y });
+    });
+    return map;
+  }, [animatedOffsets, layout.positions, visibleNodes]);
+
   useEffect(() => {
     if (wobbleNodeIds.size === 0) {
       setAnimatedOffsets(new Map());
@@ -517,7 +530,7 @@ export const SkillTreeView: React.FC = () => {
       let closestDistanceSquared = HOVER_SNAP_RADIUS * HOVER_SNAP_RADIUS;
 
       visibleNodes.forEach((node) => {
-        const position = layout.positions.get(node.id);
+        const position = renderPositions.get(node.id);
         if (!position) {
           return;
         }
@@ -532,7 +545,7 @@ export const SkillTreeView: React.FC = () => {
 
       setPointerHoveredId(closestId);
     },
-    [layout.positions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
+    [renderPositions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
   );
 
   const clearPointerHover = useCallback(() => {
@@ -698,19 +711,6 @@ export const SkillTreeView: React.FC = () => {
     }),
     [layout.height, layout.width, viewTransform]
   );
-
-  const renderPositions = useMemo(() => {
-    const map = new Map<SkillId, { x: number; y: number }>();
-    visibleNodes.forEach((node) => {
-      const base = layout.positions.get(node.id);
-      if (!base) {
-        return;
-      }
-      const offset = animatedOffsets.get(node.id) ?? { x: 0, y: 0 };
-      map.set(node.id, { x: base.x + offset.x, y: base.y + offset.y });
-    });
-    return map;
-  }, [animatedOffsets, layout.positions, visibleNodes]);
 
   const renderEdges = useMemo(
     () =>
