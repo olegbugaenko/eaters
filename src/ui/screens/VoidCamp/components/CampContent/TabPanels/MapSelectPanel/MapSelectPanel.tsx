@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   PointerEvent as ReactPointerEvent,
+  MouseEvent as ReactMouseEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { MapId, getMapConfig } from "@db/maps-db";
@@ -9,6 +10,7 @@ import { classNames } from "@shared/classNames";
 import { formatNumber } from "@shared/format/number";
 import { useResizeObserver } from "@shared/useResizeObserver";
 import { formatDuration } from "@ui/utils/formatDuration";
+import type { MapUnlockCondition } from "types/unlocks";
 import "./MapSelectPanel.css";
 
 const CELL_SIZE_X = 200;
@@ -46,9 +48,7 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
   maps.forEach((map) => {
     const config = getMapConfig(map.id);
     const deps = (config.unlockedBy ?? [])
-      .filter((condition): condition is { type: "map"; id: MapId } =>
-        condition.type === "map"
-      )
+      .filter((condition): condition is MapUnlockCondition<MapId> => condition.type === "map")
       .map((condition) => condition.id)
       .filter((id) => mapSet.has(id));
     prerequisites.set(map.id, deps);
@@ -152,7 +152,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const activeMap = maps.find((map) => map.id === activeId) ?? null;
 
   const setPopoverForMap = useCallback(
-    (map: MapListEntry, event: ReactPointerEvent<HTMLButtonElement>) => {
+    (map: MapListEntry, event: ReactMouseEvent<HTMLButtonElement>) => {
       const rect = viewportRef.current?.getBoundingClientRect();
       const x = event.clientX - (rect?.left ?? 0);
       const y = event.clientY - (rect?.top ?? 0);
@@ -168,7 +168,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   );
 
   const handleNodeClick = useCallback(
-    (map: MapListEntry, event: ReactPointerEvent<HTMLButtonElement>) => {
+    (map: MapListEntry, event: ReactMouseEvent<HTMLButtonElement>) => {
       onSelectMap(map.id);
       if (didPanRef.current) {
         return;
