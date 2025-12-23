@@ -7,12 +7,18 @@ import {
   AbilityExecutionResult,
   AbilityStateBase,
 } from "./AbilityTypes";
-import { FIREBALL_SELF_DAMAGE_PERCENT } from "./AbilityConstants";
 
-interface FireballAbilityState extends AbilityStateBase {}
+interface FireballAbilityState extends AbilityStateBase {
+  explosionRadius: number;
+  selfDamagePercent: number;
+  maxDistance: number;
+}
 
 const FIREBALL_MODULE_ID = "fireballOrgan" satisfies UnitModuleId;
 const DEFAULT_FIREBALL_COOLDOWN_SECONDS = 4;
+const DEFAULT_FIREBALL_EXPLOSION_RADIUS = 40;
+const DEFAULT_FIREBALL_SELF_DAMAGE_PERCENT = 0.75;
+const DEFAULT_FIREBALL_MAX_DISTANCE = 750;
 
 const evaluateFireball = (
   context: AbilityEvaluationContext<FireballAbilityState>,
@@ -31,7 +37,7 @@ const evaluateFireball = (
 const executeFireball = (
   context: AbilityExecutionContext<FireballAbilityState, string>,
 ): AbilityExecutionResult => {
-  const { unit, target, services, dependencies } = context;
+  const { unit, target, services, dependencies, state } = context;
   const damage = Math.max(unit.baseAttackDamage, 0) * Math.max(unit.fireballDamageMultiplier, 0);
   if (damage <= 0) {
     return { success: false };
@@ -41,12 +47,18 @@ const executeFireball = (
     sourcePosition: unit.position,
     targetBrickId: target,
     damage,
+    explosionRadius: state.explosionRadius,
+    maxDistance: state.maxDistance,
   });
   if (!launched) {
     return { success: false };
   }
-  const selfDamage = Math.max(damage * FIREBALL_SELF_DAMAGE_PERCENT, 1);
-  dependencies.damageUnit(unit.id, selfDamage);
+  const selfDamagePercent = Math.max(state.selfDamagePercent, 0);
+  const rawSelfDamage = damage * selfDamagePercent;
+  const selfDamage = selfDamagePercent > 0 ? Math.max(rawSelfDamage, 1) : 0;
+  if (selfDamage > 0) {
+    dependencies.damageUnit(unit.id, selfDamage);
+  }
   dependencies.logEvent(
     `${dependencies.formatUnitLabel(unit)} launched fireball targeting brick ${target} for ${damage.toFixed(
       1,
@@ -70,12 +82,28 @@ export const FireballAbility: AbilityDescription<FireballAbilityState, string> =
       return null;
     }
     const meta = context.getModuleMeta(FIREBALL_MODULE_ID);
+    const explosionRadius =
+      typeof meta?.fireballExplosionRadius === "number" && meta.fireballExplosionRadius > 0
+        ? meta.fireballExplosionRadius
+        : DEFAULT_FIREBALL_EXPLOSION_RADIUS;
+    const selfDamagePercent =
+      typeof meta?.fireballSelfDamagePercent === "number" && meta.fireballSelfDamagePercent >= 0
+        ? meta.fireballSelfDamagePercent
+        : DEFAULT_FIREBALL_SELF_DAMAGE_PERCENT;
+    const maxDistance =
+      typeof meta?.fireballMaxDistance === "number" && meta.fireballMaxDistance > 0
+        ? meta.fireballMaxDistance
+        : DEFAULT_FIREBALL_MAX_DISTANCE;
     const cooldownSeconds =
       typeof meta?.cooldownSeconds === "number" && meta.cooldownSeconds > 0
         ? meta.cooldownSeconds
         : DEFAULT_FIREBALL_COOLDOWN_SECONDS;
     return {
-      state: {},
+      state: {
+        explosionRadius,
+        selfDamagePercent,
+        maxDistance,
+      },
       cooldownSeconds,
       sharedCooldownKey: "fireball",
     };

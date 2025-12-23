@@ -32,6 +32,8 @@ interface FireballLaunchOptions {
   sourcePosition: SceneVector2;
   targetBrickId: string;
   damage: number;
+  explosionRadius: number;
+  maxDistance: number;
 }
 
 export class AbilityVisualService {
@@ -160,12 +162,14 @@ export class AbilityVisualService {
     if (!module) {
       return false;
     }
-    module.spawnFireball(
-      options.sourceUnitId,
-      options.sourcePosition,
-      options.targetBrickId,
-      options.damage,
-    );
+    module.spawnFireball({
+      sourceUnitId: options.sourceUnitId,
+      sourcePosition: options.sourcePosition,
+      targetBrickId: options.targetBrickId,
+      damage: options.damage,
+      explosionRadius: options.explosionRadius,
+      maxDistance: options.maxDistance,
+    });
     return true;
   }
 }
