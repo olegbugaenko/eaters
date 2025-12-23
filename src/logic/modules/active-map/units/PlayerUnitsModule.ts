@@ -43,6 +43,7 @@ import {
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
 } from "../../../visuals/VisualEffectState";
+import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import { UnitTargetingMode } from "../../../../types/unit-targeting";
 import { UnitDesignId } from "../../camp/UnitDesignModule";
 import { ArcModule } from "../../scene/ArcModule";
@@ -54,6 +55,7 @@ import {
   PheromoneAttackBonusState,
 } from "../PlayerUnitAbilities";
 import { AbilityVisualService } from "../abilities/AbilityVisualService";
+import { MapRunState } from "../MapRunState";
 import type { StatisticsTracker } from "../../shared/StatisticsModule";
 import { UnitStatisticsReporter } from "./UnitStatisticsReporter";
 import { UnitFactory, UnitCreationData } from "./UnitFactory";
@@ -115,6 +117,7 @@ interface PlayerUnitsModuleOptions {
   ) => UnitTargetingMode;
   statistics?: StatisticsTracker;
   audio?: AbilitySoundPlayer;
+  runState: MapRunState;
 }
 
 interface PlayerUnitSaveData {
@@ -144,6 +147,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly statistics?: StatisticsTracker;
   private readonly unitFactory: UnitFactory;
   private readonly runtimeController: UnitRuntimeController;
+  private readonly runState: MapRunState;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -165,6 +169,7 @@ export class PlayerUnitsModule implements GameModule {
     this.hasSkill = options.hasSkill;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.statistics = options.statistics;
+    this.runState = options.runState;
     const abilitySceneService = new AbilityVisualService({
       scene: this.scene,
       explosions: this.explosions,
@@ -296,6 +301,9 @@ export class PlayerUnitsModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     this.abilities.update(deltaMs);
     if (this.unitOrder.length === 0) {
       return;
@@ -944,10 +952,10 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       if (meltingRadius > 0) {
-        const nearbyBricks = this.bricks
-          .findBricksNear(effectOrigin, meltingRadius)
-          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
-        nearbyBricks.forEach((brick: BrickRuntimeState) => {
+        this.bricks.forEachBrickNear(effectOrigin, meltingRadius, (brick) => {
+          if (skipBrickId && brick.id === skipBrickId) {
+            return;
+          }
           this.bricks.applyEffect({
             type: "meltingTail",
             brickId: brick.id,
@@ -973,10 +981,10 @@ export class PlayerUnitsModule implements GameModule {
       }
 
       if (freezingRadius > 0) {
-        const nearbyBricks = this.bricks
-          .findBricksNear(effectOrigin, freezingRadius)
-          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
-        nearbyBricks.forEach((brick: BrickRuntimeState) => {
+        this.bricks.forEachBrickNear(effectOrigin, freezingRadius, (brick) => {
+          if (skipBrickId && brick.id === skipBrickId) {
+            return;
+          }
           this.bricks.applyEffect({
             type: "freezingTail",
             brickId: brick.id,
@@ -990,10 +998,10 @@ export class PlayerUnitsModule implements GameModule {
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
-        const nearby = this.bricks
-          .findBricksNear(target.position, unit.damageTransferRadius)
-          .filter((brick) => brick.id !== target.id);
-        nearby.forEach((brick: BrickRuntimeState) => {
+        this.bricks.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
+          if (brick.id === target.id) {
+            return;
+          }
           this.bricks.applyDamage(brick.id, splashDamage, direction, {
             rewardMultiplier: unit.rewardMultiplier,
             armorPenetration: unit.armorPenetration,
@@ -1348,24 +1356,9 @@ export const normalizeMultiplier = (value: number, baseline: number): number => 
   return Math.max(value, 0) / Math.max(baseline, 1e-9);
 };
 
-export const clampProbability = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.min(Math.max(value, 0), 1);
-};
-
 export const roundStat = (value: number): number => Math.round(value * 100) / 100;
 
-export const clampNumber = (value: number | undefined, min: number, max: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return min;
-  }
-  if (min > max) {
-    return min;
-  }
-  return Math.min(Math.max(value, min), max);
-};
+export { clampProbability, clampNumber } from "@/utils/helpers/numbers";
 
 const sanitizeNumber = (value: number | undefined): number | undefined => {
   if (typeof value === "number" && Number.isFinite(value)) {

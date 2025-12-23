@@ -32,6 +32,7 @@ import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
 import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
 import { TutorialMonitorModule } from "../modules/active-map/TutorialMonitorModule";
+import { MapRunState } from "../modules/active-map/MapRunState";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -56,6 +57,7 @@ export class Application {
   private audioModule: AudioModule;
   private spellcastingModule: SpellcastingModule;
   private tutorialMonitorModule: TutorialMonitorModule;
+  private readonly mapRunState: MapRunState;
 
   constructor() {
     const saveManager = new SaveManager();
@@ -71,6 +73,7 @@ export class Application {
 
     const bonusesModule = new BonusesModule();
     this.bonusesModule = bonusesModule;
+    this.mapRunState = new MapRunState();
 
     let mapModuleReference: MapModule | null = null;
     let skillTreeModuleReference: SkillTreeModule | null = null;
@@ -89,6 +92,7 @@ export class Application {
       bridge: this.dataBridge,
       unlocks: unlockService,
       bonuses: bonusesModule,
+      runState: this.mapRunState,
       statistics: statisticsModule,
     });
     this.resourcesModule = resourcesModule;
@@ -151,6 +155,7 @@ export class Application {
       explosions: explosionModule,
       resources: resourcesModule,
       bonuses: bonusesModule,
+      runState: this.mapRunState,
       audio: audioModule,
       onAllBricksDestroyed: () => {
         this.handleMapRunCompleted(true);
@@ -164,6 +169,7 @@ export class Application {
       movement: movementService,
       bonuses: bonusesModule,
       explosions: explosionModule,
+      runState: this.mapRunState,
       arcs: undefined, // will set after ArcModule created
       effects: undefined, // will set after EffectsModule created
       audio: audioModule,
@@ -182,6 +188,7 @@ export class Application {
       scene: sceneObjects,
       bonuses: bonusesModule,
       unitDesigns: unitDesignModule,
+      runState: this.mapRunState,
       onSanityDepleted: () => {
         this.handleMapRunCompleted(false);
       },
@@ -190,7 +197,10 @@ export class Application {
       bridge: this.dataBridge,
       necromancer: this.necromancerModule,
       unitDesigns: unitDesignModule,
+      getUnitCountByDesignId: (designId) =>
+        playerUnitsModule.getUnitCountByDesignId(designId),
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+      runState: this.mapRunState,
       isRunActive: () => mapModuleReference?.isRunActive() ?? false,
     });
     this.unitAutomationModule = unitAutomationModule;
@@ -233,6 +243,7 @@ export class Application {
     mapModuleReference = new MapModule({
       scene: sceneObjects,
       bridge: this.dataBridge,
+      runState: this.mapRunState,
       bonuses: bonusesModule,
       bricks: bricksModule,
       playerUnits: playerUnitsModule,
@@ -249,6 +260,7 @@ export class Application {
     const bulletModule = new BulletModule({
       scene: sceneObjects,
       explosions: explosionModule,
+      runState: this.mapRunState,
     });
     this.bulletModule = bulletModule;
 
@@ -259,6 +271,7 @@ export class Application {
       bricks: bricksModule,
       bonuses: bonusesModule,
       explosions: explosionModule,
+      runState: this.mapRunState,
       getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
     });
     this.spellcastingModule = spellcastingModule;
@@ -267,6 +280,7 @@ export class Application {
       bridge: this.dataBridge,
       necromancer: this.necromancerModule,
       resources: resourcesModule,
+      runState: this.mapRunState,
     });
     this.tutorialMonitorModule = tutorialMonitorModule;
 
@@ -387,6 +401,14 @@ export class Application {
     this.mapModule.restartSelectedMap();
   }
 
+  public pauseCurrentMap(): void {
+    this.mapModule.pauseActiveMap();
+  }
+
+  public resumeCurrentMap(): void {
+    this.mapModule.resumeActiveMap();
+  }
+
   public setAutoRestartEnabled(enabled: boolean): void {
     this.mapModule.setAutoRestartEnabled(enabled);
   }
@@ -453,7 +475,6 @@ export class Application {
     const durationMs = this.resourcesModule.getRunDurationMs();
     this.mapModule.recordRunResult({ success, durationMs });
     this.resourcesModule.finishRun();
-    this.cleanupSceneAfterRun();
   }
 
   private cleanupSceneAfterRun(): void {

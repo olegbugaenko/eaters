@@ -135,7 +135,7 @@ describe("PlayerUnitAbilities sound effects", () => {
     };
     let spawnedDamage = 0;
     const fireballs = {
-      spawnFireball: () => {},
+      spawnFireball: (_options: unknown) => {},
     } as unknown as FireballModule;
 
     const source = createBaseState({

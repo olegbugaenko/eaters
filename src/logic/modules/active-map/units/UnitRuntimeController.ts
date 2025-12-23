@@ -13,6 +13,7 @@ import { ExplosionModule } from "../../scene/ExplosionModule";
 import { PlayerUnitType } from "../../../../db/player-units-db";
 import { getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { PlayerUnitState } from "./UnitTypes";
+import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -53,23 +54,6 @@ export interface UnitUpdateResult {
   statsChanged: boolean;
   unitsRemoved: PlayerUnitState[];
 }
-
-const clampNumber = (value: number, min: number, max: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return min;
-  }
-  if (min > max) {
-    return min;
-  }
-  return Math.min(Math.max(value, min), max);
-};
-
-const clampProbability = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.min(Math.max(value, 0), 1);
-};
 
 const roundStat = (value: number): number => Math.round(value * 100) / 100;
 
@@ -690,10 +674,10 @@ export class UnitRuntimeController {
       }
 
       if (meltingRadius > 0) {
-        const nearbyBricks = this.bricks
-          .findBricksNear(effectOrigin, meltingRadius)
-          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
-        nearbyBricks.forEach((brick) => {
+        this.bricks.forEachBrickNear(effectOrigin, meltingRadius, (brick) => {
+          if (skipBrickId && brick.id === skipBrickId) {
+            return;
+          }
           this.bricks.applyEffect({
             type: "meltingTail",
             brickId: brick.id,
@@ -719,10 +703,10 @@ export class UnitRuntimeController {
       }
 
       if (freezingRadius > 0) {
-        const nearbyBricks = this.bricks
-          .findBricksNear(effectOrigin, freezingRadius)
-          .filter((brick) => !skipBrickId || brick.id !== skipBrickId);
-        nearbyBricks.forEach((brick) => {
+        this.bricks.forEachBrickNear(effectOrigin, freezingRadius, (brick) => {
+          if (skipBrickId && brick.id === skipBrickId) {
+            return;
+          }
           this.bricks.applyEffect({
             type: "freezingTail",
             brickId: brick.id,
@@ -736,10 +720,10 @@ export class UnitRuntimeController {
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
-        const nearby = this.bricks
-          .findBricksNear(target.position, unit.damageTransferRadius)
-          .filter((brick) => brick.id !== target.id);
-        nearby.forEach((brick) => {
+        this.bricks.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
+          if (brick.id === target.id) {
+            return;
+          }
           this.bricks.applyDamage(brick.id, splashDamage, direction, {
             rewardMultiplier: unit.rewardMultiplier,
             armorPenetration: unit.armorPenetration,
@@ -828,4 +812,3 @@ export class UnitRuntimeController {
     };
   }
 }
-

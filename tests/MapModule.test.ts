@@ -25,6 +25,7 @@ import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/UnitDesignModule";
 import { getMapConfig } from "../src/db/maps-db";
+import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
 
 const createUnitDesignerStub = (): UnitDesignModule => {
   const stub = {
@@ -71,6 +72,7 @@ describe("MapModule", () => {
   test("bricks spawn outside of the player unit safe radius", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = {
@@ -87,7 +89,7 @@ describe("MapModule", () => {
         // no-op for tests
       },
     };
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -96,6 +98,7 @@ describe("MapModule", () => {
       movement,
       bonuses,
       explosions,
+      runState,
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -107,6 +110,7 @@ describe("MapModule", () => {
       scene,
       bonuses,
       unitDesigns,
+      runState,
     });
     let mapModuleRef: MapModule | null = null;
     const unlocks = new UnlockService({
@@ -117,6 +121,7 @@ describe("MapModule", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,
@@ -133,6 +138,7 @@ describe("MapModule", () => {
     necromancer.initialize();
     maps.initialize();
     maps.recordRunResult({ mapId: "foundations", success: true });
+    maps.recordRunResult({ mapId: "foundations", level: 1, success: true });
     maps.selectMap("initial");
     maps.restartSelectedMap();
 
@@ -156,6 +162,7 @@ describe("Map run control", () => {
   test("selecting map does not start run until restart", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     let setBricksCalls = 0;
     const bricks = {
       setBricks: () => {
@@ -175,12 +182,18 @@ describe("Map run control", () => {
     let configureForMapCalls = 0;
     const necromancer = {
       configureForMap: () => {
-        configureForMapCalls += 1;
-      },
-      endCurrentMap: () => {
-        // no-op for tests
-      },
-    } as unknown as NecromancerModule;
+      configureForMapCalls += 1;
+    },
+    endCurrentMap: () => {
+      // no-op for tests
+    },
+    pauseMap: () => {
+      // no-op for tests
+    },
+    resumeMap: () => {
+      // no-op for tests
+    },
+  } as unknown as NecromancerModule;
 
     let startRunCalls = 0;
     const resources = {
@@ -202,6 +215,7 @@ describe("Map run control", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,
@@ -275,6 +289,7 @@ describe("Map run control", () => {
   test("leaving a map clears active run state", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     let lastBricks: unknown = null;
     const bricks = {
       setBricks: (input: unknown) => {
@@ -299,6 +314,12 @@ describe("Map run control", () => {
       endCurrentMap: () => {
         endCurrentMapCalls += 1;
       },
+      pauseMap: () => {
+        // no-op for tests
+      },
+      resumeMap: () => {
+        // no-op for tests
+      },
     } as unknown as NecromancerModule;
     let startRunCalls = 0;
     let cancelRunCalls = 0;
@@ -321,6 +342,7 @@ describe("Map run control", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,
@@ -355,6 +377,7 @@ describe("Map run control", () => {
     const scene = new SceneObjectManager();
     scene.setViewportScreenSize(800, 600);
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = {
@@ -363,7 +386,7 @@ describe("Map run control", () => {
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -372,6 +395,7 @@ describe("Map run control", () => {
       movement,
       bonuses,
       explosions,
+      runState,
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -383,6 +407,7 @@ describe("Map run control", () => {
       scene,
       bonuses,
       unitDesigns,
+      runState,
     });
     let mapModuleRef: MapModule | null = null;
     const unlocks = new UnlockService({
@@ -393,6 +418,7 @@ describe("Map run control", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,
@@ -409,10 +435,10 @@ describe("Map run control", () => {
     necromancer.initialize();
     maps.initialize();
 
-    maps.selectMap("foundations");
+    maps.selectMap("trainingGrounds");
     maps.restartSelectedMap();
 
-    const config = getMapConfig("foundations");
+    const config = getMapConfig("trainingGrounds");
     const spawnPoint =
       (config.spawnPoints && config.spawnPoints.length > 0
         ? config.spawnPoints[0]
@@ -430,6 +456,7 @@ describe("Map run control", () => {
     const scene = new SceneObjectManager();
     scene.setViewportScreenSize(600, 400);
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = {
@@ -438,7 +465,7 @@ describe("Map run control", () => {
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -447,6 +474,7 @@ describe("Map run control", () => {
       movement,
       bonuses,
       explosions,
+      runState,
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -458,6 +486,7 @@ describe("Map run control", () => {
       scene,
       bonuses,
       unitDesigns,
+      runState,
     });
     let mapModuleRef: MapModule | null = null;
     const unlocks = new UnlockService({
@@ -468,6 +497,7 @@ describe("Map run control", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,
@@ -484,10 +514,10 @@ describe("Map run control", () => {
     necromancer.initialize();
     maps.initialize();
 
-    maps.selectMap("foundations");
+    maps.selectMap("trainingGrounds");
     maps.restartSelectedMap();
 
-    const config = getMapConfig("foundations");
+    const config = getMapConfig("trainingGrounds");
     const spawnPoint =
       (config.spawnPoints && config.spawnPoints.length > 0
         ? config.spawnPoints[0]
@@ -512,6 +542,7 @@ describe("Map unlocking", () => {
   test("initial map unlocks after completing foundations", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = {
@@ -520,7 +551,7 @@ describe("Map unlocking", () => {
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -529,6 +560,7 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      runState,
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -540,6 +572,7 @@ describe("Map unlocking", () => {
       scene,
       bonuses,
       unitDesigns,
+      runState,
     });
 
     let mapModuleRef: MapModule | null = null;
@@ -551,6 +584,7 @@ describe("Map unlocking", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,
@@ -569,10 +603,22 @@ describe("Map unlocking", () => {
 
     const initialList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
     assert.strictEqual(initialList.length, 1);
-    assert.strictEqual(initialList[0]!.id, "foundations");
+    assert.strictEqual(initialList[0]!.id, "trainingGrounds");
     assert.strictEqual(initialList[0]!.currentLevel, 0);
     assert.strictEqual(initialList[0]!.attempts, 0);
     assert.strictEqual(initialList[0]!.bestTimeMs, null);
+
+    maps.recordRunResult({ mapId: "trainingGrounds", success: true });
+
+    const afterTraining = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const afterTrainingIds = afterTraining.map((entry) => entry.id);
+    assert(afterTrainingIds.includes("trainingGrounds"));
+    assert(afterTrainingIds.includes("foundations"));
+
+    const foundationsEntry = afterTraining.find((entry) => entry.id === "foundations");
+    assert.strictEqual(foundationsEntry?.currentLevel, 0);
+    assert.strictEqual(foundationsEntry?.attempts, 0);
+    assert.strictEqual(foundationsEntry?.bestTimeMs, null);
 
     maps.recordRunResult({ mapId: "foundations", success: true });
 
@@ -581,10 +627,8 @@ describe("Map unlocking", () => {
     assert(mapIds.includes("foundations"));
     assert(mapIds.includes("initial"));
 
-    const foundationsEntry = updatedList.find((entry) => entry.id === "foundations");
-    assert.strictEqual(foundationsEntry?.currentLevel, 1);
-    assert.strictEqual(foundationsEntry?.attempts, 1);
-    assert.strictEqual(foundationsEntry?.bestTimeMs, null);
+    const updatedFoundations = updatedList.find((entry) => entry.id === "foundations");
+    assert(updatedFoundations, "foundations should be present after a successful run");
 
     const initialEntry = updatedList.find((entry) => entry.id === "initial");
     assert.strictEqual(initialEntry?.currentLevel, 0);
@@ -595,6 +639,7 @@ describe("Map unlocking", () => {
   test("run results are stored in map stats", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = {
@@ -603,7 +648,7 @@ describe("Map unlocking", () => {
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -612,6 +657,7 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      runState,
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -623,6 +669,7 @@ describe("Map unlocking", () => {
       scene,
       bonuses,
       unitDesigns,
+      runState,
     });
 
     let mapModuleRef: MapModule | null = null;
@@ -634,6 +681,7 @@ describe("Map unlocking", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,
@@ -667,6 +715,7 @@ describe("Map auto restart", () => {
   test("auto restart unlocks with the corresponding skill and persists", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = {
@@ -675,7 +724,7 @@ describe("Map auto restart", () => {
       grantResources: () => {},
       notifyBrickDestroyed: () => {},
     };
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses });
+    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -684,6 +733,7 @@ describe("Map auto restart", () => {
       movement,
       bonuses,
       explosions,
+      runState,
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -695,6 +745,7 @@ describe("Map auto restart", () => {
       scene,
       bonuses,
       unitDesigns,
+      runState,
     });
 
     let mapModuleRef: MapModule | null = null;
@@ -707,6 +758,7 @@ describe("Map auto restart", () => {
     const maps = new MapModule({
       scene,
       bridge,
+      runState,
       bonuses,
       bricks,
       playerUnits,

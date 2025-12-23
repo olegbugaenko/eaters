@@ -14,6 +14,7 @@ import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/U
 import { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/NecromancerModule";
 import { createEmptyResourceAmount } from "../src/types/resources";
 import { PlayerUnitBlueprintStats } from "../src/types/player-units";
+import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
 
 const createFullResources = (): NecromancerResourceSnapshot => ({
   mana: { current: 999, max: 999, regenPerSecond: 10 },
@@ -79,11 +80,15 @@ describe("UnitAutomationModule", () => {
       getDefaultDesignForType: () => design,
       getActiveRosterDesigns: () => [design],
     };
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
+      getUnitCountByDesignId: () => 0,
       getSkillLevel: () => skillLevel,
+      runState,
       isRunActive: () => true,
     });
 
@@ -169,11 +174,15 @@ describe("UnitAutomationModule", () => {
       getDefaultDesignForType: () => design,
       getActiveRosterDesigns: () => [design],
     };
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
+      getUnitCountByDesignId: () => 0,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -194,9 +203,11 @@ describe("UnitAutomationModule", () => {
   test("automation distributes spawns according to weights", () => {
     const bridge = new DataBridge();
     const attempts: UnitDesignId[] = [];
+    const livingCounts = new Map<UnitDesignId, number>();
     const necromancer = {
       trySpawnDesign: (id: UnitDesignId) => {
         attempts.push(id);
+        livingCounts.set(id, (livingCounts.get(id) ?? 0) + 1);
         return true;
       },
       getResources: () => createFullResources(),
@@ -284,11 +295,18 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
+    livingCounts.set(lightDesign.id, 0);
+    livingCounts.set(heavyDesign.id, 0);
+
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
+      getUnitCountByDesignId: (designId) => livingCounts.get(designId) ?? 0,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -323,6 +341,102 @@ describe("UnitAutomationModule", () => {
     assert(
       Math.abs(heavyShare - expectedHeavyShare) < 0.1,
       `expected heavy unit share to be close to ${expectedHeavyShare}, got ${heavyShare}`
+    );
+  });
+
+  test("automation prefers underrepresented designs based on living unit mix", () => {
+    const bridge = new DataBridge();
+    const attempts: UnitDesignId[] = [];
+    const unitType = PLAYER_UNIT_TYPES[0];
+    assert(unitType, "expected at least one unit type for automation tests");
+
+    const makeDesign = (id: string, name: string): UnitDesignerUnitState => ({
+      id,
+      type: unitType,
+      name,
+      modules: [],
+      moduleDetails: [],
+      cost: createEmptyResourceAmount(),
+      blueprint: {
+        type: unitType,
+        name,
+        base: { maxHp: 1, attackDamage: 1 },
+        effective: { maxHp: 1, attackDamage: 1 },
+        multipliers: { maxHp: 1, attackDamage: 1 },
+        critChance: { base: 0, bonus: 0, effective: 0 },
+        critMultiplier: { base: 2, multiplier: 0, effective: 2 },
+        armor: 0,
+        hpRegenPerSecond: 0,
+        hpRegenPercentage: 0,
+        armorPenetration: 0,
+        baseAttackInterval: 1,
+        baseAttackDistance: 100,
+        moveSpeed: 1,
+        moveAcceleration: 1,
+        mass: 1,
+        physicalSize: 1,
+      },
+      runtime: {
+        rewardMultiplier: 1,
+        damageTransferPercent: 0,
+        damageTransferRadius: 0,
+        attackStackBonusPerHit: 0,
+        attackStackBonusCap: 0,
+      },
+      targetingMode: "nearest",
+    });
+
+    const lightDesign = makeDesign("light-living", "Light");
+    const heavyDesign = makeDesign("heavy-living", "Heavy");
+    const designs: UnitDesignerUnitState[] = [lightDesign, heavyDesign];
+    const unitDesigns = {
+      subscribe: (listener: (designs: readonly UnitDesignerUnitState[]) => void) => {
+        listener(designs);
+        return () => undefined;
+      },
+      getDefaultDesignForType: () => lightDesign,
+      getActiveRosterDesigns: () => designs,
+    };
+
+    const livingCounts = new Map<UnitDesignId, number>([
+      [lightDesign.id, 2],
+      [heavyDesign.id, 2],
+    ]);
+
+    const necromancer = {
+      trySpawnDesign: (id: UnitDesignId) => {
+        attempts.push(id);
+        livingCounts.set(id, (livingCounts.get(id) ?? 0) + 1);
+        return true;
+      },
+      getResources: () => createFullResources(),
+      getRemainingUnitCapacity: () => 99,
+    };
+
+    const runState = new MapRunState();
+    runState.start();
+    const module = new UnitAutomationModule({
+      bridge,
+      necromancer,
+      unitDesigns,
+      getUnitCountByDesignId: (designId) => livingCounts.get(designId) ?? 0,
+      getSkillLevel: () => 1,
+      runState,
+      isRunActive: () => true,
+    });
+
+    module.initialize();
+    module.setAutomationEnabled(lightDesign.id, true);
+    module.setAutomationEnabled(heavyDesign.id, true);
+    module.setAutomationWeight(lightDesign.id, 1);
+    module.setAutomationWeight(heavyDesign.id, 3);
+
+    module.tick(16);
+
+    assert.strictEqual(
+      attempts[0],
+      heavyDesign.id,
+      "automation should prioritize the underrepresented weighted design",
     );
   });
 
@@ -411,6 +525,10 @@ describe("UnitAutomationModule", () => {
       [cheapDesign.id, 10],
       [expensiveDesign.id, 30],
     ]);
+    const livingCounts = new Map<UnitDesignId, number>([
+      [cheapDesign.id, 0],
+      [expensiveDesign.id, 0],
+    ]);
     let mana = 0;
     const manaMax = 100;
     const manaRegen = 5;
@@ -422,6 +540,7 @@ describe("UnitAutomationModule", () => {
         }
         mana -= cost;
         attempts.push(id);
+        livingCounts.set(id, (livingCounts.get(id) ?? 0) + 1);
         return true;
       },
       getResources: () => ({
@@ -439,11 +558,15 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
+      getUnitCountByDesignId: (designId) => livingCounts.get(designId) ?? 0,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -556,6 +679,10 @@ describe("UnitAutomationModule", () => {
       [cheapDesign.id, 10],
       [expensiveDesign.id, 30],
     ]);
+    const livingCounts = new Map<UnitDesignId, number>([
+      [cheapDesign.id, 0],
+      [expensiveDesign.id, 0],
+    ]);
     let mana = 0;
     const manaMax = 100;
     const manaRegen = 10;
@@ -567,6 +694,7 @@ describe("UnitAutomationModule", () => {
         }
         mana -= cost;
         attempts.push(id);
+        livingCounts.set(id, (livingCounts.get(id) ?? 0) + 1);
         return true;
       },
       getResources: () => ({
@@ -584,11 +712,15 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
+      getUnitCountByDesignId: (designId) => livingCounts.get(designId) ?? 0,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -736,11 +868,15 @@ describe("UnitAutomationModule", () => {
       getActiveRosterDesigns: () => designs,
     };
 
+    const runState = new MapRunState();
+    runState.start();
     const module = new UnitAutomationModule({
       bridge,
       necromancer,
       unitDesigns,
+      getUnitCountByDesignId: () => 0,
       getSkillLevel: () => 1,
+      runState,
       isRunActive: () => true,
     });
 
@@ -765,7 +901,7 @@ describe("UnitAutomationModule", () => {
   });
 
   test("selectNextAutomationTarget balances according to weights", () => {
-    const baseCandidates: Array<Omit<AutomationSelectionCandidate, "spawned">> = [
+    const baseCandidates: Array<Omit<AutomationSelectionCandidate, "activeCount">> = [
       { designId: "light", weight: 1, order: 0 },
       { designId: "heavy", weight: 3, order: 1 },
     ];
@@ -775,7 +911,7 @@ describe("UnitAutomationModule", () => {
     for (let index = 0; index < totalIterations; index += 1) {
       const candidates: AutomationSelectionCandidate[] = baseCandidates.map((entry) => ({
         ...entry,
-        spawned: spawnCounts.get(entry.designId) ?? 0,
+        activeCount: spawnCounts.get(entry.designId) ?? 0,
       }));
       const next = selectNextAutomationTarget(candidates);
       assert.notStrictEqual(next, null);
@@ -797,8 +933,8 @@ describe("UnitAutomationModule", () => {
 
   test("selectNextAutomationTarget respects skipped candidates", () => {
     const candidates: AutomationSelectionCandidate[] = [
-      { designId: "alpha", weight: 2, spawned: 1, order: 0 },
-      { designId: "beta", weight: 1, spawned: 0, order: 1 },
+      { designId: "alpha", weight: 2, activeCount: 1, order: 0 },
+      { designId: "beta", weight: 1, activeCount: 0, order: 1 },
     ];
 
     const skipped = new Set<UnitDesignId>(["beta"]);
@@ -808,8 +944,8 @@ describe("UnitAutomationModule", () => {
 
   test("selectNextAutomationTarget falls back when weights are non-positive", () => {
     const candidates: AutomationSelectionCandidate[] = [
-      { designId: "alpha", weight: 0, spawned: 0, order: 0 },
-      { designId: "beta", weight: -2, spawned: 0, order: 1 },
+      { designId: "alpha", weight: 0, activeCount: 0, order: 0 },
+      { designId: "beta", weight: -2, activeCount: 0, order: 1 },
     ];
 
     const next = selectNextAutomationTarget(candidates);

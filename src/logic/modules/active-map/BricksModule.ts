@@ -16,6 +16,7 @@ import type { ExplosionModule } from "../scene/ExplosionModule";
 import { BonusesModule } from "../shared/BonusesModule";
 import type { StatisticsTracker } from "../shared/StatisticsModule";
 import { SpatialGrid } from "../../utils/SpatialGrid";
+import { clampNumber } from "@/utils/helpers/numbers";
 import {
   ResourceStockpile,
   RESOURCE_IDS,
@@ -29,6 +30,7 @@ import {
   BrickEffectsManager,
   BrickEffectApplication,
 } from "./BrickEffectsManager";
+import { MapRunState } from "./MapRunState";
 
 interface ResourceCollector {
   grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
@@ -122,6 +124,7 @@ interface BricksModuleOptions {
   explosions: ExplosionModule;
   resources: ResourceCollector;
   bonuses: BonusesModule;
+  runState: MapRunState;
   onAllBricksDestroyed?: () => void;
   audio?: SoundEffectPlayer;
   statistics?: StatisticsTracker;
@@ -175,8 +178,10 @@ export class BricksModule implements GameModule {
   private readonly effects: BrickEffectsManager;
   private lastPushedBrickCount = -1;
   private lastPushedTotalHp = -1;
+  private readonly runState: MapRunState;
 
   constructor(private readonly options: BricksModuleOptions) {
+    this.runState = options.runState;
     this.effects = new BrickEffectsManager({
       hasBrick: (brickId) => this.bricks.has(brickId),
       dealDamage: (brickId, damage, opts) => {
@@ -214,6 +219,9 @@ export class BricksModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
+    if (!this.runState.shouldProcessTick()) {
+      return;
+    }
     if (deltaMs > 0) {
       this.effects.update(deltaMs);
       this.hpRecomputeElapsedMs += deltaMs;
@@ -814,16 +822,6 @@ const clamp = (value: number, min: number, max: number): number => {
     return min;
   }
   return Math.min(Math.max(value, min), max);
-};
-
-const clampNumber = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return clamp(min, min, max);
-  }
-  if (min > max) {
-    return min;
-  }
-  return clamp(value, min, max);
 };
 
 const blendColorComponent = (

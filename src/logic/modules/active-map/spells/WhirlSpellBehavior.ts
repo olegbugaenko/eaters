@@ -8,6 +8,7 @@ import {
 } from "./SpellBehavior";
 import { BonusValueMap } from "../../shared/BonusesModule";
 import type { BrickRuntimeState } from "../BricksModule";
+import { clampNumber } from "@/utils/helpers/numbers";
 
 const OUT_OF_BOUNDS_MARGIN = 50;
 
@@ -51,9 +52,6 @@ interface WhirlState {
   colorOuter: SceneColor;
   renderData: SandStormCustomData;
 }
-
-const clampNumber = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(Number.isFinite(value) ? value : min, min), max);
 
 const getNowMs = (): number =>
   typeof performance !== "undefined" && typeof performance.now === "function"
@@ -320,4 +318,3 @@ export class WhirlSpellBehavior implements SpellBehavior {
     return { x: vector.x / length, y: vector.y / length };
   }
 }
-

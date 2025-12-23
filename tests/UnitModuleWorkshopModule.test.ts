@@ -44,6 +44,10 @@ describe("UnitModuleWorkshopModule", () => {
     );
 
     mapStats = {
+      trainingGrounds: {
+        0: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null },
+      },
       foundations: {
         0: { success: 1, failure: 0, bestTimeMs: null },
         1: { success: 1, failure: 0, bestTimeMs: null },
