@@ -291,6 +291,8 @@ export const SkillTreeView: React.FC = () => {
   const animationFrameRef = useRef<number | null>(null);
   const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
   const skillTreeModule = useMemo(() => app.getSkillTree(), [app]);
+  const [purchasedSkillId, setPurchasedSkillId] = useState<SkillId | null>(null);
+  const hoveredIdRef = useRef<SkillId | null>(null);
 
   const nodes = skillTree.nodes;
   const visibleNodes = useMemo(() => nodes.filter(isNodeVisible), [nodes]);
@@ -315,6 +317,10 @@ export const SkillTreeView: React.FC = () => {
   const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
   const hoveredId = pointerHoveredId ?? focusHoveredId;
+  
+  useEffect(() => {
+    hoveredIdRef.current = hoveredId;
+  }, [hoveredId]);
 
   const nodeAffordability = useMemo(() => {
     const map = new Map<SkillId, { affordable: boolean; purchasable: boolean }>();
@@ -356,10 +362,11 @@ export const SkillTreeView: React.FC = () => {
     }
 
     const step = (timestamp: number) => {
+      const currentHoveredId = hoveredIdRef.current;
       const nextOffsets = new Map<SkillId, { x: number; y: number }>();
 
       visibleNodes.forEach((node) => {
-        const shouldWobble = wobbleNodeIds.has(node.id) && hoveredId !== node.id;
+        const shouldWobble = wobbleNodeIds.has(node.id) && currentHoveredId !== node.id;
         if (!shouldWobble) {
           nextOffsets.set(node.id, { x: 0, y: 0 });
           return;
@@ -377,13 +384,19 @@ export const SkillTreeView: React.FC = () => {
       animationFrameRef.current = requestAnimationFrame(step);
     };
 
+    // Cancel any existing animation first
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
     animationFrameRef.current = requestAnimationFrame(step);
     return () => {
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     };
-  }, [hoveredId, visibleNodes, wobbleNodeIds]);
+  }, [visibleNodes, wobbleNodeIds]);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -506,7 +519,14 @@ export const SkillTreeView: React.FC = () => {
 
   const handleNodeClick = useCallback(
     (id: SkillId) => {
-      skillTreeModule.tryPurchaseSkill(id);
+      const success = skillTreeModule.tryPurchaseSkill(id);
+      if (success) {
+        setPurchasedSkillId(id);
+        // Reset after animation completes
+        setTimeout(() => {
+          setPurchasedSkillId(null);
+        }, 600);
+      }
     },
     [skillTreeModule]
   );
@@ -768,7 +788,8 @@ export const SkillTreeView: React.FC = () => {
               !node.maxed && node.unlocked && "skill-tree-node--available",
               !node.maxed && node.unlocked && affordable && "skill-tree-node--affordable",
               inactive && "skill-tree-node--inactive",
-              activeId === node.id && "skill-tree-node--active"
+              activeId === node.id && "skill-tree-node--active",
+              purchasedSkillId === node.id && "skill-tree-node--purchased"
             );
             const iconSrc = getSkillIconPath(node.icon);
             const nodeInitials = getSkillInitials(node.name);
