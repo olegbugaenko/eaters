@@ -672,7 +672,20 @@ export class MapModule implements GameModule {
   }
 
   private isMapSelectable(mapId: MapId): boolean {
-    return this.unlocks.isUnlocked({ type: "map", id: mapId, level: 0 });
+    const config = getMapConfig(mapId);
+    // Check mapsRequired first
+    if (config.mapsRequired) {
+      const mapsRequiredMet = Object.entries(config.mapsRequired).every(([requiredMapId, requiredLevel]) => {
+        const requiredId = requiredMapId as MapId;
+        const highestLevel = this.getHighestUnlockedLevel(requiredId);
+        return highestLevel >= (requiredLevel ?? 0);
+      });
+      if (!mapsRequiredMet) {
+        return false;
+      }
+    }
+    // Also check unlockedBy for backward compatibility
+    return this.unlocks.areConditionsMet(config.unlockedBy);
   }
 
   private getAvailableMaps(): MapListEntry[] {

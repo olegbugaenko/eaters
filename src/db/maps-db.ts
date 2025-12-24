@@ -31,6 +31,11 @@ export type MapBrickGenerator = (
   options: MapBrickGeneratorOptions
 ) => readonly BrickShapeBlueprint[];
 
+export interface MapNodePosition {
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
@@ -38,6 +43,8 @@ export interface MapConfig {
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
   readonly spawnPoints?: readonly SceneVector2[];
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
+  readonly nodePosition: MapNodePosition;
+  readonly mapsRequired?: Partial<Record<MapId, number>>;
 }
 
 export interface MapListEntry {
@@ -145,6 +152,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           position: { ...spawnPoint },
         },
       ],
+      nodePosition: { x: 0, y: 0 },
     } satisfies MapConfig;
   })(),
   foundations: (() => {
@@ -183,6 +191,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      nodePosition: { x: 1, y: 1 },
       bricks: ({ mapLevel }) => [
         polygonWithBricks(
           "smallTrainingBrick",
@@ -220,6 +229,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           position: { ...spawnPoint },
         },
       ],
+      mapsRequired: { trainingGrounds: 1 },
     } satisfies MapConfig;
   })(),
   initial: {
@@ -232,6 +242,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         level: 1,
       },
     ],
+    nodePosition: { x: 2, y: 2 },
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const innerLevel = baseLevel + 1;
@@ -323,6 +334,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         position: { x: 100, y: 100 },
       },
     ],
+    mapsRequired: { foundations: 1 },
   },
   thicket: (() => {
     const size: SceneSize = { width: 1000, height: 1000 };
@@ -351,6 +363,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Overgrown Thicket",
       size,
       spawnPoints: [{ x: 50, y: size.height - sandHeight - 220 }],
+      nodePosition: { x: 2, y: 3 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const sandLevel = baseLevel + 1;
@@ -391,6 +404,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { initial: 1 },
     } satisfies MapConfig;
   })(),
   oldForge: (() => {
@@ -412,6 +426,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Old Forge",
       size,
       spawnPoints: [{ x: center.x, y: center.y - outerSize / 2 + 80 }],
+      nodePosition: { x: 3, y: 2 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const walkwayLevel = baseLevel + 1;
@@ -451,6 +466,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { initial: 1 },
     } satisfies MapConfig;
   })(),
   spruce: (() => {
@@ -491,6 +507,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Forest",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 1, y: 4 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const canopyLevel = baseLevel + 1;
@@ -557,6 +574,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { thicket: 1 },
     } satisfies MapConfig;
   })(),
   mine: (() => {
@@ -584,6 +602,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Collapsed Mine",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 0, y: 4 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const wallLevel = baseLevel + 1;
@@ -646,6 +665,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { spruce: 1 },
     } satisfies MapConfig;
   })(),
   wire: (() => {
@@ -702,6 +722,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Wire",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 4, y: 1 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const outerLevel = baseLevel + 2;
@@ -785,6 +806,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { oldForge: 1 },
     } satisfies MapConfig;
   })(),
   silverRing: (() => {
@@ -799,6 +821,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Silver Ring",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 4, y: 0 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const ringLevel = baseLevel;
@@ -857,6 +880,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { wire: 1 },
     } satisfies MapConfig;
   })(),
   frozenForest: (() => {
@@ -900,6 +924,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Frozen Forest",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 3, y: -1 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const iceLevel = baseLevel;
@@ -977,6 +1002,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { silverRing: 1 },
     } satisfies MapConfig;
   })(),
   volcano: (() => {
@@ -1011,6 +1037,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Volcano",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x:-1, y: 2 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const copperLevel = baseLevel + 2;
@@ -1064,6 +1091,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { mine: 1 },
     } satisfies MapConfig;
   })(),
 };

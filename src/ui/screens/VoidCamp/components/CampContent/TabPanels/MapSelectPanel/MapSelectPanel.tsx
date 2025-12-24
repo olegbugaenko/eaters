@@ -43,66 +43,52 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
   }
 
   const mapSet = new Set(maps.map((map) => map.id));
-  const prerequisites = new Map<MapId, MapId[]>();
+  const edges: { id: string; from: MapId; to: MapId }[] = [];
 
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  // First pass: find min/max coordinates
   maps.forEach((map) => {
     const config = getMapConfig(map.id);
-    const deps = (config.unlockedBy ?? [])
-      .filter((condition): condition is MapUnlockCondition<MapId> => condition.type === "map")
-      .map((condition) => condition.id)
-      .filter((id) => mapSet.has(id));
-    prerequisites.set(map.id, deps);
+    const nodePos = config.nodePosition;
+    minX = Math.min(minX, nodePos.x);
+    maxX = Math.max(maxX, nodePos.x);
+    minY = Math.min(minY, nodePos.y);
+    maxY = Math.max(maxY, nodePos.y);
   });
 
-  const depthCache = new Map<MapId, number>();
-  const getDepth = (id: MapId): number => {
-    const cached = depthCache.get(id);
-    if (cached !== undefined) {
-      return cached;
-    }
-    const deps = prerequisites.get(id) ?? [];
-    const depth = deps.reduce(
-      (max, dep) => Math.max(max, getDepth(dep) + 1),
-      0
-    );
-    depthCache.set(id, depth);
-    return depth;
-  };
+  // Calculate offsets to normalize positions (so minX maps to TREE_MARGIN)
+  const offsetX = TREE_MARGIN - minX * CELL_SIZE_X;
+  const offsetY = TREE_MARGIN - minY * CELL_SIZE_Y;
 
-  maps.forEach((map) => getDepth(map.id));
+  const width = (maxX - minX) * CELL_SIZE_X + TREE_MARGIN * 2;
+  const height = (maxY - minY) * CELL_SIZE_Y + TREE_MARGIN * 2;
 
-  const columns = new Map<number, MapId[]>();
-  depthCache.forEach((depth, id) => {
-    const list = columns.get(depth) ?? [];
-    list.push(id);
-    columns.set(depth, list);
-  });
-
+  // Second pass: calculate positions with offset
   const positions = new Map<MapId, { x: number; y: number }>();
-  let maxColumnSize = 0;
-  columns.forEach((ids) => {
-    ids.sort();
-    maxColumnSize = Math.max(maxColumnSize, ids.length);
-  });
+  maps.forEach((map) => {
+    const config = getMapConfig(map.id);
+    const nodePos = config.nodePosition;
+    positions.set(map.id, {
+      x: offsetX + nodePos.x * CELL_SIZE_X,
+      y: offsetY + nodePos.y * CELL_SIZE_Y,
+    });
 
-  columns.forEach((ids, depth) => {
-    ids.forEach((id, index) => {
-      positions.set(id, {
-        x: TREE_MARGIN + depth * CELL_SIZE_X,
-        y: TREE_MARGIN + index * CELL_SIZE_Y,
+    // Build edges from mapsRequired
+    if (config.mapsRequired) {
+      Object.entries(config.mapsRequired).forEach(([requiredMapId, requiredLevel]) => {
+        if (mapSet.has(requiredMapId as MapId) && requiredLevel > 0) {
+          edges.push({
+            id: `${requiredMapId}->${map.id}`,
+            from: requiredMapId as MapId,
+            to: map.id,
+          });
+        }
       });
-    });
-  });
-
-  const maxDepth = Math.max(...Array.from(columns.keys()));
-  const width = TREE_MARGIN * 2 + Math.max(maxDepth, 0) * CELL_SIZE_X;
-  const height = TREE_MARGIN * 2 + Math.max(maxColumnSize - 1, 0) * CELL_SIZE_Y;
-
-  const edges: { id: string; from: MapId; to: MapId }[] = [];
-  prerequisites.forEach((deps, id) => {
-    deps.forEach((dep) => {
-      edges.push({ id: `${dep}->${id}`, from: dep, to: id });
-    });
+    }
   });
 
   return { width, height, positions, edges };
@@ -136,17 +122,109 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     | { mapId: MapId; x: number; y: number; canDecrease: boolean; canIncrease: boolean }
     | null
   >(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
 
   const layout = useMemo(() => computeLayout(maps), [maps]);
+  const hasInitializedViewRef = useRef(false);
+  const previousViewportSizeRef = useRef({ width: 0, height: 0 });
 
   useResizeObserver(viewportRef, ({ width, height }) => {
     setViewportSize({ width, height });
-    setViewTransform((current) => ({
-      ...current,
-      offsetX: width / 2 - layout.width / 2,
-      offsetY: height / 2 - layout.height / 2,
-    }));
   });
+
+  // Initialize view to center on node at (0, 0) like in SkillTreeView
+  useEffect(() => {
+    if (hasInitializedViewRef.current) {
+      return;
+    }
+
+    if (!viewportSize.width || !viewportSize.height || layout.positions.size === 0) {
+      return;
+    }
+
+    // Find the map node with nodePosition {x: 0, y: 0}
+    const originMap = maps.find((map) => {
+      const config = getMapConfig(map.id);
+      return config.nodePosition.x === 0 && config.nodePosition.y === 0;
+    });
+    const targetPosition = originMap
+      ? layout.positions.get(originMap.id)
+      : null;
+    const fallbackPosition = {
+      x: layout.width / 2,
+      y: layout.height / 2,
+    };
+    const { x, y } = targetPosition ?? fallbackPosition;
+
+    setViewTransform((current) => {
+      const next = {
+        ...current,
+        offsetX: viewportSize.width / 2 - x * current.scale,
+        offsetY: viewportSize.height / 2 - y * current.scale,
+      };
+      return next;
+    });
+    previousViewportSizeRef.current = viewportSize;
+    hasInitializedViewRef.current = true;
+  }, [layout, maps, viewportSize]);
+
+  // Update view position when viewport resizes (maintain center on origin node)
+  useEffect(() => {
+    if (!hasInitializedViewRef.current) {
+      previousViewportSizeRef.current = viewportSize;
+      return;
+    }
+
+    const previousSize = previousViewportSizeRef.current;
+    if (
+      previousSize.width === viewportSize.width &&
+      previousSize.height === viewportSize.height
+    ) {
+      return;
+    }
+
+    // Find the map node with nodePosition {x: 0, y: 0}
+    const originMap = maps.find((map) => {
+      const config = getMapConfig(map.id);
+      return config.nodePosition.x === 0 && config.nodePosition.y === 0;
+    });
+    const targetPosition = originMap
+      ? layout.positions.get(originMap.id)
+      : null;
+    const fallbackPosition = {
+      x: layout.width / 2,
+      y: layout.height / 2,
+    };
+    const { x, y } = targetPosition ?? fallbackPosition;
+
+    setViewTransform((current) => {
+      const focusWorldX = (previousSize.width / 2 - current.offsetX) / current.scale;
+      const focusWorldY = (previousSize.height / 2 - current.offsetY) / current.scale;
+
+      // If the focus point was the origin node, keep it centered
+      const originPosition = targetPosition ?? fallbackPosition;
+      const wasCenteredOnOrigin =
+        Math.abs(focusWorldX - originPosition.x) < 1 &&
+        Math.abs(focusWorldY - originPosition.y) < 1;
+
+      if (wasCenteredOnOrigin) {
+        return {
+          ...current,
+          offsetX: viewportSize.width / 2 - x * current.scale,
+          offsetY: viewportSize.height / 2 - y * current.scale,
+        };
+      }
+
+      // Otherwise, maintain the same world position
+      return {
+        ...current,
+        offsetX: viewportSize.width / 2 - focusWorldX * current.scale,
+        offsetY: viewportSize.height / 2 - focusWorldY * current.scale,
+      };
+    });
+
+    previousViewportSizeRef.current = viewportSize;
+  }, [layout, maps, viewportSize]);
 
   const activeId = hoveredId ?? selectedMap ?? null;
   const activeMap = maps.find((map) => map.id === activeId) ?? null;
@@ -292,6 +370,24 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     setHoveredId((current) => (current && current === selectedMap ? null : current));
   }, [hoveredId, selectedMap]);
 
+  // Close popover when clicking outside
+  useEffect(() => {
+    if (!popover) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setPopover(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [popover]);
+
   const canvasStyle = useMemo(
     () => ({
       width: `${Math.max(layout.width, 360)}px`,
@@ -354,11 +450,14 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 isSelected && "map-tree-node--active"
               );
 
-              const initials = map.name
-                .split(" ")
-                .map((part) => part[0])
-                .join("")
-                .slice(0, 3);
+              const getMapInitials = (name: string): string =>
+                name
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2);
+
+              const initials = getMapInitials(map.name);
 
               const handleDoubleClick = () => {
                 onSelectMap(map.id);
@@ -378,11 +477,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   onDoubleClick={handleDoubleClick}
                   aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
                 >
-                  <div className="map-tree-node__levels">
+                  <div className="map-tree-node__level">
                     {map.selectedLevel} / {map.currentLevel}
                   </div>
                   <div className="map-tree-node__icon">{initials}</div>
-                  <div className="map-tree-node__name">{map.name}</div>
                 </button>
               );
             })}
@@ -391,6 +489,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
             )}
             {popover && (
               <div
+                ref={popoverRef}
                 className="map-tree__popover"
                 style={{ left: `${popover.x}px`, top: `${popover.y}px` }}
               >
