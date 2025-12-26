@@ -65,7 +65,7 @@
   height: 78px;
   border-radius: 50%;
   border: 2px solid rgba(184, 184, 184, 0.35);
-  background: radial-gradient(circle at 35% 30%, rgba(148, 184, 184, 1.0), rgba(15, 15, 15, 1.0));
+  background: radial-gradient(circle at 35% 30%, rgb(85, 105, 105), rgba(15, 15, 15, 1.0));
   color: #e2e8f0;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -166,7 +166,7 @@
 
 .skill-tree-node--maxed {
   border-color: rgba(147, 147, 147, 0.85);
-  background: radial-gradient(circle at 40% 30%, rgb(83, 94, 109), rgb(21, 28, 41));
+  background: radial-gradient(circle at 40% 30%, rgb(53, 60, 70), rgb(21, 28, 41));
 }
 
 .skill-tree-node--active {
