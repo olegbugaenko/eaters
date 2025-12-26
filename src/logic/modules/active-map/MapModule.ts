@@ -73,6 +73,7 @@ export interface MapListEntry extends MapListEntryConfig {
   readonly selectedLevel: number;
   readonly attempts: number;
   readonly bestTimeMs: number | null;
+  readonly maxLevel: number;
 }
 
 export interface MapRunResult {
@@ -695,6 +696,7 @@ export class MapModule implements GameModule {
   }
 
   private createListEntry(map: MapListEntryConfig): MapListEntry {
+    const config = getMapConfig(map.id);
     const currentLevel = this.getHighestUnlockedLevel(map.id);
     const selectedLevel = this.getSelectedLevel(map.id);
     const attempts = this.getAttemptsForLevel(map.id, selectedLevel);
@@ -705,13 +707,15 @@ export class MapModule implements GameModule {
       selectedLevel,
       attempts,
       bestTimeMs,
+      maxLevel: config.maxLevel,
     };
   }
 
   private getHighestUnlockedLevel(mapId: MapId): number {
+    const config = getMapConfig(mapId);
+    const maxLevel = config.maxLevel;
     let level = 0;
-    const maxIterations = 100;
-    while (level < maxIterations) {
+    while (level < maxLevel) {
       const nextLevel = level + 1;
       if (!this.unlocks.isUnlocked({ type: "map", id: mapId, level: nextLevel })) {
         break;

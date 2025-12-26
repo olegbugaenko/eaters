@@ -71,6 +71,10 @@ export class UnlockService {
     // Iterative form avoids recursion overhead and repeated checks
     const level = sanitizeLevel(requestedLevel);
     const config = getMapConfig(mapId);
+    // Check maxLevel limit
+    if (level > config.maxLevel) {
+      return false;
+    }
     if (!this.areConditionsMet(config.unlockedBy)) {
       return false;
     }

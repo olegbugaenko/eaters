@@ -367,6 +367,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Increase your spell power.",
     nodePosition: { x: 0, y: -2 },
     maxLevel: 5,
+    icon: "spell_power_1.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.2 * level,
@@ -382,6 +383,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Unlock the Weaken Curse spell to sap bricks' strength and dampen their blows.",
     nodePosition: { x: 1, y: -3 },
     maxLevel: 1,
+    icon: "weaken_curse.png",
     effects: {},
     nodesRequired: { arcane_awareness: 1 },
     cost: createStoneCost(45, 1.0),
@@ -393,6 +395,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Tune the lattice into a resonant chamber, amplifying the force carried by your spells.",
     nodePosition: { x: 0, y: -3 },
     maxLevel: 10,
+    icon: "spell_power_2.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.15 * level,
@@ -408,6 +411,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Bind the lattice to desert winds, unlocking the rite to conjure devastating sand storms.",
     nodePosition: { x: 0, y: -4 },
     maxLevel: 1,
+    icon: "sandstorm.png",
     effects: {},
     nodesRequired: { arcane_amplifier: 3 },
     cost: createSandCost(100, 1.0),
@@ -419,6 +423,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Unleash darts of metal and void energy that damage targets.",
     nodePosition: { x: 1, y: -5 },
     maxLevel: 1,
+    icon: "darts.png",
     effects: {},
     nodesRequired: { sandstorm_ritual: 1 },
     cost: createResourceCost('iron', 140, 1.65),
@@ -430,6 +435,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Weave a barrier of flame that erupts outward, searing everything it brushes.",
     nodePosition: { x: 1, y: -6 },
     maxLevel: 1,
+    icon: "ring_of_fire.png",
     effects: {},
     nodesRequired: { black_darts: 1 },
     cost: createResourceCost('magma', 200, 1),
@@ -440,6 +446,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description: "Increase spell power by 12% per level.",
     nodePosition: { x: -1, y: -5 },
     maxLevel: 15,
+    icon: "spell_power_3.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.12 * level,
@@ -454,6 +461,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description: "Increase spell power by 12% per level.",
     nodePosition: { x: -1, y: -6 },
     maxLevel: 20,
+    icon: "spell_power_4.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.12 * level,
@@ -693,6 +701,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Increase the damage of your units by 1% per map levels cleared per level.",
     nodePosition: { x: -5, y: -2 },
     maxLevel: 5,
+    icon: "inspiration.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context, level),
@@ -976,6 +985,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Increase the health of your units by 1% per maximum map level cleared per level.",
     nodePosition: { x: 5, y: -2 },
     maxLevel: 5,
+    icon: "perseverance.png",
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context),

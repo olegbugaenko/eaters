@@ -20,6 +20,9 @@ const DRAG_THRESHOLD = 3;
 const MIN_SCALE = 0.6;
 const MAX_SCALE = 2.2;
 const ZOOM_SENSITIVITY = 0.0015;
+// Minimum canvas dimensions (must match CSS min-width/min-height)
+const MIN_CANVAS_WIDTH = 600;
+const MIN_CANVAS_HEIGHT = 500;
 
 interface MapTreeLayout {
   width: number;
@@ -64,8 +67,13 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
   const offsetX = TREE_MARGIN - minX * CELL_SIZE_X;
   const offsetY = TREE_MARGIN - minY * CELL_SIZE_Y;
 
-  const width = (maxX - minX) * CELL_SIZE_X + TREE_MARGIN * 2;
-  const height = (maxY - minY) * CELL_SIZE_Y + TREE_MARGIN * 2;
+  // Calculate base dimensions from node positions
+  const baseWidth = (maxX - minX) * CELL_SIZE_X + TREE_MARGIN * 2;
+  const baseHeight = (maxY - minY) * CELL_SIZE_Y + TREE_MARGIN * 2;
+  
+  // Ensure dimensions meet minimum canvas size requirements
+  const width = Math.max(baseWidth, MIN_CANVAS_WIDTH);
+  const height = Math.max(baseHeight, MIN_CANVAS_HEIGHT);
 
   // Second pass: calculate positions with offset
   const positions = new Map<MapId, { x: number; y: number }>();
@@ -119,7 +127,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   });
   const didPanRef = useRef(false);
   const [popover, setPopover] = useState<
-    | { mapId: MapId; x: number; y: number; canDecrease: boolean; canIncrease: boolean }
+    | { mapId: MapId; canDecrease: boolean; canIncrease: boolean }
     | null
   >(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
@@ -230,14 +238,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const activeMap = maps.find((map) => map.id === activeId) ?? null;
 
   const setPopoverForMap = useCallback(
-    (map: MapListEntry, event: ReactMouseEvent<HTMLButtonElement>) => {
-      const rect = viewportRef.current?.getBoundingClientRect();
-      const x = event.clientX - (rect?.left ?? 0);
-      const y = event.clientY - (rect?.top ?? 0);
+    (map: MapListEntry) => {
       setPopover({
         mapId: map.id,
-        x,
-        y,
         canDecrease: map.selectedLevel > 0,
         canIncrease: map.selectedLevel < map.currentLevel,
       });
@@ -248,12 +251,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const handleNodeClick = useCallback(
     (map: MapListEntry, event: ReactMouseEvent<HTMLButtonElement>) => {
       onSelectMap(map.id);
-      if (didPanRef.current) {
-        return;
-      }
-      setPopoverForMap(map, event);
     },
-    [onSelectMap, setPopoverForMap]
+    [onSelectMap]
   );
 
   const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -370,23 +369,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     setHoveredId((current) => (current && current === selectedMap ? null : current));
   }, [hoveredId, selectedMap]);
 
-  // Close popover when clicking outside
-  useEffect(() => {
-    if (!popover) {
-      return undefined;
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        setPopover(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [popover]);
+  // Track hover state for popover
+  const popoverHoverTimeoutRef = useRef<number | null>(null);
 
   const canvasStyle = useMemo(
     () => ({
@@ -465,68 +449,243 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 setPopover(null);
               };
 
+              // Calculate progress arcs
+              const nodeSize = 78;
+              const progressOffset = 0; // Inner radius of progress = outer radius of button (nodeSize/2)
+              const progressRadius = nodeSize / 2 + progressOffset;
+              const progressStrokeWidth = 12;
+              // SVG needs to be large enough to fit the full circle including full stroke width
+              // Outer radius = progressRadius + progressStrokeWidth
+              const svgSize = (progressRadius + progressStrokeWidth) * 2;
+              const svgCenter = svgSize / 2;
+              
+              // Calculate angles
+              // currentLevel is the highest unlocked level (0-based)
+              // If currentLevel=4, it means levels 0, 1, 2, 3 are completed (4 levels completed)
+              // Level 4 is unlocked but may not be completed yet
+              const completedLevels = map.currentLevel; // Number of completed levels
+              const totalLevels = map.maxLevel;
+              
+              // Check if map is maxed (all levels completed)
+              const isMaxed = map.currentLevel >= map.maxLevel;
+              
+              // Each level represents 1/totalLevels of the circle
+              const levelAngle = 360 / totalLevels;
+              
+              // SVG path calculations (starting from top, going clockwise)
+              const startAngle = -90; // Start from top
+              
+              let completedAngle = 0;
+              let currentLevelAngle = 0;
+              let completedEndAngle = startAngle;
+              let currentEndAngle = startAngle;
+              
+              if (isMaxed) {
+                // All levels completed - full circle (use 359.999 to avoid SVG treating 360 as 0)
+                completedAngle = 359.999;
+                completedEndAngle = startAngle + completedAngle;
+                currentEndAngle = completedEndAngle;
+              } else {
+                // Completed levels arc (opacity 1.0) - levels 0 to currentLevel-1
+                completedAngle = completedLevels * levelAngle;
+                completedEndAngle = startAngle + completedAngle;
+                
+                // Current level arc (opacity 0.75) - the level that's unlocked (currentLevel)
+                currentLevelAngle = levelAngle;
+                currentEndAngle = completedEndAngle + currentLevelAngle;
+              }
+              
+              const createArc = (start: number, end: number, radius: number, center: number) => {
+                if(end - start >= 359.999) {
+                  end = 359.999 + start;
+                }
+                const startRad = (start * Math.PI) / 180;
+                const endRad = (end * Math.PI) / 180;
+                const x1 = center + radius * Math.cos(startRad);
+                const y1 = center + radius * Math.sin(startRad);
+                const x2 = center + radius * Math.cos(endRad);
+                const y2 = center + radius * Math.sin(endRad);
+                const largeArc = end - start > 180 ? 1 : 0;
+                return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
+              };
+              // console.log('MP: ',startAngle, completedEndAngle, currentEndAngle);
               return (
-                <button
+                <div
                   key={map.id}
-                  type="button"
-                  className={nodeClasses}
-                  style={{ left: `${position.x}px`, top: `${position.y}px` }}
-                  onMouseEnter={() => setHoveredId(map.id)}
-                  onMouseLeave={() => setHoveredId((current) => (current === map.id ? null : current))}
-                  onClick={(event) => handleNodeClick(map, event)}
-                  onDoubleClick={handleDoubleClick}
-                  aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
+                  className="map-tree-node-wrapper"
+                  style={{ 
+                    left: `${position.x}px`, 
+                    top: `${position.y}px`,
+                    width: `${svgSize}px`,
+                    height: `${svgSize}px`,
+                  }}
                 >
-                  <div className="map-tree-node__level">
-                    {map.selectedLevel} / {map.currentLevel}
-                  </div>
-                  <div className="map-tree-node__icon">{initials}</div>
-                </button>
+                  <svg
+                    className="map-tree-node__progress"
+                    width={svgSize}
+                    height={svgSize}
+                    viewBox={`0 0 ${svgSize} ${svgSize}`}
+                  >
+                    {/* Background arc (remaining) - only show if not maxed */}
+                    {!isMaxed && (
+                      <path
+                        d={createArc(currentEndAngle, startAngle + 360, progressRadius + 0.5*progressStrokeWidth, svgCenter)}
+                        fill="none"
+                        stroke="#477A85"
+                        strokeWidth={progressStrokeWidth}
+                        strokeLinecap="round"
+                        opacity={0.2}
+                      />
+                    )}
+                    {/* Completed levels arc - always show if there are completed levels or if maxed */}
+                    {(completedAngle > 0 || isMaxed) && (
+                      <path
+                        d={createArc(startAngle, completedEndAngle, progressRadius + 0.5*progressStrokeWidth, svgCenter)}
+                        fill="none"
+                        stroke="#87BAC5"
+                        strokeWidth={progressStrokeWidth}
+                        strokeLinecap="round"
+                        opacity={1.0}
+                      />
+                    )}
+                    {!isMaxed && currentLevelAngle > 0 && (
+                      <path
+                        d={createArc(completedEndAngle, currentEndAngle, progressRadius + 0.5*progressStrokeWidth, svgCenter)}
+                        fill="none"
+                        stroke="#477A85"
+                        strokeWidth={progressStrokeWidth}
+                        strokeLinecap="round"
+                        opacity={0.75}
+                      />
+                    )}
+                  </svg>
+                  <button
+                    type="button"
+                    className={nodeClasses}
+                    data-map-id={map.id}
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                    onMouseEnter={() => {
+                      setHoveredId(map.id);
+                      setPopoverForMap(map);
+                      // Clear any pending close timeout
+                      if (popoverHoverTimeoutRef.current) {
+                        clearTimeout(popoverHoverTimeoutRef.current);
+                        popoverHoverTimeoutRef.current = null;
+                      }
+                    }}
+                    onMouseLeave={(event) => {
+                      setHoveredId((current) => (current === map.id ? null : current));
+                      // Check if mouse is moving to popover
+                      const relatedTarget = event.relatedTarget;
+                      if (relatedTarget && relatedTarget instanceof Node && popoverRef.current?.contains(relatedTarget)) {
+                        return; // Mouse is moving to popover, don't close
+                      }
+                      // Close popover after a small delay to allow moving to popover
+                      popoverHoverTimeoutRef.current = window.setTimeout(() => {
+                        setPopover(null);
+                        popoverHoverTimeoutRef.current = null;
+                      }, 100);
+                    }}
+                    onClick={(event) => handleNodeClick(map, event)}
+                    onDoubleClick={handleDoubleClick}
+                    aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
+                  >
+                    <div className="map-tree-node__level">
+                      {map.selectedLevel} / {map.currentLevel}
+                    </div>
+                    <div className="map-tree-node__icon">{initials}</div>
+                  </button>
+                </div>
               );
             })}
             {maps.length === 0 && (
               <div className="map-tree__empty">No maps available yet.</div>
             )}
-            {popover && (
-              <div
-                ref={popoverRef}
-                className="map-tree__popover"
-                style={{ left: `${popover.x}px`, top: `${popover.y}px` }}
-              >
-                <div className="map-tree__popover-level">Level {maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0}</div>
-                <div className="map-tree__popover-actions">
-                  <button
-                    type="button"
-                    className={classNames("button", "secondary-button", "small-button")}
-                    disabled={!popover.canDecrease}
-                    onClick={() =>
-                      onSelectLevel(
-                        popover.mapId,
-                        (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0) - 1
-                      )
+            {(() => {
+              if (!popover) {
+                return null;
+              }
+              const mapPosition = layout.positions.get(popover.mapId);
+              if (!mapPosition) {
+                return null;
+              }
+              const nodeSize = 78;
+              const nodeTop = mapPosition.y - nodeSize / 2; // Top of the node
+              // Position popover so its bottom aligns with node top
+              // We need to measure popover height, but for now use a reasonable offset
+              const popoverOffset = 8; // Gap between popover and node
+              const popoverStyle = {
+                left: `${mapPosition.x}px`,
+                bottom: `${layout.height - nodeTop + popoverOffset}px`,
+                transform: 'translateX(-50%)',
+              };
+              return (
+                <div
+                  ref={popoverRef}
+                  className="map-tree__popover"
+                  style={popoverStyle}
+                  onMouseEnter={() => {
+                    // Clear any pending close timeout
+                    if (popoverHoverTimeoutRef.current) {
+                      clearTimeout(popoverHoverTimeoutRef.current);
+                      popoverHoverTimeoutRef.current = null;
                     }
-                  >
-                    -
-                  </button>
-                  <button
-                    type="button"
-                    className={classNames("button", "secondary-button", "small-button")}
-                    disabled={!popover.canIncrease}
-                    onClick={() =>
-                      onSelectLevel(
-                        popover.mapId,
-                        (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0) + 1
-                      )
+                  }}
+                  onMouseLeave={(event) => {
+                    // Check if mouse is moving to map node
+                    const relatedTarget = event.relatedTarget;
+                    if (relatedTarget && relatedTarget instanceof Node) {
+                      const mapNode = document.querySelector(`[data-map-id="${popover.mapId}"]`);
+                      if (mapNode && (mapNode.contains(relatedTarget) || mapNode === relatedTarget)) {
+                        return; // Mouse is moving to map node, don't close
+                      }
                     }
-                  >
-                    +
+                    // Close popover when leaving it
+                    setPopover(null);
+                  }}
+                >
+                  <div className="map-tree__popover-level">
+                    Level {maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0} / {maps.find((m) => m.id === popover.mapId)?.maxLevel ?? 0}
+                  </div>
+                  <div className="map-tree__popover-actions">
+                    <button
+                      type="button"
+                      className={classNames("button", "secondary-button", "small-button")}
+                      disabled={!popover.canDecrease}
+                      onClick={() =>
+                        onSelectLevel(
+                          popover.mapId,
+                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0) - 1
+                        )
+                      }
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      className={classNames("button", "secondary-button", "small-button")}
+                      disabled={!popover.canIncrease}
+                      onClick={() =>
+                        onSelectLevel(
+                          popover.mapId,
+                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0) + 1
+                        )
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button type="button" className="button primary-button" onClick={() => onStartMap(popover.mapId)}>
+                    Start
                   </button>
                 </div>
-                <button type="button" className="button primary-button" onClick={() => onStartMap(popover.mapId)}>
-                  Start
-                </button>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
         <aside className="map-tree__details">
@@ -537,6 +696,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 <span className="map-tree__details-level">
                   Level {activeMap.selectedLevel} / {activeMap.currentLevel}
                 </span>
+              </div>
+              <div className="map-tree__details-list">
+                <span className="map-tree__details-level">
+                  Max. Level Available: {activeMap.maxLevel}
+                </span>
+                <p>Everytime you complete a level, you unlock the next level up to max level.</p>
               </div>
               <dl className="map-tree__details-list">
                 <div>
