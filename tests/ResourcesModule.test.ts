@@ -101,13 +101,13 @@ describe("ResourcesModule", () => {
     module.startRun();
     mapStats = {
       trainingGrounds: {
-        0: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null },
       },
       foundations: {
-        0: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null },
       },
       initial: {
-        0: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null },
       },
     };
     module.finishRun();

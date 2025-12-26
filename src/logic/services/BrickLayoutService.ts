@@ -5,8 +5,8 @@ import { SceneVector2 } from "./SceneObjectManager";
 const TAU = Math.PI * 2;
 
 const sanitizeBrickLevel = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    return 0;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 1) {
+    return 1;
   }
   return Math.floor(value);
 };

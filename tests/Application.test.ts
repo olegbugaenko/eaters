@@ -33,7 +33,7 @@ describe("Application", () => {
         [level: number]: { success: number; failure: number; bestTimeMs: number | null };
       };
     };
-    assert.strictEqual(stats.trainingGrounds?.[0]?.failure, 1);
+    assert.strictEqual(stats.trainingGrounds?.[1]?.failure, 1);
 
     app.restartCurrentMap();
     completeRun(true);

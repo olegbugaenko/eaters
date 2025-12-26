@@ -604,7 +604,7 @@ describe("Map unlocking", () => {
     const initialList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
     assert.strictEqual(initialList.length, 1);
     assert.strictEqual(initialList[0]!.id, "trainingGrounds");
-    assert.strictEqual(initialList[0]!.currentLevel, 0);
+    assert.strictEqual(initialList[0]!.currentLevel, 1);
     assert.strictEqual(initialList[0]!.attempts, 0);
     assert.strictEqual(initialList[0]!.bestTimeMs, null);
 
@@ -616,7 +616,7 @@ describe("Map unlocking", () => {
     assert(afterTrainingIds.includes("foundations"));
 
     const foundationsEntry = afterTraining.find((entry) => entry.id === "foundations");
-    assert.strictEqual(foundationsEntry?.currentLevel, 0);
+    assert.strictEqual(foundationsEntry?.currentLevel, 1);
     assert.strictEqual(foundationsEntry?.attempts, 0);
     assert.strictEqual(foundationsEntry?.bestTimeMs, null);
 
@@ -631,7 +631,7 @@ describe("Map unlocking", () => {
     assert(updatedFoundations, "foundations should be present after a successful run");
 
     const initialEntry = updatedList.find((entry) => entry.id === "initial");
-    assert.strictEqual(initialEntry?.currentLevel, 0);
+    assert.strictEqual(initialEntry?.currentLevel, 1);
     assert.strictEqual(initialEntry?.attempts, 0);
     assert.strictEqual(initialEntry?.bestTimeMs, null);
   });
@@ -695,13 +695,13 @@ describe("Map unlocking", () => {
     });
     mapModuleRef = maps;
 
-    maps.recordRunResult({ mapId: "foundations", level: 0, success: true });
-    maps.recordRunResult({ mapId: "foundations", level: 0, success: false });
+    maps.recordRunResult({ mapId: "foundations", level: 1, success: true });
+    maps.recordRunResult({ mapId: "foundations", level: 1, success: false });
 
     const stats = maps.getMapStats();
-    assert.strictEqual(stats.foundations?.[0]?.success, 1);
-    assert.strictEqual(stats.foundations?.[0]?.failure, 1);
-    assert.strictEqual(stats.foundations?.[0]?.bestTimeMs, null);
+    assert.strictEqual(stats.foundations?.[1]?.success, 1);
+    assert.strictEqual(stats.foundations?.[1]?.failure, 1);
+    assert.strictEqual(stats.foundations?.[1]?.bestTimeMs, null);
 
     const saved = maps.save() as { stats?: MapStats };
     assert(saved.stats);
