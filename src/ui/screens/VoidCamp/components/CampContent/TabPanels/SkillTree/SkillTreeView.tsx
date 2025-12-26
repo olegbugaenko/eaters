@@ -537,6 +537,12 @@ export const SkillTreeView: React.FC = () => {
         return;
       }
 
+      // Don't update hover if cursor is over a button (button's onMouseEnter handles it)
+      const target = event.target as HTMLElement;
+      if (target.closest("button.skill-tree-node")) {
+        return;
+      }
+
       const viewport = viewportRef.current;
       if (!viewport) {
         return;
@@ -800,7 +806,10 @@ export const SkillTreeView: React.FC = () => {
                 type="button"
                 className={nodeClasses}
                 style={{ left: `${position.x}px`, top: `${position.y}px` }}
-                onMouseEnter={() => setPointerHoveredId(node.id)}
+                onMouseEnter={() => {
+                  console.log("mouse enter", node.id);
+                  setPointerHoveredId(node.id)
+                }}
                 onMouseLeave={() =>
                   setPointerHoveredId((current) =>
                     current === node.id ? null : current
