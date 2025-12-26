@@ -157,6 +157,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Teach your swarms to sift shattered bricks with purpose, increasing stone drawn from debris.",
     nodePosition: { x: 0, y: 1 },
     maxLevel: 3,
+    icon: "resource_gain_1.png",
     effects: {
       brick_rewards: {
         multiplier: (level) => 1 + 0.25 * level,
@@ -172,6 +173,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Bind mindless servitors to repeat simple rites for you, enabling basic ritual automation.",
     nodePosition: { x: -1, y: 2 },
     maxLevel: 1,
+    icon: "automation_1.png",
     effects: {},
     nodesRequired: { stone_lore: 1 },
     cost: createStoneCost(10, 1),
@@ -183,6 +185,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Engrave restart sigils—summoning resumes on its own when the weave collapses.",
     nodePosition: { x: -1, y: 3 },
     maxLevel: 1,
+    icon: "automation_2.png",
     effects: {},
     nodesRequired: { stone_automatons: 1 },
     cost: createStoneCost(500, 1),
@@ -194,6 +197,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Found a guild to coordinate permanent worksites, unlocking dedicated building plans.",
     nodePosition: { x: -1, y: 4 },
     maxLevel: 1,
+    icon: "constructions_1.png",
     effects: {},
     nodesRequired: { autorestart_rituals: 1 },
     cost: createResourceCost("copper", 50, 1),
@@ -205,6 +209,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Codify advanced methods for large works—foundation for superior structures.",
     nodePosition: { x: -1, y: 5 },
     maxLevel: 1,
+    icon: "constructions_2.png",
     effects: {},
     nodesRequired: { construction_guild: 1 },
     cost: createResourceCost("copper", 5000, 1),
@@ -216,6 +221,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Improve your crafting speed.",
     nodePosition: { x: -1, y: 6 },
     maxLevel: 20,
+    icon: "crafting_speed.png",
     effects: {
       "crafting_speed_mult": {
         multiplier: (level) => 1 + 0.125 * level,
@@ -231,6 +237,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Account every shard and shipment; precision cuts future building costs.",
     nodePosition: { x: -2, y: 5 },
     maxLevel: 80,
+    icon: "constructions_ledger.png",
     effects: {
       building_cost_multiplier: {
         multiplier: (level) => Math.pow(0.95, level),
@@ -245,6 +252,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Assign tireless haulers so rubble never settles—more stone per shattered brick.",
     nodePosition: { x: 0, y: 2 },
+    icon: "resource_gain_2.png",
     maxLevel: 5,
     effects: {
       brick_rewards: {
@@ -261,6 +269,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Refine sorting rites; your gatherers pull richer fragments from the wreckage.",
     nodePosition: { x: 0, y: 3 },
     maxLevel: 15,
+    icon: "resource_gain_3.png",
     effects: {
       brick_rewards: {
         multiplier: (level) => 1 + 0.08 * level,
@@ -276,6 +285,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Further hone refinement patterns to squeeze even more yield from debris.",
     nodePosition: { x: 0, y: 5 },
     maxLevel: 8,
+    icon: "resource_gain_4.png",
     effects: {
       brick_rewards: {
         multiplier: (level) => 1 + 0.125 * level,
@@ -291,6 +301,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Imprint a structural chord into your entities, enabling attachment of organs and parts.",
     nodePosition: { x: 1, y: 2 },
     maxLevel: 1,
+    icon: "chorde.png",
     effects: {},
     nodesRequired: { stone_lore: 3 },
     cost: createSandCost(150, 1),
@@ -302,6 +313,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Seed your chord lattice with signal glands so your beasts can coordinate through scent and surge.",
     nodePosition: { x: 2, y: 3 },
     maxLevel: 1,
+    icon: "pheromones.png",
     effects: {},
     nodesRequired: { void_modules: 1 },
     cost: createResourceCost("organics", 200, 1),
@@ -314,6 +326,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 2, y: 4 },
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
+    icon: "ice_mastery.png",
     effects: {},
     cost: createResourceCost("ice", 400, 1),
   },
@@ -325,6 +338,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 3, y: 3 },
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
+    icon: "fire_mastery.png",
     effects: {
     },
     cost: createResourceCost("magma", 400, 1),
@@ -353,6 +367,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Increase your spell power.",
     nodePosition: { x: 0, y: -2 },
     maxLevel: 5,
+    icon: "spell_power_1.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.2 * level,
@@ -368,6 +383,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Unlock the Weaken Curse spell to sap bricks' strength and dampen their blows.",
     nodePosition: { x: 1, y: -3 },
     maxLevel: 1,
+    icon: "weaken_curse.png",
     effects: {},
     nodesRequired: { arcane_awareness: 1 },
     cost: createStoneCost(45, 1.0),
@@ -379,6 +395,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Tune the lattice into a resonant chamber, amplifying the force carried by your spells.",
     nodePosition: { x: 0, y: -3 },
     maxLevel: 10,
+    icon: "spell_power_2.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.15 * level,
@@ -394,6 +411,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Bind the lattice to desert winds, unlocking the rite to conjure devastating sand storms.",
     nodePosition: { x: 0, y: -4 },
     maxLevel: 1,
+    icon: "sandstorm.png",
     effects: {},
     nodesRequired: { arcane_amplifier: 3 },
     cost: createSandCost(100, 1.0),
@@ -405,6 +423,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Unleash darts of metal and void energy that damage targets.",
     nodePosition: { x: 1, y: -5 },
     maxLevel: 1,
+    icon: "darts.png",
     effects: {},
     nodesRequired: { sandstorm_ritual: 1 },
     cost: createResourceCost('iron', 140, 1.65),
@@ -416,6 +435,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Weave a barrier of flame that erupts outward, searing everything it brushes.",
     nodePosition: { x: 1, y: -6 },
     maxLevel: 1,
+    icon: "ring_of_fire.png",
     effects: {},
     nodesRequired: { black_darts: 1 },
     cost: createResourceCost('magma', 200, 1),
@@ -426,6 +446,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description: "Increase spell power by 12% per level.",
     nodePosition: { x: -1, y: -5 },
     maxLevel: 15,
+    icon: "spell_power_3.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.12 * level,
@@ -440,6 +461,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description: "Increase spell power by 12% per level.",
     nodePosition: { x: -1, y: -6 },
     maxLevel: 20,
+    icon: "spell_power_4.png",
     effects: {
       spell_power: {
         multiplier: (level) => 1 + 0.12 * level,
@@ -679,6 +701,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Increase the damage of your units by 1% per map levels cleared per level.",
     nodePosition: { x: -5, y: -2 },
     maxLevel: 5,
+    icon: "inspiration.png",
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context, level),
@@ -962,6 +985,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Increase the health of your units by 1% per maximum map level cleared per level.",
     nodePosition: { x: 5, y: -2 },
     maxLevel: 5,
+    icon: "perseverance.png",
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context),
@@ -1008,6 +1032,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description: "Pulp organics into disciplined sheets fit for resilient schematics.",
     nodePosition: { x: 7, y: 0 },
     maxLevel: 1,
+    icon: "paper_craft.png",
     effects: {},
     nodesRequired: { vitality3: 5 },
     cost: createDualResourceCost('organics', 120, 1, 'wood', 80, 1),

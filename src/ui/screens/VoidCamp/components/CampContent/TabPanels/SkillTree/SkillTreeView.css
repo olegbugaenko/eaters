@@ -65,7 +65,7 @@
   height: 78px;
   border-radius: 50%;
   border: 2px solid rgba(184, 184, 184, 0.35);
-  background: radial-gradient(circle at 35% 30%, rgba(148, 184, 184, 0.5), rgba(15, 15, 15, 1.0));
+  background: radial-gradient(circle at 35% 30%, rgb(85, 105, 105), rgba(15, 15, 15, 1.0));
   color: #e2e8f0;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -79,7 +79,6 @@
 
 .skill-tree-node--inactive {
   cursor: default;
-  opacity: 0.9;
 }
 
 .skill-tree-node__level {
@@ -111,8 +110,8 @@
 }
 
 .skill-tree-node--locked {
-  border-color: rgba(250, 204, 21, 0.65);
-  background: radial-gradient(circle at 30% 30%, rgba(254, 240, 138, 0.22), rgba(59, 7, 24, 0.6));
+  border-color: rgba(117, 96, 11, 0.65);
+  background: radial-gradient(circle at 30% 30%, rgb(71, 68, 39), rgb(43, 5, 18));
   color: rgba(252, 211, 77, 0.85);
 }
 
@@ -167,7 +166,7 @@
 
 .skill-tree-node--maxed {
   border-color: rgba(147, 147, 147, 0.85);
-  background: radial-gradient(circle at 40% 30%, rgba(191, 219, 254, 0.35), rgba(30, 41, 59, 0.9));
+  background: radial-gradient(circle at 40% 30%, rgb(53, 60, 70), rgb(21, 28, 41));
 }
 
 .skill-tree-node--active {
