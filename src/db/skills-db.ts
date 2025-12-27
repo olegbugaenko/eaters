@@ -240,7 +240,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "constructions_ledger.png",
     effects: {
       building_cost_multiplier: {
-        multiplier: (level) => Math.pow(0.95, level),
+        multiplier: (level) => Math.pow(0.97, level),
       },
     },
     nodesRequired: { construction_guild: 1 },
@@ -846,7 +846,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         income: (level) => 6 * level,
       },
     },
-    nodesRequired: { penetration: 5 },
+    nodesRequired: { penetration2: 5 },
     cost: createResourceCost('magma', 250, 1.5),
   },
   // right
@@ -1044,6 +1044,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Document repeatable mana experiments; each insight slightly accelerates regen.",
     nodePosition: { x: -3, y: -6 },
     maxLevel: 80,
+    icon: "mana_regen_4.png",
     effects: {
       mana_regen: {
         multiplier: (level) => 1 + 0.08*level,
@@ -1081,7 +1082,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         multiplier: (level) => 1 + 0.08 * level,
       },
     },
-    nodesRequired: { restoration: 5 },
+    nodesRequired: { restoration: 3 },
     cost: createResourceCost('tools', 8, 1.5),
   },
 };

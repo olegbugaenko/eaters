@@ -58,11 +58,40 @@
   stroke-dasharray: 14 10;
 }
 
+.skill-tree__link-counter {
+  pointer-events: none;
+}
+
+.skill-tree__link-counter-bg {
+  fill: rgba(15, 23, 42, 0.95);
+  stroke-width: 2;
+}
+
+.skill-tree__link-counter-bg--fulfilled {
+  stroke: rgba(203, 213, 225, 0.85);
+}
+
+.skill-tree__link-counter-bg--locked {
+  stroke: rgba(250, 204, 21, 0.85);
+}
+
+.skill-tree__link-counter-text {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  fill: #e2e8f0;
+  pointer-events: none;
+  user-select: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .skill-tree-node {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 78px;
-  height: 78px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   border: 2px solid rgba(184, 184, 184, 0.35);
   background: radial-gradient(circle at 35% 30%, rgb(85, 105, 105), rgba(15, 15, 15, 1.0));
@@ -102,8 +131,8 @@
 }
 
 .skill-tree-node__image {
-  width: 64px;
-  height: 64px;
+  width: 58px;
+  height: 58px;
   object-fit: contain;
   filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
   pointer-events: none;

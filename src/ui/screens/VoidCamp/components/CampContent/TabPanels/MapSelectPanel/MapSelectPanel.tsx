@@ -28,7 +28,7 @@ interface MapTreeLayout {
   width: number;
   height: number;
   positions: Map<MapId, { x: number; y: number }>;
-  edges: { id: string; from: MapId; to: MapId }[];
+  edges: { id: string; from: MapId; to: MapId; currentLevel: number; requiredLevel: number; fulfilled: boolean }[];
 }
 
 interface MapSelectPanelProps {
@@ -46,7 +46,8 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
   }
 
   const mapSet = new Set(maps.map((map) => map.id));
-  const edges: { id: string; from: MapId; to: MapId }[] = [];
+  const mapById = new Map(maps.map((map) => [map.id, map]));
+  const edges: { id: string; from: MapId; to: MapId; currentLevel: number; requiredLevel: number; fulfilled: boolean }[] = [];
 
   let minX = Infinity;
   let maxX = -Infinity;
@@ -88,11 +89,18 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
     // Build edges from mapsRequired
     if (config.mapsRequired) {
       Object.entries(config.mapsRequired).forEach(([requiredMapId, requiredLevel]) => {
-        if (mapSet.has(requiredMapId as MapId) && requiredLevel > 0) {
+        const requiredId = requiredMapId as MapId;
+        if (mapSet.has(requiredId) && requiredLevel && requiredLevel > 0) {
+          const requiredMap = mapById.get(requiredId);
+          const clearedLevels = requiredMap?.clearedLevels ?? 0;
+          const fulfilled = clearedLevels >= requiredLevel;
           edges.push({
-            id: `${requiredMapId}->${map.id}`,
-            from: requiredMapId as MapId,
+            id: `${requiredId}->${map.id}`,
+            from: requiredId,
             to: map.id,
+            currentLevel: clearedLevels, // clearedLevels is the number of completed levels
+            requiredLevel,
+            fulfilled,
           });
         }
       });
@@ -235,6 +243,17 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     previousViewportSizeRef.current = viewportSize;
   }, [layout, maps, viewportSize]);
 
+  // Clear hoveredId when popover closes (only if it was set by the popover)
+  useEffect(() => {
+    if (popover) {
+      previousPopoverMapIdRef.current = popover.mapId;
+    } else if (previousPopoverMapIdRef.current && hoveredId === previousPopoverMapIdRef.current) {
+      // Only clear if hoveredId matches the closed popover's mapId
+      setHoveredId(null);
+      previousPopoverMapIdRef.current = null;
+    }
+  }, [popover, hoveredId]);
+
   const activeId = hoveredId ?? selectedMap ?? null;
   const activeMap = (activeId ? mapById.get(activeId) : undefined) ?? null;
 
@@ -372,6 +391,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
 
   // Track hover state for popover
   const popoverHoverTimeoutRef = useRef<number | null>(null);
+  const previousPopoverMapIdRef = useRef<MapId | null>(null);
 
   const canvasStyle = useMemo(
     () => ({
@@ -412,15 +432,40 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 if (!from || !to) {
                   return null;
                 }
+                // Calculate midpoint for counter label
+                const midX = (from.x + to.x) / 2;
+                const midY = (from.y + to.y) / 2;
+                
                 return (
-                  <line
-                    key={edge.id}
-                    x1={from.x}
-                    y1={from.y}
-                    x2={to.x}
-                    y2={to.y}
-                    className="map-tree__link"
-                  />
+                  <g key={edge.id}>
+                    <line
+                      x1={from.x}
+                      y1={from.y}
+                      x2={to.x}
+                      y2={to.y}
+                      className={edge.fulfilled ? "map-tree__link map-tree__link--fulfilled" : "map-tree__link map-tree__link--locked"}
+                    />
+                    <g className="map-tree__link-counter">
+                      <circle
+                        cx={midX}
+                        cy={midY}
+                        r="16"
+                        className={edge.fulfilled ? "map-tree__link-counter-bg map-tree__link-counter-bg--fulfilled" : "map-tree__link-counter-bg map-tree__link-counter-bg--locked"}
+                        shapeRendering="crispEdges"
+                      />
+                      <text
+                        x={midX}
+                        y={midY}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        className="map-tree__link-counter-text"
+                        textRendering="optimizeLegibility"
+                        shapeRendering="crispEdges"
+                      >
+                        {edge.currentLevel}/{edge.requiredLevel}
+                      </text>
+                    </g>
+                  </g>
                 );
               })}
             </svg>
@@ -432,7 +477,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               const isSelected = map.id === selectedMap;
               const nodeClasses = classNames(
                 "map-tree-node",
-                isSelected && "map-tree-node--active"
+                isSelected && "map-tree-node--active",
+                !map.selectable && "map-tree-node--locked"
               );
 
               const getMapInitials = (name: string): string =>
@@ -451,7 +497,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               };
 
               // Calculate progress arcs
-              const nodeSize = 78;
+              const nodeSize = 70; // Reduced by 10%
               const progressOffset = 0; // Inner radius of progress = outer radius of button (nodeSize/2)
               const progressRadius = nodeSize / 2 + progressOffset;
               const progressStrokeWidth = 12;
@@ -592,6 +638,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         popoverHoverTimeoutRef.current = null;
                       }, 100);
                     }}
+                    disabled={!map.selectable}
                     onClick={(event) => handleNodeClick(map, event)}
                     onDoubleClick={handleDoubleClick}
                     aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
@@ -635,6 +682,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   className="map-tree__popover"
                   style={popoverStyle}
                   onMouseEnter={() => {
+                    // Set hoveredId to show map details in sidebar
+                    setHoveredId(popover.mapId);
                     // Clear any pending close timeout
                     if (popoverHoverTimeoutRef.current) {
                       clearTimeout(popoverHoverTimeoutRef.current);
@@ -659,6 +708,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     setPopover(null);
                   }}
                 >
+                  <div className="map-tree__popover-name">{popoverMap.name}</div>
                   <div className="map-tree__popover-level">
                     Level {popoverMap.selectedLevel} / {popoverMap.currentLevel}
                   </div>
