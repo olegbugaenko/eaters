@@ -11,6 +11,7 @@ import {
   MAP_LIST_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
+  MAP_LAST_PLAYED_BRIDGE_KEY,
 } from "../src/logic/modules/active-map/MapModule";
 import type {
   MapListEntry,
@@ -25,6 +26,7 @@ import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
 import { UnlockService } from "../src/logic/services/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/UnitDesignModule";
 import { getMapConfig } from "../src/db/maps-db";
+import { MapId } from "../src/db/maps-db";
 import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
 
 const createUnitDesignerStub = (): UnitDesignModule => {
@@ -602,11 +604,17 @@ describe("Map unlocking", () => {
     maps.initialize();
 
     const initialList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
-    assert.strictEqual(initialList.length, 1);
-    assert.strictEqual(initialList[0]!.id, "trainingGrounds");
-    assert.strictEqual(initialList[0]!.currentLevel, 1);
-    assert.strictEqual(initialList[0]!.attempts, 0);
-    assert.strictEqual(initialList[0]!.bestTimeMs, null);
+    const trainingEntry = initialList.find((entry) => entry.id === "trainingGrounds");
+    const foundationEntry = initialList.find((entry) => entry.id === "foundations");
+    assert(trainingEntry, "trainingGrounds should always be visible");
+    assert(foundationEntry, "foundations should be visible as a locked prerequisite");
+    assert.strictEqual(trainingEntry?.currentLevel, 1);
+    assert.strictEqual(trainingEntry?.attempts, 0);
+    assert.strictEqual(trainingEntry?.bestTimeMs, null);
+    assert.strictEqual(trainingEntry?.selectable, true);
+    assert.strictEqual(foundationEntry?.selectable, false);
+    assert.strictEqual(foundationEntry?.currentLevel, 0);
+    assert.strictEqual(foundationEntry?.selectedLevel, 0);
 
     maps.recordRunResult({ mapId: "trainingGrounds", success: true });
 
@@ -630,10 +638,10 @@ describe("Map unlocking", () => {
     const updatedFoundations = updatedList.find((entry) => entry.id === "foundations");
     assert(updatedFoundations, "foundations should be present after a successful run");
 
-    const initialEntry = updatedList.find((entry) => entry.id === "initial");
-    assert.strictEqual(initialEntry?.currentLevel, 1);
-    assert.strictEqual(initialEntry?.attempts, 0);
-    assert.strictEqual(initialEntry?.bestTimeMs, null);
+      const initialEntry = updatedList.find((entry) => entry.id === "initial");
+      assert.strictEqual(initialEntry?.currentLevel, 1);
+      assert.strictEqual(initialEntry?.attempts, 0);
+      assert.strictEqual(initialEntry?.bestTimeMs, null);
   });
 
   test("run results are stored in map stats", () => {
@@ -708,6 +716,108 @@ describe("Map unlocking", () => {
     assert.strictEqual(saved.stats?.foundations?.[0]?.success, 1);
     assert.strictEqual(saved.stats?.foundations?.[0]?.failure, 1);
     assert.strictEqual(saved.stats?.foundations?.[0]?.bestTimeMs, null);
+  });
+});
+
+describe("Last played map tracking", () => {
+  test("records last played map and restores on load", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const runState = new MapRunState();
+    const bonuses = createBonuses();
+    const bricks = { setBricks: () => {} } as unknown as BricksModule;
+    const playerUnits = {
+      prepareForMap: () => {},
+      setUnits: () => {},
+    } as unknown as PlayerUnitsModule;
+    const necromancer = {
+      configureForMap: () => {},
+      endCurrentMap: () => {},
+      pauseMap: () => {},
+      resumeMap: () => {},
+    } as unknown as NecromancerModule;
+    const resources = {
+      startRun: () => {},
+      cancelRun: () => {},
+    } as const;
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      runState,
+      bonuses,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources,
+      unlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
+      getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
+    });
+    mapModuleRef = maps;
+
+    maps.initialize();
+    // Start with the default training map
+    maps.restartSelectedMap();
+    maps.recordRunResult({ success: true, durationMs: 5000 });
+
+    // Unlock and play Foundations
+    maps.selectMap("foundations");
+    maps.restartSelectedMap();
+    maps.recordRunResult({ success: true, durationMs: 4200 });
+
+    const lastPlayed = bridge.getValue<{ mapId: MapId; level: number }>(
+      MAP_LAST_PLAYED_BRIDGE_KEY
+    );
+    assert.deepStrictEqual(lastPlayed, { mapId: "foundations", level: 1 });
+
+    const saved = maps.save();
+
+    const nextBridge = new DataBridge();
+    const nextRunState = new MapRunState();
+    const nextScene = new SceneObjectManager();
+    const nextBonuses = createBonuses();
+    const nextResources = {
+      startRun: () => {},
+      cancelRun: () => {},
+    } as const;
+    let restoredModuleRef: MapModule | null = null;
+    const nextUnlocks = new UnlockService({
+      getMapStats: () => restoredModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const restoredMaps = new MapModule({
+      scene: nextScene,
+      bridge: nextBridge,
+      runState: nextRunState,
+      bonuses: nextBonuses,
+      bricks,
+      playerUnits,
+      necromancer,
+      resources: nextResources,
+      unlocks: nextUnlocks,
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
+      getSkillLevel: () => 0,
+      onRunCompleted: () => undefined,
+    });
+    restoredModuleRef = restoredMaps;
+
+    restoredMaps.load(saved);
+    restoredMaps.initialize();
+
+    const restoredLastPlayed = nextBridge.getValue<{ mapId: MapId; level: number }>(
+      MAP_LAST_PLAYED_BRIDGE_KEY
+    );
+    assert.deepStrictEqual(restoredLastPlayed, { mapId: "foundations", level: 1 });
   });
 });
 

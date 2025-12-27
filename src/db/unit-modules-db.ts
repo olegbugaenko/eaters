@@ -2,6 +2,10 @@ import { ResourceAmount } from "./resources-db";
 import type { MapId } from "./maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "../types/unlocks";
+import { FILL_TYPES } from "../logic/services/SceneObjectManager";
+import type { SceneFill } from "../logic/services/SceneObjectManager";
+import type { BulletTailConfig, BulletTailEmitterConfig } from "./bullets-db";
+import type { SpellProjectileRingTrailConfig } from "./spells-db";
 
 export const UNIT_MODULE_IDS = [
   "magnet",
@@ -15,11 +19,24 @@ export const UNIT_MODULE_IDS = [
   "fireballOrgan",
   "burningTail",
   "freezingTail",
+  "tailNeedles",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
 
 export type UnitModuleBonusType = "multiplier" | "percent";
+
+export interface UnitModuleProjectileVisualConfig {
+  readonly radius: number;
+  readonly speed: number;
+  readonly lifetimeMs: number;
+  readonly fill: SceneFill;
+  readonly tail?: BulletTailConfig;
+  readonly tailEmitter?: BulletTailEmitterConfig;
+  readonly ringTrail?: SpellProjectileRingTrailConfig;
+  readonly shape?: "circle" | "triangle";
+  readonly hitRadius?: number;
+}
 
 export interface UnitModuleConfig {
   readonly id: UnitModuleId;
@@ -42,6 +59,11 @@ export interface UnitModuleConfig {
     readonly fireballExplosionRadius?: number;
     readonly fireballSelfDamagePercent?: number;
     readonly fireballMaxDistance?: number;
+    readonly lateralProjectilesPerSide?: number;
+    readonly lateralProjectileSpacing?: number;
+    readonly lateralProjectileRange?: number;
+    readonly lateralProjectileHitRadius?: number;
+    readonly lateralProjectileVisual?: UnitModuleProjectileVisualConfig;
   };
 }
 
@@ -208,6 +230,79 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseCost: { ice: 300, sand: 300 },
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
     meta: { areaRadius: 30 },
+  },
+  tailNeedles: {
+    id: "tailNeedles",
+    name: "Chord Needles",
+    description:
+      "Socket barbed quills into the chord’s tip so every strike unleashes sideways volleys of piercing shards.",
+    bonusLabel: "Side projectile damage",
+    bonusType: "multiplier",
+    baseBonusValue: 0.45,
+    bonusPerLevel: 0.025,
+    manaCostMultiplier: 2.4,
+    sanityCost: 0,
+    baseCost: { iron: 200 },
+    unlockedBy: [{ type: "skill", id: "tail_spines", level: 1 }],
+    meta: {
+      lateralProjectilesPerSide: 3,
+      lateralProjectileSpacing: 18,
+      lateralProjectileRange: 820,
+      lateralProjectileHitRadius: 12,
+      lateralProjectileVisual: {
+        radius: 4,
+        speed: 340,
+        lifetimeMs: 3800,
+        fill: {
+          fillType: FILL_TYPES.RADIAL_GRADIENT,
+          start: { x: 0, y: 0 },
+          end: 6,
+          stops: [
+            { offset: 0, color: { r: 0.85, g: 0.9, b: 0.96, a: 0.55 } },
+            { offset: 0.42, color: { r: 0.6, g: 0.74, b: 0.92, a: 0.4 } },
+            { offset: 1, color: { r: 0.35, g: 0.46, b: 0.7, a: 0 } },
+          ],
+        },
+        tail: {
+          lengthMultiplier: 3.4,
+          widthMultiplier: 1.25,
+          startColor: { r: 0.48, g: 0.62, b: 0.85, a: 0.55 },
+          endColor: { r: 0.32, g: 0.38, b: 0.62, a: 0 },
+        },
+        /*tailEmitter: {
+          particlesPerSecond: 48,
+          particleLifetimeMs: 900,
+          fadeStartMs: 260,
+          baseSpeed: 0.12,
+          speedVariation: 0.09,
+          sizeRange: { min: 4.5, max: 8.2 },
+          spread: Math.PI / 7,
+          offset: { x: -1, y: 0 },
+          color: { r: 0.7, g: 0.82, b: 1, a: 0.07 },
+          fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            stops: [
+              { offset: 0, color: { r: 0.78, g: 0.86, b: 0.95, a: 0.12 } },
+              { offset: 1, color: { r: 0.7, g: 0.88, b: 1, a: 0 } },
+            ],
+          },
+          maxParticles: 240,
+        },*/
+        ringTrail: {
+          spawnIntervalMs: 60,
+          lifetimeMs: 820,
+          startRadius: 5,
+          endRadius: 26,
+          startAlpha: 0.065,
+          endAlpha: 0,
+          innerStop: 0.46,
+          outerStop: 0.76,
+          color: { r: 0.5, g: 0.7, b: 0.9, a: 0.08 },
+        },
+        shape: "triangle",
+        hitRadius: 12,
+      },
+    },
   },
 };
 

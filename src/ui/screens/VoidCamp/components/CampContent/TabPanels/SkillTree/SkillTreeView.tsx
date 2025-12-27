@@ -839,8 +839,7 @@ export const SkillTreeView: React.FC = () => {
                 className={nodeClasses}
                 style={{ left: `${position.x}px`, top: `${position.y}px` }}
                 onMouseEnter={() => {
-                  console.log("mouse enter", node.id);
-                  setPointerHoveredId(node.id)
+                  setPointerHoveredId(node.id);
                 }}
                 onMouseLeave={() =>
                   setPointerHoveredId((current) =>

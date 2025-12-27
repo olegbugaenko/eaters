@@ -60,6 +60,8 @@ import type { StatisticsTracker } from "../../shared/StatisticsModule";
 import { UnitStatisticsReporter } from "./UnitStatisticsReporter";
 import { UnitFactory, UnitCreationData } from "./UnitFactory";
 import { UnitRuntimeController } from "./UnitRuntimeController";
+import { UnitProjectileController } from "./UnitProjectileController";
+import { spawnTailNeedleVolley } from "./TailNeedleVolley";
 import type { PlayerUnitState } from "./UnitTypes";
 import {
   ATTACK_DISTANCE_EPSILON,
@@ -147,6 +149,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly statistics?: StatisticsTracker;
   private readonly unitFactory: UnitFactory;
   private readonly runtimeController: UnitRuntimeController;
+  private readonly projectiles: UnitProjectileController;
   private readonly runState: MapRunState;
 
   private units = new Map<string, PlayerUnitState>();
@@ -229,6 +232,11 @@ export class PlayerUnitsModule implements GameModule {
       getDesignTargetingMode: this.getDesignTargetingMode,
     });
 
+    this.projectiles = new UnitProjectileController({
+      scene: this.scene,
+      bricks: this.bricks,
+    });
+
     this.runtimeController = new UnitRuntimeController({
       scene: this.scene,
       movement: this.movement,
@@ -236,6 +244,7 @@ export class PlayerUnitsModule implements GameModule {
       abilities: this.abilities,
       statistics: this.statistics,
       explosions: this.explosions,
+      projectiles: this.projectiles,
       getDesignTargetingMode: this.getDesignTargetingMode,
       syncUnitTargetingMode: (unit) => this.syncUnitTargetingMode(unit),
       removeUnit: (unit) => this.removeUnit(unit),
@@ -278,6 +287,7 @@ export class PlayerUnitsModule implements GameModule {
   public reset(): void {
     this.unitBlueprints.clear();
     this.pushBlueprintStats();
+    this.projectiles.clear();
     this.applyUnits([]);
   }
 
@@ -296,6 +306,7 @@ export class PlayerUnitsModule implements GameModule {
   public prepareForMap(): void {
     this.unitBlueprints = this.computeBlueprintStats();
     this.pushBlueprintStats();
+    this.projectiles.clear();
     // Reset per-run ability state (e.g., mending heal charges)
     this.abilities.resetRun();
   }
@@ -305,9 +316,6 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
     this.abilities.update(deltaMs);
-    if (this.unitOrder.length === 0) {
-      return;
-    }
 
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
     const result = this.runtimeController.updateUnits(this.unitOrder, deltaSeconds);
@@ -315,6 +323,11 @@ export class PlayerUnitsModule implements GameModule {
     if (result.statsChanged) {
       this.pushStats();
     }
+  }
+
+  public cleanupExpired(): void {
+    // Clean up expired projectiles and rings that accumulated while tab was inactive
+    this.projectiles.cleanupExpired();
   }
 
   public getUnitPositionIfAlive = (unitId: string): SceneVector2 | null => {
@@ -994,6 +1007,14 @@ export class PlayerUnitsModule implements GameModule {
         });
       }
     }
+
+    spawnTailNeedleVolley({
+      unit,
+      attackDirection: direction,
+      inflictedDamage,
+      totalDamage,
+      projectiles: this.projectiles,
+    });
 
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;

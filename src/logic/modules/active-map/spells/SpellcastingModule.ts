@@ -208,6 +208,15 @@ export class SpellcastingModule implements GameModule {
     }
   }
 
+  public cleanupExpired(): void {
+    // Clean up expired spell effects (projectiles, AOE, storms, etc.)
+    this.behaviorRegistry.getAllBehaviors().forEach((behavior) => {
+      if (typeof behavior.cleanupExpired === "function") {
+        behavior.cleanupExpired();
+      }
+    });
+  }
+
   public hasResourcesForAnySpell(): boolean {
     if (!this.necromancer.isMapActive()) {
       return false;

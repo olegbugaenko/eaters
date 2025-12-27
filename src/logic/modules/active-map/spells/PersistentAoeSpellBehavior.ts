@@ -63,6 +63,7 @@ interface PersistentAoeState {
   spellId: string;
   center: SceneVector2;
   elapsedMs: number;
+  createdAt: number; // For cleanup when tab becomes active
   durationMs: number;
   ring: PersistentAoeRingRuntimeConfig;
   baseDamagePerSecond: number;
@@ -168,11 +169,13 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       customData: renderData,
     });
 
+    const now = performance.now();
     const state: PersistentAoeState = {
       id: objectId,
       spellId: context.spellId,
       center,
       elapsedMs: 0,
+      createdAt: now,
       durationMs: sanitized.durationMs,
       ring: sanitized.ring,
       baseDamagePerSecond: sanitized.damagePerSecond,
@@ -227,6 +230,21 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       this.scene.removeObject(instance.id);
     });
     this.instances.length = 0;
+  }
+
+  public cleanupExpired(): void {
+    const now = performance.now();
+    let writeIndex = 0;
+    for (let i = 0; i < this.instances.length; i += 1) {
+      const instance = this.instances[i]!;
+      const elapsed = now - instance.createdAt;
+      if (elapsed >= instance.durationMs) {
+        this.scene.removeObject(instance.id);
+        continue;
+      }
+      this.instances[writeIndex++] = instance;
+    }
+    this.instances.length = writeIndex;
   }
 
   public onBonusValuesChanged(values: BonusValueMap): void {

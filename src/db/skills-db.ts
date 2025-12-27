@@ -38,6 +38,7 @@ export const SKILL_IDS = [
   "sharp_mind",
   "sharp_mind2",
   "void_modules",
+  "tail_spines",
   "pheromones",
   "ice_mastery",
   "fire_mastery",
@@ -305,6 +306,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_lore: 3 },
     cost: createSandCost(150, 1),
+  },
+  tail_spines: {
+    id: "tail_spines",
+    name: "Tail Spines",
+    description:
+      "Graft barbed spines along the chord, enabling sideways volleys from attached quills.",
+    nodePosition: { x: 2, y: 2 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { void_modules: 1 },
+    cost: createResourceCost("iron", 200, 1),
   },
   pheromones: {
     id: "pheromones",
