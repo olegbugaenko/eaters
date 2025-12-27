@@ -241,7 +241,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     (map: MapListEntry) => {
       setPopover({
         mapId: map.id,
-        canDecrease: map.selectedLevel > 0,
+        canDecrease: map.selectedLevel > 1,
         canIncrease: map.selectedLevel < map.currentLevel,
       });
     },
@@ -356,7 +356,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       }
       return {
         ...current,
-        canDecrease: map.selectedLevel > 0,
+        canDecrease: map.selectedLevel > 1,
         canIncrease: map.selectedLevel < map.currentLevel,
       };
     });
@@ -650,7 +650,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   }}
                 >
                   <div className="map-tree__popover-level">
-                    Level {maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0} / {maps.find((m) => m.id === popover.mapId)?.maxLevel ?? 0}
+                    Level {maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1} / {maps.find((m) => m.id === popover.mapId)?.currentLevel ?? 0}
                   </div>
                   <div className="map-tree__popover-actions">
                     <button
@@ -660,7 +660,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       onClick={() =>
                         onSelectLevel(
                           popover.mapId,
-                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0) - 1
+                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1) - 1
                         )
                       }
                     >
@@ -673,7 +673,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       onClick={() =>
                         onSelectLevel(
                           popover.mapId,
-                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 0) + 1
+                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1) + 1
                         )
                       }
                     >
@@ -727,7 +727,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 <button
                   type="button"
                   className={classNames("button", "secondary-button")}
-                  onClick={() => onSelectLevel(activeMap.id, Math.max(activeMap.selectedLevel - 1, 0))}
+                  disabled={activeMap.selectedLevel <= 1}
+                  onClick={() => onSelectLevel(activeMap.id, Math.max(activeMap.selectedLevel - 1, 1))}
                 >
                   Level -
                 </button>
