@@ -649,9 +649,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     setPopover(null);
                   }}
                 >
-                    <div className="map-tree__popover-level">
-                      Level {maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1} / {maps.find((m) => m.id === popover.mapId)?.maxLevel ?? 0}
-                    </div>
+                  <div className="map-tree__popover-level">
+                    Level {maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1} / {maps.find((m) => m.id === popover.mapId)?.currentLevel ?? 0}
+                  </div>
                   <div className="map-tree__popover-actions">
                     <button
                       type="button"
