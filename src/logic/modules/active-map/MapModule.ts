@@ -784,7 +784,12 @@ export class MapModule implements GameModule {
       }
       level = candidate;
     }
-    return level;
+    if (level === 0) {
+      return 0;
+    }
+    // Ensure progression never skips more than one uncleared level even if cache glitches
+    const clearedLevels = this.getClearedLevels(mapId);
+    return Math.min(level, clearedLevels + 1);
   }
 
   private getSelectedLevel(mapId: MapId): number {

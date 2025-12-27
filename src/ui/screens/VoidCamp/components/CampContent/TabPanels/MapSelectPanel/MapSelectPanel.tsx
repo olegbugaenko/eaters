@@ -144,6 +144,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const mapById = useMemo(() => new Map(maps.map((map) => [map.id, map])), [maps]);
   const hasInitializedViewRef = useRef(false);
   const previousViewportSizeRef = useRef({ width: 0, height: 0 });
+  const popoverHoverTimeoutRef = useRef<number | null>(null);
+  const previousPopoverMapIdRef = useRef<MapId | null>(null);
 
   useResizeObserver(viewportRef, ({ width, height }) => {
     setViewportSize({ width, height });
@@ -270,6 +272,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
 
   const handleNodeClick = useCallback(
     (map: MapListEntry, event: ReactMouseEvent<HTMLButtonElement>) => {
+      if (didPanRef.current) {
+        return;
+      }
       onSelectMap(map.id);
     },
     [onSelectMap]
@@ -389,10 +394,6 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     setHoveredId((current) => (current && current === selectedMap ? null : current));
   }, [hoveredId, selectedMap]);
 
-  // Track hover state for popover
-  const popoverHoverTimeoutRef = useRef<number | null>(null);
-  const previousPopoverMapIdRef = useRef<MapId | null>(null);
-
   const canvasStyle = useMemo(
     () => ({
       width: `${Math.max(layout.width, 360)}px`,
@@ -491,6 +492,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               const initials = getMapInitials(map.name);
 
               const handleDoubleClick = () => {
+                if (didPanRef.current) {
+                  return;
+                }
                 onSelectMap(map.id);
                 onStartMap(map.id);
                 setPopover(null);
