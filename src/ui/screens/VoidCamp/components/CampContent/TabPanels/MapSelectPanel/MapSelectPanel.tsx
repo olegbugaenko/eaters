@@ -133,6 +133,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
   const layout = useMemo(() => computeLayout(maps), [maps]);
+  const mapById = useMemo(() => new Map(maps.map((map) => [map.id, map])), [maps]);
   const hasInitializedViewRef = useRef(false);
   const previousViewportSizeRef = useRef({ width: 0, height: 0 });
 
@@ -235,7 +236,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   }, [layout, maps, viewportSize]);
 
   const activeId = hoveredId ?? selectedMap ?? null;
-  const activeMap = maps.find((map) => map.id === activeId) ?? null;
+  const activeMap = (activeId ? mapById.get(activeId) : undefined) ?? null;
 
   const setPopoverForMap = useCallback(
     (map: MapListEntry) => {
@@ -350,7 +351,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       if (!current) {
         return null;
       }
-      const map = maps.find((entry) => entry.id === current.mapId);
+      const map = mapById.get(current.mapId);
       if (!map) {
         return null;
       }
@@ -360,7 +361,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
         canIncrease: map.selectedLevel < map.currentLevel,
       };
     });
-  }, [maps]);
+  }, [mapById]);
 
   useEffect(() => {
     if (selectedMap && hoveredId === selectedMap) {
@@ -460,38 +461,38 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               const svgCenter = svgSize / 2;
               
               // Calculate angles
-              // currentLevel is the highest unlocked level (0-based)
-              // If currentLevel=4, it means levels 0, 1, 2, 3 are completed (4 levels completed)
-              // Level 4 is unlocked but may not be completed yet
-              const completedLevels = map.currentLevel; // Number of completed levels
+              const completedLevels = map.clearedLevels; // Number of fully completed levels
               const totalLevels = map.maxLevel;
-              
+              const unlockedLevel = map.currentLevel; // Highest unlocked level
+
               // Check if map is maxed (all levels completed)
-              const isMaxed = map.currentLevel >= map.maxLevel;
-              
+              const isMaxed = completedLevels >= totalLevels;
+
               // Each level represents 1/totalLevels of the circle
               const levelAngle = 360 / totalLevels;
-              
+
               // SVG path calculations (starting from top, going clockwise)
               const startAngle = -90; // Start from top
-              
+
               let completedAngle = 0;
               let currentLevelAngle = 0;
               let completedEndAngle = startAngle;
               let currentEndAngle = startAngle;
-              
+
               if (isMaxed) {
                 // All levels completed - full circle (use 359.999 to avoid SVG treating 360 as 0)
                 completedAngle = 359.999;
                 completedEndAngle = startAngle + completedAngle;
                 currentEndAngle = completedEndAngle;
               } else {
-                // Completed levels arc (opacity 1.0) - levels 0 to currentLevel-1
-                completedAngle = (completedLevels - 1) * levelAngle;
+                // Completed levels arc (opacity 1.0)
+                const clampedCompletedLevels = Math.min(completedLevels, totalLevels);
+                completedAngle = clampedCompletedLevels * levelAngle;
                 completedEndAngle = startAngle + completedAngle;
-                
-                // Current level arc (opacity 0.75) - the level that's unlocked (currentLevel)
-                currentLevelAngle = levelAngle;
+
+                // Current level arc (opacity 0.75) - the highest unlocked level beyond completed ones
+                const hasCurrentLevel = unlockedLevel > clampedCompletedLevels;
+                currentLevelAngle = hasCurrentLevel ? levelAngle : 0;
                 currentEndAngle = completedEndAngle + currentLevelAngle;
               }
               
@@ -614,6 +615,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               if (!mapPosition) {
                 return null;
               }
+              const popoverMap = mapById.get(popover.mapId);
+              if (!popoverMap) {
+                return null;
+              }
               const nodeSize = 78;
               const nodeTop = mapPosition.y - nodeSize / 2; // Top of the node
               // Position popover so its bottom aligns with node top
@@ -640,8 +645,13 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     // Check if mouse is moving to map node
                     const relatedTarget = event.relatedTarget;
                     if (relatedTarget && relatedTarget instanceof Node) {
-                      const mapNode = document.querySelector(`[data-map-id="${popover.mapId}"]`);
-                      if (mapNode && (mapNode.contains(relatedTarget) || mapNode === relatedTarget)) {
+                      const mapNode = document.querySelector(
+                        `[data-map-id="${popover.mapId}"]`
+                      );
+                      if (
+                        mapNode &&
+                        (mapNode.contains(relatedTarget) || mapNode === relatedTarget)
+                      ) {
                         return; // Mouse is moving to map node, don't close
                       }
                     }
@@ -650,37 +660,43 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   }}
                 >
                   <div className="map-tree__popover-level">
-                    Level {maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1} / {maps.find((m) => m.id === popover.mapId)?.currentLevel ?? 0}
+                    Level {popoverMap.selectedLevel} / {popoverMap.currentLevel}
                   </div>
                   <div className="map-tree__popover-actions">
                     <button
                       type="button"
-                      className={classNames("button", "secondary-button", "small-button")}
+                      className={classNames(
+                        "button",
+                        "secondary-button",
+                        "small-button"
+                      )}
                       disabled={!popover.canDecrease}
                       onClick={() =>
-                        onSelectLevel(
-                          popover.mapId,
-                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1) - 1
-                        )
+                        onSelectLevel(popover.mapId, popoverMap.selectedLevel - 1)
                       }
                     >
                       -
                     </button>
                     <button
                       type="button"
-                      className={classNames("button", "secondary-button", "small-button")}
+                      className={classNames(
+                        "button",
+                        "secondary-button",
+                        "small-button"
+                      )}
                       disabled={!popover.canIncrease}
                       onClick={() =>
-                        onSelectLevel(
-                          popover.mapId,
-                          (maps.find((m) => m.id === popover.mapId)?.selectedLevel ?? 1) + 1
-                        )
+                        onSelectLevel(popover.mapId, popoverMap.selectedLevel + 1)
                       }
                     >
                       +
                     </button>
                   </div>
-                  <button type="button" className="button primary-button" onClick={() => onStartMap(popover.mapId)}>
+                  <button
+                    type="button"
+                    className="button primary-button"
+                    onClick={() => onStartMap(popover.mapId)}
+                  >
                     Start
                   </button>
                 </div>

@@ -73,6 +73,7 @@ export interface MapListEntry extends MapListEntryConfig {
   readonly selectedLevel: number;
   readonly attempts: number;
   readonly bestTimeMs: number | null;
+  readonly clearedLevels: number;
   readonly maxLevel: number;
 }
 
@@ -705,12 +706,17 @@ export class MapModule implements GameModule {
     const selectedLevel = this.getSelectedLevel(map.id);
     const attempts = this.getAttemptsForLevel(map.id, selectedLevel);
     const bestTimeMs = this.getBestTimeForLevel(map.id, selectedLevel);
+    const clearedLevels = Math.min(
+      this.getClearedLevels(map.id),
+      config.maxLevel
+    );
     return {
       ...map,
       currentLevel,
       selectedLevel,
       attempts,
       bestTimeMs,
+      clearedLevels,
       maxLevel: config.maxLevel,
     };
   }
@@ -785,6 +791,10 @@ export class MapModule implements GameModule {
       return null;
     }
     return bestTimeMs;
+  }
+
+  private getClearedLevels(mapId: MapId): number {
+    return this.getClearedLevelCount(this.mapStats[mapId]);
   }
 
   private getTotalClearedLevels(): number {
