@@ -12,6 +12,8 @@ import type { StatisticsTracker } from "../../shared/StatisticsModule";
 import { ExplosionModule } from "../../scene/ExplosionModule";
 import { PlayerUnitType } from "../../../../db/player-units-db";
 import { getUnitModuleConfig } from "../../../../db/unit-modules-db";
+import { UnitProjectileController } from "./UnitProjectileController";
+import { spawnTailNeedleVolley } from "./TailNeedleVolley";
 import type { PlayerUnitState } from "./UnitTypes";
 import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import {
@@ -36,6 +38,7 @@ export interface UnitRuntimeControllerOptions {
   abilities: PlayerUnitAbilities;
   statistics?: StatisticsTracker;
   explosions: ExplosionModule;
+  projectiles: UnitProjectileController;
   getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -92,6 +95,7 @@ export class UnitRuntimeController {
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
   private readonly explosions: ExplosionModule;
+  private readonly projectiles: UnitProjectileController;
   private readonly getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -111,6 +115,7 @@ export class UnitRuntimeController {
     this.abilities = options.abilities;
     this.statistics = options.statistics;
     this.explosions = options.explosions;
+    this.projectiles = options.projectiles;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.syncUnitTargetingMode = options.syncUnitTargetingMode;
     this.removeUnit = options.removeUnit;
@@ -278,6 +283,8 @@ export class UnitRuntimeController {
         }
       }
     });
+
+    this.projectiles.tick(deltaSeconds * 1000);
 
     return { statsChanged: statsDirty, unitsRemoved };
   }
@@ -717,96 +724,13 @@ export class UnitRuntimeController {
       }
     }
 
-    const needleLevel = unit.moduleLevels?.tailNeedles ?? 0;
-    if (needleLevel > 0 && inflictedDamage > 0) {
-      const needleConfig = getUnitModuleConfig("tailNeedles");
-      const projectilesPerSide = Math.max(
-        needleConfig.meta?.lateralProjectilesPerSide ?? 0,
-        0,
-      );
-      const spacing = Math.max(needleConfig.meta?.lateralProjectileSpacing ?? 0, 0);
-      const range = Math.max(needleConfig.meta?.lateralProjectileRange ?? 0, 0);
-      const hitRadius = Math.max(
-        needleConfig.meta?.lateralProjectileHitRadius ?? spacing * 0.5,
-        1,
-      );
-      const base = Number.isFinite(needleConfig.baseBonusValue)
-        ? needleConfig.baseBonusValue
-        : 0;
-      const perLevel = Number.isFinite(needleConfig.bonusPerLevel)
-        ? needleConfig.bonusPerLevel
-        : 0;
-      const damageMultiplier = Math.max(base + perLevel * Math.max(needleLevel - 1, 0), 0);
-      const projectileDamage = totalDamage * damageMultiplier;
-
-      if (projectilesPerSide > 0 && spacing > 0 && projectileDamage > 0 && range > 0) {
-        const attackVector = vectorHasLength(direction)
-          ? direction
-          : { x: Math.cos(unit.rotation), y: Math.sin(unit.rotation) };
-        const length = vectorLength(attackVector) || 1;
-        const normalized = { x: attackVector.x / length, y: attackVector.y / length };
-        const normal = { x: -normalized.y, y: normalized.x };
-        const impacted = new Set<string>();
-
-        const findSideImpact = (
-          origin: SceneVector2,
-          side: 1 | -1,
-        ): BrickRuntimeState | null => {
-          const directionVector = scaleVector(normal, side);
-          let closest: BrickRuntimeState | null = null;
-          let closestDistance = Infinity;
-
-          this.bricks.forEachBrickNear(origin, range + hitRadius, (brick) => {
-            if (impacted.has(brick.id)) {
-              return;
-            }
-
-            const toBrick = subtractVectors(brick.position, origin);
-            const forwardDistance = toBrick.x * directionVector.x + toBrick.y * directionVector.y;
-            if (forwardDistance <= 0 || forwardDistance > range) {
-              return;
-            }
-
-            const projected = scaleVector(directionVector, forwardDistance);
-            const perpendicular = subtractVectors(toBrick, projected);
-            const perpendicularDistance = vectorLength(perpendicular);
-            const effectiveRadius = hitRadius + brick.physicalSize / 2;
-
-            if (perpendicularDistance > effectiveRadius) {
-              return;
-            }
-
-            if (forwardDistance < closestDistance) {
-              closestDistance = forwardDistance;
-              closest = brick as BrickRuntimeState;
-            }
-          });
-
-          return closest;
-        };
-
-        const spawnSideProjectiles = (side: 1 | -1) => {
-          for (let i = 0; i < projectilesPerSide; i += 1) {
-            const offsetDistance = spacing * (i + 1) * side;
-            const origin = addVectors(unit.position, scaleVector(normal, offsetDistance));
-            const targetBrick = findSideImpact(origin, side);
-
-            if (targetBrick && !impacted.has(targetBrick.id)) {
-              impacted.add(targetBrick.id);
-              const sideDirection = scaleVector(normal, side);
-              this.bricks.applyDamage(targetBrick.id, projectileDamage, sideDirection, {
-                rewardMultiplier: unit.rewardMultiplier,
-                armorPenetration: unit.armorPenetration,
-                skipKnockback: true,
-              });
-            }
-          }
-        };
-
-        spawnSideProjectiles(1);
-        spawnSideProjectiles(-1);
-      }
-    }
+    spawnTailNeedleVolley({
+      unit,
+      attackDirection: direction,
+      inflictedDamage,
+      totalDamage,
+      projectiles: this.projectiles,
+    });
 
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
