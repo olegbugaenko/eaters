@@ -487,7 +487,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 currentEndAngle = completedEndAngle;
               } else {
                 // Completed levels arc (opacity 1.0) - levels 0 to currentLevel-1
-                completedAngle = completedLevels * levelAngle;
+                completedAngle = (completedLevels - 1) * levelAngle;
                 completedEndAngle = startAngle + completedAngle;
                 
                 // Current level arc (opacity 0.75) - the level that's unlocked (currentLevel)
