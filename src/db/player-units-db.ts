@@ -394,6 +394,28 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           stroke: { type: "base", width: 1.1, brightness: -0.10 }
         },
 
+        // Tail needles (long quills anchored at the chord tip)
+        { shape: "polygon", requiresModule: "tailNeedles",
+          vertices: [ { x: -7.6, y: 0.6 }, { x: -23.6, y: 3.4 }, { x: -8.4, y: 2.4 } ],
+          fill: { type: "base", brightness: -0.1 },
+          stroke: { type: "base", width: 1.25, brightness: -0.14 },
+        },
+        { shape: "polygon", requiresModule: "tailNeedles",
+          vertices: [ { x: -7.6, y: -0.6 }, { x: -23.6, y: -3.4 }, { x: -8.4, y: -2.4 } ],
+          fill: { type: "base", brightness: -0.12 },
+          stroke: { type: "base", width: 1.25, brightness: -0.16 },
+        },
+        { shape: "polygon", requiresModule: "tailNeedles",
+          vertices: [ { x: -21.8, y: 0.8 }, { x: -31.8, y: 3.6 }, { x: -23.4, y: 2.2 } ],
+          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          stroke: { type: "base", width: 0.8, brightness: -0.12 },
+        },
+        { shape: "polygon", requiresModule: "tailNeedles",
+          vertices: [ { x: -21.8, y: -0.8 }, { x: -31.8, y: -3.6 }, { x: -23.4, y: -2.2 } ],
+          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          stroke: { type: "base", width: 0.8, brightness: -0.12 },
+        },
+
         // Burning tail (flame spine + glow)
         {
           shape: "polygon",

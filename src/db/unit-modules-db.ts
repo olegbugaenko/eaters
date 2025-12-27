@@ -15,6 +15,7 @@ export const UNIT_MODULE_IDS = [
   "fireballOrgan",
   "burningTail",
   "freezingTail",
+  "tailNeedles",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -42,6 +43,8 @@ export interface UnitModuleConfig {
     readonly fireballExplosionRadius?: number;
     readonly fireballSelfDamagePercent?: number;
     readonly fireballMaxDistance?: number;
+    readonly lateralProjectilesPerSide?: number;
+    readonly lateralProjectileSpacing?: number;
   };
 }
 
@@ -208,6 +211,21 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseCost: { ice: 300, sand: 300 },
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
     meta: { areaRadius: 30 },
+  },
+  tailNeedles: {
+    id: "tailNeedles",
+    name: "Chord Needles",
+    description:
+      "Socket barbed quills into the chord’s tip so every strike unleashes sideways volleys of piercing shards.",
+    bonusLabel: "Side projectile damage",
+    bonusType: "multiplier",
+    baseBonusValue: 0.35,
+    bonusPerLevel: 0.05,
+    manaCostMultiplier: 2.4,
+    sanityCost: 0,
+    baseCost: { iron: 200 },
+    unlockedBy: [{ type: "skill", id: "tail_spines", level: 1 }],
+    meta: { lateralProjectilesPerSide: 3, lateralProjectileSpacing: 18 },
   },
 };
 

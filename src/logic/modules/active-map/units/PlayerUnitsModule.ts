@@ -995,6 +995,54 @@ export class PlayerUnitsModule implements GameModule {
       }
     }
 
+    const needleLevel = unit.moduleLevels?.tailNeedles ?? 0;
+    if (needleLevel > 0 && inflictedDamage > 0) {
+      const needleConfig = getUnitModuleConfig("tailNeedles");
+      const projectilesPerSide = Math.max(
+        needleConfig.meta?.lateralProjectilesPerSide ?? 0,
+        0,
+      );
+      const spacing = Math.max(needleConfig.meta?.lateralProjectileSpacing ?? 0, 0);
+      const base = Number.isFinite(needleConfig.baseBonusValue)
+        ? needleConfig.baseBonusValue
+        : 0;
+      const perLevel = Number.isFinite(needleConfig.bonusPerLevel)
+        ? needleConfig.bonusPerLevel
+        : 0;
+      const damageMultiplier = Math.max(base + perLevel * Math.max(needleLevel - 1, 0), 0);
+      const projectileDamage = totalDamage * damageMultiplier;
+
+      if (projectilesPerSide > 0 && spacing > 0 && projectileDamage > 0) {
+        const attackVector = vectorHasLength(direction)
+          ? direction
+          : { x: Math.cos(unit.rotation), y: Math.sin(unit.rotation) };
+        const length = vectorLength(attackVector) || 1;
+        const normalized = { x: attackVector.x / length, y: attackVector.y / length };
+        const normal = { x: -normalized.y, y: normalized.x };
+        const impacted = new Set<string>();
+
+        const spawnSideProjectiles = (side: 1 | -1) => {
+          for (let i = 0; i < projectilesPerSide; i += 1) {
+            const offsetDistance = spacing * (i + 1) * side;
+            const searchPosition = addVectors(unit.position, scaleVector(normal, offsetDistance));
+            const targetBrick = this.bricks.findNearestBrick(searchPosition);
+
+            if (targetBrick && !impacted.has(targetBrick.id)) {
+              impacted.add(targetBrick.id);
+              this.bricks.applyDamage(targetBrick.id, projectileDamage, normal, {
+                rewardMultiplier: unit.rewardMultiplier,
+                armorPenetration: unit.armorPenetration,
+                skipKnockback: true,
+              });
+            }
+          }
+        };
+
+        spawnSideProjectiles(1);
+        spawnSideProjectiles(-1);
+      }
+    }
+
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
