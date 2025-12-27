@@ -288,4 +288,90 @@ describe("PlayerUnitsModule", () => {
       "effects should be cleared when units are removed"
     );
   });
+
+  test("tail needles fire sideways volleys instead of homing to nearby bricks", () => {
+    const scene = new SceneObjectManager();
+    scene.setMapSize({ width: 2000, height: 2000 });
+    const bridge = new DataBridge();
+    const movement = new MovementService();
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+    const explosions = new ExplosionModule({ scene });
+    const runState = new MapRunState();
+    runState.start();
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState);
+
+    bricks.setBricks([
+      {
+        position: { x: 20, y: 0 },
+        rotation: 0,
+        level: 0,
+        type: "smallSquareGray",
+      },
+      {
+        position: { x: 0, y: 80 },
+        rotation: 0,
+        level: 0,
+        type: "smallSquareGray",
+      },
+      {
+        position: { x: 800, y: 0 },
+        rotation: 0,
+        level: 0,
+        type: "smallSquareGray",
+      },
+    ]);
+
+    const bricksBefore = bricks.getBrickStates();
+    const forwardId = bricksBefore[0]?.id;
+    const sideTargetId = bricksBefore[1]?.id;
+    const distantId = bricksBefore[2]?.id;
+    assert(forwardId && sideTargetId && distantId, "expected all bricks to be created");
+
+    const units = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+      runState,
+      getModuleLevel: (id) => (id === "tailNeedles" ? 1 : 0),
+      hasSkill: () => false,
+      getDesignTargetingMode: () => "nearest",
+    });
+    units.prepareForMap();
+
+    units.setUnits([
+      {
+        type: "bluePentagon",
+        position: { x: 0, y: 0 },
+        equippedModules: ["tailNeedles"],
+      },
+    ]);
+
+    const distantBefore = bricks.getBrickState(distantId);
+    assert(distantBefore, "distant brick should exist before attacks");
+
+    for (let i = 0; i < 30; i += 1) {
+      tickSeconds(units, 0.2);
+      if (!bricks.getBrickState(forwardId)) {
+        break;
+      }
+    }
+
+    assert(!bricks.getBrickState(forwardId), "front brick should be destroyed by the attack");
+
+    const sideState = bricks.getBrickState(sideTargetId);
+    const distantState = bricks.getBrickState(distantId);
+
+    assert(sideState === null || sideState.hp < (bricksBefore[1]?.hp ?? Infinity));
+    assert(distantState, "distant brick should remain after sideways volley");
+    assert.strictEqual(
+      distantState!.hp,
+      distantBefore.hp,
+      "sideways projectiles should not home to far bricks",
+    );
+    assert.strictEqual(distantState!.maxHp, distantBefore.maxHp);
+  });
 });

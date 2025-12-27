@@ -45,6 +45,8 @@ export interface UnitModuleConfig {
     readonly fireballMaxDistance?: number;
     readonly lateralProjectilesPerSide?: number;
     readonly lateralProjectileSpacing?: number;
+    readonly lateralProjectileRange?: number;
+    readonly lateralProjectileHitRadius?: number;
   };
 }
 
@@ -225,7 +227,12 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 0,
     baseCost: { iron: 200 },
     unlockedBy: [{ type: "skill", id: "tail_spines", level: 1 }],
-    meta: { lateralProjectilesPerSide: 3, lateralProjectileSpacing: 18 },
+    meta: {
+      lateralProjectilesPerSide: 3,
+      lateralProjectileSpacing: 18,
+      lateralProjectileRange: 420,
+      lateralProjectileHitRadius: 12,
+    },
   },
 };
 
