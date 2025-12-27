@@ -929,6 +929,9 @@ const applySyncInstructions = (
   staticBuffer: WebGLBuffer,
   dynamicBuffer: WebGLBuffer
 ) => {
+  // Update auto-animating objects (time-based animations) before syncing
+  objectsRenderer.tickAutoAnimating();
+  
   const sync = objectsRenderer.consumeSyncInstructions();
   if (sync.staticData) {
     gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffer);

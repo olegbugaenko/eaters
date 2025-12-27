@@ -43,6 +43,8 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["fireball", new FireballRenderer()],
     ["spellProjectile", new BulletObjectRenderer()],
     ["spellProjectileRing", new SpellProjectileRingRenderer()],
+    ["unitProjectile", new BulletObjectRenderer()],
+    ["unitProjectileRing", new SpellProjectileRingRenderer()],
     ["sandStorm", new SandStormRenderer()],
     ["spellPersistentAoe", new PersistentAoeSpellRenderer()],
   ]);

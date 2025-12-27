@@ -72,11 +72,31 @@ export const spawnTailNeedleVolley = (options: TailNeedleVolleyOptions): void =>
   );
   const visualConfig = { ...visual, hitRadius: Math.max(visual.hitRadius ?? baseHitRadius, baseHitRadius), lifetimeMs };
 
+  // Spread projectiles along a 20-degree arc for more natural volley
+  const spreadAngleRad = (20 * Math.PI) / 180; // 20 degrees in radians
+  const halfSpread = spreadAngleRad / 2;
+  
   const spawnSide = (side: 1 | -1) => {
+    const baseAngle = Math.atan2(normal.y, normal.x) * side;
+    
     for (let i = 0; i < projectilesPerSide; i += 1) {
       const offsetDistance = spacing * (i + 1) * side;
       const origin = add(unit.position, scale(normal, offsetDistance));
-      const direction = scale(normal, side);
+      
+      // Calculate angle offset for this projectile within the arc
+      let angleOffset = 0;
+      if (projectilesPerSide > 1) {
+        // Distribute evenly across the arc: -halfSpread to +halfSpread
+        const t = i / (projectilesPerSide - 1); // 0 to 1
+        angleOffset = -halfSpread + t * spreadAngleRad;
+      }
+      
+      // Rotate the base direction by the angle offset
+      const dirAngle = Math.atan2(normal.y * side, normal.x * side) + angleOffset;
+      const direction: SceneVector2 = {
+        x: Math.cos(dirAngle),
+        y: Math.sin(dirAngle),
+      };
 
       projectiles.spawn({
         origin,

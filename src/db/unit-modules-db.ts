@@ -238,8 +238,8 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       "Socket barbed quills into the chord’s tip so every strike unleashes sideways volleys of piercing shards.",
     bonusLabel: "Side projectile damage",
     bonusType: "multiplier",
-    baseBonusValue: 0.35,
-    bonusPerLevel: 0.05,
+    baseBonusValue: 0.45,
+    bonusPerLevel: 0.025,
     manaCostMultiplier: 2.4,
     sanityCost: 0,
     baseCost: { iron: 200 },
@@ -247,12 +247,12 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     meta: {
       lateralProjectilesPerSide: 3,
       lateralProjectileSpacing: 18,
-      lateralProjectileRange: 420,
+      lateralProjectileRange: 820,
       lateralProjectileHitRadius: 12,
       lateralProjectileVisual: {
         radius: 4,
-        speed: 180,
-        lifetimeMs: 2800,
+        speed: 340,
+        lifetimeMs: 3800,
         fill: {
           fillType: FILL_TYPES.RADIAL_GRADIENT,
           start: { x: 0, y: 0 },
@@ -269,7 +269,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
           startColor: { r: 0.48, g: 0.62, b: 0.85, a: 0.55 },
           endColor: { r: 0.32, g: 0.38, b: 0.62, a: 0 },
         },
-        tailEmitter: {
+        /*tailEmitter: {
           particlesPerSecond: 48,
           particleLifetimeMs: 900,
           fadeStartMs: 260,
@@ -287,7 +287,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
             ],
           },
           maxParticles: 240,
-        },
+        },*/
         ringTrail: {
           spawnIntervalMs: 60,
           lifetimeMs: 820,

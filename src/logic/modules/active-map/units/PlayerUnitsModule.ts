@@ -325,6 +325,11 @@ export class PlayerUnitsModule implements GameModule {
     }
   }
 
+  public cleanupExpired(): void {
+    // Clean up expired projectiles and rings that accumulated while tab was inactive
+    this.projectiles.cleanupExpired();
+  }
+
   public getUnitPositionIfAlive = (unitId: string): SceneVector2 | null => {
     const u = this.units.get(unitId);
     if (!u || u.hp <= 0) return null;

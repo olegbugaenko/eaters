@@ -41,6 +41,12 @@ interface UnitProjectileRingTrailState {
   accumulatorMs: number;
 }
 
+interface RingState {
+  id: string;
+  createdAt: number;
+  lifetimeMs: number;
+}
+
 interface UnitProjectileState extends UnitProjectileSpawn {
   id: string;
   velocity: SceneVector2;
@@ -57,6 +63,10 @@ const MAX_PROJECTILE_STEPS_PER_TICK = 5;
 const MIN_MOVEMENT_STEP = 2;
 const OUT_OF_BOUNDS_MARGIN = 50;
 
+// Ring trail limits to prevent performance degradation
+const MAX_RINGS = 512; // Maximum rings across all projectiles
+const MAX_RINGS_PER_FRAME = 16; // Maximum rings spawned per frame (across all projectiles)
+
 const clamp01 = (value: number): number => clampNumber(value, 0, 1);
 
 const normalizeVector = (vector: SceneVector2): SceneVector2 => {
@@ -70,6 +80,8 @@ export class UnitProjectileController {
 
   private projectiles: UnitProjectileState[] = [];
   private projectileIndex = new Map<string, UnitProjectileState>();
+  private rings: RingState[] = [];
+  private ringsSpawnedThisFrame = 0;
 
   constructor(options: { scene: SceneObjectManager; bricks: BricksModule }) {
     this.scene = options.scene;
@@ -125,7 +137,17 @@ export class UnitProjectileController {
   }
 
   public tick(deltaMs: number): void {
-    if (deltaMs <= 0 || this.projectiles.length === 0) {
+    if (deltaMs <= 0) {
+      return;
+    }
+    
+    // Reset per-frame spawn counter
+    this.ringsSpawnedThisFrame = 0;
+    
+    // Update rings lifetime and remove expired ones
+    this.tickRings(deltaMs);
+    
+    if (this.projectiles.length === 0) {
       return;
     }
     const deltaSeconds = deltaMs / 1000;
@@ -202,6 +224,41 @@ export class UnitProjectileController {
     });
     this.projectiles = [];
     this.projectileIndex.clear();
+    
+    // Also clear rings
+    this.rings.forEach((ring) => {
+      this.scene.removeObject(ring.id);
+    });
+    this.rings = [];
+  }
+
+  /**
+   * Cleans up expired objects that accumulated while the tab was inactive.
+   * Uses absolute time (performance.now()) instead of elapsedMs to handle tab inactivity.
+   */
+  public cleanupExpired(): void {
+    const now = performance.now();
+    
+    // Clean up expired projectiles
+    let writeIndex = 0;
+    for (let i = 0; i < this.projectiles.length; i += 1) {
+      const projectile = this.projectiles[i]!;
+      // Calculate elapsed time from spawn (we don't track spawn time, so use elapsedMs as fallback)
+      // For projectiles, we'll use a simpler approach: check if lifetime exceeded
+      // Since we don't have createdAt for projectiles, we'll rely on tick() to clean them up
+      // But we can still clean up out-of-bounds ones
+      const mapSize = this.scene.getMapSize();
+      if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
+        this.scene.removeObject(projectile.id);
+        this.projectileIndex.delete(projectile.id);
+        continue;
+      }
+      this.projectiles[writeIndex++] = projectile;
+    }
+    this.projectiles.length = writeIndex;
+    
+    // Clean up expired rings (these have createdAt, so we can check properly)
+    this.tickRings(0); // Pass 0 delta, it uses performance.now() internally
   }
 
   private applyProjectileDamage(projectile: UnitProjectileState, brickId: string): void {
@@ -274,11 +331,30 @@ export class UnitProjectileController {
     if (!trail) {
       return;
     }
+    
+    // Skip if we've hit the global ring limit
+    if (this.rings.length >= MAX_RINGS) {
+      trail.accumulatorMs = 0; // Reset accumulator to prevent burst when limit is lifted
+      return;
+    }
+    
+    // Skip if we've spawned too many rings this frame (prevents spiral of death)
+    if (this.ringsSpawnedThisFrame >= MAX_RINGS_PER_FRAME) {
+      // Don't accumulate time beyond one interval to prevent burst spawning
+      trail.accumulatorMs = Math.min(trail.accumulatorMs + deltaMs, trail.config.spawnIntervalMs);
+      return;
+    }
+    
     const interval = Math.max(1, trail.config.spawnIntervalMs);
     trail.accumulatorMs += deltaMs;
-    while (trail.accumulatorMs >= interval) {
+    
+    // Spawn at most 1 ring per projectile per frame
+    if (trail.accumulatorMs >= interval && this.rings.length < MAX_RINGS) {
       trail.accumulatorMs -= interval;
+      // Cap accumulator to prevent burst spawning on next frame
+      trail.accumulatorMs = Math.min(trail.accumulatorMs, interval);
       this.spawnProjectileRing(projectile.position, trail.config);
+      this.ringsSpawnedThisFrame += 1;
     }
   }
 
@@ -289,7 +365,10 @@ export class UnitProjectileController {
       outerStop = Math.min(1, innerStop + 0.1);
     }
     const outerFadeStop = Math.min(1, outerStop + 0.15);
-    this.scene.addObject("unitProjectileRing", {
+    const now = performance.now();
+    
+    // Pass animation parameters in customData - renderer will animate based on time
+    const ringId = this.scene.addObject("unitProjectileRing", {
       position: { ...position },
       size: { width: config.startRadius * 2, height: config.startRadius * 2 },
       fill: {
@@ -304,6 +383,48 @@ export class UnitProjectileController {
           { offset: 1, color: { ...config.color, a: 0 } },
         ],
       },
+      customData: {
+        // Animation params for GPU-based animation in renderer
+        autoAnimate: true, // Mark for per-frame updates by renderer manager
+        createdAt: now,
+        lifetimeMs: config.lifetimeMs,
+        startRadius: config.startRadius,
+        endRadius: config.endRadius,
+        startAlpha: config.startAlpha,
+        endAlpha: config.endAlpha,
+        innerStop,
+        outerStop,
+        outerFadeStop,
+        color: { ...config.color },
+      },
     });
+    
+    // Track ring for lifetime removal only (no per-frame updates)
+    this.rings.push({
+      id: ringId,
+      createdAt: now,
+      lifetimeMs: config.lifetimeMs,
+    });
+  }
+  
+  private tickRings(_deltaMs: number): void {
+    if (this.rings.length === 0) {
+      return;
+    }
+    
+    const now = performance.now();
+    let writeIndex = 0;
+    for (let i = 0; i < this.rings.length; i += 1) {
+      const ring = this.rings[i]!;
+      const elapsed = now - ring.createdAt;
+      
+      if (elapsed >= ring.lifetimeMs) {
+        this.scene.removeObject(ring.id);
+        continue;
+      }
+      
+      this.rings[writeIndex++] = ring;
+    }
+    this.rings.length = writeIndex;
   }
 }

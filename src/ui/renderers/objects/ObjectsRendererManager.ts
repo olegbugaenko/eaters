@@ -60,6 +60,9 @@ export class ObjectsRendererManager {
   private readonly dynamicEntries: DynamicEntry[] = [];
   private readonly dynamicEntryByPrimitive = new Map<DynamicPrimitive, DynamicEntry>();
 
+  // Objects that need per-frame updates (e.g., time-based animations)
+  private readonly autoAnimatingIds = new Set<string>();
+
   private staticData: Float32Array | null = null;
   private dynamicData: Float32Array | null = null;
 
@@ -68,6 +71,7 @@ export class ObjectsRendererManager {
 
   private staticDirty = false;
   private dynamicLayoutDirty = false;
+  private autoAnimatingNeedsUpload = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
   private lastDynamicRebuildMs = 0;
   private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
@@ -95,6 +99,7 @@ export class ObjectsRendererManager {
     });
 
     this.objects.clear();
+    this.autoAnimatingIds.clear();
     this.staticEntries.length = 0;
     this.dynamicEntries.length = 0;
     this.dynamicEntryByPrimitive.clear();
@@ -104,6 +109,7 @@ export class ObjectsRendererManager {
     this.dynamicVertexCount = 0;
     this.staticDirty = false;
     this.dynamicLayoutDirty = false;
+    this.autoAnimatingNeedsUpload = false;
     this.pendingDynamicUpdates = [];
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
@@ -163,6 +169,63 @@ export class ObjectsRendererManager {
     });
   }
 
+  /**
+   * Updates all auto-animating objects (those with customData.autoAnimate = true).
+   * Call this once per frame before consumeSyncInstructions().
+   * 
+   * OPTIMIZATION: Instead of pushing individual updates with data.slice() (which
+   * creates new Float32Arrays every frame), we just update dynamicData in-place
+   * and mark that a full dynamic buffer upload is needed.
+   */
+  public tickAutoAnimating(): void {
+    if (this.autoAnimatingIds.size === 0) {
+      return;
+    }
+    
+    let anyUpdated = false;
+    const idsToRemove: string[] = [];
+    
+    this.autoAnimatingIds.forEach((objectId) => {
+      const managed = this.objects.get(objectId);
+      if (!managed) {
+        // Object was removed - defer deletion to avoid mutating during iteration
+        idsToRemove.push(objectId);
+        return;
+      }
+      
+      // Trigger update using current instance (renderer will recompute based on time)
+      const updates = managed.renderer.update(managed.instance, managed.registration);
+      updates.forEach(({ primitive, data }) => {
+        const entry = this.dynamicEntryByPrimitive.get(primitive);
+        if (!entry) {
+          return;
+        }
+        if (entry.length !== data.length) {
+          entry.length = data.length;
+          this.dynamicLayoutDirty = true;
+          return;
+        }
+        if (!this.dynamicData) {
+          return;
+        }
+        // Update in-place, no copy needed
+        this.dynamicData.set(data, entry.offset);
+        anyUpdated = true;
+      });
+    });
+    
+    // Clean up removed objects
+    for (const id of idsToRemove) {
+      this.autoAnimatingIds.delete(id);
+    }
+    
+    // If any auto-animating objects were updated, mark for full dynamic upload
+    // This is more efficient than many small bufferSubData calls
+    if (anyUpdated && !this.dynamicLayoutDirty) {
+      this.autoAnimatingNeedsUpload = true;
+    }
+  }
+
   public consumeSyncInstructions(): SyncInstructions {
     const result: SyncInstructions = {
       staticData: null,
@@ -180,6 +243,10 @@ export class ObjectsRendererManager {
       this.rebuildDynamicData();
       this.lastDynamicRebuildMs = Date.now();
       result.dynamicData = this.dynamicData;
+    } else if (this.autoAnimatingNeedsUpload) {
+      // Auto-animating objects updated in-place, upload full buffer (more efficient than many small updates)
+      result.dynamicData = this.dynamicData;
+      this.autoAnimatingNeedsUpload = false;
     } else if (this.pendingDynamicUpdates.length > 0) {
       result.dynamicUpdates = this.pendingDynamicUpdates;
     }
@@ -259,6 +326,12 @@ export class ObjectsRendererManager {
     if (registration.dynamicPrimitives.length > 0) {
       this.dynamicLayoutDirty = true;
     }
+
+    // Register for auto-animation if customData.autoAnimate is true
+    const customData = instance.data.customData as Record<string, unknown> | undefined;
+    if (customData?.autoAnimate === true) {
+      this.autoAnimatingIds.add(instance.id);
+    }
   }
 
   private updateObject(instance: SceneObjectInstance): void {
@@ -294,6 +367,7 @@ export class ObjectsRendererManager {
       return;
     }
     this.objects.delete(id);
+    this.autoAnimatingIds.delete(id);
 
     this.staticDirty =
       this.staticDirty || managed.registration.staticPrimitives.length > 0;
