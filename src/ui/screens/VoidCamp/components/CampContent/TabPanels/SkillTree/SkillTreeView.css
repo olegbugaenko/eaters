@@ -89,7 +89,8 @@
 
 .skill-tree-node {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%)
+    translate(var(--skill-node-wobble-x, 0px), var(--skill-node-wobble-y, 0px));
   width: 70px;
   height: 70px;
   border-radius: 50%;
@@ -153,7 +154,9 @@
 }
 
 .skill-tree-node--available:not(:disabled):hover {
-  transform: translate(-50%, -50%) scale(1.05);
+  transform: translate(-50%, -50%)
+    translate(var(--skill-node-wobble-x, 0px), var(--skill-node-wobble-y, 0px))
+    scale(1.05);
   box-shadow: 0 0 18px rgba(96, 165, 250, 0.45),
     0 0 32px rgba(255, 255, 255, 0.3),
     0 0 48px rgba(255, 255, 255, 0.15);
