@@ -73,7 +73,9 @@ export interface MapListEntry extends MapListEntryConfig {
   readonly selectedLevel: number;
   readonly attempts: number;
   readonly bestTimeMs: number | null;
+  readonly clearedLevels: number;
   readonly maxLevel: number;
+  readonly selectable: boolean; // true if map can be selected/played
 }
 
 export interface MapRunResult {
@@ -694,24 +696,81 @@ export class MapModule implements GameModule {
   }
 
   private getAvailableMaps(): MapListEntry[] {
-    return getMapList()
+    // First, get all selectable maps
+    const selectableMaps = getMapList()
       .filter((map) => this.isMapSelectable(map.id))
-      .map((map) => this.createListEntry(map));
+      .map((map) => this.createListEntry(map, true));
+    
+    const selectableMapIds = new Set(selectableMaps.map((m) => m.id));
+    const visibleMapIds = new Set<MapId>(selectableMapIds);
+    
+    // Find all maps that are required by selectable maps (show prerequisites)
+    selectableMaps.forEach((map) => {
+      const config = getMapConfig(map.id);
+      if (config.mapsRequired) {
+        Object.keys(config.mapsRequired).forEach((requiredId) => {
+          const requiredMapId = requiredId as MapId;
+          // Only include if not already selectable
+          if (!selectableMapIds.has(requiredMapId)) {
+            // Show the required map if it can be played (its requirements are met)
+            // This allows players to see what will unlock after completing the requirement
+            if (this.isMapSelectable(requiredMapId)) {
+              visibleMapIds.add(requiredMapId);
+            }
+          }
+        });
+      }
+    });
+    
+    // Find all maps that require selectable maps (show what unlocks after completing)
+    getMapList().forEach((map) => {
+      // Skip if already selectable or already visible
+      if (visibleMapIds.has(map.id)) {
+        return;
+      }
+      
+      const config = getMapConfig(map.id);
+      if (config.mapsRequired) {
+        // Check if this map requires any selectable map
+        const requiresSelectableMap = Object.entries(config.mapsRequired).some(([requiredId, requiredLevel]) => {
+          const requiredMapId = requiredId as MapId;
+          // If the required map is selectable, this map should be visible
+          return selectableMapIds.has(requiredMapId);
+        });
+        
+        if (requiresSelectableMap) {
+          visibleMapIds.add(map.id);
+        }
+      }
+    });
+    
+    // Create entries for all visible maps
+    const allVisibleMaps = getMapList()
+      .filter((map) => visibleMapIds.has(map.id))
+      .map((map) => this.createListEntry(map, selectableMapIds.has(map.id)));
+    
+    return allVisibleMaps;
   }
 
-  private createListEntry(map: MapListEntryConfig): MapListEntry {
+  private createListEntry(map: MapListEntryConfig, selectable: boolean): MapListEntry {
     const config = getMapConfig(map.id);
     const currentLevel = this.getHighestUnlockedLevel(map.id);
     const selectedLevel = this.getSelectedLevel(map.id);
     const attempts = this.getAttemptsForLevel(map.id, selectedLevel);
     const bestTimeMs = this.getBestTimeForLevel(map.id, selectedLevel);
+    const clearedLevels = Math.min(
+      this.getClearedLevels(map.id),
+      config.maxLevel
+    );
     return {
       ...map,
       currentLevel,
       selectedLevel,
       attempts,
       bestTimeMs,
+      clearedLevels,
       maxLevel: config.maxLevel,
+      selectable,
     };
   }
 
@@ -785,6 +844,10 @@ export class MapModule implements GameModule {
       return null;
     }
     return bestTimeMs;
+  }
+
+  private getClearedLevels(mapId: MapId): number {
+    return this.getClearedLevelCount(this.mapStats[mapId]);
   }
 
   private getTotalClearedLevels(): number {

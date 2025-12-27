@@ -41,7 +41,7 @@ const DRAG_THRESHOLD = 3;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
 const ZOOM_SENSITIVITY = 0.0015;
-const NODE_RADIUS = 39; // Skill node is 78px wide with a -50% translate to center it
+const NODE_RADIUS = 35; // Skill node is 70px wide with a -50% translate to center it
 const WOBBLE_RADIUS = 5;
 const WOBBLE_SPEED = 0.003;
 // Use node hit radius plus wobble amplitude so the wobble halts as soon as the
@@ -61,6 +61,8 @@ interface SkillTreeEdge {
   from: { x: number; y: number };
   to: { x: number; y: number };
   fulfilled: boolean;
+  currentLevel: number;
+  requiredLevel: number;
 }
 
 interface SkillTreeLayout {
@@ -198,6 +200,8 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
         from,
         to,
         fulfilled: requirement.currentLevel >= requirement.requiredLevel,
+        currentLevel: requirement.currentLevel,
+        requiredLevel: requirement.requiredLevel,
       });
     });
   });
@@ -762,21 +766,49 @@ export const SkillTreeView: React.FC = () => {
         onWheel={handleWheel}
       >
         <div className="skill-tree__canvas" style={canvasStyle}>
-          <svg
-            className="skill-tree__links"
-            viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {renderEdges.map((edge) => (
-              <line
-                key={edge.id}
-                x1={edge.from.x}
-                y1={edge.from.y}
-                x2={edge.to.x}
-                y2={edge.to.y}
-                className={edge.fulfilled ? "skill-tree__link skill-tree__link--fulfilled" : "skill-tree__link skill-tree__link--locked"}
-              />
-            ))}
+            <svg
+              className="skill-tree__links"
+              viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
+              preserveAspectRatio="xMidYMid meet"
+              shapeRendering="crispEdges"
+            >
+            {renderEdges.map((edge) => {
+              // Calculate midpoint for counter label
+              const midX = (edge.from.x + edge.to.x) / 2;
+              const midY = (edge.from.y + edge.to.y) / 2;
+              
+              return (
+                <g key={edge.id}>
+                  <line
+                    x1={edge.from.x}
+                    y1={edge.from.y}
+                    x2={edge.to.x}
+                    y2={edge.to.y}
+                    className={edge.fulfilled ? "skill-tree__link skill-tree__link--fulfilled" : "skill-tree__link skill-tree__link--locked"}
+                  />
+                  <g className="skill-tree__link-counter">
+                    <circle
+                      cx={midX}
+                      cy={midY}
+                      r="16"
+                      className={edge.fulfilled ? "skill-tree__link-counter-bg skill-tree__link-counter-bg--fulfilled" : "skill-tree__link-counter-bg skill-tree__link-counter-bg--locked"}
+                      shapeRendering="crispEdges"
+                    />
+                    <text
+                      x={midX}
+                      y={midY}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      className="skill-tree__link-counter-text"
+                      textRendering="optimizeLegibility"
+                      shapeRendering="crispEdges"
+                    >
+                      {edge.currentLevel}/{edge.requiredLevel}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
           </svg>
           {visibleNodes.map((node) => {
             const position = renderPositions.get(node.id);

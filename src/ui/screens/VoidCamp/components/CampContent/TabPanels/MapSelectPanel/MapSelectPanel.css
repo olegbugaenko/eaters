@@ -75,7 +75,44 @@
   stroke-width: 4;
   stroke-linecap: round;
   opacity: 0.85;
+}
+
+.map-tree__link--fulfilled {
   stroke: rgba(203, 213, 225, 0.85);
+}
+
+.map-tree__link--locked {
+  stroke: rgba(250, 204, 21, 0.85);
+  stroke-dasharray: 14 10;
+}
+
+.map-tree__link-counter {
+  pointer-events: none;
+}
+
+.map-tree__link-counter-bg {
+  fill: rgba(15, 23, 42, 0.95);
+  stroke-width: 2;
+}
+
+.map-tree__link-counter-bg--fulfilled {
+  stroke: rgba(203, 213, 225, 0.85);
+}
+
+.map-tree__link-counter-bg--locked {
+  stroke: rgba(250, 204, 21, 0.85);
+}
+
+.map-tree__link-counter-text {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  fill: #e2e8f0;
+  pointer-events: none;
+  user-select: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .map-tree-node-wrapper {
@@ -97,8 +134,8 @@
 
 .map-tree-node {
   position: relative;
-  width: 78px;
-  height: 78px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   border: 2px solid rgba(184, 184, 184, 0.35);
   background: radial-gradient(circle at 35% 30%, rgba(148, 184, 184, 0.5), rgba(15, 15, 15, 1.0));
@@ -122,6 +159,19 @@
 .map-tree-node--active {
   box-shadow: 0 0 28px rgba(248, 248, 248, 0.45);
   border-color: rgba(129, 140, 248, 0.85);
+}
+
+.map-tree-node--locked {
+  border-color: rgba(117, 96, 11, 0.65);
+  background: radial-gradient(circle at 30% 30%, rgb(71, 68, 39), rgb(43, 5, 18));
+  color: rgba(252, 211, 77, 0.85);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.map-tree-node--locked:hover {
+  transform: scale(1);
+  box-shadow: none;
 }
 
 .map-tree-node__level {
@@ -221,6 +271,12 @@
   gap: var(--spacing-sm);
   width: 200px;
   z-index: 2;
+}
+
+.map-tree__popover-name {
+  font-weight: 700;
+  text-align: center;
+  font-size: 1rem;
 }
 
 .map-tree__popover-level {

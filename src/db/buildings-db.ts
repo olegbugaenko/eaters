@@ -128,7 +128,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
         multiplier: (level) => 1 + 0.075 * level,
       }
     },
-    cost: createScalingCost({ organics: 2000, copper: 500 }, 1.75),
+    cost: createScalingCost({ organics: 2000, sand: 5000 }, 1.75),
     unlockedBy: [
       {
         type: "skill",
@@ -166,7 +166,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
         multiplier: (level) => 1 + 0.16 * level,
       },
     },
-    cost: createScalingCost({ silver: 200, copper: 800 }, 1.75),
+    cost: createScalingCost({ silver: 500, copper: 1600 }, 1.75),
     unlockedBy: [
       {
         type: "skill",
