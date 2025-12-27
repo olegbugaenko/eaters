@@ -17,8 +17,11 @@ export type MapId =
   | "thicket"
   | "oldForge"
   | "spruce"
+  | "sphinx"
+  | "stoneCottage"
   | "wire"
   | "mine"
+  | "adit"
   | "silverRing"
   | "frozenForest"
   | "volcano";
@@ -340,6 +343,108 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     mapsRequired: { foundations: 1 },
     maxLevel: 2,
   },
+  sphinx: (() => {
+    const size: SceneSize = { width: 1400, height: 1200 };
+    const center: SceneVector2 = { x: size.width * 0.55, y: size.height * 0.55 };
+    const spawnPoint: SceneVector2 = { x: center.x - 400, y: size.height - 180 };
+
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+
+    return {
+      name: "Sand Sphinx",
+      size,
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 2, y: 1 },
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const sandLevel = baseLevel + 2;
+
+        const base = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: createRectangle(120, size.height - 260, size.width - 240, 220),
+          },
+          { level: sandLevel }
+        );
+
+        const body = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: createRectangle(center.x - 260, center.y - 180, 520, 220),
+          },
+          { level: sandLevel }
+        );
+
+        const head = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: createRectangle(center.x - 300, center.y - 320, 180, 160),
+          },
+          { level: sandLevel }
+        );
+
+        const paws = [
+          polygonWithBricks(
+            "smallSquareYellow",
+            { vertices: createRectangle(center.x - 320, center.y - 30, 180, 90) },
+            { level: sandLevel }
+          ),
+          polygonWithBricks(
+            "smallSquareYellow",
+            { vertices: createRectangle(center.x + 120, center.y - 30, 180, 90) },
+            { level: sandLevel }
+          ),
+        ];
+
+        const backCrest = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: center.x + 200, y: center.y - 60 },
+            innerRadius: 0,
+            outerRadius: 140,
+          },
+          { level: sandLevel }
+        );
+
+        const tail = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: center.x + 320, y: center.y + 40 },
+            innerRadius: 0,
+            outerRadius: 110,
+          },
+          { level: sandLevel }
+        );
+
+        return [base, body, head, ...paws, backCrest, tail];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "initial",
+          level: 2,
+        },
+      ],
+      mapsRequired: { initial: 2 },
+      maxLevel: 3,
+    } satisfies MapConfig;
+  })(),
   thicket: (() => {
     const size: SceneSize = { width: 1000, height: 1000 };
     const sandHeight = 60;
@@ -584,6 +689,116 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       maxLevel: 3,
     } satisfies MapConfig;
   })(),
+  stoneCottage: (() => {
+    const size: SceneSize = { width: 1300, height: 1200 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 160 };
+
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+
+    return {
+      name: "Stone Cottage",
+      size,
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 2, y: 4 },
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const stoneLevel = baseLevel + 3;
+        const ironLevel = baseLevel + 1;
+        const organicLevel = baseLevel + 1;
+
+        const walls = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: createRectangle(center.x - 260, center.y - 220, 520, 320),
+            holes: [createRectangle(center.x - 80, center.y + 40, 160, 120)],
+          },
+          { level: stoneLevel }
+        );
+
+        const roof = polygonWithBricks(
+          "smallIron",
+          {
+            vertices: [
+              { x: center.x - 300, y: center.y - 220 },
+              { x: center.x, y: center.y - 360 },
+              { x: center.x + 300, y: center.y - 220 },
+            ],
+          },
+          { level: ironLevel }
+        );
+
+        const doorFrame = polygonWithBricks(
+          "smallIron",
+          {
+            vertices: createRectangle(center.x - 60, center.y + 120, 120, 120),
+          },
+          { level: ironLevel }
+        );
+
+        const chimney = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: createRectangle(center.x + 140, center.y - 340, 70, 180),
+          },
+          { level: stoneLevel }
+        );
+
+        const bushes = [
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x - 280, y: center.y + 200 }, innerRadius: 0, outerRadius: 90 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x + 280, y: center.y + 200 }, innerRadius: 0, outerRadius: 100 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x - 200, y: center.y + 260 }, innerRadius: 0, outerRadius: 70 },
+            { level: organicLevel }
+          ),
+        ];
+
+        const courtyard = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: createRectangle(center.x - 140, center.y + 200, 280, 100),
+          },
+          { level: stoneLevel }
+        );
+
+        return [walls, roof, doorFrame, chimney, courtyard, ...bushes];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "thicket",
+          level: 1,
+        },
+      ],
+      mapsRequired: { thicket: 1 },
+      maxLevel: 3,
+    } satisfies MapConfig;
+  })(),
   mine: (() => {
     const size: SceneSize = { width: 1200, height: 1200 };
     const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
@@ -673,6 +888,100 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       mapsRequired: { spruce: 1 },
+      maxLevel: 3,
+    } satisfies MapConfig;
+  })(),
+  adit: (() => {
+    const size: SceneSize = { width: 1500, height: 1200 };
+    const spawnPoint: SceneVector2 = { x: 200, y: size.height - 140 };
+
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+
+    return {
+      name: "Adit Corridors",
+      size,
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 5, y: 4 },
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const ironLevel = baseLevel + 1;
+        const sandLevel = baseLevel + 2;
+        const corridorWidth = 90;
+
+        const horizontalRuns = [
+          { x: 140, y: 260, width: size.width - 280 },
+          { x: 140, y: 520, width: size.width - 360 },
+          { x: 260, y: 780, width: size.width - 420 },
+        ].map((run) =>
+          polygonWithBricks(
+            "smallIron",
+            { vertices: createRectangle(run.x, run.y, run.width, corridorWidth) },
+            { level: ironLevel }
+          )
+        );
+
+        const verticalRuns = [
+          { x: 340, y: 200, height: size.height - 360 },
+          { x: 720, y: 140, height: size.height - 280 },
+          { x: 1100, y: 220, height: size.height - 420 },
+        ].map((run) =>
+          polygonWithBricks(
+            "smallIron",
+            { vertices: createRectangle(run.x, run.y, corridorWidth, run.height) },
+            { level: ironLevel }
+          )
+        );
+
+        const chambers = [
+          { x: 420, y: 320, width: 200, height: 140 },
+          { x: 880, y: 360, width: 220, height: 160 },
+          { x: 560, y: 680, width: 240, height: 180 },
+          { x: 980, y: 660, width: 220, height: 190 },
+        ].map((room) =>
+          polygonWithBricks(
+            "smallSquareYellow",
+            { vertices: createRectangle(room.x, room.y, room.width, room.height) },
+            { level: sandLevel }
+          )
+        );
+
+        const barricades = [
+          { x: 200, y: size.height - 230, width: size.width - 360, height: corridorWidth },
+          { x: size.width - 260, y: 160, width: corridorWidth, height: size.height - 320 },
+        ].map((segment) =>
+          polygonWithBricks(
+            "smallSquareYellow",
+            { vertices: createRectangle(segment.x, segment.y, segment.width, segment.height) },
+            { level: sandLevel }
+          )
+        );
+
+        return [...horizontalRuns, ...verticalRuns, ...chambers, ...barricades];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "mine",
+          level: 1,
+        },
+      ],
+      mapsRequired: { mine: 1 },
       maxLevel: 3,
     } satisfies MapConfig;
   })(),
