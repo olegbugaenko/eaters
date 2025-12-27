@@ -272,6 +272,11 @@ export const SkillTreeView: React.FC = () => {
   const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const nodeRefs = useRef<Map<SkillId, HTMLButtonElement | null>>(new Map());
+  const edgeLineRefs = useRef<Map<string, SVGLineElement | null>>(new Map());
+  const edgeCounterRefs = useRef<
+    Map<string, { circle: SVGCircleElement | null; text: SVGTextElement | null }>
+  >(new Map());
   const panStateRef = useRef({
     isDown: false,
     isPanning: false,
@@ -288,7 +293,8 @@ export const SkillTreeView: React.FC = () => {
     offsetX: 0,
     offsetY: 0,
   });
-  const [animatedOffsets, setAnimatedOffsets] = useState<
+  const animatedOffsetsRef = useRef<Map<SkillId, { x: number; y: number }>>(new Map());
+  const renderPositionsRef = useRef<
     Map<SkillId, { x: number; y: number }>
   >(new Map());
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
@@ -346,53 +352,99 @@ export const SkillTreeView: React.FC = () => {
     return ids;
   }, [nodeAffordability]);
 
-  const renderPositions = useMemo(() => {
-    const map = new Map<SkillId, { x: number; y: number }>();
-    visibleNodes.forEach((node) => {
-      const base = layout.positions.get(node.id);
-      if (!base) {
-        return;
-      }
-      const offset = animatedOffsets.get(node.id) ?? { x: 0, y: 0 };
-      map.set(node.id, { x: base.x + offset.x, y: base.y + offset.y });
-    });
-    return map;
-  }, [animatedOffsets, layout.positions, visibleNodes]);
+  const updateRenderPositions = useCallback(
+    (offsets: Map<SkillId, { x: number; y: number }>) => {
+      const nextPositions = new Map<SkillId, { x: number; y: number }>();
+
+      visibleNodes.forEach((node) => {
+        const base = layout.positions.get(node.id);
+        if (!base) {
+          return;
+        }
+
+        const offset = offsets.get(node.id) ?? { x: 0, y: 0 };
+        const position = { x: base.x + offset.x, y: base.y + offset.y };
+        nextPositions.set(node.id, position);
+
+        const element = nodeRefs.current.get(node.id);
+        if (element) {
+          element.style.setProperty("--skill-node-wobble-x", `${offset.x}px`);
+          element.style.setProperty("--skill-node-wobble-y", `${offset.y}px`);
+        }
+      });
+
+      renderPositionsRef.current = nextPositions;
+
+      layout.edges.forEach((edge) => {
+        const from = nextPositions.get(edge.fromId) ?? edge.from;
+        const to = nextPositions.get(edge.toId) ?? edge.to;
+
+        const line = edgeLineRefs.current.get(edge.id);
+        if (line) {
+          line.setAttribute("x1", `${from.x}`);
+          line.setAttribute("y1", `${from.y}`);
+          line.setAttribute("x2", `${to.x}`);
+          line.setAttribute("y2", `${to.y}`);
+        }
+
+        const counters = edgeCounterRefs.current.get(edge.id);
+        if (counters) {
+          const midX = (from.x + to.x) / 2;
+          const midY = (from.y + to.y) / 2;
+
+          counters.circle?.setAttribute("cx", `${midX}`);
+          counters.circle?.setAttribute("cy", `${midY}`);
+          counters.text?.setAttribute("x", `${midX}`);
+          counters.text?.setAttribute("y", `${midY}`);
+        }
+      });
+    },
+    [layout.edges, layout.positions, visibleNodes]
+  );
 
   useEffect(() => {
+    const offsets = animatedOffsetsRef.current;
+    offsets.clear();
+
+    const renderStillFrame = () => {
+      visibleNodes.forEach((node) => {
+        offsets.set(node.id, { x: 0, y: 0 });
+      });
+      updateRenderPositions(offsets);
+    };
+
     if (wobbleNodeIds.size === 0) {
-      setAnimatedOffsets(new Map());
+      renderStillFrame();
       return undefined;
     }
 
     const step = (timestamp: number) => {
       const currentHoveredId = hoveredIdRef.current;
-      const nextOffsets = new Map<SkillId, { x: number; y: number }>();
+      offsets.clear();
 
       visibleNodes.forEach((node) => {
         const shouldWobble = wobbleNodeIds.has(node.id) && currentHoveredId !== node.id;
         if (!shouldWobble) {
-          nextOffsets.set(node.id, { x: 0, y: 0 });
+          offsets.set(node.id, { x: 0, y: 0 });
           return;
         }
 
         const seed = wobblePhaseSeedsRef.current.get(node.id) ?? 0;
         const angle = seed + timestamp * WOBBLE_SPEED;
-        nextOffsets.set(node.id, {
+        offsets.set(node.id, {
           x: Math.cos(angle) * WOBBLE_RADIUS,
           y: Math.sin(angle) * WOBBLE_RADIUS,
         });
       });
 
-      setAnimatedOffsets(nextOffsets);
+      updateRenderPositions(offsets);
       animationFrameRef.current = requestAnimationFrame(step);
     };
 
-    // Cancel any existing animation first
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    
+
     animationFrameRef.current = requestAnimationFrame(step);
     return () => {
       if (animationFrameRef.current !== null) {
@@ -400,7 +452,7 @@ export const SkillTreeView: React.FC = () => {
         animationFrameRef.current = null;
       }
     };
-  }, [visibleNodes, wobbleNodeIds]);
+  }, [updateRenderPositions, visibleNodes, wobbleNodeIds]);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -561,7 +613,8 @@ export const SkillTreeView: React.FC = () => {
       let closestDistanceSquared = HOVER_SNAP_RADIUS * HOVER_SNAP_RADIUS;
 
       visibleNodes.forEach((node) => {
-        const position = renderPositions.get(node.id);
+        const position =
+          renderPositionsRef.current.get(node.id) ?? layout.positions.get(node.id);
         if (!position) {
           return;
         }
@@ -576,7 +629,7 @@ export const SkillTreeView: React.FC = () => {
 
       setPointerHoveredId(closestId);
     },
-    [renderPositions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
+    [layout.positions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
   );
 
   const clearPointerHover = useCallback(() => {
@@ -746,11 +799,11 @@ export const SkillTreeView: React.FC = () => {
   const renderEdges = useMemo(
     () =>
       layout.edges.map((edge) => {
-        const from = renderPositions.get(edge.fromId) ?? edge.from;
-        const to = renderPositions.get(edge.toId) ?? edge.to;
+        const from = renderPositionsRef.current.get(edge.fromId) ?? edge.from;
+        const to = renderPositionsRef.current.get(edge.toId) ?? edge.to;
         return { ...edge, from, to };
       }),
-    [layout.edges, renderPositions]
+    [layout.edges]
   );
 
   return (
@@ -772,14 +825,21 @@ export const SkillTreeView: React.FC = () => {
               preserveAspectRatio="xMidYMid meet"
               shapeRendering="crispEdges"
             >
-            {renderEdges.map((edge) => {
-              // Calculate midpoint for counter label
-              const midX = (edge.from.x + edge.to.x) / 2;
-              const midY = (edge.from.y + edge.to.y) / 2;
+          {renderEdges.map((edge) => {
+            // Calculate midpoint for counter label
+            const midX = (edge.from.x + edge.to.x) / 2;
+            const midY = (edge.from.y + edge.to.y) / 2;
               
               return (
                 <g key={edge.id}>
                   <line
+                    ref={(element) => {
+                      if (element) {
+                        edgeLineRefs.current.set(edge.id, element);
+                      } else {
+                        edgeLineRefs.current.delete(edge.id);
+                      }
+                    }}
                     x1={edge.from.x}
                     y1={edge.from.y}
                     x2={edge.to.x}
@@ -788,6 +848,27 @@ export const SkillTreeView: React.FC = () => {
                   />
                   <g className="skill-tree__link-counter">
                     <circle
+                      ref={(element) => {
+                        const existing = edgeCounterRefs.current.get(edge.id) ?? {
+                          circle: null,
+                          text: null,
+                        };
+
+                        if (!element) {
+                          const next = { ...existing, circle: null };
+                          if (!next.text) {
+                            edgeCounterRefs.current.delete(edge.id);
+                          } else {
+                            edgeCounterRefs.current.set(edge.id, next);
+                          }
+                          return;
+                        }
+
+                        edgeCounterRefs.current.set(edge.id, {
+                          circle: element,
+                          text: existing.text,
+                        });
+                      }}
                       cx={midX}
                       cy={midY}
                       r="16"
@@ -795,6 +876,27 @@ export const SkillTreeView: React.FC = () => {
                       shapeRendering="crispEdges"
                     />
                     <text
+                      ref={(element) => {
+                        const existing = edgeCounterRefs.current.get(edge.id) ?? {
+                          circle: null,
+                          text: null,
+                        };
+
+                        if (!element) {
+                          const next = { ...existing, text: null };
+                          if (!next.circle) {
+                            edgeCounterRefs.current.delete(edge.id);
+                          } else {
+                            edgeCounterRefs.current.set(edge.id, next);
+                          }
+                          return;
+                        }
+
+                        edgeCounterRefs.current.set(edge.id, {
+                          circle: existing.circle,
+                          text: element,
+                        });
+                      }}
                       x={midX}
                       y={midY}
                       textAnchor="middle"
@@ -811,7 +913,8 @@ export const SkillTreeView: React.FC = () => {
             })}
           </svg>
           {visibleNodes.map((node) => {
-            const position = renderPositions.get(node.id);
+            const position =
+              renderPositionsRef.current.get(node.id) ?? layout.positions.get(node.id);
             if (!position) {
               return null;
             }
@@ -838,6 +941,13 @@ export const SkillTreeView: React.FC = () => {
                 type="button"
                 className={nodeClasses}
                 style={{ left: `${position.x}px`, top: `${position.y}px` }}
+                ref={(element) => {
+                  if (element) {
+                    nodeRefs.current.set(node.id, element);
+                  } else {
+                    nodeRefs.current.delete(node.id);
+                  }
+                }}
                 onMouseEnter={() => {
                   setPointerHoveredId(node.id);
                 }}
