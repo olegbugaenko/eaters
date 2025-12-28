@@ -25,6 +25,7 @@ interface ProjectileState {
   radius: number;
   elapsedMs: number;
   lifetimeMs: number;
+  createdAt: number;
   direction: SceneVector2;
   damage: { min: number; max: number };
   ringTrail?: ProjectileRingTrailState;
@@ -174,28 +175,30 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         fill: config.projectile.fill,
         customData: {
           tail: config.projectile.tail,
-          tailEmitter: config.projectile.tailEmitter,
-          shape: config.projectile.shape ?? "circle",
-        },
-      });
+        tailEmitter: config.projectile.tailEmitter,
+        shape: config.projectile.shape ?? "circle",
+      },
+    });
 
-      const ringTrail = config.projectile.ringTrail
-        ? this.createRingTrailState(config.projectile.ringTrail)
-        : undefined;
+    const createdAt = performance.now();
+    const ringTrail = config.projectile.ringTrail
+      ? this.createRingTrailState(config.projectile.ringTrail)
+      : undefined;
 
-      const projectileState: ProjectileState = {
+    const projectileState: ProjectileState = {
         id: objectId,
         spellId: context.spellId,
-        position: { ...position },
-        velocity,
-        radius: config.projectile.radius,
-        elapsedMs: 0,
-        lifetimeMs: Math.max(0, config.projectile.lifetimeMs),
-        direction: { ...direction },
-        damage: config.damage,
-        ringTrail,
-        damageMultiplier: context.spellPowerMultiplier,
-        aoe: sanitizeAoe(config.projectile.aoe),
+      position: { ...position },
+      velocity,
+      radius: config.projectile.radius,
+      elapsedMs: 0,
+      lifetimeMs: Math.max(0, config.projectile.lifetimeMs),
+      createdAt,
+      direction: { ...direction },
+      damage: config.damage,
+      ringTrail,
+      damageMultiplier: context.spellPowerMultiplier,
+      aoe: sanitizeAoe(config.projectile.aoe),
         explosion: config.projectile.explosion,
       };
 
@@ -310,12 +313,17 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
   public cleanupExpired(): void {
     const now = performance.now();
-    
+
     // Clean up expired projectiles (check out-of-bounds)
     const mapSize = this.scene.getMapSize();
     let writeIndex = 0;
     for (let i = 0; i < this.projectiles.length; i += 1) {
       const projectile = this.projectiles[i]!;
+      const lifetimeElapsed = now - projectile.createdAt;
+      if (lifetimeElapsed >= projectile.lifetimeMs) {
+        this.scene.removeObject(projectile.id);
+        continue;
+      }
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
         this.scene.removeObject(projectile.id);
         continue;

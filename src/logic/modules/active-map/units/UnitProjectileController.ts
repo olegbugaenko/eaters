@@ -53,6 +53,7 @@ interface UnitProjectileState extends UnitProjectileSpawn {
   elapsedMs: number;
   radius: number;
   lifetimeMs: number;
+  createdAt: number;
   ringTrail?: UnitProjectileRingTrailState;
   shape: UnitProjectileShape;
   hitRadius: number;
@@ -96,6 +97,7 @@ export class UnitProjectileController {
       y: direction.y * visual.speed,
     };
     const position = { ...projectile.origin };
+    const createdAt = performance.now();
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
     const hitRadius = Math.max(1, visual.hitRadius ?? radius);
@@ -122,6 +124,7 @@ export class UnitProjectileController {
       position,
       elapsedMs: 0,
       lifetimeMs,
+      createdAt,
       radius,
       ringTrail,
       shape: visual.shape ?? "circle",
@@ -238,15 +241,17 @@ export class UnitProjectileController {
    */
   public cleanupExpired(): void {
     const now = performance.now();
-    
+
     // Clean up expired projectiles
     let writeIndex = 0;
     for (let i = 0; i < this.projectiles.length; i += 1) {
       const projectile = this.projectiles[i]!;
-      // Calculate elapsed time from spawn (we don't track spawn time, so use elapsedMs as fallback)
-      // For projectiles, we'll use a simpler approach: check if lifetime exceeded
-      // Since we don't have createdAt for projectiles, we'll rely on tick() to clean them up
-      // But we can still clean up out-of-bounds ones
+      const lifetimeElapsed = now - projectile.createdAt;
+      if (lifetimeElapsed >= projectile.lifetimeMs) {
+        this.scene.removeObject(projectile.id);
+        this.projectileIndex.delete(projectile.id);
+        continue;
+      }
       const mapSize = this.scene.getMapSize();
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
         this.scene.removeObject(projectile.id);
