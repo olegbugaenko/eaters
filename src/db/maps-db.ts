@@ -47,6 +47,7 @@ export interface MapConfig {
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
   readonly spawnPoints?: readonly SceneVector2[];
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
+  readonly icon?: string;
   readonly nodePosition: MapNodePosition;
   readonly mapsRequired?: Partial<Record<MapId, number>>;
   readonly maxLevel: number;
@@ -58,6 +59,7 @@ export interface MapListEntry {
   readonly size: SceneSize;
   readonly brickCount: number;
   readonly brickTypes: readonly BrickType[];
+  readonly icon?: string;
 }
 
 export interface MapPlayerUnitConfig {
@@ -2099,6 +2101,7 @@ export const getMapList = (): MapListEntry[] =>
       id: mapId,
       name: config.name,
       size: { ...config.size },
+      icon: config.icon,
       brickCount,
       brickTypes,
     };

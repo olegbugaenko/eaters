@@ -110,6 +110,14 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
   return { width, height, positions, edges };
 };
 
+const getMapIconPath = (icon?: string): string | null => {
+  if (!icon) {
+    return null;
+  }
+  const hasExtension = icon.includes(".");
+  return `/images/maps/${hasExtension ? icon : `${icon}.svg`}`;
+};
+
 export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
   clearedLevelsTotal,
@@ -490,6 +498,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   .slice(0, 2);
 
               const initials = getMapInitials(map.name);
+              const iconSrc = getMapIconPath(map.icon);
 
               const handleDoubleClick = () => {
                 if (didPanRef.current) {
@@ -650,7 +659,18 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     <div className="map-tree-node__level">
                       {map.selectedLevel} / {map.currentLevel}
                     </div>
-                    <div className="map-tree-node__icon">{initials}</div>
+                    <div className="map-tree-node__icon">
+                      {iconSrc ? (
+                        <img
+                          src={iconSrc}
+                          alt=""
+                          aria-hidden="true"
+                          className="map-tree-node__image"
+                        />
+                      ) : (
+                        initials
+                      )}
+                    </div>
                   </button>
                 </div>
               );
