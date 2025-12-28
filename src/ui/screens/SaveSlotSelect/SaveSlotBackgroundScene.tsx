@@ -69,6 +69,28 @@ const WORD_SPACING = 0;
 const LINE_SPACING = 420;
 const TITLE_LINES = ["VOID", "EATERS"] as const;
 const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
+const ARCH_PATTERN: readonly string[] = [
+  ".....###########.....",
+  "....#############....",
+  "...###############...",
+  "..#################..",
+  ".###################.",
+  ".###################.",
+  ".#######.....#######.",
+  ".######.......######.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+  ".#####.........#####.",
+];
+const ARCH_GAP_FROM_TITLE = 140;
+const ARCH_HORIZONTAL_GAP = 2;
+const ARCH_VERTICAL_GAP = 2;
 
 // Adjust brick types per letter to quickly experiment with the title palette.
 const LETTER_BRICK_TYPES: Partial<Record<string, BrickType>> = {
@@ -194,14 +216,21 @@ interface LineMetric {
   height: number;
 }
 
-interface TitleLayoutResult {
-  bricks: Array<{
-    position: SceneVector2;
-    size: SceneSize;
-    fill: SceneFill;
-    stroke?: SceneStroke;
-  }>;
-  bounds: { x: number; y: number; width: number; height: number };
+type SceneBounds = { x: number; y: number; width: number; height: number };
+
+interface BrickInstance {
+  position: SceneVector2;
+  size: SceneSize;
+  fill: SceneFill;
+  stroke?: SceneStroke;
+}
+
+interface BrickLayout {
+  bricks: BrickInstance[];
+  bounds: SceneBounds;
+}
+
+interface TitleLayoutResult extends BrickLayout {
   wordRanges: Array<{ startX: number; endX: number; startY: number; endY: number; centerY: number }>;
 }
 
@@ -436,6 +465,69 @@ const computeTitleLayout = (
   };
 };
 
+const createArchLayout = (titleBounds: SceneBounds): BrickLayout => {
+  const config = getBrickConfig("smallSquareGray");
+  const stroke = config.stroke
+    ? {
+        color: { ...config.stroke.color },
+        width: config.stroke.width,
+      }
+    : undefined;
+  const tileWidth = config.size.width + ARCH_HORIZONTAL_GAP;
+  const tileHeight = config.size.height + ARCH_VERTICAL_GAP;
+  const columns = ARCH_PATTERN.reduce((max, row) => Math.max(max, row.length), 0);
+  const rows = ARCH_PATTERN.length;
+  const width = columns * config.size.width + Math.max(0, columns - 1) * ARCH_HORIZONTAL_GAP;
+  const height = rows * config.size.height + Math.max(0, rows - 1) * ARCH_VERTICAL_GAP;
+  const startX = titleBounds.x + titleBounds.width + ARCH_GAP_FROM_TITLE;
+  const startY = titleBounds.y + titleBounds.height / 2 - height / 2;
+
+  const bricks: BrickLayout["bricks"] = [];
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  ARCH_PATTERN.forEach((patternRow, rowIndex) => {
+    for (let colIndex = 0; colIndex < patternRow.length; colIndex += 1) {
+      if (patternRow[colIndex] !== "#") {
+        continue;
+      }
+
+      const centerX =
+        startX +
+        colIndex * tileWidth +
+        config.size.width / 2;
+      const centerY =
+        startY +
+        rowIndex * tileHeight +
+        config.size.height / 2;
+
+      bricks.push({
+        position: { x: centerX, y: centerY },
+        size: { ...config.size },
+        fill: createBrickFill(config),
+        stroke,
+      });
+
+      minX = Math.min(minX, centerX - config.size.width / 2);
+      minY = Math.min(minY, centerY - config.size.height / 2);
+      maxX = Math.max(maxX, centerX + config.size.width / 2);
+      maxY = Math.max(maxY, centerY + config.size.height / 2);
+    }
+  });
+
+  return {
+    bricks,
+    bounds: {
+      x: minX,
+      y: minY,
+      width: Math.max(0, maxX - minX),
+      height: Math.max(0, maxY - minY),
+    },
+  };
+};
+
 interface CreatureConfig {
   modules: UnitModuleId[];
   orbitCenter: SceneVector2;
@@ -493,16 +585,37 @@ const deriveRendererStroke = (
   return undefined;
 };
 
+const mergeBounds = (base: SceneBounds, ...bounds: SceneBounds[]): SceneBounds => {
+  let minX = base.x;
+  let minY = base.y;
+  let maxX = base.x + base.width;
+  let maxY = base.y + base.height;
+
+  bounds.forEach((bound) => {
+    minX = Math.min(minX, bound.x);
+    minY = Math.min(minY, bound.y);
+    maxX = Math.max(maxX, bound.x + bound.width);
+    maxY = Math.max(maxY, bound.y + bound.height);
+  });
+
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(0, maxX - minX),
+    height: Math.max(0, maxY - minY),
+  };
+};
+
 const computeSceneContentBounds = (
-  titleBounds: TitleLayoutResult["bounds"],
+  contentBounds: SceneBounds,
   creatures: readonly CreatureConfig[],
   paddingX: number,
   paddingY: number
-): TitleLayoutResult["bounds"] => {
-  let minX = titleBounds.x;
-  let minY = titleBounds.y;
-  let maxX = titleBounds.x + titleBounds.width;
-  let maxY = titleBounds.y + titleBounds.height;
+): SceneBounds => {
+  let minX = contentBounds.x;
+  let minY = contentBounds.y;
+  let maxX = contentBounds.x + contentBounds.width;
+  let maxY = contentBounds.y + contentBounds.height;
 
   creatures.forEach((creature) => {
     const horizontalRadius = creature.orbitRadius;
@@ -794,7 +907,7 @@ const FRAGMENT_SHADER = createSceneFragmentShader();
 
 const centerCameraOnBounds = (
   scene: SceneObjectManager,
-  bounds: { x: number; y: number; width: number; height: number }
+  bounds: SceneBounds
 ) => {
   const camera = scene.getCamera();
   const mapSize = scene.getMapSize();
@@ -987,7 +1100,9 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       MAP_SIZE.height
     );
 
-    titleLayout.bricks.forEach((brick) => {
+    const archLayout = createArchLayout(titleLayout.bounds);
+
+    [...titleLayout.bricks, ...archLayout.bricks].forEach((brick) => {
       scene.addObject("brick", {
         position: brick.position,
         size: brick.size,
@@ -998,7 +1113,7 @@ export const SaveSlotBackgroundScene: React.FC = () => {
 
     const creatures = createCreatures(scene, titleLayout);
     const contentBounds = computeSceneContentBounds(
-      titleLayout.bounds,
+      mergeBounds(titleLayout.bounds, archLayout.bounds),
       creatures,
       500, // paddingX
       CONTENT_PADDING // paddingY
