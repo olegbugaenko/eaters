@@ -2,8 +2,8 @@ import { GameModule } from "../../core/types";
 import {
   FILL_TYPES,
   SceneColor,
-  SceneFill,
   SceneFillFilaments,
+  SceneRadialGradientFill,
   SceneFillNoise,
   SceneGradientStop,
   SceneObjectManager,
@@ -37,7 +37,7 @@ interface WaveState {
   gradientStops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
   filaments?: SceneFillFilaments;
-  fill: SceneFill;
+  fill: SceneRadialGradientFill;
   mutableStops: SceneGradientStop[];
   baseColor: SceneColor;
 }
@@ -295,7 +295,11 @@ const createReusableWaveFill = (
   alpha: number,
   noise?: SceneFillNoise,
   filaments?: SceneFillFilaments
-): { fill: SceneFill; stops: SceneGradientStop[]; baseColor: SceneColor } => {
+): {
+  fill: SceneRadialGradientFill;
+  stops: SceneGradientStop[];
+  baseColor: SceneColor;
+} => {
   const radius = Math.max(outerRadius, 0.0001);
   const normalizedInnerRadius = clamp01(innerRadius / radius);
   const baseColor = gradientStops[0]?.color ?? { r: 1, g: 1, b: 1, a: 0 };
@@ -326,7 +330,7 @@ const createReusableWaveFill = (
     stops[0].color.a = 0;
   }
 
-  const fill: SceneFill = {
+  const fill: SceneRadialGradientFill = {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
     end: radius,
@@ -337,6 +341,13 @@ const createReusableWaveFill = (
 
   return { fill, stops, baseColor };
 };
+
+const cloneFillNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
+  noise ? { ...noise } : undefined;
+
+const cloneFillFilaments = (
+  filaments: SceneFillFilaments | undefined
+): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
 
 const updateWaveFill = (
   wave: WaveState,
