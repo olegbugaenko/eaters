@@ -238,7 +238,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       "Socket barbed quills into the chord’s tip so every strike unleashes sideways volleys of piercing shards.",
     bonusLabel: "Side projectile damage",
     bonusType: "multiplier",
-    baseBonusValue: 0.45,
+    baseBonusValue: 0.575,
     bonusPerLevel: 0.025,
     manaCostMultiplier: 2.4,
     sanityCost: 0,

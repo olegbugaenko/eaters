@@ -353,11 +353,17 @@ export interface ParticleEmitterGpuRenderUniforms {
   fillType: number;
   stopCount: number;
   stopOffsets: Float32Array;
+  stopOffsetsKey?: string;
   stopColor0: Float32Array;
+  stopColor0Key?: string;
   stopColor1: Float32Array;
+  stopColor1Key?: string;
   stopColor2: Float32Array;
+  stopColor2Key?: string;
   stopColor3: Float32Array;
+  stopColor3Key?: string;
   stopColor4: Float32Array;
+  stopColor4Key?: string;
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
@@ -655,6 +661,17 @@ const serializeArray = (arr: Float32Array): string => {
   return s;
 };
 
+export const refreshParticleUniformKeys = (
+  uniforms: ParticleEmitterGpuRenderUniforms
+): void => {
+  uniforms.stopOffsetsKey = serializeArray(uniforms.stopOffsets);
+  uniforms.stopColor0Key = serializeArray(uniforms.stopColor0);
+  uniforms.stopColor1Key = serializeArray(uniforms.stopColor1);
+  uniforms.stopColor2Key = serializeArray(uniforms.stopColor2);
+  uniforms.stopColor3Key = serializeArray(uniforms.stopColor3);
+  uniforms.stopColor4Key = serializeArray(uniforms.stopColor4);
+};
+
 const uploadEmitterUniforms = (
   gl: WebGL2RenderingContext,
   program: ParticleRenderProgram,
@@ -777,35 +794,35 @@ const uploadEmitterUniforms = (
       (cache.explicitRadius = u.explicitRadius)
     );
   }
-  const so = serializeArray(u.stopOffsets);
-  if (program.uniforms.stopOffsets && cache.stopOffsets !== so) {
+  const stopOffsetsKey = u.stopOffsetsKey ?? (u.stopOffsetsKey = serializeArray(u.stopOffsets));
+  if (program.uniforms.stopOffsets && cache.stopOffsets !== stopOffsetsKey) {
     gl.uniform1fv(program.uniforms.stopOffsets, u.stopOffsets);
-    cache.stopOffsets = so;
+    cache.stopOffsets = stopOffsetsKey;
   }
-  const c0 = serializeArray(u.stopColor0);
-  if (program.uniforms.stopColor0 && cache.stopColor0 !== c0) {
+  const stopColor0Key = u.stopColor0Key ?? (u.stopColor0Key = serializeArray(u.stopColor0));
+  if (program.uniforms.stopColor0 && cache.stopColor0 !== stopColor0Key) {
     gl.uniform4fv(program.uniforms.stopColor0, u.stopColor0);
-    cache.stopColor0 = c0;
+    cache.stopColor0 = stopColor0Key;
   }
-  const c1 = serializeArray(u.stopColor1);
-  if (program.uniforms.stopColor1 && cache.stopColor1 !== c1) {
+  const stopColor1Key = u.stopColor1Key ?? (u.stopColor1Key = serializeArray(u.stopColor1));
+  if (program.uniforms.stopColor1 && cache.stopColor1 !== stopColor1Key) {
     gl.uniform4fv(program.uniforms.stopColor1, u.stopColor1);
-    cache.stopColor1 = c1;
+    cache.stopColor1 = stopColor1Key;
   }
-  const c2 = serializeArray(u.stopColor2);
-  if (program.uniforms.stopColor2 && cache.stopColor2 !== c2) {
+  const stopColor2Key = u.stopColor2Key ?? (u.stopColor2Key = serializeArray(u.stopColor2));
+  if (program.uniforms.stopColor2 && cache.stopColor2 !== stopColor2Key) {
     gl.uniform4fv(program.uniforms.stopColor2, u.stopColor2);
-    cache.stopColor2 = c2;
+    cache.stopColor2 = stopColor2Key;
   }
-  const c3 = serializeArray(u.stopColor3);
-  if (program.uniforms.stopColor3 && cache.stopColor3 !== c3) {
+  const stopColor3Key = u.stopColor3Key ?? (u.stopColor3Key = serializeArray(u.stopColor3));
+  if (program.uniforms.stopColor3 && cache.stopColor3 !== stopColor3Key) {
     gl.uniform4fv(program.uniforms.stopColor3, u.stopColor3);
-    cache.stopColor3 = c3;
+    cache.stopColor3 = stopColor3Key;
   }
-  const c4 = serializeArray(u.stopColor4);
-  if (program.uniforms.stopColor4 && cache.stopColor4 !== c4) {
+  const stopColor4Key = u.stopColor4Key ?? (u.stopColor4Key = serializeArray(u.stopColor4));
+  if (program.uniforms.stopColor4 && cache.stopColor4 !== stopColor4Key) {
     gl.uniform4fv(program.uniforms.stopColor4, u.stopColor4);
-    cache.stopColor4 = c4;
+    cache.stopColor4 = stopColor4Key;
   }
   const noiseAmp: [number, number] = [u.noiseColorAmplitude, u.noiseAlphaAmplitude];
   if (

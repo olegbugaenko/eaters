@@ -297,6 +297,7 @@ export const SkillTreeView: React.FC = () => {
   const renderPositionsRef = useRef<
     Map<SkillId, { x: number; y: number }>
   >(new Map());
+  const previousLayoutRef = useRef<SkillTreeLayout | null>(null);
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
@@ -553,6 +554,47 @@ export const SkillTreeView: React.FC = () => {
   const fallbackId: SkillId | null = visibleNodes[0]?.id ?? null;
   const activeId = hoveredId ?? fallbackId;
   const activeNode = visibleNodes.find((node) => node.id === activeId) ?? null;
+
+  useEffect(() => {
+    const previousLayout = previousLayoutRef.current;
+    previousLayoutRef.current = layout;
+
+    if (!hasInitializedViewRef.current || !previousLayout) {
+      return;
+    }
+
+    const anchorId =
+      hoveredIdRef.current ??
+      activeNode?.id ??
+      visibleNodes.find((node) =>
+        previousLayout.positions.has(node.id) && layout.positions.has(node.id)
+      )?.id ??
+      null;
+
+    if (!anchorId) {
+      return;
+    }
+
+    const previousPosition = previousLayout.positions.get(anchorId);
+    const nextPosition = layout.positions.get(anchorId);
+
+    if (!previousPosition || !nextPosition) {
+      return;
+    }
+
+    const deltaX = nextPosition.x - previousPosition.x;
+    const deltaY = nextPosition.y - previousPosition.y;
+
+    if (Math.abs(deltaX) < 0.001 && Math.abs(deltaY) < 0.001) {
+      return;
+    }
+
+    setViewTransform((current) => ({
+      ...current,
+      offsetX: current.offsetX - deltaX * current.scale,
+      offsetY: current.offsetY - deltaY * current.scale,
+    }));
+  }, [activeNode, layout, visibleNodes]);
 
   const activeMissing = useMemo(
     () => computeMissing(activeNode?.nextCost ?? null, totalsMap),

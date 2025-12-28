@@ -30,6 +30,7 @@ import {
   ParticleEmitterGpuRenderUniforms,
   ParticleRenderResources,
   getParticleRenderResources,
+  refreshParticleUniformKeys,
   registerParticleEmitterHandle,
   unregisterParticleEmitterHandle,
 } from "./gpu/ParticleEmitterGpuRenderer";
@@ -223,6 +224,7 @@ export const createParticleEmitterPrimitive = <
       state.config = nextConfig;
       // keep buffer capacity stable to prevent frequent reallocations
       state.capacity = Math.max(state.capacity, nextConfig.capacity);
+      state.signature = serializeConfig(nextConfig, options);
 
       const now = getNowMs();
       const deltaMs = Math.max(0, Math.min(now - state.lastTimestamp, MAX_DELTA_MS));
@@ -338,7 +340,11 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
   }
 
   if (state.mode === "gpu" && state.gpu) {
-    updateParticleEmitterGpuUniforms(state.gpu, config);
+    const nextSignature = serializeConfig(config, options);
+    if (state.signature !== nextSignature) {
+      state.signature = nextSignature;
+      updateParticleEmitterGpuUniforms(state.gpu, config);
+    }
     advanceParticleEmitterStateGpu(state, instance, deltaMs, options);
     state.cpuCache = null;
     return null;
@@ -1133,6 +1139,7 @@ const createParticleEmitterGpuState = (
     alignToVelocity: false,
     sizeGrowthRate: 1.0,
   };
+  refreshParticleUniformKeys(uniforms);
 
   const gpu: ParticleEmitterGpuState = {
     gl,
@@ -1374,6 +1381,8 @@ const updateParticleEmitterGpuUniforms = <
     uniforms.hasExplicitRadius = explicitRadius > 0;
     uniforms.explicitRadius = uniforms.hasExplicitRadius ? explicitRadius : 0;
   }
+
+  refreshParticleUniformKeys(uniforms);
 };
 
 const resolveParticleFill = (config: ParticleEmitterBaseConfig): SceneFill => {

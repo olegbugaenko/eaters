@@ -42,6 +42,25 @@ type BulletTailEmitterRenderConfig = ParticleEmitterBaseConfig & {
   spread: number;
 };
 
+const tailConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["tail"] | undefined;
+    config: BulletTailRenderConfig;
+  }
+>();
+const tailEmitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["tailEmitter"] | undefined;
+    config: BulletTailEmitterRenderConfig | null;
+  }
+>();
+const tailFillCache = new WeakMap<
+  SceneObjectInstance,
+  { radius: number; tailRef: BulletTailRenderConfig; fill: SceneLinearGradientFill }
+>();
+
 const DEFAULT_TAIL_CONFIG: BulletTailRenderConfig = {
   lengthMultiplier: 4.5,
   widthMultiplier: 1.75,
@@ -58,11 +77,16 @@ const cloneColor = (color: SceneColor, fallback: SceneColor): SceneColor => ({
 
 const getTailConfig = (instance: SceneObjectInstance): BulletTailRenderConfig => {
   const data = instance.data.customData as BulletRendererCustomData | undefined;
-  if (!data || typeof data !== "object" || !data.tail) {
+  const tail = data && typeof data === "object" ? data.tail : undefined;
+  const cached = tailConfigCache.get(instance);
+  if (cached && cached.source === tail) {
+    return cached.config;
+  }
+
+  if (!tail) {
     return DEFAULT_TAIL_CONFIG;
   }
 
-  const { tail } = data;
   const lengthMultiplier =
     typeof tail.lengthMultiplier === "number"
       ? tail.lengthMultiplier
@@ -78,22 +102,32 @@ const getTailConfig = (instance: SceneObjectInstance): BulletTailRenderConfig =>
     ? cloneColor(tail.endColor, DEFAULT_TAIL_CONFIG.endColor)
     : { ...DEFAULT_TAIL_CONFIG.endColor };
 
-  return {
+  const config: BulletTailRenderConfig = {
     lengthMultiplier,
     widthMultiplier,
     startColor,
     endColor,
   };
+
+  tailConfigCache.set(instance, { source: tail, config });
+
+  return config;
 };
 
 const getTailEmitterConfig = (
   instance: SceneObjectInstance
 ): BulletTailEmitterRenderConfig | null => {
   const data = instance.data.customData as BulletRendererCustomData | undefined;
-  if (!data || typeof data !== "object" || !data.tailEmitter) {
-    return null;
+  const tailEmitter = data && typeof data === "object" ? data.tailEmitter : undefined;
+  const cached = tailEmitterConfigCache.get(instance);
+  if (cached && cached.source === tailEmitter) {
+    return cached.config;
   }
-  return sanitizeTailEmitterConfig(data.tailEmitter);
+
+  const config = tailEmitter ? sanitizeTailEmitterConfig(tailEmitter) : null;
+  tailEmitterConfigCache.set(instance, { source: tailEmitter, config });
+
+  return config;
 };
 
 const sanitizeTailEmitterConfig = (
@@ -249,8 +283,13 @@ const createTailFill = (
 ): SceneLinearGradientFill => {
   const radius = getBulletRadius(instance);
   const tail = getTailConfig(instance);
+  const cached = tailFillCache.get(instance);
+  if (cached && cached.radius === radius && cached.tailRef === tail) {
+    return cached.fill;
+  }
+
   const tailLength = radius * tail.lengthMultiplier;
-  return {
+  const fill: SceneLinearGradientFill = {
     fillType: FILL_TYPES.LINEAR_GRADIENT,
     start: { x: tailLength, y: 0 },
     end: { x: 0, y: 0 },
@@ -259,6 +298,10 @@ const createTailFill = (
       { offset: 1, color: { ...tail.endColor } },
     ],
   };
+
+  tailFillCache.set(instance, { radius, tailRef: tail, fill });
+
+  return fill;
 };
 
 const randomBetween = (min: number, max: number): number => {
