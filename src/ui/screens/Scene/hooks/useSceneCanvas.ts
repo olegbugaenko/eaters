@@ -174,6 +174,7 @@ export const useSceneCanvas = ({
   particleStatsLastUpdateRef,
 }: UseSceneCanvasParams) => {
   const unitSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
+  const interpolatedPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
   const getNow = () =>
     typeof performance !== "undefined" && typeof performance.now === "function"
       ? performance.now()
@@ -214,11 +215,12 @@ export const useSceneCanvas = ({
 
   const getInterpolatedUnitPositions = () => {
     const snapshots = unitSnapshotsRef.current;
+    const positions = interpolatedPositionsRef.current;
+    positions.clear();
     if (snapshots.size === 0) {
-      return new Map<string, SceneVector2>();
+      return positions;
     }
     const now = getNow();
-    const positions = new Map<string, SceneVector2>();
     snapshots.forEach((snapshot, id) => {
       const elapsed = Math.max(now - snapshot.lastTickAt, 0);
       const alpha =

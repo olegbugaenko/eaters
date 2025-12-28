@@ -37,6 +37,9 @@ interface WaveState {
   gradientStops: readonly SceneGradientStop[];
   noise?: SceneFillNoise;
   filaments?: SceneFillFilaments;
+  fill: SceneFill;
+  mutableStops: SceneGradientStop[];
+  baseColor: SceneColor;
 }
 
 interface ExplosionState {
@@ -193,24 +196,28 @@ export class ExplosionModule implements GameModule {
     };
 
     const waves: WaveState[] = waveStates.map((wave, index) => {
-      const fill = createWaveFill(
+      const fillState = createReusableWaveFill(
+        wave.gradientStops,
         wave.startInnerRadius,
         wave.startOuterRadius,
         wave.startAlpha,
-        wave.gradientStops,
-        wave.noise
+        wave.noise,
+        wave.filaments
       );
 
       const id = this.options.scene.addObject("explosion", {
         position: { ...options.position },
         size: { width: wave.startOuterRadius * 2, height: wave.startOuterRadius * 2 },
-        fill,
+        fill: fillState.fill,
         customData: index === 0 ? customData : { waveLifetimeMs },
       });
 
       return {
         ...wave,
         id,
+        fill: fillState.fill,
+        mutableStops: fillState.stops,
+        baseColor: fillState.baseColor,
       };
     });
 
@@ -263,17 +270,12 @@ export class ExplosionModule implements GameModule {
       );
       const waveAlpha = lerp(wave.startAlpha, wave.endAlpha, waveProgress);
 
+      updateWaveFill(wave, innerRadius, outerRadius, waveAlpha);
+
       this.options.scene.updateObject(wave.id, {
         position: { ...explosion.position },
         size: { width: outerRadius * 2, height: outerRadius * 2 },
-        fill: createWaveFill(
-          innerRadius,
-          outerRadius,
-          waveAlpha,
-          wave.gradientStops,
-          wave.noise,
-          wave.filaments,
-        ),
+        fill: wave.fill,
       });
     });
   }
@@ -286,20 +288,32 @@ export class ExplosionModule implements GameModule {
   }
 }
 
-const createWaveFill = (
+const createReusableWaveFill = (
+  gradientStops: readonly SceneGradientStop[],
   innerRadius: number,
   outerRadius: number,
   alpha: number,
-  gradientStops: readonly SceneGradientStop[],
   noise?: SceneFillNoise,
   filaments?: SceneFillFilaments
-): SceneFill => {
+): { fill: SceneFill; stops: SceneGradientStop[]; baseColor: SceneColor } => {
   const radius = Math.max(outerRadius, 0.0001);
   const normalizedInnerRadius = clamp01(innerRadius / radius);
+  const baseColor = gradientStops[0]?.color ?? { r: 1, g: 1, b: 1, a: 0 };
+  const sourceStops =
+    gradientStops.length > 0
+      ? gradientStops.map((stop) => ({
+          offset: stop.offset,
+          color: cloneSceneColor(stop.color ?? baseColor),
+        }))
+      : [
+          {
+            offset: normalizedInnerRadius,
+            color: { ...baseColor, a: 0 },
+          },
+        ];
 
-  const adjustedStops = gradientStops.map((stop) => ({
-    offset:
-      normalizedInnerRadius + clamp01(stop.offset) * (1 - normalizedInnerRadius),
+  const stops = sourceStops.map((stop) => ({
+    offset: normalizedInnerRadius + clamp01(stop.offset) * (1 - normalizedInnerRadius),
     color: {
       r: stop.color.r,
       g: stop.color.g,
@@ -308,40 +322,60 @@ const createWaveFill = (
     },
   }));
 
-  if (normalizedInnerRadius > 0 && adjustedStops[0]) {
-    adjustedStops[0] = {
-      ...adjustedStops[0],
-      color: {
-        ...adjustedStops[0].color,
-        a: 0,
-      },
-    };
+  if (normalizedInnerRadius > 0 && stops[0]) {
+    stops[0].color.a = 0;
   }
 
-  const baseColor = gradientStops[0]?.color ?? { r: 1, g: 1, b: 1, a: 0 };
-  const stops: SceneGradientStop[] =
-    adjustedStops.length > 0
-      ? adjustedStops
-      : [
-          {
-            offset: normalizedInnerRadius,
-            color: {
-              r: baseColor.r,
-              g: baseColor.g,
-              b: baseColor.b,
-              a: 0,
-            },
-          },
-        ];
-
-  return {
+  const fill: SceneFill = {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
     end: radius,
     stops,
-    ...(noise && { noise }),
-    ...(filaments && { filaments }),
+    ...(noise && { noise: cloneFillNoise(noise) }),
+    ...(filaments && { filaments: cloneFillFilaments(filaments) }),
   };
+
+  return { fill, stops, baseColor };
+};
+
+const updateWaveFill = (
+  wave: WaveState,
+  innerRadius: number,
+  outerRadius: number,
+  alpha: number
+): void => {
+  const radius = Math.max(outerRadius, 0.0001);
+  const normalizedInnerRadius = clamp01(innerRadius / radius);
+  wave.fill.end = radius;
+
+  const sourceStops =
+    wave.gradientStops.length > 0
+      ? wave.gradientStops
+      : [
+          {
+            offset: normalizedInnerRadius,
+            color: wave.baseColor,
+          },
+        ];
+  const referenceStop =
+    sourceStops[Math.max(0, Math.min(sourceStops.length - 1, wave.mutableStops.length - 1))] ??
+    sourceStops[0];
+
+  for (let i = 0; i < wave.mutableStops.length; i += 1) {
+    const source = i < sourceStops.length ? sourceStops[i]! : referenceStop!;
+    const target = wave.mutableStops[i]!;
+    target.offset =
+      normalizedInnerRadius + clamp01(source.offset) * (1 - normalizedInnerRadius);
+    const color = source.color ?? wave.baseColor;
+    target.color.r = color.r;
+    target.color.g = color.g;
+    target.color.b = color.b;
+    target.color.a = clamp01((typeof color.a === "number" ? color.a : 1) * alpha);
+  }
+
+  if (normalizedInnerRadius > 0 && wave.mutableStops[0]) {
+    wave.mutableStops[0].color.a = 0;
+  }
 };
 
 const createEmitterCustomData = (

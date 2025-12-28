@@ -326,9 +326,10 @@ export class UnitRuntimeController {
     const mapSize = this.scene.getMapSize();
     const maxRadius = Math.max(Math.hypot(mapSize.width, mapSize.height), TARGETING_RADIUS_STEP);
     let radius = TARGETING_RADIUS_STEP;
+    const evaluated = new Set<string>();
     while (radius <= maxRadius + TARGETING_RADIUS_STEP) {
       const bricks = this.bricks.findBricksNear(unit.position, radius);
-      const candidate = this.pickBestBrickCandidate(unit.position, bricks, mode);
+      const candidate = this.pickBestBrickCandidate(unit.position, bricks, mode, evaluated);
       if (candidate) {
         return candidate;
       }
@@ -340,7 +341,8 @@ export class UnitRuntimeController {
   private pickBestBrickCandidate(
     origin: SceneVector2,
     bricks: BrickRuntimeState[],
-    mode: UnitTargetingMode
+    mode: UnitTargetingMode,
+    evaluated?: Set<string>
   ): BrickRuntimeState | null {
     let best: BrickRuntimeState | null = null;
     let bestScore = 0;
@@ -348,6 +350,12 @@ export class UnitRuntimeController {
     bricks.forEach((brick) => {
       if (!brick || brick.hp <= 0) {
         return;
+      }
+      if (evaluated) {
+        if (evaluated.has(brick.id)) {
+          return;
+        }
+        evaluated.add(brick.id);
       }
       const score = this.computeBrickScore(brick, mode);
       if (score === null) {
