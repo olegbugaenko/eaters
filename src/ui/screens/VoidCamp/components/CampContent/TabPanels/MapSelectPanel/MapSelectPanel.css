@@ -138,7 +138,7 @@
   height: 70px;
   border-radius: 50%;
   border: 2px solid rgba(184, 184, 184, 0.35);
-  background: radial-gradient(circle at 35% 30%, rgba(148, 184, 184, 0.5), rgba(15, 15, 15, 1.0));
+  background: radial-gradient(circle at 35% 30%, rgba(80, 100, 100, 1), rgba(15, 15, 15, 1.0));
   color: #e2e8f0;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -163,10 +163,9 @@
 
 .map-tree-node--locked {
   border-color: rgba(117, 96, 11, 0.65);
-  background: radial-gradient(circle at 30% 30%, rgb(71, 68, 39), rgb(43, 5, 18));
+  background: radial-gradient(circle at 30% 30%, rgb(54, 52, 30), rgb(43, 5, 18));
   color: rgba(252, 211, 77, 0.85);
   cursor: default;
-  opacity: 0.7;
 }
 
 .map-tree-node--locked:hover {

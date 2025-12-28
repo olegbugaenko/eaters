@@ -69,28 +69,13 @@ const WORD_SPACING = 0;
 const LINE_SPACING = 420;
 const TITLE_LINES = ["VOID", "EATERS"] as const;
 const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
-const ARCH_PATTERN: readonly string[] = [
-  ".....###########.....",
-  "....#############....",
-  "...###############...",
-  "..#################..",
-  ".###################.",
-  ".###################.",
-  ".#######.....#######.",
-  ".######.......######.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-  ".#####.........#####.",
-];
-const ARCH_GAP_FROM_TITLE = 140;
-const ARCH_HORIZONTAL_GAP = 2;
-const ARCH_VERTICAL_GAP = 2;
+// Real arch configuration - bricks placed along a semicircle with proper rotation
+const ARCH_GAP_FROM_TITLE = 320;
+const ARCH_OUTER_RADIUS = 320; // Outer radius of the arch curve
+const ARCH_INNER_RADIUS = 280; // Inner radius (creates thickness)
+const ARCH_PILLAR_HEIGHT = 880; // Height of the vertical pillars
+const ARCH_BRICK_GAP = 3; // Gap between bricks
+const ARCH_BOTTOM_PADDING = 60; // Distance from bottom of screen to pillar base
 
 // Adjust brick types per letter to quickly experiment with the title palette.
 const LETTER_BRICK_TYPES: Partial<Record<string, BrickType>> = {
@@ -223,6 +208,7 @@ interface BrickInstance {
   size: SceneSize;
   fill: SceneFill;
   stroke?: SceneStroke;
+  rotation?: number;
 }
 
 interface BrickLayout {
@@ -466,21 +452,13 @@ const computeTitleLayout = (
 };
 
 const createArchLayout = (titleBounds: SceneBounds): BrickLayout => {
-  const config = getBrickConfig("smallSquareGray");
+  const config = getBrickConfig("floodedArch");
   const stroke = config.stroke
     ? {
         color: { ...config.stroke.color },
         width: config.stroke.width,
       }
     : undefined;
-  const tileWidth = config.size.width + ARCH_HORIZONTAL_GAP;
-  const tileHeight = config.size.height + ARCH_VERTICAL_GAP;
-  const columns = ARCH_PATTERN.reduce((max, row) => Math.max(max, row.length), 0);
-  const rows = ARCH_PATTERN.length;
-  const width = columns * config.size.width + Math.max(0, columns - 1) * ARCH_HORIZONTAL_GAP;
-  const height = rows * config.size.height + Math.max(0, rows - 1) * ARCH_VERTICAL_GAP;
-  const startX = titleBounds.x + titleBounds.width + ARCH_GAP_FROM_TITLE;
-  const startY = titleBounds.y + titleBounds.height / 2 - height / 2;
 
   const bricks: BrickLayout["bricks"] = [];
   let minX = Number.POSITIVE_INFINITY;
@@ -488,34 +466,80 @@ const createArchLayout = (titleBounds: SceneBounds): BrickLayout => {
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
 
-  ARCH_PATTERN.forEach((patternRow, rowIndex) => {
-    for (let colIndex = 0; colIndex < patternRow.length; colIndex += 1) {
-      if (patternRow[colIndex] !== "#") {
-        continue;
-      }
+  const addBrick = (x: number, y: number, rotation: number = 0) => {
+    bricks.push({
+      position: { x, y },
+      size: { ...config.size },
+      fill: createBrickFill(config),
+      stroke,
+      rotation,
+    });
+    const halfW = config.size.width / 2;
+    const halfH = config.size.height / 2;
+    // Approximate bounds (not accounting for rotation, but close enough)
+    minX = Math.min(minX, x - halfW);
+    minY = Math.min(minY, y - halfH);
+    maxX = Math.max(maxX, x + halfW);
+    maxY = Math.max(maxY, y + halfH);
+  };
 
-      const centerX =
-        startX +
-        colIndex * tileWidth +
-        config.size.width / 2;
-      const centerY =
-        startY +
-        rowIndex * tileHeight +
-        config.size.height / 2;
+  // Calculate arch center position
+  const archCenterX = titleBounds.x + titleBounds.width + ARCH_GAP_FROM_TITLE + ARCH_OUTER_RADIUS;
+  // Arc center is positioned so that pillars end near the bottom of the screen
+  const arcCenterY = MAP_SIZE.height - ARCH_BOTTOM_PADDING - ARCH_PILLAR_HEIGHT;
+  const pillarBottomY = arcCenterY + ARCH_PILLAR_HEIGHT;
 
-      bricks.push({
-        position: { x: centerX, y: centerY },
-        size: { ...config.size },
-        fill: createBrickFill(config),
-        stroke,
-      });
+  // Calculate how many bricks fit along the semicircle arc
+  const brickArcLength = config.size.width + ARCH_BRICK_GAP;
+  
+  // Place bricks along the outer semicircle (top curved part)
+  // Arc goes from left (angle=π) over the top (angle=π/2) to right (angle=0)
+  const outerArcLength = Math.PI * ARCH_OUTER_RADIUS;
+  const numOuterBricks = Math.max(7, Math.floor(outerArcLength / brickArcLength));
+  
+  for (let i = 0; i <= numOuterBricks; i += 1) {
+    const t = i / numOuterBricks;
+    const angle = Math.PI * (1 - t); // π → 0 (left to right over top)
+    
+    const x = archCenterX + Math.cos(angle) * ARCH_OUTER_RADIUS;
+    const y = arcCenterY - Math.sin(angle) * ARCH_OUTER_RADIUS; // minus because Y goes down
+    // Rotation: tangent to circle. At angle=π brick is vertical, at π/2 horizontal
+    const rotation = -(angle - Math.PI / 2);
+    addBrick(x, y, rotation);
+  }
 
-      minX = Math.min(minX, centerX - config.size.width / 2);
-      minY = Math.min(minY, centerY - config.size.height / 2);
-      maxX = Math.max(maxX, centerX + config.size.width / 2);
-      maxY = Math.max(maxY, centerY + config.size.height / 2);
-    }
-  });
+  // Place bricks along the inner semicircle
+  const innerArcLength = Math.PI * ARCH_INNER_RADIUS;
+  const numInnerBricks = Math.max(5, Math.floor(innerArcLength / brickArcLength));
+  
+  for (let i = 0; i <= numInnerBricks; i += 1) {
+    const t = i / numInnerBricks;
+    const angle = Math.PI * (1 - t);
+    
+    const x = archCenterX + Math.cos(angle) * ARCH_INNER_RADIUS;
+    const y = arcCenterY - Math.sin(angle) * ARCH_INNER_RADIUS;
+    const rotation = -(angle - Math.PI / 2);
+    addBrick(x, y, rotation);
+  }
+
+  // Pillars - vertical bricks going down from arc endpoints
+  const leftPillarX = archCenterX - ARCH_OUTER_RADIUS;
+  const rightPillarX = archCenterX + ARCH_OUTER_RADIUS;
+  const pillarThickness = ARCH_OUTER_RADIUS - ARCH_INNER_RADIUS;
+  const pillarBrickHeight = config.size.height + ARCH_BRICK_GAP;
+  const numPillarBricks = Math.floor(ARCH_PILLAR_HEIGHT / pillarBrickHeight);
+  
+  for (let i = 0; i < numPillarBricks; i += 1) {
+    const y = arcCenterY + i * pillarBrickHeight + config.size.height / 2;
+    
+    // Left pillar - outer and inner edge
+    addBrick(leftPillarX, y, 0);
+    addBrick(leftPillarX + pillarThickness, y, 0);
+    
+    // Right pillar - outer and inner edge
+    addBrick(rightPillarX, y, 0);
+    addBrick(rightPillarX - pillarThickness, y, 0);
+  }
 
   return {
     bricks,
@@ -1108,6 +1132,7 @@ export const SaveSlotBackgroundScene: React.FC = () => {
         size: brick.size,
         fill: brick.fill,
         stroke: brick.stroke,
+        rotation: brick.rotation ?? 0,
       });
     });
 

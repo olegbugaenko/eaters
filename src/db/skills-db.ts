@@ -313,6 +313,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Graft barbed spines along the chord, enabling sideways volleys from attached quills.",
     nodePosition: { x: 2, y: 2 },
+    icon: "needles.png",
     maxLevel: 1,
     effects: {},
     nodesRequired: { void_modules: 1 },

@@ -26,7 +26,8 @@ export type BrickType =
   | "smallMagma"
   | "neutronBrick"
   | "neutronBrick2"
-  | "darkMatterBrick";
+  | "darkMatterBrick"
+  | "floodedArch";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -75,6 +76,12 @@ const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.9, g: 0.7, b: 0.1, a: 1 } },
   { offset: 0.5, color: { r: 1, g: 0.85, b: 0.3, a: 1 } },
   { offset: 1, color: { r: 0.9, g: 0.7, b: 0.1, a: 1 } },
+] as const;
+
+const FLOODED_ARCH_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.73, g: 0.78, b: 0.78, a: 1 } },
+  { offset: 0.55, color: { r: 0.63, g: 0.68, b: 0.68, a: 1 } },
+  { offset: 1, color: { r: 0.53, g: 0.58, b: 0.58, a: 1 } },
 ] as const;
 
 const SMALL_SQUARE_TRAINING_BRICK_GRADIENT: readonly SceneGradientStop[] = [
@@ -199,6 +206,42 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         type: "plasmoid",
         radiusMultiplier: 1.05,
       },
+    },
+  },
+  floodedArch: {
+    size: { width: 48, height: 48 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 24,
+      stops: FLOODED_ARCH_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.5,
+      },
+    },
+    stroke: { color: { r: 0.43, g: 0.48, b: 0.48, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 6,
+      armor: 0,
+      baseDamage: 3,
+      brickKnockBackDistance: 60,
+      brickKnockBackSpeed: 150,
+      brickKnockBackAmplitude: 6,
+      physicalSize: 16,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
+    },
+    rewards: {
+      stone: 1,
     },
   },
   smallTrainingBrick: {
