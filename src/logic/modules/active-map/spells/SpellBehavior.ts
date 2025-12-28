@@ -57,6 +57,12 @@ export interface SpellBehavior {
   clear(): void;
 
   /**
+   * Очищає застарілі об'єкти, які накопичилися під час неактивності вкладки.
+   * Використовує абсолютний час (performance.now()) замість elapsedMs.
+   */
+  cleanupExpired?(): void;
+
+  /**
    * Підписується на зміни бонусів для оновлення множників потужності.
    */
   onBonusValuesChanged(values: BonusValueMap): void;

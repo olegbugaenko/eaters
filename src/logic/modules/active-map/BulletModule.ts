@@ -124,8 +124,13 @@ interface BulletState {
   lifetimeMs: number;
   elapsedMs: number;
   rotation: number;
+  fill: SceneFill;
   explosionType?: ExplosionType;
 }
+
+const reusableUpdatePayload: { position: SceneVector2 } = {
+  position: { x: 0, y: 0 },
+};
 
 export interface SpawnBulletByTypeOptions {
   position?: SceneVector2;
@@ -200,11 +205,12 @@ export class BulletModule implements GameModule {
       x: Math.cos(angle) * speedPerMs,
       y: Math.sin(angle) * speedPerMs,
     };
+    const fill = createBulletFill(radius, config);
 
     const id = this.options.scene.addObject("bullet", {
       position: { ...position },
       size: { width: config.diameter, height: config.diameter },
-      fill: createBulletFill(radius, config),
+      fill,
       rotation: angle,
       customData: createBulletCustomData(type, config.tail, config.tailEmitter),
     });
@@ -216,6 +222,7 @@ export class BulletModule implements GameModule {
       position,
       velocity,
       radius,
+      fill,
       lifetimeMs: Math.max(
         0,
         options.lifetimeMs ?? this.getRandomLifetime(config)
@@ -234,12 +241,9 @@ export class BulletModule implements GameModule {
     const survivors: BulletState[] = [];
 
     this.bullets.forEach((bullet) => {
-      bullet.position = {
-        x: bullet.position.x + bullet.velocity.x * delta,
-        y: bullet.position.y + bullet.velocity.y * delta,
-      };
+      bullet.position.x += bullet.velocity.x * delta;
+      bullet.position.y += bullet.velocity.y * delta;
       bullet.elapsedMs += delta;
-      bullet.rotation = Math.atan2(bullet.velocity.y, bullet.velocity.x);
 
       if (bullet.elapsedMs >= bullet.lifetimeMs) {
         this.options.scene.removeObject(bullet.id);
@@ -260,12 +264,8 @@ export class BulletModule implements GameModule {
         return;
       }
 
-      this.options.scene.updateObject(bullet.id, {
-        position: bullet.position,
-        size: { width: bullet.radius * 2, height: bullet.radius * 2 },
-        fill: createBulletFill(bullet.radius, bullet.config),
-        rotation: bullet.rotation,
-      });
+      reusableUpdatePayload.position = bullet.position;
+      this.options.scene.updateObject(bullet.id, reusableUpdatePayload);
 
       survivors.push(bullet);
     });

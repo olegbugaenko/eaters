@@ -16,6 +16,7 @@ export type BrickType =
   | "smallSquareGray"
   | "smallSquareYellow"
   | "smallIron"
+  | "compactIron"
   | "smallOrganic"
   | "smallWood"
   | "smallCopper"
@@ -25,7 +26,8 @@ export type BrickType =
   | "smallMagma"
   | "neutronBrick"
   | "neutronBrick2"
-  | "darkMatterBrick";
+  | "darkMatterBrick"
+  | "floodedArch";
 
 export interface BrickStrokeConfig {
   color: SceneColor;
@@ -76,6 +78,12 @@ const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.9, g: 0.7, b: 0.1, a: 1 } },
 ] as const;
 
+const FLOODED_ARCH_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.73, g: 0.78, b: 0.78, a: 1 } },
+  { offset: 0.55, color: { r: 0.63, g: 0.68, b: 0.68, a: 1 } },
+  { offset: 1, color: { r: 0.53, g: 0.58, b: 0.58, a: 1 } },
+] as const;
+
 const SMALL_SQUARE_TRAINING_BRICK_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.75, g: 0.75, b: 0.75, a: 1 } },
   { offset: 1, color: { r: 0.65, g: 0.65, b: 0.65, a: 1 } },
@@ -110,6 +118,12 @@ const ORANGE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.85, g: 0.65, b: 0.45, a: 1 } },
   { offset: 0.4, color: { r: 0.75, g: 0.55, b: 0.35, a: 1 } },
   { offset: 1, color: { r: 0.6, g: 0.35, b: 0.05, a: 1 } },
+] as const;
+
+const ORANGE_RADIAL_GRADIENT_SMALL: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.85, g: 0.65, b: 0.45, a: 1 } },
+  { offset: 0.4, color: { r: 0.75, g: 0.55, b: 0.35, a: 1 } },
+  { offset: 1, color: { r: 0.6, g: 0.45, b: 0.3, a: 1 } },
 ] as const;
 
 const WOOD_LINEAR_GRADIENT: readonly SceneGradientStop[] = [
@@ -192,6 +206,42 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         type: "plasmoid",
         radiusMultiplier: 1.05,
       },
+    },
+  },
+  floodedArch: {
+    size: { width: 48, height: 48 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 24,
+      stops: FLOODED_ARCH_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.5,
+      },
+    },
+    stroke: { color: { r: 0.43, g: 0.48, b: 0.48, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 6,
+      armor: 0,
+      baseDamage: 3,
+      brickKnockBackDistance: 60,
+      brickKnockBackSpeed: 150,
+      brickKnockBackAmplitude: 6,
+      physicalSize: 16,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
+    },
+    rewards: {
+      stone: 1,
     },
   },
   smallTrainingBrick: {
@@ -319,7 +369,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     destructubleData: {
       maxHp: 90,
       armor: 8,
-      baseDamage: 21,
+      baseDamage: 20,
       brickKnockBackDistance: 90,
       brickKnockBackSpeed: 180,
       brickKnockBackAmplitude: 4,
@@ -367,6 +417,41 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       iron: 1,
     },
   },
+  compactIron: {
+    size: { width: 24, height: 24 },
+    fill: {
+      type: "radial",
+      center: { x: 0, y: 0 },
+      radius: 12,
+      stops: ORANGE_RADIAL_GRADIENT_SMALL,
+      noise: {
+        colorAmplitude: 0.01,
+        alphaAmplitude: 0.0,
+        scale: 0.15,
+      },
+    },
+    stroke: { color: { r: 0.6, g: 0.45, b: 0.2, a: 0.9 }, width: 2.4 },
+    destructubleData: {
+      maxHp: 275,
+      armor: 20,
+      baseDamage: 35,
+      brickKnockBackDistance: 90,
+      brickKnockBackSpeed: 180,
+      brickKnockBackAmplitude: 4,
+      physicalSize: 16,
+      damageExplosion: {
+        type: "ironBrickHit",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "ironBrickDestroy",
+        radiusMultiplier: 1.25,
+      },
+    },
+    rewards: {
+      iron: 1.25,
+    },
+  },
   smallWood: {
     size: { width: 24, height: 24 },
     fill: {
@@ -383,8 +468,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     stroke: { color: { r: 0.3, g: 0.2, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
       maxHp: 265,
-      armor: 20,
-      baseDamage: 76,
+      armor: 24,
+      baseDamage: 96,
       brickKnockBackDistance: 70,
       brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 7,

@@ -264,6 +264,26 @@ export class WhirlSpellBehavior implements SpellBehavior {
     this.storms = [];
   }
 
+  public cleanupExpired(): void {
+    // Clean up storms that are out of bounds
+    const mapSize = this.scene.getMapSize();
+    let writeIndex = 0;
+    for (let i = 0; i < this.storms.length; i += 1) {
+      const storm = this.storms[i]!;
+      if (this.isOutOfBounds(storm.position, storm.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
+        this.scene.removeObject(storm.id);
+        continue;
+      }
+      // Also remove if health depleted (shouldn't happen, but safety check)
+      if (storm.remainingHealth <= 0) {
+        this.scene.removeObject(storm.id);
+        continue;
+      }
+      this.storms[writeIndex++] = storm;
+    }
+    this.storms.length = writeIndex;
+  }
+
   public onBonusValuesChanged(values: BonusValueMap): void {
     const raw = values["spell_power"];
     const sanitized = Number.isFinite(raw) ? Math.max(raw, 0) : 1;

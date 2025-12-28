@@ -17,8 +17,12 @@ export type MapId =
   | "thicket"
   | "oldForge"
   | "spruce"
+  | "deadOak"
+  | "sphinx"
+  | "stoneCottage"
   | "wire"
   | "mine"
+  | "adit"
   | "silverRing"
   | "frozenForest"
   | "volcano";
@@ -31,6 +35,11 @@ export type MapBrickGenerator = (
   options: MapBrickGeneratorOptions
 ) => readonly BrickShapeBlueprint[];
 
+export interface MapNodePosition {
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
@@ -38,6 +47,10 @@ export interface MapConfig {
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
   readonly spawnPoints?: readonly SceneVector2[];
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
+  readonly icon?: string;
+  readonly nodePosition: MapNodePosition;
+  readonly mapsRequired?: Partial<Record<MapId, number>>;
+  readonly maxLevel: number;
 }
 
 export interface MapListEntry {
@@ -46,6 +59,7 @@ export interface MapListEntry {
   readonly size: SceneSize;
   readonly brickCount: number;
   readonly brickTypes: readonly BrickType[];
+  readonly icon?: string;
 }
 
 export interface MapPlayerUnitConfig {
@@ -82,6 +96,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Training Grounds",
       size,
       spawnPoints: [spawnPoint],
+      icon: "training.png",
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
 
@@ -145,6 +160,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           position: { ...spawnPoint },
         },
       ],
+      nodePosition: { x: 0, y: 0 },
+      maxLevel: 1,
     } satisfies MapConfig;
   })(),
   foundations: (() => {
@@ -175,6 +192,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     return {
       name: "Cracked Pentagon",
       size,
+      icon: "pentagon.png",
       spawnPoints: [spawnPoint],
       unlockedBy: [
         {
@@ -183,6 +201,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      nodePosition: { x: 1, y: 1 },
+      maxLevel: 1,
       bricks: ({ mapLevel }) => [
         polygonWithBricks(
           "smallTrainingBrick",
@@ -220,11 +240,13 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           position: { ...spawnPoint },
         },
       ],
+      mapsRequired: { trainingGrounds: 1 },
     } satisfies MapConfig;
   })(),
   initial: {
     name: "Initial Grounds",
     size: { width: 1200, height: 1200 },
+    icon: "initial.png",
     unlockedBy: [
       {
         type: "map",
@@ -232,6 +254,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         level: 1,
       },
     ],
+    nodePosition: { x: 2, y: 2 },
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const innerLevel = baseLevel + 1;
@@ -323,7 +346,340 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         position: { x: 100, y: 100 },
       },
     ],
+    mapsRequired: { foundations: 1 },
+    maxLevel: 2,
   },
+  sphinx: (() => {
+    const size: SceneSize = { width: 1400, height: 900 };
+    // Sphinx lying down, facing left
+    // Body center point
+    const bodyX = 700;
+    const bodyY = 550;
+    // Spawn point far from sphinx (top right corner)
+    const spawnPoint: SceneVector2 = { x: size.width - 150, y: 150 };
+
+    return {
+      name: "Sand Sphinx",
+      size,
+      icon: "sphynx.png",
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 2, y: 1 },
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const sandLevel = baseLevel + 2;
+
+        // === BODY (lying lion, with curved back) ===
+        // Main body - wider polygon with curved appearance
+        const bodyMain = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 280, y: bodyY - 80 },   // front top
+              { x: bodyX - 100, y: bodyY - 100 },  // mid-front top (curved up)
+              { x: bodyX + 100, y: bodyY - 110 },  // mid-back top (highest point)
+              { x: bodyX + 280, y: bodyY - 80 },   // back top
+              { x: bodyX + 300, y: bodyY + 50 },   // back bottom
+              { x: bodyX - 280, y: bodyY + 50 },   // front bottom
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // Belly (adds roundness underneath)
+        const belly = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX, y: bodyY + 20 },
+            innerRadius: 0,
+            outerRadius: 80,
+          },
+          { level: sandLevel }
+        );
+
+        // Haunches (back raised part - larger for folded hind legs)
+        const haunches = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX + 180, y: bodyY - 50 },
+            innerRadius: 0,
+            outerRadius: 110,
+          },
+          { level: sandLevel }
+        );
+
+        // Back curve (adds more volume to the back)
+        const backCurve = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX + 50, y: bodyY - 80 },
+            innerRadius: 0,
+            outerRadius: 70,
+          },
+          { level: sandLevel }
+        );
+
+        // === CHEST (raised front part) ===
+        const chest = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 340, y: bodyY - 140 },
+              { x: bodyX - 240, y: bodyY - 140 },
+              { x: bodyX - 220, y: bodyY - 40 },
+              { x: bodyX - 340, y: bodyY - 40 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // === NECK (shorter, connects to head) ===
+        const neck = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 380, y: bodyY - 200 },
+              { x: bodyX - 300, y: bodyY - 200 },
+              { x: bodyX - 260, y: bodyY - 130 },
+              { x: bodyX - 360, y: bodyY - 130 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // === HEAD (human profile facing left) ===
+        // Back of head (rounded)
+        const headBack = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX - 360, y: bodyY - 260 },
+            innerRadius: 0,
+            outerRadius: 70,
+          },
+          { level: sandLevel }
+        );
+
+        // Face (polygon for profile - forehead, nose, chin)
+        const face = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 430, y: bodyY - 320 }, // forehead
+              { x: bodyX - 480, y: bodyY - 280 }, // nose tip
+              { x: bodyX - 470, y: bodyY - 250 }, // under nose
+              { x: bodyX - 480, y: bodyY - 220 }, // lips
+              { x: bodyX - 450, y: bodyY - 190 }, // chin
+              { x: bodyX - 400, y: bodyY - 200 }, // jaw
+              { x: bodyX - 380, y: bodyY - 260 }, // cheek
+              { x: bodyX - 400, y: bodyY - 310 }, // temple
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // Nemes headdress (flows down sides)
+        const nemesBack = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 320, y: bodyY - 300 },
+              { x: bodyX - 280, y: bodyY - 300 },
+              { x: bodyX - 260, y: bodyY - 180 },
+              { x: bodyX - 300, y: bodyY - 180 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // Crown/top of headdress
+        const crown = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 420, y: bodyY - 360 },
+              { x: bodyX - 340, y: bodyY - 360 },
+              { x: bodyX - 320, y: bodyY - 320 },
+              { x: bodyX - 430, y: bodyY - 320 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // === FRONT PAWS (extended forward, connected to body) ===
+        // Left front paw (closer, starts from chest)
+        const frontPawLeft = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 450, y: bodyY },
+              { x: bodyX - 300, y: bodyY },
+              { x: bodyX - 300, y: bodyY + 50 },
+              { x: bodyX - 450, y: bodyY + 50 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // Right front paw (slightly behind and lower)
+        const frontPawRight = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX - 400, y: bodyY + 40 },
+              { x: bodyX - 250, y: bodyY + 40 },
+              { x: bodyX - 250, y: bodyY + 90 },
+              { x: bodyX - 400, y: bodyY + 90 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // Paw ends (toes)
+        const pawEndLeft = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX - 450, y: bodyY + 25 },
+            innerRadius: 0,
+            outerRadius: 30,
+          },
+          { level: sandLevel }
+        );
+
+        const pawEndRight = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX - 400, y: bodyY + 65 },
+            innerRadius: 0,
+            outerRadius: 28,
+          },
+          { level: sandLevel }
+        );
+
+        // === HIND LEG (left, visible from side - extended like front paws) ===
+        // Upper thigh (connects to haunches)
+        const hindThighLeft = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX + 80, y: bodyY - 20 },
+              { x: bodyX + 160, y: bodyY - 20 },
+              { x: bodyX + 180, y: bodyY + 40 },
+              { x: bodyX + 100, y: bodyY + 40 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // Lower leg (extends forward like front paws)
+        const hindLegLeft = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: bodyX + 60, y: bodyY + 30 },
+              { x: bodyX + 180, y: bodyY + 30 },
+              { x: bodyX + 180, y: bodyY + 80 },
+              { x: bodyX + 60, y: bodyY + 80 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        // Hind paw (like front paws)
+        const hindPawLeft = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX + 60, y: bodyY + 55 },
+            innerRadius: 0,
+            outerRadius: 32,
+          },
+          { level: sandLevel }
+        );
+
+        // === TAIL (more horizontal, along the ground) ===
+        const tail1 = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX + 330, y: bodyY + 30 },
+            innerRadius: 0,
+            outerRadius: 35,
+          },
+          { level: sandLevel }
+        );
+
+        const tail2 = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX + 380, y: bodyY + 20 },
+            innerRadius: 0,
+            outerRadius: 30,
+          },
+          { level: sandLevel }
+        );
+
+        const tail3 = circleWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: bodyX + 420, y: bodyY + 15 },
+            innerRadius: 0,
+            outerRadius: 25,
+          },
+          { level: sandLevel }
+        );
+
+        // === SAND BASE ===
+        const sandBase = polygonWithBricks(
+          "smallSquareYellow",
+          {
+            vertices: [
+              { x: 150, y: bodyY + 120 },
+              { x: size.width - 150, y: bodyY + 120 },
+              { x: size.width - 130, y: bodyY + 160 },
+              { x: 130, y: bodyY + 160 },
+            ],
+          },
+          { level: sandLevel }
+        );
+
+        return [
+          sandBase,
+          bodyMain,
+          belly,
+          backCurve,
+          haunches,
+          chest,
+          neck,
+          headBack,
+          face,
+          nemesBack,
+          crown,
+          frontPawLeft,
+          frontPawRight,
+          pawEndLeft,
+          pawEndRight,
+          hindThighLeft,
+          hindLegLeft,
+          hindPawLeft,
+          tail1,
+          tail2,
+          tail3,
+        ];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "initial",
+          level: 2,
+        },
+      ],
+      mapsRequired: { initial: 2 },
+      maxLevel: 1,
+    } satisfies MapConfig;
+  })(),
   thicket: (() => {
     const size: SceneSize = { width: 1000, height: 1000 };
     const sandHeight = 60;
@@ -350,7 +706,9 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     return {
       name: "Overgrown Thicket",
       size,
+      icon: "thicket.png",
       spawnPoints: [{ x: 50, y: size.height - sandHeight - 220 }],
+      nodePosition: { x: 2, y: 3 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const sandLevel = baseLevel + 1;
@@ -391,6 +749,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { initial: 1 },
+      maxLevel: 1,
     } satisfies MapConfig;
   })(),
   oldForge: (() => {
@@ -411,7 +771,9 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     return {
       name: "Old Forge",
       size,
+      icon: "forge.png",
       spawnPoints: [{ x: center.x, y: center.y - outerSize / 2 + 80 }],
+      nodePosition: { x: 3, y: 2 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const walkwayLevel = baseLevel + 1;
@@ -451,6 +813,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { initial: 1 },
+      maxLevel: 1,
     } satisfies MapConfig;
   })(),
   spruce: (() => {
@@ -491,6 +855,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Forest",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 3, y: 4 },
+      icon: "spruce.png",
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const canopyLevel = baseLevel + 1;
@@ -557,6 +923,355 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { thicket: 1 },
+      maxLevel: 1,
+    } satisfies MapConfig;
+  })(),
+  deadOak: (() => {
+    const size: SceneSize = { width: 1200, height: 1000 };
+    const centerX = size.width / 2;
+    const groundY = size.height - 150;
+    const spawnPoint: SceneVector2 = { x: 200, y: 200 };
+
+    return {
+      name: "Dead Oak",
+      size,
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 3, y: 5 },
+      icon: "dead_oak.png",
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const woodLevel = baseLevel + 1;
+
+        const createRectangle = (
+          x: number,
+          y: number,
+          width: number,
+          height: number
+        ): SceneVector2[] => [
+          { x, y },
+          { x: x + width, y },
+          { x: x + width, y: y + height },
+          { x, y: y + height },
+        ];
+
+        // Main trunk (thick, slightly tapered)
+        const trunkWidth = 100;
+        const trunkHeight = 400;
+        const trunkX = centerX - trunkWidth / 2;
+        const trunkY = groundY - trunkHeight;
+
+        const trunk = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: trunkX + 10, y: trunkY },
+              { x: trunkX + trunkWidth - 10, y: trunkY },
+              { x: trunkX + trunkWidth, y: groundY },
+              { x: trunkX, y: groundY },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Main branches extending from trunk
+        // Left main branch (going up-left)
+        const leftMainBranch = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX - 30, y: trunkY + 80 },
+              { x: centerX - 20, y: trunkY + 50 },
+              { x: centerX - 200, y: trunkY - 120 },
+              { x: centerX - 220, y: trunkY - 100 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Right main branch (going up-right)
+        const rightMainBranch = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX + 20, y: trunkY + 50 },
+              { x: centerX + 30, y: trunkY + 80 },
+              { x: centerX + 220, y: trunkY - 100 },
+              { x: centerX + 200, y: trunkY - 120 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Center top branch (going straight up)
+        const topBranch = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX - 25, y: trunkY },
+              { x: centerX + 25, y: trunkY },
+              { x: centerX + 15, y: trunkY - 180 },
+              { x: centerX - 15, y: trunkY - 180 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Smaller sub-branches
+        // Left sub-branch 1
+        const leftSubBranch1 = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX - 160, y: trunkY - 80 },
+              { x: centerX - 140, y: trunkY - 90 },
+              { x: centerX - 280, y: trunkY - 200 },
+              { x: centerX - 300, y: trunkY - 180 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Left sub-branch 2 (lower)
+        const leftSubBranch2 = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX - 80, y: trunkY + 120 },
+              { x: centerX - 60, y: trunkY + 100 },
+              { x: centerX - 180, y: trunkY + 20 },
+              { x: centerX - 200, y: trunkY + 40 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Right sub-branch 1
+        const rightSubBranch1 = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX + 140, y: trunkY - 90 },
+              { x: centerX + 160, y: trunkY - 80 },
+              { x: centerX + 300, y: trunkY - 180 },
+              { x: centerX + 280, y: trunkY - 200 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Right sub-branch 2 (lower)
+        const rightSubBranch2 = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX + 60, y: trunkY + 100 },
+              { x: centerX + 80, y: trunkY + 120 },
+              { x: centerX + 200, y: trunkY + 40 },
+              { x: centerX + 180, y: trunkY + 20 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Top sub-branches (smaller twigs)
+        const topLeftTwig = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX - 10, y: trunkY - 140 },
+              { x: centerX, y: trunkY - 150 },
+              { x: centerX - 80, y: trunkY - 250 },
+              { x: centerX - 100, y: trunkY - 240 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        const topRightTwig = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: [
+              { x: centerX, y: trunkY - 150 },
+              { x: centerX + 10, y: trunkY - 140 },
+              { x: centerX + 100, y: trunkY - 240 },
+              { x: centerX + 80, y: trunkY - 250 },
+            ],
+          },
+          { level: woodLevel }
+        );
+
+        // Ground/roots
+        const roots = polygonWithBricks(
+          "smallWood",
+          {
+            vertices: createRectangle(centerX - 150, groundY, 300, 40),
+          },
+          { level: woodLevel }
+        );
+
+        return [
+          trunk,
+          leftMainBranch,
+          rightMainBranch,
+          topBranch,
+          leftSubBranch1,
+          leftSubBranch2,
+          rightSubBranch1,
+          rightSubBranch2,
+          topLeftTwig,
+          topRightTwig,
+          roots,
+        ];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "spruce",
+          level: 1,
+        },
+      ],
+      mapsRequired: { spruce: 1 },
+      maxLevel: 2,
+    } satisfies MapConfig;
+  })(),
+  stoneCottage: (() => {
+    const size: SceneSize = { width: 1300, height: 1200 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 160 };
+
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+
+    return {
+      name: "Stone Cottage",
+      size,
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 1, y: 4 },
+      icon: "cottage.png",
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const stoneLevel = baseLevel + 3;
+        const ironLevel = baseLevel + 1;
+        const organicLevel = baseLevel + 1;
+
+        const walls = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: createRectangle(center.x - 260, center.y - 220, 520, 320),
+            holes: [
+              createRectangle(center.x - 80, center.y - 150, 120, 160)
+            ],
+          },
+          { level: stoneLevel }
+        );
+
+        const roof = polygonWithBricks(
+          "smallIron",
+          {
+            vertices: [
+              { x: center.x - 300, y: center.y - 220 },
+              { x: center.x, y: center.y - 360 },
+              { x: center.x + 300, y: center.y - 220 },
+            ],
+          },
+          { level: ironLevel }
+        );
+
+        const doorFrame = polygonWithBricks(
+          "smallIron",
+          {
+            vertices: createRectangle(center.x - 60, center.y + 120, 120, 120),
+          },
+          { level: ironLevel }
+        );
+
+        const chimney = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: createRectangle(center.x + 140, center.y - 340, 70, 180),
+          },
+          { level: stoneLevel }
+        );
+
+        const bushes = [
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x - 280, y: center.y + 200 }, innerRadius: 0, outerRadius: 90 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x + 280, y: center.y + 200 }, innerRadius: 0, outerRadius: 100 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x + 320, y: center.y + 20 }, innerRadius: 0, outerRadius: 100 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x + 400, y: center.y - 90 }, innerRadius: 0, outerRadius: 100 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x + 390, y: center.y + 140 }, innerRadius: 0, outerRadius: 100 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x - 200, y: center.y + 260 }, innerRadius: 0, outerRadius: 70 },
+            { level: organicLevel }
+          ),
+          circleWithBricks(
+            "smallOrganic",
+            { center: { x: center.x - 130, y: center.y + 200 }, innerRadius: 0, outerRadius: 70 },
+            { level: organicLevel }
+          ),
+        ];
+
+        const courtyard = polygonWithBricks(
+          "smallSquareGray",
+          {
+            vertices: createRectangle(center.x - 140, center.y + 200, 280, 100),
+          },
+          { level: stoneLevel - 1 }
+        );
+
+        return [walls, roof, doorFrame, chimney, courtyard, ...bushes];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "thicket",
+          level: 1,
+        },
+      ],
+      mapsRequired: { thicket: 1 },
+      maxLevel: 2,
     } satisfies MapConfig;
   })(),
   mine: (() => {
@@ -584,6 +1299,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Collapsed Mine",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 4, y: 5 },
+      icon: "mine.png",
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const wallLevel = baseLevel + 1;
@@ -646,6 +1363,300 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { spruce: 1 },
+      maxLevel: 1,
+    } satisfies MapConfig;
+  })(),
+  adit: (() => {
+    const size: SceneSize = { width: 1500, height: 1200 };
+    const centerX = size.width / 2;
+    const centerY = size.height / 2;
+    // Spawn point in center of central room (400x400)
+    const spawnPoint: SceneVector2 = { x: centerX, y: centerY };
+
+    const createRectangle = (
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ): SceneVector2[] => [
+      { x, y },
+      { x: x + width, y },
+      { x: x + width, y: y + height },
+      { x, y: y + height },
+    ];
+
+    return {
+      name: "Adit Corridors",
+      size,
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 4, y: 3 },
+      icon: "adit.png",
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const ironLevel = baseLevel;
+        const wallThickness = 40;
+        const corridorWidth = 250; // 200-300px as requested
+
+        // === CENTRAL ROOM (400x400) ===
+        const centralRoomSize = 400;
+        const centralRoomX = centerX - centralRoomSize / 2;
+        const centralRoomY = centerY - centralRoomSize / 2;
+
+        // === MAZE WALLS (iron) ===
+        const walls: ReturnType<typeof polygonWithBricks>[] = [];
+
+        // Outer border walls
+        walls.push(
+          // Top wall
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(100, 100, size.width - 200, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom wall
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(100, size.height - 100 - wallThickness, size.width - 200, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Left wall
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(100, 100, wallThickness, size.height - 200),
+            },
+            { level: ironLevel }
+          ),
+          // Right wall
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(size.width - 100 - wallThickness, 100, wallThickness, size.height - 200),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        // Central room walls (surrounding the 400x400 room)
+        walls.push(
+          // Top wall of central room
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centralRoomX - wallThickness, centralRoomY - wallThickness, centralRoomSize + wallThickness * 2, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom wall of central room
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centralRoomX - wallThickness, centralRoomY + centralRoomSize, centralRoomSize + wallThickness * 2, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Left wall of central room
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centralRoomX - wallThickness, centralRoomY, wallThickness, centralRoomSize),
+            },
+            { level: ironLevel }
+          ),
+          // Right wall of central room
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centralRoomX + centralRoomSize, centralRoomY, wallThickness, centralRoomSize),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        // Maze corridors - create walls around corridors (corridors are open spaces)
+        // Top corridor walls (vertical walls on sides of corridor)
+        const topCorridorY = 100 + wallThickness;
+        const topCorridorHeight = centralRoomY - topCorridorY;
+        walls.push(
+          // Left wall of top corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centerX - corridorWidth / 2 - wallThickness, topCorridorY, wallThickness, topCorridorHeight),
+            },
+            { level: ironLevel }
+          ),
+          // Right wall of top corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centerX + corridorWidth / 2, topCorridorY, wallThickness, topCorridorHeight),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        // Bottom corridor walls
+        const bottomCorridorY = centralRoomY + centralRoomSize + wallThickness;
+        const bottomCorridorHeight = size.height - 100 - wallThickness - bottomCorridorY;
+        walls.push(
+          // Left wall of bottom corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centerX - corridorWidth / 2 - wallThickness, bottomCorridorY, wallThickness, bottomCorridorHeight),
+            },
+            { level: ironLevel }
+          ),
+          // Right wall of bottom corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(centerX + corridorWidth / 2, bottomCorridorY, wallThickness, bottomCorridorHeight),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        // Left corridor walls (horizontal walls on top/bottom of corridor)
+        const leftCorridorX = 100 + wallThickness;
+        const leftCorridorWidth = centralRoomX - leftCorridorX;
+        walls.push(
+          // Top wall of left corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(leftCorridorX, centerY - corridorWidth / 2 - wallThickness, leftCorridorWidth, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom wall of left corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(leftCorridorX, centerY + corridorWidth / 2, leftCorridorWidth, wallThickness),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        // Right corridor walls
+        const rightCorridorX = centralRoomX + centralRoomSize + wallThickness;
+        const rightCorridorWidth = size.width - 100 - wallThickness - rightCorridorX;
+        walls.push(
+          // Top wall of right corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(rightCorridorX, centerY - corridorWidth / 2 - wallThickness, rightCorridorWidth, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom wall of right corridor
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(rightCorridorX, centerY + corridorWidth / 2, rightCorridorWidth, wallThickness),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        // Additional maze walls (creating dead ends and paths)
+        // Horizontal dividers in corners
+        walls.push(
+          // Top-left corner divider
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(200, 300, 300, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Top-right corner divider
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(1000, 300, 300, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom-left corner divider
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(200, size.height - 100 - wallThickness - 300, 300, wallThickness),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom-right corner divider
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(1000, size.height - 100 - wallThickness - 300, 300, wallThickness),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        // Vertical dividers in corners
+        walls.push(
+          // Top-left vertical
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(400, 100 + wallThickness, wallThickness, 200),
+            },
+            { level: ironLevel }
+          ),
+          // Top-right vertical
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(1100, 100 + wallThickness, wallThickness, 200),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom-left vertical
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(400, size.height - 100 - wallThickness - 200, wallThickness, 200),
+            },
+            { level: ironLevel }
+          ),
+          // Bottom-right vertical
+          polygonWithBricks(
+            "compactIron",
+            {
+              vertices: createRectangle(1100, size.height - 100 - wallThickness - 200, wallThickness, 200),
+            },
+            { level: ironLevel }
+          )
+        );
+
+        return walls;
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "oldForge",
+          level: 1,
+        },
+      ],
+      mapsRequired: { oldForge: 1 },
+      maxLevel: 2,
     } satisfies MapConfig;
   })(),
   wire: (() => {
@@ -702,6 +1713,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Wire",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 4, y: 1 },
+      icon: "wire.png",
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const outerLevel = baseLevel + 2;
@@ -785,6 +1798,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { oldForge: 1 },
+      maxLevel: 1,
     } satisfies MapConfig;
   })(),
   silverRing: (() => {
@@ -798,7 +1813,9 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     return {
       name: "Silver Ring",
       size,
+      icon: "silver_ring.png",
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 4, y: 0 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const ringLevel = baseLevel;
@@ -857,6 +1874,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { wire: 1 },
+      maxLevel: 1,
     } satisfies MapConfig;
   })(),
   frozenForest: (() => {
@@ -900,6 +1919,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Frozen Forest",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 3, y: -1 },
+      icon: "frozen_forest.png",
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const iceLevel = baseLevel;
@@ -977,6 +1998,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { silverRing: 1 },
+      maxLevel: 1,
     } satisfies MapConfig;
   })(),
   volcano: (() => {
@@ -1011,6 +2034,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       name: "Volcano",
       size,
       spawnPoints: [spawnPoint],
+      nodePosition: { x: 5, y: 5 },
+      icon: "volcano.png",
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const copperLevel = baseLevel + 2;
@@ -1064,6 +2089,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
+      mapsRequired: { mine: 1 },
+      maxLevel: 1,
     } satisfies MapConfig;
   })(),
 };
@@ -1091,6 +2118,7 @@ export const getMapList = (): MapListEntry[] =>
       id: mapId,
       name: config.name,
       size: { ...config.size },
+      icon: config.icon,
       brickCount,
       brickTypes,
     };

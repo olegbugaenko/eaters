@@ -47,6 +47,7 @@ interface RingState {
   id: string;
   position: SceneVector2;
   elapsedMs: number;
+  createdAt: number; // For cleanup when tab becomes active
   lifetimeMs: number;
   startRadius: number;
   endRadius: number;
@@ -307,6 +308,36 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     this.clearRings();
   }
 
+  public cleanupExpired(): void {
+    const now = performance.now();
+    
+    // Clean up expired projectiles (check out-of-bounds)
+    const mapSize = this.scene.getMapSize();
+    let writeIndex = 0;
+    for (let i = 0; i < this.projectiles.length; i += 1) {
+      const projectile = this.projectiles[i]!;
+      if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
+        this.scene.removeObject(projectile.id);
+        continue;
+      }
+      this.projectiles[writeIndex++] = projectile;
+    }
+    this.projectiles.length = writeIndex;
+    
+    // Clean up expired rings using absolute time
+    let ringWriteIndex = 0;
+    for (let i = 0; i < this.rings.length; i += 1) {
+      const ring = this.rings[i]!;
+      const elapsed = now - ring.createdAt;
+      if (elapsed >= ring.lifetimeMs) {
+        this.scene.removeObject(ring.id);
+        continue;
+      }
+      this.rings[ringWriteIndex++] = ring;
+    }
+    this.rings.length = ringWriteIndex;
+  }
+
   public onBonusValuesChanged(values: BonusValueMap): void {
     const raw = values["spell_power"];
     const sanitized = Number.isFinite(raw) ? Math.max(raw, 0) : 1;
@@ -420,6 +451,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
       outerStop = Math.min(1, innerStop + 0.1);
     }
     const outerFadeStop = Math.min(1, outerStop + 0.15);
+    const now = performance.now();
     const ring: RingState = {
       id: this.scene.addObject("spellProjectileRing", {
         position: { ...position },
@@ -436,6 +468,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
       }),
       position: { ...position },
       elapsedMs: 0,
+      createdAt: now,
       lifetimeMs: config.lifetimeMs,
       startRadius: config.startRadius,
       endRadius: config.endRadius,

@@ -959,15 +959,15 @@ const resolveBrickExplosion = (
 };
 
 const sanitizeBrickLevel = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    return 0;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 1) {
+    return 1;
   }
   return Math.floor(value);
 };
 
-const getBrickLevelStatMultiplier = (level: number): number => Math.pow(3, level);
+const getBrickLevelStatMultiplier = (level: number): number => Math.pow(3, Math.max(level - 1, 0));
 
-const getBrickLevelRewardMultiplier = (level: number): number => Math.pow(2, level);
+const getBrickLevelRewardMultiplier = (level: number): number => Math.pow(2, Math.max(level - 1, 0));
 
 const scaleBrickStat = (
   baseValue: number | undefined,

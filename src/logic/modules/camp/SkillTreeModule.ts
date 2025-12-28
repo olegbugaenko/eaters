@@ -29,6 +29,7 @@ export interface SkillNodeBridgePayload {
   id: SkillId;
   name: string;
   description: string;
+  icon?: string;
   level: number;
   maxLevel: number;
   position: SkillNodePosition;
@@ -180,6 +181,7 @@ export class SkillTreeModule implements GameModule {
       id,
       name: config.name,
       description: config.description,
+      icon: config.icon,
       level,
       maxLevel: config.maxLevel,
       position: config.nodePosition,

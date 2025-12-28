@@ -12,6 +12,8 @@ import type { StatisticsTracker } from "../../shared/StatisticsModule";
 import { ExplosionModule } from "../../scene/ExplosionModule";
 import { PlayerUnitType } from "../../../../db/player-units-db";
 import { getUnitModuleConfig } from "../../../../db/unit-modules-db";
+import { UnitProjectileController } from "./UnitProjectileController";
+import { spawnTailNeedleVolley } from "./TailNeedleVolley";
 import type { PlayerUnitState } from "./UnitTypes";
 import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import {
@@ -36,6 +38,7 @@ export interface UnitRuntimeControllerOptions {
   abilities: PlayerUnitAbilities;
   statistics?: StatisticsTracker;
   explosions: ExplosionModule;
+  projectiles: UnitProjectileController;
   getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -92,6 +95,7 @@ export class UnitRuntimeController {
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
   private readonly explosions: ExplosionModule;
+  private readonly projectiles: UnitProjectileController;
   private readonly getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -111,6 +115,7 @@ export class UnitRuntimeController {
     this.abilities = options.abilities;
     this.statistics = options.statistics;
     this.explosions = options.explosions;
+    this.projectiles = options.projectiles;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.syncUnitTargetingMode = options.syncUnitTargetingMode;
     this.removeUnit = options.removeUnit;
@@ -279,6 +284,8 @@ export class UnitRuntimeController {
       }
     });
 
+    this.projectiles.tick(deltaSeconds * 1000);
+
     return { statsChanged: statsDirty, unitsRemoved };
   }
 
@@ -319,9 +326,10 @@ export class UnitRuntimeController {
     const mapSize = this.scene.getMapSize();
     const maxRadius = Math.max(Math.hypot(mapSize.width, mapSize.height), TARGETING_RADIUS_STEP);
     let radius = TARGETING_RADIUS_STEP;
+    const evaluated = new Set<string>();
     while (radius <= maxRadius + TARGETING_RADIUS_STEP) {
       const bricks = this.bricks.findBricksNear(unit.position, radius);
-      const candidate = this.pickBestBrickCandidate(unit.position, bricks, mode);
+      const candidate = this.pickBestBrickCandidate(unit.position, bricks, mode, evaluated);
       if (candidate) {
         return candidate;
       }
@@ -333,7 +341,8 @@ export class UnitRuntimeController {
   private pickBestBrickCandidate(
     origin: SceneVector2,
     bricks: BrickRuntimeState[],
-    mode: UnitTargetingMode
+    mode: UnitTargetingMode,
+    evaluated?: Set<string>
   ): BrickRuntimeState | null {
     let best: BrickRuntimeState | null = null;
     let bestScore = 0;
@@ -341,6 +350,12 @@ export class UnitRuntimeController {
     bricks.forEach((brick) => {
       if (!brick || brick.hp <= 0) {
         return;
+      }
+      if (evaluated) {
+        if (evaluated.has(brick.id)) {
+          return;
+        }
+        evaluated.add(brick.id);
       }
       const score = this.computeBrickScore(brick, mode);
       if (score === null) {
@@ -716,6 +731,14 @@ export class UnitRuntimeController {
         });
       }
     }
+
+    spawnTailNeedleVolley({
+      unit,
+      attackDirection: direction,
+      inflictedDamage,
+      totalDamage,
+      projectiles: this.projectiles,
+    });
 
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;

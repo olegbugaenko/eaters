@@ -73,6 +73,9 @@ export interface MapListEntry extends MapListEntryConfig {
   readonly selectedLevel: number;
   readonly attempts: number;
   readonly bestTimeMs: number | null;
+  readonly clearedLevels: number;
+  readonly maxLevel: number;
+  readonly selectable: boolean; // true if map can be selected/played
 }
 
 export interface MapRunResult {
@@ -180,11 +183,13 @@ export class MapModule implements GameModule {
   public save(): unknown {
     return {
       mapId: this.selectedMapId ?? DEFAULT_MAP_ID,
-      mapLevel: this.selectedMapLevel,
-      stats: this.cloneStats(),
+      mapLevel: serializeLevel(this.selectedMapLevel),
+      stats: this.cloneStatsForSave(),
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
-      lastPlayedMap: this.lastPlayedMap ?? undefined,
+      lastPlayedMap: this.lastPlayedMap
+        ? { mapId: this.lastPlayedMap.mapId, level: serializeLevel(this.lastPlayedMap.level) }
+        : undefined,
     } satisfies MapSaveData;
   }
 
@@ -324,7 +329,7 @@ export class MapModule implements GameModule {
     const level =
       result.level !== undefined
         ? sanitizeLevel(result.level)
-        : this.getActiveLevelForMap(mapId);
+        : sanitizeLevel(this.getActiveLevelForMap(mapId));
     // Save last played map
     this.lastPlayedMap = { mapId, level };
     this.pushLastPlayedMap();
@@ -649,15 +654,17 @@ export class MapModule implements GameModule {
       mapLevel?: unknown;
       selectedLevels?: unknown;
       autoRestartEnabled?: unknown;
+      lastPlayedMap?: unknown;
     };
     if (!raw.mapId || !isMapId(raw.mapId)) {
       return null;
     }
     const stats = this.parseStats(raw.stats);
-    const mapLevel = typeof raw.mapLevel === "number" ? sanitizeLevel(raw.mapLevel) : undefined;
+    const mapLevel = typeof raw.mapLevel === "number" ? deserializeLevel(raw.mapLevel) : undefined;
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
     const autoRestartEnabled = raw.autoRestartEnabled === true;
-    return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled };
+    const lastPlayedMap = this.parseLastPlayedMap(raw.lastPlayedMap);
+    return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled, lastPlayedMap };
   }
 
   private resolveSelectableMapId(preferred: MapId | null): MapId | null {
@@ -672,56 +679,139 @@ export class MapModule implements GameModule {
   }
 
   private isMapSelectable(mapId: MapId): boolean {
-    return this.unlocks.isUnlocked({ type: "map", id: mapId, level: 0 });
+    const config = getMapConfig(mapId);
+    // Check mapsRequired first
+    if (config.mapsRequired) {
+      const mapsRequiredMet = Object.entries(config.mapsRequired).every(([requiredMapId, requiredLevel]) => {
+        const requiredId = requiredMapId as MapId;
+        const highestLevel = this.getHighestUnlockedLevel(requiredId);
+        return highestLevel >= (requiredLevel ?? 0);
+      });
+      if (!mapsRequiredMet) {
+        return false;
+      }
+    }
+    // Also check unlockedBy for backward compatibility
+    return this.unlocks.areConditionsMet(config.unlockedBy);
   }
 
   private getAvailableMaps(): MapListEntry[] {
-    return getMapList()
+    // First, get all selectable maps
+    const selectableMaps = getMapList()
       .filter((map) => this.isMapSelectable(map.id))
-      .map((map) => this.createListEntry(map));
+      .map((map) => this.createListEntry(map, true));
+    
+    const selectableMapIds = new Set(selectableMaps.map((m) => m.id));
+    const visibleMapIds = new Set<MapId>(selectableMapIds);
+    
+    // Find all maps that are required by selectable maps (show prerequisites)
+    selectableMaps.forEach((map) => {
+      const config = getMapConfig(map.id);
+      if (config.mapsRequired) {
+        Object.keys(config.mapsRequired).forEach((requiredId) => {
+          const requiredMapId = requiredId as MapId;
+          // Only include if not already selectable
+          if (!selectableMapIds.has(requiredMapId)) {
+            // Show the required map if it can be played (its requirements are met)
+            // This allows players to see what will unlock after completing the requirement
+            if (this.isMapSelectable(requiredMapId)) {
+              visibleMapIds.add(requiredMapId);
+            }
+          }
+        });
+      }
+    });
+    
+    // Find all maps that require selectable maps (show what unlocks after completing)
+    getMapList().forEach((map) => {
+      // Skip if already selectable or already visible
+      if (visibleMapIds.has(map.id)) {
+        return;
+      }
+      
+      const config = getMapConfig(map.id);
+      if (config.mapsRequired) {
+        // Check if this map requires any selectable map
+        const requiresSelectableMap = Object.entries(config.mapsRequired).some(([requiredId, requiredLevel]) => {
+          const requiredMapId = requiredId as MapId;
+          // If the required map is selectable, this map should be visible
+          return selectableMapIds.has(requiredMapId);
+        });
+        
+        if (requiresSelectableMap) {
+          visibleMapIds.add(map.id);
+        }
+      }
+    });
+    
+    // Create entries for all visible maps
+    const allVisibleMaps = getMapList()
+      .filter((map) => visibleMapIds.has(map.id))
+      .map((map) => this.createListEntry(map, selectableMapIds.has(map.id)));
+    
+    return allVisibleMaps;
   }
 
-  private createListEntry(map: MapListEntryConfig): MapListEntry {
+  private createListEntry(map: MapListEntryConfig, selectable: boolean): MapListEntry {
+    const config = getMapConfig(map.id);
     const currentLevel = this.getHighestUnlockedLevel(map.id);
     const selectedLevel = this.getSelectedLevel(map.id);
     const attempts = this.getAttemptsForLevel(map.id, selectedLevel);
     const bestTimeMs = this.getBestTimeForLevel(map.id, selectedLevel);
+    const clearedLevels = Math.min(
+      this.getClearedLevels(map.id),
+      config.maxLevel
+    );
     return {
       ...map,
       currentLevel,
       selectedLevel,
       attempts,
       bestTimeMs,
+      clearedLevels,
+      maxLevel: config.maxLevel,
+      selectable,
     };
   }
 
   private getHighestUnlockedLevel(mapId: MapId): number {
+    const config = getMapConfig(mapId);
+    const maxLevel = config.maxLevel;
     let level = 0;
-    const maxIterations = 100;
-    while (level < maxIterations) {
-      const nextLevel = level + 1;
-      if (!this.unlocks.isUnlocked({ type: "map", id: mapId, level: nextLevel })) {
+    for (let candidate = 1; candidate <= maxLevel; candidate += 1) {
+      if (!this.unlocks.canAccessMapLevel(mapId, candidate)) {
         break;
       }
-      level = nextLevel;
+      level = candidate;
     }
-    return level;
+    if (level === 0) {
+      return 0;
+    }
+    // Ensure progression never skips more than one uncleared level even if cache glitches
+    const clearedLevels = this.getClearedLevels(mapId);
+    return Math.min(level, clearedLevels + 1);
   }
 
   private getSelectedLevel(mapId: MapId): number {
     const stored = this.mapSelectedLevels[mapId];
     const storedLevel = typeof stored === "number" ? sanitizeLevel(stored) : undefined;
     const highest = this.getHighestUnlockedLevel(mapId);
+    if (highest === 0) {
+      return 0;
+    }
     if (storedLevel === undefined) {
       return highest;
     }
-    return clamp(storedLevel, 0, highest);
+    return clamp(storedLevel, 1, highest);
   }
 
   private clampLevelToUnlocked(mapId: MapId, level: number): number {
     const sanitized = sanitizeLevel(level);
     const highest = this.getHighestUnlockedLevel(mapId);
-    return clamp(sanitized, 0, highest);
+    if (highest === 0) {
+      return 0;
+    }
+    return clamp(sanitized, 1, highest);
   }
 
   private getActiveLevelForMap(mapId: MapId): number {
@@ -761,6 +851,10 @@ export class MapModule implements GameModule {
     return bestTimeMs;
   }
 
+  private getClearedLevels(mapId: MapId): number {
+    return this.getClearedLevelCount(this.mapStats[mapId]);
+  }
+
   private getTotalClearedLevels(): number {
     return Object.values(this.mapStats).reduce(
       (total, levels) => total + this.getClearedLevelCount(levels),
@@ -776,15 +870,15 @@ export class MapModule implements GameModule {
     Object.entries(levels).forEach(([rawLevel, stats]) => {
       const level = Number(rawLevel);
       if (Number.isFinite(level) && stats?.success > 0) {
-        successful.add(level);
+        successful.add(sanitizeLevel(level));
       }
     });
 
-    let cleared = 0;
+    let cleared = 1;
     while (successful.has(cleared)) {
       cleared += 1;
     }
-    return cleared;
+    return cleared - 1;
   }
 
   private parseSelectedLevels(data: unknown): Partial<Record<MapId, number>> {
@@ -796,9 +890,22 @@ export class MapModule implements GameModule {
       if (!isMapId(mapId)) {
         return;
       }
-      levels[mapId] = sanitizeLevel(value);
+      levels[mapId] = deserializeLevel(value);
     });
     return levels;
+  }
+
+  private parseLastPlayedMap(
+    data: unknown
+  ): { mapId: MapId; level: number } | undefined {
+    if (typeof data !== "object" || data === null) {
+      return undefined;
+    }
+    const raw = data as { mapId?: unknown; level?: unknown };
+    if (!raw.mapId || !isMapId(raw.mapId) || !Number.isFinite(raw.level as number)) {
+      return undefined;
+    }
+    return { mapId: raw.mapId, level: deserializeLevel(raw.level) };
   }
 
   private parseStats(data: unknown): MapStats {
@@ -816,7 +923,7 @@ export class MapModule implements GameModule {
         if (!Number.isFinite(parsed) || typeof statsValue !== "object" || statsValue === null) {
           return;
         }
-        const level = sanitizeLevel(parsed);
+        const level = deserializeLevel(parsed);
         const stats = this.parseLevelStats(statsValue as Record<string, unknown>);
         levels[level] = stats;
       });
@@ -857,7 +964,7 @@ export class MapModule implements GameModule {
       if (!isMapId(mapId) || typeof level !== "number") {
         return;
       }
-      clone[mapId as MapId] = sanitizeLevel(level);
+      clone[mapId as MapId] = serializeLevel(level);
     });
     return clone;
   }
@@ -891,6 +998,30 @@ export class MapModule implements GameModule {
     this.statsCloneDirty = false;
     return clone;
   }
+
+  private cloneStatsForSave(): MapStats {
+    const clone: MapStats = {};
+    Object.entries(this.mapStats).forEach(([mapId, levels]) => {
+      if (!levels) {
+        return;
+      }
+      const levelClone: Record<number, MapLevelStats> = {};
+      Object.entries(levels).forEach(([levelKey, stats]) => {
+        const parsed = Number(levelKey);
+        if (!Number.isFinite(parsed)) {
+          return;
+        }
+        const level = serializeLevel(sanitizeLevel(parsed));
+        levelClone[level] = {
+          success: stats.success,
+          failure: stats.failure,
+          bestTimeMs: stats.bestTimeMs === undefined ? null : stats.bestTimeMs,
+        };
+      });
+      clone[mapId as MapId] = levelClone;
+    });
+    return clone;
+  }
 }
 
 const clamp = (value: number, min: number, max: number): number => {
@@ -905,10 +1036,25 @@ const clamp = (value: number, min: number, max: number): number => {
 
 const sanitizeLevel = (value: unknown): number => {
   if (!Number.isFinite(value as number)) {
-    return 0;
+    return 1;
   }
   const level = Math.floor(Number(value));
-  return Math.max(level, 0);
+  return Math.max(level, 1);
+};
+
+const deserializeLevel = (value: unknown): number => {
+  if (!Number.isFinite(value as number)) {
+    return 1;
+  }
+  const parsed = Math.floor(Number(value));
+  return sanitizeLevel(parsed + 1);
+};
+
+const serializeLevel = (level: number): number => {
+  if (!Number.isFinite(level as number)) {
+    return 0;
+  }
+  return Math.max(Math.floor(Number(level)) - 1, 0);
 };
 
 const sanitizeCount = (value: unknown): number => {

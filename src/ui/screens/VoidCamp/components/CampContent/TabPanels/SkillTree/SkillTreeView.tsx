@@ -41,6 +41,12 @@ const DRAG_THRESHOLD = 3;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
 const ZOOM_SENSITIVITY = 0.0015;
+const NODE_RADIUS = 35; // Skill node is 70px wide with a -50% translate to center it
+const WOBBLE_RADIUS = 5;
+const WOBBLE_SPEED = 0.003;
+// Use node hit radius plus wobble amplitude so the wobble halts as soon as the
+// cursor enters the node area or the wobble path around it.
+const HOVER_SNAP_RADIUS = NODE_RADIUS + WOBBLE_RADIUS;
 
 interface ViewTransform {
   scale: number;
@@ -50,9 +56,13 @@ interface ViewTransform {
 
 interface SkillTreeEdge {
   id: string;
+  fromId: SkillId;
+  toId: SkillId;
   from: { x: number; y: number };
   to: { x: number; y: number };
   fulfilled: boolean;
+  currentLevel: number;
+  requiredLevel: number;
 }
 
 interface SkillTreeLayout {
@@ -82,6 +92,26 @@ const listResources = (names: string[]): string => {
   const others = names.slice(0, -1).map((name) => name!);
   return `${others.join(", ")}, and ${last}`;
 };
+
+const getSkillInitials = (name: string): string =>
+  name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2);
+
+const getSkillIconPath = (icon?: string): string | null => {
+  if (!icon) {
+    return null;
+  }
+  const hasExtension = icon.includes(".");
+  return `/images/skills/${hasExtension ? icon : `${icon}.svg`}`;
+};
+
+const getWobblePhaseSeed = (id: SkillId): number =>
+  id
+    .split("")
+    .reduce((acc, char, index) => acc + char.charCodeAt(0) * (index + 1), 0) * 0.001;
 
 /**
  * Determines if a skill node should be visible based on prerequisites.
@@ -165,9 +195,13 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
       }
       edges.push({
         id: `${requirement.id}->${node.id}`,
+        fromId: requirement.id,
+        toId: node.id,
         from,
         to,
         fulfilled: requirement.currentLevel >= requirement.requiredLevel,
+        currentLevel: requirement.currentLevel,
+        requiredLevel: requirement.requiredLevel,
       });
     });
   });
@@ -234,9 +268,15 @@ export const SkillTreeView: React.FC = () => {
     RESOURCE_TOTALS_BRIDGE_KEY,
     []
   );
-  const [hoveredId, setHoveredId] = useState<SkillId | null>(null);
+  const [pointerHoveredId, setPointerHoveredId] = useState<SkillId | null>(null);
+  const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const nodeRefs = useRef<Map<SkillId, HTMLButtonElement | null>>(new Map());
+  const edgeLineRefs = useRef<Map<string, SVGLineElement | null>>(new Map());
+  const edgeCounterRefs = useRef<
+    Map<string, { circle: SVGCircleElement | null; text: SVGTextElement | null }>
+  >(new Map());
   const panStateRef = useRef({
     isDown: false,
     isPanning: false,
@@ -253,19 +293,167 @@ export const SkillTreeView: React.FC = () => {
     offsetX: 0,
     offsetY: 0,
   });
+  const animatedOffsetsRef = useRef<Map<SkillId, { x: number; y: number }>>(new Map());
+  const renderPositionsRef = useRef<
+    Map<SkillId, { x: number; y: number }>
+  >(new Map());
+  const previousLayoutRef = useRef<SkillTreeLayout | null>(null);
+  const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
   const skillTreeModule = useMemo(() => app.getSkillTree(), [app]);
+  const [purchasedSkillId, setPurchasedSkillId] = useState<SkillId | null>(null);
+  const hoveredIdRef = useRef<SkillId | null>(null);
 
   const nodes = skillTree.nodes;
   const visibleNodes = useMemo(() => nodes.filter(isNodeVisible), [nodes]);
 
   useEffect(() => {
-    if (hoveredId && !visibleNodes.some((node) => node.id === hoveredId)) {
-      setHoveredId(null);
+    if (pointerHoveredId && !visibleNodes.some((node) => node.id === pointerHoveredId)) {
+      setPointerHoveredId(null);
     }
-  }, [hoveredId, visibleNodes]);
+    if (focusHoveredId && !visibleNodes.some((node) => node.id === focusHoveredId)) {
+      setFocusHoveredId(null);
+    }
+  }, [focusHoveredId, pointerHoveredId, visibleNodes]);
+
+  useEffect(() => {
+    visibleNodes.forEach((node) => {
+      if (!wobblePhaseSeedsRef.current.has(node.id)) {
+        wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
+      }
+    });
+  }, [visibleNodes]);
 
   const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
+  const hoveredId = pointerHoveredId ?? focusHoveredId;
+  
+  useEffect(() => {
+    hoveredIdRef.current = hoveredId;
+  }, [hoveredId]);
+
+  const nodeAffordability = useMemo(() => {
+    const map = new Map<SkillId, { affordable: boolean; purchasable: boolean }>();
+    visibleNodes.forEach((node) => {
+      const affordable = canAffordCost(node.nextCost, totalsMap);
+      const purchasable = node.unlocked && !node.maxed && affordable;
+      map.set(node.id, { affordable, purchasable });
+    });
+    return map;
+  }, [totalsMap, visibleNodes]);
+
+  const wobbleNodeIds = useMemo(() => {
+    const ids = new Set<SkillId>();
+    nodeAffordability.forEach((value, id) => {
+      if (value.purchasable) {
+        ids.add(id);
+      }
+    });
+    return ids;
+  }, [nodeAffordability]);
+
+  const updateRenderPositions = useCallback(
+    (offsets: Map<SkillId, { x: number; y: number }>) => {
+      const nextPositions = new Map<SkillId, { x: number; y: number }>();
+
+      visibleNodes.forEach((node) => {
+        const base = layout.positions.get(node.id);
+        if (!base) {
+          return;
+        }
+
+        const offset = offsets.get(node.id) ?? { x: 0, y: 0 };
+        const position = { x: base.x + offset.x, y: base.y + offset.y };
+        nextPositions.set(node.id, position);
+
+        const element = nodeRefs.current.get(node.id);
+        if (element) {
+          element.style.setProperty("--skill-node-wobble-x", `${offset.x}px`);
+          element.style.setProperty("--skill-node-wobble-y", `${offset.y}px`);
+        }
+      });
+
+      renderPositionsRef.current = nextPositions;
+
+      layout.edges.forEach((edge) => {
+        const from = nextPositions.get(edge.fromId) ?? edge.from;
+        const to = nextPositions.get(edge.toId) ?? edge.to;
+
+        const line = edgeLineRefs.current.get(edge.id);
+        if (line) {
+          line.setAttribute("x1", `${from.x}`);
+          line.setAttribute("y1", `${from.y}`);
+          line.setAttribute("x2", `${to.x}`);
+          line.setAttribute("y2", `${to.y}`);
+        }
+
+        const counters = edgeCounterRefs.current.get(edge.id);
+        if (counters) {
+          const midX = (from.x + to.x) / 2;
+          const midY = (from.y + to.y) / 2;
+
+          counters.circle?.setAttribute("cx", `${midX}`);
+          counters.circle?.setAttribute("cy", `${midY}`);
+          counters.text?.setAttribute("x", `${midX}`);
+          counters.text?.setAttribute("y", `${midY}`);
+        }
+      });
+    },
+    [layout.edges, layout.positions, visibleNodes]
+  );
+
+  useEffect(() => {
+    const offsets = animatedOffsetsRef.current;
+    offsets.clear();
+
+    const renderStillFrame = () => {
+      visibleNodes.forEach((node) => {
+        offsets.set(node.id, { x: 0, y: 0 });
+      });
+      updateRenderPositions(offsets);
+    };
+
+    if (wobbleNodeIds.size === 0) {
+      renderStillFrame();
+      return undefined;
+    }
+
+    const step = (timestamp: number) => {
+      const currentHoveredId = hoveredIdRef.current;
+      offsets.clear();
+
+      visibleNodes.forEach((node) => {
+        const shouldWobble = wobbleNodeIds.has(node.id) && currentHoveredId !== node.id;
+        if (!shouldWobble) {
+          offsets.set(node.id, { x: 0, y: 0 });
+          return;
+        }
+
+        const seed = wobblePhaseSeedsRef.current.get(node.id) ?? 0;
+        const angle = seed + timestamp * WOBBLE_SPEED;
+        offsets.set(node.id, {
+          x: Math.cos(angle) * WOBBLE_RADIUS,
+          y: Math.sin(angle) * WOBBLE_RADIUS,
+        });
+      });
+
+      updateRenderPositions(offsets);
+      animationFrameRef.current = requestAnimationFrame(step);
+    };
+
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    animationFrameRef.current = requestAnimationFrame(step);
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [updateRenderPositions, visibleNodes, wobbleNodeIds]);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -367,6 +555,47 @@ export const SkillTreeView: React.FC = () => {
   const activeId = hoveredId ?? fallbackId;
   const activeNode = visibleNodes.find((node) => node.id === activeId) ?? null;
 
+  useEffect(() => {
+    const previousLayout = previousLayoutRef.current;
+    previousLayoutRef.current = layout;
+
+    if (!hasInitializedViewRef.current || !previousLayout) {
+      return;
+    }
+
+    const anchorId =
+      hoveredIdRef.current ??
+      activeNode?.id ??
+      visibleNodes.find((node) =>
+        previousLayout.positions.has(node.id) && layout.positions.has(node.id)
+      )?.id ??
+      null;
+
+    if (!anchorId) {
+      return;
+    }
+
+    const previousPosition = previousLayout.positions.get(anchorId);
+    const nextPosition = layout.positions.get(anchorId);
+
+    if (!previousPosition || !nextPosition) {
+      return;
+    }
+
+    const deltaX = nextPosition.x - previousPosition.x;
+    const deltaY = nextPosition.y - previousPosition.y;
+
+    if (Math.abs(deltaX) < 0.001 && Math.abs(deltaY) < 0.001) {
+      return;
+    }
+
+    setViewTransform((current) => ({
+      ...current,
+      offsetX: current.offsetX - deltaX * current.scale,
+      offsetY: current.offsetY - deltaY * current.scale,
+    }));
+  }, [activeNode, layout, visibleNodes]);
+
   const activeMissing = useMemo(
     () => computeMissing(activeNode?.nextCost ?? null, totalsMap),
     [activeNode, totalsMap]
@@ -388,10 +617,67 @@ export const SkillTreeView: React.FC = () => {
 
   const handleNodeClick = useCallback(
     (id: SkillId) => {
-      skillTreeModule.tryPurchaseSkill(id);
+      const success = skillTreeModule.tryPurchaseSkill(id);
+      if (success) {
+        setPurchasedSkillId(id);
+        // Reset after animation completes
+        setTimeout(() => {
+          setPurchasedSkillId(null);
+        }, 600);
+      }
     },
     [skillTreeModule]
   );
+
+  const updatePointerHover = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType !== "mouse") {
+        return;
+      }
+
+      // Don't update hover if cursor is over a button (button's onMouseEnter handles it)
+      const target = event.target as HTMLElement;
+      if (target.closest("button.skill-tree-node")) {
+        return;
+      }
+
+      const viewport = viewportRef.current;
+      if (!viewport) {
+        return;
+      }
+
+      const rect = viewport.getBoundingClientRect();
+      const worldX = (event.clientX - rect.left - viewTransform.offsetX) / viewTransform.scale;
+      const worldY = (event.clientY - rect.top - viewTransform.offsetY) / viewTransform.scale;
+      pointerWorldRef.current = { x: worldX, y: worldY };
+
+      let closestId: SkillId | null = null;
+      let closestDistanceSquared = HOVER_SNAP_RADIUS * HOVER_SNAP_RADIUS;
+
+      visibleNodes.forEach((node) => {
+        const position =
+          renderPositionsRef.current.get(node.id) ?? layout.positions.get(node.id);
+        if (!position) {
+          return;
+        }
+        const dx = worldX - position.x;
+        const dy = worldY - position.y;
+        const distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared <= closestDistanceSquared) {
+          closestId = node.id;
+          closestDistanceSquared = distanceSquared;
+        }
+      });
+
+      setPointerHoveredId(closestId);
+    },
+    [layout.positions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
+  );
+
+  const clearPointerHover = useCallback(() => {
+    pointerWorldRef.current = null;
+    setPointerHoveredId(null);
+  }, []);
 
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -405,14 +691,20 @@ export const SkillTreeView: React.FC = () => {
       state.lastX = event.clientX;
       state.lastY = event.clientY;
       didPanRef.current = false;
+      if (event.pointerType === "mouse") {
+        updatePointerHover(event);
+      } else {
+        clearPointerHover();
+      }
     },
-    []
+    [clearPointerHover, updatePointerHover]
   );
 
   const handlePointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const state = panStateRef.current;
       if (!state.isDown || state.pointerId !== event.pointerId) {
+        updatePointerHover(event);
         return;
       }
 
@@ -422,6 +714,7 @@ export const SkillTreeView: React.FC = () => {
       if (!state.isPanning) {
         const distanceSquared = deltaX * deltaX + deltaY * deltaY;
         if (distanceSquared < DRAG_THRESHOLD * DRAG_THRESHOLD) {
+          updatePointerHover(event);
           return;
         }
 
@@ -442,12 +735,14 @@ export const SkillTreeView: React.FC = () => {
           offsetX: current.offsetX + deltaX,
           offsetY: current.offsetY + deltaY,
         }));
+      } else {
+        updatePointerHover(event);
       }
 
       state.lastX = event.clientX;
       state.lastY = event.clientY;
     },
-    []
+    [updatePointerHover]
   );
 
   const endPan = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -480,6 +775,14 @@ export const SkillTreeView: React.FC = () => {
       didPanRef.current = false;
     }
   }, []);
+
+  const handlePointerLeave = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      clearPointerHover();
+      endPan(event);
+    },
+    [clearPointerHover, endPan]
+  );
 
   const handleWheel = useCallback(
     (event: ReactWheelEvent<HTMLDivElement>) => {
@@ -535,6 +838,16 @@ export const SkillTreeView: React.FC = () => {
     [layout.height, layout.width, viewTransform]
   );
 
+  const renderEdges = useMemo(
+    () =>
+      layout.edges.map((edge) => {
+        const from = renderPositionsRef.current.get(edge.fromId) ?? edge.from;
+        const to = renderPositionsRef.current.get(edge.toId) ?? edge.to;
+        return { ...edge, from, to };
+      }),
+    [layout.edges]
+  );
+
   return (
     <div className="skill-tree">
       <div
@@ -543,33 +856,112 @@ export const SkillTreeView: React.FC = () => {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endPan}
-        onPointerCancel={endPan}
-        onPointerLeave={endPan}
+        onPointerCancel={handlePointerLeave}
+        onPointerLeave={handlePointerLeave}
         onWheel={handleWheel}
       >
         <div className="skill-tree__canvas" style={canvasStyle}>
-          <svg
-            className="skill-tree__links"
-            viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {layout.edges.map((edge) => (
-              <line
-                key={edge.id}
-                x1={edge.from.x}
-                y1={edge.from.y}
-                x2={edge.to.x}
-                y2={edge.to.y}
-                className={edge.fulfilled ? "skill-tree__link skill-tree__link--fulfilled" : "skill-tree__link skill-tree__link--locked"}
-              />
-            ))}
+            <svg
+              className="skill-tree__links"
+              viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
+              preserveAspectRatio="xMidYMid meet"
+              shapeRendering="crispEdges"
+            >
+          {renderEdges.map((edge) => {
+            // Calculate midpoint for counter label
+            const midX = (edge.from.x + edge.to.x) / 2;
+            const midY = (edge.from.y + edge.to.y) / 2;
+              
+              return (
+                <g key={edge.id}>
+                  <line
+                    ref={(element) => {
+                      if (element) {
+                        edgeLineRefs.current.set(edge.id, element);
+                      } else {
+                        edgeLineRefs.current.delete(edge.id);
+                      }
+                    }}
+                    x1={edge.from.x}
+                    y1={edge.from.y}
+                    x2={edge.to.x}
+                    y2={edge.to.y}
+                    className={edge.fulfilled ? "skill-tree__link skill-tree__link--fulfilled" : "skill-tree__link skill-tree__link--locked"}
+                  />
+                  <g className="skill-tree__link-counter">
+                    <circle
+                      ref={(element) => {
+                        const existing = edgeCounterRefs.current.get(edge.id) ?? {
+                          circle: null,
+                          text: null,
+                        };
+
+                        if (!element) {
+                          const next = { ...existing, circle: null };
+                          if (!next.text) {
+                            edgeCounterRefs.current.delete(edge.id);
+                          } else {
+                            edgeCounterRefs.current.set(edge.id, next);
+                          }
+                          return;
+                        }
+
+                        edgeCounterRefs.current.set(edge.id, {
+                          circle: element,
+                          text: existing.text,
+                        });
+                      }}
+                      cx={midX}
+                      cy={midY}
+                      r="16"
+                      className={edge.fulfilled ? "skill-tree__link-counter-bg skill-tree__link-counter-bg--fulfilled" : "skill-tree__link-counter-bg skill-tree__link-counter-bg--locked"}
+                      shapeRendering="crispEdges"
+                    />
+                    <text
+                      ref={(element) => {
+                        const existing = edgeCounterRefs.current.get(edge.id) ?? {
+                          circle: null,
+                          text: null,
+                        };
+
+                        if (!element) {
+                          const next = { ...existing, text: null };
+                          if (!next.circle) {
+                            edgeCounterRefs.current.delete(edge.id);
+                          } else {
+                            edgeCounterRefs.current.set(edge.id, next);
+                          }
+                          return;
+                        }
+
+                        edgeCounterRefs.current.set(edge.id, {
+                          circle: existing.circle,
+                          text: element,
+                        });
+                      }}
+                      x={midX}
+                      y={midY}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      className="skill-tree__link-counter-text"
+                      textRendering="optimizeLegibility"
+                      shapeRendering="crispEdges"
+                    >
+                      {edge.currentLevel}/{edge.requiredLevel}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
           </svg>
           {visibleNodes.map((node) => {
-            const position = layout.positions.get(node.id);
+            const position =
+              renderPositionsRef.current.get(node.id) ?? layout.positions.get(node.id);
             if (!position) {
               return null;
             }
-            const affordable = canAffordCost(node.nextCost, totalsMap);
+            const affordability = nodeAffordability.get(node.id);
+            const affordable = affordability?.affordable ?? false;
             const locked = !node.unlocked;
             const inactive = locked || node.maxed || !affordable;
             const nodeClasses = classNames(
@@ -579,8 +971,11 @@ export const SkillTreeView: React.FC = () => {
               !node.maxed && node.unlocked && "skill-tree-node--available",
               !node.maxed && node.unlocked && affordable && "skill-tree-node--affordable",
               inactive && "skill-tree-node--inactive",
-              activeId === node.id && "skill-tree-node--active"
+              activeId === node.id && "skill-tree-node--active",
+              purchasedSkillId === node.id && "skill-tree-node--purchased"
             );
+            const iconSrc = getSkillIconPath(node.icon);
+            const nodeInitials = getSkillInitials(node.name);
 
             return (
               <button
@@ -588,10 +983,27 @@ export const SkillTreeView: React.FC = () => {
                 type="button"
                 className={nodeClasses}
                 style={{ left: `${position.x}px`, top: `${position.y}px` }}
-                onMouseEnter={() => setHoveredId(node.id)}
-                onMouseLeave={() => setHoveredId((current) => (current === node.id ? null : current))}
-                onFocus={() => setHoveredId(node.id)}
-                onBlur={() => setHoveredId((current) => (current === node.id ? null : current))}
+                ref={(element) => {
+                  if (element) {
+                    nodeRefs.current.set(node.id, element);
+                  } else {
+                    nodeRefs.current.delete(node.id);
+                  }
+                }}
+                onMouseEnter={() => {
+                  setPointerHoveredId(node.id);
+                }}
+                onMouseLeave={() =>
+                  setPointerHoveredId((current) =>
+                    current === node.id ? null : current
+                  )
+                }
+                onFocus={() => setFocusHoveredId(node.id)}
+                onBlur={() =>
+                  setFocusHoveredId((current) =>
+                    current === node.id ? null : current
+                  )
+                }
                 onClick={() => {
                   if (!inactive && !didPanRef.current) {
                     handleNodeClick(node.id);
@@ -604,11 +1016,16 @@ export const SkillTreeView: React.FC = () => {
                   {node.level} / {node.maxLevel}
                 </div>
                 <div className="skill-tree-node__icon">
-                  {node.name
-                    .split(" ")
-                    .map((part) => part[0])
-                    .join("")
-                    .slice(0, 2)}
+                  {iconSrc ? (
+                    <img
+                      src={iconSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className="skill-tree-node__image"
+                    />
+                  ) : (
+                    nodeInitials
+                  )}
                 </div>
               </button>
             );
