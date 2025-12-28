@@ -69,6 +69,13 @@ const WORD_SPACING = 0;
 const LINE_SPACING = 420;
 const TITLE_LINES = ["VOID", "EATERS"] as const;
 const DEFAULT_BRICK_TYPE: BrickType = "smallSquareGray";
+// Real arch configuration - bricks placed along a semicircle with proper rotation
+const ARCH_GAP_FROM_TITLE = 320;
+const ARCH_OUTER_RADIUS = 320; // Outer radius of the arch curve
+const ARCH_INNER_RADIUS = 280; // Inner radius (creates thickness)
+const ARCH_PILLAR_HEIGHT = 880; // Height of the vertical pillars
+const ARCH_BRICK_GAP = 3; // Gap between bricks
+const ARCH_BOTTOM_PADDING = 60; // Distance from bottom of screen to pillar base
 
 // Adjust brick types per letter to quickly experiment with the title palette.
 const LETTER_BRICK_TYPES: Partial<Record<string, BrickType>> = {
@@ -194,14 +201,22 @@ interface LineMetric {
   height: number;
 }
 
-interface TitleLayoutResult {
-  bricks: Array<{
-    position: SceneVector2;
-    size: SceneSize;
-    fill: SceneFill;
-    stroke?: SceneStroke;
-  }>;
-  bounds: { x: number; y: number; width: number; height: number };
+type SceneBounds = { x: number; y: number; width: number; height: number };
+
+interface BrickInstance {
+  position: SceneVector2;
+  size: SceneSize;
+  fill: SceneFill;
+  stroke?: SceneStroke;
+  rotation?: number;
+}
+
+interface BrickLayout {
+  bricks: BrickInstance[];
+  bounds: SceneBounds;
+}
+
+interface TitleLayoutResult extends BrickLayout {
   wordRanges: Array<{ startX: number; endX: number; startY: number; endY: number; centerY: number }>;
 }
 
@@ -436,6 +451,107 @@ const computeTitleLayout = (
   };
 };
 
+const createArchLayout = (titleBounds: SceneBounds): BrickLayout => {
+  const config = getBrickConfig("floodedArch");
+  const stroke = config.stroke
+    ? {
+        color: { ...config.stroke.color },
+        width: config.stroke.width,
+      }
+    : undefined;
+
+  const bricks: BrickLayout["bricks"] = [];
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  const addBrick = (x: number, y: number, rotation: number = 0) => {
+    bricks.push({
+      position: { x, y },
+      size: { ...config.size },
+      fill: createBrickFill(config),
+      stroke,
+      rotation,
+    });
+    const halfW = config.size.width / 2;
+    const halfH = config.size.height / 2;
+    // Approximate bounds (not accounting for rotation, but close enough)
+    minX = Math.min(minX, x - halfW);
+    minY = Math.min(minY, y - halfH);
+    maxX = Math.max(maxX, x + halfW);
+    maxY = Math.max(maxY, y + halfH);
+  };
+
+  // Calculate arch center position
+  const archCenterX = titleBounds.x + titleBounds.width + ARCH_GAP_FROM_TITLE + ARCH_OUTER_RADIUS;
+  // Arc center is positioned so that pillars end near the bottom of the screen
+  const arcCenterY = MAP_SIZE.height - ARCH_BOTTOM_PADDING - ARCH_PILLAR_HEIGHT;
+  const pillarBottomY = arcCenterY + ARCH_PILLAR_HEIGHT;
+
+  // Calculate how many bricks fit along the semicircle arc
+  const brickArcLength = config.size.width + ARCH_BRICK_GAP;
+  
+  // Place bricks along the outer semicircle (top curved part)
+  // Arc goes from left (angle=π) over the top (angle=π/2) to right (angle=0)
+  const outerArcLength = Math.PI * ARCH_OUTER_RADIUS;
+  const numOuterBricks = Math.max(7, Math.floor(outerArcLength / brickArcLength));
+  
+  for (let i = 0; i <= numOuterBricks; i += 1) {
+    const t = i / numOuterBricks;
+    const angle = Math.PI * (1 - t); // π → 0 (left to right over top)
+    
+    const x = archCenterX + Math.cos(angle) * ARCH_OUTER_RADIUS;
+    const y = arcCenterY - Math.sin(angle) * ARCH_OUTER_RADIUS; // minus because Y goes down
+    // Rotation: tangent to circle. At angle=π brick is vertical, at π/2 horizontal
+    const rotation = -(angle - Math.PI / 2);
+    addBrick(x, y, rotation);
+  }
+
+  // Place bricks along the inner semicircle
+  const innerArcLength = Math.PI * ARCH_INNER_RADIUS;
+  const numInnerBricks = Math.max(5, Math.floor(innerArcLength / brickArcLength));
+  
+  for (let i = 0; i <= numInnerBricks; i += 1) {
+    const t = i / numInnerBricks;
+    const angle = Math.PI * (1 - t);
+    
+    const x = archCenterX + Math.cos(angle) * ARCH_INNER_RADIUS;
+    const y = arcCenterY - Math.sin(angle) * ARCH_INNER_RADIUS;
+    const rotation = -(angle - Math.PI / 2);
+    addBrick(x, y, rotation);
+  }
+
+  // Pillars - vertical bricks going down from arc endpoints
+  const leftPillarX = archCenterX - ARCH_OUTER_RADIUS;
+  const rightPillarX = archCenterX + ARCH_OUTER_RADIUS;
+  const pillarThickness = ARCH_OUTER_RADIUS - ARCH_INNER_RADIUS;
+  const pillarBrickHeight = config.size.height + ARCH_BRICK_GAP;
+  const numPillarBricks = Math.floor(ARCH_PILLAR_HEIGHT / pillarBrickHeight);
+  
+  for (let i = 0; i < numPillarBricks; i += 1) {
+    const y = arcCenterY + i * pillarBrickHeight + config.size.height / 2;
+    
+    // Left pillar - outer and inner edge
+    addBrick(leftPillarX, y, 0);
+    addBrick(leftPillarX + pillarThickness, y, 0);
+    
+    // Right pillar - outer and inner edge
+    addBrick(rightPillarX, y, 0);
+    addBrick(rightPillarX - pillarThickness, y, 0);
+  }
+
+  return {
+    bricks,
+    bounds: {
+      x: minX,
+      y: minY,
+      width: Math.max(0, maxX - minX),
+      height: Math.max(0, maxY - minY),
+    },
+  };
+};
+
 interface CreatureConfig {
   modules: UnitModuleId[];
   orbitCenter: SceneVector2;
@@ -493,16 +609,37 @@ const deriveRendererStroke = (
   return undefined;
 };
 
+const mergeBounds = (base: SceneBounds, ...bounds: SceneBounds[]): SceneBounds => {
+  let minX = base.x;
+  let minY = base.y;
+  let maxX = base.x + base.width;
+  let maxY = base.y + base.height;
+
+  bounds.forEach((bound) => {
+    minX = Math.min(minX, bound.x);
+    minY = Math.min(minY, bound.y);
+    maxX = Math.max(maxX, bound.x + bound.width);
+    maxY = Math.max(maxY, bound.y + bound.height);
+  });
+
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(0, maxX - minX),
+    height: Math.max(0, maxY - minY),
+  };
+};
+
 const computeSceneContentBounds = (
-  titleBounds: TitleLayoutResult["bounds"],
+  contentBounds: SceneBounds,
   creatures: readonly CreatureConfig[],
   paddingX: number,
   paddingY: number
-): TitleLayoutResult["bounds"] => {
-  let minX = titleBounds.x;
-  let minY = titleBounds.y;
-  let maxX = titleBounds.x + titleBounds.width;
-  let maxY = titleBounds.y + titleBounds.height;
+): SceneBounds => {
+  let minX = contentBounds.x;
+  let minY = contentBounds.y;
+  let maxX = contentBounds.x + contentBounds.width;
+  let maxY = contentBounds.y + contentBounds.height;
 
   creatures.forEach((creature) => {
     const horizontalRadius = creature.orbitRadius;
@@ -794,7 +931,7 @@ const FRAGMENT_SHADER = createSceneFragmentShader();
 
 const centerCameraOnBounds = (
   scene: SceneObjectManager,
-  bounds: { x: number; y: number; width: number; height: number }
+  bounds: SceneBounds
 ) => {
   const camera = scene.getCamera();
   const mapSize = scene.getMapSize();
@@ -987,18 +1124,21 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       MAP_SIZE.height
     );
 
-    titleLayout.bricks.forEach((brick) => {
+    const archLayout = createArchLayout(titleLayout.bounds);
+
+    [...titleLayout.bricks, ...archLayout.bricks].forEach((brick) => {
       scene.addObject("brick", {
         position: brick.position,
         size: brick.size,
         fill: brick.fill,
         stroke: brick.stroke,
+        rotation: brick.rotation ?? 0,
       });
     });
 
     const creatures = createCreatures(scene, titleLayout);
     const contentBounds = computeSceneContentBounds(
-      titleLayout.bounds,
+      mergeBounds(titleLayout.bounds, archLayout.bounds),
       creatures,
       500, // paddingX
       CONTENT_PADDING // paddingY
