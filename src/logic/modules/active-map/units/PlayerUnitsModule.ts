@@ -336,34 +336,36 @@ export class PlayerUnitsModule implements GameModule {
     const elapsedSeconds = Math.max(0, (now - this.lastTickTimestampMs) / 1000);
     this.lastTickTimestampMs = now;
 
-    if (elapsedSeconds === 0 || this.unitOrder.length === 0) {
-      return;
-    }
-
     let statsDirty = false;
-    const unitsSnapshot = [...this.unitOrder];
-    unitsSnapshot.forEach((unit) => {
-      if (unit.hp <= 0) {
-        this.removeUnit(unit);
-        statsDirty = true;
-        return;
-      }
 
-      unit.attackCooldown = Math.max(unit.attackCooldown - elapsedSeconds, 0);
-      unit.timeSinceLastAttack = Math.min(
-        unit.timeSinceLastAttack + elapsedSeconds,
-        PHEROMONE_TIMER_CAP_SECONDS,
-      );
-      unit.timeSinceLastSpecial = Math.min(
-        unit.timeSinceLastSpecial + elapsedSeconds,
-        PHEROMONE_TIMER_CAP_SECONDS,
-      );
-      unit.wanderCooldown = Math.max(unit.wanderCooldown - elapsedSeconds, 0);
-    });
+    if (elapsedSeconds > 0 && this.unitOrder.length > 0) {
+      const unitsSnapshot = [...this.unitOrder];
+      unitsSnapshot.forEach((unit) => {
+        if (unit.hp <= 0) {
+          this.removeUnit(unit);
+          statsDirty = true;
+          return;
+        }
+
+        unit.attackCooldown = Math.max(unit.attackCooldown - elapsedSeconds, 0);
+        unit.timeSinceLastAttack = Math.min(
+          unit.timeSinceLastAttack + elapsedSeconds,
+          PHEROMONE_TIMER_CAP_SECONDS,
+        );
+        unit.timeSinceLastSpecial = Math.min(
+          unit.timeSinceLastSpecial + elapsedSeconds,
+          PHEROMONE_TIMER_CAP_SECONDS,
+        );
+        unit.wanderCooldown = Math.max(unit.wanderCooldown - elapsedSeconds, 0);
+      });
+    }
 
     if (statsDirty) {
       this.pushStats();
     }
+
+    // Ensure any pending scene removals for player units are flushed after a hidden tab
+    this.scene.flushAllPendingRemovals();
   }
 
   public getUnitPositionIfAlive = (unitId: string): SceneVector2 | null => {
