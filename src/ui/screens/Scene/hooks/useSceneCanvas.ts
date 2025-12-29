@@ -424,6 +424,28 @@ export const useSceneCanvas = ({
     objectsRenderer.applyChanges(initialChanges);
     applySync();
 
+    const applyPendingVisibilityCleanup = () => {
+      scene.flushAllPendingRemovals();
+      const changes = scene.flushChanges();
+      if (
+        changes.added.length === 0 &&
+        changes.updated.length === 0 &&
+        changes.removed.length === 0
+      ) {
+        return;
+      }
+      objectsRenderer.applyChanges(changes);
+      applySync();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        applyPendingVisibilityCleanup();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     let frame = 0;
     let previousTime: number | null = null;
 
@@ -764,6 +786,7 @@ export const useSceneCanvas = ({
       clearPetalAuraInstances();
       resetAllArcBatches();
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.cancelAnimationFrame(frame);
       gl.deleteBuffer(staticBuffer);
       gl.deleteBuffer(dynamicBuffer);
