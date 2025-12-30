@@ -44,7 +44,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["spellProjectile", new BulletObjectRenderer()],
     ["spellProjectileRing", new SpellProjectileRingRenderer()],
     ["unitProjectile", new BulletObjectRenderer()],
-    ["unitProjectileRing", new SpellProjectileRingRenderer()],
+    // unitProjectileRing - now rendered via GPU instancing (RingGpuRenderer)
     ["sandStorm", new SandStormRenderer()],
     ["spellPersistentAoe", new PersistentAoeSpellRenderer()],
   ]);

@@ -9,6 +9,7 @@ import {
   DynamicPrimitive,
   StaticPrimitive,
   VERTEX_COMPONENTS,
+  FILL_COMPONENTS,
   transformObjectPoint,
 } from "../../objects/ObjectRenderer";
 import {
@@ -59,18 +60,21 @@ const cloneVertex = (vertex: SceneVector2): SceneVector2 => ({
 const cloneVertices = (vertices: PolygonVertices): PolygonVertices =>
   vertices.map((vertex) => cloneVertex(vertex));
 
+// Default fallback vertices - reused to avoid allocations
+const DEFAULT_FALLBACK_VERTICES: PolygonVertices = [
+  { x: -10, y: -10 },
+  { x: 10, y: -10 },
+  { x: 0, y: 15 },
+];
+
 const ensureVertices = (vertices: SceneVector2[] | undefined): PolygonVertices => {
   if (!vertices || vertices.length < MIN_VERTEX_COUNT) {
-    return [
-      { x: -10, y: -10 },
-      { x: 10, y: -10 },
-      { x: 0, y: 15 },
-    ];
+    return DEFAULT_FALLBACK_VERTICES;
   }
-  return vertices.map((vertex) => ({
-    x: typeof vertex.x === "number" ? vertex.x : 0,
-    y: typeof vertex.y === "number" ? vertex.y : 0,
-  }));
+  // OPTIMIZATION: Return vertices directly without cloning if they're already valid
+  // This avoids massive GC pressure from creating new objects every frame
+  // Callers that need mutation should clone explicitly
+  return vertices as PolygonVertices;
 };
 
 const resolveVertices = (
@@ -102,12 +106,19 @@ const resolveFill = (
   return instance.data.fill;
 };
 
-const computeGeometry = (vertices: PolygonVertices): PolygonGeometry => {
+// OPTIMIZATION: Reusable geometry object to avoid per-frame allocations
+const computeGeometry = (vertices: PolygonVertices, out?: PolygonGeometry): PolygonGeometry => {
+  const result = out ?? {
+    centerOffset: { x: 0, y: 0 },
+    size: { width: MIN_SIZE, height: MIN_SIZE },
+  };
+
   if (vertices.length < MIN_VERTEX_COUNT) {
-    return {
-      centerOffset: { x: 0, y: 0 },
-      size: { width: MIN_SIZE, height: MIN_SIZE },
-    };
+    result.centerOffset.x = 0;
+    result.centerOffset.y = 0;
+    result.size.width = MIN_SIZE;
+    result.size.height = MIN_SIZE;
+    return result;
   }
   let minX = vertices[0]!.x;
   let maxX = vertices[0]!.x;
@@ -130,18 +141,12 @@ const computeGeometry = (vertices: PolygonVertices): PolygonGeometry => {
     }
   }
 
-  const centerOffset = {
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
-  };
+  result.centerOffset.x = (minX + maxX) / 2;
+  result.centerOffset.y = (minY + maxY) / 2;
+  result.size.width = Math.max(MIN_SIZE, maxX - minX);
+  result.size.height = Math.max(MIN_SIZE, maxY - minY);
 
-  const width = Math.max(MIN_SIZE, maxX - minX);
-  const height = Math.max(MIN_SIZE, maxY - minY);
-
-  return {
-    centerOffset,
-    size: { width, height },
-  };
+  return result;
 };
 
 const pushVertex = (
@@ -378,6 +383,11 @@ export const createDynamicPolygonPrimitive = (
   instance: SceneObjectInstance,
   options: DynamicPolygonPrimitiveOptions = {}
 ): DynamicPrimitive => {
+  // Check if vertices and fill are static (not animated)
+  const isStaticVertices = !options.getVertices && !!options.vertices;
+  const isStaticFill = !options.getFill && !!options.fill;
+  const canFastPath = isStaticVertices && isStaticFill;
+  
   const initialVertices = resolveVertices(options, instance);
   let vertexCount = initialVertices.length;
   let geometry = computeGeometry(initialVertices);
@@ -387,7 +397,8 @@ export const createDynamicPolygonPrimitive = (
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-  let fillComponents = createFillVertexComponents({
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillComponents = writeFillVertexComponents(fillScratch, {
     fill: resolveFill(options, instance),
     center: fillCenter,
     rotation,
@@ -395,26 +406,64 @@ export const createDynamicPolygonPrimitive = (
   });
 
   let data = buildPolygonData(origin, rotation, initialVertices, fillComponents);
-  const fillScratch = new Float32Array(fillComponents.length);
+  
+  // Cache previous state for fast-path (use raw position, not transformed origin)
+  let prevPosX = instance.data.position.x;
+  let prevPosY = instance.data.position.y;
+  let prevRotation = rotation;
 
   const primitive: DynamicPrimitive = {
     get data() {
       return data;
     },
     update(target: SceneObjectInstance) {
-      const nextVertices = resolveVertices(options, target);
-      const nextVertexCount = nextVertices.length;
-      geometry = computeGeometry(nextVertices);
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      
+      // Fast path: skip expensive computations if nothing changed
+      // For static vertices/fill, only position and rotation matter
+      if (canFastPath &&
+          pos.x === prevPosX &&
+          pos.y === prevPosY &&
+          nextRotation === prevRotation) {
+        return null;
+      }
+      
       origin = getCenter(target);
-      rotation = target.data.rotation ?? 0;
+      rotation = nextRotation;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = rotation;
+      
+      // Skip expensive geometry/vertices work for static vertices
+      let nextVertices: PolygonVertices;
+      if (isStaticVertices) {
+        nextVertices = initialVertices;
+      } else {
+        nextVertices = resolveVertices(options, target);
+        computeGeometry(nextVertices, geometry);
+      }
+      const nextVertexCount = nextVertices.length;
+      
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
       // Reuse a single scratch buffer to avoid per-frame allocations
-      fillComponents = writeFillVertexComponents(fillScratch, {
-        fill: resolveFill(options, target),
-        center: fillCenter,
-        rotation,
-        size: geometry.size,
-      });
+      // Skip resolveFill for static fill
+      if (!isStaticFill) {
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: resolveFill(options, target),
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
+      } else {
+        // Just update center position in fill components
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: options.fill!,
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
+      }
 
       if (nextVertexCount !== vertexCount) {
         vertexCount = nextVertexCount;
@@ -510,6 +559,9 @@ export const createDynamicPolygonStrokePrimitive = (
   instance: SceneObjectInstance,
   options: DynamicPolygonStrokePrimitiveOptions
 ): DynamicPrimitive => {
+  // Check if vertices are static (not animated)
+  const isStaticVertices = !options.getVertices && !!options.vertices;
+  
   const resolveVerts = (target: SceneObjectInstance): PolygonVertices => {
     if (typeof options.getVertices === "function") {
       return ensureVertices(options.getVertices(target));
@@ -529,7 +581,8 @@ export const createDynamicPolygonStrokePrimitive = (
   let rotation = instance.data.rotation ?? 0;
   const strokeFill = createStrokeFill(options.stroke);
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-  let fillComponents = createFillVertexComponents({
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillComponents = writeFillVertexComponents(fillScratch, {
     fill: strokeFill,
     center: fillCenter,
     rotation,
@@ -537,17 +590,41 @@ export const createDynamicPolygonStrokePrimitive = (
   });
   let outer = expandVertices(inner, geometry.centerOffset, options.stroke.width);
   let data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
-  const fillScratch = new Float32Array(fillComponents.length);
+  
+  // Cache previous state for static vertices to skip updates when nothing changed
+  let prevPosX = instance.data.position.x;
+  let prevPosY = instance.data.position.y;
+  let prevRotation = rotation;
 
   const primitive: DynamicPrimitive = {
     get data() {
       return data;
     },
     update(target: SceneObjectInstance) {
-      inner = resolveVerts(target);
-      geometry = computeGeometry(inner);
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      
+      // Fast path: skip update if position/rotation unchanged and vertices are static
+      if (isStaticVertices &&
+          pos.x === prevPosX &&
+          pos.y === prevPosY &&
+          nextRotation === prevRotation) {
+        return null;
+      }
+      
       origin = getCenter(target);
-      rotation = target.data.rotation ?? 0;
+      rotation = nextRotation;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = rotation;
+      
+      // Skip expensive geometry/vertices work for static vertices
+      if (!isStaticVertices) {
+        inner = resolveVerts(target);
+        computeGeometry(inner, geometry);
+        outer = expandVertices(inner, geometry.centerOffset, options.stroke.width, outer);
+      }
+      
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
       fillComponents = writeFillVertexComponents(fillScratch, {
         fill: strokeFill,
@@ -555,8 +632,6 @@ export const createDynamicPolygonStrokePrimitive = (
         rotation,
         size: geometry.size,
       });
-      // Reuse outer buffer when possible
-      outer = expandVertices(inner, geometry.centerOffset, options.stroke.width, outer);
       // Reuse existing data buffer when possible
       data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents, data);
       return data;

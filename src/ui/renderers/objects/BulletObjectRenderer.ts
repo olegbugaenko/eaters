@@ -61,6 +61,16 @@ const tailFillCache = new WeakMap<
   { radius: number; tailRef: BulletTailRenderConfig; fill: SceneLinearGradientFill }
 >();
 
+// OPTIMIZATION: Cache vertices to avoid creating new objects every frame
+const tailVerticesCache = new WeakMap<
+  SceneObjectInstance,
+  { radius: number; tailRef: BulletTailRenderConfig; vertices: [SceneVector2, SceneVector2, SceneVector2] }
+>();
+const triangleVerticesCache = new WeakMap<
+  SceneObjectInstance,
+  { radius: number; vertices: [SceneVector2, SceneVector2, SceneVector2] }
+>();
+
 const DEFAULT_TAIL_CONFIG: BulletTailRenderConfig = {
   lengthMultiplier: 4.5,
   widthMultiplier: 1.75,
@@ -255,13 +265,23 @@ const getProjectileShape = (instance: SceneObjectInstance): "circle" | "triangle
 
 const createTriangleVertices = (instance: SceneObjectInstance): [SceneVector2, SceneVector2, SceneVector2] => {
   const radius = getBulletRadius(instance);
+  
+  // OPTIMIZATION: Cache vertices to avoid creating new objects every frame
+  const cached = triangleVerticesCache.get(instance);
+  if (cached && cached.radius === radius) {
+    return cached.vertices;
+  }
+  
   // Трикутник, спрямований вершиною вперед (у напрямку руху)
   // Вершина вперед
   const tip = { x: radius*2, y: 0 };
   // Дві задні вершини
   const baseLeft = { x: -radius * 0.6, y: radius * 0.8 };
   const baseRight = { x: -radius * 0.6, y: -radius * 0.8 };
-  return [tip, baseLeft, baseRight];
+  const vertices: [SceneVector2, SceneVector2, SceneVector2] = [tip, baseLeft, baseRight];
+  
+  triangleVerticesCache.set(instance, { radius, vertices });
+  return vertices;
 };
 
 const createTailVertices = (
@@ -269,13 +289,23 @@ const createTailVertices = (
 ): [SceneVector2, SceneVector2, SceneVector2] => {
   const radius = getBulletRadius(instance);
   const tail = getTailConfig(instance);
+  
+  // OPTIMIZATION: Cache vertices to avoid creating new objects every frame
+  const cached = tailVerticesCache.get(instance);
+  if (cached && cached.radius === radius && cached.tailRef === tail) {
+    return cached.vertices;
+  }
+  
   const tailLength = radius * tail.lengthMultiplier;
   const tailHalfWidth = (radius * tail.widthMultiplier) / 2;
-  return [
+  const vertices: [SceneVector2, SceneVector2, SceneVector2] = [
     { x: -radius / 2, y: tailHalfWidth },
     { x: -radius / 2, y: -tailHalfWidth },
     { x: -radius / 2 - tailLength, y: 0 },
   ];
+  
+  tailVerticesCache.set(instance, { radius, tailRef: tail, vertices });
+  return vertices;
 };
 
 const createTailFill = (
@@ -318,25 +348,34 @@ export class BulletObjectRenderer extends ObjectRenderer {
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
     }
+    
+    // OPTIMIZATION: Pre-compute vertices and fill at registration time
+    // This allows primitives to use their fast-path (skip update when position unchanged)
+    const tailVertices = createTailVertices(instance);
+    const tailFill = createTailFill(instance);
     dynamicPrimitives.push(
       createDynamicTrianglePrimitive(instance, {
-        getVertices: createTailVertices,
-        getFill: createTailFill,
+        vertices: tailVertices,
+        fill: tailFill,
       })
     );
     
     const shape = getProjectileShape(instance);
     if (shape === "triangle") {
       // Рендеримо трикутник як основну форму проджектайла
+      const triangleVertices = createTriangleVertices(instance);
       dynamicPrimitives.push(
         createDynamicTrianglePrimitive(instance, {
-          getVertices: createTriangleVertices,
-          getFill: (inst) => inst.data.fill,
+          vertices: triangleVertices,
+          fill: instance.data.fill,
         })
       );
     } else {
       // Рендеримо коло як основну форму проджектайла
-      dynamicPrimitives.push(createDynamicCirclePrimitive(instance));
+      // Pre-resolve fill to enable fast-path
+      dynamicPrimitives.push(createDynamicCirclePrimitive(instance, {
+        fill: instance.data.fill,
+      }));
     }
 
     return {

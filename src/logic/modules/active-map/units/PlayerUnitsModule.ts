@@ -45,7 +45,7 @@ import {
 } from "../../../visuals/VisualEffectState";
 import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import { UnitTargetingMode } from "../../../../types/unit-targeting";
-import { UnitDesignId } from "../../camp/UnitDesignModule";
+import { UnitDesignId, UnitDesignModule } from "../../camp/UnitDesignModule";
 import { ArcModule } from "../../scene/ArcModule";
 import { EffectsModule } from "../../scene/EffectsModule";
 import { FireballModule } from "../../scene/FireballModule";
@@ -110,6 +110,7 @@ interface PlayerUnitsModuleOptions {
   arcs?: ArcModule;
   effects?: EffectsModule;
   fireballs?: FireballModule;
+  unitDesign?: UnitDesignModule;
   onAllUnitsDefeated?: () => void;
   getModuleLevel: (id: UnitModuleId) => number;
   hasSkill: (id: SkillId) => boolean;
@@ -145,6 +146,7 @@ export class PlayerUnitsModule implements GameModule {
     designId: UnitDesignId | null,
     type: PlayerUnitType
   ) => UnitTargetingMode;
+  private readonly unitDesign?: UnitDesignModule;
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
   private readonly unitFactory: UnitFactory;
@@ -156,6 +158,7 @@ export class PlayerUnitsModule implements GameModule {
   private unitOrder: PlayerUnitState[] = [];
   private unitBlueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
   private readonly statsReporter: UnitStatisticsReporter;
+  private lastTickTimestampMs = performance.now();
 
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
@@ -171,6 +174,7 @@ export class PlayerUnitsModule implements GameModule {
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
+    this.unitDesign = options.unitDesign;
     this.statistics = options.statistics;
     this.runState = options.runState;
     const abilitySceneService = new AbilityVisualService({
@@ -315,6 +319,7 @@ export class PlayerUnitsModule implements GameModule {
     if (!this.runState.shouldProcessTick()) {
       return;
     }
+    this.lastTickTimestampMs = performance.now();
     this.abilities.update(deltaMs);
 
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
@@ -328,6 +333,42 @@ export class PlayerUnitsModule implements GameModule {
   public cleanupExpired(): void {
     // Clean up expired projectiles and rings that accumulated while tab was inactive
     this.projectiles.cleanupExpired();
+
+    // Remove dead units and advance basic timers using real time to prevent buildup while inactive
+    const now = performance.now();
+    const elapsedSeconds = Math.max(0, (now - this.lastTickTimestampMs) / 1000);
+    this.lastTickTimestampMs = now;
+
+    let statsDirty = false;
+
+    if (elapsedSeconds > 0 && this.unitOrder.length > 0) {
+      const unitsSnapshot = [...this.unitOrder];
+      unitsSnapshot.forEach((unit) => {
+        if (unit.hp <= 0) {
+          this.removeUnit(unit);
+          statsDirty = true;
+          return;
+        }
+
+        unit.attackCooldown = Math.max(unit.attackCooldown - elapsedSeconds, 0);
+        unit.timeSinceLastAttack = Math.min(
+          unit.timeSinceLastAttack + elapsedSeconds,
+          PHEROMONE_TIMER_CAP_SECONDS,
+        );
+        unit.timeSinceLastSpecial = Math.min(
+          unit.timeSinceLastSpecial + elapsedSeconds,
+          PHEROMONE_TIMER_CAP_SECONDS,
+        );
+        unit.wanderCooldown = Math.max(unit.wanderCooldown - elapsedSeconds, 0);
+      });
+    }
+
+    if (statsDirty) {
+      this.pushStats();
+    }
+
+    // Ensure any pending scene removals for player units are flushed after a hidden tab
+    this.scene.flushAllPendingRemovals();
   }
 
   public getUnitPositionIfAlive = (unitId: string): SceneVector2 | null => {
@@ -461,7 +502,21 @@ export class PlayerUnitsModule implements GameModule {
 
   private createUnitState(unit: PlayerUnitSpawnData): PlayerUnitState {
     const type = sanitizeUnitType(unit.type);
-    const blueprint = this.unitBlueprints.get(type);
+    
+    // Try to get blueprint from design first (includes module multipliers)
+    let blueprint: PlayerUnitBlueprintStats | undefined;
+    if (unit.designId && this.unitDesign) {
+      const design = this.unitDesign.getDesign(unit.designId);
+      if (design && design.type === type) {
+        blueprint = design.blueprint;
+      }
+    }
+    
+    // Fallback to base blueprint if no design blueprint found
+    if (!blueprint) {
+      blueprint = this.unitBlueprints.get(type);
+    }
+    
     if (!blueprint) {
       throw new Error(`Missing blueprint stats for unit type: ${type}`);
     }

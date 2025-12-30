@@ -28,6 +28,7 @@ import { BuildingsModule } from "../modules/camp/BuildingsModule";
 import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
 import { resetAllArcBatches } from "../../ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { clearAllParticleEmitters } from "../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
 import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
@@ -173,6 +174,7 @@ export class Application {
       arcs: undefined, // will set after ArcModule created
       effects: undefined, // will set after EffectsModule created
       audio: audioModule,
+      unitDesign: unitDesignModule,
       onAllUnitsDefeated: () => {
         this.handleAllUnitsDefeated();
       },
@@ -494,6 +496,9 @@ export class Application {
     } catch {}
     try {
       resetAllArcBatches();
+    } catch {}
+    try {
+      clearAllParticleEmitters();
     } catch {}
   }
 

@@ -9,6 +9,20 @@ import { BricksModule } from "../BricksModule";
 import type { BulletTailConfig, BulletTailEmitterConfig } from "@/db/bullets-db";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
 import { clampNumber } from "@/utils/helpers/numbers";
+import {
+  acquireGpuBulletSlot,
+  updateGpuBulletSlot,
+  releaseGpuBulletSlot,
+  GPU_BULLET_CONFIGS,
+  type BulletSlotHandle,
+  type BulletVisualConfig,
+} from "../../../services/BulletRenderBridge";
+import {
+  acquireRingSlot,
+  updateRingSlot,
+  releaseRingSlot,
+  type RingSlotHandle,
+} from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 
 export type UnitProjectileShape = "circle" | "triangle";
 
@@ -42,7 +56,7 @@ interface UnitProjectileRingTrailState {
 }
 
 interface RingState {
-  id: string;
+  gpuSlot: RingSlotHandle;
   createdAt: number;
   lifetimeMs: number;
 }
@@ -53,10 +67,13 @@ interface UnitProjectileState extends UnitProjectileSpawn {
   elapsedMs: number;
   radius: number;
   lifetimeMs: number;
+  createdAt: number;
   ringTrail?: UnitProjectileRingTrailState;
   shape: UnitProjectileShape;
   hitRadius: number;
   position: SceneVector2;
+  // GPU rendering slot (if using GPU instanced rendering)
+  gpuSlot?: BulletSlotHandle;
 }
 
 const MAX_PROJECTILE_STEPS_PER_TICK = 5;
@@ -96,20 +113,36 @@ export class UnitProjectileController {
       y: direction.y * visual.speed,
     };
     const position = { ...projectile.origin };
+    const createdAt = performance.now();
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
     const hitRadius = Math.max(1, visual.hitRadius ?? radius);
-    const objectId = this.scene.addObject("unitProjectile", {
-      position,
-      size: { width: radius * 2, height: radius * 2 },
-      rotation: Math.atan2(direction.y, direction.x),
-      fill: visual.fill,
-      customData: {
-        tail: visual.tail,
-        tailEmitter: visual.tailEmitter,
-        shape: visual.shape ?? "circle",
-      },
-    });
+    const rotation = Math.atan2(direction.y, direction.x);
+    const shape = visual.shape ?? "circle";
+    
+    // Try GPU instanced rendering first (much faster for many projectiles)
+    const gpuConfig = this.getGpuBulletConfig(visual, shape);
+    const gpuSlot = gpuConfig ? acquireGpuBulletSlot(gpuConfig) : null;
+    
+    let objectId: string;
+    if (gpuSlot) {
+      // Use GPU instanced rendering - no scene object needed
+      objectId = `gpu-bullet-${gpuSlot.visualKey}-${gpuSlot.slotIndex}-${createdAt}`;
+      updateGpuBulletSlot(gpuSlot, position, rotation, radius, true);
+    } else {
+      // Fallback to scene object rendering
+      objectId = this.scene.addObject("unitProjectile", {
+        position,
+        size: { width: radius * 2, height: radius * 2 },
+        rotation,
+        fill: visual.fill,
+        customData: {
+          tail: visual.tail,
+          tailEmitter: visual.tailEmitter,
+          shape,
+        },
+      });
+    }
 
     const ringTrail = visual.ringTrail
       ? this.createRingTrailState(visual.ringTrail)
@@ -122,10 +155,12 @@ export class UnitProjectileController {
       position,
       elapsedMs: 0,
       lifetimeMs,
+      createdAt,
       radius,
       ringTrail,
-      shape: visual.shape ?? "circle",
+      shape,
       hitRadius,
+      gpuSlot: gpuSlot ?? undefined,
     };
 
     this.projectiles.push(state);
@@ -134,6 +169,66 @@ export class UnitProjectileController {
       this.spawnProjectileRing(state.position, ringTrail.config);
     }
     return objectId;
+  }
+  
+  /**
+   * Converts visual config to GPU bullet config.
+   * Returns null if GPU rendering is not suitable for this bullet type.
+   */
+  private getGpuBulletConfig(visual: UnitProjectileVisualConfig, shape: UnitProjectileShape): BulletVisualConfig | null {
+    // Skip GPU rendering only for tailEmitter (particle effects need scene)
+    // ringTrail rings are separate objects, bullets can still use GPU
+    if (visual.tailEmitter) {
+      return null;
+    }
+    
+    // Extract colors from fill for GPU rendering
+    const bodyColor = this.extractBodyColor(visual.fill);
+    const tailColors = this.extractTailColors(visual.tail);
+    
+    return {
+      visualKey: `unit-projectile-${shape}`,
+      bodyColor,
+      tailStartColor: tailColors.start,
+      tailEndColor: tailColors.end,
+      tailLengthMultiplier: visual.tail?.lengthMultiplier ?? 4.5,
+      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 1.75,
+      shape,
+    };
+  }
+  
+  private extractBodyColor(fill: SceneFill): SceneColor {
+    if (fill.fillType === FILL_TYPES.SOLID && "color" in fill) {
+      return fill.color as SceneColor;
+    }
+    if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT && "stops" in fill) {
+      const stops = fill.stops as Array<{ color: SceneColor }>;
+      // Use the most opaque color from gradient
+      let bestColor: SceneColor = { r: 0.4, g: 0.6, b: 1.0, a: 1.0 };
+      let bestAlpha = 0;
+      for (const stop of stops) {
+        const alpha = stop.color.a ?? 1;
+        if (alpha > bestAlpha) {
+          bestColor = stop.color;
+          bestAlpha = alpha;
+        }
+      }
+      return bestColor;
+    }
+    return { r: 0.4, g: 0.6, b: 1.0, a: 1.0 };
+  }
+  
+  private extractTailColors(tail?: BulletTailConfig): { start: SceneColor; end: SceneColor } {
+    if (!tail) {
+      return {
+        start: { r: 0.25, g: 0.45, b: 1.0, a: 0.65 },
+        end: { r: 0.05, g: 0.15, b: 0.6, a: 0.0 },
+      };
+    }
+    return {
+      start: tail.startColor ?? { r: 0.25, g: 0.45, b: 1.0, a: 0.65 },
+      end: tail.endColor ?? { r: 0.05, g: 0.15, b: 0.6, a: 0.0 },
+    };
   }
 
   public tick(deltaMs: number): void {
@@ -179,11 +274,10 @@ export class UnitProjectileController {
         if (collided) {
           hitBrickId = collided.id;
           this.applyProjectileDamage(projectile, collided.id);
-          this.scene.removeObject(projectile.id);
+          this.removeProjectile(projectile);
           if (projectile.ringTrail) {
             this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
           }
-          this.projectileIndex.delete(projectile.id);
           break;
         }
       }
@@ -194,20 +288,17 @@ export class UnitProjectileController {
 
       projectile.elapsedMs += deltaMs;
       if (projectile.elapsedMs >= projectile.lifetimeMs) {
-        this.scene.removeObject(projectile.id);
-        this.projectileIndex.delete(projectile.id);
+        this.removeProjectile(projectile);
         continue;
       }
 
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
-        this.scene.removeObject(projectile.id);
-        this.projectileIndex.delete(projectile.id);
+        this.removeProjectile(projectile);
         continue;
       }
 
-      this.scene.updateObject(projectile.id, {
-        position: { ...projectile.position },
-      });
+      // Update position (GPU or scene object)
+      this.updateProjectilePosition(projectile);
 
       if (projectile.ringTrail) {
         this.updateProjectileRingTrail(projectile, deltaMs);
@@ -217,17 +308,49 @@ export class UnitProjectileController {
     }
     this.projectiles.length = writeIndex;
   }
+  
+  /**
+   * Removes a projectile from GPU slot or scene.
+   */
+  private removeProjectile(projectile: UnitProjectileState): void {
+    if (projectile.gpuSlot) {
+      releaseGpuBulletSlot(projectile.gpuSlot);
+    } else {
+      this.scene.removeObject(projectile.id);
+    }
+    this.projectileIndex.delete(projectile.id);
+  }
+  
+  /**
+   * Updates projectile position in GPU slot or scene.
+   */
+  private updateProjectilePosition(projectile: UnitProjectileState): void {
+    const rotation = Math.atan2(projectile.velocity.y, projectile.velocity.x);
+    if (projectile.gpuSlot) {
+      updateGpuBulletSlot(
+        projectile.gpuSlot,
+        projectile.position,
+        rotation,
+        projectile.radius,
+        true
+      );
+    } else {
+      this.scene.updateObject(projectile.id, {
+        position: { ...projectile.position },
+      });
+    }
+  }
 
   public clear(): void {
     this.projectiles.forEach((projectile) => {
-      this.scene.removeObject(projectile.id);
+      this.removeProjectile(projectile);
     });
     this.projectiles = [];
     this.projectileIndex.clear();
     
-    // Also clear rings
+    // Also clear rings (GPU slots)
     this.rings.forEach((ring) => {
-      this.scene.removeObject(ring.id);
+      releaseRingSlot(ring.gpuSlot);
     });
     this.rings = [];
   }
@@ -238,19 +361,19 @@ export class UnitProjectileController {
    */
   public cleanupExpired(): void {
     const now = performance.now();
-    
+
     // Clean up expired projectiles
     let writeIndex = 0;
     for (let i = 0; i < this.projectiles.length; i += 1) {
       const projectile = this.projectiles[i]!;
-      // Calculate elapsed time from spawn (we don't track spawn time, so use elapsedMs as fallback)
-      // For projectiles, we'll use a simpler approach: check if lifetime exceeded
-      // Since we don't have createdAt for projectiles, we'll rely on tick() to clean them up
-      // But we can still clean up out-of-bounds ones
+      const lifetimeElapsed = now - projectile.createdAt;
+      if (lifetimeElapsed >= projectile.lifetimeMs) {
+        this.removeProjectile(projectile);
+        continue;
+      }
       const mapSize = this.scene.getMapSize();
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
-        this.scene.removeObject(projectile.id);
-        this.projectileIndex.delete(projectile.id);
+        this.removeProjectile(projectile);
         continue;
       }
       this.projectiles[writeIndex++] = projectile;
@@ -359,70 +482,59 @@ export class UnitProjectileController {
   }
 
   private spawnProjectileRing(position: SceneVector2, config: UnitProjectileRingTrailState["config"]): void {
+    // GPU Instanced rendering - acquire slot and write initial data
+    const gpuSlot = acquireRingSlot();
+    if (!gpuSlot) {
+      return; // No slots available
+    }
+
     const innerStop = clamp01(config.innerStop);
     let outerStop = clamp01(config.outerStop);
     if (outerStop <= innerStop) {
       outerStop = Math.min(1, innerStop + 0.1);
     }
-    const outerFadeStop = Math.min(1, outerStop + 0.15);
     const now = performance.now();
-    
-    // Pass animation parameters in customData - renderer will animate based on time
-    const ringId = this.scene.addObject("unitProjectileRing", {
-      position: { ...position },
-      size: { width: config.startRadius * 2, height: config.startRadius * 2 },
-      fill: {
-        fillType: FILL_TYPES.RADIAL_GRADIENT,
-        start: { x: 0, y: 0 },
-        end: config.startRadius,
-        stops: [
-          { offset: 0, color: { ...config.color, a: 0 } },
-          { offset: innerStop, color: { ...config.color, a: 0 } },
-          { offset: outerStop, color: { ...config.color, a: clamp01(config.startAlpha) } },
-          { offset: outerFadeStop, color: { ...config.color, a: 0 } },
-          { offset: 1, color: { ...config.color, a: 0 } },
-        ],
-      },
-      customData: {
-        // Animation params for GPU-based animation in renderer
-        autoAnimate: true, // Mark for per-frame updates by renderer manager
-        createdAt: now,
-        lifetimeMs: config.lifetimeMs,
-        startRadius: config.startRadius,
-        endRadius: config.endRadius,
-        startAlpha: config.startAlpha,
-        endAlpha: config.endAlpha,
-        innerStop,
-        outerStop,
-        outerFadeStop,
-        color: { ...config.color },
-      },
+
+    // Write ring data to GPU - animation happens in shader
+    updateRingSlot(gpuSlot, {
+      position: { x: position.x, y: position.y },
+      createdAt: now,
+      lifetimeMs: config.lifetimeMs,
+      startRadius: config.startRadius,
+      endRadius: config.endRadius,
+      startAlpha: config.startAlpha,
+      endAlpha: config.endAlpha,
+      innerStop,
+      outerStop,
+      color: config.color,
+      active: true,
     });
-    
-    // Track ring for lifetime removal only (no per-frame updates)
+
+    // Track ring for lifetime expiration only
     this.rings.push({
-      id: ringId,
+      gpuSlot,
       createdAt: now,
       lifetimeMs: config.lifetimeMs,
     });
   }
-  
+
   private tickRings(_deltaMs: number): void {
     if (this.rings.length === 0) {
       return;
     }
-    
+
     const now = performance.now();
     let writeIndex = 0;
     for (let i = 0; i < this.rings.length; i += 1) {
       const ring = this.rings[i]!;
       const elapsed = now - ring.createdAt;
-      
+
       if (elapsed >= ring.lifetimeMs) {
-        this.scene.removeObject(ring.id);
+        // Release GPU slot
+        releaseRingSlot(ring.gpuSlot);
         continue;
       }
-      
+
       this.rings[writeIndex++] = ring;
     }
     this.rings.length = writeIndex;

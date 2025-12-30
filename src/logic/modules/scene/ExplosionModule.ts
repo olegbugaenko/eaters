@@ -49,6 +49,7 @@ interface ExplosionState {
   waveLifetimeMs: number;
   effectLifetimeMs: number;
   waves: WaveState[];
+  createdAt: number;
 }
 
 export interface SpawnExplosionOptions {
@@ -142,6 +143,7 @@ export class ExplosionModule implements GameModule {
     config: ExplosionConfig,
     options: SpawnExplosionOptions
   ): void {
+    const createdAt = performance.now();
     const baseInitialRadius = Math.max(1, options.initialRadius);
     const defaultInitialRadius = Math.max(1, config.defaultInitialRadius);
     const radiusScale = clamp(
@@ -228,7 +230,31 @@ export class ExplosionModule implements GameModule {
       waveLifetimeMs: Math.max(1, config.lifetimeMs),
       effectLifetimeMs,
       waves,
+      createdAt,
     });
+  }
+
+  public cleanupExpired(): void {
+    if (this.explosions.length === 0) {
+      return;
+    }
+
+    const now = performance.now();
+    const survivors: ExplosionState[] = [];
+
+    for (let i = 0; i < this.explosions.length; i += 1) {
+      const explosion = this.explosions[i]!;
+      const elapsed = now - explosion.createdAt;
+
+      if (elapsed >= explosion.effectLifetimeMs) {
+        explosion.waves.forEach((wave) => this.options.scene.removeObject(wave.id));
+        continue;
+      }
+
+      survivors.push(explosion);
+    }
+
+    this.explosions = survivors;
   }
 
   private hasTooManyNearbyExplosions(
