@@ -46,6 +46,12 @@ interface BulletRendererCustomData {
   maxSpeed?: number;
   velocity?: SceneVector2;
   shape?: "circle" | "triangle";
+  renderComponents?: {
+    body?: boolean;
+    tail?: boolean;
+    glow?: boolean;
+    emitters?: boolean;
+  };
 }
 
 type BulletTailEmitterRenderConfig = ParticleEmitterBaseConfig & {
@@ -106,6 +112,17 @@ const triangleVerticesCache = new WeakMap<
   SceneObjectInstance,
   { radius: number; vertices: [SceneVector2, SceneVector2, SceneVector2] }
 >();
+
+const getRenderComponents = (instance: SceneObjectInstance) => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  const components = data?.renderComponents;
+  return {
+    body: components?.body !== false,
+    tail: components?.tail !== false,
+    glow: components?.glow !== false,
+    emitters: components?.emitters !== false,
+  };
+};
 
 const DEFAULT_TAIL_CONFIG: BulletTailRenderConfig = {
   lengthMultiplier: 4.5,
@@ -173,6 +190,11 @@ const getTailScale = (instance: SceneObjectInstance): number => {
 };
 
 const getTailConfig = (instance: SceneObjectInstance): BulletTailRenderConfig => {
+  const { tail: shouldRenderTail } = getRenderComponents(instance);
+  if (!shouldRenderTail) {
+    return DEFAULT_TAIL_CONFIG;
+  }
+
   const data = instance.data.customData as BulletRendererCustomData | undefined;
   const tail = data && typeof data === "object" ? data.tail : undefined;
   const cached = tailConfigCache.get(instance);
@@ -511,9 +533,14 @@ const randomBetween = (min: number, max: number): number => {
 
 export class BulletObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
-    const emitterPrimitive = createEmitterPrimitive(instance, getTailEmitterConfig);
-    const trailEmitter = createEmitterPrimitive(instance, getTrailEmitterConfig);
-    const smokeEmitter = createEmitterPrimitive(instance, getSmokeEmitterConfig);
+    const components = getRenderComponents(instance);
+
+    const emitterPrimitive =
+      components.emitters && createEmitterPrimitive(instance, getTailEmitterConfig);
+    const trailEmitter =
+      components.emitters && createEmitterPrimitive(instance, getTrailEmitterConfig);
+    const smokeEmitter =
+      components.emitters && createEmitterPrimitive(instance, getSmokeEmitterConfig);
     const dynamicPrimitives: DynamicPrimitive[] = [];
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
@@ -527,16 +554,18 @@ export class BulletObjectRenderer extends ObjectRenderer {
 
     // OPTIMIZATION: Pre-compute vertices and fill at registration time
     // This allows primitives to use their fast-path (skip update when position unchanged)
-    const tailVertices = createTailVertices(instance);
-    const tailFill = createTailFill(instance);
-    dynamicPrimitives.push(
-      createDynamicTrianglePrimitive(instance, {
-        vertices: tailVertices,
-        fill: tailFill,
-      })
-    );
+    if (components.tail) {
+      const tailVertices = createTailVertices(instance);
+      const tailFill = createTailFill(instance);
+      dynamicPrimitives.push(
+        createDynamicTrianglePrimitive(instance, {
+          vertices: tailVertices,
+          fill: tailFill,
+        })
+      );
+    }
 
-    const glowConfig = getGlowConfig(instance);
+    const glowConfig = components.glow ? getGlowConfig(instance) : null;
     if (glowConfig) {
       const glowFill = createGlowFill(instance, glowConfig);
       dynamicPrimitives.push(
@@ -547,22 +576,24 @@ export class BulletObjectRenderer extends ObjectRenderer {
       );
     }
 
-    const shape = getProjectileShape(instance);
-    if (shape === "triangle") {
-      // Рендеримо трикутник як основну форму проджектайла
-      const triangleVertices = createTriangleVertices(instance);
-      dynamicPrimitives.push(
-        createDynamicTrianglePrimitive(instance, {
-          vertices: triangleVertices,
+    if (components.body) {
+      const shape = getProjectileShape(instance);
+      if (shape === "triangle") {
+        // Рендеримо трикутник як основну форму проджектайла
+        const triangleVertices = createTriangleVertices(instance);
+        dynamicPrimitives.push(
+          createDynamicTrianglePrimitive(instance, {
+            vertices: triangleVertices,
+            fill: instance.data.fill,
+          })
+        );
+      } else {
+        // Рендеримо коло як основну форму проджектайла
+        // Pre-resolve fill to enable fast-path
+        dynamicPrimitives.push(createDynamicCirclePrimitive(instance, {
           fill: instance.data.fill,
-        })
-      );
-    } else {
-      // Рендеримо коло як основну форму проджектайла
-      // Pre-resolve fill to enable fast-path
-      dynamicPrimitives.push(createDynamicCirclePrimitive(instance, {
-        fill: instance.data.fill,
-      }));
+        }));
+      }
     }
 
     return {
