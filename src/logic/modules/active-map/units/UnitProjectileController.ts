@@ -23,6 +23,8 @@ import {
   releaseRingSlot,
   type RingSlotHandle,
 } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
+import type { BulletSpriteName } from "@logic/services/bulletSprites";
+import { resolveBulletSpriteIndex } from "@logic/services/bulletSprites";
 
 export type UnitProjectileShape = "circle" | "sprite";
 
@@ -35,6 +37,8 @@ export interface UnitProjectileVisualConfig {
   tailEmitter?: BulletTailEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;
   shape?: UnitProjectileShape;
+  /** Sprite name when shape === "sprite" */
+  spriteName?: BulletSpriteName;
   /** Sprite index when shape === "sprite" */
   spriteIndex?: number;
   hitRadius?: number;
@@ -122,7 +126,12 @@ export class UnitProjectileController {
 
   public spawn(projectile: UnitProjectileSpawn): string {
     const direction = normalizeVector(projectile.direction);
-    const visual = projectile.visual;
+    const baseVisual = projectile.visual;
+    const spriteIndex =
+      baseVisual.shape === "sprite" && baseVisual.spriteIndex === undefined && baseVisual.spriteName
+        ? resolveBulletSpriteIndex(baseVisual.spriteName)
+        : baseVisual.spriteIndex;
+    const visual: UnitProjectileVisualConfig = { ...baseVisual, spriteIndex };
     const velocity = {
       x: direction.x * visual.speed,
       y: direction.y * visual.speed,

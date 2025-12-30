@@ -5,6 +5,7 @@
  */
 
 import type { SceneVector2, SceneColor } from "./SceneObjectManager";
+import { type BulletSpriteName, resolveBulletSpriteIndex } from "./bulletSprites";
 
 // ============================================================================
 // Types (mirrored from BulletGpuRenderer for loose coupling)
@@ -25,6 +26,8 @@ export interface BulletVisualConfig {
   /** If set, body uses radial gradient from center to edge */
   readonly centerColor?: SceneColor;
   readonly edgeColor?: SceneColor;
+  /** Sprite name for shape === "sprite" */
+  readonly spriteName?: BulletSpriteName;
   /** Sprite index for shape === "sprite" */
   readonly spriteIndex?: number;
 }
@@ -138,7 +141,14 @@ export const createGpuBulletConfig = (
   visualKey: string,
   overrides?: Partial<Omit<BulletVisualConfig, "visualKey">>
 ): BulletVisualConfig => {
-  return bridge.createConfig(visualKey, overrides);
+  const spriteIndex = overrides?.spriteName
+    ? resolveBulletSpriteIndex(overrides.spriteName)
+    : overrides?.spriteIndex;
+
+  return bridge.createConfig(visualKey, {
+    ...overrides,
+    spriteIndex,
+  });
 };
 
 // ============================================================================
@@ -146,10 +156,6 @@ export const createGpuBulletConfig = (
 // ============================================================================
 
 /** Sprite indices - must match SPRITE_PATHS order in BulletGpuRenderer */
-export const BULLET_SPRITE_INDEX = {
-  needle: 0,
-} as const;
-
 export const GPU_BULLET_CONFIGS = {
   default: (): BulletVisualConfig => createGpuBulletConfig("default"),
   
@@ -164,7 +170,18 @@ export const GPU_BULLET_CONFIGS = {
     tailStartColor: { r: 1.0, g: 0.4, b: 0.1, a: 0.8 },
     tailEndColor: { r: 0.8, g: 0.2, b: 0.0, a: 0.0 },
   }),
-  
+
+  fireball: (): BulletVisualConfig =>
+    createGpuBulletConfig("fireball", {
+      bodyColor: { r: 1.0, g: 0.78, b: 0.42, a: 1.0 },
+      tailStartColor: { r: 1.0, g: 0.55, b: 0.18, a: 0.85 },
+      tailEndColor: { r: 0.85, g: 0.25, b: 0.02, a: 0.1 },
+      tailLengthMultiplier: 3.4,
+      tailWidthMultiplier: 1.35,
+      shape: "sprite",
+      spriteName: "fireball",
+    }),
+
   needle: (): BulletVisualConfig => createGpuBulletConfig("needle", {
     bodyColor: { r: 0.7, g: 0.85, b: 0.95, a: 1.0 },
     tailStartColor: { r: 0.5, g: 0.7, b: 0.9, a: 0.6 },
@@ -172,7 +189,7 @@ export const GPU_BULLET_CONFIGS = {
     tailLengthMultiplier: 3.0,
     tailWidthMultiplier: 1.2,
     shape: "sprite",
-    spriteIndex: BULLET_SPRITE_INDEX.needle,
+    spriteName: "needle",
   }),
 };
 

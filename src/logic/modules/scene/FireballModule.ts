@@ -305,6 +305,8 @@ export class FireballModule implements GameModule {
         lifetimeMs: (maxDistance / FIREBALL_SPEED) * 1000,
         fill,
         tail: FIREBALL_TAIL_RENDER,
+        shape: "sprite",
+        spriteName: "fireball",
         hitRadius: FIREBALL_RADIUS,
         rendererCustomData,
       },

@@ -7,6 +7,11 @@
  */
 
 import type { SceneColor, SceneVector2, SceneSize } from "../../../../logic/services/SceneObjectManager";
+import {
+  BULLET_SPRITE_PATHS,
+  BULLET_SPRITE_SIZE,
+  type BulletSpriteName,
+} from "@logic/services/bulletSprites";
 
 // ============================================================================
 // Types
@@ -34,6 +39,8 @@ export interface BulletVisualConfig {
   /** If set, body uses radial gradient from center to edge */
   readonly centerColor?: SceneColor;
   readonly edgeColor?: SceneColor;
+  /** Sprite name (converted to index by logic layer) */
+  readonly spriteName?: BulletSpriteName;
   /** Sprite index in texture array (used when shape === "sprite") */
   readonly spriteIndex?: number;
 }
@@ -288,17 +295,6 @@ let globalGl: WebGL2RenderingContext | null = null;
 let globalResources: BulletGpuResources | null = null;
 const batches = new Map<string, BulletBatch>();
 
-// Sprite paths - add new sprites here
-const SPRITE_PATHS = [
-  "/images/sprites/needle.png", // index 0
-];
-const SPRITE_SIZE = 32; // All sprites must be 32x32
-
-// Sprite name to index mapping for easy lookup
-export const BULLET_SPRITE_INDEX = {
-  needle: 0,
-} as const;
-
 export const setBulletGpuContext = (gl: WebGL2RenderingContext | null): void => {
   if (gl === globalGl) return;
   
@@ -330,9 +326,9 @@ export const getBulletGpuContext = (): WebGL2RenderingContext | null => globalGl
 const loadSpriteArray = (gl: WebGL2RenderingContext, resources: BulletGpuResources): void => {
   const texture = gl.createTexture();
   if (!texture) return;
-  
+
   resources.spriteTexture = texture;
-  resources.spriteCount = SPRITE_PATHS.length;
+  resources.spriteCount = BULLET_SPRITE_PATHS.length;
   
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
   
@@ -341,9 +337,9 @@ const loadSpriteArray = (gl: WebGL2RenderingContext, resources: BulletGpuResourc
     gl.TEXTURE_2D_ARRAY,
     0,
     gl.RGBA,
-    SPRITE_SIZE,
-    SPRITE_SIZE,
-    SPRITE_PATHS.length,
+    BULLET_SPRITE_SIZE,
+    BULLET_SPRITE_SIZE,
+    BULLET_SPRITE_PATHS.length,
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
@@ -357,18 +353,18 @@ const loadSpriteArray = (gl: WebGL2RenderingContext, resources: BulletGpuResourc
   gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   
   // Load each sprite image
-  SPRITE_PATHS.forEach((path, index) => {
+  BULLET_SPRITE_PATHS.forEach((path: string, index: number) => {
     const image = new Image();
     image.onload = () => {
       if (gl !== globalGl || !globalResources) return; // Context changed
-      
+
       gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
       gl.texSubImage3D(
         gl.TEXTURE_2D_ARRAY,
         0,
         0, 0, index,
-        SPRITE_SIZE,
-        SPRITE_SIZE,
+        BULLET_SPRITE_SIZE,
+        BULLET_SPRITE_SIZE,
         1,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
