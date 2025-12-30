@@ -14,6 +14,8 @@ export type BulletType = "magnetic" | "plasmoid" | "mechanical";
 export interface BulletTailConfig {
   lengthMultiplier: number;
   widthMultiplier: number;
+  /** Tail offset along movement axis (positive = forward, negative = backward) */
+  offsetMultiplier?: number;
   startColor: SceneColor;
   endColor: SceneColor;
 }

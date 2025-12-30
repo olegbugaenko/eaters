@@ -8,6 +8,7 @@ import {
 import {
   FILL_TYPES,
   SceneColor,
+  SceneFill,
   SceneLinearGradientFill,
   SceneObjectInstance,
   SceneVector2,
@@ -30,10 +31,27 @@ interface BulletTailRenderConfig {
   endColor: SceneColor;
 }
 
+interface BulletGlowConfig {
+  color?: SceneColor;
+  radiusMultiplier?: number;
+}
+
 interface BulletRendererCustomData {
   tail?: Partial<BulletTailRenderConfig>;
   tailEmitter?: BulletTailEmitterConfig;
-  shape?: "circle" | "triangle";
+  trailEmitter?: BulletTailEmitterConfig;
+  smokeEmitter?: BulletTailEmitterConfig;
+  glow?: BulletGlowConfig;
+  speed?: number;
+  maxSpeed?: number;
+  velocity?: SceneVector2;
+  shape?: "circle" | "sprite";
+  renderComponents?: {
+    body?: boolean;
+    tail?: boolean;
+    glow?: boolean;
+    emitters?: boolean;
+  };
 }
 
 type BulletTailEmitterRenderConfig = ParticleEmitterBaseConfig & {
@@ -41,6 +59,8 @@ type BulletTailEmitterRenderConfig = ParticleEmitterBaseConfig & {
   speedVariation: number;
   spread: number;
 };
+
+type BulletEmitterKey = "tailEmitter" | "trailEmitter" | "smokeEmitter";
 
 const tailConfigCache = new WeakMap<
   SceneObjectInstance,
@@ -56,9 +76,31 @@ const tailEmitterConfigCache = new WeakMap<
     config: BulletTailEmitterRenderConfig | null;
   }
 >();
+const trailEmitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["trailEmitter"] | undefined;
+    config: BulletTailEmitterRenderConfig | null;
+  }
+>();
+const smokeEmitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["smokeEmitter"] | undefined;
+    config: BulletTailEmitterRenderConfig | null;
+  }
+>();
 const tailFillCache = new WeakMap<
   SceneObjectInstance,
   { radius: number; tailRef: BulletTailRenderConfig; fill: SceneLinearGradientFill }
+>();
+const glowFillCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    radius: number;
+    source: BulletGlowConfig | undefined;
+    fill: SceneFill;
+  }
 >();
 
 // OPTIMIZATION: Cache vertices to avoid creating new objects every frame
@@ -71,6 +113,20 @@ const triangleVerticesCache = new WeakMap<
   { radius: number; vertices: [SceneVector2, SceneVector2, SceneVector2] }
 >();
 
+const getRenderComponents = (instance: SceneObjectInstance) => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  const components = data?.renderComponents;
+  // renderComponents lets callers (like GPU-driven projectiles that still need
+  // CPU-only effects) selectively disable parts of the bullet without changing
+  // its renderer type. By default everything renders unless explicitly turned off.
+  return {
+    body: components?.body !== false,
+    tail: components?.tail !== false,
+    glow: components?.glow !== false,
+    emitters: components?.emitters !== false,
+  };
+};
+
 const DEFAULT_TAIL_CONFIG: BulletTailRenderConfig = {
   lengthMultiplier: 4.5,
   widthMultiplier: 1.75,
@@ -78,14 +134,70 @@ const DEFAULT_TAIL_CONFIG: BulletTailRenderConfig = {
   endColor: { r: 0.05, g: 0.15, b: 0.6, a: 0 },
 };
 
-const cloneColor = (color: SceneColor, fallback: SceneColor): SceneColor => ({
-  r: typeof color.r === "number" ? color.r : fallback.r,
-  g: typeof color.g === "number" ? color.g : fallback.g,
-  b: typeof color.b === "number" ? color.b : fallback.b,
-  a: typeof color.a === "number" ? color.a : fallback.a,
+const DEFAULT_GLOW_COLOR: SceneColor = { r: 1, g: 1, b: 1, a: 0.4 };
+const DEFAULT_GLOW_RADIUS_MULTIPLIER = 1.8;
+const MIN_SPEED = 0.01;
+const DEFAULT_SPEED_FOR_TAIL_SCALE = 120;
+
+const cloneColor = (
+  color: SceneColor | undefined,
+  fallback: SceneColor,
+): SceneColor => ({
+  r: typeof color?.r === "number" ? color.r : fallback.r,
+  g: typeof color?.g === "number" ? color.g : fallback.g,
+  b: typeof color?.b === "number" ? color.b : fallback.b,
+  a: typeof color?.a === "number" ? color.a : fallback.a,
 });
 
+const clamp = (min: number, max: number, value: number): number => {
+  if (value <= min) {
+    return min;
+  }
+  if (value >= max) {
+    return max;
+  }
+  return value;
+};
+
+const getTailScale = (instance: SceneObjectInstance): number => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  const speed =
+    typeof data?.speed === "number" && Number.isFinite(data.speed)
+      ? data.speed
+      : (() => {
+          const velocity =
+            data?.velocity && typeof data.velocity === "object"
+              ? data.velocity
+              : null;
+          if (!velocity) {
+            return 0;
+          }
+          const { x, y } = velocity;
+          return Math.hypot(x ?? 0, y ?? 0);
+        })();
+
+  if (speed <= MIN_SPEED) {
+    return 0.8;
+  }
+
+  const maxSpeed =
+    typeof data?.maxSpeed === "number" && Number.isFinite(data.maxSpeed)
+      ? data.maxSpeed
+      : undefined;
+
+  if (maxSpeed && maxSpeed > MIN_SPEED) {
+    return clamp(0.8, 1.8, speed / maxSpeed);
+  }
+
+  return clamp(0.8, 1.6, speed / DEFAULT_SPEED_FOR_TAIL_SCALE);
+};
+
 const getTailConfig = (instance: SceneObjectInstance): BulletTailRenderConfig => {
+  const { tail: shouldRenderTail } = getRenderComponents(instance);
+  if (!shouldRenderTail) {
+    return DEFAULT_TAIL_CONFIG;
+  }
+
   const data = instance.data.customData as BulletRendererCustomData | undefined;
   const tail = data && typeof data === "object" ? data.tail : undefined;
   const cached = tailConfigCache.get(instance);
@@ -112,9 +224,11 @@ const getTailConfig = (instance: SceneObjectInstance): BulletTailRenderConfig =>
     ? cloneColor(tail.endColor, DEFAULT_TAIL_CONFIG.endColor)
     : { ...DEFAULT_TAIL_CONFIG.endColor };
 
+  const scale = getTailScale(instance);
+
   const config: BulletTailRenderConfig = {
-    lengthMultiplier,
-    widthMultiplier,
+    lengthMultiplier: lengthMultiplier * scale,
+    widthMultiplier: widthMultiplier * scale,
     startColor,
     endColor,
   };
@@ -124,21 +238,38 @@ const getTailConfig = (instance: SceneObjectInstance): BulletTailRenderConfig =>
   return config;
 };
 
-const getTailEmitterConfig = (
-  instance: SceneObjectInstance
+const getEmitterConfig = (
+  instance: SceneObjectInstance,
+  key: BulletEmitterKey,
+  cache:
+    | typeof tailEmitterConfigCache
+    | typeof trailEmitterConfigCache
+    | typeof smokeEmitterConfigCache,
 ): BulletTailEmitterRenderConfig | null => {
   const data = instance.data.customData as BulletRendererCustomData | undefined;
-  const tailEmitter = data && typeof data === "object" ? data.tailEmitter : undefined;
-  const cached = tailEmitterConfigCache.get(instance);
-  if (cached && cached.source === tailEmitter) {
+  const emitter = data && typeof data === "object" ? data[key] : undefined;
+  const cached = cache.get(instance);
+  if (cached && cached.source === emitter) {
     return cached.config;
   }
 
-  const config = tailEmitter ? sanitizeTailEmitterConfig(tailEmitter) : null;
-  tailEmitterConfigCache.set(instance, { source: tailEmitter, config });
+  const config = emitter ? sanitizeTailEmitterConfig(emitter) : null;
+  cache.set(instance, { source: emitter, config });
 
   return config;
 };
+
+const getTailEmitterConfig = (
+  instance: SceneObjectInstance
+): BulletTailEmitterRenderConfig | null => getEmitterConfig(instance, "tailEmitter", tailEmitterConfigCache);
+
+const getTrailEmitterConfig = (
+  instance: SceneObjectInstance
+): BulletTailEmitterRenderConfig | null => getEmitterConfig(instance, "trailEmitter", trailEmitterConfigCache);
+
+const getSmokeEmitterConfig = (
+  instance: SceneObjectInstance
+): BulletTailEmitterRenderConfig | null => getEmitterConfig(instance, "smokeEmitter", smokeEmitterConfigCache);
 
 const sanitizeTailEmitterConfig = (
   config: BulletTailEmitterConfig
@@ -197,11 +328,12 @@ const serializeTailEmitterConfig = (
   ].join(":");
 };
 
-const createTailEmitterPrimitive = (
-  instance: SceneObjectInstance
+const createEmitterPrimitive = (
+  instance: SceneObjectInstance,
+  getConfig: (instance: SceneObjectInstance) => BulletTailEmitterRenderConfig | null,
 ): DynamicPrimitive | null =>
   createParticleEmitterPrimitive<BulletTailEmitterRenderConfig>(instance, {
-    getConfig: getTailEmitterConfig,
+    getConfig,
     getOrigin: getTailEmitterOrigin,
     spawnParticle: createTailParticle,
     serializeConfig: serializeTailEmitterConfig,
@@ -258,7 +390,68 @@ const getBulletRadius = (instance: SceneObjectInstance): number => {
   return Math.max(size.width, size.height) / 2;
 };
 
-const getProjectileShape = (instance: SceneObjectInstance): "circle" | "triangle" => {
+const getGlowConfig = (
+  instance: SceneObjectInstance
+): { color: SceneColor; radiusMultiplier: number } | null => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  const glow = data?.glow;
+  if (!glow) {
+    return null;
+  }
+
+  const radiusMultiplier =
+    typeof glow.radiusMultiplier === "number" && Number.isFinite(glow.radiusMultiplier)
+      ? Math.max(0, glow.radiusMultiplier)
+      : DEFAULT_GLOW_RADIUS_MULTIPLIER;
+
+  return {
+    color: cloneColor(glow.color, DEFAULT_GLOW_COLOR),
+    radiusMultiplier,
+  };
+};
+
+const getGlowRadius = (instance: SceneObjectInstance): number => {
+  const glow = getGlowConfig(instance);
+  if (!glow) {
+    return 0;
+  }
+  const radius = getBulletRadius(instance);
+  const tailScale = getTailScale(instance);
+  return radius * glow.radiusMultiplier * Math.max(1, tailScale * 0.9);
+};
+
+const createGlowFill = (
+  instance: SceneObjectInstance,
+  glow: { color: SceneColor; radiusMultiplier: number }
+): SceneFill => {
+  const customData = instance.data.customData as BulletRendererCustomData | undefined;
+  const radius = getGlowRadius(instance);
+  const cached = glowFillCache.get(instance);
+  if (cached && cached.radius === radius && cached.source === customData?.glow) {
+    return cached.fill;
+  }
+
+  const fill: SceneFill = {
+    fillType: FILL_TYPES.RADIAL_GRADIENT,
+    start: { x: 0, y: 0 },
+    end: radius,
+    stops: [
+      { offset: 0, color: { ...glow.color, a: (glow.color.a ?? 0.4) * 0.7 } },
+      { offset: 0.55, color: { ...glow.color, a: (glow.color.a ?? 0.4) * 0.35 } },
+      { offset: 1, color: { ...glow.color, a: 0 } },
+    ],
+  };
+
+  glowFillCache.set(instance, {
+    radius,
+    source: customData?.glow,
+    fill,
+  });
+
+  return fill;
+};
+
+const getProjectileShape = (instance: SceneObjectInstance): "circle" | "sprite" => {
   const data = instance.data.customData as BulletRendererCustomData | undefined;
   return data?.shape ?? "circle";
 };
@@ -343,36 +536,52 @@ const randomBetween = (min: number, max: number): number => {
 
 export class BulletObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
-    const emitterPrimitive = createTailEmitterPrimitive(instance);
+    const components = getRenderComponents(instance);
+
+    const emitterPrimitive =
+      components.emitters && createEmitterPrimitive(instance, getTailEmitterConfig);
+    const trailEmitter =
+      components.emitters && createEmitterPrimitive(instance, getTrailEmitterConfig);
+    const smokeEmitter =
+      components.emitters && createEmitterPrimitive(instance, getSmokeEmitterConfig);
     const dynamicPrimitives: DynamicPrimitive[] = [];
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
     }
-    
+    if (trailEmitter) {
+      dynamicPrimitives.push(trailEmitter);
+    }
+    if (smokeEmitter) {
+      dynamicPrimitives.push(smokeEmitter);
+    }
+
     // OPTIMIZATION: Pre-compute vertices and fill at registration time
     // This allows primitives to use their fast-path (skip update when position unchanged)
-    const tailVertices = createTailVertices(instance);
-    const tailFill = createTailFill(instance);
-    dynamicPrimitives.push(
-      createDynamicTrianglePrimitive(instance, {
-        vertices: tailVertices,
-        fill: tailFill,
-      })
-    );
-    
-    const shape = getProjectileShape(instance);
-    if (shape === "triangle") {
-      // Рендеримо трикутник як основну форму проджектайла
-      const triangleVertices = createTriangleVertices(instance);
+    if (components.tail) {
+      const tailVertices = createTailVertices(instance);
+      const tailFill = createTailFill(instance);
       dynamicPrimitives.push(
         createDynamicTrianglePrimitive(instance, {
-          vertices: triangleVertices,
-          fill: instance.data.fill,
+          vertices: tailVertices,
+          fill: tailFill,
         })
       );
-    } else {
-      // Рендеримо коло як основну форму проджектайла
-      // Pre-resolve fill to enable fast-path
+    }
+
+    const glowConfig = components.glow ? getGlowConfig(instance) : null;
+    if (glowConfig) {
+      const glowFill = createGlowFill(instance, glowConfig);
+      dynamicPrimitives.push(
+        createDynamicCirclePrimitive(instance, {
+          getRadius: getGlowRadius,
+          fill: glowFill,
+        }),
+      );
+    }
+
+    if (components.body) {
+      // Fallback renderer: sprites fall back to circles
+      // (GPU renderer handles actual sprite textures)
       dynamicPrimitives.push(createDynamicCirclePrimitive(instance, {
         fill: instance.data.fill,
       }));

@@ -10,6 +10,8 @@ import type { SceneVector2, SceneColor } from "./SceneObjectManager";
 // Types (mirrored from BulletGpuRenderer for loose coupling)
 // ============================================================================
 
+export type BulletShape = "circle" | "sprite";
+
 export interface BulletVisualConfig {
   readonly visualKey: string;
   readonly bodyColor: SceneColor;
@@ -17,7 +19,14 @@ export interface BulletVisualConfig {
   readonly tailEndColor: SceneColor;
   readonly tailLengthMultiplier: number;
   readonly tailWidthMultiplier: number;
-  readonly shape: "circle" | "triangle";
+  /** Tail offset along movement axis (positive = forward, negative = backward) */
+  readonly tailOffsetMultiplier?: number;
+  readonly shape: BulletShape;
+  /** If set, body uses radial gradient from center to edge */
+  readonly centerColor?: SceneColor;
+  readonly edgeColor?: SceneColor;
+  /** Sprite index for shape === "sprite" */
+  readonly spriteIndex?: number;
 }
 
 export interface BulletSlotHandle {
@@ -136,6 +145,11 @@ export const createGpuBulletConfig = (
 // Predefined visual configs for common bullet types
 // ============================================================================
 
+/** Sprite indices - must match SPRITE_PATHS order in BulletGpuRenderer */
+export const BULLET_SPRITE_INDEX = {
+  needle: 0,
+} as const;
+
 export const GPU_BULLET_CONFIGS = {
   default: (): BulletVisualConfig => createGpuBulletConfig("default"),
   
@@ -157,7 +171,8 @@ export const GPU_BULLET_CONFIGS = {
     tailEndColor: { r: 0.3, g: 0.5, b: 0.8, a: 0.0 },
     tailLengthMultiplier: 3.0,
     tailWidthMultiplier: 1.2,
-    shape: "triangle",
+    shape: "sprite",
+    spriteIndex: BULLET_SPRITE_INDEX.needle,
   }),
 };
 

@@ -34,7 +34,9 @@ export interface UnitModuleProjectileVisualConfig {
   readonly tail?: BulletTailConfig;
   readonly tailEmitter?: BulletTailEmitterConfig;
   readonly ringTrail?: SpellProjectileRingTrailConfig;
-  readonly shape?: "circle" | "triangle";
+  readonly shape?: "circle" | "sprite";
+  /** Sprite index when shape === "sprite" (see BULLET_SPRITE_INDEX) */
+  readonly spriteIndex?: number;
   readonly hitRadius?: number;
 }
 
@@ -141,7 +143,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       lateralProjectileRange: 820,
       lateralProjectileHitRadius: 12,
       lateralProjectileVisual: {
-        radius: 3,
+        radius: 14, // Larger for sprite visibility (32x32 sprite)
         speed: 340,
         lifetimeMs: 3800,
         fill: {
@@ -156,9 +158,10 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
         },
         tail: {
           lengthMultiplier: 3.4,
-          widthMultiplier: 1.25,
+          widthMultiplier: 0.45,
           startColor: { r: 0.48, g: 0.62, b: 0.85, a: 0.55 },
           endColor: { r: 0.32, g: 0.38, b: 0.62, a: 0 },
+          offsetMultiplier: -0.95,
         },
         /*tailEmitter: {
           particlesPerSecond: 48,
@@ -190,7 +193,8 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
           outerStop: 0.76,
           color: { r: 0.5, g: 0.7, b: 0.9, a: 0.08 },
         },
-        shape: "triangle",
+        shape: "sprite",
+        spriteIndex: 0, // needle sprite
         hitRadius: 12,
       },
     },

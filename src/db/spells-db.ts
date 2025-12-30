@@ -31,7 +31,7 @@ export interface SpellDamageConfig {
   max: number;
 }
 
-export type ProjectileShape = "circle" | "triangle";
+export type ProjectileShape = "circle" | "sprite";
 
 export interface SpellProjectileConfig {
   radius: number;
@@ -45,6 +45,7 @@ export interface SpellProjectileConfig {
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
+  spriteIndex?: number; // Sprite index when shape === "sprite"
   aoe?: { radius: number; splash: number };
   explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
 }
@@ -233,7 +234,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     damage: { min: 1, max: 3 },
     projectile: {
       radius: 7,
-      shape: "triangle",
+      shape: "sprite",
+      spriteIndex: 0, // needle sprite
       speed: 230,
       lifetimeMs: 3_600,
       fill: MAGIC_ARROW_PROJECTILE_FILL,
@@ -349,7 +351,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
       count: 10,
       spreadAngle: 15,
-      shape: "triangle",
+      shape: "sprite",
+      spriteIndex: 0, // needle sprite
     },
     unlock: { skillId: "black_darts", level: 1 },
   },

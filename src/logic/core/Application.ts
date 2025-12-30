@@ -220,24 +220,8 @@ export class Application {
 
     const fireballModule = new FireballModule({
       scene: sceneObjects,
+      bricks: bricksModule,
       explosions: explosionModule,
-      getBrickPosition: (brickId) => {
-        const brick = bricksModule.getBrickState(brickId);
-        return brick?.position || null;
-      },
-      damageBrick: (brickId, damage) => {
-        const brick = bricksModule.getBrickState(brickId);
-        if (brick) {
-          bricksModule.applyDamage(brickId, damage, { x: 0, y: 0 }, {
-            rewardMultiplier: 1,
-            armorPenetration: 0,
-          });
-        }
-      },
-      getBricksInRadius: (position, radius) => {
-        const nearbyBricks = bricksModule.findBricksNear(position, radius);
-        return nearbyBricks.map(brick => brick.id);
-      },
       logEvent: (message) => console.log(`[FireballModule] ${message}`),
     });
     this.fireballModule = fireballModule;

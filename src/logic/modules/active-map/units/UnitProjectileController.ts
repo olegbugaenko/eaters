@@ -24,7 +24,7 @@ import {
   type RingSlotHandle,
 } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 
-export type UnitProjectileShape = "circle" | "triangle";
+export type UnitProjectileShape = "circle" | "sprite";
 
 export interface UnitProjectileVisualConfig {
   radius: number;
@@ -35,7 +35,10 @@ export interface UnitProjectileVisualConfig {
   tailEmitter?: BulletTailEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;
   shape?: UnitProjectileShape;
+  /** Sprite index when shape === "sprite" */
+  spriteIndex?: number;
   hitRadius?: number;
+  rendererCustomData?: Record<string, unknown>;
 }
 
 export interface UnitProjectileSpawn {
@@ -46,7 +49,18 @@ export interface UnitProjectileSpawn {
   armorPenetration: number;
   skipKnockback?: boolean;
   visual: UnitProjectileVisualConfig;
+  onHit?: UnitProjectileOnHit;
+  onExpired?: (position: SceneVector2) => void;
 }
+
+export interface UnitProjectileHitContext {
+  brickId: string;
+  position: SceneVector2;
+}
+
+export type UnitProjectileOnHit = (
+  context: UnitProjectileHitContext,
+) => boolean | void;
 
 interface UnitProjectileRingTrailState {
   config: Required<Omit<SpellProjectileRingTrailConfig, "color">> & {
@@ -63,6 +77,7 @@ interface RingState {
 
 interface UnitProjectileState extends UnitProjectileSpawn {
   id: string;
+  effectsObjectId?: string;
   velocity: SceneVector2;
   elapsedMs: number;
   radius: number;
@@ -123,12 +138,48 @@ export class UnitProjectileController {
     // Try GPU instanced rendering first (much faster for many projectiles)
     const gpuConfig = this.getGpuBulletConfig(visual, shape);
     const gpuSlot = gpuConfig ? acquireGpuBulletSlot(gpuConfig) : null;
-    
+
+    const rendererCustomData = {
+      speed: visual.speed,
+      maxSpeed: visual.speed,
+      velocity,
+      tail: visual.tail,
+      tailEmitter: visual.tailEmitter,
+      shape,
+      ...(visual.rendererCustomData ?? {}),
+    };
+
+    // If the projectile needs features that the GPU-instanced bullet pass cannot draw
+    // (non-solid gradients for the core, glow quads, or CPU particle emitters),
+    // we attach a lightweight scene object that renders *only* those extras while
+    // the main body stays on the GPU. This keeps fireballs and other fancy bullets
+    // visually rich without giving up the high-throughput GPU path.
+    const shouldCreateOverlay = this.shouldCreateOverlayObject(visual);
+    let effectsObjectId: string | undefined;
     let objectId: string;
     if (gpuSlot) {
-      // Use GPU instanced rendering - no scene object needed
+      // Use GPU instanced rendering for the main body
       objectId = `gpu-bullet-${gpuSlot.visualKey}-${gpuSlot.slotIndex}-${createdAt}`;
       updateGpuBulletSlot(gpuSlot, position, rotation, radius, true);
+
+      if (shouldCreateOverlay) {
+        // Overlay only renders emitters - body/tail/glow are handled by GPU
+        effectsObjectId = this.scene.addObject("unitProjectile", {
+          position,
+          size: { width: radius * 2, height: radius * 2 },
+          rotation,
+          fill: visual.fill,
+          customData: {
+            ...rendererCustomData,
+            renderComponents: {
+              body: false,
+              tail: false,
+              glow: false,
+              emitters: true,
+            },
+          },
+        });
+      }
     } else {
       // Fallback to scene object rendering
       objectId = this.scene.addObject("unitProjectile", {
@@ -136,11 +187,7 @@ export class UnitProjectileController {
         size: { width: radius * 2, height: radius * 2 },
         rotation,
         fill: visual.fill,
-        customData: {
-          tail: visual.tail,
-          tailEmitter: visual.tailEmitter,
-          shape,
-        },
+        customData: rendererCustomData,
       });
     }
 
@@ -161,6 +208,7 @@ export class UnitProjectileController {
       shape,
       hitRadius,
       gpuSlot: gpuSlot ?? undefined,
+      effectsObjectId,
     };
 
     this.projectiles.push(state);
@@ -185,15 +233,29 @@ export class UnitProjectileController {
     // Extract colors from fill for GPU rendering
     const bodyColor = this.extractBodyColor(visual.fill);
     const tailColors = this.extractTailColors(visual.tail);
+    const radialColors = this.extractRadialGradient(visual.fill);
+    
+    // Use unique key for each visual type (shape + gradient + sprite)
+    let visualKey = `unit-projectile-${shape}`;
+    if (radialColors) {
+      visualKey += "-radial";
+    }
+    if (shape === "sprite" && visual.spriteIndex !== undefined) {
+      visualKey += `-sprite${visual.spriteIndex}`;
+    }
     
     return {
-      visualKey: `unit-projectile-${shape}`,
+      visualKey,
       bodyColor,
       tailStartColor: tailColors.start,
       tailEndColor: tailColors.end,
       tailLengthMultiplier: visual.tail?.lengthMultiplier ?? 4.5,
       tailWidthMultiplier: visual.tail?.widthMultiplier ?? 1.75,
+      tailOffsetMultiplier: visual.tail?.offsetMultiplier,
       shape,
+      centerColor: radialColors?.center,
+      edgeColor: radialColors?.edge,
+      spriteIndex: visual.spriteIndex,
     };
   }
   
@@ -203,7 +265,7 @@ export class UnitProjectileController {
     }
     if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT && "stops" in fill) {
       const stops = fill.stops as Array<{ color: SceneColor }>;
-      // Use the most opaque color from gradient
+      // Use the most opaque color from gradient (fallback for bodyColor)
       let bestColor: SceneColor = { r: 0.4, g: 0.6, b: 1.0, a: 1.0 };
       let bestAlpha = 0;
       for (const stop of stops) {
@@ -218,6 +280,26 @@ export class UnitProjectileController {
     return { r: 0.4, g: 0.6, b: 1.0, a: 1.0 };
   }
   
+  private extractRadialGradient(fill: SceneFill): { center: SceneColor; edge: SceneColor } | null {
+    if (fill.fillType !== FILL_TYPES.RADIAL_GRADIENT || !("stops" in fill)) {
+      return null;
+    }
+    
+    const stops = fill.stops as Array<{ offset: number; color: SceneColor }>;
+    if (stops.length < 2) {
+      return null;
+    }
+    
+    // Sort stops by offset
+    const sorted = [...stops].sort((a, b) => a.offset - b.offset);
+    
+    // Use first stop as center color, last stop as edge color
+    const center = sorted[0]!.color;
+    const edge = sorted[sorted.length - 1]!.color;
+    
+    return { center, edge };
+  }
+  
   private extractTailColors(tail?: BulletTailConfig): { start: SceneColor; end: SceneColor } {
     if (!tail) {
       return {
@@ -229,6 +311,21 @@ export class UnitProjectileController {
       start: tail.startColor ?? { r: 0.25, g: 0.45, b: 1.0, a: 0.65 },
       end: tail.endColor ?? { r: 0.05, g: 0.15, b: 0.6, a: 0.0 },
     };
+  }
+
+  private shouldCreateOverlayObject(visual: UnitProjectileVisualConfig): boolean {
+    const rendererData = visual.rendererCustomData as
+      | {
+          trailEmitter?: BulletTailEmitterConfig;
+          smokeEmitter?: BulletTailEmitterConfig;
+        }
+      | undefined;
+    // Only create overlay for particle emitters - they need scene objects
+    // Gradients and glow are now handled by GPU renderer
+    const hasEmitters = Boolean(
+      visual.tailEmitter || rendererData?.trailEmitter || rendererData?.smokeEmitter,
+    );
+    return hasEmitters;
   }
 
   public tick(deltaMs: number): void {
@@ -273,7 +370,13 @@ export class UnitProjectileController {
         const collided = this.findHitBrick(projectile.position, projectile.hitRadius);
         if (collided) {
           hitBrickId = collided.id;
-          this.applyProjectileDamage(projectile, collided.id);
+          const handled = projectile.onHit?.({
+            brickId: collided.id,
+            position: { ...projectile.position },
+          });
+          if (handled !== true) {
+            this.applyProjectileDamage(projectile, collided.id);
+          }
           this.removeProjectile(projectile);
           if (projectile.ringTrail) {
             this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
@@ -288,11 +391,13 @@ export class UnitProjectileController {
 
       projectile.elapsedMs += deltaMs;
       if (projectile.elapsedMs >= projectile.lifetimeMs) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
 
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
@@ -318,6 +423,9 @@ export class UnitProjectileController {
     } else {
       this.scene.removeObject(projectile.id);
     }
+    if (projectile.effectsObjectId) {
+      this.scene.removeObject(projectile.effectsObjectId);
+    }
     this.projectileIndex.delete(projectile.id);
   }
   
@@ -337,6 +445,13 @@ export class UnitProjectileController {
     } else {
       this.scene.updateObject(projectile.id, {
         position: { ...projectile.position },
+      });
+    }
+
+    if (projectile.effectsObjectId) {
+      this.scene.updateObject(projectile.effectsObjectId, {
+        position: { ...projectile.position },
+        rotation,
       });
     }
   }
@@ -368,11 +483,13 @@ export class UnitProjectileController {
       const projectile = this.projectiles[i]!;
       const lifetimeElapsed = now - projectile.createdAt;
       if (lifetimeElapsed >= projectile.lifetimeMs) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
       const mapSize = this.scene.getMapSize();
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
