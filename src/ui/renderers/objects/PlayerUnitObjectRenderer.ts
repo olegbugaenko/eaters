@@ -191,9 +191,13 @@ const auraInstanceMap = new Map<string, {
   basePhase: number;
 }[]>();
 
+// Кеш останньої позиції для уникнення зайвих bufferSubData викликів
+const auraLastPositionCache = new Map<string, { x: number; y: number }>();
+
 // Allow external systems (e.g., scene reset) to clear all aura slot tracking
 export const clearAllAuraSlots = (): void => {
   auraInstanceMap.clear();
+  auraLastPositionCache.clear();
 };
 
 let currentAuraBatchRef: ReturnType<typeof ensureAuraBatch> | null = null;
@@ -752,9 +756,6 @@ const createCompositePrimitives = (
         }
 
         const omega = (2 * Math.PI) / period;
-        const angleStep = 0.35;
-        const sinStep = Math.sin(angleStep);
-        const cosStep = Math.cos(angleStep);
 
         const deformSpine = (timeMs: number) => {
           if (baseSpine.length === 0) {
@@ -770,21 +771,18 @@ const createCompositePrimitives = (
             return;
           }
 
+          // Спростимо анімацію - використовуємо один sin для всіх сегментів з різними фазами
           const baseAngle = omega * timeMs + phase;
-          let sinAngle = Math.sin(baseAngle + angleStep);
-          let cosAngle = Math.cos(baseAngle + angleStep);
 
           for (let i = 1; i < baseSpine.length; i += 1) {
+            // Фазовий зсув базується на позиції сегмента (простіша версія)
+            const segmentPhase = i * 0.5; // Фіксований зсув замість складного розрахунку
+            const sinAngle = Math.sin(baseAngle + segmentPhase);
             const displacement = amplitude * falloffFactors[i]! * sinAngle;
             const axisXValue = axisX[i - 1] ?? 0;
             const axisYValue = axisY[i - 1] ?? 0;
             deformed[i]!.x = baseSpine[i]!.x + axisXValue * displacement;
             deformed[i]!.y = baseSpine[i]!.y + axisYValue * displacement;
-
-            const nextSin = sinAngle * cosStep + cosAngle * sinStep;
-            const nextCos = cosAngle * cosStep - sinAngle * sinStep;
-            sinAngle = nextSin;
-            cosAngle = nextCos;
           }
         };
 
@@ -838,16 +836,18 @@ const createCompositePrimitives = (
         };
 
         const sampleVertices = (() => {
-          let lastSampleTick = -1;
+          let lastSampleTime = -1;
+          const UPDATE_INTERVAL_MS = 32; // Оновлюємо анімацію кожні 32ms (~30 FPS)
+
           return () => {
             const now = getTentacleTimeMs();
-            const tick = Math.floor(now);
-            if (tick === lastSampleTick) {
-              return;
+            if (now - lastSampleTime < UPDATE_INTERVAL_MS) {
+              return quadVerts; // Повертаємо ті самі вершини без перерахунку
             }
-            lastSampleTick = tick;
+            lastSampleTime = now;
             deformSpine(now);
             buildQuad(segIndex);
+            return quadVerts;
           };
         })();
 
@@ -862,24 +862,20 @@ const createCompositePrimitives = (
           };
           dynamicPrimitives.push(
             createDynamicPolygonStrokePrimitive(instance, {
-              getVertices: () => {
-                sampleVertices();
-                return quadVerts;
-              },
+              getVertices: sampleVertices,
               stroke: sceneStroke,
               offset: layer.offset,
             })
           );
         }
 
+        // OPTIMIZATION: Cache fill for tentacle layers - vertices animate but fill is static
+        const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
-            getVertices: () => {
-              sampleVertices();
-              return quadVerts;
-            },
+            getVertices: sampleVertices,
             offset: layer.offset,
-            getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
+            fill: tentacleFill, // Use cached fill instead of getFill
           })
         );
         return; // handled animated tentacle layer
@@ -1048,16 +1044,17 @@ const createCompositePrimitives = (
         };
 
         const getDeformedVertices = (() => {
-          let lastTick = -1;
+          const UPDATE_INTERVAL_MS = 32; // Оновлюємо анімацію кожні 32ms (~30 FPS)
+          let lastUpdateTime = -1;
           let lastSample = baseVertices.map((v) => ({ x: v.x, y: v.y }));
           return () => {
             const now = getTentacleTimeMs();
-            const tick = Math.floor(now);
-            if (tick !== lastTick) {
-              lastTick = tick;
-              lastSample =
-                animCfg.type === "sway" ? sampleSway(now) : samplePulse(now);
+            if (now - lastUpdateTime < UPDATE_INTERVAL_MS) {
+              return lastSample; // Повертаємо закешовані вершини
             }
+            lastUpdateTime = now;
+            lastSample =
+              animCfg.type === "sway" ? sampleSway(now) : samplePulse(now);
             return lastSample;
           };
         })();
@@ -1076,11 +1073,13 @@ const createCompositePrimitives = (
             })
           );
         }
+        // OPTIMIZATION: Cache fill for animated layers too - vertices change but fill is usually static
+        const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: () => getDeformedVertices(),
             offset: layer.offset,
-            getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
+            fill: animatedLayerFill, // Use cached fill instead of getFill
           })
         );
       } else {
@@ -1101,33 +1100,39 @@ const createCompositePrimitives = (
             })
           );
         }
+        // OPTIMIZATION: Cache fill at registration time for static layers
+        // This allows fast-path in polygon primitive when fill doesn't change
+        const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             vertices: layer.vertices,
             offset: layer.offset,
-            getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
+            fill: cachedFill,
           })
         );
       }
       return;
     }
 
+    // OPTIMIZATION: Cache fills at registration time for static layers
     if (layer.stroke) {
+      const cachedStrokeFill = resolveLayerStrokeFill(instance, layer.stroke, renderer);
       dynamicPrimitives.push(
         createDynamicCirclePrimitive(instance, {
           segments: layer.segments,
           offset: layer.offset,
           radius: layer.radius + layer.stroke.width,
-          getFill: (target) => resolveLayerStrokeFill(target, layer.stroke!, renderer),
+          fill: cachedStrokeFill,
         })
       );
     }
+    const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
     dynamicPrimitives.push(
       createDynamicCirclePrimitive(instance, {
         segments: layer.segments,
         offset: layer.offset,
         radius: layer.radius,
-        getFill: (target) => resolveLayerFill(target, layer.fill, renderer),
+        fill: cachedFill,
       })
     );
   });
@@ -1144,12 +1149,26 @@ const updateAuraInstances = (instance: SceneObjectInstance): void => {
     return;
   }
   
+  const position = instance.data.position;
+  
+  // OPTIMIZATION: Skip bufferSubData if position hasn't changed
+  const lastPos = auraLastPositionCache.get(instanceId);
+  if (lastPos && lastPos.x === position.x && lastPos.y === position.y) {
+    return; // Position unchanged, GPU buffer already has correct data
+  }
+  
   const currentBatch = ensureAuraBatch();
   if (!currentBatch) {
     return;
   }
   
-  const position = instance.data.position;
+  // Update cache
+  if (lastPos) {
+    lastPos.x = position.x;
+    lastPos.y = position.y;
+  } else {
+    auraLastPositionCache.set(instanceId, { x: position.x, y: position.y });
+  }
   
   slots.forEach(({ slotIndex, auraConfig, basePhase }) => {
     writePetalAuraInstance(currentBatch, slotIndex, {
@@ -1321,39 +1340,55 @@ const computeCenter = (vertices: SceneVector2[]): SceneVector2 => {
   };
 };
 
+// Cache emitter configs to avoid creating new objects every frame
+const emitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  { source: PlayerUnitEmitterConfig | undefined; config: PlayerUnitEmitterRenderConfig | null }
+>();
+
 const getEmitterConfig = (
   instance: SceneObjectInstance
 ): PlayerUnitEmitterRenderConfig | null => {
   const payload = instance.data.customData as PlayerUnitCustomData | undefined;
-  if (!payload || typeof payload !== "object" || !payload.emitter) {
+  const emitterSource = payload?.emitter;
+  
+  // Return cached config if source hasn't changed
+  const cached = emitterConfigCache.get(instance);
+  if (cached && cached.source === emitterSource) {
+    return cached.config;
+  }
+  
+  if (!payload || typeof payload !== "object" || !emitterSource) {
+    emitterConfigCache.set(instance, { source: undefined, config: null });
     return null;
   }
 
-  const base = sanitizeParticleEmitterConfig(payload.emitter, {
+  const base = sanitizeParticleEmitterConfig(emitterSource, {
     defaultColor: DEFAULT_EMITTER_COLOR,
     defaultOffset: { x: 0, y: 0 },
     minCapacity: 4,
   });
   if (!base) {
+    emitterConfigCache.set(instance, { source: emitterSource, config: null });
     return null;
   }
 
   const baseSpeed = Math.max(
     0,
-    Number.isFinite(payload.emitter.baseSpeed)
-      ? Number(payload.emitter.baseSpeed)
+    Number.isFinite(emitterSource.baseSpeed)
+      ? Number(emitterSource.baseSpeed)
       : 0
   );
   const speedVariation = Math.max(
     0,
-    Number.isFinite(payload.emitter.speedVariation)
-      ? Number(payload.emitter.speedVariation)
+    Number.isFinite(emitterSource.speedVariation)
+      ? Number(emitterSource.speedVariation)
       : 0
   );
   const spread = Math.max(
     0,
-    Number.isFinite(payload.emitter.spread)
-      ? Number(payload.emitter.spread)
+    Number.isFinite(emitterSource.spread)
+      ? Number(emitterSource.spread)
       : 0
   );
   const physicalSize =
@@ -1361,13 +1396,16 @@ const getEmitterConfig = (
       ? Math.max(payload.physicalSize, 0)
       : 0;
 
-  return {
+  const config: PlayerUnitEmitterRenderConfig = {
     ...base,
     baseSpeed,
     speedVariation,
     spread,
     physicalSize,
   };
+  
+  emitterConfigCache.set(instance, { source: emitterSource, config });
+  return config;
 };
 
 const serializeEmitterConfig = (

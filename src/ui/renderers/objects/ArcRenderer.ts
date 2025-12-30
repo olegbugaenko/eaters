@@ -91,18 +91,21 @@ export class ArcRenderer extends ObjectRenderer {
         }
 
         if (batch && slotIndex >= 0) {
+          const wasActive = batch.instances[slotIndex]?.active ?? false;
+          const isActive = age < lifetime;
           writeArcInstance(batch, slotIndex, {
             from: data.from,
             to: data.to,
             age,
             lifetime,
-            active: age < lifetime,
+            active: isActive,
           });
-          let activeCount = 0;
-          for (let i = 0; i < batch.capacity; i += 1) {
-            if (batch.instances[i]?.active) activeCount += 1;
+          // Incremental update instead of O(capacity) loop
+          if (isActive && !wasActive) {
+            setArcBatchActiveCount(batch, batch.activeCount + 1);
+          } else if (!isActive && wasActive) {
+            setArcBatchActiveCount(batch, batch.activeCount - 1);
           }
-          setArcBatchActiveCount(batch, activeCount);
         }
 
         if (age >= lifetime) {
@@ -113,6 +116,7 @@ export class ArcRenderer extends ObjectRenderer {
       },
       dispose() {
         if (batch && slotIndex >= 0 && slotIndex < batch.capacity) {
+          const wasActive = batch.instances[slotIndex]?.active ?? false;
           writeArcInstance(batch, slotIndex, {
             from: { x: 0, y: 0 },
             to: { x: 0, y: 0 },
@@ -120,11 +124,10 @@ export class ArcRenderer extends ObjectRenderer {
             lifetime: 0,
             active: false,
           });
-          let activeCount = 0;
-          for (let i = 0; i < batch.capacity; i += 1) {
-            if (batch.instances[i]?.active) activeCount += 1;
+          // Decrement only if was active
+          if (wasActive) {
+            setArcBatchActiveCount(batch, batch.activeCount - 1);
           }
-          setArcBatchActiveCount(batch, activeCount);
         }
       },
     };

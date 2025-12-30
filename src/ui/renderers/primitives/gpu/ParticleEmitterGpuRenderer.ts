@@ -409,6 +409,8 @@ interface ParticleRendererContext {
 }
 
 const rendererContexts = new WeakMap<WebGL2RenderingContext, ParticleRendererContext>();
+// Track current active GL context for clearAllParticleEmitters without GL param
+let activeGlContext: WebGL2RenderingContext | null = null;
 
 const compileShader = (
   gl: WebGL2RenderingContext,
@@ -533,6 +535,7 @@ const createResources = (
 export const getParticleRenderResources = (
   gl: WebGL2RenderingContext
 ): ParticleRenderResources | null => {
+  activeGlContext = gl; // Track active context
   let context = rendererContexts.get(gl);
   if (context) {
     return context.resources;
@@ -566,6 +569,26 @@ export const disposeParticleRenderResources = (
     gl.deleteProgram(program.program);
   }
   rendererContexts.delete(gl);
+  if (activeGlContext === gl) {
+    activeGlContext = null;
+  }
+};
+
+/**
+ * Clears all particle emitter handles from context without disposing GL resources.
+ * Use on map restart to prevent zombie particles.
+ * Can be called without GL param - will use last active context.
+ */
+export const clearAllParticleEmitters = (gl?: WebGL2RenderingContext): void => {
+  const targetGl = gl ?? activeGlContext;
+  if (!targetGl) {
+    return;
+  }
+  const context = rendererContexts.get(targetGl);
+  if (!context) {
+    return;
+  }
+  context.emitters.clear();
 };
 
 export const getParticleStats = (

@@ -222,6 +222,8 @@ void main() {
 // innerRadius(1), outerRadius(1), petalWidth(1), rotationSpeed(1), color(3), alpha(1), active(1), pointInward(1)
 const INSTANCE_COMPONENTS = 15;
 const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+// Reusable scratch buffer to avoid per-call Float32Array allocations
+const instanceScratch = new Float32Array(INSTANCE_COMPONENTS);
 
 interface PetalAuraRendererContext {
   resources: PetalAuraRendererResources;
@@ -596,12 +598,11 @@ class PetalAuraEffect
     return context.batch;
   }
 
-  public beforeRender(gl: WebGL2RenderingContext, _timestampMs: number): void {
-    const context = this.contexts.get(gl);
-    if (!context?.batch) {
-      return;
-    }
-    packActiveInstances(context.batch);
+  public beforeRender(_gl: WebGL2RenderingContext, _timestampMs: number): void {
+    // OPTIMIZATION: Removed packActiveInstances - it was calling bufferSubData 
+    // for EVERY slot (512+) every frame! The shader already handles inactive 
+    // instances by checking a_active and moving them off-screen.
+    // We now render all capacity instances and let the GPU skip inactive ones.
   }
 
   public render(
@@ -611,7 +612,7 @@ class PetalAuraEffect
     timeMs: number,
   ): void {
     const context = this.contexts.get(gl);
-    if (!context?.batch || !context.batch.vao || context.batch.activeCount <= 0) {
+    if (!context?.batch || !context.batch.vao || context.batch.capacity <= 0) {
       return;
     }
     const { resources, batch } = context;
@@ -643,7 +644,9 @@ class PetalAuraEffect
       gl.ONE_MINUS_SRC_ALPHA,
     );
     gl.bindVertexArray(batch.vao);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, batch.activeCount);
+    // OPTIMIZATION: Render all capacity instances - shader skips inactive ones via a_active check
+    // This avoids the expensive packActiveInstances that was calling bufferSubData 512+ times per frame
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, batch.capacity);
     gl.bindVertexArray(null);
   }
 
@@ -687,7 +690,7 @@ class PetalAuraEffect
     const petalCount = Math.max(1, Math.floor(instance.petalCount));
     const clampedIndex = Math.max(0, Math.min(baseIndex, batch.capacity - petalCount));
 
-    const scratch = new Float32Array(INSTANCE_COMPONENTS);
+    const scratch = instanceScratch; // Reuse module-level scratch buffer
     batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
 
     let writtenCount = 0;
@@ -727,20 +730,40 @@ class PetalAuraEffect
         batch.activeCount = Math.max(0, batch.activeCount - 1);
       }
 
-      batch.instances[index] = {
-        position: { ...instance.position },
-        basePhase: instance.basePhase,
-        active: instance.active,
-        petalIndex: i,
-        petalCount: instance.petalCount,
-        innerRadius: instance.innerRadius,
-        outerRadius: instance.outerRadius,
-        petalWidth: instance.petalWidth,
-        rotationSpeed: instance.rotationSpeed,
-        color: [...instance.color],
-        alpha: instance.alpha,
-        pointInward: instance.pointInward,
-      };
+      // Reuse existing instance object to avoid per-frame allocations
+      const existing = batch.instances[index];
+      if (existing) {
+        existing.position.x = instance.position.x;
+        existing.position.y = instance.position.y;
+        existing.basePhase = instance.basePhase;
+        existing.active = instance.active;
+        existing.petalIndex = i;
+        existing.petalCount = instance.petalCount;
+        existing.innerRadius = instance.innerRadius;
+        existing.outerRadius = instance.outerRadius;
+        existing.petalWidth = instance.petalWidth;
+        existing.rotationSpeed = instance.rotationSpeed;
+        existing.color[0] = instance.color[0];
+        existing.color[1] = instance.color[1];
+        existing.color[2] = instance.color[2];
+        existing.alpha = instance.alpha;
+        existing.pointInward = instance.pointInward;
+      } else {
+        batch.instances[index] = {
+          position: { x: instance.position.x, y: instance.position.y },
+          basePhase: instance.basePhase,
+          active: instance.active,
+          petalIndex: i,
+          petalCount: instance.petalCount,
+          innerRadius: instance.innerRadius,
+          outerRadius: instance.outerRadius,
+          petalWidth: instance.petalWidth,
+          rotationSpeed: instance.rotationSpeed,
+          color: [instance.color[0], instance.color[1], instance.color[2]],
+          alpha: instance.alpha,
+          pointInward: instance.pointInward,
+        };
+      }
 
       writtenCount += 1;
     }

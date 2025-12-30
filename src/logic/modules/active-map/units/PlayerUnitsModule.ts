@@ -45,7 +45,7 @@ import {
 } from "../../../visuals/VisualEffectState";
 import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import { UnitTargetingMode } from "../../../../types/unit-targeting";
-import { UnitDesignId } from "../../camp/UnitDesignModule";
+import { UnitDesignId, UnitDesignModule } from "../../camp/UnitDesignModule";
 import { ArcModule } from "../../scene/ArcModule";
 import { EffectsModule } from "../../scene/EffectsModule";
 import { FireballModule } from "../../scene/FireballModule";
@@ -110,6 +110,7 @@ interface PlayerUnitsModuleOptions {
   arcs?: ArcModule;
   effects?: EffectsModule;
   fireballs?: FireballModule;
+  unitDesign?: UnitDesignModule;
   onAllUnitsDefeated?: () => void;
   getModuleLevel: (id: UnitModuleId) => number;
   hasSkill: (id: SkillId) => boolean;
@@ -145,6 +146,7 @@ export class PlayerUnitsModule implements GameModule {
     designId: UnitDesignId | null,
     type: PlayerUnitType
   ) => UnitTargetingMode;
+  private readonly unitDesign?: UnitDesignModule;
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
   private readonly unitFactory: UnitFactory;
@@ -172,6 +174,7 @@ export class PlayerUnitsModule implements GameModule {
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
+    this.unitDesign = options.unitDesign;
     this.statistics = options.statistics;
     this.runState = options.runState;
     const abilitySceneService = new AbilityVisualService({
@@ -499,7 +502,21 @@ export class PlayerUnitsModule implements GameModule {
 
   private createUnitState(unit: PlayerUnitSpawnData): PlayerUnitState {
     const type = sanitizeUnitType(unit.type);
-    const blueprint = this.unitBlueprints.get(type);
+    
+    // Try to get blueprint from design first (includes module multipliers)
+    let blueprint: PlayerUnitBlueprintStats | undefined;
+    if (unit.designId && this.unitDesign) {
+      const design = this.unitDesign.getDesign(unit.designId);
+      if (design && design.type === type) {
+        blueprint = design.blueprint;
+      }
+    }
+    
+    // Fallback to base blueprint if no design blueprint found
+    if (!blueprint) {
+      blueprint = this.unitBlueprints.get(type);
+    }
+    
     if (!blueprint) {
       throw new Error(`Missing blueprint stats for unit type: ${type}`);
     }
