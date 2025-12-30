@@ -8,7 +8,6 @@ import { PlayerUnitObjectRenderer } from "./PlayerUnitObjectRenderer";
 import { PortalObjectRenderer } from "./PortalObjectRenderer";
 import { ArcRenderer } from "./ArcRenderer";
 import { AuraRenderer } from "./AuraRenderer";
-import { FireballRenderer } from "./FireballRenderer";
 import { SpellProjectileRingRenderer } from "./SpellProjectileRingRenderer";
 import { SandStormRenderer } from "./SandStormRenderer";
 import { PersistentAoeSpellRenderer } from "./PersistentAoeSpellRenderer";
@@ -40,7 +39,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["portal", new PortalObjectRenderer()],
     ["arc", new ArcRenderer()],
     ["aura", new AuraRenderer()],
-    ["fireball", new FireballRenderer()],
+    ["fireball", new BulletObjectRenderer()],
     ["spellProjectile", new BulletObjectRenderer()],
     ["spellProjectileRing", new SpellProjectileRingRenderer()],
     ["unitProjectile", new BulletObjectRenderer()],

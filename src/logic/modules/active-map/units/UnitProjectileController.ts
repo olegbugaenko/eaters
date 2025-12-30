@@ -36,6 +36,7 @@ export interface UnitProjectileVisualConfig {
   ringTrail?: SpellProjectileRingTrailConfig;
   shape?: UnitProjectileShape;
   hitRadius?: number;
+  rendererCustomData?: Record<string, unknown>;
 }
 
 export interface UnitProjectileSpawn {
@@ -46,7 +47,18 @@ export interface UnitProjectileSpawn {
   armorPenetration: number;
   skipKnockback?: boolean;
   visual: UnitProjectileVisualConfig;
+  onHit?: UnitProjectileOnHit;
+  onExpired?: (position: SceneVector2) => void;
 }
+
+export interface UnitProjectileHitContext {
+  brickId: string;
+  position: SceneVector2;
+}
+
+export type UnitProjectileOnHit = (
+  context: UnitProjectileHitContext,
+) => boolean | void;
 
 interface UnitProjectileRingTrailState {
   config: Required<Omit<SpellProjectileRingTrailConfig, "color">> & {
@@ -130,17 +142,22 @@ export class UnitProjectileController {
       objectId = `gpu-bullet-${gpuSlot.visualKey}-${gpuSlot.slotIndex}-${createdAt}`;
       updateGpuBulletSlot(gpuSlot, position, rotation, radius, true);
     } else {
+      const rendererCustomData = {
+        speed: visual.speed,
+        maxSpeed: visual.speed,
+        velocity,
+        tail: visual.tail,
+        tailEmitter: visual.tailEmitter,
+        shape,
+        ...(visual.rendererCustomData ?? {}),
+      };
       // Fallback to scene object rendering
       objectId = this.scene.addObject("unitProjectile", {
         position,
         size: { width: radius * 2, height: radius * 2 },
         rotation,
         fill: visual.fill,
-        customData: {
-          tail: visual.tail,
-          tailEmitter: visual.tailEmitter,
-          shape,
-        },
+        customData: rendererCustomData,
       });
     }
 
@@ -273,7 +290,13 @@ export class UnitProjectileController {
         const collided = this.findHitBrick(projectile.position, projectile.hitRadius);
         if (collided) {
           hitBrickId = collided.id;
-          this.applyProjectileDamage(projectile, collided.id);
+          const handled = projectile.onHit?.({
+            brickId: collided.id,
+            position: { ...projectile.position },
+          });
+          if (handled !== true) {
+            this.applyProjectileDamage(projectile, collided.id);
+          }
           this.removeProjectile(projectile);
           if (projectile.ringTrail) {
             this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
@@ -288,11 +311,13 @@ export class UnitProjectileController {
 
       projectile.elapsedMs += deltaMs;
       if (projectile.elapsedMs >= projectile.lifetimeMs) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
 
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
@@ -368,11 +393,13 @@ export class UnitProjectileController {
       const projectile = this.projectiles[i]!;
       const lifetimeElapsed = now - projectile.createdAt;
       if (lifetimeElapsed >= projectile.lifetimeMs) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
       const mapSize = this.scene.getMapSize();
       if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
+        projectile.onExpired?.({ ...projectile.position });
         this.removeProjectile(projectile);
         continue;
       }
