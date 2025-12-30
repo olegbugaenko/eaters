@@ -12,10 +12,12 @@ import type { SceneColor, SceneVector2, SceneSize } from "../../../../logic/serv
 // Types
 // ============================================================================
 
+export type BulletShape = "circle" | "sprite";
+
 export interface BulletVisualConfig {
   /** Unique key identifying this visual type (e.g., "default", "ice", "fire") */
   readonly visualKey: string;
-  /** Base color for the bullet body */
+  /** Base color for the bullet body (used if centerColor not set) */
   readonly bodyColor: SceneColor;
   /** Color at the start of the tail (near bullet) */
   readonly tailStartColor: SceneColor;
@@ -25,8 +27,15 @@ export interface BulletVisualConfig {
   readonly tailLengthMultiplier: number;
   /** Tail width multiplier relative to bullet radius */
   readonly tailWidthMultiplier: number;
-  /** Shape: "circle" or "triangle" */
-  readonly shape: "circle" | "triangle";
+  /** Tail offset along movement axis (positive = forward, negative = backward) */
+  readonly tailOffsetMultiplier?: number;
+  /** Shape: "circle" for procedural, "sprite" for texture */
+  readonly shape: BulletShape;
+  /** If set, body uses radial gradient from center to edge */
+  readonly centerColor?: SceneColor;
+  readonly edgeColor?: SceneColor;
+  /** Sprite index in texture array (used when shape === "sprite") */
+  readonly spriteIndex?: number;
 }
 
 export interface BulletInstance {
@@ -62,6 +71,12 @@ interface BulletGpuResources {
     readonly tailLengthMul: WebGLUniformLocation | null;
     readonly tailWidthMul: WebGLUniformLocation | null;
     readonly shapeType: WebGLUniformLocation | null;
+    readonly centerColor: WebGLUniformLocation | null;
+    readonly edgeColor: WebGLUniformLocation | null;
+    readonly useRadialGradient: WebGLUniformLocation | null;
+    readonly spriteArray: WebGLUniformLocation | null;
+    readonly spriteIndex: WebGLUniformLocation | null;
+    readonly tailOffsetMul: WebGLUniformLocation | null;
   };
   readonly attributes: {
     readonly unitPosition: number;
@@ -70,6 +85,8 @@ interface BulletGpuResources {
     readonly instanceRadius: number;
     readonly instanceActive: number;
   };
+  spriteTexture: WebGLTexture | null;
+  spriteCount: number;
 }
 
 // ============================================================================
@@ -113,13 +130,16 @@ uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
 uniform float u_tailLengthMul;
 uniform float u_tailWidthMul;
-uniform int u_shapeType; // 0 = circle, 1 = triangle
+uniform float u_tailOffsetMul;
+uniform int u_shapeType; // 0 = circle, 1 = sprite
 
 // Outputs
 out vec2 v_localPos;
+out vec2 v_uv;
 out float v_radius;
 out float v_tailLength;
 out float v_tailWidth;
+out float v_tailOffset;
 
 vec2 toClip(vec2 world) {
   vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
@@ -134,6 +154,7 @@ void main() {
   
   float tailLength = a_instanceRadius * u_tailLengthMul;
   float tailWidth = a_instanceRadius * u_tailWidthMul;
+  float tailOffset = a_instanceRadius * u_tailOffsetMul;
   
   // Scale local position to cover bullet + tail
   float scaleX = a_instanceRadius + tailLength;
@@ -155,9 +176,12 @@ void main() {
   // To clip space (same formula as PetalAuraGpuRenderer)
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_localPos = a_unitPosition;
+  // UV for sprite sampling: map [-1,1] to [0,1]
+  v_uv = a_unitPosition * 0.5 + 0.5;
   v_radius = a_instanceRadius;
   v_tailLength = tailLength;
   v_tailWidth = tailWidth;
+  v_tailOffset = tailOffset;
 }
 `;
 
@@ -165,14 +189,21 @@ const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 
 in vec2 v_localPos;
+in vec2 v_uv;
 in float v_radius;
 in float v_tailLength;
 in float v_tailWidth;
+in float v_tailOffset;
 
 uniform vec4 u_bodyColor;
 uniform vec4 u_tailStartColor;
 uniform vec4 u_tailEndColor;
-uniform int u_shapeType;
+uniform int u_shapeType; // 0 = circle, 1 = sprite
+uniform vec4 u_centerColor;
+uniform vec4 u_edgeColor;
+uniform int u_useRadialGradient;
+uniform highp sampler2DArray u_spriteArray;
+uniform int u_spriteIndex;
 
 out vec4 fragColor;
 
@@ -186,29 +217,55 @@ void main() {
   // Distance from center for body
   float dist = length(pos);
   
-  // Body (circle or triangle at front)
+  // Body (circle or sprite at front)
   if (u_shapeType == 0) {
     // Circle body
     if (dist < v_radius) {
       float edge = smoothstep(v_radius, v_radius - 1.0, dist);
-      fragColor = vec4(u_bodyColor.rgb, u_bodyColor.a * edge);
+      
+      // Radial gradient or solid color
+      vec4 bodyCol;
+      if (u_useRadialGradient == 1) {
+        float t = dist / v_radius;
+        bodyCol = mix(u_centerColor, u_edgeColor, t);
+      } else {
+        bodyCol = u_bodyColor;
+      }
+      
+      fragColor = vec4(bodyCol.rgb, bodyCol.a * edge);
       return;
     }
   } else {
-    // Triangle body - check if in front triangle
-    float triLength = v_radius * 3.0; // Longer nose
-    if (pos.x > 0.0 && pos.x < triLength) {
-      float triWidth = (1.0 - pos.x / triLength) * v_radius;
-      if (abs(pos.y) < triWidth) {
-        fragColor = u_bodyColor;
+    // Sprite body - sample from texture array
+    // pos is in world-relative coords (pixels)
+    
+    // Sprite is square, sized to be visible (3x radius so it's not too tiny)
+    float spriteHalf = v_radius;
+    
+    // Sprite center is at origin (where bullet center is)
+    if (abs(pos.x) < spriteHalf && abs(pos.y) < spriteHalf) {
+      // Map pos to UV [0,1]
+      // pos.x from -spriteHalf to +spriteHalf -> u from 0 to 1
+      float u = (pos.x / spriteHalf) * 0.5 + 0.5;
+      float v = (pos.y / spriteHalf) * 0.5 + 0.5;
+      // Flip V for correct orientation (texture Y is inverted)
+      v = 1.0 - v;
+      
+      vec4 spriteColor = texture(u_spriteArray, vec3(u, v, float(u_spriteIndex)));
+      if (spriteColor.a > 0.01) {
+        fragColor = spriteColor;
         return;
       }
     }
   }
   
-  // Tail (behind the bullet, x < 0)
-  if (pos.x < 0.0 && pos.x > -v_tailLength) {
-    float t = -pos.x / v_tailLength; // 0 at body, 1 at tail end
+  // Tail (behind the bullet, with offset)
+  // tailOffset > 0 moves tail forward, < 0 moves it backward
+  float tailStartX = v_tailOffset;
+  float tailEndX = v_tailOffset - v_tailLength;
+  
+  if (pos.x < tailStartX && pos.x > tailEndX) {
+    float t = (tailStartX - pos.x) / v_tailLength; // 0 at start, 1 at end
     float tailWidthAtX = v_tailWidth * (1.0 - t * 0.7); // Taper
     
     if (abs(pos.y) < tailWidthAtX) {
@@ -231,6 +288,17 @@ let globalGl: WebGL2RenderingContext | null = null;
 let globalResources: BulletGpuResources | null = null;
 const batches = new Map<string, BulletBatch>();
 
+// Sprite paths - add new sprites here
+const SPRITE_PATHS = [
+  "/images/sprites/needle.png", // index 0
+];
+const SPRITE_SIZE = 32; // All sprites must be 32x32
+
+// Sprite name to index mapping for easy lookup
+export const BULLET_SPRITE_INDEX = {
+  needle: 0,
+} as const;
+
 export const setBulletGpuContext = (gl: WebGL2RenderingContext | null): void => {
   if (gl === globalGl) return;
   
@@ -238,15 +306,83 @@ export const setBulletGpuContext = (gl: WebGL2RenderingContext | null): void => 
   if (globalResources && globalGl) {
     globalGl.deleteProgram(globalResources.program);
     globalGl.deleteBuffer(globalResources.quadBuffer);
+    if (globalResources.spriteTexture) {
+      globalGl.deleteTexture(globalResources.spriteTexture);
+    }
   }
   batches.forEach((batch) => disposeBatch(batch));
   batches.clear();
   
   globalGl = gl;
   globalResources = gl ? createResources(gl) : null;
+  
+  // Load sprites asynchronously
+  if (gl && globalResources) {
+    loadSpriteArray(gl, globalResources);
+  }
 };
 
 export const getBulletGpuContext = (): WebGL2RenderingContext | null => globalGl;
+
+/**
+ * Loads all bullet sprites into a Texture2DArray
+ */
+const loadSpriteArray = (gl: WebGL2RenderingContext, resources: BulletGpuResources): void => {
+  const texture = gl.createTexture();
+  if (!texture) return;
+  
+  resources.spriteTexture = texture;
+  resources.spriteCount = SPRITE_PATHS.length;
+  
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+  
+  // Allocate texture array storage
+  gl.texImage3D(
+    gl.TEXTURE_2D_ARRAY,
+    0,
+    gl.RGBA,
+    SPRITE_SIZE,
+    SPRITE_SIZE,
+    SPRITE_PATHS.length,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    null
+  );
+  
+  // Set texture parameters
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  
+  // Load each sprite image
+  SPRITE_PATHS.forEach((path, index) => {
+    const image = new Image();
+    image.onload = () => {
+      if (gl !== globalGl || !globalResources) return; // Context changed
+      
+      gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+      gl.texSubImage3D(
+        gl.TEXTURE_2D_ARRAY,
+        0,
+        0, 0, index,
+        SPRITE_SIZE,
+        SPRITE_SIZE,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        image
+      );
+    };
+    image.onerror = () => {
+      console.error(`[BulletGpu] Failed to load sprite: ${path}`);
+    };
+    image.src = path;
+  });
+  
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+};
 
 const createResources = (gl: WebGL2RenderingContext): BulletGpuResources | null => {
   const vs = gl.createShader(gl.VERTEX_SHADER);
@@ -301,6 +437,12 @@ const createResources = (gl: WebGL2RenderingContext): BulletGpuResources | null 
       tailLengthMul: gl.getUniformLocation(program, "u_tailLengthMul"),
       tailWidthMul: gl.getUniformLocation(program, "u_tailWidthMul"),
       shapeType: gl.getUniformLocation(program, "u_shapeType"),
+      centerColor: gl.getUniformLocation(program, "u_centerColor"),
+      edgeColor: gl.getUniformLocation(program, "u_edgeColor"),
+      useRadialGradient: gl.getUniformLocation(program, "u_useRadialGradient"),
+      spriteArray: gl.getUniformLocation(program, "u_spriteArray"),
+      spriteIndex: gl.getUniformLocation(program, "u_spriteIndex"),
+      tailOffsetMul: gl.getUniformLocation(program, "u_tailOffsetMul"),
     },
     attributes: {
       unitPosition: gl.getAttribLocation(program, "a_unitPosition"),
@@ -309,6 +451,8 @@ const createResources = (gl: WebGL2RenderingContext): BulletGpuResources | null 
       instanceRadius: gl.getAttribLocation(program, "a_instanceRadius"),
       instanceActive: gl.getAttribLocation(program, "a_instanceActive"),
     },
+    spriteTexture: null,
+    spriteCount: 0,
   };
 };
 
@@ -584,7 +728,7 @@ export const renderBulletBatches = (
   if (!globalGl || !globalResources) return;
   
   const gl = globalGl;
-  const { program, uniforms } = globalResources;
+  const { program, uniforms, spriteTexture } = globalResources;
   
   gl.useProgram(program);
   gl.uniform2f(uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
@@ -592,6 +736,13 @@ export const renderBulletBatches = (
   
   gl.enable(gl.BLEND);
   gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  
+  // Bind sprite texture array once for all batches
+  if (spriteTexture) {
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, spriteTexture);
+    gl.uniform1i(uniforms.spriteArray, 0);
+  }
   
   batches.forEach((batch) => {
     if (batch.activeCount <= 0) return;
@@ -604,12 +755,29 @@ export const renderBulletBatches = (
     gl.uniform4f(uniforms.tailEndColor, config.tailEndColor.r, config.tailEndColor.g, config.tailEndColor.b, config.tailEndColor.a ?? 0);
     gl.uniform1f(uniforms.tailLengthMul, config.tailLengthMultiplier);
     gl.uniform1f(uniforms.tailWidthMul, config.tailWidthMultiplier);
-    gl.uniform1i(uniforms.shapeType, config.shape === "triangle" ? 1 : 0);
+    gl.uniform1f(uniforms.tailOffsetMul, config.tailOffsetMultiplier ?? 0);
+    gl.uniform1i(uniforms.shapeType, config.shape === "sprite" ? 1 : 0);
+    gl.uniform1i(uniforms.spriteIndex, config.spriteIndex ?? 0);
+    
+    // Radial gradient support
+    const useRadial = config.centerColor && config.edgeColor ? 1 : 0;
+    gl.uniform1i(uniforms.useRadialGradient, useRadial);
+    if (useRadial) {
+      const cc = config.centerColor!;
+      const ec = config.edgeColor!;
+      gl.uniform4f(uniforms.centerColor, cc.r, cc.g, cc.b, cc.a ?? 1);
+      gl.uniform4f(uniforms.edgeColor, ec.r, ec.g, ec.b, ec.a ?? 1);
+    }
     
     gl.bindVertexArray(batch.vao);
     gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, batch.capacity);
     gl.bindVertexArray(null);
   });
+  
+  // Unbind texture
+  if (spriteTexture) {
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+  }
 };
 
 /**

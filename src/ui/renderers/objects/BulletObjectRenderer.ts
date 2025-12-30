@@ -45,7 +45,7 @@ interface BulletRendererCustomData {
   speed?: number;
   maxSpeed?: number;
   velocity?: SceneVector2;
-  shape?: "circle" | "triangle";
+  shape?: "circle" | "sprite";
   renderComponents?: {
     body?: boolean;
     tail?: boolean;
@@ -451,7 +451,7 @@ const createGlowFill = (
   return fill;
 };
 
-const getProjectileShape = (instance: SceneObjectInstance): "circle" | "triangle" => {
+const getProjectileShape = (instance: SceneObjectInstance): "circle" | "sprite" => {
   const data = instance.data.customData as BulletRendererCustomData | undefined;
   return data?.shape ?? "circle";
 };
@@ -580,23 +580,11 @@ export class BulletObjectRenderer extends ObjectRenderer {
     }
 
     if (components.body) {
-      const shape = getProjectileShape(instance);
-      if (shape === "triangle") {
-        // Рендеримо трикутник як основну форму проджектайла
-        const triangleVertices = createTriangleVertices(instance);
-        dynamicPrimitives.push(
-          createDynamicTrianglePrimitive(instance, {
-            vertices: triangleVertices,
-            fill: instance.data.fill,
-          })
-        );
-      } else {
-        // Рендеримо коло як основну форму проджектайла
-        // Pre-resolve fill to enable fast-path
-        dynamicPrimitives.push(createDynamicCirclePrimitive(instance, {
-          fill: instance.data.fill,
-        }));
-      }
+      // Fallback renderer: sprites fall back to circles
+      // (GPU renderer handles actual sprite textures)
+      dynamicPrimitives.push(createDynamicCirclePrimitive(instance, {
+        fill: instance.data.fill,
+      }));
     }
 
     return {

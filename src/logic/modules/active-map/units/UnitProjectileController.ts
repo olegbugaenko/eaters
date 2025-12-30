@@ -24,7 +24,7 @@ import {
   type RingSlotHandle,
 } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 
-export type UnitProjectileShape = "circle" | "triangle";
+export type UnitProjectileShape = "circle" | "sprite";
 
 export interface UnitProjectileVisualConfig {
   radius: number;
@@ -35,6 +35,8 @@ export interface UnitProjectileVisualConfig {
   tailEmitter?: BulletTailEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;
   shape?: UnitProjectileShape;
+  /** Sprite index when shape === "sprite" */
+  spriteIndex?: number;
   hitRadius?: number;
   rendererCustomData?: Record<string, unknown>;
 }
@@ -161,6 +163,7 @@ export class UnitProjectileController {
       updateGpuBulletSlot(gpuSlot, position, rotation, radius, true);
 
       if (shouldCreateOverlay) {
+        // Overlay only renders emitters - body/tail/glow are handled by GPU
         effectsObjectId = this.scene.addObject("unitProjectile", {
           position,
           size: { width: radius * 2, height: radius * 2 },
@@ -169,9 +172,9 @@ export class UnitProjectileController {
           customData: {
             ...rendererCustomData,
             renderComponents: {
-              body: visual.fill.fillType !== FILL_TYPES.SOLID,
+              body: false,
               tail: false,
-              glow: true,
+              glow: false,
               emitters: true,
             },
           },
@@ -230,15 +233,29 @@ export class UnitProjectileController {
     // Extract colors from fill for GPU rendering
     const bodyColor = this.extractBodyColor(visual.fill);
     const tailColors = this.extractTailColors(visual.tail);
+    const radialColors = this.extractRadialGradient(visual.fill);
+    
+    // Use unique key for each visual type (shape + gradient + sprite)
+    let visualKey = `unit-projectile-${shape}`;
+    if (radialColors) {
+      visualKey += "-radial";
+    }
+    if (shape === "sprite" && visual.spriteIndex !== undefined) {
+      visualKey += `-sprite${visual.spriteIndex}`;
+    }
     
     return {
-      visualKey: `unit-projectile-${shape}`,
+      visualKey,
       bodyColor,
       tailStartColor: tailColors.start,
       tailEndColor: tailColors.end,
       tailLengthMultiplier: visual.tail?.lengthMultiplier ?? 4.5,
       tailWidthMultiplier: visual.tail?.widthMultiplier ?? 1.75,
+      tailOffsetMultiplier: visual.tail?.offsetMultiplier,
       shape,
+      centerColor: radialColors?.center,
+      edgeColor: radialColors?.edge,
+      spriteIndex: visual.spriteIndex,
     };
   }
   
@@ -248,7 +265,7 @@ export class UnitProjectileController {
     }
     if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT && "stops" in fill) {
       const stops = fill.stops as Array<{ color: SceneColor }>;
-      // Use the most opaque color from gradient
+      // Use the most opaque color from gradient (fallback for bodyColor)
       let bestColor: SceneColor = { r: 0.4, g: 0.6, b: 1.0, a: 1.0 };
       let bestAlpha = 0;
       for (const stop of stops) {
@@ -261,6 +278,26 @@ export class UnitProjectileController {
       return bestColor;
     }
     return { r: 0.4, g: 0.6, b: 1.0, a: 1.0 };
+  }
+  
+  private extractRadialGradient(fill: SceneFill): { center: SceneColor; edge: SceneColor } | null {
+    if (fill.fillType !== FILL_TYPES.RADIAL_GRADIENT || !("stops" in fill)) {
+      return null;
+    }
+    
+    const stops = fill.stops as Array<{ offset: number; color: SceneColor }>;
+    if (stops.length < 2) {
+      return null;
+    }
+    
+    // Sort stops by offset
+    const sorted = [...stops].sort((a, b) => a.offset - b.offset);
+    
+    // Use first stop as center color, last stop as edge color
+    const center = sorted[0]!.color;
+    const edge = sorted[sorted.length - 1]!.color;
+    
+    return { center, edge };
   }
   
   private extractTailColors(tail?: BulletTailConfig): { start: SceneColor; end: SceneColor } {
@@ -281,15 +318,14 @@ export class UnitProjectileController {
       | {
           trailEmitter?: BulletTailEmitterConfig;
           smokeEmitter?: BulletTailEmitterConfig;
-          glow?: unknown;
         }
       | undefined;
+    // Only create overlay for particle emitters - they need scene objects
+    // Gradients and glow are now handled by GPU renderer
     const hasEmitters = Boolean(
       visual.tailEmitter || rendererData?.trailEmitter || rendererData?.smokeEmitter,
     );
-    const hasGradientFill = visual.fill.fillType !== FILL_TYPES.SOLID;
-    const hasGlow = Boolean(rendererData?.glow);
-    return hasEmitters || hasGradientFill || hasGlow;
+    return hasEmitters;
   }
 
   public tick(deltaMs: number): void {
