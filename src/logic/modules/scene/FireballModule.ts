@@ -56,7 +56,7 @@ const FIREBALL_SPEED = 150; // pixels per second (reduced from 300 for more real
 const DEFAULT_FIREBALL_LIFETIME_MS = 5000; // 5 seconds max flight time (increased to compensate for slower speed)
 const DEFAULT_FIREBALL_EXPLOSION_RADIUS = 40;
 const DEFAULT_FIREBALL_MAX_DISTANCE = (FIREBALL_SPEED * DEFAULT_FIREBALL_LIFETIME_MS) / 1000;
-const FIREBALL_RADIUS = 8;
+const FIREBALL_RADIUS = 16;
 const FIREBALL_GLOW_COLOR: SceneColor = { r: 1.0, g: 0.7, b: 0.3, a: 0.8 };
 const FIREBALL_GLOW_RADIUS_MULTIPLIER = 1.9;
 const FIREBALL_TAIL_LENGTH_MULTIPLIER = 4.5;
@@ -81,18 +81,23 @@ const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
   fadeStartMs: 200,
   baseSpeed: 0.02,
   speedVariation: 0.002,
-  sizeRange: { min: 24.2, max: 28.4 },
+  sizeRange: { min: 24.2, max: 38.4 },
   spread: Math.PI,
-  offset: { x: -0.35, y: 0 },
+  offset: { x: -1.35, y: 0 },
   color: { r: 1, g: 0.7, b: 0.3, a: 0.45 },
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
     stops: [
-      { offset: 0, color: { r: 1, g: 0.85, b: 0.55, a: 0.12 } },
-      { offset: 0.25, color: { r: 1, g: 0.65, b: 0.2, a: 0.08 } },
-      { offset: 1, color: { r: 1, g: 0.4, b: 0.05, a: 0 } },
+      { offset: 0, color: { r: 1, g: 0.85, b: 0.55, a: 0.15 } },
+      { offset: 0.25, color: { r: 1, g: 0.65, b: 0.2, a: 0.10 } },
+      { offset: 1, color: { r: 1, g: 0.4, b: 0.05, a: 0.01 } },
     ],
+    noise: {
+      colorAmplitude: 0.01,
+      alphaAmplitude: 0.03,
+      scale: 0.35,
+    },
   },
   shape: "circle",
   maxParticles: 120,

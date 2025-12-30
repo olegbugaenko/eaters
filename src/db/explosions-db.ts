@@ -540,7 +540,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       defaultInitialRadius: 15,
       radiusExtension: 50,
       startAlpha: 0.9,
-      endAlpha: 0,
+      endAlpha: 0.3,
       gradientStops: [
         { offset: 0, color: { r: 1, g: 0.4, b: 0.1, a: 0.9 } },
         { offset: 0.5, color: { r: 1, g: 0.7, b: 0.3, a: 0.6 } },
