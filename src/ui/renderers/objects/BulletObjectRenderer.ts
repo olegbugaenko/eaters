@@ -116,6 +116,9 @@ const triangleVerticesCache = new WeakMap<
 const getRenderComponents = (instance: SceneObjectInstance) => {
   const data = instance.data.customData as BulletRendererCustomData | undefined;
   const components = data?.renderComponents;
+  // renderComponents lets callers (like GPU-driven projectiles that still need
+  // CPU-only effects) selectively disable parts of the bullet without changing
+  // its renderer type. By default everything renders unless explicitly turned off.
   return {
     body: components?.body !== false,
     tail: components?.tail !== false,

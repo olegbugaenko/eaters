@@ -147,6 +147,11 @@ export class UnitProjectileController {
       ...(visual.rendererCustomData ?? {}),
     };
 
+    // If the projectile needs features that the GPU-instanced bullet pass cannot draw
+    // (non-solid gradients for the core, glow quads, or CPU particle emitters),
+    // we attach a lightweight scene object that renders *only* those extras while
+    // the main body stays on the GPU. This keeps fireballs and other fancy bullets
+    // visually rich without giving up the high-throughput GPU path.
     const shouldCreateOverlay = this.shouldCreateOverlayObject(visual);
     let effectsObjectId: string | undefined;
     let objectId: string;
