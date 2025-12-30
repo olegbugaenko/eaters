@@ -5,10 +5,8 @@ import {
   SceneFill,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
-import {
-  BulletTailConfig,
-  BulletTailEmitterConfig,
-} from "./bullets-db";
+import { BulletTailConfig, BulletTailEmitterConfig } from "./bullets-db";
+import type { BulletSpriteName } from "../logic/services/bulletSprites";
 import { SkillId } from "./skills-db";
 import { ExplosionType } from "./explosions-db";
 
@@ -45,7 +43,7 @@ export interface SpellProjectileConfig {
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
-  spriteIndex?: number; // Sprite index when shape === "sprite"
+  spriteName?: BulletSpriteName; // Sprite name when shape === "sprite"
   aoe?: { radius: number; splash: number };
   explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
 }
@@ -235,7 +233,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     projectile: {
       radius: 7,
       shape: "sprite",
-      spriteIndex: 0, // needle sprite
+      spriteName: "needle",
       speed: 230,
       lifetimeMs: 3_600,
       fill: MAGIC_ARROW_PROJECTILE_FILL,
@@ -352,7 +350,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       count: 10,
       spreadAngle: 15,
       shape: "sprite",
-      spriteIndex: 0, // needle sprite
+      spriteName: "needle",
     },
     unlock: { skillId: "black_darts", level: 1 },
   },

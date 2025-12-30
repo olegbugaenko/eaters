@@ -6,6 +6,7 @@ import { FILL_TYPES } from "../logic/services/SceneObjectManager";
 import type { SceneFill } from "../logic/services/SceneObjectManager";
 import type { BulletTailConfig, BulletTailEmitterConfig } from "./bullets-db";
 import type { SpellProjectileRingTrailConfig } from "./spells-db";
+import type { BulletSpriteName } from "../logic/services/bulletSprites";
 
 export const UNIT_MODULE_IDS = [
   "magnet",
@@ -35,8 +36,8 @@ export interface UnitModuleProjectileVisualConfig {
   readonly tailEmitter?: BulletTailEmitterConfig;
   readonly ringTrail?: SpellProjectileRingTrailConfig;
   readonly shape?: "circle" | "sprite";
-  /** Sprite index when shape === "sprite" (see BULLET_SPRITE_INDEX) */
-  readonly spriteIndex?: number;
+  /** Sprite name when shape === "sprite" */
+  readonly spriteName?: BulletSpriteName;
   readonly hitRadius?: number;
 }
 
@@ -143,7 +144,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       lateralProjectileRange: 820,
       lateralProjectileHitRadius: 12,
       lateralProjectileVisual: {
-        radius: 14, // Larger for sprite visibility (32x32 sprite)
+        radius: 12, // Larger for sprite visibility (32x32 sprite)
         speed: 340,
         lifetimeMs: 3800,
         fill: {
@@ -194,7 +195,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
           color: { r: 0.5, g: 0.7, b: 0.9, a: 0.08 },
         },
         shape: "sprite",
-        spriteIndex: 0, // needle sprite
+        spriteName: "needle",
         hitRadius: 12,
       },
     },

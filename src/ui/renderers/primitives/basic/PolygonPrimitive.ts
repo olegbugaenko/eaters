@@ -240,7 +240,7 @@ const buildPolygonData = (
   return data;
 };
 
-// Optimized: inline transform, avoid .map() allocations
+// Optimized: fully inlined transform, no function allocations
 const updatePolygonData = (
   target: Float32Array,
   center: SceneVector2,
@@ -265,32 +265,44 @@ const updatePolygonData = (
   const hasRotation = rotation !== 0;
   const cos = hasRotation ? Math.cos(rotation) : 1;
   const sin = hasRotation ? Math.sin(rotation) : 0;
-
-  // Inline transform helper
-  const transformX = (v: SceneVector2): number =>
-    hasRotation ? cx + v.x * cos - v.y * sin : cx + v.x;
-  const transformY = (v: SceneVector2): number =>
-    hasRotation ? cy + v.x * sin + v.y * cos : cy + v.y;
+  const fillLen = fillComponents.length;
 
   let offset = 0;
   let changed = false;
   const anchor = vertices[0]!;
-  const anchorX = transformX(anchor);
-  const anchorY = transformY(anchor);
+  const anchorX = hasRotation ? cx + anchor.x * cos - anchor.y * sin : cx + anchor.x;
+  const anchorY = hasRotation ? cy + anchor.x * sin + anchor.y * cos : cy + anchor.y;
 
   for (let i = 1; i < vertices.length - 1; i += 1) {
-    changed = assignVertex(target, offset, anchorX, anchorY, fillComponents) || changed;
+    // Inline assignVertex for anchor
+    if (target[offset] !== anchorX) { target[offset] = anchorX; changed = true; }
+    if (target[offset + 1] !== anchorY) { target[offset + 1] = anchorY; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[offset + 2 + f] !== val) { target[offset + 2 + f] = val; changed = true; }
+    }
     offset += VERTEX_COMPONENTS;
 
     const current = vertices[i]!;
-    changed =
-      assignVertex(target, offset, transformX(current), transformY(current), fillComponents) ||
-      changed;
+    const currX = hasRotation ? cx + current.x * cos - current.y * sin : cx + current.x;
+    const currY = hasRotation ? cy + current.x * sin + current.y * cos : cy + current.y;
+    if (target[offset] !== currX) { target[offset] = currX; changed = true; }
+    if (target[offset + 1] !== currY) { target[offset + 1] = currY; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[offset + 2 + f] !== val) { target[offset + 2 + f] = val; changed = true; }
+    }
     offset += VERTEX_COMPONENTS;
 
     const next = vertices[i + 1]!;
-    changed =
-      assignVertex(target, offset, transformX(next), transformY(next), fillComponents) || changed;
+    const nextX = hasRotation ? cx + next.x * cos - next.y * sin : cx + next.x;
+    const nextY = hasRotation ? cy + next.x * sin + next.y * cos : cy + next.y;
+    if (target[offset] !== nextX) { target[offset] = nextX; changed = true; }
+    if (target[offset + 1] !== nextY) { target[offset + 1] = nextY; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[offset + 2 + f] !== val) { target[offset + 2 + f] = val; changed = true; }
+    }
     offset += VERTEX_COMPONENTS;
   }
   return changed;
@@ -492,7 +504,7 @@ interface DynamicPolygonStrokePrimitiveOptions {
   offset?: SceneVector2;
 }
 
-// Optimized: inline transform, no allocations, reuse target buffer when possible
+// Optimized: fully inlined transform and vertex writing, no function allocations
 const buildStrokeBandData = (
   center: SceneVector2,
   rotation: number,
@@ -518,12 +530,7 @@ const buildStrokeBandData = (
   const hasRotation = rotation !== 0;
   const cos = hasRotation ? Math.cos(rotation) : 1;
   const sin = hasRotation ? Math.sin(rotation) : 0;
-
-  // Inline transform helper - calculates world position without allocation
-  const transformX = (v: SceneVector2): number =>
-    hasRotation ? cx + v.x * cos - v.y * sin : cx + v.x;
-  const transformY = (v: SceneVector2): number =>
-    hasRotation ? cy + v.x * sin + v.y * cos : cy + v.y;
+  const fillLen = fillComponents.length;
 
   let write = 0;
   for (let i = 0; i < n; i += 1) {
@@ -533,24 +540,55 @@ const buildStrokeBandData = (
     const innerI = inner[i]!;
     const innerJ = inner[j]!;
 
-    // Transform inline
-    const Ax = transformX(outerI);
-    const Ay = transformY(outerI);
-    const Bx = transformX(outerJ);
-    const By = transformY(outerJ);
-    const ax = transformX(innerI);
-    const ay = transformY(innerI);
-    const bx = transformX(innerJ);
-    const by = transformY(innerJ);
+    // Inline transform calculations (no function call overhead)
+    let Ax: number, Ay: number, Bx: number, By: number;
+    let ax: number, ay: number, bx: number, by: number;
+    if (hasRotation) {
+      Ax = cx + outerI.x * cos - outerI.y * sin;
+      Ay = cy + outerI.x * sin + outerI.y * cos;
+      Bx = cx + outerJ.x * cos - outerJ.y * sin;
+      By = cy + outerJ.x * sin + outerJ.y * cos;
+      ax = cx + innerI.x * cos - innerI.y * sin;
+      ay = cy + innerI.x * sin + innerI.y * cos;
+      bx = cx + innerJ.x * cos - innerJ.y * sin;
+      by = cy + innerJ.x * sin + innerJ.y * cos;
+    } else {
+      Ax = cx + outerI.x;
+      Ay = cy + outerI.y;
+      Bx = cx + outerJ.x;
+      By = cy + outerJ.y;
+      ax = cx + innerI.x;
+      ay = cy + innerI.y;
+      bx = cx + innerJ.x;
+      by = cy + innerJ.y;
+    }
 
+    // Inline vertex writing (no function call overhead)
     // Triangle 1: A, B, a
-    write = pushVertex(data, write, Ax, Ay, fillComponents);
-    write = pushVertex(data, write, Bx, By, fillComponents);
-    write = pushVertex(data, write, ax, ay, fillComponents);
+    data[write] = Ax; data[write + 1] = Ay;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = Bx; data[write + 1] = By;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = ax; data[write + 1] = ay;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
     // Triangle 2: a, B, b
-    write = pushVertex(data, write, ax, ay, fillComponents);
-    write = pushVertex(data, write, Bx, By, fillComponents);
-    write = pushVertex(data, write, bx, by, fillComponents);
+    data[write] = ax; data[write + 1] = ay;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = Bx; data[write + 1] = By;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = bx; data[write + 1] = by;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
   }
   return data;
 };
@@ -595,6 +633,10 @@ export const createDynamicPolygonStrokePrimitive = (
   let prevPosX = instance.data.position.x;
   let prevPosY = instance.data.position.y;
   let prevRotation = rotation;
+  
+  // For solid color strokes, fillComponents don't depend on position/rotation
+  // so we can skip writeFillVertexComponents entirely
+  const isSolidFill = strokeFill.fillType === 0; // FILL_TYPES.SOLID = 0
 
   const primitive: DynamicPrimitive = {
     get data() {
@@ -625,13 +667,17 @@ export const createDynamicPolygonStrokePrimitive = (
         outer = expandVertices(inner, geometry.centerOffset, options.stroke.width, outer);
       }
       
-      fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-      fillComponents = writeFillVertexComponents(fillScratch, {
-        fill: strokeFill,
-        center: fillCenter,
-        rotation,
-        size: geometry.size,
-      });
+      // Skip fill computation for solid fills (color doesn't depend on position)
+      if (!isSolidFill) {
+        fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: strokeFill,
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
+      }
+      
       // Reuse existing data buffer when possible
       data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents, data);
       return data;
