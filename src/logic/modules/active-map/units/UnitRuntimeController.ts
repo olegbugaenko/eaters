@@ -129,15 +129,24 @@ export class UnitRuntimeController {
   ): UnitUpdateResult {
     const unitsSnapshot = [...units];
     const plannedTargets = new Map<string, string | null>();
+    const removedUnitIds = new Set<string>();
     let statsDirty = false;
     const unitsRemoved: PlayerUnitState[] = [];
+
+    const markUnitRemoved = (unit: PlayerUnitState): void => {
+      if (removedUnitIds.has(unit.id)) {
+        return;
+      }
+      removedUnitIds.add(unit.id);
+      this.removeUnit(unit);
+      unitsRemoved.push(unit);
+      statsDirty = true;
+    };
 
     // Phase 1: Update timers, regen, abilities, and plan movement
     unitsSnapshot.forEach((unit) => {
       if (unit.hp <= 0) {
-        this.removeUnit(unit);
-        unitsRemoved.push(unit);
-        statsDirty = true;
+        markUnitRemoved(unit);
         return;
       }
 
@@ -191,10 +200,8 @@ export class UnitRuntimeController {
 
     // Phase 2: Resolve collisions, update positions, perform attacks
     unitsSnapshot.forEach((unit) => {
-      if (unit.hp <= 0) {
-        this.removeUnit(unit);
-        unitsRemoved.push(unit);
-        statsDirty = true;
+      if (removedUnitIds.has(unit.id) || unit.hp <= 0) {
+        markUnitRemoved(unit);
         return;
       }
 
