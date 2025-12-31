@@ -127,11 +127,23 @@ export class UnitProjectileController {
   public spawn(projectile: UnitProjectileSpawn): string {
     const direction = normalizeVector(projectile.direction);
     const baseVisual = projectile.visual;
-    const spriteIndex =
-      baseVisual.shape === "sprite" && baseVisual.spriteIndex === undefined && baseVisual.spriteName
-        ? resolveBulletSpriteIndex(baseVisual.spriteName)
-        : baseVisual.spriteIndex;
-    const visual: UnitProjectileVisualConfig = { ...baseVisual, spriteIndex };
+    // Resolve spriteIndex from spriteName if needed
+    let spriteIndex = baseVisual.spriteIndex;
+    if (baseVisual.shape === "sprite" && spriteIndex === undefined && baseVisual.spriteName) {
+      try {
+        spriteIndex = resolveBulletSpriteIndex(baseVisual.spriteName);
+      } catch (error) {
+        console.error("[UnitProjectileController] Failed to resolve sprite index", {
+          spriteName: baseVisual.spriteName,
+          error,
+        });
+      }
+    }
+    // Create visual config with resolved spriteIndex
+    const visual: UnitProjectileVisualConfig = {
+      ...baseVisual,
+      spriteIndex, // This will be undefined if not resolved, which is fine
+    };
     const velocity = {
       x: direction.x * visual.speed,
       y: direction.y * visual.speed,
@@ -220,6 +232,8 @@ export class UnitProjectileController {
       effectsObjectId,
     };
 
+    console.log('state: ', state);
+
     this.projectiles.push(state);
     this.projectileIndex.set(objectId, state);
     if (ringTrail) {
@@ -231,13 +245,10 @@ export class UnitProjectileController {
   /**
    * Converts visual config to GPU bullet config.
    * Returns null if GPU rendering is not suitable for this bullet type.
+   * Note: tailEmitter doesn't block GPU rendering - it's handled via overlay object.
    */
   private getGpuBulletConfig(visual: UnitProjectileVisualConfig, shape: UnitProjectileShape): BulletVisualConfig | null {
-    // Skip GPU rendering only for tailEmitter (particle effects need scene)
-    // ringTrail rings are separate objects, bullets can still use GPU
-    if (visual.tailEmitter) {
-      return null;
-    }
+    // GPU rendering is always available - tailEmitter is handled via overlay object
     
     // Extract colors from fill for GPU rendering
     const bodyColor = this.extractBodyColor(visual.fill);

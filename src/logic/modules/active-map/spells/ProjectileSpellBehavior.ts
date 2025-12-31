@@ -1,4 +1,4 @@
-import { SceneObjectManager, SceneVector2, SceneColor, FILL_TYPES } from "../../../services/SceneObjectManager";
+import { SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
 import { BricksModule } from "../BricksModule";
 import {
   SpellBehavior,
@@ -6,63 +6,13 @@ import {
   SpellCanCastContext,
   SpellBehaviorDependencies,
 } from "./SpellBehavior";
-import { SpellConfig, SpellProjectileRingTrailConfig } from "../../../../db/spells-db";
+import { SpellConfig } from "../../../../db/spells-db";
 import { BonusValueMap } from "../../shared/BonusesModule";
 import type { BrickRuntimeState } from "../BricksModule";
 import type { ExplosionModule } from "../../scene/ExplosionModule";
 import type { ExplosionType } from "../../../../db/explosions-db";
-import { clampNumber } from "@/utils/helpers/numbers";
-
-const MAX_PROJECTILE_STEPS_PER_TICK = 5;
-const MIN_MOVEMENT_STEP = 2;
-const OUT_OF_BOUNDS_MARGIN = 50;
-
-interface ProjectileState {
-  id: string;
-  spellId: string;
-  position: SceneVector2;
-  velocity: SceneVector2;
-  radius: number;
-  elapsedMs: number;
-  lifetimeMs: number;
-  createdAt: number;
-  direction: SceneVector2;
-  damage: { min: number; max: number };
-  ringTrail?: ProjectileRingTrailState;
-  damageMultiplier: number;
-  aoe?: { radius: number; splash: number };
-  explosion?: ExplosionType;
-}
-
-interface ProjectileRingTrailState {
-  config: ProjectileRingTrailRuntimeConfig;
-  accumulatorMs: number;
-}
-
-interface ProjectileRingTrailRuntimeConfig
-  extends Omit<SpellProjectileRingTrailConfig, "color"> {
-  color: SceneColor;
-}
-
-interface RingState {
-  id: string;
-  position: SceneVector2;
-  elapsedMs: number;
-  createdAt: number; // For cleanup when tab becomes active
-  lifetimeMs: number;
-  startRadius: number;
-  endRadius: number;
-  startAlpha: number;
-  endAlpha: number;
-  innerStop: number;
-  outerStop: number;
-  outerFadeStop: number;
-  color: SceneColor;
-}
-
-const clamp01 = (value: number): number => clampNumber(value, 0, 1);
-
-const lerp = (a: number, b: number, t: number): number => a + (b - a) * clamp01(t);
+import { UnitProjectileController } from "../units/UnitProjectileController";
+import type { UnitProjectileVisualConfig } from "../units/UnitProjectileController";
 
 const randomDamage = (config: { min: number; max: number }): number => {
   const min = Math.max(0, Math.floor(config.min));
@@ -84,28 +34,6 @@ const sanitizeAoe = (
   return { radius, splash };
 };
 
-const createRingFill = (
-  radius: number,
-  alpha: number,
-  params: {
-    color: SceneColor;
-    innerStop: number;
-    outerStop: number;
-    outerFadeStop: number;
-  }
-) => ({
-  fillType: FILL_TYPES.RADIAL_GRADIENT,
-  start: { x: 0, y: 0 },
-  end: radius,
-  stops: [
-    { offset: 0, color: { ...params.color, a: 0 } },
-    { offset: params.innerStop, color: { ...params.color, a: 0 } },
-    { offset: params.outerStop, color: { ...params.color, a: clamp01(alpha) } },
-    { offset: params.outerFadeStop, color: { ...params.color, a: 0 } },
-    { offset: 1, color: { ...params.color, a: 0 } },
-  ],
-});
-
 export class ProjectileSpellBehavior implements SpellBehavior {
   public readonly spellType = "projectile" as const;
 
@@ -113,9 +41,17 @@ export class ProjectileSpellBehavior implements SpellBehavior {
   private readonly bricks: BricksModule;
   private readonly explosions?: ExplosionModule;
   private readonly getSpellPowerMultiplier: () => number;
+  private readonly projectiles: UnitProjectileController;
 
-  private projectiles: ProjectileState[] = [];
-  private rings: RingState[] = [];
+  // Track spell-specific data per projectile (damage, aoe, explosion)
+  private readonly projectileData = new Map<string, {
+    spellId: string;
+    damage: { min: number; max: number };
+    damageMultiplier: number;
+    aoe?: { radius: number; splash: number };
+    explosion?: ExplosionType;
+  }>();
+
   private spellPowerMultiplier = 1;
 
   constructor(dependencies: SpellBehaviorDependencies) {
@@ -124,6 +60,11 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     this.explosions = dependencies.explosions;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
+    
+    this.projectiles = new UnitProjectileController({
+      scene: this.scene,
+      bricks: this.bricks,
+    });
   }
 
   public canCast(context: SpellCanCastContext): boolean {
@@ -141,7 +82,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
     const config = context.config;
     const count = config.projectile.count ?? 1;
-    const spreadAngle = (config.projectile.spreadAngle ?? 0) * (Math.PI / 180); // Конвертація градусів в радіани
+    const spreadAngle = (config.projectile.spreadAngle ?? 0) * (Math.PI / 180);
     const baseAngle = Math.atan2(context.direction.y, context.direction.x);
 
     for (let i = 0; i < count; i += 1) {
@@ -158,55 +99,70 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         y: Math.sin(angle),
       };
 
-      const velocity: SceneVector2 = {
-        x: direction.x * config.projectile.speed,
-        y: direction.y * config.projectile.speed,
-      };
-
-      const position = {
+      const origin = {
         x: context.origin.x + (config.projectile.spawnOffset?.x ?? 0),
         y: context.origin.y + (config.projectile.spawnOffset?.y ?? 0),
       };
 
-      const objectId = this.scene.addObject("spellProjectile", {
-        position: { ...position },
-        size: { width: config.projectile.radius * 2, height: config.projectile.radius * 2 },
-        rotation: angle,
+      // Convert SpellProjectileConfig to UnitProjectileVisualConfig
+      const visual: UnitProjectileVisualConfig = {
+        radius: config.projectile.radius,
+        speed: config.projectile.speed,
+        lifetimeMs: Math.max(0, config.projectile.lifetimeMs),
         fill: config.projectile.fill,
-        customData: {
-          tail: config.projectile.tail,
+        tail: config.projectile.tail,
         tailEmitter: config.projectile.tailEmitter,
+        ringTrail: config.projectile.ringTrail,
         shape: config.projectile.shape ?? "circle",
-      },
-    });
-
-    const createdAt = performance.now();
-    const ringTrail = config.projectile.ringTrail
-      ? this.createRingTrailState(config.projectile.ringTrail)
-      : undefined;
-
-    const projectileState: ProjectileState = {
-        id: objectId,
-        spellId: context.spellId,
-      position: { ...position },
-      velocity,
-      radius: config.projectile.radius,
-      elapsedMs: 0,
-      lifetimeMs: Math.max(0, config.projectile.lifetimeMs),
-      createdAt,
-      direction: { ...direction },
-      damage: config.damage,
-      ringTrail,
-      damageMultiplier: context.spellPowerMultiplier,
-      aoe: sanitizeAoe(config.projectile.aoe),
-        explosion: config.projectile.explosion,
+        spriteName: config.projectile.spriteName,
       };
 
-      this.projectiles.push(projectileState);
+      const objectId = this.projectiles.spawn({
+        origin,
+        direction,
+        damage: 0, // Will be calculated on hit
+        rewardMultiplier: 1,
+        armorPenetration: 0,
+        visual,
+        onHit: (hitContext) => {
+          const data = this.projectileData.get(objectId);
+          if (!data) return true;
 
-      if (ringTrail) {
-        this.spawnProjectileRing(projectileState.position, ringTrail.config);
-      }
+          const baseDamage = randomDamage(data.damage);
+          const damage = Math.max(baseDamage * Math.max(data.damageMultiplier, 0), 0);
+          this.bricks.applyDamage(hitContext.brickId, damage, direction);
+          
+          const aoe = data.aoe;
+          if (aoe && aoe.radius > 0 && aoe.splash > 0 && damage > 0) {
+            this.bricks.forEachBrickNear(hitContext.position, aoe.radius, (brick: BrickRuntimeState) => {
+              if (brick.id === hitContext.brickId) return;
+              this.bricks.applyDamage(brick.id, damage * aoe.splash, direction);
+            });
+          }
+          
+          // Вибух при влучанні
+          if (data.explosion && this.explosions) {
+            this.explosions.spawnExplosionByType(data.explosion, {
+              position: { ...hitContext.position },
+            });
+          }
+          
+          this.projectileData.delete(objectId);
+          return true;
+        },
+        onExpired: () => {
+          this.projectileData.delete(objectId);
+        },
+      });
+
+      // Store spell-specific data
+      this.projectileData.set(objectId, {
+        spellId: context.spellId,
+        damage: config.damage,
+        damageMultiplier: context.spellPowerMultiplier,
+        aoe: sanitizeAoe(config.projectile.aoe),
+        explosion: config.projectile.explosion,
+      });
     }
 
     return true;
@@ -216,134 +172,19 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     if (deltaMs <= 0) {
       return;
     }
-
-    if (this.projectiles.length > 0) {
-      const deltaSeconds = deltaMs / 1000;
-      const mapSize = this.scene.getMapSize();
-
-      let writeIndex = 0;
-      for (let i = 0; i < this.projectiles.length; i += 1) {
-        const projectile = this.projectiles[i]!;
-        let hit = false;
-
-        const totalMoveX = projectile.velocity.x * deltaSeconds;
-        const totalMoveY = projectile.velocity.y * deltaSeconds;
-        const distance = Math.hypot(totalMoveX, totalMoveY);
-        const steps = Math.max(
-          1,
-          Math.min(
-            MAX_PROJECTILE_STEPS_PER_TICK,
-            Math.ceil(distance / Math.max(projectile.radius, MIN_MOVEMENT_STEP)),
-          ),
-        );
-        const stepX = totalMoveX / steps;
-        const stepY = totalMoveY / steps;
-
-        for (let j = 0; j < steps; j += 1) {
-          projectile.position.x += stepX;
-          projectile.position.y += stepY;
-
-          const collided = this.findHitBrick(projectile.position, projectile.radius);
-          if (collided) {
-            const baseDamage = randomDamage(projectile.damage);
-            const damage = Math.max(baseDamage * Math.max(projectile.damageMultiplier, 0), 0);
-            this.bricks.applyDamage(collided.id, damage, projectile.direction);
-            const aoe = projectile.aoe;
-            if (aoe && aoe.radius > 0 && aoe.splash > 0 && damage > 0) {
-              this.bricks.forEachBrickNear(projectile.position, aoe.radius, (brick: BrickRuntimeState) => {
-                if (brick.id === collided.id) return;
-                this.bricks.applyDamage(brick.id, damage * aoe.splash, projectile.direction);
-              });
-            }
-            // Вибух при влучанні
-            if (projectile.explosion && this.explosions) {
-              this.explosions.spawnExplosionByType(projectile.explosion, {
-                position: { ...projectile.position },
-              });
-            }
-            this.scene.removeObject(projectile.id);
-            if (projectile.ringTrail) {
-              this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
-            }
-            hit = true;
-            break;
-          }
-        }
-
-        if (hit) {
-          continue;
-        }
-
-        projectile.elapsedMs += deltaMs;
-        if (projectile.elapsedMs >= projectile.lifetimeMs) {
-          this.scene.removeObject(projectile.id);
-          continue;
-        }
-
-        if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
-          this.scene.removeObject(projectile.id);
-          continue;
-        }
-
-        this.scene.updateObject(projectile.id, {
-          position: { ...projectile.position },
-        });
-
-        if (projectile.ringTrail) {
-          this.updateProjectileRingTrail(projectile, deltaMs);
-        }
-
-        this.projectiles[writeIndex++] = projectile;
-      }
-      this.projectiles.length = writeIndex;
-    }
-
-    if (this.rings.length > 0) {
-      this.updateRings(deltaMs);
-    }
+    this.projectiles.tick(deltaMs);
   }
 
   public clear(): void {
-    this.projectiles.forEach((projectile) => {
-      this.scene.removeObject(projectile.id);
-    });
-    this.projectiles = [];
-    this.clearRings();
+    this.projectiles.clear();
+    this.projectileData.clear();
   }
 
   public cleanupExpired(): void {
-    const now = performance.now();
-
-    // Clean up expired projectiles (check out-of-bounds)
-    const mapSize = this.scene.getMapSize();
-    let writeIndex = 0;
-    for (let i = 0; i < this.projectiles.length; i += 1) {
-      const projectile = this.projectiles[i]!;
-      const lifetimeElapsed = now - projectile.createdAt;
-      if (lifetimeElapsed >= projectile.lifetimeMs) {
-        this.scene.removeObject(projectile.id);
-        continue;
-      }
-      if (this.isOutOfBounds(projectile.position, projectile.radius, mapSize, OUT_OF_BOUNDS_MARGIN)) {
-        this.scene.removeObject(projectile.id);
-        continue;
-      }
-      this.projectiles[writeIndex++] = projectile;
-    }
-    this.projectiles.length = writeIndex;
-    
-    // Clean up expired rings using absolute time
-    let ringWriteIndex = 0;
-    for (let i = 0; i < this.rings.length; i += 1) {
-      const ring = this.rings[i]!;
-      const elapsed = now - ring.createdAt;
-      if (elapsed >= ring.lifetimeMs) {
-        this.scene.removeObject(ring.id);
-        continue;
-      }
-      this.rings[ringWriteIndex++] = ring;
-    }
-    this.rings.length = ringWriteIndex;
+    this.projectiles.cleanupExpired();
+    // Clean up orphaned data entries
+    const activeIds = new Set<string>();
+    // Note: UnitProjectileController doesn't expose active IDs, so we'll clean up on next hit/expire
   }
 
   public onBonusValuesChanged(values: BonusValueMap): void {
@@ -353,8 +194,9 @@ export class ProjectileSpellBehavior implements SpellBehavior {
       return;
     }
     this.spellPowerMultiplier = sanitized;
-    this.projectiles.forEach((projectile) => {
-      projectile.damageMultiplier = sanitized;
+    // Update damage multiplier for all active projectiles
+    this.projectileData.forEach((data) => {
+      data.damageMultiplier = sanitized;
     });
   }
 
@@ -364,167 +206,5 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
   public deserializeState(_data: unknown): void {
     // Not implemented
-  }
-
-  private findHitBrick(
-    position: SceneVector2,
-    radius: number,
-  ): { id: string; distance: number; size: number } | null {
-    let closest: { id: string; distance: number; size: number } | null = null;
-    const expanded = Math.max(0, radius + 12);
-    this.bricks.forEachBrickNear(position, expanded, (brick: BrickRuntimeState) => {
-      const dx = brick.position.x - position.x;
-      const dy = brick.position.y - position.y;
-      const distanceSq = dx * dx + dy * dy;
-      const combined = Math.max(0, (brick.physicalSize ?? 0) + radius);
-      const combinedSq = combined * combined;
-      if (distanceSq <= combinedSq) {
-        if (!closest || distanceSq < closest.distance) {
-          // store squared distance; callers don't depend on exact metric
-          closest = { id: brick.id, distance: distanceSq, size: combined };
-        }
-      }
-    });
-
-    return closest;
-  }
-
-  private isOutOfBounds(
-    position: SceneVector2,
-    radius: number,
-    mapSize: { width: number; height: number },
-    margin: number = 0,
-  ): boolean {
-    return (
-      position.x + radius < -margin ||
-      position.y + radius < -margin ||
-      position.x - radius > mapSize.width + margin ||
-      position.y - radius > mapSize.height + margin
-    );
-  }
-
-  private createRingTrailState(
-    config: SpellProjectileRingTrailConfig
-  ): ProjectileRingTrailState {
-    const sanitized: ProjectileRingTrailRuntimeConfig = {
-      spawnIntervalMs: Math.max(1, Math.floor(config.spawnIntervalMs)),
-      lifetimeMs: Math.max(1, Math.floor(config.lifetimeMs)),
-      startRadius: Math.max(1, config.startRadius),
-      endRadius: Math.max(Math.max(1, config.startRadius), config.endRadius),
-      startAlpha: clamp01(config.startAlpha),
-      endAlpha: clamp01(config.endAlpha),
-      innerStop: clamp01(config.innerStop),
-      outerStop: clamp01(config.outerStop),
-      color: {
-        r: clamp01(config.color.r ?? 0),
-        g: clamp01(config.color.g ?? 0),
-        b: clamp01(config.color.b ?? 0),
-        a: clamp01(config.color.a ?? 1),
-      },
-    };
-
-    if (sanitized.outerStop <= sanitized.innerStop) {
-      sanitized.outerStop = Math.min(1, sanitized.innerStop + 0.1);
-    }
-
-    return {
-      config: sanitized,
-      accumulatorMs: 0,
-    };
-  }
-
-  private updateProjectileRingTrail(
-    projectile: ProjectileState,
-    deltaMs: number
-  ): void {
-    const trail = projectile.ringTrail;
-    if (!trail) {
-      return;
-    }
-    const interval = Math.max(1, trail.config.spawnIntervalMs);
-    trail.accumulatorMs += deltaMs;
-    while (trail.accumulatorMs >= interval) {
-      trail.accumulatorMs -= interval;
-      this.spawnProjectileRing(projectile.position, trail.config);
-    }
-  }
-
-  private spawnProjectileRing(
-    position: SceneVector2,
-    config: ProjectileRingTrailRuntimeConfig
-  ): void {
-    const innerStop = clamp01(config.innerStop);
-    let outerStop = clamp01(config.outerStop);
-    if (outerStop <= innerStop) {
-      outerStop = Math.min(1, innerStop + 0.1);
-    }
-    const outerFadeStop = Math.min(1, outerStop + 0.15);
-    const now = performance.now();
-    const ring: RingState = {
-      id: this.scene.addObject("spellProjectileRing", {
-        position: { ...position },
-        size: {
-          width: config.startRadius * 2,
-          height: config.startRadius * 2,
-        },
-        fill: createRingFill(config.startRadius, config.startAlpha, {
-          color: config.color,
-          innerStop,
-          outerStop,
-          outerFadeStop,
-        }),
-      }),
-      position: { ...position },
-      elapsedMs: 0,
-      createdAt: now,
-      lifetimeMs: config.lifetimeMs,
-      startRadius: config.startRadius,
-      endRadius: config.endRadius,
-      startAlpha: config.startAlpha,
-      endAlpha: config.endAlpha,
-      innerStop,
-      outerStop,
-      outerFadeStop,
-      color: { ...config.color },
-    };
-
-    this.rings.push(ring);
-  }
-
-  private updateRings(deltaMs: number): void {
-    if (deltaMs <= 0) {
-      return;
-    }
-    let writeIndex = 0;
-    for (let i = 0; i < this.rings.length; i += 1) {
-      const ring = this.rings[i]!;
-      ring.elapsedMs += deltaMs;
-      const lifetime = Math.max(1, ring.lifetimeMs);
-      if (ring.elapsedMs >= lifetime) {
-        this.scene.removeObject(ring.id);
-        continue;
-      }
-      const progress = clamp01(ring.elapsedMs / lifetime);
-      const radius = lerp(ring.startRadius, ring.endRadius, progress);
-      const alpha = lerp(ring.startAlpha, ring.endAlpha, progress);
-      if (alpha <= 0.001) {
-        this.scene.removeObject(ring.id);
-        continue;
-      }
-      this.scene.updateObject(ring.id, {
-        position: { ...ring.position },
-        size: { width: radius * 2, height: radius * 2 },
-        fill: createRingFill(radius, alpha, ring),
-      });
-      this.rings[writeIndex++] = ring;
-    }
-    this.rings.length = writeIndex;
-  }
-
-  private clearRings(): void {
-    this.rings.forEach((ring) => {
-      this.scene.removeObject(ring.id);
-    });
-    this.rings = [];
   }
 }

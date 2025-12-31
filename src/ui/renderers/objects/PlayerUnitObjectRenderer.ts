@@ -1396,12 +1396,24 @@ const getEmitterConfig = (
       ? Math.max(payload.physicalSize, 0)
       : 0;
 
+  // Convert sizeEvolutionMult (multiplier at end of lifetime) to sizeGrowthRate (multiplier per second)
+  // Formula: sizeGrowthRate = sizeEvolutionMult ^ (1 / lifetimeSeconds)
+  let sizeGrowthRate = base.sizeGrowthRate ?? 1.0;
+  const sizeEvolutionMult = (emitterSource as { sizeEvolutionMult?: number }).sizeEvolutionMult;
+  if (typeof sizeEvolutionMult === "number" && Number.isFinite(sizeEvolutionMult) && sizeEvolutionMult > 0) {
+    const lifetimeSeconds = base.particleLifetimeMs / 1000;
+    if (lifetimeSeconds > 0 && sizeEvolutionMult !== 1) {
+      sizeGrowthRate = Math.pow(sizeEvolutionMult, 1 / lifetimeSeconds);
+    }
+  }
+
   const config: PlayerUnitEmitterRenderConfig = {
     ...base,
     baseSpeed,
     speedVariation,
     spread,
     physicalSize,
+    sizeGrowthRate,
   };
   
   emitterConfigCache.set(instance, { source: emitterSource, config });
