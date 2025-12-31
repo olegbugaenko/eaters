@@ -1,4 +1,5 @@
 import { SceneObjectManager, SceneVector2, FILL_TYPES, SceneColor } from "../../../services/SceneObjectManager";
+import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
 import { MovementService } from "../../../services/MovementService";
 import {
   PlayerUnitType,
@@ -119,7 +120,7 @@ const cloneEmitter = (
     b: config.color.b,
     a: config.color.a,
   },
-  fill: config.fill ? cloneFill(config.fill) : undefined,
+  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
   shape: config.shape,
   maxParticles: config.maxParticles,
 });
@@ -191,45 +192,6 @@ const cloneRendererLayer = (
     anim: (layer as any).anim,
     groupId: (layer as any).groupId,
   };
-};
-
-const cloneFill = (fill: any): any => {
-  if (!fill) return undefined;
-  if (fill.fillType === FILL_TYPES.SOLID) {
-    return {
-      fillType: FILL_TYPES.SOLID,
-      color: { ...fill.color },
-      ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-    };
-  }
-  if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
-    return {
-      fillType: FILL_TYPES.LINEAR_GRADIENT,
-      start: fill.start ? { ...fill.start } : undefined,
-      end: fill.end ? { ...fill.end } : undefined,
-      stops: fill.stops.map((stop: any) => ({
-        offset: stop.offset,
-        color: { ...stop.color },
-      })),
-      ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-    };
-  }
-  if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT || fill.fillType === FILL_TYPES.DIAMOND_GRADIENT) {
-    return {
-      fillType: fill.fillType,
-      start: fill.start ? { ...fill.start } : undefined,
-      end: typeof fill.end === "number" ? fill.end : undefined,
-      stops: fill.stops.map((stop: any) => ({
-        offset: stop.offset,
-        color: { ...stop.color },
-      })),
-      ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-    };
-  }
-  return fill;
 };
 
 export class UnitFactory {

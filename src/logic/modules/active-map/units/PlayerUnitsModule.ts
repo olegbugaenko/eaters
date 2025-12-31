@@ -63,6 +63,7 @@ import { UnitRuntimeController } from "./UnitRuntimeController";
 import { UnitProjectileController } from "./UnitProjectileController";
 import { spawnTailNeedleVolley } from "./TailNeedleVolley";
 import type { PlayerUnitState } from "./UnitTypes";
+import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -471,6 +472,7 @@ export class PlayerUnitsModule implements GameModule {
       this.unitOrder.push(state);
     });
 
+    this.abilities.resetRun();
     this.pushStats();
   }
 
@@ -1269,6 +1271,7 @@ export class PlayerUnitsModule implements GameModule {
     });
     this.unitOrder = [];
     this.units.clear();
+    this.abilities.resetRun();
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {
@@ -1477,7 +1480,7 @@ const cloneEmitter = (
     b: config.color.b,
     a: config.color.a,
   },
-  fill: config.fill ? cloneFill(config.fill) : undefined,
+  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
   shape: config.shape,
   maxParticles: config.maxParticles,
 });
@@ -1576,7 +1579,7 @@ const cloneRendererFill = (
     };
   }
   if (fill.type === "gradient") {
-    return { type: "gradient", fill: cloneFill(fill.fill) };
+    return { type: "gradient", fill: cloneSceneFill(fill.fill) };
   }
   return {
     type: "base",
@@ -1604,45 +1607,6 @@ const cloneRendererStroke = (
     brightness: stroke.brightness,
     alphaMultiplier: stroke.alphaMultiplier,
   };
-};
-
-const cloneFill = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      } as SceneFill;
-    default:
-      return fill;
-  }
 };
 
 const cloneVector = (vector: SceneVector2): SceneVector2 => ({ x: vector.x, y: vector.y });

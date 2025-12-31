@@ -1,130 +1,23 @@
 import { GameModule } from "../../core/types";
+import { FILL_TYPES, SceneFill, SceneVector2 } from "../../services/SceneObjectManager";
+import { cloneSceneFill } from "../../helpers/scene-fill.helper";
+import { FireballModuleOptions, FireballSpawnOptions, FireballState, FireballTrailEmitterConfig } from "./FireballModule.types";
+export type { FireballSpawnOptions, FireballTrailEmitterConfig } from "./FireballModule.types";
 import {
-  FILL_TYPES,
-  SceneColor,
-  SceneFill,
-  SceneObjectManager,
-  SceneVector2,
-} from "../../services/SceneObjectManager";
-import { ParticleEmitterShape } from "../../services/particles/ParticleEmitterShared";
+  DEFAULT_FIREBALL_EXPLOSION_RADIUS,
+  DEFAULT_FIREBALL_LIFETIME_MS,
+  DEFAULT_FIREBALL_MAX_DISTANCE,
+  FIREBALL_GLOW_COLOR,
+  FIREBALL_GLOW_RADIUS_MULTIPLIER,
+  FIREBALL_RADIUS,
+  FIREBALL_SMOKE_EMITTER,
+  FIREBALL_SPEED,
+  FIREBALL_TAIL_RENDER,
+  FIREBALL_TRAIL_EMITTER,
+} from "./FireballModule.const";
 import { UnitProjectileController } from "../active-map/units/UnitProjectileController";
 import { BricksModule } from "../active-map/BricksModule";
 import { ExplosionModule } from "./ExplosionModule";
-
-interface FireballModuleOptions {
-  scene: SceneObjectManager;
-  bricks: BricksModule;
-  explosions: ExplosionModule;
-  logEvent: (message: string) => void;
-}
-
-interface FireballState {
-  targetBrickId: string;
-  damage: number;
-  radius: number;
-  explosionRadius: number;
-  sourceUnitId: string;
-  trailEmitter: FireballTrailEmitterConfig;
-  smokeEmitter: FireballTrailEmitterConfig;
-}
-
-interface FireballSpawnOptions {
-  sourceUnitId: string;
-  sourcePosition: SceneVector2;
-  targetBrickId: string;
-  damage: number;
-  explosionRadius: number;
-  maxDistance: number;
-}
-
-export interface FireballTrailEmitterConfig {
-  particlesPerSecond: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  baseSpeed: number;
-  speedVariation: number;
-  sizeRange: { min: number; max: number };
-  spread: number;
-  offset: SceneVector2;
-  color: SceneColor;
-  fill?: SceneFill;
-  shape?: ParticleEmitterShape;
-  maxParticles?: number;
-}
-
-const FIREBALL_SPEED = 150; // pixels per second (reduced from 300 for more realistic movement)
-const DEFAULT_FIREBALL_LIFETIME_MS = 5000; // 5 seconds max flight time (increased to compensate for slower speed)
-const DEFAULT_FIREBALL_EXPLOSION_RADIUS = 40;
-const DEFAULT_FIREBALL_MAX_DISTANCE = (FIREBALL_SPEED * DEFAULT_FIREBALL_LIFETIME_MS) / 1000;
-const FIREBALL_RADIUS = 16;
-const FIREBALL_GLOW_COLOR: SceneColor = { r: 1.0, g: 0.7, b: 0.3, a: 0.8 };
-const FIREBALL_GLOW_RADIUS_MULTIPLIER = 1.9;
-const FIREBALL_TAIL_LENGTH_MULTIPLIER = 4.5;
-const FIREBALL_TAIL_WIDTH_MULTIPLIER = 1.6;
-const FIREBALL_TAIL_START_COLOR: SceneColor = {
-  r: 1,
-  g: 0.75,
-  b: 0.3,
-  a: 0.13,
-};
-const FIREBALL_TAIL_END_COLOR: SceneColor = { r: 0.2, g: 0.02, b: 0, a: 0 };
-const FIREBALL_TAIL_RENDER = {
-  lengthMultiplier: FIREBALL_TAIL_LENGTH_MULTIPLIER,
-  widthMultiplier: FIREBALL_TAIL_WIDTH_MULTIPLIER,
-  startColor: { ...FIREBALL_TAIL_START_COLOR },
-  endColor: { ...FIREBALL_TAIL_END_COLOR },
-};
-
-const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
-  particlesPerSecond: 90,
-  particleLifetimeMs: 750,
-  fadeStartMs: 200,
-  baseSpeed: 0.02,
-  speedVariation: 0.002,
-  sizeRange: { min: 24.2, max: 38.4 },
-  spread: Math.PI,
-  offset: { x: -1.35, y: 0 },
-  color: { r: 1, g: 0.7, b: 0.3, a: 0.45 },
-  fill: {
-    fillType: FILL_TYPES.RADIAL_GRADIENT,
-    start: { x: 0, y: 0 },
-    stops: [
-      { offset: 0, color: { r: 1, g: 0.85, b: 0.55, a: 0.15 } },
-      { offset: 0.25, color: { r: 1, g: 0.65, b: 0.2, a: 0.10 } },
-      { offset: 1, color: { r: 1, g: 0.4, b: 0.05, a: 0.01 } },
-    ],
-    noise: {
-      colorAmplitude: 0.01,
-      alphaAmplitude: 0.03,
-      scale: 0.35,
-    },
-  },
-  shape: "circle",
-  maxParticles: 120,
-};
-
-const FIREBALL_SMOKE_EMITTER: FireballTrailEmitterConfig = {
-  particlesPerSecond: 48,
-  particleLifetimeMs: 820,
-  fadeStartMs: 320,
-  baseSpeed: 0.04,
-  speedVariation: 0.02,
-  sizeRange: { min: 12, max: 16 },
-  spread: Math.PI / 4,
-  offset: { x: -0.55, y: 0 },
-  color: { r: 0.35, g: 0.24, b: 0.18, a: 0.4 },
-  fill: {
-    fillType: FILL_TYPES.RADIAL_GRADIENT,
-    start: { x: 0, y: 0 },
-    stops: [
-      { offset: 0, color: { r: 0.6, g: 0.5, b: 0.4, a: 0.12 } },
-      { offset: 0.3, color: { r: 0.4, g: 0.32, b: 0.28, a: 0.08 } },
-      { offset: 1, color: { r: 0.18, g: 0.14, b: 0.12, a: 0 } },
-    ],
-  },
-  shape: "circle",
-  maxParticles: 72,
-};
 
 const createCoreFill = (radius: number): SceneFill => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -136,45 +29,6 @@ const createCoreFill = (radius: number): SceneFill => ({
     { offset: 1, color: { r: 0.9, g: 0.95, b: 0.9, a: 0.95 } },
   ],
 });
-
-const cloneFill = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      } as SceneFill;
-    default:
-      return fill;
-  }
-};
 
 const cloneTrailEmitterConfig = (
   config: FireballTrailEmitterConfig,
@@ -188,7 +42,7 @@ const cloneTrailEmitterConfig = (
   spread: config.spread,
   offset: { x: config.offset.x, y: config.offset.y },
   color: { ...config.color },
-  fill: config.fill ? cloneFill(config.fill) : undefined,
+  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
   shape: config.shape,
   maxParticles: config.maxParticles,
 });
