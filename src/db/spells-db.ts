@@ -178,14 +178,14 @@ const MAGIC_ARROW_TAIL: BulletTailConfig = {
 
 const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
   particlesPerSecond: 30,
-  particleLifetimeMs: 1950,
+  particleLifetimeMs: 1350,
   fadeStartMs: 540,
   baseSpeed: 0.05,
   speedVariation: 0.001,
   sizeRange: { min: 34.1, max: 46.4 },
   sizeEvolutionMult: 3.5, // Particles grow from 1x to 2x size over lifetime
   spread: Math.PI / 5,
-  offset: { x: -1, y: 0 },
+  offset: { x: -2, y: 0 },
   color: { r: 0.55, g: 0.4, b: 1, a: 0.6 },
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -196,7 +196,7 @@ const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
     noise: {
       colorAmplitude: 0.0,
       alphaAmplitude: 0.03,
-      scale: 0.45,
+      scale: 0.35,
     },
   },
   maxParticles: 90,
