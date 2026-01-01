@@ -195,7 +195,7 @@ const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
     ],
     noise: {
       colorAmplitude: 0.0,
-      alphaAmplitude: 0.03,
+      alphaAmplitude: 0.02,
       scale: 0.35,
     },
   },
