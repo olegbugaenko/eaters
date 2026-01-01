@@ -14,6 +14,8 @@ export type BulletType = "magnetic" | "plasmoid" | "mechanical";
 export interface BulletTailConfig {
   lengthMultiplier: number;
   widthMultiplier: number;
+  /** Tail offset along movement axis (positive = forward, negative = backward) */
+  offsetMultiplier?: number;
   startColor: SceneColor;
   endColor: SceneColor;
 }
@@ -25,6 +27,8 @@ export interface BulletTailEmitterConfig {
   baseSpeed: number;
   speedVariation: number;
   sizeRange: { min: number; max: number };
+  /** Size evolution multiplier: >1 = grow, <1 = shrink, 1 = constant (default) */
+  sizeEvolutionMult?: number;
   spread: number;
   offset: SceneVector2;
   color: SceneColor;

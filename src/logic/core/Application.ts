@@ -28,6 +28,7 @@ import { BuildingsModule } from "../modules/camp/BuildingsModule";
 import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
 import { resetAllArcBatches } from "../../ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { clearAllParticleEmitters } from "../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
 import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
@@ -173,6 +174,7 @@ export class Application {
       arcs: undefined, // will set after ArcModule created
       effects: undefined, // will set after EffectsModule created
       audio: audioModule,
+      unitDesign: unitDesignModule,
       onAllUnitsDefeated: () => {
         this.handleAllUnitsDefeated();
       },
@@ -218,24 +220,8 @@ export class Application {
 
     const fireballModule = new FireballModule({
       scene: sceneObjects,
+      bricks: bricksModule,
       explosions: explosionModule,
-      getBrickPosition: (brickId) => {
-        const brick = bricksModule.getBrickState(brickId);
-        return brick?.position || null;
-      },
-      damageBrick: (brickId, damage) => {
-        const brick = bricksModule.getBrickState(brickId);
-        if (brick) {
-          bricksModule.applyDamage(brickId, damage, { x: 0, y: 0 }, {
-            rewardMultiplier: 1,
-            armorPenetration: 0,
-          });
-        }
-      },
-      getBricksInRadius: (position, radius) => {
-        const nearbyBricks = bricksModule.findBricksNear(position, radius);
-        return nearbyBricks.map(brick => brick.id);
-      },
       logEvent: (message) => console.log(`[FireballModule] ${message}`),
     });
     this.fireballModule = fireballModule;
@@ -494,6 +480,9 @@ export class Application {
     } catch {}
     try {
       resetAllArcBatches();
+    } catch {}
+    try {
+      clearAllParticleEmitters();
     } catch {}
   }
 

@@ -79,9 +79,9 @@ const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
 ] as const;
 
 const FLOODED_ARCH_GRADIENT: readonly SceneGradientStop[] = [
-  { offset: 0, color: { r: 0.73, g: 0.78, b: 0.78, a: 1 } },
-  { offset: 0.55, color: { r: 0.63, g: 0.68, b: 0.68, a: 1 } },
-  { offset: 1, color: { r: 0.53, g: 0.58, b: 0.58, a: 1 } },
+  { offset: 0, color: { r: 0.63, g: 0.73, b: 0.73, a: 1 } },
+  { offset: 0.55, color: { r: 0.53, g: 0.63, b: 0.63, a: 1 } },
+  { offset: 1, color: { r: 0.43, g: 0.53, b: 0.53, a: 1 } },
 ] as const;
 
 const SMALL_SQUARE_TRAINING_BRICK_GRADIENT: readonly SceneGradientStop[] = [
@@ -221,7 +221,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         scale: 0.5,
       },
     },
-    stroke: { color: { r: 0.43, g: 0.48, b: 0.48, a: 1 }, width: 1.5 },
+    stroke: { color: { r: 0.43, g: 0.48, b: 0.48, a: 0.5 }, width: 1.5 },
     destructubleData: {
       maxHp: 6,
       armor: 0,

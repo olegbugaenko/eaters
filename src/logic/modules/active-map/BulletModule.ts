@@ -7,6 +7,7 @@ import {
   SceneObjectManager,
   SceneVector2,
 } from "../../services/SceneObjectManager";
+import { cloneSceneFill, cloneSceneFillFilaments, cloneSceneFillNoise } from "../../helpers/scene-fill.helper";
 import {
   BULLET_TYPES,
   BulletConfig,
@@ -18,19 +19,8 @@ import {
 import { ExplosionType } from "../../../db/explosions-db";
 import { ExplosionModule, SpawnExplosionByTypeOptions } from "../scene/ExplosionModule";
 import { MapRunState } from "./MapRunState";
-
-interface BulletCustomData {
-  type: BulletType;
-  tail: BulletTailConfig;
-  tailEmitter?: BulletTailEmitterConfig;
-}
-
-const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
-  noise ? { ...noise } : undefined;
-
-const cloneFilaments = (
-  filaments: SceneFillFilaments | undefined
-): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
+import { BulletCustomData, BulletModuleOptions, BulletState, SpawnBulletByTypeOptions } from "./BulletModule.types";
+export type { SpawnBulletByTypeOptions } from "./BulletModule.types";
 
 const createBulletFill = (radius: number, config: BulletConfig) => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -40,8 +30,8 @@ const createBulletFill = (radius: number, config: BulletConfig) => ({
     offset: stop.offset,
     color: { ...stop.color },
   })),
-  ...(config.noise ? { noise: cloneNoise(config.noise) } : {}),
-  ...(config.filaments ? { filaments: cloneFilaments(config.filaments) } : {}),
+  ...(config.noise ? { noise: cloneSceneFillNoise(config.noise) } : {}),
+  ...(config.filaments ? { filaments: cloneSceneFillFilaments(config.filaments) } : {}),
 });
 
 const createBulletCustomData = (
@@ -71,78 +61,13 @@ const cloneTailEmitterConfig = (
   spread: config.spread,
   offset: { x: config.offset.x, y: config.offset.y },
   color: { ...config.color },
-  fill: config.fill ? cloneFill(config.fill) : undefined,
+  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
   maxParticles: config.maxParticles,
 });
-
-const cloneFill = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      } as SceneFill;
-    default:
-      return fill;
-  }
-};
-
-interface BulletState {
-  id: string;
-  type: BulletType;
-  config: BulletConfig;
-  position: SceneVector2;
-  velocity: SceneVector2;
-  radius: number;
-  lifetimeMs: number;
-  elapsedMs: number;
-  rotation: number;
-  fill: SceneFill;
-  explosionType?: ExplosionType;
-}
 
 const reusableUpdatePayload: { position: SceneVector2 } = {
   position: { x: 0, y: 0 },
 };
-
-export interface SpawnBulletByTypeOptions {
-  position?: SceneVector2;
-  directionAngle?: number;
-  lifetimeMs?: number;
-}
-
-interface BulletModuleOptions {
-  scene: SceneObjectManager;
-  explosions: ExplosionModule;
-  runState: MapRunState;
-}
 
 export class BulletModule implements GameModule {
   public readonly id = "bullet";
@@ -206,13 +131,14 @@ export class BulletModule implements GameModule {
       y: Math.sin(angle) * speedPerMs,
     };
     const fill = createBulletFill(radius, config);
+    const customData = createBulletCustomData(type, config.tail, config.tailEmitter);
 
     const id = this.options.scene.addObject("bullet", {
       position: { ...position },
       size: { width: config.diameter, height: config.diameter },
       fill,
       rotation: angle,
-      customData: createBulletCustomData(type, config.tail, config.tailEmitter),
+      customData,
     });
 
     this.bullets.push({
@@ -230,6 +156,7 @@ export class BulletModule implements GameModule {
       elapsedMs: 0,
       rotation: angle,
       explosionType: config.explosionType,
+      customData,
     });
 
     return id;

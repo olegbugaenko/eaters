@@ -45,7 +45,7 @@ import {
 } from "../../../visuals/VisualEffectState";
 import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import { UnitTargetingMode } from "../../../../types/unit-targeting";
-import { UnitDesignId } from "../../camp/UnitDesignModule";
+import { UnitDesignId, UnitDesignModule } from "../../camp/UnitDesignModule";
 import { ArcModule } from "../../scene/ArcModule";
 import { EffectsModule } from "../../scene/EffectsModule";
 import { FireballModule } from "../../scene/FireballModule";
@@ -63,6 +63,7 @@ import { UnitRuntimeController } from "./UnitRuntimeController";
 import { UnitProjectileController } from "./UnitProjectileController";
 import { spawnTailNeedleVolley } from "./TailNeedleVolley";
 import type { PlayerUnitState } from "./UnitTypes";
+import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -110,6 +111,7 @@ interface PlayerUnitsModuleOptions {
   arcs?: ArcModule;
   effects?: EffectsModule;
   fireballs?: FireballModule;
+  unitDesign?: UnitDesignModule;
   onAllUnitsDefeated?: () => void;
   getModuleLevel: (id: UnitModuleId) => number;
   hasSkill: (id: SkillId) => boolean;
@@ -145,6 +147,7 @@ export class PlayerUnitsModule implements GameModule {
     designId: UnitDesignId | null,
     type: PlayerUnitType
   ) => UnitTargetingMode;
+  private readonly unitDesign?: UnitDesignModule;
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
   private readonly unitFactory: UnitFactory;
@@ -156,6 +159,7 @@ export class PlayerUnitsModule implements GameModule {
   private unitOrder: PlayerUnitState[] = [];
   private unitBlueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
   private readonly statsReporter: UnitStatisticsReporter;
+  private lastTickTimestampMs = performance.now();
 
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
@@ -171,6 +175,7 @@ export class PlayerUnitsModule implements GameModule {
     this.getModuleLevel = options.getModuleLevel;
     this.hasSkill = options.hasSkill;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
+    this.unitDesign = options.unitDesign;
     this.statistics = options.statistics;
     this.runState = options.runState;
     const abilitySceneService = new AbilityVisualService({
@@ -315,6 +320,7 @@ export class PlayerUnitsModule implements GameModule {
     if (!this.runState.shouldProcessTick()) {
       return;
     }
+    this.lastTickTimestampMs = performance.now();
     this.abilities.update(deltaMs);
 
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
@@ -328,6 +334,42 @@ export class PlayerUnitsModule implements GameModule {
   public cleanupExpired(): void {
     // Clean up expired projectiles and rings that accumulated while tab was inactive
     this.projectiles.cleanupExpired();
+
+    // Remove dead units and advance basic timers using real time to prevent buildup while inactive
+    const now = performance.now();
+    const elapsedSeconds = Math.max(0, (now - this.lastTickTimestampMs) / 1000);
+    this.lastTickTimestampMs = now;
+
+    let statsDirty = false;
+
+    if (elapsedSeconds > 0 && this.unitOrder.length > 0) {
+      const unitsSnapshot = [...this.unitOrder];
+      unitsSnapshot.forEach((unit) => {
+        if (unit.hp <= 0) {
+          this.removeUnit(unit);
+          statsDirty = true;
+          return;
+        }
+
+        unit.attackCooldown = Math.max(unit.attackCooldown - elapsedSeconds, 0);
+        unit.timeSinceLastAttack = Math.min(
+          unit.timeSinceLastAttack + elapsedSeconds,
+          PHEROMONE_TIMER_CAP_SECONDS,
+        );
+        unit.timeSinceLastSpecial = Math.min(
+          unit.timeSinceLastSpecial + elapsedSeconds,
+          PHEROMONE_TIMER_CAP_SECONDS,
+        );
+        unit.wanderCooldown = Math.max(unit.wanderCooldown - elapsedSeconds, 0);
+      });
+    }
+
+    if (statsDirty) {
+      this.pushStats();
+    }
+
+    // Ensure any pending scene removals for player units are flushed after a hidden tab
+    this.scene.flushAllPendingRemovals();
   }
 
   public getUnitPositionIfAlive = (unitId: string): SceneVector2 | null => {
@@ -430,6 +472,7 @@ export class PlayerUnitsModule implements GameModule {
       this.unitOrder.push(state);
     });
 
+    this.abilities.resetRun();
     this.pushStats();
   }
 
@@ -461,7 +504,21 @@ export class PlayerUnitsModule implements GameModule {
 
   private createUnitState(unit: PlayerUnitSpawnData): PlayerUnitState {
     const type = sanitizeUnitType(unit.type);
-    const blueprint = this.unitBlueprints.get(type);
+    
+    // Try to get blueprint from design first (includes module multipliers)
+    let blueprint: PlayerUnitBlueprintStats | undefined;
+    if (unit.designId && this.unitDesign) {
+      const design = this.unitDesign.getDesign(unit.designId);
+      if (design && design.type === type) {
+        blueprint = design.blueprint;
+      }
+    }
+    
+    // Fallback to base blueprint if no design blueprint found
+    if (!blueprint) {
+      blueprint = this.unitBlueprints.get(type);
+    }
+    
     if (!blueprint) {
       throw new Error(`Missing blueprint stats for unit type: ${type}`);
     }
@@ -1214,6 +1271,7 @@ export class PlayerUnitsModule implements GameModule {
     });
     this.unitOrder = [];
     this.units.clear();
+    this.abilities.resetRun();
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {
@@ -1422,7 +1480,7 @@ const cloneEmitter = (
     b: config.color.b,
     a: config.color.a,
   },
-  fill: config.fill ? cloneFill(config.fill) : undefined,
+  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
   shape: config.shape,
   maxParticles: config.maxParticles,
 });
@@ -1521,7 +1579,7 @@ const cloneRendererFill = (
     };
   }
   if (fill.type === "gradient") {
-    return { type: "gradient", fill: cloneFill(fill.fill) };
+    return { type: "gradient", fill: cloneSceneFill(fill.fill) };
   }
   return {
     type: "base",
@@ -1549,45 +1607,6 @@ const cloneRendererStroke = (
     brightness: stroke.brightness,
     alphaMultiplier: stroke.alphaMultiplier,
   };
-};
-
-const cloneFill = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      } as SceneFill;
-    default:
-      return fill;
-  }
 };
 
 const cloneVector = (vector: SceneVector2): SceneVector2 => ({ x: vector.x, y: vector.y });

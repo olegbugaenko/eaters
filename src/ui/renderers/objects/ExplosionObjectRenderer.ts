@@ -67,14 +67,32 @@ const createExplosionEmitterPrimitive = (
     serializeConfig: serializeExplosionEmitterConfig,
   });
 
+// Cache emitter configs to avoid creating new objects every frame
+const explosionEmitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  { source: ExplosionRendererEmitterConfig | undefined; config: ExplosionEmitterRenderConfig | null }
+>();
+
 const getEmitterConfig = (
   instance: SceneObjectInstance
 ): ExplosionEmitterRenderConfig | null => {
   const data = instance.data.customData as ExplosionRendererCustomData | undefined;
-  if (!data || typeof data !== "object" || !data.emitter) {
+  const emitterSource = data?.emitter;
+  
+  // Return cached config if source hasn't changed
+  const cached = explosionEmitterConfigCache.get(instance);
+  if (cached && cached.source === emitterSource) {
+    return cached.config;
+  }
+  
+  if (!data || typeof data !== "object" || !emitterSource) {
+    explosionEmitterConfigCache.set(instance, { source: undefined, config: null });
     return null;
   }
-  return sanitizeExplosionEmitterConfig(data.emitter);
+  
+  const config = sanitizeExplosionEmitterConfig(emitterSource);
+  explosionEmitterConfigCache.set(instance, { source: emitterSource, config });
+  return config;
 };
 
 const sanitizeExplosionEmitterConfig = (
@@ -238,6 +256,8 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
       const customData = instance.data.customData as ExplosionRendererCustomData | undefined;
       const lifetime = customData?.waveLifetimeMs ?? 800;
       let lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      // Cache fill reference to avoid recalculating key every frame
+      let lastFillRef: SceneFill | null = null;
       dynamicPrimitives.push({
         data: new Float32Array(0),
         update(target) {
@@ -256,45 +276,47 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
               const DEFAULT_CAPACITY = 64;
               batch = ensureWaveBatch(gl, fillKey, DEFAULT_CAPACITY, uniforms);
               fillKeyCached = batch ? fillKey : null;
+              lastFillRef = fill;
             }
             if (!batch) {
               return null;
             }
           }
 
-          // If fill changed to a different batching key (unlikely), re-acquire batch
+          // Only recalculate key if fill reference changed (rare)
           const currentFill = (target.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
-          const { key: currentKey } = toWaveUniformsFromFill(currentFill);
-          if (fillKeyCached && currentKey !== fillKeyCached) {
-            // Deactivate previous slot in the old batch before switching
-            if (batch && slotIndex >= 0 && slotIndex < batch.capacity) {
-              writeWaveInstance(batch, slotIndex, {
-                position: { x: 0, y: 0 },
-                size: 0,
-                age: 0,
-                lifetime: 0,
-                active: false,
-              });
-              let activeCount = 0;
-              for (let i = 0; i < batch.capacity; i += 1) {
-                const inst = batch.instances[i];
-                if (inst && inst.active) activeCount += 1;
+          if (currentFill !== lastFillRef && fillKeyCached) {
+            lastFillRef = currentFill;
+            const { key: currentKey } = toWaveUniformsFromFill(currentFill);
+            if (currentKey !== fillKeyCached) {
+              // Deactivate previous slot in the old batch before switching
+              if (batch && slotIndex >= 0 && slotIndex < batch.capacity) {
+                const wasActive = batch.instances[slotIndex]?.active ?? false;
+                writeWaveInstance(batch, slotIndex, {
+                  position: { x: 0, y: 0 },
+                  size: 0,
+                  age: 0,
+                  lifetime: 0,
+                  active: false,
+                });
+                if (wasActive) {
+                  setWaveBatchActiveCount(batch, batch.handle.activeCount - 1);
+                }
               }
-              setWaveBatchActiveCount(batch, activeCount);
-            }
-            const gl = getParticleEmitterGlContext();
-            if (gl) {
-              const { uniforms } = toWaveUniformsFromFill(currentFill);
-              uniforms.hasExplicitRadius = false;
-              uniforms.explicitRadius = 0;
-              const DEFAULT_CAPACITY = 64;
-              const next = ensureWaveBatch(gl, currentKey, DEFAULT_CAPACITY, uniforms);
-              if (next) {
-                batch = next;
-                fillKeyCached = currentKey;
-                slotIndex = -1;
-                age = 0;
-                lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+              const gl = getParticleEmitterGlContext();
+              if (gl) {
+                const { uniforms } = toWaveUniformsFromFill(currentFill);
+                uniforms.hasExplicitRadius = false;
+                uniforms.explicitRadius = 0;
+                const DEFAULT_CAPACITY = 64;
+                const next = ensureWaveBatch(gl, currentKey, DEFAULT_CAPACITY, uniforms);
+                if (next) {
+                  batch = next;
+                  fillKeyCached = currentKey;
+                  slotIndex = -1;
+                  age = 0;
+                  lastTs = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+                }
               }
             }
           }
@@ -317,23 +339,26 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
           }
 
           const radius = Math.max(0, Math.max(target.data.size?.width ?? 0, target.data.size?.height ?? 0) / 2);
+          const wasActive = batch.instances[slotIndex]?.active ?? false;
+          const isActive = age < lifetime;
           writeWaveInstance(batch, slotIndex, {
             position: target.data.position,
             size: radius * 2,
             age,
             lifetime,
-            active: age < lifetime,
+            active: isActive,
           });
-          let activeCount = 0;
-          for (let i = 0; i < batch.capacity; i += 1) {
-            const inst = batch.instances[i];
-            if (inst && inst.active) activeCount += 1;
+          // Incremental update instead of O(capacity) loop
+          if (isActive && !wasActive) {
+            setWaveBatchActiveCount(batch, batch.handle.activeCount + 1);
+          } else if (!isActive && wasActive) {
+            setWaveBatchActiveCount(batch, batch.handle.activeCount - 1);
           }
-          setWaveBatchActiveCount(batch, activeCount);
           return null;
         },
         dispose() {
           if (batch && slotIndex >= 0 && slotIndex < batch.capacity) {
+            const wasActive = batch.instances[slotIndex]?.active ?? false;
             writeWaveInstance(batch, slotIndex, {
               position: { x: 0, y: 0 },
               size: 0,
@@ -341,12 +366,10 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
               lifetime: 0,
               active: false,
             });
-            let activeCount = 0;
-            for (let i = 0; i < batch.capacity; i += 1) {
-              const inst = batch.instances[i];
-              if (inst && inst.active) activeCount += 1;
+            // Decrement only if was active
+            if (wasActive) {
+              setWaveBatchActiveCount(batch, batch.handle.activeCount - 1);
             }
-            setWaveBatchActiveCount(batch, activeCount);
           }
           batch = null;
         },

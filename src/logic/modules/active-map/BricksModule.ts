@@ -214,6 +214,10 @@ export class BricksModule implements GameModule {
     this.recomputeTotalsAndPush();
   }
 
+  public cleanupExpired(): void {
+    this.options.scene.flushAllPendingRemovals();
+  }
+
   public save(): unknown {
     return null;
   }

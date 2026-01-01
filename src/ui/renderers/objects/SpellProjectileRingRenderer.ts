@@ -33,6 +33,48 @@ const clamp01 = (value: number): number => {
 const getNow = (): number =>
   typeof performance !== "undefined" ? performance.now() : Date.now();
 
+// ============================================================================
+// OPTIMIZATION: Cache fill objects per instance to avoid GC pressure
+// ============================================================================
+
+interface CachedFill {
+  fill: SceneFill;
+  stops: Array<{ offset: number; color: SceneColor }>;
+  colors: SceneColor[];
+}
+
+const fillCache = new WeakMap<SceneObjectInstance, CachedFill>();
+
+const getOrCreateCachedFill = (instance: SceneObjectInstance): CachedFill => {
+  const existing = fillCache.get(instance);
+  if (existing) return existing;
+  
+  // Create reusable fill structure - objects will be mutated in place
+  const c0: SceneColor = { r: 1, g: 1, b: 1, a: 0 };
+  const c1: SceneColor = { r: 1, g: 1, b: 1, a: 0 };
+  const c2: SceneColor = { r: 1, g: 1, b: 1, a: 0 };
+  const c3: SceneColor = { r: 1, g: 1, b: 1, a: 0 };
+  const c4: SceneColor = { r: 1, g: 1, b: 1, a: 0 };
+  const colors: SceneColor[] = [c0, c1, c2, c3, c4];
+  const stops: Array<{ offset: number; color: SceneColor }> = [
+    { offset: 0, color: c0 },
+    { offset: 0.4, color: c1 },
+    { offset: 0.7, color: c2 },
+    { offset: 0.85, color: c3 },
+    { offset: 1, color: c4 },
+  ];
+  const fill: SceneFill = {
+    fillType: FILL_TYPES.RADIAL_GRADIENT,
+    start: { x: 0, y: 0 },
+    end: 10,
+    stops,
+  };
+  
+  const cached: CachedFill = { fill, stops, colors };
+  fillCache.set(instance, cached);
+  return cached;
+};
+
 const getAnimationProgress = (data: AnimatedRingCustomData): number => {
   const now = getNow();
   const elapsed = now - (data.createdAt ?? now);
@@ -60,20 +102,28 @@ const getAnimatedRingFill = (instance: SceneObjectInstance): SceneFill => {
   const color = data.color ?? { r: 1, g: 1, b: 1, a: 1 };
   
   const radius = lerp(startRadius, endRadius, progress);
-  const alpha = lerp(startAlpha, endAlpha, progress);
+  const alpha = clamp01(lerp(startAlpha, endAlpha, progress));
   
-  return {
-    fillType: FILL_TYPES.RADIAL_GRADIENT,
-    start: { x: 0, y: 0 },
-    end: radius,
-    stops: [
-      { offset: 0, color: { ...color, a: 0 } },
-      { offset: innerStop, color: { ...color, a: 0 } },
-      { offset: outerStop, color: { ...color, a: clamp01(alpha) } },
-      { offset: outerFadeStop, color: { ...color, a: 0 } },
-      { offset: 1, color: { ...color, a: 0 } },
-    ],
-  };
+  // Get cached fill and mutate in place - no new objects created
+  const cached = getOrCreateCachedFill(instance);
+  
+  // Update radius
+  (cached.fill as any).end = radius;
+  
+  // Update stops offsets
+  cached.stops[1]!.offset = innerStop;
+  cached.stops[2]!.offset = outerStop;
+  cached.stops[3]!.offset = outerFadeStop;
+  
+  // Update colors in place
+  const c = cached.colors;
+  c[0]!.r = color.r; c[0]!.g = color.g; c[0]!.b = color.b; c[0]!.a = 0;
+  c[1]!.r = color.r; c[1]!.g = color.g; c[1]!.b = color.b; c[1]!.a = 0;
+  c[2]!.r = color.r; c[2]!.g = color.g; c[2]!.b = color.b; c[2]!.a = alpha;
+  c[3]!.r = color.r; c[3]!.g = color.g; c[3]!.b = color.b; c[3]!.a = 0;
+  c[4]!.r = color.r; c[4]!.g = color.g; c[4]!.b = color.b; c[4]!.a = 0;
+  
+  return cached.fill;
 };
 
 const getAnimatedRingRadius = (

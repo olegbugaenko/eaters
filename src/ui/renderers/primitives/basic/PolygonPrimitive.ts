@@ -9,6 +9,7 @@ import {
   DynamicPrimitive,
   StaticPrimitive,
   VERTEX_COMPONENTS,
+  FILL_COMPONENTS,
   transformObjectPoint,
 } from "../../objects/ObjectRenderer";
 import {
@@ -59,18 +60,21 @@ const cloneVertex = (vertex: SceneVector2): SceneVector2 => ({
 const cloneVertices = (vertices: PolygonVertices): PolygonVertices =>
   vertices.map((vertex) => cloneVertex(vertex));
 
+// Default fallback vertices - reused to avoid allocations
+const DEFAULT_FALLBACK_VERTICES: PolygonVertices = [
+  { x: -10, y: -10 },
+  { x: 10, y: -10 },
+  { x: 0, y: 15 },
+];
+
 const ensureVertices = (vertices: SceneVector2[] | undefined): PolygonVertices => {
   if (!vertices || vertices.length < MIN_VERTEX_COUNT) {
-    return [
-      { x: -10, y: -10 },
-      { x: 10, y: -10 },
-      { x: 0, y: 15 },
-    ];
+    return DEFAULT_FALLBACK_VERTICES;
   }
-  return vertices.map((vertex) => ({
-    x: typeof vertex.x === "number" ? vertex.x : 0,
-    y: typeof vertex.y === "number" ? vertex.y : 0,
-  }));
+  // OPTIMIZATION: Return vertices directly without cloning if they're already valid
+  // This avoids massive GC pressure from creating new objects every frame
+  // Callers that need mutation should clone explicitly
+  return vertices as PolygonVertices;
 };
 
 const resolveVertices = (
@@ -102,12 +106,19 @@ const resolveFill = (
   return instance.data.fill;
 };
 
-const computeGeometry = (vertices: PolygonVertices): PolygonGeometry => {
+// OPTIMIZATION: Reusable geometry object to avoid per-frame allocations
+const computeGeometry = (vertices: PolygonVertices, out?: PolygonGeometry): PolygonGeometry => {
+  const result = out ?? {
+    centerOffset: { x: 0, y: 0 },
+    size: { width: MIN_SIZE, height: MIN_SIZE },
+  };
+
   if (vertices.length < MIN_VERTEX_COUNT) {
-    return {
-      centerOffset: { x: 0, y: 0 },
-      size: { width: MIN_SIZE, height: MIN_SIZE },
-    };
+    result.centerOffset.x = 0;
+    result.centerOffset.y = 0;
+    result.size.width = MIN_SIZE;
+    result.size.height = MIN_SIZE;
+    return result;
   }
   let minX = vertices[0]!.x;
   let maxX = vertices[0]!.x;
@@ -130,18 +141,12 @@ const computeGeometry = (vertices: PolygonVertices): PolygonGeometry => {
     }
   }
 
-  const centerOffset = {
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
-  };
+  result.centerOffset.x = (minX + maxX) / 2;
+  result.centerOffset.y = (minY + maxY) / 2;
+  result.size.width = Math.max(MIN_SIZE, maxX - minX);
+  result.size.height = Math.max(MIN_SIZE, maxY - minY);
 
-  const width = Math.max(MIN_SIZE, maxX - minX);
-  const height = Math.max(MIN_SIZE, maxY - minY);
-
-  return {
-    centerOffset,
-    size: { width, height },
-  };
+  return result;
 };
 
 const pushVertex = (
@@ -235,7 +240,7 @@ const buildPolygonData = (
   return data;
 };
 
-// Optimized: inline transform, avoid .map() allocations
+// Optimized: fully inlined transform, no function allocations
 const updatePolygonData = (
   target: Float32Array,
   center: SceneVector2,
@@ -260,32 +265,44 @@ const updatePolygonData = (
   const hasRotation = rotation !== 0;
   const cos = hasRotation ? Math.cos(rotation) : 1;
   const sin = hasRotation ? Math.sin(rotation) : 0;
-
-  // Inline transform helper
-  const transformX = (v: SceneVector2): number =>
-    hasRotation ? cx + v.x * cos - v.y * sin : cx + v.x;
-  const transformY = (v: SceneVector2): number =>
-    hasRotation ? cy + v.x * sin + v.y * cos : cy + v.y;
+  const fillLen = fillComponents.length;
 
   let offset = 0;
   let changed = false;
   const anchor = vertices[0]!;
-  const anchorX = transformX(anchor);
-  const anchorY = transformY(anchor);
+  const anchorX = hasRotation ? cx + anchor.x * cos - anchor.y * sin : cx + anchor.x;
+  const anchorY = hasRotation ? cy + anchor.x * sin + anchor.y * cos : cy + anchor.y;
 
   for (let i = 1; i < vertices.length - 1; i += 1) {
-    changed = assignVertex(target, offset, anchorX, anchorY, fillComponents) || changed;
+    // Inline assignVertex for anchor
+    if (target[offset] !== anchorX) { target[offset] = anchorX; changed = true; }
+    if (target[offset + 1] !== anchorY) { target[offset + 1] = anchorY; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[offset + 2 + f] !== val) { target[offset + 2 + f] = val; changed = true; }
+    }
     offset += VERTEX_COMPONENTS;
 
     const current = vertices[i]!;
-    changed =
-      assignVertex(target, offset, transformX(current), transformY(current), fillComponents) ||
-      changed;
+    const currX = hasRotation ? cx + current.x * cos - current.y * sin : cx + current.x;
+    const currY = hasRotation ? cy + current.x * sin + current.y * cos : cy + current.y;
+    if (target[offset] !== currX) { target[offset] = currX; changed = true; }
+    if (target[offset + 1] !== currY) { target[offset + 1] = currY; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[offset + 2 + f] !== val) { target[offset + 2 + f] = val; changed = true; }
+    }
     offset += VERTEX_COMPONENTS;
 
     const next = vertices[i + 1]!;
-    changed =
-      assignVertex(target, offset, transformX(next), transformY(next), fillComponents) || changed;
+    const nextX = hasRotation ? cx + next.x * cos - next.y * sin : cx + next.x;
+    const nextY = hasRotation ? cy + next.x * sin + next.y * cos : cy + next.y;
+    if (target[offset] !== nextX) { target[offset] = nextX; changed = true; }
+    if (target[offset + 1] !== nextY) { target[offset + 1] = nextY; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[offset + 2 + f] !== val) { target[offset + 2 + f] = val; changed = true; }
+    }
     offset += VERTEX_COMPONENTS;
   }
   return changed;
@@ -378,6 +395,11 @@ export const createDynamicPolygonPrimitive = (
   instance: SceneObjectInstance,
   options: DynamicPolygonPrimitiveOptions = {}
 ): DynamicPrimitive => {
+  // Check if vertices and fill are static (not animated)
+  const isStaticVertices = !options.getVertices && !!options.vertices;
+  const isStaticFill = !options.getFill && !!options.fill;
+  const canFastPath = isStaticVertices && isStaticFill;
+  
   const initialVertices = resolveVertices(options, instance);
   let vertexCount = initialVertices.length;
   let geometry = computeGeometry(initialVertices);
@@ -387,7 +409,8 @@ export const createDynamicPolygonPrimitive = (
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-  let fillComponents = createFillVertexComponents({
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillComponents = writeFillVertexComponents(fillScratch, {
     fill: resolveFill(options, instance),
     center: fillCenter,
     rotation,
@@ -395,26 +418,64 @@ export const createDynamicPolygonPrimitive = (
   });
 
   let data = buildPolygonData(origin, rotation, initialVertices, fillComponents);
-  const fillScratch = new Float32Array(fillComponents.length);
+  
+  // Cache previous state for fast-path (use raw position, not transformed origin)
+  let prevPosX = instance.data.position.x;
+  let prevPosY = instance.data.position.y;
+  let prevRotation = rotation;
 
   const primitive: DynamicPrimitive = {
     get data() {
       return data;
     },
     update(target: SceneObjectInstance) {
-      const nextVertices = resolveVertices(options, target);
-      const nextVertexCount = nextVertices.length;
-      geometry = computeGeometry(nextVertices);
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      
+      // Fast path: skip expensive computations if nothing changed
+      // For static vertices/fill, only position and rotation matter
+      if (canFastPath &&
+          pos.x === prevPosX &&
+          pos.y === prevPosY &&
+          nextRotation === prevRotation) {
+        return null;
+      }
+      
       origin = getCenter(target);
-      rotation = target.data.rotation ?? 0;
+      rotation = nextRotation;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = rotation;
+      
+      // Skip expensive geometry/vertices work for static vertices
+      let nextVertices: PolygonVertices;
+      if (isStaticVertices) {
+        nextVertices = initialVertices;
+      } else {
+        nextVertices = resolveVertices(options, target);
+        computeGeometry(nextVertices, geometry);
+      }
+      const nextVertexCount = nextVertices.length;
+      
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
       // Reuse a single scratch buffer to avoid per-frame allocations
-      fillComponents = writeFillVertexComponents(fillScratch, {
-        fill: resolveFill(options, target),
-        center: fillCenter,
-        rotation,
-        size: geometry.size,
-      });
+      // Skip resolveFill for static fill
+      if (!isStaticFill) {
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: resolveFill(options, target),
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
+      } else {
+        // Just update center position in fill components
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: options.fill!,
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
+      }
 
       if (nextVertexCount !== vertexCount) {
         vertexCount = nextVertexCount;
@@ -443,7 +504,7 @@ interface DynamicPolygonStrokePrimitiveOptions {
   offset?: SceneVector2;
 }
 
-// Optimized: inline transform, no allocations, reuse target buffer when possible
+// Optimized: fully inlined transform and vertex writing, no function allocations
 const buildStrokeBandData = (
   center: SceneVector2,
   rotation: number,
@@ -469,12 +530,7 @@ const buildStrokeBandData = (
   const hasRotation = rotation !== 0;
   const cos = hasRotation ? Math.cos(rotation) : 1;
   const sin = hasRotation ? Math.sin(rotation) : 0;
-
-  // Inline transform helper - calculates world position without allocation
-  const transformX = (v: SceneVector2): number =>
-    hasRotation ? cx + v.x * cos - v.y * sin : cx + v.x;
-  const transformY = (v: SceneVector2): number =>
-    hasRotation ? cy + v.x * sin + v.y * cos : cy + v.y;
+  const fillLen = fillComponents.length;
 
   let write = 0;
   for (let i = 0; i < n; i += 1) {
@@ -484,24 +540,55 @@ const buildStrokeBandData = (
     const innerI = inner[i]!;
     const innerJ = inner[j]!;
 
-    // Transform inline
-    const Ax = transformX(outerI);
-    const Ay = transformY(outerI);
-    const Bx = transformX(outerJ);
-    const By = transformY(outerJ);
-    const ax = transformX(innerI);
-    const ay = transformY(innerI);
-    const bx = transformX(innerJ);
-    const by = transformY(innerJ);
+    // Inline transform calculations (no function call overhead)
+    let Ax: number, Ay: number, Bx: number, By: number;
+    let ax: number, ay: number, bx: number, by: number;
+    if (hasRotation) {
+      Ax = cx + outerI.x * cos - outerI.y * sin;
+      Ay = cy + outerI.x * sin + outerI.y * cos;
+      Bx = cx + outerJ.x * cos - outerJ.y * sin;
+      By = cy + outerJ.x * sin + outerJ.y * cos;
+      ax = cx + innerI.x * cos - innerI.y * sin;
+      ay = cy + innerI.x * sin + innerI.y * cos;
+      bx = cx + innerJ.x * cos - innerJ.y * sin;
+      by = cy + innerJ.x * sin + innerJ.y * cos;
+    } else {
+      Ax = cx + outerI.x;
+      Ay = cy + outerI.y;
+      Bx = cx + outerJ.x;
+      By = cy + outerJ.y;
+      ax = cx + innerI.x;
+      ay = cy + innerI.y;
+      bx = cx + innerJ.x;
+      by = cy + innerJ.y;
+    }
 
+    // Inline vertex writing (no function call overhead)
     // Triangle 1: A, B, a
-    write = pushVertex(data, write, Ax, Ay, fillComponents);
-    write = pushVertex(data, write, Bx, By, fillComponents);
-    write = pushVertex(data, write, ax, ay, fillComponents);
+    data[write] = Ax; data[write + 1] = Ay;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = Bx; data[write + 1] = By;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = ax; data[write + 1] = ay;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
     // Triangle 2: a, B, b
-    write = pushVertex(data, write, ax, ay, fillComponents);
-    write = pushVertex(data, write, Bx, By, fillComponents);
-    write = pushVertex(data, write, bx, by, fillComponents);
+    data[write] = ax; data[write + 1] = ay;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = Bx; data[write + 1] = By;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    data[write] = bx; data[write + 1] = by;
+    for (let f = 0; f < fillLen; f++) data[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
   }
   return data;
 };
@@ -510,6 +597,9 @@ export const createDynamicPolygonStrokePrimitive = (
   instance: SceneObjectInstance,
   options: DynamicPolygonStrokePrimitiveOptions
 ): DynamicPrimitive => {
+  // Check if vertices are static (not animated)
+  const isStaticVertices = !options.getVertices && !!options.vertices;
+  
   const resolveVerts = (target: SceneObjectInstance): PolygonVertices => {
     if (typeof options.getVertices === "function") {
       return ensureVertices(options.getVertices(target));
@@ -529,7 +619,8 @@ export const createDynamicPolygonStrokePrimitive = (
   let rotation = instance.data.rotation ?? 0;
   const strokeFill = createStrokeFill(options.stroke);
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-  let fillComponents = createFillVertexComponents({
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillComponents = writeFillVertexComponents(fillScratch, {
     fill: strokeFill,
     center: fillCenter,
     rotation,
@@ -537,26 +628,56 @@ export const createDynamicPolygonStrokePrimitive = (
   });
   let outer = expandVertices(inner, geometry.centerOffset, options.stroke.width);
   let data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
-  const fillScratch = new Float32Array(fillComponents.length);
+  
+  // Cache previous state for static vertices to skip updates when nothing changed
+  let prevPosX = instance.data.position.x;
+  let prevPosY = instance.data.position.y;
+  let prevRotation = rotation;
+  
+  // For solid color strokes, fillComponents don't depend on position/rotation
+  // so we can skip writeFillVertexComponents entirely
+  const isSolidFill = strokeFill.fillType === 0; // FILL_TYPES.SOLID = 0
 
   const primitive: DynamicPrimitive = {
     get data() {
       return data;
     },
     update(target: SceneObjectInstance) {
-      inner = resolveVerts(target);
-      geometry = computeGeometry(inner);
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      
+      // Fast path: skip update if position/rotation unchanged and vertices are static
+      if (isStaticVertices &&
+          pos.x === prevPosX &&
+          pos.y === prevPosY &&
+          nextRotation === prevRotation) {
+        return null;
+      }
+      
       origin = getCenter(target);
-      rotation = target.data.rotation ?? 0;
-      fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-      fillComponents = writeFillVertexComponents(fillScratch, {
-        fill: strokeFill,
-        center: fillCenter,
-        rotation,
-        size: geometry.size,
-      });
-      // Reuse outer buffer when possible
-      outer = expandVertices(inner, geometry.centerOffset, options.stroke.width, outer);
+      rotation = nextRotation;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = rotation;
+      
+      // Skip expensive geometry/vertices work for static vertices
+      if (!isStaticVertices) {
+        inner = resolveVerts(target);
+        computeGeometry(inner, geometry);
+        outer = expandVertices(inner, geometry.centerOffset, options.stroke.width, outer);
+      }
+      
+      // Skip fill computation for solid fills (color doesn't depend on position)
+      if (!isSolidFill) {
+        fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: strokeFill,
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
+      }
+      
       // Reuse existing data buffer when possible
       data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents, data);
       return data;

@@ -37,6 +37,25 @@ import { whirlEffect, disposeWhirlResources, getWhirlGlContext } from "@ui/rende
 import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import { getParticleEmitterGlContext, setParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
 import { disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
+import {
+  setBulletGpuContext,
+  uploadBulletBatches,
+  renderBulletBatches,
+  clearAllBulletBatches,
+  acquireBulletSlot,
+  updateBulletSlot,
+  releaseBulletSlot,
+  createBulletVisualConfig,
+  getAllActiveBullets,
+  applyInterpolatedBulletPositions,
+} from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
+import { setBulletRenderBridge } from "@logic/services/BulletRenderBridge";
+import {
+  initRingGpuRenderer,
+  renderRings,
+  clearRingInstances,
+  disposeRingGpuRenderer,
+} from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 import { registerHmrCleanup } from "@ui/shared/hmrCleanup";
 import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
 import {
@@ -128,6 +147,7 @@ interface UnitRenderSnapshot {
   prev: SceneVector2;
   next: SceneVector2;
   lastTickAt: number;
+  tickCount?: number; // For bullets: skip interpolation on first tick
 }
 
 export interface UseSceneCanvasParams {
@@ -175,6 +195,7 @@ export const useSceneCanvas = ({
 }: UseSceneCanvasParams) => {
   const unitSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const interpolatedPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
+  const bulletSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const getNow = () =>
     typeof performance !== "undefined" && typeof performance.now === "function"
       ? performance.now()
@@ -204,10 +225,51 @@ export const useSceneCanvas = ({
       });
     };
 
+    const syncBulletSnapshots = (timestamp: number) => {
+      const nextKeys = new Set<string>();
+      const snapshots = bulletSnapshotsRef.current;
+      const activeBullets = getAllActiveBullets();
+      
+      activeBullets.forEach((item) => {
+        const { handle, position } = item;
+        const key = `${handle.visualKey}:${handle.slotIndex}`;
+        nextKeys.add(key);
+        const existing = snapshots.get(key);
+        
+        if (!existing) {
+          // New bullet - mark as first tick
+          // GPU buffer already has correct position from spawn/tick, don't override
+          snapshots.set(key, {
+            prev: { ...position },
+            next: { ...position },
+            lastTickAt: timestamp,
+            tickCount: 1,
+          });
+        } else {
+          // Existing bullet - normal interpolation
+          snapshots.set(key, {
+            prev: existing.next,
+            next: { ...position },
+            lastTickAt: timestamp,
+            tickCount: (existing.tickCount ?? 1) + 1,
+          });
+        }
+      });
+      
+      // Clean up snapshots for bullets that no longer exist
+      Array.from(snapshots.keys()).forEach((key) => {
+        if (!nextKeys.has(key)) {
+          snapshots.delete(key);
+        }
+      });
+    };
+
     syncUnitSnapshots(gameLoop.getLastTickTimestamp() || getNow());
-    const unsubscribe = gameLoop.addTickListener(({ timestamp }) =>
-      syncUnitSnapshots(timestamp)
-    );
+    syncBulletSnapshots(gameLoop.getLastTickTimestamp() || getNow());
+    const unsubscribe = gameLoop.addTickListener(({ timestamp }) => {
+      syncUnitSnapshots(timestamp);
+      syncBulletSnapshots(timestamp);
+    });
     return () => {
       unsubscribe();
     };
@@ -228,6 +290,46 @@ export const useSceneCanvas = ({
           ? 1
           : clamp(elapsed / TICK_INTERVAL, 0, 1);
       positions.set(id, lerpVector(snapshot.prev, snapshot.next, alpha));
+    });
+    return positions;
+  };
+
+  const getInterpolatedBulletPositions = () => {
+    const snapshots = bulletSnapshotsRef.current;
+    const positions = new Map<string, SceneVector2>();
+    if (snapshots.size === 0) {
+      return positions;
+    }
+    
+    // Only interpolate for bullets that are still active
+    const activeBullets = getAllActiveBullets();
+    const activeKeys = new Set(activeBullets.map((item) => `${item.handle.visualKey}:${item.handle.slotIndex}`));
+    
+    const now = getNow();
+    snapshots.forEach((snapshot, key) => {
+      // CRITICAL: Only interpolate if bullet is still active!
+      if (!activeKeys.has(key)) {
+        // Clean up snapshot for removed bullet
+        snapshots.delete(key);
+        return;
+      }
+      
+      // For first tick (tickCount === 1), don't apply interpolation at all
+      // GPU buffer already has correct position from spawn/tick
+      // Adding to positions would OVERRIDE that correct position
+      if ((snapshot.tickCount ?? 1) <= 1) {
+        // Skip - let GPU keep its current correct position
+        return;
+      }
+      
+      const elapsed = Math.max(now - snapshot.lastTickAt, 0);
+      
+      // For existing bullets with proper history, apply interpolation
+      const alpha =
+        elapsed > DRIFT_SNAP_THRESHOLD
+          ? 1
+          : clamp(elapsed / TICK_INTERVAL, 0, 1);
+      positions.set(key, lerpVector(snapshot.prev, snapshot.next, alpha));
     });
     return positions;
   };
@@ -253,8 +355,13 @@ export const useSceneCanvas = ({
         try { disposePetalAuraResources(); } catch {}
       } finally {
         try { setParticleEmitterGlContext(null); } catch {}
+        try { setBulletGpuContext(null); } catch {}
+        try { setBulletRenderBridge(null); } catch {}
         try { clearAllAuraSlots(); } catch {}
         try { clearPetalAuraInstances(); } catch {}
+        try { clearAllBulletBatches(); } catch {}
+        try { clearRingInstances(); } catch {}
+        try { disposeRingGpuRenderer(); } catch {}
         try { resetAllArcBatches(); } catch {}
       }
     });
@@ -272,6 +379,14 @@ export const useSceneCanvas = ({
     const objectsRenderer = createObjectsRendererManager();
 
     setParticleEmitterGlContext(gl);
+    setBulletGpuContext(gl);
+    initRingGpuRenderer(gl);
+    setBulletRenderBridge({
+      acquireSlot: acquireBulletSlot,
+      updateSlot: updateBulletSlot,
+      releaseSlot: releaseBulletSlot,
+      createConfig: createBulletVisualConfig,
+    });
     whirlEffect.onContextAcquired(gl);
     petalAuraEffect.onContextAcquired(gl);
 
@@ -424,6 +539,41 @@ export const useSceneCanvas = ({
     objectsRenderer.applyChanges(initialChanges);
     applySync();
 
+    const applyPendingVisibilityCleanup = () => {
+      const removedIds = scene.flushAllPendingRemovals();
+      const changes = scene.flushChanges();
+
+      // Об'єднуємо всі видалення (від flushAllPendingRemovals та звичайні зміни)
+      const allRemoved = [...removedIds, ...changes.removed];
+
+      // Застосовуємо всі зміни, включаючи видалення
+      objectsRenderer.applyChanges({
+        added: changes.added,
+        updated: changes.updated,
+        removed: allRemoved
+      });
+
+      // Оновлюємо буфери WebGL
+      applySync();
+
+      // Додатково очищаємо будь-які залишки змін після очищення
+      const remainingChanges = scene.flushChanges();
+      if (remainingChanges.added.length > 0 ||
+          remainingChanges.updated.length > 0 ||
+          remainingChanges.removed.length > 0) {
+        objectsRenderer.applyChanges(remainingChanges);
+        applySync();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        applyPendingVisibilityCleanup();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     let frame = 0;
     let previousTime: number | null = null;
 
@@ -519,6 +669,19 @@ export const useSceneCanvas = ({
           cameraState.position,
           cameraState.viewportSize,
           timestamp,
+        );
+        // GPU instanced bullets with interpolation
+        const interpolatedBulletPositions = getInterpolatedBulletPositions();
+        if (interpolatedBulletPositions.size > 0) {
+          applyInterpolatedBulletPositions(interpolatedBulletPositions);
+        }
+        uploadBulletBatches();
+        renderBulletBatches(cameraState.position, cameraState.viewportSize);
+        // GPU instanced rings (ring trails)
+        renderRings(
+          cameraState.position,
+          { x: cameraState.viewportSize.width, y: cameraState.viewportSize.height },
+          timestamp
         );
         const stats = getParticleStats(gl);
         const now = timestamp;
@@ -764,6 +927,7 @@ export const useSceneCanvas = ({
       clearPetalAuraInstances();
       resetAllArcBatches();
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.cancelAnimationFrame(frame);
       gl.deleteBuffer(staticBuffer);
       gl.deleteBuffer(dynamicBuffer);

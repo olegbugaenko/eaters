@@ -79,8 +79,6 @@ export class ObjectsRendererManager {
   // Stats
   private dynamicBytesAllocated = 0;
   private dynamicReallocations = 0;
-  private dynamicBytesByType = new Map<string, number>();
-  private dynamicCountByType = new Map<string, number>();
 
   constructor(private readonly renderers: Map<string, ObjectRenderer>) {}
 
@@ -114,8 +112,6 @@ export class ObjectsRendererManager {
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
-    this.dynamicBytesByType.clear();
-    this.dynamicCountByType.clear();
   }
 
   public applyChanges(
@@ -136,22 +132,29 @@ export class ObjectsRendererManager {
     if (positions.size === 0) {
       return;
     }
+    let anyUpdated = false;
     positions.forEach((position, objectId) => {
       const managed = this.objects.get(objectId);
       if (!managed) {
         return;
       }
-      const interpolatedInstance: SceneObjectInstance = {
-        ...managed.instance,
-        data: {
-          ...managed.instance.data,
-          position: { ...position },
-        },
-      };
+      // OPTIMIZATION: Mutate position in-place instead of creating new objects
+      // Save original position to restore after update
+      const originalPosition = managed.instance.data.position;
+      const origX = originalPosition.x;
+      const origY = originalPosition.y;
+      originalPosition.x = position.x;
+      originalPosition.y = position.y;
+      
       const updates = managed.renderer.update(
-        interpolatedInstance,
+        managed.instance,
         managed.registration
       );
+      
+      // Restore original position
+      originalPosition.x = origX;
+      originalPosition.y = origY;
+      
       updates.forEach(({ primitive, data }) => {
         const entry = this.dynamicEntryByPrimitive.get(primitive);
         if (!entry || entry.length !== data.length) {
@@ -160,13 +163,15 @@ export class ObjectsRendererManager {
         if (!this.dynamicData) {
           return;
         }
+        // Update in-place, no copy needed - will do full upload at end
         this.dynamicData.set(data, entry.offset);
-        this.pendingDynamicUpdates.push({
-          offset: entry.offset,
-          data: data.slice(),
-        });
+        anyUpdated = true;
       });
     });
+    // Mark for full dynamic upload instead of many small bufferSubData calls
+    if (anyUpdated && !this.dynamicLayoutDirty) {
+      this.autoAnimatingNeedsUpload = true;
+    }
   }
 
   /**
@@ -272,9 +277,21 @@ export class ObjectsRendererManager {
   }
 
   public getDynamicBufferBreakdown(): DynamicBufferBreakdownItem[] {
+    // OPTIMIZATION: Compute breakdown on-demand instead of every rebuild
+    const bytesByType = new Map<string, number>();
+    const countByType = new Map<string, number>();
+    
+    this.dynamicEntries.forEach((entry) => {
+      const bytes = entry.primitive.data.length * Float32Array.BYTES_PER_ELEMENT;
+      const managed = this.objects.get(entry.objectId);
+      const type = managed?.instance.type ?? "unknown";
+      bytesByType.set(type, (bytesByType.get(type) ?? 0) + bytes);
+      countByType.set(type, (countByType.get(type) ?? 0) + 1);
+    });
+    
     const items: DynamicBufferBreakdownItem[] = [];
-    this.dynamicBytesByType.forEach((bytes, type) => {
-      const count = this.dynamicCountByType.get(type) ?? 0;
+    bytesByType.forEach((bytes, type) => {
+      const count = countByType.get(type) ?? 0;
       items.push({ type, bytes, count });
     });
     items.sort((a, b) => b.bytes - a.bytes);
@@ -341,6 +358,7 @@ export class ObjectsRendererManager {
     }
     managed.instance = instance;
     const updates = managed.renderer.update(instance, managed.registration);
+    let anyUpdated = false;
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);
       if (!entry) {
@@ -355,10 +373,14 @@ export class ObjectsRendererManager {
       if (!this.dynamicData) {
         return;
       }
+      // Update in-place, no copy needed - will do full upload
       this.dynamicData.set(data, entry.offset);
-      // Use a copy to avoid any subtle aliasing/driver timing issues
-      this.pendingDynamicUpdates.push({ offset: entry.offset, data: data.slice() });
+      anyUpdated = true;
     });
+    // Mark for full dynamic upload instead of per-update copies
+    if (anyUpdated && !this.dynamicLayoutDirty) {
+      this.autoAnimatingNeedsUpload = true;
+    }
   }
 
   private removeObject(id: string): void {
@@ -421,10 +443,16 @@ export class ObjectsRendererManager {
   }
 
   private rebuildDynamicData(): void {
-    const totalLength = this.dynamicEntries.reduce(
-      (sum, entry) => sum + entry.primitive.data.length,
-      0
-    );
+    // OPTIMIZATION: Single pass - calculate total length and copy data in one loop
+    const entries = this.dynamicEntries;
+    const entriesCount = entries.length;
+    
+    // First pass: calculate total length (needed to check if realloc is required)
+    let totalLength = 0;
+    for (let i = 0; i < entriesCount; i += 1) {
+      totalLength += entries[i]!.primitive.data.length;
+    }
+    
     // Ensure capacity only grows when strictly necessary; keep headroom on growth
     const currentCapacity = this.dynamicData?.length ?? 0;
     const needsRealloc = totalLength > currentCapacity || !this.dynamicData;
@@ -433,32 +461,22 @@ export class ObjectsRendererManager {
       this.dynamicData = new Float32Array(Math.max(newCapacity, totalLength));
       this.dynamicReallocations += 1;
     }
+    
+    // Second pass: copy data
     const data = this.dynamicData!;
     let offset = 0;
-    this.dynamicEntries.forEach((entry) => {
+    for (let i = 0; i < entriesCount; i += 1) {
+      const entry = entries[i]!;
       entry.offset = offset;
       entry.length = entry.primitive.data.length;
       data.set(entry.primitive.data, offset);
       offset += entry.length;
-    });
-    this.dynamicData = data;
+    }
+    
     this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
-
-    // stats
     this.dynamicBytesAllocated = data.byteLength;
-
-    // per-type breakdown
-    this.dynamicBytesByType.clear();
-    this.dynamicCountByType.clear();
-    this.dynamicEntries.forEach((entry) => {
-      const bytes = entry.primitive.data.length * Float32Array.BYTES_PER_ELEMENT;
-      const managed = this.objects.get(entry.objectId);
-      const type = managed?.instance.type ?? "unknown";
-      this.dynamicBytesByType.set(type, (this.dynamicBytesByType.get(type) ?? 0) + bytes);
-      this.dynamicCountByType.set(type, (this.dynamicCountByType.get(type) ?? 0) + 1);
-    });
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {

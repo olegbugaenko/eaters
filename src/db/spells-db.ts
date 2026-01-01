@@ -5,10 +5,8 @@ import {
   SceneFill,
   SceneVector2,
 } from "../logic/services/SceneObjectManager";
-import {
-  BulletTailConfig,
-  BulletTailEmitterConfig,
-} from "./bullets-db";
+import { BulletTailConfig, BulletTailEmitterConfig } from "./bullets-db";
+import type { BulletSpriteName } from "../logic/services/bulletSprites";
 import { SkillId } from "./skills-db";
 import { ExplosionType } from "./explosions-db";
 
@@ -31,7 +29,7 @@ export interface SpellDamageConfig {
   max: number;
 }
 
-export type ProjectileShape = "circle" | "triangle";
+export type ProjectileShape = "circle" | "sprite";
 
 export interface SpellProjectileConfig {
   radius: number;
@@ -45,6 +43,7 @@ export interface SpellProjectileConfig {
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
+  spriteName?: BulletSpriteName; // Sprite name when shape === "sprite"
   aoe?: { radius: number; splash: number };
   explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
 }
@@ -172,29 +171,31 @@ const MAGIC_ARROW_PROJECTILE_FILL: SceneFill = {
 const MAGIC_ARROW_TAIL: BulletTailConfig = {
   lengthMultiplier: 5.5,
   widthMultiplier: 1.55,
-  startColor: { r: 0.55, g: 0.45, b: 1, a: 0.65 },
+  startColor: { r: 0.55, g: 0.45, b: 1, a: 0.25 },
   endColor: { r: 0.15, g: 0.1, b: 0.55, a: 0 },
+  offsetMultiplier: -0.95,
 };
 
 const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
-  particlesPerSecond: 140,
-  particleLifetimeMs: 520,
-  fadeStartMs: 240,
-  baseSpeed: 0.18,
-  speedVariation: 0.05,
-  sizeRange: { min: 14.1, max: 26.4 },
+  particlesPerSecond: 30,
+  particleLifetimeMs: 1350,
+  fadeStartMs: 540,
+  baseSpeed: 0.05,
+  speedVariation: 0.001,
+  sizeRange: { min: 34.1, max: 46.4 },
+  sizeEvolutionMult: 3.5, // Particles grow from 1x to 2x size over lifetime
   spread: Math.PI / 5,
-  offset: { x: -1, y: 0 },
+  offset: { x: -2, y: 0 },
   color: { r: 0.55, g: 0.4, b: 1, a: 0.6 },
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     stops: [
-      { offset: 0, color: { r: 0.55, g: 0.65, b: 1, a: 0.32 } },
-      { offset: 1, color: { r: 0.6, g: 0.65, b: 0.65, a: 0 } },
+      { offset: 0, color: { r: 0.55, g: 0.65, b: 1, a: 0.12 } },
+      { offset: 1, color: { r: 0.6, g: 0.65, b: 0.65, a: 0.0 } },
     ],
     noise: {
       colorAmplitude: 0.0,
-      alphaAmplitude: 0.03,
+      alphaAmplitude: 0.02,
       scale: 0.35,
     },
   },
@@ -232,23 +233,24 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     cooldownSeconds: 0.75,
     damage: { min: 1, max: 3 },
     projectile: {
-      radius: 7,
-      shape: "triangle",
+      radius: 12,
+      shape: "sprite",
+      spriteName: "magic_arrow",
       speed: 230,
       lifetimeMs: 3_600,
       fill: MAGIC_ARROW_PROJECTILE_FILL,
       tail: MAGIC_ARROW_TAIL,
       tailEmitter: MAGIC_ARROW_TAIL_EMITTER,
       ringTrail: {
-        spawnIntervalMs: 25,
+        spawnIntervalMs: 45,
         lifetimeMs: 900,
         startRadius: 4,
-        endRadius: 35,
+        endRadius: 65,
         startAlpha: 0.1,
         endAlpha: 0,
         innerStop: 0.48,
         outerStop: 0.78,
-        color: { r: 0.5, g: 0.7, b: 1, a: 0.1 },
+        color: { r: 0.5, g: 0.7, b: 1, a: 0.5 },
       },
       aoe: { radius: 15, splash: 0.5 },
       explosion: "magnetic",
@@ -349,7 +351,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
       count: 10,
       spreadAngle: 15,
-      shape: "triangle",
+      shape: "sprite",
+      spriteName: "needle",
     },
     unlock: { skillId: "black_darts", level: 1 },
   },

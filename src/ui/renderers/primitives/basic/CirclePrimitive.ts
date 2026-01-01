@@ -253,6 +253,15 @@ export const createDynamicCirclePrimitive = (
   instance: SceneObjectInstance,
   options: DynamicCircleOptions = {}
 ): DynamicPrimitive => {
+  // Check if fill and radius are static for fast-path
+  const isStaticFill = !options.getFill && !!options.fill;
+  const isStaticRadius = typeof options.radius === "number";
+  const canFastPath = isStaticFill && isStaticRadius;
+  
+  // For solid fills, components don't depend on center/rotation
+  const staticFill = isStaticFill ? options.fill : null;
+  const isSolidFill = staticFill?.fillType === 0; // FILL_TYPES.SOLID = 0
+  
   const segments = Math.max(3, Math.floor(options.segments ?? DEFAULT_SEGMENTS));
   const trig = getCircleTrigLut(segments);
   const initialCenter = getCenter(instance, options.offset);
@@ -283,25 +292,48 @@ export const createDynamicCirclePrimitive = (
   previousFill.set(initialFillComponents);
   let previousCenterX = initialCenter.x;
   let previousCenterY = initialCenter.y;
+  // Cache raw position for fast-path
+  let prevPosX = instance.data.position.x;
+  let prevPosY = instance.data.position.y;
+  let prevRotation = instance.data.rotation ?? 0;
 
   return {
     data,
     update(target: SceneObjectInstance) {
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      
+      // Fast path: skip expensive computations if nothing changed
+      if (canFastPath &&
+          pos.x === prevPosX &&
+          pos.y === prevPosY &&
+          nextRotation === prevRotation) {
+        return null;
+      }
+      
       const nextCenter = getCenter(target, options.offset);
       const nextRadius = Math.max(
         resolveRadius(options, target, getRadiusFromSize(target.data.size, radius)),
         0
       );
-      const fillComponents = writeFillVertexComponents(fillScratch, {
-        fill: resolveFill(options, target),
-        center: nextCenter,
-        rotation: target.data.rotation ?? 0,
-        size: {
-          width: nextRadius * 2,
-          height: nextRadius * 2,
-        },
-        radius: nextRadius,
-      });
+      
+      // Skip fill computation for solid fills (color doesn't depend on position)
+      let fillComponents: Float32Array;
+      if (isSolidFill) {
+        fillComponents = fillScratch; // Reuse cached solid fill
+      } else {
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: resolveFill(options, target),
+          center: nextCenter,
+          rotation: target.data.rotation ?? 0,
+          size: {
+            width: nextRadius * 2,
+            height: nextRadius * 2,
+          },
+          radius: nextRadius,
+        });
+      }
+      
       const geometryChanged =
         nextRadius !== radius ||
         nextCenter.x !== previousCenterX ||
@@ -318,11 +350,18 @@ export const createDynamicCirclePrimitive = (
         fillChanged
       );
       if (!changed) {
+        // Still update position cache for fast-path
+        prevPosX = pos.x;
+        prevPosY = pos.y;
+        prevRotation = nextRotation;
         return null;
       }
       radius = nextRadius;
       previousCenterX = nextCenter.x;
       previousCenterY = nextCenter.y;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = nextRotation;
       if (fillChanged) {
         previousFill.set(fillComponents);
       }

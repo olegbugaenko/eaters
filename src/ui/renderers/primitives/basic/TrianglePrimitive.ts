@@ -12,7 +12,9 @@ import {
 import {
   copyFillComponents,
   createFillVertexComponents,
+  writeFillVertexComponents,
 } from "../utils/fill";
+import { FILL_COMPONENTS } from "../../objects/ObjectRenderer";
 
 interface TrianglePrimitiveOptions {
   center: SceneVector2;
@@ -223,6 +225,11 @@ export const createDynamicTrianglePrimitive = (
   instance: SceneObjectInstance,
   options: DynamicTrianglePrimitiveOptions = {}
 ): DynamicPrimitive => {
+  // OPTIMIZATION: Detect static vertices/fill for fast-path
+  const isStaticVertices = !options.getVertices && !!options.vertices;
+  const isStaticFill = !options.getFill && !!options.fill;
+  const canFastPath = isStaticVertices && isStaticFill;
+  
   const initialVertices = resolveVertices(options, instance);
   let geometry = computeGeometry(initialVertices);
   const getCenter = (target: SceneObjectInstance): SceneVector2 =>
@@ -231,7 +238,9 @@ export const createDynamicTrianglePrimitive = (
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-  let fillComponents = createFillVertexComponents({
+  // OPTIMIZATION: Use reusable scratch buffer instead of creating new Float32Array each frame
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillComponents = writeFillVertexComponents(fillScratch, {
     fill: resolveFill(options, instance),
     center: fillCenter,
     rotation,
@@ -240,16 +249,39 @@ export const createDynamicTrianglePrimitive = (
 
   const data = buildTriangleData(origin, rotation, initialVertices, fillComponents);
 
+  // OPTIMIZATION: Cache previous position/rotation for fast-path
+  let prevPosX = instance.data.position.x;
+  let prevPosY = instance.data.position.y;
+  let prevRotation = rotation;
+
   return {
     data,
     update(target: SceneObjectInstance) {
-      const nextVertices = resolveVertices(options, target);
-      geometry = computeGeometry(nextVertices);
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      
+      // OPTIMIZATION: Fast-path for static vertices/fill - skip if position unchanged
+      if (canFastPath &&
+          pos.x === prevPosX &&
+          pos.y === prevPosY &&
+          nextRotation === prevRotation) {
+        return null;
+      }
+      
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = nextRotation;
+      
+      const nextVertices = isStaticVertices ? initialVertices : resolveVertices(options, target);
+      if (!isStaticVertices) {
+        geometry = computeGeometry(nextVertices);
+      }
       origin = getCenter(target);
-      rotation = target.data.rotation ?? 0;
+      rotation = nextRotation;
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
-      fillComponents = createFillVertexComponents({
-        fill: resolveFill(options, target),
+      // Always update fillComponents - rotation affects gradient direction even for static fills
+      fillComponents = writeFillVertexComponents(fillScratch, {
+        fill: isStaticFill ? options.fill! : resolveFill(options, target),
         center: fillCenter,
         rotation,
         size: geometry.size,

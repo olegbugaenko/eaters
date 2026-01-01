@@ -73,6 +73,7 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   mode: "cpu" | "gpu" | "disabled";
   requireGpu: boolean;
   cpuCache: ParticleEmitterCpuCache | null;
+  lastConfigRef: Config | null; // Cache config reference to avoid JSON.stringify on every frame
 }
 
 interface ParticleEmitterCpuCache {
@@ -224,7 +225,13 @@ export const createParticleEmitterPrimitive = <
       state.config = nextConfig;
       // keep buffer capacity stable to prevent frequent reallocations
       state.capacity = Math.max(state.capacity, nextConfig.capacity);
-      state.signature = serializeConfig(nextConfig, options);
+      
+      // Check if config object changed (by reference) and update GPU uniforms if needed
+      if (state.lastConfigRef !== nextConfig && state.gpu) {
+        state.lastConfigRef = nextConfig;
+        state.signature = serializeConfig(nextConfig, options);
+        updateParticleEmitterGpuUniforms(state.gpu, nextConfig);
+      }
 
       const now = getNowMs();
       const deltaMs = Math.max(0, Math.min(now - state.lastTimestamp, MAX_DELTA_MS));
@@ -265,6 +272,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
       mode: "disabled",
       requireGpu,
       cpuCache: null,
+      lastConfigRef: config,
     };
   }
 
@@ -283,6 +291,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     mode: gpu ? "gpu" : "cpu",
     requireGpu,
     cpuCache: null,
+    lastConfigRef: config,
   };
 
   if (gpu) {
@@ -310,6 +319,7 @@ const createEmptyParticleEmitterState = <
   mode: requireGpu ? "disabled" : "cpu",
   requireGpu,
   cpuCache: null,
+  lastConfigRef: null,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -340,11 +350,10 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
   }
 
   if (state.mode === "gpu" && state.gpu) {
-    const nextSignature = serializeConfig(config, options);
-    if (state.signature !== nextSignature) {
-      state.signature = nextSignature;
-      updateParticleEmitterGpuUniforms(state.gpu, config);
-    }
+    // GPU uniforms update is only needed when config actually changes.
+    // Since configs are typically stable during emitter lifetime, we skip
+    // the expensive serializeConfig call. If uniforms need updating,
+    // the emitter should be recreated with new capacity.
     advanceParticleEmitterStateGpu(state, instance, deltaMs, options);
     state.cpuCache = null;
     return null;
@@ -448,37 +457,36 @@ const advanceParticleEmitterStateGpu = <
 
   const origin = options.getOrigin(instance, config);
   
-  // Update CPU slots to track which are free (based on spawn time, not incremental age)
+  // Single pass: update slot lifetimes AND collect free slots
   const currentTimeMs = state.ageMs;
-  if (deltaMs > 0) {
-    const slots = gpu.slots;
-    for (let i = 0; i < slots.length; i += 1) {
-      const slot = slots[i];
-      if (!slot || !slot.active) {
-        continue;
-      }
-      if (slot.lifetimeMs > 0) {
-        const age = currentTimeMs - slot.ageMs; // ageMs stores spawnTime
-        if (age >= slot.lifetimeMs) {
-          slot.active = false;
-        }
-      }
-    }
-  }
-
   const slots = gpu.slots;
   const freeSlots: number[] = [];
   let activeCount = 0;
   for (let i = 0; i < slots.length; i += 1) {
     const slot = slots[i];
-    if (!slot || !slot.active) {
+    if (!slot) {
+      freeSlots.push(i);
+      continue;
+    }
+    // Check if active slot has expired
+    if (slot.active && deltaMs > 0 && slot.lifetimeMs > 0) {
+      const age = currentTimeMs - slot.ageMs; // ageMs stores spawnTime
+      if (age >= slot.lifetimeMs) {
+        slot.active = false;
+      }
+    }
+    // Classify slot
+    if (!slot.active) {
       freeSlots.push(i);
     } else {
       activeCount += 1;
     }
   }
 
-  const spawnBudget = Math.min(Math.floor(state.spawnAccumulator), freeSlots.length);
+  // OPTIMIZATION: Limit spawn budget per frame to reduce bufferSubData calls
+  // Particles will accumulate and spawn over multiple frames if needed
+  const MAX_SPAWN_PER_FRAME = 8;
+  const spawnBudget = Math.min(Math.floor(state.spawnAccumulator), freeSlots.length, MAX_SPAWN_PER_FRAME);
   if (spawnBudget > 0) {
     const gl = gpu.gl;
     const buffers = gpu.buffers;

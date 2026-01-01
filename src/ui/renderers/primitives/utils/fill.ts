@@ -25,35 +25,38 @@ interface FillVertexOptions {
   radius?: number;
 }
 
-const DEFAULT_LINEAR_START = (size: SceneSize): SceneVector2 => ({
-  x: -size.width / 2,
-  y: -size.height / 2,
-});
+// ============================================================================
+// OPTIMIZATION: Static scratch objects to avoid per-frame allocations
+// ============================================================================
+const scratchStartLocal: SceneVector2 = { x: 0, y: 0 };
+const scratchEndLocal: SceneVector2 = { x: 0, y: 0 };
+const scratchRotated: SceneVector2 = { x: 0, y: 0 };
+const scratchStartWorld: SceneVector2 = { x: 0, y: 0 };
+const scratchEndWorld: SceneVector2 = { x: 0, y: 0 };
+const scratchGradientCenter: SceneVector2 = { x: 0, y: 0 };
 
-const DEFAULT_LINEAR_END = (size: SceneSize): SceneVector2 => ({
-  x: size.width / 2,
-  y: size.height / 2,
-});
-
-const rotateVector = (
+// Mutating version - writes to out parameter
+const rotateVectorTo = (
   vector: SceneVector2,
-  rotation: number
-): SceneVector2 => {
+  rotation: number,
+  out: SceneVector2
+): void => {
   if (rotation === 0) {
-    return { x: vector.x, y: vector.y };
+    out.x = vector.x;
+    out.y = vector.y;
+    return;
   }
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
-  return {
-    x: vector.x * cos - vector.y * sin,
-    y: vector.x * sin + vector.y * cos,
-  };
+  out.x = vector.x * cos - vector.y * sin;
+  out.y = vector.x * sin + vector.y * cos;
 };
 
-const addVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
-  x: a.x + b.x,
-  y: a.y + b.y,
-});
+// Mutating version - writes to out parameter
+const addVectorsTo = (a: SceneVector2, b: SceneVector2, out: SceneVector2): void => {
+  out.x = a.x + b.x;
+  out.y = a.y + b.y;
+};
 
 const resolveRadius = (
   explicit: number | undefined,
@@ -69,9 +72,14 @@ const resolveRadius = (
   return Math.max(size.width, size.height) / 2;
 };
 
+// Static fallback stops to avoid allocations
+const FALLBACK_SOLID_STOP: SceneGradientStop[] = [{ offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } }];
+
 const limitStops = (stops: SceneGradientStop[]): SceneGradientStop[] => {
+  // OPTIMIZATION: Don't slice if within limit - just return original array
+  // This is safe because we only read from stops, never mutate
   if (stops.length <= MAX_GRADIENT_STOPS) {
-    return stops.slice();
+    return stops;
   }
   const limited: SceneGradientStop[] = [];
   const lastIndex = stops.length - 1;
@@ -90,22 +98,21 @@ const limitStops = (stops: SceneGradientStop[]): SceneGradientStop[] => {
   return limited;
 };
 
+// Cached solid stop per fill to avoid allocations
+const solidStopCache = new WeakMap<SceneFill, SceneGradientStop[]>();
+
 const ensureStops = (fill: SceneFill): SceneGradientStop[] => {
   if (fill.fillType === FILL_TYPES.SOLID) {
-    return [
-      {
-        offset: 0,
-        color: fill.color,
-      },
-    ];
+    // Cache solid stops per fill object
+    let cached = solidStopCache.get(fill);
+    if (!cached) {
+      cached = [{ offset: 0, color: fill.color }];
+      solidStopCache.set(fill, cached);
+    }
+    return cached;
   }
   if (fill.stops.length === 0) {
-    return [
-      {
-        offset: 0,
-        color: { r: 1, g: 1, b: 1, a: 1 },
-      },
-    ];
+    return FALLBACK_SOLID_STOP;
   }
   return limitStops(fill.stops);
 };
@@ -144,31 +151,52 @@ const populateFillVertexComponents = (
 
   switch (fill.fillType) {
     case FILL_TYPES.LINEAR_GRADIENT: {
-      const startLocal = fill.start ? { ...fill.start } : DEFAULT_LINEAR_START(size);
-      const endLocal = fill.end ? { ...fill.end } : DEFAULT_LINEAR_END(size);
-      const startWorld = addVectors(center, rotateVector(startLocal, rotation));
-      const endWorld = addVectors(center, rotateVector(endLocal, rotation));
-      const dir = {
-        x: endWorld.x - startWorld.x,
-        y: endWorld.y - startWorld.y,
-      };
-      const lengthSq = dir.x * dir.x + dir.y * dir.y;
-      components[params0Index + 0] = startWorld.x;
-      components[params0Index + 1] = startWorld.y;
-      components[params0Index + 2] = endWorld.x;
-      components[params0Index + 3] = endWorld.y;
-      components[params1Index + 0] = dir.x;
-      components[params1Index + 1] = dir.y;
+      // Use scratch objects instead of creating new ones
+      if (fill.start) {
+        scratchStartLocal.x = fill.start.x;
+        scratchStartLocal.y = fill.start.y;
+      } else {
+        scratchStartLocal.x = -size.width / 2;
+        scratchStartLocal.y = -size.height / 2;
+      }
+      if (fill.end && typeof fill.end === "object") {
+        scratchEndLocal.x = (fill.end as SceneVector2).x;
+        scratchEndLocal.y = (fill.end as SceneVector2).y;
+      } else {
+        scratchEndLocal.x = size.width / 2;
+        scratchEndLocal.y = size.height / 2;
+      }
+      rotateVectorTo(scratchStartLocal, rotation, scratchRotated);
+      addVectorsTo(center, scratchRotated, scratchStartWorld);
+      rotateVectorTo(scratchEndLocal, rotation, scratchRotated);
+      addVectorsTo(center, scratchRotated, scratchEndWorld);
+      const dirX = scratchEndWorld.x - scratchStartWorld.x;
+      const dirY = scratchEndWorld.y - scratchStartWorld.y;
+      const lengthSq = dirX * dirX + dirY * dirY;
+      components[params0Index + 0] = scratchStartWorld.x;
+      components[params0Index + 1] = scratchStartWorld.y;
+      components[params0Index + 2] = scratchEndWorld.x;
+      components[params0Index + 3] = scratchEndWorld.y;
+      components[params1Index + 0] = dirX;
+      components[params1Index + 1] = dirY;
       components[params1Index + 2] = lengthSq > 0 ? 1 / lengthSq : 0;
       components[params1Index + 3] = 0;
       break;
     }
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT: {
-      const startLocal = fill.start ? { ...fill.start } : { x: 0, y: 0 };
-      const gradientCenter = addVectors(center, rotateVector(startLocal, rotation));
-      components[params0Index + 0] = gradientCenter.x;
-      components[params0Index + 1] = gradientCenter.y;
+      // Use scratch objects instead of creating new ones
+      if (fill.start) {
+        scratchStartLocal.x = fill.start.x;
+        scratchStartLocal.y = fill.start.y;
+      } else {
+        scratchStartLocal.x = 0;
+        scratchStartLocal.y = 0;
+      }
+      rotateVectorTo(scratchStartLocal, rotation, scratchRotated);
+      addVectorsTo(center, scratchRotated, scratchGradientCenter);
+      components[params0Index + 0] = scratchGradientCenter.x;
+      components[params0Index + 1] = scratchGradientCenter.y;
       components[params0Index + 2] = resolveRadius(fill.end, size, radius);
       components[params0Index + 3] = 0;
       break;

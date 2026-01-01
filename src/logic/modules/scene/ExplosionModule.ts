@@ -1,70 +1,29 @@
 import { GameModule } from "../../core/types";
-import {
-  FILL_TYPES,
+import { FILL_TYPES, SceneVector2 } from "../../services/SceneObjectManager";
+import type {
   SceneColor,
   SceneFillFilaments,
-  SceneRadialGradientFill,
   SceneFillNoise,
   SceneGradientStop,
-  SceneObjectManager,
-  SceneVector2,
+  SceneRadialGradientFill,
 } from "../../services/SceneObjectManager";
 import {
-  ExplosionConfig,
-  ExplosionRendererEmitterConfig,
-  ExplosionType,
-  getExplosionConfig,
-} from "../../../db/explosions-db";
+  cloneSceneFill,
+  cloneSceneFillFilaments,
+  cloneSceneFillNoise,
+} from "../../helpers/scene-fill.helper";
+import { ExplosionConfig, ExplosionRendererEmitterConfig, ExplosionType, getExplosionConfig } from "../../../db/explosions-db";
+import { ExplosionModuleOptions, ExplosionRendererCustomData, ExplosionState, SpawnExplosionByTypeOptions, SpawnExplosionOptions, WaveState } from "./ExplosionModule.types";
 import {
   cloneSceneColor,
-  cloneSceneFill,
   sanitizeAngle,
   sanitizeArc,
 } from "../../services/particles/ParticleEmitterShared";
-
-interface ExplosionModuleOptions {
-  scene: SceneObjectManager;
-}
-
-interface WaveState {
-  id: string;
-  startInnerRadius: number;
-  endInnerRadius: number;
-  startOuterRadius: number;
-  endOuterRadius: number;
-  startAlpha: number;
-  endAlpha: number;
-  gradientStops: readonly SceneGradientStop[];
-  noise?: SceneFillNoise;
-  filaments?: SceneFillFilaments;
-  fill: SceneRadialGradientFill;
-  mutableStops: SceneGradientStop[];
-  baseColor: SceneColor;
-}
-
-interface ExplosionState {
-  type: ExplosionType;
-  position: SceneVector2;
-  elapsedMs: number;
-  waveLifetimeMs: number;
-  effectLifetimeMs: number;
-  waves: WaveState[];
-}
-
-export interface SpawnExplosionOptions {
-  position: SceneVector2;
-  initialRadius: number;
-}
-
-export interface SpawnExplosionByTypeOptions {
-  position: SceneVector2;
-  initialRadius?: number;
-}
-
-export interface ExplosionRendererCustomData {
-  waveLifetimeMs?: number;
-  emitter?: ExplosionRendererEmitterConfig;
-}
+export type {
+  ExplosionRendererCustomData,
+  SpawnExplosionByTypeOptions,
+  SpawnExplosionOptions,
+} from "./ExplosionModule.types";
 
 export class ExplosionModule implements GameModule {
   public readonly id = "explosions";
@@ -126,7 +85,7 @@ export class ExplosionModule implements GameModule {
     if (this.hasTooManyNearbyExplosions(type, options.position)) {
       return;
     }
-    const config = getExplosionConfig(type);
+    const config: ExplosionConfig = getExplosionConfig(type);
     const initialRadius = Math.max(
       1,
       options.initialRadius ?? config.defaultInitialRadius
@@ -142,6 +101,7 @@ export class ExplosionModule implements GameModule {
     config: ExplosionConfig,
     options: SpawnExplosionOptions
   ): void {
+    const createdAt = performance.now();
     const baseInitialRadius = Math.max(1, options.initialRadius);
     const defaultInitialRadius = Math.max(1, config.defaultInitialRadius);
     const radiusScale = clamp(
@@ -150,36 +110,39 @@ export class ExplosionModule implements GameModule {
       Number.POSITIVE_INFINITY
     );
 
-    const waveStates = config.waves.map((waveConfig) => {
-      const startInnerRadius = Math.max(0, waveConfig.initialInnerRadius * radiusScale);
-      const startOuterRadius = Math.max(
-        startInnerRadius,
-        waveConfig.initialOuterRadius * radiusScale
-      );
-      const endInnerRadius = Math.max(
-        startInnerRadius,
-        waveConfig.expansionInnerRadius * radiusScale
-      );
-      const endOuterRadius = Math.max(
-        endInnerRadius,
-        waveConfig.expansionOuterRadius * radiusScale
-      );
+    type WaveTemplate = Omit<WaveState, "id" | "fill" | "mutableStops" | "baseColor">;
+    const waveTemplates: WaveTemplate[] = config.waves.map(
+      (waveConfig: ExplosionConfig["waves"][number]) => {
+        const startInnerRadius = Math.max(0, waveConfig.initialInnerRadius * radiusScale);
+        const startOuterRadius = Math.max(
+          startInnerRadius,
+          waveConfig.initialOuterRadius * radiusScale
+        );
+        const endInnerRadius = Math.max(
+          startInnerRadius,
+          waveConfig.expansionInnerRadius * radiusScale
+        );
+        const endOuterRadius = Math.max(
+          endInnerRadius,
+          waveConfig.expansionOuterRadius * radiusScale
+        );
 
-      return {
-        startInnerRadius,
-        endInnerRadius,
-        startOuterRadius,
-        endOuterRadius,
-        startAlpha: waveConfig.startAlpha,
-        endAlpha: waveConfig.endAlpha,
-        gradientStops: waveConfig.gradientStops,
-        noise: waveConfig.noise,
-        filaments: waveConfig.filaments,
-      };
-    });
+        return {
+          startInnerRadius,
+          endInnerRadius,
+          startOuterRadius,
+          endOuterRadius,
+          startAlpha: waveConfig.startAlpha,
+          endAlpha: waveConfig.endAlpha,
+          gradientStops: waveConfig.gradientStops,
+          noise: waveConfig.noise,
+          filaments: waveConfig.filaments,
+        } satisfies WaveTemplate;
+      }
+    );
 
-    const maxInitialOuterRadius = waveStates.reduce(
-      (max, wave) => Math.max(max, wave.startOuterRadius),
+    const maxInitialOuterRadius = waveTemplates.reduce(
+      (max: number, wave: WaveTemplate) => Math.max(max, wave.startOuterRadius),
       0
     );
 
@@ -195,7 +158,7 @@ export class ExplosionModule implements GameModule {
       emitter,
     };
 
-    const waves: WaveState[] = waveStates.map((wave, index) => {
+    const waves: WaveState[] = waveTemplates.map((wave: WaveTemplate, index: number) => {
       const fillState = createReusableWaveFill(
         wave.gradientStops,
         wave.startInnerRadius,
@@ -228,7 +191,31 @@ export class ExplosionModule implements GameModule {
       waveLifetimeMs: Math.max(1, config.lifetimeMs),
       effectLifetimeMs,
       waves,
+      createdAt,
     });
+  }
+
+  public cleanupExpired(): void {
+    if (this.explosions.length === 0) {
+      return;
+    }
+
+    const now = performance.now();
+    const survivors: ExplosionState[] = [];
+
+    for (let i = 0; i < this.explosions.length; i += 1) {
+      const explosion = this.explosions[i]!;
+      const elapsed = now - explosion.createdAt;
+
+      if (elapsed >= explosion.effectLifetimeMs) {
+        explosion.waves.forEach((wave) => this.options.scene.removeObject(wave.id));
+        continue;
+      }
+
+      survivors.push(explosion);
+    }
+
+    this.explosions = survivors;
   }
 
   private hasTooManyNearbyExplosions(
@@ -335,19 +322,12 @@ const createReusableWaveFill = (
     start: { x: 0, y: 0 },
     end: radius,
     stops,
-    ...(noise && { noise: cloneFillNoise(noise) }),
-    ...(filaments && { filaments: cloneFillFilaments(filaments) }),
+    ...(noise && { noise: cloneSceneFillNoise(noise) }),
+    ...(filaments && { filaments: cloneSceneFillFilaments(filaments) }),
   };
 
   return { fill, stops, baseColor };
 };
-
-const cloneFillNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
-  noise ? { ...noise } : undefined;
-
-const cloneFillFilaments = (
-  filaments: SceneFillFilaments | undefined
-): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
 
 const updateWaveFill = (
   wave: WaveState,
