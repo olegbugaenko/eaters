@@ -1,301 +1,56 @@
 import { DataBridge } from "./DataBridge";
 import { ServiceContainer } from "./ServiceContainer";
+import { ServiceDefinition } from "./definitions/types";
+import { createBootstrapDefinitions } from "./definitions/bootstrap";
+import { createModuleDefinitions } from "./definitions/modules";
 import { GameModule, SaveSlotId, StoredSaveData } from "./types";
-import { SaveManager } from "../services/SaveManager";
-import { GameLoop } from "../services/GameLoop";
-import { TestTimeModule } from "../modules/shared/TestTimeModule";
-import { SceneObjectManager } from "../services/SceneObjectManager";
-import { BricksModule } from "../modules/active-map/BricksModule";
+import { MapId } from "../../db/maps-db";
 import { MapModule } from "../modules/active-map/MapModule";
 import { BulletModule } from "../modules/active-map/BulletModule";
-import { ExplosionModule } from "../modules/scene/ExplosionModule";
-import { ArcModule } from "../modules/scene/ArcModule";
-import { EffectsModule } from "../modules/scene/EffectsModule";
-import { FireballModule } from "../modules/scene/FireballModule";
-import { MapId } from "../../db/maps-db";
-import { PlayerUnitsModule } from "../modules/active-map/units/PlayerUnitsModule";
-import { MovementService } from "../services/MovementService";
 import { NecromancerModule } from "../modules/active-map/NecromancerModule";
+import { PlayerUnitsModule } from "../modules/active-map/units/PlayerUnitsModule";
+import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
+import { AudioModule } from "../modules/shared/AudioModule";
+import { BonusesModule } from "../modules/shared/BonusesModule";
 import { ResourcesModule } from "../modules/shared/ResourcesModule";
 import { SkillTreeModule } from "../modules/camp/SkillTreeModule";
-import { BonusesModule } from "../modules/shared/BonusesModule";
 import { StatisticsModule } from "../modules/shared/StatisticsModule";
-import { UnlockService } from "../services/UnlockService";
 import { UnitAutomationModule } from "../modules/active-map/UnitAutomationModule";
-import { UnitModuleWorkshopModule } from "../modules/camp/UnitModuleWorkshopModule";
 import { UnitDesignModule } from "../modules/camp/UnitDesignModule";
+import { UnitModuleWorkshopModule } from "../modules/camp/UnitModuleWorkshopModule";
 import { BuildingsModule } from "../modules/camp/BuildingsModule";
 import { CraftingModule } from "../modules/camp/CraftingModule";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
 import { resetAllArcBatches } from "../../ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { clearAllParticleEmitters } from "../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { AudioModule } from "../modules/shared/AudioModule";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
-import { SpellcastingModule } from "../modules/active-map/spells/SpellcastingModule";
-import { TutorialMonitorModule } from "../modules/active-map/TutorialMonitorModule";
-import { MapRunState } from "../modules/active-map/MapRunState";
+import { SaveManager } from "../services/SaveManager";
+import { GameLoop } from "../services/GameLoop";
+import { SceneObjectManager } from "../services/SceneObjectManager";
+import { ExplosionModule } from "../modules/scene/ExplosionModule";
+import { ArcModule } from "../modules/scene/ArcModule";
+import { EffectsModule } from "../modules/scene/EffectsModule";
+import { FireballModule } from "../modules/scene/FireballModule";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
   private dataBridge = new DataBridge();
   private modules: GameModule[] = [];
-  private mapModule: MapModule;
-  private necromancerModule: NecromancerModule;
-  private resourcesModule: ResourcesModule;
-  private skillTreeModule: SkillTreeModule;
-  private bonusesModule: BonusesModule;
-  private statisticsModule: StatisticsModule;
-  private unitAutomationModule: UnitAutomationModule;
-  private unitModuleWorkshopModule: UnitModuleWorkshopModule;
-  private unitDesignModule: UnitDesignModule;
-  private buildingsModule: BuildingsModule;
-  private craftingModule: CraftingModule;
-  private explosionModule: ExplosionModule;
-  private arcModule: ArcModule;
-  private effectsModule: EffectsModule;
-  private fireballModule: FireballModule;
-  private bulletModule: BulletModule;
-  private audioModule: AudioModule;
-  private spellcastingModule: SpellcastingModule;
-  private tutorialMonitorModule: TutorialMonitorModule;
-  private readonly mapRunState: MapRunState;
+  private mapModule?: MapModule;
 
   constructor() {
-    const saveManager = new SaveManager();
-    const gameLoop = new GameLoop();
-    const sceneObjects = new SceneObjectManager();
-    const movementService = new MovementService();
-
     this.serviceContainer.register("bridge", this.dataBridge);
-    this.serviceContainer.register("saveManager", saveManager);
-    this.serviceContainer.register("gameLoop", gameLoop);
-    this.serviceContainer.register("sceneObjects", sceneObjects);
-    this.serviceContainer.register("movement", movementService);
+    createBootstrapDefinitions().forEach((definition) => this.registerDefinition(definition));
 
-    const bonusesModule = new BonusesModule();
-    this.bonusesModule = bonusesModule;
-    this.mapRunState = new MapRunState();
-
-    let mapModuleReference: MapModule | null = null;
-    let skillTreeModuleReference: SkillTreeModule | null = null;
-    const unlockService = new UnlockService({
-      getMapStats: () => mapModuleReference?.getMapStats() ?? {},
-      getSkillLevel: (id) => skillTreeModuleReference?.getLevel(id) ?? 0,
-    });
-    this.serviceContainer.register("unlocks", unlockService);
-
-    const statisticsModule = new StatisticsModule({
-      bridge: this.dataBridge,
-    });
-    this.statisticsModule = statisticsModule;
-
-    const resourcesModule = new ResourcesModule({
-      bridge: this.dataBridge,
-      unlocks: unlockService,
-      bonuses: bonusesModule,
-      runState: this.mapRunState,
-      statistics: statisticsModule,
-    });
-    this.resourcesModule = resourcesModule;
-
-    const skillTreeModule = new SkillTreeModule({
-      bridge: this.dataBridge,
-      resources: resourcesModule,
-      bonuses: bonusesModule,
-    });
-    this.skillTreeModule = skillTreeModule;
-    skillTreeModuleReference = skillTreeModule;
-
-    const craftingModule = new CraftingModule({
-      bridge: this.dataBridge,
-      resources: resourcesModule,
-      unlocks: unlockService,
-      bonuses: bonusesModule,
-    });
-    this.craftingModule = craftingModule;
-
-    const buildingsModule = new BuildingsModule({
-      bridge: this.dataBridge,
-      resources: resourcesModule,
-      bonuses: bonusesModule,
-      unlocks: unlockService,
-      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
-    });
-    this.buildingsModule = buildingsModule;
-
-    const unitModuleWorkshopModule = new UnitModuleWorkshopModule({
-      bridge: this.dataBridge,
-      resources: resourcesModule,
-      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
-      unlocks: unlockService,
-    });
-    this.unitModuleWorkshopModule = unitModuleWorkshopModule;
-
-    const unitDesignModule = new UnitDesignModule({
-      bridge: this.dataBridge,
-      bonuses: bonusesModule,
-      workshop: unitModuleWorkshopModule,
-    });
-    this.unitDesignModule = unitDesignModule;
-
-    const timeModule = new TestTimeModule({
-      bridge: this.dataBridge,
-    });
-
-    const explosionModule = new ExplosionModule({
-      scene: sceneObjects,
-    });
-    this.explosionModule = explosionModule;
-
-    const audioModule = new AudioModule();
-    this.audioModule = audioModule;
-
-    const bricksModule = new BricksModule({
-      scene: sceneObjects,
-      bridge: this.dataBridge,
-      explosions: explosionModule,
-      resources: resourcesModule,
-      bonuses: bonusesModule,
-      runState: this.mapRunState,
-      audio: audioModule,
-      onAllBricksDestroyed: () => {
-        this.handleMapRunCompleted(true);
-      },
-      statistics: statisticsModule,
-    });
-    const playerUnitsModule = new PlayerUnitsModule({
-      scene: sceneObjects,
-      bricks: bricksModule,
-      bridge: this.dataBridge,
-      movement: movementService,
-      bonuses: bonusesModule,
-      explosions: explosionModule,
-      runState: this.mapRunState,
-      arcs: undefined, // will set after ArcModule created
-      effects: undefined, // will set after EffectsModule created
-      audio: audioModule,
-      unitDesign: unitDesignModule,
-      onAllUnitsDefeated: () => {
-        this.handleAllUnitsDefeated();
-      },
-      getModuleLevel: (id) => this.unitModuleWorkshopModule.getModuleLevel(id),
-      hasSkill: (id) => this.skillTreeModule.getLevel(id) > 0,
-      getDesignTargetingMode: (designId, type) =>
-        unitDesignModule.getTargetingModeForDesign(designId, type),
-      statistics: statisticsModule,
-    });
-    this.necromancerModule = new NecromancerModule({
-      bridge: this.dataBridge,
-      playerUnits: playerUnitsModule,
-      scene: sceneObjects,
-      bonuses: bonusesModule,
-      unitDesigns: unitDesignModule,
-      runState: this.mapRunState,
-      onSanityDepleted: () => {
-        this.handleMapRunCompleted(false);
-      },
-    });
-    const unitAutomationModule = new UnitAutomationModule({
-      bridge: this.dataBridge,
-      necromancer: this.necromancerModule,
-      unitDesigns: unitDesignModule,
-      getUnitCountByDesignId: (designId) =>
-        playerUnitsModule.getUnitCountByDesignId(designId),
-      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
-      runState: this.mapRunState,
-      isRunActive: () => mapModuleReference?.isRunActive() ?? false,
-    });
-    this.unitAutomationModule = unitAutomationModule;
-    const arcModule = new ArcModule({
-      scene: sceneObjects,
-      getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
-    });
-    this.arcModule = arcModule;
-
-    const effectsModule = new EffectsModule({
-      scene: sceneObjects,
-      getUnitPositionIfAlive: playerUnitsModule.getUnitPositionIfAlive,
-    });
-    this.effectsModule = effectsModule;
-
-    const fireballModule = new FireballModule({
-      scene: sceneObjects,
-      bricks: bricksModule,
-      explosions: explosionModule,
-      logEvent: (message) => console.log(`[FireballModule] ${message}`),
-    });
-    this.fireballModule = fireballModule;
-
-    mapModuleReference = new MapModule({
-      scene: sceneObjects,
-      bridge: this.dataBridge,
-      runState: this.mapRunState,
-      bonuses: bonusesModule,
-      bricks: bricksModule,
-      playerUnits: playerUnitsModule,
-      necromancer: this.necromancerModule,
-      resources: resourcesModule,
-      unlocks: unlockService,
-      unitsAutomation: unitAutomationModule,
-      arcs: arcModule,
-      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
+    const moduleDefinitions = createModuleDefinitions({
       onRunCompleted: (success) => this.handleMapRunCompleted(success),
+      onAllUnitsDefeated: () => this.handleAllUnitsDefeated(),
+      setMapModule: (mapModule) => {
+        this.mapModule = mapModule;
+      },
     });
-    this.mapModule = mapModuleReference;
 
-    const bulletModule = new BulletModule({
-      scene: sceneObjects,
-      explosions: explosionModule,
-      runState: this.mapRunState,
-    });
-    this.bulletModule = bulletModule;
-
-    const spellcastingModule = new SpellcastingModule({
-      bridge: this.dataBridge,
-      scene: sceneObjects,
-      necromancer: this.necromancerModule,
-      bricks: bricksModule,
-      bonuses: bonusesModule,
-      explosions: explosionModule,
-      runState: this.mapRunState,
-      getSkillLevel: (id) => this.skillTreeModule.getLevel(id),
-    });
-    this.spellcastingModule = spellcastingModule;
-
-    const tutorialMonitorModule = new TutorialMonitorModule({
-      bridge: this.dataBridge,
-      necromancer: this.necromancerModule,
-      resources: resourcesModule,
-      runState: this.mapRunState,
-    });
-    this.tutorialMonitorModule = tutorialMonitorModule;
-
-    this.registerModule(bonusesModule);
-    this.registerModule(statisticsModule);
-    this.registerModule(resourcesModule);
-    this.registerModule(skillTreeModule);
-    this.registerModule(craftingModule);
-    this.registerModule(buildingsModule);
-    this.registerModule(unitModuleWorkshopModule);
-    this.registerModule(unitDesignModule);
-    this.registerModule(timeModule);
-    this.registerModule(bricksModule);
-    this.registerModule(playerUnitsModule);
-    // now arcs module is ready; link it to playerUnits (optional, legacy code still works without)
-    (playerUnitsModule as any).arcs = arcModule;
-    (playerUnitsModule as any).effects = effectsModule;
-    (playerUnitsModule as any).fireballs = fireballModule;
-    this.registerModule(this.necromancerModule);
-    this.registerModule(this.unitAutomationModule);
-    this.registerModule(this.mapModule);
-    this.registerModule(explosionModule);
-    this.registerModule(arcModule);
-    this.registerModule(effectsModule);
-    this.registerModule(fireballModule);
-    this.registerModule(bulletModule);
-    this.registerModule(spellcastingModule);
-    this.registerModule(tutorialMonitorModule);
-    this.registerModule(audioModule);
+    moduleDefinitions.forEach((definition) => this.registerDefinition(definition));
   }
 
   public initialize(): void {
@@ -347,69 +102,69 @@ export class Application {
   }
 
   public getNecromancer(): NecromancerModule {
-    return this.necromancerModule;
+    return this.serviceContainer.get("necromancer");
   }
 
   public getBonuses(): BonusesModule {
-    return this.bonusesModule;
+    return this.serviceContainer.get("bonuses");
   }
 
   public getUnitDesigner(): UnitDesignModule {
-    return this.unitDesignModule;
+    return this.serviceContainer.get("unitDesign");
   }
 
   public getSkillTree(): SkillTreeModule {
-    return this.skillTreeModule;
+    return this.serviceContainer.get("skillTree");
   }
 
   public getUnitAutomation(): UnitAutomationModule {
-    return this.unitAutomationModule;
+    return this.serviceContainer.get("unitAutomation");
   }
 
   public getUnitModuleWorkshop(): UnitModuleWorkshopModule {
-    return this.unitModuleWorkshopModule;
+    return this.serviceContainer.get("unitModuleWorkshop");
   }
 
   public getBuildings(): BuildingsModule {
-    return this.buildingsModule;
+    return this.serviceContainer.get("buildings");
   }
 
   public getCrafting(): CraftingModule {
-    return this.craftingModule;
+    return this.serviceContainer.get("crafting");
   }
 
   public getSpellcasting(): SpellcastingModule {
-    return this.spellcastingModule;
+    return this.serviceContainer.get("spellcasting");
   }
 
   public restartCurrentMap(): void {
     this.cleanupSceneAfterRun();
-    this.mapModule.restartSelectedMap();
+    this.getMapModule().restartSelectedMap();
   }
 
   public pauseCurrentMap(): void {
-    this.mapModule.pauseActiveMap();
+    this.getMapModule().pauseActiveMap();
   }
 
   public resumeCurrentMap(): void {
-    this.mapModule.resumeActiveMap();
+    this.getMapModule().resumeActiveMap();
   }
 
   public setAutoRestartEnabled(enabled: boolean): void {
-    this.mapModule.setAutoRestartEnabled(enabled);
+    this.getMapModule().setAutoRestartEnabled(enabled);
   }
 
   public leaveCurrentMap(): void {
-    this.mapModule.leaveCurrentMap();
+    this.getMapModule().leaveCurrentMap();
     this.cleanupSceneAfterRun();
   }
 
   public selectMap(mapId: MapId): void {
-    this.mapModule.selectMap(mapId);
+    this.getMapModule().selectMap(mapId);
   }
 
   public selectMapLevel(mapId: MapId, level: number): void {
-    this.mapModule.selectMapLevel(mapId, level);
+    this.getMapModule().selectMapLevel(mapId, level);
   }
 
   public hasActiveSaveSlot(): boolean {
@@ -425,19 +180,31 @@ export class Application {
   }
 
   public applyAudioSettings(settings: AudioSettingsPercentages): void {
-    this.audioModule.applyPercentageSettings(settings);
+    this.serviceContainer.get<AudioModule>("audio").applyPercentageSettings(settings);
   }
 
   public resumeAudio(): void {
-    this.audioModule.resumeMusic();
+    this.serviceContainer.get<AudioModule>("audio").resumeMusic();
   }
 
   public playCampPlaylist(): void {
-    this.audioModule.playPlaylist("camp");
+    this.serviceContainer.get<AudioModule>("audio").playPlaylist("camp");
   }
 
   public playMapPlaylist(): void {
-    this.audioModule.playPlaylist("map");
+    this.serviceContainer.get<AudioModule>("audio").playPlaylist("map");
+  }
+
+  private registerDefinition<T>(definition: ServiceDefinition<T>): T {
+    const instance = definition.factory(this.serviceContainer);
+    this.serviceContainer.register(definition.token, instance);
+
+    if (definition.registerAsModule) {
+      this.registerModule(instance as unknown as GameModule);
+    }
+
+    definition.onReady?.(instance, this.serviceContainer);
+    return instance;
   }
 
   private registerModule(module: GameModule): void {
@@ -448,27 +215,32 @@ export class Application {
     gameLoop.registerModule(module);
   }
 
+  private getMapModule(): MapModule {
+    return this.serviceContainer.get("map");
+  }
+
   private handleAllUnitsDefeated(): void {
-    if (this.necromancerModule.isSanityDepleted()) {
+    if (this.getNecromancer().isSanityDepleted()) {
       this.handleMapRunCompleted(false);
     }
   }
 
   private handleMapRunCompleted(success: boolean): void {
-    if (this.resourcesModule.isRunSummaryAvailable()) {
+    const resources = this.serviceContainer.get<ResourcesModule>("resources");
+    if (resources.isRunSummaryAvailable()) {
       return;
     }
-    const durationMs = this.resourcesModule.getRunDurationMs();
-    this.mapModule.recordRunResult({ success, durationMs });
-    this.resourcesModule.finishRun();
+    const durationMs = resources.getRunDurationMs();
+    this.getMapModule().recordRunResult({ success, durationMs });
+    resources.finishRun();
   }
 
   private cleanupSceneAfterRun(): void {
-    this.fireballModule.reset();
-    this.bulletModule.reset();
-    this.explosionModule.reset();
-    this.arcModule.reset();
-    this.effectsModule.reset();
+    this.serviceContainer.get<FireballModule>("fireball").reset();
+    this.serviceContainer.get<BulletModule>("bullet").reset();
+    this.serviceContainer.get<ExplosionModule>("explosion").reset();
+    this.serviceContainer.get<ArcModule>("arc").reset();
+    this.serviceContainer.get<EffectsModule>("effects").reset();
     this.getSceneObjects().flushAllPendingRemovals();
     this.resetGpuCaches();
   }
