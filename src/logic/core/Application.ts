@@ -1,8 +1,8 @@
 import { DataBridge } from "./DataBridge";
 import { ServiceContainer } from "./ServiceContainer";
-import { ServiceDefinition } from "./definitions/types";
-import { createBootstrapDefinitions } from "./definitions/bootstrap";
-import { createModuleDefinitions } from "./definitions/modules";
+import { ServiceDefinition } from "./loader/types";
+import { createBootstrapDefinitions } from "./loader/bootstrap";
+import { createModuleDefinitions } from "../definitions/modules";
 import { GameModule, SaveSlotId, StoredSaveData } from "./types";
 import { MapId } from "../../db/maps-db";
 import { MapModule } from "../modules/active-map/MapModule";
