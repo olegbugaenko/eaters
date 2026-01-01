@@ -190,7 +190,7 @@ const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     stops: [
-      { offset: 0, color: { r: 0.55, g: 0.65, b: 1, a: 0.12 } },
+      { offset: 0, color: { r: 0.55, g: 0.65, b: 1, a: 0.17 } },
       { offset: 1, color: { r: 0.6, g: 0.65, b: 0.65, a: 0.0 } },
     ],
     noise: {
@@ -324,7 +324,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     cooldownSeconds: 1.2,
     damage: { min: 1, max: 4 },
     projectile: {
-      radius: 3,
+      radius: 6,
       speed: 120,
       lifetimeMs: 12_500,
       fill: {
