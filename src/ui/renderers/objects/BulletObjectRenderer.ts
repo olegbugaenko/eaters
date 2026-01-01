@@ -295,11 +295,22 @@ const sanitizeTailEmitterConfig = (
     Number.isFinite(config.spread) ? Number(config.spread) : 0
   );
 
+  // Convert sizeEvolutionMult (multiplier at end of lifetime) to sizeGrowthRate (multiplier per second)
+  // Formula: sizeGrowthRate = sizeEvolutionMult ^ (1 / lifetimeSeconds)
+  let sizeGrowthRate = base.sizeGrowthRate ?? 1.0;
+  if (typeof config.sizeEvolutionMult === "number" && Number.isFinite(config.sizeEvolutionMult) && config.sizeEvolutionMult > 0) {
+    const lifetimeSeconds = base.particleLifetimeMs / 1000;
+    if (lifetimeSeconds > 0 && config.sizeEvolutionMult !== 1) {
+      sizeGrowthRate = Math.pow(config.sizeEvolutionMult, 1 / lifetimeSeconds);
+    }
+  }
+
   return {
     ...base,
     baseSpeed,
     speedVariation,
     spread,
+    sizeGrowthRate,
   };
 };
 

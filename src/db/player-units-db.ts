@@ -122,6 +122,8 @@ export interface PlayerUnitEmitterConfig {
   baseSpeed: number;
   speedVariation: number;
   sizeRange: { min: number; max: number };
+  /** Size evolution multiplier: >1 = grow, <1 = shrink, 1 = constant (default) */
+  sizeEvolutionMult?: number;
   spread: number;
   offset: SceneVector2;
   color: SceneColor;
@@ -653,6 +655,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       baseSpeed: 0.05,
       speedVariation: 0.01,
       sizeRange: { min: 14.2, max: 28.4 },
+      sizeEvolutionMult: 1.75, // Particles grow from 1x to 1.25x size over lifetime
       spread: Math.PI / 5.5,
       offset: { x: -0.35, y: 0 },
       color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },

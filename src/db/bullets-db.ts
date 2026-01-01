@@ -27,6 +27,8 @@ export interface BulletTailEmitterConfig {
   baseSpeed: number;
   speedVariation: number;
   sizeRange: { min: number; max: number };
+  /** Size evolution multiplier: >1 = grow, <1 = shrink, 1 = constant (default) */
+  sizeEvolutionMult?: number;
   spread: number;
   offset: SceneVector2;
   color: SceneColor;
