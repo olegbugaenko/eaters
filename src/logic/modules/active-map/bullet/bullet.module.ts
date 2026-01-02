@@ -1,73 +1,18 @@
 import { GameModule } from "../../../core/types";
-import {
-  FILL_TYPES,
-  SceneFill,
-  SceneFillFilaments,
-  SceneFillNoise,
-  SceneObjectManager,
-  SceneVector2,
-} from "../../../services/SceneObjectManager";
-import { cloneSceneFill, cloneSceneFillFilaments, cloneSceneFillNoise } from "../../../helpers/scene-fill.helper";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import {
   BULLET_TYPES,
   BulletConfig,
-  BulletTailConfig,
-  BulletTailEmitterConfig,
   BulletType,
   getBulletConfig,
 } from "../../../../db/bullets-db";
 import { ExplosionType } from "../../../../db/explosions-db";
 import { ExplosionModule, SpawnExplosionByTypeOptions } from "../../scene/explosion/explosion.module";
 import { MapRunState } from "../map/MapRunState";
-import { BulletCustomData, BulletModuleOptions, BulletState, SpawnBulletByTypeOptions } from "./bullet.types";
+import { BulletModuleOptions, BulletState, SpawnBulletByTypeOptions } from "./bullet.types";
+import { createBulletFill, createBulletCustomData } from "./bullet.helpers";
+import { REUSABLE_UPDATE_PAYLOAD } from "./bullet.const";
 export type { SpawnBulletByTypeOptions } from "./bullet.types";
-
-const createBulletFill = (radius: number, config: BulletConfig) => ({
-  fillType: FILL_TYPES.RADIAL_GRADIENT,
-  start: { x: 0, y: 0 },
-  end: radius,
-  stops: config.gradientStops.map((stop) => ({
-    offset: stop.offset,
-    color: { ...stop.color },
-  })),
-  ...(config.noise ? { noise: cloneSceneFillNoise(config.noise) } : {}),
-  ...(config.filaments ? { filaments: cloneSceneFillFilaments(config.filaments) } : {}),
-});
-
-const createBulletCustomData = (
-  type: BulletType,
-  tail: BulletTailConfig,
-  tailEmitter: BulletTailEmitterConfig | undefined
-): BulletCustomData => ({
-  type,
-  tail: {
-    lengthMultiplier: tail.lengthMultiplier,
-    widthMultiplier: tail.widthMultiplier,
-    startColor: { ...tail.startColor },
-    endColor: { ...tail.endColor },
-  },
-  tailEmitter: tailEmitter ? cloneTailEmitterConfig(tailEmitter) : undefined,
-});
-
-const cloneTailEmitterConfig = (
-  config: BulletTailEmitterConfig
-): BulletTailEmitterConfig => ({
-  particlesPerSecond: config.particlesPerSecond,
-  particleLifetimeMs: config.particleLifetimeMs,
-  fadeStartMs: config.fadeStartMs,
-  baseSpeed: config.baseSpeed,
-  speedVariation: config.speedVariation,
-  sizeRange: { min: config.sizeRange.min, max: config.sizeRange.max },
-  spread: config.spread,
-  offset: { x: config.offset.x, y: config.offset.y },
-  color: { ...config.color },
-  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
-  maxParticles: config.maxParticles,
-});
-
-const reusableUpdatePayload: { position: SceneVector2 } = {
-  position: { x: 0, y: 0 },
-};
 
 export class BulletModule implements GameModule {
   public readonly id = "bullet";
@@ -191,8 +136,8 @@ export class BulletModule implements GameModule {
         return;
       }
 
-      reusableUpdatePayload.position = bullet.position;
-      this.options.scene.updateObject(bullet.id, reusableUpdatePayload);
+      REUSABLE_UPDATE_PAYLOAD.position = bullet.position;
+      this.options.scene.updateObject(bullet.id, REUSABLE_UPDATE_PAYLOAD);
 
       survivors.push(bullet);
     });

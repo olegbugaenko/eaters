@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SpellId } from "@db/spells-db";
-import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.module";
-import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.module";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import { SceneDebugPanel } from "./components/debug/SceneDebugPanel";
 import { SceneRunSummaryModal } from "./components/modals/SceneRunSummaryModal";
 import { SceneRunResourcePanel } from "./components/panels/SceneRunResourcePanel";
@@ -20,12 +20,12 @@ import { useBridgeValue } from "@shared/useBridgeValue";
 import "./SceneScreen.css";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";
+import { TutorialMonitorStatus } from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.types";
 import {
   DEFAULT_TUTORIAL_MONITOR_STATUS,
   TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
   TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
-  TutorialMonitorStatus,
-} from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.module";
+} from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.const";
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
 import { usePersistedSpellSelection } from "./hooks/usePersistedSpellSelection";

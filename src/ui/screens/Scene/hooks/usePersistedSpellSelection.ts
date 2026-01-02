@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SpellId, SPELL_IDS } from "@db/spells-db";
-import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 
 const STORAGE_KEY = "selectedSpellId";
 

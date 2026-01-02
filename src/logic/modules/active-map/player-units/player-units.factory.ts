@@ -18,6 +18,7 @@ export const createPlayerUnitsDefinition = (
       movement: container.get("movement"),
       bonuses: container.get("bonuses"),
       explosions: container.get("explosion"),
+      projectiles: container.get("unitProjectiles"),
       runState: container.get("mapRunState"),
       arcs: undefined,
       effects: undefined,

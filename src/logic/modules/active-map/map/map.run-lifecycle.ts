@@ -1,7 +1,9 @@
-import { SceneObjectManager, SceneSize, SceneVector2 } from "../../../services/SceneObjectManager";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { MapRunState } from "./MapRunState";
 import { MapVisualEffects } from "./map.visual-effects";
-import { BricksModule, BrickData } from "../bricks/bricks.module";
+import { BricksModule } from "../bricks/bricks.module";
+import type { BrickData } from "../bricks/bricks.types";
 import { PlayerUnitsModule, PlayerUnitSpawnData } from "../player-units/player-units.module";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { ResourceRunController } from "./map.types";

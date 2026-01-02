@@ -10,8 +10,8 @@ import {
   SceneFillFilaments,
   SceneFillNoise,
   SceneVector2,
-  FILL_TYPES,
-} from "../../../logic/services/SceneObjectManager";
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { createDynamicCirclePrimitive, createDynamicPolygonPrimitive } from "../primitives";
 import type {
   AuraRendererCompositeConfig,

@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../services/SceneObjectManager";
+import { SceneVector2 } from "../services/scene-object-manager/scene-object-manager.types";
 
 interface SpatialGridItem<T> {
   readonly id: string;

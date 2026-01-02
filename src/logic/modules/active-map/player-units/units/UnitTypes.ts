@@ -1,8 +1,9 @@
-import { SceneVector2, SceneColor } from "../../../../services/SceneObjectManager";
+import { SceneVector2, SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "../../../../../db/player-units-db";
-import { PlayerUnitRendererConfig, PlayerUnitEmitterConfig } from "../../../../../db/player-units-db";
+import type { ParticleEmitterConfig } from "../../../../interfaces/visuals/particle-emitters-config";
+import { PlayerUnitRendererConfig } from "../../../../../db/player-units-db";
 import { UnitTargetingMode } from "../../../../../types/unit-targeting";
-import { UnitDesignId } from "../../../camp/unit-design/unit-design.module";
+import { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 import { UnitModuleId } from "../../../../../db/unit-modules-db";
 import { SkillId } from "../../../../../db/skills-db";
 import { VisualEffectState } from "../../../../visuals/VisualEffectState";
@@ -45,7 +46,7 @@ export interface PlayerUnitState {
   wanderCooldown: number;
   objectId: string;
   renderer: PlayerUnitRendererConfig;
-  emitter?: PlayerUnitEmitterConfig;
+  emitter?: ParticleEmitterConfig;
   baseFillColor: SceneColor;
   baseStrokeColor?: SceneColor;
   appliedFillColor: SceneColor;

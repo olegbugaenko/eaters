@@ -1,19 +1,20 @@
-import { SceneObjectManager, SceneVector2 } from "../../../../services/SceneObjectManager";
-import { MovementService, MovementBodyState } from "../../../../services/MovementService";
-import { BricksModule, BrickRuntimeState } from "../../bricks/bricks.module";
+import { SceneObjectManager } from "../../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import { MovementService, MovementBodyState } from "../../../../services/movement/MovementService";
+import { BricksModule } from "../../bricks/bricks.module";
+import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import {
   BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
   BURNING_TAIL_DURATION_MS,
   FREEZING_TAIL_DURATION_MS,
-} from "../../bricks/BrickEffectsManager";
+} from "../../bricks/brick-effects.const";
 import { PlayerUnitAbilities, AbilityActivationResult } from "../PlayerUnitAbilities";
 import type { UnitTargetingMode } from "../../../../../types/unit-targeting";
 import type { StatisticsTracker } from "../../../shared/statistics/statistics.module";
 import { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import { PlayerUnitType } from "../../../../../db/player-units-db";
 import { getUnitModuleConfig } from "../../../../../db/unit-modules-db";
-import { UnitProjectileController } from "./UnitProjectileController";
-import { spawnTailNeedleVolley } from "./TailNeedleVolley";
+import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { PlayerUnitState } from "./UnitTypes";
 import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import {
@@ -58,35 +59,16 @@ export interface UnitUpdateResult {
   unitsRemoved: PlayerUnitState[];
 }
 
-const roundStat = (value: number): number => Math.round(value * 100) / 100;
-
-const cloneVector = (vector: SceneVector2): SceneVector2 => ({
-  x: vector.x,
-  y: vector.y,
-});
-
-const addVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
-  x: a.x + b.x,
-  y: a.y + b.y,
-});
-
-const subtractVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
-  x: a.x - b.x,
-  y: a.y - b.y,
-});
-
-const scaleVector = (vector: SceneVector2, scalar: number): SceneVector2 => ({
-  x: vector.x * scalar,
-  y: vector.y * scalar,
-});
-
-const vectorLength = (vector: SceneVector2): number => Math.hypot(vector.x, vector.y);
-
-const vectorHasLength = (vector: SceneVector2, epsilon = 0.0001): boolean =>
-  Math.abs(vector.x) > epsilon || Math.abs(vector.y) > epsilon;
-
-const vectorEquals = (a: SceneVector2, b: SceneVector2, epsilon = 0.0001): boolean =>
-  Math.abs(a.x - b.x) <= epsilon && Math.abs(a.y - b.y) <= epsilon;
+import { roundStat } from "../../../../helpers/numbers.helper";
+import {
+  cloneVector,
+  addVectors,
+  subtractVectors,
+  scaleVector,
+  vectorLength,
+  vectorHasLength,
+  vectorEquals,
+} from "../../../../helpers/vector.helper";
 
 export class UnitRuntimeController {
   private readonly scene: SceneObjectManager;
@@ -739,13 +721,12 @@ export class UnitRuntimeController {
       }
     }
 
-    spawnTailNeedleVolley({
-      unit,
-      attackDirection: direction,
+    this.abilities.processUnitAbilitiesOnAttack(
+      unit as any,
+      direction,
       inflictedDamage,
       totalDamage,
-      projectiles: this.projectiles,
-    });
+    );
 
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;

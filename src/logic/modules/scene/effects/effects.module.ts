@@ -1,17 +1,7 @@
 import { GameModule } from "../../../core/types";
-import { SceneObjectManager } from "../../../services/SceneObjectManager";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import { getVisualEffectRenderer, VisualEffectId } from "../../../../db/effects-db";
-
-interface EffectsModuleOptions {
-  scene: SceneObjectManager;
-  getUnitPositionIfAlive: (unitId: string) => { x: number; y: number } | null;
-}
-
-interface AuraState {
-  objectId: string; // scene object id for aura
-  effectId: VisualEffectId;
-  unitId: string;
-}
+import type { EffectsModuleOptions, AuraState } from "./effects.types";
 
 export class EffectsModule implements GameModule {
   public readonly id = "effects";

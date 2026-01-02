@@ -1,12 +1,13 @@
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
   SceneVector2,
-} from "../logic/services/SceneObjectManager";
+} from "../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 import { ExplosionType } from "./explosions-db";
 
 export type BulletType = "magnetic" | "plasmoid" | "mechanical";
@@ -20,21 +21,6 @@ export interface BulletTailConfig {
   endColor: SceneColor;
 }
 
-export interface BulletTailEmitterConfig {
-  particlesPerSecond: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  baseSpeed: number;
-  speedVariation: number;
-  sizeRange: { min: number; max: number };
-  /** Size evolution multiplier: >1 = grow, <1 = shrink, 1 = constant (default) */
-  sizeEvolutionMult?: number;
-  spread: number;
-  offset: SceneVector2;
-  color: SceneColor;
-  fill?: SceneFill;
-  maxParticles?: number;
-}
 
 export interface BulletConfig {
   diameter: number;
@@ -45,7 +31,7 @@ export interface BulletConfig {
   noise?: SceneFillNoise;
   filaments?: SceneFillFilaments;
   tail: BulletTailConfig;
-  tailEmitter?: BulletTailEmitterConfig;
+  tailEmitter?: ParticleEmitterConfig;
   explosionType?: ExplosionType;
 }
 

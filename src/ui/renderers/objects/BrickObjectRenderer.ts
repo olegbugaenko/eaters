@@ -1,10 +1,10 @@
 import { ObjectRenderer, ObjectRegistration } from "./ObjectRenderer";
 import {
-  FILL_TYPES,
   SceneFill,
   SceneObjectInstance,
   SceneStroke,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { createDynamicRectanglePrimitive } from "../primitives";
 
 export class BrickObjectRenderer extends ObjectRenderer {

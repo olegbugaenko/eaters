@@ -8,20 +8,18 @@ import {
   useState,
 } from "react";
 import {
-  SceneCameraState,
-  SceneObjectManager,
-} from "@logic/services/SceneObjectManager";
-import {
-  SpellOption,
-  SpellcastingModule,
-} from "@logic/modules/active-map/spellcasting/spellcasting.module";
+  SceneCameraState
+} from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
 import { SpellId } from "@db/spells-db";
 import {
   BufferStats,
   ParticleStatsState,
   useSceneCanvas,
 } from "./useSceneCanvas";
-import { GameLoop } from "@logic/services/GameLoop";
+import { GameLoop } from "@logic/services/game-loop/GameLoop";
 
 interface UseSceneCameraInteractionArgs {
   scene: SceneObjectManager;

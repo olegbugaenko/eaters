@@ -3,12 +3,12 @@ import { MapId } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
 import { CampTabPanels } from "./TabPanels/CampTabPanels";
-import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
-import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.module";
+import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
+import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
-import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.module";
-import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.module";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.module";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
+import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import "./CampContent.css";
 
 export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting";

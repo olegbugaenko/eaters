@@ -1,12 +1,14 @@
 import { MutableRefObject, useEffect, useRef } from "react";
 import { SpellId } from "@db/spells-db";
-import { SpellOption, SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
 import {
   SceneCameraState,
-  SceneObjectManager,
   SceneVector2,
-} from "@logic/services/SceneObjectManager";
-import { GameLoop, TICK_INTERVAL } from "@logic/services/GameLoop";
+} from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
+import { GameLoop } from "@logic/services/game-loop/GameLoop";
+import { TICK_INTERVAL } from "@logic/services/game-loop/game-loop.const";
 import {
   POSITION_COMPONENTS,
   VERTEX_COMPONENTS,
@@ -49,7 +51,7 @@ import {
   getAllActiveBullets,
   applyInterpolatedBulletPositions,
 } from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
-import { setBulletRenderBridge } from "@logic/services/BulletRenderBridge";
+import { setBulletRenderBridge } from "@logic/services/bullet-render-bridge/BulletRenderBridge";
 import {
   initRingGpuRenderer,
   renderRings,

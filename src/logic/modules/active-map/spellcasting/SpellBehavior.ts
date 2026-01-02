@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../../../services/SceneObjectManager";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { SpellConfig, SpellId } from "../../../../db/spells-db";
 import { BonusValueMap } from "../../shared/bonuses/bonuses.module";
 
@@ -24,6 +24,7 @@ export interface SpellBehaviorDependencies {
   readonly bricks: any; // BricksModule
   readonly bonuses: any; // BonusesModule
   readonly explosions?: any; // ExplosionModule (опціонально)
+  readonly projectiles: any; // UnitProjectileController
   readonly getSpellPowerMultiplier: () => number;
 }
 

@@ -3,8 +3,8 @@ import {
   SceneObjectInstance,
   SceneVector2,
   SceneColor,
-  FILL_TYPES,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../../../logic/services/scene-object-manager/scene-object-manager.const";
 import {
   createParticleEmitterPrimitive,
   createFireRingPrimitive,
@@ -17,7 +17,7 @@ import {
 import type {
   PersistentAoeObjectCustomData,
   PersistentAoeParticleCustomData,
-} from "@logic/modules/active-map/spellcasting/PersistentAoeSpellBehavior";
+} from "@logic/modules/active-map/spellcasting/implementations/PersistentAoeSpellBehavior.types";
 import { DynamicPrimitive } from "./ObjectRenderer";
 import {
   addFireRingInstance,

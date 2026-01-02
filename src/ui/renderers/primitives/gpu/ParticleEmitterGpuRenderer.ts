@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../../../../logic/services/SceneObjectManager";
+import { SceneVector2 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
 import {
   CORE_NOISE_GLSL,
   APPLY_FILL_NOISE_GLSL,

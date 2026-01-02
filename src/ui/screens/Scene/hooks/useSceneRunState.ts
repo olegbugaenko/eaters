@@ -4,35 +4,37 @@ import { MapAutoRestartState } from "@logic/modules/active-map/map/map.types";
 import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
-} from "@logic/modules/active-map/map/map.module";
+} from "@logic/modules/active-map/map/map.const";
 import {
   NECROMANCER_RESOURCES_BRIDGE_KEY,
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+} from "@logic/modules/active-map/necromancer/necromancer.const";
+import type {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
-} from "@logic/modules/active-map/necromancer/necromancer.module";
+} from "@logic/modules/active-map/necromancer/necromancer.types";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import {
   DEFAULT_SPELL_OPTIONS,
   SPELL_OPTIONS_BRIDGE_KEY,
-  SpellOption,
-} from "@logic/modules/active-map/spellcasting/spellcasting.module";
+} from "@logic/modules/active-map/spellcasting/spellcasting.const";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-  UnitAutomationBridgeState,
-} from "@logic/modules/active-map/unit-automation/unit-automation.module";
-import { BRICK_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bricks.module";
+} from "@logic/modules/active-map/unit-automation/unit-automation.const";
+import { BRICK_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bricks.const";
 import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "@logic/modules/active-map/player-units/player-units.module";
-import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.module";
+import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import {
-  DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
-  ResourceRunSummaryPayload,
-} from "@logic/modules/shared/resources/resources.module";
-import { SceneCameraState } from "@logic/services/SceneObjectManager";
+  DEFAULT_RESOURCE_RUN_SUMMARY,
+} from "@logic/modules/shared/resources/resources.const";
+import type { ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
+import { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { useBridgeValue } from "@shared/useBridgeValue";
 import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
 import {

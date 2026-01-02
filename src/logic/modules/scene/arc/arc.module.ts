@@ -1,23 +1,10 @@
 import { GameModule } from "../../../core/types";
-import { SceneObjectManager, SceneVector2, FILL_TYPES } from "../../../services/SceneObjectManager";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { ArcType, getArcConfig } from "../../../../db/arcs-db";
-
-interface ArcModuleOptions {
-  scene: SceneObjectManager;
-  getUnitPositionIfAlive: (unitId: string) => SceneVector2 | null;
-}
-
-interface ArcState {
-  id: string; // scene object id
-  type: ArcType;
-  sourceUnitId: string;
-  targetUnitId: string;
-  remainingMs: number;
-  lifetimeMs: number;
-  fadeStartMs: number;
-  lastUpdateTimestampMs: number;
-  lastRealTimestampMs: number;
-}
+import { getNowMs } from "../../../helpers/time.helper";
+import type { ArcModuleOptions, ArcState } from "./arc.types";
 
 export class ArcModule implements GameModule {
   public readonly id = "arcs";
@@ -49,7 +36,7 @@ export class ArcModule implements GameModule {
     if (this.arcs.length === 0) return;
     const survivors: ArcState[] = [];
     const dec = Math.max(0, deltaMs);
-    const now = this.getTimestamp();
+    const now = getNowMs();
     const realNow = Date.now();
     for (let i = 0; i < this.arcs.length; i += 1) {
       const a = this.arcs[i]!;
@@ -92,7 +79,7 @@ export class ArcModule implements GameModule {
     if (!from || !to) {
       return;
     }
-    const now = this.getTimestamp();
+    const now = getNowMs();
     const realNow = Date.now();
     const id = this.scene.addObject("arc", {
       position: { ...from },
@@ -141,12 +128,6 @@ export class ArcModule implements GameModule {
     this.arcs = [];
   }
 
-  private getTimestamp(): number {
-    if (typeof performance !== "undefined" && typeof performance.now === "function") {
-      return performance.now();
-    }
-    return Date.now();
-  }
 }
 
 

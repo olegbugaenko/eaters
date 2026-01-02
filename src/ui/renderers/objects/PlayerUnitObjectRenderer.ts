@@ -6,7 +6,6 @@ import {
   transformObjectPoint,
 } from "./ObjectRenderer";
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneFillFilaments,
@@ -14,7 +13,9 @@ import {
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
-} from "../../../logic/services/SceneObjectManager";
+  SceneSolidFill,
+} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../../../logic/services/scene-object-manager/scene-object-manager.const";
 import {
   createDynamicCirclePrimitive,
   createDynamicPolygonPrimitive,
@@ -33,8 +34,11 @@ import {
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
 import { cloneSceneFill, sanitizeSceneColor } from "../../../logic/services/particles/ParticleEmitterShared";
+import { cloneSceneFillNoise, cloneSceneFillFilaments } from "../../../logic/helpers/scene-fill.helper";
+import { clamp01 } from "@/utils/helpers/numbers";
+import { createSolidFill as createBaseSolidFill } from "../../../logic/services/scene-object-manager/scene-object-manager.helpers";
+import type { ParticleEmitterConfig } from "../../../logic/interfaces/visuals/particle-emitters-config";
 import type {
-  PlayerUnitEmitterConfig,
   PlayerUnitRendererConfig,
   PlayerUnitRendererLayerConfig,
   PlayerUnitRendererFillConfig,
@@ -57,7 +61,7 @@ interface PlayerUnitRendererLegacyPayload {
 
 interface PlayerUnitCustomData {
   renderer?: PlayerUnitRendererConfig | PlayerUnitRendererLegacyPayload;
-  emitter?: PlayerUnitEmitterConfig;
+  emitter?: ParticleEmitterConfig;
   physicalSize?: number;
   baseFillColor?: SceneColor;
   baseStrokeColor?: SceneColor;
@@ -175,13 +179,6 @@ const MIN_CIRCLE_SEGMENTS = 8;
 const TAU = Math.PI * 2;
 const POLYGON_SWAY_PHASE_STEP = 0.6;
 
-const cloneFillNoise = (
-  noise: SceneFillNoise | undefined
-): SceneFillNoise | undefined => (noise ? { ...noise } : undefined);
-
-const cloneFillFilaments = (
-  filaments: SceneFillFilaments | undefined
-): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
 
 // Глобальний реєстр для зберігання аур юнітів
 const auraInstanceMap = new Map<string, {
@@ -436,9 +433,9 @@ const sanitizeFillConfig = (
     return {
       kind: "solid",
       color: { ...fill.color },
-      ...(fill.noise ? { noise: cloneFillNoise(fill.noise) } : {}),
+      ...(fill.noise ? { noise: cloneSceneFillNoise(fill.noise) } : {}),
       ...(fill.filaments
-        ? { filaments: cloneFillFilaments(fill.filaments) }
+        ? { filaments: cloneSceneFillFilaments(fill.filaments) }
         : {}),
     };
   }
@@ -475,18 +472,6 @@ const sanitizeStrokeConfig = (
   };
 };
 
-const clamp01 = (value: number): number => {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  if (value <= 0) {
-    return 0;
-  }
-  if (value >= 1) {
-    return 1;
-  }
-  return value;
-};
 
 const applyBrightness = (component: number, brightness: number): number => {
   if (brightness > 0) {
@@ -514,16 +499,13 @@ const tintColor = (
 const createSolidFill = (
   color: SceneColor,
   noise?: SceneFillNoise
-): SceneFill => ({
-  fillType: FILL_TYPES.SOLID,
-  color: {
-    r: color.r,
-    g: color.g,
-    b: color.b,
-    a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
-  },
-  ...(noise ? { noise: cloneFillNoise(noise) } : {}),
-});
+): SceneFill => {
+  const fill = createBaseSolidFill(color);
+  if (noise) {
+    return { ...fill, noise: cloneSceneFillNoise(noise) };
+  }
+  return fill;
+};
 
 const resolveFillColor = (
   instance: SceneObjectInstance,
@@ -531,7 +513,8 @@ const resolveFillColor = (
 ): SceneColor => {
   const fill = instance.data.fill;
   if (fill?.fillType === FILL_TYPES.SOLID) {
-    const color = fill.color;
+    const solidFill = fill as SceneSolidFill;
+    const color = solidFill.color;
     return {
       r: color.r,
       g: color.g,
@@ -1343,7 +1326,7 @@ const computeCenter = (vertices: SceneVector2[]): SceneVector2 => {
 // Cache emitter configs to avoid creating new objects every frame
 const emitterConfigCache = new WeakMap<
   SceneObjectInstance,
-  { source: PlayerUnitEmitterConfig | undefined; config: PlayerUnitEmitterRenderConfig | null }
+  { source: ParticleEmitterConfig | undefined; config: PlayerUnitEmitterRenderConfig | null }
 >();
 
 const getEmitterConfig = (

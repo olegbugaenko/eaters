@@ -1,80 +1,33 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
+import type { DataBridge } from "../../../core/DataBridge";
 import {
   SKILL_IDS,
   SkillConfig,
   SkillId,
-  SkillNodePosition,
   getSkillConfig,
 } from "../../../../db/skills-db";
-import { BonusEffectPreview } from "../../../../types/bonuses";
 import {
-  RESOURCE_IDS,
-  ResourceStockpile,
-  createEmptyResourceStockpile,
   normalizeResourceAmount,
+  cloneResourceStockpile,
 } from "../../../../db/resources-db";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
-
-export const SKILL_TREE_STATE_BRIDGE_KEY = "skills/tree";
-
-export interface SkillNodeRequirementPayload {
-  id: SkillId;
-  requiredLevel: number;
-  currentLevel: number;
-}
-
-export interface SkillNodeBridgePayload {
-  id: SkillId;
-  name: string;
-  description: string;
-  icon?: string;
-  level: number;
-  maxLevel: number;
-  position: SkillNodePosition;
-  requirements: SkillNodeRequirementPayload[];
-  unlocked: boolean;
-  maxed: boolean;
-  nextCost: ResourceStockpile | null;
-  bonusEffects: BonusEffectPreview[];
-}
-
-export interface SkillTreeBridgePayload {
-  nodes: SkillNodeBridgePayload[];
-}
-
-export const DEFAULT_SKILL_TREE_STATE: SkillTreeBridgePayload = Object.freeze({
-  nodes: [],
-});
-
-interface SkillTreeModuleOptions {
-  bridge: DataBridge;
-  resources: ResourcesModule;
-  bonuses: BonusesModule;
-}
-
-interface SkillTreeSaveData {
-  levels: Partial<Record<SkillId, number>>;
-}
-
-type SkillLevelMap = Record<SkillId, number>;
-
-const createDefaultLevels = (): SkillLevelMap => {
-  const levels = {} as SkillLevelMap;
-  SKILL_IDS.forEach((id) => {
-    levels[id] = 0;
-  });
-  return levels;
-};
-
-const clampLevel = (value: number, config: SkillConfig): number => {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  const sanitized = Math.floor(Math.max(value, 0));
-  return Math.min(sanitized, config.maxLevel);
-};
+import type {
+  SkillNodeRequirementPayload,
+  SkillNodeBridgePayload,
+  SkillTreeBridgePayload,
+  SkillTreeModuleOptions,
+  SkillTreeSaveData,
+  SkillLevelMap,
+} from "./skill-tree.types";
+import {
+  SKILL_TREE_STATE_BRIDGE_KEY,
+  DEFAULT_SKILL_TREE_STATE,
+} from "./skill-tree.const";
+import {
+  createDefaultLevels,
+  clampLevel,
+} from "./skill-tree.helpers";
 
 export class SkillTreeModule implements GameModule {
   public readonly id = "skillTree";
@@ -174,7 +127,7 @@ export class SkillTreeModule implements GameModule {
     const nextLevel = level + 1;
     const nextCost =
       unlocked && nextLevel <= config.maxLevel
-        ? this.cloneCost(normalizeResourceAmount(config.cost(nextLevel)))
+        ? cloneResourceStockpile(normalizeResourceAmount(config.cost(nextLevel)))
         : null;
 
     return {
@@ -204,13 +157,6 @@ export class SkillTreeModule implements GameModule {
     });
   }
 
-  private cloneCost(source: ResourceStockpile): ResourceStockpile {
-    const clone = createEmptyResourceStockpile();
-    RESOURCE_IDS.forEach((id) => {
-      clone[id] = source[id];
-    });
-    return clone;
-  }
 
   private parseSaveData(data: unknown): SkillLevelMap | null {
     if (!data || typeof data !== "object" || !("levels" in data)) {

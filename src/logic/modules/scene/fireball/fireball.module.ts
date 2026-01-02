@@ -1,13 +1,15 @@
 import { GameModule } from "../../../core/types";
-import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
-import { FILL_TYPES, SceneFill, SceneVector2 } from "../../../services/SceneObjectManager";
+import { cloneSceneFill, createRadialGradientFill } from "../../../helpers/scene-fill.helper";
+import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
+import type { SceneFill } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import {
   FireballModuleOptions,
   FireballSpawnOptions,
   FireballState,
-  FireballTrailEmitterConfig,
 } from "./fireball.types";
-export type { FireballSpawnOptions, FireballTrailEmitterConfig } from "./fireball.types";
+export type { FireballSpawnOptions } from "./fireball.types";
 import {
   DEFAULT_FIREBALL_EXPLOSION_RADIUS,
   DEFAULT_FIREBALL_LIFETIME_MS,
@@ -20,43 +22,24 @@ import {
   FIREBALL_TAIL_RENDER,
   FIREBALL_TRAIL_EMITTER,
 } from "./fireball.const";
-import { BricksModule } from "../../active-map/bricks/bricks.module";
-import { ExplosionModule } from "../explosion/explosion.module";
-import { UnitProjectileController } from "../../active-map/player-units/units/UnitProjectileController";
+import { UnitProjectileController } from "../../active-map/projectiles/ProjectileController";
 
-const createCoreFill = (radius: number): SceneFill => ({
-  fillType: FILL_TYPES.RADIAL_GRADIENT,
-  start: { x: 0, y: 0 },
-  end: radius,
-  stops: [
+const createCoreFill = (radius: number): SceneFill =>
+  createRadialGradientFill(radius, [
     { offset: 0, color: { r: 1, g: 0.94, b: 0.7, a: 1 } },
     { offset: 0.4, color: { r: 1, g: 0.8, b: 0.9, a: 0.95 } },
     { offset: 1, color: { r: 0.9, g: 0.95, b: 0.9, a: 0.95 } },
-  ],
-});
+  ]);
 
 const cloneTrailEmitterConfig = (
-  config: FireballTrailEmitterConfig,
-): FireballTrailEmitterConfig => ({
-  particlesPerSecond: config.particlesPerSecond,
-  particleLifetimeMs: config.particleLifetimeMs,
-  fadeStartMs: config.fadeStartMs,
-  baseSpeed: config.baseSpeed,
-  speedVariation: config.speedVariation,
-  sizeRange: { min: config.sizeRange.min, max: config.sizeRange.max },
-  spread: config.spread,
-  offset: { x: config.offset.x, y: config.offset.y },
-  color: { ...config.color },
-  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
-  shape: config.shape,
-  maxParticles: config.maxParticles,
-});
+  config: ParticleEmitterConfig,
+): ParticleEmitterConfig => cloneParticleEmitterConfig(config);
 
 const createRenderCustomData = (options: {
   radius: number;
   velocity: SceneVector2;
-  trailEmitter: FireballTrailEmitterConfig;
-  smokeEmitter: FireballTrailEmitterConfig;
+  trailEmitter: ParticleEmitterConfig;
+  smokeEmitter: ParticleEmitterConfig;
 }) => ({
   radius: options.radius,
   velocity: { ...options.velocity },
@@ -79,10 +62,7 @@ export class FireballModule implements GameModule {
   private readonly projectiles: UnitProjectileController;
 
   constructor(private readonly options: FireballModuleOptions) {
-    this.projectiles = new UnitProjectileController({
-      scene: options.scene,
-      bricks: options.bricks,
-    });
+    this.projectiles = options.projectiles;
   }
 
   public initialize(): void {}

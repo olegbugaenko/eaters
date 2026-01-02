@@ -1,94 +1,36 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
+import type { DataBridge } from "../../../core/DataBridge";
 import {
   UNIT_MODULE_IDS,
   UnitModuleId,
   getUnitModuleConfig,
-  UnitModuleBonusType,
 } from "../../../../db/unit-modules-db";
 import {
   ResourceStockpile,
-  createEmptyResourceStockpile,
   normalizeResourceAmount,
-  RESOURCE_IDS,
 } from "../../../../db/resources-db";
 import { ResourcesModule } from "../../shared/resources/resources.module";
-import { SkillId } from "../../../../db/skills-db";
-import { UnlockService } from "../../../services/UnlockService";
-
-export interface UnitModuleWorkshopItemState {
-  readonly id: UnitModuleId;
-  readonly name: string;
-  readonly description: string;
-  readonly bonusLabel: string;
-  readonly bonusType: UnitModuleBonusType;
-  readonly baseBonusValue: number;
-  readonly bonusPerLevel: number;
-  readonly currentBonusValue: number;
-  readonly manaCostMultiplier: number;
-  readonly sanityCost: number;
-  readonly level: number;
-  readonly nextCost: Record<string, number> | null;
-}
-
-export interface UnitModuleWorkshopBridgeState {
-  readonly unlocked: boolean;
-  readonly modules: readonly UnitModuleWorkshopItemState[];
-}
-
-export const DEFAULT_UNIT_MODULE_WORKSHOP_STATE: UnitModuleWorkshopBridgeState = Object.freeze({
-  unlocked: false,
-  modules: [],
-});
-
-export const UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY = "unitModules/workshop";
-
-interface UnitModuleWorkshopModuleOptions {
-  bridge: DataBridge;
-  resources: ResourcesModule;
-  getSkillLevel: (id: SkillId) => number;
-  unlocks: UnlockService;
-}
-
-interface UnitModuleWorkshopSaveData {
-  readonly levels?: Partial<Record<UnitModuleId, number>>;
-}
-
-const MODULE_UNLOCK_SKILL_ID: SkillId = "void_modules";
-
-const createDefaultLevels = (): Map<UnitModuleId, number> => {
-  const levels = new Map<UnitModuleId, number>();
-  UNIT_MODULE_IDS.forEach((id) => {
-    levels.set(id, 0);
-  });
-  return levels;
-};
-
-const clampLevel = (value: unknown): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.max(0, Math.floor(value));
-};
-
-const scaleResourceStockpile = (base: ResourceStockpile, factor: number): ResourceStockpile => {
-  const scaled = createEmptyResourceStockpile();
-  RESOURCE_IDS.forEach((id) => {
-    scaled[id] = (base[id] ?? 0) * factor;
-  });
-  return scaled;
-};
-
-const toRecord = (stockpile: ResourceStockpile): Record<string, number> => {
-  const record: Record<string, number> = {};
-  RESOURCE_IDS.forEach((id) => {
-    const value = stockpile[id];
-    if (value > 0) {
-      record[id] = value;
-    }
-  });
-  return record;
-};
+import type { SkillId } from "../../../../db/skills-db";
+import { UnlockService } from "../../../services/unlock/UnlockService";
+import type {
+  UnitModuleWorkshopItemState,
+  UnitModuleWorkshopBridgeState,
+  UnitModuleWorkshopModuleOptions,
+  UnitModuleWorkshopSaveData,
+} from "./unit-module-workshop.types";
+import {
+  DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
+  UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+  MODULE_UNLOCK_SKILL_ID,
+} from "./unit-module-workshop.const";
+import {
+  createDefaultLevels,
+  clampLevel,
+  scaleResourceStockpile,
+  toRecord,
+  areModuleListsEqual,
+  computeBonusValue,
+} from "./unit-module-workshop.helpers";
 
 export class UnitModuleWorkshopModule implements GameModule {
   public readonly id = "unitModuleWorkshop";
@@ -255,7 +197,7 @@ export class UnitModuleWorkshopModule implements GameModule {
       bonusType: config.bonusType,
       baseBonusValue: config.baseBonusValue,
       bonusPerLevel: config.bonusPerLevel,
-      currentBonusValue: this.computeBonusValue(config.baseBonusValue, config.bonusPerLevel, level),
+      currentBonusValue: computeBonusValue(config.baseBonusValue, config.bonusPerLevel, level),
       manaCostMultiplier: config.manaCostMultiplier,
       sanityCost: config.sanityCost,
       level,
@@ -263,15 +205,6 @@ export class UnitModuleWorkshopModule implements GameModule {
     };
   }
 
-  private computeBonusValue(base: number, perLevel: number, level: number): number {
-    if (level <= 0) {
-      return 0;
-    }
-    if (!Number.isFinite(base) || !Number.isFinite(perLevel)) {
-      return 0;
-    }
-    return base + perLevel * (level - 1);
-  }
 
   private parseSaveData(data: unknown): Map<UnitModuleId, number> {
     const levels = createDefaultLevels();
@@ -291,12 +224,3 @@ export class UnitModuleWorkshopModule implements GameModule {
   }
 }
 
-const areModuleListsEqual = (
-  a: readonly UnitModuleId[],
-  b: readonly UnitModuleId[]
-): boolean => {
-  if (a.length !== b.length) {
-    return false;
-  }
-  return a.every((value, index) => value === b[index]);
-};

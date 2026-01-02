@@ -1,6 +1,6 @@
 import { GameModule } from "../../../core/types";
-import { SceneSize, SceneVector2 } from "../../../services/SceneObjectManager";
-import { BrickData } from "../bricks/bricks.module";
+import { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { BrickData } from "../bricks/bricks.types";
 import { PlayerUnitSpawnData } from "../player-units/player-units.module";
 import {
   MapConfig,
@@ -10,7 +10,7 @@ import {
   getMapList,
   isMapId,
 } from "../../../../db/maps-db";
-import { buildBricksFromBlueprints } from "../../../services/BrickLayoutService";
+import { buildBricksFromBlueprints } from "../../../services/brick-layout/BrickLayoutService";
 import { MapSelectionState } from "./map.selection";
 import { MapVisualEffects } from "./map.visual-effects";
 import { MapRunLifecycle } from "./map.run-lifecycle";
@@ -23,27 +23,29 @@ import {
   MapSaveData,
   MapStats,
 } from "./map.types";
-import { SkillId } from "../../../../db/skills-db";
+import { clampNumber } from "@/utils/helpers/numbers";
 import { MapRunEvent } from "./MapRunState";
 import { MapSceneCleanup, MapSceneCleanupContract } from "./map.scene-cleanup";
-
-export const MAP_LIST_BRIDGE_KEY = "maps/list";
-export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
-export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
-export const MAP_CLEARED_LEVELS_BRIDGE_KEY = "maps/clearedLevelsTotal";
-export const MAP_LAST_PLAYED_BRIDGE_KEY = "maps/lastPlayed";
-
-export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
-
-export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze({
-  unlocked: false,
-  enabled: false,
-});
-
-const DEFAULT_MAP_ID: MapId = "foundations";
-export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
-const AUTO_RESTART_SKILL_ID: SkillId = "autorestart_rituals";
-const BONUS_CONTEXT_CLEARED_LEVELS = "clearedMapLevelsTotal";
+import {
+  MAP_LIST_BRIDGE_KEY,
+  MAP_SELECTED_BRIDGE_KEY,
+  MAP_SELECTED_LEVEL_BRIDGE_KEY,
+  MAP_CLEARED_LEVELS_BRIDGE_KEY,
+  MAP_LAST_PLAYED_BRIDGE_KEY,
+  MAP_AUTO_RESTART_BRIDGE_KEY,
+  DEFAULT_MAP_AUTO_RESTART_STATE,
+  DEFAULT_MAP_ID,
+  PLAYER_UNIT_SPAWN_SAFE_RADIUS,
+  AUTO_RESTART_SKILL_ID,
+  BONUS_CONTEXT_CLEARED_LEVELS,
+} from "./map.const";
+import {
+  sanitizeLevel,
+  deserializeLevel,
+  serializeLevel,
+  sanitizeCount,
+  sanitizeDuration,
+} from "./map.helpers";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -441,8 +443,8 @@ export class MapModule implements GameModule {
 
   private clampToMap(position: SceneVector2, size: SceneSize): SceneVector2 {
     return {
-      x: clamp(position.x, 0, size.width),
-      y: clamp(position.y, 0, size.height),
+      x: clampNumber(position.x, 0, size.width),
+      y: clampNumber(position.y, 0, size.height),
     };
   }
 
@@ -639,7 +641,7 @@ export class MapModule implements GameModule {
     if (storedLevel === undefined) {
       return highest;
     }
-    return clamp(storedLevel, 1, highest);
+    return clampNumber(storedLevel, 1, highest);
   }
 
   private clampLevelToUnlocked(mapId: MapId, level: number): number {
@@ -648,7 +650,7 @@ export class MapModule implements GameModule {
     if (highest === 0) {
       return 0;
     }
-    return clamp(sanitized, 1, highest);
+    return clampNumber(sanitized, 1, highest);
   }
 
   private getActiveLevelForMap(mapId: MapId): number {
@@ -861,53 +863,3 @@ export class MapModule implements GameModule {
   }
 }
 
-const clamp = (value: number, min: number, max: number): number => {
-  if (Number.isFinite(value)) {
-    if (min > max) {
-      return min;
-    }
-    return Math.min(Math.max(value, min), max);
-  }
-  return min;
-};
-
-const sanitizeLevel = (value: unknown): number => {
-  if (!Number.isFinite(value as number)) {
-    return 1;
-  }
-  const level = Math.floor(Number(value));
-  return Math.max(level, 1);
-};
-
-const deserializeLevel = (value: unknown): number => {
-  if (!Number.isFinite(value as number)) {
-    return 1;
-  }
-  const parsed = Math.floor(Number(value));
-  return sanitizeLevel(parsed + 1);
-};
-
-const serializeLevel = (level: number): number => {
-  if (!Number.isFinite(level as number)) {
-    return 0;
-  }
-  return Math.max(Math.floor(Number(level)) - 1, 0);
-};
-
-const sanitizeCount = (value: unknown): number => {
-  if (!Number.isFinite(value as number)) {
-    return 0;
-  }
-  return Math.max(0, Math.floor(Number(value)));
-};
-
-const sanitizeDuration = (value: unknown): number | null => {
-  if (!Number.isFinite(value as number)) {
-    return null;
-  }
-  const duration = Math.floor(Number(value));
-  if (duration < 0) {
-    return null;
-  }
-  return duration;
-};

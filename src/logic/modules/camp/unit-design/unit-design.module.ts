@@ -4,12 +4,10 @@ import {
   PLAYER_UNIT_TYPES,
   PlayerUnitType,
   getPlayerUnitConfig,
-  isPlayerUnitType,
 } from "../../../../db/player-units-db";
 import {
   UNIT_MODULE_IDS,
   UnitModuleId,
-  UnitModuleBonusType,
   getUnitModuleConfig,
 } from "../../../../db/unit-modules-db";
 import { BonusValueMap, BonusesModule } from "../../shared/bonuses/bonuses.module";
@@ -24,115 +22,44 @@ import {
   DEFAULT_UNIT_TARGETING_SETTINGS,
   UnitTargetingMode,
   UnitTargetingSettings,
-  UnitTargetingSettingsMap,
 } from "../../../../types/unit-targeting";
 import {
   ResourceAmountMap,
   createEmptyResourceAmount,
   normalizeResourceCost,
 } from "../../../../types/resources";
-import { computePlayerUnitBlueprint, roundStat } from "../../active-map/player-units/player-units.module";
-
-export type UnitDesignId = string;
-
-interface UnitDesignRecord {
-  readonly id: UnitDesignId;
-  readonly type: PlayerUnitType;
-  name: string;
-  modules: UnitModuleId[];
-}
-
-export interface UnitDesignModuleDetail {
-  readonly id: UnitModuleId;
-  readonly name: string;
-  readonly description: string;
-  readonly level: number;
-  readonly bonusLabel: string;
-  readonly bonusType: UnitModuleBonusType;
-  readonly bonusValue: number;
-  readonly manaCostMultiplier: number;
-  readonly sanityCost: number;
-}
-
-export interface UnitDesignerUnitState {
-  readonly id: UnitDesignId;
-  readonly type: PlayerUnitType;
-  readonly name: string;
-  readonly modules: readonly UnitModuleId[];
-  readonly moduleDetails: readonly UnitDesignModuleDetail[];
-  readonly cost: ResourceAmountMap;
-  readonly blueprint: PlayerUnitBlueprintStats;
-  readonly runtime: PlayerUnitRuntimeModifiers;
-  readonly targetingMode: UnitTargetingMode;
-}
-
-export interface UnitDesignerAvailableModuleState {
-  readonly id: UnitModuleId;
-  readonly name: string;
-  readonly description: string;
-  readonly level: number;
-  readonly bonusLabel: string;
-  readonly bonusType: UnitModuleBonusType;
-  readonly bonusValue: number;
-  readonly manaCostMultiplier: number;
-  readonly sanityCost: number;
-}
-
-export interface UnitDesignerBridgeState {
-  readonly units: readonly UnitDesignerUnitState[];
-  readonly availableModules: readonly UnitDesignerAvailableModuleState[];
-  readonly maxModules: number;
-  readonly activeRoster: readonly UnitDesignId[];
-  readonly maxActiveUnits: number;
-  readonly targetingByUnit: UnitTargetingSettingsMap;
-}
-
-interface UnitDesignerSaveDataEntry {
-  readonly id: string;
-  readonly type: PlayerUnitType;
-  readonly name: string;
-  readonly modules: UnitModuleId[];
-}
-
-interface UnitDesignerSaveData {
-  readonly units?: UnitDesignerSaveDataEntry[];
-  readonly roster?: UnitDesignId[];
-  readonly strategy?: UnitDesignerStrategySaveData;
-}
-
-interface UnitDesignerStrategySaveData {
-  readonly targetingModes?: Record<string, UnitTargetingMode>;
-}
-
-interface UnitDesignModuleOptions {
-  bridge: DataBridge;
-  bonuses: BonusesModule;
-  workshop: UnitModuleWorkshopModule;
-}
-
-export const UNIT_DESIGNER_STATE_BRIDGE_KEY = "unitDesigner/state";
-
-export const MAX_MODULES_PER_UNIT = 3;
-export const MAX_ACTIVE_UNITS = 3;
-
-export const DEFAULT_UNIT_DESIGNER_STATE: UnitDesignerBridgeState = Object.freeze({
-  units: [],
-  availableModules: [],
-  maxModules: MAX_MODULES_PER_UNIT,
-  activeRoster: [],
-  maxActiveUnits: MAX_ACTIVE_UNITS,
-  targetingByUnit: {},
-});
-
-const DEFAULT_UNIT_NAME_FALLBACK = "Custom Unit";
-const PERFORATOR_RADIUS = 30;
-
-const clampModuleCount = (modules: UnitModuleId[]): UnitModuleId[] =>
-  modules.slice(0, MAX_MODULES_PER_UNIT);
-
-export type UnitDesignerListener = (
-  designs: readonly UnitDesignerUnitState[]
-) => void;
+import { computePlayerUnitBlueprint } from "../../active-map/player-units/player-units.blueprint";
+import { roundStat } from "../../../helpers/numbers.helper";
+import type {
+  UnitDesignId,
+  UnitDesignRecord,
+  UnitDesignModuleDetail,
+  UnitDesignerUnitState,
+  UnitDesignerAvailableModuleState,
+  UnitDesignerBridgeState,
+  UnitDesignerSaveDataEntry,
+  UnitDesignerSaveData,
+  UnitDesignerStrategySaveData,
+  UnitDesignModuleOptions,
+  UnitDesignerListener,
+} from "./unit-design.types";
+import {
+  UNIT_DESIGNER_STATE_BRIDGE_KEY,
+  MAX_MODULES_PER_UNIT,
+  MAX_ACTIVE_UNITS,
+  DEFAULT_UNIT_NAME_FALLBACK,
+  PERFORATOR_RADIUS,
+} from "./unit-design.const";
+import {
+  clampModuleCount,
+  areRostersEqual,
+  areModulesEqual,
+  sanitizeRoster,
+  sanitizeUnitType,
+  createDesignId,
+  extractCounter,
+  computeModuleValue,
+} from "./unit-design.helpers";
 
 export class UnitDesignModule implements GameModule {
   public readonly id = "unitDesign";
@@ -221,7 +148,7 @@ export class UnitDesignModule implements GameModule {
   }
 
   public createDesign(type: PlayerUnitType): UnitDesignId {
-    const sanitizedType = this.sanitizeUnitType(type);
+    const sanitizedType = sanitizeUnitType(type);
     const config = getPlayerUnitConfig(sanitizedType);
     const id = this.createDesignId();
     const record: UnitDesignRecord = {
@@ -235,7 +162,7 @@ export class UnitDesignModule implements GameModule {
     this.designTargeting.set(id, DEFAULT_UNIT_TARGETING_MODE);
     // Auto-add to roster if there's a free slot
     if (this.activeRoster.length < MAX_ACTIVE_UNITS && !this.activeRoster.includes(id)) {
-      this.activeRoster = this.sanitizeRoster([...this.activeRoster, id]);
+      this.activeRoster = sanitizeRoster([...this.activeRoster, id], this.designOrder);
       this.rosterInitialized = true;
     }
     this.refreshComputedState();
@@ -334,8 +261,8 @@ export class UnitDesignModule implements GameModule {
   }
 
   public setActiveRoster(roster: readonly UnitDesignId[]): void {
-    const sanitized = this.sanitizeRoster(roster);
-    if (this.areRostersEqual(sanitized, this.activeRoster)) {
+    const sanitized = sanitizeRoster(roster, this.designOrder);
+    if (areRostersEqual(sanitized, this.activeRoster)) {
       return;
     }
     this.activeRoster = sanitized;
@@ -384,15 +311,15 @@ export class UnitDesignModule implements GameModule {
     }
     const payload = (data as UnitDesignerSaveData).units;
     if (!Array.isArray(payload)) {
-      this.activeRoster = this.sanitizeRoster(roster);
+      this.activeRoster = sanitizeRoster(roster, this.designOrder);
       return;
     }
     payload.forEach((entry) => {
       if (!entry || typeof entry !== "object") {
         return;
       }
-      const id = typeof entry.id === "string" && entry.id.trim().length > 0 ? entry.id : this.createDesignId();
-      const type = this.sanitizeUnitType(entry.type);
+      const id = typeof entry.id === "string" && entry.id.trim().length > 0 ? entry.id : createDesignId(this.idCounter + 1);
+      const type = sanitizeUnitType(entry.type);
       const name = typeof entry.name === "string" && entry.name.trim().length > 0 ? entry.name.trim() : DEFAULT_UNIT_NAME_FALLBACK;
       const modules = Array.isArray(entry.modules) ? this.sanitizeModules(entry.modules) : [];
       if (this.designs.has(id)) {
@@ -401,12 +328,12 @@ export class UnitDesignModule implements GameModule {
       const record: UnitDesignRecord = { id, type, name, modules };
       this.designs.set(id, record);
       this.designOrder.push(id);
-      this.idCounter = Math.max(this.idCounter, this.extractCounter(id));
+      this.idCounter = Math.max(this.idCounter, extractCounter(id));
       if (!this.designTargeting.has(id)) {
         this.designTargeting.set(id, DEFAULT_UNIT_TARGETING_MODE);
       }
     });
-    this.activeRoster = this.sanitizeRoster(roster);
+    this.activeRoster = sanitizeRoster(roster, this.designOrder);
   }
 
   private ensureDefaults(): void {
@@ -419,7 +346,7 @@ export class UnitDesignModule implements GameModule {
       this.activeRoster = this.designOrder.slice(0, MAX_ACTIVE_UNITS);
       this.rosterInitialized = true;
     } else {
-      this.activeRoster = this.sanitizeRoster(this.activeRoster);
+      this.activeRoster = sanitizeRoster(this.activeRoster, this.designOrder);
       if (this.activeRoster.length > 0) {
         this.rosterInitialized = true;
       }
@@ -432,26 +359,6 @@ export class UnitDesignModule implements GameModule {
     return this.designOrder.some((id) => this.designs.get(id)?.type === type);
   }
 
-  private sanitizeRoster(roster: readonly UnitDesignId[]): UnitDesignId[] {
-    if (this.designOrder.length === 0) {
-      return [];
-    }
-    const availableSet = new Set(this.designOrder);
-    const sanitized: UnitDesignId[] = [];
-    roster.forEach((id) => {
-      if (sanitized.length >= MAX_ACTIVE_UNITS) {
-        return;
-      }
-      if (!availableSet.has(id)) {
-        return;
-      }
-      if (sanitized.includes(id)) {
-        return;
-      }
-      sanitized.push(id);
-    });
-    return sanitized;
-  }
 
   private sanitizeTargetingMode(mode: unknown): UnitTargetingMode {
     if (typeof mode === "string") {
@@ -490,20 +397,6 @@ export class UnitDesignModule implements GameModule {
     });
   }
 
-  private areRostersEqual(
-    first: readonly UnitDesignId[],
-    second: readonly UnitDesignId[]
-  ): boolean {
-    if (first.length !== second.length) {
-      return false;
-    }
-    for (let index = 0; index < first.length; index += 1) {
-      if (first[index] !== second[index]) {
-        return false;
-      }
-    }
-    return true;
-  }
 
   private createDefaultDesign(type: PlayerUnitType): void {
     const config = getPlayerUnitConfig(type);
@@ -530,7 +423,7 @@ export class UnitDesignModule implements GameModule {
         return;
       }
       const sanitizedModules = clampModuleCount(this.sanitizeModules(record.modules));
-      if (!this.areModulesEqual(sanitizedModules, record.modules)) {
+      if (!areModulesEqual(sanitizedModules, record.modules)) {
         record.modules = sanitizedModules;
       }
       const unitState = this.computeDesignState(record, bonusValues);
@@ -538,8 +431,8 @@ export class UnitDesignModule implements GameModule {
       computed.push(unitState);
     });
 
-    const sanitizedRoster = this.sanitizeRoster(this.activeRoster);
-    if (!this.areRostersEqual(sanitizedRoster, this.activeRoster)) {
+    const sanitizedRoster = sanitizeRoster(this.activeRoster, this.designOrder);
+    if (!areRostersEqual(sanitizedRoster, this.activeRoster)) {
       this.activeRoster = sanitizedRoster;
     }
 
@@ -594,7 +487,7 @@ export class UnitDesignModule implements GameModule {
     return UNIT_MODULE_IDS.map((id) => {
       const config = getUnitModuleConfig(id);
       const level = this.workshop.getModuleLevel(id);
-      const bonusValue = this.computeModuleValue(config.bonusType, config.baseBonusValue, config.bonusPerLevel, level);
+      const bonusValue = computeModuleValue(config.bonusType, config.baseBonusValue, config.bonusPerLevel, level);
       return {
         id,
         name: config.name,
@@ -617,7 +510,7 @@ export class UnitDesignModule implements GameModule {
       if (level <= 0) {
         return;
       }
-      const bonusValue = this.computeModuleValue(
+      const bonusValue = computeModuleValue(
         config.bonusType,
         config.baseBonusValue,
         config.bonusPerLevel,
@@ -804,23 +697,6 @@ export class UnitDesignModule implements GameModule {
     }
   }
 
-  private computeModuleValue(
-    type: UnitModuleBonusType,
-    base: number,
-    perLevel: number,
-    level: number
-  ): number {
-    if (level <= 0) {
-      return 0;
-    }
-    const sanitizedBase = Number.isFinite(base) ? base : 0;
-    const sanitizedPerLevel = Number.isFinite(perLevel) ? perLevel : 0;
-    const value = sanitizedBase + sanitizedPerLevel * (level - 1);
-    if (type === "multiplier") {
-      return Math.max(value, 0);
-    }
-    return Math.max(value, 0);
-  }
 
   private sanitizeModules(modules: readonly UnitModuleId[]): UnitModuleId[] {
     const unique: UnitModuleId[] = [];
@@ -839,31 +715,8 @@ export class UnitDesignModule implements GameModule {
     return unique.slice(0, MAX_MODULES_PER_UNIT);
   }
 
-  private areModulesEqual(a: readonly UnitModuleId[], b: readonly UnitModuleId[]): boolean {
-    if (a.length !== b.length) {
-      return false;
-    }
-    return a.every((value, index) => value === b[index]);
-  }
-
-  private sanitizeUnitType(type: PlayerUnitType | undefined): PlayerUnitType {
-    if (isPlayerUnitType(type)) {
-      return type;
-    }
-    return "bluePentagon";
-  }
-
   private createDesignId(): UnitDesignId {
     this.idCounter += 1;
-    return `unit-${this.idCounter}`;
-  }
-
-  private extractCounter(id: string): number {
-    const match = /unit-(\d+)/.exec(id);
-    if (!match) {
-      return 0;
-    }
-    const value = Number.parseInt(match[1] ?? "0", 10);
-    return Number.isFinite(value) ? value : 0;
+    return createDesignId(this.idCounter);
   }
 }

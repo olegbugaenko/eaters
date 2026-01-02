@@ -1,8 +1,8 @@
-import { GameLoop } from "../../services/GameLoop";
+import { GameLoop } from "../../services/game-loop/GameLoop";
 import { MapRunState } from "../../modules/active-map/map/MapRunState";
-import { MovementService } from "../../services/MovementService";
-import { SaveManager } from "../../services/SaveManager";
-import { SceneObjectManager } from "../../services/SceneObjectManager";
+import { MovementService } from "../../services/movement/MovementService";
+import { SaveManager } from "../../services/save-manager/SaveManager";
+import { SceneObjectManager } from "../../services/scene-object-manager/SceneObjectManager";
 import { ServiceDefinition } from "./types";
 
 export type BootstrapDefinitionList = readonly [

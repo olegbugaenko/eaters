@@ -3,7 +3,7 @@ import {
   ObjectRegistration,
   DynamicPrimitive,
 } from "./ObjectRenderer";
-import { SceneObjectInstance, SceneVector2, SceneColor } from "../../../logic/services/SceneObjectManager";
+import { SceneObjectInstance, SceneVector2, SceneColor } from "../../../logic/services/scene-object-manager/scene-object-manager.types";
 import {
   ensureWhirlBatch,
   writeWhirlInstance,

@@ -1,40 +1,19 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
-import { NecromancerModule } from "../necromancer/necromancer.module";
-import { ResourcesModule } from "../../shared/resources/resources.module";
-import { MapRunState } from "../map/MapRunState";
-
-export const TUTORIAL_MONITOR_INPUT_BRIDGE_KEY = "tutorial/monitor/input";
-export const TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY = "tutorial/monitor/output";
-
-export interface TutorialMonitorInput {
-  readonly active: boolean;
-  readonly stepId?: string;
-  readonly actionCompleted?: boolean;
-  readonly bricksRequired?: number;
-}
-
-export interface TutorialMonitorStatus {
-  readonly stepId: string | null;
-  readonly ready: boolean;
-  readonly reason?: "sanity" | "resources";
-  readonly version: number;
-}
-
-export const DEFAULT_TUTORIAL_MONITOR_STATUS: TutorialMonitorStatus = Object.freeze({
-  stepId: null,
-  ready: false,
-  version: 0,
-});
-
-interface TutorialMonitorModuleOptions {
-  readonly bridge: DataBridge;
-  readonly necromancer: NecromancerModule;
-  readonly resources: ResourcesModule;
-  readonly runState: MapRunState;
-}
-
-const DEFAULT_BRICKS_REQUIRED = 3;
+import type {
+  TutorialMonitorInput,
+  TutorialMonitorStatus,
+  TutorialMonitorModuleOptions,
+} from "./tutorial-monitor.types";
+import {
+  TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
+  TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
+  DEFAULT_TUTORIAL_MONITOR_STATUS,
+  DEFAULT_BRICKS_REQUIRED,
+} from "./tutorial-monitor.const";
+import type { DataBridge } from "../../../core/DataBridge";
+import type { NecromancerModule } from "../necromancer/necromancer.module";
+import type { ResourcesModule } from "../../shared/resources/resources.module";
+import type { MapRunState } from "../map/MapRunState";
 
 export class TutorialMonitorModule implements GameModule {
   public readonly id = "tutorial-monitor";

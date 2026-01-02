@@ -12,11 +12,13 @@ import type {
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@shared/useBridgeValue";
 import {
-  DEFAULT_SKILL_TREE_STATE,
-  SKILL_TREE_STATE_BRIDGE_KEY,
   SkillNodeBridgePayload,
   SkillTreeBridgePayload,
-} from "@logic/modules/camp/skill-tree/skill-tree.module";
+} from "@logic/modules/camp/skill-tree/skill-tree.types";
+import {
+  DEFAULT_SKILL_TREE_STATE,
+  SKILL_TREE_STATE_BRIDGE_KEY,
+} from "@logic/modules/camp/skill-tree/skill-tree.const";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   ResourceAmountPayload,

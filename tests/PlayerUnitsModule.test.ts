@@ -2,7 +2,7 @@ import assert from "assert";
 import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
-import type { BrickData } from "../src/logic/modules/active-map/bricks/bricks.module";
+import type { BrickData } from "../src/logic/modules/active-map/bricks/bricks.types";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   PlayerUnitsModule,

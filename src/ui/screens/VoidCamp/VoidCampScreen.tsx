@@ -11,7 +11,7 @@ import {
   MAP_CLEARED_LEVELS_BRIDGE_KEY,
   MAP_LIST_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
-} from "@logic/modules/active-map/map/map.module";
+} from "@logic/modules/active-map/map/map.const";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/time/time.module";
 import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
@@ -23,31 +23,31 @@ import {
 import type { StoredSaveData } from "@logic/core/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@shared/useBridgeValue";
+import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
-  UnitModuleWorkshopBridgeState,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
-} from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
+} from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
-  BuildingsWorkshopBridgeState,
   DEFAULT_BUILDINGS_WORKSHOP_STATE,
-} from "@/logic/modules/camp/buildings/buildings.module";
+} from "@/logic/modules/camp/buildings/buildings.const";
+import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import {
   DEFAULT_UNIT_DESIGNER_STATE,
-  UnitDesignerBridgeState,
   UNIT_DESIGNER_STATE_BRIDGE_KEY,
-} from "@logic/modules/camp/unit-design/unit-design.module";
+} from "@logic/modules/camp/unit-design/unit-design.const";
+import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import {
-  CraftingBridgeState,
   CRAFTING_STATE_BRIDGE_KEY,
   DEFAULT_CRAFTING_STATE,
-} from "@logic/modules/camp/crafting/crafting.module";
+} from "@logic/modules/camp/crafting/crafting.const";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
-  UnitAutomationBridgeState,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-} from "@logic/modules/active-map/unit-automation/unit-automation.module";
+} from "@logic/modules/active-map/unit-automation/unit-automation.const";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { VoidCampTopBar } from "@screens/VoidCamp/components/VoidCamp/VoidCampTopBar";
 import {

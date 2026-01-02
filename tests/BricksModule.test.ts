@@ -1,9 +1,9 @@
 import assert from "assert";
 import {
-  BricksModule,
   BRICK_COUNT_BRIDGE_KEY,
   BRICK_TOTAL_HP_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/bricks/bricks.module";
+} from "../src/logic/modules/active-map/bricks/bricks.const";
+import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   SceneObjectManager,

@@ -1,30 +1,15 @@
 import { GameModule } from "../../../core/types";
+import { getNowMs } from "../../../helpers/time.helper";
 import {
   AudioSettingsPercentages,
   NormalizedAudioSettings,
   readStoredAudioSettings,
   toNormalizedAudioSettings,
 } from "../../../utils/audioSettings";
-
-const DEFAULT_PLAYLISTS = {
-  camp: [
-    "/audio/music/camp-playlist/soft-calm-background-music-416544.mp3",
-    "/audio/music/camp-playlist/youtube-background-music-lofi-398315.mp3",
-  ],
-  map: [
-    "/audio/music/map-playlist/background-music-421081.mp3",
-    "/audio/music/map-playlist/calm-soft-background-music-357212.mp3",
-    "/audio/music/map-playlist/corporate-technology-background-music-424595.mp3",
-    "/audio/music/map-playlist/inspiring-inspirational-background-music-412596.mp3",
-  ],
-} as const satisfies Record<string, readonly string[]>;
-
-export type DefaultAudioPlaylistId = keyof typeof DEFAULT_PLAYLISTS;
-
-interface AudioModuleOptions {
-  playlists?: Record<string, readonly string[]>;
-  defaultPlaylistId?: string | null;
-}
+import { clamp01 } from "@/utils/helpers/numbers";
+import type { AudioModuleOptions } from "./audio.types";
+import { DEFAULT_PLAYLISTS, MIN_EFFECT_INTERVAL_MS, MUSIC_VOLUME_MULTIPLIER } from "./audio.const";
+import { pickRandomTrackIndex, normalizeEffectUrl } from "./audio.helpers";
 
 export class AudioModule implements GameModule {
   public readonly id = "audio";
@@ -42,8 +27,6 @@ export class AudioModule implements GameModule {
   private readonly effectTemplates = new Map<string, HTMLAudioElement>();
   private readonly activeEffectElements = new Set<HTMLAudioElement>();
   private readonly lastEffectPlayTimestamps = new Map<string, number>();
-  private static readonly MIN_EFFECT_INTERVAL_MS = 400;
-  private static readonly MUSIC_VOLUME_MULTIPLIER = 0.3;
 
   constructor(options: AudioModuleOptions = {}) {
     this.playlists = {
@@ -106,13 +89,13 @@ export class AudioModule implements GameModule {
     }
 
     if (settings.masterVolume !== undefined) {
-      this.masterVolume = this.clamp01(settings.masterVolume);
+      this.masterVolume = clamp01(settings.masterVolume);
     }
     if (settings.musicVolume !== undefined) {
-      this.musicVolume = this.clamp01(settings.musicVolume);
+      this.musicVolume = clamp01(settings.musicVolume);
     }
     if (settings.effectsVolume !== undefined) {
-      this.effectsVolume = this.clamp01(settings.effectsVolume);
+      this.effectsVolume = clamp01(settings.effectsVolume);
     }
 
     this.syncMusicVolume();
@@ -124,14 +107,14 @@ export class AudioModule implements GameModule {
       return;
     }
 
-    const normalizedUrl = this.normalizeEffectUrl(url);
+    const normalizedUrl = normalizeEffectUrl(url);
     if (!normalizedUrl) {
       return;
     }
 
-    const now = this.getNow();
+    const now = getNowMs();
     const lastPlay = this.lastEffectPlayTimestamps.get(normalizedUrl) ?? -Infinity;
-    if (now - lastPlay < AudioModule.MIN_EFFECT_INTERVAL_MS) {
+    if (now - lastPlay < MIN_EFFECT_INTERVAL_MS) {
       return;
     }
 
@@ -144,7 +127,7 @@ export class AudioModule implements GameModule {
 
     const element = template.cloneNode(true) as HTMLAudioElement;
     element.currentTime = 0;
-    element.volume = this.clamp01(this.masterVolume * this.effectsVolume);
+    element.volume = clamp01(this.masterVolume * this.effectsVolume);
 
     const cleanup = () => {
       this.activeEffectElements.delete(element);
@@ -179,7 +162,7 @@ export class AudioModule implements GameModule {
           this.currentPlaylistId = this.defaultPlaylistId;
           this.currentPlaylistTracks = defaultTracks;
           this.currentTrackUrl = null;
-          this.currentTrackIndex = this.pickRandomTrackIndex(defaultTracks.length);
+          this.currentTrackIndex = pickRandomTrackIndex(defaultTracks.length);
         }
       }
     }
@@ -189,7 +172,7 @@ export class AudioModule implements GameModule {
     }
 
     if (this.currentTrackUrl === null || this.currentTrackIndex >= this.currentPlaylistTracks.length) {
-      this.currentTrackIndex = this.pickRandomTrackIndex(this.currentPlaylistTracks.length);
+      this.currentTrackIndex = pickRandomTrackIndex(this.currentPlaylistTracks.length);
       this.currentTrackUrl = null;
     }
 
@@ -217,7 +200,7 @@ export class AudioModule implements GameModule {
     this.stopMusic();
     this.currentPlaylistId = playlistId;
     this.currentPlaylistTracks = tracks;
-    this.currentTrackIndex = this.pickRandomTrackIndex(tracks.length);
+    this.currentTrackIndex = pickRandomTrackIndex(tracks.length);
     this.currentTrackUrl = null;
 
     const element = this.loadCurrentTrack();
@@ -321,14 +304,14 @@ export class AudioModule implements GameModule {
       return;
     }
 
-    const computedVolume = this.clamp01(
-      this.masterVolume * this.musicVolume * AudioModule.MUSIC_VOLUME_MULTIPLIER,
+    const computedVolume = clamp01(
+      this.masterVolume * this.musicVolume * MUSIC_VOLUME_MULTIPLIER,
     );
     this.musicElement.volume = computedVolume;
   }
 
   private syncEffectVolumes(): void {
-    const computedVolume = this.clamp01(this.masterVolume * this.effectsVolume);
+    const computedVolume = clamp01(this.masterVolume * this.effectsVolume);
     this.activeEffectElements.forEach((element) => {
       element.volume = computedVolume;
     });
@@ -368,35 +351,12 @@ export class AudioModule implements GameModule {
     return track;
   }
 
-  private clamp01(value: number): number {
-    if (!Number.isFinite(value)) {
-      return 1;
-    }
-    if (value <= 0) {
-      return 0;
-    }
-    if (value >= 1) {
-      return 1;
-    }
-    return value;
-  }
-
-  private pickRandomTrackIndex(totalTracks: number): number {
-    if (totalTracks <= 0 || !Number.isFinite(totalTracks)) {
-      return 0;
-    }
-    if (totalTracks === 1) {
-      return 0;
-    }
-    return Math.floor(Math.random() * totalTracks);
-  }
-
   private resolveEffectTemplate(url: string): HTMLAudioElement | null {
     if (typeof window === "undefined" || typeof Audio === "undefined") {
       return null;
     }
 
-    const normalizedUrl = this.normalizeEffectUrl(url);
+    const normalizedUrl = normalizeEffectUrl(url);
     if (!normalizedUrl) {
       return null;
     }
@@ -410,17 +370,4 @@ export class AudioModule implements GameModule {
     return template;
   }
 
-  private getNow(): number {
-    if (typeof performance !== "undefined" && typeof performance.now === "function") {
-      return performance.now();
-    }
-    return Date.now();
-  }
-
-  private normalizeEffectUrl(url: string): string {
-    if (!url) {
-      return "";
-    }
-    return url.startsWith("/") ? url : `/${url}`;
-  }
 }

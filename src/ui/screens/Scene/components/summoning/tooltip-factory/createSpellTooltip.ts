@@ -1,9 +1,9 @@
-import {
+import type {
   ProjectileSpellOption,
   PersistentAoeSpellOption,
   SpellOption,
   WhirlSpellOption,
-} from "@logic/modules/active-map/spellcasting/spellcasting.module";
+} from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { SceneTooltipContent, SceneTooltipStat } from "../../tooltip/SceneTooltipPanel";
 import { formatNumber } from "@shared/format/number";
 

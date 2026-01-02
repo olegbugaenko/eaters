@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.module";
+import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";

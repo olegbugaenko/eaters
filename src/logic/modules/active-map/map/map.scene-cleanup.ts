@@ -1,4 +1,4 @@
-import { SceneObjectManager } from "../../../services/SceneObjectManager";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import { resetAllArcBatches } from "../../../../ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { clearAllParticleEmitters } from "../../../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { resetAllWaveBatches } from "../../../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";

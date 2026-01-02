@@ -6,19 +6,19 @@ import {
   useRef,
   useState,
 } from "react";
-import {
+import { MAX_UNITS_ON_MAP } from "@logic/modules/active-map/necromancer/necromancer.const";
+import type {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
-  MAX_UNITS_ON_MAP,
-} from "@logic/modules/active-map/necromancer/necromancer.module";
+} from "@logic/modules/active-map/necromancer/necromancer.types";
 import { createEmptyResourceAmount } from "@/types/resources";
-import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.module";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.module";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/player-units/player-units.module";
 import {
   UnitDesignId,
   UnitDesignModuleDetail,
-} from "@logic/modules/camp/unit-design/unit-design.module";
+} from "@logic/modules/camp/unit-design/unit-design.types";
 import { SpellId } from "@db/spells-db";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { classNames } from "@shared/classNames";

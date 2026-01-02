@@ -1,4 +1,12 @@
-import { FILL_TYPES, SceneColor, SceneFill } from "../SceneObjectManager";
+import { FILL_TYPES } from "../scene-object-manager/scene-object-manager.const";
+import type {
+  SceneColor,
+  SceneFill,
+  SceneSolidFill,
+  SceneLinearGradientFill,
+  SceneRadialGradientFill,
+  SceneDiamondGradientFill,
+} from "../scene-object-manager/scene-object-manager.types";
 
 export type ParticleEmitterShape = "square" | "circle" | "triangle";
 
@@ -31,38 +39,44 @@ export const sanitizeSceneColor = (
 
 export const cloneSceneFill = (fill: SceneFill): SceneFill => {
   switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
+    case FILL_TYPES.SOLID: {
+      const solidFill = fill as SceneSolidFill;
       return {
         fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
+        color: { ...solidFill.color },
+        ...(solidFill.noise ? { noise: { ...solidFill.noise } } : {}),
+        ...(solidFill.filaments ? { filaments: { ...solidFill.filaments } } : {}),
       };
-    case FILL_TYPES.LINEAR_GRADIENT:
+    }
+    case FILL_TYPES.LINEAR_GRADIENT: {
+      const linearFill = fill as SceneLinearGradientFill;
       return {
         fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
+        start: linearFill.start ? { ...linearFill.start } : undefined,
+        end: linearFill.end ? { ...linearFill.end } : undefined,
+        stops: linearFill.stops.map((stop) => ({
           offset: stop.offset,
           color: { ...stop.color },
         })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
+        ...(linearFill.noise ? { noise: { ...linearFill.noise } } : {}),
+        ...(linearFill.filaments ? { filaments: { ...linearFill.filaments } } : {}),
       };
+    }
     case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT: {
+      const radialOrDiamondFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
       return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
+        fillType: radialOrDiamondFill.fillType,
+        start: radialOrDiamondFill.start ? { ...radialOrDiamondFill.start } : undefined,
+        end: typeof radialOrDiamondFill.end === "number" ? radialOrDiamondFill.end : undefined,
+        stops: radialOrDiamondFill.stops.map((stop) => ({
           offset: stop.offset,
           color: { ...stop.color },
         })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-        ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
-      } as SceneFill;
+        ...(radialOrDiamondFill.noise ? { noise: { ...radialOrDiamondFill.noise } } : {}),
+        ...(radialOrDiamondFill.filaments ? { filaments: { ...radialOrDiamondFill.filaments } } : {}),
+      };
+    }
     default:
       return fill;
   }

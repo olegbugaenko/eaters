@@ -1,6 +1,6 @@
 import { DataBridge } from "../../../../core/DataBridge";
 import type { PlayerUnitBlueprintStats } from "../../../../../types/player-units";
-import type { UnitDesignId } from "../../../camp/unit-design/unit-design.module";
+import type { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 
 export interface UnitStatisticsReporterOptions {
   readonly bridge: DataBridge;

@@ -1,168 +1,67 @@
 import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
-import { BrickConfig, BrickType, getBrickConfig, isBrickType } from "../../../../db/bricks-db";
-import type { ExplosionType } from "../../../../db/explosions-db";
-import type { DestructubleExplosionConfig } from "../../../interfaces/destructuble";
-import {
-  FILL_TYPES,
-  SceneColor,
+import { BrickConfig, BrickType, getBrickConfig } from "../../../../db/bricks-db";
+import type {
   SceneFill,
-  SceneFillFilaments,
-  SceneFillNoise,
-  SceneObjectManager,
   SceneVector2,
-} from "../../../services/SceneObjectManager";
-import { BonusesModule } from "../../shared/bonuses/bonuses.module";
-import type { ExplosionModule } from "../../scene/explosion/explosion.module";
-import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
+} from "../../../services/scene-object-manager/scene-object-manager.types";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { clampNumber } from "@/utils/helpers/numbers";
 import {
-  ResourceStockpile,
+  ResourceStockpile,  
   RESOURCE_IDS,
   normalizeResourceAmount,
   hasAnyResources,
   cloneResourceStockpile,
   createEmptyResourceStockpile,
 } from "../../../../db/resources-db";
-import { cloneSceneColor, cloneSceneFill } from "../../../services/particles/ParticleEmitterShared";
+import { cloneSceneColor } from "../../../helpers/scene-color.helper";
+import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
 import {
-  BrickEffectsManager,
-  BrickEffectApplication,
-} from "./BrickEffectsManager";
+  addVectors,
+  scaleVector,
+  vectorLength,
+  vectorHasLength,
+  normalizeVector,
+} from "../../../helpers/vector.helper";
+import { createBrickFill } from "./bricks.fill.helper";
+import { tintSceneFill } from "../../../helpers/scene-fill.helper";
+import { sceneColorsEqual } from "../../../helpers/scene-color.helper";
+import {
+  sanitizeKnockBackSpeed,
+  sanitizeKnockBackAmplitude,
+  sanitizeHp,
+  sanitizeRotation,
+  sanitizeBrickType,
+  sanitizeBrickLevel,
+  resolveBrickExplosion,
+  calculateBrickStatsForLevel,
+  getBrickLevelStatMultiplier,
+  scaleBrickStat,
+  scaleResourceStockpile,
+} from "./bricks.helpers";
+import { BrickEffectsManager } from "./BrickEffectsManager";
+import type { BrickEffectApplication } from "./brick-effects.types";
+import type {
+  BrickData,
+  BrickRuntimeState,
+  BricksModuleOptions,
+  BrickSaveData,
+  InternalBrickState,
+  BrickExplosionState,
+  BrickEffectTint,
+} from "./bricks.types";
+import {
+  BRICK_HIT_SOUND_URL,
+  BRICK_DESTROY_SOUND_URL,
+  BRICK_COUNT_BRIDGE_KEY,
+  BRICK_TOTAL_HP_BRIDGE_KEY,
+  BRICK_KNOCKBACK_DURATION_MS,
+  KNOCKBACK_EPSILON,
+  TOTAL_HP_RECOMPUTE_INTERVAL_MS,
+  ZERO_VECTOR,
+} from "./bricks.const";
 import { MapRunState } from "../map/MapRunState";
-
-interface ResourceCollector {
-  grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
-  notifyBrickDestroyed(): void;
-}
-
-interface SoundEffectPlayer {
-  playSoundEffect(url: string): void;
-}
-
-const DEFAULT_BRICK_TYPE: BrickType = "classic";
-const BRICK_HIT_SOUND_URL = "/audio/sounds/brick_effects/hit_v2.mp3";
-const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy-01.mp3";
-
-const cloneNoise = (noise: SceneFillNoise | undefined): SceneFillNoise | undefined =>
-  noise ? { ...noise } : undefined;
-
-const cloneFilaments = (
-  filaments: SceneFillFilaments | undefined
-): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
-
-const createBrickFill = (config: BrickConfig) => {
-  const fill = config.fill;
-  switch (fill.type) {
-    case "solid":
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
-        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
-      };
-    case "radial":
-      return {
-        fillType: FILL_TYPES.RADIAL_GRADIENT,
-        start: fill.center ? { ...fill.center } : undefined,
-        end: fill.radius,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
-        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
-      };
-    case "linear":
-    default:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
-        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
-      };
-  }
-};
-
-export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
-export const BRICK_TOTAL_HP_BRIDGE_KEY = "bricks/totalHp";
-
-export interface BrickData {
-  position: SceneVector2;
-  rotation: number;
-  type: BrickType;
-  level: number;
-  hp?: number;
-}
-
-export interface BrickRuntimeState {
-  id: string;
-  type: BrickType;
-  position: SceneVector2;
-  rotation: number;
-  level: number;
-  hp: number;
-  maxHp: number;
-  armor: number;
-  baseDamage: number;
-  brickKnockBackDistance: number;
-  brickKnockBackSpeed: number;
-  brickKnockBackAmplitude: number;
-  physicalSize: number;
-  rewards: ResourceStockpile;
-}
-
-interface BricksModuleOptions {
-  scene: SceneObjectManager;
-  bridge: DataBridge;
-  explosions: ExplosionModule;
-  resources: ResourceCollector;
-  bonuses: BonusesModule;
-  runState: MapRunState;
-  audio?: SoundEffectPlayer;
-  statistics?: StatisticsTracker;
-}
-
-interface BrickSaveData {
-  bricks: BrickData[];
-}
-
-interface InternalBrickState extends BrickRuntimeState {
-  sceneObjectId: string;
-  damageExplosion?: BrickExplosionState;
-  destructionExplosion?: BrickExplosionState;
-  knockback: BrickKnockbackState | null;
-  baseFill: SceneFill;
-  appliedFill: SceneFill;
-  activeTint: BrickEffectTint | null;
-}
-
-interface BrickExplosionState {
-  type: ExplosionType;
-  initialRadius: number;
-}
-
-interface BrickKnockbackState {
-  initialOffset: SceneVector2;
-  currentOffset: SceneVector2;
-  elapsed: number;
-}
-
-export interface BrickEffectTint {
-  color: SceneColor;
-  intensity: number;
-}
-
-const BRICK_KNOCKBACK_DURATION_MS = 500;
-const KNOCKBACK_EPSILON = 0.001;
-const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
-const TOTAL_HP_RECOMPUTE_INTERVAL_MS = 3000;
 
 export class BricksModule implements GameModule {
   public readonly id = "bricks";
@@ -248,7 +147,7 @@ export class BricksModule implements GameModule {
 
       const state = brick.knockback;
       state.elapsed = Math.min(state.elapsed + deltaMs, BRICK_KNOCKBACK_DURATION_MS);
-      const progress = clamp(state.elapsed / BRICK_KNOCKBACK_DURATION_MS, 0, 1);
+      const progress = clampNumber(state.elapsed / BRICK_KNOCKBACK_DURATION_MS, 0, 1);
       const remaining = 1 - progress;
       const eased = remaining * remaining;
 
@@ -360,7 +259,7 @@ export class BricksModule implements GameModule {
     }
 
     const previousHp = brick.hp;
-    brick.hp = clamp(brick.hp - effectiveDamage, 0, brick.maxHp);
+    brick.hp = clampNumber(brick.hp - effectiveDamage, 0, brick.maxHp);
     const inflictedDamage = Math.max(0, previousHp - brick.hp);
     if (inflictedDamage > 0) {
       this.options.statistics?.recordDamageDealt(inflictedDamage);
@@ -594,7 +493,7 @@ export class BricksModule implements GameModule {
     const hasSameTint =
       brick.activeTint &&
       Math.abs(brick.activeTint.intensity - normalizedIntensity) < 1e-3 &&
-      sceneColorsApproximatelyEqual(brick.activeTint.color, tint.color);
+      sceneColorsEqual(brick.activeTint.color, tint.color);
     if (hasSameTint) {
       return;
     }
@@ -700,8 +599,8 @@ export class BricksModule implements GameModule {
   private clampToMap(position: SceneVector2): SceneVector2 {
     const { width, height } = this.options.scene.getMapSize();
     return {
-      x: clamp(position.x, 0, width),
-      y: clamp(position.y, 0, height),
+      x: clampNumber(position.x, 0, width),
+      y: clampNumber(position.y, 0, height),
     };
   }
 
@@ -759,277 +658,3 @@ export class BricksModule implements GameModule {
     });
   }
 }
-
-const addVectors = (a: SceneVector2, b: SceneVector2): SceneVector2 => ({
-  x: a.x + b.x,
-  y: a.y + b.y,
-});
-
-const scaleVector = (vector: SceneVector2, scalar: number): SceneVector2 => ({
-  x: vector.x * scalar,
-  y: vector.y * scalar,
-});
-
-const vectorLength = (vector: SceneVector2): number => Math.hypot(vector.x, vector.y);
-
-const vectorHasLength = (vector: SceneVector2, epsilon = 0.0001): boolean =>
-  Math.abs(vector.x) > epsilon || Math.abs(vector.y) > epsilon;
-
-const normalizeVector = (vector: SceneVector2): SceneVector2 | null => {
-  const length = vectorLength(vector);
-  if (length <= 0.0001) {
-    return null;
-  }
-  return {
-    x: vector.x / length,
-    y: vector.y / length,
-  };
-};
-
-const sanitizeKnockBackSpeed = (
-  value: number | undefined,
-  distance: number
-): number => {
-  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
-    return value;
-  }
-  if (distance > 0) {
-    return distance * 2;
-  }
-  return 0;
-};
-
-const sanitizeKnockBackAmplitude = (
-  value: number | undefined,
-  distance: number,
-  config: BrickConfig,
-  physicalSize: number
-): number => {
-  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
-    return value;
-  }
-
-  if (distance > 0) {
-    return clamp(distance * 0.15, 4, 12);
-  }
-
-  const fallbackSize = Math.max(physicalSize, Math.max(config.size.width, config.size.height) / 2);
-  return clamp(fallbackSize * 0.35, 4, 10);
-};
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (Number.isNaN(value) || !Number.isFinite(value)) {
-    return min;
-  }
-  if (min > max) {
-    return min;
-  }
-  return Math.min(Math.max(value, min), max);
-};
-
-const blendColorComponent = (
-  base: number | undefined,
-  overlay: number | undefined,
-  intensity: number
-): number => {
-  const sanitizedBase = Number.isFinite(base) ? (base as number) : 0;
-  const sanitizedOverlay = Number.isFinite(overlay) ? (overlay as number) : 0;
-  const blended = sanitizedBase + (sanitizedOverlay - sanitizedBase) * intensity;
-  return clamp(blended, 0, 1);
-};
-
-const tintSceneColor = (
-  source: SceneColor,
-  tint: SceneColor,
-  intensity: number
-): SceneColor => ({
-  r: blendColorComponent(source.r, tint.r, intensity),
-  g: blendColorComponent(source.g, tint.g, intensity),
-  b: blendColorComponent(source.b, tint.b, intensity),
-  a: typeof source.a === "number" && Number.isFinite(source.a) ? source.a : 1,
-});
-
-const sceneColorsApproximatelyEqual = (
-  a: SceneColor,
-  b: SceneColor,
-  epsilon = 1e-3
-): boolean =>
-  Math.abs((a.r ?? 0) - (b.r ?? 0)) <= epsilon &&
-  Math.abs((a.g ?? 0) - (b.g ?? 0)) <= epsilon &&
-  Math.abs((a.b ?? 0) - (b.b ?? 0)) <= epsilon &&
-  Math.abs((a.a ?? 1) - (b.a ?? 1)) <= epsilon;
-
-const tintSceneFill = (
-  fill: SceneFill,
-  tint: SceneColor,
-  intensity: number
-): SceneFill => {
-  const ratio = clamp(intensity, 0, 1);
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: tintSceneColor(fill.color, tint, ratio),
-        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
-        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: tintSceneColor(stop.color, tint, ratio),
-        })),
-        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
-        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: tintSceneColor(stop.color, tint, ratio),
-        })),
-        ...(fill.noise ? { noise: cloneNoise(fill.noise) } : {}),
-        ...(fill.filaments ? { filaments: cloneFilaments(fill.filaments) } : {}),
-      } as SceneFill;
-    default:
-      return cloneSceneFill(fill);
-  }
-};
-
-const sanitizeHp = (value: number | undefined, maxHp: number): number => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return clamp(value, 0, maxHp);
-  }
-  return clamp(maxHp, 0, maxHp);
-};
-
-const sanitizeRotation = (value: number | undefined): number => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  return Math.random() * Math.PI * 2;
-};
-
-const sanitizeBrickType = (value: BrickType | undefined): BrickType => {
-  if (isBrickType(value)) {
-    return value;
-  }
-  return DEFAULT_BRICK_TYPE;
-};
-
-const resolveBrickExplosion = (
-  config: DestructubleExplosionConfig | undefined,
-  brickConfig: BrickConfig,
-  physicalSize: number
-): BrickExplosionState | undefined => {
-  const baseRadius = Math.max(
-    Math.max(brickConfig.size.width, brickConfig.size.height) / 2,
-    physicalSize
-  );
-
-  const type = config?.type;
-  if (!type) {
-    return undefined;
-  }
-
-  if (
-    config &&
-    typeof config.initialRadius === "number" &&
-    Number.isFinite(config.initialRadius)
-  ) {
-    const radius = Math.max(1, config.initialRadius);
-    return { type, initialRadius: radius };
-  }
-
-  const multiplier =
-    config && typeof config.radiusMultiplier === "number" && Number.isFinite(config.radiusMultiplier)
-      ? config.radiusMultiplier
-      : 1;
-  const offset =
-    config && typeof config.radiusOffset === "number" && Number.isFinite(config.radiusOffset)
-      ? config.radiusOffset
-      : 0;
-
-  const initialRadius = Math.max(1, baseRadius * multiplier + offset);
-  return { type, initialRadius };
-};
-
-const sanitizeBrickLevel = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 1) {
-    return 1;
-  }
-  return Math.floor(value);
-};
-
-const getBrickLevelStatMultiplier = (level: number): number => Math.pow(3, Math.max(level - 1, 0));
-
-const getBrickLevelRewardMultiplier = (level: number): number => Math.pow(2, Math.max(level - 1, 0));
-
-const scaleBrickStat = (
-  baseValue: number | undefined,
-  multiplier: number,
-  ensurePositive: boolean
-): number => {
-  if (typeof baseValue !== "number" || !Number.isFinite(baseValue)) {
-    if (!ensurePositive) {
-      return 0;
-    }
-    return multiplier > 1 ? 1 : 0;
-  }
-  const base = Math.max(baseValue, 0);
-  const scaled = Math.round(base * multiplier);
-
-  if (base === 0) {
-    if (!ensurePositive) {
-      return 0;
-    }
-    return multiplier > 1 ? 1 : 0;
-  }
-
-  if (ensurePositive) {
-    return Math.max(1, scaled);
-  }
-
-  return Math.max(0, scaled);
-};
-
-const scaleResourceStockpile = (
-  base: ResourceStockpile,
-  multiplier: number
-): ResourceStockpile => {
-  const scaled = createEmptyResourceStockpile();
-  RESOURCE_IDS.forEach((id) => {
-    const value = base[id] ?? 0;
-    const scaledValue = Math.round(Math.max(value, 0) * multiplier * 100) / 100;
-    scaled[id] = scaledValue > 0 ? scaledValue : 0;
-  });
-  return scaled;
-};
-
-const calculateBrickStatsForLevel = (
-  config: BrickConfig,
-  level: number
-): { maxHp: number; baseDamage: number; armor: number; rewards: ResourceStockpile } => {
-  const sanitizedLevel = sanitizeBrickLevel(level);
-  const statMultiplier = getBrickLevelStatMultiplier(sanitizedLevel);
-  const rewardMultiplier = getBrickLevelRewardMultiplier(sanitizedLevel);
-  const destructuble = config.destructubleData;
-
-  const maxHp = Math.max(
-    scaleBrickStat(destructuble?.maxHp ?? 1, statMultiplier, true),
-    1
-  );
-  const baseDamage = scaleBrickStat(destructuble?.baseDamage ?? 0, statMultiplier, true);
-  const armor = scaleBrickStat(destructuble?.armor ?? 0, statMultiplier, true);
-  const baseRewards = normalizeResourceAmount(config.rewards);
-  const rewards = scaleResourceStockpile(baseRewards, rewardMultiplier);
-
-  return { maxHp, baseDamage, armor, rewards };
-};

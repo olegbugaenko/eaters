@@ -1,8 +1,8 @@
 import { SpellConfig } from "../../../../db/spells-db";
 import { SpellBehavior, SpellBehaviorDependencies } from "./SpellBehavior";
-import { ProjectileSpellBehavior } from "./ProjectileSpellBehavior";
-import { WhirlSpellBehavior } from "./WhirlSpellBehavior";
-import { PersistentAoeSpellBehavior } from "./PersistentAoeSpellBehavior";
+import { ProjectileSpellBehavior } from "./implementations/ProjectileSpellBehavior";
+import { WhirlSpellBehavior } from "./implementations/WhirlSpellBehavior";
+import { PersistentAoeSpellBehavior } from "./implementations/PersistentAoeSpellBehavior";
 
 export class SpellBehaviorRegistry {
   private readonly behaviors = new Map<SpellConfig["type"], SpellBehavior>();

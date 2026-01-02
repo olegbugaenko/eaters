@@ -1,6 +1,6 @@
-import { FILL_TYPES } from "../../../services/SceneObjectManager";
-import type { SceneColor } from "../../../services/SceneObjectManager";
-import type { FireballTrailEmitterConfig } from "./fireball.types";
+import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
+import type { SceneColor } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 
 export const FIREBALL_SPEED = 150; // pixels per second (reduced from 300 for more realistic movement)
 export const DEFAULT_FIREBALL_LIFETIME_MS = 5000; // 5 seconds max flight time (increased to compensate for slower speed)
@@ -25,7 +25,7 @@ export const FIREBALL_TAIL_RENDER = {
   endColor: { ...FIREBALL_TAIL_END_COLOR },
 };
 
-export const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
+export const FIREBALL_TRAIL_EMITTER: ParticleEmitterConfig = {
   particlesPerSecond: 90,
   particleLifetimeMs: 750,
   fadeStartMs: 200,
@@ -53,7 +53,7 @@ export const FIREBALL_TRAIL_EMITTER: FireballTrailEmitterConfig = {
   maxParticles: 120,
 };
 
-export const FIREBALL_SMOKE_EMITTER: FireballTrailEmitterConfig = {
+export const FIREBALL_SMOKE_EMITTER: ParticleEmitterConfig = {
   particlesPerSecond: 48,
   particleLifetimeMs: 820,
   fadeStartMs: 320,

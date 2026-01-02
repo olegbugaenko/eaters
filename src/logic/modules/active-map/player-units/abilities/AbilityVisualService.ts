@@ -1,8 +1,8 @@
 import {
-  FILL_TYPES,
-  SceneObjectManager,
   SceneVector2,
-} from "../../../../services/SceneObjectManager";
+} from "../../../../services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
 import type { ArcModule } from "../../../scene/arc/arc.module";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { EffectsModule } from "../../../scene/effects/effects.module";

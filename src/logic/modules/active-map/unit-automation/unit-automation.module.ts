@@ -1,110 +1,31 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
+import type { DataBridge } from "../../../core/DataBridge";
 import { PLAYER_UNIT_TYPES, PlayerUnitType, isPlayerUnitType } from "../../../../db/player-units-db";
-import { NecromancerModule, NecromancerResourceSnapshot } from "../necromancer/necromancer.module";
+import type { NecromancerModule } from "../necromancer/necromancer.module";
+import type { NecromancerResourceSnapshot } from "../necromancer/necromancer.types";
 import {
   UnitDesignId,
-  UnitDesignModule,
   UnitDesignerUnitState,
-} from "../../camp/unit-design/unit-design.module";
-import { SkillId } from "../../../../db/skills-db";
+} from "../../camp/unit-design/unit-design.types";
+import type {
+  UnitAutomationUnitState,
+  UnitAutomationBridgeState,
+  UnitAutomationModuleOptions,
+  UnitAutomationSaveData,
+  AutomationSelectionCandidate,
+  AutomationAvailability,
+} from "./unit-automation.types";
+import {
+  UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+  DEFAULT_UNIT_AUTOMATION_STATE,
+  AUTOMATION_SKILL_ID,
+  MAX_AUTOMATION_ITERATIONS,
+  MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK,
+} from "./unit-automation.const";
+import { selectNextAutomationTarget } from "./unit-automation.helpers";
+import { SkillId } from "@/db/skills-db";
 import { MapRunState } from "../map/MapRunState";
-
-export interface UnitAutomationUnitState {
-  readonly designId: UnitDesignId;
-  readonly type: PlayerUnitType;
-  readonly name: string;
-  readonly enabled: boolean;
-  readonly weight: number;
-}
-
-export interface UnitAutomationBridgeState {
-  readonly unlocked: boolean;
-  readonly units: readonly UnitAutomationUnitState[];
-}
-
-export const UNIT_AUTOMATION_STATE_BRIDGE_KEY = "automation/state";
-
-export const DEFAULT_UNIT_AUTOMATION_STATE: UnitAutomationBridgeState = Object.freeze({
-  unlocked: false,
-  units: [],
-});
-
-interface UnitAutomationModuleOptions {
-  bridge: DataBridge;
-  necromancer: Pick<
-    NecromancerModule,
-    "trySpawnDesign" | "getResources" | "getRemainingUnitCapacity"
-  >;
-  unitDesigns: Pick<
-    UnitDesignModule,
-    "subscribe" | "getDefaultDesignForType" | "getActiveRosterDesigns"
-  >;
-  getUnitCountByDesignId: (designId: UnitDesignId) => number;
-  getSkillLevel: (id: SkillId) => number;
-  runState: MapRunState;
-  isRunActive: () => boolean;
-}
-
-interface UnitAutomationSaveData {
-  readonly enabled?: Record<string, boolean>;
-  readonly weights?: Record<string, number>;
-}
-
-const AUTOMATION_SKILL_ID: SkillId = "stone_automatons";
-const MAX_AUTOMATION_ITERATIONS = 32;
-const MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK = 32;
-
-export interface AutomationSelectionCandidate {
-  readonly designId: UnitDesignId;
-  readonly weight: number;
-  readonly activeCount: number;
-  readonly order: number;
-}
-
-const AUTOMATION_SELECTION_EPSILON = 1e-6;
-
-type AutomationAvailability = "affordable" | "wait" | "skip";
-
-export const selectNextAutomationTarget = (
-  candidates: readonly AutomationSelectionCandidate[],
-  skipped: ReadonlySet<UnitDesignId> = new Set<UnitDesignId>()
-): UnitDesignId | null => {
-  let best: AutomationSelectionCandidate | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
-  let fallback: AutomationSelectionCandidate | null = null;
-
-  for (const candidate of candidates) {
-    if (skipped.has(candidate.designId)) {
-      continue;
-    }
-    if (!fallback) {
-      fallback = candidate;
-    }
-    const normalizedSpawned = candidate.activeCount > 0 ? candidate.activeCount : 0;
-    const effectiveWeight = candidate.weight > 0 ? candidate.weight : 1;
-    const score = normalizedSpawned / effectiveWeight;
-    if (!best) {
-      best = candidate;
-      bestScore = score;
-      continue;
-    }
-    if (score + AUTOMATION_SELECTION_EPSILON < bestScore) {
-      best = candidate;
-      bestScore = score;
-      continue;
-    }
-    if (Math.abs(score - bestScore) <= AUTOMATION_SELECTION_EPSILON && candidate.order < best.order) {
-      best = candidate;
-      bestScore = score;
-    }
-  }
-
-  if (best) {
-    return best.designId;
-  }
-  return fallback ? fallback.designId : null;
-};
+import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
 
 export class UnitAutomationModule implements GameModule {
   public readonly id = "unitAutomation";

@@ -10,8 +10,8 @@ import {
   SceneVector2,
   SceneFill,
   SceneColor,
-  FILL_TYPES,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../../../logic/services/scene-object-manager/scene-object-manager.const";
 import { createParticleEmitterPrimitive } from "../primitives";
 import { getParticleEmitterGlContext } from "../primitives/utils/gpuContext";
 import { sanitizeSceneColor } from "../../../logic/services/particles/ParticleEmitterShared";
@@ -117,13 +117,17 @@ const sanitizeExplosionEmitterConfig = (
     return null;
   }
 
+  if (!config.spawnRadius) {
+    return null;
+  }
+
   const spawnMin = Math.max(0, config.spawnRadius.min);
   const spawnMax = Math.max(spawnMin, config.spawnRadius.max);
 
   return {
     ...base,
-    baseSpeed: Math.max(0, config.baseSpeed),
-    speedVariation: Math.max(0, config.speedVariation),
+    baseSpeed: Math.max(0, config.baseSpeed ?? 0),
+    speedVariation: Math.max(0, config.speedVariation ?? 0),
     spawnRadius: { min: spawnMin, max: spawnMax },
     arc: sanitizeArc(config.arc),
     direction: sanitizeAngle(config.direction),

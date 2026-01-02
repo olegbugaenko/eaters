@@ -1,5 +1,5 @@
 import { GameModule } from "../../../core/types";
-import { BONUS_IDS, BonusId, getBonusConfig } from "../../../../db/bonuses-db";
+import { BonusId, getBonusConfig } from "../../../../db/bonuses-db";
 import {
   BonusEffectContext,
   BonusEffectFormula,
@@ -7,18 +7,21 @@ import {
   BonusEffectPreview,
   BonusEffectType,
 } from "../../../../types/bonuses";
+import type {
+  BonusValueMap,
+  BonusValuesListener,
+  SanitizedBonusEffects,
+  BonusSourceState,
+} from "./bonuses.types";
+import {
+  createBonusValueMap,
+  sanitizeLevel,
+  sanitizeEffectValue,
+  areBonusMapsEqual,
+} from "./bonuses.helpers";
 
-export type BonusValueMap = Record<BonusId, number>;
-
-type SanitizedBonusEffects = Partial<Record<BonusId, Record<string, BonusEffectFormula>>>;
-
-interface BonusSourceState {
-  readonly id: string;
-  readonly effects: SanitizedBonusEffects;
-  level: number;
-}
-
-export type BonusValuesListener = (values: BonusValueMap) => void;
+// Re-export types for backward compatibility
+export type { BonusValueMap, BonusValuesListener } from "./bonuses.types";
 
 export class BonusesModule implements GameModule {
   public readonly id = "bonuses";
@@ -249,31 +252,3 @@ export class BonusesModule implements GameModule {
   }
 }
 
-const createBonusValueMap = (
-  initializer: (config: ReturnType<typeof getBonusConfig>, id: BonusId) => number
-): BonusValueMap => {
-  const values = {} as BonusValueMap;
-  BONUS_IDS.forEach((id) => {
-    const config = getBonusConfig(id);
-    values[id] = initializer(config, id);
-  });
-  return values;
-};
-
-const sanitizeLevel = (value: number): number => {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.max(Math.floor(value), 0);
-};
-
-const sanitizeEffectValue = (value: number, effectType: string): number => {
-  if (!Number.isFinite(value)) {
-    return effectType === "multiplier" ? 1 : 0;
-  }
-  return value;
-};
-
-const areBonusMapsEqual = (a: BonusValueMap, b: BonusValueMap): boolean => {
-  return BONUS_IDS.every((id) => Math.abs((a[id] ?? 0) - (b[id] ?? 0)) < 1e-9);
-};
