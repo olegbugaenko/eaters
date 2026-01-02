@@ -3,8 +3,8 @@ import { SpellId, SPELL_IDS } from "@db/spells-db";
 import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
-  MapAutoRestartState,
 } from "@logic/modules/active-map/map/map.module";
+import { MapAutoRestartState } from "@logic/modules/active-map/map/map.types";
 import {
   NECROMANCER_RESOURCES_BRIDGE_KEY,
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,

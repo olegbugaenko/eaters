@@ -25,16 +25,6 @@ import {
 } from "./map.types";
 import { SkillId } from "../../../../db/skills-db";
 
-export type {
-  MapAutoRestartState,
-  MapLevelStats,
-  MapListEntry,
-  MapModuleOptions,
-  MapRunResult,
-  MapSaveData,
-  MapStats,
-} from "./map.types";
-
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
