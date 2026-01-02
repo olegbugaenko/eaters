@@ -66,8 +66,8 @@ const DEFAULT_TARGETING_MODE: UnitTargetingMode = TARGETING_OPTIONS[0]!.mode;
 
 export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automation }) => {
   const { app } = useAppLogic();
-  const designer = useMemo(() => app.getUnitDesigner(), [app]);
-  const automationModule = useMemo(() => app.getUnitAutomation(), [app]);
+  const designer = useMemo(() => app.services.unitDesign, [app]);
+  const automationModule = useMemo(() => app.services.unitAutomation, [app]);
 
   const roster = state.activeRoster;
   const maxSlots = state.maxActiveUnits;

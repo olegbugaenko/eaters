@@ -40,7 +40,7 @@ const getDefaultType = (units: readonly { type: PlayerUnitType }[], fallback: Pl
 
 export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resources }) => {
   const { app } = useAppLogic();
-  const designer = useMemo(() => app.getUnitDesigner(), [app]);
+  const designer = useMemo(() => app.services.unitDesign, [app]);
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
   const [preview, setPreview] = useState<{

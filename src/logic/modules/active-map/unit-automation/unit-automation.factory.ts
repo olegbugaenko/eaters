@@ -5,7 +5,7 @@ import { PlayerUnitsModule } from "../player-units/player-units.module";
 import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";
 import { UnitAutomationModule } from "./unit-automation.module";
 
-export const createUnitAutomationDefinition = (): ServiceDefinition<UnitAutomationModule> => ({
+export const createUnitAutomationDefinition = (): ServiceDefinition<UnitAutomationModule, "unitAutomation"> => ({
   token: "unitAutomation",
   factory: (container) =>
     new UnitAutomationModule({

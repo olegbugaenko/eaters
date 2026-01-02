@@ -1,7 +1,7 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { ResourcesModule } from "./resources.module";
 
-export const createResourcesDefinition = (): ServiceDefinition<ResourcesModule> => ({
+export const createResourcesDefinition = (): ServiceDefinition<ResourcesModule, "resources"> => ({
   token: "resources",
   factory: (container) =>
     new ResourcesModule({

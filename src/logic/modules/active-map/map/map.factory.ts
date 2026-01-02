@@ -6,7 +6,7 @@ import { MapModule } from "./map.module";
 
 export const createMapDefinition = (
   context: ModuleDefinitionContext,
-): ServiceDefinition<MapModule> => ({
+): ServiceDefinition<MapModule, "map"> => ({
   token: "map",
   factory: (container) =>
     new MapModule({
@@ -24,7 +24,7 @@ export const createMapDefinition = (
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
     }),
   registerAsModule: true,
-  onReady: (instance) => {
-    context.setMapModule(instance as MapModule);
+  onReady: (instance: MapModule) => {
+    context.setMapModule(instance);
   },
 });

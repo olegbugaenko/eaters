@@ -8,7 +8,7 @@ import { PlayerUnitsModule } from "./player-units.module";
 
 export const createPlayerUnitsDefinition = (
   context: ModuleDefinitionContext,
-): ServiceDefinition<PlayerUnitsModule> => ({
+): ServiceDefinition<PlayerUnitsModule, "playerUnits"> => ({
   token: "playerUnits",
   factory: (container) =>
     new PlayerUnitsModule({

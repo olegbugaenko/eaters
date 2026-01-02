@@ -301,7 +301,7 @@ export const SkillTreeView: React.FC = () => {
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
-  const skillTreeModule = useMemo(() => app.getSkillTree(), [app]);
+  const skillTreeModule = useMemo(() => app.services.skillTree, [app]);
   const [purchasedSkillId, setPurchasedSkillId] = useState<SkillId | null>(null);
   const hoveredIdRef = useRef<SkillId | null>(null);
 

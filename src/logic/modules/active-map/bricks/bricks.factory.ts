@@ -1,7 +1,7 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { BricksModule } from "./bricks.module";
 
-export const createBricksDefinition = (): ServiceDefinition<BricksModule> => ({
+export const createBricksDefinition = (): ServiceDefinition<BricksModule, "bricks"> => ({
   token: "bricks",
   factory: (container) =>
     new BricksModule({

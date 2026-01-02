@@ -3,7 +3,10 @@ import { ServiceDefinition } from "../../../core/loader/types";
 import { SkillTreeModule } from "../skill-tree/skill-tree.module";
 import { UnitModuleWorkshopModule } from "./unit-module-workshop.module";
 
-export const createUnitModuleWorkshopDefinition = (): ServiceDefinition<UnitModuleWorkshopModule> => ({
+export const createUnitModuleWorkshopDefinition = (): ServiceDefinition<
+  UnitModuleWorkshopModule,
+  "unitModuleWorkshop"
+> => ({
   token: "unitModuleWorkshop",
   factory: (container) =>
     new UnitModuleWorkshopModule({

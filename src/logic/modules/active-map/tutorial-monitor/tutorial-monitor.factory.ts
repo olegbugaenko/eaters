@@ -1,7 +1,10 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { TutorialMonitorModule } from "./tutorial-monitor.module";
 
-export const createTutorialMonitorDefinition = (): ServiceDefinition<TutorialMonitorModule> => ({
+export const createTutorialMonitorDefinition = (): ServiceDefinition<
+  TutorialMonitorModule,
+  "tutorialMonitor"
+> => ({
   token: "tutorialMonitor",
   factory: (container) =>
     new TutorialMonitorModule({

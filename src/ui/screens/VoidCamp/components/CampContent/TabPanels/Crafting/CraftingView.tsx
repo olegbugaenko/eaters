@@ -67,7 +67,7 @@ const formatCraftTime = (durationMs: number): string => {
 
 export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) => {
   const { app } = useAppLogic();
-  const crafting = useMemo(() => app.getCrafting(), [app]);
+  const crafting = useMemo(() => app.services.crafting, [app]);
   const totals = useMemo(() => buildResourceMap(resources), [resources]);
 
   const handleInputChange = useCallback(

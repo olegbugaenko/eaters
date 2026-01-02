@@ -21,9 +21,9 @@ describe("Application", () => {
 
     completeRun(false);
 
-    const bridge = app.getBridge();
-    const list = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
-    const training = list.find((entry) => entry.id === "trainingGrounds");
+    const bridge = app.services.bridge;
+    const list: MapListEntry[] = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const training = list.find((entry: MapListEntry) => entry.id === "trainingGrounds");
     assert(training, "expected trainingGrounds map to be listed");
     assert.strictEqual(training?.attempts, 1, "should count one failed attempt");
 
@@ -39,8 +39,10 @@ describe("Application", () => {
     app.restartCurrentMap();
     completeRun(true);
 
-    const updatedList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
-    const updatedTraining = updatedList.find((entry) => entry.id === "trainingGrounds");
+    const updatedList: MapListEntry[] = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const updatedTraining = updatedList.find(
+      (entry: MapListEntry) => entry.id === "trainingGrounds"
+    );
     assert(updatedTraining, "expected trainingGrounds map after success");
     assert.strictEqual(updatedTraining?.currentLevel, 1);
     assert.strictEqual(updatedTraining?.bestTimeMs, 0);

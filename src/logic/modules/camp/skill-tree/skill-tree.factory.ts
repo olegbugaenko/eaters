@@ -1,7 +1,7 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { SkillTreeModule } from "./skill-tree.module";
 
-export const createSkillTreeDefinition = (): ServiceDefinition<SkillTreeModule> => ({
+export const createSkillTreeDefinition = (): ServiceDefinition<SkillTreeModule, "skillTree"> => ({
   token: "skillTree",
   factory: (container) =>
     new SkillTreeModule({

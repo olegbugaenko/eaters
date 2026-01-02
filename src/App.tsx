@@ -27,7 +27,7 @@ function App(): JSX.Element {
   }, [app]);
 
   const refreshSlotSummaries = useCallback(() => {
-    const saveManager = app.getSaveManager();
+    const { saveManager } = app.services;
     const entries: Record<string, SaveSlotSummary> = {};
     SAVE_SLOTS.forEach((slot) => {
       entries[slot] = saveManager.getSlotSummary(slot);
@@ -45,7 +45,7 @@ function App(): JSX.Element {
       if (!confirmed) {
         return;
       }
-      const saveManager = app.getSaveManager();
+      const { saveManager } = app.services;
       saveManager.deleteSlot(slot);
       refreshSlotSummaries();
     },
@@ -79,7 +79,7 @@ function App(): JSX.Element {
 
   return (
     <AppLogicContext.Provider
-      value={{ app, bridge: app.getBridge(), scene: app.getSceneObjects() }}
+      value={{ app, bridge: app.services.bridge, scene: app.services.sceneObjects }}
     >
       <div className="app-root">
         {screen === "save-select" && (

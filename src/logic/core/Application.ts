@@ -1,59 +1,65 @@
 import { DataBridge } from "./DataBridge";
 import { ServiceContainer } from "./ServiceContainer";
-import { ServiceDefinition } from "./loader/types";
-import { createBootstrapDefinitions } from "./loader/bootstrap";
+import { ServiceDefinition, ServiceLookup } from "./loader/types";
+import { BootstrapDefinitionList, createBootstrapDefinitions } from "./loader/bootstrap";
 import { createModuleDefinitions } from "../definitions/modules";
 import { GameModule, SaveSlotId, StoredSaveData } from "./types";
 import { MapId } from "../../db/maps-db";
 import { MapModule } from "../modules/active-map/map/map.module";
-import { BulletModule } from "../modules/active-map/bullet/bullet.module";
-import { NecromancerModule } from "../modules/active-map/necromancer/necromancer.module";
-import { PlayerUnitsModule } from "../modules/active-map/player-units/player-units.module";
-import { SpellcastingModule } from "../modules/active-map/spellcasting/spellcasting.module";
-import { AudioModule } from "../modules/shared/audio/audio.module";
-import { BonusesModule } from "../modules/shared/bonuses/bonuses.module";
-import { ResourcesModule } from "../modules/shared/resources/resources.module";
-import { SkillTreeModule } from "../modules/camp/skill-tree/skill-tree.module";
-import { StatisticsModule } from "../modules/shared/statistics/statistics.module";
-import { UnitAutomationModule } from "../modules/active-map/unit-automation/unit-automation.module";
-import { UnitDesignModule } from "../modules/camp/unit-design/unit-design.module";
-import { UnitModuleWorkshopModule } from "../modules/camp/unit-module-workshop/unit-module-workshop.module";
-import { BuildingsModule } from "../modules/camp/buildings/buildings.module";
-import { CraftingModule } from "../modules/camp/crafting/crafting.module";
 import { resetAllWaveBatches } from "../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
 import { resetAllArcBatches } from "../../ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { clearAllParticleEmitters } from "../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
-import { SaveManager } from "../services/SaveManager";
-import { GameLoop } from "../services/GameLoop";
-import { SceneObjectManager } from "../services/SceneObjectManager";
-import { ExplosionModule } from "../modules/scene/explosion/explosion.module";
-import { ArcModule } from "../modules/scene/arc/arc.module";
-import { EffectsModule } from "../modules/scene/effects/effects.module";
-import { FireballModule } from "../modules/scene/fireball/fireball.module";
 import { MapRunState, MapRunEvent } from "../modules/active-map/map/MapRunState";
+import { createServiceLookup } from "./loader/createServiceLookup";
+
+type ModuleDefinitionList = ReturnType<typeof createModuleDefinitions>;
+type ApplicationDefinitionList = readonly [
+  ServiceDefinition<DataBridge, "bridge">,
+  ...BootstrapDefinitionList,
+  ...ModuleDefinitionList,
+];
+export type ApplicationServices = ServiceLookup<ApplicationDefinitionList>;
 
 export class Application {
-  private serviceContainer = new ServiceContainer();
+  private serviceContainer: ServiceContainer;
   private dataBridge = new DataBridge();
   private modules: GameModule[] = [];
+  public services: ApplicationServices;
   private mapModule?: MapModule;
 
   constructor() {
-    this.serviceContainer.register("bridge", this.dataBridge);
-    createBootstrapDefinitions().forEach((definition) => this.registerDefinition(definition));
+    this.serviceContainer = new ServiceContainer();
+    const moduleDefinitions = this.createModuleDefinitions();
+    const definitions = this.buildDefinitions(moduleDefinitions);
 
-    const runState = this.serviceContainer.get<MapRunState>("mapRunState");
+    this.services = createServiceLookup(this.serviceContainer, definitions);
+
+    definitions.forEach((definition) => this.registerDefinition(definition));
+
+    const runState = this.services.mapRunState;
     runState.subscribe((event) => this.handleRunStateEvent(event));
+  }
 
-    const moduleDefinitions = createModuleDefinitions({
+  private createModuleDefinitions(): ModuleDefinitionList {
+    return createModuleDefinitions({
       onAllUnitsDefeated: () => this.handleAllUnitsDefeated(),
       setMapModule: (mapModule) => {
         this.mapModule = mapModule;
       },
     });
+  }
 
-    moduleDefinitions.forEach((definition) => this.registerDefinition(definition));
+  private buildDefinitions(moduleDefinitions: ModuleDefinitionList): ApplicationDefinitionList {
+    return [
+      this.createBridgeDefinition(),
+      ...createBootstrapDefinitions(),
+      ...moduleDefinitions,
+    ] as const;
+  }
+
+  private createBridgeDefinition(): ServiceDefinition<DataBridge, "bridge"> {
+    return { token: "bridge", factory: () => this.dataBridge };
   }
 
   public initialize(): void {
@@ -61,7 +67,7 @@ export class Application {
   }
 
   public reset(): void {
-    const scene = this.getSceneObjects();
+    const scene = this.services.sceneObjects;
     scene.clear();
     this.modules.forEach((module) => module.reset());
     scene.flushAllPendingRemovals();
@@ -69,8 +75,7 @@ export class Application {
   }
 
   public selectSlot(slot: SaveSlotId): void {
-    const saveManager = this.getSaveManager();
-    const gameLoop = this.getGameLoop();
+    const { saveManager, gameLoop } = this.services;
     gameLoop.stop();
     saveManager.setActiveSlot(slot);
     this.reset();
@@ -80,64 +85,11 @@ export class Application {
   }
 
   public returnToMainMenu(): void {
-    const saveManager = this.getSaveManager();
-    const gameLoop = this.getGameLoop();
+    const { saveManager, gameLoop } = this.services;
     gameLoop.stop();
     this.leaveCurrentMap();
     saveManager.saveActiveSlot();
     saveManager.clearActiveSlot();
-  }
-
-  public getBridge(): DataBridge {
-    return this.dataBridge;
-  }
-
-  public getSceneObjects(): SceneObjectManager {
-    return this.serviceContainer.get<SceneObjectManager>("sceneObjects");
-  }
-
-  public getGameLoop(): GameLoop {
-    return this.serviceContainer.get<GameLoop>("gameLoop");
-  }
-
-  public getSaveManager(): SaveManager {
-    return this.serviceContainer.get<SaveManager>("saveManager");
-  }
-
-  public getNecromancer(): NecromancerModule {
-    return this.serviceContainer.get("necromancer");
-  }
-
-  public getBonuses(): BonusesModule {
-    return this.serviceContainer.get("bonuses");
-  }
-
-  public getUnitDesigner(): UnitDesignModule {
-    return this.serviceContainer.get("unitDesign");
-  }
-
-  public getSkillTree(): SkillTreeModule {
-    return this.serviceContainer.get("skillTree");
-  }
-
-  public getUnitAutomation(): UnitAutomationModule {
-    return this.serviceContainer.get("unitAutomation");
-  }
-
-  public getUnitModuleWorkshop(): UnitModuleWorkshopModule {
-    return this.serviceContainer.get("unitModuleWorkshop");
-  }
-
-  public getBuildings(): BuildingsModule {
-    return this.serviceContainer.get("buildings");
-  }
-
-  public getCrafting(): CraftingModule {
-    return this.serviceContainer.get("crafting");
-  }
-
-  public getSpellcasting(): SpellcastingModule {
-    return this.serviceContainer.get("spellcasting");
   }
 
   public restartCurrentMap(): void {
@@ -146,59 +98,61 @@ export class Application {
   }
 
   public pauseCurrentMap(): void {
-    this.getMapModule().pauseActiveMap();
+    this.services.map.pauseActiveMap();
   }
 
   public resumeCurrentMap(): void {
-    this.getMapModule().resumeActiveMap();
+    this.services.map.resumeActiveMap();
   }
 
   public setAutoRestartEnabled(enabled: boolean): void {
-    this.getMapModule().setAutoRestartEnabled(enabled);
+    this.services.map.setAutoRestartEnabled(enabled);
   }
 
   public leaveCurrentMap(): void {
-    this.getMapModule().leaveCurrentMap();
+    this.services.map.leaveCurrentMap();
     this.cleanupSceneAfterRun();
   }
 
   public selectMap(mapId: MapId): void {
-    this.getMapModule().selectMap(mapId);
+    this.services.map.selectMap(mapId);
   }
 
   public selectMapLevel(mapId: MapId, level: number): void {
-    this.getMapModule().selectMapLevel(mapId, level);
+    this.services.map.selectMapLevel(mapId, level);
   }
 
   public hasActiveSaveSlot(): boolean {
-    return this.getSaveManager().getActiveSlotId() !== null;
+    return this.services.saveManager.getActiveSlotId() !== null;
   }
 
   public exportActiveSave(): StoredSaveData | null {
-    return this.getSaveManager().exportActiveSlot();
+    return this.services.saveManager.exportActiveSlot();
   }
 
   public importActiveSave(data: StoredSaveData): void {
-    this.getSaveManager().importToActiveSlot(data);
+    this.services.saveManager.importToActiveSlot(data);
   }
 
   public applyAudioSettings(settings: AudioSettingsPercentages): void {
-    this.serviceContainer.get<AudioModule>("audio").applyPercentageSettings(settings);
+    this.services.audio.applyPercentageSettings(settings);
   }
 
   public resumeAudio(): void {
-    this.serviceContainer.get<AudioModule>("audio").resumeMusic();
+    this.services.audio.resumeMusic();
   }
 
   public playCampPlaylist(): void {
-    this.serviceContainer.get<AudioModule>("audio").playPlaylist("camp");
+    this.services.audio.playPlaylist("camp");
   }
 
   public playMapPlaylist(): void {
-    this.serviceContainer.get<AudioModule>("audio").playPlaylist("map");
+    this.services.audio.playPlaylist("map");
   }
 
-  private registerDefinition<T>(definition: ServiceDefinition<T>): T {
+  private registerDefinition<TDefinition extends ServiceDefinition<unknown, string, any>>(
+    definition: TDefinition,
+  ): TDefinition extends ServiceDefinition<infer Instance, string, any> ? Instance : never {
     const instance = definition.factory(this.serviceContainer);
     this.serviceContainer.register(definition.token, instance);
 
@@ -207,12 +161,11 @@ export class Application {
     }
 
     definition.onReady?.(instance, this.serviceContainer);
-    return instance;
+    return instance as TDefinition extends ServiceDefinition<infer Instance, string, any> ? Instance : never;
   }
 
   private registerModule(module: GameModule): void {
-    const saveManager = this.getSaveManager();
-    const gameLoop = this.getGameLoop();
+    const { saveManager, gameLoop } = this.services;
     this.modules.push(module);
     saveManager.registerModule(module);
     gameLoop.registerModule(module);
@@ -225,17 +178,17 @@ export class Application {
   }
 
   private getMapModule(): MapModule {
-    return this.serviceContainer.get("map");
+    return this.services.map;
   }
 
   private handleAllUnitsDefeated(): void {
-    if (this.getNecromancer().isSanityDepleted()) {
-      this.serviceContainer.get<MapRunState>("mapRunState").complete(false);
+    if (this.services.necromancer.isSanityDepleted()) {
+      this.services.mapRunState.complete(false);
     }
   }
 
   private handleMapRunCompleted(success: boolean): void {
-    const resources = this.serviceContainer.get<ResourcesModule>("resources");
+    const { resources } = this.services;
     if (resources.isRunSummaryAvailable()) {
       return;
     }
@@ -245,12 +198,12 @@ export class Application {
   }
 
   private cleanupSceneAfterRun(): void {
-    this.serviceContainer.get<FireballModule>("fireball").reset();
-    this.serviceContainer.get<BulletModule>("bullet").reset();
-    this.serviceContainer.get<ExplosionModule>("explosion").reset();
-    this.serviceContainer.get<ArcModule>("arc").reset();
-    this.serviceContainer.get<EffectsModule>("effects").reset();
-    this.getSceneObjects().flushAllPendingRemovals();
+    this.services.fireball.reset();
+    this.services.bullet.reset();
+    this.services.explosion.reset();
+    this.services.arc.reset();
+    this.services.effects.reset();
+    this.services.sceneObjects.flushAllPendingRemovals();
     this.resetGpuCaches();
   }
 

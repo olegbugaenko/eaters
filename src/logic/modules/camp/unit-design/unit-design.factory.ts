@@ -1,7 +1,7 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { UnitDesignModule } from "./unit-design.module";
 
-export const createUnitDesignDefinition = (): ServiceDefinition<UnitDesignModule> => ({
+export const createUnitDesignDefinition = (): ServiceDefinition<UnitDesignModule, "unitDesign"> => ({
   token: "unitDesign",
   factory: (container) =>
     new UnitDesignModule({
