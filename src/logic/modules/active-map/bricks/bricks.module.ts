@@ -125,7 +125,6 @@ interface BricksModuleOptions {
   resources: ResourceCollector;
   bonuses: BonusesModule;
   runState: MapRunState;
-  onAllBricksDestroyed?: () => void;
   audio?: SoundEffectPlayer;
   statistics?: StatisticsTracker;
 }
@@ -558,7 +557,7 @@ export class BricksModule implements GameModule {
     this.totalHpCached -= brick.hp;
     this.pushStats();
     if (this.bricks.size === 0) {
-      this.options.onAllBricksDestroyed?.();
+      this.runState.complete(true);
     }
   }
 

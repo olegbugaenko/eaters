@@ -133,7 +133,6 @@ describe("MapModule", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -227,7 +226,6 @@ describe("Map run control", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -354,7 +352,6 @@ describe("Map run control", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -430,7 +427,6 @@ describe("Map run control", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -509,7 +505,6 @@ describe("Map run control", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -596,7 +591,6 @@ describe("Map unlocking", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -699,7 +693,6 @@ describe("Map unlocking", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -759,7 +752,6 @@ describe("Last played map tracking", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 
@@ -807,7 +799,6 @@ describe("Last played map tracking", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => 0,
-      onRunCompleted: () => undefined,
     });
     restoredModuleRef = restoredMaps;
 
@@ -878,7 +869,6 @@ describe("Map auto restart", () => {
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       getSkillLevel: () => skillLevel,
-      onRunCompleted: () => undefined,
     });
     mapModuleRef = maps;
 

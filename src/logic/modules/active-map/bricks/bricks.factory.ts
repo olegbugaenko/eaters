@@ -1,10 +1,7 @@
-import { ModuleDefinitionContext } from "../../../definitions/modules/context";
 import { ServiceDefinition } from "../../../core/loader/types";
 import { BricksModule } from "./bricks.module";
 
-export const createBricksDefinition = (
-  context: ModuleDefinitionContext,
-): ServiceDefinition<BricksModule> => ({
+export const createBricksDefinition = (): ServiceDefinition<BricksModule> => ({
   token: "bricks",
   factory: (container) =>
     new BricksModule({
@@ -15,9 +12,6 @@ export const createBricksDefinition = (
       bonuses: container.get("bonuses"),
       runState: container.get("mapRunState"),
       audio: container.get("audio"),
-      onAllBricksDestroyed: () => {
-        context.onRunCompleted(true);
-      },
       statistics: container.get("statistics"),
     }),
   registerAsModule: true,

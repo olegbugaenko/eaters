@@ -20,10 +20,9 @@ import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 const createBricksModule = (
   scene: SceneObjectManager,
   bridge: DataBridge,
-  onAllBricksDestroyed?: () => void
+  runState: MapRunState = new MapRunState(),
 ) => {
   const explosions = new ExplosionModule({ scene });
-  const runState = new MapRunState();
   runState.start();
   const resources = {
     grantResources: () => {
@@ -42,7 +41,6 @@ const createBricksModule = (
     resources,
     bonuses,
     runState,
-    onAllBricksDestroyed,
   });
 };
 
@@ -251,10 +249,14 @@ describe("BricksModule", () => {
   test("notifies when the final brick is destroyed", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     let callbackCount = 0;
-    const module = createBricksModule(scene, bridge, () => {
-      callbackCount += 1;
+    runState.subscribe((event) => {
+      if (event.type === "complete" && event.success) {
+        callbackCount += 1;
+      }
     });
+    const module = createBricksModule(scene, bridge, runState);
 
     module.setBricks([
       {

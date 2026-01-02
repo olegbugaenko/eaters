@@ -61,7 +61,6 @@ interface NecromancerModuleOptions {
   bonuses: BonusesModule;
   unitDesigns: UnitDesignModule;
   runState: MapRunState;
-  onSanityDepleted?: () => void;
 }
 
 interface NecromancerSaveData {
@@ -88,7 +87,6 @@ export class NecromancerModule implements GameModule {
   private readonly scene: SceneObjectManager;
   private readonly bonuses: BonusesModule;
   private readonly unitDesigns: UnitDesignModule;
-  private readonly onSanityDepleted?: () => void;
   private readonly runState: MapRunState;
 
   private mana: ResourceState = {
@@ -120,7 +118,6 @@ export class NecromancerModule implements GameModule {
     this.bonuses = options.bonuses;
     this.unitDesigns = options.unitDesigns;
     this.runState = options.runState;
-    this.onSanityDepleted = options.onSanityDepleted;
     this.bonuses.subscribe((values) => {
       this.handleBonusValuesChanged(values);
     });
@@ -576,7 +573,7 @@ export class NecromancerModule implements GameModule {
       this.sanity.current = 0;
       this.markResourcesDirty();
       this.sanityDepleted = true;
-      this.onSanityDepleted?.();
+      this.runState.complete(false);
     }
   }
 }

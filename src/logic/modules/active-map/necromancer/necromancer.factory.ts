@@ -1,10 +1,7 @@
-import { ModuleDefinitionContext } from "../../../definitions/modules/context";
 import { ServiceDefinition } from "../../../core/loader/types";
 import { NecromancerModule } from "./necromancer.module";
 
-export const createNecromancerDefinition = (
-  context: ModuleDefinitionContext,
-): ServiceDefinition<NecromancerModule> => ({
+export const createNecromancerDefinition = (): ServiceDefinition<NecromancerModule> => ({
   token: "necromancer",
   factory: (container) =>
     new NecromancerModule({
@@ -14,9 +11,6 @@ export const createNecromancerDefinition = (
       bonuses: container.get("bonuses"),
       unitDesigns: container.get("unitDesign"),
       runState: container.get("mapRunState"),
-      onSanityDepleted: () => {
-        context.onRunCompleted(false);
-      },
     }),
   registerAsModule: true,
 });

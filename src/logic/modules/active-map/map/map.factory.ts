@@ -22,7 +22,6 @@ export const createMapDefinition = (
       unitsAutomation: container.get("unitAutomation"),
       arcs: container.get("arc"),
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
-      onRunCompleted: (success) => context.onRunCompleted(success),
     }),
   registerAsModule: true,
   onReady: (instance) => {
