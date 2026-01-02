@@ -25,6 +25,16 @@ import {
 } from "./map.types";
 import { SkillId } from "../../../../db/skills-db";
 
+export type {
+  MapAutoRestartState,
+  MapLevelStats,
+  MapListEntry,
+  MapModuleOptions,
+  MapRunResult,
+  MapSaveData,
+  MapStats,
+} from "./map.types";
+
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
@@ -449,9 +459,9 @@ export class MapModule implements GameModule {
     );
   }
 
-  private parseSaveData(data: unknown): MapSaveData | null {
+  private parseSaveData(data: unknown): MapSaveData | undefined {
     if (typeof data !== "object" || data === null) {
-      return null;
+      return undefined;
     }
     const raw = data as {
       mapId?: unknown;
@@ -462,7 +472,7 @@ export class MapModule implements GameModule {
       lastPlayedMap?: unknown;
     };
     if (!raw.mapId || !isMapId(raw.mapId)) {
-      return null;
+      return undefined;
     }
     const stats = this.parseStats(raw.stats);
     const mapLevel = typeof raw.mapLevel === "number" ? deserializeLevel(raw.mapLevel) : undefined;
