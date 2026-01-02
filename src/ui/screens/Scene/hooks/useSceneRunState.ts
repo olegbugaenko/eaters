@@ -290,7 +290,6 @@ export const useSceneRunState = ({
     autoRestartState,
     autoRestartCountdown,
     spellOptions,
-    spellOptionsRef,
     automationState,
     handleToggleAutomation,
     handleToggleAutoRestart,
