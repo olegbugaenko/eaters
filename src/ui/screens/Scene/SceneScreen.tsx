@@ -109,36 +109,23 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
   const allowTutorialGameplay = Boolean(activeTutorialStep?.allowGameplay);
 
-  const {
-    canvasRef,
-    wrapperRef,
-    summoningPanelRef,
-    pointerPressedRef,
-    lastPointerPositionRef,
-    cameraInfoRef,
-    scaleRef,
-    scale,
-    cameraInfo,
-    scaleRange,
-    vboStats,
-    particleStatsState,
-    handleScaleChange,
-  } = useSceneCameraInteraction({
-    scene,
-    spellcasting,
-    gameLoop,
-    selectedSpellIdRef,
-    spellOptionsRef,
-    isPauseOpen,
-    showTutorial,
-    canvasRef,
-    wrapperRef,
-    summoningPanelRef,
-    cameraInfoRef,
-    scaleRef,
-    pointerPressedRef,
-    lastPointerPositionRef,
-  });
+  const { scale, cameraInfo, scaleRange, vboStats, particleStatsState, handleScaleChange } =
+    useSceneCameraInteraction({
+      scene,
+      spellcasting,
+      gameLoop,
+      selectedSpellIdRef,
+      spellOptionsRef,
+      isPauseOpen,
+      showTutorial,
+      canvasRef,
+      wrapperRef,
+      summoningPanelRef,
+      cameraInfoRef,
+      scaleRef,
+      pointerPressedRef,
+      lastPointerPositionRef,
+    });
 
   const handlePlayStepAdvance = useCallback(() => {
     setCanAdvancePlayStep(true);
