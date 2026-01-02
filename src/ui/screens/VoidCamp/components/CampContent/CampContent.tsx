@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapId } from "@db/maps-db";
-import { MapListEntry } from "@logic/modules/active-map/map/map.module";
+import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
 import { CampTabPanels } from "./TabPanels/CampTabPanels";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.module";

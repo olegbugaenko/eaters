@@ -1,12 +1,7 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
-import { SceneObjectManager, SceneSize, FILL_TYPES } from "../../../services/SceneObjectManager";
-import { BricksModule, BrickData } from "../bricks/bricks.module";
-import { PlayerUnitsModule, PlayerUnitSpawnData } from "../player-units/player-units.module";
-import { NecromancerModule } from "../necromancer/necromancer.module";
-import { UnlockService } from "../../../services/UnlockService";
-import { BonusesModule } from "../../shared/bonuses/bonuses.module";
-import { ArcModule } from "../../scene/arc/arc.module";
+import { SceneSize, SceneVector2 } from "../../../services/SceneObjectManager";
+import { BrickData } from "../bricks/bricks.module";
+import { PlayerUnitSpawnData } from "../player-units/player-units.module";
 import {
   MapConfig,
   MapId,
@@ -15,76 +10,26 @@ import {
   getMapList,
   isMapId,
 } from "../../../../db/maps-db";
-import { SceneVector2 } from "../../../services/SceneObjectManager";
-import { SkillId } from "../../../../db/skills-db";
 import { buildBricksFromBlueprints } from "../../../services/BrickLayoutService";
-import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
-import { MapRunState } from "./MapRunState";
-
-interface ResourceRunController {
-  startRun(): void;
-  cancelRun(): void;
-}
+import { MapSelectionState } from "./map.selection";
+import { MapVisualEffects } from "./map.visual-effects";
+import { MapRunLifecycle } from "./map.run-lifecycle";
+import {
+  MapAutoRestartState,
+  MapLevelStats,
+  MapListEntry,
+  MapModuleOptions,
+  MapRunResult,
+  MapSaveData,
+  MapStats,
+} from "./map.types";
+import { SkillId } from "../../../../db/skills-db";
 
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
 export const MAP_CLEARED_LEVELS_BRIDGE_KEY = "maps/clearedLevelsTotal";
 export const MAP_LAST_PLAYED_BRIDGE_KEY = "maps/lastPlayed";
-
-interface MapModuleOptions {
-  scene: SceneObjectManager;
-  bridge: DataBridge;
-  runState: MapRunState;
-  bonuses: BonusesModule;
-  bricks: BricksModule;
-  playerUnits: PlayerUnitsModule;
-  necromancer: NecromancerModule;
-  resources: ResourceRunController;
-  unlocks: UnlockService;
-  unitsAutomation: UnitAutomationModule;
-  arcs: ArcModule;
-  getSkillLevel: (id: SkillId) => number;
-}
-
-interface MapSaveData {
-  mapId: MapId;
-  mapLevel?: number;
-  stats?: MapStats;
-  selectedLevels?: Partial<Record<MapId, number>>;
-  autoRestartEnabled?: boolean;
-  lastPlayedMap?: { mapId: MapId; level: number };
-}
-
-export interface MapLevelStats {
-  success: number;
-  failure: number;
-  bestTimeMs: number | null;
-}
-
-export type MapStats = Partial<Record<MapId, Record<number, MapLevelStats>>>;
-
-export interface MapListEntry extends MapListEntryConfig {
-  readonly currentLevel: number;
-  readonly selectedLevel: number;
-  readonly attempts: number;
-  readonly bestTimeMs: number | null;
-  readonly clearedLevels: number;
-  readonly maxLevel: number;
-  readonly selectable: boolean; // true if map can be selected/played
-}
-
-export interface MapRunResult {
-  mapId?: MapId;
-  level?: number;
-  success: boolean;
-  durationMs?: number;
-}
-
-export interface MapAutoRestartState {
-  readonly unlocked: boolean;
-  readonly enabled: boolean;
-}
 
 export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
 
@@ -96,38 +41,44 @@ export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze
 const DEFAULT_MAP_ID: MapId = "foundations";
 export const PLAYER_UNIT_SPAWN_SAFE_RADIUS = 150;
 const AUTO_RESTART_SKILL_ID: SkillId = "autorestart_rituals";
-const CAMERA_FOCUS_TICKS = 6;
 const BONUS_CONTEXT_CLEARED_LEVELS = "clearedMapLevelsTotal";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
 
-  private selectedMapId: MapId | null = null;
-  private readonly unlocks: UnlockService;
-  private readonly getSkillLevel: (id: SkillId) => number;
-  private readonly runState: MapRunState;
+  private readonly selection: MapSelectionState;
+  private readonly runLifecycle: MapRunLifecycle;
+  private readonly unlocks;
+  private readonly getSkillLevel;
   private mapStats: MapStats = {};
   // Cached deep-clone of mapStats for read-only consumers (e.g., UnlockService)
   private statsCloneCache: MapStats | null = null;
   private statsCloneDirty = true;
-  private selectedMapLevel = 0;
-  private activeMapLevel = 0;
-  private runActive = false;
-  private mapSelectedLevels: Partial<Record<MapId, number>> = {};
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
-  private portalObjects: { id: string; position: SceneVector2 }[] = [];
-  private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
-  private lastPlayedMap: { mapId: MapId; level: number } | null = null;
+  private readonly options: MapModuleOptions;
 
-  constructor(private readonly options: MapModuleOptions) {
+  constructor(options: MapModuleOptions) {
+    this.options = options;
     this.unlocks = options.unlocks;
     this.getSkillLevel = options.getSkillLevel;
-    this.runState = options.runState;
+    this.selection = new MapSelectionState(DEFAULT_MAP_ID);
+    const visuals = new MapVisualEffects(options.scene);
+    this.runLifecycle = new MapRunLifecycle({
+      runState: options.runState,
+      resources: options.resources,
+      playerUnits: options.playerUnits,
+      bricks: options.bricks,
+      unitsAutomation: options.unitsAutomation,
+      arcs: options.arcs,
+      necromancer: options.necromancer,
+      visuals,
+      scene: options.scene,
+    });
   }
 
   public initialize(): void {
-    this.runState.reset();
+    this.runLifecycle.reset();
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
@@ -135,10 +86,8 @@ export class MapModule implements GameModule {
   }
 
   public reset(): void {
-    this.runState.reset();
+    this.runLifecycle.reset();
     this.autoRestartEnabled = false;
-    this.runActive = false;
-    this.pendingCameraFocus = null;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.ensureSelection();
@@ -147,13 +96,8 @@ export class MapModule implements GameModule {
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
     this.mapStats = parsed?.stats ?? {};
-    this.mapSelectedLevels = parsed?.selectedLevels ?? {};
+    this.selection.loadFromSave(parsed);
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
-    if (parsed?.lastPlayedMap) {
-      this.lastPlayedMap = parsed.lastPlayedMap;
-    } else {
-      this.lastPlayedMap = null;
-    }
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
     this.refreshAutoRestartState();
@@ -161,50 +105,39 @@ export class MapModule implements GameModule {
     this.pushMapList();
     this.pushLastPlayedMap();
 
-    const savedMapId = parsed?.mapId;
-    if (savedMapId && this.isMapSelectable(savedMapId)) {
-      this.selectedMapId = savedMapId;
-      if (typeof parsed?.mapLevel === "number") {
-        this.mapSelectedLevels[savedMapId] = this.clampLevelToUnlocked(
-          savedMapId,
-          parsed.mapLevel
-        );
-      }
-    } else {
-      this.selectedMapId = null;
-    }
+    this.selection.applySavedSelection(
+      parsed?.mapId ?? null,
+      parsed?.mapLevel,
+      (mapId) => this.isMapSelectable(mapId),
+      (mapId, level) => this.clampLevelToUnlocked(mapId, level)
+    );
     this.ensureSelection();
   }
 
   public save(): unknown {
     return {
-      mapId: this.selectedMapId ?? DEFAULT_MAP_ID,
-      mapLevel: serializeLevel(this.selectedMapLevel),
+      mapId: this.selection.getSelectedMapId() ?? DEFAULT_MAP_ID,
+      mapLevel: serializeLevel(this.selection.getSelectedMapLevel()),
       stats: this.cloneStatsForSave(),
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
-      lastPlayedMap: this.lastPlayedMap
-        ? { mapId: this.lastPlayedMap.mapId, level: serializeLevel(this.lastPlayedMap.level) }
+      lastPlayedMap: this.selection.getLastPlayedMap()
+        ? {
+            mapId: this.selection.getLastPlayedMap()!.mapId,
+            level: serializeLevel(this.selection.getLastPlayedMap()!.level),
+          }
         : undefined,
     } satisfies MapSaveData;
   }
 
   public tick(_deltaMs: number): void {
-    if (!this.runState.shouldProcessTick()) {
+    if (!this.options.runState.shouldProcessTick()) {
       return;
     }
-    this.applyPendingCameraFocus();
+    this.runLifecycle.tick();
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
-    }
-    // Drive portal emitter updates like explosions do (explosions call updateObject every tick)
-    if (this.portalObjects.length > 0) {
-      this.portalObjects.forEach((portal) => {
-        this.options.scene.updateObject(portal.id, {
-          position: { x: portal.position.x, y: portal.position.y },
-        });
-      });
     }
   }
 
@@ -220,15 +153,15 @@ export class MapModule implements GameModule {
       return;
     }
     const clamped = this.clampLevelToUnlocked(mapId, level);
-    this.mapSelectedLevels[mapId] = clamped;
+    this.selection.setSelectedLevel(mapId, clamped);
 
-    if (this.selectedMapId === mapId) {
-      if (this.selectedMapLevel === clamped) {
+    if (this.selection.getSelectedMapId() === mapId) {
+      if (this.selection.getSelectedMapLevel() === clamped) {
         this.pushMapList();
         this.pushSelectedMapLevel();
         return;
       }
-      this.selectedMapLevel = clamped;
+      this.selection.updateSelection(mapId, clamped);
       this.pushSelectedMapLevel();
       this.pushMapList();
       return;
@@ -238,46 +171,30 @@ export class MapModule implements GameModule {
   }
 
   public restartSelectedMap(): void {
-    if (!this.selectedMapId) {
+    if (!this.selection.getSelectedMapId()) {
       return;
     }
-    this.cleanupActiveMap();
-    this.runState.reset();
+    this.runLifecycle.cleanupActiveMap();
+    this.options.runState.reset();
     this.startSelectedMap({ generateBricks: true, generateUnits: true });
   }
 
   public leaveCurrentMap(): void {
     // Save last played map before leaving
-    if (this.selectedMapId !== null) {
-      const level = this.activeMapLevel > 0 ? this.activeMapLevel : this.selectedMapLevel;
-      this.lastPlayedMap = { mapId: this.selectedMapId, level };
+    const selectedMapId = this.selection.getSelectedMapId();
+    if (selectedMapId !== null) {
+      const level =
+        this.runLifecycle.getActiveMapLevel() > 0
+          ? this.runLifecycle.getActiveMapLevel()
+          : this.selection.getSelectedMapLevel();
+      this.selection.recordLastPlayed(selectedMapId, level);
       this.pushLastPlayedMap();
     }
-    this.cleanupActiveMap();
-    this.runState.reset();
-    this.activeMapLevel = 0;
-    this.runActive = false;
-    this.pendingCameraFocus = null;
+    this.runLifecycle.cleanupActiveMap();
+    this.options.runState.reset();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();
-  }
-
-  private cleanupActiveMap(): void {
-    if (this.runState.isIdle() && !this.runActive && this.portalObjects.length === 0) {
-      return;
-    }
-    if (!this.runState.isIdle() && !this.runState.isCompleted()) {
-      this.options.resources.cancelRun();
-    }
-    this.runActive = false;
-    this.pendingCameraFocus = null;
-    this.options.playerUnits.setUnits([]);
-    this.options.bricks.setBricks([]);
-    this.options.unitsAutomation.onMapEnd();
-    this.options.arcs.clearArcs();
-    this.clearPortalObjects();
-    this.options.necromancer.endCurrentMap();
   }
 
   public isAutoRestartEnabled(): boolean {
@@ -285,13 +202,11 @@ export class MapModule implements GameModule {
   }
 
   public pauseActiveMap(): void {
-    this.runState.pause();
-    this.options.necromancer.pauseMap();
+    this.runLifecycle.pause();
   }
 
   public resumeActiveMap(): void {
-    this.runState.resume();
-    this.options.necromancer.resumeMap();
+    this.runLifecycle.resume();
   }
 
   public setAutoRestartEnabled(enabled: boolean): void {
@@ -314,7 +229,8 @@ export class MapModule implements GameModule {
   }
 
   public recordRunResult(result: MapRunResult): void {
-    const mapId = result.mapId && isMapId(result.mapId) ? result.mapId : this.selectedMapId;
+    const mapId =
+      result.mapId && isMapId(result.mapId) ? result.mapId : this.selection.getSelectedMapId();
     if (!mapId) {
       return;
     }
@@ -323,7 +239,7 @@ export class MapModule implements GameModule {
         ? sanitizeLevel(result.level)
         : sanitizeLevel(this.getActiveLevelForMap(mapId));
     // Save last played map
-    this.lastPlayedMap = { mapId, level };
+    this.selection.recordLastPlayed(mapId, level);
     this.pushLastPlayedMap();
     const stats = this.ensureLevelStats(mapId, level);
     if (result.success) {
@@ -339,10 +255,7 @@ export class MapModule implements GameModule {
     }
     // stats mutated → invalidate cached clone
     this.statsCloneDirty = true;
-    this.runActive = false;
-    this.options.unitsAutomation.onMapEnd();
-    this.pendingCameraFocus = null;
-    this.options.necromancer.pauseMap();
+    this.runLifecycle.completeRun();
     this.pushMapList();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
@@ -353,15 +266,13 @@ export class MapModule implements GameModule {
   }
 
   public isRunActive(): boolean {
-    return this.runState.isRunning();
+    return this.runLifecycle.isRunActive();
   }
 
   private ensureSelection(): void {
-    const mapId = this.resolveSelectableMapId(this.selectedMapId);
+    const mapId = this.resolveSelectableMapId(this.selection.getSelectedMapId());
     if (!mapId) {
-      this.selectedMapId = null;
-      this.selectedMapLevel = 0;
-      this.activeMapLevel = 0;
+      this.selection.clearSelection();
       this.pushSelectedMap();
       this.pushSelectedMapLevel();
       this.pushMapList();
@@ -374,139 +285,38 @@ export class MapModule implements GameModule {
     generateBricks: boolean;
     generateUnits: boolean;
   }): void {
-    const mapId = this.selectedMapId;
+    const mapId = this.selection.getSelectedMapId();
     if (!mapId) {
       return;
     }
     const { generateBricks, generateUnits } = options;
     const config = getMapConfig(mapId);
     const level = this.getSelectedLevel(mapId);
-    this.mapSelectedLevels[mapId] = level;
-    this.selectedMapLevel = level;
-    this.activeMapLevel = level;
-    this.lastPlayedMap = { mapId, level };
+    this.selection.updateSelection(mapId, level);
+    this.selection.recordLastPlayed(mapId, level);
     this.pushLastPlayedMap();
-    this.runActive = true;
-    this.runState.start();
-    this.options.unitsAutomation.onMapStart();
-    this.options.scene.setMapSize(config.size);
-    this.options.playerUnits.prepareForMap();
-    // Clear existing portals if any (e.g., on restart)
-    if (this.portalObjects.length > 0) {
-      this.clearPortalObjects();
-    }
-    if (generateBricks) {
-      const bricks = this.generateBricks(config, level);
-      this.options.bricks.setBricks(bricks);
-    }
+    const bricks = this.generateBricks(config, level);
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
 
-    if (spawnPoints.length > 0) {
-      this.setCameraFocus(spawnPoints[0]!);
-    } else {
-      this.pendingCameraFocus = null;
-    }
-
-    if (generateUnits) {
-      this.options.playerUnits.setUnits(spawnUnits);
-    }
-
-    this.options.necromancer.configureForMap({
+    this.runLifecycle.startRun({
+      level,
+      sceneSize: config.size,
+      bricks,
+      spawnUnits,
       spawnPoints,
+      generateBricks,
+      generateUnits,
     });
-
-    // Spawn portals at each spawn point as visual indicators
-    spawnPoints.forEach((point) => {
-      const id = this.options.scene.addObject("portal", {
-        position: { x: point.x, y: point.y },
-        size: { width: 90, height: 90 },
-        fill: {
-          fillType: FILL_TYPES.RADIAL_GRADIENT,
-          start: { x: 0, y: 0 },
-          end: 45,
-          stops: [
-            { offset: 0, color: { r: 0.4, g: 0.5, b: 0.6, a: 0.15 } },
-            { offset: 0.55, color: { r: 0.4, g: 0.7, b: 0.7, a: 0.05 } },
-            { offset: 0.65, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.65 } },
-            { offset: 0.75, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.75 } },
-            { offset: 0.8, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
-            { offset: 0.85, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
-            { offset: 1, color: { r: 0.15, g: 0.7, b: 0.7, a: 0 } },
-          ],
-        },
-        rotation: 0,
-        customData: {
-          radius: 45,
-          emitter: {
-            particlesPerSecond: 90,
-            particleLifetimeMs: 900,
-            fadeStartMs: 750,
-            sizeRange: { min: 1, max: 3 },
-            offset: { x: 0, y: 0 },
-            color: { r: 0.4, g: 0.8, b: 0.8, a: 0.6 },
-            shape: "circle",
-            maxParticles: 120,
-            baseSpeed: 0.03,
-            speedVariation: 0.01,
-          },
-        },
-      });
-      this.portalObjects.push({ id, position: { ...point } });
-    });
-
-    this.options.resources.startRun();
 
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();
   }
 
-  private clearPortalObjects(): void {
-    if (this.portalObjects.length === 0) {
-      return;
-    }
-    this.portalObjects.forEach((portal) => this.options.scene.removeObject(portal.id));
-    this.portalObjects = [];
-  }
-
-  private focusCameraOnPoint(point: SceneVector2): void {
-    const camera = this.options.scene.getCamera();
-    const targetX = point.x - camera.viewportSize.width / 2;
-    const targetY = point.y - camera.viewportSize.height / 2;
-    this.options.scene.setCameraPosition(targetX, targetY);
-  }
-
-  private setCameraFocus(point: SceneVector2): void {
-    const focusPoint = { x: point.x, y: point.y };
-    this.focusCameraOnPoint(focusPoint);
-    this.pendingCameraFocus = {
-      point: focusPoint,
-      ticksRemaining: CAMERA_FOCUS_TICKS,
-    };
-  }
-
-  private applyPendingCameraFocus(): void {
-    const pending = this.pendingCameraFocus;
-    if (!pending) {
-      return;
-    }
-    this.focusCameraOnPoint(pending.point);
-    if (pending.ticksRemaining <= 1) {
-      this.pendingCameraFocus = null;
-      return;
-    }
-    this.pendingCameraFocus = {
-      point: pending.point,
-      ticksRemaining: pending.ticksRemaining - 1,
-    };
-  }
-
   private updateSelection(mapId: MapId): void {
     const level = this.getSelectedLevel(mapId);
-    this.selectedMapId = mapId;
-    this.mapSelectedLevels[mapId] = level;
-    this.selectedMapLevel = level;
+    this.selection.updateSelection(mapId, level);
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();
@@ -621,24 +431,27 @@ export class MapModule implements GameModule {
   }
 
   private pushSelectedMap(): void {
-    this.options.bridge.setValue<MapId | null>(MAP_SELECTED_BRIDGE_KEY, this.selectedMapId);
+    this.options.bridge.setValue<MapId | null>(
+      MAP_SELECTED_BRIDGE_KEY,
+      this.selection.getSelectedMapId()
+    );
   }
 
   private pushSelectedMapLevel(): void {
-    const level = this.selectedMapId ? this.selectedMapLevel : 0;
+    const level = this.selection.getSelectedMapId() ? this.selection.getSelectedMapLevel() : 0;
     this.options.bridge.setValue<number>(MAP_SELECTED_LEVEL_BRIDGE_KEY, level);
   }
 
   private pushLastPlayedMap(): void {
     this.options.bridge.setValue<{ mapId: MapId; level: number } | null>(
       MAP_LAST_PLAYED_BRIDGE_KEY,
-      this.lastPlayedMap
+      this.selection.getLastPlayedMap()
     );
   }
 
-  private parseSaveData(data: unknown): MapSaveData | null {
+  private parseSaveData(data: unknown): MapSaveData | undefined {
     if (typeof data !== "object" || data === null) {
-      return null;
+      return undefined;
     }
     const raw = data as {
       mapId?: unknown;
@@ -649,7 +462,7 @@ export class MapModule implements GameModule {
       lastPlayedMap?: unknown;
     };
     if (!raw.mapId || !isMapId(raw.mapId)) {
-      return null;
+      return undefined;
     }
     const stats = this.parseStats(raw.stats);
     const mapLevel = typeof raw.mapLevel === "number" ? deserializeLevel(raw.mapLevel) : undefined;
@@ -785,7 +598,7 @@ export class MapModule implements GameModule {
   }
 
   private getSelectedLevel(mapId: MapId): number {
-    const stored = this.mapSelectedLevels[mapId];
+    const stored = this.selection.getSelectedLevels()[mapId];
     const storedLevel = typeof stored === "number" ? sanitizeLevel(stored) : undefined;
     const highest = this.getHighestUnlockedLevel(mapId);
     if (highest === 0) {
@@ -807,8 +620,8 @@ export class MapModule implements GameModule {
   }
 
   private getActiveLevelForMap(mapId: MapId): number {
-    if (mapId === this.selectedMapId) {
-      return this.activeMapLevel;
+    if (mapId === this.selection.getSelectedMapId()) {
+      return this.runLifecycle.getActiveMapLevel();
     }
     return this.getSelectedLevel(mapId);
   }
@@ -952,7 +765,7 @@ export class MapModule implements GameModule {
 
   private cloneSelectedLevels(): Partial<Record<MapId, number>> {
     const clone: Partial<Record<MapId, number>> = {};
-    Object.entries(this.mapSelectedLevels).forEach(([mapId, level]) => {
+    Object.entries(this.selection.getSelectedLevels()).forEach(([mapId, level]) => {
       if (!isMapId(mapId) || typeof level !== "number") {
         return;
       }

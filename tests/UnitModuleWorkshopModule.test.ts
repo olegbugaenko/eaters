@@ -6,7 +6,7 @@ import {
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
 } from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
 import type { UnitModuleWorkshopBridgeState } from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
-import type { MapStats } from "../src/logic/modules/active-map/map/map.module";
+import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
 import { UnlockService } from "../src/logic/services/UnlockService";
 import type { ResourcesModule } from "../src/logic/modules/shared/resources/resources.module";
 

@@ -17,7 +17,7 @@ import type {
   MapListEntry,
   MapStats,
   MapAutoRestartState,
-} from "../src/logic/modules/active-map/map/map.module";
+} from "../src/logic/modules/active-map/map/map.types";
 import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { ArcModule } from "../src/logic/modules/scene/arc/arc.module";
 import type { UnitAutomationModule } from "../src/logic/modules/active-map/unit-automation/unit-automation.module";

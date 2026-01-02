@@ -9,10 +9,10 @@ import { MapId } from "@db/maps-db";
 import { GAME_VERSIONS } from "@db/version-db";
 import {
   MAP_CLEARED_LEVELS_BRIDGE_KEY,
-  MapListEntry,
   MAP_LIST_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
 } from "@logic/modules/active-map/map/map.module";
+import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/time/time.module";
 import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
 import {
