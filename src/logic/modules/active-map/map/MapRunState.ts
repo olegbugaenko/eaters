@@ -6,31 +6,67 @@ export interface MapRunStatus {
   readonly completed: boolean;
 }
 
+export type MapRunEvent =
+  | { type: "start" }
+  | { type: "pause" }
+  | { type: "resume" }
+  | { type: "reset" }
+  | { type: "complete"; success: boolean };
+
+type MapRunListener = (event: MapRunEvent, status: MapRunStatus) => void;
+
 export class MapRunState {
   private phase: MapRunPhase = "idle";
 
-  public reset(): void {
+  private readonly listeners = new Set<MapRunListener>();
+
+  public subscribe(listener: MapRunListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  public reset(): boolean {
+    const changed = this.phase !== "idle";
     this.phase = "idle";
+    if (changed) {
+      this.emit({ type: "reset" });
+    }
+    return changed;
   }
 
-  public start(): void {
-    this.phase = "running";
-  }
-
-  public pause(): void {
+  public start(): boolean {
     if (this.phase === "running") {
-      this.phase = "paused";
+      return false;
     }
+    this.phase = "running";
+    this.emit({ type: "start" });
+    return true;
   }
 
-  public resume(): void {
-    if (this.phase === "paused") {
-      this.phase = "running";
+  public pause(): boolean {
+    if (this.phase !== "running") {
+      return false;
     }
+    this.phase = "paused";
+    this.emit({ type: "pause" });
+    return true;
   }
 
-  public complete(): boolean {
+  public resume(): boolean {
+    if (this.phase !== "paused") {
+      return false;
+    }
+    this.phase = "running";
+    this.emit({ type: "resume" });
+    return true;
+  }
+
+  public complete(success: boolean): boolean {
+    if (this.phase === "completed") {
+      return false;
+    }
     this.phase = "completed";
+    this.emit({ type: "complete", success });
     return true;
   }
 
@@ -64,5 +100,10 @@ export class MapRunState {
       paused: this.isPaused(),
       completed: this.isCompleted(),
     };
+  }
+
+  private emit(event: MapRunEvent): void {
+    const status = this.getStatus();
+    this.listeners.forEach((listener) => listener(event, status));
   }
 }

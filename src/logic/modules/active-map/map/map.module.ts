@@ -45,7 +45,6 @@ interface MapModuleOptions {
   unitsAutomation: UnitAutomationModule;
   arcs: ArcModule;
   getSkillLevel: (id: SkillId) => number;
-  onRunCompleted: (success: boolean) => void;
 }
 
 interface MapSaveData {
@@ -315,10 +314,6 @@ export class MapModule implements GameModule {
   }
 
   public recordRunResult(result: MapRunResult): void {
-    const completedNow = this.runState.complete();
-    if (!completedNow) {
-      return;
-    }
     const mapId = result.mapId && isMapId(result.mapId) ? result.mapId : this.selectedMapId;
     if (!mapId) {
       return;

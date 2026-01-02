@@ -31,6 +31,7 @@ import { ExplosionModule } from "../modules/scene/explosion/explosion.module";
 import { ArcModule } from "../modules/scene/arc/arc.module";
 import { EffectsModule } from "../modules/scene/effects/effects.module";
 import { FireballModule } from "../modules/scene/fireball/fireball.module";
+import { MapRunState, MapRunEvent } from "../modules/active-map/map/MapRunState";
 
 export class Application {
   private serviceContainer = new ServiceContainer();
@@ -42,8 +43,10 @@ export class Application {
     this.serviceContainer.register("bridge", this.dataBridge);
     createBootstrapDefinitions().forEach((definition) => this.registerDefinition(definition));
 
+    const runState = this.serviceContainer.get<MapRunState>("mapRunState");
+    runState.subscribe((event) => this.handleRunStateEvent(event));
+
     const moduleDefinitions = createModuleDefinitions({
-      onRunCompleted: (success) => this.handleMapRunCompleted(success),
       onAllUnitsDefeated: () => this.handleAllUnitsDefeated(),
       setMapModule: (mapModule) => {
         this.mapModule = mapModule;
@@ -215,13 +218,19 @@ export class Application {
     gameLoop.registerModule(module);
   }
 
+  private handleRunStateEvent(event: MapRunEvent): void {
+    if (event.type === "complete") {
+      this.handleMapRunCompleted(event.success);
+    }
+  }
+
   private getMapModule(): MapModule {
     return this.serviceContainer.get("map");
   }
 
   private handleAllUnitsDefeated(): void {
     if (this.getNecromancer().isSanityDepleted()) {
-      this.handleMapRunCompleted(false);
+      this.serviceContainer.get<MapRunState>("mapRunState").complete(false);
     }
   }
 
