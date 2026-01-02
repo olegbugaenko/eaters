@@ -1,4 +1,4 @@
-import { MapModule } from "../../modules/map/map.module";
+import { MapModule } from "../../modules/active-map/map/map.module";
 
 export interface ModuleDefinitionContext {
   onRunCompleted: (success: boolean) => void;

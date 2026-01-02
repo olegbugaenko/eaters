@@ -10,15 +10,15 @@ import {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
   MAX_UNITS_ON_MAP,
-} from "@logic/modules/necromancer/necromancer.module";
+} from "@logic/modules/active-map/necromancer/necromancer.module";
 import { createEmptyResourceAmount } from "@/types/resources";
-import { SpellOption } from "@logic/modules/spellcasting/spellcasting.module";
-import { UnitAutomationBridgeState } from "@logic/modules/unit-automation/unit-automation.module";
-import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/player-units/player-units.module";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.module";
+import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/player-units/player-units.module";
 import {
   UnitDesignId,
   UnitDesignModuleDetail,
-} from "@logic/modules/unit-design/unit-design.module";
+} from "@logic/modules/camp/unit-design/unit-design.module";
 import { SpellId } from "@db/spells-db";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { classNames } from "@shared/classNames";

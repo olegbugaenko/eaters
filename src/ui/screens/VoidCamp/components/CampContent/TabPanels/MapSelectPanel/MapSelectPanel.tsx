@@ -5,7 +5,7 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { MapId, getMapConfig } from "@db/maps-db";
-import { MapListEntry } from "@logic/modules/map/map.module";
+import { MapListEntry } from "@logic/modules/active-map/map/map.module";
 import { classNames } from "@shared/classNames";
 import { formatNumber } from "@shared/format/number";
 import { useResizeObserver } from "@shared/useResizeObserver";

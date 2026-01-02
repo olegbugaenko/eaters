@@ -17,7 +17,7 @@ import {
 import type {
   PersistentAoeObjectCustomData,
   PersistentAoeParticleCustomData,
-} from "@logic/modules/spellcasting/PersistentAoeSpellBehavior";
+} from "@logic/modules/active-map/spellcasting/PersistentAoeSpellBehavior";
 import { DynamicPrimitive } from "./ObjectRenderer";
 import {
   addFireRingInstance,

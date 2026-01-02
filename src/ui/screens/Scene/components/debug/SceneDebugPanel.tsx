@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { DataBridge } from "@logic/core/DataBridge";
 import { useBridgeValue } from "@shared/useBridgeValue";
-import { RESOURCE_RUN_DURATION_BRIDGE_KEY } from "@logic/modules/resources/resources.module";
-import { BRICK_COUNT_BRIDGE_KEY } from "@logic/modules/bricks/bricks.module";
+import { RESOURCE_RUN_DURATION_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
+import { BRICK_COUNT_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bricks.module";
 import { formatDuration } from "@ui/utils/formatDuration";
 import "./SceneDebugPanel.css";
 

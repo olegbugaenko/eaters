@@ -1,5 +1,5 @@
 import { useCallback, useId } from "react";
-import type { CampStatisticsSnapshot } from "@logic/modules/statistics/statistics.module";
+import type { CampStatisticsSnapshot } from "@logic/modules/shared/statistics/statistics.module";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { formatNumber } from "@ui/shared/format/number";
 import "./StatisticsModal.css";

@@ -1,6 +1,6 @@
 import { MutableRefObject, useEffect, useRef } from "react";
 import { SpellId } from "@db/spells-db";
-import { SpellOption, SpellcastingModule } from "@logic/modules/spellcasting/spellcasting.module";
+import { SpellOption, SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
 import {
   SceneCameraState,
   SceneObjectManager,

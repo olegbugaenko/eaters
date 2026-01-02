@@ -5,12 +5,12 @@ import {
   ResourcesModule,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
   RESOURCE_TOTALS_BRIDGE_KEY,
-} from "../src/logic/modules/resources/resources.module";
-import { MapRunState } from "../src/logic/modules/map/MapRunState";
-import type { ResourceRunSummaryPayload } from "../src/logic/modules/resources/resources.module";
+} from "../src/logic/modules/shared/resources/resources.module";
+import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
+import type { ResourceRunSummaryPayload } from "../src/logic/modules/shared/resources/resources.module";
 import { UnlockService } from "../src/logic/services/UnlockService";
-import type { MapStats } from "../src/logic/modules/map/map.module";
-import { BonusesModule } from "../src/logic/modules/bonuses/bonuses.module";
+import type { MapStats } from "../src/logic/modules/active-map/map/map.module";
+import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 
 describe("ResourcesModule", () => {
   test("calculates per-second gain rates for run summary", () => {

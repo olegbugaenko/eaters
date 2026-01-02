@@ -4,11 +4,11 @@ import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   UnitModuleWorkshopModule,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
-} from "../src/logic/modules/unit-module-workshop/unit-module-workshop.module";
-import type { UnitModuleWorkshopBridgeState } from "../src/logic/modules/unit-module-workshop/unit-module-workshop.module";
-import type { MapStats } from "../src/logic/modules/map/map.module";
+} from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
+import type { UnitModuleWorkshopBridgeState } from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
+import type { MapStats } from "../src/logic/modules/active-map/map/map.module";
 import { UnlockService } from "../src/logic/services/UnlockService";
-import type { ResourcesModule } from "../src/logic/modules/resources/resources.module";
+import type { ResourcesModule } from "../src/logic/modules/shared/resources/resources.module";
 
 describe("UnitModuleWorkshopModule", () => {
   test("hides locked modules until unlock conditions are met", () => {
