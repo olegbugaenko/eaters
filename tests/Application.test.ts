@@ -4,22 +4,13 @@ import { MAP_LIST_BRIDGE_KEY } from "../src/logic/modules/active-map/map/map.mod
 import { MapListEntry } from "../src/logic/modules/active-map/map/map.types";
 import { describe, test } from "./testRunner";
 
-const getInternalRunHandler = (
-  app: Application
-): ((success: boolean) => void) =>
-  (app as unknown as { handleMapRunCompleted: (success: boolean) => void })
-    .handleMapRunCompleted.bind(app);
-
 describe("Application", () => {
   test("records attempts when a run finishes", () => {
     const app = new Application();
     app.initialize();
-
-    const completeRun = getInternalRunHandler(app);
-
     app.restartCurrentMap();
 
-    completeRun(false);
+    app.services.mapRunState.complete(false);
 
     const bridge = app.services.bridge;
     const list: MapListEntry[] = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
@@ -27,9 +18,7 @@ describe("Application", () => {
     assert(training, "expected trainingGrounds map to be listed");
     assert.strictEqual(training?.attempts, 1, "should count one failed attempt");
 
-    const internalMaps = (app as unknown as { mapModule: { getMapStats: () => unknown } })
-      .mapModule;
-    const stats = internalMaps.getMapStats() as {
+    const stats = app.services.map.getMapStats() as {
       trainingGrounds?: {
         [level: number]: { success: number; failure: number; bestTimeMs: number | null };
       };
@@ -37,7 +26,7 @@ describe("Application", () => {
     assert.strictEqual(stats.trainingGrounds?.[1]?.failure, 1);
 
     app.restartCurrentMap();
-    completeRun(true);
+    app.services.mapRunState.complete(true);
 
     const updatedList: MapListEntry[] = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
     const updatedTraining = updatedList.find(

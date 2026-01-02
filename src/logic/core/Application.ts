@@ -3,15 +3,11 @@ import { ServiceContainer } from "./ServiceContainer";
 import { ServiceDefinition, ServiceLookup } from "./loader/types";
 import { BootstrapDefinitionList, createBootstrapDefinitions } from "./loader/bootstrap";
 import { createModuleDefinitions } from "../definitions/modules";
+import { createModuleDefinitionContext } from "../definitions/modules/context";
 import { GameModule, SaveSlotId, StoredSaveData } from "./types";
-import { MapId } from "../../db/maps-db";
-import { MapModule } from "../modules/active-map/map/map.module";
-import { resetAllWaveBatches } from "../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
-import { resetAllArcBatches } from "../../ui/renderers/primitives/gpu/ArcGpuRenderer";
-import { clearAllParticleEmitters } from "../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
-import { MapRunState, MapRunEvent } from "../modules/active-map/map/MapRunState";
 import { createServiceLookup } from "./loader/createServiceLookup";
+import { MapId } from "../../db/maps-db";
 
 type ModuleDefinitionList = ReturnType<typeof createModuleDefinitions>;
 type ApplicationDefinitionList = readonly [
@@ -26,7 +22,6 @@ export class Application {
   private dataBridge = new DataBridge();
   private modules: GameModule[] = [];
   public services: ApplicationServices;
-  private mapModule?: MapModule;
 
   constructor() {
     this.serviceContainer = new ServiceContainer();
@@ -36,18 +31,10 @@ export class Application {
     this.services = createServiceLookup(this.serviceContainer, definitions);
 
     definitions.forEach((definition) => this.registerDefinition(definition));
-
-    const runState = this.services.mapRunState;
-    runState.subscribe((event) => this.handleRunStateEvent(event));
   }
 
   private createModuleDefinitions(): ModuleDefinitionList {
-    return createModuleDefinitions({
-      onAllUnitsDefeated: () => this.handleAllUnitsDefeated(),
-      setMapModule: (mapModule) => {
-        this.mapModule = mapModule;
-      },
-    });
+    return createModuleDefinitions(createModuleDefinitionContext());
   }
 
   private buildDefinitions(moduleDefinitions: ModuleDefinitionList): ApplicationDefinitionList {
@@ -71,7 +58,6 @@ export class Application {
     scene.clear();
     this.modules.forEach((module) => module.reset());
     scene.flushAllPendingRemovals();
-    this.resetGpuCaches();
   }
 
   public selectSlot(slot: SaveSlotId): void {
@@ -93,8 +79,7 @@ export class Application {
   }
 
   public restartCurrentMap(): void {
-    this.cleanupSceneAfterRun();
-    this.getMapModule().restartSelectedMap();
+    this.services.map.restartSelectedMap();
   }
 
   public pauseCurrentMap(): void {
@@ -111,7 +96,6 @@ export class Application {
 
   public leaveCurrentMap(): void {
     this.services.map.leaveCurrentMap();
-    this.cleanupSceneAfterRun();
   }
 
   public selectMap(mapId: MapId): void {
@@ -169,55 +153,6 @@ export class Application {
     this.modules.push(module);
     saveManager.registerModule(module);
     gameLoop.registerModule(module);
-  }
-
-  private handleRunStateEvent(event: MapRunEvent): void {
-    if (event.type === "complete") {
-      this.handleMapRunCompleted(event.success);
-    }
-  }
-
-  private getMapModule(): MapModule {
-    return this.services.map;
-  }
-
-  private handleAllUnitsDefeated(): void {
-    if (this.services.necromancer.isSanityDepleted()) {
-      this.services.mapRunState.complete(false);
-    }
-  }
-
-  private handleMapRunCompleted(success: boolean): void {
-    const { resources } = this.services;
-    if (resources.isRunSummaryAvailable()) {
-      return;
-    }
-    const durationMs = resources.getRunDurationMs();
-    this.getMapModule().recordRunResult({ success, durationMs });
-    resources.finishRun();
-  }
-
-  private cleanupSceneAfterRun(): void {
-    this.services.fireball.reset();
-    this.services.bullet.reset();
-    this.services.explosion.reset();
-    this.services.arc.reset();
-    this.services.effects.reset();
-    this.services.sceneObjects.flushAllPendingRemovals();
-    this.resetGpuCaches();
-  }
-
-  private resetGpuCaches(): void {
-    // Clear GPU caches to avoid lingering artifacts and memory leaks between runs
-    try {
-      resetAllWaveBatches();
-    } catch {}
-    try {
-      resetAllArcBatches();
-    } catch {}
-    try {
-      clearAllParticleEmitters();
-    } catch {}
   }
 
 }

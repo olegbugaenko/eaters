@@ -15,6 +15,16 @@ import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.modul
 import { PlayerUnitEmitterConfig, getPlayerUnitConfig } from "../src/db/player-units-db";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
+const createResourceControllerStub = () => ({
+  startRun: () => {},
+  cancelRun: () => {},
+  finishRun: () => {},
+  isRunSummaryAvailable: () => false,
+  getRunDurationMs: () => 0,
+  grantResources: () => {},
+  notifyBrickDestroyed: () => {},
+});
+
 const createBricksModule = (
   scene: SceneObjectManager,
   bridge: DataBridge,
@@ -22,14 +32,7 @@ const createBricksModule = (
   explosions: ExplosionModule,
   runState: MapRunState
 ) => {
-  const resources = {
-    grantResources: () => {
-      // no-op for tests
-    },
-    notifyBrickDestroyed: () => {
-      // no-op for tests
-    },
-  };
+  const resources = createResourceControllerStub();
   return new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
 };
 

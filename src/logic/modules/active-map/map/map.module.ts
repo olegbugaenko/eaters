@@ -24,6 +24,8 @@ import {
   MapStats,
 } from "./map.types";
 import { SkillId } from "../../../../db/skills-db";
+import { MapRunEvent } from "./MapRunState";
+import { MapSceneCleanup, MapSceneCleanupContract } from "./map.scene-cleanup";
 
 export const MAP_LIST_BRIDGE_KEY = "maps/list";
 export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
@@ -57,9 +59,11 @@ export class MapModule implements GameModule {
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
   private readonly options: MapModuleOptions;
+  private readonly sceneCleanup: MapSceneCleanupContract;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
+    this.sceneCleanup = options.sceneCleanup;
     this.unlocks = options.unlocks;
     this.getSkillLevel = options.getSkillLevel;
     this.selection = new MapSelectionState(DEFAULT_MAP_ID);
@@ -75,6 +79,8 @@ export class MapModule implements GameModule {
       visuals,
       scene: options.scene,
     });
+
+    options.runState.subscribe((event) => this.handleRunStateEvent(event));
   }
 
   public initialize(): void {
@@ -261,6 +267,12 @@ export class MapModule implements GameModule {
     this.pushSelectedMapLevel();
   }
 
+  public handleAllUnitsDefeated(): void {
+    if (this.options.necromancer.isSanityDepleted()) {
+      this.options.runState.complete(false);
+    }
+  }
+
   public getMapStats(): MapStats {
     return this.cloneStats();
   }
@@ -312,6 +324,26 @@ export class MapModule implements GameModule {
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();
+  }
+
+  private handleMapRunCompleted(success: boolean): void {
+    const { resources } = this.options;
+    if (resources.isRunSummaryAvailable()) {
+      return;
+    }
+    const durationMs = resources.getRunDurationMs();
+    this.recordRunResult({ success, durationMs });
+    resources.finishRun();
+  }
+
+  private handleRunStateEvent(event: MapRunEvent): void {
+    if (event.type === "reset") {
+      this.sceneCleanup.resetAfterRun();
+      return;
+    }
+    if (event.type === "complete") {
+      this.handleMapRunCompleted(event.success);
+    }
   }
 
   private updateSelection(mapId: MapId): void {

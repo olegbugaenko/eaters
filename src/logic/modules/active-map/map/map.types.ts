@@ -11,10 +11,14 @@ import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
 import { MapRunState } from "./MapRunState";
+import { MapSceneCleanupContract } from "./map.scene-cleanup";
 
 export interface ResourceRunController {
   startRun(): void;
   cancelRun(): void;
+  finishRun(): void;
+  isRunSummaryAvailable(): boolean;
+  getRunDurationMs(): number;
 }
 
 export interface MapModuleOptions {
@@ -29,6 +33,7 @@ export interface MapModuleOptions {
   unlocks: UnlockService;
   unitsAutomation: UnitAutomationModule;
   arcs: ArcModule;
+  sceneCleanup: MapSceneCleanupContract;
   getSkillLevel: (id: SkillId) => number;
 }
 

@@ -43,8 +43,8 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
     createArcDefinition(),
     createEffectsDefinition(),
     createFireballDefinition(),
-    createMapDefinition(context),
     createBulletDefinition(),
+    createMapDefinition(context),
     createSpellcastingDefinition(),
     createTutorialMonitorDefinition(),
   ] as const;
