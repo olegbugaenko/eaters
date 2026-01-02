@@ -3,7 +3,7 @@ import { ServiceDefinition } from "../../../core/loader/types";
 import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";
 import { SpellcastingModule } from "./spellcasting.module";
 
-export const createSpellcastingDefinition = (): ServiceDefinition<SpellcastingModule> => ({
+export const createSpellcastingDefinition = (): ServiceDefinition<SpellcastingModule, "spellcasting"> => ({
   token: "spellcasting",
   factory: (container) =>
     new SpellcastingModule({

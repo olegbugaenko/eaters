@@ -1,7 +1,7 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { NecromancerModule } from "./necromancer.module";
 
-export const createNecromancerDefinition = (): ServiceDefinition<NecromancerModule> => ({
+export const createNecromancerDefinition = (): ServiceDefinition<NecromancerModule, "necromancer"> => ({
   token: "necromancer",
   factory: (container) =>
     new NecromancerModule({

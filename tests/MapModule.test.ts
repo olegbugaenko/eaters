@@ -17,7 +17,9 @@ import type {
   MapListEntry,
   MapStats,
   MapAutoRestartState,
+  ResourceRunController,
 } from "../src/logic/modules/active-map/map/map.types";
+import type { MapSceneCleanupContract } from "../src/logic/modules/active-map/map/map.scene-cleanup";
 import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { ArcModule } from "../src/logic/modules/scene/arc/arc.module";
 import type { UnitAutomationModule } from "../src/logic/modules/active-map/unit-automation/unit-automation.module";
@@ -70,6 +72,23 @@ const createBonuses = (): BonusesModule => {
   return bonuses;
 };
 
+const createResourceControllerStub = (): ResourceRunController & {
+  grantResources: () => void;
+  notifyBrickDestroyed: () => void;
+} => ({
+  startRun: () => {},
+  cancelRun: () => {},
+  finishRun: () => {},
+  isRunSummaryAvailable: () => false,
+  getRunDurationMs: () => 0,
+  grantResources: () => {},
+  notifyBrickDestroyed: () => {},
+});
+
+const createSceneCleanupStub = (): MapSceneCleanupContract => ({
+  resetAfterRun: () => {},
+});
+
 describe("MapModule", () => {
   test("bricks spawn outside of the player unit safe radius", () => {
     const scene = new SceneObjectManager();
@@ -77,20 +96,7 @@ describe("MapModule", () => {
     const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
-    const resources = {
-      startRun: () => {
-        // no-op for tests
-      },
-      cancelRun: () => {
-        // no-op for tests
-      },
-      grantResources: () => {
-        // no-op for tests
-      },
-      notifyBrickDestroyed: () => {
-        // no-op for tests
-      },
-    };
+    const resources = createResourceControllerStub();
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
@@ -132,6 +138,7 @@ describe("MapModule", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -198,11 +205,9 @@ describe("Map run control", () => {
 
     let startRunCalls = 0;
     const resources = {
+      ...createResourceControllerStub(),
       startRun: () => {
         startRunCalls += 1;
-      },
-      cancelRun: () => {
-        // no-op for tests
       },
     };
 
@@ -225,6 +230,7 @@ describe("Map run control", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -324,6 +330,7 @@ describe("Map run control", () => {
     let startRunCalls = 0;
     let cancelRunCalls = 0;
     const resources = {
+      ...createResourceControllerStub(),
       startRun: () => {
         startRunCalls += 1;
       },
@@ -351,6 +358,7 @@ describe("Map run control", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -379,12 +387,7 @@ describe("Map run control", () => {
     const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
-    const resources = {
-      startRun: () => {},
-      cancelRun: () => {},
-      grantResources: () => {},
-      notifyBrickDestroyed: () => {},
-    };
+    const resources = createResourceControllerStub();
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
@@ -426,6 +429,7 @@ describe("Map run control", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -457,12 +461,7 @@ describe("Map run control", () => {
     const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
-    const resources = {
-      startRun: () => {},
-      cancelRun: () => {},
-      grantResources: () => {},
-      notifyBrickDestroyed: () => {},
-    };
+    const resources = createResourceControllerStub();
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
@@ -504,6 +503,7 @@ describe("Map run control", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -542,12 +542,7 @@ describe("Map unlocking", () => {
     const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
-    const resources = {
-      startRun: () => {},
-      cancelRun: () => {},
-      grantResources: () => {},
-      notifyBrickDestroyed: () => {},
-    };
+    const resources = createResourceControllerStub();
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
@@ -590,6 +585,7 @@ describe("Map unlocking", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -644,12 +640,7 @@ describe("Map unlocking", () => {
     const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
-    const resources = {
-      startRun: () => {},
-      cancelRun: () => {},
-      grantResources: () => {},
-      notifyBrickDestroyed: () => {},
-    };
+    const resources = createResourceControllerStub();
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
@@ -692,6 +683,7 @@ describe("Map unlocking", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -729,10 +721,7 @@ describe("Last played map tracking", () => {
       pauseMap: () => {},
       resumeMap: () => {},
     } as unknown as NecromancerModule;
-    const resources = {
-      startRun: () => {},
-      cancelRun: () => {},
-    } as const;
+    const resources = createResourceControllerStub();
     let mapModuleRef: MapModule | null = null;
     const unlocks = new UnlockService({
       getMapStats: () => mapModuleRef?.getMapStats() ?? {},
@@ -751,6 +740,7 @@ describe("Last played map tracking", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     mapModuleRef = maps;
@@ -776,10 +766,7 @@ describe("Last played map tracking", () => {
     const nextRunState = new MapRunState();
     const nextScene = new SceneObjectManager();
     const nextBonuses = createBonuses();
-    const nextResources = {
-      startRun: () => {},
-      cancelRun: () => {},
-    } as const;
+    const nextResources = createResourceControllerStub();
     let restoredModuleRef: MapModule | null = null;
     const nextUnlocks = new UnlockService({
       getMapStats: () => restoredModuleRef?.getMapStats() ?? {},
@@ -798,6 +785,7 @@ describe("Last played map tracking", () => {
       unlocks: nextUnlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
     });
     restoredModuleRef = restoredMaps;
@@ -819,12 +807,7 @@ describe("Map auto restart", () => {
     const runState = new MapRunState();
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
-    const resources = {
-      startRun: () => {},
-      cancelRun: () => {},
-      grantResources: () => {},
-      notifyBrickDestroyed: () => {},
-    };
+    const resources = createResourceControllerStub();
     const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
@@ -868,6 +851,7 @@ describe("Map auto restart", () => {
       unlocks,
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => skillLevel,
     });
     mapModuleRef = maps;

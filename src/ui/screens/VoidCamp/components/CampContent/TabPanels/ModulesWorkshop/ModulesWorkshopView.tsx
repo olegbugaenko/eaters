@@ -54,7 +54,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   resources,
 }) => {
   const { app } = useAppLogic();
-  const workshop = useMemo(() => app.getUnitModuleWorkshop(), [app]);
+  const workshop = useMemo(() => app.services.unitModuleWorkshop, [app]);
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {

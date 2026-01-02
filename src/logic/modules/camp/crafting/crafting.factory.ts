@@ -1,7 +1,7 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { CraftingModule } from "./crafting.module";
 
-export const createCraftingDefinition = (): ServiceDefinition<CraftingModule> => ({
+export const createCraftingDefinition = (): ServiceDefinition<CraftingModule, "crafting"> => ({
   token: "crafting",
   factory: (container) =>
     new CraftingModule({

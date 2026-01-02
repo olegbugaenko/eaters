@@ -22,9 +22,7 @@ import { createUnitDesignDefinition } from "../../modules/camp/unit-design/unit-
 import { createUnitModuleWorkshopDefinition } from "../../modules/camp/unit-module-workshop/unit-module-workshop.factory";
 import { createUnlocksDefinition } from "./unlocks/factory";
 import { ModuleDefinitionContext } from "./context";
-import { ServiceDefinition } from "../../core/loader/types";
-
-export function createModuleDefinitions(context: ModuleDefinitionContext): ServiceDefinition<unknown>[] {
+export function createModuleDefinitions(context: ModuleDefinitionContext) {
   return [
     createUnlocksDefinition(),
     createBonusesDefinition(),
@@ -45,9 +43,9 @@ export function createModuleDefinitions(context: ModuleDefinitionContext): Servi
     createArcDefinition(),
     createEffectsDefinition(),
     createFireballDefinition(),
-    createMapDefinition(context),
     createBulletDefinition(),
+    createMapDefinition(context),
     createSpellcastingDefinition(),
     createTutorialMonitorDefinition(),
-  ] as ServiceDefinition<unknown>[];
+  ] as const;
 }

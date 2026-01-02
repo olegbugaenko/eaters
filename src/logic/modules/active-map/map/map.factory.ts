@@ -3,13 +3,23 @@ import { ModuleDefinitionContext } from "../../../definitions/modules/context";
 import { ServiceDefinition } from "../../../core/loader/types";
 import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";
 import { MapModule } from "./map.module";
+import { MapSceneCleanup } from "./map.scene-cleanup";
 
 export const createMapDefinition = (
   context: ModuleDefinitionContext,
-): ServiceDefinition<MapModule> => ({
+): ServiceDefinition<MapModule, "map"> => ({
   token: "map",
-  factory: (container) =>
-    new MapModule({
+  factory: (container) => {
+    const sceneCleanup = new MapSceneCleanup({
+      fireball: container.get("fireball"),
+      bullet: container.get("bullet"),
+      explosion: container.get("explosion"),
+      arc: container.get("arc"),
+      effects: container.get("effects"),
+      sceneObjects: container.get("sceneObjects"),
+    });
+
+    return new MapModule({
       scene: container.get("sceneObjects"),
       bridge: container.get("bridge"),
       runState: container.get("mapRunState"),
@@ -21,10 +31,12 @@ export const createMapDefinition = (
       unlocks: container.get("unlocks"),
       unitsAutomation: container.get("unitAutomation"),
       arcs: container.get("arc"),
+      sceneCleanup,
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
-    }),
+    });
+  },
   registerAsModule: true,
-  onReady: (instance) => {
-    context.setMapModule(instance as MapModule);
+  onReady: (instance: MapModule) => {
+    context.setMapModule(instance);
   },
 });

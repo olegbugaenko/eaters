@@ -118,8 +118,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const { app, bridge, scene } = useAppLogic();
-  const spellcasting = app.getSpellcasting();
-  const gameLoop = useMemo(() => app.getGameLoop(), [app]);
+  const spellcasting = app.services.spellcasting;
+  const gameLoop = useMemo(() => app.services.gameLoop, [app]);
   // moved high-frequency debug subscriptions into SceneDebugPanel to avoid rerendering SceneScreen every tick
   const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
@@ -172,8 +172,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const automationStateRef = useRef<UnitAutomationBridgeState>(DEFAULT_UNIT_AUTOMATION_STATE);
   const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
   const brickInitialHpRef = useRef(0);
-  const necromancer = useMemo(() => app.getNecromancer(), [app]);
-  const unitAutomation = useMemo(() => app.getUnitAutomation(), [app]);
+  const necromancer = useMemo(() => app.services.necromancer, [app]);
+  const unitAutomation = useMemo(() => app.services.unitAutomation, [app]);
   const showRunSummary = resourceSummary.completed;
   const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);

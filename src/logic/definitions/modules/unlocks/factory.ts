@@ -4,7 +4,7 @@ import { SkillTreeModule } from "../../../modules/camp/skill-tree/skill-tree.mod
 import { MapModule } from "../../../modules/active-map/map/map.module";
 import { ServiceDefinition } from "../../../core/loader/types";
 
-export const createUnlocksDefinition = (): ServiceDefinition<UnlockService> => ({
+export const createUnlocksDefinition = (): ServiceDefinition<UnlockService, "unlocks"> => ({
   token: "unlocks",
   factory: (container) =>
     new UnlockService({

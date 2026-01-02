@@ -61,7 +61,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   resources,
 }) => {
   const { app } = useAppLogic();
-  const workshop = useMemo(() => app.getBuildings(), [app]);
+  const workshop = useMemo(() => app.services.buildings, [app]);
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {
