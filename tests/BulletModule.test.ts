@@ -1,11 +1,11 @@
 import assert from "assert";
 import { FILL_TYPES, SceneObjectManager } from "../src/logic/services/SceneObjectManager";
-import { BulletModule } from "../src/logic/modules/active-map/BulletModule";
-import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modules/scene/ExplosionModule";
+import { BulletModule } from "../src/logic/modules/active-map/bullet/bullet.module";
+import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modules/scene/explosion/explosion.module";
 import { getBulletConfig } from "../src/db/bullets-db";
 import { ExplosionType } from "../src/db/explosions-db";
 import { describe, test } from "./testRunner";
-import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
+import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
 class ExplosionStub implements Pick<ExplosionModule, "spawnExplosionByType"> {
   public readonly calls: Array<{

@@ -3,7 +3,7 @@ import {
   BricksModule,
   BRICK_COUNT_BRIDGE_KEY,
   BRICK_TOTAL_HP_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/BricksModule";
+} from "../src/logic/modules/active-map/bricks/bricks.module";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   SceneObjectManager,
@@ -12,10 +12,10 @@ import {
   SceneRadialGradientFill,
 } from "../src/logic/services/SceneObjectManager";
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
-import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
+import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import { describe, test } from "./testRunner";
-import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
-import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
+import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
+import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
 const createBricksModule = (
   scene: SceneObjectManager,

@@ -4,9 +4,9 @@ import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import {
   UnitDesignerBridgeState,
   UnitDesignerUnitState,
-} from "@logic/modules/camp/UnitDesignModule";
+} from "@logic/modules/camp/unit-design/unit-design.module";
 import { Button } from "@shared/Button";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.module";
 import { UnitTargetingMode } from "@/types/unit-targeting";
 import "./UnitRosterView.css";
 

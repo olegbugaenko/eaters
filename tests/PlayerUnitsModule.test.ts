@@ -1,19 +1,19 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
-import { BricksModule } from "../src/logic/modules/active-map/BricksModule";
-import type { BrickData } from "../src/logic/modules/active-map/BricksModule";
+import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
+import type { BrickData } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
   PlayerUnitsModule,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/units/PlayerUnitsModule";
+} from "../src/logic/modules/active-map/player-units/player-units.module";
 import { MovementService } from "../src/logic/services/MovementService";
-import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
-import type { EffectsModule } from "../src/logic/modules/scene/EffectsModule";
-import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
+import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
+import type { EffectsModule } from "../src/logic/modules/scene/effects/effects.module";
+import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { PlayerUnitEmitterConfig, getPlayerUnitConfig } from "../src/db/player-units-db";
-import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
+import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
 const createBricksModule = (
   scene: SceneObjectManager,

@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { MapId } from "@db/maps-db";
-import { MapListEntry } from "@logic/modules/active-map/MapModule";
+import { MapListEntry } from "@logic/modules/active-map/map/map.module";
 import { SkillTreeView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/ModulesWorkshop/ModulesWorkshopView";
 import { UnitDesignerView } from "@screens/VoidCamp/components/UnitDesigner/UnitDesignerView";
 import { CampTabKey } from "../CampContent";
 import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
-import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/UnitModuleWorkshopModule";
-import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
-import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
-import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/BuildingsModule";
+import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
+import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.module";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.module";
 import { BuildingsWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/BuildingsWorkshop/BuildingsWorkshopView";
-import { CraftingBridgeState } from "@logic/modules/camp/CraftingModule";
+import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.module";
 import { CraftingView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/Crafting/CraftingView";
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.module";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {

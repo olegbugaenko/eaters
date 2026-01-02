@@ -8,13 +8,13 @@ import {
   UnitAutomationModule,
   selectNextAutomationTarget,
   AutomationSelectionCandidate,
-} from "../src/logic/modules/active-map/UnitAutomationModule";
+} from "../src/logic/modules/active-map/unit-automation/unit-automation.module";
 import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
-import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/UnitDesignModule";
-import { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/NecromancerModule";
+import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/unit-design/unit-design.module";
+import { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/necromancer/necromancer.module";
 import { createEmptyResourceAmount } from "../src/types/resources";
 import { PlayerUnitBlueprintStats } from "../src/types/player-units";
-import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
+import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
 const createFullResources = (): NecromancerResourceSnapshot => ({
   mana: { current: 999, max: 999, regenPerSecond: 10 },

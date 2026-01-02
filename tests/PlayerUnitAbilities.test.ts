@@ -4,13 +4,13 @@ import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import {
   PlayerUnitAbilities,
   PlayerUnitAbilityState,
-} from "../src/logic/modules/active-map/PlayerUnitAbilities";
-import type { AbilitySoundPlayer } from "../src/logic/modules/active-map/PlayerUnitAbilities";
-import type { EffectsModule } from "../src/logic/modules/scene/EffectsModule";
-import type { FireballModule } from "../src/logic/modules/scene/FireballModule";
-import type { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
+} from "../src/logic/modules/active-map/player-units/PlayerUnitAbilities";
+import type { AbilitySoundPlayer } from "../src/logic/modules/active-map/player-units/PlayerUnitAbilities";
+import type { EffectsModule } from "../src/logic/modules/scene/effects/effects.module";
+import type { FireballModule } from "../src/logic/modules/scene/fireball/fireball.module";
+import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { PlayerUnitType } from "../src/db/player-units-db";
-import { AbilityVisualService } from "../src/logic/modules/active-map/abilities/AbilityVisualService";
+import { AbilityVisualService } from "../src/logic/modules/active-map/player-units/abilities/AbilityVisualService";
 
 describe("PlayerUnitAbilities sound effects", () => {
   const createBaseState = (overrides: Partial<PlayerUnitAbilityState> = {}): PlayerUnitAbilityState => ({

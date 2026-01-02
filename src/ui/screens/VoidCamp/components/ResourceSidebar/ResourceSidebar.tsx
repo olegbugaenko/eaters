@@ -1,10 +1,10 @@
-import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
+import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
 import { ResourceIcon } from "@shared/icons/ResourceIcon";
 import "./ResourceSidebar.css";
 import { formatNumber } from "@shared/format/number";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui/shared/useBridgeValue";
-import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/MapModule";
+import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/map/map.module";
 import { getMapConfig, MapId } from "@db/maps-db";
 import { useCallback } from "react";
 

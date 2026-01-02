@@ -1,5 +1,5 @@
 import React from "react";
-import { ResourceRunSummaryItem } from "@logic/modules/shared/ResourcesModule";
+import { ResourceRunSummaryItem } from "@logic/modules/shared/resources/resources.module";
 import { formatNumber } from "@shared/format/number";
 import { ResourceIcon } from "@shared/icons/ResourceIcon";
 import "./SceneRunResourcePanel.css";
