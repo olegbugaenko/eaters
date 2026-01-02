@@ -12,14 +12,14 @@ import {
   MapListEntry,
   MAP_LIST_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
-} from "@logic/modules/active-map/MapModule";
-import { TIME_BRIDGE_KEY } from "@logic/modules/shared/TestTimeModule";
-import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
+} from "@logic/modules/map/map.module";
+import { TIME_BRIDGE_KEY } from "@logic/modules/time/time.module";
+import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/resources/resources.module";
 import {
   CampStatisticsSnapshot,
   DEFAULT_CAMP_STATISTICS,
   STATISTICS_BRIDGE_KEY,
-} from "@logic/modules/shared/StatisticsModule";
+} from "@logic/modules/statistics/statistics.module";
 import type { StoredSaveData } from "@logic/core/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@shared/useBridgeValue";
@@ -27,27 +27,27 @@ import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   UnitModuleWorkshopBridgeState,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
-} from "@logic/modules/camp/UnitModuleWorkshopModule";
+} from "@logic/modules/unit-module-workshop/unit-module-workshop.module";
 import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
   BuildingsWorkshopBridgeState,
   DEFAULT_BUILDINGS_WORKSHOP_STATE,
-} from "@/logic/modules/camp/BuildingsModule";
+} from "@/logic/modules/buildings/buildings.module";
 import {
   DEFAULT_UNIT_DESIGNER_STATE,
   UnitDesignerBridgeState,
   UNIT_DESIGNER_STATE_BRIDGE_KEY,
-} from "@logic/modules/camp/UnitDesignModule";
+} from "@logic/modules/unit-design/unit-design.module";
 import {
   CraftingBridgeState,
   CRAFTING_STATE_BRIDGE_KEY,
   DEFAULT_CRAFTING_STATE,
-} from "@logic/modules/camp/CraftingModule";
+} from "@logic/modules/crafting/crafting.module";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UnitAutomationBridgeState,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-} from "@logic/modules/active-map/UnitAutomationModule";
+} from "@logic/modules/unit-automation/unit-automation.module";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { VoidCampTopBar } from "@screens/VoidCamp/components/VoidCamp/VoidCampTopBar";
 import {

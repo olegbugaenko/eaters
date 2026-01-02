@@ -3,7 +3,7 @@ import {
   PersistentAoeSpellOption,
   SpellOption,
   WhirlSpellOption,
-} from "@logic/modules/active-map/spells/SpellcastingModule";
+} from "@logic/modules/spellcasting/spellcasting.module";
 import { SceneTooltipContent, SceneTooltipStat } from "../../tooltip/SceneTooltipPanel";
 import { formatNumber } from "@shared/format/number";
 

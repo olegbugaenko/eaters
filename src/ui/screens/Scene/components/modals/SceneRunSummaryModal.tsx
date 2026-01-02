@@ -1,4 +1,4 @@
-import { ResourceRunSummaryItem } from "@logic/modules/shared/ResourcesModule";
+import { ResourceRunSummaryItem } from "@logic/modules/resources/resources.module";
 import { Button } from "@shared/Button";
 import { formatNumber } from "@shared/format/number";
 import "./SceneRunSummaryModal.css";

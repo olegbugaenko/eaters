@@ -1,7 +1,7 @@
 import { SkillId } from "../../../../db/skills-db";
 import { UnlockService } from "../../../services/UnlockService";
-import { SkillTreeModule } from "../../../modules/camp/SkillTreeModule";
-import { MapModule } from "../../../modules/active-map/MapModule";
+import { SkillTreeModule } from "../../../modules/skill-tree/skill-tree.module";
+import { MapModule } from "../../../modules/map/map.module";
 import { ServiceDefinition } from "../../../core/loader/types";
 
 export const createUnlocksDefinition = (): ServiceDefinition<UnlockService> => ({

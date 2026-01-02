@@ -4,38 +4,38 @@ import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MapAutoRestartState,
-} from "@logic/modules/active-map/MapModule";
+} from "@logic/modules/map/map.module";
 import {
   NECROMANCER_RESOURCES_BRIDGE_KEY,
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
-} from "@logic/modules/active-map/NecromancerModule";
+} from "@logic/modules/necromancer/necromancer.module";
 import {
   DEFAULT_SPELL_OPTIONS,
   SPELL_OPTIONS_BRIDGE_KEY,
   SpellOption,
-} from "@logic/modules/active-map/spells/SpellcastingModule";
+} from "@logic/modules/spellcasting/spellcasting.module";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
   UnitAutomationBridgeState,
-} from "@logic/modules/active-map/UnitAutomationModule";
+} from "@logic/modules/unit-automation/unit-automation.module";
 import {
   BRICK_COUNT_BRIDGE_KEY,
   BRICK_TOTAL_HP_BRIDGE_KEY,
-} from "@logic/modules/active-map/BricksModule";
+} from "@logic/modules/bricks/bricks.module";
 import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "@logic/modules/active-map/units/PlayerUnitsModule";
-import { UnitDesignId } from "@logic/modules/camp/UnitDesignModule";
+} from "@logic/modules/player-units/player-units.module";
+import { UnitDesignId } from "@logic/modules/unit-design/unit-design.module";
 import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
   RESOURCE_RUN_DURATION_BRIDGE_KEY,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
   ResourceRunSummaryPayload,
-} from "@logic/modules/shared/ResourcesModule";
+} from "@logic/modules/resources/resources.module";
 import { SceneCameraState } from "@logic/services/SceneObjectManager";
 import { SceneDebugPanel } from "./components/debug/SceneDebugPanel";
 import { SceneRunSummaryModal } from "./components/modals/SceneRunSummaryModal";
@@ -70,7 +70,7 @@ import {
   TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
   TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
   TutorialMonitorStatus,
-} from "@logic/modules/active-map/TutorialMonitorModule";
+} from "@logic/modules/tutorial-monitor/tutorial-monitor.module";
 
 const AUTO_RESTART_SECONDS = 5;
 

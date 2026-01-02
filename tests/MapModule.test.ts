@@ -2,8 +2,8 @@ import assert from "assert";
 import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
 import { DataBridge } from "../src/logic/core/DataBridge";
-import { BricksModule } from "../src/logic/modules/active-map/BricksModule";
-import { PlayerUnitsModule } from "../src/logic/modules/active-map/units/PlayerUnitsModule";
+import { BricksModule } from "../src/logic/modules/bricks/bricks.module";
+import { PlayerUnitsModule } from "../src/logic/modules/player-units/player-units.module";
 import { MovementService } from "../src/logic/services/MovementService";
 import {
   MapModule,
@@ -12,22 +12,22 @@ import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MAP_LAST_PLAYED_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/MapModule";
+} from "../src/logic/modules/map/map.module";
 import type {
   MapListEntry,
   MapStats,
   MapAutoRestartState,
-} from "../src/logic/modules/active-map/MapModule";
-import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
-import type { ArcModule } from "../src/logic/modules/scene/ArcModule";
-import type { UnitAutomationModule } from "../src/logic/modules/active-map/UnitAutomationModule";
-import { NecromancerModule } from "../src/logic/modules/active-map/NecromancerModule";
-import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
+} from "../src/logic/modules/map/map.module";
+import { ExplosionModule } from "../src/logic/modules/explosion/explosion.module";
+import type { ArcModule } from "../src/logic/modules/arc/arc.module";
+import type { UnitAutomationModule } from "../src/logic/modules/unit-automation/unit-automation.module";
+import { NecromancerModule } from "../src/logic/modules/necromancer/necromancer.module";
+import { BonusesModule } from "../src/logic/modules/bonuses/bonuses.module";
 import { UnlockService } from "../src/logic/services/UnlockService";
-import type { UnitDesignModule } from "../src/logic/modules/camp/UnitDesignModule";
+import type { UnitDesignModule } from "../src/logic/modules/unit-design/unit-design.module";
 import { getMapConfig } from "../src/db/maps-db";
 import { MapId } from "../src/db/maps-db";
-import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
+import { MapRunState } from "../src/logic/modules/map/MapRunState";
 
 const createUnitDesignerStub = (): UnitDesignModule => {
   const stub = {

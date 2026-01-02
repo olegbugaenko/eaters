@@ -1,9 +1,9 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
 import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
-import { FireballModule } from "../src/logic/modules/scene/FireballModule";
-import type { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
-import type { BricksModule } from "../src/logic/modules/active-map/BricksModule";
+import { FireballModule } from "../src/logic/modules/fireball/fireball.module";
+import type { ExplosionModule } from "../src/logic/modules/explosion/explosion.module";
+import type { BricksModule } from "../src/logic/modules/bricks/bricks.module";
 
 describe("FireballModule", () => {
   test("spawnFireball attaches trail and smoke emitter configs", () => {

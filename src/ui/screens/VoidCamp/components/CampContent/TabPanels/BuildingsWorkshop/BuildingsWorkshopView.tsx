@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
+import { ResourceAmountPayload } from "@logic/modules/resources/resources.module";
 import {
   BuildingsWorkshopBridgeState,
   DEFAULT_BUILDINGS_WORKSHOP_STATE,
-} from "@/logic/modules/camp/BuildingsModule";
+} from "@/logic/modules/buildings/buildings.module";
 import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { ResourceId, getResourceConfig } from "@db/resources-db";

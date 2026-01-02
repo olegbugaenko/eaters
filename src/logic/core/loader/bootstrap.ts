@@ -1,5 +1,5 @@
 import { GameLoop } from "../../services/GameLoop";
-import { MapRunState } from "../../modules/active-map/MapRunState";
+import { MapRunState } from "../../modules/map/MapRunState";
 import { MovementService } from "../../services/MovementService";
 import { SaveManager } from "../../services/SaveManager";
 import { SceneObjectManager } from "../../services/SceneObjectManager";
