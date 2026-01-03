@@ -59,8 +59,8 @@ import {
   BRICK_KNOCKBACK_DURATION_MS,
   KNOCKBACK_EPSILON,
   TOTAL_HP_RECOMPUTE_INTERVAL_MS,
-  ZERO_VECTOR,
 } from "./bricks.const";
+import { ZERO_VECTOR } from "../../../helpers/geometry.const";
 import { MapRunState } from "../map/MapRunState";
 
 export class BricksModule implements GameModule {

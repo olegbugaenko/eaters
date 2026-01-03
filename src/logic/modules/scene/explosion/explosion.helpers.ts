@@ -10,11 +10,8 @@ import {
   cloneSceneFill,
   createRadialGradientFill,
 } from "../../../helpers/scene-fill.helper";
-import {
-  cloneSceneColor,
-  sanitizeAngle,
-  sanitizeArc,
-} from "../../../services/particles/ParticleEmitterShared";
+import { cloneSceneColor } from "../../../helpers/scene-color.helper";
+import { sanitizeAngle, sanitizeArc } from "../../../helpers/angle.helper";
 import { clamp01, clampNumber } from "@/utils/helpers/numbers";
 import type { WaveState } from "./explosion.types";
 

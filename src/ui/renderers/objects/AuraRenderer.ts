@@ -19,7 +19,7 @@ import type {
   AuraRendererFillConfig,
   AuraRendererStrokeConfig,
 } from "../../../db/effects-db";
-import { cloneSceneFill } from "../../../logic/services/particles/ParticleEmitterShared";
+import { cloneSceneFill } from "../../../logic/helpers/scene-fill.helper";
 
 interface AuraCustomData {
   renderer: AuraRendererCompositeConfig;

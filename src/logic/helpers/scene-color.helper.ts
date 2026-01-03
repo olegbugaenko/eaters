@@ -50,6 +50,30 @@ const blendColorComponent = (
 };
 
 /**
+ * Sanitizes a scene color with a fallback value.
+ * Handles optional alpha channel (defaults to 1 if not provided).
+ */
+export const sanitizeSceneColor = (
+  color: SceneColor | undefined,
+  fallback: SceneColor
+): SceneColor => ({
+  r: typeof color?.r === "number" && Number.isFinite(color.r)
+    ? color.r
+    : fallback.r,
+  g: typeof color?.g === "number" && Number.isFinite(color.g)
+    ? color.g
+    : fallback.g,
+  b: typeof color?.b === "number" && Number.isFinite(color.b)
+    ? color.b
+    : fallback.b,
+  a: typeof color?.a === "number" && Number.isFinite(color.a)
+    ? color.a
+    : typeof fallback.a === "number"
+    ? fallback.a
+    : 1,
+});
+
+/**
  * Tints a scene color by blending it with another color at a given intensity.
  * Handles optional alpha channel (preserves source alpha).
  */

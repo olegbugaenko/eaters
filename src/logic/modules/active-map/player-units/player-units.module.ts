@@ -82,7 +82,6 @@ import type { PlayerUnitState } from "./units/UnitTypes";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
-  ZERO_VECTOR,
   CRITICAL_HIT_EXPLOSION_RADIUS,
   INTERNAL_FURNACE_EFFECT_ID,
   INTERNAL_FURNACE_TINT_COLOR,
@@ -96,6 +95,7 @@ import {
   IDLE_WANDER_SPEED_FACTOR,
   TARGETING_SCORE_EPSILON,
 } from "./units/UnitTypes";
+import { ZERO_VECTOR } from "../../../helpers/geometry.const";
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";

@@ -10,7 +10,7 @@ import type {
   MovementBodyState,
   InternalMovementBodyState,
 } from "./movement.types";
-import { ZERO_VECTOR } from "./movement.const";
+import { ZERO_VECTOR } from "../../helpers/geometry.const";
 import { clampPositive } from "./movement.helpers";
 
 export class MovementService {

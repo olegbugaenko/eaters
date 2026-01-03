@@ -11,10 +11,10 @@ import {
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import {
-  ParticleEmitterShape,
   cloneSceneFill,
-  sanitizeSceneColor,
-} from "../../../logic/services/particles/ParticleEmitterShared";
+} from "../../../logic/helpers/scene-fill.helper";
+import { ParticleEmitterShape } from "@/logic/services/particles/ParticleEmitterShared";
+import { sanitizeSceneColor } from "../../../logic/helpers/scene-color.helper";
 import {
   DynamicPrimitive,
   FILL_COMPONENTS,

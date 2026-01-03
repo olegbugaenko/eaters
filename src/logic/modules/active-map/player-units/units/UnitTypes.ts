@@ -67,7 +67,8 @@ export interface PlayerUnitState {
 
 export const ATTACK_DISTANCE_EPSILON = 0.001;
 export const COLLISION_RESOLUTION_ITERATIONS = 4;
-export const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
+// Re-export for backward compatibility
+export { ZERO_VECTOR } from "../../../../helpers/geometry.const";
 export const CRITICAL_HIT_EXPLOSION_RADIUS = 12;
 export const INTERNAL_FURNACE_EFFECT_ID = "internalFurnace/heat";
 export const INTERNAL_FURNACE_TINT_COLOR: SceneColor = {

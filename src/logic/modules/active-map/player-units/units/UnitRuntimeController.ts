@@ -20,7 +20,6 @@ import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
-  ZERO_VECTOR,
   CRITICAL_HIT_EXPLOSION_RADIUS,
   PHEROMONE_TIMER_CAP_SECONDS,
   TARGETING_RADIUS_STEP,
@@ -30,6 +29,7 @@ import {
   IDLE_WANDER_SPEED_FACTOR,
   TARGETING_SCORE_EPSILON,
 } from "./UnitTypes";
+import { ZERO_VECTOR } from "../../../../helpers/geometry.const";
 
 
 export interface UnitRuntimeControllerOptions {

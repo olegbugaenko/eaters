@@ -1,3 +1,2 @@
-import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
-
-export const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
+// Re-export for backward compatibility
+export { ZERO_VECTOR } from "../../helpers/geometry.const";

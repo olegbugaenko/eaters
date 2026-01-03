@@ -106,12 +106,12 @@ export const cloneSceneFill = (fill: SceneFill): SceneFill => {
     }
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT: {
-      const radialOrDiamondFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
+      const gradientFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
       const cloned: SceneRadialGradientFill | SceneDiamondGradientFill = {
-        fillType: radialOrDiamondFill.fillType,
-        start: radialOrDiamondFill.start ? { ...radialOrDiamondFill.start } : undefined,
-        end: typeof radialOrDiamondFill.end === "number" ? radialOrDiamondFill.end : undefined,
-        stops: cloneSceneGradientStops(radialOrDiamondFill.stops),
+        fillType: fill.fillType,
+        start: gradientFill.start ? { ...gradientFill.start } : undefined,
+        end: typeof gradientFill.end === "number" ? gradientFill.end : undefined,
+        stops: cloneSceneGradientStops(gradientFill.stops),
       };
       return withNoiseAndFilaments(cloned, fill);
     }
@@ -154,12 +154,12 @@ export const tintSceneFill = (
     }
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT: {
-      const radialOrDiamondFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
+      const gradientFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
       const tinted: SceneRadialGradientFill | SceneDiamondGradientFill = {
-        fillType: radialOrDiamondFill.fillType,
-        start: radialOrDiamondFill.start ? { ...radialOrDiamondFill.start } : undefined,
-        end: typeof radialOrDiamondFill.end === "number" ? radialOrDiamondFill.end : undefined,
-        stops: radialOrDiamondFill.stops.map((stop) => ({
+        fillType: fill.fillType,
+        start: gradientFill.start ? { ...gradientFill.start } : undefined,
+        end: typeof gradientFill.end === "number" ? gradientFill.end : undefined,
+        stops: gradientFill.stops.map((stop) => ({
           offset: stop.offset,
           color: tintSceneColor(stop.color, tint, ratio),
         })),

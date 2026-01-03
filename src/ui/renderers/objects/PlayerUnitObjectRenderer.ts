@@ -33,7 +33,8 @@ import {
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
-import { cloneSceneFill, sanitizeSceneColor } from "../../../logic/services/particles/ParticleEmitterShared";
+import { cloneSceneFill } from "../../../logic/helpers/scene-fill.helper";
+import { sanitizeSceneColor } from "../../../logic/helpers/scene-color.helper";
 import { cloneSceneFillNoise, cloneSceneFillFilaments } from "../../../logic/helpers/scene-fill.helper";
 import { clamp01 } from "@/utils/helpers/numbers";
 import { createSolidFill as createBaseSolidFill } from "../../../logic/services/scene-object-manager/scene-object-manager.helpers";

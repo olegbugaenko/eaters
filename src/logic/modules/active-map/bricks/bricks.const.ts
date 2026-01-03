@@ -10,4 +10,5 @@ export const BRICK_KNOCKBACK_DURATION_MS = 500;
 export const KNOCKBACK_EPSILON = 0.001;
 export const TOTAL_HP_RECOMPUTE_INTERVAL_MS = 3000;
 
-export const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
+// Re-export for backward compatibility
+export { ZERO_VECTOR } from "../../../helpers/geometry.const";
