@@ -70,6 +70,7 @@ export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickC
     update();
     const interval = window.setInterval(update, UPDATE_INTERVAL_MS);
 
+
     return () => {
       window.clearInterval(interval);
     };

@@ -85,9 +85,8 @@ export class MapRunLifecycle {
   }
 
   public cleanupActiveMap(): void {
-    if (this.options.runState.isIdle() && !this.runActive) {
-      return;
-    }
+    // Always cleanup units and bricks, even if runState is idle
+    // This ensures clean state when starting a new map
     if (!this.options.runState.isIdle() && !this.options.runState.isCompleted()) {
       this.options.resources.cancelRun();
     }

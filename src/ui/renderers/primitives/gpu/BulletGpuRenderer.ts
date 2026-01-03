@@ -304,6 +304,8 @@ export const setBulletGpuContext = (gl: WebGL2RenderingContext | null): void => 
     globalGl.deleteBuffer(globalResources.quadBuffer);
     if (globalResources.spriteTexture) {
       globalGl.deleteTexture(globalResources.spriteTexture);
+      // Mark texture as deleted to prevent use in async callbacks
+      globalResources.spriteTexture = null;
     }
   }
   batches.forEach((batch) => disposeBatch(batch));
@@ -356,20 +358,30 @@ const loadSpriteArray = (gl: WebGL2RenderingContext, resources: BulletGpuResourc
   BULLET_SPRITE_PATHS.forEach((path: string, index: number) => {
     const image = new Image();
     image.onload = () => {
-      if (gl !== globalGl || !globalResources) return; // Context changed
+      // Check if context/resources are still valid and texture wasn't deleted
+      if (gl !== globalGl || !globalResources || !globalResources.spriteTexture) {
+        return; // Context changed or texture was deleted
+      }
 
-      gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
-      gl.texSubImage3D(
-        gl.TEXTURE_2D_ARRAY,
-        0,
-        0, 0, index,
-        BULLET_SPRITE_SIZE,
-        BULLET_SPRITE_SIZE,
-        1,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        image
-      );
+      // Use resources.spriteTexture instead of local texture variable
+      // to ensure we're using the current valid texture reference
+      try {
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, globalResources.spriteTexture);
+        gl.texSubImage3D(
+          gl.TEXTURE_2D_ARRAY,
+          0,
+          0, 0, index,
+          BULLET_SPRITE_SIZE,
+          BULLET_SPRITE_SIZE,
+          1,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          image
+        );
+      } catch (error) {
+        // Texture was deleted or context lost - silently ignore
+        // This can happen during cleanup or context recreation
+      }
     };
     image.onerror = () => {
       console.error(`[BulletGpu] Failed to load sprite: ${path}`);
@@ -732,12 +744,18 @@ export const renderBulletBatches = (
   
   gl.enable(gl.BLEND);
   gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  
+
   // Bind sprite texture array once for all batches
-  if (spriteTexture) {
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, spriteTexture);
-    gl.uniform1i(uniforms.spriteArray, 0);
+  // Check spriteTexture validity to prevent using deleted texture
+  if (spriteTexture && globalResources?.spriteTexture === spriteTexture) {
+    try {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D_ARRAY, spriteTexture);
+      gl.uniform1i(uniforms.spriteArray, 0);
+    } catch (error) {
+      // Texture was deleted or context lost - skip texture binding
+      // This can happen during cleanup or context recreation
+    }
   }
   
   batches.forEach((batch) => {

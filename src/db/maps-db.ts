@@ -57,8 +57,6 @@ export interface MapListEntry {
   readonly id: MapId;
   readonly name: string;
   readonly size: SceneSize;
-  readonly brickCount: number;
-  readonly brickTypes: readonly BrickType[];
   readonly icon?: string;
 }
 
@@ -2111,15 +2109,10 @@ export const isMapId = (value: unknown): value is MapId =>
 export const getMapList = (): MapListEntry[] =>
   MAP_IDS.map((mapId) => {
     const config = MAPS_DB[mapId];
-    const bricks = buildBricksFromBlueprints(config.bricks({ mapLevel: 0 }));
-    const brickCount = bricks.length;
-    const brickTypes = Array.from(new Set(bricks.map((brick) => brick.type)));
     return {
       id: mapId,
       name: config.name,
       size: { ...config.size },
       icon: config.icon,
-      brickCount,
-      brickTypes,
     };
   });

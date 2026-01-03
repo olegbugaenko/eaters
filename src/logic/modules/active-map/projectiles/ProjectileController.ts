@@ -167,8 +167,6 @@ export class UnitProjectileController {
       effectsObjectId,
     };
 
-    console.log('state: ', state);
-
     this.projectiles.push(state);
     this.projectileIndex.set(objectId, state);
     if (ringTrail) {

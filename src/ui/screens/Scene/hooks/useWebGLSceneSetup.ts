@@ -29,6 +29,13 @@ import { clearAllBulletBatches } from "@ui/renderers/primitives/gpu/BulletGpuRen
 import { clearRingInstances, disposeRingGpuRenderer } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 import { resetAllArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 
+interface WebGLSceneSetupOptions {
+  /** Initialize bullet GPU renderer (default: true) */
+  initBullets?: boolean;
+  /** Initialize ring GPU renderer (default: true) */
+  initRings?: boolean;
+}
+
 interface WebGLSceneSetupResult {
   gl: WebGL2RenderingContext;
   webglRenderer: WebGLSceneRenderer;
@@ -42,12 +49,15 @@ interface WebGLSceneSetupResult {
  * 
  * @param canvas - HTML canvas element
  * @param scene - Scene object manager
+ * @param options - Optional configuration for GPU effects initialization
  * @returns Setup result with gl context, renderer, and cleanup function
  */
 export const setupWebGLScene = (
   canvas: HTMLCanvasElement,
-  scene: SceneObjectManager
+  scene: SceneObjectManager,
+  options?: WebGLSceneSetupOptions
 ): WebGLSceneSetupResult => {
+  const { initBullets = true, initRings = true } = options ?? {};
   const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
 
   if (!gl) {
@@ -88,14 +98,21 @@ export const setupWebGLScene = (
   const objectsRenderer = createObjectsRendererManager();
 
   setParticleEmitterGlContext(gl);
-  setBulletGpuContext(gl);
-  initRingGpuRenderer(gl);
-  setBulletRenderBridge({
-    acquireSlot: acquireBulletSlot,
-    updateSlot: updateBulletSlot,
-    releaseSlot: releaseBulletSlot,
-    createConfig: createBulletVisualConfig,
-  });
+  
+  if (initBullets) {
+    setBulletGpuContext(gl);
+    setBulletRenderBridge({
+      acquireSlot: acquireBulletSlot,
+      updateSlot: updateBulletSlot,
+      releaseSlot: releaseBulletSlot,
+      createConfig: createBulletVisualConfig,
+    });
+  }
+  
+  if (initRings) {
+    initRingGpuRenderer(gl);
+  }
+  
   whirlEffect.onContextAcquired(gl);
   petalAuraEffect.onContextAcquired(gl);
 
@@ -113,8 +130,11 @@ export const setupWebGLScene = (
     
     // Clear all GPU contexts
     setParticleEmitterGlContext(null);
-    setBulletGpuContext(null);
-    setBulletRenderBridge(null);
+    
+    if (initBullets) {
+      setBulletGpuContext(null);
+      setBulletRenderBridge(null);
+    }
     
     if (gl) {
       try {
@@ -155,9 +175,16 @@ export const setupWebGLScene = (
     // Clear all instance data
     clearAllAuraSlots();
     clearPetalAuraInstances();
-    clearAllBulletBatches();
-    clearRingInstances();
-    disposeRingGpuRenderer();
+    
+    if (initBullets) {
+      clearAllBulletBatches();
+    }
+    
+    if (initRings) {
+      clearRingInstances();
+      disposeRingGpuRenderer();
+    }
+    
     resetAllArcBatches();
   };
 

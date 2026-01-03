@@ -88,6 +88,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const { selectedSpellId, selectedSpellIdRef, handleSelectSpell } =
     usePersistedSpellSelection(spellOptions);
   const tutorialMonitorVersionRef = useRef(0);
+  const cleanupCalledRef = useRef(false);
   const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
   const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
@@ -267,13 +268,37 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     setIsPauseOpen(false);
   }, []);
 
+  // Wrapper for onLeaveToMapSelect that properly cleans up the map before leaving
+  const handleLeaveToMapSelect = useCallback(() => {
+    cleanupCalledRef.current = true;
+    app.leaveCurrentMap();
+    onLeaveToMapSelect();
+  }, [app, onLeaveToMapSelect]);
+
   const handleLeaveToCamp = useCallback(() => {
     setIsPauseOpen(false);
-    onLeaveToMapSelect();
-  }, [onLeaveToMapSelect]);
+    handleLeaveToMapSelect();
+  }, [handleLeaveToMapSelect]);
 
+  // Handle page unload (refresh/close) - cleanup logic modules
+  // NOTE: We use beforeunload instead of useEffect cleanup because React StrictMode
+  // in dev mode double-invokes effects, which would incorrectly call leaveCurrentMap
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!cleanupCalledRef.current) {
+        try {
+          app.leaveCurrentMap();
+        } catch {
+          // Ignore errors during cleanup
+        }
+      }
+    };
 
-
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [app]);
 
   return (
     <div className="scene-screen">
@@ -319,7 +344,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           resources={resourceSummary.resources}
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          primaryAction={{ label: "Return to Void Lab", onClick: onLeaveToMapSelect }}
+          primaryAction={{ label: "Return to Void Lab", onClick: handleLeaveToMapSelect }}
           secondaryAction={{ label: "Restart Map", onClick: handleRestart }}
           autoRestart={
             autoRestartState.unlocked
