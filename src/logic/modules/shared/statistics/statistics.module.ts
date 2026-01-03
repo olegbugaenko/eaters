@@ -1,4 +1,5 @@
 import { DataBridge } from "@/logic/core/DataBridge";
+import { DataBridgeHelpers } from "@/logic/core/DataBridgeHelpers";
 import { GameModule } from "@/logic/core/types";
 import { sanitizeNonNegativeNumber } from "../../../helpers/numbers.helper";
 
@@ -133,6 +134,6 @@ export class StatisticsModule
   }
 
   private push(): void {
-    this.bridge.setValue(STATISTICS_BRIDGE_KEY, { ...this.stats });
+    DataBridgeHelpers.pushState(this.bridge, STATISTICS_BRIDGE_KEY, { ...this.stats });
   }
 }

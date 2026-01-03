@@ -1,5 +1,6 @@
 import { GameModule } from "../../../core/types";
 import type { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { BonusValueMap } from "../../shared/bonuses/bonuses.module";
@@ -295,7 +296,7 @@ export class CraftingModule implements GameModule {
       unlocked: this.unlocked,
       recipes: this.visibleRecipeIds.map((id) => this.createRecipePayload(id, totals)),
     };
-    this.bridge.setValue(CRAFTING_STATE_BRIDGE_KEY, payload);
+    DataBridgeHelpers.pushState(this.bridge, CRAFTING_STATE_BRIDGE_KEY, payload);
   }
 
   private hasRecipeInProgress(): boolean {

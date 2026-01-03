@@ -1,4 +1,9 @@
-import { GameModule } from "../../../core/types";
+import { BaseGameModule } from "../../../core/BaseGameModule";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import {
+  serializeLevelsMap,
+  parseLevelsMapFromSaveData,
+} from "../../../helpers/save-data.helper";
 import type { DataBridge } from "../../../core/DataBridge";
 import {
   UNIT_MODULE_IDS,
@@ -38,7 +43,7 @@ import {
   UnitModuleStateInput,
 } from "./unit-module-workshop.state-factory";
 
-export class UnitModuleWorkshopModule implements GameModule {
+export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   public readonly id = "unitModuleWorkshop";
 
   private readonly bridge: DataBridge;
@@ -49,10 +54,10 @@ export class UnitModuleWorkshopModule implements GameModule {
   private unlocked = false;
   private visibleModuleIds: UnitModuleId[] = [];
   private levels: Map<UnitModuleId, number> = createDefaultLevels();
-  private listeners = new Set<() => void>();
   private readonly stateFactory: UnitModuleStateFactory;
 
   constructor(options: UnitModuleWorkshopModuleOptions) {
+    super();
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.getSkillLevel = options.getSkillLevel;
@@ -81,14 +86,8 @@ export class UnitModuleWorkshopModule implements GameModule {
   }
 
   public save(): unknown {
-    const serialized: Partial<Record<UnitModuleId, number>> = {};
-    this.levels.forEach((level, id) => {
-      if (level > 0) {
-        serialized[id] = level;
-      }
-    });
     return {
-      levels: serialized,
+      levels: serializeLevelsMap(this.levels),
     } satisfies UnitModuleWorkshopSaveData;
   }
 
@@ -123,13 +122,6 @@ export class UnitModuleWorkshopModule implements GameModule {
 
   public getModuleLevel(id: UnitModuleId): number {
     return this.levels.get(id) ?? 0;
-  }
-
-  public subscribe(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
   }
 
   private refreshUnlockState(): boolean {
@@ -177,43 +169,26 @@ export class UnitModuleWorkshopModule implements GameModule {
       getUpgradeCost: (moduleId, level) => this.getUpgradeCost(moduleId, level),
     }));
     const modules = this.stateFactory.createMany(inputs);
-    this.bridge.setValue<UnitModuleWorkshopBridgeState>(
+    const payload: UnitModuleWorkshopBridgeState = {
+      unlocked: this.unlocked,
+      modules,
+    };
+    DataBridgeHelpers.pushState(
+      this.bridge,
       UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
-      {
-        unlocked: this.unlocked,
-        modules,
-      }
+      payload
     );
-  }
-
-  private notifyListeners(): void {
-    this.listeners.forEach((listener) => {
-      try {
-        listener();
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error("UnitModuleWorkshopModule listener error", error);
-      }
-    });
   }
 
 
 
   private parseSaveData(data: unknown): Map<UnitModuleId, number> {
-    const levels = createDefaultLevels();
-    if (!data || typeof data !== "object") {
-      return levels;
-    }
-    const rawLevels = (data as UnitModuleWorkshopSaveData).levels;
-    if (!rawLevels || typeof rawLevels !== "object") {
-      return levels;
-    }
-    Object.entries(rawLevels).forEach(([key, value]) => {
-      if (UNIT_MODULE_IDS.includes(key as UnitModuleId)) {
-        levels.set(key as UnitModuleId, clampLevel(value));
-      }
-    });
-    return levels;
+    return parseLevelsMapFromSaveData(
+      data,
+      UNIT_MODULE_IDS,
+      createDefaultLevels,
+      (_id, raw) => clampLevel(raw)
+    );
   }
 }
 

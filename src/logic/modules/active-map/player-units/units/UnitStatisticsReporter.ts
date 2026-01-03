@@ -1,4 +1,5 @@
 import { DataBridge } from "../../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../../core/DataBridgeHelpers";
 import type { PlayerUnitBlueprintStats } from "../../../../../types/player-units";
 import type { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 
@@ -32,11 +33,11 @@ export class UnitStatisticsReporter {
     }
 
     if (units.length !== this.lastCount) {
-      this.bridge.setValue(keys.countKey, units.length);
+      DataBridgeHelpers.pushState(this.bridge, keys.countKey, units.length);
       this.lastCount = units.length;
     }
     if (totalHp !== this.lastTotalHp) {
-      this.bridge.setValue(keys.totalHpKey, totalHp);
+      DataBridgeHelpers.pushState(this.bridge, keys.totalHpKey, totalHp);
       this.lastTotalHp = totalHp;
     }
 
@@ -51,7 +52,7 @@ export class UnitStatisticsReporter {
       countsByDesign.forEach((count, designId) => {
         payload[designId] = count;
       });
-      this.bridge.setValue(keys.countsByDesignKey, payload);
+      DataBridgeHelpers.pushState(this.bridge, keys.countsByDesignKey, payload);
       this.lastCountsSignature = signature;
     }
   }
@@ -60,7 +61,7 @@ export class UnitStatisticsReporter {
     blueprints: readonly PlayerUnitBlueprintStats[],
     key: string,
   ): void {
-    this.bridge.setValue(key, blueprints);
+    DataBridgeHelpers.pushState(this.bridge, key, blueprints);
   }
 }
 

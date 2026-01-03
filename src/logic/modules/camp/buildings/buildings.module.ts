@@ -1,5 +1,10 @@
 import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { BaseGameModule } from "../../../core/BaseGameModule";
+import {
+  serializeLevelsMap,
+  parseLevelsMapFromSaveData,
+} from "../../../helpers/save-data.helper";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
 import { UnlockService } from "../../../services/unlock/UnlockService";
@@ -37,7 +42,7 @@ import {
   BuildingStateInput,
 } from "./buildings.state-factory";
 
-export class BuildingsModule implements GameModule {
+export class BuildingsModule extends BaseGameModule<() => void> {
   public readonly id = "buildings";
 
   private readonly bridge: DataBridge;
@@ -49,10 +54,10 @@ export class BuildingsModule implements GameModule {
   private unlocked = false;
   private visibleBuildingIds: BuildingId[] = [];
   private levels: Map<BuildingId, number> = createDefaultLevels();
-  private listeners = new Set<() => void>();
   private readonly stateFactory: BuildingStateFactory;
 
   constructor(options: BuildingsModuleOptions) {
+    super();
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.bonuses = options.bonuses;
@@ -86,13 +91,7 @@ export class BuildingsModule implements GameModule {
   }
 
   public save(): unknown {
-    const serialized: Partial<Record<BuildingId, number>> = {};
-    this.levels.forEach((level, id) => {
-      if (level > 0) {
-        serialized[id] = level;
-      }
-    });
-    return { levels: serialized } satisfies BuildingsSaveData;
+    return { levels: serializeLevelsMap(this.levels) } satisfies BuildingsSaveData;
   }
 
   public tick(_deltaMs: number): void {
@@ -137,13 +136,6 @@ export class BuildingsModule implements GameModule {
 
   public getBuildingLevel(id: BuildingId): number {
     return this.levels.get(id) ?? 0;
-  }
-
-  public subscribe(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
   }
 
   private registerBonusSources(): void {
@@ -206,22 +198,17 @@ export class BuildingsModule implements GameModule {
       unlocked: this.unlocked,
       buildings,
     };
-    this.bridge.setValue(BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY, payload);
+    DataBridgeHelpers.pushState(this.bridge, BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY, payload);
   }
 
 
   private parseSaveData(data: unknown | undefined): Map<BuildingId, number> {
-    const levels = createDefaultLevels();
-    if (!data || typeof data !== "object" || !("levels" in data)) {
-      return levels;
-    }
-    const { levels: serialized } = data as BuildingsSaveData;
-    BUILDING_IDS.forEach((id) => {
-      const config = getBuildingConfig(id);
-      const raw = serialized?.[id];
-      levels.set(id, sanitizeLevel(raw, config));
-    });
-    return levels;
+    return parseLevelsMapFromSaveData(
+      data,
+      BUILDING_IDS,
+      createDefaultLevels,
+      (id, raw) => sanitizeLevel(raw, getBuildingConfig(id))
+    );
   }
 
   private cloneCost(source: ResourceStockpile): Record<string, number> {
@@ -259,16 +246,6 @@ export class BuildingsModule implements GameModule {
       }
     });
     return adjusted;
-  }
-
-  private notifyListeners(): void {
-    this.listeners.forEach((listener) => {
-      try {
-        listener();
-      } catch (error) {
-        console.error("BuildingsModule listener error", error);
-      }
-    });
   }
 
   private getBonusSourceId(id: BuildingId): string {

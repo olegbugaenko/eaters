@@ -11,6 +11,7 @@ import {
   DEFAULT_BRICKS_REQUIRED,
 } from "./tutorial-monitor.const";
 import type { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { MapRunState } from "../map/MapRunState";
@@ -38,13 +39,13 @@ export class TutorialMonitorModule implements GameModule {
   }
 
   public initialize(): void {
-    this.bridge.setValue(TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
+    DataBridgeHelpers.pushState(this.bridge, TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
   }
 
   public reset(): void {
     this.watch = { active: false };
     this.status = DEFAULT_TUTORIAL_MONITOR_STATUS;
-    this.bridge.setValue(TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
+    DataBridgeHelpers.pushState(this.bridge, TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
   }
 
   // No persistence needed; kept for interface compatibility.
@@ -77,7 +78,7 @@ export class TutorialMonitorModule implements GameModule {
       reason,
       version,
     };
-    this.bridge.setValue(TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
+    DataBridgeHelpers.pushState(this.bridge, TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
   }
 
   private handleInput(input: TutorialMonitorInput): void {
@@ -86,7 +87,7 @@ export class TutorialMonitorModule implements GameModule {
 
     if (!input.active) {
       this.status = DEFAULT_TUTORIAL_MONITOR_STATUS;
-      this.bridge.setValue(TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
+      DataBridgeHelpers.pushState(this.bridge, TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
       return;
     }
 
@@ -97,7 +98,7 @@ export class TutorialMonitorModule implements GameModule {
         ready: false,
         version: this.status.version + 1,
       };
-      this.bridge.setValue(TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
+      DataBridgeHelpers.pushState(this.bridge, TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY, this.status);
     }
   }
 

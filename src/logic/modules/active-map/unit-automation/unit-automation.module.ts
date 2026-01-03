@@ -1,5 +1,6 @@
 import { GameModule } from "../../../core/types";
 import type { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import { PLAYER_UNIT_TYPES, PlayerUnitType, isPlayerUnitType } from "../../../../db/player-units-db";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { NecromancerResourceSnapshot } from "../necromancer/necromancer.types";
@@ -322,10 +323,11 @@ export class UnitAutomationModule implements GameModule {
         } satisfies UnitAutomationUnitState;
       })
       .filter((entry): entry is UnitAutomationUnitState => Boolean(entry));
-    this.bridge.setValue<UnitAutomationBridgeState>(UNIT_AUTOMATION_STATE_BRIDGE_KEY, {
+    const payload: UnitAutomationBridgeState = {
       unlocked: this.unlocked,
       units,
-    });
+    };
+    DataBridgeHelpers.pushState(this.bridge, UNIT_AUTOMATION_STATE_BRIDGE_KEY, payload);
   }
 
   private parseSaveData(data: unknown): {

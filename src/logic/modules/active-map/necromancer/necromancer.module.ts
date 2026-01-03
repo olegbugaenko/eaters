@@ -1,5 +1,6 @@
 import { GameModule } from "../../../core/types";
 import { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import {
   PlayerUnitsModule,
   PlayerUnitSpawnData,
@@ -367,7 +368,7 @@ export class NecromancerModule implements GameModule {
         });
       });
     }
-    this.bridge.setValue(NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY, options);
+    DataBridgeHelpers.pushState(this.bridge, NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY, options);
   }
 
   private recomputeMinManaCost(): void {
@@ -497,7 +498,7 @@ export class NecromancerModule implements GameModule {
       },
     };
     this.resourcesDirty = false;
-    this.bridge.setValue(NECROMANCER_RESOURCES_BRIDGE_KEY, payload);
+    DataBridgeHelpers.pushState(this.bridge, NECROMANCER_RESOURCES_BRIDGE_KEY, payload);
   }
 
   private parseSaveData(data: unknown): ResourceAmountMap | null {

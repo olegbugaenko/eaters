@@ -17,6 +17,7 @@ import type {
   ResourcesSaveData,
 } from "./resources.types";
 import type { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import type { MapRunState } from "../../active-map/map/MapRunState";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { BonusesModule } from "../bonuses/bonuses.module";
@@ -310,7 +311,7 @@ export class ResourcesModule implements GameModule {
   }
 
   private pushTotals(): void {
-    this.bridge.setValue(RESOURCE_TOTALS_BRIDGE_KEY, this.createTotalsPayload());
+    DataBridgeHelpers.pushState(this.bridge, RESOURCE_TOTALS_BRIDGE_KEY, this.createTotalsPayload());
   }
 
   private pushRunSummary(): void {
@@ -320,11 +321,11 @@ export class ResourcesModule implements GameModule {
       bricksDestroyed: this.runBricksDestroyed,
       totalBricksDestroyed: this.totalBricksDestroyed,
     };
-    this.bridge.setValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY, payload);
+    DataBridgeHelpers.pushState(this.bridge, RESOURCE_RUN_SUMMARY_BRIDGE_KEY, payload);
   }
 
   private pushRunDuration(): void {
-    this.bridge.setValue(RESOURCE_RUN_DURATION_BRIDGE_KEY, this.runDurationMs);
+    DataBridgeHelpers.pushState(this.bridge, RESOURCE_RUN_DURATION_BRIDGE_KEY, this.runDurationMs);
   }
 
   private createTotalsPayload(): ResourceAmountPayload[] {

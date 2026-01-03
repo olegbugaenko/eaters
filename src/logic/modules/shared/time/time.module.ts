@@ -1,4 +1,5 @@
 import { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import { GameModule } from "../../../core/types";
 
 const BRIDGE_KEY = "time-played";
@@ -42,7 +43,7 @@ export class TestTimeModule implements GameModule {
   }
 
   private pushState(): void {
-    this.options.bridge.setValue(BRIDGE_KEY, this.timePlayedMs);
+    DataBridgeHelpers.pushState(this.options.bridge, BRIDGE_KEY, this.timePlayedMs);
   }
 }
 

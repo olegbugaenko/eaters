@@ -1,5 +1,6 @@
 import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import { BrickConfig, BrickType, getBrickConfig } from "../../../../db/bricks-db";
 import type {
   SceneFill,
@@ -505,12 +506,12 @@ export class BricksModule implements GameModule {
   private pushStats(): void {
     const brickCount = this.bricks.size;
     if (brickCount !== this.lastPushedBrickCount) {
-      this.options.bridge.setValue(BRICK_COUNT_BRIDGE_KEY, brickCount);
+      DataBridgeHelpers.pushState(this.options.bridge, BRICK_COUNT_BRIDGE_KEY, brickCount);
       this.lastPushedBrickCount = brickCount;
     }
     const totalHp = Math.max(0, Math.floor(this.totalHpCached));
     if (totalHp !== this.lastPushedTotalHp) {
-      this.options.bridge.setValue(BRICK_TOTAL_HP_BRIDGE_KEY, totalHp);
+      DataBridgeHelpers.pushState(this.options.bridge, BRICK_TOTAL_HP_BRIDGE_KEY, totalHp);
       this.lastPushedTotalHp = totalHp;
     }
   }

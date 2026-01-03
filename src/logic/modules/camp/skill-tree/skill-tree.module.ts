@@ -1,5 +1,7 @@
 import { GameModule } from "../../../core/types";
 import type { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { parseLevelsRecordFromSaveData } from "../../../helpers/save-data.helper";
 import {
   SKILL_IDS,
   SkillConfig,
@@ -117,7 +119,7 @@ export class SkillTreeModule implements GameModule {
     const payload: SkillTreeBridgePayload = {
       nodes: SKILL_IDS.map((id) => this.createNodePayload(id)),
     };
-    this.bridge.setValue(SKILL_TREE_STATE_BRIDGE_KEY, payload);
+    DataBridgeHelpers.pushState(this.bridge, SKILL_TREE_STATE_BRIDGE_KEY, payload);
   }
 
   private createNodePayload(id: SkillId): SkillNodeBridgePayload {
@@ -159,20 +161,13 @@ export class SkillTreeModule implements GameModule {
 
 
   private parseSaveData(data: unknown): SkillLevelMap | null {
-    if (!data || typeof data !== "object" || !("levels" in data)) {
-      return null;
-    }
-
-    const { levels } = data as SkillTreeSaveData;
-    const next = createDefaultLevels();
-    SKILL_IDS.forEach((id) => {
-      const config = getSkillConfig(id);
-      const raw = levels?.[id];
-      if (typeof raw === "number") {
-        next[id] = clampLevel(raw, config);
-      }
-    });
-    return next;
+    return parseLevelsRecordFromSaveData(
+      data,
+      SKILL_IDS,
+      createDefaultLevels,
+      (id, raw) =>
+        typeof raw === "number" ? clampLevel(raw, getSkillConfig(id)) : 0
+    );
   }
 
   private registerBonusSources(): void {

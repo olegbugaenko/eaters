@@ -1,5 +1,6 @@
 import { GameModule } from "../../../core/types";
 import type { DataBridge } from "../../../core/DataBridge";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import {
@@ -416,7 +417,7 @@ export class SpellcastingModule implements GameModule {
             return base as SpellOption;
         }
       });
-    this.bridge.setValue(SPELL_OPTIONS_BRIDGE_KEY, payload);
+    DataBridgeHelpers.pushState(this.bridge, SPELL_OPTIONS_BRIDGE_KEY, payload);
     this.optionsDirty = false;
   }
 

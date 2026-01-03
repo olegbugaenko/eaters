@@ -1,5 +1,6 @@
 import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
+import { BaseGameModule } from "../../../core/BaseGameModule";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import {
   PLAYER_UNIT_TYPES,
   PlayerUnitType,
@@ -69,7 +70,7 @@ import {
   computeModuleValue,
 } from "./unit-design.helpers";
 
-export class UnitDesignModule implements GameModule {
+export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
   public readonly id = "unitDesign";
 
   private readonly bridge: DataBridge;
@@ -86,11 +87,11 @@ export class UnitDesignModule implements GameModule {
   private rosterInitialized = false;
   private designTargeting = new Map<UnitDesignId, UnitTargetingMode>();
   private cachedBonuses: BonusValueMap | null = null;
-  private listeners = new Set<UnitDesignerListener>();
   private unsubscribeBonuses: (() => void) | null = null;
   private unsubscribeWorkshop: (() => void) | null = null;
 
   constructor(options: UnitDesignModuleOptions) {
+    super();
     this.bridge = options.bridge;
     this.bonuses = options.bonuses;
     this.workshop = options.workshop;
@@ -264,12 +265,10 @@ export class UnitDesignModule implements GameModule {
     return this.cachedComputed.get(foundId) ?? null;
   }
 
-  public subscribe(listener: UnitDesignerListener): () => void {
-    this.listeners.add(listener);
-    listener(this.getAllDesigns());
-    return () => {
-      this.listeners.delete(listener);
-    };
+  public override subscribe(listener: UnitDesignerListener): () => void {
+    return super.subscribe(listener, () => {
+      listener(this.getAllDesigns());
+    });
   }
 
   public setActiveRoster(roster: readonly UnitDesignId[]): void {
@@ -485,14 +484,15 @@ export class UnitDesignModule implements GameModule {
       const mode = this.ensureDesignTargeting(id);
       targetingByUnit[id] = { mode };
     });
-    this.bridge.setValue<UnitDesignerBridgeState>(UNIT_DESIGNER_STATE_BRIDGE_KEY, {
+    const payload: UnitDesignerBridgeState = {
       units,
       availableModules,
       maxModules: MAX_MODULES_PER_UNIT,
       activeRoster: [...this.activeRoster],
       maxActiveUnits: MAX_ACTIVE_UNITS,
       targetingByUnit,
-    });
+    };
+    DataBridgeHelpers.pushState(this.bridge, UNIT_DESIGNER_STATE_BRIDGE_KEY, payload);
   }
 
   private createAvailableModules(): UnitDesignerAvailableModuleState[] {

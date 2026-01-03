@@ -1,4 +1,5 @@
 import { GameModule } from "../../../core/types";
+import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import type { BrickData } from "../bricks/bricks.types";
 import { PlayerUnitSpawnData } from "../player-units/player-units.module";
@@ -371,13 +372,11 @@ export class MapModule implements GameModule {
   }
 
   private pushAutoRestartState(): void {
-    this.options.bridge.setValue<MapAutoRestartState>(
-      MAP_AUTO_RESTART_BRIDGE_KEY,
-      {
-        unlocked: this.autoRestartUnlocked,
-        enabled: this.autoRestartUnlocked && this.autoRestartEnabled,
-      }
-    );
+    const payload: MapAutoRestartState = {
+      unlocked: this.autoRestartUnlocked,
+      enabled: this.autoRestartUnlocked && this.autoRestartEnabled,
+    };
+    DataBridgeHelpers.pushState(this.options.bridge, MAP_AUTO_RESTART_BRIDGE_KEY, payload);
   }
 
   private generateBricks(config: MapConfig, mapLevel: number): BrickData[] {
@@ -450,7 +449,7 @@ export class MapModule implements GameModule {
 
   private pushClearedLevelsTotal(): void {
     const total = this.getTotalClearedLevels();
-    this.options.bridge.setValue<number>(MAP_CLEARED_LEVELS_BRIDGE_KEY, total);
+    DataBridgeHelpers.pushState(this.options.bridge, MAP_CLEARED_LEVELS_BRIDGE_KEY, total);
     this.options.bonuses.setEffectContext({
       [BONUS_CONTEXT_CLEARED_LEVELS]: total,
     });
@@ -461,11 +460,12 @@ export class MapModule implements GameModule {
     this.unlocks.clearCache();
     const list = this.getAvailableMaps();
     this.pushClearedLevelsTotal();
-    this.options.bridge.setValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY, list);
+    DataBridgeHelpers.pushState(this.options.bridge, MAP_LIST_BRIDGE_KEY, list);
   }
 
   private pushSelectedMap(): void {
-    this.options.bridge.setValue<MapId | null>(
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
       MAP_SELECTED_BRIDGE_KEY,
       this.selection.getSelectedMapId()
     );
@@ -473,11 +473,12 @@ export class MapModule implements GameModule {
 
   private pushSelectedMapLevel(): void {
     const level = this.selection.getSelectedMapId() ? this.selection.getSelectedMapLevel() : 0;
-    this.options.bridge.setValue<number>(MAP_SELECTED_LEVEL_BRIDGE_KEY, level);
+    DataBridgeHelpers.pushState(this.options.bridge, MAP_SELECTED_LEVEL_BRIDGE_KEY, level);
   }
 
   private pushLastPlayedMap(): void {
-    this.options.bridge.setValue<{ mapId: MapId; level: number } | null>(
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
       MAP_LAST_PLAYED_BRIDGE_KEY,
       this.selection.getLastPlayedMap()
     );

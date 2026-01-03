@@ -1,4 +1,4 @@
-import { GameModule } from "../../../core/types";
+import { BaseGameModule } from "../../../core/BaseGameModule";
 import { BonusId, getBonusConfig } from "../../../../db/bonuses-db";
 import {
   BonusEffectContext,
@@ -23,13 +23,12 @@ import {
 // Re-export types for backward compatibility
 export type { BonusValueMap, BonusValuesListener } from "./bonuses.types";
 
-export class BonusesModule implements GameModule {
+export class BonusesModule extends BaseGameModule<BonusValuesListener> {
   public readonly id = "bonuses";
 
   private sources = new Map<string, BonusSourceState>();
   private cachedValues: BonusValueMap = createBonusValueMap((config) => config.defaultValue);
   private dirty = true;
-  private listeners = new Set<BonusValuesListener>();
   private effectContext: BonusEffectContext = {};
 
   public initialize(): void {
@@ -141,12 +140,10 @@ export class BonusesModule implements GameModule {
     });
   }
 
-  public subscribe(listener: BonusValuesListener): () => void {
-    this.listeners.add(listener);
-    listener(this.getAllValues());
-    return () => {
-      this.listeners.delete(listener);
-    };
+  public override subscribe(listener: BonusValuesListener): () => void {
+    return super.subscribe(listener, () => {
+      listener(this.getAllValues());
+    });
   }
 
   private sanitizeEffects(effects: BonusEffectMap | undefined): SanitizedBonusEffects {
@@ -243,12 +240,9 @@ export class BonusesModule implements GameModule {
     this.notifyListeners();
   }
 
-  private notifyListeners(): void {
-    if (this.listeners.size === 0) {
-      return;
-    }
+  protected override notifyListeners(): void {
     const snapshot = this.getAllValues();
-    this.listeners.forEach((listener) => listener(snapshot));
+    this.notifyListenersWith((listener) => listener(snapshot));
   }
 }
 
