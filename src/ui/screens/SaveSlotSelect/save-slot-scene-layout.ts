@@ -33,11 +33,11 @@ import {
 } from "./save-slot-scene-config";
 import {
   createBrickFill,
-  cloneSceneColor,
   cloneEmitterConfig,
   cloneRendererConfigForScene,
   deriveRendererStroke,
 } from "./save-slot-scene-utils";
+import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
 
 export type SceneBounds = { x: number; y: number; width: number; height: number };
 
@@ -511,7 +511,9 @@ export const createCreatures = (
     };
     const renderer = cloneRendererConfigForScene(PLAYER_UNIT_CONFIG.renderer);
     const baseFillColor = cloneSceneColor(PLAYER_UNIT_CONFIG.renderer.fill)!;
-    const baseStrokeColor = cloneSceneColor(PLAYER_UNIT_BASE_STROKE?.color);
+    const baseStrokeColor = PLAYER_UNIT_BASE_STROKE?.color
+      ? cloneSceneColor(PLAYER_UNIT_BASE_STROKE.color)
+      : undefined;
     const emitter = cloneEmitterConfig(PLAYER_UNIT_CONFIG.emitter);
     const objectId = scene.addObject("playerUnit", {
       position: initialPosition,

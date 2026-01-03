@@ -25,7 +25,7 @@ import { PLAYER_UNIT_ABILITY_DEFINITIONS } from "../abilities";
 import type { AbilityDescription } from "../abilities/ability.types";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import { sanitizeRuntimeModifiers } from "../player-units.helpers";
-import { cloneSceneFill } from "../../../../helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 
 export interface UnitFactoryOptions {
   scene: SceneObjectManager;

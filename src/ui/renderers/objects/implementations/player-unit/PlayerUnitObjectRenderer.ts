@@ -9,11 +9,9 @@ import {
   createDynamicPolygonPrimitive,
   createParticleEmitterPrimitive,
 } from "../../../primitives";
-import { hasStroke, expandVerticesForStroke, createStrokeFill } from "../../shared/helpers";
+import { hasStroke, expandVerticesForStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
 import {
   extractRendererData,
-  sanitizeVertices,
-  sanitizeOffset,
 } from "./helpers";
 import { createCompositePrimitives } from "./composite-primitives.helpers";
 import {
@@ -28,7 +26,7 @@ import {
   getCurrentAuraBatch,
   writeAuraInstance,
 } from "./aura.helpers";
-import type { RendererData, PlayerUnitEmitterRenderConfig } from "./types";
+import type { PlayerUnitEmitterRenderConfig } from "./types";
 
 /**
  * Updates aura instances positions

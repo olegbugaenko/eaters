@@ -1,4 +1,4 @@
-import { createRadialGradientFill } from "../../../helpers/scene-fill.helper";
+import { createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
 import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { BulletConfig, BulletTailConfig, BulletType } from "../../../../db/bullets-db";

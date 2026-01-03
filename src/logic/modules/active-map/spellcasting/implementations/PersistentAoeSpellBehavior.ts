@@ -16,10 +16,10 @@ import {
   SpellPersistentAoeVisualConfig,
   SpellPersistentAoeEffectConfig,
 } from "../../../../../db/spells-db";
-import { clampNumber } from "@shared/helpers/numbers.helper";
+import { clampNumber, clamp01, lerp } from "@shared/helpers/numbers.helper";
 import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
-import { cloneSceneFill } from "../../../../helpers/scene-fill.helper";
-import { sanitizeSceneColor } from "../../../../helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import {
   MIN_DURATION_MS,
@@ -282,6 +282,12 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     return { explosion, glowColor, glowAlpha, particle, fireColor };
   }
 
+  /**
+   * Sanitizes particle emitter config for persistent AOE spells.
+   * Note: This is a specialized implementation due to unique fields (radialSpeed, tangentialSpeed, spawnJitter)
+   * that are not part of the standard ParticleEmitterBaseConfig.
+   * For standard emitter configs, use sanitizeParticleEmitterConfig from ParticleEmitterPrimitive.
+   */
   private sanitizeParticleEmitterConfig(
     emitter: ParticleEmitterConfig,
   ): PersistentAoeParticleRuntimeConfig | null {
@@ -355,9 +361,9 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       outerRadius: outer,
       thickness: ring.thickness,
       intensity: 1,
-      glowColor: cloneColor(visual.glowColor),
+      glowColor: cloneSceneColor(visual.glowColor),
       glowAlpha: visual.glowAlpha,
-      fireColor: cloneColor(visual.fireColor),
+      fireColor: cloneSceneColor(visual.fireColor),
       durationMs,
       particle: visual.particle
         ? {
@@ -365,7 +371,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
             particleLifetimeMs: visual.particle.particleLifetimeMs,
             fadeStartMs: visual.particle.fadeStartMs,
             sizeRange: { ...visual.particle.sizeRange },
-            color: cloneColor(visual.particle.color),
+            color: cloneSceneColor(visual.particle.color),
             fill: visual.particle.fill ? cloneSceneFill(visual.particle.fill) : undefined,
             maxParticles: visual.particle.maxParticles,
             radialSpeed: { ...visual.particle.radialSpeed },
@@ -473,13 +479,3 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
   }
 }
 
-const clamp01 = (value: number): number => clampNumber(value, 0, 1);
-
-const lerp = (a: number, b: number, t: number): number => a + (b - a) * clamp01(t);
-
-const cloneColor = (color: SceneColor): SceneColor => ({
-  r: color.r,
-  g: color.g,
-  b: color.b,
-  a: typeof color.a === "number" ? color.a : 1,
-});

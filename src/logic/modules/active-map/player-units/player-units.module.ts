@@ -16,7 +16,7 @@ import {
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
 } from "../../../visuals/VisualEffectState";
-import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,
@@ -43,7 +43,7 @@ import {
   vectorLength,
   vectorHasLength,
 } from "../../../../shared/helpers/vector.helper";
-import { cloneSceneColor, sceneColorsEqual } from "../../../helpers/scene-color.helper";
+import { cloneSceneColor, sceneColorsEqual } from "@shared/helpers/scene-color.helper";
 import { roundStat, sanitizeNumber } from "../../../../shared/helpers/numbers.helper";
 import { UnitStateFactory, UnitStateInput } from "./player-units.state-factory";
 import {

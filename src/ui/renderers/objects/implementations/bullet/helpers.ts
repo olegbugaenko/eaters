@@ -1,43 +1,18 @@
 import type {
   SceneObjectInstance,
   SceneColor,
-  SceneVector2,
-  SceneFill,
-  SceneLinearGradientFill,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
-import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
-import { transformObjectPoint } from "../../ObjectRenderer";
-import { randomBetween, clamp } from "../../shared/helpers";
+import { randomBetween, clamp } from "@shared/helpers/numbers.helper";
 import type {
   BulletRendererCustomData,
-  BulletTailRenderConfig,
-  BulletTailEmitterRenderConfig,
-  BulletGlowConfig,
-  BulletEmitterKey,
 } from "./types";
 import {
-  DEFAULT_TAIL_CONFIG,
-  DEFAULT_GLOW_COLOR,
-  DEFAULT_GLOW_RADIUS_MULTIPLIER,
   MIN_SPEED,
   DEFAULT_SPEED_FOR_TAIL_SCALE,
 } from "./constants";
-import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
 
-/**
- * Clones a color with fallback
- */
-export const cloneColor = (
-  color: SceneColor | undefined,
-  fallback: SceneColor
-): SceneColor => ({
-  r: typeof color?.r === "number" ? color.r : fallback.r,
-  g: typeof color?.g === "number" ? color.g : fallback.g,
-  b: typeof color?.b === "number" ? color.b : fallback.b,
-  a: typeof color?.a === "number" ? color.a : fallback.a,
-});
+// Use sanitizeSceneColor for sanitization with fallback
+// Use cloneSceneColor for simple cloning without fallback
 
 /**
  * Gets render components configuration

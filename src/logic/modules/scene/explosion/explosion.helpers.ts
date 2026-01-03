@@ -9,8 +9,12 @@ import { ExplosionConfig, ExplosionRendererEmitterConfig } from "../../../../db/
 import {
   cloneSceneFill,
   createRadialGradientFill,
-} from "../../../helpers/scene-fill.helper";
-import { cloneSceneColor } from "../../../helpers/scene-color.helper";
+} from "@shared/helpers/scene-fill.helper";
+import {
+  cloneSceneColor,
+  ensureColorAlpha,
+  cloneColorWithAlpha,
+} from "@shared/helpers/scene-color.helper";
 import { sanitizeAngle, sanitizeArc } from "../../../../shared/helpers/angle.helper";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 import type { WaveState } from "./explosion.types";
@@ -39,17 +43,15 @@ export const createReusableWaveFill = (
       : [
           {
             offset: normalizedInnerRadius,
-            color: { ...baseColor, a: 0 },
+            color: cloneColorWithAlpha(baseColor, 0),
           },
         ];
 
   const stops = sourceStops.map((stop) => ({
     offset: normalizedInnerRadius + clamp01(stop.offset) * (1 - normalizedInnerRadius),
     color: {
-      r: stop.color.r,
-      g: stop.color.g,
-      b: stop.color.b,
-      a: clamp01((typeof stop.color.a === "number" ? stop.color.a : 1) * alpha),
+      ...stop.color,
+      a: clamp01(ensureColorAlpha(stop.color) * alpha),
     },
   }));
 
@@ -97,7 +99,7 @@ export const updateWaveFill = (
     target.color.r = color.r;
     target.color.g = color.g;
     target.color.b = color.b;
-    target.color.a = clamp01((typeof color.a === "number" ? color.a : 1) * alpha);
+    target.color.a = clamp01(ensureColorAlpha(color) * alpha);
   }
 
   if (normalizedInnerRadius > 0 && wave.mutableStops[0]) {

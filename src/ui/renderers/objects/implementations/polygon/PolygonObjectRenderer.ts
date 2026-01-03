@@ -4,7 +4,7 @@ import {
   createStaticPolygonPrimitive,
   createStaticPolygonStrokePrimitive,
 } from "../../../primitives";
-import { hasStroke } from "../../shared/helpers";
+import { hasStroke } from "@shared/helpers/stroke.helper";
 import { extractCustomData } from "./helpers";
 
 export class PolygonObjectRenderer extends ObjectRenderer {

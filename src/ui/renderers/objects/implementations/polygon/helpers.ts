@@ -1,5 +1,5 @@
 import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { isVector, sanitizeOffset as sanitizeOffsetShared } from "../../shared/helpers";
+import { isVector, sanitizeOffset } from "@shared/helpers/vector.helper";
 import { DEFAULT_VERTICES } from "./constants";
 import type { PolygonCustomData } from "./types";
 
@@ -19,10 +19,7 @@ export const normalizeVertices = (vertices: SceneVector2[] | undefined): SceneVe
   return sanitized;
 };
 
-/**
- * Normalizes offset vector
- */
-export const normalizeOffset = sanitizeOffsetShared;
+// sanitizeOffset is now imported directly from @shared/helpers/vector.helper
 
 /**
  * Extracts and sanitizes custom data from instance
@@ -36,6 +33,6 @@ export const extractCustomData = (
   }
   return {
     vertices: normalizeVertices(payload.vertices),
-    offset: normalizeOffset(payload.offset),
+    offset: sanitizeOffset(payload.offset),
   };
 };

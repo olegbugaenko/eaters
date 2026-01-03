@@ -5,39 +5,9 @@ import type {
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneFill } from "@/logic/helpers/scene-fill.helper";
-import { computeCenter, expandVerticesForStroke } from "../../shared/helpers";
+import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
+import { computeCenter, sanitizeVertices } from "@shared/helpers/vector.helper";
 import type { AuraRendererFillConfig, AuraRendererStrokeConfig } from "./types";
-
-/**
- * Clones fill noise configuration
- */
-export const cloneFillNoise = (
-  noise: SceneFillNoise | undefined
-): SceneFillNoise | undefined => (noise ? { ...noise } : undefined);
-
-/**
- * Clones fill filaments configuration
- */
-export const cloneFillFilaments = (
-  filaments: SceneFillFilaments | undefined
-): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
-
-/**
- * Sanitizes vertices array, filtering out invalid entries
- */
-export const sanitizeVertices = (
-  vertices: readonly SceneVector2[] | undefined
-): SceneVector2[] => {
-  if (!Array.isArray(vertices)) return [];
-  const out: SceneVector2[] = [];
-  vertices.forEach((v) => {
-    if (v && typeof v.x === "number" && typeof v.y === "number") {
-      out.push({ x: v.x, y: v.y });
-    }
-  });
-  return out;
-};
 
 /**
  * Gets stroke width from AuraRendererStrokeConfig
@@ -58,8 +28,8 @@ export const resolveFill = (fill: AuraRendererFillConfig | undefined): SceneFill
     return {
       fillType: FILL_TYPES.SOLID,
       color: { ...fill.color },
-      ...(fill.noise ? { noise: cloneFillNoise(fill.noise) } : {}),
-      ...(fill.filaments ? { filaments: cloneFillFilaments(fill.filaments) } : {}),
+      ...(fill.noise ? { noise: cloneSceneFillNoise(fill.noise) } : {}),
+      ...(fill.filaments ? { filaments: cloneSceneFillFilaments(fill.filaments) } : {}),
     };
   }
   // gradient: incoming is SceneFill-compatible

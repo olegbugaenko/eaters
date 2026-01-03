@@ -3,7 +3,7 @@ import type {
   SceneFill,
 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { BrickConfig } from "../../../../db/bricks-db";
-import { cloneSceneFillNoise, cloneSceneFillFilaments } from "../../../helpers/scene-fill.helper";
+import { cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
 
 export const createBrickFill = (config: BrickConfig): SceneFill => {
   const fill = config.fill;

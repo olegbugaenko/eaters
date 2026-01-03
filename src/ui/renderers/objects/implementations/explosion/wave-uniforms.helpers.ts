@@ -8,9 +8,9 @@ import type {
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { sanitizeSceneColor } from "@/logic/helpers/scene-color.helper";
+import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
 import type { WaveUniformConfig } from "../../../primitives/gpu/ExplosionWaveGpuRenderer";
-import { clamp01 } from "../../shared/helpers";
+import { clamp01 } from "@shared/helpers/numbers.helper";
 
 /**
  * Converts a SceneFill to WaveUniformConfig and generates a cache key

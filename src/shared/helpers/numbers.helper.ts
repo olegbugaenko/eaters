@@ -102,7 +102,28 @@ export const clampProbability = (value: number | undefined): number => {
 /**
  * Clamps a value between 0 and 1.
  */
-export const clamp01 = (value: number): number => clampNumber(value, 0, 1);
+export const clamp01 = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return clampNumber(value, 0, 1);
+};
+
+/**
+ * Clamps a number between min and max (alias for clampNumber for compatibility)
+ */
+export const clamp = (value: number, min: number, max: number): number => {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  if (value < min) {
+    return min;
+  }
+  if (value > max) {
+    return max;
+  }
+  return value;
+};
 
 /**
  * Returns a random integer between min and max (inclusive).
@@ -120,13 +141,15 @@ export const randomIntInclusive = (config: { min: number; max: number }): number
 
 /**
  * Linear interpolation between two values.
- * @param start - Start value
- * @param end - End value
- * @param t - Interpolation factor (typically between 0 and 1, but not clamped)
+ * @param start - Start value (or 'a' for compatibility)
+ * @param end - End value (or 'b' for compatibility)
+ * @param t - Interpolation factor (clamped between 0 and 1)
  * @returns Interpolated value
  */
-export const lerp = (start: number, end: number, t: number): number =>
-  start + (end - start) * t;
+export const lerp = (start: number, end: number, t: number): number => {
+  const clampedT = clamp01(t);
+  return start + (end - start) * clampedT;
+};
 
 
 /**

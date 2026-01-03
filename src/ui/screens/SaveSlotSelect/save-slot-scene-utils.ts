@@ -10,6 +10,8 @@ import {
   SceneStroke,
 } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFillDeep, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
 import { getBrickConfig } from "@db/bricks-db";
 import type { ParticleEmitterConfig } from "@logic/interfaces/visuals/particle-emitters-config";
 import {
@@ -63,110 +65,8 @@ export const createBrickFill = (config: ReturnType<typeof getBrickConfig>): Scen
   }
 };
 
-/**
- * Clones a SceneColor
- */
-export const cloneColor = (color: SceneColor | undefined): SceneColor | undefined => {
-  if (!color) {
-    return undefined;
-  }
-  const clone: SceneColor = {
-    r: color.r,
-    g: color.g,
-    b: color.b,
-  };
-  if (typeof color.a === "number" && Number.isFinite(color.a)) {
-    clone.a = color.a;
-  }
-  return clone;
-};
 
-/**
- * Clones a SceneColor (alias for cloneColor)
- */
-export const cloneSceneColor = (color: SceneColor | undefined): SceneColor | undefined => {
-  if (!color) {
-    return undefined;
-  }
-  const cloned: SceneColor = {
-    r: color.r,
-    g: color.g,
-    b: color.b,
-  };
-  if (typeof color.a === "number" && Number.isFinite(color.a)) {
-    cloned.a = color.a;
-  }
-  return cloned;
-};
-
-/**
- * Clones a SceneFill deeply
- */
-export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID: {
-      const solidFill = fill as SceneSolidFill;
-      const solid: SceneSolidFill = {
-        fillType: FILL_TYPES.SOLID,
-        color: cloneSceneColor(solidFill.color) ?? solidFill.color,
-      };
-      if (solidFill.noise) {
-        solid.noise = { ...solidFill.noise };
-      }
-      return solid;
-    }
-    case FILL_TYPES.LINEAR_GRADIENT: {
-      const linearFill = fill as SceneLinearGradientFill;
-      const linear: SceneLinearGradientFill = {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: linearFill.start ? { ...linearFill.start } : undefined,
-        end: linearFill.end ? { ...linearFill.end } : undefined,
-        stops: linearFill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: cloneSceneColor(stop.color) ?? stop.color,
-        })),
-      };
-      if (linearFill.noise) {
-        linear.noise = { ...linearFill.noise };
-      }
-      return linear;
-    }
-    case FILL_TYPES.RADIAL_GRADIENT: {
-      const radialFill = fill as SceneRadialGradientFill;
-      const radial: SceneRadialGradientFill = {
-        fillType: FILL_TYPES.RADIAL_GRADIENT,
-        start: radialFill.start ? { ...radialFill.start } : undefined,
-        end: typeof radialFill.end === "number" ? radialFill.end : 0,
-        stops: radialFill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: cloneSceneColor(stop.color) ?? stop.color,
-        })),
-      };
-      if (radialFill.noise) {
-        radial.noise = { ...radialFill.noise };
-      }
-      return radial;
-    }
-    case FILL_TYPES.DIAMOND_GRADIENT: {
-      const diamondFill = fill as SceneDiamondGradientFill;
-      const diamond: SceneDiamondGradientFill = {
-        fillType: FILL_TYPES.DIAMOND_GRADIENT,
-        start: diamondFill.start ? { ...diamondFill.start } : undefined,
-        end: typeof diamondFill.end === "number" ? diamondFill.end : 0,
-        stops: diamondFill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: cloneSceneColor(stop.color) ?? stop.color,
-        })),
-      };
-      if (diamondFill.noise) {
-        diamond.noise = { ...diamondFill.noise };
-      }
-      return diamond;
-    }
-    default:
-      return fill;
-  }
-};
+// cloneSceneFillDeep is now imported from @shared/helpers/scene-fill.helper
 
 /**
  * Clones a ParticleEmitterConfig
@@ -187,7 +87,7 @@ export const cloneEmitterConfig = (
     sizeRange: { min: emitter.sizeRange.min, max: emitter.sizeRange.max },
     spread: emitter.spread,
     offset: emitter.offset ? { x: emitter.offset.x, y: emitter.offset.y } : { x: 0, y: 0 },
-    color: cloneSceneColor(emitter.color) ?? { ...emitter.color },
+    color: cloneSceneColor(emitter.color),
     fill: emitter.fill ? cloneSceneFillDeep(emitter.fill) : undefined,
     shape: emitter.shape,
     maxParticles: emitter.maxParticles,
@@ -207,7 +107,7 @@ export const cloneRendererStrokeConfig = (
     return {
       type: "solid",
       width: stroke.width,
-      color: cloneSceneColor(stroke.color) ?? stroke.color,
+      color: stroke.color ? cloneSceneColor(stroke.color) : stroke.color,
     };
   }
   return {
@@ -230,61 +130,15 @@ export const cloneRendererFillConfig = (
   if (fill.type === "solid") {
     return {
       type: "solid",
-      color: cloneSceneColor(fill.color) ?? fill.color,
-      ...(fill.noise ? { noise: { ...fill.noise } } : {}),
+      color: fill.color ? cloneSceneColor(fill.color) : fill.color,
+      ...(fill.noise ? { noise: cloneSceneFillNoise(fill.noise) } : {}),
     };
   }
   if (fill.type === "gradient") {
-    const gradient = fill.fill;
-    if (gradient.fillType === FILL_TYPES.SOLID) {
-      const solidFill = gradient as SceneSolidFill;
-      return {
-        type: "gradient",
-        fill: {
-          fillType: solidFill.fillType,
-          color: cloneSceneColor(solidFill.color) ?? solidFill.color,
-          ...(solidFill.noise ? { noise: { ...solidFill.noise } } : {}),
-        },
-      };
-    }
-    if (gradient.fillType === FILL_TYPES.LINEAR_GRADIENT) {
-      const linearGradient = gradient as SceneLinearGradientFill;
-      return {
-        type: "gradient",
-        fill: {
-          fillType: linearGradient.fillType,
-          start: linearGradient.start ? { ...linearGradient.start } : undefined,
-          end: linearGradient.end ? { ...linearGradient.end } : undefined,
-          stops: linearGradient.stops.map((stop) => ({
-            offset: stop.offset,
-            color: cloneSceneColor(stop.color) ?? stop.color,
-          })),
-          ...(linearGradient.noise ? { noise: { ...linearGradient.noise } } : {}),
-        },
-      };
-    }
-    if (
-      gradient.fillType === FILL_TYPES.RADIAL_GRADIENT ||
-      gradient.fillType === FILL_TYPES.DIAMOND_GRADIENT
-    ) {
-      const radialOrDiamondFill = gradient as SceneRadialGradientFill | SceneDiamondGradientFill;
-      return {
-        type: "gradient",
-        fill: {
-          fillType: radialOrDiamondFill.fillType,
-          start: radialOrDiamondFill.start ? { ...radialOrDiamondFill.start } : undefined,
-          end: typeof radialOrDiamondFill.end === "number" ? radialOrDiamondFill.end : undefined,
-          stops: radialOrDiamondFill.stops.map((stop) => ({
-            offset: stop.offset,
-            color: cloneSceneColor(stop.color) ?? stop.color,
-          })),
-          ...(radialOrDiamondFill.noise ? { noise: { ...radialOrDiamondFill.noise } } : {}),
-        },
-      };
-    }
+    // Use cloneSceneFillDeep for all gradient types - it handles all cases correctly
     return {
       type: "gradient",
-      fill: cloneSceneFillDeep(gradient),
+      fill: cloneSceneFillDeep(fill.fill),
     };
   }
   return {
@@ -343,7 +197,7 @@ export const cloneAuraConfig = (
   outerRadius: aura.outerRadius,
   petalWidth: aura.petalWidth,
   rotationSpeed: aura.rotationSpeed,
-  color: cloneSceneColor(aura.color) ?? aura.color,
+  color: aura.color ? cloneSceneColor(aura.color) : aura.color,
   alpha: aura.alpha,
   requiresModule: aura.requiresModule,
   pointInward: aura.pointInward,
@@ -357,7 +211,7 @@ export const deriveRendererStroke = (
 ): SceneStroke | undefined => {
   if (renderer.stroke) {
     return {
-      color: cloneColor(renderer.stroke.color) ?? renderer.stroke.color,
+      color: renderer.stroke.color ? cloneSceneColor(renderer.stroke.color) : renderer.stroke.color,
       width: renderer.stroke.width,
     };
   }
@@ -370,7 +224,7 @@ export const deriveRendererStroke = (
           ? layerStroke.width
           : 2;
       return {
-        color: cloneColor(layerStroke.color) ?? layerStroke.color,
+        color: layerStroke.color ? cloneSceneColor(layerStroke.color) : layerStroke.color,
         width,
       };
     }
@@ -388,14 +242,14 @@ export const cloneRendererConfigForScene = (
   const strokeSource = renderer.stroke ?? deriveRendererStroke(renderer);
   const stroke = strokeSource
     ? {
-        color: cloneSceneColor(strokeSource.color) ?? strokeSource.color,
+        color: strokeSource.color ? cloneSceneColor(strokeSource.color) : strokeSource.color,
         width: strokeSource.width,
       }
     : undefined;
 
   return {
     kind: renderer.kind,
-    fill: cloneSceneColor(renderer.fill) ?? { ...renderer.fill },
+    fill: cloneSceneColor(renderer.fill),
     stroke,
     layers: renderer.layers.map((layer) => cloneRendererLayer(layer)),
     auras: renderer.auras ? renderer.auras.map((aura) => cloneAuraConfig(aura)) : undefined,

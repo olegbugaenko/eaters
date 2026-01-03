@@ -2,18 +2,18 @@ import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-o
 import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
-import { randomBetween } from "../../shared/helpers";
 import { DEFAULT_PORTAL_EMITTER } from "./constants";
 import type { PortalCustomData, PortalEmitterConfig } from "./types";
+import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
+import { createCachedEmitterConfigGetter } from "@shared/helpers/emitter-cache.helper";
 
 /**
- * Gets the emitter config for a portal instance
+ * Sanitizes portal emitter config
  */
-export const getEmitterConfig = (
-  instance: SceneObjectInstance
+const sanitizePortalEmitterConfig = (
+  source: PortalCustomData["emitter"]
 ): PortalEmitterConfig | null => {
-  const custom = instance.data.customData as PortalCustomData | undefined;
-  const base = sanitizeParticleEmitterConfig(custom?.emitter ?? {}, {
+  const base = sanitizeParticleEmitterConfig(source ?? {}, {
     defaultColor: { r: 0.4, g: 0.8, b: 1, a: 0.9 },
     defaultOffset: { x: 0, y: 0 },
     minCapacity: 32,
@@ -24,13 +24,27 @@ export const getEmitterConfig = (
   }
   return {
     ...base,
-    baseSpeed: Math.max(0, custom?.emitter?.baseSpeed ?? DEFAULT_PORTAL_EMITTER.baseSpeed),
+    baseSpeed: Math.max(0, source?.baseSpeed ?? DEFAULT_PORTAL_EMITTER.baseSpeed),
     speedVariation: Math.max(
       0,
-      custom?.emitter?.speedVariation ?? DEFAULT_PORTAL_EMITTER.speedVariation
+      source?.speedVariation ?? DEFAULT_PORTAL_EMITTER.speedVariation
     ),
   };
 };
+
+/**
+ * Gets the emitter config for a portal instance (with caching)
+ */
+export const getEmitterConfig = createCachedEmitterConfigGetter<
+  PortalCustomData["emitter"],
+  PortalEmitterConfig
+>(
+  (instance) => {
+    const custom = instance.data.customData as PortalCustomData | undefined;
+    return custom?.emitter;
+  },
+  (source) => sanitizePortalEmitterConfig(source)
+);
 
 /**
  * Gets the emitter origin position (with rotation applied)

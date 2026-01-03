@@ -4,7 +4,8 @@ import type {
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import type { SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { computeCenter } from "./vector.helpers";
+import { computeCenter } from "./vector.helper";
+import { ensureColorAlpha } from "./scene-color.helper";
 
 /**
  * Type guard to check if a stroke is valid (has width > 0)
@@ -21,7 +22,7 @@ export const createStrokeFill = (stroke: SceneStroke): SceneFill => ({
     r: stroke.color.r,
     g: stroke.color.g,
     b: stroke.color.b,
-    a: typeof stroke.color.a === "number" ? stroke.color.a : 1,
+    a: ensureColorAlpha(stroke.color),
   },
 });
 

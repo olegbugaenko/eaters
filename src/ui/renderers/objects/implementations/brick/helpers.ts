@@ -1,5 +1,5 @@
 import type { SceneFill, SceneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { hasStroke, createStrokeFill } from "../../shared/helpers";
+import { hasStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
 
 // Re-export shared helpers for convenience
 export { hasStroke, createStrokeFill };

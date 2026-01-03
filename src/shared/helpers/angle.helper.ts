@@ -44,3 +44,21 @@ export const sanitizeArc = (
   }
   return value;
 };
+
+/**
+ * Normalizes a rotation value to [0, 2π) range.
+ * Returns fallback (default 0) if value is not a finite number.
+ */
+export const normalizeRotation = (
+  value: number | undefined,
+  fallback = 0
+): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return normalizeAngle(fallback);
+  }
+  if (value === 0) {
+    return 0;
+  }
+  const normalized = normalizeAngle(value);
+  return normalized === 0 ? 0 : normalized;
+};

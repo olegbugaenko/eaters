@@ -14,8 +14,8 @@ import {
   sanitizeParticleEmitterConfig,
 } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
-import { randomBetween } from "../../shared/helpers";
-import { DEFAULT_COLOR } from "./constants";
+import { randomBetween } from "@shared/helpers/numbers.helper";
+import { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import type { ExplosionEmitterRenderConfig, ExplosionEmitterConfigCache } from "./types";
 
 /**

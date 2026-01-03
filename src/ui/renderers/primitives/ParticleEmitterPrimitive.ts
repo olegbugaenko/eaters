@@ -12,9 +12,10 @@ import {
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import {
   cloneSceneFill,
-} from "../../../logic/helpers/scene-fill.helper";
+} from "@shared/helpers/scene-fill.helper";
 import { ParticleEmitterShape } from "@/logic/services/particles/ParticleEmitterShared";
-import { sanitizeSceneColor } from "../../../logic/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
+import { createSolidFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
 import {
   DynamicPrimitive,
   FILL_COMPONENTS,
@@ -29,6 +30,8 @@ import {
 } from "../objects/ObjectRenderer";
 import { copyFillComponents, writeFillVertexComponents } from "./utils/fill";
 import { getParticleEmitterGlContext } from "./utils/gpuContext";
+import { getNowMs } from "@shared/helpers/time.helper";
+import { clamp01 } from "@shared/helpers/numbers.helper";
 import {
   ParticleEmitterGpuDrawHandle,
   ParticleEmitterGpuRenderUniforms,
@@ -1430,15 +1433,6 @@ const resolveParticleFillForCpu = (
   return createDiamondFill(config);
 };
 
-const ensureColorAlpha = (color: SceneColor): number =>
-  typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1;
-
-const cloneColorWithAlpha = (color: SceneColor, alpha: number): SceneColor => ({
-  r: color.r,
-  g: color.g,
-  b: color.b,
-  a: alpha,
-});
 
 const getMaxParticleSize = (config: ParticleEmitterBaseConfig): number =>
   Math.max(config.sizeRange.max, config.sizeRange.min, MIN_PARTICLE_SIZE);
@@ -1483,15 +1477,7 @@ const createTriangleFill = (config: ParticleEmitterBaseConfig): SceneFill => {
   };
 };
 
-const createSolidFill = (color: SceneColor): SceneFill => ({
-  fillType: FILL_TYPES.SOLID,
-  color: {
-    r: color.r,
-    g: color.g,
-    b: color.b,
-    a: typeof color.a === "number" ? color.a : 1,
-  },
-});
+// createSolidFill is now imported from scene-object-manager.helpers
 
 const createCircularFill = (color: SceneColor): SceneFill => ({
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -1860,20 +1846,5 @@ export const sanitizeParticleEmitterConfig = (
   };
 };
 
-const getNowMs = (): number => {
-  if (typeof performance !== "undefined" && typeof performance.now === "function") {
-    return performance.now();
-  }
-  return Date.now();
-};
 
-const clamp01 = (value: number): number => {
-  if (value <= 0) {
-    return 0;
-  }
-  if (value >= 1) {
-    return 1;
-  }
-  return value;
-};
 

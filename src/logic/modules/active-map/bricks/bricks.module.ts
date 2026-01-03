@@ -16,8 +16,8 @@ import {
   cloneResourceStockpile,
   createEmptyResourceStockpile,
 } from "../../../../db/resources-db";
-import { cloneSceneColor } from "../../../helpers/scene-color.helper";
-import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import {
   addVectors,
   scaleVector,
@@ -26,8 +26,8 @@ import {
   normalizeVector,
 } from "../../../../shared/helpers/vector.helper";
 import { createBrickFill } from "./bricks.fill.helper";
-import { tintSceneFill } from "../../../helpers/scene-fill.helper";
-import { sceneColorsEqual } from "../../../helpers/scene-color.helper";
+import { tintSceneFill } from "@shared/helpers/scene-fill.helper";
+import { sceneColorsEqual } from "@shared/helpers/scene-color.helper";
 import {
   sanitizeKnockBackSpeed,
   sanitizeKnockBackAmplitude,

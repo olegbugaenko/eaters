@@ -1,6 +1,6 @@
 import type { SceneObjectInstance, SceneFill, SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { lerp, clamp01 } from "../../shared/helpers";
+import { lerp, clamp01 } from "@shared/helpers/numbers.helper";
 import type { AnimatedRingCustomData, CachedFill } from "./types";
 
 /**

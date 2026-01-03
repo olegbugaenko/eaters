@@ -1,6 +1,6 @@
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
-import { createRadialGradientFill } from "../../../helpers/scene-fill.helper";
+import { createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
 
 const CAMERA_FOCUS_TICKS = 6;
 

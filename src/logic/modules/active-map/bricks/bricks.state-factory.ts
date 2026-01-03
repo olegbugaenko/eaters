@@ -16,7 +16,7 @@ import {
   scaleBrickStat,
 } from "./bricks.helpers";
 import { createBrickFill } from "./bricks.fill.helper";
-import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 
 export interface BrickStateInput {
   readonly brick: BrickData;

@@ -13,7 +13,8 @@ import {
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
-import { cloneFill, cloneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { cloneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 
 interface ManagedObject {
   instance: SceneObjectInstance;
@@ -488,7 +489,7 @@ export class ObjectsRendererManager {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : undefined,
         color: instance.data.color ? { ...instance.data.color } : undefined,
-        fill: cloneFill(instance.data.fill),
+        fill: cloneSceneFill(instance.data.fill),
         stroke: cloneStroke(instance.data.stroke),
         rotation:
           typeof instance.data.rotation === "number"

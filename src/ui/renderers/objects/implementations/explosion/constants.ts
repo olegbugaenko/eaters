@@ -1,5 +1,4 @@
-import type { SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-
-export const DEFAULT_COLOR: SceneColor = { r: 1, g: 1, b: 1, a: 1 };
+// DEFAULT_COLOR is now imported from scene-object-manager.const.ts
+export { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 export const DEFAULT_WAVE_LIFETIME_MS = 800;
 export const DEFAULT_WAVE_BATCH_CAPACITY = 64;

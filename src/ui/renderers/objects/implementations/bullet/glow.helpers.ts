@@ -1,6 +1,7 @@
 import type { SceneObjectInstance, SceneColor, SceneFill } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { getBulletRadius, getTailScale, cloneColor } from "./helpers";
+import { getBulletRadius, getTailScale } from "./helpers";
+import { sanitizeSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
 import { DEFAULT_GLOW_COLOR, DEFAULT_GLOW_RADIUS_MULTIPLIER } from "./constants";
 import type { BulletGlowConfig, BulletRendererCustomData } from "./types";
 
@@ -32,7 +33,7 @@ export const getGlowConfig = (
       : DEFAULT_GLOW_RADIUS_MULTIPLIER;
 
   return {
-    color: cloneColor(glow.color, DEFAULT_GLOW_COLOR),
+    color: sanitizeSceneColor(glow.color, DEFAULT_GLOW_COLOR),
     radiusMultiplier,
   };
 };
@@ -64,14 +65,15 @@ export const createGlowFill = (
     return cached.fill;
   }
 
+  const baseAlpha = ensureColorAlpha(glow.color);
   const fill: SceneFill = {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
     end: radius,
     stops: [
-      { offset: 0, color: { ...glow.color, a: (glow.color.a ?? 0.4) * 0.7 } },
-      { offset: 0.55, color: { ...glow.color, a: (glow.color.a ?? 0.4) * 0.35 } },
-      { offset: 1, color: { ...glow.color, a: 0 } },
+      { offset: 0, color: cloneColorWithAlpha(glow.color, baseAlpha * 0.7) },
+      { offset: 0.55, color: cloneColorWithAlpha(glow.color, baseAlpha * 0.35) },
+      { offset: 1, color: cloneColorWithAlpha(glow.color, 0) },
     ],
   };
 

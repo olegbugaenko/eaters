@@ -22,9 +22,8 @@ import {
   acquireAuraSlotForInstance,
   writeAuraInstance,
 } from "./aura.helpers";
-import { DEFAULT_BASE_FILL_COLOR, TAU, POLYGON_SWAY_PHASE_STEP } from "./constants";
+import { TAU, POLYGON_SWAY_PHASE_STEP } from "./constants";
 import { getTentacleTimeMs } from "./helpers";
-import { hasStroke, expandVerticesForStroke, createStrokeFill } from "../../shared/helpers";
 
 /**
  * Creates composite primitives for player unit renderer

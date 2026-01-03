@@ -1,5 +1,6 @@
-import type { SceneColor } from "../services/scene-object-manager/scene-object-manager.types";
-import { clampNumber } from "@shared/helpers/numbers.helper";
+import type { SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 
 /**
  * Creates a shallow copy of a scene color.
@@ -52,26 +53,45 @@ const blendColorComponent = (
 /**
  * Sanitizes a scene color with a fallback value.
  * Handles optional alpha channel (defaults to 1 if not provided).
+ * Validates and clamps color components to [0, 1] range.
  */
 export const sanitizeSceneColor = (
   color: SceneColor | undefined,
   fallback: SceneColor
 ): SceneColor => ({
   r: typeof color?.r === "number" && Number.isFinite(color.r)
-    ? color.r
-    : fallback.r,
+    ? clamp01(color.r)
+    : clamp01(fallback.r),
   g: typeof color?.g === "number" && Number.isFinite(color.g)
-    ? color.g
-    : fallback.g,
+    ? clamp01(color.g)
+    : clamp01(fallback.g),
   b: typeof color?.b === "number" && Number.isFinite(color.b)
-    ? color.b
-    : fallback.b,
+    ? clamp01(color.b)
+    : clamp01(fallback.b),
   a: typeof color?.a === "number" && Number.isFinite(color.a)
-    ? color.a
+    ? clamp01(color.a)
     : typeof fallback.a === "number"
-    ? fallback.a
+    ? clamp01(fallback.a)
     : 1,
 });
+
+/**
+ * Sanitizes a scene color using DEFAULT_COLOR as fallback.
+ * Handles optional alpha channel (defaults to 1 if not provided).
+ * Validates and clamps color components to [0, 1] range.
+ * This is a convenience function for cases where DEFAULT_COLOR is the desired fallback.
+ */
+export const sanitizeColor = (color: SceneColor | undefined): SceneColor => {
+  if (!color) {
+    return { ...DEFAULT_COLOR };
+  }
+  return {
+    r: clamp01(color.r),
+    g: clamp01(color.g),
+    b: clamp01(color.b),
+    a: clamp01(typeof color.a === "number" ? color.a : DEFAULT_COLOR.a ?? 1),
+  };
+};
 
 /**
  * Tints a scene color by blending it with another color at a given intensity.
@@ -87,3 +107,19 @@ export const tintSceneColor = (
   b: blendColorComponent(source.b, tint.b, intensity),
   a: typeof source.a === "number" && Number.isFinite(source.a) ? source.a : 1,
 });
+
+/**
+ * Ensures a valid alpha value from a scene color.
+ * Returns the alpha value if it's a valid number, otherwise returns 1.
+ */
+export const ensureColorAlpha = (color: SceneColor): number =>
+  typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1;
+
+/**
+ * Clones a scene color with a new alpha value.
+ * Creates a shallow copy of the color and sets the specified alpha.
+ */
+export const cloneColorWithAlpha = (color: SceneColor, alpha: number): SceneColor => {
+  const cloned = cloneSceneColor(color);
+  return { ...cloned, a: alpha };
+};

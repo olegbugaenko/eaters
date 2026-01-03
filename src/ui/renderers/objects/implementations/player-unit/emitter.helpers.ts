@@ -2,7 +2,7 @@ import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-o
 import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
-import { randomBetween } from "../../shared/helpers";
+import { randomBetween } from "@shared/helpers/numbers.helper";
 import type { PlayerUnitCustomData, PlayerUnitEmitterRenderConfig } from "./types";
 import { DEFAULT_EMITTER_COLOR } from "./constants";
 import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
@@ -15,6 +15,7 @@ const emitterConfigCache = new WeakMap<
 
 /**
  * Gets emitter config for player unit (with caching)
+ * Note: Uses custom caching logic due to additional processing (physicalSize, sizeGrowthRate)
  */
 export const getEmitterConfig = (
   instance: SceneObjectInstance

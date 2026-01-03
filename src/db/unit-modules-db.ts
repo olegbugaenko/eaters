@@ -146,7 +146,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       lateralProjectileHitRadius: 12,
       lateralProjectileVisual: {
         radius: 12, // Larger for sprite visibility (32x32 sprite)
-        speed: 340,
+        speed: 170,
         lifetimeMs: 3800,
         fill: {
           fillType: FILL_TYPES.RADIAL_GRADIENT,

@@ -25,12 +25,12 @@ import {
   sanitizeStroke,
   createSolidFill,
   extractPrimaryColor,
-  normalizeRotation,
-  cloneFill,
   cloneStroke,
 } from "./scene-object-manager.helpers";
-import { clampNumber } from "@shared/helpers/numbers.helper";
 
+import { normalizeRotation } from "@shared/helpers/angle.helper";
+import { clampNumber } from "@shared/helpers/numbers.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 export class SceneObjectManager {
   private objects = new Map<string, SceneObjectInstance>();
   private ordered: SceneObjectInstance[] = [];
@@ -400,7 +400,7 @@ export class SceneObjectManager {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
         color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
-        fill: cloneFill(instance.data.fill),
+        fill: cloneSceneFill(instance.data.fill),
         stroke: cloneStroke(instance.data.stroke),
         rotation:
           typeof instance.data.rotation === "number"

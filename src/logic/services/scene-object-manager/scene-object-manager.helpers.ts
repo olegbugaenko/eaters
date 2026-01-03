@@ -26,7 +26,10 @@ import {
   DEFAULT_FILAMENT_EDGE_BLUR,
   DEFAULT_ROTATION,
 } from "./scene-object-manager.const";
-import { clamp01 } from "@shared/helpers/numbers.helper";
+import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
+import { sanitizeColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { normalizeRotation } from "@shared/helpers/angle.helper";
 
 // ============================================================================
 // Custom Data Cloning
@@ -306,17 +309,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 // Color & Fill Helpers
 // ============================================================================
 
-export function sanitizeColor(color: SceneColor | undefined): SceneColor {
-  if (!color) {
-    return { ...DEFAULT_COLOR };
-  }
-  return {
-    r: clamp01(color.r),
-    g: clamp01(color.g),
-    b: clamp01(color.b),
-    a: clamp01(typeof color.a === "number" ? color.a : DEFAULT_COLOR.a ?? 1),
-  };
-}
+// Re-export sanitizeColor for backward compatibility
+export { sanitizeColor } from "@shared/helpers/scene-color.helper";
 
 export function createSolidFill(color: SceneColor): SceneSolidFill {
   return {
@@ -443,7 +437,7 @@ export function sanitizeFillFilaments(
 
 export function sanitizeFill(fill: SceneFill | undefined): SceneFill {
   if (!fill) {
-    return cloneFill(DEFAULT_FILL);
+    return cloneSceneFill(DEFAULT_FILL);
   }
   switch (fill.fillType) {
     case FILL_TYPES.SOLID: {
@@ -497,7 +491,7 @@ export function sanitizeFill(fill: SceneFill | undefined): SceneFill {
       };
     }
     default:
-      return cloneFill(DEFAULT_FILL);
+      return cloneSceneFill(DEFAULT_FILL);
   }
 }
 
@@ -515,84 +509,6 @@ export function sanitizeStroke(stroke: SceneStroke | undefined): SceneStroke | u
   };
 }
 
-export function cloneFill(fill: SceneFill): SceneFill {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID: {
-      const solidFill = fill as SceneSolidFill;
-      const cloned: SceneSolidFill = {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...solidFill.color },
-      };
-      const noise = cloneNoise(solidFill.noise);
-      const filaments = cloneFilaments(solidFill.filaments);
-      if (noise) {
-        cloned.noise = noise;
-      }
-      if (filaments) {
-        cloned.filaments = filaments;
-      }
-      return cloned;
-    }
-    case FILL_TYPES.LINEAR_GRADIENT: {
-      const linearFill = fill as SceneLinearGradientFill;
-      const cloned: SceneLinearGradientFill = {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: linearFill.start ? { ...linearFill.start } : undefined,
-        end: linearFill.end ? { ...linearFill.end } : undefined,
-        stops: cloneStops(linearFill.stops),
-      };
-      const noise = cloneNoise(linearFill.noise);
-      const filaments = cloneFilaments(linearFill.filaments);
-      if (noise) {
-        cloned.noise = noise;
-      }
-      if (filaments) {
-        cloned.filaments = filaments;
-      }
-      return cloned;
-    }
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT: {
-      const gradientFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
-      const cloned: SceneRadialGradientFill | SceneDiamondGradientFill = {
-        fillType: fill.fillType,
-        start: gradientFill.start ? { ...gradientFill.start } : undefined,
-        end: gradientFill.end,
-        stops: cloneStops(gradientFill.stops),
-      };
-      const noise = cloneNoise(fill.noise);
-      const filaments = cloneFilaments(fill.filaments);
-      if (noise) {
-        cloned.noise = noise;
-      }
-      if (filaments) {
-        cloned.filaments = filaments;
-      }
-      return cloned;
-    }
-  }
-  return {
-    fillType: FILL_TYPES.SOLID,
-    color: { ...DEFAULT_COLOR },
-  };
-}
-
-function cloneNoise(noise: SceneFillNoise | undefined): SceneFillNoise | undefined {
-  if (!noise) {
-    return undefined;
-  }
-  return { ...noise };
-}
-
-function cloneFilaments(
-  filaments: SceneFillFilaments | undefined
-): SceneFillFilaments | undefined {
-  if (!filaments) {
-    return undefined;
-  }
-  return { ...filaments };
-}
-
 export function cloneStroke(stroke: SceneStroke | undefined): SceneStroke | undefined {
   if (!stroke) {
     return undefined;
@@ -603,12 +519,7 @@ export function cloneStroke(stroke: SceneStroke | undefined): SceneStroke | unde
   };
 }
 
-function cloneStops(stops: SceneGradientStop[]): SceneGradientStop[] {
-  return stops.map((stop) => ({
-    offset: stop.offset,
-    color: { ...stop.color },
-  }));
-}
+// cloneStops is no longer needed - using cloneSceneGradientStops from shared
 
 export function extractPrimaryColor(fill: SceneFill): SceneColor {
   if (fill.fillType === FILL_TYPES.SOLID) {
@@ -626,30 +537,3 @@ export function extractPrimaryColor(fill: SceneFill): SceneColor {
 // Utility Helpers
 // ============================================================================
 
-function clampNumber(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-  if (value < min) {
-    return min;
-  }
-  if (value > max) {
-    return max;
-  }
-  return value;
-}
-
-export function normalizeRotation(value: number | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return DEFAULT_ROTATION;
-  }
-  if (value === 0) {
-    return 0;
-  }
-  const twoPi = Math.PI * 2;
-  const normalized = value % twoPi;
-  if (normalized === 0) {
-    return 0;
-  }
-  return normalized < 0 ? normalized + twoPi : normalized;
-}

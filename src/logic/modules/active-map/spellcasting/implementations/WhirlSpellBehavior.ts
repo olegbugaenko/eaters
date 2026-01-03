@@ -12,7 +12,7 @@ import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { OUT_OF_BOUNDS_MARGIN } from "./WhirlSpellBehavior.const";
 import type { SandStormCustomData, WhirlState } from "./WhirlSpellBehavior.types";
-import { getNowMs } from "../../../../helpers/time.helper";
+import { getNowMs } from "@shared/helpers/time.helper";
 import { normalizeVector } from "../../../../../shared/helpers/vector.helper";
 
 export class WhirlSpellBehavior implements SpellBehavior {

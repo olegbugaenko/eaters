@@ -1,4 +1,4 @@
-import { cloneSceneFill } from "../../../helpers/scene-fill.helper";
+import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
 import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import {
@@ -113,8 +113,8 @@ export const cloneRendererFill = (
     return {
       type: "solid",
       color: { ...fill.color },
-      ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-      ...(fill.filaments ? { filaments: { ...fill.filaments } } : {}),
+      ...(fill.noise ? { noise: cloneSceneFillNoise(fill.noise) } : {}),
+      ...(fill.filaments ? { filaments: cloneSceneFillFilaments(fill.filaments) } : {}),
     };
   }
   if (fill.type === "gradient") {

@@ -1,5 +1,5 @@
 import { GameModule } from "../../../core/types";
-import { getNowMs } from "../../../helpers/time.helper";
+import { getNowMs } from "@shared/helpers/time.helper";
 import {
   AudioSettingsPercentages,
   NormalizedAudioSettings,

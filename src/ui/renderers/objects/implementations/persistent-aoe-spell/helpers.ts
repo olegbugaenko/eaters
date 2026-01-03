@@ -7,61 +7,14 @@ import type {
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
-import { clamp01, lerp, randomBetween } from "../../shared/helpers";
+import { clamp01, lerp, clampNumber, randomBetween } from "@shared/helpers/numbers.helper";
+import { sanitizeSceneColor, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
 import type {
   PersistentAoeObjectCustomData,
   PersistentAoeParticleCustomData,
   FireRingEmitterConfig,
 } from "./types";
 import { DEFAULT_CUSTOM_DATA, MIN_RADIUS } from "./constants";
-
-/**
- * Clamps a number between min and max
- */
-const clampNumber = (value: number | undefined, min: number, max: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return min;
-  }
-  if (value <= min) {
-    return min;
-  }
-  if (value >= max) {
-    return max;
-  }
-  return value;
-};
-
-/**
- * Generates a random number in a range
- */
-const randomRange = (min: number, max: number): number => {
-  if (!Number.isFinite(min) || !Number.isFinite(max)) {
-    return 0;
-  }
-  if (max <= min) {
-    return min;
-  }
-  return min + Math.random() * (max - min);
-};
-
-/**
- * Sanitizes a SceneColor
- */
-export const sanitizeColor = (
-  color: SceneColor | undefined,
-  fallback: SceneColor = DEFAULT_CUSTOM_DATA.glowColor
-): SceneColor => ({
-  r: clamp01(color?.r ?? fallback.r ?? DEFAULT_CUSTOM_DATA.glowColor.r),
-  g: clamp01(color?.g ?? fallback.g ?? DEFAULT_CUSTOM_DATA.glowColor.g),
-  b: clamp01(color?.b ?? fallback.b ?? DEFAULT_CUSTOM_DATA.glowColor.b),
-  a: clamp01(
-    typeof color?.a === "number"
-      ? Number(color.a)
-      : typeof fallback.a === "number"
-      ? fallback.a
-      : DEFAULT_CUSTOM_DATA.glowColor.a ?? 1
-  ),
-});
 
 /**
  * Gets and sanitizes custom data from instance
@@ -81,7 +34,7 @@ export const getCustomData = (
     typeof data.durationMs === "number" && Number.isFinite(data.durationMs)
       ? Math.max(0, Number(data.durationMs))
       : DEFAULT_CUSTOM_DATA.durationMs;
-  const fireColor = sanitizeColor(data.fireColor, DEFAULT_CUSTOM_DATA.fireColor);
+  const fireColor = sanitizeSceneColor(data.fireColor, DEFAULT_CUSTOM_DATA.fireColor);
 
   return {
     shape: data.shape === "ring" ? "ring" : DEFAULT_CUSTOM_DATA.shape,
@@ -94,7 +47,7 @@ export const getCustomData = (
       : 0,
     thickness: Number.isFinite(data.thickness) ? Math.max(0, Number(data.thickness)) : 1,
     intensity: clamp01(Number(data.intensity)),
-    glowColor: sanitizeColor(data.glowColor, DEFAULT_CUSTOM_DATA.glowColor),
+    glowColor: sanitizeSceneColor(data.glowColor, DEFAULT_CUSTOM_DATA.glowColor),
     glowAlpha: clamp01(glowAlphaRaw),
     particle: sanitizeParticleCustomData(data.particle),
     fireColor,
@@ -150,7 +103,7 @@ export const sanitizeParticleCustomData = (
     particleLifetimeMs: lifetime,
     fadeStartMs: fadeStart,
     sizeRange: { min: sizeMin, max: sizeMax },
-    color: sanitizeColor(data.color, DEFAULT_CUSTOM_DATA.glowColor),
+    color: sanitizeSceneColor(data.color, DEFAULT_CUSTOM_DATA.glowColor),
     fill: data.fill,
     maxParticles:
       typeof data.maxParticles === "number" && data.maxParticles > 0
@@ -184,7 +137,7 @@ export const createGlowFill = (instance: SceneObjectInstance): SceneFill => {
   const innerRadius = clampNumber(data.innerRadius, 0, outerRadius);
   const ringWidth = Math.max(outerRadius - innerRadius, 1);
   const intensity = clamp01(data.intensity * data.glowAlpha);
-  const color = sanitizeColor(data.glowColor, DEFAULT_CUSTOM_DATA.glowColor);
+  const color = sanitizeSceneColor(data.glowColor, DEFAULT_CUSTOM_DATA.glowColor);
 
   const innerStop = clamp01(innerRadius / outerRadius);
   const peakStop = clamp01((innerRadius + ringWidth * 0.45) / outerRadius);
@@ -195,11 +148,11 @@ export const createGlowFill = (instance: SceneObjectInstance): SceneFill => {
     start: { x: 0, y: 0 },
     end: outerRadius,
     stops: [
-      { offset: 0, color: { ...color, a: 0 } },
-      { offset: innerStop * 0.95, color: { ...color, a: 0 } },
-      { offset: peakStop, color: { ...color, a: clamp01(intensity) } },
-      { offset: fadeStop, color: { ...color, a: clamp01(intensity * 0.35) } },
-      { offset: 1, color: { ...color, a: 0 } },
+      { offset: 0, color: cloneColorWithAlpha(color, 0) },
+      { offset: innerStop * 0.95, color: cloneColorWithAlpha(color, 0) },
+      { offset: peakStop, color: cloneColorWithAlpha(color, clamp01(intensity)) },
+      { offset: fadeStop, color: cloneColorWithAlpha(color, clamp01(intensity * 0.35)) },
+      { offset: 1, color: cloneColorWithAlpha(color, 0) },
     ],
   };
 };
@@ -288,7 +241,7 @@ export const spawnParticle = (
   const angle = Math.random() * Math.PI * 2 + (Math.random() - 0.5) * 2 * jitter.angular;
   const radiusMin = Math.max(0, innerRadius - jitter.radial);
   const radiusMax = Math.max(radiusMin, outerRadius + jitter.radial);
-  const radius = randomRange(radiusMin, radiusMax);
+  const radius = randomBetween(radiusMin, radiusMax);
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   const position = {
@@ -296,8 +249,8 @@ export const spawnParticle = (
     y: origin.y + sin * radius,
   };
 
-  const radialSpeedPerSecond = randomRange(meta.radialSpeed.min, meta.radialSpeed.max);
-  const tangentialSpeedPerSecond = randomRange(
+  const radialSpeedPerSecond = randomBetween(meta.radialSpeed.min, meta.radialSpeed.max);
+  const tangentialSpeedPerSecond = randomBetween(
     meta.tangentialSpeed.min,
     meta.tangentialSpeed.max
   );
@@ -310,7 +263,7 @@ export const spawnParticle = (
   };
 
   const lifetimeMs = config.particleLifetimeMs;
-  const sizeBase = randomRange(config.sizeRange.min, config.sizeRange.max);
+  const sizeBase = randomBetween(config.sizeRange.min, config.sizeRange.max);
   const intensity = clamp01(meta.intensity * 1.1);
   const size = Math.max(1, sizeBase * lerp(0.6, 1.15, intensity));
 

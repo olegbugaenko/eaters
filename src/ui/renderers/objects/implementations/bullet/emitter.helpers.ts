@@ -2,7 +2,7 @@ import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-o
 import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
-import { randomBetween } from "../../shared/helpers";
+import { randomBetween } from "@shared/helpers/numbers.helper";
 import type {
   BulletRendererCustomData,
   BulletTailEmitterRenderConfig,

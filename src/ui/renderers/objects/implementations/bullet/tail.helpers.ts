@@ -1,7 +1,8 @@
 import type { SceneObjectInstance, SceneLinearGradientFill, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import type { BulletTailRenderConfig } from "./types";
-import { getTailScale, getBulletRadius, cloneColor } from "./helpers";
+import { getTailScale, getBulletRadius } from "./helpers";
+import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
 import { DEFAULT_TAIL_CONFIG } from "./constants";
 import type { BulletRendererCustomData } from "./types";
 
@@ -54,10 +55,10 @@ export const getTailConfig = (instance: SceneObjectInstance): BulletTailRenderCo
       ? tail.widthMultiplier
       : DEFAULT_TAIL_CONFIG.widthMultiplier;
   const startColor = tail.startColor
-    ? cloneColor(tail.startColor, DEFAULT_TAIL_CONFIG.startColor)
+    ? sanitizeSceneColor(tail.startColor, DEFAULT_TAIL_CONFIG.startColor)
     : { ...DEFAULT_TAIL_CONFIG.startColor };
   const endColor = tail.endColor
-    ? cloneColor(tail.endColor, DEFAULT_TAIL_CONFIG.endColor)
+    ? sanitizeSceneColor(tail.endColor, DEFAULT_TAIL_CONFIG.endColor)
     : { ...DEFAULT_TAIL_CONFIG.endColor };
 
   const scale = getTailScale(instance);

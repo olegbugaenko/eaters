@@ -8,9 +8,8 @@ import type {
   SceneSolidFill,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneFill } from "@/logic/helpers/scene-fill.helper";
-import { sanitizeSceneColor } from "@/logic/helpers/scene-color.helper";
-import { cloneSceneFillNoise, cloneSceneFillFilaments } from "@/logic/helpers/scene-fill.helper";
+import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
+import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 import { createSolidFill as createBaseSolidFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
 import type {
@@ -19,7 +18,7 @@ import type {
   PlayerUnitRendererFillConfig,
   PlayerUnitRendererStrokeConfig,
 } from "../../../../../db/player-units-db";
-import { isVector, sanitizeVertices as sanitizeVerticesShared, sanitizeOffset as sanitizeOffsetShared } from "../../shared/helpers";
+import { isVector, sanitizeVertices, sanitizeOffset } from "@shared/helpers/vector.helper";
 import { DEFAULT_VERTICES, DEFAULT_BASE_FILL_COLOR, MIN_CIRCLE_SEGMENTS } from "./constants";
 import type {
   PlayerUnitCustomData,
@@ -32,50 +31,26 @@ import type {
   RendererLayerStroke,
 } from "./types";
 
+import { getNowMs } from "@shared/helpers/time.helper";
+
 /**
  * Gets current timestamp for tentacle animation
  */
-export const getTentacleTimeMs = (): number =>
-  typeof performance !== "undefined" && typeof performance.now === "function"
-    ? performance.now()
-    : Date.now();
+export const getTentacleTimeMs = getNowMs;
+
+// sanitizeVertices is now imported directly from @shared/helpers/vector.helper with fallback support
 
 /**
- * Sanitizes vertices array, filtering invalid entries and falling back to default
- */
-export const sanitizeVertices = (vertices: SceneVector2[] | undefined): SceneVector2[] => {
-  if (!Array.isArray(vertices)) {
-    return DEFAULT_VERTICES.map((vertex) => ({ ...vertex }));
-  }
-  const sanitized = sanitizeVerticesShared(vertices);
-  if (sanitized.length < 3) {
-    return DEFAULT_VERTICES.map((vertex) => ({ ...vertex }));
-  }
-  return sanitized;
-};
-
-/**
- * Sanitizes layer vertices (returns null if invalid)
+ * Sanitizes layer vertices (returns null if invalid or has fewer than 3 vertices)
  */
 export const sanitizeLayerVertices = (
   vertices: readonly SceneVector2[] | undefined
 ): SceneVector2[] | null => {
-  if (!Array.isArray(vertices)) {
-    return null;
-  }
-  const sanitized = vertices
-    .filter((vertex) => isVector(vertex))
-    .map((vertex) => ({ x: vertex.x, y: vertex.y }));
-  if (sanitized.length < 3) {
-    return null;
-  }
-  return sanitized;
+  const sanitized = sanitizeVertices(vertices, undefined, 3);
+  return sanitized.length >= 3 ? sanitized : null;
 };
 
-/**
- * Sanitizes offset vector
- */
-export const sanitizeOffset = sanitizeOffsetShared;
+// sanitizeOffset is now imported directly from @shared/helpers/vector.helper
 
 /**
  * Extracts and sanitizes renderer data from instance
@@ -98,13 +73,13 @@ export const extractRendererData = (instance: SceneObjectInstance): RendererData
         const legacy = renderer as PlayerUnitRendererLegacyPayload;
         return {
           kind: "polygon",
-          vertices: sanitizeVertices(legacy.vertices),
+          vertices: sanitizeVertices(legacy.vertices, DEFAULT_VERTICES, 3),
           offset: sanitizeOffset(legacy.offset),
         };
       }
     }
   }
-  return { kind: "polygon", vertices: DEFAULT_VERTICES.map((vertex) => ({ ...vertex })) };
+  return { kind: "polygon", vertices: sanitizeVertices(undefined, DEFAULT_VERTICES, 3) };
 };
 
 /**
@@ -316,9 +291,11 @@ export const tintColor = (
 };
 
 /**
- * Creates a solid fill from color and optional noise
+ * Creates a solid fill from color and optional noise.
+ * This is a convenience wrapper around createSolidFill from scene-object-manager.helpers
+ * that adds support for noise parameter.
  */
-export const createSolidFill = (
+export const createSolidFillWithNoise = (
   color: SceneColor,
   noise?: SceneFillNoise
 ): SceneFill => {
@@ -386,13 +363,13 @@ export const resolveLayerFill = (
 ): SceneFill => {
   switch (fill.kind) {
     case "solid":
-      return createSolidFill(fill.color, fill.noise);
+      return createSolidFillWithNoise(fill.color, fill.noise);
     case "gradient":
       return cloneSceneFill(fill.fill);
     default: {
       const baseColor = resolveFillColor(instance, renderer.baseFillColor);
       const tinted = tintColor(baseColor, fill.brightness, fill.alphaMultiplier);
-      return createSolidFill(tinted, instance.data.fill.noise);
+      return createSolidFillWithNoise(tinted, instance.data.fill.noise);
     }
   }
 };
@@ -406,7 +383,7 @@ export const resolveLayerStrokeFill = (
   renderer: CompositeRendererData
 ): SceneFill => {
   if (stroke.kind === "solid") {
-    return createSolidFill(stroke.color);
+    return createBaseSolidFill(stroke.color);
   }
   const baseColor = resolveStrokeColor(
     instance,
@@ -414,5 +391,5 @@ export const resolveLayerStrokeFill = (
     renderer.baseFillColor
   );
   const tinted = tintColor(baseColor, stroke.brightness, stroke.alphaMultiplier);
-  return createSolidFill(tinted, instance.data.fill.noise);
+  return createSolidFillWithNoise(tinted, instance.data.fill.noise);
 };

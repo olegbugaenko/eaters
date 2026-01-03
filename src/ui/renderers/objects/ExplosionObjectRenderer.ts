@@ -18,7 +18,7 @@ import {
 import { FILL_TYPES } from "../../../logic/services/scene-object-manager/scene-object-manager.const";
 import { createParticleEmitterPrimitive } from "../primitives";
 import { getParticleEmitterGlContext } from "../primitives/utils/gpuContext";
-import { sanitizeSceneColor } from "../../../logic/helpers/scene-color.helper";
+import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
 import {
   WaveUniformConfig,
   ensureWaveBatch,
@@ -52,7 +52,7 @@ type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {
   direction: number;
 };
 
-const DEFAULT_COLOR = { r: 1, g: 1, b: 1, a: 1 } as const;
+import { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 
 const createExplosionEmitterPrimitive = (
   instance: SceneObjectInstance

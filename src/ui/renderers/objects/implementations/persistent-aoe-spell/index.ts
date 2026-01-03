@@ -10,5 +10,4 @@ export {
   createGlowFill,
   getEmitterConfig,
   spawnParticle,
-  sanitizeColor,
 } from "./helpers";

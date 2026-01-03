@@ -1,4 +1,6 @@
 import { SceneColor } from "../services/scene-object-manager/scene-object-manager.types";
+import { cloneSceneColor, sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
+import { DEFAULT_COLOR } from "../services/scene-object-manager/scene-object-manager.const";
 
 export type VisualEffectBlendMode = "tint" | "add";
 
@@ -41,22 +43,10 @@ const clamp01 = (value: number): number => {
   return value;
 };
 
+// Use shared helpers for color operations
 const sanitizeColor = (color: SceneColor): SceneColor => {
-  const r = clamp01(typeof color.r === "number" ? color.r : 0);
-  const g = clamp01(typeof color.g === "number" ? color.g : 0);
-  const b = clamp01(typeof color.b === "number" ? color.b : 0);
-  const a = clamp01(
-    typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1
-  );
-  return { r, g, b, a };
+  return sanitizeSceneColor(color, DEFAULT_COLOR);
 };
-
-const cloneColor = (color: SceneColor): SceneColor => ({
-  r: color.r,
-  g: color.g,
-  b: color.b,
-  a: typeof color.a === "number" ? color.a : 1,
-});
 
 const sanitizeOverlay = (
   overlay: VisualColorOverlayConfig | null | undefined
@@ -204,7 +194,7 @@ export const computeVisualEffectFillColor = (
   baseColor: SceneColor,
   state: VisualEffectState
 ): SceneColor => {
-  let result = cloneColor(sanitizeColor(baseColor));
+  let result = cloneSceneColor(sanitizeColor(baseColor));
   const overlays = sortOverlays(state.fillOverlays);
   overlays.forEach(({ overlay }) => {
     result = applyOverlay(result, overlay);
@@ -219,7 +209,7 @@ export const computeVisualEffectStrokeColor = (
   if (!baseColor) {
     return undefined;
   }
-  let result = cloneColor(sanitizeColor(baseColor));
+  let result = cloneSceneColor(sanitizeColor(baseColor));
   const overlays = sortOverlays(state.strokeOverlays);
   overlays.forEach(({ overlay }) => {
     result = applyOverlay(result, overlay);

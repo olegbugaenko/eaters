@@ -1,5 +1,6 @@
 import { SceneColor, SceneObjectInstance } from "../../../logic/services/scene-object-manager/scene-object-manager.types";
 import { DynamicPrimitive } from "../objects/ObjectRenderer";
+import { ensureColorAlpha } from "@shared/helpers/scene-color.helper";
 import {
   addFireRingInstance,
   updateFireRing,
@@ -72,7 +73,7 @@ export const createFireRingPrimitive = (
             r: config.color.r,
             g: config.color.g,
             b: config.color.b,
-            a: typeof config.color.a === "number" ? config.color.a : 1,
+            a: ensureColorAlpha(config.color),
           },
           active: true,
         };
@@ -87,7 +88,7 @@ export const createFireRingPrimitive = (
         fireInstance.color.r = config.color.r;
         fireInstance.color.g = config.color.g;
         fireInstance.color.b = config.color.b;
-        fireInstance.color.a = typeof config.color.a === "number" ? config.color.a : 1;
+        fireInstance.color.a = ensureColorAlpha(config.color);
 
         if (config.lifetime) {
           fireInstance.lifetime = config.lifetime;

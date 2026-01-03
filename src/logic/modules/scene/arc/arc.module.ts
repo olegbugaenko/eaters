@@ -3,7 +3,7 @@ import { SceneObjectManager } from "../../../services/scene-object-manager/Scene
 import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { ArcType, getArcConfig } from "../../../../db/arcs-db";
-import { getNowMs } from "../../../helpers/time.helper";
+import { getNowMs } from "@shared/helpers/time.helper";
 import type { ArcModuleOptions, ArcState } from "./arc.types";
 
 export class ArcModule implements GameModule {
