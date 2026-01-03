@@ -17,20 +17,22 @@ import {
   PlayerUnitBlueprintStats,
   PlayerUnitBonusLine,
   PlayerUnitRuntimeModifiers,
-} from "../../../../types/player-units";
+} from "@shared/types/player-units";
+import type {
+  UnitTargetingMode,
+  UnitTargetingSettings,
+} from "@shared/types/unit-targeting";
 import {
   DEFAULT_UNIT_TARGETING_MODE,
   DEFAULT_UNIT_TARGETING_SETTINGS,
-  UnitTargetingMode,
-  UnitTargetingSettings,
-} from "../../../../types/unit-targeting";
+} from "@shared/const/unit-targeting.const";
+import { ResourceAmountMap } from "@shared/types/resources";
 import {
-  ResourceAmountMap,
   createEmptyResourceAmount,
   normalizeResourceCost,
-} from "../../../../types/resources";
+} from "@shared/const/resources.const";
 import { computePlayerUnitBlueprint } from "../../active-map/player-units/player-units.blueprint";
-import { roundStat } from "../../../helpers/numbers.helper";
+import { roundStat } from "../../../../shared/helpers/numbers.helper";
 import {
   UnitDesignModuleDetailFactory,
   UnitDesignModuleDetailInput,

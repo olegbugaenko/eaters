@@ -6,11 +6,11 @@ import type {
 } from "react";
 import { MapId, getMapConfig } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
-import { classNames } from "@shared/classNames";
-import { formatNumber } from "@shared/format/number";
-import { useResizeObserver } from "@shared/useResizeObserver";
+import { classNames } from "@ui-shared/classNames";
+import { formatNumber } from "@ui-shared/format/number";
+import { useResizeObserver } from "@ui-shared/useResizeObserver";
 import { formatDuration } from "@ui/utils/formatDuration";
-import type { MapUnlockCondition } from "types/unlocks";
+import type { MapUnlockCondition } from "@shared/types/unlocks";
 import "./MapSelectPanel.css";
 
 const CELL_SIZE_X = 200;

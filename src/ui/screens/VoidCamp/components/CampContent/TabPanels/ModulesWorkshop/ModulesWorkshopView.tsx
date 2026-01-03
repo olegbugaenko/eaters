@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import { DEFAULT_UNIT_MODULE_WORKSHOP_STATE } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
-import { formatNumber } from "@shared/format/number";
-import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
+import { formatNumber } from "@ui-shared/format/number";
+import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { ResourceId, getResourceConfig } from "@db/resources-db";
-import { Button } from "@shared/Button";
-import { ModuleDetailsCard } from "@shared/ModuleDetailsCard";
+import { Button } from "@ui-shared/Button";
+import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
 import "./ModulesWorkshopView.css";
 
 interface ModulesWorkshopViewProps {

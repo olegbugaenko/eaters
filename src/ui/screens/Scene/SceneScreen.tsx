@@ -16,7 +16,7 @@ import {
   SceneTutorialOverlay,
 } from "./components/overlay/SceneTutorialOverlay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { useBridgeValue } from "@shared/useBridgeValue";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import "./SceneScreen.css";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";

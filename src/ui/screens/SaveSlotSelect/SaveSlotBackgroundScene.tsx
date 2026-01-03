@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
-import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
 import { petalAuraEffect } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
-import { updateAllWhirlInterpolations } from "@ui/renderers/objects/SandStormRenderer";
+import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { renderParticleEmitters } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { renderArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import { setupWebGLScene } from "@ui/screens/Scene/hooks/useWebGLSceneSetup";
+import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoop";
 import { whirlEffect } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import {
   MAP_SIZE,
@@ -97,35 +97,31 @@ export const SaveSlotBackgroundScene: React.FC = () => {
     webglRenderer.getObjectsRenderer().applyChanges(initialChanges);
     webglRenderer.syncBuffers();
 
-    let frame = 0;
-    const render = (timestamp: number) => {
-      setSceneTimelineTimeMs(timestamp);
-      updateCreatures(scene, creatures, timestamp);
-      const cameraState = scene.getCamera();
-      const changes = scene.flushChanges();
-      webglRenderer.getObjectsRenderer().applyChanges(changes);
-      webglRenderer.syncBuffers();
+    // Create render loop with shared logic
+    const renderLoop = createWebGLRenderLoop({
+      webglRenderer,
+      scene,
+      gl,
+      beforeUpdate: (timestamp) => {
+        updateCreatures(scene, creatures, timestamp);
+      },
+      beforeEffects: (timestamp, gl, cameraState) => {
+        // Render additional effects (particles, whirls, auras, arcs, fire rings)
+        renderParticleEmitters(gl, cameraState.position, cameraState.viewportSize);
+        updateAllWhirlInterpolations();
+        whirlEffect.beforeRender(gl, timestamp);
+        petalAuraEffect.beforeRender(gl, timestamp);
+        whirlEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+        petalAuraEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+        renderArcBatches(gl, cameraState.position, cameraState.viewportSize);
+        renderFireRings(gl, cameraState.position, cameraState.viewportSize, timestamp);
+      },
+    });
 
-      // Render base scene (static + dynamic buffers)
-      webglRenderer.render(cameraState);
-
-      // Render additional effects (particles, whirls, auras, arcs, fire rings)
-      renderParticleEmitters(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize);
-      updateAllWhirlInterpolations();
-      whirlEffect.beforeRender(webglRenderer.getGl(), timestamp);
-      petalAuraEffect.beforeRender(webglRenderer.getGl(), timestamp);
-      whirlEffect.render(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize, timestamp);
-      petalAuraEffect.render(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize, timestamp);
-      renderArcBatches(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize);
-      renderFireRings(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize, timestamp);
-
-      frame = window.requestAnimationFrame(render);
-    };
-
-    frame = window.requestAnimationFrame(render);
+    renderLoop.start();
 
     return () => {
-      window.cancelAnimationFrame(frame);
+      renderLoop.stop();
       window.removeEventListener("resize", handleResize);
       // Cleanup WebGL resources (includes all GPU effects cleanup)
       webglCleanup();

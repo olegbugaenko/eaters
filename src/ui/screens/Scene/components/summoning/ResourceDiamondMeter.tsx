@@ -1,6 +1,6 @@
 import { CSSProperties, useId } from "react";
-import { classNames } from "@shared/classNames";
-import { formatNumber } from "@shared/format/number";
+import { classNames } from "@ui-shared/classNames";
+import { formatNumber } from "@ui-shared/format/number";
 import "./ResourceDiamondMeter.css";
 
 interface GradientStop {

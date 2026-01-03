@@ -1,7 +1,7 @@
 import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
 import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { createObjectsRendererManager } from "@ui/renderers/objects";
-import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
+import { clearAllAuraSlots } from "@ui/renderers/objects";
 import {
   clearPetalAuraInstances,
   petalAuraEffect,

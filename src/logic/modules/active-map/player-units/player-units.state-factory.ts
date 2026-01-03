@@ -2,10 +2,10 @@ import { StateFactory } from "../../../core/factories/StateFactory";
 import type { PlayerUnitState } from "./units/UnitTypes";
 import type { PlayerUnitSpawnData } from "./player-units.module";
 import type { UnitFactory, UnitFactoryResult } from "./units/UnitFactory";
-import type { PlayerUnitBlueprintStats } from "../../../../types/player-units";
+import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import type { UnitModuleId } from "../../../../db/unit-modules-db";
-import { ZERO_VECTOR } from "../../../helpers/geometry.const";
-import type { UnitTargetingMode } from "../../../../types/unit-targeting";
+import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
+import type { UnitTargetingMode } from "@shared/types/unit-targeting";
 import type { PlayerUnitType } from "../../../../db/player-units-db";
 import { sanitizeUnitType } from "./player-units.helpers";
 

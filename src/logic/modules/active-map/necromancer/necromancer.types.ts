@@ -1,7 +1,7 @@
 import type { PlayerUnitType } from "../../../../db/player-units-db";
 import type { UnitDesignId, UnitDesignModuleDetail } from "../../camp/unit-design/unit-design.types";
-import type { ResourceAmountMap } from "../../../../types/resources";
-import type { PlayerUnitBlueprintStats, PlayerUnitRuntimeModifiers } from "../../../../types/player-units";
+import type { ResourceAmountMap } from "@shared/types/resources";
+import type { PlayerUnitBlueprintStats, PlayerUnitRuntimeModifiers } from "@shared/types/player-units";
 
 /**
  * Resource meter for necromancer resources (mana/sanity).

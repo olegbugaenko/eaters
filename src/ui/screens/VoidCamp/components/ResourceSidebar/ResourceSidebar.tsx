@@ -1,7 +1,7 @@
 import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
-import { ResourceIcon } from "@shared/icons/ResourceIcon";
+import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import "./ResourceSidebar.css";
-import { formatNumber } from "@shared/format/number";
+import { formatNumber } from "@ui-shared/format/number";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui/shared/useBridgeValue";
 import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";

@@ -30,11 +30,11 @@ import {
 } from "../../../../db/player-units-db";
 import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { SkillId } from "../../../../db/skills-db";
-import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
+import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
-} from "../../../../types/player-units";
+} from "@shared/types/player-units";
 import { computePlayerUnitBlueprint } from "./player-units.blueprint";
 import {
   addVectors,
@@ -42,9 +42,9 @@ import {
   scaleVector,
   vectorLength,
   vectorHasLength,
-} from "../../../helpers/vector.helper";
+} from "../../../../shared/helpers/vector.helper";
 import { cloneSceneColor, sceneColorsEqual } from "../../../helpers/scene-color.helper";
-import { roundStat, sanitizeNumber } from "../../../helpers/numbers.helper";
+import { roundStat, sanitizeNumber } from "../../../../shared/helpers/numbers.helper";
 import { UnitStateFactory, UnitStateInput } from "./player-units.state-factory";
 import {
   sanitizeRuntimeModifiers,
@@ -52,7 +52,7 @@ import {
   cloneEmitter,
   cloneRendererConfigForScene,
 } from "./player-units.helpers";
-import { UnitTargetingMode } from "../../../../types/unit-targeting";
+import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import { BricksModule } from "../bricks/bricks.module";
 import type { BrickRuntimeState } from "../bricks/bricks.types";
 import {
@@ -96,7 +96,7 @@ import {
   IDLE_WANDER_SPEED_FACTOR,
   TARGETING_SCORE_EPSILON,
 } from "./units/UnitTypes";
-import { ZERO_VECTOR } from "../../../helpers/geometry.const";
+import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
 
 export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
 export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";

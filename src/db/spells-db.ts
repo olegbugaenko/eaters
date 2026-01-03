@@ -1,4 +1,4 @@
-import { ResourceAmountMap } from "../types/resources";
+import { ResourceAmountMap } from "@shared/types/resources";
 import {
   SceneColor,
   SceneFill,

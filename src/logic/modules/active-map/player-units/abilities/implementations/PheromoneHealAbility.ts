@@ -5,7 +5,7 @@ import {
   HEAL_SKIP_RATIO_THRESHOLD,
   PHEROMONE_HEAL_EXPLOSION_RADIUS,
 } from "../ability.const";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import {
   AbilityCandidate,
   AbilityDescription,

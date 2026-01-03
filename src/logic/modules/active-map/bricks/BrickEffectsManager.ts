@@ -1,4 +1,4 @@
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import type { BrickEffectTint } from "./bricks.types";
 import type {
   BrickEffectsDependencies,

@@ -26,7 +26,7 @@ import {
   DEFAULT_FILAMENT_EDGE_BLUR,
   DEFAULT_ROTATION,
 } from "./scene-object-manager.const";
-import { clamp01 } from "@/utils/helpers/numbers";
+import { clamp01 } from "@shared/helpers/numbers.helper";
 
 // ============================================================================
 // Custom Data Cloning

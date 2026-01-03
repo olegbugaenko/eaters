@@ -1,0 +1,1 @@
+export { PolygonObjectRenderer } from "./PolygonObjectRenderer";

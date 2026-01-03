@@ -15,7 +15,7 @@ import type { ExplosionType } from "../../../../../db/explosions-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { UnitProjectileVisualConfig } from "../../projectiles/projectiles.types";
 import type { ProjectileSpellData } from "./ProjectileSpellBehavior.types";
-import { randomIntInclusive } from "@/utils/helpers/numbers";
+import { randomIntInclusive } from "@shared/helpers/numbers.helper";
 
 const sanitizeAoe = (
   aoe: { radius: number; splash: number } | undefined,

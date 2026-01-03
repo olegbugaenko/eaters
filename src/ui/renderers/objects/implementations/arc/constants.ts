@@ -1,0 +1,1 @@
+export const DEFAULT_ARC_BATCH_CAPACITY = 256;

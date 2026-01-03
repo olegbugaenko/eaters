@@ -2,7 +2,7 @@ import type { CraftingRecipeId } from "../../../../db/crafting-recipes-db";
 import type { ResourceAmount, ResourceId } from "../../../../db/resources-db";
 import { normalizeResourceAmount } from "../../../../db/resources-db";
 import type { CraftingRecipeRuntimeState } from "./crafting.types";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 
 export const createEmptyRuntimeState = (): CraftingRecipeRuntimeState => ({
   queue: 0,

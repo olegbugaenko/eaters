@@ -12,15 +12,16 @@ import {
 } from "../../../../db/player-units-db";
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
-import { ResourceAmountMap, normalizeResourceCost } from "../../../../types/resources";
+import { ResourceAmountMap } from "@shared/types/resources";
+import { normalizeResourceCost } from "@shared/const/resources.const";
 import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
 import {
   UnitDesignId,
   UnitDesignerUnitState,
 } from "../../camp/unit-design/unit-design.types";
 import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
-import { clampNumber } from "@/utils/helpers/numbers";
-import { sanitizeNumberWithFallback } from "../../../helpers/numbers.helper";
+import { clampNumber } from "@shared/helpers/numbers.helper";
+import { sanitizeNumberWithFallback } from "../../../../shared/helpers/numbers.helper";
 import { MapRunState } from "../map/MapRunState";
 import type {
   NecromancerModuleOptions,

@@ -9,8 +9,8 @@ import { BricksModule } from "../bricks/bricks.module";
 import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
-import { clamp01, clampNumber } from "@/utils/helpers/numbers";
-import { normalizeVector } from "../../../helpers/vector.helper";
+import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
+import { normalizeVector } from "../../../../shared/helpers/vector.helper";
 import {
   MAX_PROJECTILE_STEPS_PER_TICK,
   MIN_MOVEMENT_STEP,

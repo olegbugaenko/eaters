@@ -6,7 +6,7 @@ import {
   readStoredAudioSettings,
   toNormalizedAudioSettings,
 } from "../../../utils/audioSettings";
-import { clamp01 } from "@/utils/helpers/numbers";
+import { clamp01 } from "@shared/helpers/numbers.helper";
 import type { AudioModuleOptions } from "./audio.types";
 import { DEFAULT_PLAYLISTS, MIN_EFFECT_INTERVAL_MS, MUSIC_VOLUME_MULTIPLIER } from "./audio.const";
 import { pickRandomTrackIndex, normalizeEffectUrl } from "./audio.helpers";

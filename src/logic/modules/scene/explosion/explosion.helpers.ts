@@ -11,8 +11,8 @@ import {
   createRadialGradientFill,
 } from "../../../helpers/scene-fill.helper";
 import { cloneSceneColor } from "../../../helpers/scene-color.helper";
-import { sanitizeAngle, sanitizeArc } from "../../../helpers/angle.helper";
-import { clamp01, clampNumber } from "@/utils/helpers/numbers";
+import { sanitizeAngle, sanitizeArc } from "../../../../shared/helpers/angle.helper";
+import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 import type { WaveState } from "./explosion.types";
 
 export const createReusableWaveFill = (

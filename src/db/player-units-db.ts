@@ -7,10 +7,10 @@ import {
 } from "../logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
-import { ResourceCost } from "../types/resources";
+import { ResourceCost } from "@shared/types/resources";
 import type { UnitModuleId } from "./unit-modules-db";
 import type { SkillId } from "./skills-db";
-import { mapLineToPolygonShape } from '../utils/paths';
+import { mapLineToPolygonShape } from '@shared/helpers/paths.helper';
 
 export type PlayerUnitType = "bluePentagon";
 

@@ -13,7 +13,7 @@ import {
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
-} from "../../../../../types/player-units";
+} from "@shared/types/player-units";
 import {
   VisualEffectState,
   createVisualEffectState,
@@ -23,7 +23,7 @@ import { UnitModuleId, UNIT_MODULE_IDS, getUnitModuleConfig } from "../../../../
 import type { SkillId } from "../../../../../db/skills-db";
 import { PLAYER_UNIT_ABILITY_DEFINITIONS } from "../abilities";
 import type { AbilityDescription } from "../abilities/ability.types";
-import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
+import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import { sanitizeRuntimeModifiers } from "../player-units.helpers";
 import { cloneSceneFill } from "../../../../helpers/scene-fill.helper";
 

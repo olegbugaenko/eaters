@@ -1,5 +1,5 @@
 import type { SpellConfig, SpellId, SpellDamageConfig } from "../../../../db/spells-db";
-import type { ResourceAmountMap } from "../../../../types/resources";
+import type { ResourceAmountMap } from "@shared/types/resources";
 import type { DataBridge } from "../../../core/DataBridge";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { BricksModule } from "../bricks/bricks.module";

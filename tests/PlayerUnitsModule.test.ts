@@ -16,7 +16,7 @@ import { getPlayerUnitConfig } from "../src/db/player-units-db";
 import type { ParticleEmitterConfig } from "../src/logic/interfaces/visuals/particle-emitters-config";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
-import { normalizeVector } from "../src/logic/helpers/vector.helper";
+import { normalizeVector } from "../src/shared/helpers/vector.helper";
 
 const createResourceControllerStub = () => ({
   startRun: () => {},

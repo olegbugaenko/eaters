@@ -1,8 +1,8 @@
 import type { MapId } from "./maps-db";
 import type { SkillId } from "./skills-db";
-import type { UnlockCondition } from "../types/unlocks";
+import type { UnlockCondition } from "@shared/types/unlocks";
 import { RESOURCE_IDS, ResourceAmount, ResourceId } from "./resources-db";
-import { BonusEffectMap } from "../types/bonuses";
+import { BonusEffectMap } from "@shared/types/bonuses";
 
 export type BuildingId =
   | "quarry"

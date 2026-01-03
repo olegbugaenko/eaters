@@ -19,7 +19,7 @@ import {
   createEmitterCustomData,
   computeEffectLifetime,
 } from "./explosion.helpers";
-import { clamp01, clampNumber, lerp } from "@/utils/helpers/numbers";
+import { clamp01, clampNumber, lerp } from "@shared/helpers/numbers.helper";
 export type {
   ExplosionRendererCustomData,
   SpawnExplosionByTypeOptions,

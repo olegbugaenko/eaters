@@ -11,4 +11,4 @@ export const KNOCKBACK_EPSILON = 0.001;
 export const TOTAL_HP_RECOMPUTE_INTERVAL_MS = 3000;
 
 // Re-export for backward compatibility
-export { ZERO_VECTOR } from "../../../helpers/geometry.const";
+export { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";

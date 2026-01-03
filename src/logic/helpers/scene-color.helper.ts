@@ -1,5 +1,5 @@
 import type { SceneColor } from "../services/scene-object-manager/scene-object-manager.types";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 
 /**
  * Creates a shallow copy of a scene color.

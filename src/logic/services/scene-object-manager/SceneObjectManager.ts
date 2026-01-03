@@ -29,7 +29,7 @@ import {
   cloneFill,
   cloneStroke,
 } from "./scene-object-manager.helpers";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 
 export class SceneObjectManager {
   private objects = new Map<string, SceneObjectInstance>();

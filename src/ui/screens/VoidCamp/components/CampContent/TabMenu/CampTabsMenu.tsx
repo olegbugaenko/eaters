@@ -1,4 +1,4 @@
-import { classNames } from "@shared/classNames";
+import { classNames } from "@ui-shared/classNames";
 import { CampTabKey } from "../CampContent";
 import "./CampTabsMenu.css";
 

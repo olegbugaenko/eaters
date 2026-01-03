@@ -10,7 +10,7 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { useBridgeValue } from "@shared/useBridgeValue";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import {
   SkillNodeBridgePayload,
   SkillTreeBridgePayload,
@@ -31,9 +31,9 @@ import {
   getResourceConfig,
 } from "@db/resources-db";
 import { SkillId, getSkillConfig } from "@db/skills-db";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
-import { BonusEffectsPreviewList } from "@shared/BonusEffectsPreviewList";
-import { classNames } from "@shared/classNames";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
+import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
+import { classNames } from "@ui-shared/classNames";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;

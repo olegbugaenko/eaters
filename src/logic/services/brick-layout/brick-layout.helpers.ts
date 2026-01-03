@@ -8,7 +8,7 @@ import type {
   BrickSpacing,
 } from "./brick-layout.types";
 import { getBrickConfig } from "../../../db/bricks-db";
-import { TAU } from "../../helpers/geometry.const";
+import { TAU } from "../../../shared/helpers/geometry.const";
 import { GRID_EPSILON } from "./brick-layout.const";
 
 /**

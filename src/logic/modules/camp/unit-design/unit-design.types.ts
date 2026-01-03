@@ -6,12 +6,12 @@ import type { UnitModuleWorkshopModule } from "../unit-module-workshop/unit-modu
 import type {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
-} from "../../../../types/player-units";
+} from "@shared/types/player-units";
 import type {
   UnitTargetingMode,
   UnitTargetingSettingsMap,
-} from "../../../../types/unit-targeting";
-import type { ResourceAmountMap } from "../../../../types/resources";
+} from "@shared/types/unit-targeting";
+import type { ResourceAmountMap } from "@shared/types/resources";
 
 export type UnitDesignId = string;
 

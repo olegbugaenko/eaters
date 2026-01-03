@@ -1,6 +1,6 @@
 import React from "react";
 import { RESOURCE_IDS, ResourceId } from "@db/resources-db";
-import { classNames } from "@shared/classNames";
+import { classNames } from "@ui-shared/classNames";
 import { ResourceIcon } from "./icons/ResourceIcon";
 import { formatNumber } from "./format/number";
 import "./ResourceCostDisplay.css";

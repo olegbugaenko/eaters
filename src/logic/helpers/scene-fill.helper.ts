@@ -11,7 +11,7 @@ import type {
   SceneSolidFill,
   SceneVector2,
 } from "../services/scene-object-manager/scene-object-manager.types";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import { tintSceneColor } from "./scene-color.helper";
 
 export const cloneSceneFillNoise = (

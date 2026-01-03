@@ -1,5 +1,5 @@
 import { ResourceAmount, ResourceId } from "./resources-db";
-import { BonusEffectContext, BonusEffectMap } from "../types/bonuses";
+import { BonusEffectContext, BonusEffectMap } from "@shared/types/bonuses";
 
 export interface SkillNodePosition {
   readonly x: number;

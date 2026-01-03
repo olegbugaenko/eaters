@@ -1,7 +1,7 @@
 import type { DataBridge } from "../../../core/DataBridge";
 import type { SkillId, SkillConfig, SkillNodePosition } from "../../../../db/skills-db";
 import type { ResourceStockpile } from "../../../../db/resources-db";
-import type { BonusEffectPreview } from "../../../../types/bonuses";
+import type { BonusEffectPreview } from "@shared/types/bonuses";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 

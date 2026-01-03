@@ -1,4 +1,4 @@
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 
 /**
  * Sanitizes a level value, ensuring it's a valid positive integer >= 1.

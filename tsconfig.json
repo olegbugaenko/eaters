@@ -35,7 +35,8 @@
       "@/*": ["*"],
       "@ui/*": ["ui/*"],
       "@screens/*": ["ui/screens/*"],
-      "@shared/*": ["ui/shared/*"],
+      "@ui-shared/*": ["ui/shared/*"],
+      "@shared/*": ["shared/*"],
       "@logic/*": ["logic/*"],
       "@db/*": ["db/*"],
       "react-joyride": ["../vendor/react-joyride"]

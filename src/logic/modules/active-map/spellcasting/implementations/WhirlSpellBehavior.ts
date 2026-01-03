@@ -9,11 +9,11 @@ import {
 } from "../SpellBehavior";
 import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import { OUT_OF_BOUNDS_MARGIN } from "./WhirlSpellBehavior.const";
 import type { SandStormCustomData, WhirlState } from "./WhirlSpellBehavior.types";
 import { getNowMs } from "../../../../helpers/time.helper";
-import { normalizeVector } from "../../../../helpers/vector.helper";
+import { normalizeVector } from "../../../../../shared/helpers/vector.helper";
 
 export class WhirlSpellBehavior implements SpellBehavior {
   public readonly spellType = "whirl" as const;

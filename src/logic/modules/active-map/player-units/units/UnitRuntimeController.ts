@@ -9,14 +9,14 @@ import {
   FREEZING_TAIL_DURATION_MS,
 } from "../../bricks/brick-effects.const";
 import { PlayerUnitAbilities, AbilityActivationResult } from "../PlayerUnitAbilities";
-import type { UnitTargetingMode } from "../../../../../types/unit-targeting";
+import type { UnitTargetingMode } from "@shared/types/unit-targeting";
 import type { StatisticsTracker } from "../../../shared/statistics/statistics.module";
 import { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import { PlayerUnitType } from "../../../../../db/player-units-db";
 import { getUnitModuleConfig } from "../../../../../db/unit-modules-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { PlayerUnitState } from "./UnitTypes";
-import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
+import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -29,7 +29,7 @@ import {
   IDLE_WANDER_SPEED_FACTOR,
   TARGETING_SCORE_EPSILON,
 } from "./UnitTypes";
-import { ZERO_VECTOR } from "../../../../helpers/geometry.const";
+import { ZERO_VECTOR } from "../../../../../shared/helpers/geometry.const";
 
 
 export interface UnitRuntimeControllerOptions {
@@ -59,7 +59,7 @@ export interface UnitUpdateResult {
   unitsRemoved: PlayerUnitState[];
 }
 
-import { roundStat } from "../../../../helpers/numbers.helper";
+import { roundStat } from "../../../../../shared/helpers/numbers.helper";
 import {
   cloneVector,
   addVectors,
@@ -68,7 +68,7 @@ import {
   vectorLength,
   vectorHasLength,
   vectorEquals,
-} from "../../../../helpers/vector.helper";
+} from "../../../../../shared/helpers/vector.helper";
 
 export class UnitRuntimeController {
   private readonly scene: SceneObjectManager;

@@ -307,14 +307,14 @@ export const cloneRendererLayer = (
       offset: layer.offset ? { ...layer.offset } : undefined,
       fill: cloneRendererFillConfig(layer.fill),
       stroke: cloneRendererStrokeConfig(layer.stroke),
-      requiresModule: (layer as any).requiresModule,
-      requiresSkill: (layer as any).requiresSkill,
-      requiresEffect: (layer as any).requiresEffect,
-      anim: (layer as any).anim,
-      spine: (layer as any).spine,
-      segmentIndex: (layer as any).segmentIndex,
-      buildOpts: (layer as any).buildOpts,
-      groupId: (layer as any).groupId,
+      requiresModule: layer.requiresModule,
+      requiresSkill: layer.requiresSkill,
+      requiresEffect: layer.requiresEffect,
+      anim: layer.anim,
+      spine: layer.spine,
+      segmentIndex: layer.segmentIndex,
+      buildOpts: layer.buildOpts,
+      groupId: layer.groupId,
     };
   }
   return {
@@ -324,11 +324,11 @@ export const cloneRendererLayer = (
     offset: layer.offset ? { ...layer.offset } : undefined,
     fill: cloneRendererFillConfig(layer.fill),
     stroke: cloneRendererStrokeConfig(layer.stroke),
-    requiresModule: (layer as any).requiresModule,
-    requiresSkill: (layer as any).requiresSkill,
-    requiresEffect: (layer as any).requiresEffect,
-    anim: (layer as any).anim,
-    groupId: (layer as any).groupId,
+    requiresModule: layer.requiresModule,
+    requiresSkill: layer.requiresSkill,
+    requiresEffect: layer.requiresEffect,
+    anim: layer.anim,
+    groupId: layer.groupId,
   };
 };
 
@@ -363,9 +363,7 @@ export const deriveRendererStroke = (
   }
 
   for (const layer of renderer.layers) {
-    const layerStroke = (layer as any)?.stroke as
-      | { type?: string; color?: SceneColor; width?: number }
-      | undefined;
+    const layerStroke = layer.stroke;
     if (layerStroke?.type === "solid" && layerStroke.color) {
       const width =
         typeof layerStroke.width === "number" && Number.isFinite(layerStroke.width)

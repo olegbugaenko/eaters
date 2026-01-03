@@ -1,4 +1,4 @@
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import type { BrickConfig, BrickType } from "../../../../db/bricks-db";
 import { isBrickType, getBrickConfig } from "../../../../db/bricks-db";
 import type { ExplosionType } from "../../../../db/explosions-db";

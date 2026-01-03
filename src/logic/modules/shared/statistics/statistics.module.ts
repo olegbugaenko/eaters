@@ -1,7 +1,7 @@
 import { DataBridge } from "@/logic/core/DataBridge";
 import { DataBridgeHelpers } from "@/logic/core/DataBridgeHelpers";
 import { GameModule } from "@/logic/core/types";
-import { sanitizeNonNegativeNumber } from "../../../helpers/numbers.helper";
+import { sanitizeNonNegativeNumber } from "../../../../shared/helpers/numbers.helper";
 
 export const STATISTICS_BRIDGE_KEY = "statistics/summary";
 

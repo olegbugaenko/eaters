@@ -1,4 +1,4 @@
-import { PlayerUnitBlueprintStats } from "../../types/player-units";
+import { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import { formatNumber } from "./format/number";
 
 export interface UnitStatEntry {

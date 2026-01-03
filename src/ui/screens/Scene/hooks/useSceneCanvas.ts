@@ -8,7 +8,7 @@ import {
 } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
 import { GameLoop } from "@logic/services/game-loop/GameLoop";
-import { updateAllWhirlInterpolations } from "@ui/renderers/objects/SandStormRenderer";
+import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { renderArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import {
   petalAuraEffect,
@@ -27,9 +27,9 @@ import {
 import {
   renderRings,
 } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
-import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
+import { createWebGLRenderLoop } from "./useWebGLRenderLoop";
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
@@ -228,51 +228,52 @@ export const useSceneCanvas = ({
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    let frame = 0;
     let previousTime: number | null = null;
 
-    const render = (timestamp: number) => {
-      setSceneTimelineTimeMs(timestamp);
-      if (previousTime === null) {
+    // Create render loop with shared logic
+    const renderLoop = createWebGLRenderLoop({
+      webglRenderer,
+      scene: sceneRef.current,
+      gl,
+      beforeUpdate: (timestamp) => {
+        if (previousTime === null) {
+          previousTime = timestamp;
+        }
+        const deltaMs = Math.min(timestamp - previousTime, 100);
         previousTime = timestamp;
-      }
-      const deltaMs = Math.min(timestamp - previousTime, 100);
-      previousTime = timestamp;
 
-      applyCameraMovement(
-        pointerState,
-        sceneRef.current,
-        deltaMs,
-        canvas.width,
-        canvas.height,
-      );
+        applyCameraMovement(
+          pointerState,
+          sceneRef.current,
+          deltaMs,
+          canvas.width,
+          canvas.height,
+        );
+      },
+      afterApplyChanges: (timestamp, scene, cameraState) => {
+        // Apply interpolated unit positions
+        const interpolatedUnitPositions = getInterpolatedUnitPositionsRef.current();
+        if (interpolatedUnitPositions.size > 0) {
+          webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedUnitPositions);
+        }
+      },
 
-      const cameraState = sceneRef.current.getCamera();
-      const changes = sceneRef.current.flushChanges();
-      webglRenderer.getObjectsRenderer().applyChanges(changes);
-      const interpolatedUnitPositions = getInterpolatedUnitPositionsRef.current();
-      if (interpolatedUnitPositions.size > 0) {
-        webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedUnitPositions);
-      }
-      applySync();
-
-      const dbs = webglRenderer.getObjectsRenderer().getDynamicBufferStats();
-      if (
-        dbs.bytesAllocated !== vboStatsRef.current.bytes ||
-        dbs.reallocations !== vboStatsRef.current.reallocs
-      ) {
-        vboStatsRef.current = {
-          bytes: dbs.bytesAllocated,
-          reallocs: dbs.reallocations,
-        };
-        setVboStats({ bytes: dbs.bytesAllocated, reallocs: dbs.reallocations });
-      }
-
-      // Render base scene (static + dynamic buffers)
-      webglRenderer.render(cameraState);
-
-      // Render additional effects (particles, whirls, auras, arcs, fire rings, bullets, rings)
-      if (gl) {
+      afterUpdate: (timestamp, scene, cameraState) => {
+        // Update VBO stats
+        const dbs = webglRenderer.getObjectsRenderer().getDynamicBufferStats();
+        if (
+          dbs.bytesAllocated !== vboStatsRef.current.bytes ||
+          dbs.reallocations !== vboStatsRef.current.reallocs
+        ) {
+          vboStatsRef.current = {
+            bytes: dbs.bytesAllocated,
+            reallocs: dbs.reallocations,
+          };
+          setVboStats({ bytes: dbs.bytesAllocated, reallocs: dbs.reallocations });
+        }
+      },
+      beforeEffects: (timestamp, gl, cameraState) => {
+        // Render additional effects (particles, whirls, auras, arcs, fire rings, bullets, rings)
         renderParticleEmitters(
           gl,
           cameraState.position,
@@ -317,6 +318,9 @@ export const useSceneCanvas = ({
           { x: cameraState.viewportSize.width, y: cameraState.viewportSize.height },
           timestamp
         );
+      },
+      afterRender: (timestamp, gl, cameraState) => {
+        // Update particle stats
         const stats = getParticleStats(gl);
         const now = timestamp;
         if (now - particleStatsLastUpdateRef.current >= 500) {
@@ -332,31 +336,30 @@ export const useSceneCanvas = ({
         } else {
           particleStatsRef.current = stats;
         }
-      }
 
-      const latestCamera = sceneRef.current.getCamera();
-      if (
-        Math.abs(latestCamera.scale - scaleRef.current) > 0.0001
-      ) {
-        scaleRef.current = latestCamera.scale;
-        setScale(latestCamera.scale);
-      }
-      if (
-        Math.abs(latestCamera.position.x - cameraInfoRef.current.position.x) >
-          0.0001 ||
-        Math.abs(latestCamera.position.y - cameraInfoRef.current.position.y) >
-          0.0001 ||
-        Math.abs(latestCamera.viewportSize.width - cameraInfoRef.current.viewportSize.width) >
-          0.0001 ||
-        Math.abs(latestCamera.viewportSize.height - cameraInfoRef.current.viewportSize.height) >
-          0.0001
-      ) {
-        cameraInfoRef.current = latestCamera;
-        setCameraInfo(latestCamera);
-      }
-
-      frame = window.requestAnimationFrame(render);
-    };
+        // Update camera/scale state
+        const latestCamera = sceneRef.current.getCamera();
+        if (
+          Math.abs(latestCamera.scale - scaleRef.current) > 0.0001
+        ) {
+          scaleRef.current = latestCamera.scale;
+          setScale(latestCamera.scale);
+        }
+        if (
+          Math.abs(latestCamera.position.x - cameraInfoRef.current.position.x) >
+            0.0001 ||
+          Math.abs(latestCamera.position.y - cameraInfoRef.current.position.y) >
+            0.0001 ||
+          Math.abs(latestCamera.viewportSize.width - cameraInfoRef.current.viewportSize.width) >
+            0.0001 ||
+          Math.abs(latestCamera.viewportSize.height - cameraInfoRef.current.viewportSize.height) >
+            0.0001
+        ) {
+          cameraInfoRef.current = latestCamera;
+          setCameraInfo(latestCamera);
+        }
+      },
+    });
 
     const resize = () => {
       const wrapper = wrapperRef.current ?? canvas.parentElement;
@@ -387,7 +390,7 @@ export const useSceneCanvas = ({
     };
 
     resize();
-    frame = window.requestAnimationFrame(render);
+    renderLoop.start();
     window.addEventListener("resize", resize);
 
     const getWorldPosition = (event: PointerEvent): SceneVector2 | null => {
@@ -521,11 +524,12 @@ export const useSceneCanvas = ({
     canvas.addEventListener("pointerdown", handlePointerDown);
 
     return () => {
+      // Stop render loop
+      renderLoop.stop();
       // Cleanup WebGL resources (includes resetAllArcBatches)
       webglCleanup();
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", handlePointerMoveWithCast);
       window.removeEventListener("pointerleave", handlePointerLeave);
       window.removeEventListener("pointerout", handlePointerLeave);

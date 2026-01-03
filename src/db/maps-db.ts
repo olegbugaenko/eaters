@@ -1,7 +1,7 @@
 import { BrickType, getBrickConfig } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "./player-units-db";
-import type { UnlockCondition } from "../types/unlocks";
+import type { UnlockCondition } from "@shared/types/unlocks";
 import type { SkillId } from "./skills-db";
 import {
   BrickShapeBlueprint,

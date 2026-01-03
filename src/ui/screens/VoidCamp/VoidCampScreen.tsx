@@ -22,7 +22,7 @@ import {
 } from "@logic/modules/shared/statistics/statistics.module";
 import type { StoredSaveData } from "@logic/core/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { useBridgeValue } from "@shared/useBridgeValue";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,

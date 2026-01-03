@@ -10,14 +10,14 @@ import {
   SPELL_IDS,
 } from "../../../../db/spells-db";
 import { SkillId } from "../../../../db/skills-db";
-import { ResourceAmountMap } from "../../../../types/resources";
+import { ResourceAmountMap } from "@shared/types/resources";
 import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { MapRunState } from "../map/MapRunState";
 import { SpellBehaviorRegistry } from "./SpellBehaviorRegistry";
 import { SpellCastContext, SpellCanCastContext } from "./SpellBehavior";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import type {
   SpellOption,
   SpellOptionBase,

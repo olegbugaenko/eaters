@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import { DEFAULT_BUILDINGS_WORKSHOP_STATE } from "@/logic/modules/camp/buildings/buildings.const";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { ResourceId, getResourceConfig } from "@db/resources-db";
 import { BuildingId } from "@db/buildings-db";
-import { Button } from "@shared/Button";
-import { BonusEffectsPreviewList } from "@shared/BonusEffectsPreviewList";
-import { formatNumber } from "@shared/format/number";
+import { Button } from "@ui-shared/Button";
+import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
+import { formatNumber } from "@ui-shared/format/number";
 import "../ModulesWorkshop/ModulesWorkshopView.css";
 
 type BuildingsWorkshopViewProps = {

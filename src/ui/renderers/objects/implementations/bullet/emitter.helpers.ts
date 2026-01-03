@@ -1,0 +1,204 @@
+import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
+import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
+import { transformObjectPoint } from "../../ObjectRenderer";
+import { randomBetween } from "../../shared/helpers";
+import type {
+  BulletRendererCustomData,
+  BulletTailEmitterRenderConfig,
+  BulletEmitterKey,
+} from "./types";
+import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
+import { getBulletRadius } from "./helpers";
+
+// Caches for emitter configs
+const tailEmitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["tailEmitter"] | undefined;
+    config: BulletTailEmitterRenderConfig | null;
+  }
+>();
+const trailEmitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["trailEmitter"] | undefined;
+    config: BulletTailEmitterRenderConfig | null;
+  }
+>();
+const smokeEmitterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["smokeEmitter"] | undefined;
+    config: BulletTailEmitterRenderConfig | null;
+  }
+>();
+
+/**
+ * Gets emitter config for a specific emitter key (with caching)
+ */
+const getEmitterConfig = (
+  instance: SceneObjectInstance,
+  key: BulletEmitterKey,
+  cache:
+    | typeof tailEmitterConfigCache
+    | typeof trailEmitterConfigCache
+    | typeof smokeEmitterConfigCache
+): BulletTailEmitterRenderConfig | null => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  const emitter = data && typeof data === "object" ? data[key] : undefined;
+  const cached = cache.get(instance);
+  if (cached && cached.source === emitter) {
+    return cached.config;
+  }
+
+  const config = emitter ? sanitizeTailEmitterConfig(emitter) : null;
+  cache.set(instance, { source: emitter, config });
+
+  return config;
+};
+
+/**
+ * Gets tail emitter config
+ */
+export const getTailEmitterConfig = (
+  instance: SceneObjectInstance
+): BulletTailEmitterRenderConfig | null =>
+  getEmitterConfig(instance, "tailEmitter", tailEmitterConfigCache);
+
+/**
+ * Gets trail emitter config
+ */
+export const getTrailEmitterConfig = (
+  instance: SceneObjectInstance
+): BulletTailEmitterRenderConfig | null =>
+  getEmitterConfig(instance, "trailEmitter", trailEmitterConfigCache);
+
+/**
+ * Gets smoke emitter config
+ */
+export const getSmokeEmitterConfig = (
+  instance: SceneObjectInstance
+): BulletTailEmitterRenderConfig | null =>
+  getEmitterConfig(instance, "smokeEmitter", smokeEmitterConfigCache);
+
+/**
+ * Sanitizes tail emitter config
+ */
+export const sanitizeTailEmitterConfig = (
+  config: ParticleEmitterConfig
+): BulletTailEmitterRenderConfig | null => {
+  const base = sanitizeParticleEmitterConfig(config, {
+    defaultOffset: { x: -1, y: 0 },
+    defaultColor: { r: 1, g: 1, b: 1, a: 1 },
+  });
+  if (!base) {
+    return null;
+  }
+
+  const baseSpeed = Math.max(
+    0,
+    Number.isFinite(config.baseSpeed) ? Number(config.baseSpeed) : 0
+  );
+  const speedVariation = Math.max(
+    0,
+    Number.isFinite(config.speedVariation) ? Number(config.speedVariation) : 0
+  );
+  const spread = Math.max(0, Number.isFinite(config.spread) ? Number(config.spread) : 0);
+
+  // Convert sizeEvolutionMult (multiplier at end of lifetime) to sizeGrowthRate (multiplier per second)
+  // Formula: sizeGrowthRate = sizeEvolutionMult ^ (1 / lifetimeSeconds)
+  let sizeGrowthRate = base.sizeGrowthRate ?? 1.0;
+  if (
+    typeof config.sizeEvolutionMult === "number" &&
+    Number.isFinite(config.sizeEvolutionMult) &&
+    config.sizeEvolutionMult > 0
+  ) {
+    const lifetimeSeconds = base.particleLifetimeMs / 1000;
+    if (lifetimeSeconds > 0 && config.sizeEvolutionMult !== 1) {
+      sizeGrowthRate = Math.pow(config.sizeEvolutionMult, 1 / lifetimeSeconds);
+    }
+  }
+
+  return {
+    ...base,
+    baseSpeed,
+    speedVariation,
+    spread,
+    sizeGrowthRate,
+  };
+};
+
+/**
+ * Serializes tail emitter config for caching
+ */
+export const serializeTailEmitterConfig = (config: BulletTailEmitterRenderConfig): string => {
+  const serializedFill = config.fill ? JSON.stringify(config.fill) : "";
+  return [
+    config.particlesPerSecond,
+    config.particleLifetimeMs,
+    config.fadeStartMs,
+    config.baseSpeed,
+    config.speedVariation,
+    config.sizeRange.min,
+    config.sizeRange.max,
+    config.spread,
+    config.offset.x,
+    config.offset.y,
+    config.color.r,
+    config.color.g,
+    config.color.b,
+    config.color.a,
+    config.capacity,
+    serializedFill,
+    config.shape,
+  ].join(":");
+};
+
+/**
+ * Gets tail emitter origin position
+ */
+export const getTailEmitterOrigin = (
+  instance: SceneObjectInstance,
+  config: BulletTailEmitterRenderConfig
+): SceneVector2 => {
+  const radius = getBulletRadius(instance);
+  const offset = {
+    x: config.offset.x * radius,
+    y: config.offset.y * radius,
+  };
+  return transformObjectPoint(instance.data.position, instance.data.rotation, offset);
+};
+
+/**
+ * Creates a tail particle state
+ */
+export const createTailParticle = (
+  origin: SceneVector2,
+  instance: SceneObjectInstance,
+  config: BulletTailEmitterRenderConfig
+): ParticleEmitterParticleState => {
+  const baseDirection = (instance.data.rotation ?? 0) + Math.PI;
+  const halfSpread = config.spread / 2;
+  const direction =
+    baseDirection + (config.spread > 0 ? randomBetween(-halfSpread, halfSpread) : 0);
+  const speed = Math.max(
+    0,
+    config.baseSpeed +
+      (config.speedVariation > 0
+        ? randomBetween(-config.speedVariation, config.speedVariation)
+        : 0)
+  );
+  const size =
+    config.sizeRange.min === config.sizeRange.max
+      ? config.sizeRange.min
+      : randomBetween(config.sizeRange.min, config.sizeRange.max);
+
+  return {
+    position: { x: origin.x, y: origin.y },
+    velocity: { x: Math.cos(direction) * speed, y: Math.sin(direction) * speed },
+    ageMs: 0,
+    lifetimeMs: config.particleLifetimeMs,
+    size,
+  };
+};

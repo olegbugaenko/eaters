@@ -2,11 +2,11 @@ import { useCallback, useMemo } from "react";
 import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
-import { ResourceIcon } from "@shared/icons/ResourceIcon";
-import { formatNumber } from "@shared/format/number";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
+import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
+import { formatNumber } from "@ui-shared/format/number";
 import { CraftingRecipeId } from "@db/crafting-recipes-db";
-import { classNames } from "@shared/classNames";
+import { classNames } from "@ui-shared/classNames";
 import "./CraftingView.css";
 
 interface CraftingViewProps {

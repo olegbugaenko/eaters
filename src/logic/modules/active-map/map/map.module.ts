@@ -24,7 +24,7 @@ import {
   MapSaveData,
   MapStats,
 } from "./map.types";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import { MapRunEvent } from "./MapRunState";
 import { MapSceneCleanup, MapSceneCleanupContract } from "./map.scene-cleanup";
 import {

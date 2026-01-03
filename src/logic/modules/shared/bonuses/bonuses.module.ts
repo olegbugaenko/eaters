@@ -6,7 +6,7 @@ import {
   BonusEffectMap,
   BonusEffectPreview,
   BonusEffectType,
-} from "../../../../types/bonuses";
+} from "@shared/types/bonuses";
 import type {
   BonusValueMap,
   BonusValuesListener,

@@ -1,7 +1,7 @@
 import type { MapId } from "../../../db/maps-db";
 import type { SkillId } from "../../../db/skills-db";
 import type { MapStats } from "../../modules/active-map/map/map.types";
-import type { UnlockCondition } from "../../../types/unlocks";
+import type { UnlockCondition } from "@shared/types/unlocks";
 
 export interface UnlockServiceOptions {
   getMapStats: () => MapStats;

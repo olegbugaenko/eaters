@@ -16,7 +16,7 @@ import {
   SpellPersistentAoeVisualConfig,
   SpellPersistentAoeEffectConfig,
 } from "../../../../../db/spells-db";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
 import { cloneSceneFill } from "../../../../helpers/scene-fill.helper";
 import { sanitizeSceneColor } from "../../../../helpers/scene-color.helper";

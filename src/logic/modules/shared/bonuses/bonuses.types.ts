@@ -1,5 +1,5 @@
 import type { BonusId } from "../../../../db/bonuses-db";
-import type { BonusEffectFormula } from "../../../../types/bonuses";
+import type { BonusEffectFormula } from "@shared/types/bonuses";
 
 export type BonusValueMap = Record<BonusId, number>;
 

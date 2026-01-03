@@ -2,7 +2,7 @@ import { SceneVector2, SceneColor } from "../../../../services/scene-object-mana
 import { PlayerUnitType } from "../../../../../db/player-units-db";
 import type { ParticleEmitterConfig } from "../../../../interfaces/visuals/particle-emitters-config";
 import { PlayerUnitRendererConfig } from "../../../../../db/player-units-db";
-import { UnitTargetingMode } from "../../../../../types/unit-targeting";
+import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 import { UnitModuleId } from "../../../../../db/unit-modules-db";
 import { SkillId } from "../../../../../db/skills-db";
@@ -68,7 +68,7 @@ export interface PlayerUnitState {
 export const ATTACK_DISTANCE_EPSILON = 0.001;
 export const COLLISION_RESOLUTION_ITERATIONS = 4;
 // Re-export for backward compatibility
-export { ZERO_VECTOR } from "../../../../helpers/geometry.const";
+export { ZERO_VECTOR } from "../../../../../shared/helpers/geometry.const";
 export const CRITICAL_HIT_EXPLOSION_RADIUS = 12;
 export const INTERNAL_FURNACE_EFFECT_ID = "internalFurnace/heat";
 export const INTERNAL_FURNACE_TINT_COLOR: SceneColor = {

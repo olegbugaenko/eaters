@@ -17,7 +17,7 @@ import {
   getResourceConfig,
   normalizeResourceAmount,
 } from "../../../../db/resources-db";
-import { clamp01 } from "@/utils/helpers/numbers";
+import { clamp01 } from "@shared/helpers/numbers.helper";
 import type {
   CraftingRecipeBridgeState,
   CraftingBridgeState,

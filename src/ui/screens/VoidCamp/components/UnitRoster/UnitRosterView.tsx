@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { classNames } from "@shared/classNames";
+import { classNames } from "@ui-shared/classNames";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import {
   UnitDesignerBridgeState,
   UnitDesignerUnitState,
 } from "@logic/modules/camp/unit-design/unit-design.types";
-import { Button } from "@shared/Button";
+import { Button } from "@ui-shared/Button";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
-import { UnitTargetingMode } from "@/types/unit-targeting";
+import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import "./UnitRosterView.css";
 
 interface UnitRosterViewProps {

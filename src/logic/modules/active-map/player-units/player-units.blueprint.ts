@@ -1,14 +1,14 @@
 import { getPlayerUnitConfig, PlayerUnitType } from "../../../../db/player-units-db";
 import { getBonusConfig } from "../../../../db/bonuses-db";
 import { BonusValueMap } from "../../shared/bonuses/bonuses.module";
-import { PlayerUnitBlueprintStats } from "../../../../types/player-units";
-import { clampProbability } from "@/utils/helpers/numbers";
+import { PlayerUnitBlueprintStats } from "@shared/types/player-units";
+import { clampProbability } from "@shared/helpers/numbers.helper";
 import {
   sanitizeMultiplier,
   sanitizeAdditive,
   normalizeMultiplier,
   roundStat,
-} from "../../../helpers/numbers.helper";
+} from "../../../../shared/helpers/numbers.helper";
 
 const DEFAULT_CRIT_MULTIPLIER_BONUS = getBonusConfig(
   "all_units_crit_mult"

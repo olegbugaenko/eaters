@@ -10,6 +10,10 @@ import {
   SceneVector2,
   SceneFill,
   SceneColor,
+  SceneSolidFill,
+  SceneLinearGradientFill,
+  SceneRadialGradientFill,
+  SceneDiamondGradientFill,
 } from "../../../logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "../../../logic/services/scene-object-manager/scene-object-manager.const";
 import { createParticleEmitterPrimitive } from "../primitives";
@@ -26,12 +30,14 @@ import {
   normalizeAngle,
   sanitizeAngle,
   sanitizeArc,
-} from "../../../logic/helpers/angle.helper";
+} from "@shared/helpers/angle.helper";
 import {
   ParticleEmitterBaseConfig,
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
 } from "../primitives/ParticleEmitterPrimitive";
+import { clamp01 } from "@shared/helpers/numbers.helper";
+import { randomBetween } from "@shared/helpers/numbers.helper";
 
 interface ExplosionRendererCustomData {
   waveLifetimeMs?: number;
@@ -47,15 +53,6 @@ type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {
 };
 
 const DEFAULT_COLOR = { r: 1, g: 1, b: 1, a: 1 } as const;
-
-const clamp01 = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  if (value <= 0) return 0;
-  if (value >= 1) return 1;
-  return value;
-};
 
 const createExplosionEmitterPrimitive = (
   instance: SceneObjectInstance
@@ -234,13 +231,6 @@ const pickSpawnAngle = (
   return normalizeAngle(config.direction + offset);
 };
 
-const randomBetween = (min: number, max: number): number => {
-  if (max <= min) {
-    return min;
-  }
-  return min + Math.random() * (max - min);
-};
-
 export class ExplosionObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const dynamicPrimitives: DynamicPrimitive[] = [];
@@ -273,7 +263,7 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
           if (!batch) {
             const gl = getParticleEmitterGlContext();
             if (gl) {
-              const fill = (target.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
+              const fill: SceneFill = (target.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } } as SceneSolidFill);
               const { uniforms, key: fillKey } = toWaveUniformsFromFill(fill);
               uniforms.hasExplicitRadius = false;
               uniforms.explicitRadius = 0;
@@ -288,7 +278,7 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
           }
 
           // Only recalculate key if fill reference changed (rare)
-          const currentFill = (target.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } as SceneColor } as any);
+          const currentFill: SceneFill = (target.data.fill as SceneFill) ?? ({ fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } } as SceneSolidFill);
           if (currentFill !== lastFillRef && fillKeyCached) {
             lastFillRef = currentFill;
             const { key: currentKey } = toWaveUniformsFromFill(currentFill);
@@ -397,16 +387,16 @@ const toWaveUniformsFromFill = (
           t: FILL_TYPES.SOLID,
           // RGB only; ignore alpha which changes frame-to-frame
           c: {
-            r: (fill as any).color?.r ?? 1,
-            g: (fill as any).color?.g ?? 1,
-            b: (fill as any).color?.b ?? 1,
+            r: fill.fillType === FILL_TYPES.SOLID ? (fill as SceneSolidFill).color?.r ?? 1 : 1,
+            g: fill.fillType === FILL_TYPES.SOLID ? (fill as SceneSolidFill).color?.g ?? 1 : 1,
+            b: fill.fillType === FILL_TYPES.SOLID ? (fill as SceneSolidFill).color?.b ?? 1 : 1,
           },
         }
       : {
           t: fill.fillType,
           // ignore start/end (radius/offset), and ignore alpha; use only offsets + RGB
-          stops: Array.isArray((fill as any).stops)
-            ? (fill as any).stops.map((s: any) => ({
+          stops: "stops" in fill && Array.isArray(fill.stops)
+            ? fill.stops.map((s) => ({
                 o: s?.offset ?? 0,
                 r: s?.color?.r ?? 1,
                 g: s?.color?.g ?? 1,
@@ -437,12 +427,13 @@ const toWaveUniformsFromFill = (
   const stopColors = [stopColor0, stopColor1, stopColor2, stopColor3, stopColor4];
 
   if (fill.fillType === FILL_TYPES.SOLID) {
-    const color = sanitizeSceneColor((fill as any).color as any, defaultColor);
+    const solidFill = fill as SceneSolidFill;
+    const color = sanitizeSceneColor(solidFill.color, defaultColor);
     stopColor0[0] = color.r; stopColor0[1] = color.g; stopColor0[2] = color.b; stopColor0[3] = color.a ?? 1;
     stopCount = 1;
     fillType = FILL_TYPES.SOLID;
   } else if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
-    const f = fill as any;
+    const f = fill as SceneLinearGradientFill;
     fillType = FILL_TYPES.LINEAR_GRADIENT;
     hasLinearStart = Boolean(f.start);
     hasLinearEnd = Boolean(f.end);
@@ -459,7 +450,7 @@ const toWaveUniformsFromFill = (
       prevColor = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
     }
   } else if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT || fill.fillType === FILL_TYPES.DIAMOND_GRADIENT) {
-    const f = fill as any;
+    const f = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
     fillType = fill.fillType;
     hasRadialOffset = Boolean(f.start);
     if (f.start) radialOffset = { x: f.start.x ?? 0, y: f.start.y ?? 0 };
@@ -483,7 +474,7 @@ const toWaveUniformsFromFill = (
   const noiseScale = noise ? Math.max(noise.scale, 0.0001) : 1;
   const noiseDensity = noise?.density ?? 1;
 
-  const filaments = (fill as any).filaments;
+  const filaments = fill.filaments;
   const filamentColorContrast = filaments ? clamp01(filaments.colorContrast) : 0;
   const filamentAlphaContrast = filaments ? clamp01(filaments.alphaContrast) : 0;
   const filamentWidth = filaments ? clamp01(filaments.width) : 0;

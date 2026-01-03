@@ -35,8 +35,8 @@ import {
 } from "@logic/modules/shared/resources/resources.const";
 import type { ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
 import { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { useBridgeValue } from "@shared/useBridgeValue";
-import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { clearAllAuraSlots } from "@ui/renderers/objects";
 import {
   clearPetalAuraInstances,
   petalAuraEffect,

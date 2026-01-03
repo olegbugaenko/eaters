@@ -2,7 +2,7 @@ import { StateFactory } from "../../../core/factories/StateFactory";
 import { BuildingId, getBuildingConfig } from "../../../../db/buildings-db";
 import { ResourceStockpile, normalizeResourceAmount } from "../../../../db/resources-db";
 import { BuildingWorkshopItemState } from "./buildings.types";
-import type { BonusEffectPreview } from "../../../../types/bonuses";
+import type { BonusEffectPreview } from "@shared/types/bonuses";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { getMaxLevel } from "./buildings.helpers";

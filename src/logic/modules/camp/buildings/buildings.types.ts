@@ -4,7 +4,7 @@ import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { SkillId } from "../../../../db/skills-db";
-import type { BonusEffectPreview } from "../../../../types/bonuses";
+import type { BonusEffectPreview } from "@shared/types/bonuses";
 
 export interface BuildingWorkshopItemState {
   readonly id: BuildingId;

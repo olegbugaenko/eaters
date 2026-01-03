@@ -7,7 +7,7 @@ import type {
   SceneVector2,
 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
-import { clampNumber } from "@/utils/helpers/numbers";
+import { clampNumber } from "@shared/helpers/numbers.helper";
 import {
   ResourceStockpile,  
   RESOURCE_IDS,
@@ -24,7 +24,7 @@ import {
   vectorLength,
   vectorHasLength,
   normalizeVector,
-} from "../../../helpers/vector.helper";
+} from "../../../../shared/helpers/vector.helper";
 import { createBrickFill } from "./bricks.fill.helper";
 import { tintSceneFill } from "../../../helpers/scene-fill.helper";
 import { sceneColorsEqual } from "../../../helpers/scene-color.helper";
@@ -61,7 +61,7 @@ import {
   KNOCKBACK_EPSILON,
   TOTAL_HP_RECOMPUTE_INTERVAL_MS,
 } from "./bricks.const";
-import { ZERO_VECTOR } from "../../../helpers/geometry.const";
+import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
 import { MapRunState } from "../map/MapRunState";
 import { BrickStateFactory, BrickStateInput } from "./bricks.state-factory";
 

@@ -14,7 +14,7 @@ import {
   scaleVector,
   vectorHasLength,
   normalizeVector,
-} from "@/logic/helpers/vector.helper";
+} from "@/shared/helpers/vector.helper";
 
 interface TailNeedleState extends AbilityStateBase {}
 

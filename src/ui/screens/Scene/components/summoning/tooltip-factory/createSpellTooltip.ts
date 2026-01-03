@@ -5,7 +5,7 @@ import type {
   WhirlSpellOption,
 } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { SceneTooltipContent, SceneTooltipStat } from "../../tooltip/SceneTooltipPanel";
-import { formatNumber } from "@shared/format/number";
+import { formatNumber } from "@ui-shared/format/number";
 
 const formatDamageRange = (min: number, max: number): string => {
   const clampedMin = Math.max(min, 0);

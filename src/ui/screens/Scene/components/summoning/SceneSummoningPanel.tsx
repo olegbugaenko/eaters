@@ -11,7 +11,7 @@ import type {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
 } from "@logic/modules/active-map/necromancer/necromancer.types";
-import { createEmptyResourceAmount } from "@/types/resources";
+import { createEmptyResourceAmount } from "@shared/const/resources.const";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/player-units/player-units.module";
@@ -21,11 +21,11 @@ import {
 } from "@logic/modules/camp/unit-design/unit-design.types";
 import { SpellId } from "@db/spells-db";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { classNames } from "@shared/classNames";
-import { formatNumber } from "@shared/format/number";
-import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
-import { useBridgeValue } from "@shared/useBridgeValue";
+import { classNames } from "@ui-shared/classNames";
+import { formatNumber } from "@ui-shared/format/number";
+import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
 import "./SceneSummoningPanel.css";
 import { SceneTooltipContent } from "../tooltip/SceneTooltipPanel";

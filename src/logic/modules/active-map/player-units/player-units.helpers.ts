@@ -9,7 +9,7 @@ import {
   PlayerUnitRendererFillConfig,
   PlayerUnitRendererStrokeConfig,
 } from "../../../../db/player-units-db";
-import { PlayerUnitRuntimeModifiers } from "../../../../types/player-units";
+import { PlayerUnitRuntimeModifiers } from "@shared/types/player-units";
 
 /**
  * Sanitizes runtime modifiers for player units.
