@@ -25,15 +25,6 @@ import {
 } from "@db/player-units-db";
 import {
   createObjectsRendererManager,
-  POSITION_COMPONENTS,
-  VERTEX_COMPONENTS,
-  FILL_INFO_COMPONENTS,
-  FILL_PARAMS0_COMPONENTS,
-  FILL_PARAMS1_COMPONENTS,
-  FILL_FILAMENTS0_COMPONENTS,
-  FILL_FILAMENTS1_COMPONENTS,
-  STOP_OFFSETS_COMPONENTS,
-  STOP_COLOR_COMPONENTS,
 } from "@ui/renderers/objects";
 import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
 import {
@@ -49,14 +40,10 @@ import {
 import { renderArcBatches, resetAllArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { renderFireRings, disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import {
-  SCENE_VERTEX_SHADER,
-  createSceneFragmentShader,
-} from "@ui/renderers/shaders/fillEffects.glsl";
-import {
   setParticleEmitterGlContext,
   getParticleEmitterGlContext,
 } from "@ui/renderers/primitives/utils/gpuContext";
-import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
+import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
 import { whirlEffect, disposeWhirlResources } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import type { UnitModuleId } from "@db/unit-modules-db";
@@ -932,10 +919,6 @@ const cloneRendererConfigForScene = (
   };
 };
 
-const VERTEX_SHADER = SCENE_VERTEX_SHADER;
-
-const FRAGMENT_SHADER = createSceneFragmentShader();
-
 const centerCameraOnBounds = (
   scene: SceneObjectManager,
   bounds: SceneBounds
@@ -1067,35 +1050,6 @@ const updateCreatures = (
   });
 };
 
-const applySyncInstructions = (
-  gl: WebGL2RenderingContext,
-  objectsRenderer: ReturnType<typeof createObjectsRendererManager>,
-  staticBuffer: WebGLBuffer,
-  dynamicBuffer: WebGLBuffer
-) => {
-  // Update auto-animating objects (time-based animations) before syncing
-  objectsRenderer.tickAutoAnimating();
-  
-  const sync = objectsRenderer.consumeSyncInstructions();
-  if (sync.staticData) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, sync.staticData, gl.STATIC_DRAW);
-  }
-  if (sync.dynamicData) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, sync.dynamicData, gl.DYNAMIC_DRAW);
-  } else if (sync.dynamicUpdates.length > 0) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
-    sync.dynamicUpdates.forEach(({ offset, data }) => {
-      gl.bufferSubData(
-        gl.ARRAY_BUFFER,
-        offset * Float32Array.BYTES_PER_ELEMENT,
-        data
-      );
-    });
-  }
-};
-
 export const SaveSlotBackgroundScene: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -1153,92 +1107,8 @@ export const SaveSlotBackgroundScene: React.FC = () => {
 
     objectsRenderer.bootstrap(scene.getObjects());
 
-    const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-    const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    const program = linkProgram(gl, vertexShader, fragmentShader);
-
-    const positionLocation = gl.getAttribLocation(program, "a_position");
-    const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
-    const fillParams0Location = gl.getAttribLocation(program, "a_fillParams0");
-    const fillParams1Location = gl.getAttribLocation(program, "a_fillParams1");
-    const filaments0Location = gl.getAttribLocation(program, "a_filaments0");
-    const filamentEdgeBlurLocation = gl.getAttribLocation(
-      program,
-      "a_filamentEdgeBlur",
-    );
-    const stopOffsetsLocation = gl.getAttribLocation(program, "a_stopOffsets");
-    const stopColor0Location = gl.getAttribLocation(program, "a_stopColor0");
-    const stopColor1Location = gl.getAttribLocation(program, "a_stopColor1");
-    const stopColor2Location = gl.getAttribLocation(program, "a_stopColor2");
-
-    const attributeLocations = [
-      positionLocation,
-      fillInfoLocation,
-      fillParams0Location,
-      fillParams1Location,
-      filaments0Location,
-      filamentEdgeBlurLocation,
-      stopOffsetsLocation,
-      stopColor0Location,
-      stopColor1Location,
-      stopColor2Location,
-    ];
-
-    if (attributeLocations.some((location) => location < 0)) {
-      throw new Error("Failed to resolve attribute locations");
-    }
-
-    const stride = VERTEX_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    const attributeConfigs = (() => {
-      let offset = 0;
-      const configs: Array<{ location: number; size: number; offset: number }> = [];
-      const push = (location: number, size: number) => {
-        configs.push({ location, size, offset });
-        offset += size * Float32Array.BYTES_PER_ELEMENT;
-      };
-      push(positionLocation, POSITION_COMPONENTS);
-      push(fillInfoLocation, FILL_INFO_COMPONENTS);
-      push(fillParams0Location, FILL_PARAMS0_COMPONENTS);
-      push(fillParams1Location, FILL_PARAMS1_COMPONENTS);
-      push(filaments0Location, FILL_FILAMENTS0_COMPONENTS);
-      push(filamentEdgeBlurLocation, FILL_FILAMENTS1_COMPONENTS);
-      push(stopOffsetsLocation, STOP_OFFSETS_COMPONENTS);
-      push(stopColor0Location, STOP_COLOR_COMPONENTS);
-      push(stopColor1Location, STOP_COLOR_COMPONENTS);
-      push(stopColor2Location, STOP_COLOR_COMPONENTS);
-      return configs;
-    })();
-
-    const staticBuffer = gl.createBuffer();
-    const dynamicBuffer = gl.createBuffer();
-
-    if (!staticBuffer || !dynamicBuffer) {
-      throw new Error("Unable to allocate GL buffers");
-    }
-
-    const enableAttributes = (buffer: WebGLBuffer) => {
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      attributeConfigs.forEach(({ location, size, offset }) => {
-        gl.enableVertexAttribArray(location);
-        gl.vertexAttribPointer(location, size, gl.FLOAT, false, stride, offset);
-      });
-    };
-
-    const cameraPositionLocation = gl.getUniformLocation(program, "u_cameraPosition");
-    const viewportSizeLocation = gl.getUniformLocation(program, "u_viewportSize");
-
-    if (!cameraPositionLocation || !viewportSizeLocation) {
-      throw new Error("Failed to resolve camera uniforms");
-    }
-
-    gl.clearColor(0, 0, 0, 0);
-    gl.enable(gl.BLEND);
-    gl.blendFuncSeparate(
-      gl.SRC_ALPHA,
-      gl.ONE_MINUS_SRC_ALPHA,
-      gl.ONE,
-      gl.ONE_MINUS_SRC_ALPHA,
-    );
+    // Initialize WebGL renderer (handles shaders, buffers, attributes, uniforms)
+    const webglRenderer = new WebGLSceneRenderer(gl, objectsRenderer);
 
     const handleResize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -1263,8 +1133,8 @@ export const SaveSlotBackgroundScene: React.FC = () => {
     window.addEventListener("resize", handleResize);
 
     const initialChanges = scene.flushChanges();
-    objectsRenderer.applyChanges(initialChanges);
-    applySyncInstructions(gl, objectsRenderer, staticBuffer, dynamicBuffer);
+    webglRenderer.getObjectsRenderer().applyChanges(initialChanges);
+    webglRenderer.syncBuffers();
 
     let frame = 0;
     const render = (timestamp: number) => {
@@ -1272,37 +1142,21 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       updateCreatures(scene, creatures, timestamp);
       const cameraState = scene.getCamera();
       const changes = scene.flushChanges();
-      objectsRenderer.applyChanges(changes);
-      applySyncInstructions(gl, objectsRenderer, staticBuffer, dynamicBuffer);
+      webglRenderer.getObjectsRenderer().applyChanges(changes);
+      webglRenderer.syncBuffers();
 
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(program);
-      gl.uniform2f(cameraPositionLocation, cameraState.position.x, cameraState.position.y);
-      gl.uniform2f(
-        viewportSizeLocation,
-        cameraState.viewportSize.width,
-        cameraState.viewportSize.height
-      );
+      // Render base scene (static + dynamic buffers)
+      webglRenderer.render(cameraState);
 
-      const drawBuffer = (buffer: WebGLBuffer, vertexCount: number) => {
-        if (vertexCount <= 0) {
-          return;
-        }
-        enableAttributes(buffer);
-        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
-      };
-
-      drawBuffer(staticBuffer, objectsRenderer.getStaticVertexCount());
-      drawBuffer(dynamicBuffer, objectsRenderer.getDynamicVertexCount());
-
-      renderParticleEmitters(gl, cameraState.position, cameraState.viewportSize);
+      // Render additional effects (particles, whirls, auras, arcs, fire rings)
+      renderParticleEmitters(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize);
       updateAllWhirlInterpolations();
-      whirlEffect.beforeRender(gl, timestamp);
-      petalAuraEffect.beforeRender(gl, timestamp);
-      whirlEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
-      petalAuraEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
-      renderArcBatches(gl, cameraState.position, cameraState.viewportSize);
-      renderFireRings(gl, cameraState.position, cameraState.viewportSize, timestamp);
+      whirlEffect.beforeRender(webglRenderer.getGl(), timestamp);
+      petalAuraEffect.beforeRender(webglRenderer.getGl(), timestamp);
+      whirlEffect.render(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize, timestamp);
+      petalAuraEffect.render(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize, timestamp);
+      renderArcBatches(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize);
+      renderFireRings(webglRenderer.getGl(), cameraState.position, cameraState.viewportSize, timestamp);
 
       frame = window.requestAnimationFrame(render);
     };
@@ -1313,6 +1167,11 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       objectsRenderer.dispose();
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", handleResize);
+      
+      // Dispose WebGL renderer (handles buffers, program, shaders)
+      webglRenderer.dispose();
+      
+      // Cleanup additional GPU effects
       const particleGl = getParticleEmitterGlContext();
       if (particleGl) {
         try {
@@ -1345,11 +1204,6 @@ export const SaveSlotBackgroundScene: React.FC = () => {
         // ignore cleanup errors
       }
       setParticleEmitterGlContext(null);
-      gl.deleteBuffer(staticBuffer);
-      gl.deleteBuffer(dynamicBuffer);
-      gl.deleteProgram(program);
-      gl.deleteShader(vertexShader);
-      gl.deleteShader(fragmentShader);
     };
   }, []);
 

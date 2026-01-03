@@ -150,33 +150,24 @@ export const useSceneRunState = ({
     }
   }, [brickTotalHp]);
 
+  // Sync all state values to refs in a single effect to reduce overhead
   useEffect(() => {
     spellOptionsRef.current = spellOptions;
-  }, [spellOptions]);
-
-  useEffect(() => {
     automationStateRef.current = automationState;
-  }, [automationState]);
-
-  useEffect(() => {
     necromancerResourcesRef.current = necromancerResources;
-  }, [necromancerResources]);
-
-  useEffect(() => {
     necromancerOptionsRef.current = necromancerOptions;
-  }, [necromancerOptions]);
-
-  useEffect(() => {
     unitCountRef.current = unitCount;
-  }, [unitCount]);
-
-  useEffect(() => {
     unitTotalHpRef.current = unitTotalHp;
-  }, [unitTotalHp]);
-
-  useEffect(() => {
     brickTotalHpRef.current = brickTotalHp;
-  }, [brickTotalHp]);
+  }, [
+    spellOptions,
+    automationState,
+    necromancerResources,
+    necromancerOptions,
+    unitCount,
+    unitTotalHp,
+    brickTotalHp,
+  ]);
 
   const restartMap = useCallback(() => {
     clearAllAuraSlots();

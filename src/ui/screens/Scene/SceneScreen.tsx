@@ -132,30 +132,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     handleTutorialAdvance(tutorialStepIndex + 1);
   }, [handleTutorialAdvance, tutorialStepIndex]);
 
+  // Clear UI overlays when modals/overlays become visible
   useEffect(() => {
     if (showRunSummary) {
       setHoverContent(null);
-    }
-  }, [showRunSummary]);
-
-  useEffect(() => {
-    if (showRunSummary) {
       setIsPauseOpen(false);
     }
-  }, [showRunSummary]);
-
-  useEffect(() => {
     if (isPauseOpen) {
       setHoverContent(null);
     }
-  }, [isPauseOpen]);
-
-  useEffect(() => {
     if (showTutorial) {
       setHoverContent(null);
       setIsPauseOpen(false);
     }
-  }, [showTutorial]);
+  }, [showRunSummary, isPauseOpen, showTutorial]);
 
   useEffect(() => {
     if (!showTutorial) {
@@ -224,68 +214,52 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     });
   }, [handleSummonDesign]);
 
+  // Tutorial monitor: input bridge, status response, and sanity fallback
   useEffect(() => {
-    if (!showTutorial || activeTutorialStep?.id !== "summon-blue-vanguard") {
+    const isSummonStep = showTutorial && activeTutorialStep?.id === "summon-blue-vanguard";
+    
+    // Update bridge input
+    if (!isSummonStep) {
       bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, { active: false });
+    } else {
+      bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, {
+        active: true,
+        stepId: "summon-blue-vanguard",
+        actionCompleted: tutorialSummonDone,
+        bricksRequired: 3,
+      });
+    }
+    
+    // Skip advancement logic if not on summon step
+    if (!isSummonStep) {
       return;
     }
-    bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, {
-      active: true,
-      stepId: "summon-blue-vanguard",
-      actionCompleted: tutorialSummonDone,
-      bricksRequired: 3,
-    });
-  }, [activeTutorialStep?.id, bridge, showTutorial, tutorialSummonDone]);
-
-  useEffect(() => {
-    if (!showTutorial) {
+    
+    // Check if monitor signaled completion (version changed)
+    if (
+      tutorialMonitorStatus.ready &&
+      tutorialMonitorStatus.stepId === "summon-blue-vanguard" &&
+      tutorialMonitorVersionRef.current !== tutorialMonitorStatus.version
+    ) {
+      tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
+      handlePlayStepAdvance();
       return;
     }
-    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
-      return;
+    
+    // Fallback: advance when sanity runs out after summoning
+    if (tutorialSummonDone && !canAdvancePlayStep && necromancerResources.sanity.current <= 1) {
+      handlePlayStepAdvance();
     }
-    if (!tutorialMonitorStatus.ready) {
-      return;
-    }
-    if (tutorialMonitorStatus.stepId !== "summon-blue-vanguard") {
-      return;
-    }
-    if (tutorialMonitorVersionRef.current === tutorialMonitorStatus.version) {
-      return;
-    }
-    tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
-    handlePlayStepAdvance();
   }, [
     activeTutorialStep?.id,
-    handlePlayStepAdvance,
-    handleTutorialAdvance,
-    showTutorial,
-    tutorialMonitorStatus.ready,
-    tutorialMonitorStatus.stepId,
-    tutorialMonitorStatus.version,
-    tutorialStepIndex,
-  ]);
-
-  useEffect(() => {
-    if (!showTutorial) {
-      return;
-    }
-    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
-      return;
-    }
-    if (!tutorialSummonDone || canAdvancePlayStep) {
-      return;
-    }
-    if (necromancerResources.sanity.current > 1) {
-      return;
-    }
-    handlePlayStepAdvance();
-  }, [
-    activeTutorialStep?.id,
+    bridge,
     canAdvancePlayStep,
     handlePlayStepAdvance,
     necromancerResources.sanity.current,
     showTutorial,
+    tutorialMonitorStatus.ready,
+    tutorialMonitorStatus.stepId,
+    tutorialMonitorStatus.version,
     tutorialSummonDone,
   ]);
 
