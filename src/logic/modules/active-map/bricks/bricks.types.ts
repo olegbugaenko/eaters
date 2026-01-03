@@ -25,7 +25,7 @@ export interface BrickData {
 
 export interface BrickRuntimeState {
   id: string;
-  type: string;
+  type: BrickType;
   position: SceneVector2;
   rotation: number;
   level: number;

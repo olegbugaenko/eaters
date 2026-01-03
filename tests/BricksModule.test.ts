@@ -6,11 +6,11 @@ import {
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
-  SceneObjectManager,
-  FILL_TYPES,
   SceneLinearGradientFill,
   SceneRadialGradientFill,
-} from "../src/logic/services/SceneObjectManager";
+} from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
 import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import { describe, test } from "./testRunner";

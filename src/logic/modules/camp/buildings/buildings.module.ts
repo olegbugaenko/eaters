@@ -32,6 +32,10 @@ import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
   BUILDINGS_UNLOCK_SKILL_ID,
 } from "./buildings.const";
+import {
+  BuildingStateFactory,
+  BuildingStateInput,
+} from "./buildings.state-factory";
 
 export class BuildingsModule implements GameModule {
   public readonly id = "buildings";
@@ -46,6 +50,7 @@ export class BuildingsModule implements GameModule {
   private visibleBuildingIds: BuildingId[] = [];
   private levels: Map<BuildingId, number> = createDefaultLevels();
   private listeners = new Set<() => void>();
+  private readonly stateFactory: BuildingStateFactory;
 
   constructor(options: BuildingsModuleOptions) {
     this.bridge = options.bridge;
@@ -53,6 +58,7 @@ export class BuildingsModule implements GameModule {
     this.bonuses = options.bonuses;
     this.unlocks = options.unlocks;
     this.getSkillLevel = options.getSkillLevel;
+    this.stateFactory = new BuildingStateFactory();
     this.registerBonusSources();
   }
 
@@ -186,45 +192,23 @@ export class BuildingsModule implements GameModule {
   }
 
   private pushState(): void {
+    const inputs: BuildingStateInput[] = this.visibleBuildingIds.map((id) => ({
+      id,
+      level: this.levels.get(id) ?? 0,
+      unlocks: this.unlocks,
+      bonuses: this.bonuses,
+      getBonusSourceId: (buildingId) => this.getBonusSourceId(buildingId),
+      cloneCost: (source) => this.cloneCost(source),
+      applyCostModifiers: (source) => this.applyCostModifiers(source),
+    }));
+    const buildings = this.stateFactory.createMany(inputs);
     const payload: BuildingsWorkshopBridgeState = {
       unlocked: this.unlocked,
-      buildings: this.visibleBuildingIds.map((id) => this.createBuildingState(id)),
+      buildings,
     };
     this.bridge.setValue(BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY, payload);
   }
 
-  private createBuildingState(id: BuildingId): BuildingWorkshopItemState {
-    const config = getBuildingConfig(id);
-    const level = this.levels.get(id) ?? 0;
-    const maxLevelLimit = getMaxLevel(config);
-    const maxLevel = config.maxLevel ?? null;
-    const available = this.unlocks.areConditionsMet(config.unlockedBy);
-    const maxed = level >= maxLevelLimit;
-    const canUpgrade = available && !maxed;
-    const nextCost = canUpgrade
-      ? this.cloneCost(
-          this.applyCostModifiers(normalizeResourceAmount(config.cost(level + 1)))
-        )
-      : null;
-    let bonusEffects = this.bonuses.getBonusEffects(this.getBonusSourceId(id));
-    if (maxed) {
-      bonusEffects = bonusEffects.map((effect) => ({
-        ...effect,
-        nextValue: effect.currentValue,
-      }));
-    }
-    return {
-      id,
-      name: config.name,
-      description: config.description,
-      level,
-      maxLevel,
-      maxed,
-      available,
-      nextCost,
-      bonusEffects,
-    };
-  }
 
   private parseSaveData(data: unknown | undefined): Map<BuildingId, number> {
     const levels = createDefaultLevels();

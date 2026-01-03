@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
+import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import type { BrickData } from "../src/logic/modules/active-map/bricks/bricks.types";
 import { DataBridge } from "../src/logic/core/DataBridge";
@@ -8,12 +8,15 @@ import {
   PlayerUnitsModule,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "../src/logic/modules/active-map/player-units/player-units.module";
-import { MovementService } from "../src/logic/services/MovementService";
+import { MovementService } from "../src/logic/services/movement/MovementService";
 import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { EffectsModule } from "../src/logic/modules/scene/effects/effects.module";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
-import { PlayerUnitEmitterConfig, getPlayerUnitConfig } from "../src/db/player-units-db";
+import { getPlayerUnitConfig } from "../src/db/player-units-db";
+import type { ParticleEmitterConfig } from "../src/logic/interfaces/visuals/particle-emitters-config";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
+import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
+import { normalizeVector } from "../src/logic/helpers/vector.helper";
 
 const createResourceControllerStub = () => ({
   startRun: () => {},
@@ -34,6 +37,129 @@ const createBricksModule = (
 ) => {
   const resources = createResourceControllerStub();
   return new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+};
+
+const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule): UnitProjectileController => {
+  interface ProjectileState {
+    id: string;
+    position: { x: number; y: number };
+    velocity: { x: number; y: number };
+    damage: number;
+    hitRadius: number;
+    rewardMultiplier: number;
+    armorPenetration: number;
+    skipKnockback: boolean;
+    elapsedMs: number;
+    lifetimeMs: number;
+  }
+
+  const projectiles: ProjectileState[] = [];
+
+  return {
+    fireProjectile: () => {},
+    clear: () => {
+      projectiles.length = 0;
+    },
+    spawn: (projectile: any) => {
+      const origin = projectile.origin ?? { x: 0, y: 0 };
+      const rawDirection = projectile.direction ?? { x: 1, y: 0 };
+      const direction = normalizeVector(rawDirection) || { x: 1, y: 0 };
+      const speed = projectile.visual?.speed ?? 300;
+      const radius = projectile.visual?.radius ?? 10;
+      const hitRadius = projectile.visual?.hitRadius ?? radius;
+      const lifetimeMs = projectile.visual?.lifetimeMs ?? 3000;
+
+      const objectId = scene.addObject("unitProjectile", {
+        position: { ...origin },
+        size: { width: radius * 2, height: radius * 2 },
+        fill: projectile.visual?.fill,
+        customData: projectile.visual?.rendererCustomData ?? {},
+      });
+
+      projectiles.push({
+        id: objectId,
+        position: { ...origin },
+        velocity: { x: direction.x * speed, y: direction.y * speed },
+        damage: projectile.damage ?? 0,
+        hitRadius,
+        rewardMultiplier: projectile.rewardMultiplier ?? 1,
+        armorPenetration: projectile.armorPenetration ?? 0,
+        skipKnockback: projectile.skipKnockback === true,
+        elapsedMs: 0,
+        lifetimeMs,
+      });
+
+      return objectId;
+    },
+    tick: (deltaMs: number) => {
+      if (deltaMs <= 0 || projectiles.length === 0) {
+        return;
+      }
+      const deltaSeconds = deltaMs / 1000;
+      const mapSize = scene.getMapSize();
+
+      let writeIndex = 0;
+      for (let i = 0; i < projectiles.length; i++) {
+        const p = projectiles[i]!;
+        let hit = false;
+
+        // Move projectile
+        p.position.x += p.velocity.x * deltaSeconds;
+        p.position.y += p.velocity.y * deltaSeconds;
+
+        // Check collision with bricks
+        const nearbyBricks = bricks.findBricksNear(p.position, p.hitRadius + 50);
+        for (const brick of nearbyBricks) {
+          const dx = brick.position.x - p.position.x;
+          const dy = brick.position.y - p.position.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance <= p.hitRadius + (brick.physicalSize ?? 0)) {
+            // Hit!
+            if (p.damage > 0) {
+              const dir = { x: p.velocity.x, y: p.velocity.y };
+              const len = Math.hypot(dir.x, dir.y);
+              if (len > 0) {
+                dir.x /= len;
+                dir.y /= len;
+              }
+              bricks.applyDamage(brick.id, p.damage, dir, {
+                rewardMultiplier: p.rewardMultiplier,
+                armorPenetration: p.armorPenetration,
+                skipKnockback: p.skipKnockback,
+              });
+            }
+            scene.removeObject(p.id);
+            hit = true;
+            break;
+          }
+        }
+
+        if (hit) {
+          continue;
+        }
+
+        // Check lifetime
+        p.elapsedMs += deltaMs;
+        if (p.elapsedMs >= p.lifetimeMs) {
+          scene.removeObject(p.id);
+          continue;
+        }
+
+        // Check bounds
+        if (p.position.x < -100 || p.position.x > mapSize.width + 100 ||
+            p.position.y < -100 || p.position.y > mapSize.height + 100) {
+          scene.removeObject(p.id);
+          continue;
+        }
+
+        // Update scene object position
+        scene.updateObject(p.id, { position: { ...p.position } });
+
+        projectiles[writeIndex++] = p;
+      }
+      projectiles.length = writeIndex;
+    },
+  } as unknown as UnitProjectileController;
 };
 
 const tickSeconds = (module: PlayerUnitsModule, seconds: number) => {
@@ -60,10 +186,12 @@ describe("PlayerUnitsModule", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
     });
+    units.initialize();
     units.prepareForMap();
 
     bricks.setBricks([
@@ -71,7 +199,7 @@ describe("PlayerUnitsModule", () => {
         position: { x: 4, y: 0 },
         rotation: 0,
         level: 0,
-        type: "smallSquareGray",
+        type: "smallTrainingBrick",
       },
     ]);
 
@@ -82,14 +210,14 @@ describe("PlayerUnitsModule", () => {
       },
     ]);
 
-    const unitObject = scene.getObjects().find((object) => object.type === "playerUnit");
+    const unitObject = scene.getObjects().find((object: { type: string }) => object.type === "playerUnit");
     assert(unitObject, "unit scene object should be created");
     const customData = unitObject!.data.customData as {
       emitter?: unknown;
       physicalSize?: number;
     };
     assert(customData && customData.emitter, "unit should include emitter config");
-    const emitter = customData.emitter as PlayerUnitEmitterConfig;
+    const emitter = customData.emitter as ParticleEmitterConfig;
     const unitConfig = getPlayerUnitConfig("bluePentagon");
     assert(unitConfig.emitter, "expected emitter configuration for bluePentagon");
     const expectedEmitter = unitConfig.emitter!;
@@ -120,7 +248,7 @@ describe("PlayerUnitsModule", () => {
     }
     assert.strictEqual(customData?.physicalSize, 12);
 
-    for (let i = 0; i < 32 && bricks.getBrickStates().length > 0; i += 1) {
+    for (let i = 0; i < 64 && bricks.getBrickStates().length > 0; i += 1) {
       tickSeconds(units, 0.5);
     }
 
@@ -148,10 +276,12 @@ describe("PlayerUnitsModule", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
     });
+    units.initialize();
     units.prepareForMap();
 
     bricks.setBricks([
@@ -171,7 +301,7 @@ describe("PlayerUnitsModule", () => {
     ]);
 
     const getUnitObject = () =>
-      scene.getObjects().find((object) => object.type === "playerUnit");
+      scene.getObjects().find((object: { type: string }) => object.type === "playerUnit");
 
     let minX = Infinity;
     let maxX = -Infinity;
@@ -268,11 +398,13 @@ describe("PlayerUnitsModule", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       effects: effectsStub,
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
     });
+    units.initialize();
 
     units.setUnits([
       {
@@ -309,19 +441,19 @@ describe("PlayerUnitsModule", () => {
         position: { x: 20, y: 0 },
         rotation: 0,
         level: 0,
-        type: "smallSquareGray",
+        type: "smallTrainingBrick",
       },
       {
         position: { x: 0, y: 80 },
         rotation: 0,
         level: 0,
-        type: "smallSquareGray",
+        type: "smallTrainingBrick",
       },
       {
         position: { x: 800, y: 0 },
         rotation: 0,
         level: 0,
-        type: "smallSquareGray",
+        type: "smallTrainingBrick",
       },
     ]);
 
@@ -339,10 +471,12 @@ describe("PlayerUnitsModule", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: (id) => (id === "tailNeedles" ? 1 : 0),
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
     });
+    units.initialize();
     units.prepareForMap();
 
     units.setUnits([

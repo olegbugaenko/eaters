@@ -30,6 +30,14 @@ import {
 } from "../../../../types/resources";
 import { computePlayerUnitBlueprint } from "../../active-map/player-units/player-units.blueprint";
 import { roundStat } from "../../../helpers/numbers.helper";
+import {
+  UnitDesignModuleDetailFactory,
+  UnitDesignModuleDetailInput,
+} from "./unit-design.state-factory";
+import {
+  UnitDesignerAvailableModuleFactory,
+  UnitDesignerAvailableModuleInput,
+} from "./unit-design.available-modules.state-factory";
 import type {
   UnitDesignId,
   UnitDesignRecord,
@@ -67,6 +75,8 @@ export class UnitDesignModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly bonuses: BonusesModule;
   private readonly workshop: UnitModuleWorkshopModule;
+  private readonly moduleDetailFactory: UnitDesignModuleDetailFactory;
+  private readonly availableModuleFactory: UnitDesignerAvailableModuleFactory;
 
   private designs = new Map<UnitDesignId, UnitDesignRecord>();
   private designOrder: UnitDesignId[] = [];
@@ -84,6 +94,8 @@ export class UnitDesignModule implements GameModule {
     this.bridge = options.bridge;
     this.bonuses = options.bonuses;
     this.workshop = options.workshop;
+    this.moduleDetailFactory = new UnitDesignModuleDetailFactory();
+    this.availableModuleFactory = new UnitDesignerAvailableModuleFactory();
   }
 
   public initialize(): void {
@@ -484,51 +496,19 @@ export class UnitDesignModule implements GameModule {
   }
 
   private createAvailableModules(): UnitDesignerAvailableModuleState[] {
-    return UNIT_MODULE_IDS.map((id) => {
-      const config = getUnitModuleConfig(id);
-      const level = this.workshop.getModuleLevel(id);
-      const bonusValue = computeModuleValue(config.bonusType, config.baseBonusValue, config.bonusPerLevel, level);
-      return {
-        id,
-        name: config.name,
-        description: config.description,
-        level,
-        bonusLabel: config.bonusLabel,
-        bonusType: config.bonusType,
-        bonusValue,
-        manaCostMultiplier: config.manaCostMultiplier,
-        sanityCost: config.sanityCost,
-      };
-    });
+    const inputs: UnitDesignerAvailableModuleInput[] = UNIT_MODULE_IDS.map((id) => ({
+      moduleId: id,
+      getModuleLevel: (moduleId) => this.workshop.getModuleLevel(moduleId),
+    }));
+    return this.availableModuleFactory.createMany(inputs);
   }
 
   private createModuleDetails(modules: readonly UnitModuleId[]): UnitDesignModuleDetail[] {
-    const details: UnitDesignModuleDetail[] = [];
-    modules.forEach((moduleId) => {
-      const config = getUnitModuleConfig(moduleId);
-      const level = this.workshop.getModuleLevel(moduleId);
-      if (level <= 0) {
-        return;
-      }
-      const bonusValue = computeModuleValue(
-        config.bonusType,
-        config.baseBonusValue,
-        config.bonusPerLevel,
-        level
-      );
-      details.push({
-        id: moduleId,
-        name: config.name,
-        description: config.description,
-        level,
-        bonusLabel: config.bonusLabel,
-        bonusType: config.bonusType,
-        bonusValue,
-        manaCostMultiplier: config.manaCostMultiplier,
-        sanityCost: config.sanityCost,
-      });
-    });
-    return details;
+    const inputs: UnitDesignModuleDetailInput[] = modules.map((moduleId) => ({
+      moduleId,
+      getModuleLevel: (id) => this.workshop.getModuleLevel(id),
+    }));
+    return this.moduleDetailFactory.createManyWithLevelFilter(inputs);
   }
 
   private computeCost(

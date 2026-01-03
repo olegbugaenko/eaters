@@ -23,14 +23,20 @@ import {
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
   MODULE_UNLOCK_SKILL_ID,
 } from "./unit-module-workshop.const";
+
+// Re-export for tests
+export { UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY };
+export type { UnitModuleWorkshopBridgeState } from "./unit-module-workshop.types";
 import {
   createDefaultLevels,
   clampLevel,
   scaleResourceStockpile,
-  toRecord,
   areModuleListsEqual,
-  computeBonusValue,
 } from "./unit-module-workshop.helpers";
+import {
+  UnitModuleStateFactory,
+  UnitModuleStateInput,
+} from "./unit-module-workshop.state-factory";
 
 export class UnitModuleWorkshopModule implements GameModule {
   public readonly id = "unitModuleWorkshop";
@@ -44,12 +50,14 @@ export class UnitModuleWorkshopModule implements GameModule {
   private visibleModuleIds: UnitModuleId[] = [];
   private levels: Map<UnitModuleId, number> = createDefaultLevels();
   private listeners = new Set<() => void>();
+  private readonly stateFactory: UnitModuleStateFactory;
 
   constructor(options: UnitModuleWorkshopModuleOptions) {
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.getSkillLevel = options.getSkillLevel;
     this.unlocks = options.unlocks;
+    this.stateFactory = new UnitModuleStateFactory();
   }
 
   public initialize(): void {
@@ -163,7 +171,12 @@ export class UnitModuleWorkshopModule implements GameModule {
 
   private pushState(): void {
     const moduleIds = this.unlocked ? this.visibleModuleIds : [];
-    const modules = moduleIds.map((id) => this.createModuleState(id));
+    const inputs: UnitModuleStateInput[] = moduleIds.map((id) => ({
+      id,
+      level: this.levels.get(id) ?? 0,
+      getUpgradeCost: (moduleId, level) => this.getUpgradeCost(moduleId, level),
+    }));
+    const modules = this.stateFactory.createMany(inputs);
     this.bridge.setValue<UnitModuleWorkshopBridgeState>(
       UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
       {
@@ -184,26 +197,6 @@ export class UnitModuleWorkshopModule implements GameModule {
     });
   }
 
-  private createModuleState(id: UnitModuleId): UnitModuleWorkshopItemState {
-    const config = getUnitModuleConfig(id);
-    const level = this.levels.get(id) ?? 0;
-    const costStockpile = this.getUpgradeCost(id, level);
-    const costRecord = toRecord(costStockpile);
-    return {
-      id,
-      name: config.name,
-      description: config.description,
-      bonusLabel: config.bonusLabel,
-      bonusType: config.bonusType,
-      baseBonusValue: config.baseBonusValue,
-      bonusPerLevel: config.bonusPerLevel,
-      currentBonusValue: computeBonusValue(config.baseBonusValue, config.bonusPerLevel, level),
-      manaCostMultiplier: config.manaCostMultiplier,
-      sanityCost: config.sanityCost,
-      level,
-      nextCost: Object.keys(costRecord).length > 0 ? costRecord : null,
-    };
-  }
 
 
   private parseSaveData(data: unknown): Map<UnitModuleId, number> {

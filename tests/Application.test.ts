@@ -1,6 +1,6 @@
 import assert from "assert";
 import { Application } from "../src/logic/core/Application";
-import { MAP_LIST_BRIDGE_KEY } from "../src/logic/modules/active-map/map/map.module";
+import { MAP_LIST_BRIDGE_KEY } from "../src/logic/modules/active-map/map/map.const";
 import { MapListEntry } from "../src/logic/modules/active-map/map/map.types";
 import { describe, test } from "./testRunner";
 

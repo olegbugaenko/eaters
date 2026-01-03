@@ -62,6 +62,7 @@ import {
 } from "./bricks.const";
 import { ZERO_VECTOR } from "../../../helpers/geometry.const";
 import { MapRunState } from "../map/MapRunState";
+import { BrickStateFactory, BrickStateInput } from "./bricks.state-factory";
 
 export class BricksModule implements GameModule {
   public readonly id = "bricks";
@@ -77,9 +78,11 @@ export class BricksModule implements GameModule {
   private lastPushedBrickCount = -1;
   private lastPushedTotalHp = -1;
   private readonly runState: MapRunState;
+  private readonly stateFactory: BrickStateFactory;
 
   constructor(private readonly options: BricksModuleOptions) {
     this.runState = options.runState;
+    this.stateFactory = new BrickStateFactory({ scene: options.scene });
     this.effects = new BrickEffectsManager({
       hasBrick: (brickId) => this.bricks.has(brickId),
       dealDamage: (brickId, damage, opts) => {
@@ -331,7 +334,12 @@ export class BricksModule implements GameModule {
     this.lastPushedTotalHp = -1;
 
     bricks.forEach((brick) => {
-      const state = this.createBrickState(brick);
+      const input: BrickStateInput = {
+        brick,
+        brickId: this.createBrickId(),
+        clampToMap: (pos) => this.clampToMap(pos),
+      };
+      const state = this.stateFactory.createWithTransform(input);
       this.bricks.set(state.id, state);
       this.brickOrder.push(state);
       this.spatialIndex.set(state.id, state.position, state.physicalSize, state);
@@ -341,86 +349,6 @@ export class BricksModule implements GameModule {
     this.pushStats();
   }
 
-  private createBrickState(brick: BrickData): InternalBrickState {
-    const type = sanitizeBrickType(brick.type);
-    const config = getBrickConfig(type);
-    const destructuble = config.destructubleData;
-    const level = sanitizeBrickLevel(brick.level);
-    const stats = calculateBrickStatsForLevel(config, level);
-    const maxHp = stats.maxHp;
-    const baseDamage = stats.baseDamage;
-    const brickKnockBackDistance = Math.max(destructuble?.brickKnockBackDistance ?? 0, 0);
-    const brickKnockBackSpeed = sanitizeKnockBackSpeed(
-      destructuble?.brickKnockBackSpeed,
-      brickKnockBackDistance
-    );
-    const armor = stats.armor;
-    const physicalSize = Math.max(
-      destructuble?.physicalSize ?? Math.max(config.size.width, config.size.height) / 2,
-      0
-    );
-    const brickKnockBackAmplitude = sanitizeKnockBackAmplitude(
-      destructuble?.brickKnockBackAmplitude,
-      brickKnockBackDistance,
-      config,
-      physicalSize
-    );
-    const baseHp =
-      typeof destructuble?.hp === "number"
-        ? scaleBrickStat(destructuble.hp, getBrickLevelStatMultiplier(level), true)
-        : maxHp;
-    const hp = sanitizeHp(brick.hp ?? baseHp, maxHp);
-    const position = this.clampToMap(brick.position);
-    const rotation = sanitizeRotation(brick.rotation);
-    const rewards = stats.rewards;
-
-    const id = this.createBrickId();
-    const baseFill = createBrickFill(config);
-    const sceneObjectId = this.options.scene.addObject("brick", {
-      position,
-      size: { ...config.size },
-      fill: cloneSceneFill(baseFill),
-      rotation,
-      stroke: config.stroke
-        ? {
-            color: { ...config.stroke.color },
-            width: config.stroke.width,
-          }
-        : undefined,
-    });
-
-    return {
-      id,
-      type,
-      position,
-      rotation,
-      level,
-      hp,
-      maxHp,
-      armor,
-      baseDamage,
-      brickKnockBackDistance,
-      brickKnockBackSpeed,
-      brickKnockBackAmplitude,
-      physicalSize,
-      rewards,
-      sceneObjectId,
-      damageExplosion: resolveBrickExplosion(
-        destructuble?.damageExplosion,
-        config,
-        physicalSize
-      ),
-      destructionExplosion: resolveBrickExplosion(
-        destructuble?.destructionExplosion,
-        config,
-        physicalSize
-      ),
-      knockback: null,
-      baseFill: cloneSceneFill(baseFill),
-      appliedFill: cloneSceneFill(baseFill),
-      activeTint: null,
-    };
-  }
 
   private playBrickSound(type: "hit" | "destroy"): void {
     const audio = this.options.audio;

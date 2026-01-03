@@ -1,18 +1,20 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
+import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { PlayerUnitsModule } from "../src/logic/modules/active-map/player-units/player-units.module";
-import { MovementService } from "../src/logic/services/MovementService";
+import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
+import { normalizeVector } from "../src/logic/helpers/vector.helper";
+import { MovementService } from "../src/logic/services/movement/MovementService";
+import { MapModule } from "../src/logic/modules/active-map/map/map.module";
 import {
-  MapModule,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
   MAP_LIST_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MAP_LAST_PLAYED_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/map/map.module";
+} from "../src/logic/modules/active-map/map/map.const";
 import type {
   MapListEntry,
   MapStats,
@@ -25,11 +27,134 @@ import type { ArcModule } from "../src/logic/modules/scene/arc/arc.module";
 import type { UnitAutomationModule } from "../src/logic/modules/active-map/unit-automation/unit-automation.module";
 import { NecromancerModule } from "../src/logic/modules/active-map/necromancer/necromancer.module";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
-import { UnlockService } from "../src/logic/services/UnlockService";
+import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/unit-design/unit-design.module";
 import { getMapConfig } from "../src/db/maps-db";
 import { MapId } from "../src/db/maps-db";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
+
+const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule): UnitProjectileController => {
+  interface ProjectileState {
+    id: string;
+    position: { x: number; y: number };
+    velocity: { x: number; y: number };
+    damage: number;
+    hitRadius: number;
+    rewardMultiplier: number;
+    armorPenetration: number;
+    skipKnockback: boolean;
+    elapsedMs: number;
+    lifetimeMs: number;
+  }
+
+  const projectiles: ProjectileState[] = [];
+
+  return {
+    fireProjectile: () => {},
+    clear: () => {
+      projectiles.length = 0;
+    },
+    spawn: (projectile: any) => {
+      const origin = projectile.origin ?? { x: 0, y: 0 };
+      const rawDirection = projectile.direction ?? { x: 1, y: 0 };
+      const direction = normalizeVector(rawDirection) || { x: 1, y: 0 };
+      const speed = projectile.visual?.speed ?? 300;
+      const radius = projectile.visual?.radius ?? 10;
+      const hitRadius = projectile.visual?.hitRadius ?? radius;
+      const lifetimeMs = projectile.visual?.lifetimeMs ?? 3000;
+
+      const objectId = scene.addObject("unitProjectile", {
+        position: { ...origin },
+        size: { width: radius * 2, height: radius * 2 },
+        fill: projectile.visual?.fill,
+        customData: projectile.visual?.rendererCustomData ?? {},
+      });
+
+      projectiles.push({
+        id: objectId,
+        position: { ...origin },
+        velocity: { x: direction.x * speed, y: direction.y * speed },
+        damage: projectile.damage ?? 0,
+        hitRadius,
+        rewardMultiplier: projectile.rewardMultiplier ?? 1,
+        armorPenetration: projectile.armorPenetration ?? 0,
+        skipKnockback: projectile.skipKnockback === true,
+        elapsedMs: 0,
+        lifetimeMs,
+      });
+
+      return objectId;
+    },
+    tick: (deltaMs: number) => {
+      if (deltaMs <= 0 || projectiles.length === 0) {
+        return;
+      }
+      const deltaSeconds = deltaMs / 1000;
+      const mapSize = scene.getMapSize();
+
+      let writeIndex = 0;
+      for (let i = 0; i < projectiles.length; i++) {
+        const p = projectiles[i]!;
+        let hit = false;
+
+        // Move projectile
+        p.position.x += p.velocity.x * deltaSeconds;
+        p.position.y += p.velocity.y * deltaSeconds;
+
+        // Check collision with bricks
+        const nearbyBricks = bricks.findBricksNear(p.position, p.hitRadius + 50);
+        for (const brick of nearbyBricks) {
+          const dx = brick.position.x - p.position.x;
+          const dy = brick.position.y - p.position.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance <= p.hitRadius + (brick.physicalSize ?? 0)) {
+            // Hit!
+            if (p.damage > 0) {
+              const dir = { x: p.velocity.x, y: p.velocity.y };
+              const len = Math.hypot(dir.x, dir.y);
+              if (len > 0) {
+                dir.x /= len;
+                dir.y /= len;
+              }
+              bricks.applyDamage(brick.id, p.damage, dir, {
+                rewardMultiplier: p.rewardMultiplier,
+                armorPenetration: p.armorPenetration,
+                skipKnockback: p.skipKnockback,
+              });
+            }
+            scene.removeObject(p.id);
+            hit = true;
+            break;
+          }
+        }
+
+        if (hit) {
+          continue;
+        }
+
+        // Check lifetime
+        p.elapsedMs += deltaMs;
+        if (p.elapsedMs >= p.lifetimeMs) {
+          scene.removeObject(p.id);
+          continue;
+        }
+
+        // Check bounds
+        if (p.position.x < -100 || p.position.x > mapSize.width + 100 ||
+            p.position.y < -100 || p.position.y > mapSize.height + 100) {
+          scene.removeObject(p.id);
+          continue;
+        }
+
+        // Update scene object position
+        scene.updateObject(p.id, { position: { ...p.position } });
+
+        projectiles[writeIndex++] = p;
+      }
+      projectiles.length = writeIndex;
+    },
+  } as unknown as UnitProjectileController;
+};
 
 const createUnitDesignerStub = (): UnitDesignModule => {
   const stub = {
@@ -107,6 +232,7 @@ describe("MapModule", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -398,6 +524,7 @@ describe("Map run control", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -472,6 +599,7 @@ describe("Map run control", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -553,6 +681,7 @@ describe("Map unlocking", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -651,6 +780,7 @@ describe("Map unlocking", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",
@@ -818,6 +948,7 @@ describe("Map auto restart", () => {
       bonuses,
       explosions,
       runState,
+      projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
       getDesignTargetingMode: () => "nearest",

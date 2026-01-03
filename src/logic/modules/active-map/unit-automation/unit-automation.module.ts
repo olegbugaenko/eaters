@@ -23,6 +23,11 @@ import {
   MAX_AUTOMATION_FAILURES_BEFORE_FALLBACK,
 } from "./unit-automation.const";
 import { selectNextAutomationTarget } from "./unit-automation.helpers";
+
+// Re-export for tests
+export { UNIT_AUTOMATION_STATE_BRIDGE_KEY, DEFAULT_UNIT_AUTOMATION_STATE };
+export { selectNextAutomationTarget };
+export type { UnitAutomationBridgeState, AutomationSelectionCandidate } from "./unit-automation.types";
 import { SkillId } from "@/db/skills-db";
 import { MapRunState } from "../map/MapRunState";
 import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";

@@ -97,7 +97,6 @@ export interface UnitFactoryResult {
 }
 
 import { cloneEmitter } from "../player-units.helpers";
-import { cloneSceneColor } from "../../../../helpers/scene-color.helper";
 
 const cloneAuraConfig = (aura: PlayerUnitAuraConfig): PlayerUnitAuraConfig => ({
   petalCount: aura.petalCount,
