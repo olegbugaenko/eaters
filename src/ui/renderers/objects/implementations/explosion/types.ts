@@ -5,6 +5,8 @@ import type { ParticleEmitterBaseConfig } from "../../../primitives/ParticleEmit
 export interface ExplosionRendererCustomData {
   waveLifetimeMs?: number;
   emitter?: ParticleEmitterConfig;
+  startAlpha?: number;
+  endAlpha?: number;
 }
 
 export type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {

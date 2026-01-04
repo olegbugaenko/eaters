@@ -9,24 +9,21 @@ import {
 import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
 import { GameLoop } from "@logic/services/game-loop/GameLoop";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
-import { renderArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import {
-  petalAuraEffect,
+  petalAuraGpuRenderer,
 } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
 import {
-  getParticleStats,
-  renderParticleEmitters,
+  particleEmitterGpuRenderer,
 } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { whirlEffect } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
+import { explosionWaveGpuRenderer } from "@ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
+import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import {
-  uploadBulletBatches,
-  renderBulletBatches,
+  bulletGpuRenderer,
   applyInterpolatedBulletPositions,
 } from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
-import {
-  renderRings,
-} from "@ui/renderers/primitives/gpu/RingGpuRenderer";
+import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "./useWebGLRenderLoop";
@@ -274,31 +271,29 @@ export const useSceneCanvas = ({
       },
       beforeEffects: (timestamp, gl, cameraState) => {
         // Render additional effects (particles, whirls, auras, arcs, fire rings, bullets, rings)
-        renderParticleEmitters(
+        // Explosion waves - rendered separately (not via ParticleEmitter system)
+        explosionWaveGpuRenderer.beforeRender(gl, timestamp);
+        explosionWaveGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+        // Particle emitters (particles, not waves)
+        particleEmitterGpuRenderer.beforeRender(gl, timestamp);
+        particleEmitterGpuRenderer.render(
           gl,
           cameraState.position,
           cameraState.viewportSize,
+          timestamp,
         );
         updateAllWhirlInterpolations();
-        whirlEffect.beforeRender(gl, timestamp);
-        petalAuraEffect.beforeRender(gl, timestamp);
-        whirlEffect.render(
+        whirlGpuRenderer.beforeRender(gl, timestamp);
+        petalAuraGpuRenderer.beforeRender(gl, timestamp);
+        whirlGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+        petalAuraGpuRenderer.render(
           gl,
           cameraState.position,
           cameraState.viewportSize,
           timestamp,
         );
-        petalAuraEffect.render(
-          gl,
-          cameraState.position,
-          cameraState.viewportSize,
-          timestamp,
-        );
-        renderArcBatches(
-          gl,
-          cameraState.position,
-          cameraState.viewportSize,
-        );
+        arcGpuRenderer.beforeRender(gl, timestamp);
+        arcGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
         renderFireRings(
           gl,
           cameraState.position,
@@ -310,18 +305,15 @@ export const useSceneCanvas = ({
         if (interpolatedBulletPositions.size > 0) {
           applyInterpolatedBulletPositions(interpolatedBulletPositions);
         }
-        uploadBulletBatches();
-        renderBulletBatches(cameraState.position, cameraState.viewportSize);
+        bulletGpuRenderer.beforeRender(gl, timestamp);
+        bulletGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
         // GPU instanced rings (ring trails)
-        renderRings(
-          cameraState.position,
-          { x: cameraState.viewportSize.width, y: cameraState.viewportSize.height },
-          timestamp
-        );
+        ringGpuRenderer.beforeRender(gl, timestamp);
+        ringGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
       },
       afterRender: (timestamp, gl, cameraState) => {
         // Update particle stats
-        const stats = getParticleStats(gl);
+        const stats = particleEmitterGpuRenderer.getStats(gl);
         const now = timestamp;
         if (now - particleStatsLastUpdateRef.current >= 500) {
           particleStatsLastUpdateRef.current = now;
@@ -526,7 +518,7 @@ export const useSceneCanvas = ({
     return () => {
       // Stop render loop
       renderLoop.stop();
-      // Cleanup WebGL resources (includes resetAllArcBatches)
+      // Cleanup WebGL resources
       webglCleanup();
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", handleVisibilityChange);

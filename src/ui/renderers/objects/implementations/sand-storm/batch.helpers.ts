@@ -1,54 +1,43 @@
-import { ensureWhirlBatch, getWhirlGlContext } from "../../../primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer, type WhirlSlotHandle } from "../../../primitives/gpu/WhirlGpuRenderer";
+import { getParticleEmitterGlContext } from "../../../primitives/utils/gpuContext";
 import { DEFAULT_BATCH_CAPACITY } from "./constants";
 
 /**
- * Ensures whirl batch is created and returns it
+ * Ensures whirl batch is created and returns context
  */
 export const ensureBatch = () => {
-  const gl = getWhirlGlContext();
+  const gl = getParticleEmitterGlContext();
   if (!gl) {
     return null;
   }
-  return ensureWhirlBatch(gl, DEFAULT_BATCH_CAPACITY);
+  // Set context if not already set
+  if (whirlGpuRenderer["gl"] !== gl) {
+    whirlGpuRenderer.setContext(gl);
+  }
+  return gl;
 };
 
 /**
  * Acquires a slot in the batch for an instance
  */
 export const acquireSlot = (
-  batch: NonNullable<ReturnType<typeof ensureBatch>>,
+  _gl: WebGL2RenderingContext | null,
   instanceId: string,
-  instanceSlotMap: Map<string, number>,
-  startIndex = 0
-): number => {
-  // Спочатку шукаємо вільний слот (неактивний і не зареєстрований для іншого instance)
-  for (let i = 0; i < batch.capacity; i += 1) {
-    const index = (startIndex + i) % batch.capacity;
-    const inst = batch.instances[index];
-    if (!inst || !inst.active) {
-      // Перевіряємо, чи цей слот не зареєстрований для іншого instance
-      let slotInUse = false;
-      for (const [id, slotIdx] of instanceSlotMap.entries()) {
-        if (id !== instanceId && slotIdx === index) {
-          slotInUse = true;
-          break;
-        }
-      }
-      if (!slotInUse) {
-        return index;
-      }
-    }
+  instanceSlotMap: Map<string, WhirlSlotHandle>,
+  _startIndex = 0
+): WhirlSlotHandle | null => {
+  // Check if instance already has a slot
+  const existing = instanceSlotMap.get(instanceId);
+  if (existing) {
+    return existing;
   }
 
-  // Якщо всі слоти зайняті, вибираємо останній слот і очищаємо його з map
-  // (інший instance доведеться знайти новий слот при наступному update)
-  const fallbackIndex = Math.max(0, batch.capacity - 1);
-  for (const [id, slotIdx] of instanceSlotMap.entries()) {
-    if (id !== instanceId && slotIdx === fallbackIndex) {
-      // Видаляємо інший instance з map, оскільки ми перезапишемо його слот
-      instanceSlotMap.delete(id);
-      break;
-    }
+  // Acquire new slot
+  const handle = whirlGpuRenderer.acquireSlot(undefined);
+  if (!handle) {
+    return null;
   }
-  return fallbackIndex;
+
+  instanceSlotMap.set(instanceId, handle);
+  return handle;
 };

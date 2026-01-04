@@ -81,7 +81,7 @@ export const usePositionInterpolation = (
       
       activeBullets.forEach((item) => {
         const { handle, position } = item;
-        const key = `${handle.visualKey}:${handle.slotIndex}`;
+        const key = `${handle.batchKey}:${handle.slotIndex}`;
         nextKeys.add(key);
         const existing = snapshots.get(key);
         

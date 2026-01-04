@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneSize, SceneVector2 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
 import {
   CORE_NOISE_GLSL,
   APPLY_FILL_NOISE_GLSL,
@@ -6,6 +6,7 @@ import {
   DEFAULT_NOISE_ANCHOR,
   createNoiseAnchorGLSL,
 } from "../../shaders/fillEffects.glsl";
+import type { GpuInstancedPrimitiveLifecycle } from "./GpuInstancedPrimitiveLifecycle";
 
 const UNIT_QUAD_VERTICES = new Float32Array([
   // TRIANGLE_STRIP order: bottom-left, bottom-right, top-left, top-right
@@ -25,6 +26,8 @@ in float a_age;
 in float a_lifetime;
 in float a_isActive;
 in vec2 a_velocity;
+in float a_startAlpha;
+in float a_endAlpha;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
@@ -80,17 +83,13 @@ float clamp01(float value) {
   return clamp(value, 0.0, 1.0);
 }
 
-float computeAlpha(float age, float lifetime) {
+float computeAlpha(float age, float lifetime, float startAlpha, float endAlpha) {
   float effectiveLifetime = lifetime > 0.0 ? lifetime : u_defaultLifetimeMs;
-  if (u_fadeStartMs >= effectiveLifetime) {
-    return 1.0;
+  if (effectiveLifetime <= 0.0) {
+    return startAlpha;
   }
-  if (age <= u_fadeStartMs) {
-    return 1.0;
-  }
-  float fadeDuration = max(1.0, effectiveLifetime - u_fadeStartMs);
-  float fadeProgress = clamp01((age - u_fadeStartMs) / fadeDuration);
-  return 1.0 - fadeProgress;
+  float fadeProgress = clamp01(age / effectiveLifetime);
+  return mix(startAlpha, endAlpha, fadeProgress);
 }
 
 vec2 toClip(vec2 world) {
@@ -121,7 +120,10 @@ void main() {
     world = center + baseOffset;
   }
 
-  float alpha = alive ? computeAlpha(a_age, a_lifetime) : 0.0;
+  // Use per-instance alpha range if provided (startAlpha > 0 or endAlpha > 0), otherwise use uniform-based fade
+  float startA = a_startAlpha > 0.0 || a_endAlpha > 0.0 ? a_startAlpha : 1.0;
+  float endA = a_startAlpha > 0.0 || a_endAlpha > 0.0 ? a_endAlpha : 0.0;
+  float alpha = alive ? computeAlpha(a_age, a_lifetime, startA, endA) : 0.0;
 
   v_worldPosition = world;
   for (int i = 0; i < 5; i++) {
@@ -314,6 +316,8 @@ interface ParticleRenderProgram {
     age: number;
     lifetime: number;
     isActive: number;
+    startAlpha: number;
+    endAlpha: number;
   };
   uniforms: {
     cameraPosition: WebGLUniformLocation | null;
@@ -465,6 +469,8 @@ const createRenderProgram = (
     age: gl.getAttribLocation(program, "a_age"),
     lifetime: gl.getAttribLocation(program, "a_lifetime"),
     isActive: gl.getAttribLocation(program, "a_isActive"),
+    startAlpha: gl.getAttribLocation(program, "a_startAlpha"),
+    endAlpha: gl.getAttribLocation(program, "a_endAlpha"),
   };
   if (
     attributes.unitPosition < 0 ||
@@ -895,6 +901,33 @@ const uploadEmitterUniforms = (
   }
 };
 
+/**
+ * Public function to upload emitter uniforms.
+ * Used by ExplosionWaveGpuRenderer which renders separately but uses same shader.
+ */
+export const uploadEmitterUniformsPublic = (
+  gl: WebGL2RenderingContext,
+  uniforms: ParticleEmitterGpuRenderUniforms,
+  cameraPosition: SceneVector2,
+  viewportSize: { width: number; height: number }
+): void => {
+  const resources = getParticleRenderResources(gl);
+  if (!resources) {
+    return;
+  }
+  const program = resources.program;
+  
+  if (program.uniforms.cameraPosition) {
+    gl.uniform2f(program.uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
+  }
+  if (program.uniforms.viewportSize) {
+    gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height);
+  }
+  
+  const cache: UniformCache = {};
+  uploadEmitterUniforms(gl, program, uniforms, cache);
+};
+
 export const renderParticleEmitters = (
   gl: WebGL2RenderingContext,
   cameraPosition: SceneVector2,
@@ -923,7 +956,9 @@ export const renderParticleEmitters = (
 
   const cache: UniformCache = {};
   emitters.forEach((handle) => {
-    const instanceCount = Math.max(0, Math.min(handle.capacity, handle.activeCount || 0));
+    // Render full capacity - inactive particles are clipped in shader via alpha=0
+    // This avoids the slot fragmentation issue where activeCount doesn't match actual active slots
+    const instanceCount = Math.max(0, handle.capacity);
     if (instanceCount <= 0) {
       return;
     }
@@ -940,3 +975,117 @@ export const renderParticleEmitters = (
 
   gl.bindVertexArray(null);
 };
+
+// ============================================================================
+// ParticleEmitterGpuRenderer Singleton Class
+// ============================================================================
+
+/**
+ * Singleton class for managing particle emitter GPU rendering.
+ * Implements GpuInstancedPrimitiveLifecycle for unified lifecycle management.
+ * 
+ * Note: This renderer differs from GpuBatchRenderer because particle simulation
+ * uses Transform Feedback with ping-pong buffers. The simulation is handled
+ * by ParticleEmitterPrimitive, while this class manages rendering.
+ */
+class ParticleEmitterGpuRendererClass implements GpuInstancedPrimitiveLifecycle<ParticleEmitterGpuDrawHandle> {
+  private gl: WebGL2RenderingContext | null = null;
+
+  /**
+   * Called when WebGL context is acquired.
+   */
+  public onContextAcquired(gl: WebGL2RenderingContext): void {
+    this.gl = gl;
+    // Ensure resources are initialized
+    getParticleRenderResources(gl);
+  }
+
+  /**
+   * Called when WebGL context is lost.
+   */
+  public onContextLost(gl: WebGL2RenderingContext): void {
+    disposeParticleRenderResources(gl);
+    if (this.gl === gl) {
+      this.gl = null;
+    }
+  }
+
+  /**
+   * Set the WebGL context (alternative to onContextAcquired for compatibility).
+   */
+  public setContext(gl: WebGL2RenderingContext | null): void {
+    if (gl === this.gl) {
+      return;
+    }
+    if (this.gl) {
+      // Don't dispose resources - they may be shared with other emitters
+      this.gl = null;
+    }
+    if (gl) {
+      this.gl = gl;
+      getParticleRenderResources(gl);
+    }
+  }
+
+  /**
+   * Ensure a batch (emitter handle) exists. For particle emitters, handles are
+   * created by ParticleEmitterPrimitive via createParticleEmitterGpuState.
+   * This method is here for interface compatibility.
+   */
+  public ensureBatch(
+    _gl: WebGL2RenderingContext,
+    _capacity: number
+  ): ParticleEmitterGpuDrawHandle | null {
+    // Handles are created by ParticleEmitterPrimitive, not by this renderer
+    return null;
+  }
+
+  /**
+   * Called before render to prepare GPU state.
+   * For particle emitters, simulation is done in ParticleEmitterPrimitive.
+   * This is a no-op here since there's no instance data to upload.
+   */
+  public beforeRender(_gl: WebGL2RenderingContext, _timestampMs: number): void {
+    // Transform feedback simulation is done in ParticleEmitterPrimitive
+    // No additional work needed here
+  }
+
+  /**
+   * Render all registered particle emitters.
+   */
+  public render(
+    gl: WebGL2RenderingContext,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    _timestampMs: number
+  ): void {
+    renderParticleEmitters(gl, cameraPosition, viewportSize);
+  }
+
+  /**
+   * Clear all particle emitter instances.
+   */
+  public clearInstances(gl?: WebGL2RenderingContext): void {
+    clearAllParticleEmitters(gl);
+  }
+
+  /**
+   * Dispose all resources.
+   */
+  public dispose(): void {
+    if (this.gl) {
+      disposeParticleRenderResources(this.gl);
+      this.gl = null;
+    }
+  }
+
+  /**
+   * Get statistics about particle emitters.
+   */
+  public getStats(gl: WebGL2RenderingContext): { emitters: number; active: number; capacity: number } {
+    return getParticleStats(gl);
+  }
+}
+
+// Export singleton instance
+export const particleEmitterGpuRenderer = new ParticleEmitterGpuRendererClass();

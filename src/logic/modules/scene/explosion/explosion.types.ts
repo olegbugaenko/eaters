@@ -53,4 +53,6 @@ export interface SpawnExplosionByTypeOptions {
 export interface ExplosionRendererCustomData {
   waveLifetimeMs?: number;
   emitter?: ParticleEmitterConfig;
+  startAlpha?: number;
+  endAlpha?: number;
 }

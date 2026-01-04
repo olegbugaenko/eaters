@@ -165,11 +165,18 @@ export class ExplosionModule implements GameModule {
         wave.filaments
       );
 
+      // Each wave gets its own startAlpha/endAlpha for GPU interpolation
+      const waveCustomData: ExplosionRendererCustomData = {
+        ...(index === 0 ? customData : { waveLifetimeMs }),
+        startAlpha: wave.startAlpha,
+        endAlpha: wave.endAlpha,
+      };
+
       const id = this.options.scene.addObject("explosion", {
         position: { ...options.position },
         size: { width: wave.startOuterRadius * 2, height: wave.startOuterRadius * 2 },
         fill: fillState.fill,
-        customData: index === 0 ? customData : { waveLifetimeMs },
+        customData: waveCustomData,
       });
 
       return {

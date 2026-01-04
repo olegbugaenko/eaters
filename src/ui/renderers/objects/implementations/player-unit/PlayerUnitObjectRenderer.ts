@@ -1,31 +1,29 @@
 import {
+  ObjectRenderer,
+  ObjectRegistration,
   DynamicPrimitive,
   DynamicPrimitiveUpdate,
-  ObjectRegistration,
-  ObjectRenderer,
 } from "../../ObjectRenderer";
 import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import {
   createDynamicPolygonPrimitive,
-  createParticleEmitterPrimitive,
+  createDynamicPolygonStrokePrimitive,
 } from "../../../primitives";
+import { extractRendererData } from "./helpers";
 import { hasStroke, expandVerticesForStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
 import {
-  extractRendererData,
-} from "./helpers";
-import { createCompositePrimitives } from "./composite-primitives.helpers";
-import {
   getEmitterConfig,
-  serializeEmitterConfig,
   getEmitterOrigin,
+  serializeEmitterConfig,
   createEmitterParticle,
 } from "./emitter.helpers";
 import {
   getAuraInstanceMap,
   getAuraLastPositionCache,
-  getCurrentAuraBatch,
   writeAuraInstance,
 } from "./aura.helpers";
+import { createCompositePrimitives } from "./composite-primitives.helpers";
+import { createParticleEmitterPrimitive } from "../../../primitives/ParticleEmitterPrimitive";
 import type { PlayerUnitEmitterRenderConfig } from "./types";
 
 /**
@@ -48,11 +46,6 @@ const updateAuraInstances = (instance: SceneObjectInstance): void => {
     return; // Position unchanged, GPU buffer already has correct data
   }
 
-  const currentBatch = getCurrentAuraBatch();
-  if (!currentBatch) {
-    return;
-  }
-
   // Update cache
   if (lastPos) {
     lastPos.x = position.x;
@@ -61,8 +54,8 @@ const updateAuraInstances = (instance: SceneObjectInstance): void => {
     auraLastPositionCache.set(instanceId, { x: position.x, y: position.y });
   }
 
-  slots.forEach(({ slotIndex, auraConfig, basePhase }) => {
-    writeAuraInstance(slotIndex, {
+  slots.forEach(({ handle, auraConfig, basePhase }) => {
+    writeAuraInstance(handle, {
       position: { ...position },
       basePhase,
       active: true,
@@ -151,25 +144,16 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     const auraInstanceMap = getAuraInstanceMap();
     const slots = auraInstanceMap.get(instanceId);
     if (slots) {
-      slots.forEach(({ slotIndex, auraConfig }) => {
-        writeAuraInstance(slotIndex, {
-          position: { x: 0, y: 0 },
-          basePhase: 0,
-          active: false,
-          petalCount: auraConfig.petalCount,
-          innerRadius: auraConfig.innerRadius,
-          outerRadius: auraConfig.outerRadius,
-          petalWidth:
-            auraConfig.petalWidth ??
-            (auraConfig.outerRadius - auraConfig.innerRadius) * 0.5,
-          rotationSpeed: auraConfig.rotationSpeed,
-          color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
-          alpha: auraConfig.alpha,
-          pointInward: auraConfig.pointInward ?? false,
-        });
+      const { petalAuraGpuRenderer } = require("../../../primitives/gpu/PetalAuraGpuRenderer");
+      slots.forEach(({ handle }) => {
+        petalAuraGpuRenderer.releaseSlot(handle);
       });
       auraInstanceMap.delete(instanceId);
+      const auraLastPositionCache = getAuraLastPositionCache();
+      auraLastPositionCache.delete(instanceId);
     }
+
+    // Викликаємо стандартний remove
     super.remove(instance, registration);
   }
 }

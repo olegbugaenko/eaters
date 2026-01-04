@@ -1,10 +1,15 @@
 /**
  * GPU Instanced Ring Renderer
  * Renders animated expanding rings with a single draw call per batch
+ * 
+ * Unified API: extends GpuBatchRenderer for consistent lifecycle and slot management
  */
 
-import { SceneColor, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneColor, SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { RING_VERTEX_SHADER, RING_FRAGMENT_SHADER } from "../../shaders/ring.glsl";
+import { GpuBatchRenderer, type SlotHandle } from "../core/GpuBatchRenderer";
+import type { ExtendedGpuBatch } from "../core/GpuBatchRenderer";
+import { compileProgram } from "../core/BaseGpuPrimitive";
 
 // ============================================================================
 // Types
@@ -24,16 +29,11 @@ export interface RingInstance {
   active: boolean;
 }
 
-interface RingBatch {
-  gl: WebGL2RenderingContext;
-  capacity: number;
-  instanceBuffer: WebGLBuffer;
-  vao: WebGLVertexArrayObject;
-  freeSlots: number[];
-  activeCount: number;
+interface RingBatch extends ExtendedGpuBatch<RingInstance> {
+  // No additional fields needed - all in base GpuBatch
 }
 
-interface RingRendererResources {
+interface RingSharedResources {
   program: WebGLProgram;
   circleBuffer: WebGLBuffer;
   circleVertexCount: number;
@@ -69,65 +69,22 @@ const DEFAULT_BATCH_CAPACITY = 512;
 const CIRCLE_SEGMENTS = 48;
 
 // ============================================================================
-// State
-// ============================================================================
-
-let globalGl: WebGL2RenderingContext | null = null;
-let globalResources: RingRendererResources | null = null;
-let globalBatch: RingBatch | null = null;
-
-// Static scratch buffer for writing instance data
-const instanceScratch = new Float32Array(INSTANCE_COMPONENTS);
-
-// ============================================================================
 // Helpers
 // ============================================================================
 
-const createShader = (
+const createCircleBuffer = (
   gl: WebGL2RenderingContext,
-  type: number,
-  source: string
-): WebGLShader | null => {
-  const shader = gl.createShader(type);
-  if (!shader) return null;
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error("[RingGpuRenderer] Shader compile error:", gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
-};
-
-const createProgram = (
-  gl: WebGL2RenderingContext,
-  vertexShader: WebGLShader,
-  fragmentShader: WebGLShader
-): WebGLProgram | null => {
-  const program = gl.createProgram();
-  if (!program) return null;
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    console.error("[RingGpuRenderer] Program link error:", gl.getProgramInfoLog(program));
-    gl.deleteProgram(program);
-    return null;
-  }
-  return program;
-};
-
-const createCircleBuffer = (gl: WebGL2RenderingContext, segments: number): { buffer: WebGLBuffer; vertexCount: number } | null => {
+  segments: number
+): { buffer: WebGLBuffer; vertexCount: number } | null => {
   const buffer = gl.createBuffer();
   if (!buffer) return null;
 
   // Create triangle fan vertices for a unit circle
   const vertices: number[] = [];
-  
+
   // Center vertex
   vertices.push(0, 0);
-  
+
   // Perimeter vertices
   for (let i = 0; i <= segments; i++) {
     const angle = (i / segments) * Math.PI * 2;
@@ -141,307 +98,271 @@ const createCircleBuffer = (gl: WebGL2RenderingContext, segments: number): { buf
   return { buffer, vertexCount: segments + 2 };
 };
 
-const createResources = (gl: WebGL2RenderingContext): RingRendererResources | null => {
-  const vertexShader = createShader(gl, gl.VERTEX_SHADER, RING_VERTEX_SHADER);
-  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, RING_FRAGMENT_SHADER);
-  if (!vertexShader || !fragmentShader) return null;
-
-  const program = createProgram(gl, vertexShader, fragmentShader);
-  if (!program) return null;
-
-  gl.deleteShader(vertexShader);
-  gl.deleteShader(fragmentShader);
-
-  const circleResult = createCircleBuffer(gl, CIRCLE_SEGMENTS);
-  if (!circleResult) return null;
-
-  const uniforms = {
-    cameraPosition: gl.getUniformLocation(program, "u_cameraPosition"),
-    viewportSize: gl.getUniformLocation(program, "u_viewportSize"),
-    time: gl.getUniformLocation(program, "u_time"),
-  };
-
-  const attributes = {
-    position: gl.getAttribLocation(program, "a_position"),
-    instancePosition: gl.getAttribLocation(program, "a_instancePosition"),
-    instanceCreatedAt: gl.getAttribLocation(program, "a_instanceCreatedAt"),
-    instanceLifetime: gl.getAttribLocation(program, "a_instanceLifetime"),
-    instanceStartRadius: gl.getAttribLocation(program, "a_instanceStartRadius"),
-    instanceEndRadius: gl.getAttribLocation(program, "a_instanceEndRadius"),
-    instanceStartAlpha: gl.getAttribLocation(program, "a_instanceStartAlpha"),
-    instanceEndAlpha: gl.getAttribLocation(program, "a_instanceEndAlpha"),
-    instanceInnerStop: gl.getAttribLocation(program, "a_instanceInnerStop"),
-    instanceOuterStop: gl.getAttribLocation(program, "a_instanceOuterStop"),
-    instanceColor: gl.getAttribLocation(program, "a_instanceColor"),
-    instanceActive: gl.getAttribLocation(program, "a_instanceActive"),
-  };
-
-  return {
-    program,
-    circleBuffer: circleResult.buffer,
-    circleVertexCount: circleResult.vertexCount,
-    uniforms,
-    attributes,
-  };
-};
-
-const createBatch = (
-  gl: WebGL2RenderingContext,
-  resources: RingRendererResources,
-  capacity: number
-): RingBatch | null => {
-  const instanceBuffer = gl.createBuffer();
-  if (!instanceBuffer) return null;
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
-
-  const vao = gl.createVertexArray();
-  if (!vao) {
-    gl.deleteBuffer(instanceBuffer);
-    return null;
-  }
-
-  gl.bindVertexArray(vao);
-
-  // Setup circle vertices (per-vertex)
-  gl.bindBuffer(gl.ARRAY_BUFFER, resources.circleBuffer);
-  gl.enableVertexAttribArray(resources.attributes.position);
-  gl.vertexAttribPointer(resources.attributes.position, 2, gl.FLOAT, false, 0, 0);
-
-  // Setup instance attributes
-  gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
-  const attrs = resources.attributes;
-  let offset = 0;
-
-  // instancePosition (vec2)
-  gl.enableVertexAttribArray(attrs.instancePosition);
-  gl.vertexAttribPointer(attrs.instancePosition, 2, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instancePosition, 1);
-  offset += 2 * 4;
-
-  // instanceCreatedAt (float)
-  gl.enableVertexAttribArray(attrs.instanceCreatedAt);
-  gl.vertexAttribPointer(attrs.instanceCreatedAt, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceCreatedAt, 1);
-  offset += 4;
-
-  // instanceLifetime (float)
-  gl.enableVertexAttribArray(attrs.instanceLifetime);
-  gl.vertexAttribPointer(attrs.instanceLifetime, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceLifetime, 1);
-  offset += 4;
-
-  // instanceStartRadius (float)
-  gl.enableVertexAttribArray(attrs.instanceStartRadius);
-  gl.vertexAttribPointer(attrs.instanceStartRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceStartRadius, 1);
-  offset += 4;
-
-  // instanceEndRadius (float)
-  gl.enableVertexAttribArray(attrs.instanceEndRadius);
-  gl.vertexAttribPointer(attrs.instanceEndRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceEndRadius, 1);
-  offset += 4;
-
-  // instanceStartAlpha (float)
-  gl.enableVertexAttribArray(attrs.instanceStartAlpha);
-  gl.vertexAttribPointer(attrs.instanceStartAlpha, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceStartAlpha, 1);
-  offset += 4;
-
-  // instanceEndAlpha (float)
-  gl.enableVertexAttribArray(attrs.instanceEndAlpha);
-  gl.vertexAttribPointer(attrs.instanceEndAlpha, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceEndAlpha, 1);
-  offset += 4;
-
-  // instanceInnerStop (float)
-  gl.enableVertexAttribArray(attrs.instanceInnerStop);
-  gl.vertexAttribPointer(attrs.instanceInnerStop, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceInnerStop, 1);
-  offset += 4;
-
-  // instanceOuterStop (float)
-  gl.enableVertexAttribArray(attrs.instanceOuterStop);
-  gl.vertexAttribPointer(attrs.instanceOuterStop, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceOuterStop, 1);
-  offset += 4;
-
-  // instanceColor (vec3)
-  gl.enableVertexAttribArray(attrs.instanceColor);
-  gl.vertexAttribPointer(attrs.instanceColor, 3, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceColor, 1);
-  offset += 3 * 4;
-
-  // instanceActive (float)
-  gl.enableVertexAttribArray(attrs.instanceActive);
-  gl.vertexAttribPointer(attrs.instanceActive, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attrs.instanceActive, 1);
-
-  gl.bindVertexArray(null);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-  const freeSlots: number[] = [];
-  for (let i = capacity - 1; i >= 0; i--) {
-    freeSlots.push(i);
-  }
-
-  return {
-    gl,
-    capacity,
-    instanceBuffer,
-    vao,
-    freeSlots,
-    activeCount: 0,
-  };
-};
-
 // ============================================================================
-// Public API
+// RingGpuRenderer Class
 // ============================================================================
 
-export interface RingSlotHandle {
-  readonly slotIndex: number;
+/**
+ * GPU renderer for animated expanding rings.
+ * Uses instanced rendering with a single draw call per batch.
+ */
+class RingGpuRenderer extends GpuBatchRenderer<RingInstance, RingBatch, void> {
+  private circleBuffer: WebGLBuffer | null = null;
+  private circleVertexCount = 0;
+  private sharedResourcesExtended: RingSharedResources | null = null;
+
+  constructor() {
+    super(DEFAULT_BATCH_CAPACITY);
+  }
+
+  protected createSharedResources(gl: WebGL2RenderingContext): { program: WebGLProgram } | null {
+    const programResult = compileProgram(gl, RING_VERTEX_SHADER, RING_FRAGMENT_SHADER, "[RingGpu]");
+    if (!programResult) {
+      return null;
+    }
+
+    const circleResult = createCircleBuffer(gl, CIRCLE_SEGMENTS);
+    if (!circleResult) {
+      gl.deleteProgram(programResult.program);
+      return null;
+    }
+
+    this.circleBuffer = circleResult.buffer;
+    this.circleVertexCount = circleResult.vertexCount;
+
+    const uniforms = {
+      cameraPosition: gl.getUniformLocation(programResult.program, "u_cameraPosition"),
+      viewportSize: gl.getUniformLocation(programResult.program, "u_viewportSize"),
+      time: gl.getUniformLocation(programResult.program, "u_time"),
+    };
+
+    const attributes = {
+      position: gl.getAttribLocation(programResult.program, "a_position"),
+      instancePosition: gl.getAttribLocation(programResult.program, "a_instancePosition"),
+      instanceCreatedAt: gl.getAttribLocation(programResult.program, "a_instanceCreatedAt"),
+      instanceLifetime: gl.getAttribLocation(programResult.program, "a_instanceLifetime"),
+      instanceStartRadius: gl.getAttribLocation(programResult.program, "a_instanceStartRadius"),
+      instanceEndRadius: gl.getAttribLocation(programResult.program, "a_instanceEndRadius"),
+      instanceStartAlpha: gl.getAttribLocation(programResult.program, "a_instanceStartAlpha"),
+      instanceEndAlpha: gl.getAttribLocation(programResult.program, "a_instanceEndAlpha"),
+      instanceInnerStop: gl.getAttribLocation(programResult.program, "a_instanceInnerStop"),
+      instanceOuterStop: gl.getAttribLocation(programResult.program, "a_instanceOuterStop"),
+      instanceColor: gl.getAttribLocation(programResult.program, "a_instanceColor"),
+      instanceActive: gl.getAttribLocation(programResult.program, "a_instanceActive"),
+    };
+
+    const resources: RingSharedResources = {
+      program: programResult.program,
+      circleBuffer: circleResult.buffer,
+      circleVertexCount: circleResult.vertexCount,
+      uniforms,
+      attributes,
+    };
+
+    this.sharedResourcesExtended = resources;
+    // Return base type for sharedResources, but keep extended in instance
+    return { program: programResult.program };
+  }
+
+  protected createBatch(gl: WebGL2RenderingContext, capacity: number): RingBatch | null {
+    if (!this.sharedResourcesExtended) {
+      return null;
+    }
+
+    const instanceBuffer = gl.createBuffer();
+    if (!instanceBuffer) {
+      return null;
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
+
+    const vao = gl.createVertexArray();
+    if (!vao) {
+      gl.deleteBuffer(instanceBuffer);
+      return null;
+    }
+
+    gl.bindVertexArray(vao);
+
+    // Setup circle vertices (per-vertex)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.sharedResourcesExtended.circleBuffer);
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.position);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.position, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.position, 0);
+
+    // Setup instance attributes
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    const attrs = this.sharedResourcesExtended.attributes;
+    let offset = 0;
+
+    // instancePosition (vec2)
+    gl.enableVertexAttribArray(attrs.instancePosition);
+    gl.vertexAttribPointer(attrs.instancePosition, 2, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instancePosition, 1);
+    offset += 2 * 4;
+
+    // instanceCreatedAt (float)
+    gl.enableVertexAttribArray(attrs.instanceCreatedAt);
+    gl.vertexAttribPointer(attrs.instanceCreatedAt, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceCreatedAt, 1);
+    offset += 4;
+
+    // instanceLifetime (float)
+    gl.enableVertexAttribArray(attrs.instanceLifetime);
+    gl.vertexAttribPointer(attrs.instanceLifetime, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceLifetime, 1);
+    offset += 4;
+
+    // instanceStartRadius (float)
+    gl.enableVertexAttribArray(attrs.instanceStartRadius);
+    gl.vertexAttribPointer(attrs.instanceStartRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceStartRadius, 1);
+    offset += 4;
+
+    // instanceEndRadius (float)
+    gl.enableVertexAttribArray(attrs.instanceEndRadius);
+    gl.vertexAttribPointer(attrs.instanceEndRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceEndRadius, 1);
+    offset += 4;
+
+    // instanceStartAlpha (float)
+    gl.enableVertexAttribArray(attrs.instanceStartAlpha);
+    gl.vertexAttribPointer(attrs.instanceStartAlpha, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceStartAlpha, 1);
+    offset += 4;
+
+    // instanceEndAlpha (float)
+    gl.enableVertexAttribArray(attrs.instanceEndAlpha);
+    gl.vertexAttribPointer(attrs.instanceEndAlpha, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceEndAlpha, 1);
+    offset += 4;
+
+    // instanceInnerStop (float)
+    gl.enableVertexAttribArray(attrs.instanceInnerStop);
+    gl.vertexAttribPointer(attrs.instanceInnerStop, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceInnerStop, 1);
+    offset += 4;
+
+    // instanceOuterStop (float)
+    gl.enableVertexAttribArray(attrs.instanceOuterStop);
+    gl.vertexAttribPointer(attrs.instanceOuterStop, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceOuterStop, 1);
+    offset += 4;
+
+    // instanceColor (vec3)
+    gl.enableVertexAttribArray(attrs.instanceColor);
+    gl.vertexAttribPointer(attrs.instanceColor, 3, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceColor, 1);
+    offset += 3 * 4;
+
+    // instanceActive (float)
+    gl.enableVertexAttribArray(attrs.instanceActive);
+    gl.vertexAttribPointer(attrs.instanceActive, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceActive, 1);
+
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    const freeSlots: number[] = [];
+    for (let i = capacity - 1; i >= 0; i--) {
+      freeSlots.push(i);
+    }
+
+    return {
+      gl,
+      capacity,
+      instanceBuffer,
+      vao,
+      freeSlots,
+      activeCount: 0,
+      instances: new Array(capacity).fill(null),
+      needsUpload: false,
+      instanceData: new Float32Array(capacity * INSTANCE_COMPONENTS),
+    };
+  }
+
+  protected getBatchKey(_config: void): string {
+    return "default"; // Rings don't have configs
+  }
+
+  protected writeInstanceData(batch: RingBatch, slotIndex: number, instance: RingInstance): void {
+    const offset = slotIndex * INSTANCE_COMPONENTS;
+    const data = batch.instanceData;
+
+    data[offset + 0] = instance.position.x;
+    data[offset + 1] = instance.position.y;
+    data[offset + 2] = instance.createdAt;
+    data[offset + 3] = instance.lifetimeMs;
+    data[offset + 4] = instance.startRadius;
+    data[offset + 5] = instance.endRadius;
+    data[offset + 6] = instance.startAlpha;
+    data[offset + 7] = instance.endAlpha;
+    data[offset + 8] = instance.innerStop;
+    data[offset + 9] = instance.outerStop;
+    data[offset + 10] = instance.color.r;
+    data[offset + 11] = instance.color.g;
+    data[offset + 12] = instance.color.b;
+    data[offset + 13] = instance.active ? 1 : 0;
+  }
+
+  protected setupRenderState(
+    gl: WebGL2RenderingContext,
+    _batch: RingBatch,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    timestampMs: number
+  ): void {
+    if (!this.sharedResourcesExtended) {
+      return;
+    }
+
+    const { uniforms } = this.sharedResourcesExtended;
+
+    if (uniforms.cameraPosition) {
+      gl.uniform2f(uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
+    }
+    if (uniforms.viewportSize) {
+      gl.uniform2f(uniforms.viewportSize, viewportSize.width, viewportSize.height);
+    }
+    if (uniforms.time) {
+      gl.uniform1f(uniforms.time, timestampMs);
+    }
+
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  }
+
+  protected getInstanceFloats(): number {
+    return INSTANCE_COMPONENTS;
+  }
+
+  protected getActiveFloatIndex(): number {
+    return 13; // active flag is last
+  }
+
+  protected getVertexCount(_batch: RingBatch): number {
+    return this.circleVertexCount;
+  }
+
+  protected getDrawMode(gl: WebGL2RenderingContext): number {
+    return gl.TRIANGLE_FAN;
+  }
+
+  protected override disposeSharedResources(gl: WebGL2RenderingContext): void {
+    if (this.circleBuffer) {
+      gl.deleteBuffer(this.circleBuffer);
+      this.circleBuffer = null;
+    }
+    this.sharedResourcesExtended = null;
+  }
 }
 
-export const initRingGpuRenderer = (gl: WebGL2RenderingContext): boolean => {
-  if (globalGl === gl && globalResources && globalBatch) {
-    return true;
-  }
+// ============================================================================
+// Public API - Single instance with unified interface
+// ============================================================================
 
-  disposeRingGpuRenderer();
+export const ringGpuRenderer = new RingGpuRenderer();
 
-  const resources = createResources(gl);
-  if (!resources) return false;
-
-  const batch = createBatch(gl, resources, DEFAULT_BATCH_CAPACITY);
-  if (!batch) {
-    gl.deleteBuffer(resources.circleBuffer);
-    gl.deleteProgram(resources.program);
-    return false;
-  }
-
-  globalGl = gl;
-  globalResources = resources;
-  globalBatch = batch;
-  return true;
-};
-
-export const acquireRingSlot = (): RingSlotHandle | null => {
-  if (!globalBatch || globalBatch.freeSlots.length === 0) {
-    return null;
-  }
-
-  const slotIndex = globalBatch.freeSlots.pop()!;
-  globalBatch.activeCount++;
-
-  return { slotIndex };
-};
-
-export const updateRingSlot = (handle: RingSlotHandle, instance: RingInstance): void => {
-  if (!globalBatch || !globalGl) return;
-
-  const { slotIndex } = handle;
-  if (slotIndex < 0 || slotIndex >= globalBatch.capacity) return;
-
-  // Write to scratch buffer
-  instanceScratch[0] = instance.position.x;
-  instanceScratch[1] = instance.position.y;
-  instanceScratch[2] = instance.createdAt;
-  instanceScratch[3] = instance.lifetimeMs;
-  instanceScratch[4] = instance.startRadius;
-  instanceScratch[5] = instance.endRadius;
-  instanceScratch[6] = instance.startAlpha;
-  instanceScratch[7] = instance.endAlpha;
-  instanceScratch[8] = instance.innerStop;
-  instanceScratch[9] = instance.outerStop;
-  instanceScratch[10] = instance.color.r;
-  instanceScratch[11] = instance.color.g;
-  instanceScratch[12] = instance.color.b;
-  instanceScratch[13] = instance.active ? 1 : 0;
-
-  // Upload to GPU
-  globalGl.bindBuffer(globalGl.ARRAY_BUFFER, globalBatch.instanceBuffer);
-  globalGl.bufferSubData(globalGl.ARRAY_BUFFER, slotIndex * INSTANCE_STRIDE, instanceScratch);
-  globalGl.bindBuffer(globalGl.ARRAY_BUFFER, null);
-};
-
-export const releaseRingSlot = (handle: RingSlotHandle): void => {
-  if (!globalBatch || !globalGl) return;
-
-  const { slotIndex } = handle;
-  if (slotIndex < 0 || slotIndex >= globalBatch.capacity) return;
-
-  // Mark as inactive in GPU buffer
-  instanceScratch[13] = 0;
-  globalGl.bindBuffer(globalGl.ARRAY_BUFFER, globalBatch.instanceBuffer);
-  globalGl.bufferSubData(
-    globalGl.ARRAY_BUFFER,
-    slotIndex * INSTANCE_STRIDE + 13 * 4,
-    instanceScratch.subarray(13, 14)
-  );
-  globalGl.bindBuffer(globalGl.ARRAY_BUFFER, null);
-
-  globalBatch.freeSlots.push(slotIndex);
-  globalBatch.activeCount = Math.max(0, globalBatch.activeCount - 1);
-};
-
-export const renderRings = (
-  cameraPosition: SceneVector2,
-  viewportSize: SceneVector2,
-  timeMs: number
-): void => {
-  if (!globalGl || !globalResources || !globalBatch) return;
-  if (globalBatch.activeCount <= 0) return;
-
-  const gl = globalGl;
-  const { program, uniforms, circleVertexCount } = globalResources;
-  const batch = globalBatch;
-
-  gl.useProgram(program);
-
-  gl.uniform2f(uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
-  gl.uniform2f(uniforms.viewportSize, viewportSize.x, viewportSize.y);
-  gl.uniform1f(uniforms.time, timeMs);
-
-  gl.enable(gl.BLEND);
-  gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-  gl.bindVertexArray(batch.vao);
-  gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, circleVertexCount, batch.capacity);
-  gl.bindVertexArray(null);
-};
-
-export const clearRingInstances = (): void => {
-  if (!globalBatch || !globalGl) return;
-
-  // Reset free slots
-  globalBatch.freeSlots.length = 0;
-  for (let i = globalBatch.capacity - 1; i >= 0; i--) {
-    globalBatch.freeSlots.push(i);
-  }
-  globalBatch.activeCount = 0;
-
-  // Clear GPU buffer
-  globalGl.bindBuffer(globalGl.ARRAY_BUFFER, globalBatch.instanceBuffer);
-  globalGl.bufferData(globalGl.ARRAY_BUFFER, globalBatch.capacity * INSTANCE_STRIDE, globalGl.DYNAMIC_DRAW);
-  globalGl.bindBuffer(globalGl.ARRAY_BUFFER, null);
-};
-
-export const disposeRingGpuRenderer = (): void => {
-  if (globalGl && globalBatch) {
-    globalGl.deleteBuffer(globalBatch.instanceBuffer);
-    globalGl.deleteVertexArray(globalBatch.vao);
-  }
-  if (globalGl && globalResources) {
-    globalGl.deleteBuffer(globalResources.circleBuffer);
-    globalGl.deleteProgram(globalResources.program);
-  }
-  globalGl = null;
-  globalResources = null;
-  globalBatch = null;
-};
-
-export const getRingActiveCount = (): number => globalBatch?.activeCount ?? 0;
-
+// Re-export types
+export type RingSlotHandle = SlotHandle;

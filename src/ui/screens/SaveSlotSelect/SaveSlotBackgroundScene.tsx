@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
-import { petalAuraEffect } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
-import { renderParticleEmitters } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { renderArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { particleEmitterGpuRenderer } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
+import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
 import { setupWebGLScene } from "@ui/screens/Scene/hooks/useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoop";
-import { whirlEffect } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import {
   MAP_SIZE,
   TITLE_LINES,
@@ -107,13 +107,15 @@ export const SaveSlotBackgroundScene: React.FC = () => {
       },
       beforeEffects: (timestamp, gl, cameraState) => {
         // Render additional effects (particles, whirls, auras, arcs, fire rings)
-        renderParticleEmitters(gl, cameraState.position, cameraState.viewportSize);
+        particleEmitterGpuRenderer.beforeRender(gl, timestamp);
+        particleEmitterGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
         updateAllWhirlInterpolations();
-        whirlEffect.beforeRender(gl, timestamp);
-        petalAuraEffect.beforeRender(gl, timestamp);
-        whirlEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
-        petalAuraEffect.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
-        renderArcBatches(gl, cameraState.position, cameraState.viewportSize);
+        whirlGpuRenderer.beforeRender(gl, timestamp);
+        petalAuraGpuRenderer.beforeRender(gl, timestamp);
+        whirlGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+        petalAuraGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+        arcGpuRenderer.beforeRender(gl, timestamp);
+        arcGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
         renderFireRings(gl, cameraState.position, cameraState.viewportSize, timestamp);
       },
     });

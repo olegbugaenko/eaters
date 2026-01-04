@@ -1,15 +1,13 @@
-import { writeWhirlInstance } from "../../../primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer, type WhirlInstance } from "../../../primitives/gpu/WhirlGpuRenderer";
+import { type WhirlSlotHandle } from "../../../primitives/gpu/WhirlGpuRenderer";
 import { MAX_INTERPOLATION_TIME_MS } from "./constants";
 import type { InterpolationData } from "./types";
-
-type BatchType = NonNullable<ReturnType<typeof import("./batch.helpers").ensureBatch>>;
 
 /**
  * Computes interpolated state and writes it to the batch
  */
 export const computeInterpolatedState = (
-  batch: BatchType,
-  slotIndex: number,
+  handle: WhirlSlotHandle,
   data: InterpolationData
 ): Float32Array | null => {
   const currentTime = performance.now();
@@ -25,7 +23,7 @@ export const computeInterpolatedState = (
   // Інтерполяція phase (обертання)
   const interpolatedPhase = data.phase + data.spinSpeed * timeSinceUpdate;
 
-  writeWhirlInstance(batch, slotIndex, {
+  const instance: WhirlInstance = {
     position,
     radius: data.radius,
     phase: interpolatedPhase,
@@ -39,7 +37,9 @@ export const computeInterpolatedState = (
     colorInner: data.colorInner,
     colorMid: data.colorMid,
     colorOuter: data.colorOuter,
-  });
+  };
+
+  whirlGpuRenderer.updateSlot(handle, instance);
 
   // Завжди повертаємо дані, щоб примусити рендерер оновлюватися на кожному кадрі
   return new Float32Array(0);

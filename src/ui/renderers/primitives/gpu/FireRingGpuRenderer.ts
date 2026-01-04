@@ -1,8 +1,58 @@
-import { SceneColor, SceneVector2 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
+/**
+ * GPU Instanced Fire Ring Renderer
+ * Renders animated fire rings with age computed on GPU
+ * 
+ * Unified API: extends GpuBatchRenderer for consistent lifecycle and slot management
+ */
 
-// ============================================
-// Fire ring — age computed on GPU from birth time
-// ============================================
+import { SceneColor, SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { GpuBatchRenderer, type SlotHandle } from "../core/GpuBatchRenderer";
+import type { ExtendedGpuBatch } from "../core/GpuBatchRenderer";
+import { compileProgram, UNIT_QUAD_STRIP } from "../core/BaseGpuPrimitive";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface FireRingInstance {
+  center: SceneVector2;
+  innerRadius: number;
+  outerRadius: number;
+  birthTimeMs: number; // time of spawn in ms
+  lifetime: number;    // ms (<=0 => infinite)
+  intensity: number;
+  color: SceneColor;
+  active: boolean;
+}
+
+interface FireRingBatch extends ExtendedGpuBatch<FireRingInstance> {
+  // No additional fields needed
+}
+
+interface FireRingSharedResources {
+  program: WebGLProgram;
+  quadBuffer: WebGLBuffer;
+  uniforms: {
+    cameraPosition: WebGLUniformLocation | null;
+    viewportSize: WebGLUniformLocation | null;
+    time: WebGLUniformLocation | null;
+  };
+  attributes: {
+    unitPosition: number;
+    center: number;
+    innerRadius: number;
+    outerRadius: number;
+    birthTimeMs: number;
+    lifetime: number;
+    intensity: number;
+    color: number;
+    active: number;
+  };
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const FIRE_RING_VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -201,153 +251,304 @@ void main() {
 }
 `;
 
-interface FireRingProgram {
-  program: WebGLProgram;
-  attributes: {
-    unitPosition: number;
-    center: number;
-    innerRadius: number;
-    outerRadius: number;
-    birthTimeMs: number;  // <-- NEW
-    lifetime: number;
-    intensity: number;
-    color: number;
-    active: number;
-  };
-  uniforms: {
-    cameraPosition: WebGLUniformLocation | null;
-    viewportSize: WebGLUniformLocation | null;
-    time: WebGLUniformLocation | null;
-  };
-}
-
-interface FireRingResources {
-  program: FireRingProgram;
-  quadBuffer: WebGLBuffer;
-}
-
-export interface FireRingInstance {
-  center: SceneVector2;
-  innerRadius: number;
-  outerRadius: number;
-  birthTimeMs: number; // <-- NEW
-  lifetime: number;    // ms (<=0 => infinite)
-  intensity: number;
-  color: SceneColor;
-  active: boolean;
-}
-
-interface FireRingBatch {
-  instances: FireRingInstance[];
-  instanceBuffer: WebGLBuffer | null;
-  vao: WebGLVertexArrayObject | null;
-  capacity: number;
-  needsUpload: boolean; // only when structure (count) changes
-}
-
-interface FireRingContext {
-  resources: FireRingResources;
-  batch: FireRingBatch | null;
-}
-
-const UNIT_QUAD = new Float32Array([
-  -1, -1,
-   1, -1,
-  -1,  1,
-   1,  1,
-]);
-
 // center(2) + inner(1) + outer(1) + birth(1) + lifetime(1) + intensity(1) + active(1) + color(3)
-const COMPONENTS_PER_INSTANCE = 11;
-const BYTES_PER_FLOAT = 4;
+const INSTANCE_COMPONENTS = 11;
+const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+const DEFAULT_BATCH_CAPACITY = 512;
 
-const contexts = new WeakMap<WebGL2RenderingContext, FireRingContext>();
+// ============================================================================
+// FireRingGpuRenderer Class
+// ============================================================================
 
-const createProgram = (gl: WebGL2RenderingContext): FireRingProgram | null => {
-  const vs = gl.createShader(gl.VERTEX_SHADER);
-  if (!vs) return null;
-  gl.shaderSource(vs, FIRE_RING_VERTEX_SHADER);
-  gl.compileShader(vs);
-  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-    console.error("Fire ring VS compile:", gl.getShaderInfoLog(vs));
-    gl.deleteShader(vs);
-    return null;
+/**
+ * GPU renderer for animated fire rings.
+ * Uses instanced rendering with age computed on GPU.
+ */
+class FireRingGpuRenderer extends GpuBatchRenderer<FireRingInstance, FireRingBatch, void> {
+  private sharedResourcesExtended: FireRingSharedResources | null = null;
+
+  constructor() {
+    super(DEFAULT_BATCH_CAPACITY);
   }
 
-  const fs = gl.createShader(gl.FRAGMENT_SHADER);
-  if (!fs) { gl.deleteShader(vs); return null; }
-  gl.shaderSource(fs, FIRE_RING_FRAGMENT_SHADER);
-  gl.compileShader(fs);
-  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-    console.error("Fire ring FS compile:", gl.getShaderInfoLog(fs));
-    gl.deleteShader(vs);
-    gl.deleteShader(fs);
-    return null;
+  protected createSharedResources(gl: WebGL2RenderingContext): { program: WebGLProgram } | null {
+    const programResult = compileProgram(gl, FIRE_RING_VERTEX_SHADER, FIRE_RING_FRAGMENT_SHADER, "[FireRingGpu]");
+    if (!programResult) {
+      return null;
+    }
+
+    const quadBuffer = gl.createBuffer();
+    if (!quadBuffer) {
+      gl.deleteProgram(programResult.program);
+      return null;
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, UNIT_QUAD_STRIP, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    const attributes = {
+      unitPosition: gl.getAttribLocation(programResult.program, "a_unitPosition"),
+      center: gl.getAttribLocation(programResult.program, "a_center"),
+      innerRadius: gl.getAttribLocation(programResult.program, "a_innerRadius"),
+      outerRadius: gl.getAttribLocation(programResult.program, "a_outerRadius"),
+      birthTimeMs: gl.getAttribLocation(programResult.program, "a_birthTimeMs"),
+      lifetime: gl.getAttribLocation(programResult.program, "a_lifetime"),
+      intensity: gl.getAttribLocation(programResult.program, "a_intensity"),
+      color: gl.getAttribLocation(programResult.program, "a_color"),
+      active: gl.getAttribLocation(programResult.program, "a_active"),
+    };
+
+    const uniforms = {
+      cameraPosition: gl.getUniformLocation(programResult.program, "u_cameraPosition"),
+      viewportSize: gl.getUniformLocation(programResult.program, "u_viewportSize"),
+      time: gl.getUniformLocation(programResult.program, "u_time"),
+    };
+
+    this.sharedResourcesExtended = {
+      program: programResult.program,
+      quadBuffer,
+      uniforms,
+      attributes,
+    };
+
+    return { program: programResult.program };
   }
 
-  const programObj = gl.createProgram();
-  if (!programObj) { gl.deleteShader(vs); gl.deleteShader(fs); return null; }
-  gl.attachShader(programObj, vs);
-  gl.attachShader(programObj, fs);
-  gl.linkProgram(programObj);
-  if (!gl.getProgramParameter(programObj, gl.LINK_STATUS)) {
-    console.error("Fire ring program link:", gl.getProgramInfoLog(programObj));
-    gl.deleteProgram(programObj);
-    gl.deleteShader(vs);
-    gl.deleteShader(fs);
-    return null;
-  }
-  gl.deleteShader(vs);
-  gl.deleteShader(fs);
+  protected createBatch(gl: WebGL2RenderingContext, capacity: number): FireRingBatch | null {
+    if (!this.sharedResourcesExtended) {
+      return null;
+    }
 
-  return {
-    program: programObj,
-    attributes: {
-      unitPosition: gl.getAttribLocation(programObj, "a_unitPosition"),
-      center:       gl.getAttribLocation(programObj, "a_center"),
-      innerRadius:  gl.getAttribLocation(programObj, "a_innerRadius"),
-      outerRadius:  gl.getAttribLocation(programObj, "a_outerRadius"),
-      birthTimeMs:  gl.getAttribLocation(programObj, "a_birthTimeMs"),
-      lifetime:     gl.getAttribLocation(programObj, "a_lifetime"),
-      intensity:    gl.getAttribLocation(programObj, "a_intensity"),
-      color:        gl.getAttribLocation(programObj, "a_color"),
-      active:       gl.getAttribLocation(programObj, "a_active"),
-    },
-    uniforms: {
-      cameraPosition: gl.getUniformLocation(programObj, "u_cameraPosition"),
-      viewportSize:   gl.getUniformLocation(programObj, "u_viewportSize"),
-      time:           gl.getUniformLocation(programObj, "u_time"),
-    },
-  };
+    const instanceBuffer = gl.createBuffer();
+    const vao = gl.createVertexArray();
+    if (!instanceBuffer || !vao) {
+      if (instanceBuffer) gl.deleteBuffer(instanceBuffer);
+      if (vao) gl.deleteVertexArray(vao);
+      return null;
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
+
+    gl.bindVertexArray(vao);
+
+    // Quad attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.sharedResourcesExtended.quadBuffer);
+    if (this.sharedResourcesExtended.attributes.unitPosition >= 0) {
+      gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.unitPosition);
+      gl.vertexAttribPointer(
+        this.sharedResourcesExtended.attributes.unitPosition,
+        2,
+        gl.FLOAT,
+        false,
+        0,
+        0
+      );
+      gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.unitPosition, 0);
+    }
+
+    // Instance attributes
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    const attrs = this.sharedResourcesExtended.attributes;
+    let offset = 0;
+
+    if (attrs.center >= 0) {
+      gl.enableVertexAttribArray(attrs.center);
+      gl.vertexAttribPointer(attrs.center, 2, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.center, 1);
+      offset += 2 * Float32Array.BYTES_PER_ELEMENT;
+    }
+    if (attrs.innerRadius >= 0) {
+      gl.enableVertexAttribArray(attrs.innerRadius);
+      gl.vertexAttribPointer(attrs.innerRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.innerRadius, 1);
+      offset += Float32Array.BYTES_PER_ELEMENT;
+    }
+    if (attrs.outerRadius >= 0) {
+      gl.enableVertexAttribArray(attrs.outerRadius);
+      gl.vertexAttribPointer(attrs.outerRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.outerRadius, 1);
+      offset += Float32Array.BYTES_PER_ELEMENT;
+    }
+    if (attrs.birthTimeMs >= 0) {
+      gl.enableVertexAttribArray(attrs.birthTimeMs);
+      gl.vertexAttribPointer(attrs.birthTimeMs, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.birthTimeMs, 1);
+      offset += Float32Array.BYTES_PER_ELEMENT;
+    }
+    if (attrs.lifetime >= 0) {
+      gl.enableVertexAttribArray(attrs.lifetime);
+      gl.vertexAttribPointer(attrs.lifetime, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.lifetime, 1);
+      offset += Float32Array.BYTES_PER_ELEMENT;
+    }
+    if (attrs.intensity >= 0) {
+      gl.enableVertexAttribArray(attrs.intensity);
+      gl.vertexAttribPointer(attrs.intensity, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.intensity, 1);
+      offset += Float32Array.BYTES_PER_ELEMENT;
+    }
+    if (attrs.color >= 0) {
+      gl.enableVertexAttribArray(attrs.color);
+      gl.vertexAttribPointer(attrs.color, 3, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.color, 1);
+      offset += 3 * Float32Array.BYTES_PER_ELEMENT;
+    }
+    if (attrs.active >= 0) {
+      gl.enableVertexAttribArray(attrs.active);
+      gl.vertexAttribPointer(attrs.active, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(attrs.active, 1);
+    }
+
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    const freeSlots: number[] = [];
+    for (let i = capacity - 1; i >= 0; i--) {
+      freeSlots.push(i);
+    }
+
+    return {
+      gl,
+      capacity,
+      instanceBuffer,
+      vao,
+      freeSlots,
+      activeCount: 0,
+      instances: new Array(capacity).fill(null),
+      needsUpload: false,
+      instanceData: new Float32Array(capacity * INSTANCE_COMPONENTS),
+    };
+  }
+
+  protected getBatchKey(_config: void): string {
+    return "default"; // FireRings don't have configs
+  }
+
+  protected writeInstanceData(batch: FireRingBatch, slotIndex: number, instance: FireRingInstance): void {
+    const offset = slotIndex * INSTANCE_COMPONENTS;
+    const data = batch.instanceData;
+
+    data[offset + 0] = instance.center.x;
+    data[offset + 1] = instance.center.y;
+    data[offset + 2] = instance.innerRadius;
+    data[offset + 3] = instance.outerRadius;
+    data[offset + 4] = instance.birthTimeMs;
+    data[offset + 5] = instance.lifetime;
+    data[offset + 6] = instance.intensity;
+    data[offset + 7] = instance.color.r ?? 1.0;
+    data[offset + 8] = instance.color.g ?? 1.0;
+    data[offset + 9] = instance.color.b ?? 1.0;
+    data[offset + 10] = instance.active ? 1 : 0;
+  }
+
+  protected setupRenderState(
+    gl: WebGL2RenderingContext,
+    _batch: FireRingBatch,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    timestampMs: number
+  ): void {
+    if (!this.sharedResourcesExtended) {
+      return;
+    }
+
+    const { uniforms } = this.sharedResourcesExtended;
+
+    if (uniforms.cameraPosition) {
+      gl.uniform2f(uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
+    }
+    if (uniforms.viewportSize) {
+      gl.uniform2f(uniforms.viewportSize, viewportSize.width, viewportSize.height);
+    }
+    if (uniforms.time) {
+      gl.uniform1f(uniforms.time, timestampMs);
+    }
+
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE); // soft additive
+  }
+
+  protected getInstanceFloats(): number {
+    return INSTANCE_COMPONENTS;
+  }
+
+  protected getActiveFloatIndex(): number {
+    return 10; // active flag
+  }
+
+  protected getVertexCount(_batch: FireRingBatch): number {
+    return 4; // TRIANGLE_STRIP quad
+  }
+
+  protected getDrawMode(gl: WebGL2RenderingContext): number {
+    return gl.TRIANGLE_STRIP;
+  }
+
+  protected override disposeSharedResources(gl: WebGL2RenderingContext): void {
+    if (this.sharedResourcesExtended?.quadBuffer) {
+      gl.deleteBuffer(this.sharedResourcesExtended.quadBuffer);
+    }
+    this.sharedResourcesExtended = null;
+  }
+
+  /**
+   * Override render to restore default blend func after rendering
+   */
+  public override render(
+    gl: WebGL2RenderingContext,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    timestampMs: number
+  ): void {
+    super.render(gl, cameraPosition, viewportSize, timestampMs);
+    
+    // Restore default blend func
+    gl.blendFuncSeparate(
+      gl.SRC_ALPHA,
+      gl.ONE_MINUS_SRC_ALPHA,
+      gl.ONE,
+      gl.ONE_MINUS_SRC_ALPHA
+    );
+  }
+}
+
+// ============================================================================
+// Public API - Single instance with unified interface
+// ============================================================================
+
+export const fireRingGpuRenderer = new FireRingGpuRenderer();
+
+// Re-export types
+export type FireRingSlotHandle = SlotHandle;
+
+// ============================================================================
+// Helper functions for backward compatibility
+// ============================================================================
+
+/**
+ * Add a fire ring instance (acquires slot automatically)
+ */
+export const addFireRingInstance = (
+  gl: WebGL2RenderingContext,
+  instance: FireRingInstance
+): void => {
+  // Set context if not already set
+  if (fireRingGpuRenderer["gl"] !== gl) {
+    fireRingGpuRenderer.setContext(gl);
+  }
+
+  // Acquire slot and update
+  const handle = fireRingGpuRenderer.acquireSlot(undefined);
+  if (handle) {
+    fireRingGpuRenderer.updateSlot(handle, instance);
+  }
 };
 
-const createResources = (gl: WebGL2RenderingContext): FireRingResources | null => {
-  const program = createProgram(gl);
-  if (!program) return null;
-
-  const quadBuffer = gl.createBuffer();
-  if (!quadBuffer) {
-    gl.deleteProgram(program.program);
-    return null;
-  }
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, UNIT_QUAD, gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-  return { program, quadBuffer };
-};
-
-const getContext = (gl: WebGL2RenderingContext): FireRingContext | null => {
-  let context = contexts.get(gl);
-  if (context) return context;
-  const resources = createResources(gl);
-  if (!resources) return null;
-  context = { resources, batch: null };
-  contexts.set(gl, context);
-  return context;
-};
-
-// Тепер не треба тікати age щокадру — достатньо підтримувати активність.
+/**
+ * Update fire ring instance (marks as inactive if lifetime expired)
+ */
 export const updateFireRing = (
   _gl: WebGL2RenderingContext,
   instance: FireRingInstance,
@@ -357,201 +558,27 @@ export const updateFireRing = (
   if (instance.lifetime > 0) {
     const age = nowMs - instance.birthTimeMs;
     if (age >= instance.lifetime) {
-      // дає можливість fade-out на шейдері (ще 0.2*life), але можна й одразу вимикати
       instance.active = false;
     }
   }
 };
 
-export const addFireRingInstance = (
-  gl: WebGL2RenderingContext,
-  instance: FireRingInstance
-): void => {
-  const context = getContext(gl);
-  if (!context) return;
-
-  if (!context.batch) {
-    const instanceBuffer = gl.createBuffer();
-    if (!instanceBuffer) return;
-
-    context.batch = {
-      instances: [],
-      instanceBuffer,
-      vao: null,
-      capacity: 0,
-      needsUpload: true,
-    };
-  }
-  context.batch.instances.push(instance);
-  context.batch.needsUpload = true; // structural change
-};
-
+/**
+ * Render fire rings
+ */
 export const renderFireRings = (
   gl: WebGL2RenderingContext,
   cameraPosition: SceneVector2,
   viewportSize: { width: number; height: number },
   timeMs: number
 ): void => {
-  const context = getContext(gl);
-  if (!context || !context.batch) return;
-
-  const { resources, batch } = context;
-  const { program, quadBuffer } = resources;
-
-  // remove inactive
-  const before = batch.instances.length;
-  batch.instances = batch.instances.filter(inst => inst.active);
-  if (batch.instances.length === 0) return;
-  if (batch.instances.length !== before) batch.needsUpload = true;
-
-  const count = batch.instances.length;
-  const data = new Float32Array(count * COMPONENTS_PER_INSTANCE);
-  {
-    let o = 0;
-    for (const inst of batch.instances) {
-      data[o++] = inst.center.x;
-      data[o++] = inst.center.y;
-      data[o++] = inst.innerRadius;
-      data[o++] = inst.outerRadius;
-      data[o++] = inst.birthTimeMs; // <-- birth, not age
-      data[o++] = inst.lifetime;
-      data[o++] = inst.intensity;
-      const color = inst.color;
-      data[o++] = color.r ?? 1.0;
-      data[o++] = color.g ?? 1.0;
-      data[o++] = color.b ?? 1.0;
-      data[o++] = inst.active ? 1.0 : 0.0;
-    }
-  }
-
-  
-  gl.bindBuffer(gl.ARRAY_BUFFER, batch.instanceBuffer);
-  if (batch.needsUpload || batch.capacity !== count) {
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
-    batch.capacity = count;
-    batch.needsUpload = false;
-
-    // (Re)create VAO
-    if (batch.vao) gl.deleteVertexArray(batch.vao);
-    batch.vao = gl.createVertexArray();
-    if (!batch.vao) return;
-
-    gl.bindVertexArray(batch.vao);
-
-    // quad
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-    if (program.attributes.unitPosition >= 0) {
-      gl.enableVertexAttribArray(program.attributes.unitPosition);
-      gl.vertexAttribPointer(program.attributes.unitPosition, 2, gl.FLOAT, false, 0, 0);
-      gl.vertexAttribDivisor(program.attributes.unitPosition, 0);
-    }
-
-    // instance attributes
-    gl.bindBuffer(gl.ARRAY_BUFFER, batch.instanceBuffer);
-    const stride = COMPONENTS_PER_INSTANCE * BYTES_PER_FLOAT;
-    let off = 0;
-
-    if (program.attributes.center >= 0) {
-      gl.enableVertexAttribArray(program.attributes.center);
-      gl.vertexAttribPointer(program.attributes.center, 2, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.center, 1);
-      off += 2 * BYTES_PER_FLOAT;
-    }
-    if (program.attributes.innerRadius >= 0) {
-      gl.enableVertexAttribArray(program.attributes.innerRadius);
-      gl.vertexAttribPointer(program.attributes.innerRadius, 1, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.innerRadius, 1);
-      off += 1 * BYTES_PER_FLOAT;
-    }
-    if (program.attributes.outerRadius >= 0) {
-      gl.enableVertexAttribArray(program.attributes.outerRadius);
-      gl.vertexAttribPointer(program.attributes.outerRadius, 1, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.outerRadius, 1);
-      off += 1 * BYTES_PER_FLOAT;
-    }
-    if (program.attributes.birthTimeMs >= 0) {
-      gl.enableVertexAttribArray(program.attributes.birthTimeMs);
-      gl.vertexAttribPointer(program.attributes.birthTimeMs, 1, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.birthTimeMs, 1);
-      off += 1 * BYTES_PER_FLOAT;
-    }
-    if (program.attributes.lifetime >= 0) {
-      gl.enableVertexAttribArray(program.attributes.lifetime);
-      gl.vertexAttribPointer(program.attributes.lifetime, 1, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.lifetime, 1);
-      off += 1 * BYTES_PER_FLOAT;
-    }
-    if (program.attributes.intensity >= 0) {
-      gl.enableVertexAttribArray(program.attributes.intensity);
-      gl.vertexAttribPointer(program.attributes.intensity, 1, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.intensity, 1);
-      off += 1 * BYTES_PER_FLOAT;
-    }
-    if (program.attributes.color >= 0) {
-      gl.enableVertexAttribArray(program.attributes.color);
-      gl.vertexAttribPointer(program.attributes.color, 3, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.color, 1);
-      off += 3 * BYTES_PER_FLOAT;
-    }
-    if (program.attributes.active >= 0) {
-      gl.enableVertexAttribArray(program.attributes.active);
-      gl.vertexAttribPointer(program.attributes.active, 1, gl.FLOAT, false, stride, off);
-      gl.vertexAttribDivisor(program.attributes.active, 1);
-    }
-
-    gl.bindVertexArray(null);
-  } else {
-    // same size — можна нічого не аплоадити, але раз ми вже зібрали data, оновимо буфер (можеш прибрати, якщо не треба)
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
-  }
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-  if (!batch.vao) return;
-
-  // Render
-  gl.useProgram(program.program);
-
-  if (program.uniforms.cameraPosition) {
-    gl.uniform2f(program.uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
-  }
-  if (program.uniforms.viewportSize) {
-    gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height);
-  }
-  if (program.uniforms.time) {
-    gl.uniform1f(program.uniforms.time, timeMs);
-  }
-
-  gl.enable(gl.BLEND);
-  gl.blendFuncSeparate(
-    gl.SRC_ALPHA,
-    gl.ONE,
-    gl.ONE,
-    gl.ONE,
-  ); // soft additive
-
-  gl.bindVertexArray(batch.vao);
-  gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, batch.instances.length);
-  gl.bindVertexArray(null);
-
-  // restore default
-  gl.blendFuncSeparate(
-    gl.SRC_ALPHA,
-    gl.ONE_MINUS_SRC_ALPHA,
-    gl.ONE,
-    gl.ONE_MINUS_SRC_ALPHA,
-  );
+  fireRingGpuRenderer.beforeRender(gl, timeMs);
+  fireRingGpuRenderer.render(gl, cameraPosition, viewportSize, timeMs);
 };
 
+/**
+ * Dispose fire ring resources
+ */
 export const disposeFireRing = (gl: WebGL2RenderingContext): void => {
-  const context = contexts.get(gl);
-  if (!context) return;
-
-  if (context.batch) {
-    if (context.batch.vao) gl.deleteVertexArray(context.batch.vao);
-    if (context.batch.instanceBuffer) gl.deleteBuffer(context.batch.instanceBuffer);
-  }
-  gl.deleteBuffer(context.resources.quadBuffer);
-  gl.deleteProgram(context.resources.program.program);
-
-  contexts.delete(gl);
+  fireRingGpuRenderer.setContext(null);
 };

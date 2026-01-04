@@ -27,9 +27,7 @@ import {
   type BulletVisualConfig,
 } from "../../../services/bullet-render-bridge/BulletRenderBridge";
 import {
-  acquireRingSlot,
-  updateRingSlot,
-  releaseRingSlot,
+  ringGpuRenderer,
   type RingSlotHandle,
 } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 import { resolveBulletSpriteIndex } from "@logic/services/bullet-render-bridge/bullet-sprites.helpers";
@@ -417,7 +415,7 @@ export class UnitProjectileController {
     
     // Also clear rings (GPU slots)
     this.rings.forEach((ring) => {
-      releaseRingSlot(ring.gpuSlot);
+      ringGpuRenderer.releaseSlot(ring.gpuSlot);
     });
     this.rings = [];
   }
@@ -552,7 +550,7 @@ export class UnitProjectileController {
 
   private spawnProjectileRing(position: SceneVector2, config: UnitProjectileRingTrailState["config"]): void {
     // GPU Instanced rendering - acquire slot and write initial data
-    const gpuSlot = acquireRingSlot();
+    const gpuSlot = ringGpuRenderer.acquireSlot(undefined);
     if (!gpuSlot) {
       return; // No slots available
     }
@@ -565,7 +563,7 @@ export class UnitProjectileController {
     const now = performance.now();
 
     // Write ring data to GPU - animation happens in shader
-    updateRingSlot(gpuSlot, {
+    ringGpuRenderer.updateSlot(gpuSlot, {
       position: { x: position.x, y: position.y },
       createdAt: now,
       lifetimeMs: config.lifetimeMs,
@@ -600,7 +598,7 @@ export class UnitProjectileController {
 
       if (elapsed >= ring.lifetimeMs) {
         // Release GPU slot
-        releaseRingSlot(ring.gpuSlot);
+        ringGpuRenderer.releaseSlot(ring.gpuSlot);
         continue;
       }
 

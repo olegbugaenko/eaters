@@ -37,10 +37,7 @@ import type { ResourceRunSummaryPayload } from "@logic/modules/shared/resources/
 import { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
-import {
-  clearPetalAuraInstances,
-  petalAuraEffect,
-} from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
 
 const AUTO_RESTART_SECONDS = 5;
 
@@ -171,12 +168,7 @@ export const useSceneRunState = ({
 
   const restartMap = useCallback(() => {
     clearAllAuraSlots();
-    const auraContext = petalAuraEffect.getPrimaryContext();
-    if (auraContext) {
-      clearPetalAuraInstances(auraContext);
-    } else {
-      clearPetalAuraInstances();
-    }
+    petalAuraGpuRenderer.clearInstances();
     app.restartCurrentMap();
   }, [app]);
 

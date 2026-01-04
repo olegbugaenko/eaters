@@ -1,32 +1,18 @@
-import { SceneSize, SceneVector2 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
-import { GpuInstancedPrimitiveLifecycle } from "./GpuInstancedPrimitiveLifecycle";
+/**
+ * GPU Instanced Whirl Renderer
+ * Renders animated spiral whirl effects
+ * 
+ * Unified API: extends GpuBatchRenderer for consistent lifecycle and slot management
+ */
 
-interface WhirlRendererResources {
-  gl: WebGL2RenderingContext;
-  program: WebGLProgram;
-  attributes: {
-    unitPosition: number;
-    center: number;
-    radius: number;
-    phase: number;
-    intensity: number;
-    active: number;
-    rotationSpeedMultiplier: number;
-    spiralArms: number;
-    spiralArms2: number;
-    spiralTwist: number;
-    spiralTwist2: number;
-    colorInner: number;
-    colorMid: number;
-    colorOuter: number;
-  };
-  uniforms: {
-    cameraPosition: WebGLUniformLocation | null;
-    viewportSize: WebGLUniformLocation | null;
-    time: WebGLUniformLocation | null;
-  };
-  quadBuffer: WebGLBuffer;
-}
+import { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { GpuBatchRenderer, type SlotHandle } from "../core/GpuBatchRenderer";
+import type { ExtendedGpuBatch } from "../core/GpuBatchRenderer";
+import { compileProgram, UNIT_QUAD_STRIP } from "../core/BaseGpuPrimitive";
+
+// ============================================================================
+// Types
+// ============================================================================
 
 export interface WhirlInstance {
   position: SceneVector2;
@@ -45,21 +31,39 @@ export interface WhirlInstance {
   colorOuter: [number, number, number]; // RGB
 }
 
-interface WhirlBatch {
-  gl: WebGL2RenderingContext;
-  vao: WebGLVertexArrayObject | null;
-  instanceBuffer: WebGLBuffer | null;
-  capacity: number;
-  instances: WhirlInstance[];
-  activeCount: number;
+interface WhirlBatch extends ExtendedGpuBatch<WhirlInstance> {
+  // No additional fields needed
 }
 
-const UNIT_QUAD_VERTICES = new Float32Array([
-  -0.5, -0.5,
-   0.5, -0.5,
-  -0.5,  0.5,
-   0.5,  0.5,
-]);
+interface WhirlSharedResources {
+  program: WebGLProgram;
+  quadBuffer: WebGLBuffer;
+  uniforms: {
+    cameraPosition: WebGLUniformLocation | null;
+    viewportSize: WebGLUniformLocation | null;
+    time: WebGLUniformLocation | null;
+  };
+  attributes: {
+    unitPosition: number;
+    center: number;
+    radius: number;
+    phase: number;
+    intensity: number;
+    active: number;
+    rotationSpeedMultiplier: number;
+    spiralArms: number;
+    spiralArms2: number;
+    spiralTwist: number;
+    spiralTwist2: number;
+    colorInner: number;
+    colorMid: number;
+    colorOuter: number;
+  };
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const WHIRL_VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -215,510 +219,239 @@ void main() {
 }
 `;
 
-// Структура instance: center(2), radius(1), phase(1), intensity(1), active(1),
+// Instance data: center(2), radius(1), phase(1), intensity(1), active(1),
 // rotationSpeedMultiplier(1), spiralArms(1), spiralArms2(1), spiralTwist(1), spiralTwist2(1),
 // colorInner(3), colorMid(3), colorOuter(3)
 const INSTANCE_COMPONENTS = 20;
 const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+const DEFAULT_BATCH_CAPACITY = 512;
 
-interface WhirlRendererContext {
-  resources: WhirlRendererResources;
-  batch: WhirlBatch | null;
-}
+// ============================================================================
+// WhirlGpuRenderer Class
+// ============================================================================
 
-const compileShader = (
-  gl: WebGL2RenderingContext,
-  type: GLenum,
-  source: string,
-): WebGLShader | null => {
-  const shader = gl.createShader(type);
-  if (!shader) {
-    return null;
-  }
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
-};
+/**
+ * GPU renderer for animated spiral whirl effects.
+ * Uses instanced rendering with a single draw call per batch.
+ */
+class WhirlGpuRenderer extends GpuBatchRenderer<WhirlInstance, WhirlBatch, void> {
+  private sharedResourcesExtended: WhirlSharedResources | null = null;
 
-const createProgram = (
-  gl: WebGL2RenderingContext,
-  vertex: string,
-  fragment: string,
-): WebGLProgram | null => {
-  const vs = compileShader(gl, gl.VERTEX_SHADER, vertex);
-  const fs = compileShader(gl, gl.FRAGMENT_SHADER, fragment);
-  if (!vs || !fs) {
-    if (vs) gl.deleteShader(vs);
-    if (fs) gl.deleteShader(fs);
-    return null;
-  }
-  const program = gl.createProgram();
-  if (!program) {
-    gl.deleteShader(vs);
-    gl.deleteShader(fs);
-    return null;
-  }
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  gl.deleteShader(vs);
-  gl.deleteShader(fs);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    gl.deleteProgram(program);
-    return null;
-  }
-  return program;
-};
-
-const createResources = (
-  gl: WebGL2RenderingContext,
-): WhirlRendererResources | null => {
-  const program = createProgram(gl, WHIRL_VERTEX_SHADER, WHIRL_FRAGMENT_SHADER);
-  if (!program) {
-    return null;
-  }
-  const quadBuffer = gl.createBuffer();
-  if (!quadBuffer) {
-    gl.deleteProgram(program);
-    return null;
-  }
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, UNIT_QUAD_VERTICES, gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-  const attributes = {
-    unitPosition: gl.getAttribLocation(program, "a_unitPosition"),
-    center: gl.getAttribLocation(program, "a_center"),
-    radius: gl.getAttribLocation(program, "a_radius"),
-    phase: gl.getAttribLocation(program, "a_phase"),
-    intensity: gl.getAttribLocation(program, "a_intensity"),
-    active: gl.getAttribLocation(program, "a_active"),
-    rotationSpeedMultiplier: gl.getAttribLocation(program, "a_rotationSpeedMultiplier"),
-    spiralArms: gl.getAttribLocation(program, "a_spiralArms"),
-    spiralArms2: gl.getAttribLocation(program, "a_spiralArms2"),
-    spiralTwist: gl.getAttribLocation(program, "a_spiralTwist"),
-    spiralTwist2: gl.getAttribLocation(program, "a_spiralTwist2"),
-    colorInner: gl.getAttribLocation(program, "a_colorInner"),
-    colorMid: gl.getAttribLocation(program, "a_colorMid"),
-    colorOuter: gl.getAttribLocation(program, "a_colorOuter"),
-  };
-
-  const uniforms = {
-    cameraPosition: gl.getUniformLocation(program, "u_cameraPosition"),
-    viewportSize: gl.getUniformLocation(program, "u_viewportSize"),
-    time: gl.getUniformLocation(program, "u_time"),
-  };
-
-  return {
-    gl,
-    program,
-    attributes,
-    uniforms,
-    quadBuffer,
-  };
-};
-
-const createWhirlBatch = (
-  gl: WebGL2RenderingContext,
-  capacity: number,
-  resources: WhirlRendererResources,
-): WhirlBatch | null => {
-  const vao = gl.createVertexArray();
-  const instanceBuffer = gl.createBuffer();
-  if (!vao || !instanceBuffer) {
-    if (vao) gl.deleteVertexArray(vao);
-    if (instanceBuffer) gl.deleteBuffer(instanceBuffer);
-    return null;
+  constructor() {
+    super(DEFAULT_BATCH_CAPACITY);
   }
 
-  gl.bindVertexArray(vao);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, resources.quadBuffer);
-  if (resources.attributes.unitPosition >= 0) {
-    gl.enableVertexAttribArray(resources.attributes.unitPosition);
-    gl.vertexAttribPointer(
-      resources.attributes.unitPosition,
-      2,
-      gl.FLOAT,
-      false,
-      2 * Float32Array.BYTES_PER_ELEMENT,
-      0,
-    );
-    gl.vertexAttribDivisor(resources.attributes.unitPosition, 0);
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
-
-  const bindAttribute = (location: number, size: number, offset: number) => {
-    if (location < 0) {
-      return;
-    }
-    gl.enableVertexAttribArray(location);
-    gl.vertexAttribPointer(
-      location,
-      size,
-      gl.FLOAT,
-      false,
-      INSTANCE_STRIDE,
-      offset,
-    );
-    gl.vertexAttribDivisor(location, 1);
-  };
-
-  bindAttribute(resources.attributes.center, 2, 0);
-  bindAttribute(resources.attributes.radius, 1, 2 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.phase, 1, 3 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.intensity, 1, 4 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.active, 1, 5 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.rotationSpeedMultiplier, 1, 6 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.spiralArms, 1, 7 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.spiralArms2, 1, 8 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.spiralTwist, 1, 9 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.spiralTwist2, 1, 10 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.colorInner, 3, 11 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.colorMid, 3, 14 * Float32Array.BYTES_PER_ELEMENT);
-  bindAttribute(resources.attributes.colorOuter, 3, 17 * Float32Array.BYTES_PER_ELEMENT);
-
-  gl.bindVertexArray(null);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-  return {
-    gl,
-    vao,
-    instanceBuffer,
-    capacity,
-    instances: new Array(capacity).fill(null).map(() => ({
-      position: { x: 0, y: 0 },
-      radius: 0,
-      phase: 0,
-      intensity: 0,
-      active: false,
-      rotationSpeedMultiplier: 1.0,
-      spiralArms: 6.0,
-      spiralArms2: 12.0,
-      spiralTwist: 7.0,
-      spiralTwist2: 4.0,
-      colorInner: [0.95, 0.88, 0.72],
-      colorMid: [0.85, 0.72, 0.58],
-      colorOuter: [0.68, 0.55, 0.43],
-    })),
-    activeCount: 0,
-  };
-};
-
-const disposeWhirlBatch = (batch: WhirlBatch): void => {
-  const { gl, vao, instanceBuffer } = batch;
-  if (vao) {
-    gl.deleteVertexArray(vao);
-  }
-  if (instanceBuffer) {
-    gl.deleteBuffer(instanceBuffer);
-  }
-};
-
-const writeWhirlInstanceInternal = (
-  batch: WhirlBatch,
-  index: number,
-  instance: WhirlInstance,
-): void => {
-  if (!batch.instanceBuffer) {
-    return;
-  }
-  const clampedIndex = Math.max(0, Math.min(index, batch.capacity - 1));
-  const scratch = new Float32Array(INSTANCE_COMPONENTS);
-  scratch[0] = instance.position.x;
-  scratch[1] = instance.position.y;
-  scratch[2] = instance.radius;
-  scratch[3] = instance.phase;
-  scratch[4] = instance.intensity;
-  scratch[5] = instance.active ? 1 : 0;
-  scratch[6] = instance.rotationSpeedMultiplier;
-  scratch[7] = instance.spiralArms;
-  scratch[8] = instance.spiralArms2;
-  scratch[9] = instance.spiralTwist;
-  scratch[10] = instance.spiralTwist2;
-  scratch[11] = instance.colorInner[0];
-  scratch[12] = instance.colorInner[1];
-  scratch[13] = instance.colorInner[2];
-  scratch[14] = instance.colorMid[0];
-  scratch[15] = instance.colorMid[1];
-  scratch[16] = instance.colorMid[2];
-  scratch[17] = instance.colorOuter[0];
-  scratch[18] = instance.colorOuter[1];
-  scratch[19] = instance.colorOuter[2];
-  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
-  batch.gl.bufferSubData(
-    batch.gl.ARRAY_BUFFER,
-    clampedIndex * INSTANCE_STRIDE,
-    scratch,
-  );
-  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
-
-  const previous = batch.instances[clampedIndex];
-  const prevActive = previous?.active ?? false;
-  batch.instances[clampedIndex] = { ...instance };
-  if (instance.active && !prevActive) {
-    batch.activeCount += 1;
-  } else if (!instance.active && prevActive) {
-    batch.activeCount = Math.max(0, batch.activeCount - 1);
-  }
-};
-
-const packActiveInstances = (batch: WhirlBatch): void => {
-  if (!batch.instanceBuffer || batch.activeCount <= 0) {
-    return;
-  }
-
-  // Збираємо всі активні instances з їх оригінальних слотів
-  const activeInstances: WhirlInstance[] = [];
-  for (let i = 0; i < batch.capacity; i += 1) {
-    const inst = batch.instances[i];
-    if (inst && inst.active) {
-      activeInstances.push(inst);
-    }
-  }
-
-  // Оновлюємо лічильник, якщо потрібно
-  batch.activeCount = activeInstances.length;
-
-  if (activeInstances.length === 0) {
-    return;
-  }
-
-  // Перепаковуємо активні instances в початок буфера
-  const scratch = new Float32Array(INSTANCE_COMPONENTS);
-  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
-  for (let i = 0; i < activeInstances.length; i += 1) {
-    const inst = activeInstances[i]!;
-    scratch[0] = inst.position.x;
-    scratch[1] = inst.position.y;
-    scratch[2] = inst.radius;
-    scratch[3] = inst.phase;
-    scratch[4] = inst.intensity;
-    scratch[5] = 1; // active
-    scratch[6] = inst.rotationSpeedMultiplier;
-    scratch[7] = inst.spiralArms;
-    scratch[8] = inst.spiralArms2;
-    scratch[9] = inst.spiralTwist;
-    scratch[10] = inst.spiralTwist2;
-    scratch[11] = inst.colorInner[0];
-    scratch[12] = inst.colorInner[1];
-    scratch[13] = inst.colorInner[2];
-    scratch[14] = inst.colorMid[0];
-    scratch[15] = inst.colorMid[1];
-    scratch[16] = inst.colorMid[2];
-    scratch[17] = inst.colorOuter[0];
-    scratch[18] = inst.colorOuter[1];
-    scratch[19] = inst.colorOuter[2];
-    batch.gl.bufferSubData(
-      batch.gl.ARRAY_BUFFER,
-      i * INSTANCE_STRIDE,
-      scratch,
-    );
-  }
-  batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
-};
-
-class WhirlEffect implements GpuInstancedPrimitiveLifecycle<WhirlBatch> {
-  private readonly contexts = new Map<WebGL2RenderingContext, WhirlRendererContext>();
-
-  private primaryContext: WebGL2RenderingContext | null = null;
-
-  public onContextAcquired(gl: WebGL2RenderingContext): void {
-    if (!this.contexts.has(gl)) {
-      const resources = createResources(gl);
-      if (!resources) {
-        return;
-      }
-      this.contexts.set(gl, { resources, batch: null });
-    }
-    this.primaryContext = gl;
-  }
-
-  public onContextLost(gl: WebGL2RenderingContext): void {
-    const context = this.contexts.get(gl);
-    if (context) {
-      if (context.batch) {
-        disposeWhirlBatch(context.batch);
-      }
-      gl.deleteBuffer(context.resources.quadBuffer);
-      gl.deleteProgram(context.resources.program);
-      this.contexts.delete(gl);
-    }
-    if (this.primaryContext === gl) {
-      this.primaryContext = null;
-    }
-  }
-
-  public ensureBatch(
-    gl: WebGL2RenderingContext,
-    capacity: number,
-  ): WhirlBatch | null {
-    this.onContextAcquired(gl);
-    const context = this.contexts.get(gl);
-    if (!context) {
+  protected createSharedResources(gl: WebGL2RenderingContext): { program: WebGLProgram } | null {
+    const programResult = compileProgram(gl, WHIRL_VERTEX_SHADER, WHIRL_FRAGMENT_SHADER, "[WhirlGpu]");
+    if (!programResult) {
       return null;
     }
-    if (!context.batch || capacity > context.batch.capacity) {
-      if (context.batch) {
-        disposeWhirlBatch(context.batch);
-      }
-      context.batch = createWhirlBatch(gl, capacity, context.resources);
-      if (!context.batch) {
-        return null;
-      }
+
+    const quadBuffer = gl.createBuffer();
+    if (!quadBuffer) {
+      gl.deleteProgram(programResult.program);
+      return null;
     }
-    return context.batch;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, UNIT_QUAD_STRIP, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    const attributes = {
+      unitPosition: gl.getAttribLocation(programResult.program, "a_unitPosition"),
+      center: gl.getAttribLocation(programResult.program, "a_center"),
+      radius: gl.getAttribLocation(programResult.program, "a_radius"),
+      phase: gl.getAttribLocation(programResult.program, "a_phase"),
+      intensity: gl.getAttribLocation(programResult.program, "a_intensity"),
+      active: gl.getAttribLocation(programResult.program, "a_active"),
+      rotationSpeedMultiplier: gl.getAttribLocation(programResult.program, "a_rotationSpeedMultiplier"),
+      spiralArms: gl.getAttribLocation(programResult.program, "a_spiralArms"),
+      spiralArms2: gl.getAttribLocation(programResult.program, "a_spiralArms2"),
+      spiralTwist: gl.getAttribLocation(programResult.program, "a_spiralTwist"),
+      spiralTwist2: gl.getAttribLocation(programResult.program, "a_spiralTwist2"),
+      colorInner: gl.getAttribLocation(programResult.program, "a_colorInner"),
+      colorMid: gl.getAttribLocation(programResult.program, "a_colorMid"),
+      colorOuter: gl.getAttribLocation(programResult.program, "a_colorOuter"),
+    };
+
+    const uniforms = {
+      cameraPosition: gl.getUniformLocation(programResult.program, "u_cameraPosition"),
+      viewportSize: gl.getUniformLocation(programResult.program, "u_viewportSize"),
+      time: gl.getUniformLocation(programResult.program, "u_time"),
+    };
+
+    this.sharedResourcesExtended = {
+      program: programResult.program,
+      quadBuffer,
+      uniforms,
+      attributes,
+    };
+
+    return { program: programResult.program };
   }
 
-  public beforeRender(gl: WebGL2RenderingContext, _timestampMs: number): void {
-    const context = this.contexts.get(gl);
-    if (!context?.batch) {
-      return;
+  protected createBatch(gl: WebGL2RenderingContext, capacity: number): WhirlBatch | null {
+    if (!this.sharedResourcesExtended) {
+      return null;
     }
-    packActiveInstances(context.batch);
+
+    const instanceBuffer = gl.createBuffer();
+    const vao = gl.createVertexArray();
+    if (!instanceBuffer || !vao) {
+      if (instanceBuffer) gl.deleteBuffer(instanceBuffer);
+      if (vao) gl.deleteVertexArray(vao);
+      return null;
+    }
+
+    gl.bindVertexArray(vao);
+
+    // Unit quad attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.sharedResourcesExtended.quadBuffer);
+    if (this.sharedResourcesExtended.attributes.unitPosition >= 0) {
+      gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.unitPosition);
+      gl.vertexAttribPointer(
+        this.sharedResourcesExtended.attributes.unitPosition,
+        2,
+        gl.FLOAT,
+        false,
+        2 * Float32Array.BYTES_PER_ELEMENT,
+        0
+      );
+      gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.unitPosition, 0);
+    }
+
+    // Instance buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
+
+    const bindAttribute = (location: number, size: number, offset: number) => {
+      if (location < 0) {
+        return;
+      }
+      gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(location, size, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+      gl.vertexAttribDivisor(location, 1);
+    };
+
+    const attrs = this.sharedResourcesExtended.attributes;
+    bindAttribute(attrs.center, 2, 0);
+    bindAttribute(attrs.radius, 1, 2 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.phase, 1, 3 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.intensity, 1, 4 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.active, 1, 5 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.rotationSpeedMultiplier, 1, 6 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.spiralArms, 1, 7 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.spiralArms2, 1, 8 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.spiralTwist, 1, 9 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.spiralTwist2, 1, 10 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.colorInner, 3, 11 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.colorMid, 3, 14 * Float32Array.BYTES_PER_ELEMENT);
+    bindAttribute(attrs.colorOuter, 3, 17 * Float32Array.BYTES_PER_ELEMENT);
+
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    const freeSlots: number[] = [];
+    for (let i = capacity - 1; i >= 0; i--) {
+      freeSlots.push(i);
+    }
+
+    return {
+      gl,
+      capacity,
+      instanceBuffer,
+      vao,
+      freeSlots,
+      activeCount: 0,
+      instances: new Array(capacity).fill(null),
+      needsUpload: false,
+      instanceData: new Float32Array(capacity * INSTANCE_COMPONENTS),
+    };
   }
 
-  public render(
+  protected getBatchKey(_config: void): string {
+    return "default"; // Whirls don't have configs
+  }
+
+  protected writeInstanceData(batch: WhirlBatch, slotIndex: number, instance: WhirlInstance): void {
+    const offset = slotIndex * INSTANCE_COMPONENTS;
+    const data = batch.instanceData;
+
+    data[offset + 0] = instance.position.x;
+    data[offset + 1] = instance.position.y;
+    data[offset + 2] = instance.radius;
+    data[offset + 3] = instance.phase;
+    data[offset + 4] = instance.intensity;
+    data[offset + 5] = instance.active ? 1 : 0;
+    data[offset + 6] = instance.rotationSpeedMultiplier;
+    data[offset + 7] = instance.spiralArms;
+    data[offset + 8] = instance.spiralArms2;
+    data[offset + 9] = instance.spiralTwist;
+    data[offset + 10] = instance.spiralTwist2;
+    data[offset + 11] = instance.colorInner[0];
+    data[offset + 12] = instance.colorInner[1];
+    data[offset + 13] = instance.colorInner[2];
+    data[offset + 14] = instance.colorMid[0];
+    data[offset + 15] = instance.colorMid[1];
+    data[offset + 16] = instance.colorMid[2];
+    data[offset + 17] = instance.colorOuter[0];
+    data[offset + 18] = instance.colorOuter[1];
+    data[offset + 19] = instance.colorOuter[2];
+  }
+
+  protected setupRenderState(
     gl: WebGL2RenderingContext,
+    _batch: WhirlBatch,
     cameraPosition: SceneVector2,
     viewportSize: SceneSize,
-    timeMs: number,
+    timestampMs: number
   ): void {
-    const context = this.contexts.get(gl);
-    if (!context?.batch || !context.batch.vao || context.batch.activeCount <= 0) {
+    if (!this.sharedResourcesExtended) {
       return;
     }
 
-    const { resources, batch } = context;
+    const { uniforms } = this.sharedResourcesExtended;
 
-    gl.useProgram(resources.program);
-    if (resources.uniforms.cameraPosition) {
-      gl.uniform2f(
-        resources.uniforms.cameraPosition,
-        cameraPosition.x,
-        cameraPosition.y,
-      );
+    if (uniforms.cameraPosition) {
+      gl.uniform2f(uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
     }
-    if (resources.uniforms.viewportSize) {
-      gl.uniform2f(
-        resources.uniforms.viewportSize,
-        viewportSize.width,
-        viewportSize.height,
-      );
+    if (uniforms.viewportSize) {
+      gl.uniform2f(uniforms.viewportSize, viewportSize.width, viewportSize.height);
     }
-    if (resources.uniforms.time) {
-      gl.uniform1f(resources.uniforms.time, timeMs);
+    if (uniforms.time) {
+      gl.uniform1f(uniforms.time, timestampMs);
     }
-
-    gl.bindVertexArray(batch.vao);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, batch.activeCount);
-    gl.bindVertexArray(null);
   }
 
-  public clearInstances(gl?: WebGL2RenderingContext): void {
-    if (gl) {
-      const context = this.contexts.get(gl);
-      if (context?.batch) {
-        resetBatch(context.batch);
-      }
-      return;
+  protected getInstanceFloats(): number {
+    return INSTANCE_COMPONENTS;
+  }
+
+  protected getActiveFloatIndex(): number {
+    return 5; // active flag
+  }
+
+  protected getVertexCount(_batch: WhirlBatch): number {
+    return 4; // TRIANGLE_STRIP quad
+  }
+
+  protected getDrawMode(gl: WebGL2RenderingContext): number {
+    return gl.TRIANGLE_STRIP;
+  }
+
+  protected override disposeSharedResources(gl: WebGL2RenderingContext): void {
+    if (this.sharedResourcesExtended?.quadBuffer) {
+      gl.deleteBuffer(this.sharedResourcesExtended.quadBuffer);
     }
-
-    this.contexts.forEach((context) => {
-      if (context.batch) {
-        resetBatch(context.batch);
-      }
-    });
-  }
-
-  public dispose(): void {
-    this.contexts.forEach((context, gl) => {
-      if (context.batch) {
-        disposeWhirlBatch(context.batch);
-      }
-      gl.deleteBuffer(context.resources.quadBuffer);
-      gl.deleteProgram(context.resources.program);
-    });
-    this.contexts.clear();
-    this.primaryContext = null;
-  }
-
-  public writeInstance(
-    batch: WhirlBatch,
-    index: number,
-    instance: WhirlInstance,
-  ): void {
-    writeWhirlInstanceInternal(batch, index, instance);
-  }
-
-  public getPrimaryContext(): WebGL2RenderingContext | null {
-    return this.primaryContext;
+    this.sharedResourcesExtended = null;
   }
 }
 
-const createInactiveWhirlInstance = (): WhirlInstance => ({
-  position: { x: 0, y: 0 },
-  radius: 0,
-  phase: 0,
-  intensity: 0,
-  active: false,
-  rotationSpeedMultiplier: 1.0,
-  spiralArms: 6.0,
-  spiralArms2: 12.0,
-  spiralTwist: 7.0,
-  spiralTwist2: 4.0,
-  colorInner: [0.95, 0.88, 0.72],
-  colorMid: [0.85, 0.72, 0.58],
-  colorOuter: [0.68, 0.55, 0.43],
-});
+// ============================================================================
+// Public API - Single instance with unified interface
+// ============================================================================
 
-const resetBatch = (batch: WhirlBatch): void => {
-  batch.activeCount = 0;
-  for (let i = 0; i < batch.capacity; i += 1) {
-    batch.instances[i] = createInactiveWhirlInstance();
-  }
-  if (batch.instanceBuffer) {
-    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
-    batch.gl.bufferData(
-      batch.gl.ARRAY_BUFFER,
-      batch.capacity * INSTANCE_STRIDE,
-      batch.gl.DYNAMIC_DRAW,
-    );
-    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
-  }
-};
+export const whirlGpuRenderer = new WhirlGpuRenderer();
 
-export const whirlEffect = new WhirlEffect();
-
-export const ensureWhirlBatch = (
-  gl: WebGL2RenderingContext,
-  capacity: number,
-): WhirlBatch | null => whirlEffect.ensureBatch(gl, capacity);
-
-export const writeWhirlInstance = (
-  batch: WhirlBatch,
-  index: number,
-  instance: WhirlInstance,
-): void => {
-  whirlEffect.writeInstance(batch, index, instance);
-};
-
-export const renderWhirls = (
-  gl: WebGL2RenderingContext,
-  cameraPosition: SceneVector2,
-  viewportSize: SceneSize,
-  timeMs: number,
-): void => whirlEffect.render(gl, cameraPosition, viewportSize, timeMs);
-
-export const disposeWhirlResources = (): void => {
-  whirlEffect.dispose();
-};
-
-export const getWhirlGlContext = (): WebGL2RenderingContext | null =>
-  whirlEffect.getPrimaryContext();
+// Re-export types
+export type WhirlSlotHandle = SlotHandle;

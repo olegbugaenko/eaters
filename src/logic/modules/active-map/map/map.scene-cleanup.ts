@@ -1,7 +1,7 @@
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import { resetAllArcBatches } from "../../../../ui/renderers/primitives/gpu/ArcGpuRenderer";
-import { clearAllParticleEmitters } from "../../../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { resetAllWaveBatches } from "../../../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
+import { arcGpuRenderer } from "../../../../ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { particleEmitterGpuRenderer } from "../../../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
+import { explosionWaveGpuRenderer } from "../../../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
 import { FireballModule } from "../../scene/fireball/fireball.module";
 import { BulletModule } from "../bullet/bullet.module";
 import { ExplosionModule } from "../../scene/explosion/explosion.module";
@@ -37,13 +37,13 @@ export class MapSceneCleanup implements MapSceneCleanupContract {
   private resetGpuCaches(): void {
     // Clear GPU caches to avoid lingering artifacts and memory leaks between runs
     try {
-      resetAllWaveBatches();
+      explosionWaveGpuRenderer.clearInstances();
     } catch {}
     try {
-      resetAllArcBatches();
+      arcGpuRenderer.clearInstances();
     } catch {}
     try {
-      clearAllParticleEmitters();
+      particleEmitterGpuRenderer.clearInstances();
     } catch {}
   }
 }

@@ -18,7 +18,6 @@ import {
 } from "./helpers";
 import {
   getAuraInstanceMap,
-  getCurrentAuraBatch,
   acquireAuraSlotForInstance,
   writeAuraInstance,
 } from "./aura.helpers";
@@ -37,77 +36,59 @@ export const createCompositePrimitives = (
   // Створюємо аури, якщо вони є в конфігу
   if (renderer.auras && Array.isArray(payload?.modules)) {
     const instanceId = instance.id;
-    const currentBatch = getCurrentAuraBatch();
     const auraInstanceMap = getAuraInstanceMap();
 
-    if (currentBatch) {
-      // Очищаємо старі аури для цього instance
-      const existingSlots = auraInstanceMap.get(instanceId);
-      if (existingSlots) {
-        existingSlots.forEach(({ slotIndex, auraConfig }) => {
-          writeAuraInstance(slotIndex, {
-            position: { x: 0, y: 0 },
-            basePhase: 0,
-            active: false,
-            petalCount: auraConfig.petalCount,
-            innerRadius: auraConfig.innerRadius,
-            outerRadius: auraConfig.outerRadius,
-            petalWidth:
-              auraConfig.petalWidth ??
-              (auraConfig.outerRadius - auraConfig.innerRadius) * 0.5,
-            rotationSpeed: auraConfig.rotationSpeed,
-            color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
-            alpha: auraConfig.alpha,
-            pointInward: auraConfig.pointInward ?? false,
-          });
-        });
-      }
+    // Очищаємо старі аури для цього instance
+    const existingSlots = auraInstanceMap.get(instanceId);
+    if (existingSlots) {
+      const { petalAuraGpuRenderer } = require("../../../primitives/gpu/PetalAuraGpuRenderer");
+      existingSlots.forEach(({ handle }) => {
+        // releaseSlot marks slots as inactive and returns them to the pool
+        petalAuraGpuRenderer.releaseSlot(handle);
+      });
+    }
 
-      const newSlots: typeof existingSlots = [];
-      let currentSlotIndex = 0;
+    const newSlots: typeof existingSlots = [];
 
-      renderer.auras.forEach((auraConfig) => {
-        if (auraConfig.requiresModule) {
-          if (!payload?.modules?.includes(auraConfig.requiresModule)) {
-            return;
-          }
-        }
-        const petalCount = Math.max(1, Math.floor(auraConfig.petalCount));
-        const slotIndex = acquireAuraSlotForInstance(instanceId, petalCount, currentSlotIndex);
-        if (slotIndex === null) {
+    renderer.auras.forEach((auraConfig) => {
+      if (auraConfig.requiresModule) {
+        if (!payload?.modules?.includes(auraConfig.requiresModule)) {
           return;
         }
-        const basePhase = Math.random() * Math.PI * 2;
+      }
+      const petalCount = Math.max(1, Math.floor(auraConfig.petalCount));
+      const handle = acquireAuraSlotForInstance(instanceId, petalCount);
+      if (!handle) {
+        return;
+      }
+      const basePhase = Math.random() * Math.PI * 2;
 
-        newSlots.push({
-          instanceId,
-          slotIndex,
-          auraConfig,
-          basePhase,
-        });
-
-        // Записуємо пелюстки одразу
-        writeAuraInstance(slotIndex, {
-          position: { ...instance.data.position },
-          basePhase,
-          active: true,
-          petalCount: auraConfig.petalCount,
-          innerRadius: auraConfig.innerRadius,
-          outerRadius: auraConfig.outerRadius,
-          petalWidth:
-            auraConfig.petalWidth ??
-            (auraConfig.outerRadius - auraConfig.innerRadius) * 0.5,
-          rotationSpeed: auraConfig.rotationSpeed,
-          color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
-          alpha: auraConfig.alpha,
-          pointInward: auraConfig.pointInward ?? false,
-        });
-
-        currentSlotIndex = slotIndex + petalCount;
+      newSlots.push({
+        instanceId,
+        handle,
+        auraConfig,
+        basePhase,
       });
 
-      auraInstanceMap.set(instanceId, newSlots);
-    }
+      // Записуємо пелюстки одразу
+      writeAuraInstance(handle, {
+        position: { ...instance.data.position },
+        basePhase,
+        active: true,
+        petalCount: auraConfig.petalCount,
+        innerRadius: auraConfig.innerRadius,
+        outerRadius: auraConfig.outerRadius,
+        petalWidth:
+          auraConfig.petalWidth ??
+          (auraConfig.outerRadius - auraConfig.innerRadius) * 0.5,
+        rotationSpeed: auraConfig.rotationSpeed,
+        color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
+        alpha: auraConfig.alpha,
+        pointInward: auraConfig.pointInward ?? false,
+      });
+    });
+
+    auraInstanceMap.set(instanceId, newSlots);
   }
 
   // Group tentacle segments by groupId for potential future use (not required to animate basic sway)

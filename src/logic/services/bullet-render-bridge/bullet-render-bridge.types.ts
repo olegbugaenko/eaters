@@ -23,6 +23,7 @@ export interface BulletVisualConfig {
 }
 
 export interface BulletSlotHandle {
+  readonly batchKey: string;
   readonly visualKey: string;
   readonly slotIndex: number;
 }

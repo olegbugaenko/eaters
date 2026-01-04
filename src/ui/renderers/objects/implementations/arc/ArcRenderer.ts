@@ -6,25 +6,26 @@ import type {
 import { DynamicPrimitive, ObjectRegistration, ObjectRenderer } from "../../ObjectRenderer";
 import { getParticleEmitterGlContext } from "../../../primitives/utils/gpuContext";
 import {
-  ArcGpuUniforms,
-  ensureArcBatch,
-  writeArcInstance,
-  setArcBatchActiveCount,
+  arcGpuRenderer,
+  type ArcGpuUniforms,
+  type ArcInstance,
+  type ArcBatchConfig,
+  type ArcSlotHandle,
 } from "../../../primitives/gpu/ArcGpuRenderer";
 import type { ArcRendererCustomData } from "./types";
 import { DEFAULT_ARC_BATCH_CAPACITY } from "./constants";
 
 export class ArcRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
-    let slotIndex = -1;
+    let slotHandle: ArcSlotHandle | null = null;
     let age = 0;
     let lifetime = 1000;
     let lastTs =
       typeof performance !== "undefined" && performance.now
         ? performance.now()
         : Date.now();
-    let batch: ReturnType<typeof ensureArcBatch> | null = null;
     let batchKey: string | null = null;
+    let batchConfig: ArcBatchConfig | null = null;
 
     const primitive: DynamicPrimitive = {
       data: new Float32Array(0),
@@ -35,9 +36,15 @@ export class ArcRenderer extends ObjectRenderer {
         lifetime = Math.max(1, data.lifetimeMs ?? config.lifetimeMs);
 
         // lazy acquire GL + batch keyed by visual params only
-        if (!batch) {
+        if (!batchConfig) {
           const gl = getParticleEmitterGlContext();
           if (!gl) return null;
+
+          // Set context if not already set
+          if (arcGpuRenderer["gl"] !== gl) {
+            arcGpuRenderer.setContext(gl);
+          }
+
           const uniforms: ArcGpuUniforms = {
             coreColor: new Float32Array([
               config.coreColor.r,
@@ -70,8 +77,15 @@ export class ArcRenderer extends ObjectRenderer {
             uniforms.oscAmplitude,
             uniforms.oscAngularSpeed,
           ].join("|");
-          batch = ensureArcBatch(gl, batchKey, DEFAULT_ARC_BATCH_CAPACITY, uniforms);
-          if (!batch) return null;
+
+          batchConfig = {
+            batchKey,
+            uniforms,
+          };
+
+          // Acquire slot to ensure batch exists
+          slotHandle = arcGpuRenderer.acquireSlot(batchConfig);
+          if (!slotHandle) return null;
         }
 
         const now =
@@ -82,33 +96,22 @@ export class ArcRenderer extends ObjectRenderer {
         lastTs = now;
         age = Math.min(lifetime, age + dt);
 
-        if (slotIndex < 0 && batch) {
-          for (let i = 0; i < batch.capacity; i += 1) {
-            const inst = batch.instances[i];
-            if (!inst || !inst.active) {
-              slotIndex = i;
-              break;
-            }
-          }
-          if (slotIndex < 0) slotIndex = 0;
+        // Acquire slot if not already acquired
+        if (!slotHandle && batchConfig) {
+          slotHandle = arcGpuRenderer.acquireSlot(batchConfig);
+          if (!slotHandle) return null;
         }
 
-        if (batch && slotIndex >= 0) {
-          const wasActive = batch.instances[slotIndex]?.active ?? false;
+        if (slotHandle && batchConfig) {
           const isActive = age < lifetime;
-          writeArcInstance(batch, slotIndex, {
+          const instance: ArcInstance = {
             from: data.from,
             to: data.to,
             age,
             lifetime,
             active: isActive,
-          });
-          // Incremental update instead of O(capacity) loop
-          if (isActive && !wasActive) {
-            setArcBatchActiveCount(batch, batch.activeCount + 1);
-          } else if (!isActive && wasActive) {
-            setArcBatchActiveCount(batch, batch.activeCount - 1);
-          }
+          };
+          arcGpuRenderer.updateSlot(slotHandle, instance);
         }
 
         if (age >= lifetime) {
@@ -118,19 +121,9 @@ export class ArcRenderer extends ObjectRenderer {
         return null;
       },
       dispose() {
-        if (batch && slotIndex >= 0 && slotIndex < batch.capacity) {
-          const wasActive = batch.instances[slotIndex]?.active ?? false;
-          writeArcInstance(batch, slotIndex, {
-            from: { x: 0, y: 0 },
-            to: { x: 0, y: 0 },
-            age: 0,
-            lifetime: 0,
-            active: false,
-          });
-          // Decrement only if was active
-          if (wasActive) {
-            setArcBatchActiveCount(batch, batch.activeCount - 1);
-          }
+        if (slotHandle) {
+          arcGpuRenderer.releaseSlot(slotHandle);
+          slotHandle = null;
         }
       },
     };

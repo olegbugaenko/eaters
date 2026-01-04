@@ -1,17 +1,19 @@
 /**
- * GPU Instanced Renderer for Bullets
+ * GPU Instanced Bullet Renderer
+ * Renders all bullets of the same visual type in a single draw call
  * 
- * Renders all bullets of the same visual type in a single draw call.
- * Supports different bullet types with different appearances.
- * Uses object pooling - slots are reused, buffer is never rebuilt.
+ * Unified API: extends GpuBatchRenderer for consistent lifecycle and slot management
  */
 
-import type { SceneColor, SceneVector2, SceneSize } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor, SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import {
   BULLET_SPRITE_PATHS,
   BULLET_SPRITE_SIZE,
   type BulletSpriteName,
 } from "@logic/services/bullet-render-bridge/bullet-sprites.const";
+import { GpuBatchRenderer, type SlotHandle } from "../core/GpuBatchRenderer";
+import type { ExtendedGpuBatch } from "../core/GpuBatchRenderer";
+import { compileProgram, UNIT_QUAD_CENTERED } from "../core/BaseGpuPrimitive";
 
 // ============================================================================
 // Types
@@ -52,48 +54,44 @@ export interface BulletInstance {
   active: boolean;
 }
 
-interface BulletBatch {
-  readonly gl: WebGL2RenderingContext;
-  readonly visualKey: string;
-  readonly config: BulletVisualConfig;
-  readonly vao: WebGLVertexArrayObject;
-  readonly instanceBuffer: WebGLBuffer;
-  readonly capacity: number;
-  instances: (BulletInstance | null)[];
-  freeSlots: number[];
-  activeCount: number;
-  needsUpload: boolean;
-  instanceData: Float32Array;
+export interface BulletBatchConfig {
+  batchKey: string;
+  config: BulletVisualConfig;
 }
 
-interface BulletGpuResources {
-  readonly program: WebGLProgram;
-  readonly quadBuffer: WebGLBuffer;
-  readonly uniforms: {
-    readonly cameraPosition: WebGLUniformLocation | null;
-    readonly viewportSize: WebGLUniformLocation | null;
-    readonly bodyColor: WebGLUniformLocation | null;
-    readonly tailStartColor: WebGLUniformLocation | null;
-    readonly tailEndColor: WebGLUniformLocation | null;
-    readonly tailLengthMul: WebGLUniformLocation | null;
-    readonly tailWidthMul: WebGLUniformLocation | null;
-    readonly shapeType: WebGLUniformLocation | null;
-    readonly centerColor: WebGLUniformLocation | null;
-    readonly edgeColor: WebGLUniformLocation | null;
-    readonly useRadialGradient: WebGLUniformLocation | null;
-    readonly spriteArray: WebGLUniformLocation | null;
-    readonly spriteIndex: WebGLUniformLocation | null;
-    readonly tailOffsetMul: WebGLUniformLocation | null;
-  };
-  readonly attributes: {
-    readonly unitPosition: number;
-    readonly instancePosition: number;
-    readonly instanceRotation: number;
-    readonly instanceRadius: number;
-    readonly instanceActive: number;
-  };
+interface BulletBatch extends ExtendedGpuBatch<BulletInstance> {
+  visualKey: string;
+  config: BulletVisualConfig;
+}
+
+interface BulletSharedResources {
+  program: WebGLProgram;
+  quadBuffer: WebGLBuffer;
   spriteTexture: WebGLTexture | null;
   spriteCount: number;
+  uniforms: {
+    cameraPosition: WebGLUniformLocation | null;
+    viewportSize: WebGLUniformLocation | null;
+    bodyColor: WebGLUniformLocation | null;
+    tailStartColor: WebGLUniformLocation | null;
+    tailEndColor: WebGLUniformLocation | null;
+    tailLengthMul: WebGLUniformLocation | null;
+    tailWidthMul: WebGLUniformLocation | null;
+    shapeType: WebGLUniformLocation | null;
+    centerColor: WebGLUniformLocation | null;
+    edgeColor: WebGLUniformLocation | null;
+    useRadialGradient: WebGLUniformLocation | null;
+    spriteArray: WebGLUniformLocation | null;
+    spriteIndex: WebGLUniformLocation | null;
+    tailOffsetMul: WebGLUniformLocation | null;
+  };
+  attributes: {
+    unitPosition: number;
+    instancePosition: number;
+    instanceRotation: number;
+    instanceRadius: number;
+    instanceActive: number;
+  };
 }
 
 // ============================================================================
@@ -105,20 +103,6 @@ const DEFAULT_BATCH_CAPACITY = 256;
 // Instance data layout: posX, posY, rotation, radius, active
 const INSTANCE_FLOATS = 5;
 const INSTANCE_STRIDE = INSTANCE_FLOATS * Float32Array.BYTES_PER_ELEMENT;
-
-// Unit quad for instanced rendering
-const UNIT_QUAD = new Float32Array([
-  -1, -1,
-   1, -1,
-   1,  1,
-  -1, -1,
-   1,  1,
-  -1,  1,
-]);
-
-// ============================================================================
-// Shaders
-// ============================================================================
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -288,385 +272,408 @@ void main() {
 `;
 
 // ============================================================================
-// Resource Management
+// BulletGpuRenderer Class
 // ============================================================================
 
-let globalGl: WebGL2RenderingContext | null = null;
-let globalResources: BulletGpuResources | null = null;
-const batches = new Map<string, BulletBatch>();
+/**
+ * GPU renderer for bullets.
+ * Uses instanced rendering with configurable visuals per batch.
+ */
+class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, BulletBatchConfig> {
+  private sharedResourcesExtended: BulletSharedResources | null = null;
 
-export const setBulletGpuContext = (gl: WebGL2RenderingContext | null): void => {
-  if (gl === globalGl) return;
-  
-  // Cleanup old resources
-  if (globalResources && globalGl) {
-    globalGl.deleteProgram(globalResources.program);
-    globalGl.deleteBuffer(globalResources.quadBuffer);
-    if (globalResources.spriteTexture) {
-      globalGl.deleteTexture(globalResources.spriteTexture);
-      // Mark texture as deleted to prevent use in async callbacks
-      globalResources.spriteTexture = null;
+  constructor() {
+    super(DEFAULT_BATCH_CAPACITY);
+  }
+
+  protected createSharedResources(gl: WebGL2RenderingContext): { program: WebGLProgram } | null {
+    const programResult = compileProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER, "[BulletGpu]");
+    if (!programResult) {
+      return null;
+    }
+
+    const quadBuffer = gl.createBuffer();
+    if (!quadBuffer) {
+      gl.deleteProgram(programResult.program);
+      return null;
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, UNIT_QUAD_CENTERED, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    const uniforms = {
+      cameraPosition: gl.getUniformLocation(programResult.program, "u_cameraPosition"),
+      viewportSize: gl.getUniformLocation(programResult.program, "u_viewportSize"),
+      bodyColor: gl.getUniformLocation(programResult.program, "u_bodyColor"),
+      tailStartColor: gl.getUniformLocation(programResult.program, "u_tailStartColor"),
+      tailEndColor: gl.getUniformLocation(programResult.program, "u_tailEndColor"),
+      tailLengthMul: gl.getUniformLocation(programResult.program, "u_tailLengthMul"),
+      tailWidthMul: gl.getUniformLocation(programResult.program, "u_tailWidthMul"),
+      shapeType: gl.getUniformLocation(programResult.program, "u_shapeType"),
+      centerColor: gl.getUniformLocation(programResult.program, "u_centerColor"),
+      edgeColor: gl.getUniformLocation(programResult.program, "u_edgeColor"),
+      useRadialGradient: gl.getUniformLocation(programResult.program, "u_useRadialGradient"),
+      spriteArray: gl.getUniformLocation(programResult.program, "u_spriteArray"),
+      spriteIndex: gl.getUniformLocation(programResult.program, "u_spriteIndex"),
+      tailOffsetMul: gl.getUniformLocation(programResult.program, "u_tailOffsetMul"),
+    };
+
+    const attributes = {
+      unitPosition: gl.getAttribLocation(programResult.program, "a_unitPosition"),
+      instancePosition: gl.getAttribLocation(programResult.program, "a_instancePosition"),
+      instanceRotation: gl.getAttribLocation(programResult.program, "a_instanceRotation"),
+      instanceRadius: gl.getAttribLocation(programResult.program, "a_instanceRadius"),
+      instanceActive: gl.getAttribLocation(programResult.program, "a_instanceActive"),
+    };
+
+    this.sharedResourcesExtended = {
+      program: programResult.program,
+      quadBuffer,
+      spriteTexture: null,
+      spriteCount: 0,
+      uniforms,
+      attributes,
+    };
+
+    // Load sprites asynchronously
+    this.loadSpriteArray(gl);
+
+    return { program: programResult.program };
+  }
+
+  private loadSpriteArray(gl: WebGL2RenderingContext): void {
+    if (!this.sharedResourcesExtended) {
+      return;
+    }
+
+    const texture = gl.createTexture();
+    if (!texture) {
+      return;
+    }
+
+    this.sharedResourcesExtended.spriteTexture = texture;
+    this.sharedResourcesExtended.spriteCount = BULLET_SPRITE_PATHS.length;
+
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+
+    // Allocate texture array storage
+    gl.texImage3D(
+      gl.TEXTURE_2D_ARRAY,
+      0,
+      gl.RGBA,
+      BULLET_SPRITE_SIZE,
+      BULLET_SPRITE_SIZE,
+      BULLET_SPRITE_PATHS.length,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      null
+    );
+
+    // Set texture parameters
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    // Load each sprite image
+    BULLET_SPRITE_PATHS.forEach((path: string, index: number) => {
+      const image = new Image();
+      image.onload = () => {
+        // Check if context/resources are still valid and texture wasn't deleted
+        if (gl !== this.gl || !this.sharedResourcesExtended || !this.sharedResourcesExtended.spriteTexture) {
+          return; // Context changed or texture was deleted
+        }
+
+        try {
+          gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.sharedResourcesExtended.spriteTexture);
+          gl.texSubImage3D(
+            gl.TEXTURE_2D_ARRAY,
+            0,
+            0, 0, index,
+            BULLET_SPRITE_SIZE,
+            BULLET_SPRITE_SIZE,
+            1,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            image
+          );
+        } catch (error) {
+          // Texture was deleted or context lost - silently ignore
+        }
+      };
+      image.onerror = () => {
+        console.error(`[BulletGpu] Failed to load sprite: ${path}`);
+      };
+      image.src = path;
+    });
+
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+  }
+
+  protected createBatch(gl: WebGL2RenderingContext, capacity: number): BulletBatch | null {
+    if (!this.sharedResourcesExtended) {
+      return null;
+    }
+
+    const instanceBuffer = gl.createBuffer();
+    const vao = gl.createVertexArray();
+    if (!instanceBuffer || !vao) {
+      if (instanceBuffer) gl.deleteBuffer(instanceBuffer);
+      if (vao) gl.deleteVertexArray(vao);
+      return null;
+    }
+
+    gl.bindVertexArray(vao);
+
+    // Unit quad (per-vertex)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.sharedResourcesExtended.quadBuffer);
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.unitPosition);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.unitPosition, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.unitPosition, 0);
+
+    // Instance buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
+
+    // Instance attributes
+    let offset = 0;
+
+    // position (vec2)
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.instancePosition);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.instancePosition, 2, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instancePosition, 1);
+    offset += 2 * 4;
+
+    // rotation (float)
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.instanceRotation);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.instanceRotation, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instanceRotation, 1);
+    offset += 1 * 4;
+
+    // radius (float)
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.instanceRadius);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.instanceRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instanceRadius, 1);
+    offset += 1 * 4;
+
+    // active (float)
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.instanceActive);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.instanceActive, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instanceActive, 1);
+
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    const freeSlots: number[] = [];
+    for (let i = capacity - 1; i >= 0; i--) {
+      freeSlots.push(i);
+    }
+
+    return {
+      gl,
+      visualKey: "", // Will be set in acquireSlot
+      config: DEFAULT_BULLET_VISUAL,
+      capacity,
+      instanceBuffer,
+      vao,
+      freeSlots,
+      activeCount: 0,
+      instances: new Array(capacity).fill(null),
+      needsUpload: false,
+      instanceData: new Float32Array(capacity * INSTANCE_FLOATS),
+    };
+  }
+
+  protected getBatchKey(config: BulletBatchConfig): string {
+    return config.batchKey;
+  }
+
+  protected writeInstanceData(batch: BulletBatch, slotIndex: number, instance: BulletInstance): void {
+    const offset = slotIndex * INSTANCE_FLOATS;
+    const data = batch.instanceData;
+
+    data[offset + 0] = instance.position.x;
+    data[offset + 1] = instance.position.y;
+    data[offset + 2] = instance.rotation;
+    data[offset + 3] = instance.radius;
+    data[offset + 4] = instance.active ? 1 : 0;
+  }
+
+  protected setupRenderState(
+    gl: WebGL2RenderingContext,
+    batch: BulletBatch,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    _timestampMs: number
+  ): void {
+    if (!this.sharedResourcesExtended) {
+      return;
+    }
+
+    const { uniforms, spriteTexture } = this.sharedResourcesExtended;
+    const { config } = batch;
+
+    // Camera uniforms (shared)
+    if (uniforms.cameraPosition) {
+      gl.uniform2f(uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
+    }
+    if (uniforms.viewportSize) {
+      gl.uniform2f(uniforms.viewportSize, viewportSize.width, viewportSize.height);
+    }
+
+    // Batch-specific uniforms
+    if (uniforms.bodyColor) {
+      gl.uniform4f(uniforms.bodyColor, config.bodyColor.r, config.bodyColor.g, config.bodyColor.b, config.bodyColor.a ?? 1);
+    }
+    if (uniforms.tailStartColor) {
+      gl.uniform4f(uniforms.tailStartColor, config.tailStartColor.r, config.tailStartColor.g, config.tailStartColor.b, config.tailStartColor.a ?? 1);
+    }
+    if (uniforms.tailEndColor) {
+      gl.uniform4f(uniforms.tailEndColor, config.tailEndColor.r, config.tailEndColor.g, config.tailEndColor.b, config.tailEndColor.a ?? 0);
+    }
+    if (uniforms.tailLengthMul) {
+      gl.uniform1f(uniforms.tailLengthMul, config.tailLengthMultiplier);
+    }
+    if (uniforms.tailWidthMul) {
+      gl.uniform1f(uniforms.tailWidthMul, config.tailWidthMultiplier);
+    }
+    if (uniforms.tailOffsetMul) {
+      gl.uniform1f(uniforms.tailOffsetMul, config.tailOffsetMultiplier ?? 0);
+    }
+    if (uniforms.shapeType) {
+      gl.uniform1i(uniforms.shapeType, config.shape === "sprite" ? 1 : 0);
+    }
+    if (uniforms.spriteIndex) {
+      gl.uniform1i(uniforms.spriteIndex, config.spriteIndex ?? 0);
+    }
+
+    // Radial gradient support
+    const useRadial = config.centerColor && config.edgeColor ? 1 : 0;
+    if (uniforms.useRadialGradient) {
+      gl.uniform1i(uniforms.useRadialGradient, useRadial);
+    }
+    if (useRadial) {
+      const cc = config.centerColor!;
+      const ec = config.edgeColor!;
+      if (uniforms.centerColor) {
+        gl.uniform4f(uniforms.centerColor, cc.r, cc.g, cc.b, cc.a ?? 1);
+      }
+      if (uniforms.edgeColor) {
+        gl.uniform4f(uniforms.edgeColor, ec.r, ec.g, ec.b, ec.a ?? 1);
+      }
+    }
+
+    // Bind sprite texture array once for all batches
+    if (spriteTexture && this.sharedResourcesExtended.spriteTexture === spriteTexture) {
+      try {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, spriteTexture);
+        if (uniforms.spriteArray) {
+          gl.uniform1i(uniforms.spriteArray, 0);
+        }
+      } catch (error) {
+        // Texture was deleted or context lost - skip texture binding
+      }
+    }
+
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  }
+
+  protected getInstanceFloats(): number {
+    return INSTANCE_FLOATS;
+  }
+
+  protected getActiveFloatIndex(): number {
+    return 4; // active flag
+  }
+
+  protected getVertexCount(_batch: BulletBatch): number {
+    return 6; // TRIANGLES (UNIT_QUAD_CENTERED has 6 vertices)
+  }
+
+  protected getDrawMode(gl: WebGL2RenderingContext): number {
+    return gl.TRIANGLES;
+  }
+
+  protected override disposeSharedResources(gl: WebGL2RenderingContext): void {
+    if (this.sharedResourcesExtended?.quadBuffer) {
+      gl.deleteBuffer(this.sharedResourcesExtended.quadBuffer);
+    }
+    if (this.sharedResourcesExtended?.spriteTexture) {
+      gl.deleteTexture(this.sharedResourcesExtended.spriteTexture);
+      this.sharedResourcesExtended.spriteTexture = null;
+    }
+    this.sharedResourcesExtended = null;
+  }
+
+  /**
+   * Override acquireSlot to set batch config from BulletVisualConfig and return BulletSlotHandle.
+   */
+  public override acquireSlot(config: BulletBatchConfig): BulletSlotHandle | null {
+    const handle = super.acquireSlot(config);
+    if (!handle) {
+      return null;
+    }
+
+    const batch = this.batches.get(handle.batchKey);
+    if (batch) {
+      // Store config in batch
+      batch.visualKey = config.config.visualKey;
+      batch.config = config.config;
+      // Return handle with visualKey
+      return { ...handle, visualKey: batch.visualKey };
+    }
+
+    return null;
+  }
+
+  /**
+   * Override render to unbind texture after rendering.
+   */
+  public override render(
+    gl: WebGL2RenderingContext,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    timestampMs: number
+  ): void {
+    super.render(gl, cameraPosition, viewportSize, timestampMs);
+
+    // Unbind texture
+    if (this.sharedResourcesExtended?.spriteTexture) {
+      gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
     }
   }
-  batches.forEach((batch) => disposeBatch(batch));
-  batches.clear();
-  
-  globalGl = gl;
-  globalResources = gl ? createResources(gl) : null;
-  
-  // Load sprites asynchronously
-  if (gl && globalResources) {
-    loadSpriteArray(gl, globalResources);
-  }
-};
-
-export const getBulletGpuContext = (): WebGL2RenderingContext | null => globalGl;
-
-/**
- * Loads all bullet sprites into a Texture2DArray
- */
-const loadSpriteArray = (gl: WebGL2RenderingContext, resources: BulletGpuResources): void => {
-  const texture = gl.createTexture();
-  if (!texture) return;
-
-  resources.spriteTexture = texture;
-  resources.spriteCount = BULLET_SPRITE_PATHS.length;
-  
-  gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
-  
-  // Allocate texture array storage
-  gl.texImage3D(
-    gl.TEXTURE_2D_ARRAY,
-    0,
-    gl.RGBA,
-    BULLET_SPRITE_SIZE,
-    BULLET_SPRITE_SIZE,
-    BULLET_SPRITE_PATHS.length,
-    0,
-    gl.RGBA,
-    gl.UNSIGNED_BYTE,
-    null
-  );
-  
-  // Set texture parameters
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  
-  // Load each sprite image
-  BULLET_SPRITE_PATHS.forEach((path: string, index: number) => {
-    const image = new Image();
-    image.onload = () => {
-      // Check if context/resources are still valid and texture wasn't deleted
-      if (gl !== globalGl || !globalResources || !globalResources.spriteTexture) {
-        return; // Context changed or texture was deleted
-      }
-
-      // Use resources.spriteTexture instead of local texture variable
-      // to ensure we're using the current valid texture reference
-      try {
-        gl.bindTexture(gl.TEXTURE_2D_ARRAY, globalResources.spriteTexture);
-        gl.texSubImage3D(
-          gl.TEXTURE_2D_ARRAY,
-          0,
-          0, 0, index,
-          BULLET_SPRITE_SIZE,
-          BULLET_SPRITE_SIZE,
-          1,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          image
-        );
-      } catch (error) {
-        // Texture was deleted or context lost - silently ignore
-        // This can happen during cleanup or context recreation
-      }
-    };
-    image.onerror = () => {
-      console.error(`[BulletGpu] Failed to load sprite: ${path}`);
-    };
-    image.src = path;
-  });
-  
-  gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
-};
-
-const createResources = (gl: WebGL2RenderingContext): BulletGpuResources | null => {
-  const vs = gl.createShader(gl.VERTEX_SHADER);
-  const fs = gl.createShader(gl.FRAGMENT_SHADER);
-  if (!vs || !fs) return null;
-  
-  gl.shaderSource(vs, VERTEX_SHADER);
-  gl.shaderSource(fs, FRAGMENT_SHADER);
-  gl.compileShader(vs);
-  gl.compileShader(fs);
-  
-  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-    console.error("[BulletGpu] Vertex shader error:", gl.getShaderInfoLog(vs));
-    return null;
-  }
-  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-    console.error("[BulletGpu] Fragment shader error:", gl.getShaderInfoLog(fs));
-    return null;
-  }
-  
-  const program = gl.createProgram();
-  if (!program) return null;
-  
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    console.error("[BulletGpu] Program link error:", gl.getProgramInfoLog(program));
-    return null;
-  }
-  
-  gl.deleteShader(vs);
-  gl.deleteShader(fs);
-  
-  const quadBuffer = gl.createBuffer();
-  if (!quadBuffer) return null;
-  
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, UNIT_QUAD, gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  
-  return {
-    program,
-    quadBuffer,
-    uniforms: {
-      cameraPosition: gl.getUniformLocation(program, "u_cameraPosition"),
-      viewportSize: gl.getUniformLocation(program, "u_viewportSize"),
-      bodyColor: gl.getUniformLocation(program, "u_bodyColor"),
-      tailStartColor: gl.getUniformLocation(program, "u_tailStartColor"),
-      tailEndColor: gl.getUniformLocation(program, "u_tailEndColor"),
-      tailLengthMul: gl.getUniformLocation(program, "u_tailLengthMul"),
-      tailWidthMul: gl.getUniformLocation(program, "u_tailWidthMul"),
-      shapeType: gl.getUniformLocation(program, "u_shapeType"),
-      centerColor: gl.getUniformLocation(program, "u_centerColor"),
-      edgeColor: gl.getUniformLocation(program, "u_edgeColor"),
-      useRadialGradient: gl.getUniformLocation(program, "u_useRadialGradient"),
-      spriteArray: gl.getUniformLocation(program, "u_spriteArray"),
-      spriteIndex: gl.getUniformLocation(program, "u_spriteIndex"),
-      tailOffsetMul: gl.getUniformLocation(program, "u_tailOffsetMul"),
-    },
-    attributes: {
-      unitPosition: gl.getAttribLocation(program, "a_unitPosition"),
-      instancePosition: gl.getAttribLocation(program, "a_instancePosition"),
-      instanceRotation: gl.getAttribLocation(program, "a_instanceRotation"),
-      instanceRadius: gl.getAttribLocation(program, "a_instanceRadius"),
-      instanceActive: gl.getAttribLocation(program, "a_instanceActive"),
-    },
-    spriteTexture: null,
-    spriteCount: 0,
-  };
-};
-
-// ============================================================================
-// Batch Management
-// ============================================================================
-
-const createBatch = (
-  gl: WebGL2RenderingContext,
-  config: BulletVisualConfig,
-  capacity: number
-): BulletBatch | null => {
-  if (!globalResources) return null;
-  
-  const vao = gl.createVertexArray();
-  const instanceBuffer = gl.createBuffer();
-  if (!vao || !instanceBuffer) return null;
-  
-  const { attributes } = globalResources;
-  
-  gl.bindVertexArray(vao);
-  
-  // Unit quad (per-vertex)
-  gl.bindBuffer(gl.ARRAY_BUFFER, globalResources.quadBuffer);
-  gl.enableVertexAttribArray(attributes.unitPosition);
-  gl.vertexAttribPointer(attributes.unitPosition, 2, gl.FLOAT, false, 0, 0);
-  gl.vertexAttribDivisor(attributes.unitPosition, 0);
-  
-  // Instance buffer
-  gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, capacity * INSTANCE_STRIDE, gl.DYNAMIC_DRAW);
-  
-  // Instance attributes
-  let offset = 0;
-  
-  // position (vec2)
-  gl.enableVertexAttribArray(attributes.instancePosition);
-  gl.vertexAttribPointer(attributes.instancePosition, 2, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attributes.instancePosition, 1);
-  offset += 2 * 4;
-  
-  // rotation (float)
-  gl.enableVertexAttribArray(attributes.instanceRotation);
-  gl.vertexAttribPointer(attributes.instanceRotation, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attributes.instanceRotation, 1);
-  offset += 1 * 4;
-  
-  // radius (float)
-  gl.enableVertexAttribArray(attributes.instanceRadius);
-  gl.vertexAttribPointer(attributes.instanceRadius, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attributes.instanceRadius, 1);
-  offset += 1 * 4;
-  
-  // active (float)
-  gl.enableVertexAttribArray(attributes.instanceActive);
-  gl.vertexAttribPointer(attributes.instanceActive, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-  gl.vertexAttribDivisor(attributes.instanceActive, 1);
-  
-  gl.bindVertexArray(null);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  
-  // Initialize instances and free slots
-  const instances: (BulletInstance | null)[] = new Array(capacity).fill(null);
-  const freeSlots: number[] = [];
-  for (let i = capacity - 1; i >= 0; i -= 1) {
-    freeSlots.push(i);
-  }
-  
-  return {
-    gl,
-    visualKey: config.visualKey,
-    config,
-    vao,
-    instanceBuffer,
-    capacity,
-    instances,
-    freeSlots,
-    activeCount: 0,
-    needsUpload: false,
-    instanceData: new Float32Array(capacity * INSTANCE_FLOATS),
-  };
-};
-
-const disposeBatch = (batch: BulletBatch): void => {
-  batch.gl.deleteVertexArray(batch.vao);
-  batch.gl.deleteBuffer(batch.instanceBuffer);
-};
-
-const ensureBatch = (config: BulletVisualConfig): BulletBatch | null => {
-  if (!globalGl || !globalResources) return null;
-  
-  const existing = batches.get(config.visualKey);
-  if (existing) return existing;
-  
-  const newBatch = createBatch(globalGl, config, DEFAULT_BATCH_CAPACITY);
-  if (newBatch) {
-    batches.set(config.visualKey, newBatch);
-  }
-  return newBatch;
-};
-
-// ============================================================================
-// Public API
-// ============================================================================
-
-export interface BulletSlotHandle {
-  readonly visualKey: string;
-  readonly slotIndex: number;
 }
 
-/**
- * Acquires a slot for a new bullet.
- * Returns a handle to update/release the slot, or null if no space.
- */
-export const acquireBulletSlot = (config: BulletVisualConfig): BulletSlotHandle | null => {
-  const batch = ensureBatch(config);
-  if (!batch || batch.freeSlots.length === 0) {
-    // TODO: Could grow batch here if needed
-    return null;
-  }
-  
-  const slotIndex = batch.freeSlots.pop()!;
-  batch.instances[slotIndex] = {
-    position: { x: 0, y: 0 },
-    rotation: 0,
-    radius: 1,
-    active: false,
-  };
-  
-  return { visualKey: config.visualKey, slotIndex };
-};
+// ============================================================================
+// Public API - Single instance with unified interface
+// ============================================================================
 
-/**
- * Updates a bullet's position and rotation.
- */
-export const updateBulletSlot = (
-  handle: BulletSlotHandle,
-  position: SceneVector2,
-  rotation: number,
-  radius: number,
-  active: boolean
-): void => {
-  const batch = batches.get(handle.visualKey);
-  if (!batch) return;
-  
-  const instance = batch.instances[handle.slotIndex];
-  if (!instance) return;
-  
-  const wasActive = instance.active;
-  
-  instance.position.x = position.x;
-  instance.position.y = position.y;
-  instance.rotation = rotation;
-  instance.radius = radius;
-  instance.active = active;
-  
-  // Update instance data
-  const offset = handle.slotIndex * INSTANCE_FLOATS;
-  batch.instanceData[offset + 0] = position.x;
-  batch.instanceData[offset + 1] = position.y;
-  batch.instanceData[offset + 2] = rotation;
-  batch.instanceData[offset + 3] = radius;
-  batch.instanceData[offset + 4] = active ? 1 : 0;
-  
-  batch.needsUpload = true;
-  
-  // Track active count
-  if (active && !wasActive) {
-    batch.activeCount += 1;
-  } else if (!active && wasActive) {
-    batch.activeCount = Math.max(0, batch.activeCount - 1);
-  }
-};
+export const bulletGpuRenderer = new BulletGpuRenderer();
 
-/**
- * Releases a bullet slot back to the pool.
- */
-export const releaseBulletSlot = (handle: BulletSlotHandle): void => {
-  const batch = batches.get(handle.visualKey);
-  if (!batch) return;
-  
-  const instance = batch.instances[handle.slotIndex];
-  if (instance?.active) {
-    batch.activeCount = Math.max(0, batch.activeCount - 1);
-  }
-  
-  batch.instances[handle.slotIndex] = null;
-  batch.freeSlots.push(handle.slotIndex);
-  
-  // Mark slot as inactive in GPU data
-  const offset = handle.slotIndex * INSTANCE_FLOATS;
-  batch.instanceData[offset + 4] = 0;
-  batch.needsUpload = true;
-};
+// Re-export types
+export interface BulletSlotHandle extends SlotHandle {
+  visualKey: string;
+}
+
+// ============================================================================
+// Helper functions for interpolation
+// ============================================================================
 
 /**
  * Gets all active bullets for interpolation snapshot sync.
  */
 export const getAllActiveBullets = (): Array<{ handle: BulletSlotHandle; position: SceneVector2 }> => {
   const result: Array<{ handle: BulletSlotHandle; position: SceneVector2 }> = [];
-  batches.forEach((batch, visualKey) => {
+  bulletGpuRenderer["batches"].forEach((batch, batchKey) => {
     for (let i = 0; i < batch.capacity; i++) {
       const instance = batch.instances[i];
       if (instance && instance.active) {
         result.push({
-          handle: { visualKey, slotIndex: i },
+          handle: { batchKey, visualKey: batch.visualKey, slotIndex: i },
           position: { x: instance.position.x, y: instance.position.y },
         });
       }
@@ -677,135 +684,36 @@ export const getAllActiveBullets = (): Array<{ handle: BulletSlotHandle; positio
 
 /**
  * Applies interpolated positions to bullets before rendering.
- * Only updates positions for bullets that are still active.
  */
 export const applyInterpolatedBulletPositions = (
   interpolatedPositions: Map<string, SceneVector2>
 ): void => {
   if (interpolatedPositions.size === 0) return;
-  
+
   interpolatedPositions.forEach((position, key) => {
-    // Parse key: "visualKey:slotIndex"
+    // Parse key: "batchKey:slotIndex"
     const parts = key.split(":");
     if (parts.length !== 2) return;
-    const [visualKey, slotIndexStr] = parts;
-    if (!visualKey || !slotIndexStr) return;
-    
+    const [batchKey, slotIndexStr] = parts;
+    if (!batchKey || !slotIndexStr) return;
+
     const slotIndex = parseInt(slotIndexStr, 10);
     if (isNaN(slotIndex)) return;
-    
-    const batch = batches.get(visualKey);
+
+    const batch = bulletGpuRenderer["batches"].get(batchKey);
     if (!batch) return;
-    
+
     const instance = batch.instances[slotIndex];
     // CRITICAL: Only update if bullet is still active!
     if (!instance || !instance.active) return;
-    
-    // Update position in instance data
+
+    // Update position
     instance.position.x = position.x;
     instance.position.y = position.y;
-    
+
     const offset = slotIndex * INSTANCE_FLOATS;
     batch.instanceData[offset + 0] = position.x;
     batch.instanceData[offset + 1] = position.y;
-    batch.needsUpload = true;
-  });
-};
-
-/**
- * Uploads dirty batches to GPU. Call once per frame before render.
- */
-export const uploadBulletBatches = (): void => {
-  batches.forEach((batch) => {
-    if (!batch.needsUpload) return;
-    
-    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, batch.instanceBuffer);
-    batch.gl.bufferSubData(batch.gl.ARRAY_BUFFER, 0, batch.instanceData);
-    batch.gl.bindBuffer(batch.gl.ARRAY_BUFFER, null);
-    batch.needsUpload = false;
-  });
-};
-
-/**
- * Renders all bullet batches.
- */
-export const renderBulletBatches = (
-  cameraPosition: SceneVector2,
-  viewportSize: SceneSize
-): void => {
-  if (!globalGl || !globalResources) return;
-  
-  const gl = globalGl;
-  const { program, uniforms, spriteTexture } = globalResources;
-  
-  gl.useProgram(program);
-  gl.uniform2f(uniforms.cameraPosition, cameraPosition.x, cameraPosition.y);
-  gl.uniform2f(uniforms.viewportSize, viewportSize.width, viewportSize.height);
-  
-  gl.enable(gl.BLEND);
-  gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-  // Bind sprite texture array once for all batches
-  // Check spriteTexture validity to prevent using deleted texture
-  if (spriteTexture && globalResources?.spriteTexture === spriteTexture) {
-    try {
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D_ARRAY, spriteTexture);
-      gl.uniform1i(uniforms.spriteArray, 0);
-    } catch (error) {
-      // Texture was deleted or context lost - skip texture binding
-      // This can happen during cleanup or context recreation
-    }
-  }
-  
-  batches.forEach((batch) => {
-    if (batch.activeCount <= 0) return;
-    
-    const { config } = batch;
-    
-    // Set per-batch uniforms
-    gl.uniform4f(uniforms.bodyColor, config.bodyColor.r, config.bodyColor.g, config.bodyColor.b, config.bodyColor.a ?? 1);
-    gl.uniform4f(uniforms.tailStartColor, config.tailStartColor.r, config.tailStartColor.g, config.tailStartColor.b, config.tailStartColor.a ?? 1);
-    gl.uniform4f(uniforms.tailEndColor, config.tailEndColor.r, config.tailEndColor.g, config.tailEndColor.b, config.tailEndColor.a ?? 0);
-    gl.uniform1f(uniforms.tailLengthMul, config.tailLengthMultiplier);
-    gl.uniform1f(uniforms.tailWidthMul, config.tailWidthMultiplier);
-    gl.uniform1f(uniforms.tailOffsetMul, config.tailOffsetMultiplier ?? 0);
-    gl.uniform1i(uniforms.shapeType, config.shape === "sprite" ? 1 : 0);
-    gl.uniform1i(uniforms.spriteIndex, config.spriteIndex ?? 0);
-    
-    // Radial gradient support
-    const useRadial = config.centerColor && config.edgeColor ? 1 : 0;
-    gl.uniform1i(uniforms.useRadialGradient, useRadial);
-    if (useRadial) {
-      const cc = config.centerColor!;
-      const ec = config.edgeColor!;
-      gl.uniform4f(uniforms.centerColor, cc.r, cc.g, cc.b, cc.a ?? 1);
-      gl.uniform4f(uniforms.edgeColor, ec.r, ec.g, ec.b, ec.a ?? 1);
-    }
-    
-    gl.bindVertexArray(batch.vao);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, batch.capacity);
-    gl.bindVertexArray(null);
-  });
-  
-  // Unbind texture
-  if (spriteTexture) {
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
-  }
-};
-
-/**
- * Clears all bullet batches.
- */
-export const clearAllBulletBatches = (): void => {
-  batches.forEach((batch) => {
-    batch.activeCount = 0;
-    batch.freeSlots.length = 0;
-    for (let i = batch.capacity - 1; i >= 0; i -= 1) {
-      batch.instances[i] = null;
-      batch.freeSlots.push(i);
-      batch.instanceData[i * INSTANCE_FLOATS + 4] = 0;
-    }
     batch.needsUpload = true;
   });
 };
@@ -832,4 +740,3 @@ export const createBulletVisualConfig = (
   ...overrides,
   visualKey,
 });
-

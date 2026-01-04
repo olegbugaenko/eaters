@@ -2,32 +2,24 @@ import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneOb
 import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { createObjectsRendererManager } from "@ui/renderers/objects";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
-import {
-  clearPetalAuraInstances,
-  petalAuraEffect,
-} from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
 import { setParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
-import { whirlEffect } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
 import {
-  setBulletGpuContext,
-  acquireBulletSlot,
-  updateBulletSlot,
-  releaseBulletSlot,
+  bulletGpuRenderer,
   createBulletVisualConfig,
 } from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
 import { setBulletRenderBridge } from "@logic/services/bullet-render-bridge/BulletRenderBridge";
-import { initRingGpuRenderer } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
+import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
 import { registerHmrCleanup } from "@ui/shared/hmrCleanup";
 import { getParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
-import { getWhirlGlContext } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
-import { getPetalAuraGlContext } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+// WhirlGpuRenderer now uses unified API
+// PetalAuraGpuRenderer now uses unified API
 import { disposeParticleRenderResources } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
 import { disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
-import { disposeWhirlResources } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
-import { disposePetalAuraResources } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
-import { clearAllBulletBatches } from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
-import { clearRingInstances, disposeRingGpuRenderer } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
-import { resetAllArcBatches } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
+// BulletGpuRenderer now uses unified API
+// RingGpuRenderer now uses unified API - no separate imports needed
+import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */
@@ -72,26 +64,20 @@ export const setupWebGLScene = (
         try { disposeParticleRenderResources(gl1); } catch {}
         try { disposeFireRing(gl1); } catch {}
       }
-      const gl2 = getWhirlGlContext?.();
-      if (gl2) {
-        try { whirlEffect.onContextLost(gl2); } catch {}
-      }
-      const gl3 = getPetalAuraGlContext?.();
-      if (gl3) {
-        try { petalAuraEffect.onContextLost(gl3); } catch {}
-      }
-      try { disposeWhirlResources(); } catch {}
-      try { disposePetalAuraResources(); } catch {}
+      // WhirlGpuRenderer handles context loss automatically
+      // PetalAuraGpuRenderer handles context loss automatically
+      try { whirlGpuRenderer.dispose(); } catch {}
+      try { petalAuraGpuRenderer.dispose(); } catch {}
     } finally {
       try { setParticleEmitterGlContext(null); } catch {}
-      try { setBulletGpuContext(null); } catch {}
+      try { bulletGpuRenderer.setContext(null); } catch {}
       try { setBulletRenderBridge(null); } catch {}
       try { clearAllAuraSlots(); } catch {}
-      try { clearPetalAuraInstances(); } catch {}
-      try { clearAllBulletBatches(); } catch {}
-      try { clearRingInstances(); } catch {}
-      try { disposeRingGpuRenderer(); } catch {}
-      try { resetAllArcBatches(); } catch {}
+      try { petalAuraGpuRenderer.clearInstances(); } catch {}
+      try { bulletGpuRenderer.clearInstances(); } catch {}
+      try { ringGpuRenderer.clearInstances(); } catch {}
+      try { ringGpuRenderer.dispose(); } catch {}
+      try { arcGpuRenderer.clearInstances(); arcGpuRenderer.dispose(); } catch {}
     }
   });
 
@@ -100,24 +86,38 @@ export const setupWebGLScene = (
   setParticleEmitterGlContext(gl);
   
   if (initBullets) {
-    setBulletGpuContext(gl);
+    bulletGpuRenderer.setContext(gl);
     setBulletRenderBridge({
-      acquireSlot: acquireBulletSlot,
-      updateSlot: updateBulletSlot,
-      releaseSlot: releaseBulletSlot,
+      acquireSlot: (config) => {
+        return bulletGpuRenderer.acquireSlot({
+          batchKey: config.visualKey,
+          config,
+        });
+      },
+      updateSlot: (handle, position, rotation, radius, active) => {
+        bulletGpuRenderer.updateSlot(handle, {
+          position,
+          rotation,
+          radius,
+          active,
+        });
+      },
+      releaseSlot: (handle) => {
+        bulletGpuRenderer.releaseSlot(handle);
+      },
       createConfig: createBulletVisualConfig,
     });
   }
   
   if (initRings) {
-    initRingGpuRenderer(gl);
+    ringGpuRenderer.setContext(gl);
   }
   
-  whirlEffect.onContextAcquired(gl);
-  petalAuraEffect.onContextAcquired(gl);
+  whirlGpuRenderer.setContext(gl);
+  petalAuraGpuRenderer.setContext(gl);
 
   clearAllAuraSlots();
-  clearPetalAuraInstances(gl);
+  petalAuraGpuRenderer.clearInstances();
   objectsRenderer.bootstrap(scene.getObjects());
 
   // Initialize WebGL renderer (handles shaders, buffers, attributes, uniforms)
@@ -132,16 +132,16 @@ export const setupWebGLScene = (
     setParticleEmitterGlContext(null);
     
     if (initBullets) {
-      setBulletGpuContext(null);
+      bulletGpuRenderer.setContext(null);
       setBulletRenderBridge(null);
     }
     
     if (gl) {
       try {
-        whirlEffect.onContextLost(gl);
+        whirlGpuRenderer.setContext(null);
       } catch {}
       try {
-        petalAuraEffect.onContextLost(gl);
+        petalAuraGpuRenderer.setContext(null);
       } catch {}
       try {
         disposeParticleRenderResources(gl);
@@ -150,42 +150,33 @@ export const setupWebGLScene = (
         disposeFireRing(gl);
       } catch {}
     } else {
-      const whirlContext = whirlEffect.getPrimaryContext();
-      if (whirlContext) {
-        try {
-          whirlEffect.onContextLost(whirlContext);
-        } catch {}
-      }
-      const auraContext = petalAuraEffect.getPrimaryContext();
-      if (auraContext) {
-        try {
-          petalAuraEffect.onContextLost(auraContext);
-        } catch {}
-      }
+      // WhirlGpuRenderer handles context loss automatically
+      // PetalAuraGpuRenderer handles context loss automatically
     }
     
     // Dispose effect resources
     try {
-      whirlEffect.dispose();
+      whirlGpuRenderer.dispose();
     } catch {}
     try {
-      petalAuraEffect.dispose();
+      petalAuraGpuRenderer.dispose();
     } catch {}
     
     // Clear all instance data
     clearAllAuraSlots();
-    clearPetalAuraInstances();
+    petalAuraGpuRenderer.clearInstances();
     
     if (initBullets) {
-      clearAllBulletBatches();
+      bulletGpuRenderer.clearInstances();
     }
     
     if (initRings) {
-      clearRingInstances();
-      disposeRingGpuRenderer();
+      ringGpuRenderer.clearInstances();
+      ringGpuRenderer.dispose();
     }
     
-    resetAllArcBatches();
+    arcGpuRenderer.clearInstances();
+    arcGpuRenderer.dispose();
   };
 
   return {

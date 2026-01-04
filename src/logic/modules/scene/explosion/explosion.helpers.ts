@@ -24,7 +24,7 @@ export const createReusableWaveFill = (
   gradientStops: readonly SceneGradientStop[],
   innerRadius: number,
   outerRadius: number,
-  alpha: number,
+  _alpha: number, // Alpha is now handled by GPU shader via startAlpha/endAlpha instance attributes
   noise?: SceneFillNoise,
   filaments?: SceneFillFilaments
 ): {
@@ -48,14 +48,16 @@ export const createReusableWaveFill = (
           },
         ];
 
+  // Keep original alpha from gradient stops - GPU shader handles fade via startAlpha/endAlpha
   const stops = sourceStops.map((stop) => ({
     offset: normalizedInnerRadius + clamp01(stop.offset) * (1 - normalizedInnerRadius),
     color: {
       ...stop.color,
-      a: clamp01(ensureColorAlpha(stop.color) * alpha),
+      a: ensureColorAlpha(stop.color),
     },
   }));
 
+  // Inner edge is transparent for ring effect
   if (normalizedInnerRadius > 0 && stops[0]) {
     stops[0].color.a = 0;
   }
@@ -72,7 +74,7 @@ export const updateWaveFill = (
   wave: WaveState,
   innerRadius: number,
   outerRadius: number,
-  alpha: number
+  _alpha: number // Alpha is now handled by GPU shader via startAlpha/endAlpha instance attributes
 ): void => {
   const radius = Math.max(outerRadius, 0.0001);
   const normalizedInnerRadius = clamp01(innerRadius / radius);
@@ -100,9 +102,11 @@ export const updateWaveFill = (
     target.color.r = color.r;
     target.color.g = color.g;
     target.color.b = color.b;
-    target.color.a = clamp01(ensureColorAlpha(color) * alpha);
+    // Keep original alpha from gradient stops - GPU shader handles fade via startAlpha/endAlpha
+    target.color.a = ensureColorAlpha(color);
   }
 
+  // Inner edge is transparent for ring effect
   if (normalizedInnerRadius > 0 && wave.mutableStops[0]) {
     wave.mutableStops[0].color.a = 0;
   }

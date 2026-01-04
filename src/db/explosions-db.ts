@@ -529,8 +529,8 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     waves: createSimpleWave({
       defaultInitialRadius: 6,
       radiusExtension: 40,
-      startAlpha: 0.6,
-      endAlpha: 0.15,
+      startAlpha: 0.4,
+      endAlpha: 0.0,
       gradientStops: GRAY_BRICK_HIT_WAVE_GRADIENT_STOPS,
     }),
     emitter: GRAY_BRICK_DAMAGE_EMITTER,
@@ -541,8 +541,8 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     waves: createSimpleWave({
       defaultInitialRadius: 10,
       radiusExtension: 60,
-      startAlpha: 0.7,
-      endAlpha: 0.2,
+      startAlpha: 0.6,
+      endAlpha: 0.0,
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     }),
     emitter: GRAY_BRICK_DESTRUCTION_EMITTER,
