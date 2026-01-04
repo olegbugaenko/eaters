@@ -1,12 +1,12 @@
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneFillFilaments,
   SceneFillNoise,
   SceneVector2,
-} from "../logic/services/SceneObjectManager";
-import { ParticleEmitterShape } from "../logic/services/particles/ParticleEmitterShared";
+} from "../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 import { ResourceCost } from "../types/resources";
 import type { UnitModuleId } from "./unit-modules-db";
 import type { SkillId } from "./skills-db";
@@ -115,22 +115,6 @@ export interface PlayerUnitRendererCompositeConfig {
 
 export type PlayerUnitRendererConfig = PlayerUnitRendererCompositeConfig;
 
-export interface PlayerUnitEmitterConfig {
-  particlesPerSecond: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  baseSpeed: number;
-  speedVariation: number;
-  sizeRange: { min: number; max: number };
-  /** Size evolution multiplier: >1 = grow, <1 = shrink, 1 = constant (default) */
-  sizeEvolutionMult?: number;
-  spread: number;
-  offset: SceneVector2;
-  color: SceneColor;
-  fill?: SceneFill;
-  shape?: ParticleEmitterShape;
-  maxParticles?: number;
-}
 
 export interface PlayerUnitConfig {
   readonly name: string;
@@ -146,7 +130,7 @@ export interface PlayerUnitConfig {
   readonly physicalSize: number;
   readonly baseCritChance?: number;
   readonly baseCritMultiplier?: number;
-  readonly emitter?: PlayerUnitEmitterConfig;
+  readonly emitter?: ParticleEmitterConfig;
   readonly cost: ResourceCost;
 }
 

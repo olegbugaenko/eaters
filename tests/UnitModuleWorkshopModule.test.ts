@@ -7,7 +7,7 @@ import {
 } from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
 import type { UnitModuleWorkshopBridgeState } from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
 import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
-import { UnlockService } from "../src/logic/services/UnlockService";
+import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { ResourcesModule } from "../src/logic/modules/shared/resources/resources.module";
 
 describe("UnitModuleWorkshopModule", () => {
@@ -39,7 +39,7 @@ describe("UnitModuleWorkshopModule", () => {
     assert(initialState, "initial state should be available");
     assert(initialState.unlocked, "workshop should be unlocked");
     assert.deepStrictEqual(
-      initialState.modules.map((item) => item.id),
+      initialState.modules.map((item: { id: string }) => item.id),
       ["magnet", "perforator"]
     );
 
@@ -68,7 +68,7 @@ describe("UnitModuleWorkshopModule", () => {
       );
     assert(unlockedState, "state should be pushed after unlocking");
     assert.deepStrictEqual(
-      unlockedState.modules.map((item) => item.id),
+      unlockedState.modules.map((item: { id: string }) => item.id),
       ["magnet", "perforator", "vitalHull", "ironForge"]
     );
   });

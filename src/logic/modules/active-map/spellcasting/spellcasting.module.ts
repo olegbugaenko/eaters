@@ -1,78 +1,34 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
-import { SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
-import { BricksModule } from "../bricks/bricks.module";
-import { NecromancerModule } from "../necromancer/necromancer.module";
+import type { DataBridge } from "../../../core/DataBridge";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import {
   SpellConfig,
   SpellId,
-  SpellDamageConfig,
   getSpellConfig,
   SPELL_IDS,
 } from "../../../../db/spells-db";
 import { SkillId } from "../../../../db/skills-db";
 import { ResourceAmountMap } from "../../../../types/resources";
 import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import type { BricksModule } from "../bricks/bricks.module";
+import type { NecromancerModule } from "../necromancer/necromancer.module";
+import type { MapRunState } from "../map/MapRunState";
 import { SpellBehaviorRegistry } from "./SpellBehaviorRegistry";
 import { SpellCastContext, SpellCanCastContext } from "./SpellBehavior";
-import { ExplosionModule } from "../../scene/explosion/explosion.module";
-import { MapRunState } from "../map/MapRunState";
 import { clampNumber } from "@/utils/helpers/numbers";
-
-interface SpellOptionBase {
-  id: SpellId;
-  type: SpellConfig["type"];
-  name: string;
-  description: string;
-  cost: ResourceAmountMap;
-  cooldownSeconds: number;
-  remainingCooldownMs: number;
-  spellPowerMultiplier: number;
-}
-
-export interface ProjectileSpellOption extends SpellOptionBase {
-  type: "projectile";
-  damage: SpellDamageConfig;
-}
-
-export interface WhirlSpellOption extends SpellOptionBase {
-  type: "whirl";
-  damagePerSecond: number;
-  maxHealth: number;
-  radius: number;
-  speed: number;
-}
-
-export interface PersistentAoeSpellOption extends SpellOptionBase {
-  type: "persistent-aoe";
-  damagePerSecond: number;
-  durationSeconds: number;
-  startRadius: number;
-  endRadius: number;
-  thickness: number;
-  damageReduction?: number; // Flat damage reduction from effects
-  effectDurationSeconds?: number; // Duration of the effect on bricks
-}
-
-export type SpellOption =
-  | ProjectileSpellOption
-  | WhirlSpellOption
-  | PersistentAoeSpellOption;
-
-export const DEFAULT_SPELL_OPTIONS: SpellOption[] = [];
-
-export const SPELL_OPTIONS_BRIDGE_KEY = "spellcasting/options";
-
-interface SpellcastingModuleOptions {
-  bridge: DataBridge;
-  scene: SceneObjectManager;
-  necromancer: NecromancerModule;
-  bricks: BricksModule;
-  bonuses: BonusesModule;
-  explosions?: ExplosionModule;
-  getSkillLevel: (id: SkillId) => number;
-  runState: MapRunState;
-}
+import type {
+  SpellOption,
+  SpellOptionBase,
+  ProjectileSpellOption,
+  WhirlSpellOption,
+  PersistentAoeSpellOption,
+  SpellcastingModuleOptions,
+} from "./spellcasting.types";
+import {
+  DEFAULT_SPELL_OPTIONS,
+  SPELL_OPTIONS_BRIDGE_KEY,
+} from "./spellcasting.const";
 
 const cloneCost = (cost: ResourceAmountMap): ResourceAmountMap => ({
   mana: Number.isFinite(cost.mana) ? cost.mana : 0,
@@ -117,6 +73,7 @@ export class SpellcastingModule implements GameModule {
       bricks: this.bricks,
       bonuses: this.bonuses,
       explosions: options.explosions,
+      projectiles: options.projectiles,
       getSpellPowerMultiplier: () => this.spellPowerMultiplier,
     });
 

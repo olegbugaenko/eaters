@@ -10,6 +10,7 @@ export const createFireballDefinition = (): ServiceDefinition<FireballModule, "f
       scene: container.get("sceneObjects"),
       bricks: container.get("bricks"),
       explosions: container.get("explosion"),
+      projectiles: container.get("unitProjectiles"),
       logEvent: (message) => console.log(`[FireballModule] ${message}`),
     }),
   registerAsModule: true,

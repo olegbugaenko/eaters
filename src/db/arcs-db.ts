@@ -1,4 +1,4 @@
-import type { SceneColor } from "../logic/services/SceneObjectManager";
+import type { SceneColor } from "../logic/services/scene-object-manager/scene-object-manager.types";
 
 export type ArcType = "heal" | "frenzy";
 

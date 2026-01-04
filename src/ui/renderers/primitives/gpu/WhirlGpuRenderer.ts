@@ -1,4 +1,4 @@
-import { SceneSize, SceneVector2 } from "../../../../logic/services/SceneObjectManager";
+import { SceneSize, SceneVector2 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
 import { GpuInstancedPrimitiveLifecycle } from "./GpuInstancedPrimitiveLifecycle";
 
 interface WhirlRendererResources {

@@ -3,10 +3,10 @@ import type {
   SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
-  SceneObjectManager,
   SceneRadialGradientFill,
   SceneVector2,
-} from "../../../services/SceneObjectManager";
+} from "../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { ExplosionRendererEmitterConfig, ExplosionType } from "../../../../db/explosions-db";
 
 export interface ExplosionModuleOptions {

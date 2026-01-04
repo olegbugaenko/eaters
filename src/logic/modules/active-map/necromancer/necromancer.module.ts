@@ -3,81 +3,45 @@ import { DataBridge } from "../../../core/DataBridge";
 import {
   PlayerUnitsModule,
   PlayerUnitSpawnData,
-  computePlayerUnitBlueprint,
 } from "../player-units/player-units.module";
 import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
 } from "../../../../db/player-units-db";
-import { SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { ResourceAmountMap, normalizeResourceCost } from "../../../../types/resources";
 import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
 import {
   UnitDesignId,
-  UnitDesignModule,
   UnitDesignerUnitState,
-  UnitDesignModuleDetail,
-} from "../../camp/unit-design/unit-design.module";
-import {
-  PlayerUnitBlueprintStats,
-  PlayerUnitRuntimeModifiers,
-} from "../../../../types/player-units";
+} from "../../camp/unit-design/unit-design.types";
+import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
 import { clampNumber } from "@/utils/helpers/numbers";
+import { sanitizeNumberWithFallback } from "../../../helpers/numbers.helper";
 import { MapRunState } from "../map/MapRunState";
+import type {
+  NecromancerModuleOptions,
+  NecromancerResourceSnapshot,
+  NecromancerResourcesPayload,
+  NecromancerSaveData,
+  NecromancerSpawnOption,
+  ResourceState,
+} from "./necromancer.types";
+import {
+  NECROMANCER_RESOURCES_BRIDGE_KEY,
+  NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+  SPAWN_JITTER_RADIUS,
+  SANITY_DECAY_PER_SECOND,
+  SANITY_DEPLETION_THRESHOLD,
+  MAX_UNITS_ON_MAP,
+} from "./necromancer.const";
+import {
+  getDefaultRuntime,
+  getFallbackBlueprint,
+} from "./necromancer.helpers";
 
-export interface NecromancerResourceMeter {
-  current: number;
-  max: number;
-}
-
-export interface NecromancerResourcesPayload {
-  mana: NecromancerResourceMeter;
-  sanity: NecromancerResourceMeter;
-}
-
-export interface NecromancerResourceSnapshot {
-  mana: NecromancerResourceMeter & { regenPerSecond: number };
-  sanity: NecromancerResourceMeter;
-}
-
-export interface NecromancerSpawnOption {
-  designId: UnitDesignId;
-  type: PlayerUnitType;
-  name: string;
-  cost: ResourceAmountMap;
-  blueprint: PlayerUnitBlueprintStats;
-  modules: readonly UnitDesignModuleDetail[];
-  runtime: PlayerUnitRuntimeModifiers;
-}
-
-export const NECROMANCER_RESOURCES_BRIDGE_KEY = "necromancer/resources";
-export const NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY = "necromancer/spawnOptions";
-
-interface NecromancerModuleOptions {
-  bridge: DataBridge;
-  playerUnits: PlayerUnitsModule;
-  scene: SceneObjectManager;
-  bonuses: BonusesModule;
-  unitDesigns: UnitDesignModule;
-  runState: MapRunState;
-}
-
-interface NecromancerSaveData {
-  mana: number;
-  sanity: number;
-}
-
-interface ResourceState {
-  current: number;
-  max: number;
-  regenPerSecond: number;
-}
-
-const SPAWN_JITTER_RADIUS = 30;
-const SANITY_DECAY_PER_SECOND = 0.25;
-const SANITY_DEPLETION_THRESHOLD = 1e-5;
-export const MAX_UNITS_ON_MAP = 25;
 
 export class NecromancerModule implements GameModule {
   public readonly id = "necromancer";
@@ -480,9 +444,9 @@ export class NecromancerModule implements GameModule {
   }
 
   private handleBonusValuesChanged(values: BonusValueMap): void {
-    const manaCap = sanitizeBonusValue(values["mana_cap"], 0);
-    const sanityCap = sanitizeBonusValue(values["sanity_cap"], 0);
-    const manaRegen = sanitizeBonusValue(values["mana_regen"], 0);
+    const manaCap = sanitizeNumberWithFallback(values["mana_cap"], 0);
+    const sanityCap = sanitizeNumberWithFallback(values["sanity_cap"], 0);
+    const manaRegen = sanitizeNumberWithFallback(values["mana_regen"], 0);
 
     const previousManaMax = this.mana.max;
     const previousSanityMax = this.sanity.max;
@@ -548,8 +512,8 @@ export class NecromancerModule implements GameModule {
 
     const { mana, sanity } = data as NecromancerSaveData;
     return {
-      mana: sanitizeNumber(mana),
-      sanity: sanitizeNumber(sanity),
+      mana: sanitizeNumberWithFallback(mana),
+      sanity: sanitizeNumberWithFallback(sanity),
     };
   }
 
@@ -578,36 +542,3 @@ export class NecromancerModule implements GameModule {
   }
 }
 
-const sanitizeBonusValue = (value: number | undefined, fallback: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return fallback;
-  }
-  return value;
-};
-
-const sanitizeNumber = (value: number): number => {
-  if (Number.isFinite(value)) {
-    return value;
-  }
-  return 0;
-};
-
-const DEFAULT_RUNTIME: PlayerUnitRuntimeModifiers = Object.freeze({
-  rewardMultiplier: 1,
-  damageTransferPercent: 0,
-  damageTransferRadius: 0,
-  attackStackBonusPerHit: 0,
-  attackStackBonusCap: 0,
-});
-
-const getDefaultRuntime = (): PlayerUnitRuntimeModifiers => ({
-  ...DEFAULT_RUNTIME,
-});
-
-const getFallbackBlueprint = (
-  type: PlayerUnitType,
-  bonusValues: BonusValueMap
-): PlayerUnitBlueprintStats => ({
-  ...computePlayerUnitBlueprint(type, bonusValues),
-  bonuses: [],
-});

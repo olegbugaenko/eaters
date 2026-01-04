@@ -1,4 +1,6 @@
-import { SceneObjectManager, SceneVector2, FILL_TYPES } from "../../../services/SceneObjectManager";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { createRadialGradientFill } from "../../../helpers/scene-fill.helper";
 
 const CAMERA_FOCUS_TICKS = 6;
 
@@ -35,20 +37,15 @@ export class MapVisualEffects {
       const id = this.scene.addObject("portal", {
         position: { x: point.x, y: point.y },
         size: { width: 90, height: 90 },
-        fill: {
-          fillType: FILL_TYPES.RADIAL_GRADIENT,
-          start: { x: 0, y: 0 },
-          end: 45,
-          stops: [
-            { offset: 0, color: { r: 0.4, g: 0.5, b: 0.6, a: 0.15 } },
-            { offset: 0.55, color: { r: 0.4, g: 0.7, b: 0.7, a: 0.05 } },
-            { offset: 0.65, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.65 } },
-            { offset: 0.75, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.75 } },
-            { offset: 0.8, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
-            { offset: 0.85, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
-            { offset: 1, color: { r: 0.15, g: 0.7, b: 0.7, a: 0 } },
-          ],
-        },
+        fill: createRadialGradientFill(45, [
+          { offset: 0, color: { r: 0.4, g: 0.5, b: 0.6, a: 0.15 } },
+          { offset: 0.55, color: { r: 0.4, g: 0.7, b: 0.7, a: 0.05 } },
+          { offset: 0.65, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.65 } },
+          { offset: 0.75, color: { r: 0.4, g: 0.9, b: 0.9, a: 0.75 } },
+          { offset: 0.8, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
+          { offset: 0.85, color: { r: 0.25, g: 0.9, b: 0.9, a: 0.8 } },
+          { offset: 1, color: { r: 0.15, g: 0.7, b: 0.7, a: 0 } },
+        ]),
         rotation: 0,
         customData: {
           radius: 45,

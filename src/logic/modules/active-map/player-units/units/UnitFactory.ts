@@ -1,11 +1,12 @@
-import { SceneObjectManager, SceneVector2, FILL_TYPES, SceneColor } from "../../../../services/SceneObjectManager";
-import { cloneSceneFill } from "../../../../helpers/scene-fill.helper";
-import { MovementService } from "../../../../services/MovementService";
+import type { ParticleEmitterConfig } from "../../../../interfaces/visuals/particle-emitters-config";
+import { SceneVector2, SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "../../../../services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { MovementService } from "../../../../services/movement/MovementService";
 import {
   PlayerUnitType,
   getPlayerUnitConfig,
   PlayerUnitRendererConfig,
-  PlayerUnitEmitterConfig,
   PlayerUnitConfig,
   PlayerUnitAuraConfig,
 } from "../../../../../db/player-units-db";
@@ -17,12 +18,14 @@ import {
   VisualEffectState,
   createVisualEffectState,
 } from "../../../../visuals/VisualEffectState";
-import { UnitDesignId } from "../../../camp/unit-design/unit-design.module";
+import { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 import { UnitModuleId, UNIT_MODULE_IDS, getUnitModuleConfig } from "../../../../../db/unit-modules-db";
 import type { SkillId } from "../../../../../db/skills-db";
 import { PLAYER_UNIT_ABILITY_DEFINITIONS } from "../abilities";
-import type { AbilityDescription } from "../abilities/AbilityTypes";
+import type { AbilityDescription } from "../abilities/ability.types";
 import { clampNumber, clampProbability } from "@/utils/helpers/numbers";
+import { sanitizeRuntimeModifiers } from "../player-units.helpers";
+import { cloneSceneFill } from "../../../../helpers/scene-fill.helper";
 
 export interface UnitFactoryOptions {
   scene: SceneObjectManager;
@@ -82,7 +85,7 @@ export interface UnitFactoryResult {
   readonly attackCooldown: number;
   readonly targetingMode: string;
   readonly renderer: PlayerUnitRendererConfig;
-  readonly emitter?: PlayerUnitEmitterConfig;
+  readonly emitter?: ParticleEmitterConfig;
   readonly baseFillColor: SceneColor;
   readonly baseStrokeColor?: SceneColor;
   readonly visualEffects: VisualEffectState;
@@ -93,44 +96,7 @@ export interface UnitFactoryResult {
   readonly canUnitAttackDistant: boolean;
 }
 
-const sanitizeRuntimeModifiers = (
-  modifiers: PlayerUnitRuntimeModifiers | undefined
-): PlayerUnitRuntimeModifiers => ({
-  rewardMultiplier: Math.max(modifiers?.rewardMultiplier ?? 1, 0),
-  damageTransferPercent: Math.max(modifiers?.damageTransferPercent ?? 0, 0),
-  damageTransferRadius: Math.max(modifiers?.damageTransferRadius ?? 0, 0),
-  attackStackBonusPerHit: Math.max(modifiers?.attackStackBonusPerHit ?? 0, 0),
-  attackStackBonusCap: Math.max(modifiers?.attackStackBonusCap ?? 0, 0),
-});
-
-const cloneEmitter = (
-  config: PlayerUnitEmitterConfig
-): PlayerUnitEmitterConfig => ({
-  particlesPerSecond: config.particlesPerSecond,
-  particleLifetimeMs: config.particleLifetimeMs,
-  fadeStartMs: config.fadeStartMs,
-  baseSpeed: config.baseSpeed,
-  speedVariation: config.speedVariation,
-  sizeRange: { min: config.sizeRange.min, max: config.sizeRange.max },
-  spread: config.spread,
-  offset: { x: config.offset.x, y: config.offset.y },
-  color: {
-    r: config.color.r,
-    g: config.color.g,
-    b: config.color.b,
-    a: config.color.a,
-  },
-  fill: config.fill ? cloneSceneFill(config.fill) : undefined,
-  shape: config.shape,
-  maxParticles: config.maxParticles,
-});
-
-const cloneSceneColor = (color: SceneColor): SceneColor => ({
-  r: color.r,
-  g: color.g,
-  b: color.b,
-  a: typeof color.a === "number" ? color.a : 1,
-});
+import { cloneEmitter } from "../player-units.helpers";
 
 const cloneAuraConfig = (aura: PlayerUnitAuraConfig): PlayerUnitAuraConfig => ({
   petalCount: aura.petalCount,
@@ -144,6 +110,8 @@ const cloneAuraConfig = (aura: PlayerUnitAuraConfig): PlayerUnitAuraConfig => ({
   pointInward: aura.pointInward,
 });
 
+// Note: UnitFactory uses a simpler version of cloneRendererConfigForScene
+// that doesn't deep-clone fill/stroke (for performance)
 const cloneRendererConfigForScene = (
   renderer: PlayerUnitRendererConfig
 ): PlayerUnitRendererConfig => ({
@@ -155,17 +123,29 @@ const cloneRendererConfigForScene = (
         width: renderer.stroke.width,
       }
     : undefined,
-  layers: renderer.layers.map((layer) => cloneRendererLayer(layer)),
-  auras: renderer.auras ? renderer.auras.map((aura) => cloneAuraConfig(aura)) : undefined,
-});
-
-const cloneRendererLayer = (
-  layer: PlayerUnitRendererConfig["layers"][number]
-): PlayerUnitRendererConfig["layers"][number] => {
-  if (layer.shape === "polygon") {
+  layers: renderer.layers.map((layer) => {
+    // Simple shallow clone for performance (UnitFactory doesn't need deep cloning)
+    if (layer.shape === "polygon") {
+      return {
+        shape: "polygon",
+        vertices: layer.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y })),
+        offset: layer.offset ? { ...layer.offset } : undefined,
+        fill: layer.fill ? { ...layer.fill } : undefined,
+        stroke: layer.stroke ? { ...layer.stroke } : undefined,
+        requiresModule: (layer as any).requiresModule,
+        requiresSkill: (layer as any).requiresSkill,
+        requiresEffect: (layer as any).requiresEffect,
+        anim: (layer as any).anim,
+        spine: (layer as any).spine,
+        segmentIndex: (layer as any).segmentIndex,
+        buildOpts: (layer as any).buildOpts,
+        groupId: (layer as any).groupId,
+      };
+    }
     return {
-      shape: "polygon",
-      vertices: layer.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y })),
+      shape: "circle",
+      radius: layer.radius,
+      segments: layer.segments,
       offset: layer.offset ? { ...layer.offset } : undefined,
       fill: layer.fill ? { ...layer.fill } : undefined,
       stroke: layer.stroke ? { ...layer.stroke } : undefined,
@@ -173,26 +153,11 @@ const cloneRendererLayer = (
       requiresSkill: (layer as any).requiresSkill,
       requiresEffect: (layer as any).requiresEffect,
       anim: (layer as any).anim,
-      spine: (layer as any).spine,
-      segmentIndex: (layer as any).segmentIndex,
-      buildOpts: (layer as any).buildOpts,
       groupId: (layer as any).groupId,
     };
-  }
-  return {
-    shape: "circle",
-    radius: layer.radius,
-    segments: layer.segments,
-    offset: layer.offset ? { ...layer.offset } : undefined,
-    fill: layer.fill ? { ...layer.fill } : undefined,
-    stroke: layer.stroke ? { ...layer.stroke } : undefined,
-    requiresModule: (layer as any).requiresModule,
-    requiresSkill: (layer as any).requiresSkill,
-    requiresEffect: (layer as any).requiresEffect,
-    anim: (layer as any).anim,
-    groupId: (layer as any).groupId,
-  };
-};
+  }),
+  auras: renderer.auras ? renderer.auras.map((aura) => cloneAuraConfig(aura)) : undefined,
+});
 
 export class UnitFactory {
   private readonly scene: SceneObjectManager;

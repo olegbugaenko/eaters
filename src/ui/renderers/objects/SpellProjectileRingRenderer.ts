@@ -1,10 +1,10 @@
 import { ObjectRenderer, ObjectRegistration } from "./ObjectRenderer";
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneObjectInstance,
-} from "../../../logic/services/SceneObjectManager";
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { createDynamicCirclePrimitive } from "../primitives";
 
 const RING_SEGMENT_COUNT = 48;

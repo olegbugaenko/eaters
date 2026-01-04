@@ -1,4 +1,4 @@
-import type { BulletTailEmitterConfig } from "../../../db/bullets-db";
+import type { ParticleEmitterConfig } from "../../../logic/interfaces/visuals/particle-emitters-config";
 import {
   DynamicPrimitive,
   ObjectRegistration,
@@ -6,13 +6,13 @@ import {
   transformObjectPoint,
 } from "./ObjectRenderer";
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneLinearGradientFill,
   SceneObjectInstance,
   SceneVector2,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../../../logic/services/scene-object-manager/scene-object-manager.const";
 import {
   createDynamicCirclePrimitive,
   createDynamicTrianglePrimitive,
@@ -38,9 +38,9 @@ interface BulletGlowConfig {
 
 interface BulletRendererCustomData {
   tail?: Partial<BulletTailRenderConfig>;
-  tailEmitter?: BulletTailEmitterConfig;
-  trailEmitter?: BulletTailEmitterConfig;
-  smokeEmitter?: BulletTailEmitterConfig;
+  tailEmitter?: ParticleEmitterConfig;
+  trailEmitter?: ParticleEmitterConfig;
+  smokeEmitter?: ParticleEmitterConfig;
   glow?: BulletGlowConfig;
   speed?: number;
   maxSpeed?: number;
@@ -272,7 +272,7 @@ const getSmokeEmitterConfig = (
 ): BulletTailEmitterRenderConfig | null => getEmitterConfig(instance, "smokeEmitter", smokeEmitterConfigCache);
 
 const sanitizeTailEmitterConfig = (
-  config: BulletTailEmitterConfig
+  config: ParticleEmitterConfig
 ): BulletTailEmitterRenderConfig | null => {
   const base = sanitizeParticleEmitterConfig(config, {
     defaultOffset: { x: -1, y: 0 },

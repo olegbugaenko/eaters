@@ -10,6 +10,13 @@ src/ - source files of the project
 - logic/ - app logic. Working with saving, loading, calculations and updating game state
 -- core/ - basic abstract classes and system classes
 -- modules/ - classes implementing specific logic
+---- {group-name} - modules are groupped by scope
+------ {module-name} - folder with module files
+-------- {module-name}.ts - main logic of the module
+-------- {module-name}.const.ts - constants
+-------- {module-name}.types.ts - types and interfaces
+-------- {module-name}.helpers.ts - module helpers
+-- helpers/ - contain files with application-wide, shared between modules and services helpers
 
 - ui/ - react components and webgl shaders for drawing scene
 -- shared/ - shared components
@@ -20,6 +27,13 @@ Use prettier
 Use types
 Use shared styles and components as much as possible.
 UI should not work directly with logic, as well as logic with UI. We need to build and utilize interaction standart
+
+### How to approach tasks
+1. Locate and read documentation with explanations on file structure (especially docs/overview/*.md files)
+2. Before creating new methods - search in logic/helpers for existing or similar ones
+3. Avoid code duplication
+4. After task complete - run tests
+5. Update docs if needed
 
 ## Documentation
 - Основна точка входу — `docs/index.md`. Кожна вкладена папка містить власний `index.md` із коротким описом доступних файлів.

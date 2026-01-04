@@ -1,5 +1,6 @@
 import { DataBridge } from "@/logic/core/DataBridge";
 import { GameModule } from "@/logic/core/types";
+import { sanitizeNonNegativeNumber } from "../../../helpers/numbers.helper";
 
 export const STATISTICS_BRIDGE_KEY = "statistics/summary";
 
@@ -33,23 +34,16 @@ interface StatisticsSaveData {
   stats?: Partial<CampStatisticsSnapshot>;
 }
 
-const sanitizeNumber = (value: unknown, fallback = 0): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return fallback;
-  }
-  return Math.max(0, value);
-};
-
 const sanitizeSnapshot = (value: unknown): CampStatisticsSnapshot => {
   if (typeof value !== "object" || value === null) {
     return { ...DEFAULT_CAMP_STATISTICS };
   }
   const stats = value as Partial<CampStatisticsSnapshot>;
   return {
-    bricksDestroyed: sanitizeNumber(stats.bricksDestroyed),
-    creaturesDied: sanitizeNumber(stats.creaturesDied),
-    damageDealt: sanitizeNumber(stats.damageDealt),
-    damageTaken: sanitizeNumber(stats.damageTaken),
+    bricksDestroyed: sanitizeNonNegativeNumber(stats.bricksDestroyed),
+    creaturesDied: sanitizeNonNegativeNumber(stats.creaturesDied),
+    damageDealt: sanitizeNonNegativeNumber(stats.damageDealt),
+    damageTaken: sanitizeNonNegativeNumber(stats.damageTaken),
   };
 };
 
@@ -94,7 +88,7 @@ export class StatisticsModule
   }
 
   public recordBrickDestroyed(count = 1): void {
-    const increment = sanitizeNumber(count);
+    const increment = sanitizeNonNegativeNumber(count);
     if (increment <= 0) {
       return;
     }
@@ -103,7 +97,7 @@ export class StatisticsModule
   }
 
   public recordCreatureDeath(count = 1): void {
-    const increment = sanitizeNumber(count);
+    const increment = sanitizeNonNegativeNumber(count);
     if (increment <= 0) {
       return;
     }
@@ -112,7 +106,7 @@ export class StatisticsModule
   }
 
   public recordDamageDealt(amount: number): void {
-    const increment = sanitizeNumber(amount);
+    const increment = sanitizeNonNegativeNumber(amount);
     if (increment <= 0) {
       return;
     }
@@ -121,7 +115,7 @@ export class StatisticsModule
   }
 
   public recordDamageTaken(amount: number): void {
-    const increment = sanitizeNumber(amount);
+    const increment = sanitizeNonNegativeNumber(amount);
     if (increment <= 0) {
       return;
     }
@@ -130,7 +124,7 @@ export class StatisticsModule
   }
 
   public syncBrickDestroyed(total: number): void {
-    const sanitized = sanitizeNumber(total);
+    const sanitized = sanitizeNonNegativeNumber(total);
     if (sanitized <= this.stats.bricksDestroyed) {
       return;
     }

@@ -3,7 +3,7 @@ import {
   SceneObjectInstance,
   SceneSize,
   SceneVector2,
-} from "../../../../logic/services/SceneObjectManager";
+} from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
 import {
   DynamicPrimitive,
   POSITION_COMPONENTS,

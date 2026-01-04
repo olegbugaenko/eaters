@@ -6,9 +6,9 @@ import {
 } from "./ObjectRenderer";
 import {
   SceneObjectInstance,
-  FILL_TYPES,
   SceneFill,
-} from "../../../logic/services/SceneObjectManager";
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import {
   createDynamicCirclePrimitive,
 } from "../primitives";

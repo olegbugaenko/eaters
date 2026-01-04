@@ -2,11 +2,12 @@ import { ResourceAmount } from "./resources-db";
 import type { MapId } from "./maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "../types/unlocks";
-import { FILL_TYPES } from "../logic/services/SceneObjectManager";
-import type { SceneFill } from "../logic/services/SceneObjectManager";
-import type { BulletTailConfig, BulletTailEmitterConfig } from "./bullets-db";
+import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+import type { SceneFill } from "../logic/services/scene-object-manager/scene-object-manager.types";
+import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
+import type { BulletTailConfig } from "./bullets-db";
 import type { SpellProjectileRingTrailConfig } from "./spells-db";
-import type { BulletSpriteName } from "../logic/services/bulletSprites";
+import type { BulletSpriteName } from "../logic/services/bullet-render-bridge/bullet-sprites.const";
 
 export const UNIT_MODULE_IDS = [
   "magnet",
@@ -33,7 +34,7 @@ export interface UnitModuleProjectileVisualConfig {
   readonly lifetimeMs: number;
   readonly fill: SceneFill;
   readonly tail?: BulletTailConfig;
-  readonly tailEmitter?: BulletTailEmitterConfig;
+  readonly tailEmitter?: ParticleEmitterConfig;
   readonly ringTrail?: SpellProjectileRingTrailConfig;
   readonly shape?: "circle" | "sprite";
   /** Sprite name when shape === "sprite" */

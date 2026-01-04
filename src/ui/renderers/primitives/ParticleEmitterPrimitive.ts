@@ -1,16 +1,20 @@
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneGradientStop,
   SceneObjectInstance,
   SceneVector2,
-} from "../../../logic/services/SceneObjectManager";
+  SceneSolidFill,
+  SceneLinearGradientFill,
+  SceneRadialGradientFill,
+  SceneDiamondGradientFill,
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import {
-  ParticleEmitterShape,
   cloneSceneFill,
-  sanitizeSceneColor,
-} from "../../../logic/services/particles/ParticleEmitterShared";
+} from "../../../logic/helpers/scene-fill.helper";
+import { ParticleEmitterShape } from "@/logic/services/particles/ParticleEmitterShared";
+import { sanitizeSceneColor } from "../../../logic/helpers/scene-color.helper";
 import {
   DynamicPrimitive,
   FILL_COMPONENTS,
@@ -1269,14 +1273,16 @@ const limitParticleStops = (stops: SceneGradientStop[]): SceneGradientStop[] => 
 
 const ensureParticleStops = (fill: SceneFill): SceneGradientStop[] => {
   if (fill.fillType === FILL_TYPES.SOLID) {
+    const solidFill = fill as SceneSolidFill;
     return [
       {
         offset: 0,
-        color: fill.color,
+        color: solidFill.color,
       },
     ];
   }
-  if (!fill.stops || fill.stops.length === 0) {
+  const gradientFill = fill as SceneLinearGradientFill | SceneRadialGradientFill | SceneDiamondGradientFill;
+  if (!gradientFill.stops || gradientFill.stops.length === 0) {
     return [
       {
         offset: 0,
@@ -1284,7 +1290,7 @@ const ensureParticleStops = (fill: SceneFill): SceneGradientStop[] => {
       },
     ];
   }
-  return limitParticleStops(fill.stops);
+  return limitParticleStops(gradientFill.stops);
 };
 
 const updateParticleEmitterGpuUniforms = <
@@ -1368,24 +1374,26 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.explicitRadius = 0;
 
   if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
-    if (fill.start) {
+    const linearFill = fill as SceneLinearGradientFill;
+    if (linearFill.start) {
       uniforms.hasLinearStart = true;
-      assignVector(uniforms.linearStart, sanitizeVector(fill.start));
+      assignVector(uniforms.linearStart, sanitizeVector(linearFill.start));
     }
-    if (fill.end) {
+    if (linearFill.end && typeof linearFill.end === "object") {
       uniforms.hasLinearEnd = true;
-      assignVector(uniforms.linearEnd, sanitizeVector(fill.end));
+      assignVector(uniforms.linearEnd, sanitizeVector(linearFill.end));
     }
   } else if (
     fill.fillType === FILL_TYPES.RADIAL_GRADIENT ||
     fill.fillType === FILL_TYPES.DIAMOND_GRADIENT
   ) {
-    if (fill.start) {
+    const radialOrDiamondFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
+    if (radialOrDiamondFill.start) {
       uniforms.hasRadialOffset = true;
-      assignVector(uniforms.radialOffset, sanitizeVector(fill.start));
+      assignVector(uniforms.radialOffset, sanitizeVector(radialOrDiamondFill.start));
     }
     const explicitRadius =
-      typeof fill.end === "number" && Number.isFinite(fill.end) ? fill.end : 0;
+      typeof radialOrDiamondFill.end === "number" && Number.isFinite(radialOrDiamondFill.end) ? radialOrDiamondFill.end : 0;
     uniforms.hasExplicitRadius = explicitRadius > 0;
     uniforms.explicitRadius = uniforms.hasExplicitRadius ? explicitRadius : 0;
   }
@@ -1563,32 +1571,38 @@ const floatArrayEquals = (a: Float32Array, b: Float32Array): boolean => {
 
 const serializeSceneFill = (fill: SceneFill): string => {
   switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
+    case FILL_TYPES.SOLID: {
+      const solidFill = fill as SceneSolidFill;
       return JSON.stringify({
-        fillType: fill.fillType,
-        color: fill.color,
-        noise: fill.noise,
-        filaments: fill.filaments,
+        fillType: solidFill.fillType,
+        color: solidFill.color,
+        noise: solidFill.noise,
+        filaments: solidFill.filaments,
       });
-    case FILL_TYPES.LINEAR_GRADIENT:
+    }
+    case FILL_TYPES.LINEAR_GRADIENT: {
+      const linearFill = fill as SceneLinearGradientFill;
       return JSON.stringify({
-        fillType: fill.fillType,
-        start: fill.start,
-        end: fill.end,
-        stops: fill.stops,
-        noise: fill.noise,
-        filaments: fill.filaments,
+        fillType: linearFill.fillType,
+        start: linearFill.start,
+        end: linearFill.end,
+        stops: linearFill.stops,
+        noise: linearFill.noise,
+        filaments: linearFill.filaments,
       });
+    }
     case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
+    case FILL_TYPES.DIAMOND_GRADIENT: {
+      const radialOrDiamondFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
       return JSON.stringify({
-        fillType: fill.fillType,
-        start: fill.start,
-        end: fill.end,
-        stops: fill.stops,
-        noise: fill.noise,
-        filaments: fill.filaments,
+        fillType: radialOrDiamondFill.fillType,
+        start: radialOrDiamondFill.start,
+        end: radialOrDiamondFill.end,
+        stops: radialOrDiamondFill.stops,
+        noise: radialOrDiamondFill.noise,
+        filaments: radialOrDiamondFill.filaments,
       });
+    }
     default:
       return JSON.stringify(fill);
   }
@@ -1599,11 +1613,12 @@ const createSolidFillTemplate = (fill: SceneFill): Float32Array | null => {
     return null;
   }
 
+  const solidFill = fill as SceneSolidFill;
   const template = new Float32Array(FILL_COMPONENTS);
   template[0] = FILL_TYPES.SOLID;
   template[1] = 1;
 
-  const color = sanitizeSceneColor(fill.color, fill.color);
+  const color = sanitizeSceneColor(solidFill.color, solidFill.color);
   const colorBase =
     FILL_INFO_COMPONENTS +
     FILL_PARAMS0_COMPONENTS +

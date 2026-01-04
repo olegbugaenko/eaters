@@ -3,7 +3,7 @@
  * Renders animated expanding rings with a single draw call per batch
  */
 
-import { SceneColor, SceneVector2 } from "@logic/services/SceneObjectManager";
+import { SceneColor, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { RING_VERTEX_SHADER, RING_FRAGMENT_SHADER } from "../../shaders/ring.glsl";
 
 // ============================================================================

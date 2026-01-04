@@ -1,8 +1,9 @@
-import { SceneVector2, SceneColor } from "../../../../services/SceneObjectManager";
+import { SceneVector2, SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "../../../../../db/player-units-db";
-import { PlayerUnitRendererConfig, PlayerUnitEmitterConfig } from "../../../../../db/player-units-db";
+import type { ParticleEmitterConfig } from "../../../../interfaces/visuals/particle-emitters-config";
+import { PlayerUnitRendererConfig } from "../../../../../db/player-units-db";
 import { UnitTargetingMode } from "../../../../../types/unit-targeting";
-import { UnitDesignId } from "../../../camp/unit-design/unit-design.module";
+import { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 import { UnitModuleId } from "../../../../../db/unit-modules-db";
 import { SkillId } from "../../../../../db/skills-db";
 import { VisualEffectState } from "../../../../visuals/VisualEffectState";
@@ -45,7 +46,7 @@ export interface PlayerUnitState {
   wanderCooldown: number;
   objectId: string;
   renderer: PlayerUnitRendererConfig;
-  emitter?: PlayerUnitEmitterConfig;
+  emitter?: ParticleEmitterConfig;
   baseFillColor: SceneColor;
   baseStrokeColor?: SceneColor;
   appliedFillColor: SceneColor;
@@ -66,7 +67,8 @@ export interface PlayerUnitState {
 
 export const ATTACK_DISTANCE_EPSILON = 0.001;
 export const COLLISION_RESOLUTION_ITERATIONS = 4;
-export const ZERO_VECTOR: SceneVector2 = { x: 0, y: 0 };
+// Re-export for backward compatibility
+export { ZERO_VECTOR } from "../../../../helpers/geometry.const";
 export const CRITICAL_HIT_EXPLOSION_RADIUS = 12;
 export const INTERNAL_FURNACE_EFFECT_ID = "internalFurnace/heat";
 export const INTERNAL_FURNACE_TINT_COLOR: SceneColor = {

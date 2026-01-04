@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneSolidFill,
@@ -9,19 +8,20 @@ import {
   SceneDiamondGradientFill,
   SceneFillNoise,
   SceneGradientStop,
-  SceneObjectManager,
   SceneSize,
   SceneStroke,
   SceneVector2,
-} from "@logic/services/SceneObjectManager";
+} from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
 import { BrickType, getBrickConfig } from "@db/bricks-db";
+import type { ParticleEmitterConfig } from "@logic/interfaces/visuals/particle-emitters-config";
 import {
   getPlayerUnitConfig,
   PlayerUnitRendererConfig,
   PlayerUnitRendererLayerConfig,
   PlayerUnitRendererStrokeConfig,
   PlayerUnitAuraConfig,
-  PlayerUnitEmitterConfig,
 } from "@db/player-units-db";
 import {
   createObjectsRendererManager,
@@ -681,8 +681,8 @@ const cloneSceneColor = (color: SceneColor | undefined): SceneColor | undefined 
 };
 
 const cloneEmitterConfig = (
-  emitter: PlayerUnitEmitterConfig | undefined
-): PlayerUnitEmitterConfig | undefined => {
+  emitter: ParticleEmitterConfig | undefined
+): ParticleEmitterConfig | undefined => {
   if (!emitter) {
     return undefined;
   }
@@ -695,7 +695,7 @@ const cloneEmitterConfig = (
     speedVariation: emitter.speedVariation,
     sizeRange: { min: emitter.sizeRange.min, max: emitter.sizeRange.max },
     spread: emitter.spread,
-    offset: { x: emitter.offset.x, y: emitter.offset.y },
+    offset: emitter.offset ? { x: emitter.offset.x, y: emitter.offset.y } : { x: 0, y: 0 },
     color: cloneSceneColor(emitter.color) ?? { ...emitter.color },
     fill: emitter.fill ? cloneSceneFillDeep(emitter.fill) : undefined,
     shape: emitter.shape,
@@ -706,57 +706,61 @@ const cloneEmitterConfig = (
 const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
   switch (fill.fillType) {
     case FILL_TYPES.SOLID: {
+      const solidFill = fill as SceneSolidFill;
       const solid: SceneSolidFill = {
         fillType: FILL_TYPES.SOLID,
-        color: cloneSceneColor(fill.color) ?? fill.color,
+        color: cloneSceneColor(solidFill.color) ?? solidFill.color,
       };
-      if (fill.noise) {
-        solid.noise = { ...fill.noise };
+      if (solidFill.noise) {
+        solid.noise = { ...solidFill.noise };
       }
       return solid;
     }
     case FILL_TYPES.LINEAR_GRADIENT: {
+      const linearFill = fill as SceneLinearGradientFill;
       const linear: SceneLinearGradientFill = {
         fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
+        start: linearFill.start ? { ...linearFill.start } : undefined,
+        end: linearFill.end ? { ...linearFill.end } : undefined,
+        stops: linearFill.stops.map((stop) => ({
           offset: stop.offset,
           color: cloneSceneColor(stop.color) ?? stop.color,
         })),
       };
-      if (fill.noise) {
-        linear.noise = { ...fill.noise };
+      if (linearFill.noise) {
+        linear.noise = { ...linearFill.noise };
       }
       return linear;
     }
     case FILL_TYPES.RADIAL_GRADIENT: {
+      const radialFill = fill as SceneRadialGradientFill;
       const radial: SceneRadialGradientFill = {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : 0,
-        stops: fill.stops.map((stop) => ({
+        start: radialFill.start ? { ...radialFill.start } : undefined,
+        end: typeof radialFill.end === "number" ? radialFill.end : 0,
+        stops: radialFill.stops.map((stop) => ({
           offset: stop.offset,
           color: cloneSceneColor(stop.color) ?? stop.color,
         })),
       };
-      if (fill.noise) {
-        radial.noise = { ...fill.noise };
+      if (radialFill.noise) {
+        radial.noise = { ...radialFill.noise };
       }
       return radial;
     }
     case FILL_TYPES.DIAMOND_GRADIENT: {
+      const diamondFill = fill as SceneDiamondGradientFill;
       const diamond: SceneDiamondGradientFill = {
         fillType: FILL_TYPES.DIAMOND_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: typeof fill.end === "number" ? fill.end : 0,
-        stops: fill.stops.map((stop) => ({
+        start: diamondFill.start ? { ...diamondFill.start } : undefined,
+        end: typeof diamondFill.end === "number" ? diamondFill.end : 0,
+        stops: diamondFill.stops.map((stop) => ({
           offset: stop.offset,
           color: cloneSceneColor(stop.color) ?? stop.color,
         })),
       };
-      if (fill.noise) {
-        diamond.noise = { ...fill.noise };
+      if (diamondFill.noise) {
+        diamond.noise = { ...diamondFill.noise };
       }
       return diamond;
     }
@@ -802,27 +806,29 @@ const cloneRendererFillConfig = (
   if (fill.type === "gradient") {
     const gradient = fill.fill;
     if (gradient.fillType === FILL_TYPES.SOLID) {
+      const solidFill = gradient as SceneSolidFill;
       return {
         type: "gradient",
         fill: {
-          fillType: gradient.fillType,
-          color: cloneSceneColor(gradient.color) ?? gradient.color,
-          ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+          fillType: solidFill.fillType,
+          color: cloneSceneColor(solidFill.color) ?? solidFill.color,
+          ...(solidFill.noise ? { noise: { ...solidFill.noise } } : {}),
         },
       };
     }
     if (gradient.fillType === FILL_TYPES.LINEAR_GRADIENT) {
+      const linearGradient = gradient as SceneLinearGradientFill;
       return {
         type: "gradient",
         fill: {
-          fillType: gradient.fillType,
-          start: gradient.start ? { ...gradient.start } : undefined,
-          end: gradient.end ? { ...gradient.end } : undefined,
-          stops: gradient.stops.map((stop) => ({
+          fillType: linearGradient.fillType,
+          start: linearGradient.start ? { ...linearGradient.start } : undefined,
+          end: linearGradient.end ? { ...linearGradient.end } : undefined,
+          stops: linearGradient.stops.map((stop) => ({
             offset: stop.offset,
             color: cloneSceneColor(stop.color) ?? stop.color,
           })),
-          ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+          ...(linearGradient.noise ? { noise: { ...linearGradient.noise } } : {}),
         },
       };
     }
@@ -830,17 +836,18 @@ const cloneRendererFillConfig = (
       gradient.fillType === FILL_TYPES.RADIAL_GRADIENT ||
       gradient.fillType === FILL_TYPES.DIAMOND_GRADIENT
     ) {
+      const radialOrDiamondFill = gradient as SceneRadialGradientFill | SceneDiamondGradientFill;
       return {
         type: "gradient",
         fill: {
-          fillType: gradient.fillType,
-          start: gradient.start ? { ...gradient.start } : undefined,
-          end: typeof gradient.end === "number" ? gradient.end : undefined,
-          stops: gradient.stops.map((stop) => ({
+          fillType: radialOrDiamondFill.fillType,
+          start: radialOrDiamondFill.start ? { ...radialOrDiamondFill.start } : undefined,
+          end: typeof radialOrDiamondFill.end === "number" ? radialOrDiamondFill.end : undefined,
+          stops: radialOrDiamondFill.stops.map((stop) => ({
             offset: stop.offset,
             color: cloneSceneColor(stop.color) ?? stop.color,
           })),
-          ...(gradient.noise ? { noise: { ...gradient.noise } } : {}),
+          ...(radialOrDiamondFill.noise ? { noise: { ...radialOrDiamondFill.noise } } : {}),
         },
       };
     }

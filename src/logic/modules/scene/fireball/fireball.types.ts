@@ -1,12 +1,15 @@
-import type { SceneVector2, SceneFill, SceneColor, SceneObjectManager } from "../../../services/SceneObjectManager";
-import type { ParticleEmitterShape } from "../../../services/particles/ParticleEmitterShared";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { BricksModule } from "../../active-map/bricks/bricks.module";
 import type { ExplosionModule } from "../explosion/explosion.module";
+import type { UnitProjectileController } from "../../active-map/projectiles/ProjectileController";
 
 export interface FireballModuleOptions {
   scene: SceneObjectManager;
   bricks: BricksModule;
   explosions: ExplosionModule;
+  projectiles: UnitProjectileController;
   logEvent: (message: string) => void;
 }
 
@@ -16,8 +19,8 @@ export interface FireballState {
   radius: number;
   explosionRadius: number;
   sourceUnitId: string;
-  trailEmitter: FireballTrailEmitterConfig;
-  smokeEmitter: FireballTrailEmitterConfig;
+  trailEmitter: ParticleEmitterConfig;
+  smokeEmitter: ParticleEmitterConfig;
 }
 
 export interface FireballSpawnOptions {
@@ -29,17 +32,3 @@ export interface FireballSpawnOptions {
   maxDistance: number;
 }
 
-export interface FireballTrailEmitterConfig {
-  particlesPerSecond: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  baseSpeed: number;
-  speedVariation: number;
-  sizeRange: { min: number; max: number };
-  spread: number;
-  offset: SceneVector2;
-  color: SceneColor;
-  fill?: SceneFill;
-  shape?: ParticleEmitterShape;
-  maxParticles?: number;
-}

@@ -1,104 +1,15 @@
 import { clampNumber } from "@/utils/helpers/numbers";
-import type { BrickEffectTint } from "./bricks.module";
-
-interface BrickEffectsDependencies {
-  readonly hasBrick: (brickId: string) => boolean;
-  readonly dealDamage: (
-    brickId: string,
-    amount: number,
-    options: { rewardMultiplier: number; armorPenetration: number; overTime: number },
-  ) => void;
-  readonly setTint: (brickId: string, tint: BrickEffectTint | null) => void;
-}
-
-export const BURNING_TAIL_DURATION_MS = 4000;
-export const FREEZING_TAIL_DURATION_MS = 4000;
-export const BURNING_TAIL_DAMAGE_RATIO_PER_SECOND = 0.2;
-
-const DAMAGE_APPLICATION_THRESHOLD = 0.5;
-
-const EFFECT_TINTS: Partial<Record<BrickEffectType, BrickEffectTint & { priority: number }>> = {
-  meltingTail: {
-    color: { r: 1, g: 0.2, b: 0.1, a: 1 },
-    intensity: 0.65,
-    priority: 20,
-  },
-  freezingTail: {
-    color: { r: 0.35, g: 0.55, b: 1, a: 1 },
-    intensity: 0.55,
-    priority: 10,
-  },
-  weakeningCurse: {
-    color: { r: 0.55, g: 0.25, b: 0.55, a: 1 },
-    intensity: 0.65,
-    priority: 15,
-  },
-  weakeningCurseFlat: {
-    color: { r: 0.55, g: 0.15, b: 0.45, a: 1 },
-    intensity: 0.5,
-    priority: 15,
-  },
-};
-
-export type BrickEffectType = "meltingTail" | "freezingTail" | "weakeningCurse" | "weakeningCurseFlat";
-
-export type BrickEffectApplication =
-  | {
-      readonly type: "meltingTail";
-      readonly brickId: string;
-      readonly durationMs: number;
-      readonly multiplier: number; // incoming damage multiplier (> 1)
-      readonly tint?: BrickEffectTint | null;
-    }
-  | {
-      readonly type: "freezingTail";
-      readonly brickId: string;
-      readonly durationMs: number;
-      readonly divisor: number;
-      readonly tint?: BrickEffectTint | null;
-    }
-  | {
-      readonly type: "weakeningCurse";
-      readonly brickId: string;
-      readonly durationMs: number;
-      readonly multiplier: number; // outgoing damage multiplier (< 1)
-      readonly tint?: BrickEffectTint | null;
-    }
-  | {
-      readonly type: "weakeningCurseFlat";
-      readonly brickId: string;
-      readonly durationMs: number;
-      readonly flatReduction: number; // flat damage reduction value
-      readonly tint?: BrickEffectTint | null;
-    };
-
-interface BaseEffectState {
-  readonly type: BrickEffectType;
-  remainingMs: number;
-  tint?: BrickEffectTint | null;
-}
-
-interface MeltingEffectState extends BaseEffectState {
-  readonly type: "meltingTail";
-  multiplier: number;
-}
-
-interface FreezingEffectState extends BaseEffectState {
-  readonly type: "freezingTail";
-  divisor: number;
-}
-
-interface WeakeningCurseEffectState extends BaseEffectState {
-  readonly type: "weakeningCurse";
-  multiplier: number;
-}
-
-interface WeakeningCurseFlatEffectState extends BaseEffectState {
-  readonly type: "weakeningCurseFlat";
-  flatReduction: number;
-}
-
-type BrickEffectState = MeltingEffectState | FreezingEffectState | WeakeningCurseEffectState | WeakeningCurseFlatEffectState;
+import type { BrickEffectTint } from "./bricks.types";
+import type {
+  BrickEffectsDependencies,
+  BrickEffectApplication,
+  BrickEffectState,
+  MeltingEffectState,
+  FreezingEffectState,
+  WeakeningCurseEffectState,
+  WeakeningCurseFlatEffectState,
+} from "./brick-effects.types";
+import { EFFECT_TINTS } from "./brick-effects.const";
 
 export class BrickEffectsManager {
   private readonly dependencies: BrickEffectsDependencies;

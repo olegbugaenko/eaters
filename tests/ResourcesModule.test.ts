@@ -8,7 +8,7 @@ import {
 } from "../src/logic/modules/shared/resources/resources.module";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import type { ResourceRunSummaryPayload } from "../src/logic/modules/shared/resources/resources.module";
-import { UnlockService } from "../src/logic/services/UnlockService";
+import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 

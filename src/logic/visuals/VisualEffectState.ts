@@ -1,4 +1,4 @@
-import { SceneColor } from "../services/SceneObjectManager";
+import { SceneColor } from "../services/scene-object-manager/scene-object-manager.types";
 
 export type VisualEffectBlendMode = "tint" | "add";
 

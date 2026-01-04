@@ -10,8 +10,8 @@ import {
   SceneFillFilaments,
   SceneFillNoise,
   SceneVector2,
-  FILL_TYPES,
-} from "../../../logic/services/SceneObjectManager";
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { createDynamicCirclePrimitive, createDynamicPolygonPrimitive } from "../primitives";
 import type {
   AuraRendererCompositeConfig,
@@ -19,7 +19,7 @@ import type {
   AuraRendererFillConfig,
   AuraRendererStrokeConfig,
 } from "../../../db/effects-db";
-import { cloneSceneFill } from "../../../logic/services/particles/ParticleEmitterShared";
+import { cloneSceneFill } from "../../../logic/helpers/scene-fill.helper";
 
 interface AuraCustomData {
   renderer: AuraRendererCompositeConfig;

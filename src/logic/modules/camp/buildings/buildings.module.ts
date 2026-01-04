@@ -2,59 +2,40 @@ import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
-import { UnlockService } from "../../../services/UnlockService";
+import { UnlockService } from "../../../services/unlock/UnlockService";
 import {
   BUILDING_IDS,
   BuildingId,
   getBuildingConfig,
-  BuildingConfig,
 } from "../../../../db/buildings-db";
+import {
+  createDefaultLevels,
+  areBuildingListsEqual,
+  getMaxLevel,
+  sanitizeLevel,
+} from "./buildings.helpers";
 import {
   ResourceStockpile,
   RESOURCE_IDS,
   normalizeResourceAmount,
   createEmptyResourceStockpile,
 } from "../../../../db/resources-db";
-import { BonusEffectPreview } from "../../../../types/bonuses";
 import { SkillId } from "../../../../db/skills-db";
-
-export interface BuildingWorkshopItemState {
-  readonly id: BuildingId;
-  readonly name: string;
-  readonly description: string;
-  readonly level: number;
-  readonly maxLevel: number | null;
-  readonly maxed: boolean;
-  readonly available: boolean;
-  readonly nextCost: Record<string, number> | null;
-  readonly bonusEffects: readonly BonusEffectPreview[];
-}
-
-export interface BuildingsWorkshopBridgeState {
-  readonly unlocked: boolean;
-  readonly buildings: readonly BuildingWorkshopItemState[];
-}
-
-export const DEFAULT_BUILDINGS_WORKSHOP_STATE: BuildingsWorkshopBridgeState = Object.freeze({
-  unlocked: false,
-  buildings: [],
-});
-
-export const BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY = "buildings/workshop";
-
-interface BuildingsModuleOptions {
-  readonly bridge: DataBridge;
-  readonly resources: ResourcesModule;
-  readonly bonuses: BonusesModule;
-  readonly unlocks: UnlockService;
-  readonly getSkillLevel: (id: SkillId) => number;
-}
-
-interface BuildingsSaveData {
-  readonly levels?: Partial<Record<BuildingId, number>>;
-}
-
-const BUILDINGS_UNLOCK_SKILL_ID: SkillId = "construction_guild";
+import type {
+  BuildingWorkshopItemState,
+  BuildingsWorkshopBridgeState,
+  BuildingsModuleOptions,
+  BuildingsSaveData,
+} from "./buildings.types";
+import {
+  DEFAULT_BUILDINGS_WORKSHOP_STATE,
+  BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
+  BUILDINGS_UNLOCK_SKILL_ID,
+} from "./buildings.const";
+import {
+  BuildingStateFactory,
+  BuildingStateInput,
+} from "./buildings.state-factory";
 
 export class BuildingsModule implements GameModule {
   public readonly id = "buildings";
@@ -69,6 +50,7 @@ export class BuildingsModule implements GameModule {
   private visibleBuildingIds: BuildingId[] = [];
   private levels: Map<BuildingId, number> = createDefaultLevels();
   private listeners = new Set<() => void>();
+  private readonly stateFactory: BuildingStateFactory;
 
   constructor(options: BuildingsModuleOptions) {
     this.bridge = options.bridge;
@@ -76,6 +58,7 @@ export class BuildingsModule implements GameModule {
     this.bonuses = options.bonuses;
     this.unlocks = options.unlocks;
     this.getSkillLevel = options.getSkillLevel;
+    this.stateFactory = new BuildingStateFactory();
     this.registerBonusSources();
   }
 
@@ -209,45 +192,23 @@ export class BuildingsModule implements GameModule {
   }
 
   private pushState(): void {
+    const inputs: BuildingStateInput[] = this.visibleBuildingIds.map((id) => ({
+      id,
+      level: this.levels.get(id) ?? 0,
+      unlocks: this.unlocks,
+      bonuses: this.bonuses,
+      getBonusSourceId: (buildingId) => this.getBonusSourceId(buildingId),
+      cloneCost: (source) => this.cloneCost(source),
+      applyCostModifiers: (source) => this.applyCostModifiers(source),
+    }));
+    const buildings = this.stateFactory.createMany(inputs);
     const payload: BuildingsWorkshopBridgeState = {
       unlocked: this.unlocked,
-      buildings: this.visibleBuildingIds.map((id) => this.createBuildingState(id)),
+      buildings,
     };
     this.bridge.setValue(BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY, payload);
   }
 
-  private createBuildingState(id: BuildingId): BuildingWorkshopItemState {
-    const config = getBuildingConfig(id);
-    const level = this.levels.get(id) ?? 0;
-    const maxLevelLimit = getMaxLevel(config);
-    const maxLevel = config.maxLevel ?? null;
-    const available = this.unlocks.areConditionsMet(config.unlockedBy);
-    const maxed = level >= maxLevelLimit;
-    const canUpgrade = available && !maxed;
-    const nextCost = canUpgrade
-      ? this.cloneCost(
-          this.applyCostModifiers(normalizeResourceAmount(config.cost(level + 1)))
-        )
-      : null;
-    let bonusEffects = this.bonuses.getBonusEffects(this.getBonusSourceId(id));
-    if (maxed) {
-      bonusEffects = bonusEffects.map((effect) => ({
-        ...effect,
-        nextValue: effect.currentValue,
-      }));
-    }
-    return {
-      id,
-      name: config.name,
-      description: config.description,
-      level,
-      maxLevel,
-      maxed,
-      available,
-      nextCost,
-      bonusEffects,
-    };
-  }
 
   private parseSaveData(data: unknown | undefined): Map<BuildingId, number> {
     const levels = createDefaultLevels();
@@ -314,40 +275,3 @@ export class BuildingsModule implements GameModule {
     return `building_${id}`;
   }
 }
-
-const createDefaultLevels = (): Map<BuildingId, number> => {
-  const levels = new Map<BuildingId, number>();
-  BUILDING_IDS.forEach((id) => {
-    levels.set(id, 0);
-  });
-  return levels;
-};
-
-const areBuildingListsEqual = (
-  a: readonly BuildingId[],
-  b: readonly BuildingId[]
-): boolean => {
-  if (a.length !== b.length) {
-    return false;
-  }
-  return a.every((value, index) => value === b[index]);
-};
-
-const getMaxLevel = (config: BuildingConfig): number => {
-  if (config.maxLevel === undefined || config.maxLevel === null) {
-    return Number.POSITIVE_INFINITY;
-  }
-  if (!Number.isFinite(config.maxLevel)) {
-    return Number.POSITIVE_INFINITY;
-  }
-  return Math.max(0, Math.floor(config.maxLevel));
-};
-
-const sanitizeLevel = (value: unknown, config: BuildingConfig): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  const normalized = Math.max(0, Math.floor(value));
-  const maxLevel = getMaxLevel(config);
-  return Math.min(normalized, maxLevel);
-};

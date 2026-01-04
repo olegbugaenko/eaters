@@ -13,6 +13,7 @@ export const createSpellcastingDefinition = (): ServiceDefinition<SpellcastingMo
       bricks: container.get("bricks"),
       bonuses: container.get("bonuses"),
       explosions: container.get("explosion"),
+      projectiles: container.get("unitProjectiles"),
       runState: container.get("mapRunState"),
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
     }),

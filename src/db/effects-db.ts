@@ -3,7 +3,7 @@ import type {
   SceneFill,
   SceneFillFilaments,
   SceneFillNoise,
-} from "../logic/services/SceneObjectManager";
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
 
 export type VisualEffectId = "frenzyAura";
 

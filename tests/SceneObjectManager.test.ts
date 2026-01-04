@@ -1,9 +1,10 @@
 import assert from "assert";
 import {
-  FILL_TYPES,
-  SceneObjectManager,
   SceneRadialGradientFill,
-} from "../src/logic/services/SceneObjectManager";
+  SceneLinearGradientFill,
+} from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
 import { describe, test } from "./testRunner";
 
 describe("SceneObjectManager fill handling", () => {
@@ -32,11 +33,13 @@ describe("SceneObjectManager fill handling", () => {
     assert(instance, "Object should be registered");
     const fill = instance.data.fill;
     assert.strictEqual(fill.fillType, FILL_TYPES.LINEAR_GRADIENT);
-    assert.strictEqual(fill.start, undefined);
-    assert.strictEqual(fill.end, undefined);
-    assert.strictEqual(fill.stops.length, 2);
+    assert(fill.fillType === FILL_TYPES.LINEAR_GRADIENT, "fill should be linear gradient");
+    const linearFill = fill as SceneLinearGradientFill;
+    assert.strictEqual(linearFill.start, undefined);
+    assert.strictEqual(linearFill.end, undefined);
+    assert.strictEqual(linearFill.stops.length, 2);
 
-    const [first, second] = fill.stops;
+    const [first, second] = linearFill.stops;
     assert(first, "First stop must exist");
     assert.strictEqual(first.offset, 0);
     assert.deepStrictEqual(first.color, { r: 1, g: 0, b: 0.25, a: 1 });
@@ -79,21 +82,24 @@ describe("SceneObjectManager fill handling", () => {
     const fill = updated.data.fill;
 
     assert.strictEqual(fill.fillType, FILL_TYPES.RADIAL_GRADIENT);
-    assert.deepStrictEqual(fill.start, { x: 4, y: -6 });
-    assert.strictEqual(fill.end, undefined);
-    assert.strictEqual(fill.stops.length, 1);
-    assert.deepStrictEqual(fill.stops[0], {
+    assert(fill.fillType === FILL_TYPES.RADIAL_GRADIENT, "fill should be radial gradient");
+    const radialFill = fill as SceneRadialGradientFill;
+    assert.deepStrictEqual(radialFill.start, { x: 4, y: -6 });
+    assert.strictEqual(radialFill.end, undefined);
+    assert.strictEqual(radialFill.stops.length, 1);
+    assert.deepStrictEqual(radialFill.stops[0], {
       offset: 0,
       color: { r: 1, g: 1, b: 1, a: 1 },
     });
 
-    fill.stops[0].color.r = 0.25;
+    radialFill.stops[0].color.r = 0.25;
     const stored = manager.getObject(id);
     assert(stored, "Object should still exist");
     const storedFill = stored.data.fill;
     if (storedFill.fillType !== FILL_TYPES.RADIAL_GRADIENT) {
       throw new Error("Unexpected fill type after update");
     }
-    assert.strictEqual(storedFill.stops[0]?.color.r, 1);
+    const storedRadialFill = storedFill as SceneRadialGradientFill;
+    assert.strictEqual(storedRadialFill.stops[0]?.color.r, 1);
   });
 });

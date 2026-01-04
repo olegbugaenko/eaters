@@ -1,9 +1,10 @@
 import { SkillId } from "../../../../db/skills-db";
 import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
-import { SceneObjectManager } from "../../../services/SceneObjectManager";
-import { UnlockService } from "../../../services/UnlockService";
-import { BricksModule, BrickData } from "../bricks/bricks.module";
+import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import { UnlockService } from "../../../services/unlock/UnlockService";
+import { BricksModule } from "../bricks/bricks.module";
+import type { BrickData } from "../bricks/bricks.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { PlayerUnitsModule, PlayerUnitSpawnData } from "../player-units/player-units.module";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";

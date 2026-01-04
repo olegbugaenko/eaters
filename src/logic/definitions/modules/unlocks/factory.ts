@@ -1,5 +1,5 @@
 import { SkillId } from "../../../../db/skills-db";
-import { UnlockService } from "../../../services/UnlockService";
+import { UnlockService } from "../../../services/unlock/UnlockService";
 import { SkillTreeModule } from "../../../modules/camp/skill-tree/skill-tree.module";
 import { MapModule } from "../../../modules/active-map/map/map.module";
 import { ServiceDefinition } from "../../../core/loader/types";

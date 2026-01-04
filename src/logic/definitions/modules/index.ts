@@ -20,6 +20,7 @@ import { createTutorialMonitorDefinition } from "../../modules/active-map/tutori
 import { createUnitAutomationDefinition } from "../../modules/active-map/unit-automation/unit-automation.factory";
 import { createUnitDesignDefinition } from "../../modules/camp/unit-design/unit-design.factory";
 import { createUnitModuleWorkshopDefinition } from "../../modules/camp/unit-module-workshop/unit-module-workshop.factory";
+import { createUnitProjectilesDefinition } from "../../modules/active-map/projectiles/projectiles.factory";
 import { createUnlocksDefinition } from "./unlocks/factory";
 import { ModuleDefinitionContext } from "./context";
 export function createModuleDefinitions(context: ModuleDefinitionContext) {
@@ -37,6 +38,7 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
     createExplosionDefinition(),
     createAudioDefinition(),
     createBricksDefinition(),
+    createUnitProjectilesDefinition(),
     createPlayerUnitsDefinition(context),
     createNecromancerDefinition(),
     createUnitAutomationDefinition(),

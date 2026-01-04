@@ -1,12 +1,13 @@
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
   SceneVector2,
-} from "../logic/services/SceneObjectManager";
+} from "../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 
 export type ExplosionType =
   | "plasmoid"
@@ -48,45 +49,17 @@ export interface ExplosionWaveConfig {
   filaments?: SceneFillFilaments;
 }
 
-export interface ExplosionEmitterConfig {
-  emissionDurationMs: number;
-  particlesPerSecond: number;
-  baseSpeed: number;
-  speedVariation: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  sizeRange: { min: number; max: number };
-  spawnRadius: { min: number; max: number };
-  /**
-   * Ensures the maximum spawn radius scales with the initial radius of the explosion.
-   */
-  spawnRadiusMultiplier: number;
-  color: SceneColor;
-  arc?: number;
-  direction?: number;
-  fill?: SceneFill;
-  shape?: "circle" | "square"; // Форма частинок (за замовчуванням "square")
-  sizeGrowthRate?: number;
-}
+/**
+ * Explosion emitter configuration (from DB).
+ * Alias for ParticleEmitterConfig - all fields are available.
+ */
+export type ExplosionEmitterConfig = ParticleEmitterConfig;
 
-export interface ExplosionRendererEmitterConfig {
-  particlesPerSecond: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  emissionDurationMs: number;
-  sizeRange: { min: number; max: number };
-  spawnRadius: { min: number; max: number };
-  baseSpeed: number;
-  speedVariation: number;
-  color: SceneColor;
-  fill?: SceneFill;
-  arc: number;
-  direction: number;
-  offset?: SceneVector2;
-  maxParticles?: number;
-  shape?: "circle" | "square";
-  sizeGrowthRate?: number;
-}
+/**
+ * Explosion renderer emitter configuration (processed/sanitized).
+ * Alias for ParticleEmitterConfig - all fields are available.
+ */
+export type ExplosionRendererEmitterConfig = ParticleEmitterConfig;
 
 export interface ExplosionConfig {
   lifetimeMs: number;

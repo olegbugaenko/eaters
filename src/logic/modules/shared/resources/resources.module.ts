@@ -1,10 +1,4 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
-import { MapRunState } from "../../active-map/map/MapRunState";
-import { UnlockService } from "../../../services/UnlockService";
-import { BonusesModule } from "../bonuses/bonuses.module";
-import { BonusId } from "../../../../db/bonuses-db";
-import { StatisticsTracker } from "../statistics/statistics.module";
 import {
   RESOURCE_IDS,
   ResourceAmount,
@@ -15,52 +9,39 @@ import {
   normalizeResourceAmount,
   cloneResourceStockpile,
 } from "../../../../db/resources-db";
+import type {
+  ResourceAmountPayload,
+  ResourceRunSummaryItem,
+  ResourceRunSummaryPayload,
+  ResourcesModuleOptions,
+  ResourcesSaveData,
+} from "./resources.types";
+import type { DataBridge } from "../../../core/DataBridge";
+import type { MapRunState } from "../../active-map/map/MapRunState";
+import type { UnlockService } from "../../../services/unlock/UnlockService";
+import type { BonusesModule } from "../bonuses/bonuses.module";
+import type { StatisticsTracker } from "../statistics/statistics.module";
+import {
+  RESOURCE_TOTALS_BRIDGE_KEY,
+  RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
+  RESOURCE_RUN_DURATION_BRIDGE_KEY,
+  PASSIVE_RESOURCE_BONUS_IDS,
+  VISIBILITY_REFRESH_INTERVAL_MS,
+} from "./resources.const";
+import { sanitizeBrickCount, areResourceListsEqual } from "./resources.helpers";
 
-export const RESOURCE_TOTALS_BRIDGE_KEY = "resources/totals";
-export const RESOURCE_RUN_SUMMARY_BRIDGE_KEY = "resources/runSummary";
-export const RESOURCE_RUN_DURATION_BRIDGE_KEY = "resources/runDuration";
-
-const PASSIVE_RESOURCE_BONUS_IDS: Partial<Record<ResourceId, BonusId>> = {
-  stone: "stone_income",
-};
-
-export interface ResourceAmountPayload {
-  id: ResourceId;
-  name: string;
-  amount: number;
-}
-
-export interface ResourceRunSummaryItem extends ResourceAmountPayload {
-  gained: number;
-  ratePerSecond: number;
-}
-
-export interface ResourceRunSummaryPayload {
-  completed: boolean;
-  resources: ResourceRunSummaryItem[];
-  bricksDestroyed: number;
-  totalBricksDestroyed: number;
-}
-
-export const DEFAULT_RESOURCE_RUN_SUMMARY: ResourceRunSummaryPayload = Object.freeze({
-  completed: false,
-  resources: [],
-  bricksDestroyed: 0,
-  totalBricksDestroyed: 0,
-});
-
-interface ResourcesModuleOptions {
-  bridge: DataBridge;
-  unlocks: UnlockService;
-  bonuses: BonusesModule;
-  runState: MapRunState;
-  statistics?: StatisticsTracker;
-}
-
-interface ResourcesSaveData {
-  totals: ResourceAmount;
-  bricksDestroyed?: number;
-}
+// Re-export types and constants for backward compatibility
+export type {
+  ResourceAmountPayload,
+  ResourceRunSummaryItem,
+  ResourceRunSummaryPayload,
+} from "./resources.types";
+export {
+  RESOURCE_TOTALS_BRIDGE_KEY,
+  RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
+  RESOURCE_RUN_DURATION_BRIDGE_KEY,
+  DEFAULT_RESOURCE_RUN_SUMMARY,
+} from "./resources.const";
 
 export class ResourcesModule implements GameModule {
   public readonly id = "resources";
@@ -81,7 +62,6 @@ export class ResourcesModule implements GameModule {
   private passiveIncomeRemainder: ResourceStockpile = createEmptyResourceStockpile();
   // Throttle visibility recomputation to avoid hot areConditionsMet calls
   private lastVisibilityRefreshMs = 0;
-  private static readonly VISIBILITY_REFRESH_INTERVAL_MS = 250; // 4x per second is enough
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
@@ -376,7 +356,7 @@ export class ResourcesModule implements GameModule {
 
   private refreshVisibleResourceIds(): boolean {
     const now = Date.now();
-    if (now - this.lastVisibilityRefreshMs < ResourcesModule.VISIBILITY_REFRESH_INTERVAL_MS) {
+    if (now - this.lastVisibilityRefreshMs < VISIBILITY_REFRESH_INTERVAL_MS) {
       return false;
     }
     this.lastVisibilityRefreshMs = now;
@@ -418,19 +398,3 @@ export class ResourcesModule implements GameModule {
   }
 }
 
-const sanitizeBrickCount = (value: unknown): number => {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    return 0;
-  }
-  return Math.floor(value);
-};
-
-const areResourceListsEqual = (
-  a: readonly ResourceId[],
-  b: readonly ResourceId[]
-): boolean => {
-  if (a.length !== b.length) {
-    return false;
-  }
-  return a.every((value, index) => value === b[index]);
-};

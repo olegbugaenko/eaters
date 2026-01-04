@@ -1,4 +1,4 @@
-import { SceneColor, SceneObjectInstance } from "../../../logic/services/SceneObjectManager";
+import { SceneColor, SceneObjectInstance } from "../../../logic/services/scene-object-manager/scene-object-manager.types";
 import { DynamicPrimitive } from "../objects/ObjectRenderer";
 import {
   addFireRingInstance,

@@ -1,4 +1,4 @@
-import { SceneColor, SceneVector2 } from "../../../../logic/services/SceneObjectManager";
+import { SceneColor, SceneVector2 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
 
 // ============================================
 // Fire ring — age computed on GPU from birth time

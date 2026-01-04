@@ -6,12 +6,12 @@
  * Uses object pooling - slots are reused, buffer is never rebuilt.
  */
 
-import type { SceneColor, SceneVector2, SceneSize } from "../../../../logic/services/SceneObjectManager";
+import type { SceneColor, SceneVector2, SceneSize } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
 import {
   BULLET_SPRITE_PATHS,
   BULLET_SPRITE_SIZE,
   type BulletSpriteName,
-} from "@logic/services/bulletSprites";
+} from "@logic/services/bullet-render-bridge/bullet-sprites.const";
 
 // ============================================================================
 // Types

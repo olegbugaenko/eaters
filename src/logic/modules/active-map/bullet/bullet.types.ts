@@ -1,5 +1,7 @@
-import type { SceneFill, SceneObjectManager, SceneVector2 } from "../../../services/SceneObjectManager";
-import type { BulletConfig, BulletTailConfig, BulletTailEmitterConfig, BulletType } from "../../../../db/bullets-db";
+import type { SceneFill, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { BulletConfig, BulletTailConfig, BulletType } from "../../../../db/bullets-db";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { ExplosionType } from "../../../../db/explosions-db";
 import type { MapRunState } from "../map/MapRunState";
@@ -7,7 +9,7 @@ import type { MapRunState } from "../map/MapRunState";
 export interface BulletCustomData {
   type: BulletType;
   tail: BulletTailConfig;
-  tailEmitter?: BulletTailEmitterConfig;
+  tailEmitter?: ParticleEmitterConfig;
 }
 
 export interface BulletState {

@@ -3,7 +3,7 @@ import {
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
 import {
   createStaticPolygonPrimitive,
   createStaticPolygonStrokePrimitive,

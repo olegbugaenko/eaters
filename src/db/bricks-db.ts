@@ -5,7 +5,7 @@ import {
   SceneGradientStop,
   SceneSize,
   SceneVector2,
-} from "../logic/services/SceneObjectManager";
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
 
 import { DestructubleData } from "../logic/interfaces/destructuble";
 import { ResourceAmount } from "./resources-db";

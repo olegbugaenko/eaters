@@ -1,5 +1,7 @@
 import assert from "assert";
-import { FILL_TYPES, SceneObjectManager } from "../src/logic/services/SceneObjectManager";
+import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+import type { SceneRadialGradientFill } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
 import { BulletModule } from "../src/logic/modules/active-map/bullet/bullet.module";
 import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modules/scene/explosion/explosion.module";
 import { getBulletConfig } from "../src/db/bullets-db";
@@ -44,9 +46,13 @@ describe("BulletModule", () => {
     const config = getBulletConfig("plasmoid");
     const fill = instance.data.fill;
     assert.strictEqual(fill.fillType, FILL_TYPES.RADIAL_GRADIENT);
-    assert.strictEqual(fill.stops.length, config.gradientStops.length);
+    if (fill.fillType !== FILL_TYPES.RADIAL_GRADIENT) {
+      throw new Error("fill should be radial gradient");
+    }
+    const radialFill = fill as SceneRadialGradientFill;
+    assert.strictEqual(radialFill.stops.length, config.gradientStops.length);
 
-    fill.stops.forEach((stop, index) => {
+    radialFill.stops.forEach((stop, index) => {
       const expected = config.gradientStops[index];
       assert(expected, "Expected gradient stop to exist");
       assert.strictEqual(stop.offset, expected.offset);

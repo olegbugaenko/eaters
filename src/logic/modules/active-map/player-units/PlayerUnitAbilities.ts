@@ -1,6 +1,6 @@
-import type { SceneVector2 } from "../../../services/SceneObjectManager";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { AbilityVisualService } from "./abilities/AbilityVisualService";
-import type { AbilitySoundId } from "./abilities/AbilityTypes";
+import type { AbilitySoundId } from "./abilities/ability.types";
 import {
   AbilityCandidate,
   AbilityDescription,
@@ -8,7 +8,7 @@ import {
   AbilityRuntimeDependencies,
   AbilityStateBase,
   AbilityCooldownState,
-} from "./abilities/AbilityTypes";
+} from "./abilities/ability.types";
 import {
   PLAYER_UNIT_ABILITY_DEFINITIONS,
   PlayerUnitAbilityState,
@@ -17,17 +17,19 @@ import { getUnitModuleConfig, UnitModuleId } from "../../../../db/unit-modules-d
 import type { SkillId } from "../../../../db/skills-db";
 import {
   DEFAULT_PHEROMONE_IDLE_THRESHOLD_SECONDS,
-} from "./abilities/AbilityConstants";
+} from "./abilities/ability.const";
 import type { PheromoneAttackBonusState } from "./abilities/AbilityUnitState";
+import { UnitProjectileController } from "../projectiles/ProjectileController";
+import type { SoundEffectPlayer } from "../../shared/audio/audio.types";
 
-export interface AbilitySoundPlayer {
-  playSoundEffect(url: string): void;
-}
+// Re-export for backward compatibility
+export type AbilitySoundPlayer = SoundEffectPlayer;
 
 const ABILITY_SOUND_URLS: Record<AbilitySoundId, string> = {
   heal: "/audio/sounds/brick_effects/heal.mp3",
   frenzy: "/audio/sounds/brick_effects/buff.mp3",
   fireball: "/audio/sounds/brick_effects/fireball.mp3",
+  tailNeedle: "/audio/sounds/brick_effects/fireball.mp3", // TODO: Add specific sound if needed
 };
 
 interface PlayerUnitAbilitiesOptions {
@@ -42,6 +44,7 @@ interface PlayerUnitAbilitiesOptions {
   damageUnit: (unitId: string, damage: number) => void;
   findNearestBrick: (position: SceneVector2) => string | null;
   audio?: AbilitySoundPlayer;
+  projectiles?: UnitProjectileController;
 }
 
 export interface AbilityActivationResult {
@@ -101,6 +104,7 @@ export class PlayerUnitAbilities {
       getBricksInRadius: this.getBricksInRadius,
       damageUnit: this.damageUnit,
       findNearestBrick: this.findNearestBrick,
+      projectiles: options.projectiles,
     };
   }
 
@@ -124,11 +128,17 @@ export class PlayerUnitAbilities {
   public processUnitAbilities(
     unit: PlayerUnitAbilityState,
     deltaSeconds: number,
+    event: "tick" | "hit" = "tick",
+    attackContext?: {
+      attackDirection: SceneVector2;
+      inflictedDamage: number;
+      totalDamage: number;
+    },
   ): AbilityActivationResult | null {
     const runtime = this.ensureUnitRuntime(unit);
     this.advanceCooldowns(runtime, deltaSeconds);
 
-    const candidates = this.collectAbilityCandidates(unit, runtime);
+    const candidates = this.collectAbilityCandidates(unit, runtime, event, attackContext);
     if (candidates.length === 0) {
       return null;
     }
@@ -160,6 +170,10 @@ export class PlayerUnitAbilities {
       services: this.visuals,
       dependencies: this.dependencies,
       target: candidate.target,
+      event,
+      attackDirection: attackContext?.attackDirection,
+      inflictedDamage: attackContext?.inflictedDamage,
+      totalDamage: attackContext?.totalDamage,
     };
 
     const result = runtimeEntry.definition.execute(executionContext as never);
@@ -183,6 +197,19 @@ export class PlayerUnitAbilities {
       abilityId: runtimeEntry.definition.abilityId,
       statsChanged: result.statsChanged ?? false,
     };
+  }
+
+  public processUnitAbilitiesOnAttack(
+    unit: PlayerUnitAbilityState,
+    attackDirection: SceneVector2,
+    inflictedDamage: number,
+    totalDamage: number,
+  ): void {
+    this.processUnitAbilities(unit, 0, "hit", {
+      attackDirection,
+      inflictedDamage,
+      totalDamage,
+    });
   }
 
   public consumeAttackBonuses(unit: PlayerUnitAbilityState): number {
@@ -215,6 +242,12 @@ export class PlayerUnitAbilities {
   private collectAbilityCandidates(
     unit: PlayerUnitAbilityState,
     runtime: UnitAbilityRuntime,
+    event: "tick" | "hit" = "tick",
+    attackContext?: {
+      attackDirection: SceneVector2;
+      inflictedDamage: number;
+      totalDamage: number;
+    },
   ): Array<{
     runtimeEntry: AbilityRuntimeEntry;
     cooldown: AbilityCooldownState;
@@ -247,6 +280,10 @@ export class PlayerUnitAbilities {
         cooldown: { remaining: cooldown.remaining, duration: entry.cooldownSeconds },
         services: this.visuals,
         dependencies: this.dependencies,
+        event,
+        attackDirection: attackContext?.attackDirection,
+        inflictedDamage: attackContext?.inflictedDamage,
+        totalDamage: attackContext?.totalDamage,
       };
 
       const candidate = entry.definition.evaluate(evaluationContext as never);

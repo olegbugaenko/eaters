@@ -1,6 +1,6 @@
-import { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
-import { UnlockService } from "../../../services/UnlockService";
+import type { DataBridge } from "../../../core/DataBridge";
+import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { BonusValueMap } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
@@ -11,119 +11,32 @@ import {
   getCraftingRecipeConfig,
 } from "../../../../db/crafting-recipes-db";
 import {
-  ResourceAmount,
   ResourceId,
   ResourceStockpile,
   getResourceConfig,
   normalizeResourceAmount,
 } from "../../../../db/resources-db";
-
-export interface CraftingRecipeBridgeState {
-  readonly id: CraftingRecipeId;
-  readonly name: string;
-  readonly productId: ResourceId;
-  readonly productName: string;
-  readonly productAmount: number;
-  readonly cost: Record<string, number>;
-  readonly queue: number;
-  readonly inProgress: boolean;
-  readonly progress: number;
-  readonly durationMs: number;
-  readonly maxQueue: number;
-  readonly waitingForResources: boolean;
-}
-
-export interface CraftingBridgeState {
-  readonly unlocked: boolean;
-  readonly recipes: readonly CraftingRecipeBridgeState[];
-}
-
-export const DEFAULT_CRAFTING_STATE: CraftingBridgeState = Object.freeze({
-  unlocked: false,
-  recipes: [],
-});
-
-export const CRAFTING_STATE_BRIDGE_KEY = "crafting/state";
-
-interface CraftingModuleOptions {
-  readonly bridge: DataBridge;
-  readonly resources: ResourcesModule;
-  readonly unlocks: UnlockService;
-  readonly bonuses: BonusesModule;
-}
-
-interface CraftingRecipeRuntimeState {
-  queue: number;
-  progressMs: number;
-  inProgress: boolean;
-}
-
-interface CraftingRecipeSaveState {
-  readonly queue?: number;
-  readonly progressMs?: number;
-  readonly inProgress?: boolean;
-}
-
-interface CraftingModuleSaveData {
-  readonly recipes?: Partial<Record<CraftingRecipeId, CraftingRecipeSaveState>>;
-}
-
-const PROGRESS_PUSH_INTERVAL_MS = 100;
-
-const createEmptyRuntimeState = (): CraftingRecipeRuntimeState => ({
-  queue: 0,
-  progressMs: 0,
-  inProgress: false,
-});
-
-const sanitizeQueueValue = (value: unknown): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.max(0, Math.floor(value));
-};
-
-const sanitizeProgressValue = (value: unknown, durationMs: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  if (value <= 0) {
-    return 0;
-  }
-  return Math.min(Math.max(0, value), durationMs);
-};
-
-const toCostRecord = (amount: ResourceAmount): Record<string, number> => {
-  const normalized = normalizeResourceAmount(amount);
-  const record: Record<string, number> = {};
-  (Object.keys(normalized) as ResourceId[]).forEach((id) => {
-    const value = normalized[id];
-    if (value > 0) {
-      record[id] = value;
-    }
-  });
-  return record;
-};
-
-const clamp01 = (value: number): number => {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  if (value <= 0) {
-    return 0;
-  }
-  if (value >= 1) {
-    return 1;
-  }
-  return value;
-};
-
-const createProductAmount = (
-  productId: ResourceId,
-  amount: number
-): ResourceAmount => ({
-  [productId]: amount,
-});
+import { clamp01 } from "@/utils/helpers/numbers";
+import type {
+  CraftingRecipeBridgeState,
+  CraftingBridgeState,
+  CraftingModuleOptions,
+  CraftingRecipeRuntimeState,
+  CraftingRecipeSaveState,
+  CraftingModuleSaveData,
+} from "./crafting.types";
+import {
+  DEFAULT_CRAFTING_STATE,
+  CRAFTING_STATE_BRIDGE_KEY,
+  PROGRESS_PUSH_INTERVAL_MS,
+} from "./crafting.const";
+import {
+  createEmptyRuntimeState,
+  sanitizeQueueValue,
+  sanitizeProgressValue,
+  toCostRecord,
+  createProductAmount,
+} from "./crafting.helpers";
 
 export class CraftingModule implements GameModule {
   public readonly id = "crafting";
