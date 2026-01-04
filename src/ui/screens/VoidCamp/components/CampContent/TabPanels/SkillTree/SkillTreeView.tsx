@@ -50,7 +50,10 @@ const WOBBLE_RADIUS = 5;
 const WOBBLE_SPEED = 0.003;
 // Use node hit radius plus wobble amplitude so the wobble halts as soon as the
 // cursor enters the node area or the wobble path around it.
-const HOVER_SNAP_RADIUS = NODE_RADIUS + WOBBLE_RADIUS;
+// Use hysteresis: larger radius for entering hover (to start wobble stop),
+// smaller radius for leaving hover (to resume wobble) to prevent flickering
+const HOVER_SNAP_RADIUS_ENTER = NODE_RADIUS + WOBBLE_RADIUS;
+const HOVER_SNAP_RADIUS_LEAVE = NODE_RADIUS + WOBBLE_RADIUS * 0.5;
 // Fixed viewport size for initial calculation (prevents jump on first render)
 const INITIAL_VIEWPORT_WIDTH = 2000;
 const INITIAL_VIEWPORT_HEIGHT = 2000;
@@ -692,18 +695,27 @@ export const SkillTreeView: React.FC = () => {
       pointerWorldRef.current = { x: worldX, y: worldY };
 
       let closestId: SkillId | null = null;
-      let closestDistanceSquared = HOVER_SNAP_RADIUS * HOVER_SNAP_RADIUS;
+      let closestDistanceSquared = HOVER_SNAP_RADIUS_ENTER * HOVER_SNAP_RADIUS_ENTER;
 
       visibleNodes.forEach((node) => {
-        const position =
-          renderPositionsRef.current.get(node.id) ?? layout.positions.get(node.id);
+        // Use static position (without wobble) for hover detection to prevent flickering
+        // when cursor is on the edge of a wobbling node
+        const position = layout.positions.get(node.id);
         if (!position) {
           return;
         }
         const dx = worldX - position.x;
         const dy = worldY - position.y;
         const distanceSquared = dx * dx + dy * dy;
-        if (distanceSquared <= closestDistanceSquared) {
+        
+        // Use hysteresis: different thresholds for entering and leaving hover state
+        // This prevents flickering when cursor is on the edge of a wobbling node
+        const isCurrentlyHovered = pointerHoveredId === node.id;
+        const thresholdSquared = isCurrentlyHovered
+          ? HOVER_SNAP_RADIUS_LEAVE * HOVER_SNAP_RADIUS_LEAVE
+          : HOVER_SNAP_RADIUS_ENTER * HOVER_SNAP_RADIUS_ENTER;
+        
+        if (distanceSquared <= thresholdSquared && distanceSquared <= closestDistanceSquared) {
           closestId = node.id;
           closestDistanceSquared = distanceSquared;
         }

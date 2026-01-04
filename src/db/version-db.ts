@@ -6,6 +6,19 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.0.5c",
+    releaseDate: "2026-01-05",
+    changes: [
+      "Fixed camera zoom initialization and minimum zoom calculation",
+      "Added mouse wheel zoom support on map",
+      "Fixed viewport position jumping on map tree and skill tree initialization",
+      "Added viewport position saving for map tree and skill tree",
+      "Fixed brick animation smoothness with position interpolation",
+      "Fixed particle animation issues - unit tail particles now animate smoothly",
+      "Fixed hover flickering on skill tree nodes when cursor is on the edge",
+    ],
+  },
+  {
     displayName: "v0.0.5b",
     releaseDate: "2026-01-01",
     changes: [
