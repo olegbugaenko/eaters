@@ -49,6 +49,7 @@ export class MapVisualEffects {
         rotation: 0,
         customData: {
           radius: 45,
+          autoAnimate: true, // Enable auto-animation so particles update every frame
           emitter: {
             particlesPerSecond: 90,
             particleLifetimeMs: 900,

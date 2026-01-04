@@ -18,7 +18,7 @@ interface SceneDebugPanelProps {
   particleEmitters?: number;
 }
 
-const UPDATE_INTERVAL_MS = 1000;
+const UPDATE_INTERVAL_MS = 500; // Update more frequently for smoother display
 const FPS_SAMPLE_MS = 1000;
 
 export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickCount, bridge, dynamicBytes = 0, dynamicReallocs = 0, breakdown = [], particleActive = 0, particleCapacity = 0, particleEmitters = 0 }) => {

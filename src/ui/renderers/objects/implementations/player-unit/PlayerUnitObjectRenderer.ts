@@ -75,13 +75,20 @@ const updateAuraInstances = (instance: SceneObjectInstance): void => {
 
 const createEmitterPrimitive = (
   instance: SceneObjectInstance
-): DynamicPrimitive | null =>
-  createParticleEmitterPrimitive<PlayerUnitEmitterRenderConfig>(instance, {
+): DynamicPrimitive | null => {
+  const primitive = createParticleEmitterPrimitive<PlayerUnitEmitterRenderConfig>(instance, {
     getConfig: getEmitterConfig,
     getOrigin: getEmitterOrigin,
     spawnParticle: createEmitterParticle,
     serializeConfig: serializeEmitterConfig,
   });
+  if (primitive) {
+    // Enable auto-animation for particle emitter so it updates every render frame
+    // This ensures smooth particle animation even when the unit itself is only updated on game loop ticks
+    primitive.autoAnimate = true;
+  }
+  return primitive;
+};
 
 export class PlayerUnitObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {

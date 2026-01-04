@@ -143,20 +143,22 @@ export const useSceneCanvas = ({
   hasInitializedScaleRef,
 }: UseSceneCanvasParams) => {
   // Use position interpolation hook
-  const { getInterpolatedUnitPositions, getInterpolatedBulletPositions } = usePositionInterpolation(scene, gameLoop);
+  const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions } = usePositionInterpolation(scene, gameLoop);
 
   // Store scene, spellcasting, and interpolation functions in refs to avoid recreating useEffect
   const sceneRef = useRef(scene);
   const spellcastingRef = useRef(spellcasting);
   const getInterpolatedUnitPositionsRef = useRef(getInterpolatedUnitPositions);
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
+  const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
   
   useEffect(() => {
     sceneRef.current = scene;
     spellcastingRef.current = spellcasting;
     getInterpolatedUnitPositionsRef.current = getInterpolatedUnitPositions;
     getInterpolatedBulletPositionsRef.current = getInterpolatedBulletPositions;
-  }, [scene, spellcasting, getInterpolatedUnitPositions, getInterpolatedBulletPositions]);
+    getInterpolatedBrickPositionsRef.current = getInterpolatedBrickPositions;
+  }, [scene, spellcasting, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -256,6 +258,11 @@ export const useSceneCanvas = ({
         const interpolatedUnitPositions = getInterpolatedUnitPositionsRef.current();
         if (interpolatedUnitPositions.size > 0) {
           webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedUnitPositions);
+        }
+        // Apply interpolated brick positions
+        const interpolatedBrickPositions = getInterpolatedBrickPositionsRef.current();
+        if (interpolatedBrickPositions.size > 0) {
+          webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedBrickPositions);
         }
       },
 
