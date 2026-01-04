@@ -9,21 +9,21 @@ import {
 import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
 import { GameLoop } from "@logic/services/game-loop/GameLoop";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
-import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 import {
   petalAuraGpuRenderer,
-} from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+} from "@ui/renderers/primitives/gpu/petal-aura";
 import {
   particleEmitterGpuRenderer,
-} from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { explosionWaveGpuRenderer } from "@ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
-import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
-import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
+} from "@ui/renderers/primitives/gpu/particle-emitter";
+import { explosionWaveGpuRenderer } from "@ui/renderers/primitives/gpu/explosion-wave";
+import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/whirl";
+import { renderFireRings } from "@ui/renderers/primitives/gpu/fire-ring";
 import {
   bulletGpuRenderer,
   applyInterpolatedBulletPositions,
-} from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
-import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
+} from "@ui/renderers/primitives/gpu/bullet";
+import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/ring";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "./useWebGLRenderLoop";

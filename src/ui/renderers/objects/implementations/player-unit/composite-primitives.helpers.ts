@@ -41,7 +41,7 @@ export const createCompositePrimitives = (
     // Очищаємо старі аури для цього instance
     const existingSlots = auraInstanceMap.get(instanceId);
     if (existingSlots) {
-      const { petalAuraGpuRenderer } = require("../../../primitives/gpu/PetalAuraGpuRenderer");
+      const { petalAuraGpuRenderer } = require("../../../primitives/gpu/petal-aura");
       existingSlots.forEach(({ handle }) => {
         // releaseSlot marks slots as inactive and returns them to the pool
         petalAuraGpuRenderer.releaseSlot(handle);

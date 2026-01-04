@@ -3,7 +3,7 @@ import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
 import type { BulletSlotHandle } from "../../../services/bullet-render-bridge/BulletRenderBridge";
-import type { RingSlotHandle } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
+import type { RingSlotHandle } from "@ui/renderers/primitives/gpu/ring";
 import type { BulletSpriteName } from "@logic/services/bullet-render-bridge/bullet-sprites.const";
 
 export type UnitProjectileShape = "circle" | "sprite";

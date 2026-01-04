@@ -3,7 +3,7 @@ import { SceneVector2 } from "@logic/services/scene-object-manager/scene-object-
 import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
 import { GameLoop } from "@logic/services/game-loop/GameLoop";
 import { TICK_INTERVAL } from "@logic/services/game-loop/game-loop.const";
-import { getAllActiveBullets } from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
+import { getAllActiveBullets } from "@ui/renderers/primitives/gpu/bullet/BulletGpuRenderer";
 
 const DRIFT_SNAP_THRESHOLD = TICK_INTERVAL * 1.25;
 

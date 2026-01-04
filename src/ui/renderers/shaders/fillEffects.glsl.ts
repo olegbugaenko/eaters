@@ -4,6 +4,8 @@
  * Import and concatenate with your shader code.
  */
 
+import { TO_CLIP_GLSL, CLAMP01_GLSL } from "./common.glsl";
+
 // ============================================================================
 // CORE NOISE FUNCTIONS (no dependencies on varyings)
 // ============================================================================
@@ -90,12 +92,7 @@ out vec4 v_stopColor1;
 out vec4 v_stopColor2;
 `;
 
-export const SCENE_VERTEX_SHADER_MAIN = `
-vec2 toClip(vec2 world) {
-  vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
-  return vec2(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0);
-}
-
+export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
 void main() {
   gl_Position = vec4(toClip(a_position), 0.0, 1.0);
   v_worldPosition = a_position;
@@ -133,10 +130,7 @@ in vec4 v_stopColor2;
 
 out vec4 fragColor;
 
-float clamp01(float value) {
-  return clamp(value, 0.0, 1.0);
-}
-`;
+` + CLAMP01_GLSL;
 
 // Legacy exports for backwards compatibility
 export const FILL_NOISE_GLSL = CORE_NOISE_GLSL;

@@ -15,7 +15,7 @@ import {
   type WaveInstance,
   type WaveUniformConfig,
   type WaveSlotHandle,
-} from "../../../primitives/gpu/ExplosionWaveGpuRenderer";
+} from "../../../primitives/gpu/explosion-wave";
 import { createExplosionEmitterPrimitive } from "./emitter.helpers";
 import { toWaveUniformsFromFill } from "./wave-uniforms.helpers";
 import { DEFAULT_WAVE_LIFETIME_MS, DEFAULT_WAVE_BATCH_CAPACITY } from "./constants";

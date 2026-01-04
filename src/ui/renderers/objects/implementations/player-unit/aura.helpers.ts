@@ -2,7 +2,7 @@ import {
   petalAuraGpuRenderer,
   type PetalAuraInstance,
   type PetalAuraSlotHandle,
-} from "../../../primitives/gpu/PetalAuraGpuRenderer";
+} from "../../../primitives/gpu/petal-aura";
 import { getParticleEmitterGlContext } from "../../../primitives/utils/gpuContext";
 import type { PlayerUnitAuraConfig } from "../../../../../db/player-units-db";
 

@@ -3,6 +3,8 @@
  * Renders animated expanding rings with radial gradient fading
  */
 
+import { TO_CLIP_GLSL } from "./common.glsl";
+
 export const RING_VERTEX_SHADER = `#version 300 es
 precision highp float;
 
@@ -36,10 +38,7 @@ out float v_innerStop;
 out float v_outerStop;
 out vec3 v_color;
 
-vec2 toClip(vec2 world) {
-  vec2 normalized = (world - u_cameraPosition) / u_viewportSize;
-  return vec2(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0);
-}
+` + TO_CLIP_GLSL + `
 
 void main() {
   // Discard inactive instances

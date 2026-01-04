@@ -1,7 +1,7 @@
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import { arcGpuRenderer } from "../../../../ui/renderers/primitives/gpu/ArcGpuRenderer";
-import { particleEmitterGpuRenderer } from "../../../../ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { explosionWaveGpuRenderer } from "../../../../ui/renderers/primitives/gpu/ExplosionWaveGpuRenderer";
+import { arcGpuRenderer } from "../../../../ui/renderers/primitives/gpu/arc";
+import { particleEmitterGpuRenderer } from "../../../../ui/renderers/primitives/gpu/particle-emitter";
+import { explosionWaveGpuRenderer } from "../../../../ui/renderers/primitives/gpu/explosion-wave";
 import { FireballModule } from "../../scene/fireball/fireball.module";
 import { BulletModule } from "../bullet/bullet.module";
 import { ExplosionModule } from "../../scene/explosion/explosion.module";

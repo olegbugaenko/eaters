@@ -27,4 +27,4 @@ export {
   DEFAULT_BULLET_VISUAL,
   type BulletVisualConfig,
   type BulletSlotHandle,
-} from "./gpu/BulletGpuRenderer";
+} from "./gpu/bullet";

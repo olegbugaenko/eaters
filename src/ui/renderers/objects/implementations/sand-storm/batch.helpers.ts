@@ -1,4 +1,4 @@
-import { whirlGpuRenderer, type WhirlSlotHandle } from "../../../primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer, type WhirlSlotHandle } from "../../../primitives/gpu/whirl";
 import { getParticleEmitterGlContext } from "../../../primitives/utils/gpuContext";
 import { DEFAULT_BATCH_CAPACITY } from "./constants";
 

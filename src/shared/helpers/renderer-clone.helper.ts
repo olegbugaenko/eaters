@@ -4,6 +4,7 @@ import type {
   SceneSolidFill,
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import { cloneSceneFill, cloneSceneFillDeep } from "@shared/helpers/scene-fill.helper";
 import type {
@@ -59,6 +60,22 @@ export const cloneRendererFillConfig = (
 };
 
 /**
+ * Resolves RendererFillConfig to SceneFill.
+ * This is a unified function for converting RendererFillConfig to SceneFill.
+ * Use this instead of manually cloning fill.fill in different places.
+ */
+export const resolveRendererFillConfig = (
+  fill: RendererFillConfig | undefined,
+  options: CloneRendererOptions = {}
+): SceneFill => {
+  if (!fill || fill.type === "base") {
+    return { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } };
+  }
+  // solid and gradient: incoming is SceneFill-compatible
+  return options.deep ? cloneSceneFillDeep(fill.fill) : cloneSceneFill(fill.fill);
+};
+
+/**
  * Clones a RendererStrokeConfig.
  */
 export const cloneRendererStrokeConfig = (
@@ -73,9 +90,7 @@ export const cloneRendererStrokeConfig = (
     return {
       type: "solid",
       width: stroke.width,
-      color: options.deep
-        ? cloneSceneColor(stroke.color)
-        : { ...stroke.color },
+      color: cloneSceneColor(stroke.color),
     };
   }
 
@@ -155,7 +170,7 @@ export const cloneAuraConfig = (
   outerRadius: aura.outerRadius,
   petalWidth: aura.petalWidth,
   rotationSpeed: aura.rotationSpeed,
-  color: options.deep ? cloneSceneColor(aura.color) : { ...aura.color },
+  color: cloneSceneColor(aura.color),
   alpha: aura.alpha,
   requiresModule: aura.requiresModule,
   pointInward: aura.pointInward,
@@ -171,9 +186,7 @@ export const deriveRendererStroke = (
 ): { color: SceneColor; width: number } | undefined => {
   if (renderer.stroke) {
     return {
-      color: options.deep
-        ? cloneSceneColor(renderer.stroke.color)
-        : { ...renderer.stroke.color },
+      color: cloneSceneColor(renderer.stroke.color),
       width: renderer.stroke.width,
     };
   }
@@ -186,9 +199,7 @@ export const deriveRendererStroke = (
           ? layerStroke.width
           : 2;
       return {
-        color: options.deep
-          ? cloneSceneColor(layerStroke.color)
-          : { ...layerStroke.color },
+        color: cloneSceneColor(layerStroke.color),
         width,
       };
     }
@@ -207,16 +218,14 @@ export const cloneRendererConfigForScene = (
   const strokeSource = renderer.stroke ?? deriveRendererStroke(renderer, options);
   const stroke = strokeSource
     ? {
-        color: options.deep
-          ? cloneSceneColor(strokeSource.color)
-          : { ...strokeSource.color },
+        color: cloneSceneColor(strokeSource.color),
         width: strokeSource.width,
       }
     : undefined;
 
   return {
     kind: renderer.kind,
-    fill: options.deep ? cloneSceneColor(renderer.fill) : { ...renderer.fill },
+    fill: cloneSceneColor(renderer.fill),
     stroke,
     layers: renderer.layers.map((layer) => cloneRendererLayer(layer, options)),
     auras: renderer.auras

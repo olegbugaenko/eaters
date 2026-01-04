@@ -144,7 +144,7 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     const auraInstanceMap = getAuraInstanceMap();
     const slots = auraInstanceMap.get(instanceId);
     if (slots) {
-      const { petalAuraGpuRenderer } = require("../../../primitives/gpu/PetalAuraGpuRenderer");
+      const { petalAuraGpuRenderer } = require("../../../primitives/gpu/petal-aura");
       slots.forEach(({ handle }) => {
         petalAuraGpuRenderer.releaseSlot(handle);
       });

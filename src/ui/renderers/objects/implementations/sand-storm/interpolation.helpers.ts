@@ -1,5 +1,4 @@
-import { whirlGpuRenderer, type WhirlInstance } from "../../../primitives/gpu/WhirlGpuRenderer";
-import { type WhirlSlotHandle } from "../../../primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer, type WhirlInstance, type WhirlSlotHandle } from "../../../primitives/gpu/whirl";
 import { MAX_INTERPOLATION_TIME_MS } from "./constants";
 import type { InterpolationData } from "./types";
 

@@ -27,7 +27,7 @@ export const cloneSceneGradientStops = (
 ): SceneGradientStop[] =>
   stops.map((stop) => ({
     offset: stop.offset,
-    color: { ...stop.color },
+    color: cloneSceneColor(stop.color),
   }));
 
 /**
@@ -49,10 +49,7 @@ export const createRadialGradientFill = (
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: options?.start ? { ...options.start } : { x: 0, y: 0 },
     end: radius,
-    stops: stops.map((stop) => ({
-      offset: stop.offset,
-      color: { ...stop.color },
-    })),
+    stops: cloneSceneGradientStops(stops),
   };
 
   if (options?.noise) {
@@ -157,7 +154,7 @@ export const cloneSceneFill = (fill: SceneFill): SceneFill => {
       const solidFill = fill as SceneSolidFill;
       const cloned: SceneSolidFill = {
         fillType: FILL_TYPES.SOLID,
-        color: { ...solidFill.color },
+        color: cloneSceneColor(solidFill.color),
       };
       return withNoiseAndFilaments(cloned, fill);
     }

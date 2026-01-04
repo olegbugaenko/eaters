@@ -24,7 +24,7 @@ import {
   explosionWaveGpuRenderer,
   type WaveInstance,
   type WaveSlotHandle,
-} from "../primitives/gpu/ExplosionWaveGpuRenderer";
+} from "../primitives/gpu/explosion-wave";
 import {
   normalizeAngle,
   sanitizeAngle,

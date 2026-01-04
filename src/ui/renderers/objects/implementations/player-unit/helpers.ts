@@ -8,7 +8,7 @@ import type {
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
-import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 import { createSolidFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
 import type {
@@ -17,6 +17,7 @@ import type {
 } from "@db/player-units-db";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
 import { isVector, sanitizeVertices, sanitizeOffset } from "@shared/helpers/vector.helper";
+import { resolveRendererFillConfig } from "@shared/helpers/renderer-clone.helper";
 import { DEFAULT_VERTICES, DEFAULT_BASE_FILL_COLOR, MIN_CIRCLE_SEGMENTS } from "./constants";
 import type {
   PlayerUnitCustomData,
@@ -218,13 +219,13 @@ export const sanitizeFillConfig = (
     const solidFill = fill.fill as SceneSolidFill;
     return {
       kind: "solid" as const,
-      color: { ...solidFill.color },
+      color: cloneSceneColor(solidFill.color),
       ...(solidFill.noise ? { noise: solidFill.noise } : {}),
     };
   }
   return {
     kind: "gradient" as const,
-    fill: cloneSceneFill(fill.fill),
+    fill: resolveRendererFillConfig(fill),
   };
 };
 
@@ -247,7 +248,7 @@ export const sanitizeStrokeConfig = (
     return {
       kind: "solid",
       width,
-      color: { ...stroke.color },
+      color: cloneSceneColor(stroke.color),
     };
   }
   return {

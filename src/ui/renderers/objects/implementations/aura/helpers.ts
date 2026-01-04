@@ -3,8 +3,9 @@ import type {
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { computeCenter, sanitizeVertices } from "@shared/helpers/vector.helper";
+import { resolveRendererFillConfig } from "@shared/helpers/renderer-clone.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
 
 /**
@@ -17,13 +18,10 @@ export const getStrokeWidth = (stroke: RendererStrokeConfig): number => {
 
 /**
  * Resolves RendererFillConfig to SceneFill
+ * @deprecated Use resolveRendererFillConfig from @shared/helpers/renderer-clone.helper instead
  */
 export const resolveFill = (fill: RendererFillConfig | undefined): SceneFill => {
-  if (!fill || fill.type === "base") {
-    return { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } };
-  }
-  // solid and gradient: incoming is SceneFill-compatible
-  return cloneSceneFill(fill.fill);
+  return resolveRendererFillConfig(fill);
 };
 
 /**
@@ -31,7 +29,7 @@ export const resolveFill = (fill: RendererFillConfig | undefined): SceneFill => 
  */
 export const resolveStrokeFill = (stroke: RendererStrokeConfig): SceneFill => {
   if (stroke.type === "solid") {
-    return { fillType: FILL_TYPES.SOLID, color: { ...stroke.color } };
+    return { fillType: FILL_TYPES.SOLID, color: cloneSceneColor(stroke.color) };
   }
   // base stroke uses base color white; brightness/alpha are ignored for auras
   return { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } };

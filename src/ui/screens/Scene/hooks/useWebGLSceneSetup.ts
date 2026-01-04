@@ -2,24 +2,24 @@ import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneOb
 import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { createObjectsRendererManager } from "@ui/renderers/objects";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
-import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 import { setParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
-import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/whirl";
 import {
   bulletGpuRenderer,
   createBulletVisualConfig,
-} from "@ui/renderers/primitives/gpu/BulletGpuRenderer";
+} from "@ui/renderers/primitives/gpu/bullet";
 import { setBulletRenderBridge } from "@logic/services/bullet-render-bridge/BulletRenderBridge";
-import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/RingGpuRenderer";
+import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/ring";
 import { registerHmrCleanup } from "@ui/shared/hmrCleanup";
 import { getParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
 // WhirlGpuRenderer now uses unified API
 // PetalAuraGpuRenderer now uses unified API
-import { disposeParticleRenderResources } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { disposeFireRing } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
+import { disposeParticleRenderResources } from "@ui/renderers/primitives/gpu/particle-emitter";
+import { disposeFireRing } from "@ui/renderers/primitives/gpu/fire-ring";
 // BulletGpuRenderer now uses unified API
 // RingGpuRenderer now uses unified API - no separate imports needed
-import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
+import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */

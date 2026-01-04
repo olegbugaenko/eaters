@@ -5,68 +5,21 @@
  * Unified API: extends GpuBatchRenderer for consistent lifecycle and slot management
  */
 
-import { SceneColor, SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { RING_VERTEX_SHADER, RING_FRAGMENT_SHADER } from "../../shaders/ring.glsl";
-import { GpuBatchRenderer, type SlotHandle } from "../core/GpuBatchRenderer";
-import type { ExtendedGpuBatch } from "../core/GpuBatchRenderer";
-import { compileProgram } from "../core/BaseGpuPrimitive";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface RingInstance {
-  position: SceneVector2;
-  createdAt: number;
-  lifetimeMs: number;
-  startRadius: number;
-  endRadius: number;
-  startAlpha: number;
-  endAlpha: number;
-  innerStop: number;
-  outerStop: number;
-  color: SceneColor;
-  active: boolean;
-}
-
-interface RingBatch extends ExtendedGpuBatch<RingInstance> {
-  // No additional fields needed - all in base GpuBatch
-}
-
-interface RingSharedResources {
-  program: WebGLProgram;
-  circleBuffer: WebGLBuffer;
-  circleVertexCount: number;
-  uniforms: {
-    cameraPosition: WebGLUniformLocation | null;
-    viewportSize: WebGLUniformLocation | null;
-    time: WebGLUniformLocation | null;
-  };
-  attributes: {
-    position: number;
-    instancePosition: number;
-    instanceCreatedAt: number;
-    instanceLifetime: number;
-    instanceStartRadius: number;
-    instanceEndRadius: number;
-    instanceStartAlpha: number;
-    instanceEndAlpha: number;
-    instanceInnerStop: number;
-    instanceOuterStop: number;
-    instanceColor: number;
-    instanceActive: number;
-  };
-}
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-// Instance data: x, y, createdAt, lifetime, startR, endR, startA, endA, inner, outer, r, g, b, active
-const INSTANCE_COMPONENTS = 14;
-const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-const DEFAULT_BATCH_CAPACITY = 512;
-const CIRCLE_SEGMENTS = 48;
+import type { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { RING_VERTEX_SHADER, RING_FRAGMENT_SHADER } from "../../../shaders/ring.glsl";
+import { GpuBatchRenderer, type SlotHandle } from "../../core/GpuBatchRenderer";
+import { compileProgram } from "../../core/BaseGpuPrimitive";
+import type {
+  RingInstance,
+  RingBatch,
+  RingSharedResources,
+} from "./ring.types";
+import {
+  INSTANCE_COMPONENTS,
+  INSTANCE_STRIDE,
+  DEFAULT_BATCH_CAPACITY,
+  CIRCLE_SEGMENTS,
+} from "./ring.const";
 
 // ============================================================================
 // Helpers

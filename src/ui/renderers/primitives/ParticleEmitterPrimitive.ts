@@ -42,7 +42,7 @@ import {
   refreshParticleUniformKeys,
   registerParticleEmitterHandle,
   unregisterParticleEmitterHandle,
-} from "./gpu/ParticleEmitterGpuRenderer";
+} from "./gpu/particle-emitter";
 
 export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;

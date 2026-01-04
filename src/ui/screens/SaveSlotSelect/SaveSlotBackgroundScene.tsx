@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
-import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
-import { particleEmitterGpuRenderer } from "@ui/renderers/primitives/gpu/ParticleEmitterGpuRenderer";
-import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/ArcGpuRenderer";
-import { renderFireRings } from "@ui/renderers/primitives/gpu/FireRingGpuRenderer";
+import { particleEmitterGpuRenderer } from "@ui/renderers/primitives/gpu/particle-emitter";
+import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
+import { renderFireRings } from "@ui/renderers/primitives/gpu/fire-ring";
 import { setupWebGLScene } from "@ui/screens/Scene/hooks/useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoop";
-import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/whirl";
 import {
   MAP_SIZE,
   TITLE_LINES,

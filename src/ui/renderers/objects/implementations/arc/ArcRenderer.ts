@@ -11,7 +11,7 @@ import {
   type ArcInstance,
   type ArcBatchConfig,
   type ArcSlotHandle,
-} from "../../../primitives/gpu/ArcGpuRenderer";
+} from "../../../primitives/gpu/arc";
 import type { ArcRendererCustomData } from "./types";
 import { DEFAULT_ARC_BATCH_CAPACITY } from "./constants";
 

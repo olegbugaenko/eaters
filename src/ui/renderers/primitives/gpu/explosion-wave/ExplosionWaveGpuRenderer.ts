@@ -6,123 +6,25 @@
  * Uses shared resources from ParticleEmitterGpuRenderer
  */
 
-import { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { GpuBatchRenderer, type SlotHandle } from "../core/GpuBatchRenderer";
-import type { ExtendedGpuBatch } from "../core/GpuBatchRenderer";
+import type { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { GpuBatchRenderer, type SlotHandle } from "../../core/GpuBatchRenderer";
 import {
-  ParticleEmitterGpuRenderUniforms,
   getParticleRenderResources,
   uploadEmitterUniformsPublic,
-} from "./ParticleEmitterGpuRenderer";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface WaveInstance {
-  position: SceneVector2;
-  size: number; // diameter in world units
-  age: number;
-  lifetime: number;
-  active: boolean;
-  startAlpha: number; // alpha at age=0
-  endAlpha: number; // alpha at age=lifetime
-}
-
-export type WaveUniformConfig = Omit<
-  ParticleEmitterGpuRenderUniforms,
-  | "minParticleSize"
-  | "shape"
-  | "stopOffsets"
-  | "stopColor0"
-  | "stopColor1"
-  | "stopColor2"
-  | "stopColor3"
-  | "stopColor4"
-  | "linearStart"
-  | "linearEnd"
-  | "radialOffset"
-  | "sizeGrowthRate"
-> & {
-  stopOffsets: Float32Array;
-  stopColor0: Float32Array;
-  stopColor1: Float32Array;
-  stopColor2: Float32Array;
-  stopColor3: Float32Array;
-  stopColor4: Float32Array;
-  linearStart?: SceneVector2;
-  linearEnd?: SceneVector2;
-  radialOffset?: SceneVector2;
-};
-
-interface WaveBatch extends ExtendedGpuBatch<WaveInstance> {
-  uniforms: ParticleEmitterGpuRenderUniforms;
-}
-
-interface WaveSharedResources {
-  program: WebGLProgram;
-  quadBuffer: WebGLBuffer;
-  attributes: {
-    unitPosition: number;
-    position: number;
-    size: number;
-    startAlpha: number;
-    endAlpha: number;
-    age: number;
-    lifetime: number;
-    isActive: number;
-  };
-}
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-// Instance data: position(2) + size(1) + age(1) + lifetime(1) + isActive(1) + startAlpha(1) + endAlpha(1)
-const INSTANCE_COMPONENTS = 8;
-const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-const DEFAULT_BATCH_CAPACITY = 512;
-
-// ============================================================================
-// Helper: Serialize WaveUniformConfig to batch key
-// ============================================================================
-
-// Round float to 2 decimal places for stable batch key
-const r2 = (n: number): string => n.toFixed(2);
-
-// Round color array for batch key (avoid float precision issues)
-const roundColor = (arr: Float32Array): string => {
-  return `${r2(arr[0] ?? 0)},${r2(arr[1] ?? 0)},${r2(arr[2] ?? 0)},${r2(arr[3] ?? 0)}`;
-};
-
-const serializeWaveConfig = (config: WaveUniformConfig): string => {
-  // Simplified batch key - only essential parameters that affect rendering
-  // Colors are rounded to avoid float precision creating too many unique batches
-  const parts: string[] = [
-    `ft:${config.fillType}`,
-    `sc:${config.stopCount}`,
-  ];
-  
-  // Add rounded colors (main differentiator for visual appearance)
-  if (config.stopCount > 0) {
-    parts.push(`c0:${roundColor(config.stopColor0)}`);
-  }
-  if (config.stopCount > 1) {
-    parts.push(`c1:${roundColor(config.stopColor1)}`);
-  }
-  
-  // Add noise if significant
-  if (config.noiseColorAmplitude > 0.01 || config.noiseAlphaAmplitude > 0.01) {
-    parts.push(`n:${r2(config.noiseScale)}`);
-  }
-  
-  // Add filaments if present
-  if ((config.filamentColorContrast ?? 0) > 0.01 || (config.filamentAlphaContrast ?? 0) > 0.01) {
-    parts.push(`f:1`);
-  }
-  
-  return parts.join("|");
-};
+} from "../particle-emitter";
+import type { ParticleEmitterGpuRenderUniforms } from "../particle-emitter";
+import type {
+  WaveInstance,
+  WaveBatch,
+  WaveUniformConfig,
+  WaveSharedResources,
+} from "./explosion-wave.types";
+import {
+  INSTANCE_COMPONENTS,
+  INSTANCE_STRIDE,
+  DEFAULT_BATCH_CAPACITY,
+  serializeWaveConfig,
+} from "./explosion-wave.const";
 
 // ============================================================================
 // ExplosionWaveGpuRenderer Class
@@ -477,4 +379,3 @@ export const explosionWaveGpuRenderer = new ExplosionWaveGpuRenderer();
 
 // Re-export types
 export type WaveSlotHandle = SlotHandle;
-

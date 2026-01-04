@@ -29,7 +29,7 @@ import {
 import {
   ringGpuRenderer,
   type RingSlotHandle,
-} from "@ui/renderers/primitives/gpu/RingGpuRenderer";
+} from "@ui/renderers/primitives/gpu/ring";
 import { resolveBulletSpriteIndex } from "@logic/services/bullet-render-bridge/bullet-sprites.helpers";
 import type {
   UnitProjectileShape,

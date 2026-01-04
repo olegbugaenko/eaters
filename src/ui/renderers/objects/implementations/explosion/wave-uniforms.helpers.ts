@@ -9,7 +9,7 @@ import type {
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
-import type { WaveUniformConfig } from "../../../primitives/gpu/ExplosionWaveGpuRenderer";
+import type { WaveUniformConfig } from "../../../primitives/gpu/explosion-wave";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 
 /**

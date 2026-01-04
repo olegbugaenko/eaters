@@ -37,7 +37,7 @@ import type { ResourceRunSummaryPayload } from "@logic/modules/shared/resources/
 import { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
-import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
+import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 
 const AUTO_RESTART_SECONDS = 5;
 

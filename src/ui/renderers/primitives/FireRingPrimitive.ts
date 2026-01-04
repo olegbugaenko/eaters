@@ -5,7 +5,7 @@ import {
   fireRingGpuRenderer,
   type FireRingInstance,
   type FireRingSlotHandle,
-} from "./gpu/FireRingGpuRenderer";
+} from "./gpu/fire-ring";
 import { getParticleEmitterGlContext } from "./utils/gpuContext";
 import { getSceneTimelineNow } from "./utils/sceneTimeline";
 

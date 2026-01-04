@@ -4,8 +4,7 @@ import {
   DynamicPrimitive,
 } from "../../ObjectRenderer";
 import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { whirlGpuRenderer, type WhirlInstance } from "../../../primitives/gpu/WhirlGpuRenderer";
-import { type WhirlSlotHandle } from "../../../primitives/gpu/WhirlGpuRenderer";
+import { whirlGpuRenderer, type WhirlInstance, type WhirlSlotHandle } from "../../../primitives/gpu/whirl";
 import { ensureBatch, acquireSlot } from "./batch.helpers";
 import { computeInterpolatedState } from "./interpolation.helpers";
 import { extractCustomData, createInterpolationData } from "./data.helpers";
