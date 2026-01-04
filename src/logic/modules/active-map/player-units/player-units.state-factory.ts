@@ -1,6 +1,6 @@
 import { StateFactory } from "../../../core/factories/StateFactory";
 import type { PlayerUnitState } from "./units/UnitTypes";
-import type { PlayerUnitSpawnData } from "./player-units.module";
+import type { PlayerUnitSpawnData } from "./player-units.types";
 import type { UnitFactory, UnitFactoryResult } from "./units/UnitFactory";
 import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import type { UnitModuleId } from "../../../../db/unit-modules-db";

@@ -1,4 +1,4 @@
-import type { ExplosionRendererEmitterConfig } from "../../../db/explosions-db";
+import type { ParticleEmitterConfig } from "../../../logic/interfaces/visuals/particle-emitters-config";
 import {
   DynamicPrimitive,
   ObjectRegistration,
@@ -18,7 +18,7 @@ import {
 import { FILL_TYPES } from "../../../logic/services/scene-object-manager/scene-object-manager.const";
 import { createParticleEmitterPrimitive } from "../primitives";
 import { getParticleEmitterGlContext } from "../primitives/utils/gpuContext";
-import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import {
   WaveUniformConfig,
   ensureWaveBatch,
@@ -41,7 +41,7 @@ import { randomBetween } from "@shared/helpers/numbers.helper";
 
 interface ExplosionRendererCustomData {
   waveLifetimeMs?: number;
-  emitter?: ExplosionRendererEmitterConfig;
+  emitter?: ParticleEmitterConfig;
 }
 
 type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {
@@ -67,7 +67,7 @@ const createExplosionEmitterPrimitive = (
 // Cache emitter configs to avoid creating new objects every frame
 const explosionEmitterConfigCache = new WeakMap<
   SceneObjectInstance,
-  { source: ExplosionRendererEmitterConfig | undefined; config: ExplosionEmitterRenderConfig | null }
+  { source: ParticleEmitterConfig | undefined; config: ExplosionEmitterRenderConfig | null }
 >();
 
 const getEmitterConfig = (
@@ -93,7 +93,7 @@ const getEmitterConfig = (
 };
 
 const sanitizeExplosionEmitterConfig = (
-  config: ExplosionRendererEmitterConfig
+  config: ParticleEmitterConfig
 ): ExplosionEmitterRenderConfig | null => {
   const base = sanitizeParticleEmitterConfig(
     {
@@ -423,7 +423,7 @@ const toWaveUniformsFromFill = (
   let linearEnd: SceneVector2 | undefined;
   let radialOffset: SceneVector2 | undefined;
 
-  const defaultColor = { r: 1, g: 1, b: 1, a: 1 };
+  const defaultColor: SceneColor = { r: 1, g: 1, b: 1, a: 1 };
   const stopColors = [stopColor0, stopColor1, stopColor2, stopColor3, stopColor4];
 
   if (fill.fillType === FILL_TYPES.SOLID) {
@@ -441,13 +441,13 @@ const toWaveUniformsFromFill = (
     if (f.end) linearEnd = { x: f.end.x ?? 0, y: f.end.y ?? 0 };
     const stops = Array.isArray(f.stops) ? f.stops : [];
     stopCount = Math.min(5, Math.max(1, stops.length));
-    let prevColor = defaultColor;
+    let prevColor: SceneColor = defaultColor;
     for (let i = 0; i < 5; i++) {
       const s = stops[i] ?? stops[stops.length - 1] ?? { offset: 1, color: prevColor };
       stopOffsets[i] = Math.max(0, Math.min(1, s.offset ?? (i / 4)));
       const c = sanitizeSceneColor(s.color, prevColor);
       stopColors[i]!.set([c.r, c.g, c.b, c.a ?? 1]);
-      prevColor = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+      prevColor = cloneSceneColor(c);
     }
   } else if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT || fill.fillType === FILL_TYPES.DIAMOND_GRADIENT) {
     const f = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
@@ -458,13 +458,13 @@ const toWaveUniformsFromFill = (
     explicitRadius = hasExplicitRadius ? Number(f.end) : 0;
     const stops = Array.isArray(f.stops) ? f.stops : [];
     stopCount = Math.min(5, Math.max(1, stops.length));
-    let prevColor = defaultColor;
+    let prevColor: SceneColor = defaultColor;
     for (let i = 0; i < 5; i++) {
       const s = stops[i] ?? stops[stops.length - 1] ?? { offset: 1, color: prevColor };
       stopOffsets[i] = Math.max(0, Math.min(1, s.offset ?? (i / 4)));
       const c = sanitizeSceneColor(s.color, prevColor);
       stopColors[i]!.set([c.r, c.g, c.b, c.a ?? 1]);
-      prevColor = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+      prevColor = cloneSceneColor(c);
     }
   }
 

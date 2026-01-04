@@ -57,21 +57,21 @@ export interface SceneLinearGradientFill extends SceneFillCommon {
   fillType: SceneFillType;
   start?: SceneVector2;
   end?: SceneVector2;
-  stops: SceneGradientStop[];
+  stops: readonly SceneGradientStop[];
 }
 
 export interface SceneRadialGradientFill extends SceneFillCommon {
   fillType: SceneFillType;
   start?: SceneVector2;
   end?: number;
-  stops: SceneGradientStop[];
+  stops: readonly SceneGradientStop[];
 }
 
 export interface SceneDiamondGradientFill extends SceneFillCommon {
   fillType: SceneFillType;
   start?: SceneVector2;
   end?: number;
-  stops: SceneGradientStop[];
+  stops: readonly SceneGradientStop[];
 }
 
 export type SceneFill =

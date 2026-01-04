@@ -1,48 +1,17 @@
 import {
   SceneColor,
   SceneFill,
-  SceneFillFilaments,
-  SceneFillNoise,
+  SceneSolidFill,
   SceneVector2,
 } from "../logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 import { ResourceCost } from "@shared/types/resources";
 import type { UnitModuleId } from "./unit-modules-db";
-import type { SkillId } from "./skills-db";
 import { mapLineToPolygonShape } from '@shared/helpers/paths.helper';
+import type { ExtendedRendererLayerFields, BaseRendererLayerConfig } from "@shared/types/renderer.types";
 
 export type PlayerUnitType = "bluePentagon";
-
-export type PlayerUnitRendererFillConfig =
-  | {
-      type: "base";
-      brightness?: number;
-      alphaMultiplier?: number;
-    }
-  | {
-      type: "solid";
-      color: SceneColor;
-      noise?: SceneFillNoise;
-      filaments?: SceneFillFilaments;
-    }
-  | {
-      type: "gradient";
-      fill: SceneFill;
-    };
-
-export type PlayerUnitRendererStrokeConfig =
-  | {
-      type: "base";
-      width: number;
-      brightness?: number;
-      alphaMultiplier?: number;
-    }
-  | {
-      type: "solid";
-      width: number;
-      color: SceneColor;
-    };
 
 export interface PlayerUnitAuraConfig {
   petalCount: number;
@@ -56,51 +25,7 @@ export interface PlayerUnitAuraConfig {
   pointInward?: boolean; // Якщо true, пелюстки спрямовані всередину (загостренням до центру), інакше назовні (за замовчуванням false)
 }
 
-export type PlayerUnitRendererLayerConfig =
-  | {
-      shape: "polygon";
-      vertices: readonly SceneVector2[];
-      offset?: SceneVector2;
-      fill?: PlayerUnitRendererFillConfig;
-      stroke?: PlayerUnitRendererStrokeConfig;
-      requiresModule?: UnitModuleId;
-      requiresSkill?: SkillId;
-      requiresEffect?: string;
-      // Optional animation and meta for dynamic deformation
-      anim?: {
-        type: "sway" | "pulse";
-        periodMs?: number;
-        amplitude?: number; // absolute displacement in world units
-        amplitudePercentage?: number; // optional: fraction of perpendicular distance to axis
-        phase?: number;
-        falloff?: "tip" | "root" | "none";
-        axis?: "normal" | "tangent" | "movement-normal" | "movement-tangent";
-      };
-      // Meta for line-based shapes (tentacles): original spine and builder opts
-      spine?: { x: number; y: number; width: number }[];
-      segmentIndex?: number;
-      buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
-      groupId?: string;
-    }
-  | {
-      shape: "circle";
-      radius: number;
-      segments?: number;
-      offset?: SceneVector2;
-      fill?: PlayerUnitRendererFillConfig;
-      stroke?: PlayerUnitRendererStrokeConfig;
-      requiresModule?: UnitModuleId;
-      requiresSkill?: SkillId;
-      requiresEffect?: string;
-      anim?: {
-        type: "pulse" | "sway";
-        periodMs?: number;
-        amplitude?: number;
-        amplitudePercentage?: number;
-        phase?: number;
-      };
-      groupId?: string;
-    };
+export type PlayerUnitRendererLayerConfig = BaseRendererLayerConfig<ExtendedRendererLayerFields>;
 
 export interface PlayerUnitRendererCompositeConfig {
   kind: "composite";
@@ -393,32 +318,32 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         },
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -7.8, y: 0.8 }, { x: -19.8, y: 7.6 }, { x: -8.4, y: 2.2 } ],
-          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } } },
           stroke: { type: "base", width: 0.8, brightness: -0.12 },
         },
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -7.8, y: -0.8 }, { x: -19.8, y: -7.6 }, { x: -8.4, y: -2.2 } ],
-          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } } },
           stroke: { type: "base", width: 0.8, brightness: -0.12 },
         },
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -6.3, y: 0.8 }, { x: -15.8, y: 10.6 }, { x: -7.4, y: 2.2 } ],
-          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } } },
           stroke: { type: "base", width: 0.8, brightness: -0.12 },
         },
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -6.3, y: -0.8 }, { x: -15.8, y: -10.6 }, { x: -7.4, y: -2.2 } ],
-          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } } },
           stroke: { type: "base", width: 0.8, brightness: -0.12 },
         },
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -5.3, y: 0.8 }, { x: -12.8, y: 11.6 }, { x: -6.4, y: 2.2 } ],
-          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } } },
           stroke: { type: "base", width: 0.8, brightness: -0.12 },
         },
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -5.3, y: -0.8 }, { x: -12.8, y: -11.6 }, { x: -6.4, y: -2.2 } ],
-          fill: { type: "solid", color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.74, g: 0.86, b: 0.95, a: 0.8 } } },
           stroke: { type: "base", width: 0.8, brightness: -0.12 },
         },
 
@@ -462,7 +387,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           ],
           {
             requiresModule: "burningTail",
-            fill: { type: "solid", color: { r: 1, g: 0.6, b: 0.24, a: 0.75 } },
+            fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 0.6, b: 0.24, a: 0.75 } } },
             anim: { type: "sway", periodMs: 1650, amplitude: 5.6, falloff: "tip", axis: "normal", phase: 0.42 },
             groupId: "burningTail-glow",
           },
@@ -477,7 +402,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             { x: -33.8, y: -0.2 },
             { x: -31.0, y: -0.7 },
           ],
-          fill: { type: "solid", color: { r: 1, g: 0.58, b: 0.2, a: 0.85 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 0.58, b: 0.2, a: 0.85 } } },
           stroke: { type: "solid", width: 0.6, color: { r: 0.75, g: 0.22, b: 0.05, a: 1 } },
         },
         {
@@ -537,7 +462,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           ],
           {
             requiresModule: "freezingTail",
-            fill: { type: "solid", color: { r: 0.66, g: 0.95, b: 1, a: 0.78 } },
+            fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.66, g: 0.95, b: 1, a: 0.78 } } },
             anim: { type: "sway", periodMs: 1880, amplitude: 5.4, falloff: "tip", axis: "normal", phase: 0.48 },
             groupId: "freezingTail-glow",
           },
@@ -552,7 +477,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             { x: -32.4, y: -0.1 },
             { x: -30.0, y: -0.6 },
           ],
-          fill: { type: "solid", color: { r: 0.66, g: 0.95, b: 1, a: 0.85 } },
+          fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.66, g: 0.95, b: 1, a: 0.85 } } },
           stroke: { type: "solid", width: 0.6, color: { r: 0.24, g: 0.62, b: 0.95, a: 1 } },
         },
         {

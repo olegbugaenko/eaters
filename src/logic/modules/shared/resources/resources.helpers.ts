@@ -1,14 +1,14 @@
 import type { ResourceId } from "../../../../db/resources-db";
+import { sanitizeCount } from "@shared/helpers/validation.helper";
 
 /**
  * Sanitizes a brick count value from unknown source.
  * Returns 0 if value is not a finite non-negative number.
+ * @param value - Value to sanitize
+ * @returns Sanitized brick count (non-negative integer)
  */
 export const sanitizeBrickCount = (value: unknown): number => {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    return 0;
-  }
-  return Math.floor(value);
+  return sanitizeCount(value, 0);
 };
 
 /**

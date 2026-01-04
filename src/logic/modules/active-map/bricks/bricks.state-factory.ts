@@ -9,7 +9,6 @@ import {
   sanitizeKnockBackSpeed,
   sanitizeKnockBackAmplitude,
   sanitizeHp,
-  sanitizeRotation,
   resolveBrickExplosion,
   calculateBrickStatsForLevel,
   getBrickLevelStatMultiplier,
@@ -17,6 +16,7 @@ import {
 } from "./bricks.helpers";
 import { createBrickFill } from "./bricks.fill.helper";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { sanitizeRotation } from "@shared/helpers/validation.helper";
 
 export interface BrickStateInput {
   readonly brick: BrickData;

@@ -26,6 +26,10 @@ import type { AbilityDescription } from "../abilities/ability.types";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import { sanitizeRuntimeModifiers } from "../player-units.helpers";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import {
+  cloneRendererConfigForScene,
+  cloneAuraConfig,
+} from "@shared/helpers/renderer-clone.helper";
 
 export interface UnitFactoryOptions {
   scene: SceneObjectManager;
@@ -98,66 +102,13 @@ export interface UnitFactoryResult {
 
 import { cloneEmitter } from "../player-units.helpers";
 
-const cloneAuraConfig = (aura: PlayerUnitAuraConfig): PlayerUnitAuraConfig => ({
-  petalCount: aura.petalCount,
-  innerRadius: aura.innerRadius,
-  outerRadius: aura.outerRadius,
-  petalWidth: aura.petalWidth,
-  rotationSpeed: aura.rotationSpeed,
-  color: { ...aura.color },
-  alpha: aura.alpha,
-  requiresModule: aura.requiresModule,
-  pointInward: aura.pointInward,
-});
-
-// Note: UnitFactory uses a simpler version of cloneRendererConfigForScene
-// that doesn't deep-clone fill/stroke (for performance)
-const cloneRendererConfigForScene = (
+// All cloning functions are now imported from @shared/helpers/renderer-clone.helper
+// Using shallow clone (deep: false) for performance in UnitFactory
+const cloneRendererConfigForSceneShallow = (
   renderer: PlayerUnitRendererConfig
-): PlayerUnitRendererConfig => ({
-  kind: renderer.kind,
-  fill: { ...renderer.fill },
-  stroke: renderer.stroke
-    ? {
-        color: { ...renderer.stroke.color },
-        width: renderer.stroke.width,
-      }
-    : undefined,
-  layers: renderer.layers.map((layer) => {
-    // Simple shallow clone for performance (UnitFactory doesn't need deep cloning)
-    if (layer.shape === "polygon") {
-      return {
-        shape: "polygon",
-        vertices: layer.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y })),
-        offset: layer.offset ? { ...layer.offset } : undefined,
-        fill: layer.fill ? { ...layer.fill } : undefined,
-        stroke: layer.stroke ? { ...layer.stroke } : undefined,
-        requiresModule: (layer as any).requiresModule,
-        requiresSkill: (layer as any).requiresSkill,
-        requiresEffect: (layer as any).requiresEffect,
-        anim: (layer as any).anim,
-        spine: (layer as any).spine,
-        segmentIndex: (layer as any).segmentIndex,
-        buildOpts: (layer as any).buildOpts,
-        groupId: (layer as any).groupId,
-      };
-    }
-    return {
-      shape: "circle",
-      radius: layer.radius,
-      segments: layer.segments,
-      offset: layer.offset ? { ...layer.offset } : undefined,
-      fill: layer.fill ? { ...layer.fill } : undefined,
-      stroke: layer.stroke ? { ...layer.stroke } : undefined,
-      requiresModule: (layer as any).requiresModule,
-      requiresSkill: (layer as any).requiresSkill,
-      requiresEffect: (layer as any).requiresEffect,
-      anim: (layer as any).anim,
-      groupId: (layer as any).groupId,
-    };
-  }),
-  auras: renderer.auras ? renderer.auras.map((aura) => cloneAuraConfig(aura)) : undefined,
-});
+): PlayerUnitRendererConfig => {
+  return cloneRendererConfigForScene(renderer, { deep: false });
+};
 
 export class UnitFactory {
   private readonly scene: SceneObjectManager;
@@ -267,7 +218,7 @@ export class UnitFactory {
         : undefined,
       rotation: 0,
       customData: {
-        renderer: cloneRendererConfigForScene(config.renderer),
+        renderer: cloneRendererConfigForSceneShallow(config.renderer),
         emitter,
         physicalSize,
         baseFillColor: { ...baseFillColor },

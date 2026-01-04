@@ -1,11 +1,14 @@
 import {
   SceneColor,
+  SceneFill,
   SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
   SceneSize,
+  SceneStroke,
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 
 import { DestructubleData } from "../logic/interfaces/destructuble";
 import { ResourceAmount } from "./resources-db";
@@ -29,45 +32,10 @@ export type BrickType =
   | "darkMatterBrick"
   | "floodedArch";
 
-export interface BrickStrokeConfig {
-  color: SceneColor;
-  width: number;
-}
-
-export interface BrickLinearFillConfig {
-  type: "linear";
-  start?: SceneVector2;
-  end?: SceneVector2;
-  stops: readonly SceneGradientStop[];
-  noise?: SceneFillNoise;
-  filaments?: SceneFillFilaments;
-}
-
-export interface BrickRadialFillConfig {
-  type: "radial";
-  center?: SceneVector2;
-  radius?: number;
-  stops: readonly SceneGradientStop[];
-  noise?: SceneFillNoise;
-  filaments?: SceneFillFilaments;
-}
-
-export interface BrickSolidFillConfig {
-  type: "solid";
-  color: SceneColor;
-  noise?: SceneFillNoise;
-  filaments?: SceneFillFilaments;
-}
-
-export type BrickFillConfig =
-  | BrickLinearFillConfig
-  | BrickRadialFillConfig
-  | BrickSolidFillConfig;
-
 export interface BrickConfig {
   size: SceneSize;
-  fill: BrickFillConfig;
-  stroke?: BrickStrokeConfig;
+  fill: SceneFill;
+  stroke?: SceneStroke;
   destructubleData?: DestructubleData;
   rewards?: ResourceAmount;
 }
@@ -184,7 +152,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   classic: {
     size: { width: 60, height: 30 },
     fill: {
-      type: "linear",
+      fillType: FILL_TYPES.LINEAR_GRADIENT,
       start: { x: 0, y: -15 },
       end: { x: 0, y: 15 },
       stops: CLASSIC_GRADIENT,
@@ -211,9 +179,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   floodedArch: {
     size: { width: 48, height: 48 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 24,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 24,
       stops: FLOODED_ARCH_GRADIENT,
       noise: {
         colorAmplitude: 0.04,
@@ -247,9 +215,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallTrainingBrick: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 12,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 12,
       stops: SMALL_SQUARE_TRAINING_BRICK_GRADIENT,
       noise: {
         colorAmplitude: 0.04,
@@ -283,9 +251,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallSquareGray: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 12,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 12,
       stops: SMALL_SQUARE_GRAY_GRADIENT,
       noise: {
         colorAmplitude: 0.04,
@@ -319,9 +287,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallSquareYellow: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 12,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 12,
       stops: SMALL_SQUARE_YELLOW_GRADIENT,
       noise: {
         colorAmplitude: 0.03,
@@ -355,9 +323,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallOrganic: {
     size: { width: 30, height: 30 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 28,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 28,
       stops: GREEN_RADIAL_GRADIENT,
       noise: {
         colorAmplitude: 0.01,
@@ -390,9 +358,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallIron: {
     size: { width: 30, height: 30 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 28,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 28,
       stops: ORANGE_RADIAL_GRADIENT,
     },
     stroke: { color: { r: 0.6, g: 0.35, b: 0.1, a: 0.9 }, width: 2.4 },
@@ -420,9 +388,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   compactIron: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 12,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 12,
       stops: ORANGE_RADIAL_GRADIENT_SMALL,
       noise: {
         colorAmplitude: 0.01,
@@ -455,7 +423,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallWood: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "linear",
+      fillType: FILL_TYPES.LINEAR_GRADIENT,
       start: { x: 0, y: -12 },
       end: { x: 0, y: 12 },
       stops: WOOD_LINEAR_GRADIENT,
@@ -490,9 +458,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallCopper: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 12,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 12,
       stops: COPPER_RADIAL_GRADIENT,
       noise: {
         colorAmplitude: 0.04,
@@ -525,7 +493,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallSilver: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "linear",
+      fillType: FILL_TYPES.LINEAR_GRADIENT,
       start: { x: 0, y: -12 },
       end: { x: 0, y: 12 },
       stops: SILVER_LINEAR_GRADIENT,
@@ -555,9 +523,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallCoal: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 12,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 12,
       stops: COAL_RADIAL_GRADIENT,
       noise: {
         colorAmplitude: 0.01,
@@ -590,9 +558,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallIce: {
     size: { width: 30, height: 30 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 28,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 28,
       stops: ICE_RADIAL_GRADIENT,
       noise: {
         colorAmplitude: 0.05,
@@ -625,9 +593,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   smallMagma: {
     size: { width: 24, height: 24 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 12,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 12,
       stops: MAGMA_RADIAL_GRADIENT,
       noise: {
         colorAmplitude: 0.02,
@@ -660,9 +628,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   neutronBrick: {
     size: { width: 32, height: 32 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 16,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 16,
       stops: NEUTRON_RADIAL_GRADIENT,
       noise: {
         colorAmplitude: 0.04,
@@ -695,9 +663,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   neutronBrick2: {
     size: { width: 32, height: 32 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 16,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 16,
       stops: NEUTRON_RADIAL_GRADIENT_2,
       noise: {
         colorAmplitude: 0.04,
@@ -730,9 +698,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
   darkMatterBrick: {
     size: { width: 32, height: 32 },
     fill: {
-      type: "radial",
-      center: { x: 0, y: 0 },
-      radius: 28,
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 28,
       stops: DARK_MATTER_RADIAL_GRADIENT,
       noise: {
         colorAmplitude: 0.05,

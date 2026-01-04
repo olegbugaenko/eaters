@@ -1,45 +1,35 @@
 import type {
   SceneFill,
-  SceneFillNoise,
-  SceneFillFilaments,
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { computeCenter, sanitizeVertices } from "@shared/helpers/vector.helper";
-import type { AuraRendererFillConfig, AuraRendererStrokeConfig } from "./types";
+import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
 
 /**
- * Gets stroke width from AuraRendererStrokeConfig
+ * Gets stroke width from RendererStrokeConfig
  */
-export const getStrokeWidth = (stroke: AuraRendererStrokeConfig): number => {
+export const getStrokeWidth = (stroke: RendererStrokeConfig): number => {
   if (stroke.type === "solid") return stroke.width ?? 0;
   return stroke.width ?? 0;
 };
 
 /**
- * Resolves AuraRendererFillConfig to SceneFill
+ * Resolves RendererFillConfig to SceneFill
  */
-export const resolveFill = (fill: AuraRendererFillConfig | undefined): SceneFill => {
+export const resolveFill = (fill: RendererFillConfig | undefined): SceneFill => {
   if (!fill || fill.type === "base") {
     return { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } };
   }
-  if (fill.type === "solid") {
-    return {
-      fillType: FILL_TYPES.SOLID,
-      color: { ...fill.color },
-      ...(fill.noise ? { noise: cloneSceneFillNoise(fill.noise) } : {}),
-      ...(fill.filaments ? { filaments: cloneSceneFillFilaments(fill.filaments) } : {}),
-    };
-  }
-  // gradient: incoming is SceneFill-compatible
-  return cloneSceneFill(fill.fill as any);
+  // solid and gradient: incoming is SceneFill-compatible
+  return cloneSceneFill(fill.fill);
 };
 
 /**
- * Resolves AuraRendererStrokeConfig to SceneFill
+ * Resolves RendererStrokeConfig to SceneFill
  */
-export const resolveStrokeFill = (stroke: AuraRendererStrokeConfig): SceneFill => {
+export const resolveStrokeFill = (stroke: RendererStrokeConfig): SceneFill => {
   if (stroke.type === "solid") {
     return { fillType: FILL_TYPES.SOLID, color: { ...stroke.color } };
   }

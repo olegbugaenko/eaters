@@ -217,11 +217,10 @@ export class UnitProjectileController {
       return fill.color as SceneColor;
     }
     if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT && "stops" in fill) {
-      const stops = fill.stops as Array<{ color: SceneColor }>;
       // Use the most opaque color from gradient (fallback for bodyColor)
       let bestColor: SceneColor = { r: 0.4, g: 0.6, b: 1.0, a: 1.0 };
       let bestAlpha = 0;
-      for (const stop of stops) {
+      for (const stop of fill.stops) {
         const alpha = stop.color.a ?? 1;
         if (alpha > bestAlpha) {
           bestColor = stop.color;

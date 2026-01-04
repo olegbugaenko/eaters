@@ -3,21 +3,17 @@ import type {
   SceneVector2,
   SceneFill,
   SceneFillNoise,
-  SceneFillFilaments,
-  SceneStroke,
-  SceneSolidFill,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import type {
   PlayerUnitRendererConfig,
   PlayerUnitRendererLayerConfig,
-  PlayerUnitRendererFillConfig,
-  PlayerUnitRendererStrokeConfig,
   PlayerUnitAuraConfig,
-} from "../../../../../db/player-units-db";
-import type { UnitModuleId } from "../../../../../db/unit-modules-db";
-import type { SkillId } from "../../../../../db/skills-db";
-import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
+} from "@db/player-units-db";
+import type { UnitModuleId } from "@db/unit-modules-db";
+import type { SkillId } from "@db/skills-db";
+import type { ParticleEmitterConfig } from "@logic/interfaces/visuals/particle-emitters-config";
 import type { ParticleEmitterBaseConfig } from "../../../primitives/ParticleEmitterPrimitive";
+import type { RendererLayerAnimationConfig, ExtendedRendererLayerFields } from "@shared/types/renderer.types";
 
 export interface PlayerUnitRendererLegacyPayload {
   kind?: string;
@@ -59,26 +55,14 @@ export interface PolygonRendererData {
 
 export type RendererData = CompositeRendererData | PolygonRendererData;
 
-export interface RendererLayerBase {
-  offset?: SceneVector2;
+/**
+ * Runtime layer base fields.
+ * Note: fill is required (not optional) in runtime, unlike in config types.
+ */
+export interface RendererLayerBase extends Omit<ExtendedRendererLayerFields, "fill" | "stroke" | "anim"> {
   fill: RendererLayerFill;
   stroke?: RendererLayerStroke;
-  requiresModule?: UnitModuleId;
-  requiresSkill?: SkillId;
-  requiresEffect?: string;
-  anim?: {
-    type: "sway" | "pulse";
-    periodMs?: number;
-    amplitude?: number;
-    amplitudePercentage?: number;
-    phase?: number;
-    falloff?: "tip" | "root" | "none";
-    axis?: "normal" | "tangent" | "movement-normal" | "movement-tangent";
-  };
-  spine?: Array<{ x: number; y: number; width: number }>;
-  segmentIndex?: number;
-  buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
-  groupId?: string;
+  anim?: RendererLayerAnimationConfig;
 }
 
 export interface RendererPolygonLayer extends RendererLayerBase {
@@ -132,3 +116,4 @@ export interface RendererLayerStrokeSolid {
 export type RendererLayerStroke = RendererLayerStrokeBase | RendererLayerStrokeSolid;
 
 export type { PlayerUnitRendererConfig, PlayerUnitRendererLayerConfig, PlayerUnitAuraConfig };
+export type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";

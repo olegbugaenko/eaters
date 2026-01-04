@@ -16,18 +16,10 @@ import {
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
 } from "../../../visuals/VisualEffectState";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import {
   PlayerUnitType,
   PLAYER_UNIT_TYPES,
-  getPlayerUnitConfig,
-  PlayerUnitRendererConfig,
-  PlayerUnitRendererLayerConfig,
-  PlayerUnitRendererFillConfig,
-  PlayerUnitRendererStrokeConfig,
-  isPlayerUnitType,
-  PlayerUnitConfig,
-} from "../../../../db/player-units-db";
+} from "@db/player-units-db";
 import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { SkillId } from "../../../../db/skills-db";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
@@ -55,11 +47,6 @@ import {
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import { BricksModule } from "../bricks/bricks.module";
 import type { BrickRuntimeState } from "../bricks/bricks.types";
-import {
-  BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
-  BURNING_TAIL_DURATION_MS,
-  FREEZING_TAIL_DURATION_MS,
-} from "../bricks/brick-effects.const";
 import { BonusValueMap, BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { UnitDesignId } from "../../camp/unit-design/unit-design.types";
 import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
@@ -97,49 +84,18 @@ import {
   TARGETING_SCORE_EPSILON,
 } from "./units/UnitTypes";
 import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
+import {
+  PLAYER_UNIT_COUNT_BRIDGE_KEY,
+  PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
+  PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY,
+  PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
+} from "./player-units.const";
+import type {
+  PlayerUnitSpawnData,
+  PlayerUnitsModuleOptions,
+  PlayerUnitSaveData,
+} from "./player-units.types";
 
-export const PLAYER_UNIT_COUNT_BRIDGE_KEY = "playerUnits/count";
-export const PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY = "playerUnits/totalHp";
-export const PLAYER_UNIT_BLUEPRINT_STATS_BRIDGE_KEY = "playerUnits/blueprintStats";
-export const PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY = "playerUnits/countsByDesign";
-
-export interface PlayerUnitSpawnData {
-  readonly designId?: UnitDesignId;
-  readonly type: PlayerUnitType;
-  readonly position: SceneVector2;
-  readonly hp?: number;
-  readonly attackCooldown?: number;
-  readonly runtimeModifiers?: PlayerUnitRuntimeModifiers;
-  readonly equippedModules?: UnitModuleId[];
-}
-
-interface PlayerUnitsModuleOptions {
-  scene: SceneObjectManager;
-  bricks: BricksModule;
-  bridge: DataBridge;
-  movement: MovementService;
-  bonuses: BonusesModule;
-  explosions: ExplosionModule;
-  projectiles: UnitProjectileController;
-  arcs?: ArcModule;
-  effects?: EffectsModule;
-  fireballs?: FireballModule;
-  unitDesign?: UnitDesignModule;
-  onAllUnitsDefeated?: () => void;
-  getModuleLevel: (id: UnitModuleId) => number;
-  hasSkill: (id: SkillId) => boolean;
-  getDesignTargetingMode: (
-    designId: UnitDesignId | null,
-    type: PlayerUnitType
-  ) => UnitTargetingMode;
-  statistics?: StatisticsTracker;
-  audio?: AbilitySoundPlayer;
-  runState: MapRunState;
-}
-
-interface PlayerUnitSaveData {
-  readonly units: PlayerUnitSpawnData[];
-}
 
 export class PlayerUnitsModule implements GameModule {
   public readonly id = "playerUnits";

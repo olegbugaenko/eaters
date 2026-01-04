@@ -3,21 +3,19 @@ import type {
   SceneVector2,
   SceneColor,
   SceneFill,
-  SceneFillNoise,
   SceneStroke,
   SceneSolidFill,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
-import { createSolidFill as createBaseSolidFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { createSolidFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
 import type {
   PlayerUnitRendererConfig,
   PlayerUnitRendererLayerConfig,
-  PlayerUnitRendererFillConfig,
-  PlayerUnitRendererStrokeConfig,
-} from "../../../../../db/player-units-db";
+} from "@db/player-units-db";
+import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
 import { isVector, sanitizeVertices, sanitizeOffset } from "@shared/helpers/vector.helper";
 import { DEFAULT_VERTICES, DEFAULT_BASE_FILL_COLOR, MIN_CIRCLE_SEGMENTS } from "./constants";
 import type {
@@ -206,7 +204,7 @@ export const clampAlphaMultiplier = (value: number | undefined): number => {
  * Sanitizes fill config
  */
 export const sanitizeFillConfig = (
-  fill: PlayerUnitRendererFillConfig | undefined
+  fill: RendererFillConfig | undefined
 ): RendererLayerFill => {
   if (!fill || fill.type === "base") {
     return {
@@ -215,18 +213,17 @@ export const sanitizeFillConfig = (
       alphaMultiplier: clampAlphaMultiplier(fill?.alphaMultiplier),
     };
   }
+  // solid and gradient: incoming is SceneFill-compatible
   if (fill.type === "solid") {
+    const solidFill = fill.fill as SceneSolidFill;
     return {
-      kind: "solid",
-      color: { ...fill.color },
-      ...(fill.noise ? { noise: cloneSceneFillNoise(fill.noise) } : {}),
-      ...(fill.filaments
-        ? { filaments: cloneSceneFillFilaments(fill.filaments) }
-        : {}),
+      kind: "solid" as const,
+      color: { ...solidFill.color },
+      ...(solidFill.noise ? { noise: solidFill.noise } : {}),
     };
   }
   return {
-    kind: "gradient",
+    kind: "gradient" as const,
     fill: cloneSceneFill(fill.fill),
   };
 };
@@ -235,7 +232,7 @@ export const sanitizeFillConfig = (
  * Sanitizes stroke config
  */
 export const sanitizeStrokeConfig = (
-  stroke: PlayerUnitRendererStrokeConfig | undefined
+  stroke: RendererStrokeConfig | undefined
 ): RendererLayerStroke | undefined => {
   if (!stroke) {
     return undefined;
@@ -290,21 +287,6 @@ export const tintColor = (
   return { r, g, b, a };
 };
 
-/**
- * Creates a solid fill from color and optional noise.
- * This is a convenience wrapper around createSolidFill from scene-object-manager.helpers
- * that adds support for noise parameter.
- */
-export const createSolidFillWithNoise = (
-  color: SceneColor,
-  noise?: SceneFillNoise
-): SceneFill => {
-  const fill = createBaseSolidFill(color);
-  if (noise) {
-    return { ...fill, noise: cloneSceneFillNoise(noise) };
-  }
-  return fill;
-};
 
 /**
  * Resolves fill color from instance
@@ -363,13 +345,13 @@ export const resolveLayerFill = (
 ): SceneFill => {
   switch (fill.kind) {
     case "solid":
-      return createSolidFillWithNoise(fill.color, fill.noise);
+      return createSolidFill(fill.color, { noise: fill.noise });
     case "gradient":
       return cloneSceneFill(fill.fill);
     default: {
       const baseColor = resolveFillColor(instance, renderer.baseFillColor);
       const tinted = tintColor(baseColor, fill.brightness, fill.alphaMultiplier);
-      return createSolidFillWithNoise(tinted, instance.data.fill.noise);
+      return createSolidFill(tinted, { noise: instance.data.fill.noise });
     }
   }
 };
@@ -383,7 +365,7 @@ export const resolveLayerStrokeFill = (
   renderer: CompositeRendererData
 ): SceneFill => {
   if (stroke.kind === "solid") {
-    return createBaseSolidFill(stroke.color);
+    return createSolidFill(stroke.color);
   }
   const baseColor = resolveStrokeColor(
     instance,
@@ -391,5 +373,5 @@ export const resolveLayerStrokeFill = (
     renderer.baseFillColor
   );
   const tinted = tintColor(baseColor, stroke.brightness, stroke.alphaMultiplier);
-  return createSolidFillWithNoise(tinted, instance.data.fill.noise);
+  return createSolidFill(tinted, { noise: instance.data.fill.noise });
 };

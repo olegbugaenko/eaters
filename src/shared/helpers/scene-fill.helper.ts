@@ -23,7 +23,7 @@ export const cloneSceneFillFilaments = (
 ): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
 
 export const cloneSceneGradientStops = (
-  stops: SceneGradientStop[],
+  stops: readonly SceneGradientStop[],
 ): SceneGradientStop[] =>
   stops.map((stop) => ({
     offset: stop.offset,
@@ -105,6 +105,49 @@ export const cloneSceneFillWithNoiseAndFilaments = (
   if (options?.filaments) {
     cloned.filaments = cloneSceneFillFilaments(options.filaments);
   }
+  return cloned;
+};
+
+/**
+ * Clones a fill with options to include/exclude noise and filaments from the original fill.
+ * This is a convenience function for the common pattern of cloning fill while preserving or excluding noise/filaments.
+ * @param fill - The fill to clone
+ * @param options - Optional configuration:
+ *   - includeNoise: if true, includes noise from original fill (default: true)
+ *   - includeFilaments: if true, includes filaments from original fill (default: true)
+ *   - noise: optional new noise to replace original (if provided, overrides includeNoise)
+ *   - filaments: optional new filaments to replace original (if provided, overrides includeFilaments)
+ * @returns Cloned fill with noise/filaments applied according to options
+ */
+export const cloneFillWithOptions = (
+  fill: SceneFill,
+  options?: {
+    includeNoise?: boolean;
+    includeFilaments?: boolean;
+    noise?: SceneFillNoise;
+    filaments?: SceneFillFilaments;
+  }
+): SceneFill => {
+  const cloned = cloneSceneFill(fill);
+  
+  // Handle noise
+  if (options?.noise !== undefined) {
+    cloned.noise = cloneSceneFillNoise(options.noise);
+  } else if (options?.includeNoise !== false && fill.noise) {
+    cloned.noise = cloneSceneFillNoise(fill.noise);
+  } else {
+    delete cloned.noise;
+  }
+  
+  // Handle filaments
+  if (options?.filaments !== undefined) {
+    cloned.filaments = cloneSceneFillFilaments(options.filaments);
+  } else if (options?.includeFilaments !== false && fill.filaments) {
+    cloned.filaments = cloneSceneFillFilaments(fill.filaments);
+  } else {
+    delete cloned.filaments;
+  }
+  
   return cloned;
 };
 

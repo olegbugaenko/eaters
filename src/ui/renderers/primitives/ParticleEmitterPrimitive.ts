@@ -32,6 +32,8 @@ import { copyFillComponents, writeFillVertexComponents } from "./utils/fill";
 import { getParticleEmitterGlContext } from "./utils/gpuContext";
 import { getNowMs } from "@shared/helpers/time.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
+import { sanitizeVector as sanitizeVectorShared } from "@shared/helpers/vector.helper";
+import { ZERO_VECTOR } from "@shared/helpers/geometry.const";
 import {
   ParticleEmitterGpuDrawHandle,
   ParticleEmitterGpuRenderUniforms,
@@ -1241,19 +1243,15 @@ const destroyParticleEmitterGpuState = <
   state.gpu = undefined;
 };
 
-const sanitizeVector = (value: SceneVector2 | undefined): SceneVector2 => {
-  if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.y)) {
-    return { x: 0, y: 0 };
-  }
-  return { x: value.x, y: value.y };
-};
+const sanitizeVector = (value: SceneVector2 | undefined): SceneVector2 =>
+  sanitizeVectorShared(value, ZERO_VECTOR) ?? ZERO_VECTOR;
 
 const assignVector = (target: SceneVector2, source: SceneVector2): void => {
   target.x = source.x;
   target.y = source.y;
 };
 
-const limitParticleStops = (stops: SceneGradientStop[]): SceneGradientStop[] => {
+const limitParticleStops = (stops: readonly SceneGradientStop[]): SceneGradientStop[] => {
   if (stops.length <= MAX_GRADIENT_STOPS) {
     return stops.slice();
   }

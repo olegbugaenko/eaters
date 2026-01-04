@@ -5,7 +5,7 @@ import type {
   ExplosionRendererCustomData,
   ExplosionEmitterRenderConfig,
 } from "./types";
-import type { ExplosionRendererEmitterConfig } from "../../../../../db/explosions-db";
+import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
 import {
   sanitizeExplosionEmitterConfig,
   serializeExplosionEmitterConfig,
@@ -18,7 +18,7 @@ import { createCachedEmitterConfigGetter } from "@shared/helpers/emitter-cache.h
  * Gets the emitter config for an explosion instance (with caching)
  */
 export const getEmitterConfig = createCachedEmitterConfigGetter<
-  ExplosionRendererEmitterConfig,
+  ParticleEmitterConfig,
   ExplosionEmitterRenderConfig
 >(
   (instance) => {

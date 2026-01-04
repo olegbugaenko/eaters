@@ -79,11 +79,10 @@ const resolveRadius = (
 // Static fallback stops to avoid allocations
 const FALLBACK_SOLID_STOP: SceneGradientStop[] = [{ offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } }];
 
-const limitStops = (stops: SceneGradientStop[]): SceneGradientStop[] => {
-  // OPTIMIZATION: Don't slice if within limit - just return original array
-  // This is safe because we only read from stops, never mutate
+const limitStops = (stops: readonly SceneGradientStop[]): SceneGradientStop[] => {
+  // OPTIMIZATION: Don't slice if within limit - just return a copy
   if (stops.length <= MAX_GRADIENT_STOPS) {
-    return stops;
+    return stops.slice();
   }
   const limited: SceneGradientStop[] = [];
   const lastIndex = stops.length - 1;

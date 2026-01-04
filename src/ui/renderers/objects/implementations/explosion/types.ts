@@ -1,10 +1,10 @@
-import type { ExplosionRendererEmitterConfig } from "../../../../../db/explosions-db";
+import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
 import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterBaseConfig } from "../../../primitives/ParticleEmitterPrimitive";
 
 export interface ExplosionRendererCustomData {
   waveLifetimeMs?: number;
-  emitter?: ExplosionRendererEmitterConfig;
+  emitter?: ParticleEmitterConfig;
 }
 
 export type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {
@@ -16,6 +16,6 @@ export type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {
 };
 
 export interface ExplosionEmitterConfigCache {
-  source: ExplosionRendererEmitterConfig | undefined;
+  source: ParticleEmitterConfig | undefined;
   config: ExplosionEmitterRenderConfig | null;
 }

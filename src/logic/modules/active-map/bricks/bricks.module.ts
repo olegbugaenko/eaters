@@ -29,18 +29,13 @@ import { createBrickFill } from "./bricks.fill.helper";
 import { tintSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sceneColorsEqual } from "@shared/helpers/scene-color.helper";
 import {
-  sanitizeKnockBackSpeed,
-  sanitizeKnockBackAmplitude,
   sanitizeHp,
-  sanitizeRotation,
   sanitizeBrickType,
   sanitizeBrickLevel,
-  resolveBrickExplosion,
   calculateBrickStatsForLevel,
-  getBrickLevelStatMultiplier,
-  scaleBrickStat,
   scaleResourceStockpile,
 } from "./bricks.helpers";
+import { sanitizeRotation } from "@shared/helpers/validation.helper";
 import { BrickEffectsManager } from "./BrickEffectsManager";
 import type { BrickEffectApplication } from "./brick-effects.types";
 import type {

@@ -1,4 +1,4 @@
-import type { ExplosionRendererEmitterConfig } from "../../../../../db/explosions-db";
+import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
 import type {
   SceneObjectInstance,
   SceneVector2,
@@ -19,10 +19,10 @@ import { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-objec
 import type { ExplosionEmitterRenderConfig, ExplosionEmitterConfigCache } from "./types";
 
 /**
- * Sanitizes and converts ExplosionRendererEmitterConfig to ExplosionEmitterRenderConfig
+ * Sanitizes and converts ParticleEmitterConfig to ExplosionEmitterRenderConfig
  */
 export const sanitizeExplosionEmitterConfig = (
-  config: ExplosionRendererEmitterConfig
+  config: ParticleEmitterConfig
 ): ExplosionEmitterRenderConfig | null => {
   const base = sanitizeParticleEmitterConfig(
     {

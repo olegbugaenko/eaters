@@ -28,8 +28,9 @@ import {
 } from "./scene-object-manager.const";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 import { sanitizeColor } from "@shared/helpers/scene-color.helper";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
 import { normalizeRotation } from "@shared/helpers/angle.helper";
+import { sanitizeVector } from "@shared/helpers/vector.helper";
 
 // ============================================================================
 // Custom Data Cloning
@@ -312,25 +313,27 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 // Re-export sanitizeColor for backward compatibility
 export { sanitizeColor } from "@shared/helpers/scene-color.helper";
 
-export function createSolidFill(color: SceneColor): SceneSolidFill {
-  return {
+export function createSolidFill(
+  color: SceneColor,
+  options?: {
+    noise?: SceneFillNoise;
+    filaments?: SceneFillFilaments;
+  }
+): SceneSolidFill {
+  const fill: SceneSolidFill = {
     fillType: FILL_TYPES.SOLID,
     color: sanitizeColor(color),
   };
-}
-
-export function sanitizeVector(
-  value: SceneVector2 | undefined
-): SceneVector2 | undefined {
-  if (!value) {
-    return undefined;
+  
+  if (options?.noise) {
+    fill.noise = cloneSceneFillNoise(options.noise);
   }
-  const x = Number(value.x);
-  const y = Number(value.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) {
-    return undefined;
+  
+  if (options?.filaments) {
+    fill.filaments = cloneSceneFillFilaments(options.filaments);
   }
-  return { x, y };
+  
+  return fill;
 }
 
 export function sanitizeRadius(value: number | undefined): number | undefined {
@@ -344,7 +347,7 @@ export function sanitizeRadius(value: number | undefined): number | undefined {
 }
 
 export function sanitizeGradientStops(
-  stops: SceneGradientStop[] | undefined
+  stops: readonly SceneGradientStop[] | undefined
 ): SceneGradientStop[] {
   if (!stops || stops.length === 0) {
     return [

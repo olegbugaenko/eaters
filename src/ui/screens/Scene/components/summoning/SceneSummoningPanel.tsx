@@ -14,7 +14,7 @@ import type {
 import { createEmptyResourceAmount } from "@shared/const/resources.const";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
-import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/player-units/player-units.module";
+import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/player-units/player-units.const";
 import {
   UnitDesignId,
   UnitDesignModuleDetail,

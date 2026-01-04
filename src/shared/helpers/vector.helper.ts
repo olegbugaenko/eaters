@@ -143,3 +143,24 @@ export const sanitizeOffset = (offset: SceneVector2 | undefined): SceneVector2 |
   }
   return { x: offset.x, y: offset.y };
 };
+
+/**
+ * Sanitizes a vector, ensuring it has valid finite number components.
+ * @param value - Vector to sanitize
+ * @param fallback - Optional fallback vector to return if value is invalid. If not provided, returns undefined for invalid values.
+ * @returns Sanitized vector, fallback vector, or undefined
+ */
+export const sanitizeVector = (
+  value: SceneVector2 | undefined,
+  fallback?: SceneVector2
+): SceneVector2 | undefined => {
+  if (!value) {
+    return fallback;
+  }
+  const x = Number(value.x);
+  const y = Number(value.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return fallback;
+  }
+  return { x, y };
+};

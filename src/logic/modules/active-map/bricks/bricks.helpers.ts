@@ -1,4 +1,5 @@
 import { clampNumber } from "@shared/helpers/numbers.helper";
+import { sanitizeRotation, sanitizeLevel } from "@shared/helpers/validation.helper";
 import type { BrickConfig, BrickType } from "../../../../db/bricks-db";
 import { isBrickType, getBrickConfig } from "../../../../db/bricks-db";
 import type { ExplosionType } from "../../../../db/explosions-db";
@@ -55,11 +56,13 @@ export const sanitizeHp = (value: number | undefined, maxHp: number): number => 
   return clampNumber(maxHp, 0, maxHp);
 };
 
-export const sanitizeRotation = (value: number | undefined): number => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  return Math.random() * Math.PI * 2;
+/**
+ * Sanitizes a brick level value, ensuring it's a valid positive integer >= 1.
+ * @param value - Value to sanitize
+ * @returns Sanitized brick level (>= 1)
+ */
+export const sanitizeBrickLevel = (value: number | undefined): number => {
+  return sanitizeLevel(value, 1);
 };
 
 export const sanitizeBrickType = (value: BrickType | undefined): BrickType => {
@@ -67,13 +70,6 @@ export const sanitizeBrickType = (value: BrickType | undefined): BrickType => {
     return value;
   }
   return DEFAULT_BRICK_TYPE;
-};
-
-export const sanitizeBrickLevel = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 1) {
-    return 1;
-  }
-  return Math.floor(value);
 };
 
 export const resolveBrickExplosion = (

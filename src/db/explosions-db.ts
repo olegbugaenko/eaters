@@ -49,23 +49,11 @@ export interface ExplosionWaveConfig {
   filaments?: SceneFillFilaments;
 }
 
-/**
- * Explosion emitter configuration (from DB).
- * Alias for ParticleEmitterConfig - all fields are available.
- */
-export type ExplosionEmitterConfig = ParticleEmitterConfig;
-
-/**
- * Explosion renderer emitter configuration (processed/sanitized).
- * Alias for ParticleEmitterConfig - all fields are available.
- */
-export type ExplosionRendererEmitterConfig = ParticleEmitterConfig;
-
 export interface ExplosionConfig {
   lifetimeMs: number;
   defaultInitialRadius: number;
   waves: readonly ExplosionWaveConfig[];
-  emitter: ExplosionEmitterConfig;
+  emitter: ParticleEmitterConfig;
 }
 
 const createSimpleWave = (options: {
@@ -378,7 +366,7 @@ const CRITICAL_HIT_EMITTER_FILL: SceneFill = {
   ],
 };
 
-const DEFAULT_EMITTER: ExplosionEmitterConfig = {
+const DEFAULT_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 700,
   particlesPerSecond: 260,
   baseSpeed: 0.1,
@@ -394,7 +382,7 @@ const DEFAULT_EMITTER: ExplosionEmitterConfig = {
   fill: DEFAULT_EMITTER_FILL,
 };
 
-const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
+const GRAY_BRICK_DAMAGE_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 140,
   particlesPerSecond: 34,
   baseSpeed: 0.04,
@@ -412,7 +400,7 @@ const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
   sizeGrowthRate: 1.35,
 };
 
-const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
+const GRAY_BRICK_DESTRUCTION_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 220,
   particlesPerSecond: 42,
   baseSpeed: 0.05,
@@ -430,7 +418,7 @@ const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
   sizeGrowthRate: 1.35,
 };
 
-const CRITICAL_HIT_EMITTER: ExplosionEmitterConfig = {
+const CRITICAL_HIT_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 240,
   particlesPerSecond: 220,
   baseSpeed: 0.16,

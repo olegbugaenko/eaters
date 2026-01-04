@@ -27,7 +27,7 @@ import { BRICK_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bric
 import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "@logic/modules/active-map/player-units/player-units.module";
+} from "@logic/modules/active-map/player-units/player-units.const";
 import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import {
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,

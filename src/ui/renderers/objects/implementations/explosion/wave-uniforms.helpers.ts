@@ -8,7 +8,7 @@ import type {
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import type { WaveUniformConfig } from "../../../primitives/gpu/ExplosionWaveGpuRenderer";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 
@@ -82,13 +82,13 @@ export const toWaveUniformsFromFill = (
     if (f.end) linearEnd = { x: f.end.x ?? 0, y: f.end.y ?? 0 };
     const stops = Array.isArray(f.stops) ? f.stops : [];
     stopCount = Math.min(5, Math.max(1, stops.length));
-    let prevColor = defaultColor;
+    let prevColor: SceneColor = defaultColor;
     for (let i = 0; i < 5; i++) {
       const s = stops[i] ?? stops[stops.length - 1] ?? { offset: 1, color: prevColor };
       stopOffsets[i] = Math.max(0, Math.min(1, s.offset ?? i / 4));
       const c = sanitizeSceneColor(s.color, prevColor);
       stopColors[i]!.set([c.r, c.g, c.b, c.a ?? 1]);
-      prevColor = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+      prevColor = cloneSceneColor(c);
     }
   } else if (
     fill.fillType === FILL_TYPES.RADIAL_GRADIENT ||
@@ -102,13 +102,13 @@ export const toWaveUniformsFromFill = (
     explicitRadius = hasExplicitRadius ? Number(f.end) : 0;
     const stops = Array.isArray(f.stops) ? f.stops : [];
     stopCount = Math.min(5, Math.max(1, stops.length));
-    let prevColor = defaultColor;
+    let prevColor: SceneColor = defaultColor;
     for (let i = 0; i < 5; i++) {
       const s = stops[i] ?? stops[stops.length - 1] ?? { offset: 1, color: prevColor };
       stopOffsets[i] = Math.max(0, Math.min(1, s.offset ?? i / 4));
       const c = sanitizeSceneColor(s.color, prevColor);
       stopColors[i]!.set([c.r, c.g, c.b, c.a ?? 1]);
-      prevColor = { r: c.r, g: c.g, b: c.b, a: c.a ?? 1 };
+      prevColor = cloneSceneColor(c);
     }
   }
 

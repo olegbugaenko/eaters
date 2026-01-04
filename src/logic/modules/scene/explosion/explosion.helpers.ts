@@ -5,7 +5,8 @@ import type {
   SceneGradientStop,
   SceneRadialGradientFill,
 } from "../../../services/scene-object-manager/scene-object-manager.types";
-import { ExplosionConfig, ExplosionRendererEmitterConfig } from "../../../../db/explosions-db";
+import { ExplosionConfig } from "../../../../db/explosions-db";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import {
   cloneSceneFill,
   createRadialGradientFill,
@@ -110,7 +111,7 @@ export const updateWaveFill = (
 export const createEmitterCustomData = (
   config: ExplosionConfig,
   initialRadius: number
-): ExplosionRendererEmitterConfig | undefined => {
+): ParticleEmitterConfig | undefined => {
   const particlesPerSecond = Math.max(0, config.emitter.particlesPerSecond);
   const particleLifetimeMs = Math.max(0, config.emitter.particleLifetimeMs);
   const emissionDurationMs = Math.max(0, config.emitter.emissionDurationMs ?? 0);
@@ -161,7 +162,7 @@ export const createEmitterCustomData = (
 
 export const computeEffectLifetime = (
   config: ExplosionConfig,
-  emitter: ExplosionRendererEmitterConfig | undefined
+  emitter: ParticleEmitterConfig | undefined
 ): number => {
   const waveLifetime = Math.max(1, config.lifetimeMs);
   if (!emitter) {
