@@ -34,6 +34,7 @@ import {
   MAP_CLEARED_LEVELS_BRIDGE_KEY,
   MAP_LAST_PLAYED_BRIDGE_KEY,
   MAP_AUTO_RESTART_BRIDGE_KEY,
+  MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
   DEFAULT_MAP_ID,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
@@ -61,6 +62,7 @@ export class MapModule implements GameModule {
   private statsCloneDirty = true;
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
+  private mapSelectViewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private readonly options: MapModuleOptions;
   private readonly sceneCleanup: MapSceneCleanupContract;
 
@@ -91,6 +93,7 @@ export class MapModule implements GameModule {
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
+    this.pushMapSelectViewTransform();
     this.ensureSelection();
   }
 
@@ -107,12 +110,14 @@ export class MapModule implements GameModule {
     this.mapStats = parsed?.stats ?? {};
     this.selection.loadFromSave(parsed);
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
+    this.mapSelectViewTransform = parsed?.mapSelectViewTransform ?? null;
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
     this.pushLastPlayedMap();
+    this.pushMapSelectViewTransform();
 
     this.selection.applySavedSelection(
       parsed?.mapId ?? null,
@@ -136,6 +141,7 @@ export class MapModule implements GameModule {
             level: serializeLevel(this.selection.getLastPlayedMap()!.level),
           }
         : undefined,
+      mapSelectViewTransform: this.mapSelectViewTransform ?? undefined,
     } satisfies MapSaveData;
   }
 
@@ -379,6 +385,19 @@ export class MapModule implements GameModule {
     DataBridgeHelpers.pushState(this.options.bridge, MAP_AUTO_RESTART_BRIDGE_KEY, payload);
   }
 
+  private pushMapSelectViewTransform(): void {
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
+      MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
+      this.mapSelectViewTransform
+    );
+  }
+
+  public setMapSelectViewTransform(transform: { scale: number; worldX: number; worldY: number } | null): void {
+    this.mapSelectViewTransform = transform;
+    this.pushMapSelectViewTransform();
+  }
+
   private generateBricks(config: MapConfig, mapLevel: number): BrickData[] {
     const spawnOrigins =
       config.spawnPoints && config.spawnPoints.length > 0
@@ -495,6 +514,7 @@ export class MapModule implements GameModule {
       selectedLevels?: unknown;
       autoRestartEnabled?: unknown;
       lastPlayedMap?: unknown;
+      mapSelectViewTransform?: unknown;
     };
     if (!raw.mapId || !isMapId(raw.mapId)) {
       return undefined;
@@ -504,7 +524,23 @@ export class MapModule implements GameModule {
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
     const autoRestartEnabled = raw.autoRestartEnabled === true;
     const lastPlayedMap = this.parseLastPlayedMap(raw.lastPlayedMap);
-    return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled, lastPlayedMap };
+    const mapSelectViewTransform = this.parseViewTransform(raw.mapSelectViewTransform);
+    return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled, lastPlayedMap, mapSelectViewTransform };
+  }
+
+  private parseViewTransform(data: unknown): { scale: number; worldX: number; worldY: number } | undefined {
+    if (typeof data !== "object" || data === null) {
+      return undefined;
+    }
+    const raw = data as { scale?: unknown; worldX?: unknown; worldY?: unknown };
+    if (
+      typeof raw.scale === "number" &&
+      typeof raw.worldX === "number" &&
+      typeof raw.worldY === "number"
+    ) {
+      return { scale: raw.scale, worldX: raw.worldX, worldY: raw.worldY };
+    }
+    return undefined;
   }
 
   private resolveSelectableMapId(preferred: MapId | null): MapId | null {

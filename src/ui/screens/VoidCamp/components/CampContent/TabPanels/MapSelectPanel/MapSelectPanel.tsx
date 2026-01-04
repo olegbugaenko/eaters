@@ -11,6 +11,9 @@ import { formatNumber } from "@ui-shared/format/number";
 import { useResizeObserver } from "@ui-shared/useResizeObserver";
 import { formatDuration } from "@ui/utils/formatDuration";
 import type { MapUnlockCondition } from "@shared/types/unlocks";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
 import "./MapSelectPanel.css";
 
 const CELL_SIZE_X = 200;
@@ -21,8 +24,8 @@ const MIN_SCALE = 0.6;
 const MAX_SCALE = 2.2;
 const ZOOM_SENSITIVITY = 0.0015;
 // Minimum canvas dimensions (must match CSS min-width/min-height)
-const MIN_CANVAS_WIDTH = 600;
-const MIN_CANVAS_HEIGHT = 500;
+const MIN_CANVAS_WIDTH = 2000;
+const MIN_CANVAS_HEIGHT = 2000;
 
 interface MapTreeLayout {
   width: number;
@@ -126,14 +129,15 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   onSelectLevel,
   onStartMap,
 }) => {
+  const { app, bridge } = useAppLogic();
+  const savedViewTransform = useBridgeValue<{ scale: number; worldX: number; worldY: number } | null>(
+    bridge,
+    MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
+    null
+  );
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [hoveredId, setHoveredId] = useState<MapId | null>(null);
-  const [viewTransform, setViewTransform] = useState({
-    scale: 0.9,
-    offsetX: 0,
-    offsetY: 0,
-  });
   const panStateRef = useRef({
     isDown: false,
     isPanning: false,
@@ -155,18 +159,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const popoverHoverTimeoutRef = useRef<number | null>(null);
   const previousPopoverMapIdRef = useRef<MapId | null>(null);
 
-  useResizeObserver(viewportRef, ({ width, height }) => {
-    setViewportSize({ width, height });
-  });
-
-  // Initialize view to center on node at (0, 0) like in SkillTreeView
-  useEffect(() => {
-    if (hasInitializedViewRef.current) {
-      return;
-    }
-
-    if (!viewportSize.width || !viewportSize.height || layout.positions.size === 0) {
-      return;
+  // Compute initial view transform synchronously using fixed viewport size
+  // This prevents visible jump on first render
+  // Use saved viewTransform if available, otherwise compute centered position
+  const initialViewTransform = useMemo(() => {
+    if (layout.positions.size === 0) {
+      return { scale: 0.9, offsetX: 0, offsetY: 0 };
     }
 
     // Find the map node with nodePosition {x: 0, y: 0}
@@ -183,17 +181,82 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     };
     const { x, y } = targetPosition ?? fallbackPosition;
 
-    setViewTransform((current) => {
-      const next = {
-        ...current,
-        offsetX: viewportSize.width / 2 - x * current.scale,
-        offsetY: viewportSize.height / 2 - y * current.scale,
+    const scale = 0.9;
+    // Use fixed viewport size for initial calculation
+    return {
+      scale,
+      offsetX: MIN_CANVAS_WIDTH / 2 - x * scale,
+      offsetY: MIN_CANVAS_HEIGHT / 2 - y * scale,
+    };
+  }, [layout, maps]);
+
+  // Use saved viewTransform if available, otherwise use computed initial
+  const [viewTransform, setViewTransform] = useState(initialViewTransform);
+
+  // Save viewTransform when it changes (but not during initialization)
+  const saveViewTransformRef = useRef(false);
+  useEffect(() => {
+    if (hasInitializedViewRef.current && saveViewTransformRef.current && viewportSize.width && viewportSize.height) {
+      // Convert viewport offset to world coordinates for saving
+      const worldX = (viewportSize.width / 2 - viewTransform.offsetX) / viewTransform.scale;
+      const worldY = (viewportSize.height / 2 - viewTransform.offsetY) / viewTransform.scale;
+      app.services.map.setMapSelectViewTransform({
+        scale: viewTransform.scale,
+        worldX,
+        worldY,
+      });
+    }
+  }, [viewTransform, app, viewportSize.width, viewportSize.height]);
+
+  useResizeObserver(viewportRef, ({ width, height }) => {
+    setViewportSize({ width, height });
+  });
+
+  // Update view transform when real viewport size becomes available
+  useEffect(() => {
+    if (hasInitializedViewRef.current) {
+      return;
+    }
+
+    if (!viewportSize.width || !viewportSize.height || layout.positions.size === 0) {
+      return;
+    }
+
+    // If we have a saved viewTransform, use it to restore position
+    if (savedViewTransform) {
+      // Convert world coordinates to viewport offset
+      const scale = savedViewTransform.scale;
+      setViewTransform({
+        scale,
+        offsetX: viewportSize.width / 2 - savedViewTransform.worldX * scale,
+        offsetY: viewportSize.height / 2 - savedViewTransform.worldY * scale,
+      });
+    } else {
+      // Find the map node with nodePosition {x: 0, y: 0}
+      const originMap = maps.find((map) => {
+        const config = getMapConfig(map.id);
+        return config.nodePosition.x === 0 && config.nodePosition.y === 0;
+      });
+      const targetPosition = originMap
+        ? layout.positions.get(originMap.id)
+        : null;
+      const fallbackPosition = {
+        x: layout.width / 2,
+        y: layout.height / 2,
       };
-      return next;
-    });
+      const { x, y } = targetPosition ?? fallbackPosition;
+
+      const scale = viewTransform.scale;
+      setViewTransform({
+        scale,
+        offsetX: viewportSize.width / 2 - x * scale,
+        offsetY: viewportSize.height / 2 - y * scale,
+      });
+    }
     previousViewportSizeRef.current = viewportSize;
     hasInitializedViewRef.current = true;
-  }, [layout, maps, viewportSize]);
+    saveViewTransformRef.current = true;
+  }, [layout, maps, viewportSize, savedViewTransform]);
 
   // Update view position when viewport resizes (maintain center on origin node)
   useEffect(() => {
@@ -458,9 +521,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       <circle
                         cx={midX}
                         cy={midY}
-                        r="16"
+                        r="20"
                         className={edge.fulfilled ? "map-tree__link-counter-bg map-tree__link-counter-bg--fulfilled" : "map-tree__link-counter-bg map-tree__link-counter-bg--locked"}
-                        shapeRendering="crispEdges"
                       />
                       <text
                         x={midX}
@@ -468,8 +530,6 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         textAnchor="middle"
                         dominantBaseline="central"
                         className="map-tree__link-counter-text"
-                        textRendering="optimizeLegibility"
-                        shapeRendering="crispEdges"
                       >
                         {edge.currentLevel}/{edge.requiredLevel}
                       </text>

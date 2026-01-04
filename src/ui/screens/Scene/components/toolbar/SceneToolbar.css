@@ -50,6 +50,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
+  margin-right: 24px;
 }
 
 .scene-toolbar__hp {
@@ -119,5 +120,6 @@
   .scene-toolbar__section--right {
     flex-direction: column;
     align-items: center;
+    margin-right: 14px;
   }
 }

@@ -46,6 +46,7 @@ export interface MapSaveData {
   selectedLevels?: Partial<Record<MapId, number>>;
   autoRestartEnabled?: boolean;
   lastPlayedMap?: { mapId: MapId; level: number };
+  mapSelectViewTransform?: { scale: number; worldX: number; worldY: number };
 }
 
 export interface MapLevelStats {

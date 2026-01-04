@@ -110,11 +110,13 @@ export interface UseSceneCanvasParams {
   scaleRef: MutableRefObject<number>;
   setScale: (value: number) => void;
   setCameraInfo: (value: SceneCameraState) => void;
+  setScaleRange: (value: { min: number; max: number }) => void;
   setVboStats: (stats: BufferStats) => void;
   vboStatsRef: MutableRefObject<BufferStats>;
   setParticleStats: (stats: ParticleStatsState) => void;
   particleStatsRef: MutableRefObject<ParticleStatsState>;
   particleStatsLastUpdateRef: MutableRefObject<number>;
+  hasInitializedScaleRef: MutableRefObject<boolean>;
 }
 
 export const useSceneCanvas = ({
@@ -132,11 +134,13 @@ export const useSceneCanvas = ({
   scaleRef,
   setScale,
   setCameraInfo,
+  setScaleRange,
   setVboStats,
   vboStatsRef,
   setParticleStats,
   particleStatsRef,
   particleStatsLastUpdateRef,
+  hasInitializedScaleRef,
 }: UseSceneCanvasParams) => {
   // Use position interpolation hook
   const { getInterpolatedUnitPositions, getInterpolatedBulletPositions } = usePositionInterpolation(scene, gameLoop);
@@ -369,16 +373,22 @@ export const useSceneCanvas = ({
       
       gl.viewport(0, 0, canvas.width, canvas.height);
       sceneRef.current.setViewportScreenSize(canvas.width, canvas.height);
-      const currentMapSize = sceneRef.current.getMapSize();
-      sceneRef.current.setMapSize({
-        width: Math.max(currentMapSize.width, canvas.width, 1000),
-        height: Math.max(currentMapSize.height + 150, canvas.height, 1000),
-      });
+      // Don't modify map size here - it should be set by MapRunLifecycle.startRun()
+      // which uses the map config's size. Modifying it here causes minScale to change
+      // on every resize/restart.
       const current = sceneRef.current.getCamera();
       scaleRef.current = current.scale;
       cameraInfoRef.current = current;
       setScale(current.scale);
       setCameraInfo(current);
+      
+      // Update scale range after viewport changes
+      const newScaleRange = sceneRef.current.getScaleRange();
+      setScaleRange(newScaleRange);
+      
+      // Mark scale as initialized after first resize
+      // This ensures scale is set AFTER minScale is properly calculated
+      hasInitializedScaleRef.current = true;
     };
 
     resize();
@@ -507,6 +517,28 @@ export const useSceneCanvas = ({
       }
     };
 
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const currentCamera = sceneRef.current.getCamera();
+      const scaleRange = sceneRef.current.getScaleRange();
+      
+      // Zoom factor: negative deltaY = zoom in, positive = zoom out
+      const zoomFactor = Math.exp(-event.deltaY * 0.001);
+      const proposedScale = currentCamera.scale * zoomFactor;
+      
+      // Clamp to valid range
+      const nextScale = clamp(proposedScale, scaleRange.min, scaleRange.max);
+      
+      if (Math.abs(nextScale - currentCamera.scale) > 0.0001) {
+        sceneRef.current.setScale(nextScale);
+        const updatedCamera = sceneRef.current.getCamera();
+        scaleRef.current = updatedCamera.scale;
+        cameraInfoRef.current = updatedCamera;
+        setScale(updatedCamera.scale);
+        setCameraInfo(updatedCamera);
+      }
+    };
+
     window.addEventListener("pointermove", handlePointerMoveWithCast, {
       passive: true,
     });
@@ -514,6 +546,7 @@ export const useSceneCanvas = ({
     window.addEventListener("pointerout", handlePointerLeave, { passive: true });
     window.addEventListener("pointerup", handlePointerUp, { passive: true });
     canvas.addEventListener("pointerdown", handlePointerDown);
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
       // Stop render loop
@@ -527,6 +560,7 @@ export const useSceneCanvas = ({
       window.removeEventListener("pointerout", handlePointerLeave);
       window.removeEventListener("pointerup", handlePointerUp);
       canvas.removeEventListener("pointerdown", handlePointerDown);
+      canvas.removeEventListener("wheel", handleWheel);
     };
   }, [
     // Refs are stable and don't need to be in dependencies

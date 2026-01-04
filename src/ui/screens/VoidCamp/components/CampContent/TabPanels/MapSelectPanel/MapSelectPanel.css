@@ -93,6 +93,8 @@
 .map-tree__link-counter-bg {
   fill: rgba(15, 23, 42, 0.95);
   stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
 }
 
 .map-tree__link-counter-bg--fulfilled {
@@ -104,15 +106,17 @@
 }
 
 .map-tree__link-counter-text {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   font-family: "IBM Plex Mono", monospace;
   fill: #e2e8f0;
   pointer-events: none;
   user-select: none;
-  text-rendering: geometricPrecision;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  paint-order: stroke fill;
+  stroke: rgba(15, 23, 42, 0.8);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .map-tree-node-wrapper {

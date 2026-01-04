@@ -18,6 +18,7 @@ import {
 import {
   DEFAULT_SKILL_TREE_STATE,
   SKILL_TREE_STATE_BRIDGE_KEY,
+  SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
 } from "@logic/modules/camp/skill-tree/skill-tree.const";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
@@ -34,6 +35,7 @@ import { SkillId, getSkillConfig } from "@db/skills-db";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { classNames } from "@ui-shared/classNames";
+import { useResizeObserver } from "@ui-shared/useResizeObserver";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;
@@ -49,6 +51,9 @@ const WOBBLE_SPEED = 0.003;
 // Use node hit radius plus wobble amplitude so the wobble halts as soon as the
 // cursor enters the node area or the wobble path around it.
 const HOVER_SNAP_RADIUS = NODE_RADIUS + WOBBLE_RADIUS;
+// Fixed viewport size for initial calculation (prevents jump on first render)
+const INITIAL_VIEWPORT_WIDTH = 2000;
+const INITIAL_VIEWPORT_HEIGHT = 2000;
 
 interface ViewTransform {
   scale: number;
@@ -265,6 +270,11 @@ export const SkillTreeView: React.FC = () => {
     SKILL_TREE_STATE_BRIDGE_KEY,
     DEFAULT_SKILL_TREE_STATE
   );
+  const savedViewTransform = useBridgeValue<{ scale: number; worldX: number; worldY: number } | null>(
+    bridge,
+    SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
+    null
+  );
   const totals = useBridgeValue<ResourceAmountPayload[]>(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
@@ -290,11 +300,6 @@ export const SkillTreeView: React.FC = () => {
   const hasInitializedViewRef = useRef(false);
   const previousViewportSizeRef = useRef({ width: 0, height: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
-  const [viewTransform, setViewTransform] = useState<ViewTransform>({
-    scale: 0.8,
-    offsetX: 0,
-    offsetY: 0,
-  });
   const animatedOffsetsRef = useRef<Map<SkillId, { x: number; y: number }>>(new Map());
   const renderPositionsRef = useRef<
     Map<SkillId, { x: number; y: number }>
@@ -306,6 +311,7 @@ export const SkillTreeView: React.FC = () => {
   const skillTreeModule = useMemo(() => app.services.skillTree, [app]);
   const [purchasedSkillId, setPurchasedSkillId] = useState<SkillId | null>(null);
   const hoveredIdRef = useRef<SkillId | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const nodes = skillTree.nodes;
   const visibleNodes = useMemo(() => nodes.filter(isNodeVisible), [nodes]);
@@ -334,6 +340,134 @@ export const SkillTreeView: React.FC = () => {
   useEffect(() => {
     hoveredIdRef.current = hoveredId;
   }, [hoveredId]);
+
+  // Compute initial view transform synchronously using fixed viewport size
+  // This prevents visible jump on first render
+  const initialViewTransform = useMemo(() => {
+    if (layout.positions.size === 0) {
+      return { scale: 0.8, offsetX: 0, offsetY: 0 };
+    }
+
+    // Find the node with position {x: 0, y: 0}
+    const originNode = visibleNodes.find(
+      (node) => node.position.x === 0 && node.position.y === 0
+    );
+    const targetPosition = originNode
+      ? layout.positions.get(originNode.id)
+      : null;
+    const fallbackPosition = {
+      x: layout.width / 2,
+      y: layout.height / 2,
+    };
+    const { x, y } = targetPosition ?? fallbackPosition;
+
+    const scale = 0.8;
+    // Use fixed viewport size for initial calculation
+    return {
+      scale,
+      offsetX: INITIAL_VIEWPORT_WIDTH / 2 - x * scale,
+      offsetY: INITIAL_VIEWPORT_HEIGHT / 2 - y * scale,
+    };
+  }, [layout, visibleNodes]);
+
+  // Use computed initial (already centered using fixed viewport size)
+  const [viewTransform, setViewTransform] = useState<ViewTransform>(initialViewTransform);
+
+  // Save viewTransform when it changes (but not during initialization)
+  const saveViewTransformRef = useRef(false);
+  useEffect(() => {
+    if (hasInitializedViewRef.current && saveViewTransformRef.current && viewportSize.width && viewportSize.height) {
+      // Convert viewport offset to world coordinates for saving
+      const worldX = (viewportSize.width / 2 - viewTransform.offsetX) / viewTransform.scale;
+      const worldY = (viewportSize.height / 2 - viewTransform.offsetY) / viewTransform.scale;
+      skillTreeModule.setViewTransform({
+        scale: viewTransform.scale,
+        worldX,
+        worldY,
+      });
+    }
+  }, [viewTransform, skillTreeModule, viewportSize.width, viewportSize.height]);
+
+  useResizeObserver(viewportRef, ({ width, height }) => {
+    setViewportSize({ width, height });
+  });
+
+  // Update view transform when real viewport size becomes available
+  useEffect(() => {
+    if (hasInitializedViewRef.current) {
+      return;
+    }
+
+    if (!viewportSize.width || !viewportSize.height || layout.positions.size === 0) {
+      return;
+    }
+
+    // If we have a saved viewTransform, use it to restore position
+    if (savedViewTransform) {
+      // Convert world coordinates to viewport offset
+      const scale = savedViewTransform.scale;
+      setViewTransform({
+        scale,
+        offsetX: viewportSize.width / 2 - savedViewTransform.worldX * scale,
+        offsetY: viewportSize.height / 2 - savedViewTransform.worldY * scale,
+      });
+    } else {
+      // Find the node with position {x: 0, y: 0}
+      const originNode = visibleNodes.find(
+        (node) => node.position.x === 0 && node.position.y === 0
+      );
+      const targetPosition = originNode
+        ? layout.positions.get(originNode.id)
+        : null;
+      const fallbackPosition = {
+        x: layout.width / 2,
+        y: layout.height / 2,
+      };
+      const { x, y } = targetPosition ?? fallbackPosition;
+
+      const scale = viewTransform.scale;
+      setViewTransform({
+        scale,
+        offsetX: viewportSize.width / 2 - x * scale,
+        offsetY: viewportSize.height / 2 - y * scale,
+      });
+    }
+    previousViewportSizeRef.current = viewportSize;
+    hasInitializedViewRef.current = true;
+    saveViewTransformRef.current = true;
+    setIsInitialized(true);
+  }, [layout, visibleNodes, viewportSize, savedViewTransform]);
+
+  // Update view position when viewport resizes
+  useEffect(() => {
+    if (!hasInitializedViewRef.current) {
+      previousViewportSizeRef.current = viewportSize;
+      return;
+    }
+
+    const previousSize = previousViewportSizeRef.current;
+    if (
+      previousSize.width === viewportSize.width &&
+      previousSize.height === viewportSize.height
+    ) {
+      return;
+    }
+
+    setViewTransform((current) => {
+      const focusWorldX =
+        (previousSize.width / 2 - current.offsetX) / current.scale;
+      const focusWorldY =
+        (previousSize.height / 2 - current.offsetY) / current.scale;
+
+      return {
+        ...current,
+        offsetX: viewportSize.width / 2 - focusWorldX * current.scale,
+        offsetY: viewportSize.height / 2 - focusWorldY * current.scale,
+      };
+    });
+
+    previousViewportSizeRef.current = viewportSize;
+  }, [viewportSize]);
 
   const nodeAffordability = useMemo(() => {
     const map = new Map<SkillId, { affordable: boolean; purchasable: boolean }>();
@@ -456,102 +590,6 @@ export const SkillTreeView: React.FC = () => {
       }
     };
   }, [updateRenderPositions, visibleNodes, wobbleNodeIds]);
-
-  useEffect(() => {
-    const element = viewportRef.current;
-    if (!element) {
-      return;
-    }
-
-    const updateSize = () => {
-      const rect = element.getBoundingClientRect();
-      setViewportSize({ width: rect.width, height: rect.height });
-    };
-
-    updateSize();
-
-    if (typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (entry) {
-          const { width, height } = entry.contentRect;
-          setViewportSize({ width, height });
-        }
-      });
-      observer.observe(element);
-      return () => {
-        observer.disconnect();
-      };
-    }
-
-    window.addEventListener("resize", updateSize);
-    return () => {
-      window.removeEventListener("resize", updateSize);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (hasInitializedViewRef.current) {
-      return;
-    }
-
-    if (!viewportSize.width || !viewportSize.height || layout.positions.size === 0) {
-      return;
-    }
-
-    const originNode = visibleNodes.find(
-      (node) => node.position.x === 0 && node.position.y === 0
-    );
-    const targetPosition = originNode
-      ? layout.positions.get(originNode.id)
-      : null;
-    const fallbackPosition = {
-      x: layout.width / 2,
-      y: layout.height / 2,
-    };
-    const { x, y } = targetPosition ?? fallbackPosition;
-
-    setViewTransform((current) => {
-      const next = {
-        ...current,
-        offsetX: viewportSize.width / 2 - x * current.scale,
-        offsetY: viewportSize.height / 2 - y * current.scale,
-      };
-      return next;
-    });
-    previousViewportSizeRef.current = viewportSize;
-    hasInitializedViewRef.current = true;
-  }, [layout, visibleNodes, viewportSize]);
-
-  useEffect(() => {
-    if (!hasInitializedViewRef.current) {
-      previousViewportSizeRef.current = viewportSize;
-      return;
-    }
-
-    const previousSize = previousViewportSizeRef.current;
-    if (
-      previousSize.width === viewportSize.width &&
-      previousSize.height === viewportSize.height
-    ) {
-      return;
-    }
-
-    setViewTransform((current) => {
-      const focusWorldX =
-        (previousSize.width / 2 - current.offsetX) / current.scale;
-      const focusWorldY =
-        (previousSize.height / 2 - current.offsetY) / current.scale;
-
-      return {
-        ...current,
-        offsetX: viewportSize.width / 2 - focusWorldX * current.scale,
-        offsetY: viewportSize.height / 2 - focusWorldY * current.scale,
-      };
-    });
-
-    previousViewportSizeRef.current = viewportSize;
-  }, [viewportSize]);
 
   const fallbackId: SkillId | null = visibleNodes[0]?.id ?? null;
   const activeId = hoveredId ?? fallbackId;
@@ -862,7 +900,13 @@ export const SkillTreeView: React.FC = () => {
         onPointerLeave={handlePointerLeave}
         onWheel={handleWheel}
       >
-        <div className="skill-tree__canvas" style={canvasStyle}>
+        <div
+          className="skill-tree__canvas"
+          style={{
+            ...canvasStyle,
+            opacity: isInitialized ? 1 : 0,
+          }}
+        >
             <svg
               className="skill-tree__links"
               viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
@@ -917,7 +961,6 @@ export const SkillTreeView: React.FC = () => {
                       cy={midY}
                       r="16"
                       className={edge.fulfilled ? "skill-tree__link-counter-bg skill-tree__link-counter-bg--fulfilled" : "skill-tree__link-counter-bg skill-tree__link-counter-bg--locked"}
-                      shapeRendering="crispEdges"
                     />
                     <text
                       ref={(element) => {
@@ -946,8 +989,6 @@ export const SkillTreeView: React.FC = () => {
                       textAnchor="middle"
                       dominantBaseline="central"
                       className="skill-tree__link-counter-text"
-                      textRendering="optimizeLegibility"
-                      shapeRendering="crispEdges"
                     >
                       {edge.currentLevel}/{edge.requiredLevel}
                     </text>

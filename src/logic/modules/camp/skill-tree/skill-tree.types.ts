@@ -38,6 +38,7 @@ export interface SkillTreeModuleOptions {
 
 export interface SkillTreeSaveData {
   levels: Partial<Record<SkillId, number>>;
+  viewTransform?: { scale: number; worldX: number; worldY: number };
 }
 
 export type SkillLevelMap = Record<SkillId, number>;

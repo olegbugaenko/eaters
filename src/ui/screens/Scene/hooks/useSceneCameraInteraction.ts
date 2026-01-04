@@ -70,11 +70,16 @@ export const useSceneCameraInteraction = ({
   pointerPressedRef,
   lastPointerPositionRef,
 }: UseSceneCameraInteractionArgs): UseSceneCameraInteractionResult => {
-  const [scale, setScale] = useState(() => scaleRef.current ?? scene.getCamera().scale);
+  // Delay scale initialization until viewport is properly sized
+  const hasInitializedScaleRef = useRef(false);
+  const [scale, setScale] = useState(() => {
+    // Don't initialize from scene yet - wait for first resize
+    return scaleRef.current ?? 1;
+  });
   const [cameraInfo, setCameraInfo] = useState(
     () => cameraInfoRef.current ?? scene.getCamera()
   );
-  const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
+  const [scaleRange, setScaleRange] = useState(() => scene.getScaleRange());
   const [vboStats, setVboStats] = useState<BufferStats>({ bytes: 0, reallocs: 0 });
   const vboStatsRef = useRef<BufferStats>({ bytes: 0, reallocs: 0 });
   const [particleStatsState, setParticleStatsState] = useState<ParticleStatsState>({
@@ -118,11 +123,13 @@ export const useSceneCameraInteraction = ({
     scaleRef,
     setScale,
     setCameraInfo,
+    setScaleRange,
     setVboStats,
     vboStatsRef,
     setParticleStats: setParticleStatsState,
     particleStatsRef,
     particleStatsLastUpdateRef,
+    hasInitializedScaleRef,
   });
 
   useEffect(() => {

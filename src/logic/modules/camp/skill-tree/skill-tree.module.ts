@@ -24,6 +24,7 @@ import type {
 } from "./skill-tree.types";
 import {
   SKILL_TREE_STATE_BRIDGE_KEY,
+  SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
   DEFAULT_SKILL_TREE_STATE,
 } from "./skill-tree.const";
 import {
@@ -38,6 +39,7 @@ export class SkillTreeModule implements GameModule {
   private readonly resources: ResourcesModule;
   private readonly bonuses: BonusesModule;
   private levels: SkillLevelMap = createDefaultLevels();
+  private viewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private unsubscribeBonuses: (() => void) | null = null;
 
   constructor(options: SkillTreeModuleOptions) {
@@ -54,6 +56,7 @@ export class SkillTreeModule implements GameModule {
   public initialize(): void {
     this.syncAllBonusLevels();
     this.pushState();
+    this.pushViewTransform();
   }
 
   public reset(): void {
@@ -67,13 +70,17 @@ export class SkillTreeModule implements GameModule {
     if (parsed) {
       this.levels = parsed;
     }
+    const saveData = this.parseFullSaveData(data);
+    this.viewTransform = saveData?.viewTransform ?? null;
     this.syncAllBonusLevels();
     this.pushState();
+    this.pushViewTransform();
   }
 
   public save(): unknown {
     return {
       levels: { ...this.levels },
+      viewTransform: this.viewTransform ?? undefined,
     } satisfies SkillTreeSaveData;
   }
 
@@ -170,6 +177,31 @@ export class SkillTreeModule implements GameModule {
     );
   }
 
+  private parseFullSaveData(data: unknown): SkillTreeSaveData | undefined {
+    if (typeof data !== "object" || data === null) {
+      return undefined;
+    }
+    const raw = data as { levels?: unknown; viewTransform?: unknown };
+    const levels = this.parseSaveData(data);
+    const viewTransform = this.parseViewTransform(raw.viewTransform);
+    return { levels: levels ?? {}, viewTransform };
+  }
+
+  private parseViewTransform(data: unknown): { scale: number; worldX: number; worldY: number } | undefined {
+    if (typeof data !== "object" || data === null) {
+      return undefined;
+    }
+    const raw = data as { scale?: unknown; worldX?: unknown; worldY?: unknown };
+    if (
+      typeof raw.scale === "number" &&
+      typeof raw.worldX === "number" &&
+      typeof raw.worldY === "number"
+    ) {
+      return { scale: raw.scale, worldX: raw.worldX, worldY: raw.worldY };
+    }
+    return undefined;
+  }
+
   private registerBonusSources(): void {
     SKILL_IDS.forEach((id) => {
       const config = getSkillConfig(id);
@@ -190,5 +222,18 @@ export class SkillTreeModule implements GameModule {
 
   private getBonusSourceId(id: SkillId): string {
     return `skill_${id}`;
+  }
+
+  private pushViewTransform(): void {
+    DataBridgeHelpers.pushState(
+      this.bridge,
+      SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
+      this.viewTransform
+    );
+  }
+
+  public setViewTransform(transform: { scale: number; worldX: number; worldY: number } | null): void {
+    this.viewTransform = transform;
+    this.pushViewTransform();
   }
 }

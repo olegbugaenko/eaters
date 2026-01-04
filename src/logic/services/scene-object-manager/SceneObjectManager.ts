@@ -361,6 +361,7 @@ export class SceneObjectManager {
     const safeMapHeight = Math.max(1, this.mapSize.height);
     const minScaleWidth = safeScreenWidth / safeMapWidth;
     const minScaleHeight = safeScreenHeight / safeMapHeight;
+    // Use Math.min to ensure map fits in viewport without scrolling
     const minScale = Math.min(minScaleWidth, minScaleHeight);
     return clampNumber(minScale, 0.1, MAX_SCALE);
   }
