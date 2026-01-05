@@ -7,6 +7,7 @@ import { cloneResourceStockpile, normalizeResourceAmount } from "../../../../db/
 import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
+import { DamageService } from "../targeting/DamageService";
 import { EnemyStateFactory, EnemyStateInput } from "./enemies.state-factory";
 import {
   ENEMY_COUNT_BRIDGE_KEY,
@@ -22,6 +23,8 @@ import type {
   InternalEnemyState,
 } from "./enemies.types";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
+import type { ExplosionModule } from "../../scene/explosion/explosion.module";
+import { vectorLength } from "../../../../shared/helpers/vector.helper";
 
 export class EnemiesModule implements GameModule {
   public readonly id = "enemies";
@@ -30,6 +33,8 @@ export class EnemiesModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly runState: MapRunState;
   private readonly targeting?: TargetingService;
+  private readonly damage?: DamageService;
+  private readonly explosions?: ExplosionModule;
   private readonly stateFactory: EnemyStateFactory;
   private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(ENEMY_SPATIAL_GRID_CELL_SIZE);
 
@@ -45,6 +50,8 @@ export class EnemiesModule implements GameModule {
     this.bridge = options.bridge;
     this.runState = options.runState;
     this.targeting = options.targeting;
+    this.damage = options.damage;
+    this.explosions = options.explosions;
     this.stateFactory = new EnemyStateFactory({ scene: this.scene });
 
     if (this.targeting) {
@@ -91,6 +98,11 @@ export class EnemiesModule implements GameModule {
           enemy.attackCooldown = next;
           anyChanged = true;
         }
+      }
+
+      if (enemy.attackCooldown <= 0 && this.tryAttack(enemy)) {
+        enemy.attackCooldown = enemy.attackInterval;
+        anyChanged = true;
       }
     });
 
@@ -203,6 +215,38 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.delete(enemy.id);
   }
 
+  private tryAttack(enemy: InternalEnemyState): boolean {
+    if (!this.damage || !this.targeting) {
+      return false;
+    }
+
+    const target = this.targeting.findNearestTarget(enemy.position, { types: ["unit"] });
+    if (!target) {
+      return false;
+    }
+
+    const distance = vectorLength({
+      x: target.position.x - enemy.position.x,
+      y: target.position.y - enemy.position.y,
+    });
+    if (distance > enemy.attackRange) {
+      return false;
+    }
+
+    this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
+      armorPenetration: 0,
+    });
+
+    if (this.explosions) {
+      this.explosions.spawnExplosionByType("plasmoid", {
+        position: { ...target.position },
+        initialRadius: Math.max(8, enemy.physicalSize),
+      });
+    }
+
+    return true;
+  }
+
   private clearSceneObjects(): void {
     this.enemyOrder.forEach((enemy) => {
       this.scene.removeObject(enemy.sceneObjectId);
@@ -257,6 +301,7 @@ export class EnemiesModule implements GameModule {
       baseDamage: enemy.baseDamage,
       attackInterval: enemy.attackInterval,
       attackCooldown: enemy.attackCooldown,
+      attackRange: enemy.attackRange,
       moveSpeed: enemy.moveSpeed,
       physicalSize: enemy.physicalSize,
       reward: enemy.reward ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward)) : undefined,

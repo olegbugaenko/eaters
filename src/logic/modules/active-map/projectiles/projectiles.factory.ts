@@ -9,8 +9,8 @@ export const createUnitProjectilesDefinition = (): ServiceDefinition<
   factory: (container) =>
     new UnitProjectileController({
       scene: container.get("sceneObjects"),
-      bricks: container.get("bricks"),
       targeting: container.get("targeting"),
+      damage: container.get("damage"),
     }),
   registerAsModule: false,
 });

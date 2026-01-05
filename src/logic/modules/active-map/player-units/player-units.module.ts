@@ -70,6 +70,7 @@ import type { PlayerUnitState } from "./units/UnitTypes";
 import { TargetingService } from "../targeting/TargetingService";
 import { isTargetOfType } from "../targeting/targeting.types";
 import { BricksTargetingProvider } from "../targeting/BricksTargetingProvider";
+import { PlayerUnitsTargetingProvider } from "./PlayerUnitsTargetingProvider";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -146,6 +147,7 @@ export class PlayerUnitsModule implements GameModule {
     if (!options.targeting) {
       targeting.registerProvider(new BricksTargetingProvider(this.bricks));
     }
+    targeting.registerProvider(new PlayerUnitsTargetingProvider(this));
     this.targeting = targeting;
     this.arcs = options.arcs;
     this.effects = options.effects;
@@ -189,15 +191,7 @@ export class PlayerUnitsModule implements GameModule {
         return this.getBrickIdsInRadius(position, radius);
       },
       damageUnit: (unitId: string, damage: number) => {
-        const unit = this.units.get(unitId);
-        if (unit) {
-          const previousHp = unit.hp;
-          unit.hp = Math.max(unit.hp - damage, 0);
-          const taken = Math.max(0, previousHp - unit.hp);
-          if (taken > 0) {
-            this.statistics?.recordDamageTaken(taken);
-          }
-        }
+        this.applyDamage(unitId, damage);
       },
       findNearestBrick: (position: SceneVector2) => {
         const brick = this.findNearestBrickTarget(position);
@@ -587,6 +581,88 @@ export class PlayerUnitsModule implements GameModule {
     });
   }
 
+  public getUnitState(unitId: string): PlayerUnitState | null {
+    const unit = this.units.get(unitId);
+    return unit ? this.cloneUnit(unit) : null;
+  }
+
+  public findNearestUnit(position: SceneVector2): PlayerUnitState | null {
+    let best: PlayerUnitState | null = null;
+    let bestDistanceSq = Number.POSITIVE_INFINITY;
+    this.unitOrder.forEach((unit) => {
+      const dx = unit.position.x - position.x;
+      const dy = unit.position.y - position.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq < bestDistanceSq) {
+        best = unit;
+        bestDistanceSq = distanceSq;
+      }
+    });
+    return best ? this.cloneUnit(best) : null;
+  }
+
+  public findUnitsNear(position: SceneVector2, radius: number): PlayerUnitState[] {
+    if (radius < 0) {
+      return [];
+    }
+    const radiusSq = radius * radius;
+    const found: PlayerUnitState[] = [];
+    this.unitOrder.forEach((unit) => {
+      const dx = unit.position.x - position.x;
+      const dy = unit.position.y - position.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq <= radiusSq) {
+        found.push(this.cloneUnit(unit));
+      }
+    });
+    return found;
+  }
+
+  public forEachUnitNear(
+    position: SceneVector2,
+    radius: number,
+    visitor: (unit: PlayerUnitState) => void,
+  ): void {
+    if (radius < 0) {
+      return;
+    }
+    const radiusSq = radius * radius;
+    this.unitOrder.forEach((unit) => {
+      const dx = unit.position.x - position.x;
+      const dy = unit.position.y - position.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq <= radiusSq) {
+        visitor(this.cloneUnit(unit));
+      }
+    });
+  }
+
+  public applyDamage(
+    unitId: string,
+    damage: number,
+    options?: { armorPenetration?: number },
+  ): number {
+    if (damage <= 0) {
+      return 0;
+    }
+    const unit = this.units.get(unitId);
+    if (!unit) {
+      return 0;
+    }
+    const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
+    const effectiveArmor = Math.max(unit.armor - armorPenetration, 0);
+    const inflicted = Math.max(damage - effectiveArmor, 0);
+    if (inflicted <= 0) {
+      return 0;
+    }
+    const previousHp = unit.hp;
+    unit.hp = Math.max(unit.hp - inflicted, 0);
+    if (previousHp !== unit.hp) {
+      this.statistics?.recordDamageTaken(previousHp - unit.hp);
+    }
+    return previousHp - unit.hp;
+  }
+
   private findNearestBrickTarget(position: SceneVector2): BrickRuntimeState | null {
     const target = this.targeting.findNearestTarget(position, { types: ["brick"] });
     if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
@@ -639,6 +715,17 @@ export class PlayerUnitsModule implements GameModule {
     const reduction = Math.max(unit.knockBackReduction, 1);
     const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
     this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+  }
+
+  private cloneUnit(unit: PlayerUnitState): PlayerUnitState {
+    return {
+      ...unit,
+      position: { ...unit.position },
+      spawnPosition: { ...unit.spawnPosition },
+      preCollisionVelocity: { ...unit.preCollisionVelocity },
+      lastNonZeroVelocity: { ...unit.lastNonZeroVelocity },
+      wanderTarget: unit.wanderTarget ? { ...unit.wanderTarget } : null,
+    };
   }
 
   private removeUnit(unit: PlayerUnitState): void {

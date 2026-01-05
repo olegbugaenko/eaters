@@ -9,6 +9,8 @@ export const createEnemiesDefinition = (): ServiceDefinition<EnemiesModule, "ene
       bridge: container.get("bridge"),
       runState: container.get("mapRunState"),
       targeting: container.get("targeting"),
+      damage: container.get("damage"),
+      explosions: container.get("explosion"),
     }),
   registerAsModule: true,
 });

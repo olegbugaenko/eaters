@@ -3,6 +3,8 @@ import type { DataBridge } from "../../../core/DataBridge";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
+import type { DamageService } from "../targeting/DamageService";
+import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { TargetType } from "../targeting/targeting.types";
 
@@ -14,6 +16,7 @@ export interface EnemyBlueprint {
   readonly armor: number;
   readonly baseDamage: number;
   readonly attackInterval: number;
+  readonly attackRange?: number;
   readonly moveSpeed: number;
   readonly physicalSize: number;
   readonly fill?: SceneFill;
@@ -41,6 +44,7 @@ export interface EnemyRuntimeState {
   baseDamage: number;
   attackInterval: number;
   attackCooldown: number;
+  attackRange: number;
   moveSpeed: number;
   physicalSize: number;
   reward?: ResourceStockpile;
@@ -61,4 +65,6 @@ export interface EnemiesModuleOptions {
   readonly bridge: DataBridge;
   readonly runState: MapRunState;
   readonly targeting?: TargetingService;
+  readonly damage?: DamageService;
+  readonly explosions?: ExplosionModule;
 }

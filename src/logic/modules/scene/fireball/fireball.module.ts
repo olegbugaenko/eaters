@@ -154,10 +154,12 @@ export class FireballModule implements GameModule {
         hitRadius: FIREBALL_RADIUS,
         rendererCustomData,
       },
-      onHit: (context) => {
-        this.explodeFireball(fireball, context.brickId, context.position);
-        return true;
-      },
+        onHit: (context) => {
+          if (context.brickId) {
+            this.explodeFireball(fireball, context.brickId, context.position);
+          }
+          return true;
+        },
       onExpired: () => this.removeFireballInstance(fireball),
     });
   }

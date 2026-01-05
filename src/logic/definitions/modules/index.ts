@@ -3,6 +3,7 @@ import { createAudioDefinition } from "../../modules/shared/audio/audio.factory"
 import { createBonusesDefinition } from "../../modules/shared/bonuses/bonuses.factory";
 import { createBricksDefinition } from "../../modules/active-map/bricks/bricks.factory";
 import { createTargetingDefinition } from "../../modules/active-map/targeting/targeting.factory";
+import { createDamageDefinition } from "../../modules/active-map/targeting/damage.factory";
 import { createEnemiesDefinition } from "../../modules/active-map/enemies/enemies.factory";
 import { createBuildingsDefinition } from "../../modules/camp/buildings/buildings.factory";
 import { createBulletDefinition } from "../../modules/active-map/bullet/bullet.factory";
@@ -40,6 +41,7 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
     createExplosionDefinition(),
     createAudioDefinition(),
     createTargetingDefinition(),
+    createDamageDefinition(),
     createEnemiesDefinition(),
     createBricksDefinition(),
     createUnitProjectilesDefinition(),

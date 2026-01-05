@@ -39,6 +39,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     const baseDamage = clampNumber(blueprint.baseDamage, 0, Number.POSITIVE_INFINITY);
     const attackInterval = clampNumber(blueprint.attackInterval, 0, Number.POSITIVE_INFINITY);
     const attackCooldown = clampNumber(enemy.attackCooldown ?? attackInterval, 0, Number.POSITIVE_INFINITY);
+    const attackRange = clampNumber(blueprint.attackRange ?? 240, 0, Number.POSITIVE_INFINITY);
     const moveSpeed = clampNumber(blueprint.moveSpeed, 0, Number.POSITIVE_INFINITY);
     const physicalSize = clampNumber(blueprint.physicalSize, 0, Number.POSITIVE_INFINITY);
     const fill: SceneFill = cloneSceneFill(blueprint.fill ?? createSolidFill(DEFAULT_COLOR));
@@ -55,6 +56,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       baseDamage,
       attackInterval,
       attackCooldown,
+      attackRange,
       moveSpeed,
       physicalSize,
       reward: blueprint.reward,
