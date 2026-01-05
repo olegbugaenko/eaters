@@ -78,10 +78,10 @@ export const SceneSummoningPanel = forwardRef<
     ref,
   ) => {
     const { bridge } = useAppLogic();
-    const unitCountsByDesign = useBridgeValue<Record<string, number>>(
+    const unitCountsByDesign = useBridgeValue(
       bridge,
       PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
-      {},
+      {} as Record<string, number>,
     );
 
     const available = {
@@ -110,9 +110,9 @@ export const SceneSummoningPanel = forwardRef<
 
     const showUnitTooltip = useCallback(
       (blueprint: NecromancerSpawnOption["blueprint"]) => {
-        onHoverInfoChange(createUnitTooltip(blueprint));
+        onHoverInfoChange(createUnitTooltip(blueprint, spawnOptions.length > 1));
       },
-      [onHoverInfoChange],
+      [onHoverInfoChange, spawnOptions],
     );
 
     const showSpellTooltip = useCallback(
@@ -275,11 +275,9 @@ export const SceneSummoningPanel = forwardRef<
                 );
                 const statusLabel = onCooldown
                   ? `Ready in ${formatCooldownRemaining(spell.remainingCooldownMs)}`
-                  : canAfford
-                  ? isSelected
-                    ? "Selected"
-                    : "Ready"
-                  : "Need resources";
+                  : isSelected
+                  ? "Selected"
+                  : "Ready";
                 return (
                   <div
                     key={spell.id}

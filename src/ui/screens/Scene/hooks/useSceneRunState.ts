@@ -96,35 +96,35 @@ export const useSceneRunState = ({
   scaleRef,
   spellOptionsRef,
 }: UseSceneRunStateArgs): UseSceneRunStateResult => {
-  const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
-  const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
-  const unitTotalHp = useBridgeValue<number>(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
-  const necromancerResources = useBridgeValue<NecromancerResourcesPayload>(
+  const brickTotalHp = useBridgeValue(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
+  const unitCount = useBridgeValue(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
+  const unitTotalHp = useBridgeValue(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
+  const necromancerResources = useBridgeValue(
     bridge,
     NECROMANCER_RESOURCES_BRIDGE_KEY,
-    { mana: { current: 0, max: 0 }, sanity: { current: 0, max: 0 } }
+    { mana: { current: 0, max: 0 }, sanity: { current: 0, max: 0 } } as NecromancerResourcesPayload
   );
-  const necromancerOptions = useBridgeValue<NecromancerSpawnOption[]>(
+  const necromancerOptions = useBridgeValue(
     bridge,
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
-    []
+    [] as NecromancerSpawnOption[]
   );
-  const spellOptions = useBridgeValue<SpellOption[]>(
+  const spellOptions = useBridgeValue(
     bridge,
     SPELL_OPTIONS_BRIDGE_KEY,
     DEFAULT_SPELL_OPTIONS
   );
-  const resourceSummary = useBridgeValue<ResourceRunSummaryPayload>(
+  const resourceSummary = useBridgeValue(
     bridge,
     RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
     DEFAULT_RESOURCE_RUN_SUMMARY
   );
-  const automationState = useBridgeValue<UnitAutomationBridgeState>(
+  const automationState = useBridgeValue(
     bridge,
     UNIT_AUTOMATION_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_AUTOMATION_STATE
   );
-  const autoRestartState = useBridgeValue<MapAutoRestartState>(
+  const autoRestartState = useBridgeValue(
     bridge,
     MAP_AUTO_RESTART_BRIDGE_KEY,
     DEFAULT_MAP_AUTO_RESTART_STATE

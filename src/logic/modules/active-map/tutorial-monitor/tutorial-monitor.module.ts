@@ -33,7 +33,7 @@ export class TutorialMonitorModule implements GameModule {
     this.resources = options.resources;
     this.runState = options.runState;
 
-    this.bridge.subscribe<TutorialMonitorInput>(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, (next) => {
+    this.bridge.subscribe(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, (next) => {
       this.handleInput(next);
     });
   }

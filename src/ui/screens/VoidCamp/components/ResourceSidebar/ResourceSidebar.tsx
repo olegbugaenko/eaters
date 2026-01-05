@@ -15,10 +15,10 @@ interface ResourceSidebarProps {
 
 export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onStart }) => {
   const { app, bridge } = useAppLogic();
-  const lastPlayedMap = useBridgeValue<{ mapId: MapId; level: number } | null>(
+  const lastPlayedMap = useBridgeValue(
     bridge,
     MAP_LAST_PLAYED_BRIDGE_KEY,
-    null
+    null as { mapId: MapId; level: number } | null
   );
 
   const handleQuickStart = useCallback(() => {

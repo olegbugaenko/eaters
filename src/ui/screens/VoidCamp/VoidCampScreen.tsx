@@ -81,45 +81,45 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const [statusMessage, setStatusMessage] = useState<SettingsMessage | null>(null);
   const { settings: audioSettings, setAudioSetting } = useAudioSettings();
   const currentVersion = GAME_VERSIONS[0] ?? null;
-  const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
-  const maps = useBridgeValue<MapListEntry[]>(bridge, MAP_LIST_BRIDGE_KEY, []);
-  const selectedMap = useBridgeValue<MapId | null>(bridge, MAP_SELECTED_BRIDGE_KEY, null);
-  const clearedLevelsTotal = useBridgeValue<number>(
+  const timePlayed = useBridgeValue(bridge, TIME_BRIDGE_KEY, 0);
+  const maps = useBridgeValue(bridge, MAP_LIST_BRIDGE_KEY, [] as MapListEntry[]);
+  const selectedMap = useBridgeValue(bridge, MAP_SELECTED_BRIDGE_KEY, null as MapId | null);
+  const clearedLevelsTotal = useBridgeValue(
     bridge,
     MAP_CLEARED_LEVELS_BRIDGE_KEY,
     0
   );
-  const resources = useBridgeValue<ResourceAmountPayload[]>(
+  const resources = useBridgeValue(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
-    []
+    [] as ResourceAmountPayload[]
   );
-  const statistics = useBridgeValue<CampStatisticsSnapshot>(
+  const statistics = useBridgeValue(
     bridge,
     STATISTICS_BRIDGE_KEY,
     DEFAULT_CAMP_STATISTICS
   );
-  const moduleWorkshopState = useBridgeValue<UnitModuleWorkshopBridgeState>(
+  const moduleWorkshopState = useBridgeValue(
     bridge,
     UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_MODULE_WORKSHOP_STATE
   );
-  const buildingsState = useBridgeValue<BuildingsWorkshopBridgeState>(
+  const buildingsState = useBridgeValue(
     bridge,
     BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
     DEFAULT_BUILDINGS_WORKSHOP_STATE
   );
-  const unitDesignerState = useBridgeValue<UnitDesignerBridgeState>(
+  const unitDesignerState = useBridgeValue(
     bridge,
     UNIT_DESIGNER_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_DESIGNER_STATE
   );
-  const unitAutomationState = useBridgeValue<UnitAutomationBridgeState>(
+  const unitAutomationState = useBridgeValue(
     bridge,
     UNIT_AUTOMATION_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_AUTOMATION_STATE
   );
-  const craftingState = useBridgeValue<CraftingBridgeState>(
+  const craftingState = useBridgeValue(
     bridge,
     CRAFTING_STATE_BRIDGE_KEY,
     DEFAULT_CRAFTING_STATE

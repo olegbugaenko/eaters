@@ -1,4 +1,4 @@
-export type BridgeKey = string;
+import type { BridgeKey, BridgeSchema, BridgeValue } from "./BridgeSchema";
 
 export type BridgeListener<T> = (value: T) => void;
 
@@ -6,7 +6,11 @@ export class DataBridge {
   private values = new Map<BridgeKey, unknown>();
   private listeners = new Map<BridgeKey, Set<BridgeListener<unknown>>>();
 
-  public setValue<T>(key: BridgeKey, value: T): void {
+  /**
+   * Встановлює значення для ключа з типобезпечною перевіркою.
+   * TypeScript перевірить, що тип значення відповідає типу ключа.
+   */
+  public setValue<K extends BridgeKey>(key: K, value: BridgeValue<K>): void {
     this.values.set(key, value);
     const keyListeners = this.listeners.get(key);
     if (!keyListeners) {
@@ -15,11 +19,22 @@ export class DataBridge {
     keyListeners.forEach((listener) => listener(value));
   }
 
-  public getValue<T>(key: BridgeKey): T | undefined {
-    return this.values.get(key) as T | undefined;
+  /**
+   * Отримує значення за ключем з типобезпечною перевіркою.
+   * TypeScript автоматично виведе правильний тип значення.
+   */
+  public getValue<K extends BridgeKey>(key: K): BridgeValue<K> | undefined {
+    return this.values.get(key) as BridgeValue<K> | undefined;
   }
 
-  public subscribe<T>(key: BridgeKey, listener: BridgeListener<T>): () => void {
+  /**
+   * Підписується на зміни значення за ключем з типобезпечною перевіркою.
+   * Listener автоматично отримає правильний тип значення.
+   */
+  public subscribe<K extends BridgeKey>(
+    key: K,
+    listener: BridgeListener<BridgeValue<K>>
+  ): () => void {
     let keyListeners = this.listeners.get(key);
     if (!keyListeners) {
       keyListeners = new Set();
@@ -28,7 +43,7 @@ export class DataBridge {
     keyListeners.add(listener as BridgeListener<unknown>);
 
     if (this.values.has(key)) {
-      listener(this.values.get(key) as T);
+      listener(this.values.get(key) as BridgeValue<K>);
     }
 
     return () => {

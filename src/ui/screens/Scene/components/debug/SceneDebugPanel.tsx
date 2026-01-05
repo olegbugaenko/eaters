@@ -22,8 +22,8 @@ const UPDATE_INTERVAL_MS = 500; // Update more frequently for smoother display
 const FPS_SAMPLE_MS = 1000;
 
 export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickCount, bridge, dynamicBytes = 0, dynamicReallocs = 0, breakdown = [], particleActive = 0, particleCapacity = 0, particleEmitters = 0 }) => {
-  const timeMsValue = typeof timeMs === "number" ? timeMs : (bridge ? useBridgeValue<number>(bridge, RESOURCE_RUN_DURATION_BRIDGE_KEY, 0) : 0);
-  const brickCountValue = typeof brickCount === "number" ? brickCount : (bridge ? useBridgeValue<number>(bridge, BRICK_COUNT_BRIDGE_KEY, 0) : 0);
+  const timeMsValue = typeof timeMs === "number" ? timeMs : (bridge ? useBridgeValue(bridge, RESOURCE_RUN_DURATION_BRIDGE_KEY, 0) : 0);
+  const brickCountValue = typeof brickCount === "number" ? brickCount : (bridge ? useBridgeValue(bridge, BRICK_COUNT_BRIDGE_KEY, 0) : 0);
   const latestValues = useRef({ timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown, particleActive, particleCapacity, particleEmitters });
   const timeRef = useRef<HTMLDivElement | null>(null);
   const brickRef = useRef<HTMLDivElement | null>(null);

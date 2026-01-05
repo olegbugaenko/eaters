@@ -80,7 +80,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     scaleRef,
     spellOptionsRef,
   });
-  const tutorialMonitorStatus = useBridgeValue<TutorialMonitorStatus>(
+  const tutorialMonitorStatus = useBridgeValue(
     bridge,
     TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
     DEFAULT_TUTORIAL_MONITOR_STATUS

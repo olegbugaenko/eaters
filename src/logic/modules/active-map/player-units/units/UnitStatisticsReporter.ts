@@ -1,5 +1,6 @@
 import { DataBridge } from "../../../../core/DataBridge";
 import { DataBridgeHelpers } from "../../../../core/DataBridgeHelpers";
+import type { BridgeKey, BridgeValue } from "../../../../core/BridgeSchema";
 import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import type { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 
@@ -19,7 +20,7 @@ export class UnitStatisticsReporter {
 
   public pushCounts(
     units: readonly { hp: number; designId: UnitDesignId | null }[],
-    keys: { countKey: string; totalHpKey: string; countsByDesignKey: string },
+    keys: { countKey: BridgeKey; totalHpKey: BridgeKey; countsByDesignKey: BridgeKey },
   ): void {
     const countsByDesign = new Map<UnitDesignId, number>();
     let totalHp = 0;
@@ -57,11 +58,11 @@ export class UnitStatisticsReporter {
     }
   }
 
-  public pushBlueprints(
+  public pushBlueprints<K extends BridgeKey>(
     blueprints: readonly PlayerUnitBlueprintStats[],
-    key: string,
+    key: K,
   ): void {
-    DataBridgeHelpers.pushState(this.bridge, key, blueprints);
+    DataBridgeHelpers.pushState(this.bridge, key, blueprints as BridgeValue<K>);
   }
 }
 

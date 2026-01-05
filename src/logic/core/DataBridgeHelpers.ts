@@ -1,5 +1,5 @@
 import type { DataBridge } from "./DataBridge";
-import type { BridgeKey } from "./DataBridge";
+import type { BridgeKey, BridgeValue } from "./BridgeSchema";
 
 /**
  * Helper функції для роботи з DataBridge.
@@ -7,30 +7,35 @@ import type { BridgeKey } from "./DataBridge";
  */
 export class DataBridgeHelpers {
   /**
-   * Публікує стан модуля через DataBridge.
-   * Уніфікує паттерн `bridge.setValue(key, payload)`, який повторюється в багатьох модулях.
+   * Публікує стан модуля через DataBridge з типобезпечною перевіркою.
+   * TypeScript перевірить, що тип payload відповідає типу ключа.
    *
    * @param bridge - екземпляр DataBridge
    * @param key - ключ для публікації стану
    * @param payload - дані для публікації
    */
-  public static pushState<T>(bridge: DataBridge, key: BridgeKey, payload: T): void {
+  public static pushState<K extends BridgeKey>(
+    bridge: DataBridge,
+    key: K,
+    payload: BridgeValue<K>
+  ): void {
     bridge.setValue(key, payload);
   }
 
   /**
    * Створює функцію для публікації стану з фіксованим ключем.
    * Корисно для модулів, які публікують стан через один ключ.
+   * TypeScript перевірить, що тип payload відповідає типу ключа.
    *
    * @param bridge - екземпляр DataBridge
    * @param key - ключ для публікації стану
    * @returns функція для публікації стану
    */
-  public static createStatePusher<T>(
+  public static createStatePusher<K extends BridgeKey>(
     bridge: DataBridge,
-    key: BridgeKey
-  ): (payload: T) => void {
-    return (payload: T) => {
+    key: K
+  ): (payload: BridgeValue<K>) => void {
+    return (payload: BridgeValue<K>) => {
       bridge.setValue(key, payload);
     };
   }

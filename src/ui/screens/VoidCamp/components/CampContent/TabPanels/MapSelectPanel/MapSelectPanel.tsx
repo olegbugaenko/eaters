@@ -130,10 +130,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   onStartMap,
 }) => {
   const { app, bridge } = useAppLogic();
-  const savedViewTransform = useBridgeValue<{ scale: number; worldX: number; worldY: number } | null>(
+  const savedViewTransform = useBridgeValue(
     bridge,
     MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
-    null
+    null as { scale: number; worldX: number; worldY: number } | null
   );
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });

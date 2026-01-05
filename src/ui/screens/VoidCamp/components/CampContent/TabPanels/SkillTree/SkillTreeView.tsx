@@ -268,20 +268,20 @@ const getMissingResourceNames = (
 
 export const SkillTreeView: React.FC = () => {
   const { app, bridge } = useAppLogic();
-  const skillTree = useBridgeValue<SkillTreeBridgePayload>(
+  const skillTree = useBridgeValue(
     bridge,
     SKILL_TREE_STATE_BRIDGE_KEY,
     DEFAULT_SKILL_TREE_STATE
   );
-  const savedViewTransform = useBridgeValue<{ scale: number; worldX: number; worldY: number } | null>(
+  const savedViewTransform = useBridgeValue(
     bridge,
     SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
-    null
+    null as { scale: number; worldX: number; worldY: number } | null
   );
-  const totals = useBridgeValue<ResourceAmountPayload[]>(
+  const totals = useBridgeValue(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
-    []
+    [] as ResourceAmountPayload[]
   );
   const [pointerHoveredId, setPointerHoveredId] = useState<SkillId | null>(null);
   const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
