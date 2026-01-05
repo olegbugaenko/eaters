@@ -6,6 +6,9 @@ import {
 import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import { BricksModule } from "../bricks/bricks.module";
+import type { BrickRuntimeState } from "../bricks/bricks.types";
+import { TargetingService } from "../targeting/TargetingService";
+import { isTargetOfType } from "../targeting/targeting.types";
 import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
@@ -46,15 +49,21 @@ import type {
 export class UnitProjectileController {
   private readonly scene: SceneObjectManager;
   private readonly bricks: BricksModule;
+  private readonly targeting: TargetingService;
 
   private projectiles: UnitProjectileState[] = [];
   private projectileIndex = new Map<string, UnitProjectileState>();
   private rings: RingState[] = [];
   private ringsSpawnedThisFrame = 0;
 
-  constructor(options: { scene: SceneObjectManager; bricks: BricksModule }) {
+  constructor(options: {
+    scene: SceneObjectManager;
+    bricks: BricksModule;
+    targeting: TargetingService;
+  }) {
     this.scene = options.scene;
     this.bricks = options.bricks;
+    this.targeting = options.targeting;
   }
 
   public spawn(projectile: UnitProjectileSpawn): string {
@@ -462,18 +471,30 @@ export class UnitProjectileController {
   private findHitBrick(position: SceneVector2, radius: number): { id: string } | null {
     let closest: { id: string; distanceSq: number } | null = null;
     const expanded = Math.max(0, radius + 12);
-    this.bricks.forEachBrickNear(position, expanded, (brick) => {
-      const dx = brick.position.x - position.x;
-      const dy = brick.position.y - position.y;
-      const distanceSq = dx * dx + dy * dy;
-      const combined = Math.max(0, (brick.physicalSize ?? 0) + radius);
-      const combinedSq = combined * combined;
-      if (distanceSq <= combinedSq) {
-        if (!closest || distanceSq < closest.distanceSq) {
-          closest = { id: brick.id, distanceSq };
+    this.targeting.forEachTargetNear(
+      position,
+      expanded,
+      (target) => {
+        if (!isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+          return;
         }
-      }
-    });
+        const brick = target.data ?? this.bricks.getBrickState(target.id);
+        if (!brick) {
+          return;
+        }
+        const dx = brick.position.x - position.x;
+        const dy = brick.position.y - position.y;
+        const distanceSq = dx * dx + dy * dy;
+        const combined = Math.max(0, (brick.physicalSize ?? 0) + radius);
+        const combinedSq = combined * combined;
+        if (distanceSq <= combinedSq) {
+          if (!closest || distanceSq < closest.distanceSq) {
+            closest = { id: brick.id, distanceSq };
+          }
+        }
+      },
+      { types: ["brick"] },
+    );
     return closest;
   }
 

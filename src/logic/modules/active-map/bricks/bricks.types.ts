@@ -9,6 +9,7 @@ import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { MapRunState } from "../map/MapRunState";
 import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
+import type { TargetingService } from "../targeting/TargetingService";
 
 export interface ResourceCollector {
   grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
@@ -47,6 +48,7 @@ export interface BricksModuleOptions {
   resources: ResourceCollector;
   bonuses: BonusesModule;
   runState: MapRunState;
+  targeting?: TargetingService;
   audio?: SoundEffectPlayer;
   statistics?: StatisticsTracker;
 }

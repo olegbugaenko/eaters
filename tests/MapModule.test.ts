@@ -5,7 +5,7 @@ import { DataBridge } from "../src/logic/core/DataBridge";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { PlayerUnitsModule } from "../src/logic/modules/active-map/player-units/player-units.module";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
-import { normalizeVector } from "../src/logic/helpers/vector.helper";
+import { normalizeVector } from "../src/shared/helpers/vector.helper";
 import { MovementService } from "../src/logic/services/movement/MovementService";
 import { MapModule } from "../src/logic/modules/active-map/map/map.module";
 import {
@@ -404,13 +404,17 @@ describe("Map run control", () => {
 
     maps.restartSelectedMap();
     assert.strictEqual(startRunCalls, 1, "run should start when restarting the selected map");
-    assert.strictEqual(setBricksCalls, 1, "bricks should spawn when restarting the map");
+    assert.strictEqual(setBricksCalls, 2, "bricks should be cleared and spawned when restarting the map");
     assert.strictEqual(
       prepareForMapCalls,
       1,
       "units should prepare when restarting the map"
     );
-    assert.strictEqual(setUnitsCalls, 1, "units should spawn when restarting the map");
+    assert.strictEqual(
+      setUnitsCalls,
+      2,
+      "units should be cleared and spawned when restarting the map"
+    );
     assert.strictEqual(
       configureForMapCalls,
       1,
@@ -503,7 +507,7 @@ describe("Map run control", () => {
     assert.strictEqual(cancelRunCalls, 1, "leaving should cancel the active run");
     assert(Array.isArray(lastBricks) && (lastBricks as unknown[]).length === 0);
     assert(Array.isArray(lastUnits) && (lastUnits as unknown[]).length === 0);
-    assert.strictEqual(endCurrentMapCalls, 1, "necromancer should be notified when leaving");
+    assert.strictEqual(endCurrentMapCalls, 2, "necromancer should be notified when leaving");
   });
 
   test("centers camera on the primary portal when starting a map", () => {
@@ -722,7 +726,7 @@ describe("Map unlocking", () => {
     necromancer.initialize();
     maps.initialize();
 
-    const initialList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const initialList = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
     const trainingEntry = initialList.find((entry) => entry.id === "trainingGrounds");
     const foundationEntry = initialList.find((entry) => entry.id === "foundations");
     assert(trainingEntry, "trainingGrounds should always be visible");
@@ -737,7 +741,7 @@ describe("Map unlocking", () => {
 
     maps.recordRunResult({ mapId: "trainingGrounds", success: true });
 
-    const afterTraining = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const afterTraining = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
     const afterTrainingIds = afterTraining.map((entry) => entry.id);
     assert(afterTrainingIds.includes("trainingGrounds"));
     assert(afterTrainingIds.includes("foundations"));
@@ -749,7 +753,7 @@ describe("Map unlocking", () => {
 
     maps.recordRunResult({ mapId: "foundations", success: true });
 
-    const updatedList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const updatedList = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
     const mapIds = updatedList.map((entry) => entry.id);
     assert(mapIds.includes("foundations"));
     assert(mapIds.includes("initial"));
@@ -885,9 +889,7 @@ describe("Last played map tracking", () => {
     maps.restartSelectedMap();
     maps.recordRunResult({ success: true, durationMs: 4200 });
 
-    const lastPlayed = bridge.getValue<{ mapId: MapId; level: number }>(
-      MAP_LAST_PLAYED_BRIDGE_KEY
-    );
+    const lastPlayed = bridge.getValue(MAP_LAST_PLAYED_BRIDGE_KEY);
     assert.deepStrictEqual(lastPlayed, { mapId: "foundations", level: 1 });
 
     const saved = maps.save();
@@ -923,9 +925,7 @@ describe("Last played map tracking", () => {
     restoredMaps.load(saved);
     restoredMaps.initialize();
 
-    const restoredLastPlayed = nextBridge.getValue<{ mapId: MapId; level: number }>(
-      MAP_LAST_PLAYED_BRIDGE_KEY
-    );
+    const restoredLastPlayed = nextBridge.getValue(MAP_LAST_PLAYED_BRIDGE_KEY);
     assert.deepStrictEqual(restoredLastPlayed, { mapId: "foundations", level: 1 });
   });
 });
@@ -990,31 +990,23 @@ describe("Map auto restart", () => {
     necromancer.initialize();
     maps.initialize();
 
-    let state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    let state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, false);
     assert.strictEqual(state.enabled, false);
 
     maps.setAutoRestartEnabled(true);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, false);
     assert.strictEqual(state.enabled, false);
 
     skillLevel = 1;
     maps.tick(0);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, true);
     assert.strictEqual(state.enabled, false);
 
     maps.setAutoRestartEnabled(true);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, true);
     assert.strictEqual(state.enabled, true);
 
@@ -1023,9 +1015,7 @@ describe("Map auto restart", () => {
 
     skillLevel = 0;
     maps.tick(0);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, false);
     assert.strictEqual(state.enabled, false);
   });

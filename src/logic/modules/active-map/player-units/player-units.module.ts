@@ -67,6 +67,9 @@ import { UnitProjectileController } from "../projectiles/ProjectileController";
 import { UnitRuntimeController } from "./units/UnitRuntimeController";
 import { UnitStatisticsReporter } from "./units/UnitStatisticsReporter";
 import type { PlayerUnitState } from "./units/UnitTypes";
+import { TargetingService } from "../targeting/TargetingService";
+import { isTargetOfType } from "../targeting/targeting.types";
+import { BricksTargetingProvider } from "../targeting/BricksTargetingProvider";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -106,6 +109,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly movement: MovementService;
   private readonly bonuses: BonusesModule;
   private readonly explosions: ExplosionModule;
+  private readonly targeting: TargetingService;
   private readonly arcs?: ArcModule;
   private readonly effects?: EffectsModule;
   private readonly fireballs?: FireballModule;
@@ -138,6 +142,11 @@ export class PlayerUnitsModule implements GameModule {
     this.movement = options.movement;
     this.bonuses = options.bonuses;
     this.explosions = options.explosions;
+    const targeting = options.targeting ?? new TargetingService();
+    if (!options.targeting) {
+      targeting.registerProvider(new BricksTargetingProvider(this.bricks));
+    }
+    this.targeting = targeting;
     this.arcs = options.arcs;
     this.effects = options.effects;
     this.fireballs = options.fireballs;
@@ -164,7 +173,7 @@ export class PlayerUnitsModule implements GameModule {
       getUnits: () => this.unitOrder,
       getUnitById: (id: string) => this.units.get(id),
       getBrickPosition: (brickId: string) => {
-        const brick = this.bricks.getBrickState(brickId);
+        const brick = this.getBrickTarget(brickId);
         return brick?.position || null;
       },
       damageBrick: (brickId: string, damage: number) => {
@@ -177,8 +186,7 @@ export class PlayerUnitsModule implements GameModule {
         }
       },
       getBricksInRadius: (position: SceneVector2, radius: number) => {
-        const nearbyBricks = this.bricks.findBricksNear(position, radius);
-        return nearbyBricks.map((brick: BrickRuntimeState) => brick.id);
+        return this.getBrickIdsInRadius(position, radius);
       },
       damageUnit: (unitId: string, damage: number) => {
         const unit = this.units.get(unitId);
@@ -192,7 +200,7 @@ export class PlayerUnitsModule implements GameModule {
         }
       },
       findNearestBrick: (position: SceneVector2) => {
-        const brick = this.bricks.findNearestBrick(position);
+        const brick = this.findNearestBrickTarget(position);
         return brick?.id || null;
       },
       audio: options.audio,
@@ -213,6 +221,7 @@ export class PlayerUnitsModule implements GameModule {
       scene: this.scene,
       movement: this.movement,
       bricks: this.bricks,
+      targeting: this.targeting,
       abilities: this.abilities,
       statistics: this.statistics,
       explosions: this.explosions,
@@ -576,6 +585,27 @@ export class PlayerUnitsModule implements GameModule {
       position: { ...position },
       initialRadius: CRITICAL_HIT_EXPLOSION_RADIUS,
     });
+  }
+
+  private findNearestBrickTarget(position: SceneVector2): BrickRuntimeState | null {
+    const target = this.targeting.findNearestTarget(position, { types: ["brick"] });
+    if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      return target.data ?? this.bricks.getBrickState(target.id);
+    }
+    return null;
+  }
+
+  private getBrickTarget(brickId: string): BrickRuntimeState | null {
+    const target = this.targeting.getTargetById(brickId, { types: ["brick"] });
+    if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      return target.data ?? this.bricks.getBrickState(target.id);
+    }
+    return null;
+  }
+
+  private getBrickIdsInRadius(position: SceneVector2, radius: number): string[] {
+    const targets = this.targeting.findTargetsNear(position, radius, { types: ["brick"] });
+    return targets.map((target) => target.id);
   }
 
   private applyKnockBack(

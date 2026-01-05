@@ -11,6 +11,7 @@ export const createBricksDefinition = (): ServiceDefinition<BricksModule, "brick
       resources: container.get("resources"),
       bonuses: container.get("bonuses"),
       runState: container.get("mapRunState"),
+      targeting: container.get("targeting"),
       audio: container.get("audio"),
       statistics: container.get("statistics"),
     }),

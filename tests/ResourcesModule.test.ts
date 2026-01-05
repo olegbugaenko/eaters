@@ -31,9 +31,7 @@ describe("ResourcesModule", () => {
     module.grantResources({ stone: 100 });
     module.finishRun();
 
-    const payload = bridge.getValue<ResourceRunSummaryPayload>(
-      RESOURCE_RUN_SUMMARY_BRIDGE_KEY
-    );
+    const payload = bridge.getValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY);
     assert(payload, "run summary should be available");
 
     const stone = payload.resources.find((resource) => resource.id === "stone");
@@ -66,9 +64,7 @@ describe("ResourcesModule", () => {
     module.grantResources({ stone: 5 });
     module.finishRun();
 
-    const payload = bridge.getValue<ResourceRunSummaryPayload>(
-      RESOURCE_RUN_SUMMARY_BRIDGE_KEY
-    );
+    const payload = bridge.getValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY);
     assert(payload, "run summary should be available");
 
     const stone = payload.resources.find((resource) => resource.id === "stone");
@@ -92,7 +88,7 @@ describe("ResourcesModule", () => {
 
     module.initialize();
 
-    const totalsBefore = bridge.getValue<{ id: string }[]>(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
+    const totalsBefore = bridge.getValue(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
     assert(
       totalsBefore.every((resource) => resource.id !== "iron"),
       "iron should be hidden before unlocking"
@@ -112,7 +108,7 @@ describe("ResourcesModule", () => {
     };
     module.finishRun();
 
-    const totalsAfter = bridge.getValue<{ id: string }[]>(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
+    const totalsAfter = bridge.getValue(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
     assert(
       totalsAfter.some((resource) => resource.id === "iron"),
       "iron should be visible after unlocking"

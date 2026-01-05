@@ -10,6 +10,7 @@ export const createUnitProjectilesDefinition = (): ServiceDefinition<
     new UnitProjectileController({
       scene: container.get("sceneObjects"),
       bricks: container.get("bricks"),
+      targeting: container.get("targeting"),
     }),
   registerAsModule: false,
 });

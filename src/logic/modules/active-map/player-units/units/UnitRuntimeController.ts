@@ -3,6 +3,8 @@ import type { SceneVector2 } from "../../../../services/scene-object-manager/sce
 import { MovementService, MovementBodyState } from "../../../../services/movement/MovementService";
 import { BricksModule } from "../../bricks/bricks.module";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
+import { TargetingService } from "../../targeting/TargetingService";
+import { isTargetOfType } from "../../targeting/targeting.types";
 import {
   BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
   BURNING_TAIL_DURATION_MS,
@@ -36,6 +38,7 @@ export interface UnitRuntimeControllerOptions {
   scene: SceneObjectManager;
   movement: MovementService;
   bricks: BricksModule;
+  targeting: TargetingService;
   abilities: PlayerUnitAbilities;
   statistics?: StatisticsTracker;
   explosions: ExplosionModule;
@@ -74,6 +77,7 @@ export class UnitRuntimeController {
   private readonly scene: SceneObjectManager;
   private readonly movement: MovementService;
   private readonly bricks: BricksModule;
+  private readonly targeting: TargetingService;
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
   private readonly explosions: ExplosionModule;
@@ -94,6 +98,7 @@ export class UnitRuntimeController {
     this.scene = options.scene;
     this.movement = options.movement;
     this.bricks = options.bricks;
+    this.targeting = options.targeting;
     this.abilities = options.abilities;
     this.statistics = options.statistics;
     this.explosions = options.explosions;
@@ -286,7 +291,7 @@ export class UnitRuntimeController {
     }
 
     if (unit.targetBrickId) {
-      const current = this.bricks.getBrickState(unit.targetBrickId);
+      const current = this.getBrickTarget(unit.targetBrickId);
       if (current && current.hp > 0) {
         return current;
       }
@@ -303,7 +308,7 @@ export class UnitRuntimeController {
     mode: UnitTargetingMode
   ): BrickRuntimeState | null {
     if (mode === "nearest") {
-      return this.bricks.findNearestBrick(unit.position);
+      return this.findNearestBrick(unit.position);
     }
     return this.findBrickByCriterion(unit, mode);
   }
@@ -317,14 +322,72 @@ export class UnitRuntimeController {
     let radius = TARGETING_RADIUS_STEP;
     const evaluated = new Set<string>();
     while (radius <= maxRadius + TARGETING_RADIUS_STEP) {
-      const bricks = this.bricks.findBricksNear(unit.position, radius);
+      const bricks = this.findBricksNear(unit.position, radius);
       const candidate = this.pickBestBrickCandidate(unit.position, bricks, mode, evaluated);
       if (candidate) {
         return candidate;
       }
       radius += TARGETING_RADIUS_STEP;
     }
-    return this.bricks.findNearestBrick(unit.position);
+    return this.findNearestBrick(unit.position);
+  }
+
+  private getBrickTarget(brickId: string): BrickRuntimeState | null {
+    const target = this.targeting.getTargetById(brickId, { types: ["brick"] });
+    if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      return target.data ?? this.bricks.getBrickState(target.id);
+    }
+    return null;
+  }
+
+  private findNearestBrick(position: SceneVector2): BrickRuntimeState | null {
+    const target = this.targeting.findNearestTarget(position, { types: ["brick"] });
+    if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      return target.data ?? this.bricks.getBrickState(target.id);
+    }
+    return null;
+  }
+
+  private findBricksNear(position: SceneVector2, radius: number): BrickRuntimeState[] {
+    if (radius < 0) {
+      return [];
+    }
+    const targets = this.targeting.findTargetsNear(position, radius, { types: ["brick"] });
+    const bricks: BrickRuntimeState[] = [];
+    targets.forEach((target) => {
+      if (!isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+        return;
+      }
+      const brick = target.data ?? this.bricks.getBrickState(target.id);
+      if (brick) {
+        bricks.push(brick);
+      }
+    });
+    return bricks;
+  }
+
+  private forEachBrickNear(
+    position: SceneVector2,
+    radius: number,
+    visitor: (brick: BrickRuntimeState) => void,
+  ): void {
+    if (radius < 0) {
+      return;
+    }
+    this.targeting.forEachTargetNear(
+      position,
+      radius,
+      (target) => {
+        if (!isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+          return;
+        }
+        const brick = target.data ?? this.bricks.getBrickState(target.id);
+        if (brick) {
+          visitor(brick);
+        }
+      },
+      { types: ["brick"] },
+    );
   }
 
   private pickBestBrickCandidate(
@@ -527,7 +590,7 @@ export class UnitRuntimeController {
 
     for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
       let collided = false;
-      this.bricks.forEachBrickNear(resolvedPosition, unit.physicalSize, (brick) => {
+      this.forEachBrickNear(resolvedPosition, unit.physicalSize, (brick) => {
         const brickRadius = Math.max(brick.physicalSize, 0);
         const combinedRadius = unit.physicalSize + brickRadius;
         if (combinedRadius <= 0) {
@@ -678,7 +741,7 @@ export class UnitRuntimeController {
       }
 
       if (meltingRadius > 0) {
-        this.bricks.forEachBrickNear(effectOrigin, meltingRadius, (brick) => {
+        this.forEachBrickNear(effectOrigin, meltingRadius, (brick) => {
           if (skipBrickId && brick.id === skipBrickId) {
             return;
           }
@@ -707,7 +770,7 @@ export class UnitRuntimeController {
       }
 
       if (freezingRadius > 0) {
-        this.bricks.forEachBrickNear(effectOrigin, freezingRadius, (brick) => {
+        this.forEachBrickNear(effectOrigin, freezingRadius, (brick) => {
           if (skipBrickId && brick.id === skipBrickId) {
             return;
           }
@@ -731,7 +794,7 @@ export class UnitRuntimeController {
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
-        this.bricks.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
+        this.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
           if (brick.id === target.id) {
             return;
           }
