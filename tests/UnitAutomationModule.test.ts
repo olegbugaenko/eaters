@@ -54,6 +54,7 @@ describe("UnitAutomationModule", () => {
       moveAcceleration: 1,
       mass: 1,
       physicalSize: 1,
+      knockbackReduction: 1,
     };
     const design: UnitDesignerUnitState = {
       id: "design-1",
@@ -69,6 +70,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -156,6 +158,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -163,6 +166,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -240,6 +244,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -247,6 +252,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -275,6 +281,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -282,6 +289,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -375,6 +383,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -382,6 +391,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     });
@@ -475,6 +485,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -482,6 +493,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -510,6 +522,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -517,6 +530,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -629,6 +643,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -636,6 +651,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -664,6 +680,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -671,6 +688,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -790,6 +808,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -797,6 +816,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -825,6 +845,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -832,6 +853,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };

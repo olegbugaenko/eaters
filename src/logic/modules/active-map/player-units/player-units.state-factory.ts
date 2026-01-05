@@ -80,6 +80,7 @@ export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInp
       moveAcceleration: factoryResult.moveAcceleration,
       mass: factoryResult.mass,
       physicalSize: factoryResult.physicalSize,
+      knockBackReduction: factoryResult.knockBackReduction,
       critChance: factoryResult.critChance,
       critMultiplier: factoryResult.critMultiplier,
       rewardMultiplier: factoryResult.rewardMultiplier,

@@ -29,6 +29,7 @@ export interface PlayerUnitState {
   moveAcceleration: number;
   mass: number;
   physicalSize: number;
+  knockBackReduction: number;
   critChance: number;
   critMultiplier: number;
   rewardMultiplier: number;

@@ -22,6 +22,7 @@ export const sanitizeRuntimeModifiers = (
   damageTransferRadius: Math.max(modifiers?.damageTransferRadius ?? 0, 0),
   attackStackBonusPerHit: Math.max(modifiers?.attackStackBonusPerHit ?? 0, 0),
   attackStackBonusCap: Math.max(modifiers?.attackStackBonusCap ?? 0, 0),
+  knockBackReduction: Math.max(modifiers?.knockBackReduction ?? 1, 1),
 });
 
 /**

@@ -606,7 +606,8 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
 
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed);
+    const reduction = Math.max(unit.knockBackReduction, 1);
+    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
     this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
   }
 

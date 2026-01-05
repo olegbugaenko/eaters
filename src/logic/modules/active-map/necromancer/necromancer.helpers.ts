@@ -12,6 +12,7 @@ export const DEFAULT_RUNTIME: PlayerUnitRuntimeModifiers = Object.freeze({
   damageTransferRadius: 0,
   attackStackBonusPerHit: 0,
   attackStackBonusCap: 0,
+  knockBackReduction: 1,
 });
 
 /**
