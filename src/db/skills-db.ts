@@ -932,10 +932,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "impact_dampening",
     name: "Impact Dampening",
     description:
-      "Brace joints and counterweights so impacts displace less mass, reducing knockback.",
+      "Elastic tissues absorb impacts, reducing knockback.",
     nodePosition: { x: 5, y: 2 },
     maxLevel: 5,
-    icon: "armor3.png",
+    icon: "knockback_reduction.png",
     effects: {
       all_units_knockback_reduction: {
         multiplier: (level) => 1 + 0.02 * level,
