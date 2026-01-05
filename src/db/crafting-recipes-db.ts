@@ -1,6 +1,6 @@
 import { ResourceAmount, ResourceId } from "./resources-db";
 import { SkillId } from "./skills-db";
-import { UnlockConditionList } from "../types/unlocks";
+import { UnlockConditionList } from "@shared/types/unlocks";
 import { MapId } from "./maps-db";
 
 export type CraftingRecipeId = "tools" | "paper";

@@ -20,16 +20,11 @@ export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
 export { createParticleSystemPrimitive } from "./ParticleSystemPrimitive";
 export { createFireRingPrimitive } from "./FireRingPrimitive";
 export {
-  setBulletGpuContext,
-  getBulletGpuContext,
-  acquireBulletSlot,
-  updateBulletSlot,
-  releaseBulletSlot,
-  uploadBulletBatches,
-  renderBulletBatches,
-  clearAllBulletBatches,
+  bulletGpuRenderer,
+  getAllActiveBullets,
+  applyInterpolatedBulletPositions,
   createBulletVisualConfig,
   DEFAULT_BULLET_VISUAL,
   type BulletVisualConfig,
   type BulletSlotHandle,
-} from "./gpu/BulletGpuRenderer";
+} from "./gpu/bullet";

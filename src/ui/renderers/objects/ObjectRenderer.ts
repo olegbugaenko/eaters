@@ -1,7 +1,7 @@
 import {
   SceneObjectInstance,
   SceneVector2,
-} from "../../../logic/services/SceneObjectManager";
+} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
 
 export const POSITION_COMPONENTS = 2;
 export const FILL_INFO_COMPONENTS = 4;
@@ -32,6 +32,12 @@ export interface StaticPrimitive extends Primitive {}
 export interface DynamicPrimitive extends Primitive {
   update(instance: SceneObjectInstance): Float32Array | null;
   dispose?(): void;
+  /**
+   * If true, this primitive will be updated every render frame via tickAutoAnimatingPrimitives().
+   * This allows individual primitives (e.g., particle emitters) to animate smoothly
+   * without requiring the entire object to be auto-animated.
+   */
+  autoAnimate?: boolean;
 }
 
 export interface ObjectRegistration {

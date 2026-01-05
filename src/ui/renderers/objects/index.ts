@@ -1,19 +1,24 @@
-import { BrickObjectRenderer } from "./BrickObjectRenderer";
-import { BulletObjectRenderer } from "./BulletObjectRenderer";
+import { BrickObjectRenderer } from "./implementations/brick";
+import { BulletObjectRenderer } from "./implementations/bullet";
 import { ObjectsRendererManager } from "./ObjectsRendererManager";
 import { ObjectRenderer } from "./ObjectRenderer";
-import { ExplosionObjectRenderer } from "./ExplosionObjectRenderer";
-import { PolygonObjectRenderer } from "./PolygonObjectRenderer";
-import { PlayerUnitObjectRenderer } from "./PlayerUnitObjectRenderer";
-import { PortalObjectRenderer } from "./PortalObjectRenderer";
-import { ArcRenderer } from "./ArcRenderer";
-import { AuraRenderer } from "./AuraRenderer";
-import { SpellProjectileRingRenderer } from "./SpellProjectileRingRenderer";
-import { SandStormRenderer } from "./SandStormRenderer";
-import { PersistentAoeSpellRenderer } from "./PersistentAoeSpellRenderer";
+import { ExplosionObjectRenderer } from "./implementations/explosion";
+import { PolygonObjectRenderer } from "./implementations/polygon";
+import { PlayerUnitObjectRenderer } from "./implementations/player-unit";
+import { PortalObjectRenderer } from "./implementations/portal";
+import { ArcRenderer } from "./implementations/arc";
+import { AuraRenderer } from "./implementations/aura";
+import { SpellProjectileRingRenderer } from "./implementations/spell-projectile-ring";
+import { SandStormRenderer } from "./implementations/sand-storm";
+import { PersistentAoeSpellRenderer } from "./implementations/persistent-aoe-spell";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
+
+// Re-export updateAllWhirlInterpolations for convenience
+export { updateAllWhirlInterpolations } from "./implementations/sand-storm";
+// Re-export clearAllAuraSlots for convenience
+export { clearAllAuraSlots } from "./implementations/player-unit";
 export {
   VERTEX_COMPONENTS,
   POSITION_COMPONENTS,

@@ -19,4 +19,8 @@
   box-sizing: border-box;
   border: 2px solid #1f6feb;
   border-radius: 0.5rem;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }

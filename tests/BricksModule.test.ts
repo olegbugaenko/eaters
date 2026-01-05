@@ -1,29 +1,28 @@
 import assert from "assert";
 import {
-  BricksModule,
   BRICK_COUNT_BRIDGE_KEY,
   BRICK_TOTAL_HP_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/BricksModule";
+} from "../src/logic/modules/active-map/bricks/bricks.const";
+import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { DataBridge } from "../src/logic/core/DataBridge";
 import {
-  SceneObjectManager,
-  FILL_TYPES,
   SceneLinearGradientFill,
   SceneRadialGradientFill,
-} from "../src/logic/services/SceneObjectManager";
+} from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
-import { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
+import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import { describe, test } from "./testRunner";
-import { BonusesModule } from "../src/logic/modules/shared/BonusesModule";
-import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
+import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
+import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
 const createBricksModule = (
   scene: SceneObjectManager,
   bridge: DataBridge,
-  onAllBricksDestroyed?: () => void
+  runState: MapRunState = new MapRunState(),
 ) => {
   const explosions = new ExplosionModule({ scene });
-  const runState = new MapRunState();
   runState.start();
   const resources = {
     grantResources: () => {
@@ -42,7 +41,6 @@ const createBricksModule = (
     resources,
     bonuses,
     runState,
-    onAllBricksDestroyed,
   });
 };
 
@@ -251,10 +249,14 @@ describe("BricksModule", () => {
   test("notifies when the final brick is destroyed", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
+    const runState = new MapRunState();
     let callbackCount = 0;
-    const module = createBricksModule(scene, bridge, () => {
-      callbackCount += 1;
+    runState.subscribe((event) => {
+      if (event.type === "complete" && event.success) {
+        callbackCount += 1;
+      }
     });
+    const module = createBricksModule(scene, bridge, runState);
 
     module.setBricks([
       {

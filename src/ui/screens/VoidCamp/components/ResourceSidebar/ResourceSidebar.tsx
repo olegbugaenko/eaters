@@ -1,10 +1,10 @@
-import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
-import { ResourceIcon } from "@shared/icons/ResourceIcon";
+import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import "./ResourceSidebar.css";
-import { formatNumber } from "@shared/format/number";
+import { formatNumber } from "@ui-shared/format/number";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui/shared/useBridgeValue";
-import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/MapModule";
+import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
 import { getMapConfig, MapId } from "@db/maps-db";
 import { useCallback } from "react";
 
@@ -15,10 +15,10 @@ interface ResourceSidebarProps {
 
 export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onStart }) => {
   const { app, bridge } = useAppLogic();
-  const lastPlayedMap = useBridgeValue<{ mapId: MapId; level: number } | null>(
+  const lastPlayedMap = useBridgeValue(
     bridge,
     MAP_LAST_PLAYED_BRIDGE_KEY,
-    null
+    null as { mapId: MapId; level: number } | null
   );
 
   const handleQuickStart = useCallback(() => {

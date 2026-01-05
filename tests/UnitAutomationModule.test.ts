@@ -8,13 +8,13 @@ import {
   UnitAutomationModule,
   selectNextAutomationTarget,
   AutomationSelectionCandidate,
-} from "../src/logic/modules/active-map/UnitAutomationModule";
+} from "../src/logic/modules/active-map/unit-automation/unit-automation.module";
 import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
-import { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/UnitDesignModule";
-import { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/NecromancerModule";
+import type { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/unit-design/unit-design.types";
+import type { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/necromancer/necromancer.types";
 import { createEmptyResourceAmount } from "../src/types/resources";
 import { PlayerUnitBlueprintStats } from "../src/types/player-units";
-import { MapRunState } from "../src/logic/modules/active-map/MapRunState";
+import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
 const createFullResources = (): NecromancerResourceSnapshot => ({
   mana: { current: 999, max: 999, regenPerSecond: 10 },
@@ -54,6 +54,7 @@ describe("UnitAutomationModule", () => {
       moveAcceleration: 1,
       mass: 1,
       physicalSize: 1,
+      knockbackReduction: 1,
     };
     const design: UnitDesignerUnitState = {
       id: "design-1",
@@ -69,6 +70,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -112,7 +114,7 @@ describe("UnitAutomationModule", () => {
       bridge.getValue<UnitAutomationBridgeState>(
         UNIT_AUTOMATION_STATE_BRIDGE_KEY
       ) ?? DEFAULT_UNIT_AUTOMATION_STATE;
-    const unitState = unlockedState.units.find((entry) => entry.designId === design.id);
+    const unitState = unlockedState.units.find((entry: { designId: string }) => entry.designId === design.id);
     assert.strictEqual(unlockedState.unlocked, true);
     assert.strictEqual(unitState?.enabled, true);
     assert.strictEqual(unitState?.weight, 1);
@@ -156,6 +158,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -163,6 +166,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -193,7 +197,7 @@ describe("UnitAutomationModule", () => {
     const state =
       bridge.getValue<UnitAutomationBridgeState>(UNIT_AUTOMATION_STATE_BRIDGE_KEY) ??
       DEFAULT_UNIT_AUTOMATION_STATE;
-    const unitState = state.units.find((entry) => entry.designId === design.id);
+    const unitState = state.units.find((entry: { designId: string }) => entry.designId === design.id);
     assert.strictEqual(unitState?.weight, 5);
 
     module.tick(16);
@@ -240,6 +244,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -247,6 +252,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -275,6 +281,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -282,6 +289,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -375,6 +383,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -382,6 +391,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     });
@@ -475,6 +485,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -482,6 +493,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -510,6 +522,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -517,6 +530,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -629,6 +643,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -636,6 +651,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -664,6 +680,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -671,6 +688,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -790,6 +808,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -797,6 +816,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };
@@ -825,6 +845,7 @@ describe("UnitAutomationModule", () => {
         moveAcceleration: 1,
         mass: 1,
         physicalSize: 1,
+        knockbackReduction: 1,
       },
       runtime: {
         rewardMultiplier: 1,
@@ -832,6 +853,7 @@ describe("UnitAutomationModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
+        knockBackReduction: 1,
       },
       targetingMode: "nearest",
     };

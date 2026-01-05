@@ -253,7 +253,7 @@ export function TutorialOverlay({
     position: "fixed",
     zIndex,
     background: dimColor,
-    pointerEvents: "auto",
+    pointerEvents: blockOutsideClicks ? "auto" : "none",
   };
 
   const topMask: React.CSSProperties = { ...maskCommon, left: 0, top: 0, right: 0, height: r.y };
@@ -299,11 +299,15 @@ export function TutorialOverlay({
 
   return (
     <>
-      {/* Masks around the spotlight hole */}
-      <div style={topMask} onMouseDown={blockOutsideClicks ? onOutsideClick : undefined} onClick={blockOutsideClicks ? onOutsideClick : undefined} />
-      <div style={leftMask} onMouseDown={blockOutsideClicks ? onOutsideClick : undefined} onClick={blockOutsideClicks ? onOutsideClick : undefined} />
-      <div style={rightMask} onMouseDown={blockOutsideClicks ? onOutsideClick : undefined} onClick={blockOutsideClicks ? onOutsideClick : undefined} />
-      <div style={bottomMask} onMouseDown={blockOutsideClicks ? onOutsideClick : undefined} onClick={blockOutsideClicks ? onOutsideClick : undefined} />
+      {/* Masks around the spotlight hole - only render when blockOutsideClicks is true */}
+      {blockOutsideClicks && (
+        <>
+          <div style={topMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
+          <div style={leftMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
+          <div style={rightMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
+          <div style={bottomMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
+        </>
+      )}
 
       {/* Visual outline for the spotlight */}
       {rect && <div style={spotlightOutline} />}

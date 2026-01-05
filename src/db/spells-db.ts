@@ -1,12 +1,13 @@
-import { ResourceAmountMap } from "../types/resources";
+import { ResourceAmountMap } from "@shared/types/resources";
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneVector2,
-} from "../logic/services/SceneObjectManager";
-import { BulletTailConfig, BulletTailEmitterConfig } from "./bullets-db";
-import type { BulletSpriteName } from "../logic/services/bulletSprites";
+} from "../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
+import { BulletTailConfig } from "./bullets-db";
+import type { BulletSpriteName } from "../logic/services/bullet-render-bridge/bullet-sprites.const";
 import { SkillId } from "./skills-db";
 import { ExplosionType } from "./explosions-db";
 
@@ -37,7 +38,7 @@ export interface SpellProjectileConfig {
   lifetimeMs: number;
   fill: SceneFill;
   tail: BulletTailConfig;
-  tailEmitter?: BulletTailEmitterConfig;
+  tailEmitter?: ParticleEmitterConfig;
   spawnOffset?: SceneVector2;
   ringTrail?: SpellProjectileRingTrailConfig;
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
@@ -91,25 +92,13 @@ export type SpellPersistentAoeEffectConfig =
       tint?: SpellBrickEffectTintConfig;
     };
 
-export interface SpellPersistentAoeParticleEmitterConfig {
-  particlesPerSecond: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  sizeRange: { min: number; max: number };
-  color: SceneColor;
-  fill?: SceneFill;
-  maxParticles?: number;
-  radialSpeed: { min: number; max: number };
-  tangentialSpeed: { min: number; max: number };
-  spawnJitter?: { radial?: number; angular?: number };
-}
 
 export interface SpellPersistentAoeVisualConfig {
   /** If set, spawns this explosion type instead of fire ring. Use for non-fire effects. */
   explosion?: ExplosionType;
   glowColor?: SceneColor;
   glowAlpha?: number;
-  particleEmitter?: SpellPersistentAoeParticleEmitterConfig;
+  particleEmitter?: ParticleEmitterConfig;
   fireColor?: SceneColor;
 }
 
@@ -176,8 +165,8 @@ const MAGIC_ARROW_TAIL: BulletTailConfig = {
   offsetMultiplier: -0.95,
 };
 
-const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
-  particlesPerSecond: 30,
+const MAGIC_ARROW_TAIL_EMITTER: ParticleEmitterConfig = {
+  particlesPerSecond: 45,
   particleLifetimeMs: 1350,
   fadeStartMs: 540,
   baseSpeed: 0.05,
@@ -190,7 +179,7 @@ const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     stops: [
-      { offset: 0, color: { r: 0.55, g: 0.65, b: 1, a: 0.12 } },
+      { offset: 0, color: { r: 0.55, g: 0.65, b: 1, a: 0.17 } },
       { offset: 1, color: { r: 0.6, g: 0.65, b: 0.65, a: 0.0 } },
     ],
     noise: {
@@ -202,7 +191,7 @@ const MAGIC_ARROW_TAIL_EMITTER: BulletTailEmitterConfig = {
   maxParticles: 90,
 };
 
-const VOID_DARTS_TAIL_EMITTER: BulletTailEmitterConfig = {
+const VOID_DARTS_TAIL_EMITTER: ParticleEmitterConfig = {
   particlesPerSecond: 40,
   particleLifetimeMs: 920,
   fadeStartMs: 240,
@@ -236,8 +225,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       radius: 12,
       shape: "sprite",
       spriteName: "magic_arrow",
-      speed: 230,
-      lifetimeMs: 3_600,
+      speed: 100,
+      lifetimeMs: 19_600,
       fill: MAGIC_ARROW_PROJECTILE_FILL,
       tail: MAGIC_ARROW_TAIL,
       tailEmitter: MAGIC_ARROW_TAIL_EMITTER,
@@ -324,7 +313,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     cooldownSeconds: 1.2,
     damage: { min: 1, max: 4 },
     projectile: {
-      radius: 3,
+      radius: 6,
       speed: 120,
       lifetimeMs: 12_500,
       fill: {

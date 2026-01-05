@@ -32,6 +32,7 @@ export const buildTutorialSteps = (
       const getResourceElement = (resourceId: string) =>
         getElementById(`${resourceId}-resource`);
       const getBlueVanguardCard = () => getElementById("summon-option-bluePentagon");
+      const getMagicArrowSpell = () => getElementById("spell-option-magic-arrow");
 
       return [
         {
@@ -55,7 +56,7 @@ export const buildTutorialSteps = (
           nextLabel: "Summon Blue Vanguard",
           lockMessage: "Spend your mana on summons and break a few bricks to continue",
           allowGameplay: true,
-          blockOutsideClicks: false,
+          blockOutsideClicks: true,
           isLocked: locks?.playStepLocked ?? false,
         },
         {
@@ -68,13 +69,29 @@ export const buildTutorialSteps = (
           placement: "top",
         },
         {
-          id: "progress",
-          title: "Don’t Fear Failure",
+          id: "cast-magic-arrow",
+          title: "Spellcasting",
           description:
-            "If you can’t shatter every brick, that’s fine. Every brick you destroy drops resources—use them to return stronger next time.",
+            "Spells are another way to destroy bricks. You can select one of the available spells from the list. Then clicking on the map will cast the spell at that location.",
+          getTarget: getMagicArrowSpell,
+          highlightPadding: 32,
+          placement: "top",
+          requiredAction: "cast-magic-arrow",
+          nextLabel: "Cast Magic Arrow",
+          lockMessage: "Select Magic Arrow and click on the map to cast it",
+          allowGameplay: false,
+          blockOutsideClicks: false,
+          isLocked: locks?.playStepLocked ?? false,
+        },
+        {
+          id: "progress",
+          title: "Don't Fear Failure",
+          description:
+            "If you can't shatter every brick, that's fine. Every brick you destroy drops resources—use them to return stronger next time.",
           getTarget: getCanvasWrapper,
           highlightPadding: 48,
           placement: "center",
+          allowGameplay: false,
         },
       ];
     }

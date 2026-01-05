@@ -1,7 +1,8 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
 import { createParticleEmitterPrimitive } from "../src/ui/renderers/primitives/ParticleEmitterPrimitive";
-import { FILL_TYPES, SceneObjectInstance } from "../src/logic/services/SceneObjectManager";
+import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectInstance } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
 
 describe("ParticleEmitterPrimitive GPU enforcement", () => {
   test("skips CPU fallback when GPU context is unavailable and forceGpu is set", () => {

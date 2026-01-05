@@ -1,0 +1,17 @@
+import { ServiceContainer } from "../../../core/ServiceContainer";
+import { ServiceDefinition } from "../../../core/loader/types";
+import { PlayerUnitsModule } from "../../active-map/player-units/player-units.module";
+import { ArcModule } from "./arc.module";
+
+export const createArcDefinition = (): ServiceDefinition<ArcModule, "arc"> => ({
+  token: "arc",
+  factory: (container) =>
+    new ArcModule({
+      scene: container.get("sceneObjects"),
+      getUnitPositionIfAlive: container.get<PlayerUnitsModule>("playerUnits").getUnitPositionIfAlive,
+    }),
+  registerAsModule: true,
+  onReady: (instance: ArcModule, container: ServiceContainer) => {
+    (container.get<PlayerUnitsModule>("playerUnits") as any).arcs = instance;
+  },
+});

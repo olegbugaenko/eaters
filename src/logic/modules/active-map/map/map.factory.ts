@@ -1,0 +1,42 @@
+import { SkillId } from "../../../../db/skills-db";
+import { ModuleDefinitionContext } from "../../../definitions/modules/context";
+import { ServiceDefinition } from "../../../core/loader/types";
+import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";
+import { MapModule } from "./map.module";
+import { MapSceneCleanup } from "./map.scene-cleanup";
+
+export const createMapDefinition = (
+  context: ModuleDefinitionContext,
+): ServiceDefinition<MapModule, "map"> => ({
+  token: "map",
+  factory: (container) => {
+    const sceneCleanup = new MapSceneCleanup({
+      fireball: container.get("fireball"),
+      bullet: container.get("bullet"),
+      explosion: container.get("explosion"),
+      arc: container.get("arc"),
+      effects: container.get("effects"),
+      sceneObjects: container.get("sceneObjects"),
+    });
+
+    return new MapModule({
+      scene: container.get("sceneObjects"),
+      bridge: container.get("bridge"),
+      runState: container.get("mapRunState"),
+      bonuses: container.get("bonuses"),
+      bricks: container.get("bricks"),
+      playerUnits: container.get("playerUnits"),
+      necromancer: container.get("necromancer"),
+      resources: container.get("resources"),
+      unlocks: container.get("unlocks"),
+      unitsAutomation: container.get("unitAutomation"),
+      arcs: container.get("arc"),
+      sceneCleanup,
+      getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
+    });
+  },
+  registerAsModule: true,
+  onReady: (instance: MapModule) => {
+    context.setMapModule(instance);
+  },
+});

@@ -50,6 +50,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
+  margin-right: 24px;
 }
 
 .scene-toolbar__hp {
@@ -58,6 +59,10 @@
   align-items: center;
   gap: 0.35rem;
   min-width: 220px;
+}
+
+.scene-toolbar__section--center .progress-bar__label {
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
 }
 
 .scene-toolbar__hp-label {
@@ -119,5 +124,6 @@
   .scene-toolbar__section--right {
     flex-direction: column;
     align-items: center;
+    margin-right: 14px;
   }
 }

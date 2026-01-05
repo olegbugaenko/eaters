@@ -9,45 +9,45 @@ import { MapId } from "@db/maps-db";
 import { GAME_VERSIONS } from "@db/version-db";
 import {
   MAP_CLEARED_LEVELS_BRIDGE_KEY,
-  MapListEntry,
   MAP_LIST_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
-} from "@logic/modules/active-map/MapModule";
-import { TIME_BRIDGE_KEY } from "@logic/modules/shared/TestTimeModule";
-import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
+} from "@logic/modules/active-map/map/map.const";
+import { MapListEntry } from "@logic/modules/active-map/map/map.types";
+import { TIME_BRIDGE_KEY } from "@logic/modules/shared/time/time.module";
+import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
 import {
   CampStatisticsSnapshot,
   DEFAULT_CAMP_STATISTICS,
   STATISTICS_BRIDGE_KEY,
-} from "@logic/modules/shared/StatisticsModule";
+} from "@logic/modules/shared/statistics/statistics.module";
 import type { StoredSaveData } from "@logic/core/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { useBridgeValue } from "@shared/useBridgeValue";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
-  UnitModuleWorkshopBridgeState,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
-} from "@logic/modules/camp/UnitModuleWorkshopModule";
+} from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
+import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
-  BuildingsWorkshopBridgeState,
   DEFAULT_BUILDINGS_WORKSHOP_STATE,
-} from "@/logic/modules/camp/BuildingsModule";
+} from "@/logic/modules/camp/buildings/buildings.const";
+import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import {
   DEFAULT_UNIT_DESIGNER_STATE,
-  UnitDesignerBridgeState,
   UNIT_DESIGNER_STATE_BRIDGE_KEY,
-} from "@logic/modules/camp/UnitDesignModule";
+} from "@logic/modules/camp/unit-design/unit-design.const";
+import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import {
-  CraftingBridgeState,
   CRAFTING_STATE_BRIDGE_KEY,
   DEFAULT_CRAFTING_STATE,
-} from "@logic/modules/camp/CraftingModule";
+} from "@logic/modules/camp/crafting/crafting.const";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
-  UnitAutomationBridgeState,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-} from "@logic/modules/active-map/UnitAutomationModule";
+} from "@logic/modules/active-map/unit-automation/unit-automation.const";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { VoidCampTopBar } from "@screens/VoidCamp/components/VoidCamp/VoidCampTopBar";
 import {
@@ -81,45 +81,45 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const [statusMessage, setStatusMessage] = useState<SettingsMessage | null>(null);
   const { settings: audioSettings, setAudioSetting } = useAudioSettings();
   const currentVersion = GAME_VERSIONS[0] ?? null;
-  const timePlayed = useBridgeValue<number>(bridge, TIME_BRIDGE_KEY, 0);
-  const maps = useBridgeValue<MapListEntry[]>(bridge, MAP_LIST_BRIDGE_KEY, []);
-  const selectedMap = useBridgeValue<MapId | null>(bridge, MAP_SELECTED_BRIDGE_KEY, null);
-  const clearedLevelsTotal = useBridgeValue<number>(
+  const timePlayed = useBridgeValue(bridge, TIME_BRIDGE_KEY, 0);
+  const maps = useBridgeValue(bridge, MAP_LIST_BRIDGE_KEY, [] as MapListEntry[]);
+  const selectedMap = useBridgeValue(bridge, MAP_SELECTED_BRIDGE_KEY, null as MapId | null);
+  const clearedLevelsTotal = useBridgeValue(
     bridge,
     MAP_CLEARED_LEVELS_BRIDGE_KEY,
     0
   );
-  const resources = useBridgeValue<ResourceAmountPayload[]>(
+  const resources = useBridgeValue(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
-    []
+    [] as ResourceAmountPayload[]
   );
-  const statistics = useBridgeValue<CampStatisticsSnapshot>(
+  const statistics = useBridgeValue(
     bridge,
     STATISTICS_BRIDGE_KEY,
     DEFAULT_CAMP_STATISTICS
   );
-  const moduleWorkshopState = useBridgeValue<UnitModuleWorkshopBridgeState>(
+  const moduleWorkshopState = useBridgeValue(
     bridge,
     UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_MODULE_WORKSHOP_STATE
   );
-  const buildingsState = useBridgeValue<BuildingsWorkshopBridgeState>(
+  const buildingsState = useBridgeValue(
     bridge,
     BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
     DEFAULT_BUILDINGS_WORKSHOP_STATE
   );
-  const unitDesignerState = useBridgeValue<UnitDesignerBridgeState>(
+  const unitDesignerState = useBridgeValue(
     bridge,
     UNIT_DESIGNER_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_DESIGNER_STATE
   );
-  const unitAutomationState = useBridgeValue<UnitAutomationBridgeState>(
+  const unitAutomationState = useBridgeValue(
     bridge,
     UNIT_AUTOMATION_STATE_BRIDGE_KEY,
     DEFAULT_UNIT_AUTOMATION_STATE
   );
-  const craftingState = useBridgeValue<CraftingBridgeState>(
+  const craftingState = useBridgeValue(
     bridge,
     CRAFTING_STATE_BRIDGE_KEY,
     DEFAULT_CRAFTING_STATE

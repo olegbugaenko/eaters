@@ -1,6 +1,6 @@
 import type { MapId } from "./maps-db";
 import type { SkillId } from "./skills-db";
-import type { UnlockCondition } from "../types/unlocks";
+import type { UnlockCondition } from "@shared/types/unlocks";
 
 export type ResourceId =
   | "stone"

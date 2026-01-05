@@ -6,13 +6,15 @@ import {
   VERTEX_COMPONENTS,
 } from "./ObjectRenderer";
 import {
-  FILL_TYPES,
   SceneFill,
   SceneObjectInstance,
-  SceneObjectManager,
   SceneStroke,
   SceneVector2,
-} from "../../../logic/services/SceneObjectManager";
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
+import { cloneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 
 interface ManagedObject {
   instance: SceneObjectInstance;
@@ -62,6 +64,8 @@ export class ObjectsRendererManager {
 
   // Objects that need per-frame updates (e.g., time-based animations)
   private readonly autoAnimatingIds = new Set<string>();
+  // Individual primitives that need per-frame updates (e.g., particle emitters)
+  private readonly autoAnimatingPrimitives = new Map<DynamicPrimitive, { objectId: string }>();
 
   private staticData: Float32Array | null = null;
   private dynamicData: Float32Array | null = null;
@@ -98,6 +102,7 @@ export class ObjectsRendererManager {
 
     this.objects.clear();
     this.autoAnimatingIds.clear();
+    this.autoAnimatingPrimitives.clear();
     this.staticEntries.length = 0;
     this.dynamicEntries.length = 0;
     this.dynamicEntryByPrimitive.clear();
@@ -175,7 +180,8 @@ export class ObjectsRendererManager {
   }
 
   /**
-   * Updates all auto-animating objects (those with customData.autoAnimate = true).
+   * Updates all auto-animating objects (those with customData.autoAnimate = true)
+   * and individual primitives (those with primitive.autoAnimate = true).
    * Call this once per frame before consumeSyncInstructions().
    * 
    * OPTIMIZATION: Instead of pushing individual updates with data.slice() (which
@@ -183,48 +189,83 @@ export class ObjectsRendererManager {
    * and mark that a full dynamic buffer upload is needed.
    */
   public tickAutoAnimating(): void {
-    if (this.autoAnimatingIds.size === 0) {
-      return;
-    }
-    
     let anyUpdated = false;
     const idsToRemove: string[] = [];
+    const primitivesToRemove: DynamicPrimitive[] = [];
     
-    this.autoAnimatingIds.forEach((objectId) => {
-      const managed = this.objects.get(objectId);
-      if (!managed) {
-        // Object was removed - defer deletion to avoid mutating during iteration
-        idsToRemove.push(objectId);
-        return;
-      }
-      
-      // Trigger update using current instance (renderer will recompute based on time)
-      const updates = managed.renderer.update(managed.instance, managed.registration);
-      updates.forEach(({ primitive, data }) => {
-        const entry = this.dynamicEntryByPrimitive.get(primitive);
-        if (!entry) {
+    // Update full objects with autoAnimate: true
+    if (this.autoAnimatingIds.size > 0) {
+      this.autoAnimatingIds.forEach((objectId) => {
+        const managed = this.objects.get(objectId);
+        if (!managed) {
+          // Object was removed - defer deletion to avoid mutating during iteration
+          idsToRemove.push(objectId);
           return;
         }
-        if (entry.length !== data.length) {
-          entry.length = data.length;
-          this.dynamicLayoutDirty = true;
-          return;
-        }
-        if (!this.dynamicData) {
-          return;
-        }
-        // Update in-place, no copy needed
-        this.dynamicData.set(data, entry.offset);
-        anyUpdated = true;
+        
+        // Trigger update using current instance (renderer will recompute based on time)
+        const updates = managed.renderer.update(managed.instance, managed.registration);
+        updates.forEach(({ primitive, data }) => {
+          const entry = this.dynamicEntryByPrimitive.get(primitive);
+          if (!entry) {
+            return;
+          }
+          if (entry.length !== data.length) {
+            entry.length = data.length;
+            this.dynamicLayoutDirty = true;
+            return;
+          }
+          if (!this.dynamicData) {
+            return;
+          }
+          // Update in-place, no copy needed
+          this.dynamicData.set(data, entry.offset);
+          anyUpdated = true;
+        });
       });
-    });
+    }
     
-    // Clean up removed objects
+    // Update individual primitives with autoAnimate: true
+    if (this.autoAnimatingPrimitives.size > 0) {
+      this.autoAnimatingPrimitives.forEach(({ objectId }, primitive) => {
+        const managed = this.objects.get(objectId);
+        if (!managed) {
+          // Object was removed - defer deletion
+          primitivesToRemove.push(primitive);
+          return;
+        }
+        
+        // Update only this specific primitive
+        const data = primitive.update(managed.instance);
+        if (data) {
+          const entry = this.dynamicEntryByPrimitive.get(primitive);
+          if (!entry) {
+            return;
+          }
+          if (entry.length !== data.length) {
+            entry.length = data.length;
+            this.dynamicLayoutDirty = true;
+            return;
+          }
+          if (!this.dynamicData) {
+            return;
+          }
+          // Update in-place, no copy needed
+          this.dynamicData.set(data, entry.offset);
+          anyUpdated = true;
+        }
+      });
+    }
+    
+    // Clean up removed objects and primitives
     for (const id of idsToRemove) {
       this.autoAnimatingIds.delete(id);
     }
+    for (const primitive of primitivesToRemove) {
+      this.autoAnimatingPrimitives.delete(primitive);
+    }
     
-    // If any auto-animating objects were updated, mark for full dynamic upload
+    // If any auto-animating objects/primitives were updated, mark for full dynamic upload
     // This is more efficient than many small bufferSubData calls
     if (anyUpdated && !this.dynamicLayoutDirty) {
       this.autoAnimatingNeedsUpload = true;
@@ -338,6 +379,11 @@ export class ObjectsRendererManager {
       };
       this.dynamicEntries.push(entry);
       this.dynamicEntryByPrimitive.set(primitive, entry);
+      
+      // Register primitive for auto-animation if it has autoAnimate flag
+      if (primitive.autoAnimate === true) {
+        this.autoAnimatingPrimitives.set(primitive, { objectId: instance.id });
+      }
     });
 
     if (registration.dynamicPrimitives.length > 0) {
@@ -390,6 +436,11 @@ export class ObjectsRendererManager {
     }
     this.objects.delete(id);
     this.autoAnimatingIds.delete(id);
+    
+    // Remove all primitives from this object from auto-animating list
+    managed.registration.dynamicPrimitives.forEach((primitive) => {
+      this.autoAnimatingPrimitives.delete(primitive);
+    });
 
     this.staticDirty =
       this.staticDirty || managed.registration.staticPrimitives.length > 0;
@@ -487,7 +538,7 @@ export class ObjectsRendererManager {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : undefined,
         color: instance.data.color ? { ...instance.data.color } : undefined,
-        fill: cloneFill(instance.data.fill),
+        fill: cloneSceneFill(instance.data.fill),
         stroke: cloneStroke(instance.data.stroke),
         rotation:
           typeof instance.data.rotation === "number"
@@ -497,52 +548,3 @@ export class ObjectsRendererManager {
     };
   }
 }
-
-const cloneFill = (fill: SceneFill): SceneFill => {
-  switch (fill.fillType) {
-    case FILL_TYPES.SOLID:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { ...fill.color },
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-      };
-    case FILL_TYPES.LINEAR_GRADIENT:
-      return {
-        fillType: FILL_TYPES.LINEAR_GRADIENT,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end ? { ...fill.end } : undefined,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-      };
-    case FILL_TYPES.RADIAL_GRADIENT:
-    case FILL_TYPES.DIAMOND_GRADIENT:
-      return {
-        fillType: fill.fillType,
-        start: fill.start ? { ...fill.start } : undefined,
-        end: fill.end,
-        stops: fill.stops.map((stop) => ({
-          offset: stop.offset,
-          color: { ...stop.color },
-        })),
-        ...(fill.noise ? { noise: { ...fill.noise } } : {}),
-      };
-    default:
-      return {
-        fillType: FILL_TYPES.SOLID,
-        color: { r: 1, g: 1, b: 1, a: 1 },
-      };
-  }
-};
-
-const cloneStroke = (stroke: SceneStroke | undefined): SceneStroke | undefined => {
-  if (!stroke) {
-    return undefined;
-  }
-  return {
-    color: { ...stroke.color },
-    width: stroke.width,
-  };
-};

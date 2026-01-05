@@ -6,26 +6,26 @@ import {
   useRef,
   useState,
 } from "react";
-import {
+import { MAX_UNITS_ON_MAP } from "@logic/modules/active-map/necromancer/necromancer.const";
+import type {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
-  MAX_UNITS_ON_MAP,
-} from "@logic/modules/active-map/NecromancerModule";
-import { createEmptyResourceAmount } from "@/types/resources";
-import { SpellOption } from "@logic/modules/active-map/spells/SpellcastingModule";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
-import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/units/PlayerUnitsModule";
+} from "@logic/modules/active-map/necromancer/necromancer.types";
+import { createEmptyResourceAmount } from "@shared/const/resources.const";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/player-units/player-units.const";
 import {
   UnitDesignId,
   UnitDesignModuleDetail,
-} from "@logic/modules/camp/UnitDesignModule";
+} from "@logic/modules/camp/unit-design/unit-design.types";
 import { SpellId } from "@db/spells-db";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { classNames } from "@shared/classNames";
-import { formatNumber } from "@shared/format/number";
-import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
-import { useBridgeValue } from "@shared/useBridgeValue";
+import { classNames } from "@ui-shared/classNames";
+import { formatNumber } from "@ui-shared/format/number";
+import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { ResourceDiamondMeter } from "./ResourceDiamondMeter";
 import "./SceneSummoningPanel.css";
 import { SceneTooltipContent } from "../tooltip/SceneTooltipPanel";
@@ -78,10 +78,10 @@ export const SceneSummoningPanel = forwardRef<
     ref,
   ) => {
     const { bridge } = useAppLogic();
-    const unitCountsByDesign = useBridgeValue<Record<string, number>>(
+    const unitCountsByDesign = useBridgeValue(
       bridge,
       PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
-      {},
+      {} as Record<string, number>,
     );
 
     const available = {
@@ -110,9 +110,9 @@ export const SceneSummoningPanel = forwardRef<
 
     const showUnitTooltip = useCallback(
       (blueprint: NecromancerSpawnOption["blueprint"]) => {
-        onHoverInfoChange(createUnitTooltip(blueprint));
+        onHoverInfoChange(createUnitTooltip(blueprint, spawnOptions.length > 1));
       },
-      [onHoverInfoChange],
+      [onHoverInfoChange, spawnOptions],
     );
 
     const showSpellTooltip = useCallback(
@@ -275,14 +275,14 @@ export const SceneSummoningPanel = forwardRef<
                 );
                 const statusLabel = onCooldown
                   ? `Ready in ${formatCooldownRemaining(spell.remainingCooldownMs)}`
-                  : canAfford
-                  ? isSelected
-                    ? "Selected"
-                    : "Ready"
-                  : "Need resources";
+                  : isSelected
+                  ? "Selected"
+                  : "Ready";
+                const spellElementId = `spell-option-${spell.id}`;
                 return (
                   <div
                     key={spell.id}
+                    id={spellElementId}
                     className={spellClassName}
                     role="button"
                     tabIndex={0}

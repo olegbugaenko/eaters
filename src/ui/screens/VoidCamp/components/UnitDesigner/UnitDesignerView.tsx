@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { classNames } from "@shared/classNames";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
-import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
-import { UnitDesignerBridgeState } from "@logic/modules/camp/UnitDesignModule";
+import { classNames } from "@ui-shared/classNames";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
+import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
-import { buildUnitStatEntries } from "@shared/unitStats";
+import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
+import { buildUnitStatEntries } from "@ui-shared/unitStats";
 import { PlayerUnitType } from "@db/player-units-db";
 import { UnitModuleId } from "@db/unit-modules-db";
-import { Button } from "@shared/Button";
-import { ModuleDetailsCard } from "@shared/ModuleDetailsCard";
+import { Button } from "@ui-shared/Button";
+import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
 import "./UnitDesignerView.css";
 
 interface UnitDesignerViewProps {
@@ -40,7 +40,7 @@ const getDefaultType = (units: readonly { type: PlayerUnitType }[], fallback: Pl
 
 export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resources }) => {
   const { app } = useAppLogic();
-  const designer = useMemo(() => app.getUnitDesigner(), [app]);
+  const designer = useMemo(() => app.services.unitDesign, [app]);
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
   const [preview, setPreview] = useState<{

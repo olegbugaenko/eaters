@@ -1,14 +1,14 @@
 import { BrickType, getBrickConfig } from "./bricks-db";
-import { SceneSize, SceneVector2 } from "../logic/services/SceneObjectManager";
+import { SceneSize, SceneVector2 } from "../logic/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "./player-units-db";
-import type { UnlockCondition } from "../types/unlocks";
+import type { UnlockCondition } from "@shared/types/unlocks";
 import type { SkillId } from "./skills-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
   circleWithBricks,
   polygonWithBricks,
-} from "../logic/services/BrickLayoutService";
+} from "../logic/services/brick-layout/BrickLayoutService";
 
 export type MapId =
   | "trainingGrounds"
@@ -57,8 +57,6 @@ export interface MapListEntry {
   readonly id: MapId;
   readonly name: string;
   readonly size: SceneSize;
-  readonly brickCount: number;
-  readonly brickTypes: readonly BrickType[];
   readonly icon?: string;
 }
 
@@ -2111,15 +2109,10 @@ export const isMapId = (value: unknown): value is MapId =>
 export const getMapList = (): MapListEntry[] =>
   MAP_IDS.map((mapId) => {
     const config = MAPS_DB[mapId];
-    const bricks = buildBricksFromBlueprints(config.bricks({ mapLevel: 0 }));
-    const brickCount = bricks.length;
-    const brickTypes = Array.from(new Set(bricks.map((brick) => brick.type)));
     return {
       id: mapId,
       name: config.name,
       size: { ...config.size },
       icon: config.icon,
-      brickCount,
-      brickTypes,
     };
   });

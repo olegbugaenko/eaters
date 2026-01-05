@@ -1,42 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SpellId, SPELL_IDS } from "@db/spells-db";
-import {
-  DEFAULT_MAP_AUTO_RESTART_STATE,
-  MAP_AUTO_RESTART_BRIDGE_KEY,
-  MapAutoRestartState,
-} from "@logic/modules/active-map/MapModule";
-import {
-  NECROMANCER_RESOURCES_BRIDGE_KEY,
-  NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
-  NecromancerResourcesPayload,
-  NecromancerSpawnOption,
-} from "@logic/modules/active-map/NecromancerModule";
-import {
-  DEFAULT_SPELL_OPTIONS,
-  SPELL_OPTIONS_BRIDGE_KEY,
-  SpellOption,
-} from "@logic/modules/active-map/spells/SpellcastingModule";
-import {
-  DEFAULT_UNIT_AUTOMATION_STATE,
-  UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-  UnitAutomationBridgeState,
-} from "@logic/modules/active-map/UnitAutomationModule";
-import {
-  BRICK_COUNT_BRIDGE_KEY,
-  BRICK_TOTAL_HP_BRIDGE_KEY,
-} from "@logic/modules/active-map/BricksModule";
-import {
-  PLAYER_UNIT_COUNT_BRIDGE_KEY,
-  PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "@logic/modules/active-map/units/PlayerUnitsModule";
-import { UnitDesignId } from "@logic/modules/camp/UnitDesignModule";
-import {
-  DEFAULT_RESOURCE_RUN_SUMMARY,
-  RESOURCE_RUN_DURATION_BRIDGE_KEY,
-  RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
-  ResourceRunSummaryPayload,
-} from "@logic/modules/shared/ResourcesModule";
-import { SceneCameraState } from "@logic/services/SceneObjectManager";
+import { SpellId } from "@db/spells-db";
+import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import { SceneDebugPanel } from "./components/debug/SceneDebugPanel";
 import { SceneRunSummaryModal } from "./components/modals/SceneRunSummaryModal";
 import { SceneRunResourcePanel } from "./components/panels/SceneRunResourcePanel";
@@ -50,36 +15,20 @@ import {
   SceneTutorialConfig,
   SceneTutorialOverlay,
 } from "./components/overlay/SceneTutorialOverlay";
-import { clearAllAuraSlots } from "@ui/renderers/objects/PlayerUnitObjectRenderer";
-import {
-  clearPetalAuraInstances,
-  petalAuraEffect,
-} from "@ui/renderers/primitives/gpu/PetalAuraGpuRenderer";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { useBridgeValue } from "@shared/useBridgeValue";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import "./SceneScreen.css";
-import {
-  BufferStats,
-  ParticleStatsState,
-  useSceneCanvas,
-} from "./hooks/useSceneCanvas";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";
+import { TutorialMonitorStatus } from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.types";
 import {
   DEFAULT_TUTORIAL_MONITOR_STATUS,
   TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
   TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
-  TutorialMonitorStatus,
-} from "@logic/modules/active-map/TutorialMonitorModule";
-
-const AUTO_RESTART_SECONDS = 5;
-
-const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = Object.freeze({
-  mana: { current: 0, max: 0 },
-  sanity: { current: 0, max: 0 },
-});
-
-const DEFAULT_NECROMANCER_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
+} from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.const";
+import { useSceneRunState } from "./hooks/useSceneRunState";
+import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
+import { usePersistedSpellSelection } from "./hooks/usePersistedSpellSelection";
 
 interface SceneScreenProps {
   onExit: () => void;
@@ -88,117 +37,61 @@ interface SceneScreenProps {
   onTutorialComplete?: () => void;
 }
 
-const cameraEquals = (
-  a: SceneCameraState,
-  b: SceneCameraState | undefined,
-  epsilon = 0.01
-): boolean => {
-  if (a === b) {
-    return true;
-  }
-  if (!b) {
-    return false;
-  }
-  return (
-    Math.abs(a.position.x - b.position.x) <= epsilon &&
-    Math.abs(a.position.y - b.position.y) <= epsilon &&
-    Math.abs(a.scale - b.scale) <= epsilon &&
-    Math.abs(a.viewportSize.width - b.viewportSize.width) <= epsilon &&
-    Math.abs(a.viewportSize.height - b.viewportSize.height) <= epsilon
-  );
-};
-
 export const SceneScreen: React.FC<SceneScreenProps> = ({
   onExit,
   onLeaveToMapSelect,
   tutorial,
   onTutorialComplete,
 }) => {
+  const { app, bridge, scene } = useAppLogic();
+  const spellcasting = app.services.spellcasting;
+  const gameLoop = useMemo(() => app.services.gameLoop, [app]);
+  const necromancer = useMemo(() => app.services.necromancer, [app]);
+  const unitAutomation = useMemo(() => app.services.unitAutomation, [app]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
-  const { app, bridge, scene } = useAppLogic();
-  const spellcasting = app.getSpellcasting();
-  const gameLoop = useMemo(() => app.getGameLoop(), [app]);
-  // moved high-frequency debug subscriptions into SceneDebugPanel to avoid rerendering SceneScreen every tick
-  const brickTotalHp = useBridgeValue<number>(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
-  const unitCount = useBridgeValue<number>(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
-  const unitTotalHp = useBridgeValue<number>(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
-  const necromancerResources = useBridgeValue<NecromancerResourcesPayload>(
+  const pointerPressedRef = useRef(false);
+  const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const initialCamera = useMemo(() => scene.getCamera(), [scene]);
+  const cameraInfoRef = useRef(initialCamera);
+  const scaleRef = useRef(initialCamera.scale);
+  const spellOptionsRef = useRef<SpellOption[]>([]);
+  const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
+  const [isPauseOpen, setIsPauseOpen] = useState(false);
+  const {
+    toolbarState,
+    summoningProps,
+    resourceSummary,
+    necromancerResources,
+    autoRestartState,
+    autoRestartCountdown,
+    spellOptions,
+    handleToggleAutomation,
+    handleToggleAutoRestart,
+    handleRestart,
+    showRunSummary,
+  } = useSceneRunState({
     bridge,
-    NECROMANCER_RESOURCES_BRIDGE_KEY,
-    DEFAULT_NECROMANCER_RESOURCES
-  );
-  const necromancerOptions = useBridgeValue<NecromancerSpawnOption[]>(
-    bridge,
-    NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
-    DEFAULT_NECROMANCER_SPAWN_OPTIONS
-  );
-  const spellOptions = useBridgeValue<SpellOption[]>(
-    bridge,
-    SPELL_OPTIONS_BRIDGE_KEY,
-    DEFAULT_SPELL_OPTIONS
-  );
-  const resourceSummary = useBridgeValue<ResourceRunSummaryPayload>(
-    bridge,
-    RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
-    DEFAULT_RESOURCE_RUN_SUMMARY
-  );
-  const automationState = useBridgeValue<UnitAutomationBridgeState>(
-    bridge,
-    UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-    DEFAULT_UNIT_AUTOMATION_STATE
-  );
-  const tutorialMonitorStatus = useBridgeValue<TutorialMonitorStatus>(
+    app,
+    necromancer,
+    unitAutomation,
+    cameraInfoRef,
+    scaleRef,
+    spellOptionsRef,
+  });
+  const tutorialMonitorStatus = useBridgeValue(
     bridge,
     TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
     DEFAULT_TUTORIAL_MONITOR_STATUS
   );
-  const autoRestartState = useBridgeValue<MapAutoRestartState>(
-    bridge,
-    MAP_AUTO_RESTART_BRIDGE_KEY,
-    DEFAULT_MAP_AUTO_RESTART_STATE
-  );
-  const [scale, setScale] = useState(() => scene.getCamera().scale);
-  const [cameraInfo, setCameraInfo] = useState(() => scene.getCamera());
-  const cameraInfoRef = useRef(cameraInfo);
-  const scaleRef = useRef(scale);
-  const unitCountRef = useRef(0);
-  const unitTotalHpRef = useRef(0);
-  const brickTotalHpRef2 = useRef(0);
-  const necromancerResourcesRef = useRef<NecromancerResourcesPayload>(DEFAULT_NECROMANCER_RESOURCES);
-  const necromancerOptionsRef = useRef<NecromancerSpawnOption[]>(DEFAULT_NECROMANCER_SPAWN_OPTIONS);
-  const spellOptionsRef = useRef<SpellOption[]>(DEFAULT_SPELL_OPTIONS);
-  const automationStateRef = useRef<UnitAutomationBridgeState>(DEFAULT_UNIT_AUTOMATION_STATE);
-  const scaleRange = useMemo(() => scene.getScaleRange(), [scene]);
-  const brickInitialHpRef = useRef(0);
-  const necromancer = useMemo(() => app.getNecromancer(), [app]);
-  const unitAutomation = useMemo(() => app.getUnitAutomation(), [app]);
-  const showRunSummary = resourceSummary.completed;
-  const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
-  const [isPauseOpen, setIsPauseOpen] = useState(false);
-  const [selectedSpellId, setSelectedSpellId] = useState<SpellId | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-    try {
-      const stored = localStorage.getItem("selectedSpellId");
-      if (stored && SPELL_IDS.includes(stored as SpellId)) {
-        return stored as SpellId;
-      }
-    } catch {
-      // Ігноруємо помилки localStorage
-    }
-    return null;
-  });
-  const selectedSpellIdRef = useRef<SpellId | null>(null);
-  const pointerPressedRef = useRef(false);
-  const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
-  const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
-  const autoRestartHandledRef = useRef(false);
+  const { selectedSpellId, selectedSpellIdRef, handleSelectSpell } =
+    usePersistedSpellSelection(spellOptions);
   const tutorialMonitorVersionRef = useRef(0);
+  const cleanupCalledRef = useRef(false);
   const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
+  const [tutorialSpellCastDone, setTutorialSpellCastDone] = useState(false);
   const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
   const {
     tutorialSteps,
@@ -216,41 +109,77 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   });
 
   const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
-  const allowTutorialGameplay = Boolean(activeTutorialStep?.allowGameplay);
+  // For cast-magic-arrow step: allow gameplay after spell is cast
+  const isSpellStepAfterCast = activeTutorialStep?.id === "cast-magic-arrow" && tutorialSpellCastDone;
+  const allowTutorialGameplay = isSpellStepAfterCast || Boolean(activeTutorialStep?.allowGameplay);
 
   const handlePlayStepAdvance = useCallback(() => {
     setCanAdvancePlayStep(true);
+    // Register action for cast-magic-arrow before advancing
+    if (activeTutorialStep?.id === "cast-magic-arrow" && tutorialSpellCastDone) {
+      registerTutorialAction("cast-magic-arrow");
+    }
     handleTutorialAdvance(tutorialStepIndex + 1);
-  }, [handleTutorialAdvance, tutorialStepIndex]);
+  }, [activeTutorialStep?.id, handleTutorialAdvance, registerTutorialAction, tutorialStepIndex, tutorialSpellCastDone]);
 
+  // Ref to avoid timer reset when callback reference changes
+  const handlePlayStepAdvanceRef = useRef(handlePlayStepAdvance);
+  useEffect(() => {
+    handlePlayStepAdvanceRef.current = handlePlayStepAdvance;
+  }, [handlePlayStepAdvance]);
+
+  const handleSpellCast = useCallback(
+    (spellId: SpellId) => {
+      console.log('[handleSpellCast] called:', { spellId, showTutorial, stepId: activeTutorialStep?.id });
+      const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+      if (isSpellStep && spellId === "magic-arrow") {
+        console.log('[handleSpellCast] Setting tutorialSpellCastDone to true');
+        // Don't register action immediately to prevent auto-advance
+        // We'll register it when handlePlayStepAdvance is called
+        setTutorialSpellCastDone(true);
+      }
+    },
+    [activeTutorialStep?.id, showTutorial]
+  );
+
+  const { scale, cameraInfo, scaleRange, vboStats, particleStatsState, handleScaleChange } =
+    useSceneCameraInteraction({
+      scene,
+      spellcasting,
+      gameLoop,
+      selectedSpellIdRef,
+      spellOptionsRef,
+      isPauseOpen,
+      showTutorial,
+      canvasRef,
+      wrapperRef,
+      summoningPanelRef,
+      cameraInfoRef,
+      scaleRef,
+      pointerPressedRef,
+      lastPointerPositionRef,
+      onSpellCast: handleSpellCast,
+    });
+
+  // Clear UI overlays when modals/overlays become visible
   useEffect(() => {
     if (showRunSummary) {
       setHoverContent(null);
-    }
-  }, [showRunSummary]);
-
-  useEffect(() => {
-    if (showRunSummary) {
       setIsPauseOpen(false);
     }
-  }, [showRunSummary]);
-
-  useEffect(() => {
     if (isPauseOpen) {
       setHoverContent(null);
     }
-  }, [isPauseOpen]);
-
-  useEffect(() => {
     if (showTutorial) {
       setHoverContent(null);
       setIsPauseOpen(false);
     }
-  }, [showTutorial]);
+  }, [showRunSummary, isPauseOpen, showTutorial]);
 
   useEffect(() => {
     if (!showTutorial) {
       setTutorialSummonDone(false);
+      setTutorialSpellCastDone(false);
       setCanAdvancePlayStep(false);
       return;
     }
@@ -259,141 +188,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setCanAdvancePlayStep(false);
       setIsPauseOpen(false);
     }
-  }, [showTutorial, tutorialStepIndex, tutorialSteps]);
-
-  useEffect(() => {
-    if (brickTotalHp > brickInitialHpRef.current) {
-      brickInitialHpRef.current = brickTotalHp;
-    } else if (brickInitialHpRef.current === 0 && brickTotalHp > 0) {
-      brickInitialHpRef.current = brickTotalHp;
+    if (currentStep?.id === "cast-magic-arrow" && currentStep.isLocked) {
+      setCanAdvancePlayStep(false);
+      // Ensure player has enough mana to cast the spell (costs 1 mana)
+      necromancer.ensureMinMana(1.1);
     }
-  }, [brickTotalHp]);
-
-  useEffect(() => {
-    cameraInfoRef.current = cameraInfo;
-  }, [cameraInfo]);
-
-  useEffect(() => {
-    scaleRef.current = scale;
-  }, [scale]);
-
-  useEffect(() => {
-    unitCountRef.current = unitCount;
-  }, [unitCount]);
-
-  useEffect(() => {
-    unitTotalHpRef.current = unitTotalHp;
-  }, [unitTotalHp]);
-
-  useEffect(() => {
-    brickTotalHpRef2.current = brickTotalHp;
-  }, [brickTotalHp]);
-
-  useEffect(() => {
-    necromancerResourcesRef.current = necromancerResources;
-  }, [necromancerResources]);
-
-  useEffect(() => {
-    necromancerOptionsRef.current = necromancerOptions;
-  }, [necromancerOptions]);
-
-  useEffect(() => {
-    spellOptionsRef.current = spellOptions;
-  }, [spellOptions]);
-
-  // Періодична перевірка для касту спелів при затиснутій миші (навіть без руху)
-  useEffect(() => {
-    if (isPauseOpen || showTutorial) {
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      if (!pointerPressedRef.current || !lastPointerPositionRef.current) {
-        return;
-      }
-
-      const spellId = selectedSpellIdRef.current;
-      if (!spellId) {
-        return;
-      }
-
-      const spell = spellOptionsRef.current.find((option) => option.id === spellId);
-      if (!spell || spell.remainingCooldownMs > 0) {
-        return;
-      }
-
-      const rect = canvas.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        return;
-      }
-
-      // Конвертуємо canvas координати назад в viewport координати
-      const viewportX = (lastPointerPositionRef.current.x / canvas.width) * rect.width;
-      const viewportY = (lastPointerPositionRef.current.y / canvas.height) * rect.height;
-      
-      // Обчислюємо world position напряму
-      const rawX = viewportX / rect.width;
-      const rawY = viewportY / rect.height;
-      if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) {
-        return;
-      }
-      
-      const cameraState = scene.getCamera();
-      const normalizedX = Math.min(Math.max(rawX, 0), 1);
-      const normalizedY = Math.min(Math.max(rawY, 0), 1);
-      const worldPosition = {
-        x: cameraState.position.x + normalizedX * cameraState.viewportSize.width,
-        y: cameraState.position.y + normalizedY * cameraState.viewportSize.height,
-      };
-
-      spellcasting.tryCastSpell(spellId, worldPosition);
-    }, 250); // Перевіряємо кожні 250ms
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [isPauseOpen, showTutorial, spellcasting, scene]);
-
-  useEffect(() => {
-    selectedSpellIdRef.current = selectedSpellId;
-    if (typeof window !== "undefined") {
-      if (selectedSpellId) {
-        localStorage.setItem("selectedSpellId", selectedSpellId);
-      } else {
-        localStorage.removeItem("selectedSpellId");
-      }
-    }
-  }, [selectedSpellId]);
-
-  useEffect(() => {
-    // Перевіряємо тільки якщо є доступні спели
-    if (spellOptions.length === 0) {
-      return;
-    }
-    
-    if (!selectedSpellId) {
-      // Якщо немає вибраного спела, вибираємо перший доступний
-      setSelectedSpellId(spellOptions[0]!.id);
-      return;
-    }
-    
-    // Перевіряємо, чи вибраний спел ще є в списку доступних
-    // (навіть якщо не вистачає ресурсів, спел має залишатися вибраним)
-    const stillAvailable = spellOptions.some((spell) => spell.id === selectedSpellId);
-    if (!stillAvailable) {
-      // Якщо вибраний спел більше не існує в списку, вибираємо перший доступний
-      setSelectedSpellId(spellOptions[0]!.id);
-    }
-  }, [selectedSpellId, spellOptions]);
-
-  useEffect(() => {
-    automationStateRef.current = automationState;
-  }, [automationState]);
+  }, [necromancer, showTutorial, tutorialStepIndex, tutorialSteps]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -416,38 +216,58 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   useEffect(() => {
     const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
     const shouldPause = isPauseOpen || shouldPauseForTutorial || showRunSummary;
+    // For cast-magic-arrow step before cast, don't pause the map (to allow spell casting)
+    const isSpellStepWaitingForCast = 
+      showTutorial && 
+      activeTutorialStep?.id === "cast-magic-arrow" && 
+      !tutorialSpellCastDone;
+    
+    console.log('[PauseEffect]', {
+      shouldPause,
+      shouldPauseForTutorial,
+      allowTutorialGameplay,
+      isSpellStepWaitingForCast,
+      tutorialSpellCastDone,
+      stepId: activeTutorialStep?.id,
+      isPauseOpen,
+      showRunSummary,
+      showTutorial,
+    });
+    
     if (shouldPause) {
-      app.pauseCurrentMap();
+      // Stop gameLoop
       gameLoop.stop();
-      return () => {
+      // Only pause map if NOT waiting for spell cast
+      if (!isSpellStepWaitingForCast) {
+        console.log('[PauseEffect] Pausing map');
+        app.pauseCurrentMap();
+      } else {
+        // Map was likely paused by previous step - RESUME it for spell casting!
+        console.log('[PauseEffect] RESUMING map for spell cast');
         app.resumeCurrentMap();
-        gameLoop.start();
-      };
+      }
+    } else {
+      // Resume everything
+      console.log('[PauseEffect] Resuming map and gameLoop');
+      app.resumeCurrentMap();
+      gameLoop.start();
     }
-    app.resumeCurrentMap();
-    gameLoop.start();
+    
     return undefined;
-  }, [allowTutorialGameplay, app, gameLoop, isPauseOpen, showRunSummary, showTutorial]);
-
-  const handleScaleChange = (nextScale: number) => {
-    scene.setScale(nextScale);
-    const current = scene.getCamera();
-    setScale(current.scale);
-    setCameraInfo(current);
-  };
+  }, [activeTutorialStep?.id, allowTutorialGameplay, app, gameLoop, isPauseOpen, showRunSummary, showTutorial, tutorialSpellCastDone]);
 
   const handleSummonDesign = useCallback(
     (designId: UnitDesignId) => {
       const wasSummoned = necromancer.trySpawnDesign(designId);
       if (wasSummoned) {
-        const option = necromancerOptionsRef.current.find((entry) => entry.designId === designId);
+        const option = summoningProps.spawnOptions.find((entry) => entry.designId === designId);
         if (option?.type === "bluePentagon") {
           registerTutorialAction("summon-blue-vanguard");
           setTutorialSummonDone(true);
         }
       }
     },
-    [necromancer, registerTutorialAction]
+    [necromancer, registerTutorialAction, summoningProps.spawnOptions]
   );
 
   useEffect(() => {
@@ -456,229 +276,133 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     });
   }, [handleSummonDesign]);
 
+  // Tutorial monitor: input bridge, status response, and sanity fallback
   useEffect(() => {
-    if (!showTutorial || activeTutorialStep?.id !== "summon-blue-vanguard") {
+    const isSummonStep = showTutorial && activeTutorialStep?.id === "summon-blue-vanguard";
+    
+    // Update bridge input
+    if (!isSummonStep) {
       bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, { active: false });
+    } else {
+      bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, {
+        active: true,
+        stepId: "summon-blue-vanguard",
+        actionCompleted: tutorialSummonDone,
+        bricksRequired: 3,
+      });
+    }
+    
+    // Skip advancement logic if not on summon step
+    if (!isSummonStep) {
       return;
     }
-    bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, {
-      active: true,
-      stepId: "summon-blue-vanguard",
-      actionCompleted: tutorialSummonDone,
-      bricksRequired: 3,
-    });
-  }, [activeTutorialStep?.id, bridge, showTutorial, tutorialSummonDone]);
-
-  useEffect(() => {
-    if (!showTutorial) {
+    
+    // Check if monitor signaled completion (version changed)
+    if (
+      tutorialMonitorStatus.ready &&
+      tutorialMonitorStatus.stepId === "summon-blue-vanguard" &&
+      tutorialMonitorVersionRef.current !== tutorialMonitorStatus.version
+    ) {
+      tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
+      handlePlayStepAdvance();
       return;
     }
-    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
-      return;
+    
+    // Fallback: advance when sanity runs out after summoning
+    if (tutorialSummonDone && !canAdvancePlayStep && necromancerResources.sanity.current <= 2) {
+      handlePlayStepAdvance();
     }
-    if (!tutorialMonitorStatus.ready) {
-      return;
-    }
-    if (tutorialMonitorStatus.stepId !== "summon-blue-vanguard") {
-      return;
-    }
-    if (tutorialMonitorVersionRef.current === tutorialMonitorStatus.version) {
-      return;
-    }
-    tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
-    handlePlayStepAdvance();
   }, [
     activeTutorialStep?.id,
-    handlePlayStepAdvance,
-    handleTutorialAdvance,
-    showTutorial,
-    tutorialMonitorStatus.ready,
-    tutorialMonitorStatus.stepId,
-    tutorialMonitorStatus.version,
-    tutorialStepIndex,
-  ]);
-
-  useEffect(() => {
-    if (!showTutorial) {
-      return;
-    }
-    if (activeTutorialStep?.id !== "summon-blue-vanguard") {
-      return;
-    }
-    if (!tutorialSummonDone || canAdvancePlayStep) {
-      return;
-    }
-    if (necromancerResources.sanity.current > 1) {
-      return;
-    }
-    handlePlayStepAdvance();
-  }, [
-    activeTutorialStep?.id,
+    bridge,
     canAdvancePlayStep,
     handlePlayStepAdvance,
     necromancerResources.sanity.current,
     showTutorial,
+    tutorialMonitorStatus.ready,
+    tutorialMonitorStatus.stepId,
+    tutorialMonitorStatus.version,
     tutorialSummonDone,
   ]);
 
-  const handleSelectSpell = useCallback((spellId: SpellId) => {
-    setSelectedSpellId((current) => (current === spellId ? null : spellId));
-  }, []);
-
-  const handleToggleAutomation = useCallback(
-    (designId: UnitDesignId, enabled: boolean) => {
-      unitAutomation.setAutomationEnabled(designId, enabled);
-    },
-    [unitAutomation]
-  );
-
-  const restartMap = useCallback(() => {
-    clearAllAuraSlots();
-    const auraContext = petalAuraEffect.getPrimaryContext();
-    if (auraContext) {
-      clearPetalAuraInstances(auraContext);
-    } else {
-      clearPetalAuraInstances();
+  // Tutorial spell step: advance after 3 seconds (primary condition)
+  useEffect(() => {
+    const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+    
+    if (!isSpellStep || !tutorialSpellCastDone || canAdvancePlayStep) {
+      return;
     }
-    app.restartCurrentMap();
-  }, [app, clearAllAuraSlots, clearPetalAuraInstances]);
 
-  const handleToggleAutoRestart = useCallback(
-    (enabled: boolean) => {
-      app.setAutoRestartEnabled(enabled);
-    },
-    [app]
-  );
+    // Primary: advance after 3 seconds
+    const timeoutId = setTimeout(() => {
+      handlePlayStepAdvanceRef.current();
+    }, 3000);
 
-  const handleRestart = useCallback(() => {
-    autoRestartHandledRef.current = true;
-    restartMap();
-  }, [restartMap]);
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    activeTutorialStep?.id,
+    canAdvancePlayStep,
+    showTutorial,
+    tutorialSpellCastDone,
+  ]);
+
+  // Tutorial spell step: sanity fallback - advance early if sanity drops too low
+  useEffect(() => {
+    const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+    
+    if (!isSpellStep || !tutorialSpellCastDone || canAdvancePlayStep) {
+      return;
+    }
+
+    // Fallback: advance immediately if sanity is critical
+    if (necromancerResources.sanity.current <= 1) {
+      handlePlayStepAdvanceRef.current();
+    }
+  }, [
+    activeTutorialStep?.id,
+    canAdvancePlayStep,
+    necromancerResources.sanity.current,
+    showTutorial,
+    tutorialSpellCastDone,
+  ]);
 
   const handleResume = useCallback(() => {
     setIsPauseOpen(false);
   }, []);
 
+  // Wrapper for onLeaveToMapSelect that properly cleans up the map before leaving
+  const handleLeaveToMapSelect = useCallback(() => {
+    cleanupCalledRef.current = true;
+    app.leaveCurrentMap();
+    onLeaveToMapSelect();
+  }, [app, onLeaveToMapSelect]);
+
   const handleLeaveToCamp = useCallback(() => {
     setIsPauseOpen(false);
-    onLeaveToMapSelect();
-  }, [onLeaveToMapSelect]);
+    handleLeaveToMapSelect();
+  }, [handleLeaveToMapSelect]);
 
+  // Handle page unload (refresh/close) - cleanup logic modules
+  // NOTE: We use beforeunload instead of useEffect cleanup because React StrictMode
+  // in dev mode double-invokes effects, which would incorrectly call leaveCurrentMap
   useEffect(() => {
-    if (!showRunSummary) {
-      autoRestartHandledRef.current = false;
-      setAutoRestartCountdown(AUTO_RESTART_SECONDS);
-      return;
-    }
-    if (!autoRestartState.unlocked) {
-      autoRestartHandledRef.current = false;
-      setAutoRestartCountdown(AUTO_RESTART_SECONDS);
-      return;
-    }
-    if (!autoRestartState.enabled) {
-      autoRestartHandledRef.current = false;
-      setAutoRestartCountdown(AUTO_RESTART_SECONDS);
-      return;
-    }
-    autoRestartHandledRef.current = false;
-    setAutoRestartCountdown(AUTO_RESTART_SECONDS);
-    let remaining = AUTO_RESTART_SECONDS;
-    const interval = window.setInterval(() => {
-      remaining -= 1;
-      if (remaining <= 0) {
-        window.clearInterval(interval);
-        setAutoRestartCountdown(0);
-        if (!autoRestartHandledRef.current) {
-          autoRestartHandledRef.current = true;
-          restartMap();
+    const handleBeforeUnload = () => {
+      if (!cleanupCalledRef.current) {
+        try {
+          app.leaveCurrentMap();
+        } catch {
+          // Ignore errors during cleanup
         }
-        return;
       }
-      setAutoRestartCountdown(remaining);
-    }, 1000);
-    return () => {
-      window.clearInterval(interval);
     };
-  }, [
-    autoRestartState.enabled,
-    autoRestartState.unlocked,
-    restartMap,
-    showRunSummary,
-  ]);
 
-
-
-
-  const brickInitialHp = brickInitialHpRef.current;
-  const [toolbarState, setToolbarState] = useState(() => ({
-    brickTotalHp,
-    brickInitialHp,
-    unitCount,
-    unitTotalHp,
-    scale,
-    cameraPosition: cameraInfo.position,
-  }));
-
-  const [summoningProps, setSummoningProps] = useState(() => ({
-    resources: necromancerResources,
-    spawnOptions: necromancerOptions,
-    automation: automationState,
-    spells: spellOptions,
-    unitCount,
-  }));
-
-  // Throttle toolbar updates to at most 5 times per second
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setToolbarState({
-        brickTotalHp: brickTotalHpRef2.current,
-        brickInitialHp: brickInitialHpRef.current,
-        unitCount: unitCountRef.current,
-        unitTotalHp: unitTotalHpRef.current,
-        scale: scaleRef.current,
-        cameraPosition: { ...cameraInfoRef.current.position },
-      });
-      setSummoningProps({
-        resources: necromancerResourcesRef.current,
-        spawnOptions: necromancerOptionsRef.current,
-        automation: automationStateRef.current,
-        spells: spellOptionsRef.current,
-        unitCount: unitCountRef.current,
-      });
-    }, 200);
-    return () => window.clearInterval(interval);
-  }, []);
-  const [vboStats, setVboStats] = useState<BufferStats>({ bytes: 0, reallocs: 0 });
-  const vboStatsRef = useRef<BufferStats>({ bytes: 0, reallocs: 0 });
-  const [particleStatsState, setParticleStatsState] = useState<ParticleStatsState>({
-    active: 0,
-    capacity: 0,
-    emitters: 0,
-  });
-  const particleStatsRef = useRef<ParticleStatsState>({ active: 0, capacity: 0, emitters: 0 });
-  const particleStatsLastUpdateRef = useRef(0);
-
-  useSceneCanvas({
-    scene,
-    spellcasting,
-    gameLoop,
-    canvasRef,
-    wrapperRef,
-    summoningPanelRef,
-    selectedSpellIdRef,
-    spellOptionsRef,
-    pointerPressedRef,
-    lastPointerPositionRef,
-    cameraInfoRef,
-    scaleRef,
-    setScale,
-    setCameraInfo,
-    setVboStats,
-    vboStatsRef,
-    setParticleStats: setParticleStatsState,
-    particleStatsRef,
-    particleStatsLastUpdateRef,
-  });
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [app]);
 
   return (
     <div className="scene-screen">
@@ -724,7 +448,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           resources={resourceSummary.resources}
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          primaryAction={{ label: "Return to Void Lab", onClick: onLeaveToMapSelect }}
+          primaryAction={{ label: "Return to Void Lab", onClick: handleLeaveToMapSelect }}
           secondaryAction={{ label: "Restart Map", onClick: handleRestart }}
           autoRestart={
             autoRestartState.unlocked

@@ -1,10 +1,11 @@
-import { SceneColor, SceneObjectInstance } from "../../../logic/services/SceneObjectManager";
+import { SceneColor, SceneObjectInstance } from "../../../logic/services/scene-object-manager/scene-object-manager.types";
 import { DynamicPrimitive } from "../objects/ObjectRenderer";
+import { ensureColorAlpha } from "@shared/helpers/scene-color.helper";
 import {
-  addFireRingInstance,
-  updateFireRing,
+  fireRingGpuRenderer,
   type FireRingInstance,
-} from "./gpu/FireRingGpuRenderer";
+  type FireRingSlotHandle,
+} from "./gpu/fire-ring";
 import { getParticleEmitterGlContext } from "./utils/gpuContext";
 import { getSceneTimelineNow } from "./utils/sceneTimeline";
 
@@ -34,6 +35,7 @@ export const createFireRingPrimitive = (
   };
 
   let fireInstance: FireRingInstance | null = null;
+  let slotHandle: FireRingSlotHandle | null = null;
 
   const primitive: DynamicPrimitive = {
     get data() {
@@ -44,8 +46,9 @@ export const createFireRingPrimitive = (
       const config = options.getConfig(target);
       
       if (!config) {
-        if (fireInstance) {
-          fireInstance.active = false;
+        if (slotHandle) {
+          fireRingGpuRenderer.releaseSlot(slotHandle);
+          slotHandle = null;
           fireInstance = null;
         }
         return null;
@@ -56,10 +59,15 @@ export const createFireRingPrimitive = (
         return null;
       }
 
+      // Set context if not already set
+      if (fireRingGpuRenderer["gl"] !== glContext) {
+        fireRingGpuRenderer.setContext(glContext);
+      }
+
       const position = target.data.position;
       const currentTime = getSceneTimelineNow();
 
-      if (!fireInstance) {
+      if (!fireInstance || !slotHandle) {
         // Створюємо новий інстанс
         fireInstance = {
           center: { x: position.x, y: position.y },
@@ -72,11 +80,16 @@ export const createFireRingPrimitive = (
             r: config.color.r,
             g: config.color.g,
             b: config.color.b,
-            a: typeof config.color.a === "number" ? config.color.a : 1,
+            a: ensureColorAlpha(config.color),
           },
           active: true,
         };
-        addFireRingInstance(glContext, fireInstance);
+        slotHandle = fireRingGpuRenderer.acquireSlot(undefined);
+        if (slotHandle) {
+          fireRingGpuRenderer.updateSlot(slotHandle, fireInstance);
+        } else {
+          fireInstance = null;
+        }
       } else {
         // Оновлюємо існуючий інстанс
         fireInstance.center.x = position.x;
@@ -87,20 +100,32 @@ export const createFireRingPrimitive = (
         fireInstance.color.r = config.color.r;
         fireInstance.color.g = config.color.g;
         fireInstance.color.b = config.color.b;
-        fireInstance.color.a = typeof config.color.a === "number" ? config.color.a : 1;
+        fireInstance.color.a = ensureColorAlpha(config.color);
 
         if (config.lifetime) {
           fireInstance.lifetime = config.lifetime;
         }
-        updateFireRing(glContext, fireInstance, currentTime);
+
+        // Check if lifetime expired
+        if (fireInstance.lifetime > 0) {
+          const age = currentTime - fireInstance.birthTimeMs;
+          if (age >= fireInstance.lifetime) {
+            fireInstance.active = false;
+          }
+        }
+
+        if (slotHandle) {
+          fireRingGpuRenderer.updateSlot(slotHandle, fireInstance);
+        }
       }
       
       return null; // GPU rendering, no vertex data needed
     },
 
     dispose() {
-      if (fireInstance) {
-        fireInstance.active = false;
+      if (slotHandle) {
+        fireRingGpuRenderer.releaseSlot(slotHandle);
+        slotHandle = null;
         fireInstance = null;
       }
     },
@@ -108,4 +133,3 @@ export const createFireRingPrimitive = (
 
   return primitive;
 };
-

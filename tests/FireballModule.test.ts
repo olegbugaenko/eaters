@@ -1,9 +1,10 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/SceneObjectManager";
-import { FireballModule } from "../src/logic/modules/scene/FireballModule";
-import type { ExplosionModule } from "../src/logic/modules/scene/ExplosionModule";
-import type { BricksModule } from "../src/logic/modules/active-map/BricksModule";
+import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+import { FireballModule } from "../src/logic/modules/scene/fireball/fireball.module";
+import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
+import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
+import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 
 describe("FireballModule", () => {
   test("spawnFireball attaches trail and smoke emitter configs", () => {
@@ -56,10 +57,25 @@ describe("FireballModule", () => {
       findBricksNear: () => [],
     };
 
+    const projectiles = {
+      fireProjectile: () => {},
+      tick: () => {},
+      clear: () => {},
+      spawn: (projectile: any) => {
+        return scene.addObject("unitProjectile", {
+          position: projectile.origin,
+          size: { width: (projectile.visual?.radius ?? 10) * 2, height: (projectile.visual?.radius ?? 10) * 2 },
+          fill: projectile.visual?.fill,
+          customData: projectile.visual?.rendererCustomData ?? {},
+        });
+      },
+    } as unknown as UnitProjectileController;
+
     const module = new FireballModule({
       scene,
       bricks: bricks as BricksModule,
       explosions: explosions as ExplosionModule,
+      projectiles,
       logEvent: () => undefined,
     });
 
@@ -74,7 +90,7 @@ describe("FireballModule", () => {
 
     const fireball = scene
       .getObjects()
-      .find((instance) => instance.type === "unitProjectile");
+      .find((instance: { type: string }) => instance.type === "unitProjectile");
     assert(fireball, "fireball should be rendered as a unit projectile");
 
     const customData = fireball.data

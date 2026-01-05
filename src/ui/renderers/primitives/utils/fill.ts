@@ -1,11 +1,15 @@
 import {
-  FILL_TYPES,
   SceneFill,
   SceneFillFilaments,
   SceneGradientStop,
   SceneSize,
   SceneVector2,
-} from "../../../../logic/services/SceneObjectManager";
+  SceneSolidFill,
+  SceneLinearGradientFill,
+  SceneRadialGradientFill,
+  SceneDiamondGradientFill,
+} from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import {
   FILL_COMPONENTS,
   FILL_FILAMENTS1_COMPONENTS,
@@ -75,11 +79,10 @@ const resolveRadius = (
 // Static fallback stops to avoid allocations
 const FALLBACK_SOLID_STOP: SceneGradientStop[] = [{ offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } }];
 
-const limitStops = (stops: SceneGradientStop[]): SceneGradientStop[] => {
-  // OPTIMIZATION: Don't slice if within limit - just return original array
-  // This is safe because we only read from stops, never mutate
+const limitStops = (stops: readonly SceneGradientStop[]): SceneGradientStop[] => {
+  // OPTIMIZATION: Don't slice if within limit - just return a copy
   if (stops.length <= MAX_GRADIENT_STOPS) {
-    return stops;
+    return stops.slice();
   }
   const limited: SceneGradientStop[] = [];
   const lastIndex = stops.length - 1;
@@ -106,15 +109,17 @@ const ensureStops = (fill: SceneFill): SceneGradientStop[] => {
     // Cache solid stops per fill object
     let cached = solidStopCache.get(fill);
     if (!cached) {
-      cached = [{ offset: 0, color: fill.color }];
+      const solidFill = fill as SceneSolidFill;
+      cached = [{ offset: 0, color: solidFill.color }];
       solidStopCache.set(fill, cached);
     }
     return cached;
   }
-  if (fill.stops.length === 0) {
+  const gradientFill = fill as SceneLinearGradientFill | SceneRadialGradientFill | SceneDiamondGradientFill;
+  if (gradientFill.stops.length === 0) {
     return FALLBACK_SOLID_STOP;
   }
-  return limitStops(fill.stops);
+  return limitStops(gradientFill.stops);
 };
 
 const populateFillVertexComponents = (
@@ -151,17 +156,18 @@ const populateFillVertexComponents = (
 
   switch (fill.fillType) {
     case FILL_TYPES.LINEAR_GRADIENT: {
+      const linearFill = fill as SceneLinearGradientFill;
       // Use scratch objects instead of creating new ones
-      if (fill.start) {
-        scratchStartLocal.x = fill.start.x;
-        scratchStartLocal.y = fill.start.y;
+      if (linearFill.start) {
+        scratchStartLocal.x = linearFill.start.x;
+        scratchStartLocal.y = linearFill.start.y;
       } else {
         scratchStartLocal.x = -size.width / 2;
         scratchStartLocal.y = -size.height / 2;
       }
-      if (fill.end && typeof fill.end === "object") {
-        scratchEndLocal.x = (fill.end as SceneVector2).x;
-        scratchEndLocal.y = (fill.end as SceneVector2).y;
+      if (linearFill.end && typeof linearFill.end === "object") {
+        scratchEndLocal.x = linearFill.end.x;
+        scratchEndLocal.y = linearFill.end.y;
       } else {
         scratchEndLocal.x = size.width / 2;
         scratchEndLocal.y = size.height / 2;
@@ -185,10 +191,11 @@ const populateFillVertexComponents = (
     }
     case FILL_TYPES.RADIAL_GRADIENT:
     case FILL_TYPES.DIAMOND_GRADIENT: {
+      const radialOrDiamondFill = fill as SceneRadialGradientFill | SceneDiamondGradientFill;
       // Use scratch objects instead of creating new ones
-      if (fill.start) {
-        scratchStartLocal.x = fill.start.x;
-        scratchStartLocal.y = fill.start.y;
+      if (radialOrDiamondFill.start) {
+        scratchStartLocal.x = radialOrDiamondFill.start.x;
+        scratchStartLocal.y = radialOrDiamondFill.start.y;
       } else {
         scratchStartLocal.x = 0;
         scratchStartLocal.y = 0;
@@ -197,7 +204,11 @@ const populateFillVertexComponents = (
       addVectorsTo(center, scratchRotated, scratchGradientCenter);
       components[params0Index + 0] = scratchGradientCenter.x;
       components[params0Index + 1] = scratchGradientCenter.y;
-      components[params0Index + 2] = resolveRadius(fill.end, size, radius);
+      components[params0Index + 2] = resolveRadius(
+        typeof radialOrDiamondFill.end === "number" ? radialOrDiamondFill.end : undefined,
+        size,
+        radius
+      );
       components[params0Index + 3] = 0;
       break;
     }

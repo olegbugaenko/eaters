@@ -10,7 +10,7 @@ export interface SceneTutorialConfig {
   readonly type: "new-player";
 }
 
-export type SceneTutorialAction = "summon-blue-vanguard";
+export type SceneTutorialAction = "summon-blue-vanguard" | "cast-magic-arrow";
 
 export interface SceneTutorialStep {
   readonly id: string;

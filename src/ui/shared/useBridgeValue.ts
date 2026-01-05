@@ -1,10 +1,24 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { DataBridge } from "@logic/core/DataBridge";
+import type { BridgeKey, BridgeValue } from "@logic/core/BridgeSchema";
 
-export const useBridgeValue = <T>(bridge: DataBridge, key: string, fallback: T): T => {
+/**
+ * Хук для підписки на значення DataBridge з типобезпечною перевіркою.
+ * TypeScript автоматично виведе правильний тип значення на основі ключа.
+ *
+ * @param bridge - екземпляр DataBridge
+ * @param key - ключ для підписки
+ * @param fallback - значення за замовчуванням, якщо значення відсутнє
+ * @returns поточне значення або fallback
+ */
+export const useBridgeValue = <K extends BridgeKey>(
+  bridge: DataBridge,
+  key: K,
+  fallback: BridgeValue<K>
+): BridgeValue<K> => {
   const subscribe = useCallback(
     (callback: () => void) => {
-      const unsubscribe = bridge.subscribe<T>(key, () => {
+      const unsubscribe = bridge.subscribe(key, () => {
         callback();
       });
       return unsubscribe;
@@ -13,7 +27,7 @@ export const useBridgeValue = <T>(bridge: DataBridge, key: string, fallback: T):
   );
 
   const getSnapshot = useCallback(() => {
-    const value = bridge.getValue<T>(key);
+    const value = bridge.getValue(key);
     return value ?? fallback;
   }, [bridge, key, fallback]);
 

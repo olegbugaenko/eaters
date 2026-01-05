@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ResourceAmountPayload } from "@logic/modules/shared/ResourcesModule";
-import {
-  DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
-  UnitModuleWorkshopBridgeState,
-} from "@logic/modules/camp/UnitModuleWorkshopModule";
-import { ResourceCostDisplay } from "@shared/ResourceCostDisplay";
-import { formatNumber } from "@shared/format/number";
-import { formatUnitModuleBonusValue } from "@shared/format/unitModuleBonus";
+import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
+import { DEFAULT_UNIT_MODULE_WORKSHOP_STATE } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
+import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
+import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { UnitModuleId } from "@db/unit-modules-db";
-import { ResourceId, getResourceConfig } from "@db/resources-db";
-import { Button } from "@shared/Button";
-import { ModuleDetailsCard } from "@shared/ModuleDetailsCard";
+import { Button } from "@ui-shared/Button";
+import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
 import "./ModulesWorkshopView.css";
 
 interface ModulesWorkshopViewProps {
@@ -54,7 +50,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   resources,
 }) => {
   const { app } = useAppLogic();
-  const workshop = useMemo(() => app.getUnitModuleWorkshop(), [app]);
+  const workshop = useMemo(() => app.services.unitModuleWorkshop, [app]);
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {
@@ -98,23 +94,6 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     [workshop]
   );
 
-  const formatCostSummary = useCallback((cost: Record<string, number> | null): string => {
-    if (!cost) {
-      return "Unavailable";
-    }
-    const entries = Object.entries(cost).filter(([, amount]) => amount > 0);
-    if (entries.length === 0) {
-      return "Free";
-    }
-    return entries
-      .map(([id, amount]) => {
-        const config = getResourceConfig(id as ResourceId);
-        const label = config ? config.name : id;
-        return `${formatNumber(amount, { maximumFractionDigits: 0 })} ${label}`;
-      })
-      .join(" · ");
-  }, []);
-
   if (!state.modules || state.modules.length === 0) {
     return (
       <div className="modules-workshop surface-panel stack-lg">
@@ -141,12 +120,16 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
           <ul className="modules-workshop__list">
           {state.modules.map((module) => {
             const isActive = module.id === (hoveredId ?? selectedId ?? module.id);
+            const moduleMissing = computeMissingCost(module.nextCost, totals);
+            const hasMissingResources = Object.keys(moduleMissing).length > 0;
             return (
               <li key={module.id}>
                 <button
                   type="button"
                   className={
-                    "modules-workshop__card" + (isActive ? " modules-workshop__card--active" : "")
+                    "modules-workshop__card" + 
+                    (isActive ? " modules-workshop__card--active" : "") +
+                    (hasMissingResources ? " modules-workshop__card--missing-resources" : "")
                   }
                   onClick={() => setSelectedId(module.id)}
                   onMouseEnter={() => setHoveredId(module.id)}
@@ -159,9 +142,16 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                   <span className="modules-workshop__card-title">{module.name}</span>
                   <span className="modules-workshop__card-level">Level {module.level}</span>
                   <p className="modules-workshop__card-description">{module.description}</p>
-                  <span className="modules-workshop__card-cost">
-                    {formatCostSummary(module.nextCost)}
-                  </span>
+                  <div className="modules-workshop__card-cost">
+                    {module.nextCost ? (
+                      <ResourceCostDisplay
+                        cost={module.nextCost}
+                        missing={moduleMissing}
+                      />
+                    ) : (
+                      <span className="text-muted">Unavailable</span>
+                    )}
+                  </div>
                 </button>
               </li>
             );

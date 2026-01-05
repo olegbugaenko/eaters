@@ -1,14 +1,17 @@
-import { PlayerUnitBlueprintStats } from "@/types/player-units";
+import { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import { SceneTooltipContent } from "../../tooltip/SceneTooltipPanel";
-import { buildUnitStatEntries } from "@shared/unitStats";
+import { buildUnitStatEntries } from "@ui-shared/unitStats";
 
 export const createUnitTooltip = (
-  blueprint: PlayerUnitBlueprintStats
+  blueprint: PlayerUnitBlueprintStats,
+  hasMultipleUnits?: boolean
 ): SceneTooltipContent => {
   return {
     title: blueprint.name,
     subtitle: "Includes current bonuses",
     stats: buildUnitStatEntries(blueprint),
-    footer: "Hover other elements to inspect their bonuses.",
+    ...(hasMultipleUnits && {
+      footer: "Hover other elements to inspect their bonuses.",
+    }),
   };
 };

@@ -1,4 +1,4 @@
-export class ServiceContainer {
+export class ServiceContainer<Services extends Record<string, any> = Record<string, any>> {
   private services = new Map<string, unknown>();
 
   public register<T>(token: string, service: T): void {

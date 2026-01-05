@@ -1,5 +1,5 @@
 import React from "react";
-import { classNames } from "@shared/classNames";
+import { classNames } from "@ui-shared/classNames";
 import "./ProgressBar.css";
 
 export type ProgressBarOrientation = "horizontal" | "vertical";

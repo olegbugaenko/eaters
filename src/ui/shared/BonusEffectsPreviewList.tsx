@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BonusEffectPreview } from "../../types/bonuses";
+import { BonusEffectPreview } from "@shared/types/bonuses";
 import { formatNumber } from "./format/number";
 import "./BonusEffectsPreviewList.css";
 

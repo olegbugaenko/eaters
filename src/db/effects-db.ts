@@ -1,9 +1,11 @@
 import type {
   SceneColor,
   SceneFill,
-  SceneFillFilaments,
-  SceneFillNoise,
-} from "../logic/services/SceneObjectManager";
+  SceneSolidFill,
+} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
+import type { BaseRendererLayerConfig, BaseRendererLayerFields, RendererCompositeConfig } from "@shared/types/renderer.types";
 
 export type VisualEffectId = "frenzyAura";
 
@@ -15,37 +17,9 @@ export interface VisualEffectOverlayConfig {
   readonly target?: "fill" | "stroke";
 }
 
-// Minimal renderer schema for auras (composite like player units)
-export type AuraRendererFillConfig =
-  | { type: "base"; brightness?: number; alphaMultiplier?: number }
-  | { type: "solid"; color: SceneColor; noise?: SceneFillNoise; filaments?: SceneFillFilaments }
-  | { type: "gradient"; fill: SceneFill };
+export type AuraRendererLayer = BaseRendererLayerConfig<BaseRendererLayerFields>;
 
-export type AuraRendererStrokeConfig =
-  | { type: "base"; width: number; brightness?: number; alphaMultiplier?: number }
-  | { type: "solid"; width: number; color: SceneColor };
-
-export type AuraRendererLayer =
-  | {
-      shape: "circle";
-      radius: number;
-      segments?: number;
-      offset?: { x: number; y: number };
-      fill?: AuraRendererFillConfig;
-      stroke?: AuraRendererStrokeConfig;
-    }
-  | {
-      shape: "polygon";
-      vertices: readonly { x: number; y: number }[];
-      offset?: { x: number; y: number };
-      fill?: AuraRendererFillConfig;
-      stroke?: AuraRendererStrokeConfig;
-    };
-
-export interface AuraRendererCompositeConfig {
-  kind: "composite";
-  layers: readonly AuraRendererLayer[];
-}
+export type AuraRendererCompositeConfig = RendererCompositeConfig<AuraRendererLayer>;
 
 export interface VisualEffectConfig extends VisualEffectOverlayConfig {
   readonly renderer?: AuraRendererCompositeConfig;
@@ -69,7 +43,7 @@ const EFFECTS_DB: Record<VisualEffectId, VisualEffectConfig> = {
           fill: {
             type: "gradient",
             fill: {
-              fillType: 2, // FILL_TYPES.RADIAL_GRADIENT resolved in renderer
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
               start: { x: 0, y: 0 },
               end: 24,
               stops: [
@@ -78,7 +52,7 @@ const EFFECTS_DB: Record<VisualEffectId, VisualEffectConfig> = {
                 { offset: 0.75, color: { r: 1.0, g: 0.7, b: 0.5, a: 0.45 } },
                 { offset: 1, color: { r: 1.0, g: 0.9, b: 0.5, a: 0.0 } },
               ],
-            } as any,
+            },
           },
         },
       ],

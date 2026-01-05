@@ -1,4 +1,5 @@
-import { SceneVector2 } from "../services/SceneObjectManager";
+import { SceneVector2 } from "../services/scene-object-manager/scene-object-manager.types";
+import { cloneVector } from "@shared/helpers/vector.helper";
 
 interface SpatialGridItem<T> {
   readonly id: string;
@@ -14,8 +15,6 @@ interface CellRange {
   readonly maxX: number;
   readonly maxY: number;
 }
-
-const cloneVector = (vector: SceneVector2): SceneVector2 => ({ x: vector.x, y: vector.y });
 
 const clampRadius = (radius: number): number => {
   if (!Number.isFinite(radius) || radius <= 0) {

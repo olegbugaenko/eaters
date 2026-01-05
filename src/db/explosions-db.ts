@@ -1,12 +1,13 @@
 import {
-  FILL_TYPES,
   SceneColor,
   SceneFill,
   SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
   SceneVector2,
-} from "../logic/services/SceneObjectManager";
+} from "../logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 
 export type ExplosionType =
   | "plasmoid"
@@ -48,51 +49,11 @@ export interface ExplosionWaveConfig {
   filaments?: SceneFillFilaments;
 }
 
-export interface ExplosionEmitterConfig {
-  emissionDurationMs: number;
-  particlesPerSecond: number;
-  baseSpeed: number;
-  speedVariation: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  sizeRange: { min: number; max: number };
-  spawnRadius: { min: number; max: number };
-  /**
-   * Ensures the maximum spawn radius scales with the initial radius of the explosion.
-   */
-  spawnRadiusMultiplier: number;
-  color: SceneColor;
-  arc?: number;
-  direction?: number;
-  fill?: SceneFill;
-  shape?: "circle" | "square"; // Форма частинок (за замовчуванням "square")
-  sizeGrowthRate?: number;
-}
-
-export interface ExplosionRendererEmitterConfig {
-  particlesPerSecond: number;
-  particleLifetimeMs: number;
-  fadeStartMs: number;
-  emissionDurationMs: number;
-  sizeRange: { min: number; max: number };
-  spawnRadius: { min: number; max: number };
-  baseSpeed: number;
-  speedVariation: number;
-  color: SceneColor;
-  fill?: SceneFill;
-  arc: number;
-  direction: number;
-  offset?: SceneVector2;
-  maxParticles?: number;
-  shape?: "circle" | "square";
-  sizeGrowthRate?: number;
-}
-
 export interface ExplosionConfig {
   lifetimeMs: number;
   defaultInitialRadius: number;
   waves: readonly ExplosionWaveConfig[];
-  emitter: ExplosionEmitterConfig;
+  emitter: ParticleEmitterConfig;
 }
 
 const createSimpleWave = (options: {
@@ -405,7 +366,7 @@ const CRITICAL_HIT_EMITTER_FILL: SceneFill = {
   ],
 };
 
-const DEFAULT_EMITTER: ExplosionEmitterConfig = {
+const DEFAULT_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 700,
   particlesPerSecond: 260,
   baseSpeed: 0.1,
@@ -421,7 +382,7 @@ const DEFAULT_EMITTER: ExplosionEmitterConfig = {
   fill: DEFAULT_EMITTER_FILL,
 };
 
-const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
+const GRAY_BRICK_DAMAGE_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 140,
   particlesPerSecond: 34,
   baseSpeed: 0.04,
@@ -439,7 +400,7 @@ const GRAY_BRICK_DAMAGE_EMITTER: ExplosionEmitterConfig = {
   sizeGrowthRate: 1.35,
 };
 
-const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
+const GRAY_BRICK_DESTRUCTION_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 220,
   particlesPerSecond: 42,
   baseSpeed: 0.05,
@@ -457,7 +418,7 @@ const GRAY_BRICK_DESTRUCTION_EMITTER: ExplosionEmitterConfig = {
   sizeGrowthRate: 1.35,
 };
 
-const CRITICAL_HIT_EMITTER: ExplosionEmitterConfig = {
+const CRITICAL_HIT_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 240,
   particlesPerSecond: 220,
   baseSpeed: 0.16,
@@ -568,8 +529,8 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     waves: createSimpleWave({
       defaultInitialRadius: 6,
       radiusExtension: 40,
-      startAlpha: 0.6,
-      endAlpha: 0.15,
+      startAlpha: 0.4,
+      endAlpha: 0.0,
       gradientStops: GRAY_BRICK_HIT_WAVE_GRADIENT_STOPS,
     }),
     emitter: GRAY_BRICK_DAMAGE_EMITTER,
@@ -580,8 +541,8 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     waves: createSimpleWave({
       defaultInitialRadius: 10,
       radiusExtension: 60,
-      startAlpha: 0.7,
-      endAlpha: 0.2,
+      startAlpha: 0.6,
+      endAlpha: 0.0,
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     }),
     emitter: GRAY_BRICK_DESTRUCTION_EMITTER,

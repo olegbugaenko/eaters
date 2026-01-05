@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { classNames } from "@shared/classNames";
+import { classNames } from "@ui-shared/classNames";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import {
   UnitDesignerBridgeState,
   UnitDesignerUnitState,
-} from "@logic/modules/camp/UnitDesignModule";
-import { Button } from "@shared/Button";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/UnitAutomationModule";
-import { UnitTargetingMode } from "@/types/unit-targeting";
+} from "@logic/modules/camp/unit-design/unit-design.types";
+import { Button } from "@ui-shared/Button";
+import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import "./UnitRosterView.css";
 
 interface UnitRosterViewProps {
@@ -66,8 +66,8 @@ const DEFAULT_TARGETING_MODE: UnitTargetingMode = TARGETING_OPTIONS[0]!.mode;
 
 export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automation }) => {
   const { app } = useAppLogic();
-  const designer = useMemo(() => app.getUnitDesigner(), [app]);
-  const automationModule = useMemo(() => app.getUnitAutomation(), [app]);
+  const designer = useMemo(() => app.services.unitDesign, [app]);
+  const automationModule = useMemo(() => app.services.unitAutomation, [app]);
 
   const roster = state.activeRoster;
   const maxSlots = state.maxActiveUnits;
