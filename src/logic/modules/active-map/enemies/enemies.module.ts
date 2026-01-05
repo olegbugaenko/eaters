@@ -8,7 +8,16 @@ import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
 import { DamageService } from "../targeting/DamageService";
+import { MovementService } from "../../../services/movement/MovementService";
 import { EnemyStateFactory, EnemyStateInput } from "./enemies.state-factory";
+import {
+  subtractVectors,
+  scaleVector,
+  vectorLength,
+  vectorHasLength,
+  addVectors,
+} from "../../../../shared/helpers/vector.helper";
+import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
 import {
   ENEMY_COUNT_BRIDGE_KEY,
   ENEMY_SCENE_OBJECT_TYPE,
@@ -24,7 +33,10 @@ import type {
 } from "./enemies.types";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
-import { vectorLength } from "../../../../shared/helpers/vector.helper";
+import { getEnemyConfig } from "../../../../db/enemies-db";
+import { normalizeVector } from "../../../../shared/helpers/vector.helper";
+import type { UnitProjectileHitContext } from "../projectiles/projectiles.types";
+import type { UnitProjectileController } from "../projectiles/ProjectileController";
 
 export class EnemiesModule implements GameModule {
   public readonly id = "enemies";
@@ -32,9 +44,11 @@ export class EnemiesModule implements GameModule {
   private readonly scene: EnemiesModuleOptions["scene"];
   private readonly bridge: DataBridge;
   private readonly runState: MapRunState;
+  private readonly movement: MovementService;
   private readonly targeting?: TargetingService;
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
+  private readonly projectiles?: UnitProjectileController;
   private readonly stateFactory: EnemyStateFactory;
   private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(ENEMY_SPATIAL_GRID_CELL_SIZE);
 
@@ -49,10 +63,12 @@ export class EnemiesModule implements GameModule {
     this.scene = options.scene;
     this.bridge = options.bridge;
     this.runState = options.runState;
+    this.movement = options.movement;
     this.targeting = options.targeting;
     this.damage = options.damage;
     this.explosions = options.explosions;
-    this.stateFactory = new EnemyStateFactory({ scene: this.scene });
+    this.projectiles = options.projectiles;
+    this.stateFactory = new EnemyStateFactory({ scene: this.scene, movement: this.movement });
 
     if (this.targeting) {
       this.targeting.registerProvider(new EnemyTargetingProvider(this));
@@ -91,7 +107,49 @@ export class EnemiesModule implements GameModule {
     const deltaSeconds = deltaMs / 1000;
     let anyChanged = false;
 
+    // Phase 1: Compute movement forces towards targets
     this.enemyOrder.forEach((enemy) => {
+      const target = this.targeting?.findNearestTarget(enemy.position, { types: ["unit"] }) ?? null;
+      const force = this.computeMovementForce(enemy, target);
+      this.movement.setForce(enemy.movementId, force);
+    });
+
+    // Update movement physics
+    this.movement.update(deltaSeconds);
+
+    // Phase 2: Update positions, rotations, and handle attacks
+    this.enemyOrder.forEach((enemy) => {
+      const movementState = this.movement.getBodyState(enemy.movementId);
+      if (!movementState) {
+        return;
+      }
+
+      // Update position
+      const newPosition = this.clampToMap(movementState.position);
+      if (newPosition.x !== enemy.position.x || newPosition.y !== enemy.position.y) {
+        enemy.position = newPosition;
+        this.spatialIndex.set(enemy.id, enemy.position, enemy.physicalSize, enemy);
+        anyChanged = true;
+      }
+
+      // Update rotation towards target
+      const target = this.targeting?.findNearestTarget(enemy.position, { types: ["unit"] });
+      if (target) {
+        const direction = subtractVectors(target.position, enemy.position);
+        const distance = vectorLength(direction);
+        if (distance > 0) {
+          enemy.rotation = Math.atan2(direction.y, direction.x);
+          anyChanged = true;
+        }
+      }
+
+      // Update scene object position and rotation
+      this.scene.updateObject(enemy.sceneObjectId, {
+        position: { ...enemy.position },
+        rotation: enemy.rotation,
+      });
+
+      // Handle attack cooldown
       if (enemy.attackCooldown > 0) {
         const next = Math.max(enemy.attackCooldown - deltaSeconds, 0);
         if (next !== enemy.attackCooldown) {
@@ -100,6 +158,7 @@ export class EnemiesModule implements GameModule {
         }
       }
 
+      // Try to attack
       if (enemy.attackCooldown <= 0 && this.tryAttack(enemy)) {
         enemy.attackCooldown = enemy.attackInterval;
         anyChanged = true;
@@ -113,6 +172,22 @@ export class EnemiesModule implements GameModule {
 
   public setEnemies(enemies: EnemySpawnData[]): void {
     this.applyEnemies(enemies);
+  }
+
+  public spawnEnemy(data: EnemySpawnData): void {
+    const input: EnemyStateInput = {
+      enemy: data,
+      enemyId: this.createEnemyId(data.id),
+      clampToMap: (position: EnemySpawnData["position"]) => this.clampToMap(position),
+    };
+    const state = this.stateFactory.createWithTransform(input);
+    // Ensure movement body position matches enemy position
+    this.movement.setBodyPosition(state.movementId, state.position);
+    this.enemies.set(state.id, state);
+    this.enemyOrder.push(state);
+    this.spatialIndex.set(state.id, state.position, state.physicalSize, state);
+    this.totalHpCached += state.hp;
+    this.pushStats();
   }
 
   public getEnemies(): EnemyRuntimeState[] {
@@ -210,13 +285,14 @@ export class EnemiesModule implements GameModule {
 
   private destroyEnemy(enemy: InternalEnemyState): void {
     this.scene.removeObject(enemy.sceneObjectId);
+    this.movement.removeBody(enemy.movementId);
     this.enemies.delete(enemy.id);
     this.enemyOrder = this.enemyOrder.filter((item) => item.id !== enemy.id);
     this.spatialIndex.delete(enemy.id);
   }
 
   private tryAttack(enemy: InternalEnemyState): boolean {
-    if (!this.damage || !this.targeting) {
+    if (!this.targeting) {
       return false;
     }
 
@@ -225,23 +301,61 @@ export class EnemiesModule implements GameModule {
       return false;
     }
 
-    const distance = vectorLength({
-      x: target.position.x - enemy.position.x,
-      y: target.position.y - enemy.position.y,
-    });
-    if (distance > enemy.attackRange) {
+    const toTarget = subtractVectors(target.position, enemy.position);
+    const distance = vectorLength(toTarget);
+    const attackRange = enemy.attackRange + enemy.physicalSize + target.physicalSize;
+    
+    if (distance > attackRange) {
       return false;
     }
 
-    this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
-      armorPenetration: 0,
-    });
+    const config = getEnemyConfig(enemy.type);
 
-    if (this.explosions) {
-      this.explosions.spawnExplosionByType("plasmoid", {
-        position: { ...target.position },
-        initialRadius: Math.max(8, enemy.physicalSize),
+    // Якщо є конфіг снаряда - створюємо снаряд
+    if (config.projectile && this.projectiles) {
+      const direction = normalizeVector(toTarget) || { x: 1, y: 0 };
+      const origin = { ...enemy.position };
+
+      this.projectiles.spawn({
+        origin,
+        direction,
+        damage: enemy.baseDamage,
+        rewardMultiplier: 1, // Вороги не дають нагороди за атаку
+        armorPenetration: 0,
+        targetTypes: ["unit"], // Вороги атакують тільки юнітів
+        visual: config.projectile,
+        onHit: (hitContext: UnitProjectileHitContext) => {
+          if (hitContext.targetType === "unit" && this.damage) {
+            this.damage.applyTargetDamage(hitContext.targetId, enemy.baseDamage, {
+              armorPenetration: 0,
+            });
+
+            if (this.explosions) {
+              this.explosions.spawnExplosionByType("plasmoid", {
+                position: { ...hitContext.position },
+                initialRadius: Math.max(8, enemy.physicalSize),
+              });
+            }
+          }
+          return true; // Снаряд зникає після влучання
+        },
       });
+
+      return true;
+    }
+
+    // Якщо немає конфігу снаряда - instant damage
+    if (this.damage) {
+      this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
+        armorPenetration: 0,
+      });
+
+      if (this.explosions) {
+        this.explosions.spawnExplosionByType("plasmoid", {
+          position: { ...target.position },
+          initialRadius: Math.max(8, enemy.physicalSize),
+        });
+      }
     }
 
     return true;
@@ -250,10 +364,89 @@ export class EnemiesModule implements GameModule {
   private clearSceneObjects(): void {
     this.enemyOrder.forEach((enemy) => {
       this.scene.removeObject(enemy.sceneObjectId);
+      this.movement.removeBody(enemy.movementId);
     });
     this.enemies.clear();
     this.enemyOrder = [];
     this.spatialIndex.clear();
+  }
+
+  /**
+   * Computes movement force towards target
+   */
+  private computeMovementForce(
+    enemy: InternalEnemyState,
+    target: { position: SceneVector2; physicalSize: number } | null
+  ): SceneVector2 {
+    const movementState = this.movement.getBodyState(enemy.movementId);
+    if (!movementState) {
+      return ZERO_VECTOR;
+    }
+
+    if (!target) {
+      // No target - brake
+      return this.computeBrakingForce(enemy, movementState);
+    }
+
+    const toTarget = subtractVectors(target.position, enemy.position);
+    const distance = vectorLength(toTarget);
+    const attackRange = enemy.attackRange + enemy.physicalSize + target.physicalSize;
+    const distanceOutsideRange = Math.max(distance - attackRange, 0);
+
+    // If within attack range, brake
+    if (distanceOutsideRange <= 0) {
+      return this.computeBrakingForce(enemy, movementState);
+    }
+
+    // Move towards target
+    const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
+    if (!vectorHasLength(direction)) {
+      return ZERO_VECTOR;
+    }
+
+    // Desired speed - slow down as we approach
+    const desiredSpeed = Math.max(
+      Math.min(enemy.moveSpeed, distanceOutsideRange),
+      enemy.moveSpeed * 0.25
+    );
+    const desiredVelocity = scaleVector(direction, desiredSpeed);
+
+    // Steering force (similar to player units)
+    return this.computeSteeringForce(enemy, movementState.velocity, desiredVelocity);
+  }
+
+  /**
+   * Computes steering force to reach desired velocity
+   */
+  private computeSteeringForce(
+    enemy: InternalEnemyState,
+    currentVelocity: SceneVector2,
+    desiredVelocity: SceneVector2
+  ): SceneVector2 {
+    const velocityDiff = subtractVectors(desiredVelocity, currentVelocity);
+    const diffLength = vectorLength(velocityDiff);
+    if (diffLength <= 0) {
+      return ZERO_VECTOR;
+    }
+
+    // Acceleration factor based on moveSpeed
+    const acceleration = enemy.moveSpeed * 5; // Adjust for responsiveness
+    const force = scaleVector(velocityDiff, acceleration / diffLength);
+    
+    return force;
+  }
+
+  /**
+   * Computes braking force to slow down
+   */
+  private computeBrakingForce(
+    enemy: InternalEnemyState,
+    movementState: { velocity: SceneVector2 }
+  ): SceneVector2 {
+    if (!vectorHasLength(movementState.velocity)) {
+      return ZERO_VECTOR;
+    }
+    return this.computeSteeringForce(enemy, movementState.velocity, ZERO_VECTOR);
   }
 
   private parseSaveData(data: unknown): EnemySaveData | null {
@@ -293,6 +486,7 @@ export class EnemiesModule implements GameModule {
     return {
       id: enemy.id,
       type: enemy.type,
+      level: enemy.level,
       position: { ...enemy.position },
       rotation: enemy.rotation,
       hp: enemy.hp,

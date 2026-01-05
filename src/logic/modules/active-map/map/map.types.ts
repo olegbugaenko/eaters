@@ -11,6 +11,7 @@ import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ArcModule } from "../../scene/arc/arc.module";
+import { EnemiesModule } from "../enemies/enemies.module";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
@@ -30,6 +31,7 @@ export interface MapModuleOptions {
   bonuses: BonusesModule;
   bricks: BricksModule;
   playerUnits: PlayerUnitsModule;
+  enemies: EnemiesModule;
   necromancer: NecromancerModule;
   resources: ResourceRunController;
   unlocks: UnlockService;
