@@ -36,6 +36,7 @@ interface UseSceneCameraInteractionArgs {
   scaleRef: MutableRefObject<number>;
   pointerPressedRef: MutableRefObject<boolean>;
   lastPointerPositionRef: MutableRefObject<{ x: number; y: number } | null>;
+  onSpellCast?: (spellId: SpellId) => void;
 }
 
 interface UseSceneCameraInteractionResult {
@@ -69,6 +70,7 @@ export const useSceneCameraInteraction = ({
   scaleRef,
   pointerPressedRef,
   lastPointerPositionRef,
+  onSpellCast,
 }: UseSceneCameraInteractionArgs): UseSceneCameraInteractionResult => {
   // Delay scale initialization until viewport is properly sized
   const hasInitializedScaleRef = useRef(false);
@@ -130,6 +132,7 @@ export const useSceneCameraInteraction = ({
     particleStatsRef,
     particleStatsLastUpdateRef,
     hasInitializedScaleRef,
+    onSpellCast,
   });
 
   useEffect(() => {

@@ -91,6 +91,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const cleanupCalledRef = useRef(false);
   const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
+  const [tutorialSpellCastDone, setTutorialSpellCastDone] = useState(false);
   const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
   const {
     tutorialSteps,
@@ -108,7 +109,38 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   });
 
   const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
-  const allowTutorialGameplay = Boolean(activeTutorialStep?.allowGameplay);
+  // For cast-magic-arrow step: allow gameplay after spell is cast
+  const isSpellStepAfterCast = activeTutorialStep?.id === "cast-magic-arrow" && tutorialSpellCastDone;
+  const allowTutorialGameplay = isSpellStepAfterCast || Boolean(activeTutorialStep?.allowGameplay);
+
+  const handlePlayStepAdvance = useCallback(() => {
+    setCanAdvancePlayStep(true);
+    // Register action for cast-magic-arrow before advancing
+    if (activeTutorialStep?.id === "cast-magic-arrow" && tutorialSpellCastDone) {
+      registerTutorialAction("cast-magic-arrow");
+    }
+    handleTutorialAdvance(tutorialStepIndex + 1);
+  }, [activeTutorialStep?.id, handleTutorialAdvance, registerTutorialAction, tutorialStepIndex, tutorialSpellCastDone]);
+
+  // Ref to avoid timer reset when callback reference changes
+  const handlePlayStepAdvanceRef = useRef(handlePlayStepAdvance);
+  useEffect(() => {
+    handlePlayStepAdvanceRef.current = handlePlayStepAdvance;
+  }, [handlePlayStepAdvance]);
+
+  const handleSpellCast = useCallback(
+    (spellId: SpellId) => {
+      console.log('[handleSpellCast] called:', { spellId, showTutorial, stepId: activeTutorialStep?.id });
+      const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+      if (isSpellStep && spellId === "magic-arrow") {
+        console.log('[handleSpellCast] Setting tutorialSpellCastDone to true');
+        // Don't register action immediately to prevent auto-advance
+        // We'll register it when handlePlayStepAdvance is called
+        setTutorialSpellCastDone(true);
+      }
+    },
+    [activeTutorialStep?.id, showTutorial]
+  );
 
   const { scale, cameraInfo, scaleRange, vboStats, particleStatsState, handleScaleChange } =
     useSceneCameraInteraction({
@@ -126,12 +158,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       scaleRef,
       pointerPressedRef,
       lastPointerPositionRef,
+      onSpellCast: handleSpellCast,
     });
-
-  const handlePlayStepAdvance = useCallback(() => {
-    setCanAdvancePlayStep(true);
-    handleTutorialAdvance(tutorialStepIndex + 1);
-  }, [handleTutorialAdvance, tutorialStepIndex]);
 
   // Clear UI overlays when modals/overlays become visible
   useEffect(() => {
@@ -151,6 +179,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   useEffect(() => {
     if (!showTutorial) {
       setTutorialSummonDone(false);
+      setTutorialSpellCastDone(false);
       setCanAdvancePlayStep(false);
       return;
     }
@@ -159,7 +188,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setCanAdvancePlayStep(false);
       setIsPauseOpen(false);
     }
-  }, [showTutorial, tutorialStepIndex, tutorialSteps]);
+    if (currentStep?.id === "cast-magic-arrow" && currentStep.isLocked) {
+      setCanAdvancePlayStep(false);
+      // Ensure player has enough mana to cast the spell (costs 1 mana)
+      necromancer.ensureMinMana(1.1);
+    }
+  }, [necromancer, showTutorial, tutorialStepIndex, tutorialSteps]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -182,18 +216,45 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   useEffect(() => {
     const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
     const shouldPause = isPauseOpen || shouldPauseForTutorial || showRunSummary;
+    // For cast-magic-arrow step before cast, don't pause the map (to allow spell casting)
+    const isSpellStepWaitingForCast = 
+      showTutorial && 
+      activeTutorialStep?.id === "cast-magic-arrow" && 
+      !tutorialSpellCastDone;
+    
+    console.log('[PauseEffect]', {
+      shouldPause,
+      shouldPauseForTutorial,
+      allowTutorialGameplay,
+      isSpellStepWaitingForCast,
+      tutorialSpellCastDone,
+      stepId: activeTutorialStep?.id,
+      isPauseOpen,
+      showRunSummary,
+      showTutorial,
+    });
+    
     if (shouldPause) {
-      app.pauseCurrentMap();
+      // Stop gameLoop
       gameLoop.stop();
-      return () => {
+      // Only pause map if NOT waiting for spell cast
+      if (!isSpellStepWaitingForCast) {
+        console.log('[PauseEffect] Pausing map');
+        app.pauseCurrentMap();
+      } else {
+        // Map was likely paused by previous step - RESUME it for spell casting!
+        console.log('[PauseEffect] RESUMING map for spell cast');
         app.resumeCurrentMap();
-        gameLoop.start();
-      };
+      }
+    } else {
+      // Resume everything
+      console.log('[PauseEffect] Resuming map and gameLoop');
+      app.resumeCurrentMap();
+      gameLoop.start();
     }
-    app.resumeCurrentMap();
-    gameLoop.start();
+    
     return undefined;
-  }, [allowTutorialGameplay, app, gameLoop, isPauseOpen, showRunSummary, showTutorial]);
+  }, [activeTutorialStep?.id, allowTutorialGameplay, app, gameLoop, isPauseOpen, showRunSummary, showTutorial, tutorialSpellCastDone]);
 
   const handleSummonDesign = useCallback(
     (designId: UnitDesignId) => {
@@ -248,7 +309,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
     
     // Fallback: advance when sanity runs out after summoning
-    if (tutorialSummonDone && !canAdvancePlayStep && necromancerResources.sanity.current <= 1) {
+    if (tutorialSummonDone && !canAdvancePlayStep && necromancerResources.sanity.current <= 2) {
       handlePlayStepAdvance();
     }
   }, [
@@ -262,6 +323,49 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     tutorialMonitorStatus.stepId,
     tutorialMonitorStatus.version,
     tutorialSummonDone,
+  ]);
+
+  // Tutorial spell step: advance after 3 seconds (primary condition)
+  useEffect(() => {
+    const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+    
+    if (!isSpellStep || !tutorialSpellCastDone || canAdvancePlayStep) {
+      return;
+    }
+
+    // Primary: advance after 3 seconds
+    const timeoutId = setTimeout(() => {
+      handlePlayStepAdvanceRef.current();
+    }, 3000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    activeTutorialStep?.id,
+    canAdvancePlayStep,
+    showTutorial,
+    tutorialSpellCastDone,
+  ]);
+
+  // Tutorial spell step: sanity fallback - advance early if sanity drops too low
+  useEffect(() => {
+    const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+    
+    if (!isSpellStep || !tutorialSpellCastDone || canAdvancePlayStep) {
+      return;
+    }
+
+    // Fallback: advance immediately if sanity is critical
+    if (necromancerResources.sanity.current <= 1) {
+      handlePlayStepAdvanceRef.current();
+    }
+  }, [
+    activeTutorialStep?.id,
+    canAdvancePlayStep,
+    necromancerResources.sanity.current,
+    showTutorial,
+    tutorialSpellCastDone,
   ]);
 
   const handleResume = useCallback(() => {

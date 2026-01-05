@@ -603,8 +603,8 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
 
-    const impulse = scaleVector(axis, -knockBackSpeed);
-    this.movement.applyImpulse(unit.movementId, impulse, 1);
+    const knockbackVelocity = scaleVector(axis, -knockBackSpeed);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
   }
 
   private removeUnit(unit: PlayerUnitState): void {

@@ -49,40 +49,11 @@ interface PointerState {
   y: number;
   inside: boolean;
   isPressed: boolean;
+  isRightMousePressed: boolean;
   lastCastTime: number;
 }
 
-const applyCameraMovement = (
-  pointer: Pick<PointerState, "x" | "y" | "inside">,
-  scene: SceneObjectManager,
-  deltaMs: number,
-  canvasWidthPx: number,
-  canvasHeightPx: number,
-) => {
-  if (!pointer.inside || deltaMs <= 0) {
-    return;
-  }
-  const deltaSeconds = deltaMs / 1000;
-  let moveX = 0;
-  let moveY = 0;
-
-  if (pointer.x < EDGE_THRESHOLD) {
-    moveX -= CAMERA_SPEED * deltaSeconds;
-  } else if (pointer.x > canvasWidthPx - EDGE_THRESHOLD) {
-    moveX += CAMERA_SPEED * deltaSeconds;
-  }
-
-  if (pointer.y < EDGE_THRESHOLD) {
-    moveY -= CAMERA_SPEED * deltaSeconds;
-  } else if (pointer.y > canvasHeightPx - EDGE_THRESHOLD) {
-    moveY += CAMERA_SPEED * deltaSeconds;
-  }
-
-  if (moveX !== 0 || moveY !== 0) {
-    // Note: scene accessed via ref in render loop
-    scene.panCamera(moveX, moveY);
-  }
-};
+// applyCameraMovement will be defined inside useEffect to access rightMouseLastPositionRef
 
 export interface BufferStats {
   bytes: number;
@@ -117,6 +88,7 @@ export interface UseSceneCanvasParams {
   particleStatsRef: MutableRefObject<ParticleStatsState>;
   particleStatsLastUpdateRef: MutableRefObject<number>;
   hasInitializedScaleRef: MutableRefObject<boolean>;
+  onSpellCast?: (spellId: SpellId) => void;
 }
 
 export const useSceneCanvas = ({
@@ -141,24 +113,29 @@ export const useSceneCanvas = ({
   particleStatsRef,
   particleStatsLastUpdateRef,
   hasInitializedScaleRef,
+  onSpellCast,
 }: UseSceneCanvasParams) => {
   // Use position interpolation hook
   const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions } = usePositionInterpolation(scene, gameLoop);
 
-  // Store scene, spellcasting, and interpolation functions in refs to avoid recreating useEffect
+  // Store scene, spellcasting, callbacks, and interpolation functions in refs to avoid recreating useEffect
   const sceneRef = useRef(scene);
   const spellcastingRef = useRef(spellcasting);
+  const onSpellCastRef = useRef(onSpellCast);
   const getInterpolatedUnitPositionsRef = useRef(getInterpolatedUnitPositions);
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
+  // Separate ref for right mouse panning to track previous position
+  const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     sceneRef.current = scene;
     spellcastingRef.current = spellcasting;
+    onSpellCastRef.current = onSpellCast;
     getInterpolatedUnitPositionsRef.current = getInterpolatedUnitPositions;
     getInterpolatedBulletPositionsRef.current = getInterpolatedBulletPositions;
     getInterpolatedBrickPositionsRef.current = getInterpolatedBrickPositions;
-  }, [scene, spellcasting, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions]);
+  }, [scene, spellcasting, onSpellCast, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -174,6 +151,7 @@ export const useSceneCanvas = ({
       y: 0,
       inside: false,
       isPressed: false,
+      isRightMousePressed: false,
       lastCastTime: 0,
     };
 
@@ -182,10 +160,65 @@ export const useSceneCanvas = ({
       pointerPressedRef.current = pressed;
     };
 
+    const updateRightMousePressed = (pressed: boolean) => {
+      pointerState.isRightMousePressed = pressed;
+    };
+
+    const applyCameraMovement = (
+      pointer: Pick<PointerState, "x" | "y" | "inside" | "isRightMousePressed">,
+      scene: SceneObjectManager,
+      deltaMs: number,
+      canvasWidthPx: number,
+      canvasHeightPx: number,
+    ) => {
+      if (deltaMs <= 0) {
+        return;
+      }
+      const deltaSeconds = deltaMs / 1000;
+      let moveX = 0;
+      let moveY = 0;
+
+      // Right mouse button panning: move camera based on mouse movement
+      if (pointer.isRightMousePressed && rightMouseLastPositionRef.current) {
+        const deltaX = pointer.x - rightMouseLastPositionRef.current.x;
+        const deltaY = pointer.y - rightMouseLastPositionRef.current.y;
+        // Only move if there's actual movement
+        if (Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1) {
+          // Convert pixel movement to world units (inverse of scale)
+          const cameraState = scene.getCamera();
+          const worldDeltaX = -(deltaX / canvasWidthPx) * cameraState.viewportSize.width;
+          const worldDeltaY = -(deltaY / canvasHeightPx) * cameraState.viewportSize.height;
+          moveX = worldDeltaX;
+          moveY = worldDeltaY;
+          // Update last position after using it
+          rightMouseLastPositionRef.current = { x: pointer.x, y: pointer.y };
+        }
+      } else if (pointer.inside) {
+        // Edge panning: move camera when mouse is near screen edges
+        if (pointer.x < EDGE_THRESHOLD) {
+          moveX -= CAMERA_SPEED * deltaSeconds;
+        } else if (pointer.x > canvasWidthPx - EDGE_THRESHOLD) {
+          moveX += CAMERA_SPEED * deltaSeconds;
+        }
+
+        if (pointer.y < EDGE_THRESHOLD) {
+          moveY -= CAMERA_SPEED * deltaSeconds;
+        } else if (pointer.y > canvasHeightPx - EDGE_THRESHOLD) {
+          moveY += CAMERA_SPEED * deltaSeconds;
+        }
+      }
+
+      if (moveX !== 0 || moveY !== 0) {
+        // Note: scene accessed via ref in render loop
+        scene.panCamera(moveX, moveY);
+      }
+    };
+
     const updateLastPointerPosition = (x: number, y: number) => {
       pointerState.x = x;
       pointerState.y = y;
       lastPointerPositionRef.current = { x, y };
+      // Don't update rightMouseLastPositionRef here - it's updated in applyCameraMovement after use
     };
 
     const applySync = () => {
@@ -437,6 +470,14 @@ export const useSceneCanvas = ({
       const rect = canvas.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) {
         pointerState.inside = false;
+        // Still update position for right mouse panning even if canvas is invalid
+        if (pointerState.isRightMousePressed) {
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          const canvasX = (x / Math.max(rect.width, 1)) * canvas.width;
+          const canvasY = (y / Math.max(rect.height, 1)) * canvas.height;
+          updateLastPointerPosition(canvasX, canvasY);
+        }
         return;
       }
 
@@ -460,7 +501,8 @@ export const useSceneCanvas = ({
     const handlePointerLeave = () => {
       pointerState.inside = false;
       updatePointerPressed(false);
-      lastPointerPositionRef.current = null;
+      updateRightMousePressed(false);
+      rightMouseLastPositionRef.current = null;
     };
 
     const tryCastSpellAtPosition = (event: PointerEvent) => {
@@ -480,14 +522,15 @@ export const useSceneCanvas = ({
       if (!worldPosition) {
         return;
       }
-      spellcastingRef.current.tryCastSpell(spellId, worldPosition);
+      const castSuccess = spellcastingRef.current.tryCastSpell(spellId, worldPosition);
+      console.log('[useSceneCanvas] tryCastSpell result:', { spellId, castSuccess, hasCallback: !!onSpellCastRef.current });
+      if (castSuccess) {
+        onSpellCastRef.current?.(spellId);
+      }
       pointerState.lastCastTime = now;
     };
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) {
-        return;
-      }
       const rect = canvas.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
         const x = event.clientX - rect.left;
@@ -498,15 +541,37 @@ export const useSceneCanvas = ({
         const canvasY = (clampedY / rect.height) * canvas.height;
         updateLastPointerPosition(canvasX, canvasY);
       }
-      updatePointerPressed(true);
-      tryCastSpellAtPosition(event);
+
+      if (event.button === 0) {
+        // Left mouse button - spell casting
+        updatePointerPressed(true);
+        tryCastSpellAtPosition(event);
+      } else if (event.button === 2) {
+        // Right mouse button - camera panning
+        event.preventDefault(); // Prevent context menu
+        updateRightMousePressed(true);
+        // Initialize right mouse position for panning
+        if (rect.width > 0 && rect.height > 0) {
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          const clampedX = clamp(x, 0, rect.width);
+          const clampedY = clamp(y, 0, rect.height);
+          const canvasX = (clampedX / rect.width) * canvas.width;
+          const canvasY = (clampedY / rect.height) * canvas.height;
+          rightMouseLastPositionRef.current = { x: canvasX, y: canvasY };
+        }
+      }
     };
 
     const handlePointerUp = (event: PointerEvent) => {
-      if (event.button !== 0) {
-        return;
+      if (event.button === 0) {
+        // Left mouse button
+        updatePointerPressed(false);
+      } else if (event.button === 2) {
+        // Right mouse button
+        updateRightMousePressed(false);
+        rightMouseLastPositionRef.current = null;
       }
-      updatePointerPressed(false);
     };
 
     const handlePointerMoveWithCast = (event: PointerEvent) => {
@@ -546,6 +611,16 @@ export const useSceneCanvas = ({
       }
     };
 
+    const handleContextMenu = (event: MouseEvent) => {
+      // Prevent context menu on right click
+      event.preventDefault();
+    };
+
+    const handleSelectStart = (event: Event) => {
+      // Prevent text selection
+      event.preventDefault();
+    };
+
     window.addEventListener("pointermove", handlePointerMoveWithCast, {
       passive: true,
     });
@@ -554,6 +629,8 @@ export const useSceneCanvas = ({
     window.addEventListener("pointerup", handlePointerUp, { passive: true });
     canvas.addEventListener("pointerdown", handlePointerDown);
     canvas.addEventListener("wheel", handleWheel, { passive: false });
+    canvas.addEventListener("contextmenu", handleContextMenu);
+    canvas.addEventListener("selectstart", handleSelectStart);
 
     return () => {
       // Stop render loop
@@ -568,6 +645,8 @@ export const useSceneCanvas = ({
       window.removeEventListener("pointerup", handlePointerUp);
       canvas.removeEventListener("pointerdown", handlePointerDown);
       canvas.removeEventListener("wheel", handleWheel);
+      canvas.removeEventListener("contextmenu", handleContextMenu);
+      canvas.removeEventListener("selectstart", handleSelectStart);
     };
   }, [
     // Refs are stable and don't need to be in dependencies

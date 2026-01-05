@@ -166,7 +166,7 @@ const MAGIC_ARROW_TAIL: BulletTailConfig = {
 };
 
 const MAGIC_ARROW_TAIL_EMITTER: ParticleEmitterConfig = {
-  particlesPerSecond: 30,
+  particlesPerSecond: 45,
   particleLifetimeMs: 1350,
   fadeStartMs: 540,
   baseSpeed: 0.05,
@@ -225,8 +225,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       radius: 12,
       shape: "sprite",
       spriteName: "magic_arrow",
-      speed: 290,
-      lifetimeMs: 4_600,
+      speed: 100,
+      lifetimeMs: 19_600,
       fill: MAGIC_ARROW_PROJECTILE_FILL,
       tail: MAGIC_ARROW_TAIL,
       tailEmitter: MAGIC_ARROW_TAIL_EMITTER,

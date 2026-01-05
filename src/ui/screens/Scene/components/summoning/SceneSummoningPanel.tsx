@@ -278,9 +278,11 @@ export const SceneSummoningPanel = forwardRef<
                   : isSelected
                   ? "Selected"
                   : "Ready";
+                const spellElementId = `spell-option-${spell.id}`;
                 return (
                   <div
                     key={spell.id}
+                    id={spellElementId}
                     className={spellClassName}
                     role="button"
                     tabIndex={0}

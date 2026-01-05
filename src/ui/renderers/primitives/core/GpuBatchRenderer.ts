@@ -250,6 +250,11 @@ export abstract class GpuBatchRenderer<
    * Call before render() each frame.
    */
   public beforeRender(gl: WebGL2RenderingContext, _timestampMs: number): void {
+    // Skip if gl context doesn't match (stale resources from previous context)
+    if (this.gl !== gl) {
+      return;
+    }
+    
     this.batches.forEach((batch) => {
       if (batch.gl !== gl || !batch.needsUpload) {
         return;
@@ -271,7 +276,8 @@ export abstract class GpuBatchRenderer<
     viewportSize: SceneSize,
     timestampMs: number
   ): void {
-    if (!this.sharedResources) {
+    // Skip if no resources OR if gl context doesn't match (stale resources from previous context)
+    if (!this.sharedResources || this.gl !== gl) {
       return;
     }
 
@@ -332,17 +338,23 @@ export abstract class GpuBatchRenderer<
    * Dispose all resources.
    */
   public dispose(): void {
-    if (this.gl && this.sharedResources) {
-      this.disposeSharedResources(this.gl);
-      this.gl.deleteProgram(this.sharedResources.program);
+    // Capture references before nulling to prevent race conditions
+    // where render() might check sharedResources between delete and null assignment
+    const gl = this.gl;
+    const sharedResources = this.sharedResources;
+    
+    // Null out first to prevent any render calls from using deleted resources
+    this.gl = null;
+    this.sharedResources = null;
+
+    if (gl && sharedResources) {
+      this.disposeSharedResources(gl);
+      gl.deleteProgram(sharedResources.program);
     }
 
     this.batches.forEach((batch) => {
       disposeBatch(batch);
     });
     this.batches.clear();
-
-    this.gl = null;
-    this.sharedResources = null;
   }
 }

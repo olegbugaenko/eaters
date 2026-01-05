@@ -103,6 +103,36 @@ export class MovementService {
     });
   }
 
+  /**
+   * Apply knockback by replacing current velocity (not adding).
+   * More consistent knockback effect regardless of unit's current movement.
+   * Still respects maxSpeed and fades out over duration.
+   */
+  public applyKnockback(bodyId: string, velocity: SceneVector2, duration = 1): void {
+    const body = this.bodies.get(bodyId);
+    if (!body) {
+      return;
+    }
+
+    const safeDuration = clampPositive(duration, 0.001);
+    let knockbackVelocity = cloneVector(velocity);
+
+    // Clamp to maxSpeed if needed
+    const speed = Math.hypot(knockbackVelocity.x, knockbackVelocity.y);
+    if (body.maxSpeed > 0 && speed > body.maxSpeed) {
+      const factor = body.maxSpeed / speed;
+      knockbackVelocity = scaleVector(knockbackVelocity, factor);
+    }
+
+    // Replace velocity and clear existing dampings
+    body.velocity = knockbackVelocity;
+    body.dampings = [{
+      initialVelocity: knockbackVelocity,
+      elapsed: 0,
+      duration: safeDuration,
+    }];
+  }
+
   public update(deltaSeconds: number): void {
     if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) {
       this.resetForces();

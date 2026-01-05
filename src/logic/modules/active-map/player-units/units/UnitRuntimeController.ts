@@ -811,8 +811,8 @@ export class UnitRuntimeController {
       return;
     }
 
-    const impulse = scaleVector(axis, -knockBackSpeed);
-    this.movement.applyImpulse(unit.movementId, impulse, 1);
+    const knockbackVelocity = scaleVector(axis, -knockBackSpeed);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {
