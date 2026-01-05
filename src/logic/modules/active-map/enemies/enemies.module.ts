@@ -24,22 +24,35 @@ import {
   ENEMY_SPATIAL_GRID_CELL_SIZE,
   ENEMY_TOTAL_HP_BRIDGE_KEY,
 } from "./enemies.const";
-import type {
-  EnemiesModuleOptions,
-  EnemyRuntimeState,
-  EnemySaveData,
-  EnemySpawnData,
-  InternalEnemyState,
-  ObstacleDescriptor,
-} from "./enemies.types";
+import type { EnemiesModuleOptions, EnemyRuntimeState, EnemySaveData, EnemySpawnData, InternalEnemyState } from "./enemies.types";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { getEnemyConfig } from "../../../../db/enemies-db";
 import { normalizeVector } from "../../../../shared/helpers/vector.helper";
 import type { UnitProjectileHitContext } from "../projectiles/projectiles.types";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
-import { isPassableFor } from "@/logic/shared/navigation/passability.types";
+import { isPassableFor, type PassabilityTag } from "@/logic/shared/navigation/passability.types";
+import type { ObstacleDescriptor, ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
+import { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import { BrickObstacleProvider } from "./brick-obstacle-provider";
+
+const ENEMY_PASSABILITY: PassabilityTag = "enemy";
+const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+};
+
+interface EnemyNavigationState {
+  targetId: string;
+  targetPosition: SceneVector2;
+  targetRadius: number;
+  waypoints: SceneVector2[];
+  goalReached: boolean;
+  repathCooldown: number;
+  lastPosition: SceneVector2;
+  stuckTimer: number;
+}
 
 export class EnemiesModule implements GameModule {
   public readonly id = "enemies";
@@ -52,7 +65,10 @@ export class EnemiesModule implements GameModule {
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
   private readonly projectiles?: UnitProjectileController;
-  private readonly obstacles?: EnemiesModuleOptions["obstacles"];
+  private readonly obstacles: ObstacleProvider;
+  private readonly pathfinder: PathfindingService;
+  private readonly navigationCellSize: number;
+  private readonly navigationState = new Map<string, EnemyNavigationState>();
   private readonly stateFactory: EnemyStateFactory;
   private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(ENEMY_SPATIAL_GRID_CELL_SIZE);
 
@@ -73,6 +89,13 @@ export class EnemiesModule implements GameModule {
     this.explosions = options.explosions;
     this.projectiles = options.projectiles;
     this.obstacles = options.obstacles ?? new BrickObstacleProvider(options.bricks);
+    this.pathfinder =
+      options.pathfinder ??
+      new PathfindingService({
+        obstacles: this.obstacles,
+        getMapSize: () => this.scene.getMapSize(),
+      });
+    this.navigationCellSize = this.pathfinder.getCellSize();
     this.stateFactory = new EnemyStateFactory({ scene: this.scene, movement: this.movement });
 
     if (this.targeting) {
@@ -112,9 +135,13 @@ export class EnemiesModule implements GameModule {
     const deltaSeconds = deltaMs / 1000;
     let anyChanged = false;
 
+    const activeTargets = new Map<string, { id: string; position: SceneVector2; physicalSize: number } | null>();
+
     // Phase 1: Compute movement forces towards targets
     this.enemyOrder.forEach((enemy) => {
       const target = this.targeting?.findNearestTarget(enemy.position, { types: ["unit"] }) ?? null;
+      activeTargets.set(enemy.id, target);
+      this.updateNavigationState(enemy, target, deltaSeconds);
       const force = this.computeMovementForce(enemy, target);
       this.movement.setForce(enemy.movementId, force);
     });
@@ -138,7 +165,7 @@ export class EnemiesModule implements GameModule {
       }
 
       // Update rotation towards target
-      const target = this.targeting?.findNearestTarget(enemy.position, { types: ["unit"] });
+      const target = activeTargets.get(enemy.id);
       if (target) {
         const direction = subtractVectors(target.position, enemy.position);
         const distance = vectorLength(direction);
@@ -164,10 +191,12 @@ export class EnemiesModule implements GameModule {
       }
 
       // Try to attack
-      if (enemy.attackCooldown <= 0 && this.tryAttack(enemy)) {
+      if (enemy.attackCooldown <= 0 && this.tryAttack(enemy, target ?? null)) {
         enemy.attackCooldown = enemy.attackInterval;
         anyChanged = true;
       }
+
+      this.trackNavigationProgress(enemy, deltaSeconds);
     });
 
     if (anyChanged) {
@@ -294,15 +323,14 @@ export class EnemiesModule implements GameModule {
     this.enemies.delete(enemy.id);
     this.enemyOrder = this.enemyOrder.filter((item) => item.id !== enemy.id);
     this.spatialIndex.delete(enemy.id);
+    this.navigationState.delete(enemy.id);
   }
 
-  private tryAttack(enemy: InternalEnemyState): boolean {
-    if (!this.targeting) {
-      return false;
-    }
-
-    const target = this.targeting.findNearestTarget(enemy.position, { types: ["unit"] });
-    if (!target) {
+  private tryAttack(
+    enemy: InternalEnemyState,
+    target: { id: string; position: SceneVector2; physicalSize: number } | null,
+  ): boolean {
+    if (!this.targeting || !target) {
       return false;
     }
 
@@ -374,6 +402,122 @@ export class EnemiesModule implements GameModule {
     this.enemies.clear();
     this.enemyOrder = [];
     this.spatialIndex.clear();
+    this.navigationState.clear();
+  }
+
+  private updateNavigationState(
+    enemy: InternalEnemyState,
+    target: { id: string; position: SceneVector2; physicalSize: number } | null,
+    deltaSeconds: number,
+  ): void {
+    if (!target) {
+      this.navigationState.delete(enemy.id);
+      return;
+    }
+
+    const targetRadius = enemy.attackRange + enemy.physicalSize + target.physicalSize;
+    const existing = this.navigationState.get(enemy.id);
+    const distanceToTargetSq = distanceSquared(enemy.position, target.position);
+    const targetMoved = existing
+      ? distanceSquared(existing.targetPosition, target.position) > this.navigationCellSize * this.navigationCellSize * 0.5
+      : true;
+
+    if (distanceToTargetSq <= targetRadius * targetRadius) {
+      this.navigationState.set(enemy.id, {
+        targetId: target.id,
+        targetPosition: { ...target.position },
+        targetRadius,
+        waypoints: [],
+        goalReached: true,
+        repathCooldown: 0.2,
+        lastPosition: { ...enemy.position },
+        stuckTimer: 0,
+      });
+      return;
+    }
+
+    const repathCooldown = Math.max((existing?.repathCooldown ?? 0) - deltaSeconds, 0);
+    const needsPath =
+      !existing ||
+      existing.targetId !== target.id ||
+      existing.goalReached ||
+      existing.waypoints.length === 0 ||
+      repathCooldown <= 0 ||
+      targetMoved;
+
+    if (!needsPath && existing) {
+      existing.targetRadius = targetRadius;
+      existing.targetPosition = { ...target.position };
+      existing.repathCooldown = repathCooldown;
+      this.navigationState.set(enemy.id, existing);
+      return;
+    }
+
+    const path = this.pathfinder.findPathToTarget({
+      start: enemy.position,
+      target: target.position,
+      targetRadius,
+      entityRadius: enemy.physicalSize,
+      passabilityTag: ENEMY_PASSABILITY,
+    });
+
+    this.navigationState.set(enemy.id, {
+      targetId: target.id,
+      targetPosition: { ...target.position },
+      targetRadius,
+      waypoints: path.waypoints.map((point) => ({ ...point })),
+      goalReached: path.goalReached,
+      repathCooldown: path.goalReached ? 0.2 : 0.35,
+      lastPosition: { ...enemy.position },
+      stuckTimer: 0,
+    });
+  }
+
+  private consumeWaypoints(
+    enemy: InternalEnemyState,
+    navigation: EnemyNavigationState | undefined,
+    target: { position: SceneVector2 } | null,
+  ): void {
+    if (!navigation) {
+      return;
+    }
+    const threshold = Math.max(enemy.physicalSize * 0.5, this.navigationCellSize * 0.5);
+    const thresholdSq = threshold * threshold;
+
+    while (navigation.waypoints.length > 0) {
+      const waypoint = navigation.waypoints[0]!;
+      if (distanceSquared(enemy.position, waypoint) > thresholdSq) {
+        break;
+      }
+      navigation.waypoints.shift();
+    }
+
+    if (navigation.waypoints.length === 0) {
+      navigation.goalReached = target
+        ? distanceSquared(enemy.position, target.position) <= navigation.targetRadius * navigation.targetRadius
+        : navigation.goalReached;
+    }
+  }
+
+  private trackNavigationProgress(enemy: InternalEnemyState, deltaSeconds: number): void {
+    const navigation = this.navigationState.get(enemy.id);
+    if (!navigation) {
+      return;
+    }
+
+    const movedSq = distanceSquared(enemy.position, navigation.lastPosition);
+    if (movedSq < 1) {
+      navigation.stuckTimer += deltaSeconds;
+      if (navigation.stuckTimer > 0.6) {
+        navigation.repathCooldown = 0;
+        navigation.waypoints = [];
+        navigation.goalReached = false;
+      }
+      return;
+    }
+
+    navigation.stuckTimer = 0;
+    navigation.lastPosition = { ...enemy.position };
   }
 
   /**
@@ -393,27 +537,31 @@ export class EnemiesModule implements GameModule {
       return this.computeBrakingForce(enemy, movementState);
     }
 
+    const navigation = this.navigationState.get(enemy.id);
+    this.consumeWaypoints(enemy, navigation, target);
+
+    const destination = navigation?.waypoints[0] ?? target.position;
+    const toDestination = subtractVectors(destination, enemy.position);
+    const distanceToDestination = vectorLength(toDestination);
     const toTarget = subtractVectors(target.position, enemy.position);
     const distance = vectorLength(toTarget);
     const attackRange = enemy.attackRange + enemy.physicalSize + target.physicalSize;
     const distanceOutsideRange = Math.max(distance - attackRange, 0);
 
     // If within attack range, brake
-    if (distanceOutsideRange <= 0) {
+    if (distanceOutsideRange <= 0 || navigation?.goalReached) {
       return this.computeBrakingForce(enemy, movementState);
     }
 
     // Move towards target
-    const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
+    const direction = distanceToDestination > 0 ? scaleVector(toDestination, 1 / distanceToDestination) : ZERO_VECTOR;
     if (!vectorHasLength(direction)) {
       return ZERO_VECTOR;
     }
 
     // Desired speed - slow down as we approach
-    const desiredSpeed = Math.max(
-      Math.min(enemy.moveSpeed, distanceOutsideRange),
-      enemy.moveSpeed * 0.25
-    );
+    const approachDistance = Math.min(distanceOutsideRange, distanceToDestination);
+    const desiredSpeed = Math.max(Math.min(enemy.moveSpeed, approachDistance), enemy.moveSpeed * 0.25);
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
     const avoidance = this.computeObstacleAvoidance(enemy, desiredVelocity);
@@ -429,12 +577,12 @@ export class EnemiesModule implements GameModule {
     enemy: InternalEnemyState,
     desiredVelocity: SceneVector2
   ): SceneVector2 {
-    if (!this.obstacles || !vectorHasLength(desiredVelocity)) {
+    if (!vectorHasLength(desiredVelocity)) {
       return ZERO_VECTOR;
     }
 
     const avoidanceRadius = enemy.physicalSize * 3;
-    const entityTag = "enemy" as const;
+    const entityTag = ENEMY_PASSABILITY;
     let avoidanceVector = { ...ZERO_VECTOR };
 
     this.obstacles.forEachObstacleNear(enemy.position, avoidanceRadius, (obstacle: ObstacleDescriptor) => {

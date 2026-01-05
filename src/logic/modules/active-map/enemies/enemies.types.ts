@@ -8,7 +8,8 @@ import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { EnemyType } from "../../../../db/enemies-db";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
-import type { PassabilityTag } from "@/logic/shared/navigation/passability.types";
+import type { ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
+import type { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import type { BricksModule } from "../bricks/bricks.module";
 
 export interface EnemySpawnData {
@@ -63,18 +64,5 @@ export interface EnemiesModuleOptions {
   readonly projectiles?: UnitProjectileController;
   readonly bricks: BricksModule;
   readonly obstacles?: ObstacleProvider;
-}
-
-export interface ObstacleDescriptor {
-  readonly position: SceneVector2;
-  readonly radius: number;
-  readonly passableFor?: readonly PassabilityTag[];
-}
-
-export interface ObstacleProvider {
-  forEachObstacleNear(
-    position: SceneVector2,
-    radius: number,
-    visitor: (obstacle: ObstacleDescriptor) => void
-  ): void;
+  readonly pathfinder?: PathfindingService;
 }
