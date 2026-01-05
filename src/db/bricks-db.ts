@@ -231,7 +231,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 0,
       baseDamage: 2,
       brickKnockBackDistance: 60,
-      brickKnockBackSpeed: 150,
+      brickKnockBackSpeed: 120,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -267,7 +267,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 0,
       baseDamage: 3,
       brickKnockBackDistance: 60,
-      brickKnockBackSpeed: 150,
+      brickKnockBackSpeed: 120,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -303,7 +303,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 1,
       baseDamage: 5,
       brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 160,
+      brickKnockBackSpeed: 120,
       brickKnockBackAmplitude: 10.5,
       physicalSize: 16,
       damageExplosion: {
@@ -339,7 +339,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 8,
       baseDamage: 20,
       brickKnockBackDistance: 90,
-      brickKnockBackSpeed: 180,
+      brickKnockBackSpeed: 140,
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
@@ -369,7 +369,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 12,
       baseDamage: 18,
       brickKnockBackDistance: 90,
-      brickKnockBackSpeed: 180,
+      brickKnockBackSpeed: 140,
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
@@ -404,7 +404,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 20,
       baseDamage: 35,
       brickKnockBackDistance: 90,
-      brickKnockBackSpeed: 180,
+      brickKnockBackSpeed: 160,
       brickKnockBackAmplitude: 4,
       physicalSize: 16,
       damageExplosion: {
