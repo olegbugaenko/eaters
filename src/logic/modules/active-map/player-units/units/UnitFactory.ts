@@ -79,6 +79,7 @@ export interface UnitFactoryResult {
   readonly moveAcceleration: number;
   readonly mass: number;
   readonly physicalSize: number;
+  readonly knockBackReduction: number;
   readonly critChance: number;
   readonly critMultiplier: number;
   readonly rewardMultiplier: number;
@@ -249,6 +250,7 @@ export class UnitFactory {
       moveAcceleration,
       mass,
       physicalSize,
+      knockBackReduction: Math.max(blueprint.knockbackReduction * runtime.knockBackReduction, 1),
       critChance,
       critMultiplier,
       rewardMultiplier: runtime.rewardMultiplier,

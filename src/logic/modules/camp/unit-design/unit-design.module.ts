@@ -536,6 +536,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     let damageTransferRadius = PERFORATOR_RADIUS;
     let attackStackBonusPerHit = 0;
     let attackStackBonusCap = 0;
+    let knockBackReduction = 1;
 
     modules.forEach((detail) => {
       switch (detail.id) {
@@ -562,6 +563,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       damageTransferRadius,
       attackStackBonusPerHit,
       attackStackBonusCap,
+      knockBackReduction,
     };
   }
 

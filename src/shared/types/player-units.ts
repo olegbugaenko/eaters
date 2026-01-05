@@ -37,6 +37,7 @@ export interface PlayerUnitRuntimeModifiers {
   readonly damageTransferRadius: number;
   readonly attackStackBonusPerHit: number;
   readonly attackStackBonusCap: number;
+  readonly knockBackReduction: number;
 }
 
 export interface PlayerUnitBlueprintStats {
@@ -59,5 +60,6 @@ export interface PlayerUnitBlueprintStats {
   readonly moveAcceleration: number;
   readonly mass: number;
   readonly physicalSize: number;
+  readonly knockbackReduction: number;
   readonly bonuses?: readonly PlayerUnitBonusLine[];
 }

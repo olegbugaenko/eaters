@@ -57,6 +57,7 @@ export const SKILL_IDS = [
   "critical_chance2",
   "damage_lore",
   "armor_lore",
+  "impact_dampening",
   "vitality2",
   "clarity3",
   "refinement",
@@ -926,6 +927,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { stone_armor: 3 },
     cost: createMixedCost(200, 1.5, 20, 1.5),
+  },
+  impact_dampening: {
+    id: "impact_dampening",
+    name: "Impact Dampening",
+    description:
+      "Elastic tissues absorb impacts, reducing knockback.",
+    nodePosition: { x: 5, y: 2 },
+    maxLevel: 5,
+    icon: "knockback_reduction.png",
+    effects: {
+      all_units_knockback_reduction: {
+        multiplier: (level) => 1 + 0.02 * level,
+      },
+    },
+    nodesRequired: { armor_lore: 5 },
+    cost: createResourceCost('organics', 45, 1.5),
   },
   armor_lore2: {
     id: "armor_lore2",

@@ -20,6 +20,7 @@ export const BONUS_IDS = [
   "all_units_crit_chance",
   "all_units_hp_regen_percentage",
   "all_units_armor_penetration",
+  "all_units_knockback_reduction",
   "spell_power",
   "crafting_speed_mult",
   "building_cost_multiplier"
@@ -97,6 +98,12 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_armor_penetration",
     name: "Brick Armor Penetration",
     defaultValue: 0
+  },
+  all_units_knockback_reduction: {
+    id: "all_units_knockback_reduction",
+    name: "Knockback Reduction",
+    description: "Divides incoming knockback effects.",
+    defaultValue: 1,
   },
   spell_power: {
     id: "spell_power",

@@ -48,6 +48,10 @@ export const computePlayerUnitBlueprint = (
     globalCritMultiplierRaw,
     DEFAULT_CRIT_MULTIPLIER_BONUS
   );
+  const globalKnockbackReduction = Math.max(
+    sanitizeMultiplier(values["all_units_knockback_reduction"], 1),
+    1,
+  );
   const globalHpRegenPercentage = Math.max(
     sanitizeAdditive(values["all_units_hp_regen_percentage"], 0),
     0
@@ -129,5 +133,6 @@ export const computePlayerUnitBlueprint = (
     moveAcceleration: baseMoveAcceleration,
     mass: baseMass,
     physicalSize: baseSize,
+    knockbackReduction: globalKnockbackReduction,
   };
 };
