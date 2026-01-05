@@ -13,6 +13,7 @@ export const createEnemiesDefinition = (): ServiceDefinition<EnemiesModule, "ene
       damage: container.get("damage"),
       explosions: container.get("explosion"),
       projectiles: container.get("unitProjectiles"),
+      bricks: container.get("bricks"),
     }),
   registerAsModule: true,
 });

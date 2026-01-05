@@ -29,6 +29,7 @@ import { NecromancerModule } from "../src/logic/modules/active-map/necromancer/n
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/unit-design/unit-design.module";
+import type { EnemiesModule } from "../src/logic/modules/active-map/enemies/enemies.module";
 import { getMapConfig } from "../src/db/maps-db";
 import { MapId } from "../src/db/maps-db";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
@@ -156,6 +157,19 @@ const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule):
   } as unknown as UnitProjectileController;
 };
 
+const createEnemiesStub = (): EnemiesModule =>
+  ({
+    id: "enemies",
+    initialize: () => {},
+    reset: () => {},
+    load: () => {},
+    save: () => null,
+    tick: () => {},
+    setEnemies: () => {},
+    spawnEnemy: () => {},
+    getEnemies: () => [],
+  } as unknown as EnemiesModule);
+
 const createUnitDesignerStub = (): UnitDesignModule => {
   const stub = {
     subscribe: (listener: (designs: never[]) => void) => {
@@ -259,6 +273,7 @@ describe("MapModule", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -351,6 +366,7 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -483,6 +499,7 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -555,6 +572,7 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -630,6 +648,7 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -713,6 +732,7 @@ describe("Map unlocking", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -812,6 +832,7 @@ describe("Map unlocking", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -869,6 +890,7 @@ describe("Last played map tracking", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
@@ -912,6 +934,7 @@ describe("Last played map tracking", () => {
       bonuses: nextBonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources: nextResources,
       unlocks: nextUnlocks,
@@ -977,6 +1000,7 @@ describe("Map auto restart", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,

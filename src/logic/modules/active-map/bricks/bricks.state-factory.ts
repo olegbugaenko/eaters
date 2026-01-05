@@ -95,6 +95,7 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
       brickKnockBackAmplitude,
       physicalSize,
       rewards,
+      passableFor: config.passableFor,
       damageExplosion: resolveBrickExplosion(
         destructuble?.damageExplosion,
         config,

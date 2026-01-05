@@ -30,6 +30,7 @@ import type {
   EnemySaveData,
   EnemySpawnData,
   InternalEnemyState,
+  ObstacleDescriptor,
 } from "./enemies.types";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
@@ -37,6 +38,8 @@ import { getEnemyConfig } from "../../../../db/enemies-db";
 import { normalizeVector } from "../../../../shared/helpers/vector.helper";
 import type { UnitProjectileHitContext } from "../projectiles/projectiles.types";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
+import { isPassableFor } from "@/logic/shared/navigation/passability.types";
+import { BrickObstacleProvider } from "./brick-obstacle-provider";
 
 export class EnemiesModule implements GameModule {
   public readonly id = "enemies";
@@ -49,6 +52,7 @@ export class EnemiesModule implements GameModule {
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
   private readonly projectiles?: UnitProjectileController;
+  private readonly obstacles?: EnemiesModuleOptions["obstacles"];
   private readonly stateFactory: EnemyStateFactory;
   private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(ENEMY_SPATIAL_GRID_CELL_SIZE);
 
@@ -68,6 +72,7 @@ export class EnemiesModule implements GameModule {
     this.damage = options.damage;
     this.explosions = options.explosions;
     this.projectiles = options.projectiles;
+    this.obstacles = options.obstacles ?? new BrickObstacleProvider(options.bricks);
     this.stateFactory = new EnemyStateFactory({ scene: this.scene, movement: this.movement });
 
     if (this.targeting) {
@@ -409,10 +414,63 @@ export class EnemiesModule implements GameModule {
       Math.min(enemy.moveSpeed, distanceOutsideRange),
       enemy.moveSpeed * 0.25
     );
-    const desiredVelocity = scaleVector(direction, desiredSpeed);
+    let desiredVelocity = scaleVector(direction, desiredSpeed);
+
+    const avoidance = this.computeObstacleAvoidance(enemy, desiredVelocity);
+    if (vectorHasLength(avoidance)) {
+      desiredVelocity = addVectors(desiredVelocity, avoidance);
+    }
 
     // Steering force (similar to player units)
     return this.computeSteeringForce(enemy, movementState.velocity, desiredVelocity);
+  }
+
+  private computeObstacleAvoidance(
+    enemy: InternalEnemyState,
+    desiredVelocity: SceneVector2
+  ): SceneVector2 {
+    if (!this.obstacles || !vectorHasLength(desiredVelocity)) {
+      return ZERO_VECTOR;
+    }
+
+    const avoidanceRadius = enemy.physicalSize * 3;
+    const entityTag = "enemy" as const;
+    let avoidanceVector = { ...ZERO_VECTOR };
+
+    this.obstacles.forEachObstacleNear(enemy.position, avoidanceRadius, (obstacle: ObstacleDescriptor) => {
+      if (isPassableFor(obstacle, entityTag)) {
+        return;
+      }
+
+      const toObstacle = subtractVectors(obstacle.position, enemy.position);
+      const distance = vectorLength(toObstacle);
+      const combinedRadius = obstacle.radius + enemy.physicalSize;
+      const normalizedToObstacle = normalizeVector(toObstacle);
+      if (!normalizedToObstacle) {
+        return;
+      }
+      const isAhead = normalizedToObstacle.x * desiredVelocity.x + normalizedToObstacle.y * desiredVelocity.y > 0;
+      if (distance <= 0 || distance > avoidanceRadius || !isAhead) {
+        return;
+      }
+
+      const overlap = combinedRadius + 4 - distance;
+      if (overlap <= 0) {
+        return;
+      }
+
+      const pushDirection = scaleVector(toObstacle, -1 / Math.max(distance, 1));
+      const strength = overlap / Math.max(combinedRadius, 1);
+      avoidanceVector = addVectors(avoidanceVector, scaleVector(pushDirection, strength));
+    });
+
+    const length = vectorLength(avoidanceVector);
+    if (length <= 0) {
+      return ZERO_VECTOR;
+    }
+
+    const maxAvoidance = enemy.moveSpeed;
+    return scaleVector(avoidanceVector, maxAvoidance / length);
   }
 
   /**

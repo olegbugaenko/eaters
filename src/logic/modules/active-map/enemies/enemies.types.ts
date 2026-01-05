@@ -8,6 +8,8 @@ import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { EnemyType } from "../../../../db/enemies-db";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
+import type { PassabilityTag } from "@/logic/shared/navigation/passability.types";
+import type { BricksModule } from "../bricks/bricks.module";
 
 export interface EnemySpawnData {
   readonly id?: string;
@@ -59,4 +61,20 @@ export interface EnemiesModuleOptions {
   readonly damage?: DamageService;
   readonly explosions?: ExplosionModule;
   readonly projectiles?: UnitProjectileController;
+  readonly bricks: BricksModule;
+  readonly obstacles?: ObstacleProvider;
+}
+
+export interface ObstacleDescriptor {
+  readonly position: SceneVector2;
+  readonly radius: number;
+  readonly passableFor?: readonly PassabilityTag[];
+}
+
+export interface ObstacleProvider {
+  forEachObstacleNear(
+    position: SceneVector2,
+    radius: number,
+    visitor: (obstacle: ObstacleDescriptor) => void
+  ): void;
 }

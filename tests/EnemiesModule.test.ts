@@ -13,6 +13,9 @@ import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
 import { createSolidFill } from "../src/logic/services/scene-object-manager/scene-object-manager.helpers";
 import { createVisualEffectState } from "../src/logic/visuals/VisualEffectState";
 import { describe, test } from "./testRunner";
+import { MovementService } from "../src/logic/services/movement/MovementService";
+import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
+import type { EnemiesModuleOptions } from "../src/logic/modules/active-map/enemies/enemies.types";
 
 const createEnemySpawnData = () => ({
   type: "basicEnemy" as const,
@@ -20,14 +23,45 @@ const createEnemySpawnData = () => ({
   position: { x: 0, y: 0 },
 });
 
+const createEmptyBricks = (): BricksModule =>
+  ({
+    forEachBrickNear: () => {},
+  } as unknown as BricksModule);
+
+const createEnemiesModuleWithDeps = (
+  options: Partial<EnemiesModuleOptions> & { scene?: SceneObjectManager; bridge?: DataBridge } = {}
+) => {
+  const scene = options.scene ?? new SceneObjectManager();
+  const bridge = options.bridge ?? new DataBridge();
+  const runState = options.runState ?? new MapRunState();
+  const movement = options.movement ?? new MovementService();
+  const bricks = options.bricks ?? createEmptyBricks();
+
+  return {
+    module: new EnemiesModule({
+      scene,
+      bridge,
+      runState,
+      movement,
+      bricks,
+      targeting: options.targeting,
+      damage: options.damage,
+      explosions: options.explosions,
+      projectiles: options.projectiles,
+      obstacles: options.obstacles,
+    }),
+    scene,
+    bridge,
+    runState,
+  };
+};
+
 describe("EnemiesModule", () => {
   test("spawns enemies via state factory and pushes bridge stats", () => {
-    const scene = new SceneObjectManager();
-    const bridge = new DataBridge();
     const runState = new MapRunState();
     runState.start();
     const spawnData = createEnemySpawnData();
-    const module = new EnemiesModule({ scene, bridge, runState });
+    const { module, scene, bridge } = createEnemiesModuleWithDeps({ runState });
 
     module.setEnemies([
       {
@@ -39,7 +73,8 @@ describe("EnemiesModule", () => {
     const objects = scene.getObjects();
     assert.strictEqual(objects.length, 1, "should spawn a scene object for the enemy");
     assert(bridge.getValue(ENEMY_COUNT_BRIDGE_KEY) === 1);
-    assert(bridge.getValue(ENEMY_TOTAL_HP_BRIDGE_KEY) > 0);
+    const totalHp = bridge.getValue(ENEMY_TOTAL_HP_BRIDGE_KEY) ?? 0;
+    assert(totalHp > 0);
 
     const [enemy] = module.getEnemies();
     assert(enemy, "expected runtime enemy state");
@@ -48,12 +83,10 @@ describe("EnemiesModule", () => {
   });
 
   test("applies armor, removes on death, and exposes targets", () => {
-    const scene = new SceneObjectManager();
-    const bridge = new DataBridge();
     const runState = new MapRunState();
     runState.start();
     const targeting = new TargetingService();
-    const module = new EnemiesModule({ scene, bridge, runState, targeting });
+    const { module, bridge } = createEnemiesModuleWithDeps({ runState, targeting });
     const spawnData = createEnemySpawnData();
 
     module.setEnemies([
@@ -240,7 +273,7 @@ describe("EnemiesModule", () => {
     });
 
     const spawnData = createEnemySpawnData();
-    const module = new EnemiesModule({
+    const { module } = createEnemiesModuleWithDeps({
       scene,
       bridge,
       runState,

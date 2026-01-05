@@ -42,9 +42,9 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
     createAudioDefinition(),
     createTargetingDefinition(),
     createDamageDefinition(),
+    createBricksDefinition(),
     createUnitProjectilesDefinition(), // Має бути перед createEnemiesDefinition, бо enemies використовує projectiles
     createEnemiesDefinition(),
-    createBricksDefinition(),
     createPlayerUnitsDefinition(context),
     createNecromancerDefinition(),
     createUnitAutomationDefinition(),
