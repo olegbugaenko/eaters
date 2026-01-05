@@ -66,6 +66,10 @@ export class UnitProjectileController {
   }
 
   public spawn(projectile: UnitProjectileSpawn): string {
+    const targetTypes =
+      projectile.targetTypes && projectile.targetTypes.length > 0
+        ? [...projectile.targetTypes]
+        : ["brick", "enemy"];
     const direction = normalizeVector(projectile.direction) || { x: 1, y: 0 };
     const baseVisual = projectile.visual;
     // Resolve spriteIndex from spriteName if needed
@@ -159,6 +163,7 @@ export class UnitProjectileController {
 
     const state: UnitProjectileState = {
       ...projectile,
+      targetTypes,
       id: objectId,
       velocity,
       position,
