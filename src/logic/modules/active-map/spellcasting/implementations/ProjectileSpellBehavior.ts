@@ -110,6 +110,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         onHit: (hitContext) => {
           const data = this.projectileData.get(objectId);
           if (!data) return true;
+          if (!hitContext.brickId) return true;
 
           const baseDamage = randomIntInclusive(data.damage);
           const damage = Math.max(baseDamage * Math.max(data.damageMultiplier, 0), 0);

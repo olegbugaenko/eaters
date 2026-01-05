@@ -1,4 +1,5 @@
 import type { SceneVector2, SceneFill, SceneColor } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { TargetType } from "../targeting/targeting.types";
 import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
@@ -32,13 +33,16 @@ export interface UnitProjectileSpawn {
   rewardMultiplier: number;
   armorPenetration: number;
   skipKnockback?: boolean;
+  targetTypes?: TargetType[];
   visual: UnitProjectileVisualConfig;
   onHit?: UnitProjectileOnHit;
   onExpired?: (position: SceneVector2) => void;
 }
 
 export interface UnitProjectileHitContext {
-  brickId: string;
+  targetId: string;
+  targetType: TargetType;
+  brickId?: string;
   position: SceneVector2;
 }
 

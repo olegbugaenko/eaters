@@ -57,6 +57,10 @@ export interface BridgeSchema {
   "bricks/count": number;
   "bricks/totalHp": number;
 
+  // Enemies
+  "enemies/count": number;
+  "enemies/totalHp": number;
+
   // Camp Modules
   "buildings/workshop": BuildingsWorkshopBridgeState;
   "crafting/state": CraftingBridgeState;

@@ -19,7 +19,8 @@ if (originalResolve) {
     "@": aliasRoot,
     "@ui": path.join(aliasRoot, "ui"),
     "@screens": path.join(aliasRoot, "ui", "screens"),
-    "@shared": path.join(aliasRoot, "ui", "shared"),
+    "@ui-shared": path.join(aliasRoot, "ui", "shared"),
+    "@shared": path.join(aliasRoot, "shared"),
     "@logic": path.join(aliasRoot, "logic"),
     "@db": path.join(aliasRoot, "db"),
   };

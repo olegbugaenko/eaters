@@ -67,9 +67,9 @@ describe("BricksModule", () => {
 
     assert.deepStrictEqual(instance.data.size, config.size);
     const fill = instance.data.fill;
-    const fillConfig = config.fill;
-    if (fillConfig.type === "linear") {
+    if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
       const linearFill = fill as SceneLinearGradientFill;
+      const fillConfig = config.fill as SceneLinearGradientFill;
       assert.strictEqual(linearFill.fillType, FILL_TYPES.LINEAR_GRADIENT);
       assert.strictEqual(linearFill.stops.length, fillConfig.stops.length);
       linearFill.stops.forEach((stop, index) => {
@@ -78,8 +78,9 @@ describe("BricksModule", () => {
         assert.strictEqual(stop.offset, expected.offset);
         assert.deepStrictEqual(stop.color, expected.color);
       });
-    } else if (fillConfig.type === "radial") {
+    } else if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT) {
       const radialFill = fill as SceneRadialGradientFill;
+      const fillConfig = config.fill as SceneRadialGradientFill;
       assert.strictEqual(radialFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
       assert.strictEqual(radialFill.stops.length, fillConfig.stops.length);
       radialFill.stops.forEach((stop, index) => {
@@ -89,7 +90,7 @@ describe("BricksModule", () => {
         assert.deepStrictEqual(stop.color, expected.color);
       });
     } else {
-      assert.fail(`unexpected fill type: ${fillConfig.type}`);
+      assert.fail(`unexpected fill type: ${fill.fillType}`);
     }
 
     assert(instance.data.stroke, "stroke should be defined");
@@ -134,9 +135,9 @@ describe("BricksModule", () => {
     assert.deepStrictEqual(instance.data.size, config.size);
     const fill = instance.data.fill as SceneLinearGradientFill;
     assert.strictEqual(fill.fillType, FILL_TYPES.LINEAR_GRADIENT);
-    const fillConfig = config.fill;
+    const fillConfig = config.fill as SceneLinearGradientFill;
     fill.stops.forEach((stop, index) => {
-      const expected = fillConfig.type === "linear" ? fillConfig.stops[index] : null;
+      const expected = fillConfig.stops[index];
       assert(expected, "expected gradient stop");
       assert.strictEqual(stop.offset, expected.offset);
       assert.deepStrictEqual(stop.color, expected.color);

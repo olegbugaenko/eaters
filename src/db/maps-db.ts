@@ -1,6 +1,7 @@
 import { BrickType, getBrickConfig } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "./player-units-db";
+import type { EnemyType } from "./enemies-db";
 import type { UnlockCondition } from "@shared/types/unlocks";
 import type { SkillId } from "./skills-db";
 import {
@@ -40,12 +41,29 @@ export interface MapNodePosition {
   readonly y: number;
 }
 
+export interface MapEnemySpawnTypeConfig {
+  readonly type: EnemyType;
+  readonly weight: number; // Вага для випадкового вибору (1.0 = базовий, 2.0 = вдвічі частіше)
+  readonly minLevel?: number; // Мінімальний рівень карти для появи
+  readonly maxLevel?: number; // Максимальний рівень карти
+}
+
+export interface MapEnemySpawnPointConfig {
+  readonly position: SceneVector2;
+  readonly spawnRate: number; // Ворогів на секунду (або інтервал між спавнами)
+  readonly enemyTypes: readonly MapEnemySpawnTypeConfig[];
+  readonly maxConcurrent?: number; // Максимальна кількість одночасно активних ворогів
+  readonly enabled?: boolean; // Можна вимкнути для певних рівнів
+  readonly levelOffset?: number; // Зміщення рівня ворогів відносно рівня карти (за замовчуванням 0)
+}
+
 export interface MapConfig {
   readonly name: string;
   readonly size: SceneSize;
   readonly bricks: MapBrickGenerator;
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
   readonly spawnPoints?: readonly SceneVector2[];
+  readonly enemySpawnPoints?: readonly MapEnemySpawnPointConfig[];
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly icon?: string;
   readonly nodePosition: MapNodePosition;
@@ -766,11 +784,24 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       ];
     };
 
+    const enemySpawnPosition: SceneVector2 = { x: center.x, y: center.y + outerSize / 2 + 20 };
+
     return {
       name: "Old Forge",
       size,
       icon: "forge.png",
       spawnPoints: [{ x: center.x, y: center.y - outerSize / 2 + 80 }],
+      enemySpawnPoints: [
+        {
+          position: enemySpawnPosition,
+          spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
+          enemyTypes: [
+            { type: "tankEnemy", weight: 1.0 },
+            { type: "fastEnemy", weight: 1.0 },
+          ],
+          maxConcurrent: 10,
+        },
+      ],
       nodePosition: { x: 3, y: 2 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));

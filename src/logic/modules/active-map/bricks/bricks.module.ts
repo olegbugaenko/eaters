@@ -59,6 +59,8 @@ import {
 import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
 import { MapRunState } from "../map/MapRunState";
 import { BrickStateFactory, BrickStateInput } from "./bricks.state-factory";
+import { TargetingService } from "../targeting/TargetingService";
+import { BricksTargetingProvider } from "../targeting/BricksTargetingProvider";
 
 export class BricksModule implements GameModule {
   public readonly id = "bricks";
@@ -75,10 +77,12 @@ export class BricksModule implements GameModule {
   private lastPushedTotalHp = -1;
   private readonly runState: MapRunState;
   private readonly stateFactory: BrickStateFactory;
+  private readonly targeting?: TargetingService;
 
   constructor(private readonly options: BricksModuleOptions) {
     this.runState = options.runState;
     this.stateFactory = new BrickStateFactory({ scene: options.scene });
+    this.targeting = options.targeting;
     this.effects = new BrickEffectsManager({
       hasBrick: (brickId) => this.bricks.has(brickId),
       dealDamage: (brickId, damage, opts) => {
@@ -92,6 +96,10 @@ export class BricksModule implements GameModule {
         this.applyEffectTint(brick, tint);
       },
     });
+
+    if (this.targeting) {
+      this.targeting.registerProvider(new BricksTargetingProvider(this));
+    }
   }
 
   public initialize(): void {

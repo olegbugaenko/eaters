@@ -77,6 +77,7 @@ export class MapModule implements GameModule {
       runState: options.runState,
       resources: options.resources,
       playerUnits: options.playerUnits,
+      enemies: options.enemies,
       bricks: options.bricks,
       unitsAutomation: options.unitsAutomation,
       arcs: options.arcs,
@@ -145,11 +146,11 @@ export class MapModule implements GameModule {
     } satisfies MapSaveData;
   }
 
-  public tick(_deltaMs: number): void {
+  public tick(deltaMs: number): void {
     if (!this.options.runState.shouldProcessTick()) {
       return;
     }
-    this.runLifecycle.tick();
+    this.runLifecycle.tick(deltaMs);
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
@@ -319,6 +320,7 @@ export class MapModule implements GameModule {
     const bricks = this.generateBricks(config, level);
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
+    const enemySpawnPoints = config.enemySpawnPoints ?? [];
 
     this.runLifecycle.startRun({
       level,
@@ -326,6 +328,7 @@ export class MapModule implements GameModule {
       bricks,
       spawnUnits,
       spawnPoints,
+      enemySpawnPoints,
       generateBricks,
       generateUnits,
     });

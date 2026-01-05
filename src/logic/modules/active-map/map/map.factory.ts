@@ -26,6 +26,7 @@ export const createMapDefinition = (
       bonuses: container.get("bonuses"),
       bricks: container.get("bricks"),
       playerUnits: container.get("playerUnits"),
+      enemies: container.get("enemies"),
       necromancer: container.get("necromancer"),
       resources: container.get("resources"),
       unlocks: container.get("unlocks"),
