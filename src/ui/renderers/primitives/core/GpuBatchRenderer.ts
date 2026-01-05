@@ -193,6 +193,12 @@ export abstract class GpuBatchRenderer<
     batch.activeCount++;
     batch.instances[slotIndex] = null; // Will be set in updateSlot
 
+    // Initialize slot as inactive to prevent rendering stale data
+    const instanceFloats = this.getInstanceFloats();
+    const activeIndex = this.getActiveFloatIndex();
+    batch.instanceData[slotIndex * instanceFloats + activeIndex] = 0;
+    batch.needsUpload = true;
+
     return { batchKey: key, slotIndex };
   }
 

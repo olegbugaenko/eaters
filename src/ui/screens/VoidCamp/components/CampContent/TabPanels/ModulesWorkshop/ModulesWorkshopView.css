@@ -102,6 +102,15 @@
   color: var(--color-accent);
 }
 
+.modules-workshop__card--missing-resources {
+  opacity: 0.7;
+  border-color: var(--color-border-subtle);
+}
+
+.modules-workshop__card--missing-resources:hover {
+  opacity: 0.85;
+}
+
 .modules-workshop__empty {
   text-align: center;
   padding: var(--spacing-xl);

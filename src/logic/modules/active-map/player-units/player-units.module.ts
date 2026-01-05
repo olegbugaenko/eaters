@@ -276,10 +276,13 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
     this.lastTickTimestampMs = performance.now();
-    this.abilities.update(deltaMs);
 
+    // Update positions FIRST so abilities use current positions
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
     const result = this.runtimeController.updateUnits(this.unitOrder, deltaSeconds);
+
+    // Then evaluate abilities with updated positions
+    this.abilities.update(deltaMs);
 
     if (result.statsChanged) {
       this.pushStats();

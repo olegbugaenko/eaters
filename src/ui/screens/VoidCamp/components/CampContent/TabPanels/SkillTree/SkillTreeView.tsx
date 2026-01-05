@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
@@ -328,21 +329,19 @@ export const SkillTreeView: React.FC = () => {
     }
   }, [focusHoveredId, pointerHoveredId, visibleNodes]);
 
-  useEffect(() => {
-    visibleNodes.forEach((node) => {
-      if (!wobblePhaseSeedsRef.current.has(node.id)) {
-        wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
-      }
-    });
-  }, [visibleNodes]);
+  // Initialize wobble seeds lazily (only when needed, not in useEffect)
+  // This runs during render but only mutates ref, so it's safe
+  visibleNodes.forEach((node) => {
+    if (!wobblePhaseSeedsRef.current.has(node.id)) {
+      wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
+    }
+  });
 
   const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
   const hoveredId = pointerHoveredId ?? focusHoveredId;
-  
-  useEffect(() => {
-    hoveredIdRef.current = hoveredId;
-  }, [hoveredId]);
+  // Update ref directly instead of useEffect
+  hoveredIdRef.current = hoveredId;
 
   // Compute initial view transform synchronously using fixed viewport size
   // This prevents visible jump on first render
@@ -594,9 +593,8 @@ export const SkillTreeView: React.FC = () => {
     };
   }, [updateRenderPositions, visibleNodes, wobbleNodeIds]);
 
-  const fallbackId: SkillId | null = visibleNodes[0]?.id ?? null;
-  const activeId = hoveredId ?? fallbackId;
-  const activeNode = visibleNodes.find((node) => node.id === activeId) ?? null;
+  // Only show details for hovered node, no fallback to avoid confusion
+  const activeNode = hoveredId ? visibleNodes.find((node) => node.id === hoveredId) ?? null : null;
 
   useEffect(() => {
     const previousLayout = previousLayoutRef.current;
@@ -608,7 +606,6 @@ export const SkillTreeView: React.FC = () => {
 
     const anchorId =
       hoveredIdRef.current ??
-      activeNode?.id ??
       visibleNodes.find((node) =>
         previousLayout.positions.has(node.id) && layout.positions.has(node.id)
       )?.id ??
@@ -637,7 +634,7 @@ export const SkillTreeView: React.FC = () => {
       offsetX: current.offsetX - deltaX * current.scale,
       offsetY: current.offsetY - deltaY * current.scale,
     }));
-  }, [activeNode, layout, visibleNodes]);
+  }, [layout, visibleNodes]);
 
   const activeMissing = useMemo(
     () => computeMissing(activeNode?.nextCost ?? null, totalsMap),
@@ -662,7 +659,10 @@ export const SkillTreeView: React.FC = () => {
     (id: SkillId) => {
       const success = skillTreeModule.tryPurchaseSkill(id);
       if (success) {
-        setPurchasedSkillId(id);
+        // Force React to immediately update UI with new bridge state
+        flushSync(() => {
+          setPurchasedSkillId(id);
+        });
         // Reset after animation completes
         setTimeout(() => {
           setPurchasedSkillId(null);
@@ -1026,7 +1026,7 @@ export const SkillTreeView: React.FC = () => {
               !node.maxed && node.unlocked && "skill-tree-node--available",
               !node.maxed && node.unlocked && affordable && "skill-tree-node--affordable",
               inactive && "skill-tree-node--inactive",
-              activeId === node.id && "skill-tree-node--active",
+              hoveredId === node.id && "skill-tree-node--active",
               purchasedSkillId === node.id && "skill-tree-node--purchased"
             );
             const iconSrc = getSkillIconPath(node.icon);

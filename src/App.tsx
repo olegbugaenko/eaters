@@ -126,6 +126,7 @@ function App(): JSX.Element {
             onLeaveToMapSelect={() => {
               app.leaveCurrentMap();
               app.playCampPlaylist();
+              app.services.gameLoop.start(); // Ensure game loop runs in camp
               setVoidCampTab("skills");
               setScreen("void-camp");
               setSceneTutorial(null);

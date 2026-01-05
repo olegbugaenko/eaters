@@ -183,7 +183,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "autorestart_rituals",
     name: "Autorestart Sigils",
     description:
-      "Engrave restart sigils—summoning resumes on its own when the weave collapses.",
+      "Allows the map to automatically restart after completion or defeat.",
     nodePosition: { x: -1, y: 3 },
     maxLevel: 1,
     icon: "automation_2.png",

@@ -130,6 +130,9 @@ void main(){
     }
   }
 
+  // Discard inactive/cleared instances
+  if (v_lifetime <= 0.0) discard;
+
   vec3 rgb = mix(u_blurColor.rgb, u_coreColor.rgb, coreBlend);
   float a = mix(u_blurColor.a, u_coreColor.a, coreBlend);
   float finalAlpha = a * coreBlend * fade;
