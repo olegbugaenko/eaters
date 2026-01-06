@@ -9,6 +9,7 @@ import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { EnemiesModule } from "../enemies/enemies.module";
 import { EnemySpawnController } from "../enemies/enemies.spawn-controller";
 import type { MapEnemySpawnPointConfig } from "../../../../db/maps-db";
+import type { EnemySpawnData } from "../enemies/enemies.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { ResourceRunController } from "./map.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
@@ -34,8 +35,10 @@ interface StartRunPayload {
   spawnUnits: PlayerUnitSpawnData[];
   spawnPoints: SceneVector2[];
   enemySpawnPoints: readonly MapEnemySpawnPointConfig[];
+  staticEnemies: EnemySpawnData[];
   generateBricks: boolean;
   generateUnits: boolean;
+  generateEnemies: boolean;
 }
 
 export class MapRunLifecycle {
@@ -86,7 +89,7 @@ export class MapRunLifecycle {
     this.options.playerUnits.prepareForMap();
     this.options.bricks.setBricks(payload.generateBricks ? payload.bricks : []);
     this.options.playerUnits.setUnits(payload.generateUnits ? payload.spawnUnits : []);
-    this.options.enemies.setEnemies([]); // Clear enemies on start
+    this.options.enemies.setEnemies(payload.generateEnemies ? payload.staticEnemies : []); // Set static enemies
     this.enemySpawnPoints = payload.enemySpawnPoints;
     this.enemySpawnController.reset();
     this.options.necromancer.configureForMap({

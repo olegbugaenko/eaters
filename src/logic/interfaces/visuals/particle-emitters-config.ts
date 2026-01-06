@@ -47,6 +47,12 @@ export interface ParticleEmitterConfig {
   spawnRadiusMultiplier?: number;
   arc?: number; // Arc angle in radians
   direction?: number; // Direction angle in radians
+  /**
+   * If true, particles move radially outward from the explosion center.
+   * Direction is calculated from origin to spawn position.
+   * If false, uses the configured direction/arc as normal.
+   */
+  radialVelocity?: boolean;
 
   // Spell-specific properties (optional)
   spawnJitter?: { radial?: number; angular?: number };

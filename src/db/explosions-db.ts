@@ -35,7 +35,8 @@ export type ExplosionType =
   | "magmaBrickHit"
   | "magmaBrickDestroy"
   | "criticalHit"
-  | "weakenCurse";
+  | "weakenCurse"
+  | "smallCannon";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
@@ -446,6 +447,30 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
     }),
     emitter: DEFAULT_EMITTER,
+  },
+  smallCannon: {
+    lifetimeMs: 2_000,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 10,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.02,
+      speedVariation: 0.00,
+      fadeStartMs: 400,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 4760,
+      sizeRange: { min: 0.5, max: 1.4 },
+      emissionDurationMs: 300,
+      // color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: DEFAULT_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
   },
   magnetic: {
     lifetimeMs: 3_000,

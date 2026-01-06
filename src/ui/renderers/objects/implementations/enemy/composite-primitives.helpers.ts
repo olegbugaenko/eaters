@@ -11,114 +11,45 @@ import {
   createDynamicSpritePrimitive,
 } from "../../../primitives";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
-import type { CompositeRendererData, RendererLayer, PlayerUnitCustomData } from "./types";
+import type { EnemyRendererCompositeConfig } from "@db/enemies-db";
 import {
   resolveLayerFill,
   resolveLayerStrokeFill,
   resolveStrokeColor,
-} from "./helpers";
-import {
-  getAuraInstanceMap,
-  acquireAuraSlotForInstance,
-  writeAuraInstance,
-} from "./aura.helpers";
-import { TAU, POLYGON_SWAY_PHASE_STEP } from "./constants";
-import { getTentacleTimeMs } from "./helpers";
+  sanitizeCompositeLayer,
+} from "./composite-helpers";
+import { getNowMs } from "@shared/helpers/time.helper";
+
+const TAU = Math.PI * 2;
+const POLYGON_SWAY_PHASE_STEP = 0.3; // Phase difference between vertices for wave-like animation
 
 /**
- * Creates composite primitives for player unit renderer
+ * Gets current timestamp for animations
+ */
+const getAnimationTimeMs = getNowMs;
+
+/**
+ * Creates composite primitives for enemy renderer
  */
 export const createCompositePrimitives = (
   instance: SceneObjectInstance,
-  renderer: CompositeRendererData,
+  renderer: EnemyRendererCompositeConfig,
   dynamicPrimitives: DynamicPrimitive[]
 ): void => {
-  const payload = instance.data.customData as PlayerUnitCustomData | undefined;
-  // Створюємо аури, якщо вони є в конфігу
-  if (renderer.auras && Array.isArray(payload?.modules)) {
-    const instanceId = instance.id;
-    const auraInstanceMap = getAuraInstanceMap();
-
-    // Очищаємо старі аури для цього instance
-    const existingSlots = auraInstanceMap.get(instanceId);
-    if (existingSlots) {
-      const { petalAuraGpuRenderer } = require("../../../primitives/gpu/petal-aura");
-      existingSlots.forEach(({ handle }) => {
-        // releaseSlot marks slots as inactive and returns them to the pool
-        petalAuraGpuRenderer.releaseSlot(handle);
-      });
+  // Process each layer
+  renderer.layers.forEach((layerConfig) => {
+    const layer = sanitizeCompositeLayer(layerConfig);
+    if (!layer) {
+      return; // Skip invalid layers
     }
 
-    const newSlots: typeof existingSlots = [];
-
-    renderer.auras.forEach((auraConfig) => {
-      if (auraConfig.requiresModule) {
-        if (!payload?.modules?.includes(auraConfig.requiresModule)) {
-          return;
-        }
-      }
-      const petalCount = Math.max(1, Math.floor(auraConfig.petalCount));
-      const handle = acquireAuraSlotForInstance(instanceId, petalCount);
-      if (!handle) {
-        return;
-      }
-      const basePhase = Math.random() * Math.PI * 2;
-
-      newSlots.push({
-        instanceId,
-        handle,
-        auraConfig,
-        basePhase,
-      });
-
-      // Записуємо пелюстки одразу
-      writeAuraInstance(handle, {
-        position: { ...instance.data.position },
-        basePhase,
-        active: true,
-        petalCount: auraConfig.petalCount,
-        innerRadius: auraConfig.innerRadius,
-        outerRadius: auraConfig.outerRadius,
-        petalWidth:
-          auraConfig.petalWidth ??
-          (auraConfig.outerRadius - auraConfig.innerRadius) * 0.5,
-        rotationSpeed: auraConfig.rotationSpeed,
-        color: [auraConfig.color.r, auraConfig.color.g, auraConfig.color.b],
-        alpha: auraConfig.alpha,
-        pointInward: auraConfig.pointInward ?? false,
-      });
-    });
-
-    auraInstanceMap.set(instanceId, newSlots);
-  }
-
-  // Group tentacle segments by groupId for potential future use (not required to animate basic sway)
-  renderer.layers.forEach((layer) => {
-    // If a layer requires a module, render it only when present
-    const payload = instance.data.customData as PlayerUnitCustomData | undefined;
-    const required = layer.requiresModule;
-    if (
-      required &&
-      (!payload || !Array.isArray(payload.modules) || !payload.modules.includes(required))
-    ) {
-      return;
-    }
-    const reqSkill = layer.requiresSkill;
-    if (
-      reqSkill &&
-      (!payload || !Array.isArray(payload.skills) || !payload.skills.includes(reqSkill))
-    ) {
-      return;
-    }
-    const reqEffect = layer.requiresEffect;
-    if (reqEffect) {
-      const effects: string[] = Array.isArray(payload?.effects) ? payload.effects : [];
-      if (!effects.includes(reqEffect)) {
-        return;
-      }
-    }
     if (layer.shape === "polygon") {
-      // Sway animation for tentacle segments built from a line spine
+      // Handle polygon layers
+      if (!layer.vertices || layer.vertices.length < 3) {
+        return;
+      }
+
+      // Sway animation for tentacle segments built from a line spine (like player units)
       if (Array.isArray(layer.spine) && layer.anim?.type === "sway") {
         const rawSpine = layer.spine;
         const baseSpine = rawSpine.map((p) => ({ x: p.x, y: p.y, width: p.width }));
@@ -188,12 +119,10 @@ export const createCompositePrimitives = (
             return;
           }
 
-          // Спростимо анімацію - використовуємо один sin для всіх сегментів з різними фазами
           const baseAngle = omega * timeMs + phase;
 
           for (let i = 1; i < baseSpine.length; i += 1) {
-            // Фазовий зсув базується на позиції сегмента (простіша версія)
-            const segmentPhase = i * 0.5; // Фіксований зсув замість складного розрахунку
+            const segmentPhase = i * 0.5;
             const sinAngle = Math.sin(baseAngle + segmentPhase);
             const displacement = amplitude * falloffFactors[i]! * sinAngle;
             const axisXValue = axisX[i - 1] ?? 0;
@@ -254,12 +183,12 @@ export const createCompositePrimitives = (
 
         const sampleVertices = (() => {
           let lastSampleTime = -1;
-          const UPDATE_INTERVAL_MS = 32; // Оновлюємо анімацію кожні 32ms (~30 FPS)
+          const UPDATE_INTERVAL_MS = 32;
 
           return () => {
-            const now = getTentacleTimeMs();
+            const now = getAnimationTimeMs();
             if (now - lastSampleTime < UPDATE_INTERVAL_MS) {
-              return quadVerts; // Повертаємо ті самі вершини без перерахунку
+              return quadVerts;
             }
             lastSampleTime = now;
             deformSpine(now);
@@ -272,7 +201,7 @@ export const createCompositePrimitives = (
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
-              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
+              : resolveStrokeColor(instance, renderer.stroke?.color, renderer.fill);
           const sceneStroke: SceneStroke = {
             width: layer.stroke.width,
             color: strokeColor,
@@ -285,8 +214,6 @@ export const createCompositePrimitives = (
             })
           );
         }
-
-        // OPTIMIZATION: Cache fill for tentacle layers - vertices animate but fill is static
         const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
@@ -297,10 +224,11 @@ export const createCompositePrimitives = (
         );
         return; // handled animated tentacle layer
       }
-      // Generic polygon layer (no spine). If it has anim.sway/pulse, deform vertices per-frame.
-      const animCfg = layer.anim;
 
+      // Check for animation
+      const animCfg = layer.anim;
       if (animCfg && (animCfg.type === "sway" || animCfg.type === "pulse")) {
+        // Animated polygon layer
         const baseVertices = layer.vertices.map((v) => ({ x: v.x, y: v.y }));
         const center = baseVertices.reduce(
           (acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }),
@@ -309,6 +237,7 @@ export const createCompositePrimitives = (
         const invCount = baseVertices.length > 0 ? 1 / baseVertices.length : 0;
         center.x *= invCount;
         center.y *= invCount;
+
         const period = Math.max(1, Math.floor(animCfg.periodMs ?? 1500));
         const amplitude = animCfg.amplitude ?? 6;
         const phase = animCfg.phase ?? 0;
@@ -318,12 +247,6 @@ export const createCompositePrimitives = (
           Number.isFinite(animCfg.amplitudePercentage)
             ? animCfg.amplitudePercentage
             : undefined;
-        const movementPerp =
-          axis === "movement-tangent"
-            ? { x: 0, y: 1 }
-            : axis === "movement-normal"
-            ? { x: -1, y: 0 }
-            : null;
 
         const vertexMeta = baseVertices.map((v) => {
           const dx = v.x - center.x;
@@ -347,21 +270,9 @@ export const createCompositePrimitives = (
             tangentMagnitude: amplitude,
           };
         });
-        const movementMeta = movementPerp
-          ? baseVertices.map((v) => {
-              const signedDist = v.x * movementPerp.x + v.y * movementPerp.y;
-              const toward = -Math.sign(signedDist) || 0;
-              const magnitude =
-                amplitudePercentage !== undefined
-                  ? Math.abs(signedDist) * amplitudePercentage
-                  : amplitude;
-              return {
-                toward,
-                magnitude,
-              };
-            })
-          : null;
-        const hasMovement = Boolean(movementPerp && movementMeta);
+
+        // Add phase step for vertex-by-vertex animation (like player units)
+        const POLYGON_SWAY_PHASE_STEP = 0.3; // Phase difference between vertices
         const sinPhaseStep = Math.sin(POLYGON_SWAY_PHASE_STEP);
         const cosPhaseStep = Math.cos(POLYGON_SWAY_PHASE_STEP);
 
@@ -371,11 +282,7 @@ export const createCompositePrimitives = (
           }
           const omega = TAU / period;
           const baseAngle = omega * timeMs + phase;
-          const globalSin = Math.sin(baseAngle);
-          const usesVertexPhase = !hasMovement;
-          const sinStep = usesVertexPhase ? sinPhaseStep : 0;
-          const cosStep = usesVertexPhase ? cosPhaseStep : 1;
-          let sinValue = globalSin;
+          let sinValue = Math.sin(baseAngle);
           let cosValue = Math.cos(baseAngle);
           const deformed = new Array<SceneVector2>(vertexMeta.length);
           for (let i = 0; i < vertexMeta.length; i += 1) {
@@ -384,15 +291,9 @@ export const createCompositePrimitives = (
               deformed[i] = { x: 0, y: 0 };
               continue;
             }
-            const sinForVertex = usesVertexPhase ? sinValue : globalSin;
-            if (movementPerp && movementMeta && hasMovement) {
-              const moveInfo = movementMeta[i]!;
-              const magnitude = moveInfo.magnitude * sinForVertex * moveInfo.toward;
-              deformed[i] = {
-                x: meta.baseX + movementPerp.x * magnitude,
-                y: meta.baseY + movementPerp.y * magnitude,
-              };
-            } else if (axis === "tangent") {
+            // Use per-vertex phase for wave-like animation
+            const sinForVertex = sinValue;
+            if (axis === "tangent") {
               const magnitude = meta.tangentMagnitude * sinForVertex;
               deformed[i] = {
                 x: meta.baseX + meta.tangentX * magnitude,
@@ -405,12 +306,11 @@ export const createCompositePrimitives = (
                 y: meta.baseY + meta.normalY * magnitude,
               };
             }
-            if (usesVertexPhase) {
-              const prevSin = sinValue;
-              const prevCos = cosValue;
-              sinValue = prevSin * cosStep + prevCos * sinStep;
-              cosValue = prevCos * cosStep - prevSin * sinStep;
-            }
+            // Rotate phase for next vertex
+            const prevSin = sinValue;
+            const prevCos = cosValue;
+            sinValue = prevSin * cosPhaseStep + prevCos * sinPhaseStep;
+            cosValue = prevCos * cosPhaseStep - prevSin * sinPhaseStep;
           }
           return deformed;
         };
@@ -429,14 +329,7 @@ export const createCompositePrimitives = (
               deformed[i] = { x: 0, y: 0 };
               continue;
             }
-            if (movementPerp && movementMeta) {
-              const moveInfo = movementMeta[i]!;
-              const magnitude = moveInfo.magnitude * s * moveInfo.toward;
-              deformed[i] = {
-                x: meta.baseX + movementPerp.x * magnitude,
-                y: meta.baseY + movementPerp.y * magnitude,
-              };
-            } else if (axis === "tangent") {
+            if (axis === "tangent") {
               const magnitude = amplitude * s;
               deformed[i] = {
                 x: meta.baseX + meta.tangentX * magnitude,
@@ -454,13 +347,13 @@ export const createCompositePrimitives = (
         };
 
         const getDeformedVertices = (() => {
-          const UPDATE_INTERVAL_MS = 32; // Оновлюємо анімацію кожні 32ms (~30 FPS)
+          const UPDATE_INTERVAL_MS = 32; // Update animation every 32ms (~30 FPS)
           let lastUpdateTime = -1;
           let lastSample = baseVertices.map((v) => ({ x: v.x, y: v.y }));
           return () => {
-            const now = getTentacleTimeMs();
+            const now = getAnimationTimeMs();
             if (now - lastUpdateTime < UPDATE_INTERVAL_MS) {
-              return lastSample; // Повертаємо закешовані вершини
+              return lastSample; // Return cached vertices
             }
             lastUpdateTime = now;
             lastSample = animCfg.type === "sway" ? sampleSway(now) : samplePulse(now);
@@ -472,7 +365,7 @@ export const createCompositePrimitives = (
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
-              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
+              : resolveStrokeColor(instance, renderer.stroke?.color, renderer.fill);
           const sceneStroke: SceneStroke = { width: layer.stroke.width, color: strokeColor };
           dynamicPrimitives.push(
             createDynamicPolygonStrokePrimitive(instance, {
@@ -482,7 +375,6 @@ export const createCompositePrimitives = (
             })
           );
         }
-        // OPTIMIZATION: Cache fill for animated layers too - vertices change but fill is usually static
         const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
@@ -492,11 +384,12 @@ export const createCompositePrimitives = (
           })
         );
       } else {
+        // Static polygon layer
         if (layer.stroke) {
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
-              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
+              : resolveStrokeColor(instance, renderer.stroke?.color, renderer.fill);
           const sceneStroke: SceneStroke = {
             width: layer.stroke.width,
             color: strokeColor,
@@ -509,7 +402,6 @@ export const createCompositePrimitives = (
             })
           );
         }
-        // OPTIMIZATION: Cache fill at registration time for static layers
         const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
@@ -523,14 +415,14 @@ export const createCompositePrimitives = (
     }
 
     if (layer.shape === "circle") {
-      // OPTIMIZATION: Cache fills at registration time for static layers
+      // Circle layer
       if (layer.stroke) {
         const cachedStrokeFill = resolveLayerStrokeFill(instance, layer.stroke, renderer);
         dynamicPrimitives.push(
           createDynamicCirclePrimitive(instance, {
             segments: layer.segments,
             offset: layer.offset,
-            radius: layer.radius + layer.stroke.width,
+            radius: layer.radius! + layer.stroke.width,
             fill: cachedStrokeFill,
           })
         );
@@ -540,7 +432,7 @@ export const createCompositePrimitives = (
         createDynamicCirclePrimitive(instance, {
           segments: layer.segments,
           offset: layer.offset,
-          radius: layer.radius,
+          radius: layer.radius!,
           fill: cachedFill,
         })
       );
@@ -549,11 +441,14 @@ export const createCompositePrimitives = (
 
     if (layer.shape === "sprite") {
       // Sprite layer - uses RectanglePrimitive as fallback until texture support is added
+      if (!layer.spritePath || typeof layer.width !== "number" || typeof layer.height !== "number") {
+        return; // Skip invalid sprite layers
+      }
       dynamicPrimitives.push(
         createDynamicSpritePrimitive(instance, {
           spritePath: layer.spritePath,
-          getWidth: () => layer.width,
-          getHeight: () => layer.height,
+          getWidth: () => layer.width!,
+          getHeight: () => layer.height!,
           offset: layer.offset,
         })
       );

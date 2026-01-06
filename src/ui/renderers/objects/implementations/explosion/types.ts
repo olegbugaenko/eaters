@@ -15,6 +15,7 @@ export type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {
   spawnRadius: { min: number; max: number };
   arc: number;
   direction: number;
+  radialVelocity?: boolean;
 };
 
 export interface ExplosionEmitterConfigCache {

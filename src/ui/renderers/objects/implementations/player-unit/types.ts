@@ -76,7 +76,14 @@ export interface RendererCircleLayer extends RendererLayerBase {
   segments: number;
 }
 
-export type RendererLayer = RendererPolygonLayer | RendererCircleLayer;
+export interface RendererSpriteLayer extends RendererLayerBase {
+  shape: "sprite";
+  spritePath: string;
+  width: number;
+  height: number;
+}
+
+export type RendererLayer = RendererPolygonLayer | RendererCircleLayer | RendererSpriteLayer;
 
 export interface RendererLayerFillBase {
   kind: "base";

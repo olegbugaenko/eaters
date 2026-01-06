@@ -71,6 +71,8 @@ import { TargetingService } from "../targeting/TargetingService";
 import { isTargetOfType } from "../targeting/targeting.types";
 import { BricksTargetingProvider } from "../targeting/BricksTargetingProvider";
 import { PlayerUnitsTargetingProvider } from "./PlayerUnitsTargetingProvider";
+import type { DamageService } from "../targeting/DamageService";
+import type { EnemiesModule } from "../enemies/enemies.module";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -111,6 +113,8 @@ export class PlayerUnitsModule implements GameModule {
   private readonly bonuses: BonusesModule;
   private readonly explosions: ExplosionModule;
   private readonly targeting: TargetingService;
+  private readonly damage?: DamageService;
+  private readonly enemies?: EnemiesModule;
   private readonly arcs?: ArcModule;
   private readonly effects?: EffectsModule;
   private readonly fireballs?: FireballModule;
@@ -211,6 +215,9 @@ export class PlayerUnitsModule implements GameModule {
       getDesignTargetingMode: this.getDesignTargetingMode,
     });
 
+    this.damage = options.damage;
+    this.enemies = options.enemies;
+
     this.runtimeController = new UnitRuntimeController({
       scene: this.scene,
       movement: this.movement,
@@ -220,6 +227,8 @@ export class PlayerUnitsModule implements GameModule {
       statistics: this.statistics,
       explosions: this.explosions,
       projectiles: this.projectiles,
+      damage: this.damage,
+      enemies: this.enemies,
       getDesignTargetingMode: this.getDesignTargetingMode,
       syncUnitTargetingMode: (unit) => this.syncUnitTargetingMode(unit),
       removeUnit: (unit) => this.removeUnit(unit),

@@ -5,6 +5,8 @@ import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";
 import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
 import { UnitModuleWorkshopModule } from "../../camp/unit-module-workshop/unit-module-workshop.module";
 import { PlayerUnitsModule } from "./player-units.module";
+import type { DamageService } from "../targeting/DamageService";
+import type { EnemiesModule } from "../enemies/enemies.module";
 
 export const createPlayerUnitsDefinition = (
   context: ModuleDefinitionContext,
@@ -20,6 +22,8 @@ export const createPlayerUnitsDefinition = (
       explosions: container.get("explosion"),
       projectiles: container.get("unitProjectiles"),
       targeting: container.get("targeting"),
+      damage: container.get("damage"),
+      enemies: container.get("enemies"),
       runState: container.get("mapRunState"),
       arcs: undefined,
       effects: undefined,

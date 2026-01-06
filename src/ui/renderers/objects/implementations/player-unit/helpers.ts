@@ -31,6 +31,17 @@ import type {
 } from "./types";
 
 import { getNowMs } from "@shared/helpers/time.helper";
+// Re-export shared composite renderer helpers
+import {
+  sanitizeCompositeFillConfig,
+  sanitizeCompositeStrokeConfig,
+  resolveCompositeLayerFill,
+  resolveCompositeLayerStrokeFill,
+  resolveCompositeFillColor,
+  resolveCompositeStrokeColor,
+  applyBrightness,
+  tintColor,
+} from "../../shared/composite-renderer-helpers";
 
 /**
  * Gets current timestamp for tentacle animation
@@ -145,6 +156,27 @@ export const sanitizeCompositeLayer = (
     };
   }
 
+  if (layer.shape === "sprite") {
+    if (!layer.spritePath || typeof layer.width !== "number" || typeof layer.height !== "number") {
+      return null;
+    }
+    return {
+      shape: "sprite",
+      spritePath: layer.spritePath,
+      width: layer.width,
+      height: layer.height,
+      offset: sanitizeOffset(layer.offset),
+      fill: sanitizeFillConfig(layer.fill),
+      stroke: sanitizeStrokeConfig(layer.stroke),
+      requiresModule: layer.requiresModule,
+      requiresSkill: layer.requiresSkill,
+      requiresEffect: layer.requiresEffect,
+      anim: layer.anim,
+      groupId: layer.groupId,
+    };
+  }
+
+  // circle
   const radius =
     typeof layer.radius === "number" && Number.isFinite(layer.radius) ? layer.radius : 0;
   if (radius <= 0) {
@@ -202,177 +234,51 @@ export const clampAlphaMultiplier = (value: number | undefined): number => {
 };
 
 /**
- * Sanitizes fill config
+ * Sanitizes fill config (uses shared implementation)
  */
 export const sanitizeFillConfig = (
   fill: RendererFillConfig | undefined
 ): RendererLayerFill => {
-  if (!fill || fill.type === "base") {
-    return {
-      kind: "base",
-      brightness: clampBrightness(fill?.brightness),
-      alphaMultiplier: clampAlphaMultiplier(fill?.alphaMultiplier),
-    };
-  }
-  // solid and gradient: incoming is SceneFill-compatible
-  if (fill.type === "solid") {
-    const solidFill = fill.fill as SceneSolidFill;
-    return {
-      kind: "solid" as const,
-      color: cloneSceneColor(solidFill.color),
-      ...(solidFill.noise ? { noise: solidFill.noise } : {}),
-    };
-  }
-  return {
-    kind: "gradient" as const,
-    fill: resolveRendererFillConfig(fill),
-  };
+  return sanitizeCompositeFillConfig(fill) as RendererLayerFill;
 };
 
 /**
- * Sanitizes stroke config
+ * Sanitizes stroke config (uses shared implementation)
  */
 export const sanitizeStrokeConfig = (
   stroke: RendererStrokeConfig | undefined
 ): RendererLayerStroke | undefined => {
-  if (!stroke) {
-    return undefined;
-  }
-  const width = typeof stroke.width === "number" && Number.isFinite(stroke.width)
-    ? stroke.width
-    : 0;
-  if (width <= 0) {
-    return undefined;
-  }
-  if (stroke.type === "solid") {
-    return {
-      kind: "solid",
-      width,
-      color: cloneSceneColor(stroke.color),
-    };
-  }
-  return {
-    kind: "base",
-    width,
-    brightness: clampBrightness(stroke.brightness),
-    alphaMultiplier: clampAlphaMultiplier(stroke.alphaMultiplier),
-  };
+  return sanitizeCompositeStrokeConfig(stroke) as RendererLayerStroke | undefined;
 };
 
 /**
- * Applies brightness to a color component
+ * Resolves fill color from instance (uses shared implementation)
  */
-export const applyBrightness = (component: number, brightness: number): number => {
-  if (brightness > 0) {
-    return component + (1 - component) * brightness;
-  }
-  if (brightness < 0) {
-    return component * (1 + brightness);
-  }
-  return component;
-};
+export const resolveFillColor = resolveCompositeFillColor;
 
 /**
- * Tints a color with brightness and alpha multiplier
+ * Resolves stroke color from instance (uses shared implementation)
  */
-export const tintColor = (
-  color: SceneColor,
-  brightness: number,
-  alphaMultiplier: number
-): SceneColor => {
-  const r = clamp01(applyBrightness(color.r, brightness));
-  const g = clamp01(applyBrightness(color.g, brightness));
-  const b = clamp01(applyBrightness(color.b, brightness));
-  const baseAlpha = typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1;
-  const a = clamp01(baseAlpha * alphaMultiplier);
-  return { r, g, b, a };
-};
-
+export const resolveStrokeColor = resolveCompositeStrokeColor;
 
 /**
- * Resolves fill color from instance
- */
-export const resolveFillColor = (
-  instance: SceneObjectInstance,
-  fallback: SceneColor
-): SceneColor => {
-  const fill = instance.data.fill;
-  if (fill?.fillType === FILL_TYPES.SOLID) {
-    const solidFill = fill as SceneSolidFill;
-    const color = solidFill.color;
-    return {
-      r: color.r,
-      g: color.g,
-      b: color.b,
-      a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
-    };
-  }
-  return fallback;
-};
-
-/**
- * Resolves stroke color from instance
- */
-export const resolveStrokeColor = (
-  instance: SceneObjectInstance,
-  fallbackStroke: SceneColor | undefined,
-  fallbackFill: SceneColor
-): SceneColor => {
-  const stroke = instance.data.stroke;
-  if (stroke && stroke.width > 0) {
-    const color = stroke.color;
-    if (color) {
-      return {
-        r: color.r,
-        g: color.g,
-        b: color.b,
-        a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
-      };
-    }
-  }
-  if (fallbackStroke) {
-    return fallbackStroke;
-  }
-  return fallbackFill;
-};
-
-/**
- * Resolves layer fill to SceneFill
+ * Resolves layer fill to SceneFill (uses shared implementation)
  */
 export const resolveLayerFill = (
   instance: SceneObjectInstance,
   fill: RendererLayerFill,
   renderer: CompositeRendererData
 ): SceneFill => {
-  switch (fill.kind) {
-    case "solid":
-      return createSolidFill(fill.color, { noise: fill.noise });
-    case "gradient":
-      return cloneSceneFill(fill.fill);
-    default: {
-      const baseColor = resolveFillColor(instance, renderer.baseFillColor);
-      const tinted = tintColor(baseColor, fill.brightness, fill.alphaMultiplier);
-      return createSolidFill(tinted, { noise: instance.data.fill.noise });
-    }
-  }
+  return resolveCompositeLayerFill(instance, fill, renderer);
 };
 
 /**
- * Resolves layer stroke fill to SceneFill
+ * Resolves layer stroke fill to SceneFill (uses shared implementation)
  */
 export const resolveLayerStrokeFill = (
   instance: SceneObjectInstance,
   stroke: RendererLayerStroke,
   renderer: CompositeRendererData
 ): SceneFill => {
-  if (stroke.kind === "solid") {
-    return createSolidFill(stroke.color);
-  }
-  const baseColor = resolveStrokeColor(
-    instance,
-    renderer.baseStrokeColor,
-    renderer.baseFillColor
-  );
-  const tinted = tintColor(baseColor, stroke.brightness, stroke.alphaMultiplier);
-  return createSolidFill(tinted, { noise: instance.data.fill.noise });
+  return resolveCompositeLayerStrokeFill(instance, stroke, renderer);
 };

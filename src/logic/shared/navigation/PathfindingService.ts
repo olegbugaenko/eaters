@@ -9,6 +9,8 @@ import type { ObstacleDescriptor, ObstacleProvider } from "./navigation.types";
 const DEFAULT_CELL_SIZE = 14;
 const DIAGONAL_COST = Math.SQRT2;
 const SMALL_NUMBER = 1e-3;
+const GRID_CACHE_TTL_MS = 150; // Кешуємо сітку на 150мс
+const MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 1.5; // Збираємо перешкоди тільки в 1.5x відстані від шляху
 
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dx = a.x - b.x;
@@ -100,10 +102,19 @@ class MinHeap {
   }
 }
 
+interface CachedGrid {
+  obstacles: ObstacleDescriptor[];
+  grid: { blocked: Uint8Array; cols: number; rows: number };
+  timestamp: number;
+  clearance: number;
+  mapSize: SceneSize;
+}
+
 export class PathfindingService {
   private readonly obstacles: ObstacleProvider;
   private readonly getMapSize: () => SceneSize;
   private readonly cellSize: number;
+  private gridCache: CachedGrid | null = null;
 
   constructor(options: PathfindingServiceOptions) {
     this.obstacles = options.obstacles;
@@ -121,13 +132,24 @@ export class PathfindingService {
     const clearance = Math.max(request.entityRadius, 0);
     const goalReached = distanceSquared(request.start, request.target) <= goalRadius * goalRadius;
 
-    const obstacles = this.collectObstacles(request, Math.hypot(mapSize.width, mapSize.height));
+    // Оптимізований радіус збору перешкод - тільки в релевантній області
+    const pathDistance = Math.hypot(
+      request.target.x - request.start.x,
+      request.target.y - request.start.y
+    );
+    const collectionRadius = Math.min(
+      pathDistance * MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER + clearance * 2,
+      Math.hypot(mapSize.width, mapSize.height)
+    );
+
+    const obstacles = this.collectObstacles(request, collectionRadius);
 
     if (goalReached || this.isLineClear(request.start, request.target, clearance, obstacles)) {
       return { waypoints: [], goalReached: true };
     }
 
-    const grid = this.createGrid(mapSize, obstacles, clearance);
+    // Використовуємо кешовану сітку якщо можливо
+    const grid = this.getOrCreateGrid(mapSize, obstacles, clearance);
     const startIndex = this.findNearestWalkableIndex(request.start, grid);
     const goalMask = this.computeGoalMask(request.target, goalRadius + this.cellSize * 0.5, grid);
 
@@ -181,6 +203,198 @@ export class PathfindingService {
     const lengthSq = Math.max(dx * dx + dy * dy, SMALL_NUMBER);
     const t = clampNumber(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq, 0, 1);
     return { x: lerp(start.x, end.x, t), y: lerp(start.y, end.y, t) };
+  }
+
+  /**
+   * Отримує кешовану сітку або створює нову
+   */
+  private getOrCreateGrid(
+    mapSize: SceneSize,
+    obstacles: readonly ObstacleDescriptor[],
+    clearance: number
+  ): { blocked: Uint8Array; cols: number; rows: number } {
+    const now = performance.now();
+    
+    // Перевіряємо чи кеш валідний
+    if (
+      this.gridCache &&
+      now - this.gridCache.timestamp < GRID_CACHE_TTL_MS &&
+      this.gridCache.clearance === clearance &&
+      this.gridCache.mapSize.width === mapSize.width &&
+      this.gridCache.mapSize.height === mapSize.height &&
+      this.areObstaclesSimilar(this.gridCache.obstacles, obstacles)
+    ) {
+      // Використовуємо кеш, але оновлюємо перешкоди які змінилися
+      const updatedGrid = this.updateGridForChangedObstacles(
+        this.gridCache.grid,
+        this.gridCache.obstacles,
+        obstacles,
+        clearance
+      );
+      
+      // Оновлюємо кеш
+      this.gridCache.obstacles = [...obstacles];
+      this.gridCache.grid = updatedGrid;
+      this.gridCache.timestamp = now;
+      
+      return updatedGrid;
+    }
+
+    // Створюємо нову сітку
+    const grid = this.createGrid(mapSize, obstacles, clearance);
+    
+    // Кешуємо
+    this.gridCache = {
+      obstacles: [...obstacles],
+      grid,
+      timestamp: now,
+      clearance,
+      mapSize: { ...mapSize },
+    };
+
+    return grid;
+  }
+
+  /**
+   * Перевіряє чи перешкоди схожі (для кешування)
+   */
+  private areObstaclesSimilar(
+    cached: readonly ObstacleDescriptor[],
+    current: readonly ObstacleDescriptor[]
+  ): boolean {
+    // Якщо кількість сильно відрізняється - точно не схожі
+    if (Math.abs(cached.length - current.length) > cached.length * 0.1) {
+      return false;
+    }
+
+    // Швидка перевірка - якщо кількість однакова, вважаємо схожими
+    // (детальна перевірка була б занадто дорогою)
+    return cached.length === current.length;
+  }
+
+  /**
+   * Оновлює сітку тільки для змінених перешкод (інкрементальне оновлення)
+   */
+  private updateGridForChangedObstacles(
+    grid: { blocked: Uint8Array; cols: number; rows: number },
+    oldObstacles: readonly ObstacleDescriptor[],
+    newObstacles: readonly ObstacleDescriptor[],
+    clearance: number
+  ): { blocked: Uint8Array; cols: number; rows: number } {
+    const mapSize = this.getMapSize();
+    
+    // Якщо перешкод багато, простіше пересоздати сітку
+    if (newObstacles.length > 200) {
+      return this.createGrid(mapSize, newObstacles, clearance);
+    }
+
+    // Створюємо мапу старих перешкод для швидкого пошуку
+    const oldMap = new Map<string, ObstacleDescriptor>();
+    oldObstacles.forEach((obs) => {
+      const key = `${obs.position.x.toFixed(1)},${obs.position.y.toFixed(1)},${obs.radius.toFixed(1)}`;
+      oldMap.set(key, obs);
+    });
+
+    // Знаходимо видалені перешкоди (були в старому, немає в новому)
+    const removed: ObstacleDescriptor[] = [];
+    oldMap.forEach((obs) => {
+      const key = `${obs.position.x.toFixed(1)},${obs.position.y.toFixed(1)},${obs.radius.toFixed(1)}`;
+      if (!newObstacles.some((n) => {
+        const nKey = `${n.position.x.toFixed(1)},${n.position.y.toFixed(1)},${n.radius.toFixed(1)}`;
+        return nKey === key;
+      })) {
+        removed.push(obs);
+      }
+    });
+
+    // Знаходимо додані перешкоди (є в новому, немає в старому)
+    const added: ObstacleDescriptor[] = [];
+    newObstacles.forEach((obs) => {
+      const key = `${obs.position.x.toFixed(1)},${obs.position.y.toFixed(1)},${obs.radius.toFixed(1)}`;
+      if (!oldMap.has(key)) {
+        added.push(obs);
+      }
+    });
+
+    // Якщо змін занадто багато - пересоздаємо сітку
+    if (removed.length + added.length > Math.max(newObstacles.length * 0.3, 50)) {
+      const mapSize = this.getMapSize();
+      return this.createGrid(mapSize, newObstacles, clearance);
+    }
+
+    // Інкрементальне оновлення: очищаємо клітинки від видалених перешкод
+    this.clearObstaclesFromGrid(grid, removed, clearance);
+    
+    // Додаємо нові перешкоди
+    this.addObstaclesToGrid(grid, added, clearance);
+
+    return grid;
+  }
+
+  /**
+   * Видаляє перешкоди з сітки
+   */
+  private clearObstaclesFromGrid(
+    grid: { blocked: Uint8Array; cols: number; rows: number },
+    obstacles: readonly ObstacleDescriptor[],
+    clearance: number
+  ): void {
+    const { blocked, cols, rows } = grid;
+    const half = this.cellSize * 0.5;
+    const halfDiag = half * Math.SQRT2;
+
+    for (const obstacle of obstacles) {
+      const inflation = obstacle.radius + clearance;
+      const minX = clampNumber(Math.floor((obstacle.position.x - inflation) / this.cellSize), 0, cols - 1);
+      const maxX = clampNumber(Math.floor((obstacle.position.x + inflation) / this.cellSize), 0, cols - 1);
+      const minY = clampNumber(Math.floor((obstacle.position.y - inflation) / this.cellSize), 0, rows - 1);
+      const maxY = clampNumber(Math.floor((obstacle.position.y + inflation) / this.cellSize), 0, rows - 1);
+
+      for (let y = minY; y <= maxY; y += 1) {
+        const centerY = y * this.cellSize + half;
+        for (let x = minX; x <= maxX; x += 1) {
+          const centerX = x * this.cellSize + half;
+          const dx = centerX - obstacle.position.x;
+          const dy = centerY - obstacle.position.y;
+          if (dx * dx + dy * dy <= (inflation + halfDiag) * (inflation + halfDiag)) {
+            blocked[y * cols + x] = 0; // Очищаємо
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Додає перешкоди до сітки
+   */
+  private addObstaclesToGrid(
+    grid: { blocked: Uint8Array; cols: number; rows: number },
+    obstacles: readonly ObstacleDescriptor[],
+    clearance: number
+  ): void {
+    const { blocked, cols, rows } = grid;
+    const half = this.cellSize * 0.5;
+    const halfDiag = half * Math.SQRT2;
+
+    for (const obstacle of obstacles) {
+      const inflation = obstacle.radius + clearance;
+      const minX = clampNumber(Math.floor((obstacle.position.x - inflation) / this.cellSize), 0, cols - 1);
+      const maxX = clampNumber(Math.floor((obstacle.position.x + inflation) / this.cellSize), 0, cols - 1);
+      const minY = clampNumber(Math.floor((obstacle.position.y - inflation) / this.cellSize), 0, rows - 1);
+      const maxY = clampNumber(Math.floor((obstacle.position.y + inflation) / this.cellSize), 0, rows - 1);
+
+      for (let y = minY; y <= maxY; y += 1) {
+        const centerY = y * this.cellSize + half;
+        for (let x = minX; x <= maxX; x += 1) {
+          const centerX = x * this.cellSize + half;
+          const dx = centerX - obstacle.position.x;
+          const dy = centerY - obstacle.position.y;
+          if (dx * dx + dy * dy <= (inflation + halfDiag) * (inflation + halfDiag)) {
+            blocked[y * cols + x] = 1; // Блокуємо
+          }
+        }
+      }
+    }
   }
 
   private createGrid(map: SceneSize, obstacles: readonly ObstacleDescriptor[], clearance: number) {

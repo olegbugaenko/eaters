@@ -49,6 +49,7 @@ export class WebGLSceneRenderer {
   private stride: number;
   private cameraPositionLocation: WebGLUniformLocation;
   private viewportSizeLocation: WebGLUniformLocation;
+  private spriteTextureLocation: WebGLUniformLocation | null;
   private objectsRenderer: ObjectsRendererManager;
 
   constructor(
@@ -130,6 +131,10 @@ export class WebGLSceneRenderer {
       this.program,
       "u_viewportSize"
     );
+    const spriteTextureLocation = gl.getUniformLocation(
+      this.program,
+      "u_spriteTexture"
+    );
 
     if (!cameraPositionLocation || !viewportSizeLocation) {
       throw new Error("Unable to resolve camera uniforms");
@@ -137,6 +142,7 @@ export class WebGLSceneRenderer {
 
     this.cameraPositionLocation = cameraPositionLocation;
     this.viewportSizeLocation = viewportSizeLocation;
+    this.spriteTextureLocation = spriteTextureLocation;
 
     // Setup WebGL state
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -189,6 +195,39 @@ export class WebGLSceneRenderer {
       cameraState.viewportSize.width,
       cameraState.viewportSize.height
     );
+    
+    // Bind sprite texture if available (texture unit 0)
+    if (this.spriteTextureLocation !== null) {
+      this.gl.activeTexture(this.gl.TEXTURE0);
+      this.gl.uniform1i(this.spriteTextureLocation, 0);
+      
+      // Get texture from cache
+      const { getTextureCache } = require("../primitives/basic/SpritePrimitive");
+      const textureCache = getTextureCache();
+      
+      // Bind first available texture or create dummy
+      const firstTexture = textureCache.values().next().value;
+      if (firstTexture?.texture) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, firstTexture.texture);
+      } else {
+        // Create a dummy 1x1 white texture if none loaded yet
+        const dummyTexture = this.gl.createTexture();
+        if (dummyTexture) {
+          this.gl.bindTexture(this.gl.TEXTURE_2D, dummyTexture);
+          this.gl.texImage2D(
+            this.gl.TEXTURE_2D, 
+            0, 
+            this.gl.RGBA, 
+            1, 
+            1, 
+            0, 
+            this.gl.RGBA, 
+            this.gl.UNSIGNED_BYTE, 
+            new Uint8Array([255, 255, 255, 255])
+          );
+        }
+      }
+    }
 
     this.drawBuffer(this.staticBuffer, this.objectsRenderer.getStaticVertexCount());
     this.drawBuffer(this.dynamicBuffer, this.objectsRenderer.getDynamicVertexCount());
@@ -235,6 +274,18 @@ export class WebGLSceneRenderer {
    */
   public getObjectsRenderer(): ObjectsRendererManager {
     return this.objectsRenderer;
+  }
+
+  /**
+   * Loads a sprite texture
+   */
+  public async loadSpriteTexture(spritePath: string): Promise<void> {
+    const { loadSpriteTexture } = require("../primitives/basic/SpritePrimitive");
+    try {
+      await loadSpriteTexture(this.gl, spritePath);
+    } catch (error) {
+      console.warn(`[WebGLSceneRenderer] Failed to load texture: ${spritePath}`, error);
+    }
   }
 
   /**

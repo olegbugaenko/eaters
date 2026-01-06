@@ -494,7 +494,7 @@ const advanceParticleEmitterStateGpu = <
 
   // OPTIMIZATION: Limit spawn budget per frame to reduce bufferSubData calls
   // Particles will accumulate and spawn over multiple frames if needed
-  const MAX_SPAWN_PER_FRAME = 8;
+  const MAX_SPAWN_PER_FRAME = 32;
   const spawnBudget = Math.min(Math.floor(state.spawnAccumulator), freeSlots.length, MAX_SPAWN_PER_FRAME);
   if (spawnBudget > 0) {
     const gl = gpu.gl;
