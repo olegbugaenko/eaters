@@ -159,6 +159,13 @@ export const usePositionInterpolation = (
     }
     const now = getNow();
     snapshots.forEach((snapshot, id) => {
+      // OPTIMIZATION: Skip stationary units (position hasn't changed)
+      if (
+        snapshot.prev.x === snapshot.next.x &&
+        snapshot.prev.y === snapshot.next.y
+      ) {
+        return;
+      }
       const elapsed = Math.max(now - snapshot.lastTickAt, 0);
       const alpha =
         elapsed > DRIFT_SNAP_THRESHOLD
@@ -217,6 +224,14 @@ export const usePositionInterpolation = (
     }
     const now = getNow();
     snapshots.forEach((snapshot, id) => {
+      // OPTIMIZATION: Skip static bricks (position hasn't changed)
+      // This prevents unnecessary RectanglePrimitive.update calls
+      if (
+        snapshot.prev.x === snapshot.next.x &&
+        snapshot.prev.y === snapshot.next.y
+      ) {
+        return;
+      }
       const elapsed = Math.max(now - snapshot.lastTickAt, 0);
       const alpha =
         elapsed > DRIFT_SNAP_THRESHOLD

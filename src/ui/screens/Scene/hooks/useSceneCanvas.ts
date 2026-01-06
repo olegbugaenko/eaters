@@ -27,6 +27,7 @@ import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/ring";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "./useWebGLRenderLoop";
+import { updateVboStats, updateParticleStats } from "../components/debug/debugStats";
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
@@ -82,9 +83,7 @@ export interface UseSceneCanvasParams {
   setScale: (value: number) => void;
   setCameraInfo: (value: SceneCameraState) => void;
   setScaleRange: (value: { min: number; max: number }) => void;
-  setVboStats: (stats: BufferStats) => void;
   vboStatsRef: MutableRefObject<BufferStats>;
-  setParticleStats: (stats: ParticleStatsState) => void;
   particleStatsRef: MutableRefObject<ParticleStatsState>;
   particleStatsLastUpdateRef: MutableRefObject<number>;
   hasInitializedScaleRef: MutableRefObject<boolean>;
@@ -107,9 +106,7 @@ export const useSceneCanvas = ({
   setScale,
   setCameraInfo,
   setScaleRange,
-  setVboStats,
   vboStatsRef,
-  setParticleStats,
   particleStatsRef,
   particleStatsLastUpdateRef,
   hasInitializedScaleRef,
@@ -300,7 +297,7 @@ export const useSceneCanvas = ({
       },
 
       afterUpdate: (timestamp, scene, cameraState) => {
-        // Update VBO stats
+        // Update VBO stats (write to global object, no React re-render)
         const dbs = webglRenderer.getObjectsRenderer().getDynamicBufferStats();
         if (
           dbs.bytesAllocated !== vboStatsRef.current.bytes ||
@@ -310,7 +307,7 @@ export const useSceneCanvas = ({
             bytes: dbs.bytesAllocated,
             reallocs: dbs.reallocations,
           };
-          setVboStats({ bytes: dbs.bytesAllocated, reallocs: dbs.reallocations });
+          updateVboStats(dbs.bytesAllocated, dbs.reallocations);
         }
       },
       beforeEffects: (timestamp, gl, cameraState) => {
@@ -356,7 +353,7 @@ export const useSceneCanvas = ({
         ringGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
       },
       afterRender: (timestamp, gl, cameraState) => {
-        // Update particle stats
+        // Update particle stats (write to global object, no React re-render)
         const stats = particleEmitterGpuRenderer.getStats(gl);
         const now = timestamp;
         if (now - particleStatsLastUpdateRef.current >= 500) {
@@ -367,7 +364,7 @@ export const useSceneCanvas = ({
             stats.emitters !== particleStatsRef.current.emitters
           ) {
             particleStatsRef.current = stats;
-            setParticleStats(stats);
+            updateParticleStats(stats.active, stats.capacity, stats.emitters);
           }
         } else {
           particleStatsRef.current = stats;
@@ -655,7 +652,5 @@ export const useSceneCanvas = ({
     canvasRef,
     setScale,
     setCameraInfo,
-    setVboStats,
-    setParticleStats,
   ]);
 };

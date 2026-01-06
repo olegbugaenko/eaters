@@ -1,4 +1,4 @@
-import { CSSProperties, useId } from "react";
+import { CSSProperties, useId, memo } from "react";
 import { classNames } from "@ui-shared/classNames";
 import { formatNumber } from "@ui-shared/format/number";
 import "./ResourceDiamondMeter.css";
@@ -26,7 +26,10 @@ const DIAMOND_SIZE = 120;
 const DIAMOND_PATH = "M60 4L116 60L60 116L4 60Z";
 const INNER_RIDGE_PATH = "M60 12L108 60L60 108L12 60Z";
 
-export const ResourceDiamondMeter: React.FC<ResourceDiamondMeterProps> = ({
+/** Round to 1 decimal place - prevents re-renders on tiny changes */
+const roundDisplay = (value: number): number => Math.round(value * 10) / 10;
+
+const ResourceDiamondMeterInner: React.FC<ResourceDiamondMeterProps> = ({
   id,
   className,
   current,
@@ -134,3 +137,25 @@ const clampValue = (value: number, min: number, max: number): number => {
   }
   return Math.min(Math.max(value, min), max);
 };
+
+/** 
+ * Memoized export - only re-renders when rounded display values change.
+ * Prevents expensive SVG re-renders on every frame when sanity/mana regenerates.
+ */
+export const ResourceDiamondMeter = memo(
+  ResourceDiamondMeterInner,
+  (prev, next) => {
+    // Only re-render if display values actually change (rounded to 1 decimal)
+    return (
+      prev.id === next.id &&
+      prev.className === next.className &&
+      roundDisplay(prev.current) === roundDisplay(next.current) &&
+      roundDisplay(prev.max) === roundDisplay(next.max) &&
+      prev.outlineColor === next.outlineColor &&
+      prev.glowColor === next.glowColor &&
+      prev.showText === next.showText &&
+      prev.title === next.title &&
+      prev.gradientStops === next.gradientStops // reference equality for static arrays
+    );
+  }
+);

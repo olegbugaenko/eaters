@@ -155,6 +155,28 @@ const MAX_DELTA_MS = 250;
 const PARTICLE_FILL_SCRATCH = new Float32Array(FILL_COMPONENTS);
 const INACTIVE_PARTICLE_FILL = new Float32Array(FILL_COMPONENTS);
 const PARTICLE_STATE_COMPONENTS = 8;
+
+/**
+ * Global flag to enable/disable the global particle pool.
+ * DISABLED: Transform feedback bindBufferRange has compatibility issues.
+ */
+let useGlobalParticlePool = false;
+const DEBUG_POOL = false;
+
+/**
+ * Enable or disable the global particle pool.
+ * Call this before creating emitters to change behavior.
+ */
+export const setUseGlobalParticlePool = (enabled: boolean): void => {
+  useGlobalParticlePool = enabled;
+};
+
+/**
+ * Check if global particle pool is enabled.
+ */
+export const isGlobalParticlePoolEnabled = (): boolean => {
+  return useGlobalParticlePool;
+};
 const PARTICLE_STATE_BYTES =
   PARTICLE_STATE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
 const SOLID_CENTER_X_INDEX = FILL_INFO_COMPONENTS;
@@ -188,6 +210,9 @@ interface ParticleEmitterGpuState {
   slots: ParticleEmitterGpuSlot[];
   uniforms: ParticleEmitterGpuRenderUniforms;
   handle: ParticleEmitterGpuDrawHandle;
+  // Pool-based emitter fields
+  poolHandle?: import("./gpu/particle-emitter").GlobalParticlePoolHandle;
+  usesPool?: boolean;
 }
 
 interface ParticleSimulationProgram {
@@ -306,7 +331,18 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
 ): ParticleEmitterState<Config> => {
   const capacity = Math.max(0, config.capacity);
   const gl = getParticleEmitterGlContext();
-  const gpu = capacity > 0 && gl ? createParticleEmitterGpuState(gl, capacity) : null;
+  
+  // Try pool-based state first if enabled, fall back to individual buffers
+  let gpu: ParticleEmitterGpuState | null = null;
+  if (capacity > 0 && gl) {
+    if (useGlobalParticlePool) {
+      gpu = createParticleEmitterGpuStateFromPool(gl, capacity);
+    }
+    // Fall back to individual buffers if pool failed or is disabled
+    if (!gpu) {
+      gpu = createParticleEmitterGpuState(gl, capacity);
+    }
+  }
 
   if (requireGpu && !gpu) {
     return {
@@ -581,6 +617,11 @@ const advanceParticleEmitterStateGpu = <
       const gl = gpu.gl;
       const buffers = gpu.buffers;
       const scratch = gpu.spawnScratch;
+      // For pool-based emitters, add global offset
+      const globalSlotOffset = gpu.usesPool && gpu.poolHandle 
+        ? gpu.poolHandle.range.startIndex 
+        : 0;
+      
       for (let i = 0; i < spawnBudget; i += 1) {
         const slotIndex = freeSlots[i]!;
         const particle = options.spawnParticle(origin, instance, config);
@@ -592,17 +633,17 @@ const advanceParticleEmitterStateGpu = <
         scratch[PARTICLE_LIFETIME_INDEX] = particle.lifetimeMs;
         scratch[PARTICLE_SIZE_INDEX] = Math.max(particle.size, 0);
         scratch[PARTICLE_ACTIVE_INDEX] = 1;
+        
+        // Calculate byte offset: local slotIndex + global offset for pool
+        const byteOffset = (globalSlotOffset + slotIndex) * PARTICLE_STATE_BYTES;
+        
         for (let b = 0; b < buffers.length; b += 1) {
           const buffer = buffers[b];
           if (!buffer) {
             continue;
           }
           gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-          gl.bufferSubData(
-            gl.ARRAY_BUFFER,
-            slotIndex * PARTICLE_STATE_BYTES,
-            scratch
-          );
+          gl.bufferSubData(gl.ARRAY_BUFFER, byteOffset, scratch);
         }
         const slot = slots[slotIndex]!;
         slot.active = true;
@@ -975,6 +1016,7 @@ const stepParticleSimulation = (
 ): 0 | 1 | null => {
   const gl = gpu.gl;
   const program = gpu.program;
+  
   gl.useProgram(program.program);
   
   // Core simulation uniform
@@ -1032,7 +1074,7 @@ const stepParticleSimulation = (
   }
   
   const sourceIndex = gpu.currentBufferIndex;
-  const targetIndex = sourceIndex === 0 ? 1 : 0;
+  const targetIndex: 0 | 1 = sourceIndex === 0 ? 1 : 0;
   const sourceVao = gpu.simulationVaos[sourceIndex];
   const targetTransformFeedback = gpu.transformFeedbacks[targetIndex];
   const targetBuffer = gpu.buffers[targetIndex];
@@ -1043,6 +1085,7 @@ const stepParticleSimulation = (
   gl.bindVertexArray(sourceVao);
   gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, targetTransformFeedback);
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, targetBuffer);
+  
   gl.enable(gl.RASTERIZER_DISCARD);
   gl.beginTransformFeedback(gl.POINTS);
   gl.drawArrays(gl.POINTS, 0, capacity);
@@ -1456,10 +1499,334 @@ const createParticleEmitterGpuState = (
   return gpu;
 };
 
+/**
+ * Create GPU state using the global particle pool instead of individual buffers.
+ * This reduces memory fragmentation and enables batched rendering.
+ */
+const createParticleEmitterGpuStateFromPool = (
+  gl: WebGL2RenderingContext,
+  capacity: number
+): ParticleEmitterGpuState | null => {
+  // Lazy import to avoid circular dependencies
+  const poolModule = require("./gpu/particle-emitter/GlobalParticlePool") as typeof import("./gpu/particle-emitter/GlobalParticlePool");
+  
+  // Initialize pool if not already done
+  if (!poolModule.isPoolInitialized()) {
+    if (!poolModule.initGlobalParticlePool(gl)) {
+      console.warn("[ParticleEmitter] Failed to initialize global particle pool, falling back to individual buffers");
+      return createParticleEmitterGpuState(gl, capacity);
+    }
+  }
+  
+  // Allocate slots from pool
+  const poolHandle = poolModule.allocateSlots(capacity);
+  if (!poolHandle) {
+    console.warn("[ParticleEmitter] Failed to allocate slots from pool, falling back to individual buffers");
+    return createParticleEmitterGpuState(gl, capacity);
+  }
+  
+  const program = getSimulationProgram(gl);
+  if (!program) {
+    poolModule.freeSlots(poolHandle);
+    return null;
+  }
+
+  const renderResources = getParticleRenderResources(gl);
+  if (!renderResources) {
+    poolModule.freeSlots(poolHandle);
+    return null;
+  }
+  
+  // Get shared buffers from pool
+  const stateBuffers = poolModule.getStateBuffers();
+  if (!stateBuffers) {
+    poolModule.freeSlots(poolHandle);
+    return null;
+  }
+  
+  // Create VAOs that point to our slot range in the shared buffers
+  const renderVaoA = gl.createVertexArray();
+  const renderVaoB = gl.createVertexArray();
+  const simulationVaoA = gl.createVertexArray();
+  const simulationVaoB = gl.createVertexArray();
+  const feedbackA = gl.createTransformFeedback();
+  const feedbackB = gl.createTransformFeedback();
+  
+  if (!renderVaoA || !renderVaoB || !simulationVaoA || !simulationVaoB || !feedbackA || !feedbackB) {
+    if (renderVaoA) gl.deleteVertexArray(renderVaoA);
+    if (renderVaoB) gl.deleteVertexArray(renderVaoB);
+    if (simulationVaoA) gl.deleteVertexArray(simulationVaoA);
+    if (simulationVaoB) gl.deleteVertexArray(simulationVaoB);
+    if (feedbackA) gl.deleteTransformFeedback(feedbackA);
+    if (feedbackB) gl.deleteTransformFeedback(feedbackB);
+    poolModule.freeSlots(poolHandle);
+    return null;
+  }
+  
+  const stride = PARTICLE_STATE_BYTES;
+  const slotByteOffset = poolHandle.range.startIndex * PARTICLE_STATE_BYTES;
+  
+  // Setup simulation VAOs for our range
+  const bindSimulationAttributes = (
+    vao: WebGLVertexArrayObject,
+    buffer: WebGLBuffer
+  ) => {
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    
+    // Position
+    gl.enableVertexAttribArray(program.attributes.position);
+    gl.vertexAttribPointer(
+      program.attributes.position,
+      2,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_POSITION_X_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    
+    // Velocity
+    gl.enableVertexAttribArray(program.attributes.velocity);
+    gl.vertexAttribPointer(
+      program.attributes.velocity,
+      2,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_VELOCITY_X_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    
+    // Age
+    gl.enableVertexAttribArray(program.attributes.age);
+    gl.vertexAttribPointer(
+      program.attributes.age,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_AGE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    
+    // Lifetime
+    gl.enableVertexAttribArray(program.attributes.lifetime);
+    gl.vertexAttribPointer(
+      program.attributes.lifetime,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_LIFETIME_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    
+    // Size
+    gl.enableVertexAttribArray(program.attributes.size);
+    gl.vertexAttribPointer(
+      program.attributes.size,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_SIZE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    
+    // IsActive
+    gl.enableVertexAttribArray(program.attributes.isActive);
+    gl.vertexAttribPointer(
+      program.attributes.isActive,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_ACTIVE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+  };
+  
+  bindSimulationAttributes(simulationVaoA, stateBuffers[0]);
+  bindSimulationAttributes(simulationVaoB, stateBuffers[1]);
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  
+  // Setup render VAOs
+  const configureRenderVao = (
+    vao: WebGLVertexArrayObject,
+    buffer: WebGLBuffer
+  ) => {
+    gl.bindVertexArray(vao);
+    
+    // Unit quad (shared)
+    gl.bindBuffer(gl.ARRAY_BUFFER, renderResources.quadBuffer);
+    gl.enableVertexAttribArray(renderResources.program.attributes.unitPosition);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.unitPosition,
+      2,
+      gl.FLOAT,
+      false,
+      2 * Float32Array.BYTES_PER_ELEMENT,
+      0
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.unitPosition, 0);
+    
+    // Instance data from pool buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    
+    // Position
+    gl.enableVertexAttribArray(renderResources.program.attributes.position);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.position,
+      2,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_POSITION_X_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.position, 1);
+    
+    // Velocity
+    gl.enableVertexAttribArray(renderResources.program.attributes.velocity);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.velocity,
+      2,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_VELOCITY_X_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.velocity, 1);
+    
+    // Size
+    gl.enableVertexAttribArray(renderResources.program.attributes.size);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.size,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_SIZE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.size, 1);
+    
+    // Age
+    gl.enableVertexAttribArray(renderResources.program.attributes.age);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.age,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_AGE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.age, 1);
+    
+    // Lifetime
+    gl.enableVertexAttribArray(renderResources.program.attributes.lifetime);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.lifetime,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_LIFETIME_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.lifetime, 1);
+    
+    // IsActive
+    gl.enableVertexAttribArray(renderResources.program.attributes.isActive);
+    gl.vertexAttribPointer(
+      renderResources.program.attributes.isActive,
+      1,
+      gl.FLOAT,
+      false,
+      stride,
+      slotByteOffset + PARTICLE_ACTIVE_INDEX * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribDivisor(renderResources.program.attributes.isActive, 1);
+  };
+  
+  configureRenderVao(renderVaoA, stateBuffers[0]);
+  configureRenderVao(renderVaoB, stateBuffers[1]);
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  
+  // Initialize slot tracking (minimal - just for spawn logic)
+  const slots: ParticleEmitterGpuSlot[] = [];
+  for (let i = 0; i < capacity; i += 1) {
+    slots.push({ active: false, ageMs: 0, lifetimeMs: 0 });
+  }
+  
+  const uniforms: ParticleEmitterGpuRenderUniforms = {
+    fillType: FILL_TYPES.SOLID,
+    stopCount: 1,
+    stopOffsets: new Float32Array(5),
+    stopColor0: new Float32Array([1, 1, 1, 1]),
+    stopColor1: new Float32Array([1, 1, 1, 0]),
+    stopColor2: new Float32Array([1, 1, 1, 0]),
+    stopColor3: new Float32Array([1, 1, 1, 0]),
+    stopColor4: new Float32Array([1, 1, 1, 0]),
+    noiseColorAmplitude: 0,
+    noiseAlphaAmplitude: 0,
+    noiseScale: 1,
+    noiseDensity: 1,
+    filamentColorContrast: 0,
+    filamentAlphaContrast: 0,
+    filamentWidth: 0,
+    filamentDensity: 0,
+    filamentEdgeBlur: 0,
+    hasLinearStart: false,
+    linearStart: { x: 0, y: 0 },
+    hasLinearEnd: false,
+    linearEnd: { x: 0, y: 0 },
+    hasRadialOffset: false,
+    radialOffset: { x: 0, y: 0 },
+    hasExplicitRadius: false,
+    explicitRadius: 0,
+    fadeStartMs: 0,
+    defaultLifetimeMs: 0,
+    shape: 0,
+    minParticleSize: MIN_PARTICLE_SIZE,
+    lengthMultiplier: 1,
+    alignToVelocity: false,
+    sizeGrowthRate: 1.0,
+  };
+  refreshParticleUniformKeys(uniforms);
+  
+  const gpu: ParticleEmitterGpuState = {
+    gl,
+    capacity,
+    // Use shared buffers from pool
+    buffers: [stateBuffers[0], stateBuffers[1]],
+    transformFeedbacks: [feedbackA, feedbackB],
+    simulationVaos: [simulationVaoA, simulationVaoB],
+    renderVaos: [renderVaoA, renderVaoB],
+    program,
+    renderResources,
+    currentBufferIndex: 0,
+    spawnScratch: new Float32Array(PARTICLE_STATE_COMPONENTS),
+    slots,
+    uniforms,
+    handle: null as unknown as ParticleEmitterGpuDrawHandle,
+    // Pool-specific
+    poolHandle,
+    usesPool: true,
+  };
+  
+  gpu.handle = {
+    gl,
+    capacity,
+    uniforms,
+    getCurrentVao: () => gpu.renderVaos[gpu.currentBufferIndex],
+    activeCount: 0,
+  };
+  
+  registerParticleEmitterHandle(gpu.handle);
+  
+  return gpu;
+};
+
 const resetParticleEmitterGpuState = (gpu: ParticleEmitterGpuState): void => {
   const gl = gpu.gl;
   gpu.currentBufferIndex = 0;
-  const zero = new Float32Array(gpu.capacity * PARTICLE_STATE_COMPONENTS);
+  
+  // Reset slot tracking
   for (let i = 0; i < gpu.slots.length; i += 1) {
     const slot = gpu.slots[i];
     if (!slot) {
@@ -1469,15 +1836,25 @@ const resetParticleEmitterGpuState = (gpu: ParticleEmitterGpuState): void => {
     slot.ageMs = 0;
     slot.lifetimeMs = 0;
   }
-  for (let i = 0; i < gpu.buffers.length; i += 1) {
-    const buffer = gpu.buffers[i];
-    if (!buffer) {
-      continue;
+  
+  // Clear particle data
+  if (gpu.usesPool && gpu.poolHandle) {
+    // Use pool's clear function for pool-based emitters
+    const poolModule = require("./gpu/particle-emitter/GlobalParticlePool") as typeof import("./gpu/particle-emitter/GlobalParticlePool");
+    poolModule.clearSlotRange(gpu.poolHandle);
+  } else {
+    // Clear individual buffers for non-pool emitters
+    const zero = new Float32Array(gpu.capacity * PARTICLE_STATE_COMPONENTS);
+    for (let i = 0; i < gpu.buffers.length; i += 1) {
+      const buffer = gpu.buffers[i];
+      if (!buffer) {
+        continue;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, zero);
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, zero);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
 };
 
 const destroyParticleEmitterGpuState = <
@@ -1489,11 +1866,21 @@ const destroyParticleEmitterGpuState = <
   }
   const gl = gpu.gl;
   unregisterParticleEmitterHandle(gpu.handle);
-  gpu.buffers.forEach((buffer) => {
-    if (buffer) {
-      gl.deleteBuffer(buffer);
-    }
-  });
+  
+  // If using pool, free slots and only delete VAOs (buffers are shared)
+  if (gpu.usesPool && gpu.poolHandle) {
+    const poolModule = require("./gpu/particle-emitter/GlobalParticlePool") as typeof import("./gpu/particle-emitter/GlobalParticlePool");
+    poolModule.freeSlots(gpu.poolHandle);
+    // Don't delete buffers - they belong to the pool
+  } else {
+    // Delete individual buffers for non-pool emitters
+    gpu.buffers.forEach((buffer) => {
+      if (buffer) {
+        gl.deleteBuffer(buffer);
+      }
+    });
+  }
+  
   gpu.transformFeedbacks.forEach((feedback) => {
     if (feedback) {
       gl.deleteTransformFeedback(feedback);
