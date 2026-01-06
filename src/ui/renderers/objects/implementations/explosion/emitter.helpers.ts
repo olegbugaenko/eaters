@@ -1,6 +1,7 @@
 import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
 import { createParticleEmitterPrimitive } from "../../../primitives";
+import type { GpuSpawnConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import type {
   ExplosionRendererCustomData,
   ExplosionEmitterRenderConfig,
@@ -29,7 +30,26 @@ export const getEmitterConfig = createCachedEmitterConfigGetter<
 );
 
 /**
- * Creates an explosion emitter primitive
+ * Extracts GPU spawn config from explosion emitter config
+ */
+const getGpuSpawnConfig = (
+  _instance: SceneObjectInstance,
+  config: ExplosionEmitterRenderConfig
+): GpuSpawnConfig => ({
+  baseSpeed: config.baseSpeed,
+  speedVariation: config.speedVariation,
+  sizeMin: config.sizeRange.min,
+  sizeMax: config.sizeRange.max,
+  spawnRadiusMin: config.spawnRadius.min,
+  spawnRadiusMax: config.spawnRadius.max,
+  arc: config.arc,
+  direction: config.direction,
+  spread: 0, // Explosions don't use spread
+  radialVelocity: config.radialVelocity ?? false,
+});
+
+/**
+ * Creates an explosion emitter primitive with GPU-based particle spawning
  */
 export const createExplosionEmitterPrimitive = (
   instance: SceneObjectInstance
@@ -39,4 +59,5 @@ export const createExplosionEmitterPrimitive = (
     getOrigin: getEmitterOrigin,
     spawnParticle: createExplosionParticle,
     serializeConfig: serializeExplosionEmitterConfig,
+    getGpuSpawnConfig, // Enable GPU particle spawning!
   });

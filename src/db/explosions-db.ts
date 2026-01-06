@@ -460,13 +460,15 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     }),
     emitter: {
       ...DEFAULT_EMITTER,
-      baseSpeed: 0.02,
-      speedVariation: 0.00,
+      baseSpeed: 0.04,
+      speedVariation: 0.01,
       fadeStartMs: 400,
       particleLifetimeMs: 1_000,
-      particlesPerSecond: 4760,
+      particlesPerSecond: 2760,
       sizeRange: { min: 0.5, max: 1.4 },
-      emissionDurationMs: 300,
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
       // color: { r: 1, g: 1, b: 1, a: 1 },
       fill: DEFAULT_EMITTER_FILL,
       radialVelocity: true, // Частинки рухаються від центру вибуху
