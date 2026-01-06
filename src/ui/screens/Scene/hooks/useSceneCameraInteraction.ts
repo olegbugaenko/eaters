@@ -50,8 +50,6 @@ interface UseSceneCameraInteractionResult {
   scale: number;
   cameraInfo: SceneCameraState;
   scaleRange: { min: number; max: number };
-  vboStats: BufferStats;
-  particleStatsState: ParticleStatsState;
   handleScaleChange: (value: number) => void;
 }
 
@@ -82,13 +80,8 @@ export const useSceneCameraInteraction = ({
     () => cameraInfoRef.current ?? scene.getCamera()
   );
   const [scaleRange, setScaleRange] = useState(() => scene.getScaleRange());
-  const [vboStats, setVboStats] = useState<BufferStats>({ bytes: 0, reallocs: 0 });
+  // Debug stats are now written to global debugStats object (no React state)
   const vboStatsRef = useRef<BufferStats>({ bytes: 0, reallocs: 0 });
-  const [particleStatsState, setParticleStatsState] = useState<ParticleStatsState>({
-    active: 0,
-    capacity: 0,
-    emitters: 0,
-  });
   const particleStatsRef = useRef<ParticleStatsState>({ active: 0, capacity: 0, emitters: 0 });
   const particleStatsLastUpdateRef = useRef(0);
 
@@ -126,9 +119,7 @@ export const useSceneCameraInteraction = ({
     setScale,
     setCameraInfo,
     setScaleRange,
-    setVboStats,
     vboStatsRef,
-    setParticleStats: setParticleStatsState,
     particleStatsRef,
     particleStatsLastUpdateRef,
     hasInitializedScaleRef,
@@ -201,8 +192,6 @@ export const useSceneCameraInteraction = ({
     scale,
     cameraInfo,
     scaleRange,
-    vboStats,
-    particleStatsState,
     handleScaleChange,
   };
 };

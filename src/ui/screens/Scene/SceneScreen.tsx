@@ -142,7 +142,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     [activeTutorialStep?.id, showTutorial]
   );
 
-  const { scale, cameraInfo, scaleRange, vboStats, particleStatsState, handleScaleChange } =
+  const { scale, cameraInfo, scaleRange, handleScaleChange } =
     useSceneCameraInteraction({
       scene,
       spellcasting,
@@ -419,14 +419,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneTooltipPanel content={hoverContent} />
-      <SceneDebugPanel
-        bridge={bridge}
-        dynamicBytes={vboStats.bytes}
-        dynamicReallocs={vboStats.reallocs}
-        particleActive={particleStatsState.active}
-        particleCapacity={particleStatsState.capacity}
-        particleEmitters={particleStatsState.emitters}
-      />
+      <SceneDebugPanel bridge={bridge} />
       <SceneSummoningPanel
         ref={summoningPanelRef}
         resources={summoningProps.resources}

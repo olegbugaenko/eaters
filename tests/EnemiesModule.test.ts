@@ -13,6 +13,12 @@ import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
 import { createSolidFill } from "../src/logic/services/scene-object-manager/scene-object-manager.helpers";
 import { createVisualEffectState } from "../src/logic/visuals/VisualEffectState";
 import { describe, test } from "./testRunner";
+import { MovementService } from "../src/logic/services/movement/MovementService";
+import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
+import type { EnemiesModuleOptions } from "../src/logic/modules/active-map/enemies/enemies.types";
+import { PathfindingService } from "../src/logic/shared/navigation/PathfindingService";
+import type { ObstacleDescriptor, ObstacleProvider } from "../src/logic/shared/navigation/navigation.types";
+import type { SceneVector2 } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
 
 const createEnemySpawnData = () => ({
   type: "basicEnemy" as const,
@@ -20,14 +26,75 @@ const createEnemySpawnData = () => ({
   position: { x: 0, y: 0 },
 });
 
+const createEmptyBricks = (): BricksModule =>
+  ({
+    forEachBrickNear: () => {},
+  } as unknown as BricksModule);
+
+class StaticObstacleProvider implements ObstacleProvider {
+  constructor(private readonly obstacles: readonly ObstacleDescriptor[]) {}
+
+  public forEachObstacleNear(
+    position: SceneVector2,
+    radius: number,
+    visitor: (obstacle: ObstacleDescriptor) => void,
+  ): void {
+    const maxDistanceSq = radius * radius;
+    this.obstacles.forEach((obstacle) => {
+      const dx = obstacle.position.x - position.x;
+      const dy = obstacle.position.y - position.y;
+      const range = radius + obstacle.radius;
+      if (dx * dx + dy * dy <= range * range || dx * dx + dy * dy <= maxDistanceSq) {
+        visitor(obstacle);
+      }
+    });
+  }
+}
+
+const createEnemiesModuleWithDeps = (
+  options: Partial<EnemiesModuleOptions> & { scene?: SceneObjectManager; bridge?: DataBridge } = {}
+) => {
+  const scene = options.scene ?? new SceneObjectManager();
+  const bridge = options.bridge ?? new DataBridge();
+  const runState = options.runState ?? new MapRunState();
+  const movement = options.movement ?? new MovementService();
+  const bricks = options.bricks ?? createEmptyBricks();
+  const obstacles = options.obstacles ?? undefined;
+  const pathfinder =
+    options.pathfinder ??
+    (obstacles
+      ? new PathfindingService({
+          obstacles,
+          getMapSize: () => scene.getMapSize(),
+        })
+      : undefined);
+
+  return {
+    module: new EnemiesModule({
+      scene,
+      bridge,
+      runState,
+      movement,
+      bricks,
+      targeting: options.targeting,
+      damage: options.damage,
+      explosions: options.explosions,
+      projectiles: options.projectiles,
+      obstacles,
+      pathfinder,
+    }),
+    scene,
+    bridge,
+    runState,
+  };
+};
+
 describe("EnemiesModule", () => {
   test("spawns enemies via state factory and pushes bridge stats", () => {
-    const scene = new SceneObjectManager();
-    const bridge = new DataBridge();
     const runState = new MapRunState();
     runState.start();
     const spawnData = createEnemySpawnData();
-    const module = new EnemiesModule({ scene, bridge, runState });
+    const { module, scene, bridge } = createEnemiesModuleWithDeps({ runState });
 
     module.setEnemies([
       {
@@ -39,7 +106,8 @@ describe("EnemiesModule", () => {
     const objects = scene.getObjects();
     assert.strictEqual(objects.length, 1, "should spawn a scene object for the enemy");
     assert(bridge.getValue(ENEMY_COUNT_BRIDGE_KEY) === 1);
-    assert(bridge.getValue(ENEMY_TOTAL_HP_BRIDGE_KEY) > 0);
+    const totalHp = bridge.getValue(ENEMY_TOTAL_HP_BRIDGE_KEY) ?? 0;
+    assert(totalHp > 0);
 
     const [enemy] = module.getEnemies();
     assert(enemy, "expected runtime enemy state");
@@ -48,12 +116,10 @@ describe("EnemiesModule", () => {
   });
 
   test("applies armor, removes on death, and exposes targets", () => {
-    const scene = new SceneObjectManager();
-    const bridge = new DataBridge();
     const runState = new MapRunState();
     runState.start();
     const targeting = new TargetingService();
-    const module = new EnemiesModule({ scene, bridge, runState, targeting });
+    const { module, bridge } = createEnemiesModuleWithDeps({ runState, targeting });
     const spawnData = createEnemySpawnData();
 
     module.setEnemies([
@@ -240,7 +306,7 @@ describe("EnemiesModule", () => {
     });
 
     const spawnData = createEnemySpawnData();
-    const module = new EnemiesModule({
+    const { module } = createEnemiesModuleWithDeps({
       scene,
       bridge,
       runState,
@@ -261,5 +327,90 @@ describe("EnemiesModule", () => {
     const unitAfterHit = units[0]!;
     assert(unitAfterHit.hp < 10, "enemy attack should deal damage to units");
     assert(explosionCalls > 0, "enemy attack should spawn explosion visuals");
+  });
+
+  test("navigates around blocking obstacles to reach attack distance", () => {
+    const scene = new SceneObjectManager();
+    scene.setMapSize({ width: 800, height: 400 });
+    const bridge = new DataBridge();
+    const runState = new MapRunState();
+    runState.start();
+    const targeting = new TargetingService();
+
+    const targetPosition = { x: 360, y: 120 } as const;
+    const targetData = {
+      id: "unit-1",
+      position: { ...targetPosition },
+      type: "unit" as const,
+      physicalSize: 12,
+      hp: 100,
+      maxHp: 100,
+      armor: 0,
+      baseDamage: 0,
+    };
+
+    const createSnapshot = () => ({ ...targetData, position: { ...targetPosition }, data: targetData });
+
+    const targetProvider: TargetingProvider<"unit", typeof targetData> = {
+      types: ["unit"],
+      getById: (id) => (id === targetData.id ? createSnapshot() : null),
+      findNearest: () => createSnapshot(),
+      findInRadius: () => [createSnapshot()],
+      forEachInRadius: (_position, _radius, visitor) => {
+        visitor(createSnapshot());
+      },
+    };
+
+    targeting.registerProvider(targetProvider);
+
+    const obstacles: ObstacleDescriptor[] = [
+      { position: { x: 140, y: -40 }, radius: 30 },
+      { position: { x: 140, y: 0 }, radius: 30 },
+      { position: { x: 140, y: 40 }, radius: 30 },
+      { position: { x: 140, y: 80 }, radius: 30 },
+    ];
+
+    const obstacleProvider = new StaticObstacleProvider(obstacles);
+
+    const { module } = createEnemiesModuleWithDeps({
+      scene,
+      bridge,
+      runState,
+      targeting,
+      obstacles: obstacleProvider,
+      pathfinder: new PathfindingService({
+        obstacles: obstacleProvider,
+        getMapSize: () => scene.getMapSize(),
+        cellSize: 12,
+      }),
+    });
+
+    const spawnData = createEnemySpawnData();
+
+    module.setEnemies([
+      {
+        ...spawnData,
+        position: { x: 10, y: 0 },
+      },
+    ]);
+
+    for (let i = 0; i < 160; i += 1) {
+      module.tick(50);
+    }
+
+    const [enemy] = module.getEnemies();
+    assert(enemy, "expected enemy after navigation ticks");
+    const toTarget = {
+      x: targetPosition.x - enemy.position.x,
+      y: targetPosition.y - enemy.position.y,
+    };
+    const distance = Math.hypot(toTarget.x, toTarget.y);
+
+    assert(enemy.position.x > 180, "enemy should progress past the obstacle wall");
+    assert(enemy.position.y > 40, "enemy should take a detour around the obstacle wall");
+    assert(
+      distance <= enemy.attackRange + enemy.physicalSize + targetData.physicalSize + 1,
+      "enemy should reach attack range via pathfinding",
+    );
   });
 });

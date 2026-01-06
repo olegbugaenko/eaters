@@ -5,6 +5,7 @@ export const FILL_TYPES = {
   LINEAR_GRADIENT: 1,
   RADIAL_GRADIENT: 2,
   DIAMOND_GRADIENT: 3,
+  SPRITE: 4, // Sprite texture fill
 } as const;
 
 export type SceneFillType = (typeof FILL_TYPES)[keyof typeof FILL_TYPES];

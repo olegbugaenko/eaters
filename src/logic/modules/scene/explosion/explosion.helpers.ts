@@ -132,10 +132,14 @@ export const createEmitterCustomData = (
   const sizeMin = Math.max(0, config.emitter.sizeRange.min);
   const sizeMax = Math.max(sizeMin, config.emitter.sizeRange.max);
   const spawnRadiusMin = Math.max(0, config.emitter.spawnRadius.min);
+  // Only use initialRadius if spawnRadiusMultiplier is explicitly set
+  const radiusFromMultiplier = config.emitter.spawnRadiusMultiplier != null
+    ? initialRadius * config.emitter.spawnRadiusMultiplier
+    : 0;
   const spawnRadiusMax = Math.max(
     spawnRadiusMin,
     config.emitter.spawnRadius.max,
-    initialRadius * (config.emitter.spawnRadiusMultiplier ?? 1)
+    radiusFromMultiplier
   );
 
   const maxParticles = computeEmitterMaxParticles(
@@ -161,6 +165,7 @@ export const createEmitterCustomData = (
     maxParticles,
     shape: config.emitter.shape,
     sizeGrowthRate: config.emitter.sizeGrowthRate,
+    radialVelocity: config.emitter.radialVelocity ?? false,
   };
 };
 

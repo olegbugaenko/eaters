@@ -16,6 +16,7 @@ import {
   getEmitterOrigin,
   serializeEmitterConfig,
   createEmitterParticle,
+  getGpuSpawnConfig,
 } from "./emitter.helpers";
 import {
   getAuraInstanceMap,
@@ -81,6 +82,7 @@ const createEmitterPrimitive = (
     getOrigin: getEmitterOrigin,
     spawnParticle: createEmitterParticle,
     serializeConfig: serializeEmitterConfig,
+    getGpuSpawnConfig, // Enable GPU particle spawning (no CPU slot tracking!)
   });
   if (primitive) {
     // Enable auto-animation for particle emitter so it updates every render frame
@@ -137,7 +139,6 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
   ): DynamicPrimitiveUpdate[] {
     // Оновлюємо позиції аур при зміні позиції юніта
     updateAuraInstances(instance);
-
     // Викликаємо стандартний update
     return super.update(instance, registration);
   }

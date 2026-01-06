@@ -2,6 +2,7 @@ import { BrickType, getBrickConfig } from "./bricks-db";
 import { SceneSize, SceneVector2 } from "../logic/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "./player-units-db";
 import type { EnemyType } from "./enemies-db";
+import type { EnemySpawnData } from "../logic/modules/active-map/enemies/enemies.types";
 import type { UnlockCondition } from "@shared/types/unlocks";
 import type { SkillId } from "./skills-db";
 import {
@@ -15,6 +16,7 @@ export type MapId =
   | "trainingGrounds"
   | "foundations"
   | "initial"
+  | "turretRings"
   | "thicket"
   | "oldForge"
   | "spruce"
@@ -35,6 +37,14 @@ export interface MapBrickGeneratorOptions {
 export type MapBrickGenerator = (
   options: MapBrickGeneratorOptions
 ) => readonly BrickShapeBlueprint[];
+
+export interface MapEnemyGeneratorOptions {
+  readonly mapLevel: number;
+}
+
+export type MapEnemyGenerator = (
+  options: MapEnemyGeneratorOptions
+) => readonly EnemySpawnData[];
 
 export interface MapNodePosition {
   readonly x: number;
@@ -64,6 +74,7 @@ export interface MapConfig {
   readonly playerUnits?: readonly MapPlayerUnitConfig[];
   readonly spawnPoints?: readonly SceneVector2[];
   readonly enemySpawnPoints?: readonly MapEnemySpawnPointConfig[];
+  readonly enemies?: MapEnemyGenerator; // Статичні вороги (турелі), що генеруються один раз при ініціалізації
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly icon?: string;
   readonly nodePosition: MapNodePosition;
@@ -365,6 +376,85 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     mapsRequired: { foundations: 1 },
     maxLevel: 2,
   },
+  turretRings: (() => {
+    const size: SceneSize = { width: 1400, height: 1400 };
+    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 600 };
+
+    // Позиції центрів окремих кіл (5-6 кіл)
+    const ringCenters: SceneVector2[] = [
+      { x: center.x - 300, y: center.y - 200 },
+      { x: center.x + 300, y: center.y - 200 },
+      { x: center.x - 300, y: center.y + 200 },
+      { x: center.x + 300, y: center.y + 200 },
+      { x: center.x, y: center.y - 400 },
+      { x: center.x, y: center.y + 400 },
+    ];
+
+    return {
+      name: "Turret Rings",
+      size,
+      icon: "turretRings.png",
+      unlockedBy: [
+        {
+          type: "map",
+          id: "initial",
+          level: 1,
+        },
+      ],
+      nodePosition: { x: 1, y: 2 },
+      maxLevel: 1,
+      spawnPoints: [spawnPoint],
+      bricks: ({ mapLevel }) => {
+        const level = Math.max(1, Math.floor(mapLevel));
+        const ringRadius = 150;
+        const brickSize = 24; // Розмір бріка smallSquareYellow
+        const ringThickness = 2 * brickSize; // Товщина 2 бріки = 48px
+        const innerRadius = ringRadius - ringThickness;
+        const outerRadius = ringRadius;
+
+        const rings: BrickShapeBlueprint[] = [];
+
+        // Генеруємо окремі кола піску (використовуємо smallSquareYellow, який дає sand)
+        ringCenters.forEach((ringCenter) => {
+          const ring = circleWithBricks(
+            "smallSquareYellow",
+            {
+              center: ringCenter,
+              innerRadius,
+              outerRadius,
+            },
+            { level }
+          );
+          rings.push(ring);
+        });
+
+        return rings;
+      },
+      enemies: ({ mapLevel }) => {
+        const level = Math.max(1, Math.floor(mapLevel));
+        const turrets: EnemySpawnData[] = [];
+
+        // Додаємо турель в центрі кожного кола
+        ringCenters.forEach((ringCenter) => {
+          turrets.push({
+            type: "turretEnemy",
+            level,
+            position: { ...ringCenter },
+          });
+        });
+
+        return turrets;
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      mapsRequired: { initial: 1 },
+    } satisfies MapConfig;
+  })(),
   sphinx: (() => {
     const size: SceneSize = { width: 1400, height: 900 };
     // Sphinx lying down, facing left

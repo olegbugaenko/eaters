@@ -593,6 +593,195 @@ const buildStrokeBandData = (
   return data;
 };
 
+// Fast path: update stroke band data directly without change detection
+// Use this for animated vertices where changes are guaranteed
+const updateStrokeBandDataFast = (
+  target: Float32Array,
+  center: SceneVector2,
+  rotation: number,
+  inner: PolygonVertices,
+  outer: PolygonVertices,
+  fillComponents: Float32Array
+): void => {
+  const n = Math.min(inner.length, outer.length);
+  if (n < MIN_VERTEX_COUNT) {
+    return;
+  }
+  
+  const cx = center.x;
+  const cy = center.y;
+  const hasRotation = rotation !== 0;
+  const cos = hasRotation ? Math.cos(rotation) : 1;
+  const sin = hasRotation ? Math.sin(rotation) : 0;
+  const fillLen = fillComponents.length;
+  
+  let write = 0;
+  
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const outerI = outer[i]!;
+    const outerJ = outer[j]!;
+    const innerI = inner[i]!;
+    const innerJ = inner[j]!;
+    
+    let Ax: number, Ay: number, Bx: number, By: number;
+    let ax: number, ay: number, bx: number, by: number;
+    if (hasRotation) {
+      Ax = cx + outerI.x * cos - outerI.y * sin;
+      Ay = cy + outerI.x * sin + outerI.y * cos;
+      Bx = cx + outerJ.x * cos - outerJ.y * sin;
+      By = cy + outerJ.x * sin + outerJ.y * cos;
+      ax = cx + innerI.x * cos - innerI.y * sin;
+      ay = cy + innerI.x * sin + innerI.y * cos;
+      bx = cx + innerJ.x * cos - innerJ.y * sin;
+      by = cy + innerJ.x * sin + innerJ.y * cos;
+    } else {
+      Ax = cx + outerI.x;
+      Ay = cy + outerI.y;
+      Bx = cx + outerJ.x;
+      By = cy + outerJ.y;
+      ax = cx + innerI.x;
+      ay = cy + innerI.y;
+      bx = cx + innerJ.x;
+      by = cy + innerJ.y;
+    }
+    
+    // Triangle 1: A, B, a - direct write, no comparison
+    target[write] = Ax; target[write + 1] = Ay;
+    for (let f = 0; f < fillLen; f++) target[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    target[write] = Bx; target[write + 1] = By;
+    for (let f = 0; f < fillLen; f++) target[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    target[write] = ax; target[write + 1] = ay;
+    for (let f = 0; f < fillLen; f++) target[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    // Triangle 2: a, B, b
+    target[write] = ax; target[write + 1] = ay;
+    for (let f = 0; f < fillLen; f++) target[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    target[write] = Bx; target[write + 1] = By;
+    for (let f = 0; f < fillLen; f++) target[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+    
+    target[write] = bx; target[write + 1] = by;
+    for (let f = 0; f < fillLen; f++) target[write + 2 + f] = fillComponents[f]!;
+    write += VERTEX_COMPONENTS;
+  }
+};
+
+// Slow path: update stroke band data with change detection
+// Use this for static vertices where we can skip GPU upload if unchanged
+const updateStrokeBandData = (
+  target: Float32Array,
+  center: SceneVector2,
+  rotation: number,
+  inner: PolygonVertices,
+  outer: PolygonVertices,
+  fillComponents: Float32Array
+): boolean => {
+  const n = Math.min(inner.length, outer.length);
+  if (n < MIN_VERTEX_COUNT) {
+    return false;
+  }
+  
+  const cx = center.x;
+  const cy = center.y;
+  const hasRotation = rotation !== 0;
+  const cos = hasRotation ? Math.cos(rotation) : 1;
+  const sin = hasRotation ? Math.sin(rotation) : 0;
+  const fillLen = fillComponents.length;
+  
+  let write = 0;
+  let changed = false;
+  
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const outerI = outer[i]!;
+    const outerJ = outer[j]!;
+    const innerI = inner[i]!;
+    const innerJ = inner[j]!;
+    
+    let Ax: number, Ay: number, Bx: number, By: number;
+    let ax: number, ay: number, bx: number, by: number;
+    if (hasRotation) {
+      Ax = cx + outerI.x * cos - outerI.y * sin;
+      Ay = cy + outerI.x * sin + outerI.y * cos;
+      Bx = cx + outerJ.x * cos - outerJ.y * sin;
+      By = cy + outerJ.x * sin + outerJ.y * cos;
+      ax = cx + innerI.x * cos - innerI.y * sin;
+      ay = cy + innerI.x * sin + innerI.y * cos;
+      bx = cx + innerJ.x * cos - innerJ.y * sin;
+      by = cy + innerJ.x * sin + innerJ.y * cos;
+    } else {
+      Ax = cx + outerI.x;
+      Ay = cy + outerI.y;
+      Bx = cx + outerJ.x;
+      By = cy + outerJ.y;
+      ax = cx + innerI.x;
+      ay = cy + innerI.y;
+      bx = cx + innerJ.x;
+      by = cy + innerJ.y;
+    }
+    
+    // Triangle 1: A, B, a - inline with change detection
+    if (target[write] !== Ax) { target[write] = Ax; changed = true; }
+    if (target[write + 1] !== Ay) { target[write + 1] = Ay; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[write + 2 + f] !== val) { target[write + 2 + f] = val; changed = true; }
+    }
+    write += VERTEX_COMPONENTS;
+    
+    if (target[write] !== Bx) { target[write] = Bx; changed = true; }
+    if (target[write + 1] !== By) { target[write + 1] = By; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[write + 2 + f] !== val) { target[write + 2 + f] = val; changed = true; }
+    }
+    write += VERTEX_COMPONENTS;
+    
+    if (target[write] !== ax) { target[write] = ax; changed = true; }
+    if (target[write + 1] !== ay) { target[write + 1] = ay; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[write + 2 + f] !== val) { target[write + 2 + f] = val; changed = true; }
+    }
+    write += VERTEX_COMPONENTS;
+    
+    // Triangle 2: a, B, b
+    if (target[write] !== ax) { target[write] = ax; changed = true; }
+    if (target[write + 1] !== ay) { target[write + 1] = ay; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[write + 2 + f] !== val) { target[write + 2 + f] = val; changed = true; }
+    }
+    write += VERTEX_COMPONENTS;
+    
+    if (target[write] !== Bx) { target[write] = Bx; changed = true; }
+    if (target[write + 1] !== By) { target[write + 1] = By; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[write + 2 + f] !== val) { target[write + 2 + f] = val; changed = true; }
+    }
+    write += VERTEX_COMPONENTS;
+    
+    if (target[write] !== bx) { target[write] = bx; changed = true; }
+    if (target[write + 1] !== by) { target[write + 1] = by; changed = true; }
+    for (let f = 0; f < fillLen; f++) {
+      const val = fillComponents[f]!;
+      if (target[write + 2 + f] !== val) { target[write + 2 + f] = val; changed = true; }
+    }
+    write += VERTEX_COMPONENTS;
+  }
+  
+  return changed;
+};
+
 export const createDynamicPolygonStrokePrimitive = (
   instance: SceneObjectInstance,
   options: DynamicPolygonStrokePrimitiveOptions
@@ -678,9 +867,23 @@ export const createDynamicPolygonStrokePrimitive = (
         });
       }
       
-      // Reuse existing data buffer when possible
-      data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents, data);
-      return data;
+      // Check if buffer size changed (e.g., vertex count changed)
+      const n = Math.min(inner.length, outer.length);
+      const expectedSize = n * 2 * 3 * VERTEX_COMPONENTS;
+      if (data.length !== expectedSize) {
+        data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
+        return data;
+      }
+      
+      // For animated vertices, use fast path (no change detection overhead)
+      // For static vertices, use change detection to skip GPU upload when possible
+      if (!isStaticVertices) {
+        updateStrokeBandDataFast(data, origin, rotation, inner, outer, fillComponents);
+        return data;
+      }
+      
+      const changed = updateStrokeBandData(data, origin, rotation, inner, outer, fillComponents);
+      return changed ? data : null;
     },
   };
 

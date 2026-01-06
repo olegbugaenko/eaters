@@ -3,6 +3,7 @@ import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
 import { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import type { BrickData } from "../bricks/bricks.types";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
+import type { EnemySpawnData } from "../enemies/enemies.types";
 import {
   MapConfig,
   MapId,
@@ -192,7 +193,7 @@ export class MapModule implements GameModule {
     }
     this.runLifecycle.cleanupActiveMap();
     this.options.runState.reset();
-    this.startSelectedMap({ generateBricks: true, generateUnits: true });
+    this.startSelectedMap({ generateBricks: true, generateUnits: true, generateEnemies: true });
   }
 
   public leaveCurrentMap(): void {
@@ -306,12 +307,13 @@ export class MapModule implements GameModule {
   private startSelectedMap(options: {
     generateBricks: boolean;
     generateUnits: boolean;
+    generateEnemies: boolean;
   }): void {
     const mapId = this.selection.getSelectedMapId();
     if (!mapId) {
       return;
     }
-    const { generateBricks, generateUnits } = options;
+    const { generateBricks, generateUnits, generateEnemies } = options;
     const config = getMapConfig(mapId);
     const level = this.getSelectedLevel(mapId);
     this.selection.updateSelection(mapId, level);
@@ -321,6 +323,7 @@ export class MapModule implements GameModule {
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
     const enemySpawnPoints = config.enemySpawnPoints ?? [];
+    const staticEnemies = this.generateEnemies(config, level);
 
     this.runLifecycle.startRun({
       level,
@@ -329,8 +332,10 @@ export class MapModule implements GameModule {
       spawnUnits,
       spawnPoints,
       enemySpawnPoints,
+      staticEnemies,
       generateBricks,
       generateUnits,
+      generateEnemies,
     });
 
     this.pushSelectedMap();
@@ -428,6 +433,13 @@ export class MapModule implements GameModule {
         return dx * dx + dy * dy >= safetyRadiusSq;
       })
     );
+  }
+
+  private generateEnemies(config: MapConfig, mapLevel: number): EnemySpawnData[] {
+    if (!config.enemies) {
+      return [];
+    }
+    return [...config.enemies({ mapLevel })];
   }
 
   private generatePlayerUnits(config: MapConfig): PlayerUnitSpawnData[] {

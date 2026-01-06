@@ -176,6 +176,7 @@ export class UnitProjectileController {
       hitRadius,
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
+      justSpawned: true, // Не рухати снаряд в перший тік
     };
 
     this.projectiles.push(state);
@@ -312,6 +313,17 @@ export class UnitProjectileController {
     for (let i = 0; i < this.projectiles.length; i += 1) {
       const projectile = this.projectiles[i]!;
       let hitTarget: TargetSnapshot | null = null;
+
+      // Якщо снаряд щойно створений - пропускаємо рух, тільки оновлюємо візуал
+      if (projectile.justSpawned) {
+        projectile.justSpawned = false;
+        this.updateProjectilePosition(projectile);
+        if (projectile.ringTrail) {
+          projectile.ringTrail.accumulatorMs += deltaMs;
+        }
+        this.projectiles[writeIndex++] = projectile;
+        continue;
+      }
 
       const totalMoveX = projectile.velocity.x * deltaSeconds;
       const totalMoveY = projectile.velocity.y * deltaSeconds;

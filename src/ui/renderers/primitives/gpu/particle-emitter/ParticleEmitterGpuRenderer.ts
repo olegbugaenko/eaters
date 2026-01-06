@@ -499,6 +499,17 @@ export const uploadEmitterUniformsPublic = (
   uploadEmitterUniforms(gl, program, uniforms, cache);
 };
 
+// Reusable array to avoid allocations during render
+const emitterRenderList: ParticleEmitterGpuDrawHandle[] = [];
+
+// Generate a signature for uniform values to enable batching
+const getUniformSignature = (u: ParticleEmitterGpuRenderUniforms): string => {
+  // Use pre-computed keys if available, otherwise compute them
+  const stopOffsetsKey = u.stopOffsetsKey ?? serializeArray(u.stopOffsets);
+  const stopColor0Key = u.stopColor0Key ?? serializeArray(u.stopColor0);
+  return `${u.fillType}|${u.stopCount}|${u.fadeStartMs}|${u.sizeGrowthRate}|${stopOffsetsKey}|${stopColor0Key}`;
+};
+
 export const renderParticleEmitters = (
   gl: WebGL2RenderingContext,
   cameraPosition: SceneVector2,
@@ -525,24 +536,32 @@ export const renderParticleEmitters = (
     gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height);
   }
 
-  const cache: UniformCache = {};
+  // Sort emitters by uniform signature to minimize uniform updates
+  emitterRenderList.length = 0;
   emitters.forEach((handle) => {
-    // Render full capacity - inactive particles are clipped in shader via alpha=0
-    // This avoids the slot fragmentation issue where activeCount doesn't match actual active slots
-    const instanceCount = Math.max(0, handle.capacity);
-    if (instanceCount <= 0) {
-      return;
+    if (handle.capacity > 0 && handle.getCurrentVao()) {
+      emitterRenderList.push(handle);
     }
+  });
+  
+  // Sort by uniform signature for batching
+  emitterRenderList.sort((a, b) => {
+    const sigA = getUniformSignature(a.uniforms);
+    const sigB = getUniformSignature(b.uniforms);
+    return sigA.localeCompare(sigB);
+  });
+
+  const cache: UniformCache = {};
+  for (let i = 0; i < emitterRenderList.length; i++) {
+    const handle = emitterRenderList[i]!;
     const vao = handle.getCurrentVao();
     if (!vao) {
-      return;
+      continue;
     }
-    const uniforms = handle.uniforms;
-    uploadEmitterUniforms(gl, program, uniforms, cache);
-
+    uploadEmitterUniforms(gl, program, handle.uniforms, cache);
     gl.bindVertexArray(vao);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
-  });
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, handle.capacity);
+  }
 
   gl.bindVertexArray(null);
 };

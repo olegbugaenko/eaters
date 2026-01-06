@@ -8,6 +8,7 @@ import type {
   SceneLinearGradientFill,
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
+  SceneSpriteFill,
   SceneStroke,
   SceneVector2,
   MutableCloneResult,
@@ -312,6 +313,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 // Re-export sanitizeColor for backward compatibility
 export { sanitizeColor } from "@shared/helpers/scene-color.helper";
+
+export function createSpriteFill(spritePath: string, color?: SceneColor): SceneSpriteFill {
+  return {
+    fillType: FILL_TYPES.SPRITE,
+    spritePath,
+    color: color ? sanitizeColor(color) : undefined,
+  };
+}
 
 export function createSolidFill(
   color: SceneColor,

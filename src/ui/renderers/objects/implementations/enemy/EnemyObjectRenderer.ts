@@ -10,6 +10,7 @@ import {
 } from "../../../primitives";
 import { hasStroke, expandVerticesForStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
 import { extractEnemyRendererData } from "./helpers";
+import { createCompositePrimitives } from "./composite-primitives.helpers";
 
 export class EnemyObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
@@ -17,15 +18,10 @@ export class EnemyObjectRenderer extends ObjectRenderer {
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
 
-    if (rendererData.kind === "composite") {
-      // For now, composite enemies are not fully implemented
-      // They would need similar logic to PlayerUnitObjectRenderer
-      // For simplicity, we'll render as a simple polygon
-      // TODO: Implement composite rendering for enemies if needed
-    }
-
-    // Render polygon (either from polygon config or fallback)
-    if (rendererData.vertices && rendererData.vertices.length >= 3) {
+    if (rendererData.kind === "composite" && rendererData.composite) {
+      createCompositePrimitives(instance, rendererData.composite, dynamicPrimitives);
+    } else if (rendererData.vertices && rendererData.vertices.length >= 3) {
+      // Render polygon (either from polygon config or fallback)
       const vertices = [...rendererData.vertices]; // Create mutable copy
       
       if (hasStroke(instance.data.stroke)) {

@@ -11,6 +11,7 @@ import {
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 
 import { DestructubleData } from "../logic/interfaces/destructuble";
+import type { PassabilityTag } from "@/logic/shared/navigation/passability.types";
 import { ResourceAmount } from "./resources-db";
 
 export type BrickType =
@@ -38,6 +39,11 @@ export interface BrickConfig {
   stroke?: SceneStroke;
   destructubleData?: DestructubleData;
   rewards?: ResourceAmount;
+  /**
+   * Tags describing which actors may pass through the brick without avoidance.
+   * Empty/undefined means the brick is blocking for everyone.
+   */
+  passableFor?: readonly PassabilityTag[];
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [

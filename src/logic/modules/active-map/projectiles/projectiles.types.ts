@@ -6,6 +6,7 @@ import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
 import type { BulletSlotHandle } from "../../../services/bullet-render-bridge/BulletRenderBridge";
 import type { RingSlotHandle } from "@ui/renderers/primitives/gpu/ring";
 import type { BulletSpriteName } from "@logic/services/bullet-render-bridge/bullet-sprites.const";
+import type { ExplosionType } from "@/db/explosions-db";
 
 export type UnitProjectileShape = "circle" | "sprite";
 
@@ -23,6 +24,8 @@ export interface UnitProjectileVisualConfig {
   /** Sprite index when shape === "sprite" */
   spriteIndex?: number;
   hitRadius?: number;
+  /** Explosion type when projectile hits target (optional) */
+  explosion?: ExplosionType;
   rendererCustomData?: Record<string, unknown>;
 }
 
@@ -77,4 +80,6 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
   position: SceneVector2;
   // GPU rendering slot (if using GPU instanced rendering)
   gpuSlot?: BulletSlotHandle;
+  // Прапорець для пропуску руху в перший тік
+  justSpawned: boolean;
 }

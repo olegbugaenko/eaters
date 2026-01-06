@@ -20,6 +20,8 @@ import type { StatisticsTracker } from "../../shared/statistics/statistics.modul
 import type { MapRunState } from "../map/MapRunState";
 import type { AbilitySoundPlayer } from "./PlayerUnitAbilities";
 import type { TargetingService } from "../targeting/TargetingService";
+import type { DamageService } from "../targeting/DamageService";
+import type { EnemiesModule } from "../enemies/enemies.module";
 
 export interface PlayerUnitSpawnData {
   readonly designId?: UnitDesignId;
@@ -40,6 +42,8 @@ export interface PlayerUnitsModuleOptions {
   explosions: ExplosionModule;
   projectiles: UnitProjectileController;
   targeting?: TargetingService;
+  damage?: DamageService;
+  enemies?: EnemiesModule;
   arcs?: ArcModule;
   effects?: EffectsModule;
   fireballs?: FireballModule;

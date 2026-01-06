@@ -1,75 +1,69 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, memo } from "react";
 import { DataBridge } from "@logic/core/DataBridge";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { RESOURCE_RUN_DURATION_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
-import { BRICK_COUNT_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bricks.const";
 import { formatDuration } from "@ui/utils/formatDuration";
+import { debugStats } from "./debugStats";
 import "./SceneDebugPanel.css";
 
 interface SceneDebugPanelProps {
   timeMs?: number;
-  brickCount?: number;
   bridge?: DataBridge;
-  dynamicBytes?: number;
-  dynamicReallocs?: number;
-  breakdown?: { type: string; bytes: number; count: number }[];
-  particleActive?: number;
-  particleCapacity?: number;
-  particleEmitters?: number;
 }
 
-const UPDATE_INTERVAL_MS = 500; // Update more frequently for smoother display
+const UPDATE_INTERVAL_MS = 500;
 const FPS_SAMPLE_MS = 1000;
 
-export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickCount, bridge, dynamicBytes = 0, dynamicReallocs = 0, breakdown = [], particleActive = 0, particleCapacity = 0, particleEmitters = 0 }) => {
+/**
+ * Debug panel that reads stats from global debugStats object
+ * instead of React props to avoid triggering re-renders.
+ */
+const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ timeMs, bridge }) => {
   const timeMsValue = typeof timeMs === "number" ? timeMs : (bridge ? useBridgeValue(bridge, RESOURCE_RUN_DURATION_BRIDGE_KEY, 0) : 0);
-  const brickCountValue = typeof brickCount === "number" ? brickCount : (bridge ? useBridgeValue(bridge, BRICK_COUNT_BRIDGE_KEY, 0) : 0);
-  const latestValues = useRef({ timeMs, brickCount, dynamicBytes, dynamicReallocs, breakdown, particleActive, particleCapacity, particleEmitters });
+  const latestTimeMs = useRef(timeMsValue);
   const timeRef = useRef<HTMLDivElement | null>(null);
-  const brickRef = useRef<HTMLDivElement | null>(null);
   const fpsRef = useRef<HTMLDivElement | null>(null);
   const vboRef = useRef<HTMLDivElement | null>(null);
   const particlesRef = useRef<HTMLDivElement | null>(null);
   const lastDisplayedTime = useRef<string | null>(null);
-  const lastDisplayedBricks = useRef<number | null>(null);
   const lastDisplayedFps = useRef<number | null>(null);
   const lastDisplayedVbo = useRef<string | null>(null);
+  const lastDisplayedParticles = useRef<string | null>(null);
 
   useEffect(() => {
-    latestValues.current = { timeMs: timeMsValue, brickCount: brickCountValue, dynamicBytes, dynamicReallocs, breakdown, particleActive, particleCapacity, particleEmitters } as any;
-  }, [timeMsValue, brickCountValue, dynamicBytes, dynamicReallocs, breakdown, particleActive, particleCapacity, particleEmitters]);
+    latestTimeMs.current = timeMsValue;
+  }, [timeMsValue]);
 
   useEffect(() => {
     const update = () => {
-      const { timeMs: nextTime, brickCount: nextBricks, dynamicBytes: bytes, dynamicReallocs: reallocs, particleActive: pActive, particleCapacity: pCap, particleEmitters: pEmit } = latestValues.current as any;
-      const formatted = formatDuration(nextTime);
-
+      // Read time from ref (updated via useBridgeValue)
+      const formatted = formatDuration(latestTimeMs.current);
       if (lastDisplayedTime.current !== formatted && timeRef.current) {
         lastDisplayedTime.current = formatted;
         timeRef.current.textContent = `Map Time: ${formatted}`;
       }
 
-      if (lastDisplayedBricks.current !== nextBricks && brickRef.current) {
-        lastDisplayedBricks.current = nextBricks;
-        brickRef.current.textContent = `Particles: ${nextBricks}`;
-      }
-
+      // Read VBO stats from global object (no React re-render)
       if (vboRef.current) {
-        const next = `Dyn VBO: ${Math.round(bytes / 1024)} KB (${reallocs})`;
+        const next = `Dyn VBO: ${Math.round(debugStats.vboBytes / 1024)} KB (${debugStats.vboReallocs})`;
         if (lastDisplayedVbo.current !== next) {
           lastDisplayedVbo.current = next;
           vboRef.current.textContent = next;
         }
       }
 
+      // Read particle stats from global object (no React re-render)
       if (particlesRef.current) {
-        particlesRef.current.textContent = `Particles: ${pActive}/${pCap} (emitters: ${pEmit})`;
+        const next = `Particles: ${debugStats.particleActive}/${debugStats.particleCapacity} (emitters: ${debugStats.particleEmitters})`;
+        if (lastDisplayedParticles.current !== next) {
+          lastDisplayedParticles.current = next;
+          particlesRef.current.textContent = next;
+        }
       }
     };
 
     update();
     const interval = window.setInterval(update, UPDATE_INTERVAL_MS);
-
 
     return () => {
       window.clearInterval(interval);
@@ -116,10 +110,12 @@ export const SceneDebugPanel: React.FC<SceneDebugPanelProps> = ({ timeMs, brickC
   return (
     <div className="scene-debug-panel">
       <div className="scene-debug-panel__item" ref={timeRef} />
-      {/*<div className="scene-debug-panel__item" ref={brickRef} />*/}
       <div className="scene-debug-panel__item" ref={fpsRef} />
       <div className="scene-debug-panel__item" ref={vboRef} />
       <div className="scene-debug-panel__item" ref={particlesRef} />
     </div>
   );
 };
+
+/** Memoized export - prevents re-renders from parent */
+export const SceneDebugPanel = memo(SceneDebugPanelInner);

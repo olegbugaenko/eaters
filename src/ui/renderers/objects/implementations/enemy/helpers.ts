@@ -20,6 +20,7 @@ export interface EnemyRendererData {
   kind: "polygon" | "composite";
   vertices?: SceneVector2[];
   offset?: SceneVector2;
+  composite?: EnemyRendererCompositeConfig;
 }
 
 /**
@@ -31,9 +32,9 @@ export const extractEnemyRendererData = (instance: SceneObjectInstance): EnemyRe
     const renderer = payload.renderer;
     if (renderer && typeof renderer === "object") {
       if ((renderer as EnemyRendererConfig).kind === "composite") {
-        // For composite, we'll handle it separately
         return {
           kind: "composite",
+          composite: renderer as EnemyRendererCompositeConfig,
         };
       }
       if ((renderer as EnemyRendererPolygonConfig).kind === "polygon") {

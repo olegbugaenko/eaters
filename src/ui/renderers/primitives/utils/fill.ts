@@ -8,6 +8,7 @@ import {
   SceneLinearGradientFill,
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
+  SceneSpriteFill,
 } from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import {
@@ -115,6 +116,10 @@ const ensureStops = (fill: SceneFill): SceneGradientStop[] => {
     }
     return cached;
   }
+  if (fill.fillType === FILL_TYPES.SPRITE) {
+    const spriteFill = fill as SceneSpriteFill;
+    return [{ offset: 0, color: spriteFill.color || { r: 1, g: 1, b: 1, a: 1 } }];
+  }
   const gradientFill = fill as SceneLinearGradientFill | SceneRadialGradientFill | SceneDiamondGradientFill;
   if (gradientFill.stops.length === 0) {
     return FALLBACK_SOLID_STOP;
@@ -210,6 +215,14 @@ const populateFillVertexComponents = (
         radius
       );
       components[params0Index + 3] = 0;
+      break;
+    }
+    case FILL_TYPES.SPRITE: {
+      // For sprites, fillParams0.xy stores UV coordinates (will be set per-vertex)
+      // fillParams0.z stores texture index for texture array
+      components[params0Index + 0] = 0; // UV.x will be set per-vertex
+      components[params0Index + 1] = 0; // UV.y will be set per-vertex
+      components[params0Index + 2] = 0; // Texture index (will be set in SpritePrimitive)
       break;
     }
     case FILL_TYPES.SOLID:

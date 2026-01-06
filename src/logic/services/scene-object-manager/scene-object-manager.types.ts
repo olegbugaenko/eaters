@@ -74,11 +74,18 @@ export interface SceneDiamondGradientFill extends SceneFillCommon {
   stops: readonly SceneGradientStop[];
 }
 
+export interface SceneSpriteFill extends SceneFillCommon {
+  fillType: SceneFillType;
+  spritePath: string;
+  color?: SceneColor; // Optional tint color
+}
+
 export type SceneFill =
   | SceneSolidFill
   | SceneLinearGradientFill
   | SceneRadialGradientFill
-  | SceneDiamondGradientFill;
+  | SceneDiamondGradientFill
+  | SceneSpriteFill;
 
 export interface SceneObjectData {
   position: SceneVector2;

@@ -8,6 +8,9 @@ import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { EnemyType } from "../../../../db/enemies-db";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
+import type { ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
+import type { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
+import type { BricksModule } from "../bricks/bricks.module";
 
 export interface EnemySpawnData {
   readonly id?: string;
@@ -59,4 +62,7 @@ export interface EnemiesModuleOptions {
   readonly damage?: DamageService;
   readonly explosions?: ExplosionModule;
   readonly projectiles?: UnitProjectileController;
+  readonly bricks: BricksModule;
+  readonly obstacles?: ObstacleProvider;
+  readonly pathfinder?: PathfindingService;
 }

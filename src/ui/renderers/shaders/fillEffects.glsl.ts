@@ -79,8 +79,10 @@ in vec4 a_stopColor2;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
+uniform sampler2D u_spriteTexture;
 
 out vec2 v_worldPosition;
+out vec2 v_uv; // UV coordinates for sprite textures
 out vec4 v_fillInfo;
 out vec4 v_fillParams0;
 out vec4 v_fillParams1;
@@ -96,6 +98,8 @@ export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
 void main() {
   gl_Position = vec4(toClip(a_position), 0.0, 1.0);
   v_worldPosition = a_position;
+  // Use fillParams0.xy for UV coordinates when rendering sprites
+  v_uv = a_fillParams0.xy;
   v_fillInfo = a_fillInfo;
   v_fillParams0 = a_fillParams0;
   v_fillParams1 = a_fillParams1;
@@ -118,6 +122,7 @@ export const SCENE_FRAGMENT_SHADER_HEADER = `#version 300 es
 precision highp float;
 
 in vec2 v_worldPosition;
+in vec2 v_uv; // UV coordinates for sprite textures
 in vec4 v_fillInfo;
 in vec4 v_fillParams0;
 in vec4 v_fillParams1;
@@ -127,6 +132,8 @@ in vec3 v_stopOffsets;
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
 in vec4 v_stopColor2;
+
+uniform sampler2D u_spriteTexture;
 
 out vec4 fragColor;
 
@@ -260,6 +267,13 @@ export const SCENE_FRAGMENT_SHADER_MAIN = `
 void main() {
   float fillType = v_fillInfo.x;
   vec4 color = v_stopColor0;
+
+  // Sprite texture fill (fillType == 4.0)
+  if (fillType >= 3.5 && fillType < 4.5) {
+    vec4 spriteColor = texture(u_spriteTexture, v_uv);
+    fragColor = spriteColor;
+    return;
+  }
 
   if (fillType >= 0.5) {
     float t = 0.0;

@@ -56,6 +56,12 @@ export type BaseRendererLayerConfig<TFields extends BaseRendererLayerFields = Ba
       shape: "circle";
       radius: number;
       segments?: number;
+    } & TFields)
+  | ({
+      shape: "sprite";
+      spritePath: string;
+      width: number;
+      height: number;
     } & TFields);
 
 /**
