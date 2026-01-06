@@ -9,8 +9,7 @@ import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/ren
 import {
   type CompositeRendererLayerFill,
   type CompositeRendererLayerStroke,
-  sanitizeCompositeFillConfig,
-  sanitizeCompositeStrokeConfig,
+  createCompositeLayerSanitizer,
   resolveCompositeLayerFill,
   resolveCompositeLayerStrokeFill,
   resolveCompositeFillColor,
@@ -75,51 +74,65 @@ export const sanitizeCompositeLayer = (
   segmentIndex?: number;
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
 } | null => {
-  if (layer.shape === "polygon") {
-    if (!layer.vertices || layer.vertices.length < 3) {
+  return sanitizeEnemyCompositeLayer(layer);
+};
+
+type EnemyLayerExtras = {
+  offset?: { x: number; y: number };
+  anim?: any;
+  spine?: { x: number; y: number; width: number }[];
+  segmentIndex?: number;
+  buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+};
+
+const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
+  {
+    shape: "polygon" | "circle" | "sprite";
+    vertices?: readonly { x: number; y: number }[];
+    radius?: number;
+    segments?: number;
+    spritePath?: string;
+    width?: number;
+    height?: number;
+    offset?: { x: number; y: number };
+    fill?: RendererFillConfig;
+    stroke?: RendererStrokeConfig;
+    anim?: any; // Animation config (optional for enemies)
+    spine?: { x: number; y: number; width: number }[];
+    segmentIndex?: number;
+    buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+  },
+  EnemyLayerExtras
+>({
+  sanitizeVertices: (vertices) => {
+    const typed = vertices as readonly { x: number; y: number }[] | undefined;
+    if (!typed || typed.length < 3) {
       return null;
     }
-    return {
-      shape: "polygon",
-      vertices: layer.vertices.map((v) => ({ x: v.x, y: v.y })),
-      offset: layer.offset,
-      fill: sanitizeCompositeFillConfig(layer.fill),
-      stroke: sanitizeCompositeStrokeConfig(layer.stroke),
-      anim: layer.anim,
-      spine: layer.spine,
-      segmentIndex: layer.segmentIndex,
-      buildOpts: layer.buildOpts,
-    };
-  }
-  if (layer.shape === "sprite") {
+    return typed.map((v) => ({ x: v.x, y: v.y }));
+  },
+  sanitizeCircleRadius: (radius) =>
+    typeof radius === "number" && Number.isFinite(radius) && radius > 0 ? radius : null,
+  sanitizeCircleSegments: (segments) =>
+    typeof segments === "number" && segments >= 3 ? segments : undefined,
+  sanitizeSprite: (layer) => {
+    if (layer.shape !== "sprite") {
+      return null;
+    }
     if (!layer.spritePath || typeof layer.width !== "number" || typeof layer.height !== "number") {
       return null;
     }
     return {
-      shape: "sprite",
       spritePath: layer.spritePath,
       width: layer.width,
       height: layer.height,
-      offset: layer.offset,
-      fill: sanitizeCompositeFillConfig(layer.fill),
-      stroke: sanitizeCompositeStrokeConfig(layer.stroke),
-      anim: layer.anim,
     };
-  }
-  // circle
-  const radius = typeof layer.radius === "number" && Number.isFinite(layer.radius) && layer.radius > 0
-    ? layer.radius
-    : undefined;
-  if (!radius) {
-    return null;
-  }
-  return {
-    shape: "circle",
-    radius,
-    segments: typeof layer.segments === "number" && layer.segments >= 3 ? layer.segments : undefined,
+  },
+  mapExtraFields: (layer) => ({
     offset: layer.offset,
-    fill: sanitizeCompositeFillConfig(layer.fill),
-    stroke: sanitizeCompositeStrokeConfig(layer.stroke),
     anim: layer.anim,
-  };
-};
+    spine: layer.spine,
+    segmentIndex: layer.segmentIndex,
+    buildOpts: layer.buildOpts,
+  }),
+});

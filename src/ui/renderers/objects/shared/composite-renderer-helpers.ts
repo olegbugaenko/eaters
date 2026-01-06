@@ -5,6 +5,7 @@ import type {
   SceneFillNoise,
   SceneStroke,
   SceneSolidFill,
+  SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
@@ -42,6 +43,138 @@ export interface BaseCompositeRendererConfig {
   };
   baseStrokeColor?: SceneColor;
 }
+
+export interface CompositeLayerBaseConfig {
+  shape: "polygon" | "circle" | "sprite";
+  vertices?: readonly SceneVector2[];
+  radius?: number;
+  segments?: number;
+  spritePath?: string;
+  width?: number;
+  height?: number;
+  offset?: SceneVector2;
+  fill?: RendererFillConfig;
+  stroke?: RendererStrokeConfig;
+}
+
+export interface CompositeLayerSanitizerOptions<
+  TLayer extends CompositeLayerBaseConfig,
+  TExtra extends object = object
+> {
+  sanitizeVertices: (vertices: unknown) => SceneVector2[] | null;
+  sanitizeOffset?: (offset: TLayer["offset"] | undefined) => SceneVector2 | undefined;
+  sanitizeCircleRadius?: (radius: TLayer["radius"] | undefined) => number | null;
+  sanitizeCircleSegments?: (segments: TLayer["segments"] | undefined) => number | undefined;
+  sanitizeSprite?: (
+    layer: TLayer
+  ) => { spritePath: string; width: number; height: number } | null;
+  mapExtraFields?: (layer: TLayer) => TExtra;
+}
+
+export type SanitizedCompositeLayer<TExtra extends object = object> =
+  | ({
+      shape: "polygon";
+      vertices: SceneVector2[];
+    } & TExtra)
+  | ({
+      shape: "circle";
+      radius: number;
+      segments?: number;
+    } & TExtra)
+  | ({
+      shape: "sprite";
+      spritePath: string;
+      width: number;
+      height: number;
+    } & TExtra);
+
+export const createCompositeLayerSanitizer = <
+  TLayer extends CompositeLayerBaseConfig,
+  TExtra extends object = object
+>(
+  options: CompositeLayerSanitizerOptions<TLayer, TExtra>
+) => {
+  const sanitizeOffset = options.sanitizeOffset ?? ((offset) => offset);
+  const sanitizeCircleRadius = options.sanitizeCircleRadius ?? ((radius) => radius ?? null);
+  const sanitizeSprite =
+    options.sanitizeSprite ??
+    ((layer: TLayer) => {
+      if (
+        !layer.spritePath ||
+        typeof layer.width !== "number" ||
+        typeof layer.height !== "number"
+      ) {
+        return null;
+      }
+      return {
+        spritePath: layer.spritePath,
+        width: layer.width,
+        height: layer.height,
+      };
+    });
+
+  return (
+    layer: TLayer
+  ): (SanitizedCompositeLayer<TExtra> & {
+    offset?: SceneVector2;
+    fill: CompositeRendererLayerFill;
+    stroke?: CompositeRendererLayerStroke;
+  }) | null => {
+    switch (layer.shape) {
+      case "polygon": {
+        const vertices = options.sanitizeVertices(layer.vertices);
+        if (!vertices) {
+          return null;
+        }
+        const extra = options.mapExtraFields ? options.mapExtraFields(layer) : ({} as TExtra);
+        return {
+          shape: "polygon",
+          vertices,
+          offset: sanitizeOffset(layer.offset),
+          fill: sanitizeCompositeFillConfig(layer.fill),
+          stroke: sanitizeCompositeStrokeConfig(layer.stroke),
+          ...extra,
+        };
+      }
+      case "circle": {
+        const radius = sanitizeCircleRadius(layer.radius);
+        if (radius === null || radius <= 0) {
+          return null;
+        }
+        const segments = options.sanitizeCircleSegments
+          ? options.sanitizeCircleSegments(layer.segments)
+          : layer.segments;
+        const extra = options.mapExtraFields ? options.mapExtraFields(layer) : ({} as TExtra);
+        return {
+          shape: "circle",
+          radius,
+          segments,
+          offset: sanitizeOffset(layer.offset),
+          fill: sanitizeCompositeFillConfig(layer.fill),
+          stroke: sanitizeCompositeStrokeConfig(layer.stroke),
+          ...extra,
+        };
+      }
+      case "sprite": {
+        const sprite = sanitizeSprite(layer);
+        if (!sprite) {
+          return null;
+        }
+        const extra = options.mapExtraFields ? options.mapExtraFields(layer) : ({} as TExtra);
+        return {
+          shape: "sprite",
+          ...sprite,
+          offset: sanitizeOffset(layer.offset),
+          fill: sanitizeCompositeFillConfig(layer.fill),
+          stroke: sanitizeCompositeStrokeConfig(layer.stroke),
+          ...extra,
+        };
+      }
+      default:
+        return null;
+    }
+  };
+};
 
 /**
  * Clamps brightness value between -1 and 1

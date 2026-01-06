@@ -39,6 +39,7 @@ import {
   resolveCompositeLayerStrokeFill,
   resolveCompositeFillColor,
   resolveCompositeStrokeColor,
+  createCompositeLayerSanitizer,
   applyBrightness,
   tintColor,
 } from "../../shared/composite-renderer-helpers";
@@ -134,104 +135,58 @@ export const sanitizeCompositeRenderer = (
 export const sanitizeCompositeLayer = (
   layer: PlayerUnitRendererLayerConfig
 ): RendererLayer | null => {
-  if (layer.shape === "polygon") {
-    const vertices = sanitizeLayerVertices(layer.vertices);
-    if (!vertices) {
+  const sanitized = sanitizePlayerCompositeLayer(layer);
+  return sanitized as RendererLayer | null;
+};
+
+type PlayerLayerExtraFields = {
+  requiresModule?: PlayerUnitCustomData["modules"] extends ReadonlyArray<infer T> | undefined ? T : never;
+  requiresSkill?: PlayerUnitCustomData["skills"] extends ReadonlyArray<infer T> | undefined ? T : never;
+  requiresEffect?: string;
+  anim?: RendererLayer["anim"];
+  spine?: RendererLayer["spine"];
+  segmentIndex?: RendererLayer["segmentIndex"];
+  buildOpts?: RendererLayer["buildOpts"];
+  groupId?: RendererLayer["groupId"];
+};
+
+const sanitizePlayerCompositeLayer = createCompositeLayerSanitizer<
+  PlayerUnitRendererLayerConfig,
+  PlayerLayerExtraFields
+>({
+  sanitizeVertices: (vertices) =>
+    sanitizeLayerVertices(vertices as readonly SceneVector2[] | undefined),
+  sanitizeOffset,
+  sanitizeCircleRadius: (radius) =>
+    typeof radius === "number" && Number.isFinite(radius) ? radius : null,
+  sanitizeCircleSegments: (segments) =>
+    typeof segments === "number" && Number.isFinite(segments)
+      ? Math.max(Math.round(segments), MIN_CIRCLE_SEGMENTS)
+      : 32,
+  sanitizeSprite: (layer) => {
+    if (layer.shape !== "sprite") {
       return null;
     }
-    return {
-      shape: "polygon",
-      vertices,
-      offset: sanitizeOffset(layer.offset),
-      fill: sanitizeFillConfig(layer.fill),
-      stroke: sanitizeStrokeConfig(layer.stroke),
-      requiresModule: layer.requiresModule,
-      requiresSkill: layer.requiresSkill,
-      requiresEffect: layer.requiresEffect,
-      anim: layer.anim,
-      spine: layer.spine,
-      segmentIndex: layer.segmentIndex,
-      buildOpts: layer.buildOpts,
-      groupId: layer.groupId,
-    };
-  }
-
-  if (layer.shape === "sprite") {
     if (!layer.spritePath || typeof layer.width !== "number" || typeof layer.height !== "number") {
       return null;
     }
     return {
-      shape: "sprite",
       spritePath: layer.spritePath,
       width: layer.width,
       height: layer.height,
-      offset: sanitizeOffset(layer.offset),
-      fill: sanitizeFillConfig(layer.fill),
-      stroke: sanitizeStrokeConfig(layer.stroke),
-      requiresModule: layer.requiresModule,
-      requiresSkill: layer.requiresSkill,
-      requiresEffect: layer.requiresEffect,
-      anim: layer.anim,
-      groupId: layer.groupId,
     };
-  }
-
-  // circle
-  const radius =
-    typeof layer.radius === "number" && Number.isFinite(layer.radius) ? layer.radius : 0;
-  if (radius <= 0) {
-    return null;
-  }
-  const segments =
-    typeof layer.segments === "number" && Number.isFinite(layer.segments)
-      ? Math.max(Math.round(layer.segments), MIN_CIRCLE_SEGMENTS)
-      : 32;
-  return {
-    shape: "circle",
-    radius,
-    segments,
-    offset: sanitizeOffset(layer.offset),
-    fill: sanitizeFillConfig(layer.fill),
-    stroke: sanitizeStrokeConfig(layer.stroke),
+  },
+  mapExtraFields: (layer) => ({
     requiresModule: layer.requiresModule,
     requiresSkill: layer.requiresSkill,
     requiresEffect: layer.requiresEffect,
     anim: layer.anim,
+    spine: layer.spine,
+    segmentIndex: layer.segmentIndex,
+    buildOpts: layer.buildOpts,
     groupId: layer.groupId,
-  };
-};
-
-/**
- * Clamps brightness value between -1 and 1
- */
-export const clampBrightness = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-  if (value <= -1) {
-    return -1;
-  }
-  if (value >= 1) {
-    return 1;
-  }
-  return value;
-};
-
-/**
- * Clamps alpha multiplier between 0 and 10
- */
-export const clampAlphaMultiplier = (value: number | undefined): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 1;
-  }
-  if (value <= 0) {
-    return 0;
-  }
-  if (value >= 10) {
-    return 10;
-  }
-  return value;
-};
+  }),
+});
 
 /**
  * Sanitizes fill config (uses shared implementation)
