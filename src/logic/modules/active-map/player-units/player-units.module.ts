@@ -164,6 +164,10 @@ export class PlayerUnitsModule implements GameModule {
       getArcs: () => this.arcs,
       getEffects: () => this.effects,
       getFireballs: () => this.fireballs,
+      getUnitObjectId: (unitId: string) => {
+        const unit = this.units.get(unitId);
+        return unit?.objectId;
+      },
     });
 
     this.abilities = new PlayerUnitAbilities({
@@ -250,7 +254,10 @@ export class PlayerUnitsModule implements GameModule {
         }
       },
       applyAura: (unitId, effectId) => {
-        this.effects?.applyEffect(unitId, effectId as never);
+        const unit = this.units.get(unitId);
+        if (unit) {
+          this.effects?.applyEffect(unitId, unit.objectId, effectId as never);
+        }
       },
       removeAura: (unitId, effectId) => {
         this.effects?.removeEffect(unitId, effectId as never);

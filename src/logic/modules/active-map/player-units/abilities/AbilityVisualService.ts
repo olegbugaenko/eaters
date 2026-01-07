@@ -17,6 +17,7 @@ interface AbilityVisualServiceOptions {
   getArcs: () => ArcModule | undefined;
   getEffects: () => EffectsModule | undefined;
   getFireballs: () => FireballModule | undefined;
+  getUnitObjectId: (unitId: string) => string | undefined;
 }
 
 interface AbilityArcEntry {
@@ -42,6 +43,7 @@ export class AbilityVisualService {
   private readonly getArcs: () => ArcModule | undefined;
   private readonly getEffects: () => EffectsModule | undefined;
   private readonly getFireballs: () => FireballModule | undefined;
+  private readonly getUnitObjectId: (unitId: string) => string | undefined;
   private activeArcEffects: AbilityArcEntry[] = [];
 
   constructor(options: AbilityVisualServiceOptions) {
@@ -50,6 +52,7 @@ export class AbilityVisualService {
     this.getArcs = options.getArcs;
     this.getEffects = options.getEffects;
     this.getFireballs = options.getFireballs;
+    this.getUnitObjectId = options.getUnitObjectId;
   }
 
   public reset(): void {
@@ -106,7 +109,11 @@ export class AbilityVisualService {
   }
 
   public applyEffect(unitId: string, effectId: string): void {
-    this.getEffects()?.applyEffect(unitId, effectId as never);
+    const effects = this.getEffects();
+    if (!effects) return;
+    const unitObjectId = this.getUnitObjectId(unitId);
+    if (!unitObjectId) return;
+    effects.applyEffect(unitId, unitObjectId, effectId as never);
   }
 
   public removeEffect(unitId: string, effectId: string): void {

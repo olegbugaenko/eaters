@@ -15,6 +15,7 @@ import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-m
 import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
 import { cloneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 
 interface ManagedObject {
   instance: SceneObjectInstance;
@@ -84,7 +85,10 @@ export class ObjectsRendererManager {
   private dynamicBytesAllocated = 0;
   private dynamicReallocations = 0;
 
-  constructor(private readonly renderers: Map<string, ObjectRenderer>) {}
+  constructor(
+    private readonly renderers: Map<string, ObjectRenderer>,
+    private readonly tiedObjects: TiedObjectsRegistry
+  ) {}
 
   public bootstrap(instances: readonly SceneObjectInstance[]): void {
     instances.forEach((instance) => {
@@ -106,6 +110,7 @@ export class ObjectsRendererManager {
     this.staticEntries.length = 0;
     this.dynamicEntries.length = 0;
     this.dynamicEntryByPrimitive.clear();
+    this.tiedObjects.clear();
     this.staticData = null;
     this.dynamicData = null;
     this.staticVertexCount = 0;
@@ -117,6 +122,14 @@ export class ObjectsRendererManager {
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
+  }
+
+  /**
+   * Get all object IDs that are tied to a parent object.
+   * Used for applying interpolated positions to tied children.
+   */
+  public getTiedChildren(parentId: string): ReadonlySet<string> | undefined {
+    return this.tiedObjects.getChildren(parentId);
   }
 
   public applyChanges(
@@ -362,6 +375,12 @@ export class ObjectsRendererManager {
     };
     this.objects.set(instance.id, managed);
 
+    // Register tied object relationship if present
+    const tiedToObjectId = (instance.data.customData as { tiedToObjectId?: string } | undefined)?.tiedToObjectId;
+    if (tiedToObjectId) {
+      this.tiedObjects.register(instance.id, tiedToObjectId);
+    }
+
     registration.staticPrimitives.forEach((primitive) => {
       this.staticEntries.push({ objectId: instance.id, primitive });
     });
@@ -436,6 +455,10 @@ export class ObjectsRendererManager {
     }
     this.objects.delete(id);
     this.autoAnimatingIds.delete(id);
+
+    // Unregister from tied objects (handles both parent and child cases)
+    this.tiedObjects.unregisterChild(id);
+    this.tiedObjects.unregisterParent(id);
     
     // Remove all primitives from this object from auto-animating list
     managed.registration.dynamicPrimitives.forEach((primitive) => {

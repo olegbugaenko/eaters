@@ -32,6 +32,12 @@ interface DynamicPolygonPrimitiveOptions {
   fill?: SceneFill;
   getFill?: (instance: SceneObjectInstance) => SceneFill;
   offset?: SceneVector2;
+  /**
+   * Callback to refresh fill when instance.data.fill reference changes.
+   * Used for "base" fills in composite renderers that depend on visual effects.
+   * Only called when instance.data.fill !== prevInstanceFill (reference changed).
+   */
+  refreshFill?: (instance: SceneObjectInstance) => SceneFill;
 }
 
 interface PolygonStrokeOptions {
@@ -398,7 +404,10 @@ export const createDynamicPolygonPrimitive = (
   // Check if vertices and fill are static (not animated)
   const isStaticVertices = !options.getVertices && !!options.vertices;
   const isStaticFill = !options.getFill && !!options.fill;
-  const canFastPath = isStaticVertices && isStaticFill;
+  // refreshFill tracks instance.data.fill reference changes for visual effects
+  const hasRefreshFill = typeof options.refreshFill === "function";
+  // Can only fast-path if fill doesn't need refresh tracking
+  const canFastPath = isStaticVertices && isStaticFill && !hasRefreshFill;
   
   const initialVertices = resolveVertices(options, instance);
   let vertexCount = initialVertices.length;
@@ -410,8 +419,13 @@ export const createDynamicPolygonPrimitive = (
   let rotation = instance.data.rotation ?? 0;
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
   const fillScratch = new Float32Array(FILL_COMPONENTS);
+  
+  // For refreshFill: cache the resolved fill and track instance.data.fill reference
+  let cachedFill: SceneFill = resolveFill(options, instance);
+  let prevInstanceFillRef: SceneFill | undefined = hasRefreshFill ? instance.data.fill : undefined;
+  
   let fillComponents = writeFillVertexComponents(fillScratch, {
-    fill: resolveFill(options, instance),
+    fill: cachedFill,
     center: fillCenter,
     rotation,
     size: geometry.size,
@@ -431,6 +445,14 @@ export const createDynamicPolygonPrimitive = (
     update(target: SceneObjectInstance) {
       const pos = target.data.position;
       const nextRotation = target.data.rotation ?? 0;
+      
+      // Check if instance.data.fill reference changed (visual effect applied)
+      let fillRefChanged = false;
+      if (hasRefreshFill && target.data.fill !== prevInstanceFillRef) {
+        prevInstanceFillRef = target.data.fill;
+        cachedFill = options.refreshFill!(target);
+        fillRefChanged = true;
+      }
       
       // Fast path: skip expensive computations if nothing changed
       // For static vertices/fill, only position and rotation matter
@@ -459,7 +481,7 @@ export const createDynamicPolygonPrimitive = (
       
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
       // Reuse a single scratch buffer to avoid per-frame allocations
-      // Skip resolveFill for static fill
+      // Skip resolveFill for static fill (unless refreshFill triggered)
       if (!isStaticFill) {
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: resolveFill(options, target),
@@ -467,10 +489,18 @@ export const createDynamicPolygonPrimitive = (
           rotation,
           size: geometry.size,
         });
+      } else if (fillRefChanged) {
+        // refreshFill was triggered - use the newly cached fill
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: cachedFill,
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
       } else {
         // Just update center position in fill components
         fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: options.fill!,
+          fill: cachedFill,
           center: fillCenter,
           rotation,
           size: geometry.size,

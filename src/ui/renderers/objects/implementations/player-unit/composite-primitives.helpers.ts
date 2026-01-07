@@ -287,12 +287,17 @@ export const createCompositePrimitives = (
         }
 
         // OPTIMIZATION: Cache fill for tentacle layers - vertices animate but fill is static
+        // For base fills, add refreshFill to track visual effect changes
         const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForTentacle = layer.fill;
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: sampleVertices,
             offset: layer.offset,
             fill: tentacleFill,
+            ...(layerFillForTentacle.kind === "base" && {
+              refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
+            }),
           })
         );
         return; // handled animated tentacle layer
@@ -483,12 +488,17 @@ export const createCompositePrimitives = (
           );
         }
         // OPTIMIZATION: Cache fill for animated layers too - vertices change but fill is usually static
+        // For base fills, add refreshFill to track visual effect changes
         const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForAnimated = layer.fill;
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: () => getDeformedVertices(),
             offset: layer.offset,
             fill: animatedLayerFill,
+            ...(layerFillForAnimated.kind === "base" && {
+              refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+            }),
           })
         );
       } else {
@@ -510,12 +520,17 @@ export const createCompositePrimitives = (
           );
         }
         // OPTIMIZATION: Cache fill at registration time for static layers
+        // For base fills, add refreshFill to track visual effect changes
         const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForStatic = layer.fill;
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             vertices: layer.vertices,
             offset: layer.offset,
             fill: cachedFill,
+            ...(layerFillForStatic.kind === "base" && {
+              refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
+            }),
           })
         );
       }
@@ -535,13 +550,18 @@ export const createCompositePrimitives = (
           })
         );
       }
+      // For base fills, add refreshFill to track visual effect changes
       const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+      const layerFillForCircle = layer.fill;
       dynamicPrimitives.push(
         createDynamicCirclePrimitive(instance, {
           segments: layer.segments,
           offset: layer.offset,
           radius: layer.radius,
           fill: cachedFill,
+          ...(layerFillForCircle.kind === "base" && {
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForCircle, renderer),
+          }),
         })
       );
       return;
