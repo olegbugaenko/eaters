@@ -17,6 +17,7 @@ import type { UnitAutomationBridgeState } from "../modules/active-map/unit-autom
 import type { SpellOption } from "../modules/active-map/spellcasting/spellcasting.types";
 import type { NecromancerResourcesPayload, NecromancerSpawnOption } from "../modules/active-map/necromancer/necromancer.types";
 import type { SkillTreeBridgePayload } from "../modules/camp/skill-tree/skill-tree.types";
+import type { AchievementsBridgePayload } from "../modules/shared/achievements/achievements.types";
 import type { TutorialMonitorInput, TutorialMonitorStatus } from "../modules/active-map/tutorial-monitor/tutorial-monitor.types";
 import type { CampStatisticsSnapshot } from "../modules/shared/statistics/statistics.module";
 
@@ -71,6 +72,9 @@ export interface BridgeSchema {
   // Skill Tree
   "skills/tree": SkillTreeBridgePayload;
   "skills/treeViewTransform": ViewTransform | null;
+
+  // Achievements
+  "achievements/list": AchievementsBridgePayload;
 
   // Spellcasting
   "spellcasting/options": SpellOption[];

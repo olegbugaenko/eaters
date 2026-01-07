@@ -5,6 +5,7 @@ import type { EnemyType } from "./enemies-db";
 import type { EnemySpawnData } from "../logic/modules/active-map/enemies/enemies.types";
 import type { UnlockCondition } from "@shared/types/unlocks";
 import type { SkillId } from "./skills-db";
+import type { AchievementId } from "./achievements-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
@@ -84,6 +85,7 @@ export interface MapConfig {
   readonly mapsRequired?: Partial<Record<MapId, number>>;
   readonly maxLevel: number;
   readonly resourceMultiplier?: number; // Множник ресурсів для цієї мапи (застосовується до brick_rewards)
+  readonly achievementId?: AchievementId;
 }
 
 export interface MapListEntry {
@@ -348,7 +350,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       nodePosition: { x: -1, y: 1 },
-      maxLevel: 1,
+      maxLevel: 10,
+      achievementId: "megaBrick",
       bricks: ({ mapLevel }) => [
         templateWithBricks(
           "megaBrick",

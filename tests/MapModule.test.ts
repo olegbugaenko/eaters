@@ -27,6 +27,7 @@ import type { ArcModule } from "../src/logic/modules/scene/arc/arc.module";
 import type { UnitAutomationModule } from "../src/logic/modules/active-map/unit-automation/unit-automation.module";
 import { NecromancerModule } from "../src/logic/modules/active-map/necromancer/necromancer.module";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
+import type { AchievementsModule } from "../src/logic/modules/shared/achievements/achievements.module";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/unit-design/unit-design.module";
 import type { EnemiesModule } from "../src/logic/modules/active-map/enemies/enemies.module";
@@ -212,6 +213,11 @@ const createBonuses = (): BonusesModule => {
   return bonuses;
 };
 
+const createAchievementsStub = (): AchievementsModule => ({
+  syncFromMapStats: () => {},
+  getLevel: () => 0,
+} as unknown as AchievementsModule);
+
 const createResourceControllerStub = (): ResourceRunController & {
   grantResources: () => void;
   notifyBrickDestroyed: () => void;
@@ -288,6 +294,7 @@ describe("MapModule", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -381,6 +388,7 @@ describe("Map run control", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -514,6 +522,7 @@ describe("Map run control", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -597,6 +606,7 @@ describe("Map run control", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -683,6 +693,7 @@ describe("Map run control", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -777,6 +788,7 @@ describe("Map unlocking", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -887,6 +899,7 @@ describe("Map unlocking", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -945,6 +958,7 @@ describe("Last played map tracking", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -989,6 +1003,7 @@ describe("Last played map tracking", () => {
       necromancer,
       resources: nextResources,
       unlocks: nextUnlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -1065,6 +1080,7 @@ describe("Map auto restart", () => {
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),

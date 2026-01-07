@@ -118,6 +118,7 @@ export class MapModule implements GameModule {
     this.mapSelectViewTransform = parsed?.mapSelectViewTransform ?? null;
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
+    this.options.achievements.syncFromMapStats(this.mapStats);
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
@@ -277,6 +278,7 @@ export class MapModule implements GameModule {
     }
     // stats mutated → invalidate cached clone
     this.statsCloneDirty = true;
+    this.options.achievements.syncFromMapStats(this.mapStats);
     this.runLifecycle.completeRun();
     this.pushMapList();
     this.pushSelectedMap();
@@ -674,6 +676,7 @@ export class MapModule implements GameModule {
     };
   }
 
+
   private getHighestUnlockedLevel(mapId: MapId): number {
     const config = getMapConfig(mapId);
     const maxLevel = config.maxLevel;
@@ -950,4 +953,3 @@ export class MapModule implements GameModule {
     }
   }
 }
-

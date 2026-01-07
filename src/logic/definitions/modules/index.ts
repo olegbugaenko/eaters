@@ -1,6 +1,7 @@
 import { createArcDefinition } from "../../modules/scene/arc/arc.factory";
 import { createAudioDefinition } from "../../modules/shared/audio/audio.factory";
 import { createBonusesDefinition } from "../../modules/shared/bonuses/bonuses.factory";
+import { createAchievementsDefinition } from "../../modules/shared/achievements/achievements.factory";
 import { createBricksDefinition } from "../../modules/active-map/bricks/bricks.factory";
 import { createTargetingDefinition } from "../../modules/active-map/targeting/targeting.factory";
 import { createDamageDefinition } from "../../modules/active-map/targeting/damage.factory";
@@ -31,6 +32,7 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
   return [
     createUnlocksDefinition(),
     createBonusesDefinition(),
+    createAchievementsDefinition(),
     createStatisticsDefinition(),
     createResourcesDefinition(),
     createSkillTreeDefinition(),
