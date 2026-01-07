@@ -20,17 +20,14 @@ export interface UnitStateInput {
 }
 
 export interface UnitStateFactoryOptions {
-  readonly updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
   readonly pushUnitSceneState: (unit: PlayerUnitState, options?: { forceFill?: boolean }) => void;
 }
 
 export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInput> {
-  private readonly updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
   private readonly pushUnitSceneState: (unit: PlayerUnitState, options?: { forceFill?: boolean }) => void;
 
   constructor(options: UnitStateFactoryOptions) {
     super();
-    this.updateInternalFurnaceEffect = options.updateInternalFurnaceEffect;
     this.pushUnitSceneState = options.pushUnitSceneState;
   }
 
@@ -88,7 +85,6 @@ export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInp
       damageTransferRadius: factoryResult.damageTransferRadius,
       attackStackBonusPerHit: factoryResult.attackStackBonusPerHit,
       attackStackBonusCap: factoryResult.attackStackBonusCap,
-      currentAttackStackBonus: 0,
       attackCooldown: factoryResult.attackCooldown,
       targetBrickId: null,
       objectId: factoryResult.objectId,
@@ -106,7 +102,6 @@ export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInp
       timeSinceLastSpecial: getAbilityCooldownSeconds(),
       pheromoneHealingMultiplier: factoryResult.pheromoneHealingMultiplier,
       pheromoneAggressionMultiplier: factoryResult.pheromoneAggressionMultiplier,
-      pheromoneAttackBonuses: [],
       fireballDamageMultiplier: factoryResult.fireballDamageMultiplier,
       canUnitAttackDistant: factoryResult.canUnitAttackDistant,
       moduleLevels,
@@ -124,7 +119,6 @@ export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInp
    * Застосовує side effects: оновлює furnace effect та push до scene.
    */
   protected override transform(state: PlayerUnitState, _input: UnitStateInput): void {
-    this.updateInternalFurnaceEffect(state);
     if (state.visualEffectsDirty) {
       this.pushUnitSceneState(state, { forceFill: true });
     }

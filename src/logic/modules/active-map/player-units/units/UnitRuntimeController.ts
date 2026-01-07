@@ -8,8 +8,8 @@ import { isTargetOfType, type TargetSnapshot } from "../../targeting/targeting.t
 import type { DamageService } from "../../targeting/DamageService";
 import type { EnemiesModule } from "../../enemies/enemies.module";
 import type { EnemyRuntimeState } from "../../enemies/enemies.types";
+import type { StatusEffectsModule } from "../../status-effects/status-effects.module";
 import {
-  BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
   BURNING_TAIL_DURATION_MS,
   FREEZING_TAIL_DURATION_MS,
 } from "../../bricks/brick-effects.const";
@@ -48,6 +48,7 @@ export interface UnitRuntimeControllerOptions {
   projectiles: UnitProjectileController;
   damage?: DamageService;
   enemies?: EnemiesModule;
+  statusEffects: StatusEffectsModule;
   getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -58,7 +59,6 @@ export interface UnitRuntimeControllerOptions {
     unit: PlayerUnitState,
     options?: { forceFill?: boolean; forceStroke?: boolean }
   ) => void;
-  updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
 }
 
 
@@ -90,6 +90,7 @@ export class UnitRuntimeController {
   private readonly projectiles: UnitProjectileController;
   private readonly damage?: DamageService;
   private readonly enemies?: EnemiesModule;
+  private readonly statusEffects: StatusEffectsModule;
   private readonly getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -100,7 +101,6 @@ export class UnitRuntimeController {
     unit: PlayerUnitState,
     options?: { forceFill?: boolean; forceStroke?: boolean }
   ) => void;
-  private readonly updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
 
   constructor(options: UnitRuntimeControllerOptions) {
     this.scene = options.scene;
@@ -113,11 +113,11 @@ export class UnitRuntimeController {
     this.projectiles = options.projectiles;
     this.damage = options.damage;
     this.enemies = options.enemies;
+    this.statusEffects = options.statusEffects;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.syncUnitTargetingMode = options.syncUnitTargetingMode;
     this.removeUnit = options.removeUnit;
     this.updateSceneState = options.updateSceneState;
-    this.updateInternalFurnaceEffect = options.updateInternalFurnaceEffect;
   }
 
   public updateUnits(
@@ -662,9 +662,10 @@ export class UnitRuntimeController {
       return ZERO_VECTOR;
     }
 
+    const moveSpeed = this.getEffectiveMoveSpeed(unit);
     const desiredSpeed = Math.max(
-      Math.min(unit.moveSpeed, distanceOutsideRange),
-      unit.moveSpeed * 0.25
+      Math.min(moveSpeed, distanceOutsideRange),
+      moveSpeed * 0.25
     );
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
@@ -730,8 +731,16 @@ export class UnitRuntimeController {
     }
 
     // Обмежуємо силу уникнення
-    const maxAvoidance = unit.moveSpeed * 0.5; // Менша ніж у ворогів, щоб не заважати атаці
+    const maxAvoidance = this.getEffectiveMoveSpeed(unit) * 0.5; // Менша ніж у ворогів, щоб не заважати атаці
     return scaleVector(avoidanceVector, Math.min(maxAvoidance / length, 1));
+  }
+
+  private getEffectiveMoveSpeed(unit: PlayerUnitState): number {
+    const multiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    return Math.max(unit.moveSpeed * Math.max(multiplier, 0), 0);
   }
 
   private computeBrakingForce(
@@ -761,8 +770,9 @@ export class UnitRuntimeController {
       unit.wanderTarget = null;
       return this.computeBrakingForce(unit, movementState);
     }
-    const desiredSpeed = Math.max(unit.moveSpeed * IDLE_WANDER_SPEED_FACTOR, unit.moveSpeed * 0.2);
-    const cappedSpeed = Math.min(desiredSpeed, Math.max(distance, unit.moveSpeed * 0.2));
+    const moveSpeed = this.getEffectiveMoveSpeed(unit);
+    const desiredSpeed = Math.max(moveSpeed * IDLE_WANDER_SPEED_FACTOR, moveSpeed * 0.2);
+    const cappedSpeed = Math.min(desiredSpeed, Math.max(distance, moveSpeed * 0.2));
     const desiredVelocity = scaleVector(direction, cappedSpeed);
     return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
   }
@@ -895,11 +905,7 @@ export class UnitRuntimeController {
   private getAttackOutcome(
     unit: PlayerUnitState
   ): { damage: number; isCritical: boolean } {
-    const cappedStack = Math.min(
-      Math.max(unit.currentAttackStackBonus, 0),
-      Math.max(unit.attackStackBonusCap, 0)
-    );
-    const stackMultiplier = 1 + cappedStack;
+    const stackMultiplier = this.statusEffects.getUnitAttackMultiplier(unit.id);
     const baseDamage = Math.max(unit.baseAttackDamage * stackMultiplier, 0);
     const variance = 0.2;
     const varianceMultiplier = 1 - variance + Math.random() * (variance * 2);
@@ -1080,9 +1086,7 @@ export class UnitRuntimeController {
     }
 
     if (unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0) {
-      const nextStack = unit.currentAttackStackBonus + unit.attackStackBonusPerHit;
-      unit.currentAttackStackBonus = Math.min(nextStack, unit.attackStackBonusCap);
-      this.updateInternalFurnaceEffect(unit);
+      this.statusEffects.handleUnitAttack(unit.id);
     }
 
     if (targetDestroyed) {

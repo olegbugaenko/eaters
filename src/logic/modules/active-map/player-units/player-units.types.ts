@@ -22,6 +22,7 @@ import type { AbilitySoundPlayer } from "./PlayerUnitAbilities";
 import type { TargetingService } from "../targeting/TargetingService";
 import type { DamageService } from "../targeting/DamageService";
 import type { EnemiesModule } from "../enemies/enemies.module";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 export interface PlayerUnitSpawnData {
   readonly designId?: UnitDesignId;
@@ -40,6 +41,7 @@ export interface PlayerUnitsModuleOptions {
   movement: MovementService;
   bonuses: BonusesModule;
   explosions: ExplosionModule;
+  statusEffects: StatusEffectsModule;
   projectiles: UnitProjectileController;
   targeting?: TargetingService;
   damage?: DamageService;

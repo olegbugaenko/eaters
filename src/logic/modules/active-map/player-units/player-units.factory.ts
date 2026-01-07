@@ -20,6 +20,7 @@ export const createPlayerUnitsDefinition = (
       movement: container.get("movement"),
       bonuses: container.get("bonuses"),
       explosions: container.get("explosion"),
+      statusEffects: container.get("statusEffects"),
       projectiles: container.get("unitProjectiles"),
       targeting: container.get("targeting"),
       damage: container.get("damage"),

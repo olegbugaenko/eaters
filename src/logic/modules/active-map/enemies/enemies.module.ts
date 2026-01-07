@@ -37,6 +37,7 @@ import { isPassableFor, type PassabilityTag } from "@/logic/shared/navigation/pa
 import type { ObstacleDescriptor, ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
 import { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import { BrickObstacleProvider } from "./brick-obstacle-provider";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
@@ -73,6 +74,7 @@ export class EnemiesModule implements GameModule {
   private readonly navigationState = new Map<string, EnemyNavigationState>();
   private readonly stateFactory: EnemyStateFactory;
   private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(ENEMY_SPATIAL_GRID_CELL_SIZE);
+  private readonly statusEffects: StatusEffectsModule;
 
   private enemies = new Map<string, InternalEnemyState>();
   private enemyOrder: InternalEnemyState[] = [];
@@ -90,6 +92,7 @@ export class EnemiesModule implements GameModule {
     this.damage = options.damage;
     this.explosions = options.explosions;
     this.projectiles = options.projectiles;
+    this.statusEffects = options.statusEffects;
     this.obstacles = options.obstacles ?? new BrickObstacleProvider(options.bricks);
     this.pathfinder =
       options.pathfinder ??
@@ -103,6 +106,13 @@ export class EnemiesModule implements GameModule {
     if (this.targeting) {
       this.targeting.registerProvider(new EnemyTargetingProvider(this));
     }
+
+    this.statusEffects.registerEnemyAdapter({
+      hasEnemy: (enemyId) => this.enemies.has(enemyId),
+      damageEnemy: (enemyId, amount) => {
+        this.applyDamage(enemyId, amount);
+      },
+    });
   }
 
   public initialize(): void {
@@ -148,7 +158,8 @@ export class EnemiesModule implements GameModule {
       activeTargets.set(enemy.id, target);
       
       // Статичні вороги (moveSpeed === 0) не рухаються
-      if (enemy.moveSpeed > 0) {
+      const moveSpeed = this.getEffectiveMoveSpeed(enemy);
+      if (moveSpeed > 0) {
         this.updateNavigationState(enemy, target, deltaSeconds);
         const force = this.computeMovementForce(enemy, target);
         this.movement.setForce(enemy.movementId, force);
@@ -292,7 +303,8 @@ export class EnemiesModule implements GameModule {
       return 0;
     }
     const armorPenetration = clampNumber(options?.armorPenetration ?? 0, 0, Number.POSITIVE_INFINITY);
-    const effectiveArmor = Math.max(enemy.armor - armorPenetration, 0);
+    const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "enemy", id: enemyId });
+    const effectiveArmor = Math.max(enemy.armor + armorDelta - armorPenetration, 0);
     const appliedDamage = Math.max(damage - effectiveArmor, 0);
     if (appliedDamage <= 0) {
       return 0;
@@ -301,6 +313,9 @@ export class EnemiesModule implements GameModule {
     const remainingHp = Math.max(enemy.hp - appliedDamage, 0);
     const dealt = enemy.hp - remainingHp;
     enemy.hp = remainingHp;
+    if (dealt > 0) {
+      this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });
+    }
     this.totalHpCached = Math.max(0, this.totalHpCached - dealt);
 
     if (enemy.hp <= 0) {
@@ -349,6 +364,7 @@ export class EnemiesModule implements GameModule {
     this.enemyOrder = this.enemyOrder.filter((item) => item.id !== enemy.id);
     this.spatialIndex.delete(enemy.id);
     this.navigationState.delete(enemy.id);
+    this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
   }
 
   private tryAttack(
@@ -443,6 +459,7 @@ export class EnemiesModule implements GameModule {
     this.enemyOrder.forEach((enemy) => {
       this.scene.removeObject(enemy.sceneObjectId);
       this.movement.removeBody(enemy.movementId);
+      this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
     });
     this.enemies.clear();
     this.enemyOrder = [];
@@ -466,12 +483,13 @@ export class EnemiesModule implements GameModule {
     // With limited steering force, enemy needs extra space to turn
     // Estimate: time to turn 90 degrees at max steering force
     const mass = this.getEnemyMass(enemy);
-    const baseAcceleration = enemy.moveSpeed * 5;
+    const moveSpeed = this.getEffectiveMoveSpeed(enemy);
+    const baseAcceleration = moveSpeed * 5;
     const maxForce = baseAcceleration * mass;
     // Rough estimate: time to change velocity direction by 90 degrees
     // Assuming we need to change velocity by moveSpeed (perpendicular component)
-    const turnTime = maxForce > 0 ? enemy.moveSpeed / maxForce : 0.2;
-    const maneuverMargin = enemy.moveSpeed * turnTime * 0.5; // Conservative margin
+    const turnTime = maxForce > 0 ? moveSpeed / maxForce : 0.2;
+    const maneuverMargin = moveSpeed * turnTime * 0.5; // Conservative margin
     const targetRadius = baseTargetRadius + maneuverMargin;
     
     const existing = this.navigationState.get(enemy.id);
@@ -635,7 +653,8 @@ export class EnemiesModule implements GameModule {
 
     // Desired speed - slow down as we approach
     const approachDistance = Math.min(distanceOutsideRange, distanceToDestination);
-    const desiredSpeed = Math.max(Math.min(enemy.moveSpeed, approachDistance), enemy.moveSpeed * 0.25);
+    const moveSpeed = this.getEffectiveMoveSpeed(enemy);
+    const desiredSpeed = Math.max(Math.min(moveSpeed, approachDistance), moveSpeed * 0.25);
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
     const avoidance = this.computeObstacleAvoidance(enemy, desiredVelocity);
@@ -691,8 +710,16 @@ export class EnemiesModule implements GameModule {
       return ZERO_VECTOR;
     }
 
-    const maxAvoidance = enemy.moveSpeed;
+    const maxAvoidance = this.getEffectiveMoveSpeed(enemy);
     return scaleVector(avoidanceVector, maxAvoidance / length);
+  }
+
+  private getEffectiveMoveSpeed(enemy: InternalEnemyState): number {
+    const multiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "enemy",
+      id: enemy.id,
+    });
+    return Math.max(enemy.moveSpeed * Math.max(multiplier, 0), 0);
   }
 
   /**
@@ -713,7 +740,7 @@ export class EnemiesModule implements GameModule {
     // Calculate max force based on moveSpeed and mass (similar to player units)
     // Use moveSpeed * 5 as base acceleration, multiplied by mass
     // This limits how quickly velocity can change
-    const baseAcceleration = enemy.moveSpeed * 5;
+    const baseAcceleration = this.getEffectiveMoveSpeed(enemy) * 5;
     const mass = this.getEnemyMass(enemy);
     const maxForce = Math.max(baseAcceleration * mass, 0);
 

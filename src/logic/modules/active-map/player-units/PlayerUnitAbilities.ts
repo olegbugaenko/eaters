@@ -18,9 +18,9 @@ import type { SkillId } from "../../../../db/skills-db";
 import {
   DEFAULT_PHEROMONE_IDLE_THRESHOLD_SECONDS,
 } from "./abilities/ability.const";
-import type { PheromoneAttackBonusState } from "./abilities/AbilityUnitState";
 import { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SoundEffectPlayer } from "../../shared/audio/audio.types";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 // Re-export for backward compatibility
 export type AbilitySoundPlayer = SoundEffectPlayer;
@@ -34,6 +34,7 @@ const ABILITY_SOUND_URLS: Record<AbilitySoundId, string> = {
 
 interface PlayerUnitAbilitiesOptions {
   sceneService: AbilityVisualService;
+  statusEffects: StatusEffectsModule;
   logEvent: (message: string) => void;
   formatUnitLabel: (unit: PlayerUnitAbilityState) => string;
   getUnits: () => readonly PlayerUnitAbilityState[];
@@ -78,10 +79,12 @@ export class PlayerUnitAbilities {
   private readonly findNearestBrick: (position: SceneVector2) => string | null;
   private readonly audio?: AbilitySoundPlayer;
   private readonly dependencies: AbilityRuntimeDependencies;
+  private readonly statusEffects: StatusEffectsModule;
   private unitStates = new Map<string, UnitAbilityRuntime>();
 
   constructor(options: PlayerUnitAbilitiesOptions) {
     this.visuals = options.sceneService;
+    this.statusEffects = options.statusEffects;
     this.definitions = PLAYER_UNIT_ABILITY_DEFINITIONS;
     this.logEvent = options.logEvent;
     this.formatUnitLabel = options.formatUnitLabel;
@@ -105,6 +108,7 @@ export class PlayerUnitAbilities {
       damageUnit: this.damageUnit,
       findNearestBrick: this.findNearestBrick,
       projectiles: options.projectiles,
+      statusEffects: this.statusEffects,
     };
   }
 
@@ -213,26 +217,7 @@ export class PlayerUnitAbilities {
   }
 
   public consumeAttackBonuses(unit: PlayerUnitAbilityState): number {
-    if (unit.pheromoneAttackBonuses.length === 0) {
-      return 0;
-    }
-    let total = 0;
-    const survivors: PheromoneAttackBonusState[] = [];
-    unit.pheromoneAttackBonuses.forEach((entry) => {
-      if (entry.remainingAttacks <= 0 || entry.bonusDamage <= 0) {
-        return;
-      }
-      total += entry.bonusDamage;
-      const next = entry.remainingAttacks - 1;
-      if (next > 0) {
-        survivors.push({ bonusDamage: entry.bonusDamage, remainingAttacks: next });
-      }
-    });
-    unit.pheromoneAttackBonuses = survivors;
-    if (survivors.length === 0) {
-      this.visuals.removeEffect(unit.id, "frenzyAura");
-    }
-    return total;
+    return this.statusEffects.consumeAttackBonus(unit.id);
   }
 
   public getAbilityCooldownSeconds(): number {
@@ -406,4 +391,4 @@ export class PlayerUnitAbilities {
   }
 }
 
-export type { PlayerUnitAbilityState, PheromoneAttackBonusState } from "./abilities";
+export type { PlayerUnitAbilityState } from "./abilities";

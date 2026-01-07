@@ -11,6 +11,7 @@ import type { UnitProjectileController } from "../projectiles/ProjectileControll
 import type { ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
 import type { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import type { BricksModule } from "../bricks/bricks.module";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 export interface EnemySpawnData {
   readonly id?: string;
@@ -63,6 +64,7 @@ export interface EnemiesModuleOptions {
   readonly explosions?: ExplosionModule;
   readonly projectiles?: UnitProjectileController;
   readonly bricks: BricksModule;
+  readonly statusEffects: StatusEffectsModule;
   readonly obstacles?: ObstacleProvider;
   readonly pathfinder?: PathfindingService;
 }

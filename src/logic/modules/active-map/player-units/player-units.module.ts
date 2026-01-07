@@ -10,11 +10,10 @@ import { SceneObjectManager } from "../../../services/scene-object-manager/Scene
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
 import { MovementService, MovementBodyState } from "../../../services/movement/MovementService";
 import {
-  VisualEffectState,
-  createVisualEffectState,
-  setVisualEffectFillOverlay,
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
+  setVisualEffectFillOverlay,
+  setVisualEffectStrokeOverlay,
 } from "../../../visuals/VisualEffectState";
 import {
   PlayerUnitType,
@@ -56,11 +55,7 @@ import { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { FireballModule } from "../../scene/fireball/fireball.module";
 import { MapRunState } from "../map/MapRunState";
 import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
-import {
-  AbilitySoundPlayer,
-  PlayerUnitAbilities,
-  PheromoneAttackBonusState,
-} from "./PlayerUnitAbilities";
+import { AbilitySoundPlayer, PlayerUnitAbilities } from "./PlayerUnitAbilities";
 import { AbilityVisualService } from "./abilities/AbilityVisualService";
 import { UnitFactory, UnitCreationData } from "./units/UnitFactory";
 import { UnitProjectileController } from "../projectiles/ProjectileController";
@@ -73,14 +68,11 @@ import { BricksTargetingProvider } from "../targeting/BricksTargetingProvider";
 import { PlayerUnitsTargetingProvider } from "./PlayerUnitsTargetingProvider";
 import type { DamageService } from "../targeting/DamageService";
 import type { EnemiesModule } from "../enemies/enemies.module";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
   CRITICAL_HIT_EXPLOSION_RADIUS,
-  INTERNAL_FURNACE_EFFECT_ID,
-  INTERNAL_FURNACE_TINT_COLOR,
-  INTERNAL_FURNACE_MAX_INTENSITY,
-  INTERNAL_FURNACE_EFFECT_PRIORITY,
   PHEROMONE_TIMER_CAP_SECONDS,
   TARGETING_RADIUS_STEP,
   IDLE_WANDER_RADIUS,
@@ -115,6 +107,7 @@ export class PlayerUnitsModule implements GameModule {
   private readonly targeting: TargetingService;
   private readonly damage?: DamageService;
   private readonly enemies?: EnemiesModule;
+  private readonly statusEffects: StatusEffectsModule;
   private readonly arcs?: ArcModule;
   private readonly effects?: EffectsModule;
   private readonly fireballs?: FireballModule;
@@ -147,6 +140,7 @@ export class PlayerUnitsModule implements GameModule {
     this.movement = options.movement;
     this.bonuses = options.bonuses;
     this.explosions = options.explosions;
+    this.statusEffects = options.statusEffects;
     const targeting = options.targeting ?? new TargetingService();
     if (!options.targeting) {
       targeting.registerProvider(new BricksTargetingProvider(this.bricks));
@@ -174,6 +168,7 @@ export class PlayerUnitsModule implements GameModule {
 
     this.abilities = new PlayerUnitAbilities({
       sceneService: abilitySceneService,
+      statusEffects: this.statusEffects,
       logEvent: (message: string) => this.logPheromoneEvent(message),
       formatUnitLabel: (unit) => this.formatUnitLogLabel(unit),
       getUnits: () => this.unitOrder,
@@ -229,16 +224,40 @@ export class PlayerUnitsModule implements GameModule {
       projectiles: this.projectiles,
       damage: this.damage,
       enemies: this.enemies,
+      statusEffects: this.statusEffects,
       getDesignTargetingMode: this.getDesignTargetingMode,
       syncUnitTargetingMode: (unit) => this.syncUnitTargetingMode(unit),
       removeUnit: (unit) => this.removeUnit(unit),
       updateSceneState: (unit, options) => this.pushUnitSceneState(unit, options),
-      updateInternalFurnaceEffect: (unit) => this.updateInternalFurnaceEffect(unit),
     });
 
     this.unitStateFactory = new UnitStateFactory({
-      updateInternalFurnaceEffect: (unit) => this.updateInternalFurnaceEffect(unit),
       pushUnitSceneState: (unit, options) => this.pushUnitSceneState(unit, options),
+    });
+
+    this.statusEffects.registerUnitAdapter({
+      applyOverlay: (unitId, effectId, target, overlay) => {
+        const unit = this.units.get(unitId);
+        if (!unit) {
+          return;
+        }
+        const changed =
+          target === "stroke"
+            ? setVisualEffectStrokeOverlay(unit.visualEffects, effectId, overlay)
+            : setVisualEffectFillOverlay(unit.visualEffects, effectId, overlay);
+        if (changed) {
+          unit.visualEffectsDirty = true;
+        }
+      },
+      applyAura: (unitId, effectId) => {
+        this.effects?.applyEffect(unitId, effectId as never);
+      },
+      removeAura: (unitId, effectId) => {
+        this.effects?.removeEffect(unitId, effectId as never);
+      },
+      damageUnit: (unitId, amount) => {
+        this.applyDamage(unitId, amount);
+      },
     });
   }
 
@@ -474,7 +493,13 @@ export class PlayerUnitsModule implements GameModule {
       getAbilityCooldownSeconds: () => this.abilities.getAbilityCooldownSeconds(),
     };
 
-    return this.unitStateFactory.createWithTransform(input);
+    const state = this.unitStateFactory.createWithTransform(input);
+    this.statusEffects.ensureInternalFurnace(
+      state.id,
+      state.attackStackBonusPerHit,
+      state.attackStackBonusCap,
+    );
+    return state;
   }
 
   private syncUnitTargetingMode(unit: PlayerUnitState): UnitTargetingMode {
@@ -550,37 +575,6 @@ export class PlayerUnitsModule implements GameModule {
       ...(fillUpdate ? { fill: fillUpdate } : {}),
       ...(strokeUpdate ? { stroke: strokeUpdate } : {}),
     });
-  }
-
-  private updateInternalFurnaceEffect(unit: PlayerUnitState): void {
-    const hasStacks =
-      unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0 && unit.hp > 0;
-    const cap = Math.max(unit.attackStackBonusCap, 1e-6);
-    const ratio = hasStacks
-      ? clampNumber(unit.currentAttackStackBonus / cap, 0, 1)
-      : 0;
-    let intensity = 0;
-    if (ratio > 0) {
-      const normalized = Math.sqrt(ratio);
-      intensity = Math.min(
-        normalized * INTERNAL_FURNACE_MAX_INTENSITY,
-        INTERNAL_FURNACE_MAX_INTENSITY
-      );
-    }
-    const overlayChanged = setVisualEffectFillOverlay(
-      unit.visualEffects,
-      INTERNAL_FURNACE_EFFECT_ID,
-      intensity > 0
-        ? {
-            color: INTERNAL_FURNACE_TINT_COLOR,
-            intensity,
-            priority: INTERNAL_FURNACE_EFFECT_PRIORITY,
-          }
-        : null
-    );
-    if (overlayChanged) {
-      unit.visualEffectsDirty = true;
-    }
   }
 
   private spawnCriticalHitEffect(position: SceneVector2): void {
@@ -664,7 +658,8 @@ export class PlayerUnitsModule implements GameModule {
       return 0;
     }
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
-    const effectiveArmor = Math.max(unit.armor - armorPenetration, 0);
+    const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unitId });
+    const effectiveArmor = Math.max(unit.armor + armorDelta - armorPenetration, 0);
     const inflicted = Math.max(damage - effectiveArmor, 0);
     if (inflicted <= 0) {
       return 0;
@@ -673,6 +668,7 @@ export class PlayerUnitsModule implements GameModule {
     unit.hp = Math.max(unit.hp - inflicted, 0);
     if (previousHp !== unit.hp) {
       this.statistics?.recordDamageTaken(previousHp - unit.hp);
+      this.statusEffects.handleTargetHit({ type: "unit", id: unitId });
       
       // Apply knockback from enemy attack if configured
       if (options?.knockBackDirection && (options.knockBackDistance ?? 0) > 0) {
@@ -788,6 +784,7 @@ export class PlayerUnitsModule implements GameModule {
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.arcs?.clearArcsForUnit(unit.id);
+    this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
@@ -800,6 +797,7 @@ export class PlayerUnitsModule implements GameModule {
       this.scene.removeObject(unit.objectId);
       this.movement.removeBody(unit.movementId);
       this.arcs?.clearArcsForUnit(unit.id);
+      this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     });
     this.unitOrder = [];
     this.units.clear();

@@ -4,6 +4,7 @@ import type { UnitModuleConfig, UnitModuleId } from "../../../../../db/unit-modu
 import type { PlayerUnitAbilityState } from "./AbilityUnitState";
 import type { AbilityVisualService } from "./AbilityVisualService";
 import type { UnitProjectileController } from "../../projectiles/ProjectileController"; 
+import type { StatusEffectsModule } from "../../status-effects/status-effects.module";
 
 export type AbilitySoundId = "heal" | "frenzy" | "fireball" | "tailNeedle";
 
@@ -42,6 +43,7 @@ export interface AbilityRuntimeDependencies {
   readonly damageUnit: (unitId: string, damage: number) => void;
   readonly findNearestBrick: (position: SceneVector2) => string | null;
   readonly projectiles?: UnitProjectileController;
+  readonly statusEffects: StatusEffectsModule;
 }
 
 export interface AbilityCooldownInfo {
