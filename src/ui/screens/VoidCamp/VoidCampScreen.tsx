@@ -59,6 +59,12 @@ import { useAudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import { clampVolumePercentage } from "@logic/utils/audioSettings";
 import { StatisticsModal } from "@screens/VoidCamp/components/StatisticsModal/StatisticsModal";
+import { AchievementsModal } from "@screens/VoidCamp/components/AchievementsModal/AchievementsModal";
+import {
+  ACHIEVEMENTS_BRIDGE_KEY,
+  DEFAULT_ACHIEVEMENTS_STATE,
+} from "@logic/modules/shared/achievements/achievements.const";
+import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -77,6 +83,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState(false);
+  const [isAchievementsOpen, setAchievementsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("game-data");
   const [statusMessage, setStatusMessage] = useState<SettingsMessage | null>(null);
   const { settings: audioSettings, setAudioSetting } = useAudioSettings();
@@ -98,6 +105,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     STATISTICS_BRIDGE_KEY,
     DEFAULT_CAMP_STATISTICS
+  );
+  const achievementsPayload = useBridgeValue(
+    bridge,
+    ACHIEVEMENTS_BRIDGE_KEY,
+    DEFAULT_ACHIEVEMENTS_STATE
   );
   const moduleWorkshopState = useBridgeValue(
     bridge,
@@ -164,6 +176,20 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const handleCloseStatistics = useCallback(() => {
     setStatisticsOpen(false);
   }, []);
+
+  const handleOpenAchievements = useCallback(() => {
+    setAchievementsOpen(true);
+  }, []);
+
+  const handleCloseAchievements = useCallback(() => {
+    setAchievementsOpen(false);
+  }, []);
+
+  // Check if there are any unlocked achievements
+  const hasUnlockedAchievements = useMemo(
+    () => achievementsPayload.achievements.some((achievement) => achievement.level > 0),
+    [achievementsPayload.achievements]
+  );
 
   const handleExportSave = useCallback(() => {
     setSettingsTab("game-data");
@@ -287,6 +313,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             versionLabel={currentVersion?.displayName}
             onVersionClick={currentVersion ? () => setVersionHistoryOpen(true) : undefined}
             onStatisticsClick={handleOpenStatistics}
+            onAchievementsClick={handleOpenAchievements}
+            showAchievements={hasUnlockedAchievements}
             onSettingsClick={handleOpenSettings}
             onExitClick={handleExit}
           />
@@ -335,6 +363,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         timePlayedMs={timePlayed}
         favoriteMap={favoriteMap}
         statistics={statistics}
+      />
+      <AchievementsModal
+        isOpen={isAchievementsOpen}
+        onClose={handleCloseAchievements}
+        achievements={achievementsPayload.achievements}
       />
     </>
   );
