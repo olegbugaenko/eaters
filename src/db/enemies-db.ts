@@ -638,7 +638,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     armor: 10,
     baseDamage: 0,
     attackInterval: 1.8,
-    attackRange: 380,
+    attackRange: 600,
     moveSpeed: 0,
     physicalSize: 20,
     reward: normalizeResourceAmount({
@@ -649,7 +649,8 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       arcType: "freeze",
       statusEffectId: "freeze",
       statusEffectOptions: {
-        speedMultiplier: 0.5,
+        speedMultiplier: 0.7,
+        durationMs: 2000,
       },
     },
   },
