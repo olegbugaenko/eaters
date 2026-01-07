@@ -61,6 +61,8 @@ export interface EnemyConfig {
   readonly reward?: ResourceAmount;
   readonly emitter?: ParticleEmitterConfig;
   readonly projectile?: UnitProjectileVisualConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
+  readonly knockBackDistance?: number; // Відстань knockback при атаці юнітів
+  readonly knockBackSpeed?: number; // Швидкість knockback при атаці юнітів
 }
 
 const BASIC_ENEMY_VERTICES: readonly SceneVector2[] = [
@@ -259,9 +261,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             },
         ],
     },
-    maxHp: 80,
+    maxHp: 125,
     armor: 8,
-    baseDamage: 14,
+    baseDamage: 24,
     attackInterval: 1.5,
     attackRange: 400,
     moveSpeed: 0, // Статична турель
@@ -281,6 +283,8 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       hitRadius: 8,
       explosion: "smallCannon", // Тип експлозії при влучанні снаряда
     },
+    knockBackDistance: 40,
+    knockBackSpeed: 120,
   },
 };
 

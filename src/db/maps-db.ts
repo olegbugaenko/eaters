@@ -80,6 +80,7 @@ export interface MapConfig {
   readonly nodePosition: MapNodePosition;
   readonly mapsRequired?: Partial<Record<MapId, number>>;
   readonly maxLevel: number;
+  readonly resourceMultiplier?: number; // Множник ресурсів для цієї мапи (застосовується до brick_rewards)
 }
 
 export interface MapListEntry {
@@ -394,7 +395,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     return {
       name: "Turret Rings",
       size,
-      icon: "turretRings.png",
+      icon: "ring_turrets.png",
       unlockedBy: [
         {
           type: "map",
@@ -453,6 +454,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       mapsRequired: { initial: 1 },
+      resourceMultiplier: 2, // x2 бонус до ресурсів
     } satisfies MapConfig;
   })(),
   sphinx: (() => {
@@ -881,7 +883,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       size,
       icon: "forge.png",
       spawnPoints: [{ x: center.x, y: center.y - outerSize / 2 + 80 }],
-      enemySpawnPoints: [
+      /*enemySpawnPoints: [
         {
           position: enemySpawnPosition,
           spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
@@ -891,7 +893,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           ],
           maxConcurrent: 10,
         },
-      ],
+      ],*/
       nodePosition: { x: 3, y: 2 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));

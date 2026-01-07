@@ -12,6 +12,7 @@ import {
   getMapList,
   isMapId,
 } from "../../../../db/maps-db";
+import type { BonusEffectMap } from "@shared/types/bonuses";
 import { buildBricksFromBlueprints } from "../../../services/brick-layout/BrickLayoutService";
 import { MapSelectionState } from "./map.selection";
 import { MapVisualEffects } from "./map.visual-effects";
@@ -66,6 +67,7 @@ export class MapModule implements GameModule {
   private mapSelectViewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private readonly options: MapModuleOptions;
   private readonly sceneCleanup: MapSceneCleanupContract;
+  private currentMapBonusSourceId: string | null = null;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
@@ -100,6 +102,7 @@ export class MapModule implements GameModule {
   }
 
   public reset(): void {
+    this.unregisterMapResourceBonus();
     this.runLifecycle.reset();
     this.autoRestartEnabled = false;
     this.refreshAutoRestartState();
@@ -207,6 +210,8 @@ export class MapModule implements GameModule {
       this.selection.recordLastPlayed(selectedMapId, level);
       this.pushLastPlayedMap();
     }
+    // Unregister map resource bonus
+    this.unregisterMapResourceBonus();
     this.runLifecycle.cleanupActiveMap();
     this.options.runState.reset();
     this.pushSelectedMap();
@@ -319,6 +324,10 @@ export class MapModule implements GameModule {
     this.selection.updateSelection(mapId, level);
     this.selection.recordLastPlayed(mapId, level);
     this.pushLastPlayedMap();
+    
+    // Register map resource multiplier bonus if configured
+    this.registerMapResourceBonus(mapId, config);
+    
     const bricks = this.generateBricks(config, level);
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
@@ -912,6 +921,33 @@ export class MapModule implements GameModule {
       clone[mapId as MapId] = levelClone;
     });
     return clone;
+  }
+
+  private registerMapResourceBonus(mapId: MapId, config: MapConfig): void {
+    // Unregister previous bonus if any
+    this.unregisterMapResourceBonus();
+
+    // Register new bonus if multiplier is configured
+    if (config.resourceMultiplier !== undefined && config.resourceMultiplier > 0) {
+      const sourceId = `map_${mapId}`;
+      const multiplier = Math.max(config.resourceMultiplier, 0);
+      
+      const effects: BonusEffectMap = {
+        brick_rewards: {
+          multiplier: () => multiplier,
+        },
+      };
+
+      this.options.bonuses.registerSource(sourceId, effects);
+      this.currentMapBonusSourceId = sourceId;
+    }
+  }
+
+  private unregisterMapResourceBonus(): void {
+    if (this.currentMapBonusSourceId !== null) {
+      this.options.bonuses.unregisterSource(this.currentMapBonusSourceId);
+      this.currentMapBonusSourceId = null;
+    }
   }
 }
 

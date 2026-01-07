@@ -649,7 +649,12 @@ export class PlayerUnitsModule implements GameModule {
   public applyDamage(
     unitId: string,
     damage: number,
-    options?: { armorPenetration?: number },
+    options?: { 
+      armorPenetration?: number;
+      knockBackDistance?: number;
+      knockBackSpeed?: number;
+      knockBackDirection?: SceneVector2;
+    },
   ): number {
     if (damage <= 0) {
       return 0;
@@ -668,6 +673,11 @@ export class PlayerUnitsModule implements GameModule {
     unit.hp = Math.max(unit.hp - inflicted, 0);
     if (previousHp !== unit.hp) {
       this.statistics?.recordDamageTaken(previousHp - unit.hp);
+      
+      // Apply knockback from enemy attack if configured
+      if (options?.knockBackDirection && (options.knockBackDistance ?? 0) > 0) {
+        this.applyEnemyKnockBack(unit, options.knockBackDirection, options.knockBackDistance ?? 0, options.knockBackSpeed ?? 0);
+      }
     }
     return previousHp - unit.hp;
   }
@@ -706,6 +716,38 @@ export class PlayerUnitsModule implements GameModule {
     }
 
     let axis = direction;
+    if (distance > 0) {
+      axis = scaleVector(direction, 1 / distance);
+    } else if (!vectorHasLength(axis)) {
+      axis = { x: Math.cos(unit.rotation), y: Math.sin(unit.rotation) };
+    }
+
+    if (!vectorHasLength(axis)) {
+      axis = { x: 0, y: -1 };
+    }
+
+    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    if (knockBackSpeed <= 0) {
+      return;
+    }
+
+    const reduction = Math.max(unit.knockBackReduction, 1);
+    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+  }
+
+  private applyEnemyKnockBack(
+    unit: PlayerUnitState,
+    direction: SceneVector2,
+    knockBackDistance: number,
+    knockBackSpeedRaw: number
+  ): void {
+    if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
+      return;
+    }
+
+    let axis = direction;
+    const distance = vectorLength(direction);
     if (distance > 0) {
       axis = scaleVector(direction, 1 / distance);
     } else if (!vectorHasLength(axis)) {

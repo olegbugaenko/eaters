@@ -388,8 +388,14 @@ export class EnemiesModule implements GameModule {
         visual: config.projectile,
         onHit: (hitContext: UnitProjectileHitContext) => {
           if (hitContext.targetType === "unit" && this.damage) {
+            // Calculate knockback direction from enemy to hit position
+            const knockBackDirection = subtractVectors(hitContext.position, enemy.position);
+            
             this.damage.applyTargetDamage(hitContext.targetId, enemy.baseDamage, {
               armorPenetration: 0,
+              knockBackDistance: config.knockBackDistance,
+              knockBackSpeed: config.knockBackSpeed,
+              knockBackDirection: vectorLength(knockBackDirection) > 0 ? knockBackDirection : direction,
             });
 
             if (this.explosions && config.projectile?.explosion) {
@@ -408,8 +414,14 @@ export class EnemiesModule implements GameModule {
 
     // Якщо немає конфігу снаряда - instant damage
     if (this.damage) {
+      // Calculate knockback direction from enemy to target
+      const knockBackDirection = toTarget;
+      
       this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
         armorPenetration: 0,
+        knockBackDistance: config.knockBackDistance,
+        knockBackSpeed: config.knockBackSpeed,
+        knockBackDirection: vectorLength(knockBackDirection) > 0 ? knockBackDirection : normalizeVector(toTarget) || { x: 1, y: 0 },
       });
 
       // For instant damage, use default explosion type (plasmoid) if explosions module is available
