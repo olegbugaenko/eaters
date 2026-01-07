@@ -472,11 +472,14 @@ export class EnemiesModule implements GameModule {
         { type: "unit", id: target.id },
       );
       if (arcAttack.statusEffectId) {
-        this.statusEffects.applyEffect(
-          arcAttack.statusEffectId,
-          { type: "unit", id: target.id },
-          arcAttack.statusEffectOptions,
-        );
+        const effectTarget = { type: "unit", id: target.id } as const;
+        if (!this.statusEffects.hasEffect(arcAttack.statusEffectId, effectTarget)) {
+          this.statusEffects.applyEffect(
+            arcAttack.statusEffectId,
+            effectTarget,
+            arcAttack.statusEffectOptions,
+          );
+        }
       }
       if (this.damage && enemy.baseDamage > 0) {
         const knockBackDirection = toTarget;
