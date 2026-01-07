@@ -175,13 +175,6 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       size,
       spawnPoints: [spawnPoint],
       icon: "training.png",
-      unlockedBy: [
-        {
-          type: "map",
-          id: "tutorialZone",
-          level: 1,
-        },
-      ],
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
 
@@ -288,6 +281,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       nodePosition: { x: 1, y: 1 },
+      mapsRequired: { trainingGrounds: 1 },
       maxLevel: 1,
       bricks: ({ mapLevel }) => [
         polygonWithBricks(
@@ -326,7 +320,6 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           position: { ...spawnPoint },
         },
       ],
-      mapsRequired: { trainingGrounds: 1 },
     } satisfies MapConfig;
   })(),
   megaBrick: (() => {
