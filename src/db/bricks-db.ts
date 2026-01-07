@@ -31,7 +31,8 @@ export type BrickType =
   | "neutronBrick"
   | "neutronBrick2"
   | "darkMatterBrick"
-  | "floodedArch";
+  | "floodedArch"
+  | "megaBrick";
 
 export interface BrickConfig {
   size: SceneSize;
@@ -288,6 +289,42 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       stone: 1,
+    },
+  },
+  megaBrick: {
+    size: { width: 128, height: 128 },
+    fill: {
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 64,
+      stops: SMALL_SQUARE_GRAY_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.6,
+      },
+    },
+    stroke: { color: { r: 0.33, g: 0.33, b: 0.38, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 300,
+      armor: 0,
+      baseDamage: 6,
+      brickKnockBackDistance: 90,
+      brickKnockBackSpeed: 160,
+      brickKnockBackAmplitude: 6,
+      physicalSize: 64,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
+    },
+    rewards: {
+      stone: 100,
     },
   },
   smallSquareYellow: {

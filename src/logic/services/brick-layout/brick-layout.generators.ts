@@ -1,4 +1,5 @@
 import type { BrickType } from "../../../db/bricks-db";
+import { getBrickConfig } from "../../../db/bricks-db";
 import type { BrickData } from "../../modules/active-map/bricks/bricks.types";
 import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
 import type {
@@ -7,6 +8,7 @@ import type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  TemplateWithBricksOptions,
 } from "./brick-layout.types";
 import {
   sanitizeBrickLevel,
@@ -190,4 +192,70 @@ export const generateSquareBricks = (
     },
     generationOptions
   );
+};
+
+/**
+ * Generates bricks from a template pattern (e.g., letters, numbers).
+ * Template is an array of strings where "#" = brick, " " = empty.
+ */
+export const generateTemplateBricks = (
+  brickType: BrickType,
+  options: TemplateWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] => {
+  const { template, center, horizontalGap = 1, verticalGap = 1, rotation = 0 } = options;
+  const level = sanitizeBrickLevel(generationOptions?.level);
+  const config = getBrickConfig(brickType);
+  const brickWidth = config.size.width;
+  const brickHeight = config.size.height;
+
+  if (template.length === 0) {
+    return [];
+  }
+
+  // Find the maximum width (columns) in the template
+  const maxColumns = Math.max(...template.map((row) => row.length));
+  if (maxColumns === 0) {
+    return [];
+  }
+
+  const rows = template.length;
+  const totalWidth = maxColumns * brickWidth + Math.max(0, maxColumns - 1) * horizontalGap;
+  const totalHeight = rows * brickHeight + Math.max(0, rows - 1) * verticalGap;
+
+  // Calculate top-left corner (before rotation)
+  const startX = center.x - totalWidth / 2;
+  const startY = center.y - totalHeight / 2;
+
+  const bricks: BrickData[] = [];
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  for (let row = 0; row < rows; row += 1) {
+    const patternRow = template[row] ?? "";
+    const rowY = startY + row * (brickHeight + verticalGap) + brickHeight / 2;
+
+    for (let col = 0; col < patternRow.length; col += 1) {
+      if (patternRow[col] !== "#") {
+        continue;
+      }
+
+      const colX = startX + col * (brickWidth + horizontalGap) + brickWidth / 2;
+
+      // Apply rotation around center
+      const dx = colX - center.x;
+      const dy = rowY - center.y;
+      const rotatedX = center.x + dx * cos - dy * sin;
+      const rotatedY = center.y + dx * sin + dy * cos;
+
+      bricks.push({
+        position: { x: rotatedX, y: rotatedY },
+        rotation: rotation,
+        type: brickType,
+        level,
+      });
+    }
+  }
+
+  return bricks;
 };

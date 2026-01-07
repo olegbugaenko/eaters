@@ -43,6 +43,14 @@ export interface SquareWithBricksOptions
   readonly rotation?: number;
 }
 
+export interface TemplateWithBricksOptions {
+  readonly center: SceneVector2;
+  readonly template: readonly string[]; // Array of strings, where "#" = brick, " " = empty
+  readonly horizontalGap?: number; // Gap between bricks horizontally (default: 1)
+  readonly verticalGap?: number; // Gap between bricks vertically (default: 1)
+  readonly rotation?: number; // Rotation in radians (default: 0)
+}
+
 export type BrickShapeBlueprint =
   | {
       readonly shape: "circle";
@@ -66,6 +74,12 @@ export type BrickShapeBlueprint =
       readonly shape: "square";
       readonly brickType: BrickType;
       readonly options: SquareWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "template";
+      readonly brickType: BrickType;
+      readonly options: TemplateWithBricksOptions;
       readonly generationOptions?: BrickGenerationOptions;
     };
 

@@ -10,9 +10,11 @@ import {
   buildBricksFromBlueprints,
   circleWithBricks,
   polygonWithBricks,
+  templateWithBricks,
 } from "../logic/services/brick-layout/BrickLayoutService";
 
 export type MapId =
+  | "tutorialZone"
   | "trainingGrounds"
   | "foundations"
   | "initial"
@@ -28,7 +30,8 @@ export type MapId =
   | "adit"
   | "silverRing"
   | "frozenForest"
-  | "volcano";
+  | "volcano"
+  | "megaBrick";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
@@ -98,6 +101,51 @@ export interface MapPlayerUnitConfig {
 const FOUNDATIONS_CENTER: SceneVector2 = { x: 500, y: 500 };
 
 const MAPS_DB: Record<MapId, MapConfig> = {
+  tutorialZone: (() => {
+    const center: SceneVector2 = { x: 500, y: 600 };
+    const size: SceneSize = { width: 1000, height: 1000 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 500 };
+
+    // Простий шаблон цифри "1"
+    const numberOneTemplate: readonly string[] = [
+      " #####      ##      #####",
+      " #         #  #       #",
+      " ####     ######      #",
+      " #        #    #      #",
+      " #####   #      #     #",
+    ];
+
+    return {
+      name: "Weird Bricks",
+      size,
+      spawnPoints: [spawnPoint],
+      icon: "eat.png",
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+
+        const numberOne = templateWithBricks(
+          "smallTrainingBrick",
+          {
+            center,
+            template: numberOneTemplate,
+            horizontalGap: 1,
+            verticalGap: 1,
+          },
+          { level: baseLevel }
+        );
+
+        return [numberOne];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      nodePosition: { x: -1, y: -1 },
+      maxLevel: 1,
+    } satisfies MapConfig;
+  })(),
   trainingGrounds: (() => {
     const center: SceneVector2 = { x: 500, y: 600 };
     const size: SceneSize = { width: 1000, height: 1000 };
@@ -121,10 +169,17 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const mouthSegments = 8; // кількість сегментів для рота
 
     return {
-      name: "Training Grounds",
+      name: "Optimistic Smile",
       size,
       spawnPoints: [spawnPoint],
       icon: "training.png",
+      unlockedBy: [
+        {
+          type: "map",
+          id: "tutorialZone",
+          level: 1,
+        },
+      ],
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
 
@@ -189,6 +244,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       nodePosition: { x: 0, y: 0 },
+      mapsRequired: { tutorialZone: 1 },
       maxLevel: 1,
     } satisfies MapConfig;
   })(),
@@ -261,6 +317,47 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           },
           { level: mapLevel }
         ))
+      ],
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      mapsRequired: { trainingGrounds: 1 },
+    } satisfies MapConfig;
+  })(),
+  megaBrick: (() => {
+    const center = FOUNDATIONS_CENTER;
+    const size: SceneSize = { width: 1000, height: 1000 };
+    const spawnPoint: SceneVector2 = { x: 100, y: center.y - 30 };
+
+    // Один цегла по центру
+    const singleBrickTemplate: readonly string[] = [" # "];
+
+    return {
+      name: "Mega Brick",
+      size,
+      icon: "mega_brick.png",
+      spawnPoints: [spawnPoint],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "trainingGrounds",
+          level: 1,
+        },
+      ],
+      nodePosition: { x: -1, y: 1 },
+      maxLevel: 1,
+      bricks: ({ mapLevel }) => [
+        templateWithBricks(
+          "megaBrick",
+          {
+            center,
+            template: singleBrickTemplate,
+          },
+          { level: mapLevel }
+        ),
       ],
       playerUnits: [
         {
