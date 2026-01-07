@@ -16,6 +16,7 @@ import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.
 import { describe, test } from "./testRunner";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
+import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -34,6 +35,7 @@ const createBricksModule = (
   };
   const bonuses = new BonusesModule();
   bonuses.initialize();
+  const statusEffects = new StatusEffectsModule();
   return new BricksModule({
     scene,
     bridge,
@@ -41,6 +43,7 @@ const createBricksModule = (
     resources,
     bonuses,
     runState,
+    statusEffects,
   });
 };
 

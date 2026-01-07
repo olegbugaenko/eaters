@@ -33,6 +33,7 @@ import type { EnemiesModule } from "../src/logic/modules/active-map/enemies/enem
 import { getMapConfig } from "../src/db/maps-db";
 import { MapId } from "../src/db/maps-db";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
+import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule): UnitProjectileController => {
   interface ProjectileState {
@@ -236,7 +237,16 @@ describe("MapModule", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -245,6 +255,7 @@ describe("MapModule", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -535,7 +546,16 @@ describe("Map run control", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -544,6 +564,7 @@ describe("Map run control", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -611,7 +632,16 @@ describe("Map run control", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -620,6 +650,7 @@ describe("Map run control", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -694,7 +725,16 @@ describe("Map unlocking", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -703,6 +743,7 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -794,7 +835,16 @@ describe("Map unlocking", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -803,6 +853,7 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -961,7 +1012,16 @@ describe("Map auto restart", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -970,6 +1030,7 @@ describe("Map auto restart", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,

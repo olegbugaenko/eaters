@@ -5,7 +5,6 @@ import {
   StatusEffectVisuals,
   getStatusEffectConfig,
 } from "../../../../db/status-effects-db";
-import type { BrickEffectTint } from "../bricks/bricks.types";
 import type {
   StatusEffectApplicationOptions,
   StatusEffectTarget,
@@ -23,6 +22,11 @@ interface StatusEffectInstance {
   nextTickMs: number;
   visuals?: StatusEffectVisuals;
 }
+
+type BrickTint = {
+  color: { r: number; g: number; b: number; a?: number };
+  intensity: number;
+};
 
 type TargetKey = `${StatusEffectTarget["type"]}:${string}`;
 
@@ -670,35 +674,36 @@ export class StatusEffectsModule implements GameModule {
     const [type, id] = targetKey.split(":") as [StatusEffectTarget["type"], string];
 
     if (type === "unit") {
-      if (!this.unitAdapter) {
+      const unitAdapter = this.unitAdapter;
+      if (!unitAdapter) {
         return;
       }
       const applyOverlay = (effectId: string, overlay: StatusEffectVisuals["overlay"] | null) => {
         if (!overlay) {
-          this.unitAdapter?.applyOverlay(id, effectId, "fill", null);
-          this.unitAdapter?.applyOverlay(id, effectId, "stroke", null);
+          unitAdapter.applyOverlay(id, effectId, "fill", null);
+          unitAdapter.applyOverlay(id, effectId, "stroke", null);
           return;
         }
         const target = overlay.target ?? "fill";
-        this.unitAdapter.applyOverlay(id, effectId, target, overlay);
+        unitAdapter.applyOverlay(id, effectId, target, overlay);
       };
 
       if (options?.clearAll || !effectsMap) {
-        this.unitAdapter.applyOverlay(id, "internalFurnace", "fill", null);
-        this.unitAdapter.applyOverlay(id, "internalFurnace", "stroke", null);
-        this.unitAdapter.removeAura(id, "frenzyAura");
+        unitAdapter.applyOverlay(id, "internalFurnace", "fill", null);
+        unitAdapter.applyOverlay(id, "internalFurnace", "stroke", null);
+        unitAdapter.removeAura(id, "frenzyAura");
         effectsMap?.forEach((_instances, effectId) => {
-          this.unitAdapter?.applyOverlay(id, effectId, "fill", null);
-          this.unitAdapter?.applyOverlay(id, effectId, "stroke", null);
+          unitAdapter.applyOverlay(id, effectId, "fill", null);
+          unitAdapter.applyOverlay(id, effectId, "stroke", null);
         });
         return;
       }
 
       const frenzyInstances = effectsMap.get("frenzy") ?? [];
       if (frenzyInstances.length > 0) {
-        this.unitAdapter.applyAura(id, "frenzyAura");
+        unitAdapter.applyAura(id, "frenzyAura");
       } else {
-        this.unitAdapter.removeAura(id, "frenzyAura");
+        unitAdapter.removeAura(id, "frenzyAura");
       }
 
       const furnaceInstances = effectsMap.get("internalFurnace");
@@ -753,8 +758,10 @@ export class StatusEffectsModule implements GameModule {
 
   private resolveBrickTint(
     effectsMap: Map<StatusEffectId, StatusEffectInstance[]>,
-  ): BrickEffectTint | null {
-    let selected: (BrickEffectTint & { priority: number }) | null = null;
+  ): BrickTint | null {
+    let selectedTint: BrickTint | null = null;
+    let selectedPriority = Number.NEGATIVE_INFINITY;
+
     effectsMap.forEach((instances) => {
       instances.forEach((instance) => {
         const tint = instance.visuals?.brickTint;
@@ -762,15 +769,21 @@ export class StatusEffectsModule implements GameModule {
         if (!tint) {
           return;
         }
-        if (!selected || priority > selected.priority) {
-          selected = { ...tint, priority };
+        if (!selectedTint || priority > selectedPriority) {
+          selectedTint = {
+            color: { ...tint.color },
+            intensity: tint.intensity,
+          };
+          selectedPriority = priority;
         }
       });
     });
-    if (!selected) {
+
+    if (!selectedTint) {
       return null;
     }
-    return { color: { ...selected.color }, intensity: selected.intensity };
+    const resolvedTint = selectedTint as BrickTint;
+    return { color: { ...resolvedTint.color }, intensity: resolvedTint.intensity };
   }
 
   private mergeTintVisuals(

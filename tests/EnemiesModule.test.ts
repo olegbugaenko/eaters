@@ -19,6 +19,7 @@ import type { EnemiesModuleOptions } from "../src/logic/modules/active-map/enemi
 import { PathfindingService } from "../src/logic/shared/navigation/PathfindingService";
 import type { ObstacleDescriptor, ObstacleProvider } from "../src/logic/shared/navigation/navigation.types";
 import type { SceneVector2 } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 const createEnemySpawnData = () => ({
   type: "basicEnemy" as const,
@@ -59,6 +60,7 @@ const createEnemiesModuleWithDeps = (
   const runState = options.runState ?? new MapRunState();
   const movement = options.movement ?? new MovementService();
   const bricks = options.bricks ?? createEmptyBricks();
+  const statusEffects = options.statusEffects ?? new StatusEffectsModule();
   const obstacles = options.obstacles ?? undefined;
   const pathfinder =
     options.pathfinder ??
@@ -76,6 +78,7 @@ const createEnemiesModuleWithDeps = (
       runState,
       movement,
       bricks,
+      statusEffects,
       targeting: options.targeting,
       damage: options.damage,
       explosions: options.explosions,
@@ -205,7 +208,6 @@ describe("EnemiesModule", () => {
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
-        currentAttackStackBonus: 0,
         attackCooldown: 0,
         preCollisionVelocity: { x: 0, y: 0 },
         lastNonZeroVelocity: { x: 0, y: 0 },
@@ -234,7 +236,6 @@ describe("EnemiesModule", () => {
         timeSinceLastSpecial: 0,
         pheromoneHealingMultiplier: 1,
         pheromoneAggressionMultiplier: 1,
-        pheromoneAttackBonuses: [],
         fireballDamageMultiplier: 1,
         canUnitAttackDistant: false,
         moduleLevels: {},
