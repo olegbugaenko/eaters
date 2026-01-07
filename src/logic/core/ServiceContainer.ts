@@ -15,4 +15,8 @@ export class ServiceContainer<Services extends Record<string, any> = Record<stri
     }
     return service as T;
   }
+
+  public getOptional<T>(token: string): T | null {
+    return (this.services.get(token) as T | undefined) ?? null;
+  }
 }
