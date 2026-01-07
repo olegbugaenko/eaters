@@ -544,10 +544,14 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 return null;
               }
               const isSelected = map.id === selectedMap;
+              const mapConfig = getMapConfig(map.id);
+              const hasAchievement = !!mapConfig.achievementId;
+              
               const nodeClasses = classNames(
                 "map-tree-node",
                 isSelected && "map-tree-node--active",
-                !map.selectable && "map-tree-node--locked"
+                !map.selectable && "map-tree-node--locked",
+                hasAchievement && "map-tree-node--achievement"
               );
 
               const getMapInitials = (name: string): string =>
@@ -792,7 +796,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     setPopover(null);
                   }}
                 >
-                  <div className="map-tree__popover-name">{popoverMap.name}</div>
+                  <div className={classNames(
+                    "map-tree__popover-name",
+                    getMapConfig(popoverMap.id).achievementId && "map-tree__popover-name--achievement"
+                  )}>
+                    {popoverMap.name}
+                  </div>
                   <div className="map-tree__popover-level">
                     Level {popoverMap.selectedLevel} / {popoverMap.currentLevel}
                   </div>
@@ -842,11 +851,21 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
           {activeMap ? (
             <>
               <div className="map-tree__details-header">
-                <h2>{activeMap.name}</h2>
+                <h2 className={classNames(
+                  getMapConfig(activeMap.id).achievementId && "map-tree__details-title--achievement"
+                )}>
+                  {activeMap.name}
+                </h2>
                 <span className="map-tree__details-level">
                   Level {activeMap.selectedLevel} / {activeMap.currentLevel}
                 </span>
               </div>
+              {getMapConfig(activeMap.id).achievementId && (
+                <div className="map-tree__details-achievement-notice">
+                  <strong>🏆 Challenge Map</strong>
+                  <p>Completing levels on this map grants permanent bonuses through achievements!</p>
+                </div>
+              )}
               <div className="map-tree__details-list">
                 <span className="map-tree__details-level">
                   Max. Level Available: {activeMap.maxLevel}

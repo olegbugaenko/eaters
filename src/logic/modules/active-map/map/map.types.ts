@@ -10,6 +10,7 @@ import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { AchievementsModule } from "../../shared/achievements/achievements.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
@@ -35,6 +36,7 @@ export interface MapModuleOptions {
   necromancer: NecromancerModule;
   resources: ResourceRunController;
   unlocks: UnlockService;
+  achievements: AchievementsModule;
   unitsAutomation: UnitAutomationModule;
   arcs: ArcModule;
   sceneCleanup: MapSceneCleanupContract;
@@ -89,4 +91,3 @@ export type MapGenerationPayload = {
   spawnUnits: PlayerUnitSpawnData[];
   spawnPoints: { x: number; y: number }[];
 };
-

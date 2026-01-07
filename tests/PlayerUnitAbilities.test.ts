@@ -57,6 +57,7 @@ describe("PlayerUnitAbilities sound effects", () => {
       getArcs: () => undefined,
       getEffects: () => effects,
       getFireballs: () => fireballs,
+      getUnitObjectId: () => undefined,
     });
     const statusEffects = new StatusEffectsModule();
 

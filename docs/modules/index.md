@@ -6,6 +6,7 @@
 
 ### Камп та прогресія
 - [bonuses.md](bonuses.md)
+- [achievements.md](achievements.md)
 - [resources.md](resources.md)
 - [skill-tree.md](skill-tree.md)
 - [crafting.md](crafting.md)

@@ -30,6 +30,7 @@ export const createMapDefinition = (
       necromancer: container.get("necromancer"),
       resources: container.get("resources"),
       unlocks: container.get("unlocks"),
+      achievements: container.get("achievements"),
       unitsAutomation: container.get("unitAutomation"),
       arcs: container.get("arc"),
       sceneCleanup,

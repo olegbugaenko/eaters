@@ -6,6 +6,8 @@ interface VoidCampTopBarProps {
   readonly onVersionClick?: () => void;
   readonly onSettingsClick: () => void;
   readonly onStatisticsClick: () => void;
+  readonly onAchievementsClick?: () => void;
+  readonly showAchievements?: boolean;
   readonly onExitClick: () => void;
 }
 
@@ -14,6 +16,8 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
   onVersionClick,
   onSettingsClick,
   onStatisticsClick,
+  onAchievementsClick,
+  showAchievements,
   onExitClick,
 }) => {
   return (
@@ -29,6 +33,18 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
         >
           Statistics
         </button>
+        {showAchievements && onAchievementsClick && (
+          <button
+            type="button"
+            className={classNames(
+              "void-camp-top-bar__button",
+              "void-camp-top-bar__button--achievements"
+            )}
+            onClick={onAchievementsClick}
+          >
+            Achievements
+          </button>
+        )}
         <button
           type="button"
           className={classNames(
