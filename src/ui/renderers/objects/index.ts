@@ -12,8 +12,10 @@ import { AuraRenderer } from "./implementations/aura";
 import { SpellProjectileRingRenderer } from "./implementations/spell-projectile-ring";
 import { SandStormRenderer } from "./implementations/sand-storm";
 import { PersistentAoeSpellRenderer } from "./implementations/persistent-aoe-spell";
+import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
+export { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 export type { SyncInstructions, DynamicBufferUpdate } from "./ObjectsRendererManager";
 
 // Re-export updateAllWhirlInterpolations for convenience
@@ -54,5 +56,6 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["sandStorm", new SandStormRenderer()],
     ["spellPersistentAoe", new PersistentAoeSpellRenderer()],
   ]);
-  return new ObjectsRendererManager(renderers);
+  const tiedObjectsRegistry = new TiedObjectsRegistry();
+  return new ObjectsRendererManager(renderers, tiedObjectsRegistry);
 };

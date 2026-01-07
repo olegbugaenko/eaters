@@ -23,7 +23,6 @@ const FRENZY_MODULE_ID = "frenzyGland" satisfies UnitModuleId;
 
 const findAggressionTarget = (
   source: PlayerUnitAbilityState,
-  services: AbilityEvaluationContext<PheromoneFrenzyState>["services"],
   dependencies: AbilityEvaluationContext<PheromoneFrenzyState>["dependencies"],
 ): PlayerUnitAbilityState | null => {
   const candidates = dependencies
@@ -35,7 +34,7 @@ const findAggressionTarget = (
   const withoutAura: PlayerUnitAbilityState[] = [];
   const withAura: PlayerUnitAbilityState[] = [];
   candidates.forEach((candidate: PlayerUnitAbilityState) => {
-    if (services.hasEffect(candidate.id, "frenzyAura")) {
+    if (dependencies.statusEffects.hasEffect("frenzy", { type: "unit", id: candidate.id })) {
       withAura.push(candidate);
     } else {
       withoutAura.push(candidate);
@@ -57,8 +56,8 @@ const computeFrenzyScore = (target: PlayerUnitAbilityState): number => {
 const evaluateFrenzy = (
   context: AbilityEvaluationContext<PheromoneFrenzyState>,
 ): AbilityCandidate<PlayerUnitAbilityState> | null => {
-  const { unit, services, dependencies } = context;
-  const target = findAggressionTarget(unit, services, dependencies);
+  const { unit, dependencies } = context;
+  const target = findAggressionTarget(unit, dependencies);
   if (!target) {
     return null;
   }
@@ -83,11 +82,11 @@ const executeFrenzy = (
   if (bonusDamage <= 0) {
     return { success: false };
   }
-  target.pheromoneAttackBonuses.push({
-    bonusDamage,
-    remainingAttacks: state.frenzyAttacks,
-  });
-  services.applyEffect(target.id, "frenzyAura");
+  dependencies.statusEffects.applyEffect(
+    "frenzy",
+    { type: "unit", id: target.id },
+    { bonusDamage, charges: state.frenzyAttacks, sourceId: unit.id },
+  );
   services.spawnExplosionByType("magnetic", {
     position: { ...target.position },
     initialRadius: PHEROMONE_FRENZY_EXPLOSION_RADIUS,

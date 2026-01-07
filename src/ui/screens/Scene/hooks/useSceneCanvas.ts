@@ -113,7 +113,7 @@ export const useSceneCanvas = ({
   onSpellCast,
 }: UseSceneCanvasParams) => {
   // Use position interpolation hook
-  const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions } = usePositionInterpolation(scene, gameLoop);
+  const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions } = usePositionInterpolation(scene, gameLoop);
 
   // Store scene, spellcasting, callbacks, and interpolation functions in refs to avoid recreating useEffect
   const sceneRef = useRef(scene);
@@ -122,6 +122,7 @@ export const useSceneCanvas = ({
   const getInterpolatedUnitPositionsRef = useRef(getInterpolatedUnitPositions);
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
+  const getInterpolatedEnemyPositionsRef = useRef(getInterpolatedEnemyPositions);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
   
@@ -132,7 +133,8 @@ export const useSceneCanvas = ({
     getInterpolatedUnitPositionsRef.current = getInterpolatedUnitPositions;
     getInterpolatedBulletPositionsRef.current = getInterpolatedBulletPositions;
     getInterpolatedBrickPositionsRef.current = getInterpolatedBrickPositions;
-  }, [scene, spellcasting, onSpellCast, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions]);
+    getInterpolatedEnemyPositionsRef.current = getInterpolatedEnemyPositions;
+  }, [scene, spellcasting, onSpellCast, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -284,15 +286,36 @@ export const useSceneCanvas = ({
         );
       },
       afterApplyChanges: (timestamp, scene, cameraState) => {
+        const objectsRenderer = webglRenderer.getObjectsRenderer();
+        
         // Apply interpolated unit positions
         const interpolatedUnitPositions = getInterpolatedUnitPositionsRef.current();
         if (interpolatedUnitPositions.size > 0) {
-          webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedUnitPositions);
+          objectsRenderer.applyInterpolatedPositions(interpolatedUnitPositions);
+          
+          // Also update objects tied to interpolated units (e.g., auras)
+          const tiedPositions = new Map<string, { x: number; y: number }>();
+          interpolatedUnitPositions.forEach((pos, unitId) => {
+            const tiedChildren = objectsRenderer.getTiedChildren(unitId);
+            if (tiedChildren) {
+              tiedChildren.forEach((childId) => {
+                tiedPositions.set(childId, pos);
+              });
+            }
+          });
+          if (tiedPositions.size > 0) {
+            objectsRenderer.applyInterpolatedPositions(tiedPositions);
+          }
         }
         // Apply interpolated brick positions
         const interpolatedBrickPositions = getInterpolatedBrickPositionsRef.current();
         if (interpolatedBrickPositions.size > 0) {
-          webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedBrickPositions);
+          objectsRenderer.applyInterpolatedPositions(interpolatedBrickPositions);
+        }
+        // Apply interpolated enemy positions
+        const interpolatedEnemyPositions = getInterpolatedEnemyPositionsRef.current();
+        if (interpolatedEnemyPositions.size > 0) {
+          objectsRenderer.applyInterpolatedPositions(interpolatedEnemyPositions);
         }
       },
 

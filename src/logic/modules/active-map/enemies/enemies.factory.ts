@@ -14,6 +14,7 @@ export const createEnemiesDefinition = (): ServiceDefinition<EnemiesModule, "ene
       explosions: container.get("explosion"),
       projectiles: container.get("unitProjectiles"),
       bricks: container.get("bricks"),
+      statusEffects: container.get("statusEffects"),
     }),
   registerAsModule: true,
 });

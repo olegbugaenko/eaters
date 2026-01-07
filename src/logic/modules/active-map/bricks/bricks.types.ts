@@ -11,6 +11,7 @@ import type { MapRunState } from "../map/MapRunState";
 import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
 import type { TargetingService } from "../targeting/TargetingService";
 import type { PassabilityTag } from "@/logic/shared/navigation/passability.types";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 export interface ResourceCollector {
   grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
@@ -50,6 +51,7 @@ export interface BricksModuleOptions {
   resources: ResourceCollector;
   bonuses: BonusesModule;
   runState: MapRunState;
+  statusEffects: StatusEffectsModule;
   targeting?: TargetingService;
   audio?: SoundEffectPlayer;
   statistics?: StatisticsTracker;

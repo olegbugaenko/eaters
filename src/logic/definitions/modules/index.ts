@@ -19,6 +19,7 @@ import { createSkillTreeDefinition } from "../../modules/camp/skill-tree/skill-t
 import { createSpellcastingDefinition } from "../../modules/active-map/spellcasting/spellcasting.factory";
 import { createStatisticsDefinition } from "../../modules/shared/statistics/statistics.factory";
 import { createTimeDefinition } from "../../modules/shared/time/time.factory";
+import { createStatusEffectsDefinition } from "../../modules/active-map/status-effects/status-effects.factory";
 import { createTutorialMonitorDefinition } from "../../modules/active-map/tutorial-monitor/tutorial-monitor.factory";
 import { createUnitAutomationDefinition } from "../../modules/active-map/unit-automation/unit-automation.factory";
 import { createUnitDesignDefinition } from "../../modules/camp/unit-design/unit-design.factory";
@@ -40,6 +41,7 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
     createTimeDefinition(),
     createExplosionDefinition(),
     createAudioDefinition(),
+    createStatusEffectsDefinition(),
     createTargetingDefinition(),
     createDamageDefinition(),
     createBricksDefinition(),

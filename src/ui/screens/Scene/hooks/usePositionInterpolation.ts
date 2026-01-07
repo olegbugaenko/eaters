@@ -49,6 +49,7 @@ export const usePositionInterpolation = (
   const interpolatedPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
   const bulletSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const brickSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
+  const enemySnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
 
   // Sync snapshots with game loop ticks
   useEffect(() => {
@@ -137,13 +138,38 @@ export const usePositionInterpolation = (
       });
     };
 
+    const syncEnemySnapshots = (timestamp: number) => {
+      const nextIds = new Set<string>();
+      const snapshots = enemySnapshotsRef.current;
+      scene
+        .getObjects()
+        .filter((instance) => instance.type === "enemy")
+        .forEach((instance) => {
+          nextIds.add(instance.id);
+          const existing = snapshots.get(instance.id);
+          const previous = existing?.next ?? { ...instance.data.position };
+          snapshots.set(instance.id, {
+            prev: previous,
+            next: { ...instance.data.position },
+            lastTickAt: timestamp,
+          });
+        });
+      Array.from(snapshots.keys()).forEach((id) => {
+        if (!nextIds.has(id)) {
+          snapshots.delete(id);
+        }
+      });
+    };
+
     syncUnitSnapshots(gameLoop.getLastTickTimestamp() || getNow());
     syncBulletSnapshots(gameLoop.getLastTickTimestamp() || getNow());
     syncBrickSnapshots(gameLoop.getLastTickTimestamp() || getNow());
+    syncEnemySnapshots(gameLoop.getLastTickTimestamp() || getNow());
     const unsubscribe = gameLoop.addTickListener(({ timestamp }) => {
       syncUnitSnapshots(timestamp);
       syncBulletSnapshots(timestamp);
       syncBrickSnapshots(timestamp);
+      syncEnemySnapshots(timestamp);
     });
     return () => {
       unsubscribe();
@@ -242,9 +268,35 @@ export const usePositionInterpolation = (
     return positions;
   };
 
+  const getInterpolatedEnemyPositions = () => {
+    const snapshots = enemySnapshotsRef.current;
+    const positions = new Map<string, SceneVector2>();
+    if (snapshots.size === 0) {
+      return positions;
+    }
+    const now = getNow();
+    snapshots.forEach((snapshot, id) => {
+      // OPTIMIZATION: Skip stationary enemies (position hasn't changed)
+      if (
+        snapshot.prev.x === snapshot.next.x &&
+        snapshot.prev.y === snapshot.next.y
+      ) {
+        return;
+      }
+      const elapsed = Math.max(now - snapshot.lastTickAt, 0);
+      const alpha =
+        elapsed > DRIFT_SNAP_THRESHOLD
+          ? 1
+          : clamp(elapsed / TICK_INTERVAL, 0, 1);
+      positions.set(id, lerpVector(snapshot.prev, snapshot.next, alpha));
+    });
+    return positions;
+  };
+
   return {
     getInterpolatedUnitPositions,
     getInterpolatedBulletPositions,
     getInterpolatedBrickPositions,
+    getInterpolatedEnemyPositions,
   };
 };

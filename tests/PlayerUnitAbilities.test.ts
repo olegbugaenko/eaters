@@ -11,6 +11,7 @@ import type { FireballModule } from "../src/logic/modules/scene/fireball/firebal
 import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { PlayerUnitType } from "../src/db/player-units-db";
 import { AbilityVisualService } from "../src/logic/modules/active-map/player-units/abilities/AbilityVisualService";
+import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 describe("PlayerUnitAbilities sound effects", () => {
   const createBaseState = (overrides: Partial<PlayerUnitAbilityState> = {}): PlayerUnitAbilityState => ({
@@ -23,7 +24,6 @@ describe("PlayerUnitAbilities sound effects", () => {
     baseAttackInterval: overrides.baseAttackInterval ?? 1,
     pheromoneHealingMultiplier: overrides.pheromoneHealingMultiplier ?? 0,
     pheromoneAggressionMultiplier: overrides.pheromoneAggressionMultiplier ?? 0,
-    pheromoneAttackBonuses: overrides.pheromoneAttackBonuses ?? [],
     timeSinceLastAttack: overrides.timeSinceLastAttack ?? 0,
     timeSinceLastSpecial: overrides.timeSinceLastSpecial ?? 5,
     fireballDamageMultiplier: overrides.fireballDamageMultiplier ?? 0,
@@ -58,9 +58,11 @@ describe("PlayerUnitAbilities sound effects", () => {
       getEffects: () => effects,
       getFireballs: () => fireballs,
     });
+    const statusEffects = new StatusEffectsModule();
 
     return new PlayerUnitAbilities({
       sceneService: visuals,
+      statusEffects,
       logEvent: () => {},
       formatUnitLabel: (unit) => unit.id,
       getUnits: () => units,
