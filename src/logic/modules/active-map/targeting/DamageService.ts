@@ -12,6 +12,9 @@ export interface DamageApplicationOptions {
   readonly armorPenetration?: number;
   readonly overTime?: number;
   readonly skipKnockback?: boolean;
+  readonly knockBackDistance?: number;
+  readonly knockBackSpeed?: number;
+  readonly knockBackDirection?: SceneVector2;
 }
 
 export interface AreaDamageOptions extends DamageApplicationOptions {
@@ -107,7 +110,12 @@ export class DamageService {
 
     const units = this.units?.();
     if (target.type === "unit" && units) {
-      return units.applyDamage(target.id, damage, options);
+      return units.applyDamage(target.id, damage, {
+        armorPenetration: options.armorPenetration,
+        knockBackDistance: options.knockBackDistance,
+        knockBackSpeed: options.knockBackSpeed,
+        knockBackDirection: options.knockBackDirection,
+      });
     }
 
     return 0;

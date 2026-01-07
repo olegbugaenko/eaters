@@ -208,6 +208,18 @@ const DEFAULT_EMITTER_FILL: SceneFill = {
   color: { r: 1, g: 0.85, b: 0.55, a: 1 },
 };
 
+
+const SMALL_CANNON_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    { offset: 0, color: { r: 1.0, g: 0.9, b: 0.8, a: 1.0 } },
+    { offset: 0.45, color: { r: 0.9, g: 0.8, b: 0.7, a: 0.42 } },
+    { offset: 1, color: { r: 0.5, g: 0.4, b: 0.3, a: 0.02 } },
+  ]
+};
+
+
 const MAGNETIC_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
@@ -461,16 +473,16 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     emitter: {
       ...DEFAULT_EMITTER,
       baseSpeed: 0.04,
-      speedVariation: 0.01,
+      speedVariation: 0.025,
       fadeStartMs: 400,
       particleLifetimeMs: 1_000,
       particlesPerSecond: 2760,
-      sizeRange: { min: 0.5, max: 1.4 },
+      sizeRange: { min: 0.5, max: 4.4 },
       emissionDurationMs: 400,
       spawnRadius: { min: 0, max: 0.1 },
       spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
       // color: { r: 1, g: 1, b: 1, a: 1 },
-      fill: DEFAULT_EMITTER_FILL,
+      fill: SMALL_CANNON_EMITTER_FILL,
       radialVelocity: true, // Частинки рухаються від центру вибуху
     },
   },

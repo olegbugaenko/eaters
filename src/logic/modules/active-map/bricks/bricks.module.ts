@@ -227,6 +227,14 @@ export class BricksModule implements GameModule {
     });
   }
 
+  /**
+   * Ітерує через ВСІ цеглини без просторової фільтрації.
+   * Швидше ніж forEachBrickNear з величезним радіусом.
+   */
+  public forEachBrick(visitor: (brick: Readonly<BrickRuntimeState>) => void): void {
+    this.spatialIndex.forEachItem(visitor);
+  }
+
   public applyEffect(effect: BrickEffectApplication): void {
     this.effects.applyEffect(effect);
   }

@@ -137,6 +137,9 @@ export class EnemiesModule implements GameModule {
     const deltaSeconds = deltaMs / 1000;
     let anyChanged = false;
 
+    // Кешуємо всі перешкоди один раз на початку tick для всіх ворогів
+    this.pathfinder.cacheAllObstacles(ENEMY_PASSABILITY);
+
     const activeTargets = new Map<string, { id: string; position: SceneVector2; physicalSize: number } | null>();
 
     // Phase 1: Compute movement forces towards targets (тільки для рухомих ворогів)
@@ -388,8 +391,14 @@ export class EnemiesModule implements GameModule {
         visual: config.projectile,
         onHit: (hitContext: UnitProjectileHitContext) => {
           if (hitContext.targetType === "unit" && this.damage) {
+            // Calculate knockback direction from enemy to hit position
+            const knockBackDirection = subtractVectors(hitContext.position, enemy.position);
+            
             this.damage.applyTargetDamage(hitContext.targetId, enemy.baseDamage, {
               armorPenetration: 0,
+              knockBackDistance: config.knockBackDistance,
+              knockBackSpeed: config.knockBackSpeed,
+              knockBackDirection: vectorLength(knockBackDirection) > 0 ? knockBackDirection : direction,
             });
 
             if (this.explosions && config.projectile?.explosion) {
@@ -408,8 +417,14 @@ export class EnemiesModule implements GameModule {
 
     // Якщо немає конфігу снаряда - instant damage
     if (this.damage) {
+      // Calculate knockback direction from enemy to target
+      const knockBackDirection = toTarget;
+      
       this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
         armorPenetration: 0,
+        knockBackDistance: config.knockBackDistance,
+        knockBackSpeed: config.knockBackSpeed,
+        knockBackDirection: vectorLength(knockBackDirection) > 0 ? knockBackDirection : normalizeVector(toTarget) || { x: 1, y: 0 },
       });
 
       // For instant damage, use default explosion type (plasmoid) if explosions module is available
@@ -504,13 +519,29 @@ export class EnemiesModule implements GameModule {
       passabilityTag: ENEMY_PASSABILITY,
     });
 
+    // Адаптивний cooldown: далекі вороги рідше перераховують шлях
+    const distanceToTarget = Math.sqrt(distanceToTargetSq);
+    let repathCooldownValue: number;
+    if (path.goalReached) {
+      repathCooldownValue = 0.2;
+    } else if (distanceToTarget > 300) {
+      // Далеко - рідко перераховувати (1 раз/сек)
+      repathCooldownValue = 1.0;
+    } else if (distanceToTarget > 150) {
+      // Середня відстань
+      repathCooldownValue = 0.6;
+    } else {
+      // Близько - частіше
+      repathCooldownValue = 0.35;
+    }
+
     this.navigationState.set(enemy.id, {
       targetId: target.id,
       targetPosition: { ...target.position },
       targetRadius: baseTargetRadius, // Store base radius (without margin) for goal checking
       waypoints: path.waypoints.map((point) => ({ ...point })),
       goalReached: path.goalReached,
-      repathCooldown: path.goalReached ? 0.2 : 0.35,
+      repathCooldown: repathCooldownValue,
       lastPosition: { ...enemy.position },
       stuckTimer: 0,
     });

@@ -10,7 +10,7 @@ import type { ExtendedRendererLayerFields, BaseRendererLayerConfig } from "@shar
 import type { UnitProjectileVisualConfig } from "../logic/modules/active-map/projectiles/projectiles.types";
 import { mapLineToPolygonShape } from "@/shared/helpers/paths.helper";
 
-export type EnemyType = "basicEnemy" | "fastEnemy" | "tankEnemy" | "turretEnemy";
+export type EnemyType = "basicEnemy" | "fastEnemy" | "tankEnemy" | "turretEnemy" | "spectreEnemy";
 
 export interface EnemyAuraConfig {
   petalCount: number;
@@ -61,6 +61,8 @@ export interface EnemyConfig {
   readonly reward?: ResourceAmount;
   readonly emitter?: ParticleEmitterConfig;
   readonly projectile?: UnitProjectileVisualConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
+  readonly knockBackDistance?: number; // Відстань knockback при атаці юнітів
+  readonly knockBackSpeed?: number; // Швидкість knockback при атаці юнітів
 }
 
 const BASIC_ENEMY_VERTICES: readonly SceneVector2[] = [
@@ -211,6 +213,83 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       hitRadius: 10,
     },
   },
+  spectreEnemy: {
+    name: "Spectre",
+    renderer: {
+        kind: "composite",
+        fill: { r: 0.8, g: 0.7, b: 0.3, a: 1 },
+        layers: [
+            // Chord
+            {
+                shape: "polygon",
+                fill: { type: "base", brightness: 0.2 },
+                vertices: [
+                    { x: 20, y: 0 },
+                    { x: 14, y: -3 },
+                    { x: 14, y: 3 },
+                ],
+            },
+            {
+                shape: "polygon",
+                fill: { type: "base", brightness: 0.2 },
+                vertices: [
+                    { x: 14, y: -3 },
+                    { x: 10, y: -8 },
+                    { x: 10, y: 8 },
+                    { x: 14, y: 3 },
+                ],
+            },
+            {
+                shape: "polygon",
+                fill: { type: "base", brightness: 0.2 },
+                vertices: [
+                    { x: 10, y: -2 },
+                    { x: -14, y: -3 },
+                    { x: -14, y: 3 },
+                    { x: 10, y: 2 },
+                ],
+            },
+            ...mapLineToPolygonShape<Omit<EnemyRendererLayerConfig, "shape" | "vertices">>(
+                [{ x: 0, y: -3, width: 1.6 }, {x: 1, y: -8, width: 1.3}, { x: 2, y: -10, width: 1.0}, { x: 3, y: -12, width: 0.8}, { x: 4, y: -14, width: 0.6}, { x: 6, y: -18, width: 0.5}],
+                { fill: { type: "base", brightness: 0.3 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 2, falloff: "tip", axis: "normal", phase: 1.1 } },
+                { epsilon: 0.25, winding: "CCW" }
+              ),
+
+              ...mapLineToPolygonShape<Omit<EnemyRendererLayerConfig, "shape" | "vertices">>(
+                [{ x: 0, y: 3, width: 1.6 }, {x: 1, y: 8, width: 1.3}, { x: 2, y: 10, width: 1.0}, { x: 3, y: 12, width: 0.8 }, { x: 4, y: 14, width: 0.6 }, { x: 6, y: 18, width: 0.5}],
+                { fill: { type: "base", brightness: 0.3 }, stroke: { type: "base", width: 1.4, brightness: -0.12 }, anim: { type: "sway", periodMs: 1500, amplitude: 2, falloff: "tip", axis: "normal", phase: 1.1 } },
+                { epsilon: 0.25, winding: "CCW" }
+              ),
+        ],
+    },
+    maxHp: 2500,
+    armor: 100,
+    baseDamage: 600,
+    attackInterval: 1.8,
+    attackRange: 280,
+    moveSpeed: 20,
+    physicalSize: 18,
+    reward: {
+      stone: 2,
+    },
+    projectile: {
+      radius: 6,
+      speed: 200,
+      lifetimeMs: 2000,
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        stops: [
+            { offset: 0, color: { r: 0.8, g: 0.9, b: 1, a: 1 } },
+            { offset: 1, color: { r: 0.8, g: 0.9, b: 1, a: 0 } },
+        ]
+      },
+      shape: "circle",
+      hitRadius: 10,
+      explosion: "iceBrickHit",
+    },
+    knockBackDistance: 80,
+    knockBackSpeed: 120,
+  },
   turretEnemy: {
     name: "Turret",
     renderer: {
@@ -259,9 +338,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             },
         ],
     },
-    maxHp: 80,
+    maxHp: 125,
     armor: 8,
-    baseDamage: 14,
+    baseDamage: 24,
     attackInterval: 1.5,
     attackRange: 400,
     moveSpeed: 0, // Статична турель
@@ -281,6 +360,8 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       hitRadius: 8,
       explosion: "smallCannon", // Тип експлозії при влучанні снаряда
     },
+    knockBackDistance: 80,
+    knockBackSpeed: 120,
   },
 };
 

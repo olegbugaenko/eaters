@@ -928,9 +928,10 @@ void main() {
         spawnAngle = rand(particleId, 2) * 6.28318;
       } else if (u_spread > 0.0) {
         // Directional with spread (for player units, bullets)
+        // u_direction already includes rotation + offset, don't add u_emitterRotation again
         float halfSpread = u_spread * 0.5;
         float spreadOffset = randRange(particleId, 2, -halfSpread, halfSpread);
-        spawnAngle = u_emitterRotation + u_direction + spreadOffset;
+        spawnAngle = u_direction + spreadOffset;
       } else {
         // Limited arc (for explosions with direction)
         float halfArc = u_arc * 0.5;

@@ -27,7 +27,7 @@ import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/ring";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "./useWebGLRenderLoop";
-import { updateVboStats, updateParticleStats } from "../components/debug/debugStats";
+import { updateVboStats, updateParticleStats, tickFrame } from "../components/debug/debugStats";
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
@@ -353,6 +353,9 @@ export const useSceneCanvas = ({
         ringGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
       },
       afterRender: (timestamp, gl, cameraState) => {
+        // Tick FPS counter (no separate rAF needed)
+        tickFrame();
+
         // Update particle stats (write to global object, no React re-render)
         const stats = particleEmitterGpuRenderer.getStats(gl);
         const now = timestamp;

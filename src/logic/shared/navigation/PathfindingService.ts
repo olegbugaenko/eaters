@@ -9,8 +9,9 @@ import type { ObstacleDescriptor, ObstacleProvider } from "./navigation.types";
 const DEFAULT_CELL_SIZE = 14;
 const DIAGONAL_COST = Math.SQRT2;
 const SMALL_NUMBER = 1e-3;
-const GRID_CACHE_TTL_MS = 150; // Кешуємо сітку на 150мс
+const GRID_CACHE_TTL_MS = 300; // Кешуємо сітку на 300мс (було 150)
 const MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 1.5; // Збираємо перешкоди тільки в 1.5x відстані від шляху
+const GLOBAL_OBSTACLE_CACHE_TTL_MS = 50; // Кеш перешкод на кадр (~20 FPS)
 
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dx = a.x - b.x;
@@ -110,11 +111,18 @@ interface CachedGrid {
   mapSize: SceneSize;
 }
 
+interface GlobalObstacleCache {
+  obstacles: ObstacleDescriptor[];
+  timestamp: number;
+  passabilityTag: string;
+}
+
 export class PathfindingService {
   private readonly obstacles: ObstacleProvider;
   private readonly getMapSize: () => SceneSize;
   private readonly cellSize: number;
   private gridCache: CachedGrid | null = null;
+  private globalObstacleCache: GlobalObstacleCache | null = null;
 
   constructor(options: PathfindingServiceOptions) {
     this.obstacles = options.obstacles;
@@ -124,6 +132,79 @@ export class PathfindingService {
 
   public getCellSize(): number {
     return this.cellSize;
+  }
+
+  /**
+   * Збирає всі перешкоди на мапі один раз за кадр.
+   * Викликай на початку tick перед обробкою pathfinding для всіх ворогів.
+   */
+  public cacheAllObstacles(passabilityTag: string): void {
+    const now = performance.now();
+    if (
+      this.globalObstacleCache &&
+      now - this.globalObstacleCache.timestamp < GLOBAL_OBSTACLE_CACHE_TTL_MS &&
+      this.globalObstacleCache.passabilityTag === passabilityTag
+    ) {
+      return; // Кеш ще актуальний
+    }
+
+    const collected: ObstacleDescriptor[] = [];
+
+    // Використовуємо швидкий метод якщо доступний
+    if (this.obstacles.forEachObstacle) {
+      this.obstacles.forEachObstacle((obstacle) => {
+        if (!isPassableFor(obstacle, passabilityTag)) {
+          collected.push(obstacle);
+        }
+      });
+    } else {
+      // Fallback для старих провайдерів
+      const mapSize = this.getMapSize();
+      const mapRadius = Math.hypot(mapSize.width, mapSize.height);
+      const center = { x: mapSize.width * 0.5, y: mapSize.height * 0.5 };
+      this.obstacles.forEachObstacleNear(center, mapRadius, (obstacle) => {
+        if (!isPassableFor(obstacle, passabilityTag)) {
+          collected.push(obstacle);
+        }
+      });
+    }
+
+    this.globalObstacleCache = {
+      obstacles: collected,
+      timestamp: now,
+      passabilityTag,
+    };
+  }
+
+  /**
+   * Отримує перешкоди з глобального кешу, фільтруючи за відстанню.
+   * Якщо кеш порожній, збирає перешкоди локально.
+   */
+  private getObstaclesInRadius(
+    center: SceneVector2,
+    radius: number,
+    passabilityTag: string
+  ): ObstacleDescriptor[] {
+    // Якщо є глобальний кеш - фільтруємо його (O(n), але без forEachObstacleNear)
+    if (this.globalObstacleCache && this.globalObstacleCache.passabilityTag === passabilityTag) {
+      const radiusSq = radius * radius;
+      return this.globalObstacleCache.obstacles.filter((obs) => {
+        const dx = obs.position.x - center.x;
+        const dy = obs.position.y - center.y;
+        // Враховуємо радіус перешкоди
+        const effectiveRadius = radius + obs.radius;
+        return dx * dx + dy * dy <= effectiveRadius * effectiveRadius;
+      });
+    }
+
+    // Fallback: збираємо локально
+    const collected: ObstacleDescriptor[] = [];
+    this.obstacles.forEachObstacleNear(center, radius, (obstacle) => {
+      if (!isPassableFor(obstacle, passabilityTag)) {
+        collected.push(obstacle);
+      }
+    });
+    return collected;
   }
 
   public findPathToTarget(request: PathRequest): PathResult {
@@ -142,7 +223,13 @@ export class PathfindingService {
       Math.hypot(mapSize.width, mapSize.height)
     );
 
-    const obstacles = this.collectObstacles(request, collectionRadius);
+    // Використовуємо глобальний кеш якщо доступний
+    const center = {
+      x: (request.start.x + request.target.x) * 0.5,
+      y: (request.start.y + request.target.y) * 0.5,
+    };
+    const passabilityTag = request.passabilityTag ?? "";
+    const obstacles = this.getObstaclesInRadius(center, collectionRadius, passabilityTag);
 
     if (goalReached || this.isLineClear(request.start, request.target, clearance, obstacles)) {
       return { waypoints: [], goalReached: true };
@@ -164,20 +251,6 @@ export class PathfindingService {
 
     const smoothed = this.smoothPath(path, obstacles, clearance);
     return { waypoints: smoothed.slice(1), goalReached: false };
-  }
-
-  private collectObstacles(request: PathRequest, radius: number): ObstacleDescriptor[] {
-    const center = {
-      x: (request.start.x + request.target.x) * 0.5,
-      y: (request.start.y + request.target.y) * 0.5,
-    } satisfies SceneVector2;
-    const collected: ObstacleDescriptor[] = [];
-    this.obstacles.forEachObstacleNear(center, radius, (obstacle) => {
-      if (!isPassableFor(obstacle, request.passabilityTag ?? "")) {
-        collected.push(obstacle);
-      }
-    });
-    return collected;
   }
 
   private isLineClear(

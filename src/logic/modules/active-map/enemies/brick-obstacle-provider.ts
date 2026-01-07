@@ -18,5 +18,15 @@ export class BrickObstacleProvider implements ObstacleProvider {
       });
     });
   }
+
+  public forEachObstacle(visitor: (obstacle: ObstacleDescriptor) => void): void {
+    this.bricks.forEachBrick((brick) => {
+      visitor({
+        position: brick.position,
+        radius: brick.physicalSize,
+        passableFor: brick.passableFor,
+      });
+    });
+  }
 }
 
