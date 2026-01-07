@@ -2,16 +2,24 @@ import type { SceneObjectManager } from "../../../services/scene-object-manager/
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import type { ArcType } from "../../../../db/arcs-db";
 
+export type ArcTargetType = "unit" | "enemy";
+
+export interface ArcTargetRef {
+  readonly type: ArcTargetType;
+  readonly id: string;
+}
+
 export interface ArcModuleOptions {
   scene: SceneObjectManager;
   getUnitPositionIfAlive: (unitId: string) => SceneVector2 | null;
+  getEnemyPositionIfAlive?: (enemyId: string) => SceneVector2 | null;
 }
 
 export interface ArcState {
   id: string; // scene object id
   type: ArcType;
-  sourceUnitId: string;
-  targetUnitId: string;
+  source: ArcTargetRef;
+  target: ArcTargetRef;
   remainingMs: number;
   lifetimeMs: number;
   fadeStartMs: number;
