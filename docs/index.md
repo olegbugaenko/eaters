@@ -6,6 +6,7 @@
 - [modules/](modules/index.md) — детальний опис кожного логічного модуля та його публічних методів.
 - [gameplay/](gameplay/index.md) — покроковий гайд по ігровому процесу з точки зору гравця.
 - [technology/](technology/index.md) — технічні нотатки та оптимізації рендеру.
+- [examples/](examples/index.md) — покрокові інструкції для інтеграційних задач.
 - Якщо губитеся в коді — почніть із [overview/file-structure.md](overview/file-structure.md) та [overview/interfaces.md](overview/interfaces.md).
 
 > Порада: шукайте ключові слова на кшталт `bridge key`, `spawn`, `upgrade` чи назви сервісів. Кожен файл містить розділ «Основні методи», де зібрані виклики, які найчастіше знадобляться при інтеграції.

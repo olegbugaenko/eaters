@@ -30,3 +30,4 @@
 - [explosions.md](explosions.md)
 - [arcs.md](arcs.md)
 - [effects.md](effects.md)
+- [status-effects.md](status-effects.md)
