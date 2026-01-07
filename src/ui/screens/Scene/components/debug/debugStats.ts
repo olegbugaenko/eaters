@@ -12,6 +12,10 @@ export interface DebugStats {
   particleActive: number;
   particleCapacity: number;
   particleEmitters: number;
+  // FPS tracking - updated by render loop
+  frameCount: number;
+  lastFpsUpdate: number;
+  currentFps: number;
 }
 
 /** Global mutable stats object - written by render loop, read by debug panel */
@@ -21,6 +25,9 @@ export const debugStats: DebugStats = {
   particleActive: 0,
   particleCapacity: 0,
   particleEmitters: 0,
+  frameCount: 0,
+  lastFpsUpdate: 0,
+  currentFps: 0,
 };
 
 /** Update VBO stats (called from useSceneCanvas) */
@@ -38,4 +45,19 @@ export const updateParticleStats = (
   debugStats.particleActive = active;
   debugStats.particleCapacity = capacity;
   debugStats.particleEmitters = emitters;
+};
+
+/** 
+ * Increment frame counter - called every frame from render loop.
+ * FPS is calculated lazily when read.
+ */
+export const tickFrame = (): void => {
+  debugStats.frameCount++;
+  const now = performance.now();
+  const elapsed = now - debugStats.lastFpsUpdate;
+  if (elapsed >= 1000) {
+    debugStats.currentFps = Math.round((debugStats.frameCount / elapsed) * 1000);
+    debugStats.frameCount = 0;
+    debugStats.lastFpsUpdate = now;
+  }
 };

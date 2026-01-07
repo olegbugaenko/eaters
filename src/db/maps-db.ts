@@ -1279,10 +1279,22 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       { x, y: y + height },
     ];
 
+    const enemySpawnPosition: SceneVector2 = { x: size.width - 200, y: 200 };
+
     return {
       name: "Stone Cottage",
       size,
       spawnPoints: [spawnPoint],
+      enemySpawnPoints: [
+        {
+          position: enemySpawnPosition,
+          spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
+          enemyTypes: [
+            { type: "spectreEnemy", weight: 1.0 },
+          ],
+          maxConcurrent: 10,
+        },
+      ],
       nodePosition: { x: 1, y: 4 },
       icon: "cottage.png",
       bricks: ({ mapLevel }) => {

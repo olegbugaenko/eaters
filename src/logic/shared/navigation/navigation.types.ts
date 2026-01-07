@@ -13,5 +13,11 @@ export interface ObstacleProvider {
     radius: number,
     visitor: (obstacle: ObstacleDescriptor) => void
   ): void;
+  
+  /**
+   * Ітерує через ВСІ перешкоди без просторової фільтрації.
+   * Швидше ніж forEachObstacleNear з величезним радіусом.
+   */
+  forEachObstacle?(visitor: (obstacle: ObstacleDescriptor) => void): void;
 }
 
