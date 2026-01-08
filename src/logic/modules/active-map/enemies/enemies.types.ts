@@ -1,4 +1,8 @@
-import type { SceneFill, SceneStroke, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type {
+  SceneFill,
+  SceneStroke,
+  SceneVector2,
+} from "../../../services/scene-object-manager/scene-object-manager.types";
 import type { DataBridge } from "../../../core/DataBridge";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { MapRunState } from "../map/MapRunState";
@@ -12,6 +16,7 @@ import type { ObstacleProvider } from "@/logic/shared/navigation/navigation.type
 import type { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import type { ArcModule } from "../../scene/arc/arc.module";
 
 export interface EnemySpawnData {
   readonly id?: string;
@@ -63,6 +68,7 @@ export interface EnemiesModuleOptions {
   readonly damage?: DamageService;
   readonly explosions?: ExplosionModule;
   readonly projectiles?: UnitProjectileController;
+  readonly arcs?: ArcModule;
   readonly bricks: BricksModule;
   readonly statusEffects: StatusEffectsModule;
   readonly obstacles?: ObstacleProvider;

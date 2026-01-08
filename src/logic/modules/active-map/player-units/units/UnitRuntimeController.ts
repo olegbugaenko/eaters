@@ -955,6 +955,19 @@ export class UnitRuntimeController {
         });
         hpChanged = inflictedDamage > 0;
         
+        // Knockback юніта від ворога при атаці (щоб не застрягав)
+        const knockbackDistance = 15;
+        const knockbackDirection = distance > 0 
+          ? scaleVector(direction, -1 / distance) // Напрямок ВІД ворога
+          : { x: -1, y: 0 };
+        const newPosition = addVectors(
+          unit.position,
+          scaleVector(knockbackDirection, knockbackDistance)
+        );
+        console.log(`[KNOCKBACK] unit=${unit.id} attacking enemy, distance=${distance.toFixed(1)}, knockback=${knockbackDistance}`);
+        this.movement.setBodyPosition(unit.movementId, newPosition);
+        unit.position = { ...newPosition };
+        
         // Перевіряємо чи ворог вижив
         const updatedEnemy = this.enemies.getEnemyState(target.id);
         surviving = updatedEnemy ?? null;

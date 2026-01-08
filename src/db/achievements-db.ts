@@ -8,7 +8,7 @@ export interface AchievementConfig {
   readonly effects: BonusEffectMap;
 }
 
-export const ACHIEVEMENT_IDS = ["megaBrick"] as const;
+export const ACHIEVEMENT_IDS = ["megaBrick", "ancientPyramids"] as const;
 
 export type AchievementId = (typeof ACHIEVEMENT_IDS)[number];
 
@@ -20,6 +20,17 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     maxLevel: 10,
     effects: {
       brick_rewards: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+  },
+  ancientPyramids: {
+    id: "ancientPyramids",
+    name: "Ancient Piramids Mastery",
+    description: "Complete Ancient Piramids levels to boost unit HP.",
+    maxLevel: 10,
+    effects: {
+      all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
       },
     },

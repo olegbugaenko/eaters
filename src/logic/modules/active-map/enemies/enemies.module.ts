@@ -3,7 +3,10 @@ import type { DataBridge } from "../../../core/DataBridge";
 import { GameModule } from "../../../core/types";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
-import { cloneResourceStockpile, normalizeResourceAmount } from "../../../../db/resources-db";
+import {
+  cloneResourceStockpile,
+  normalizeResourceAmount,
+} from "../../../../db/resources-db";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
@@ -25,7 +28,13 @@ import {
   ENEMY_SPATIAL_GRID_CELL_SIZE,
   ENEMY_TOTAL_HP_BRIDGE_KEY,
 } from "./enemies.const";
-import type { EnemiesModuleOptions, EnemyRuntimeState, EnemySaveData, EnemySpawnData, InternalEnemyState } from "./enemies.types";
+import type {
+  EnemiesModuleOptions,
+  EnemyRuntimeState,
+  EnemySaveData,
+  EnemySpawnData,
+  InternalEnemyState,
+} from "./enemies.types";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { getEnemyConfig } from "../../../../db/enemies-db";
@@ -33,11 +42,18 @@ import { normalizeVector } from "../../../../shared/helpers/vector.helper";
 import { normalizeAngle } from "../../../../shared/helpers/angle.helper";
 import type { UnitProjectileHitContext } from "../projectiles/projectiles.types";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
-import { isPassableFor, type PassabilityTag } from "@/logic/shared/navigation/passability.types";
-import type { ObstacleDescriptor, ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
+import {
+  isPassableFor,
+  type PassabilityTag,
+} from "@/logic/shared/navigation/passability.types";
+import type {
+  ObstacleDescriptor,
+  ObstacleProvider,
+} from "@/logic/shared/navigation/navigation.types";
 import { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import { BrickObstacleProvider } from "./brick-obstacle-provider";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import type { ArcModule } from "../../scene/arc/arc.module";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
@@ -68,12 +84,15 @@ export class EnemiesModule implements GameModule {
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
   private readonly projectiles?: UnitProjectileController;
+  private readonly arcs?: ArcModule;
   private readonly obstacles: ObstacleProvider;
   private readonly pathfinder: PathfindingService;
   private readonly navigationCellSize: number;
   private readonly navigationState = new Map<string, EnemyNavigationState>();
   private readonly stateFactory: EnemyStateFactory;
-  private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(ENEMY_SPATIAL_GRID_CELL_SIZE);
+  private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(
+    ENEMY_SPATIAL_GRID_CELL_SIZE,
+  );
   private readonly statusEffects: StatusEffectsModule;
 
   private enemies = new Map<string, InternalEnemyState>();
@@ -92,8 +111,10 @@ export class EnemiesModule implements GameModule {
     this.damage = options.damage;
     this.explosions = options.explosions;
     this.projectiles = options.projectiles;
+    this.arcs = options.arcs;
     this.statusEffects = options.statusEffects;
-    this.obstacles = options.obstacles ?? new BrickObstacleProvider(options.bricks);
+    this.obstacles =
+      options.obstacles ?? new BrickObstacleProvider(options.bricks);
     this.pathfinder =
       options.pathfinder ??
       new PathfindingService({
@@ -101,7 +122,10 @@ export class EnemiesModule implements GameModule {
         getMapSize: () => this.scene.getMapSize(),
       });
     this.navigationCellSize = this.pathfinder.getCellSize();
-    this.stateFactory = new EnemyStateFactory({ scene: this.scene, movement: this.movement });
+    this.stateFactory = new EnemyStateFactory({
+      scene: this.scene,
+      movement: this.movement,
+    });
 
     if (this.targeting) {
       this.targeting.registerProvider(new EnemyTargetingProvider(this));
@@ -150,13 +174,19 @@ export class EnemiesModule implements GameModule {
     // Кешуємо всі перешкоди один раз на початку tick для всіх ворогів
     this.pathfinder.cacheAllObstacles(ENEMY_PASSABILITY);
 
-    const activeTargets = new Map<string, { id: string; position: SceneVector2; physicalSize: number } | null>();
+    const activeTargets = new Map<
+      string,
+      { id: string; position: SceneVector2; physicalSize: number } | null
+    >();
 
     // Phase 1: Compute movement forces towards targets (тільки для рухомих ворогів)
     this.enemyOrder.forEach((enemy) => {
-      const target = this.targeting?.findNearestTarget(enemy.position, { types: ["unit"] }) ?? null;
+      const target =
+        this.targeting?.findNearestTarget(enemy.position, {
+          types: ["unit"],
+        }) ?? null;
       activeTargets.set(enemy.id, target);
-      
+
       // Статичні вороги (moveSpeed === 0) не рухаються
       const moveSpeed = this.getEffectiveMoveSpeed(enemy);
       if (moveSpeed > 0) {
@@ -191,20 +221,32 @@ export class EnemiesModule implements GameModule {
 
       // Update position
       const newPosition = this.clampToMap(movementState.position);
-      if (newPosition.x !== enemy.position.x || newPosition.y !== enemy.position.y) {
+      if (
+        newPosition.x !== enemy.position.x ||
+        newPosition.y !== enemy.position.y
+      ) {
         enemy.position = newPosition;
-        this.spatialIndex.set(enemy.id, enemy.position, enemy.physicalSize, enemy);
+        this.spatialIndex.set(
+          enemy.id,
+          enemy.position,
+          enemy.physicalSize,
+          enemy,
+        );
         anyChanged = true;
       }
 
       // Update rotation based on movement direction or target direction
       const target = activeTargets.get(enemy.id);
-      const desiredRotation = this.computeEnemyRotation(enemy, target ?? null, movementState);
+      const desiredRotation = this.computeEnemyRotation(
+        enemy,
+        target ?? null,
+        movementState,
+      );
       const newRotation = this.applyRotationSpeedLimit(
         enemy.rotation,
         desiredRotation,
         deltaSeconds,
-        movementState.velocity
+        movementState.velocity,
       );
       if (newRotation !== enemy.rotation) {
         enemy.rotation = newRotation;
@@ -248,7 +290,8 @@ export class EnemiesModule implements GameModule {
     const input: EnemyStateInput = {
       enemy: data,
       enemyId: this.createEnemyId(data.id),
-      clampToMap: (position: EnemySpawnData["position"]) => this.clampToMap(position),
+      clampToMap: (position: EnemySpawnData["position"]) =>
+        this.clampToMap(position),
     };
     const state = this.stateFactory.createWithTransform(input);
     // Ensure movement body position matches enemy position
@@ -269,12 +312,25 @@ export class EnemiesModule implements GameModule {
     return enemy ? this.cloneState(enemy) : null;
   }
 
+  public getEnemyPositionIfAlive = (enemyId: string): SceneVector2 | null => {
+    const enemy = this.enemies.get(enemyId);
+    if (!enemy || enemy.hp <= 0) {
+      return null;
+    }
+    return { ...enemy.position };
+  };
+
   public findNearestEnemy(position: SceneVector2): EnemyRuntimeState | null {
-    const nearest = this.spatialIndex.queryNearest(position, { maxLayers: 128 });
+    const nearest = this.spatialIndex.queryNearest(position, {
+      maxLayers: 128,
+    });
     return nearest ? this.cloneState(nearest) : null;
   }
 
-  public findEnemiesNear(position: SceneVector2, radius: number): EnemyRuntimeState[] {
+  public findEnemiesNear(
+    position: SceneVector2,
+    radius: number,
+  ): EnemyRuntimeState[] {
     if (radius < 0) {
       return [];
     }
@@ -291,10 +347,16 @@ export class EnemiesModule implements GameModule {
     if (radius < 0) {
       return;
     }
-    this.spatialIndex.forEachInCircle(position, radius, (enemy) => visitor(this.cloneState(enemy)));
+    this.spatialIndex.forEachInCircle(position, radius, (enemy) =>
+      visitor(this.cloneState(enemy)),
+    );
   }
 
-  public applyDamage(enemyId: string, damage: number, options?: { armorPenetration?: number }): number {
+  public applyDamage(
+    enemyId: string,
+    damage: number,
+    options?: { armorPenetration?: number },
+  ): number {
     if (damage <= 0) {
       return 0;
     }
@@ -302,9 +364,19 @@ export class EnemiesModule implements GameModule {
     if (!enemy) {
       return 0;
     }
-    const armorPenetration = clampNumber(options?.armorPenetration ?? 0, 0, Number.POSITIVE_INFINITY);
-    const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "enemy", id: enemyId });
-    const effectiveArmor = Math.max(enemy.armor + armorDelta - armorPenetration, 0);
+    const armorPenetration = clampNumber(
+      options?.armorPenetration ?? 0,
+      0,
+      Number.POSITIVE_INFINITY,
+    );
+    const armorDelta = this.statusEffects.getTargetArmorDelta({
+      type: "enemy",
+      id: enemyId,
+    });
+    const effectiveArmor = Math.max(
+      enemy.armor + armorDelta - armorPenetration,
+      0,
+    );
     const appliedDamage = Math.max(damage - effectiveArmor, 0);
     if (appliedDamage <= 0) {
       return 0;
@@ -337,12 +409,18 @@ export class EnemiesModule implements GameModule {
       const input: EnemyStateInput = {
         enemy,
         enemyId: this.createEnemyId(enemy.id),
-        clampToMap: (position: EnemySpawnData["position"]) => this.clampToMap(position),
+        clampToMap: (position: EnemySpawnData["position"]) =>
+          this.clampToMap(position),
       };
       const state = this.stateFactory.createWithTransform(input);
       this.enemies.set(state.id, state);
       this.enemyOrder.push(state);
-      this.spatialIndex.set(state.id, state.position, state.physicalSize, state);
+      this.spatialIndex.set(
+        state.id,
+        state.position,
+        state.physicalSize,
+        state,
+      );
       this.totalHpCached += state.hp;
     });
 
@@ -377,13 +455,46 @@ export class EnemiesModule implements GameModule {
 
     const toTarget = subtractVectors(target.position, enemy.position);
     const distance = vectorLength(toTarget);
-    const attackRange = enemy.attackRange + enemy.physicalSize + target.physicalSize;
-    
+    const attackRange =
+      enemy.attackRange + enemy.physicalSize + target.physicalSize;
+
     if (distance > attackRange) {
       return false;
     }
 
     const config = getEnemyConfig(enemy.type);
+
+    if (config.arcAttack) {
+      const arcAttack = config.arcAttack;
+      this.arcs?.spawnArcBetweenTargets(
+        arcAttack.arcType,
+        { type: "enemy", id: enemy.id },
+        { type: "unit", id: target.id },
+      );
+      if (arcAttack.statusEffectId) {
+        const effectTarget = { type: "unit", id: target.id } as const;
+        if (!this.statusEffects.hasEffect(arcAttack.statusEffectId, effectTarget)) {
+          this.statusEffects.applyEffect(
+            arcAttack.statusEffectId,
+            effectTarget,
+            arcAttack.statusEffectOptions,
+          );
+        }
+      }
+      if (this.damage && enemy.baseDamage > 0) {
+        const knockBackDirection = toTarget;
+        this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
+          armorPenetration: 0,
+          knockBackDistance: config.knockBackDistance,
+          knockBackSpeed: config.knockBackSpeed,
+          knockBackDirection:
+            vectorLength(knockBackDirection) > 0
+              ? knockBackDirection
+              : normalizeVector(toTarget) || { x: 1, y: 0 },
+        });
+      }
+      return true;
+    }
 
     // Якщо є конфіг снаряда - створюємо снаряд
     if (config.projectile && this.projectiles) {
@@ -408,20 +519,33 @@ export class EnemiesModule implements GameModule {
         onHit: (hitContext: UnitProjectileHitContext) => {
           if (hitContext.targetType === "unit" && this.damage) {
             // Calculate knockback direction from enemy to hit position
-            const knockBackDirection = subtractVectors(hitContext.position, enemy.position);
-            
-            this.damage.applyTargetDamage(hitContext.targetId, enemy.baseDamage, {
-              armorPenetration: 0,
-              knockBackDistance: config.knockBackDistance,
-              knockBackSpeed: config.knockBackSpeed,
-              knockBackDirection: vectorLength(knockBackDirection) > 0 ? knockBackDirection : direction,
-            });
+            const knockBackDirection = subtractVectors(
+              hitContext.position,
+              enemy.position,
+            );
+
+            this.damage.applyTargetDamage(
+              hitContext.targetId,
+              enemy.baseDamage,
+              {
+                armorPenetration: 0,
+                knockBackDistance: config.knockBackDistance,
+                knockBackSpeed: config.knockBackSpeed,
+                knockBackDirection:
+                  vectorLength(knockBackDirection) > 0
+                    ? knockBackDirection
+                    : direction,
+              },
+            );
 
             if (this.explosions && config.projectile?.explosion) {
-              this.explosions.spawnExplosionByType(config.projectile.explosion, {
-                position: { ...hitContext.position },
-                initialRadius: Math.max(8, enemy.physicalSize),
-              });
+              this.explosions.spawnExplosionByType(
+                config.projectile.explosion,
+                {
+                  position: { ...hitContext.position },
+                  initialRadius: Math.max(8, enemy.physicalSize),
+                },
+              );
             }
           }
           return true; // Снаряд зникає після влучання
@@ -435,12 +559,15 @@ export class EnemiesModule implements GameModule {
     if (this.damage) {
       // Calculate knockback direction from enemy to target
       const knockBackDirection = toTarget;
-      
+
       this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
         armorPenetration: 0,
         knockBackDistance: config.knockBackDistance,
         knockBackSpeed: config.knockBackSpeed,
-        knockBackDirection: vectorLength(knockBackDirection) > 0 ? knockBackDirection : normalizeVector(toTarget) || { x: 1, y: 0 },
+        knockBackDirection:
+          vectorLength(knockBackDirection) > 0
+            ? knockBackDirection
+            : normalizeVector(toTarget) || { x: 1, y: 0 },
       });
 
       // For instant damage, use default explosion type (plasmoid) if explosions module is available
@@ -477,8 +604,9 @@ export class EnemiesModule implements GameModule {
       return;
     }
 
-    const baseTargetRadius = enemy.attackRange + enemy.physicalSize + target.physicalSize;
-    
+    const baseTargetRadius =
+      enemy.attackRange + enemy.physicalSize + target.physicalSize;
+
     // Add margin for maneuverability limitations
     // With limited steering force, enemy needs extra space to turn
     // Estimate: time to turn 90 degrees at max steering force
@@ -491,11 +619,12 @@ export class EnemiesModule implements GameModule {
     const turnTime = maxForce > 0 ? moveSpeed / maxForce : 0.2;
     const maneuverMargin = moveSpeed * turnTime * 0.5; // Conservative margin
     const targetRadius = baseTargetRadius + maneuverMargin;
-    
+
     const existing = this.navigationState.get(enemy.id);
     const distanceToTargetSq = distanceSquared(enemy.position, target.position);
     const targetMoved = existing
-      ? distanceSquared(existing.targetPosition, target.position) > this.navigationCellSize * this.navigationCellSize * 0.5
+      ? distanceSquared(existing.targetPosition, target.position) >
+        this.navigationCellSize * this.navigationCellSize * 0.5
       : true;
 
     if (distanceToTargetSq <= baseTargetRadius * baseTargetRadius) {
@@ -512,7 +641,10 @@ export class EnemiesModule implements GameModule {
       return;
     }
 
-    const repathCooldown = Math.max((existing?.repathCooldown ?? 0) - deltaSeconds, 0);
+    const repathCooldown = Math.max(
+      (existing?.repathCooldown ?? 0) - deltaSeconds,
+      0,
+    );
     const needsPath =
       !existing ||
       existing.targetId !== target.id ||
@@ -573,7 +705,10 @@ export class EnemiesModule implements GameModule {
     if (!navigation) {
       return;
     }
-    const threshold = Math.max(enemy.physicalSize * 0.5, this.navigationCellSize * 0.5);
+    const threshold = Math.max(
+      enemy.physicalSize * 0.5,
+      this.navigationCellSize * 0.5,
+    );
     const thresholdSq = threshold * threshold;
 
     while (navigation.waypoints.length > 0) {
@@ -586,12 +721,16 @@ export class EnemiesModule implements GameModule {
 
     if (navigation.waypoints.length === 0) {
       navigation.goalReached = target
-        ? distanceSquared(enemy.position, target.position) <= navigation.targetRadius * navigation.targetRadius
+        ? distanceSquared(enemy.position, target.position) <=
+          navigation.targetRadius * navigation.targetRadius
         : navigation.goalReached;
     }
   }
 
-  private trackNavigationProgress(enemy: InternalEnemyState, deltaSeconds: number): void {
+  private trackNavigationProgress(
+    enemy: InternalEnemyState,
+    deltaSeconds: number,
+  ): void {
     const navigation = this.navigationState.get(enemy.id);
     if (!navigation) {
       return;
@@ -617,7 +756,7 @@ export class EnemiesModule implements GameModule {
    */
   private computeMovementForce(
     enemy: InternalEnemyState,
-    target: { position: SceneVector2; physicalSize: number } | null
+    target: { position: SceneVector2; physicalSize: number } | null,
   ): SceneVector2 {
     const movementState = this.movement.getBodyState(enemy.movementId);
     if (!movementState) {
@@ -637,7 +776,8 @@ export class EnemiesModule implements GameModule {
     const distanceToDestination = vectorLength(toDestination);
     const toTarget = subtractVectors(target.position, enemy.position);
     const distance = vectorLength(toTarget);
-    const attackRange = enemy.attackRange + enemy.physicalSize + target.physicalSize;
+    const attackRange =
+      enemy.attackRange + enemy.physicalSize + target.physicalSize;
     const distanceOutsideRange = Math.max(distance - attackRange, 0);
 
     // If within attack range, brake
@@ -646,15 +786,24 @@ export class EnemiesModule implements GameModule {
     }
 
     // Move towards target
-    const direction = distanceToDestination > 0 ? scaleVector(toDestination, 1 / distanceToDestination) : ZERO_VECTOR;
+    const direction =
+      distanceToDestination > 0
+        ? scaleVector(toDestination, 1 / distanceToDestination)
+        : ZERO_VECTOR;
     if (!vectorHasLength(direction)) {
       return ZERO_VECTOR;
     }
 
     // Desired speed - slow down as we approach
-    const approachDistance = Math.min(distanceOutsideRange, distanceToDestination);
+    const approachDistance = Math.min(
+      distanceOutsideRange,
+      distanceToDestination,
+    );
     const moveSpeed = this.getEffectiveMoveSpeed(enemy);
-    const desiredSpeed = Math.max(Math.min(moveSpeed, approachDistance), moveSpeed * 0.25);
+    const desiredSpeed = Math.max(
+      Math.min(moveSpeed, approachDistance),
+      moveSpeed * 0.25,
+    );
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
     const avoidance = this.computeObstacleAvoidance(enemy, desiredVelocity);
@@ -663,12 +812,16 @@ export class EnemiesModule implements GameModule {
     }
 
     // Steering force (similar to player units)
-    return this.computeSteeringForce(enemy, movementState.velocity, desiredVelocity);
+    return this.computeSteeringForce(
+      enemy,
+      movementState.velocity,
+      desiredVelocity,
+    );
   }
 
   private computeObstacleAvoidance(
     enemy: InternalEnemyState,
-    desiredVelocity: SceneVector2
+    desiredVelocity: SceneVector2,
   ): SceneVector2 {
     if (!vectorHasLength(desiredVelocity)) {
       return ZERO_VECTOR;
@@ -678,32 +831,45 @@ export class EnemiesModule implements GameModule {
     const entityTag = ENEMY_PASSABILITY;
     let avoidanceVector = { ...ZERO_VECTOR };
 
-    this.obstacles.forEachObstacleNear(enemy.position, avoidanceRadius, (obstacle: ObstacleDescriptor) => {
-      if (isPassableFor(obstacle, entityTag)) {
-        return;
-      }
+    this.obstacles.forEachObstacleNear(
+      enemy.position,
+      avoidanceRadius,
+      (obstacle: ObstacleDescriptor) => {
+        if (isPassableFor(obstacle, entityTag)) {
+          return;
+        }
 
-      const toObstacle = subtractVectors(obstacle.position, enemy.position);
-      const distance = vectorLength(toObstacle);
-      const combinedRadius = obstacle.radius + enemy.physicalSize;
-      const normalizedToObstacle = normalizeVector(toObstacle);
-      if (!normalizedToObstacle) {
-        return;
-      }
-      const isAhead = normalizedToObstacle.x * desiredVelocity.x + normalizedToObstacle.y * desiredVelocity.y > 0;
-      if (distance <= 0 || distance > avoidanceRadius || !isAhead) {
-        return;
-      }
+        const toObstacle = subtractVectors(obstacle.position, enemy.position);
+        const distance = vectorLength(toObstacle);
+        const combinedRadius = obstacle.radius + enemy.physicalSize;
+        const normalizedToObstacle = normalizeVector(toObstacle);
+        if (!normalizedToObstacle) {
+          return;
+        }
+        const isAhead =
+          normalizedToObstacle.x * desiredVelocity.x +
+            normalizedToObstacle.y * desiredVelocity.y >
+          0;
+        if (distance <= 0 || distance > avoidanceRadius || !isAhead) {
+          return;
+        }
 
-      const overlap = combinedRadius + 4 - distance;
-      if (overlap <= 0) {
-        return;
-      }
+        const overlap = combinedRadius + 4 - distance;
+        if (overlap <= 0) {
+          return;
+        }
 
-      const pushDirection = scaleVector(toObstacle, -1 / Math.max(distance, 1));
-      const strength = overlap / Math.max(combinedRadius, 1);
-      avoidanceVector = addVectors(avoidanceVector, scaleVector(pushDirection, strength));
-    });
+        const pushDirection = scaleVector(
+          toObstacle,
+          -1 / Math.max(distance, 1),
+        );
+        const strength = overlap / Math.max(combinedRadius, 1);
+        avoidanceVector = addVectors(
+          avoidanceVector,
+          scaleVector(pushDirection, strength),
+        );
+      },
+    );
 
     const length = vectorLength(avoidanceVector);
     if (length <= 0) {
@@ -729,7 +895,7 @@ export class EnemiesModule implements GameModule {
   private computeSteeringForce(
     enemy: InternalEnemyState,
     currentVelocity: SceneVector2,
-    desiredVelocity: SceneVector2
+    desiredVelocity: SceneVector2,
   ): SceneVector2 {
     const steering = subtractVectors(desiredVelocity, currentVelocity);
     const magnitude = vectorLength(steering);
@@ -770,12 +936,16 @@ export class EnemiesModule implements GameModule {
    */
   private computeBrakingForce(
     enemy: InternalEnemyState,
-    movementState: { velocity: SceneVector2 }
+    movementState: { velocity: SceneVector2 },
   ): SceneVector2 {
     if (!vectorHasLength(movementState.velocity)) {
       return ZERO_VECTOR;
     }
-    return this.computeSteeringForce(enemy, movementState.velocity, ZERO_VECTOR);
+    return this.computeSteeringForce(
+      enemy,
+      movementState.velocity,
+      ZERO_VECTOR,
+    );
   }
 
   /**
@@ -787,7 +957,7 @@ export class EnemiesModule implements GameModule {
   private computeEnemyRotation(
     enemy: InternalEnemyState,
     target: { position: SceneVector2; physicalSize: number } | null,
-    movementState: MovementBodyState
+    movementState: MovementBodyState,
   ): number {
     const MIN_VELOCITY_FOR_MOVEMENT_ROTATION = 0.1; // Minimum velocity to use movement-based rotation
 
@@ -795,7 +965,8 @@ export class EnemiesModule implements GameModule {
     if (target) {
       const toTarget = subtractVectors(target.position, enemy.position);
       const distance = vectorLength(toTarget);
-      const attackRange = enemy.attackRange + enemy.physicalSize + target.physicalSize;
+      const attackRange =
+        enemy.attackRange + enemy.physicalSize + target.physicalSize;
 
       if (distance <= attackRange) {
         // Within attack range - rotate towards target for proper attack
@@ -832,7 +1003,7 @@ export class EnemiesModule implements GameModule {
     currentRotation: number,
     desiredRotation: number,
     deltaSeconds: number,
-    velocity: SceneVector2
+    velocity: SceneVector2,
   ): number {
     const MIN_VELOCITY_FOR_FREE_ROTATION = 0.1; // If moving, allow free rotation
     const MAX_ROTATION_SPEED = Math.PI * 2; // 360 degrees per second (adjustable)
@@ -866,7 +1037,10 @@ export class EnemiesModule implements GameModule {
 
     // Limit rotation speed
     const maxRotationDelta = MAX_ROTATION_SPEED * deltaSeconds;
-    const clampedDiff = Math.max(-maxRotationDelta, Math.min(maxRotationDelta, angleDiff));
+    const clampedDiff = Math.max(
+      -maxRotationDelta,
+      Math.min(maxRotationDelta, angleDiff),
+    );
 
     // Apply rotation
     const newRotation = normalizedCurrent + clampedDiff;
@@ -901,7 +1075,11 @@ export class EnemiesModule implements GameModule {
 
     const totalHp = Math.max(0, Math.floor(this.totalHpCached));
     if (totalHp !== this.lastPushedTotalHp) {
-      DataBridgeHelpers.pushState(this.bridge, ENEMY_TOTAL_HP_BRIDGE_KEY, totalHp);
+      DataBridgeHelpers.pushState(
+        this.bridge,
+        ENEMY_TOTAL_HP_BRIDGE_KEY,
+        totalHp,
+      );
       this.lastPushedTotalHp = totalHp;
     }
   }
@@ -922,7 +1100,9 @@ export class EnemiesModule implements GameModule {
       attackRange: enemy.attackRange,
       moveSpeed: enemy.moveSpeed,
       physicalSize: enemy.physicalSize,
-      reward: enemy.reward ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward)) : undefined,
+      reward: enemy.reward
+        ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward))
+        : undefined,
     };
   }
 }

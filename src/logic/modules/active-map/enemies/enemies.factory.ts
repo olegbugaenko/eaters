@@ -1,7 +1,11 @@
 import { ServiceDefinition } from "../../../core/loader/types";
 import { EnemiesModule } from "./enemies.module";
+import type { ArcModule } from "../../scene/arc/arc.module";
 
-export const createEnemiesDefinition = (): ServiceDefinition<EnemiesModule, "enemies"> => ({
+export const createEnemiesDefinition = (): ServiceDefinition<
+  EnemiesModule,
+  "enemies"
+> => ({
   token: "enemies",
   factory: (container) =>
     new EnemiesModule({
@@ -13,6 +17,7 @@ export const createEnemiesDefinition = (): ServiceDefinition<EnemiesModule, "ene
       damage: container.get("damage"),
       explosions: container.get("explosion"),
       projectiles: container.get("unitProjectiles"),
+      arcs: container.getOptional<ArcModule>("arc") ?? undefined,
       bricks: container.get("bricks"),
       statusEffects: container.get("statusEffects"),
     }),

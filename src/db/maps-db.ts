@@ -1,5 +1,8 @@
 import { BrickType, getBrickConfig } from "./bricks-db";
-import { SceneSize, SceneVector2 } from "../logic/services/scene-object-manager/scene-object-manager.types";
+import {
+  SceneSize,
+  SceneVector2,
+} from "../logic/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "./player-units-db";
 import type { EnemyType } from "./enemies-db";
 import type { EnemySpawnData } from "../logic/modules/active-map/enemies/enemies.types";
@@ -32,14 +35,15 @@ export type MapId =
   | "silverRing"
   | "frozenForest"
   | "volcano"
-  | "megaBrick";
+  | "megaBrick"
+  | "ancientPyramids";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
 }
 
 export type MapBrickGenerator = (
-  options: MapBrickGeneratorOptions
+  options: MapBrickGeneratorOptions,
 ) => readonly BrickShapeBlueprint[];
 
 export interface MapEnemyGeneratorOptions {
@@ -47,7 +51,7 @@ export interface MapEnemyGeneratorOptions {
 }
 
 export type MapEnemyGenerator = (
-  options: MapEnemyGeneratorOptions
+  options: MapEnemyGeneratorOptions,
 ) => readonly EnemySpawnData[];
 
 export interface MapNodePosition {
@@ -133,7 +137,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             horizontalGap: 1,
             verticalGap: 1,
           },
-          { level: baseLevel }
+          { level: baseLevel },
         );
 
         return [numberOne];
@@ -186,7 +190,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: headRadius - headThickness,
             outerRadius: headRadius,
           },
-          { level: baseLevel }
+          { level: baseLevel },
         );
 
         // Ліве око
@@ -197,7 +201,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: eyeRadius,
           },
-          { level: baseLevel }
+          { level: baseLevel },
         );
 
         // Праве око
@@ -208,27 +212,31 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: eyeRadius,
           },
-          { level: baseLevel }
+          { level: baseLevel },
         );
 
         // Рот (дуга) - створюємо через сегменти кіл
-        const mouthSegmentsArray = Array.from({ length: mouthSegments }, (_, i) => {
-          const t = i / (mouthSegments - 1);
-          const angle = mouthStartAngle + (mouthEndAngle - mouthStartAngle) * t;
-          const segmentCenter: SceneVector2 = {
-            x: center.x + Math.cos(angle) * mouthRadius,
-            y: mouthCenterY + Math.sin(angle) * mouthRadius,
-          };
-          return circleWithBricks(
-            "smallTrainingBrick",
-            {
-              center: segmentCenter,
-              innerRadius: 0,
-              outerRadius: mouthThickness,
-            },
-            { level: baseLevel }
-          );
-        });
+        const mouthSegmentsArray = Array.from(
+          { length: mouthSegments },
+          (_, i) => {
+            const t = i / (mouthSegments - 1);
+            const angle =
+              mouthStartAngle + (mouthEndAngle - mouthStartAngle) * t;
+            const segmentCenter: SceneVector2 = {
+              x: center.x + Math.cos(angle) * mouthRadius,
+              y: mouthCenterY + Math.sin(angle) * mouthRadius,
+            };
+            return circleWithBricks(
+              "smallTrainingBrick",
+              {
+                center: segmentCenter,
+                innerRadius: 0,
+                outerRadius: mouthThickness,
+              },
+              { level: baseLevel },
+            );
+          },
+        );
 
         return [headOuter, leftEye, rightEye, ...mouthSegmentsArray];
       },
@@ -249,9 +257,13 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 30 };
     const sides = 5;
     const outerRadius = 360;
-    const layerThicknessTraining = getBrickConfig("smallTrainingBrick").size.width;
+    const layerThicknessTraining =
+      getBrickConfig("smallTrainingBrick").size.width;
     const layerThicknessGray = getBrickConfig("smallSquareGray").size.width;
-    const innerRadius = Math.max(outerRadius - layerThicknessTraining - layerThicknessGray, 0);
+    const innerRadius = Math.max(
+      outerRadius - layerThicknessTraining - layerThicknessGray,
+      0,
+    );
     const middleRadius = Math.max(outerRadius - layerThicknessGray, 0);
 
     const createPolygon = (radius: number): SceneVector2[] =>
@@ -266,7 +278,9 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const outerVertices = createPolygon(outerRadius);
     const innerVertices = createPolygon(innerRadius);
     const middleVertices = createPolygon(middleRadius);
-    const expandedVertices = createPolygon(outerRadius + getBrickConfig("smallSquareGray").size.width * 1.5);
+    const expandedVertices = createPolygon(
+      outerRadius + getBrickConfig("smallSquareGray").size.width * 1.5,
+    );
 
     return {
       name: "Cracked Pentagon",
@@ -292,7 +306,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             offsetX: center.x,
             offsetY: center.y,
           },
-          { level: mapLevel }
+          { level: mapLevel },
         ),
         polygonWithBricks(
           "smallSquareGray",
@@ -302,17 +316,19 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             offsetX: center.x,
             offsetY: center.y,
           },
-          { level: mapLevel }
+          { level: mapLevel },
         ),
-        ...expandedVertices.map((vertex) => circleWithBricks(
-          "smallSquareGray",
-          {
-            center: vertex,
-            innerRadius: 0,
-            outerRadius: getBrickConfig("smallSquareGray").size.width * 3,
-          },
-          { level: mapLevel }
-        ))
+        ...expandedVertices.map((vertex) =>
+          circleWithBricks(
+            "smallSquareGray",
+            {
+              center: vertex,
+              innerRadius: 0,
+              outerRadius: getBrickConfig("smallSquareGray").size.width * 3,
+            },
+            { level: mapLevel },
+          ),
+        ),
       ],
       playerUnits: [
         {
@@ -352,7 +368,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             center,
             template: singleBrickTemplate,
           },
-          { level: mapLevel }
+          { level: mapLevel },
         ),
       ],
       playerUnits: [
@@ -362,6 +378,77 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       mapsRequired: { trainingGrounds: 1 },
+    } satisfies MapConfig;
+  })(),
+  ancientPyramids: (() => {
+    const center = FOUNDATIONS_CENTER;
+    const size: SceneSize = { width: 1200, height: 1200 };
+    const spawnPoint: SceneVector2 = { x: 150, y: 150 };
+    const pyramidTemplate: readonly string[] = [
+      "       #       ",
+      "      ###      ",
+      "     #####     ",
+      "    #######    ",
+      "   #########   ",
+      "  ###########  ",
+      " ############# ",
+      "###############",
+    ];
+
+    return {
+      name: "Ancient Piramids",
+      size,
+      icon: "pyramids.png",
+      spawnPoints: [spawnPoint],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "megaBrick",
+          level: 1,
+        },
+      ],
+      nodePosition: { x: -2, y: 1 },
+      maxLevel: 10,
+      achievementId: "ancientPyramids",
+      bricks: ({ mapLevel }) => {
+        const pyramidLevel = Math.max(1, Math.floor(mapLevel)) + 1;
+        return [
+          templateWithBricks(
+            "smallSquareYellow",
+            {
+              center,
+              template: pyramidTemplate,
+              horizontalGap: 1,
+              verticalGap: 1,
+            },
+            { level: pyramidLevel },
+          ),
+        ];
+      },
+      enemies: ({ mapLevel }) => {
+        const level = Math.max(1, Math.floor(mapLevel));
+        const turretCount = 3;
+        const turretRadius = 320;
+        return Array.from({ length: turretCount }, (_, index) => {
+          const angle = (index / turretCount) * Math.PI * 2;
+          const position: SceneVector2 = {
+            x: center.x + Math.cos(angle) * turretRadius,
+            y: center.y + Math.sin(angle) * turretRadius,
+          };
+          return {
+            type: "freezeTurretEnemy",
+            level,
+            position,
+          } satisfies EnemySpawnData;
+        });
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      mapsRequired: { megaBrick: 1 },
     } satisfies MapConfig;
   })(),
   initial: {
@@ -387,7 +474,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           innerRadius: 210,
           outerRadius: 250,
         },
-        { level: innerLevel }
+        { level: innerLevel },
       );
 
       const largeYellowCircle = circleWithBricks(
@@ -397,7 +484,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           innerRadius: 130,
           outerRadius: 210,
         },
-        { level: baseLevel }
+        { level: baseLevel },
       );
 
       const satelliteCount = 8;
@@ -417,26 +504,29 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: satelliteRadius * 0.6,
             outerRadius: satelliteRadius,
           },
-          { level: baseLevel + 0.5 }
+          { level: baseLevel + 0.5 },
         );
       });
 
-      const satellitesInner = Array.from({ length: satelliteCount }, (_, index) => {
-        const angle = (index / satelliteCount) * Math.PI * 2;
-        const position: SceneVector2 = {
-          x: center.x + Math.cos(angle) * orbitRadius,
-          y: center.y + Math.sin(angle) * orbitRadius,
-        };
-        return circleWithBricks(
-          "smallSquareYellow",
-          {
-            center: position,
-            innerRadius: 0,
-            outerRadius: satelliteRadius * 0.6,
-          },
-          { level: baseLevel }
-        );
-      });
+      const satellitesInner = Array.from(
+        { length: satelliteCount },
+        (_, index) => {
+          const angle = (index / satelliteCount) * Math.PI * 2;
+          const position: SceneVector2 = {
+            x: center.x + Math.cos(angle) * orbitRadius,
+            y: center.y + Math.sin(angle) * orbitRadius,
+          };
+          return circleWithBricks(
+            "smallSquareYellow",
+            {
+              center: position,
+              innerRadius: 0,
+              outerRadius: satelliteRadius * 0.6,
+            },
+            { level: baseLevel },
+          );
+        },
+      );
 
       /*const satelliteCountOuter = 32;
       const satelliteRadiusOuter = 100;
@@ -459,7 +549,12 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         );
       });
       */
-      return [largeCircle, largeYellowCircle, ...satellites, ...satellitesInner];
+      return [
+        largeCircle,
+        largeYellowCircle,
+        ...satellites,
+        ...satellitesInner,
+      ];
     },
     playerUnits: [
       {
@@ -518,7 +613,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               innerRadius,
               outerRadius,
             },
-            { level }
+            { level },
           );
           rings.push(ring);
         });
@@ -575,15 +670,15 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           "smallSquareYellow",
           {
             vertices: [
-              { x: bodyX - 280, y: bodyY - 80 },   // front top
-              { x: bodyX - 100, y: bodyY - 100 },  // mid-front top (curved up)
-              { x: bodyX + 100, y: bodyY - 110 },  // mid-back top (highest point)
-              { x: bodyX + 280, y: bodyY - 80 },   // back top
-              { x: bodyX + 300, y: bodyY + 50 },   // back bottom
-              { x: bodyX - 280, y: bodyY + 50 },   // front bottom
+              { x: bodyX - 280, y: bodyY - 80 }, // front top
+              { x: bodyX - 100, y: bodyY - 100 }, // mid-front top (curved up)
+              { x: bodyX + 100, y: bodyY - 110 }, // mid-back top (highest point)
+              { x: bodyX + 280, y: bodyY - 80 }, // back top
+              { x: bodyX + 300, y: bodyY + 50 }, // back bottom
+              { x: bodyX - 280, y: bodyY + 50 }, // front bottom
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Belly (adds roundness underneath)
@@ -594,7 +689,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 80,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Haunches (back raised part - larger for folded hind legs)
@@ -605,7 +700,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 110,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Back curve (adds more volume to the back)
@@ -616,7 +711,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 70,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // === CHEST (raised front part) ===
@@ -630,7 +725,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX - 340, y: bodyY - 40 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // === NECK (shorter, connects to head) ===
@@ -644,7 +739,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX - 360, y: bodyY - 130 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // === HEAD (human profile facing left) ===
@@ -656,7 +751,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 70,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Face (polygon for profile - forehead, nose, chin)
@@ -674,7 +769,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX - 400, y: bodyY - 310 }, // temple
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Nemes headdress (flows down sides)
@@ -688,7 +783,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX - 300, y: bodyY - 180 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Crown/top of headdress
@@ -702,7 +797,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX - 430, y: bodyY - 320 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // === FRONT PAWS (extended forward, connected to body) ===
@@ -717,7 +812,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX - 450, y: bodyY + 50 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Right front paw (slightly behind and lower)
@@ -731,7 +826,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX - 400, y: bodyY + 90 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Paw ends (toes)
@@ -742,7 +837,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 30,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         const pawEndRight = circleWithBricks(
@@ -752,7 +847,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 28,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // === HIND LEG (left, visible from side - extended like front paws) ===
@@ -767,7 +862,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX + 100, y: bodyY + 40 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Lower leg (extends forward like front paws)
@@ -781,7 +876,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: bodyX + 60, y: bodyY + 80 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // Hind paw (like front paws)
@@ -792,7 +887,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 32,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // === TAIL (more horizontal, along the ground) ===
@@ -803,7 +898,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 35,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         const tail2 = circleWithBricks(
@@ -813,7 +908,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 30,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         const tail3 = circleWithBricks(
@@ -823,7 +918,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: 25,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         // === SAND BASE ===
@@ -837,7 +932,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: 130, y: bodyY + 160 },
             ],
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         return [
@@ -888,14 +983,19 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       x: number,
       y: number,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x, y },
       { x: x + width, y },
       { x: x + width, y: y + height },
       { x, y: y + height },
     ];
-    const sandVertices = createRectangle(0, size.height - sandHeight, size.width, sandHeight);
+    const sandVertices = createRectangle(
+      0,
+      size.height - sandHeight,
+      size.width,
+      sandHeight,
+    );
     const bushClusters: readonly { center: SceneVector2; radius: number }[] = [
       { center: { x: 320, y: 760 }, radius: 110 },
       { center: { x: 500, y: 640 }, radius: 100 },
@@ -920,7 +1020,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             vertices: sandVertices,
           },
-          { level: sandLevel }
+          { level: sandLevel },
         );
 
         const bushes = bushClusters.map((cluster) =>
@@ -931,8 +1031,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               innerRadius: 0,
               outerRadius: cluster.radius,
             },
-            { level: organicLevel }
-          )
+            { level: organicLevel },
+          ),
         );
 
         return [sandBank, ...bushes];
@@ -969,7 +1069,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       ];
     };
 
-    const enemySpawnPosition: SceneVector2 = { x: center.x, y: center.y + outerSize / 2 + 20 };
+    const enemySpawnPosition: SceneVector2 = {
+      x: center.x,
+      y: center.y + outerSize / 2 + 20,
+    };
 
     return {
       name: "Old Forge",
@@ -1000,16 +1103,19 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             vertices: createSquareVertices(outerSize),
             holes: [createSquareVertices(cavitySize)],
           },
-          { level: walkwayLevel }
+          { level: walkwayLevel },
         );
 
         const ironLining = polygonWithBricks(
           "smallIron",
           {
             vertices: createSquareVertices(cavitySize),
-            holes: innerRingSize > 0 ? [createSquareVertices(innerRingSize)] : undefined,
+            holes:
+              innerRingSize > 0
+                ? [createSquareVertices(innerRingSize)]
+                : undefined,
           },
-          { level: baseLevel }
+          { level: baseLevel },
         );
 
         return [forgeFloor, ironLining];
@@ -1037,7 +1143,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       x: number,
       y: number,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x, y },
       { x: x + width, y },
@@ -1047,7 +1153,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const createTriangle = (
       baseCenter: SceneVector2,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x: baseCenter.x, y: baseCenter.y - height },
       { x: baseCenter.x + width / 2, y: baseCenter.y },
@@ -1089,10 +1195,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
                 tree.base.x - trunkWidth / 2,
                 trunkTopY,
                 trunkWidth,
-                trunkHeight
+                trunkHeight,
               ),
             },
-            { level: trunkLevel }
+            { level: trunkLevel },
           );
 
           const canopyLayers = [
@@ -1112,10 +1218,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
                 vertices: createTriangle(
                   baseCenter,
                   layer.width * tree.scale,
-                  layer.height * tree.scale
+                  layer.height * tree.scale,
                 ),
               },
-              { level: canopyLevel }
+              { level: canopyLevel },
             );
           });
 
@@ -1161,7 +1267,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           x: number,
           y: number,
           width: number,
-          height: number
+          height: number,
         ): SceneVector2[] => [
           { x, y },
           { x: x + width, y },
@@ -1185,7 +1291,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: trunkX, y: groundY },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Main branches extending from trunk
@@ -1200,7 +1306,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX - 220, y: trunkY - 100 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Right main branch (going up-right)
@@ -1214,7 +1320,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX + 200, y: trunkY - 120 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Center top branch (going straight up)
@@ -1228,7 +1334,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX - 15, y: trunkY - 180 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Smaller sub-branches
@@ -1243,7 +1349,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX - 300, y: trunkY - 180 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Left sub-branch 2 (lower)
@@ -1257,7 +1363,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX - 200, y: trunkY + 40 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Right sub-branch 1
@@ -1271,7 +1377,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX + 280, y: trunkY - 200 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Right sub-branch 2 (lower)
@@ -1285,7 +1391,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX + 180, y: trunkY + 20 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Top sub-branches (smaller twigs)
@@ -1299,7 +1405,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX - 100, y: trunkY - 240 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         const topRightTwig = polygonWithBricks(
@@ -1312,7 +1418,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: centerX + 80, y: trunkY - 250 },
             ],
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         // Ground/roots
@@ -1321,7 +1427,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             vertices: createRectangle(centerX - 150, groundY, 300, 40),
           },
-          { level: woodLevel }
+          { level: woodLevel },
         );
 
         return [
@@ -1364,7 +1470,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       x: number,
       y: number,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x, y },
       { x: x + width, y },
@@ -1382,9 +1488,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         {
           position: enemySpawnPosition,
           spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
-          enemyTypes: [
-            { type: "spectreEnemy", weight: 1.0 },
-          ],
+          enemyTypes: [{ type: "spectreEnemy", weight: 1.0 }],
           maxConcurrent: 10,
         },
       ],
@@ -1400,11 +1504,9 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           "smallSquareGray",
           {
             vertices: createRectangle(center.x - 260, center.y - 220, 520, 320),
-            holes: [
-              createRectangle(center.x - 80, center.y - 150, 120, 160)
-            ],
+            holes: [createRectangle(center.x - 80, center.y - 150, 120, 160)],
           },
-          { level: stoneLevel }
+          { level: stoneLevel },
         );
 
         const roof = polygonWithBricks(
@@ -1416,7 +1518,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: center.x + 300, y: center.y - 220 },
             ],
           },
-          { level: ironLevel }
+          { level: ironLevel },
         );
 
         const doorFrame = polygonWithBricks(
@@ -1424,7 +1526,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             vertices: createRectangle(center.x - 60, center.y + 120, 120, 120),
           },
-          { level: ironLevel }
+          { level: ironLevel },
         );
 
         const chimney = polygonWithBricks(
@@ -1432,44 +1534,72 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             vertices: createRectangle(center.x + 140, center.y - 340, 70, 180),
           },
-          { level: stoneLevel }
+          { level: stoneLevel },
         );
 
         const bushes = [
           circleWithBricks(
             "smallOrganic",
-            { center: { x: center.x - 280, y: center.y + 200 }, innerRadius: 0, outerRadius: 90 },
-            { level: organicLevel }
+            {
+              center: { x: center.x - 280, y: center.y + 200 },
+              innerRadius: 0,
+              outerRadius: 90,
+            },
+            { level: organicLevel },
           ),
           circleWithBricks(
             "smallOrganic",
-            { center: { x: center.x + 280, y: center.y + 200 }, innerRadius: 0, outerRadius: 100 },
-            { level: organicLevel }
+            {
+              center: { x: center.x + 280, y: center.y + 200 },
+              innerRadius: 0,
+              outerRadius: 100,
+            },
+            { level: organicLevel },
           ),
           circleWithBricks(
             "smallOrganic",
-            { center: { x: center.x + 320, y: center.y + 20 }, innerRadius: 0, outerRadius: 100 },
-            { level: organicLevel }
+            {
+              center: { x: center.x + 320, y: center.y + 20 },
+              innerRadius: 0,
+              outerRadius: 100,
+            },
+            { level: organicLevel },
           ),
           circleWithBricks(
             "smallOrganic",
-            { center: { x: center.x + 400, y: center.y - 90 }, innerRadius: 0, outerRadius: 100 },
-            { level: organicLevel }
+            {
+              center: { x: center.x + 400, y: center.y - 90 },
+              innerRadius: 0,
+              outerRadius: 100,
+            },
+            { level: organicLevel },
           ),
           circleWithBricks(
             "smallOrganic",
-            { center: { x: center.x + 390, y: center.y + 140 }, innerRadius: 0, outerRadius: 100 },
-            { level: organicLevel }
+            {
+              center: { x: center.x + 390, y: center.y + 140 },
+              innerRadius: 0,
+              outerRadius: 100,
+            },
+            { level: organicLevel },
           ),
           circleWithBricks(
             "smallOrganic",
-            { center: { x: center.x - 200, y: center.y + 260 }, innerRadius: 0, outerRadius: 70 },
-            { level: organicLevel }
+            {
+              center: { x: center.x - 200, y: center.y + 260 },
+              innerRadius: 0,
+              outerRadius: 70,
+            },
+            { level: organicLevel },
           ),
           circleWithBricks(
             "smallOrganic",
-            { center: { x: center.x - 130, y: center.y + 200 }, innerRadius: 0, outerRadius: 70 },
-            { level: organicLevel }
+            {
+              center: { x: center.x - 130, y: center.y + 200 },
+              innerRadius: 0,
+              outerRadius: 70,
+            },
+            { level: organicLevel },
           ),
         ];
 
@@ -1478,7 +1608,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             vertices: createRectangle(center.x - 140, center.y + 200, 280, 100),
           },
-          { level: stoneLevel - 1 }
+          { level: stoneLevel - 1 },
         );
 
         return [walls, roof, doorFrame, chimney, courtyard, ...bushes];
@@ -1508,7 +1638,11 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const entryWidth = 140;
     const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 160 };
 
-    const createSupport = (angle: number, length: number, width: number): SceneVector2[] => {
+    const createSupport = (
+      angle: number,
+      length: number,
+      width: number,
+    ): SceneVector2[] => {
       const dx = Math.cos(angle) * length;
       const dy = Math.sin(angle) * length;
       const px = -Math.sin(angle) * width;
@@ -1538,7 +1672,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: shaftRadius,
             outerRadius: shaftRadius + wallThickness,
           },
-          { level: wallLevel }
+          { level: wallLevel },
         );
 
         const coalVein = circleWithBricks(
@@ -1548,7 +1682,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: shaftRadius - 40,
           },
-          { level: baseLevel }
+          { level: baseLevel },
         );
 
         const entryTunnel = polygonWithBricks(
@@ -1561,17 +1695,22 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               { x: center.x - entryWidth / 2, y: center.y + shaftRadius - 20 },
             ],
           },
-          { level: wallLevel }
+          { level: wallLevel },
         );
 
-        const supports = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle) =>
-          polygonWithBricks(
-            "smallIron",
-            {
-              vertices: createSupport(angle, shaftRadius + wallThickness * 0.45, 30),
-            },
-            { level: wallLevel }
-          )
+        const supports = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map(
+          (angle) =>
+            polygonWithBricks(
+              "smallIron",
+              {
+                vertices: createSupport(
+                  angle,
+                  shaftRadius + wallThickness * 0.45,
+                  30,
+                ),
+              },
+              { level: wallLevel },
+            ),
         );
 
         return [ironWalls, coalVein, entryTunnel, ...supports];
@@ -1604,7 +1743,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       x: number,
       y: number,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x, y },
       { x: x + width, y },
@@ -1638,34 +1777,54 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(100, 100, size.width - 200, wallThickness),
+              vertices: createRectangle(
+                100,
+                100,
+                size.width - 200,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom wall
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(100, size.height - 100 - wallThickness, size.width - 200, wallThickness),
+              vertices: createRectangle(
+                100,
+                size.height - 100 - wallThickness,
+                size.width - 200,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Left wall
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(100, 100, wallThickness, size.height - 200),
+              vertices: createRectangle(
+                100,
+                100,
+                wallThickness,
+                size.height - 200,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Right wall
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(size.width - 100 - wallThickness, 100, wallThickness, size.height - 200),
+              vertices: createRectangle(
+                size.width - 100 - wallThickness,
+                100,
+                wallThickness,
+                size.height - 200,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         // Central room walls (surrounding the 400x400 room)
@@ -1674,34 +1833,54 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centralRoomX - wallThickness, centralRoomY - wallThickness, centralRoomSize + wallThickness * 2, wallThickness),
+              vertices: createRectangle(
+                centralRoomX - wallThickness,
+                centralRoomY - wallThickness,
+                centralRoomSize + wallThickness * 2,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom wall of central room
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centralRoomX - wallThickness, centralRoomY + centralRoomSize, centralRoomSize + wallThickness * 2, wallThickness),
+              vertices: createRectangle(
+                centralRoomX - wallThickness,
+                centralRoomY + centralRoomSize,
+                centralRoomSize + wallThickness * 2,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Left wall of central room
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centralRoomX - wallThickness, centralRoomY, wallThickness, centralRoomSize),
+              vertices: createRectangle(
+                centralRoomX - wallThickness,
+                centralRoomY,
+                wallThickness,
+                centralRoomSize,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Right wall of central room
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centralRoomX + centralRoomSize, centralRoomY, wallThickness, centralRoomSize),
+              vertices: createRectangle(
+                centralRoomX + centralRoomSize,
+                centralRoomY,
+                wallThickness,
+                centralRoomSize,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         // Maze corridors - create walls around corridors (corridors are open spaces)
@@ -1713,40 +1892,61 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centerX - corridorWidth / 2 - wallThickness, topCorridorY, wallThickness, topCorridorHeight),
+              vertices: createRectangle(
+                centerX - corridorWidth / 2 - wallThickness,
+                topCorridorY,
+                wallThickness,
+                topCorridorHeight,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Right wall of top corridor
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centerX + corridorWidth / 2, topCorridorY, wallThickness, topCorridorHeight),
+              vertices: createRectangle(
+                centerX + corridorWidth / 2,
+                topCorridorY,
+                wallThickness,
+                topCorridorHeight,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         // Bottom corridor walls
         const bottomCorridorY = centralRoomY + centralRoomSize + wallThickness;
-        const bottomCorridorHeight = size.height - 100 - wallThickness - bottomCorridorY;
+        const bottomCorridorHeight =
+          size.height - 100 - wallThickness - bottomCorridorY;
         walls.push(
           // Left wall of bottom corridor
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centerX - corridorWidth / 2 - wallThickness, bottomCorridorY, wallThickness, bottomCorridorHeight),
+              vertices: createRectangle(
+                centerX - corridorWidth / 2 - wallThickness,
+                bottomCorridorY,
+                wallThickness,
+                bottomCorridorHeight,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Right wall of bottom corridor
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(centerX + corridorWidth / 2, bottomCorridorY, wallThickness, bottomCorridorHeight),
+              vertices: createRectangle(
+                centerX + corridorWidth / 2,
+                bottomCorridorY,
+                wallThickness,
+                bottomCorridorHeight,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         // Left corridor walls (horizontal walls on top/bottom of corridor)
@@ -1757,40 +1957,61 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(leftCorridorX, centerY - corridorWidth / 2 - wallThickness, leftCorridorWidth, wallThickness),
+              vertices: createRectangle(
+                leftCorridorX,
+                centerY - corridorWidth / 2 - wallThickness,
+                leftCorridorWidth,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom wall of left corridor
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(leftCorridorX, centerY + corridorWidth / 2, leftCorridorWidth, wallThickness),
+              vertices: createRectangle(
+                leftCorridorX,
+                centerY + corridorWidth / 2,
+                leftCorridorWidth,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         // Right corridor walls
         const rightCorridorX = centralRoomX + centralRoomSize + wallThickness;
-        const rightCorridorWidth = size.width - 100 - wallThickness - rightCorridorX;
+        const rightCorridorWidth =
+          size.width - 100 - wallThickness - rightCorridorX;
         walls.push(
           // Top wall of right corridor
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(rightCorridorX, centerY - corridorWidth / 2 - wallThickness, rightCorridorWidth, wallThickness),
+              vertices: createRectangle(
+                rightCorridorX,
+                centerY - corridorWidth / 2 - wallThickness,
+                rightCorridorWidth,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom wall of right corridor
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(rightCorridorX, centerY + corridorWidth / 2, rightCorridorWidth, wallThickness),
+              vertices: createRectangle(
+                rightCorridorX,
+                centerY + corridorWidth / 2,
+                rightCorridorWidth,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         // Additional maze walls (creating dead ends and paths)
@@ -1802,7 +2023,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             {
               vertices: createRectangle(200, 300, 300, wallThickness),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Top-right corner divider
           polygonWithBricks(
@@ -1810,24 +2031,34 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             {
               vertices: createRectangle(1000, 300, 300, wallThickness),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom-left corner divider
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(200, size.height - 100 - wallThickness - 300, 300, wallThickness),
+              vertices: createRectangle(
+                200,
+                size.height - 100 - wallThickness - 300,
+                300,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom-right corner divider
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(1000, size.height - 100 - wallThickness - 300, 300, wallThickness),
+              vertices: createRectangle(
+                1000,
+                size.height - 100 - wallThickness - 300,
+                300,
+                wallThickness,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         // Vertical dividers in corners
@@ -1836,34 +2067,54 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(400, 100 + wallThickness, wallThickness, 200),
+              vertices: createRectangle(
+                400,
+                100 + wallThickness,
+                wallThickness,
+                200,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Top-right vertical
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(1100, 100 + wallThickness, wallThickness, 200),
+              vertices: createRectangle(
+                1100,
+                100 + wallThickness,
+                wallThickness,
+                200,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom-left vertical
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(400, size.height - 100 - wallThickness - 200, wallThickness, 200),
+              vertices: createRectangle(
+                400,
+                size.height - 100 - wallThickness - 200,
+                wallThickness,
+                200,
+              ),
             },
-            { level: ironLevel }
+            { level: ironLevel },
           ),
           // Bottom-right vertical
           polygonWithBricks(
             "compactIron",
             {
-              vertices: createRectangle(1100, size.height - 100 - wallThickness - 200, wallThickness, 200),
+              vertices: createRectangle(
+                1100,
+                size.height - 100 - wallThickness - 200,
+                wallThickness,
+                200,
+              ),
             },
-            { level: ironLevel }
-          )
+            { level: ironLevel },
+          ),
         );
 
         return walls;
@@ -1891,7 +2142,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       x: number,
       y: number,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x, y },
       { x: x + width, y },
@@ -1907,19 +2158,24 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       { x: 1120, y: 820 },
       { x: 860, y: 960 },
       { x: 620, y: 900 },
-      { x: 420, y: 1080 }
+      { x: 420, y: 1080 },
     ];
 
     const createConnector = (
       start: SceneVector2,
       end: SceneVector2,
-      halfWidth: number
+      halfWidth: number,
     ): SceneVector2[] => {
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.hypot(dx, dy);
       if (length === 0) {
-        return createRectangle(start.x - halfWidth, start.y - halfWidth, halfWidth * 2, halfWidth * 2);
+        return createRectangle(
+          start.x - halfWidth,
+          start.y - halfWidth,
+          halfWidth * 2,
+          halfWidth * 2,
+        );
       }
       const ux = dx / length;
       const uy = dy / length;
@@ -1955,7 +2211,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               innerRadius: 0,
               outerRadius,
             },
-            { level: outerLevel }
+            { level: outerLevel },
           );
 
           if (index >= cableCenters.length - 1) {
@@ -1972,7 +2228,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             {
               vertices: createConnector(center, nextCenter, outerRadius),
             },
-            { level: outerLevel }
+            { level: outerLevel },
           );
 
           return [circle, connector];
@@ -1986,7 +2242,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               innerRadius: 0,
               outerRadius: innerRadius,
             },
-            { level: baseLevel }
+            { level: baseLevel },
           );
 
           if (index >= cableCenters.length - 1) {
@@ -2003,7 +2259,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             {
               vertices: createConnector(center, nextCenter, innerRadius),
             },
-            { level: baseLevel }
+            { level: baseLevel },
           );
 
           return [circle, connector];
@@ -2054,7 +2310,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius,
             outerRadius,
           },
-          { level: ringLevel }
+          { level: ringLevel },
         );
 
         const copperGem = circleWithBricks(
@@ -2062,27 +2318,27 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             center: { x: center.x + outerRadius + 50, y: center.y },
             innerRadius: 0,
-            outerRadius: gemRadius*1.25,
+            outerRadius: gemRadius * 1.25,
           },
-          { level: gemLevel }
+          { level: gemLevel },
         );
         const copperGem2 = circleWithBricks(
           "smallCopper",
           {
-            center: { x: center.x + outerRadius-25, y: center.y + 50 },
+            center: { x: center.x + outerRadius - 25, y: center.y + 50 },
             innerRadius: 0,
             outerRadius: gemRadius,
           },
-          { level: gemLevel }
+          { level: gemLevel },
         );
         const copperGem3 = circleWithBricks(
           "smallCopper",
           {
-            center: { x: center.x + outerRadius-25, y: center.y - 50 },
+            center: { x: center.x + outerRadius - 25, y: center.y - 50 },
             innerRadius: 0,
             outerRadius: gemRadius,
           },
-          { level: gemLevel }
+          { level: gemLevel },
         );
 
         return [silverRing, copperGem, copperGem2, copperGem3];
@@ -2114,7 +2370,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       x: number,
       y: number,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x, y },
       { x: x + width, y },
@@ -2125,7 +2381,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const createTriangle = (
       baseCenter: SceneVector2,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x: baseCenter.x, y: baseCenter.y - height },
       { x: baseCenter.x + width / 2, y: baseCenter.y },
@@ -2160,7 +2416,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: lakeRadius,
           },
-          { level: iceLevel }
+          { level: iceLevel },
         );
 
         const trees = treeConfigs.flatMap((tree) => {
@@ -2176,10 +2432,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
                 tree.base.x - trunkWidth / 2,
                 trunkTopY,
                 trunkWidth,
-                trunkHeight
+                trunkHeight,
               ),
             },
-            { level: treeTrunkLevel }
+            { level: treeTrunkLevel },
           );
 
           const canopyLayers = [
@@ -2199,10 +2455,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
                 vertices: createTriangle(
                   baseCenter,
                   layer.width * tree.scale,
-                  layer.height * tree.scale
+                  layer.height * tree.scale,
                 ),
               },
-              { level: treeCanopyLevel }
+              { level: treeCanopyLevel },
             );
           });
 
@@ -2240,7 +2496,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       x: number,
       y: number,
       width: number,
-      height: number
+      height: number,
     ): SceneVector2[] => [
       { x, y },
       { x: x + width, y },
@@ -2248,12 +2504,32 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       { x, y: y + height },
     ];
 
-    const magmaFlowPaths: readonly { center: SceneVector2; length: number; angle: number }[] = [
-      { center: { x: center.x - 300, y: center.y + 200 }, length: 200, angle: 0.5 },
-      { center: { x: center.x + 250, y: center.y + 150 }, length: 180, angle: -0.3 },
+    const magmaFlowPaths: readonly {
+      center: SceneVector2;
+      length: number;
+      angle: number;
+    }[] = [
+      {
+        center: { x: center.x - 300, y: center.y + 200 },
+        length: 200,
+        angle: 0.5,
+      },
+      {
+        center: { x: center.x + 250, y: center.y + 150 },
+        length: 180,
+        angle: -0.3,
+      },
       { center: { x: center.x, y: center.y + 300 }, length: 220, angle: 0 },
-      { center: { x: center.x - 200, y: center.y - 100 }, length: 150, angle: 1.2 },
-      { center: { x: center.x + 300, y: center.y - 150 }, length: 170, angle: -1.0 },
+      {
+        center: { x: center.x - 200, y: center.y - 100 },
+        length: 150,
+        angle: 1.2,
+      },
+      {
+        center: { x: center.x + 300, y: center.y - 150 },
+        length: 170,
+        angle: -1.0,
+      },
     ];
 
     return {
@@ -2275,7 +2551,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: volcanoInnerRadius,
             outerRadius: volcanoBaseRadius,
           },
-          { level: copperLevel }
+          { level: copperLevel },
         );
 
         const volcanoCore = circleWithBricks(
@@ -2285,7 +2561,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             innerRadius: 0,
             outerRadius: volcanoInnerRadius - 40,
           },
-          { level: stoneLevel }
+          { level: stoneLevel },
         );
 
         const magmaFlows = magmaFlowPaths.map((flow) =>
@@ -2296,8 +2572,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
               innerRadius: 0,
               outerRadius: magmaFlowRadius,
             },
-            { level: magmaLevel }
-          )
+            { level: magmaLevel },
+          ),
         );
 
         return [volcanoBase, volcanoCore, ...magmaFlows];
@@ -2332,7 +2608,8 @@ export const getMapConfig = (mapId: MapId): MapConfig => {
 };
 
 export const isMapId = (value: unknown): value is MapId =>
-  typeof value === "string" && Object.prototype.hasOwnProperty.call(MAPS_DB, value);
+  typeof value === "string" &&
+  Object.prototype.hasOwnProperty.call(MAPS_DB, value);
 
 export const getMapList = (): MapListEntry[] =>
   MAP_IDS.map((mapId) => {
