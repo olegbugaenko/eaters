@@ -566,7 +566,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackInterval: 1.5,
     attackRange: 400,
     moveSpeed: 0, // Статична турель
-    physicalSize: 20,
+    physicalSize: 30,
     reward: normalizeResourceAmount({
       stone: 50,
       iron: 10,
@@ -583,10 +583,12 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       hitRadius: 8,
       explosion: "smallCannon", // Тип експлозії при влучанні снаряда
     },
-    knockBackDistance: 80,
-    knockBackSpeed: 120,
+    knockBackDistance: 120,
+    knockBackSpeed: 160,
   },
   freezeTurretEnemy: {
+    knockBackDistance: 120,
+    knockBackSpeed: 160,
     name: "Freeze Turret",
     renderer: {
       kind: "composite",
@@ -638,18 +640,18 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     armor: 10,
     baseDamage: 0,
     attackInterval: 1.8,
-    attackRange: 600,
+    attackRange: 1600,
     moveSpeed: 0,
     physicalSize: 20,
     reward: normalizeResourceAmount({
       stone: 30,
-      iron: 5,
+      sand: 5,
     }),
     arcAttack: {
       arcType: "freeze",
       statusEffectId: "freeze",
       statusEffectOptions: {
-        speedMultiplier: 0.7,
+        speedMultiplier: 0.6, // Було 0.3 - юніти застрягали. 0.6 дозволяє юнітам виходити з collision
         durationMs: 2000,
       },
     },

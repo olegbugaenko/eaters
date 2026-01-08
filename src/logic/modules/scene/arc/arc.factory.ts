@@ -17,5 +17,6 @@ export const createArcDefinition = (): ServiceDefinition<ArcModule, "arc"> => ({
   registerAsModule: true,
   onReady: (instance: ArcModule, container: ServiceContainer) => {
     (container.get<PlayerUnitsModule>("playerUnits") as any).arcs = instance;
+    (container.get<EnemiesModule>("enemies") as any).arcs = instance;
   },
 });

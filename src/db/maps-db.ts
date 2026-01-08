@@ -385,19 +385,20 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const size: SceneSize = { width: 1200, height: 1200 };
     const spawnPoint: SceneVector2 = { x: 150, y: 150 };
     const pyramidTemplate: readonly string[] = [
-      "      #      ",
-      "     ###     ",
-      "    #####    ",
-      "   #######   ",
-      "  #########  ",
-      " ########### ",
-      "#############",
+      "       #       ",
+      "      ###      ",
+      "     #####     ",
+      "    #######    ",
+      "   #########   ",
+      "  ###########  ",
+      " ############# ",
+      "###############",
     ];
 
     return {
       name: "Ancient Piramids",
       size,
-      icon: "sphynx.png",
+      icon: "pyramids.png",
       spawnPoints: [spawnPoint],
       unlockedBy: [
         {
@@ -406,7 +407,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           level: 1,
         },
       ],
-      nodePosition: { x: -2, y: 2 },
+      nodePosition: { x: -2, y: 1 },
       maxLevel: 10,
       achievementId: "ancientPyramids",
       bricks: ({ mapLevel }) => {
@@ -426,7 +427,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       },
       enemies: ({ mapLevel }) => {
         const level = Math.max(1, Math.floor(mapLevel));
-        const turretCount = 8;
+        const turretCount = 3;
         const turretRadius = 320;
         return Array.from({ length: turretCount }, (_, index) => {
           const angle = (index / turretCount) * Math.PI * 2;
