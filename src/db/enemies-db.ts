@@ -587,7 +587,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     knockBackSpeed: 160,
   },
   freezeTurretEnemy: {
-    knockBackDistance: 120,
+    knockBackDistance: 160,
     knockBackSpeed: 160,
     name: "Freeze Turret",
     renderer: {
@@ -642,7 +642,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackInterval: 1.8,
     attackRange: 1600,
     moveSpeed: 0,
-    physicalSize: 20,
+    physicalSize: 26,
     reward: normalizeResourceAmount({
       stone: 30,
       sand: 5,
@@ -651,7 +651,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       arcType: "freeze",
       statusEffectId: "freeze",
       statusEffectOptions: {
-        speedMultiplier: 0.6, // Було 0.3 - юніти застрягали. 0.6 дозволяє юнітам виходити з collision
+        speedMultiplier: 0.5,
         durationMs: 2000,
       },
     },

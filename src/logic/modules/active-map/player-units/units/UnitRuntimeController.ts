@@ -359,7 +359,48 @@ export class UnitRuntimeController {
     if (mode === "nearest") {
       return this.findNearestTarget(unit.position);
     }
+    if (mode === "firstBrick") {
+      return (
+        this.findNearestTargetByType(unit.position, "brick") ??
+        this.findNearestTargetByType(unit.position, "enemy") ??
+        this.findNearestTarget(unit.position)
+      );
+    }
+    if (mode === "firstEnemy") {
+      return (
+        this.findNearestTargetByType(unit.position, "enemy") ??
+        this.findNearestTargetByType(unit.position, "brick") ??
+        this.findNearestTarget(unit.position)
+      );
+    }
     return this.findTargetByCriterion(unit, mode);
+  }
+
+  private findNearestTargetByType(
+    position: SceneVector2,
+    preferredType: "brick" | "enemy"
+  ): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
+    const target = this.targeting.findNearestTarget(position, { types: [preferredType] });
+    if (!target) {
+      return null;
+    }
+    if (preferredType === "brick" && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      const brick = target.data ?? this.bricks.getBrickState(target.id);
+      if (brick && brick.hp > 0) {
+        return { target: brick, type: "brick" };
+      }
+      return null;
+    }
+    if (
+      preferredType === "enemy" &&
+      isTargetOfType<"enemy", EnemyRuntimeState>(target, "enemy")
+    ) {
+      const enemy = target.data ?? (this.enemies ? this.enemies.getEnemyState(target.id) : null);
+      if (enemy && enemy.hp > 0) {
+        return { target: enemy, type: "enemy" };
+      }
+    }
+    return null;
   }
 
   private findTargetByCriterion(

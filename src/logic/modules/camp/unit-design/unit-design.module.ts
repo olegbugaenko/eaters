@@ -377,6 +377,8 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     if (typeof mode === "string") {
       switch (mode) {
         case "nearest":
+        case "firstBrick":
+        case "firstEnemy":
         case "highestHp":
         case "lowestHp":
         case "highestDamage":
