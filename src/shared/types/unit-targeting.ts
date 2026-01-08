@@ -1,5 +1,7 @@
 export type UnitTargetingMode =
   | "nearest"
+  | "firstBrick"
+  | "firstEnemy"
   | "highestHp"
   | "lowestHp"
   | "highestDamage"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapId } from "@db/maps-db";
+import { MapId, getMapConfig } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { SkillTreeView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/ModulesWorkshop/ModulesWorkshopView";
@@ -48,6 +48,13 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   buildingsState,
   craftingState,
 }) => {
+  const hasEnemyStrategies = maps.some((map) => {
+    if (!map.selectable) {
+      return false;
+    }
+    const config = getMapConfig(map.id);
+    return Boolean(config.enemySpawnPoints?.length || config.enemies);
+  });
   const moduleTabs: { key: "shop" | "designer" | "roster"; label: string }[] = [
     { key: "shop", label: "Organ Workshop" },
     { key: "designer", label: "Unit Designer" },
@@ -113,7 +120,11 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
           ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
           ) : (
-            <UnitRosterView state={unitDesignerState} automation={unitAutomationState} />
+            <UnitRosterView
+              state={unitDesignerState}
+              automation={unitAutomationState}
+              hasEnemyStrategies={hasEnemyStrategies}
+            />
           )}
         </div>
       </div>
