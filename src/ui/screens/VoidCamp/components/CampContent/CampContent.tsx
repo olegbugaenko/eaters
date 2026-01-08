@@ -9,6 +9,7 @@ import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import "./CampContent.css";
 
 export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting";
@@ -28,6 +29,7 @@ interface CampContentProps {
   unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
+  achievementsState: AchievementsBridgePayload;
 }
 
 export const CampContent: React.FC<CampContentProps> = ({
@@ -45,6 +47,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   unitAutomationState,
   buildingsState,
   craftingState,
+  achievementsState,
 }) => {
   const [activeTab, setActiveTab] = useState<CampTabKey>(initialTab);
   const fallbackTab = useMemo<CampTabKey>(() => {
@@ -108,6 +111,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         unitAutomationState={unitAutomationState}
         buildingsState={buildingsState}
         craftingState={craftingState}
+        achievementsState={achievementsState}
       />
     </div>
   );

@@ -193,18 +193,13 @@ export class AchievementsModule implements GameModule {
 
   private pushState(): void {
     const payload: AchievementsBridgePayload = {
-      achievements: ACHIEVEMENT_IDS.map((id) => this.createAchievementPayload(id)).filter(
-        (entry): entry is AchievementBridgeEntry => entry !== null
-      ),
+      achievements: ACHIEVEMENT_IDS.map((id) => this.createAchievementPayload(id)),
     };
     DataBridgeHelpers.pushState(this.bridge, ACHIEVEMENTS_BRIDGE_KEY, payload);
   }
 
-  private createAchievementPayload(id: AchievementId): AchievementBridgeEntry | null {
+  private createAchievementPayload(id: AchievementId): AchievementBridgeEntry {
     const level = this.levels[id] ?? 0;
-    if (level <= 0) {
-      return null;
-    }
     const config = getAchievementConfig(id);
     const mapId = this.mapByAchievementId[id];
     const bonusEffects: BonusEffectPreview[] =

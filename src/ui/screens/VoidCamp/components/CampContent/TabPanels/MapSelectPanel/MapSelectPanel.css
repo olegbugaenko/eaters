@@ -307,6 +307,17 @@
   line-height: 1.45;
 }
 
+.map-tree__details-achievement-bonuses {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.map-tree__details-achievement-bonuses-title {
+  font-weight: 600;
+  color: var(--color-text-strong);
+  font-size: 0.9rem;
+}
+
 .map-tree__popover {
   position: absolute;
   transform: translate(-50%, -50%);

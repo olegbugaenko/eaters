@@ -15,6 +15,7 @@ import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types
 import { CraftingView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/Crafting/CraftingView";
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -31,6 +32,7 @@ type CampTabPanelsProps = {
   unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
+  achievementsState: AchievementsBridgePayload;
 };
 
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
@@ -47,6 +49,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   unitAutomationState,
   buildingsState,
   craftingState,
+  achievementsState,
 }) => {
   const hasEnemyStrategies = maps.some((map) => {
     if (!map.selectable) {
@@ -76,6 +79,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         maps={maps}
         clearedLevelsTotal={clearedLevelsTotal}
         selectedMap={selectedMap}
+        achievements={achievementsState}
         onSelectMap={onSelectMap}
         onSelectLevel={onSelectMapLevel}
         onStartMap={onStartMap}

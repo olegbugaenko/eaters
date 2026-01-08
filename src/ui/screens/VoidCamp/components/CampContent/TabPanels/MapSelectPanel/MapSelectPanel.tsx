@@ -14,6 +14,8 @@ import type { MapUnlockCondition } from "@shared/types/unlocks";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
+import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
+import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import "./MapSelectPanel.css";
 
 const CELL_SIZE_X = 200;
@@ -38,6 +40,7 @@ interface MapSelectPanelProps {
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
+  achievements: AchievementsBridgePayload;
   onSelectMap: (mapId: MapId) => void;
   onSelectLevel: (mapId: MapId, level: number) => void;
   onStartMap: (mapId: MapId) => void;
@@ -125,6 +128,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
   clearedLevelsTotal,
   selectedMap,
+  achievements,
   onSelectMap,
   onSelectLevel,
   onStartMap,
@@ -329,6 +333,16 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
 
   const activeId = hoveredId ?? selectedMap ?? null;
   const activeMap = (activeId ? mapById.get(activeId) : undefined) ?? null;
+  const activeAchievement = useMemo(() => {
+    if (!activeMap) {
+      return null;
+    }
+    const achievementId = getMapConfig(activeMap.id).achievementId;
+    if (!achievementId) {
+      return null;
+    }
+    return achievements.achievements.find((entry) => entry.id === achievementId) ?? null;
+  }, [achievements.achievements, activeMap]);
 
   const setPopoverForMap = useCallback(
     (map: MapListEntry) => {
@@ -866,6 +880,17 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   <p>Completing levels on this map grants permanent bonuses through achievements!</p>
                 </div>
               )}
+              {activeAchievement ? (
+                <div className="map-tree__details-achievement-bonuses">
+                  <div className="map-tree__details-achievement-bonuses-title">
+                    Bonus now → next level
+                  </div>
+                  <BonusEffectsPreviewList
+                    effects={activeAchievement.bonusEffects}
+                    emptyLabel="No bonuses yet."
+                  />
+                </div>
+              ) : null}
               <div className="map-tree__details-list">
                 <span className="map-tree__details-level">
                   Max. Level Available: {activeMap.maxLevel}

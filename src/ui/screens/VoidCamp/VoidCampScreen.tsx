@@ -335,6 +335,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitDesignerState={unitDesignerState}
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
+            achievementsState={achievementsPayload}
           />
         }
       />
