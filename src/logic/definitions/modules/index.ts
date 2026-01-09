@@ -85,7 +85,7 @@ function sortModuleDefinitions<Definitions extends readonly ServiceDefinition<an
     throw new Error(`Cyclic module dependencies detected: ${remaining.join(", ")}`);
   }
 
-  return sorted as Definitions;
+  return sorted as unknown as Definitions;
 }
 
 export function createModuleDefinitions(context: ModuleDefinitionContext) {
