@@ -37,7 +37,7 @@ import type {
 } from "./enemies.types";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
-import { getEnemyConfig } from "../../../../db/enemies-db";
+import { getEnemyConfig, type EnemyConfig } from "../../../../db/enemies-db";
 import { normalizeVector } from "../../../../shared/helpers/vector.helper";
 import { normalizeAngle } from "../../../../shared/helpers/angle.helper";
 import type { UnitProjectileHitContext } from "../projectiles/projectiles.types";
@@ -178,13 +178,15 @@ export class EnemiesModule implements GameModule {
       string,
       { id: string; position: SceneVector2; physicalSize: number } | null
     >();
+    const reservedTargets = new Set<string>();
 
     // Phase 1: Compute movement forces towards targets (тільки для рухомих ворогів)
     this.enemyOrder.forEach((enemy) => {
-      const target =
-        this.targeting?.findNearestTarget(enemy.position, {
-          types: ["unit"],
-        }) ?? null;
+      const config = getEnemyConfig(enemy.type);
+      const target = this.findTargetForEnemy(enemy, config, reservedTargets);
+      if (target && config.targeting?.avoidSharedTargets) {
+        reservedTargets.add(target.id);
+      }
       activeTargets.set(enemy.id, target);
 
       // Статичні вороги (moveSpeed === 0) не рухаються
@@ -443,6 +445,55 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.delete(enemy.id);
     this.navigationState.delete(enemy.id);
     this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
+  }
+
+  private findTargetForEnemy(
+    enemy: InternalEnemyState,
+    config: EnemyConfig,
+    reservedTargets: Set<string>,
+  ): { id: string; position: SceneVector2; physicalSize: number } | null {
+    if (!this.targeting) {
+      return null;
+    }
+    if (!config.targeting) {
+      return (
+        this.targeting.findNearestTarget(enemy.position, {
+          types: ["unit"],
+        }) ?? null
+      );
+    }
+    const searchPadding = Math.max(config.targeting.searchPadding ?? 0, 0);
+    const radius = enemy.attackRange + enemy.physicalSize + searchPadding;
+    const candidates = this.targeting.findTargetsNear(enemy.position, radius, { types: ["unit"] });
+    let best: { id: string; position: SceneVector2; physicalSize: number } | null = null;
+    let bestDistanceSq = Number.POSITIVE_INFINITY;
+    candidates.forEach((candidate) => {
+      if (config.targeting?.avoidSharedTargets && reservedTargets.has(candidate.id)) {
+        return;
+      }
+      if (
+        config.targeting?.skipTargetsWithEffects?.some((effectId) =>
+          this.statusEffects.hasEffect(effectId, { type: "unit", id: candidate.id }),
+        )
+      ) {
+        return;
+      }
+      const attackRange =
+        enemy.attackRange + enemy.physicalSize + candidate.physicalSize;
+      const distanceSq = distanceSquared(candidate.position, enemy.position);
+      if (distanceSq > attackRange * attackRange) {
+        return;
+      }
+      if (distanceSq < bestDistanceSq) {
+        bestDistanceSq = distanceSq;
+        best = {
+          id: candidate.id,
+          position: candidate.position,
+          physicalSize: candidate.physicalSize,
+        };
+      }
+    });
+    return best;
   }
 
   private tryAttack(

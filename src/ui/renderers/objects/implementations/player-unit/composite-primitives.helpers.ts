@@ -269,6 +269,7 @@ export const createCompositePrimitives = (
         })();
 
         if (layer.stroke) {
+          const layerStrokeForTentacle = layer.stroke;
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
@@ -282,12 +283,18 @@ export const createCompositePrimitives = (
               getVertices: sampleVertices,
               stroke: sceneStroke,
               offset: layer.offset,
+              refreshStroke: layerStrokeForTentacle.kind === "base"
+                ? (inst) => ({
+                    width: layerStrokeForTentacle.width,
+                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
+                  })
+                : undefined,
             })
           );
         }
 
         // OPTIMIZATION: Cache fill for tentacle layers - vertices animate but fill is static
-        // For base fills, add refreshFill to track visual effect changes
+        // Always add refreshFill to track visual effect changes
         const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForTentacle = layer.fill;
         dynamicPrimitives.push(
@@ -295,9 +302,7 @@ export const createCompositePrimitives = (
             getVertices: sampleVertices,
             offset: layer.offset,
             fill: tentacleFill,
-            ...(layerFillForTentacle.kind === "base" && {
-              refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
-            }),
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
           })
         );
         return; // handled animated tentacle layer
@@ -474,6 +479,7 @@ export const createCompositePrimitives = (
         })();
 
         if (layer.stroke) {
+          const layerStrokeForAnimated = layer.stroke;
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
@@ -484,11 +490,17 @@ export const createCompositePrimitives = (
               getVertices: () => getDeformedVertices(),
               stroke: sceneStroke,
               offset: layer.offset,
+              refreshStroke: layerStrokeForAnimated.kind === "base"
+                ? (inst) => ({
+                    width: layerStrokeForAnimated.width,
+                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
+                  })
+                : undefined,
             })
           );
         }
         // OPTIMIZATION: Cache fill for animated layers too - vertices change but fill is usually static
-        // For base fills, add refreshFill to track visual effect changes
+        // Always add refreshFill to track visual effect changes
         const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForAnimated = layer.fill;
         dynamicPrimitives.push(
@@ -496,13 +508,12 @@ export const createCompositePrimitives = (
             getVertices: () => getDeformedVertices(),
             offset: layer.offset,
             fill: animatedLayerFill,
-            ...(layerFillForAnimated.kind === "base" && {
-              refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
-            }),
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
           })
         );
       } else {
         if (layer.stroke) {
+          const layerStrokeForStatic = layer.stroke;
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
@@ -516,11 +527,17 @@ export const createCompositePrimitives = (
               vertices: layer.vertices,
               stroke: sceneStroke,
               offset: layer.offset,
+              refreshStroke: layerStrokeForStatic.kind === "base"
+                ? (inst) => ({
+                    width: layerStrokeForStatic.width,
+                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
+                  })
+                : undefined,
             })
           );
         }
         // OPTIMIZATION: Cache fill at registration time for static layers
-        // For base fills, add refreshFill to track visual effect changes
+        // Always add refreshFill to track visual effect changes
         const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForStatic = layer.fill;
         dynamicPrimitives.push(
@@ -528,9 +545,7 @@ export const createCompositePrimitives = (
             vertices: layer.vertices,
             offset: layer.offset,
             fill: cachedFill,
-            ...(layerFillForStatic.kind === "base" && {
-              refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
-            }),
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
           })
         );
       }
@@ -540,6 +555,7 @@ export const createCompositePrimitives = (
     if (layer.shape === "circle") {
       // OPTIMIZATION: Cache fills at registration time for static layers
       if (layer.stroke) {
+        const layerStrokeForCircle = layer.stroke;
         const cachedStrokeFill = resolveLayerStrokeFill(instance, layer.stroke, renderer);
         dynamicPrimitives.push(
           createDynamicCirclePrimitive(instance, {
@@ -547,10 +563,13 @@ export const createCompositePrimitives = (
             offset: layer.offset,
             radius: layer.radius + layer.stroke.width,
             fill: cachedStrokeFill,
+            refreshFill: layerStrokeForCircle.kind === "base"
+              ? (inst) => resolveLayerStrokeFill(inst, layerStrokeForCircle, renderer)
+              : undefined,
           })
         );
       }
-      // For base fills, add refreshFill to track visual effect changes
+      // Always add refreshFill to track visual effect changes
       const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
       const layerFillForCircle = layer.fill;
       dynamicPrimitives.push(
@@ -559,9 +578,7 @@ export const createCompositePrimitives = (
           offset: layer.offset,
           radius: layer.radius,
           fill: cachedFill,
-          ...(layerFillForCircle.kind === "base" && {
-            refreshFill: (inst) => resolveLayerFill(inst, layerFillForCircle, renderer),
-          }),
+          refreshFill: (inst) => resolveLayerFill(inst, layerFillForCircle, renderer),
         })
       );
       return;

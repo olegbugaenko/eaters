@@ -155,10 +155,10 @@ const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
     durationMs: 4000,
     visuals: {
       overlay: {
-        color: { r: 0.45, g: 0.75, b: 1, a: 1 },
+        color: { r: 0.15, g: 0.25, b: 0.95, a: 1 },
         intensity: 0.5,
         priority: 13,
-        target: "fill",
+        target: ["fill", "stroke"],
       },
     },
   },

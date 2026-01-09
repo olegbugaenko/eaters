@@ -118,6 +118,10 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     renderer: {
       kind: "composite",
       fill: { r: 0.4, g: 0.8, b: 0.95, a: 1 },
+      stroke: {
+        color: { r: 0.55, g: 0.8, b: 0.95, a: 0.2 },
+        width: 1.8,
+      },
       layers: [
         {
           shape: "circle",
@@ -187,9 +191,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             },
           },
           stroke: { 
-            type: "solid", 
-            width: 1.8, 
-            color: { r: 0.55, g: 0.8, b: 0.95, a: 0.2 } 
+            type: "base", 
+            width: 1.8,
           },
           anim: { type: "sway", periodMs: 1500, amplitudePercentage: 0.13, falloff: "tip", axis: "movement-tangent", phase: 0 }
         },

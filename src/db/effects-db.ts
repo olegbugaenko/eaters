@@ -9,12 +9,14 @@ import type { BaseRendererLayerConfig, BaseRendererLayerFields, RendererComposit
 
 export type VisualEffectId = "frenzyAura";
 
+export type VisualEffectOverlayTarget = "fill" | "stroke";
+
 export interface VisualEffectOverlayConfig {
   readonly color: SceneColor;
   readonly intensity: number; // 0..1
   readonly blendMode?: "tint" | "add";
   readonly priority?: number;
-  readonly target?: "fill" | "stroke";
+  readonly target?: VisualEffectOverlayTarget | readonly VisualEffectOverlayTarget[];
 }
 
 export type AuraRendererLayer = BaseRendererLayerConfig<BaseRendererLayerFields>;

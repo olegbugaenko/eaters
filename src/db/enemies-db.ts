@@ -69,6 +69,12 @@ export interface EnemyArcAttackConfig {
   readonly statusEffectOptions?: StatusEffectApplicationOptions;
 }
 
+export interface EnemyTargetingOptions {
+  readonly avoidSharedTargets?: boolean;
+  readonly skipTargetsWithEffects?: readonly StatusEffectId[];
+  readonly searchPadding?: number;
+}
+
 export interface EnemyConfig {
   readonly name: string;
   readonly renderer: EnemyRendererConfig;
@@ -83,6 +89,7 @@ export interface EnemyConfig {
   readonly emitter?: ParticleEmitterConfig;
   readonly projectile?: UnitProjectileVisualConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
   readonly arcAttack?: EnemyArcAttackConfig;
+  readonly targeting?: EnemyTargetingOptions;
   readonly knockBackDistance?: number; // Відстань knockback при атаці юнітів
   readonly knockBackSpeed?: number; // Швидкість knockback при атаці юнітів
 }
@@ -651,9 +658,14 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       arcType: "freeze",
       statusEffectId: "freeze",
       statusEffectOptions: {
-        speedMultiplier: 0.5,
+        speedMultiplier: 0.3,
         durationMs: 2000,
       },
+    },
+    targeting: {
+      avoidSharedTargets: true,
+      skipTargetsWithEffects: ["freeze"],
+      searchPadding: 200,
     },
   },
 };

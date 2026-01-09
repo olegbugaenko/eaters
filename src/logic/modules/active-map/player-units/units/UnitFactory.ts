@@ -164,7 +164,9 @@ export class UnitFactory {
       b: config.renderer.fill.b,
       a: typeof config.renderer.fill.a === "number" ? config.renderer.fill.a : 1,
     };
-    const baseStrokeColor = config.renderer.stroke
+    // Use explicit stroke color if defined, otherwise fallback to fill color
+    // This ensures stroke overlays work for units with layer-level strokes
+    const baseStrokeColor: SceneColor = config.renderer.stroke
       ? {
           r: config.renderer.stroke.color.r,
           g: config.renderer.stroke.color.g,
@@ -174,7 +176,7 @@ export class UnitFactory {
               ? config.renderer.stroke.color.a
               : 1,
         }
-      : undefined;
+      : { ...baseFillColor };
     const visualEffects = createVisualEffectState();
 
     const ownedModuleIds = Array.isArray(data.equippedModules)
