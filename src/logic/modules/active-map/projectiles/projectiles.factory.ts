@@ -13,4 +13,5 @@ export const createUnitProjectilesDefinition = (): ServiceDefinition<
       damage: container.get("damage"),
     }),
   registerAsModule: false,
+  dependsOn: ["targeting", "damage"],
 });

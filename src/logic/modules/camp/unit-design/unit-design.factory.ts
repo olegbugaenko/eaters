@@ -10,4 +10,5 @@ export const createUnitDesignDefinition = (): ServiceDefinition<UnitDesignModule
       workshop: container.get("unitModuleWorkshop"),
     }),
   registerAsModule: true,
+  dependsOn: ["bonuses", "unitModuleWorkshop"],
 });

@@ -11,6 +11,7 @@ export const createEffectsDefinition = (): ServiceDefinition<EffectsModule, "eff
       getUnitPositionIfAlive: container.get<PlayerUnitsModule>("playerUnits").getUnitPositionIfAlive,
     }),
   registerAsModule: true,
+  dependsOn: ["playerUnits"],
   onReady: (instance: EffectsModule, container: ServiceContainer) => {
     (container.get<PlayerUnitsModule>("playerUnits") as any).effects = instance;
   },

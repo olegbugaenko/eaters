@@ -38,6 +38,23 @@ export const createMapDefinition = (
     });
   },
   registerAsModule: true,
+  dependsOn: [
+    "fireball",
+    "bullet",
+    "explosion",
+    "arc",
+    "effects",
+    "bonuses",
+    "bricks",
+    "playerUnits",
+    "enemies",
+    "necromancer",
+    "resources",
+    "unlocks",
+    "achievements",
+    "unitAutomation",
+    "skillTree",
+  ],
   onReady: (instance: MapModule) => {
     context.setMapModule(instance);
   },

@@ -28,8 +28,68 @@ import { createUnitModuleWorkshopDefinition } from "../../modules/camp/unit-modu
 import { createUnitProjectilesDefinition } from "../../modules/active-map/projectiles/projectiles.factory";
 import { createUnlocksDefinition } from "./unlocks/factory";
 import { ModuleDefinitionContext } from "./context";
+import type { ServiceDefinition } from "../../core/loader/types";
+
+function sortModuleDefinitions<Definitions extends readonly ServiceDefinition<any, string, any>[]>(
+  definitions: Definitions,
+): Definitions {
+  const definitionMap = new Map(
+    definitions.map((definition, index) => [definition.token, { definition, index }] as const),
+  );
+  const inDegree = new Map<string, number>();
+  const edges = new Map<string, string[]>();
+
+  definitions.forEach((definition) => {
+    inDegree.set(definition.token, 0);
+    edges.set(definition.token, []);
+  });
+
+  definitions.forEach((definition) => {
+    definition.dependsOn?.forEach((dependency) => {
+      if (!definitionMap.has(dependency)) {
+        throw new Error(`Unknown module dependency token: ${dependency}`);
+      }
+      edges.get(dependency)?.push(definition.token);
+      inDegree.set(definition.token, (inDegree.get(definition.token) ?? 0) + 1);
+    });
+  });
+
+  const queue = definitions
+    .filter((definition) => inDegree.get(definition.token) === 0)
+    .map((definition) => definition.token);
+  const sorted: typeof definitions[number][] = [];
+
+  while (queue.length > 0) {
+    queue.sort((left, right) => (definitionMap.get(left)?.index ?? 0) - (definitionMap.get(right)?.index ?? 0));
+    const token = queue.shift();
+    if (!token) {
+      break;
+    }
+    const entry = definitionMap.get(token);
+    if (entry) {
+      sorted.push(entry.definition);
+    }
+    edges.get(token)?.forEach((next) => {
+      const nextCount = (inDegree.get(next) ?? 0) - 1;
+      inDegree.set(next, nextCount);
+      if (nextCount === 0) {
+        queue.push(next);
+      }
+    });
+  }
+
+  if (sorted.length !== definitions.length) {
+    const remaining = definitions
+      .map((definition) => definition.token)
+      .filter((token) => (inDegree.get(token) ?? 0) > 0);
+    throw new Error(`Cyclic module dependencies detected: ${remaining.join(", ")}`);
+  }
+
+  return sorted as Definitions;
+}
+
 export function createModuleDefinitions(context: ModuleDefinitionContext) {
-  return [
+  const definitions = [
     createUnlocksDefinition(),
     createBonusesDefinition(),
     createAchievementsDefinition(),
@@ -47,7 +107,7 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
     createTargetingDefinition(),
     createDamageDefinition(),
     createBricksDefinition(),
-    createUnitProjectilesDefinition(), // Має бути перед createEnemiesDefinition, бо enemies використовує projectiles
+    createUnitProjectilesDefinition(),
     createEnemiesDefinition(),
     createPlayerUnitsDefinition(context),
     createNecromancerDefinition(),
@@ -60,4 +120,6 @@ export function createModuleDefinitions(context: ModuleDefinitionContext) {
     createSpellcastingDefinition(),
     createTutorialMonitorDefinition(),
   ] as const;
+
+  return sortModuleDefinitions(definitions);
 }

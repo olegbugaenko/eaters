@@ -12,4 +12,5 @@ export const createResourcesDefinition = (): ServiceDefinition<ResourcesModule, 
       statistics: container.get("statistics"),
     }),
   registerAsModule: true,
+  dependsOn: ["unlocks", "bonuses", "statistics"],
 });

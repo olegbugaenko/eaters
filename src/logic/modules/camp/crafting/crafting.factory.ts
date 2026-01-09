@@ -11,4 +11,5 @@ export const createCraftingDefinition = (): ServiceDefinition<CraftingModule, "c
       bonuses: container.get("bonuses"),
     }),
   registerAsModule: true,
+  dependsOn: ["resources", "unlocks", "bonuses"],
 });
