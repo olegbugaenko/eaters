@@ -46,7 +46,8 @@ import {
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import { BricksModule } from "../bricks/bricks.module";
 import type { BrickRuntimeState } from "../bricks/bricks.types";
-import { BonusValueMap, BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { UnitDesignId } from "../../camp/unit-design/unit-design.types";
 import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
 import { ArcModule } from "../../scene/arc/arc.module";

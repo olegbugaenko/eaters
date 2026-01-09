@@ -3,7 +3,7 @@ import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
-import type { BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { ResourcesModule } from "../../shared/resources/resources.module";
 import {
   CRAFTING_RECIPE_IDS,

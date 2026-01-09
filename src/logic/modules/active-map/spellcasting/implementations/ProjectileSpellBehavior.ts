@@ -8,7 +8,7 @@ import {
   SpellBehaviorDependencies,
 } from "../SpellBehavior";
 import { SpellConfig } from "../../../../../db/spells-db";
-import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { ExplosionType } from "../../../../../db/explosions-db";

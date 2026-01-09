@@ -12,7 +12,8 @@ import { SceneObjectManager } from "@core/logic/provided/services/scene-object-m
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ResourceAmountMap } from "@shared/types/resources";
 import { normalizeResourceCost } from "@shared/const/resources.const";
-import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import {
   UnitDesignId,
   UnitDesignerUnitState,
@@ -549,4 +550,3 @@ export class NecromancerModule implements GameModule {
     }
   }
 }
-
