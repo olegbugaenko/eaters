@@ -3,21 +3,9 @@ import type { SceneVector2, SceneUiApi } from "@logic/services/scene-object-mana
 import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
 import { TICK_INTERVAL } from "@logic/services/game-loop/game-loop.const";
 import { getAllActiveBullets } from "@ui/renderers/primitives/gpu/bullet/BulletGpuRenderer";
+import { clamp } from "@shared/helpers/numbers.helper";
 
 const DRIFT_SNAP_THRESHOLD = TICK_INTERVAL * 1.25;
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-  if (value < min) {
-    return min;
-  }
-  if (value > max) {
-    return max;
-  }
-  return value;
-};
 
 const lerpVector = (from: SceneVector2, to: SceneVector2, alpha: number): SceneVector2 => ({
   x: from.x + (to.x - from.x) * alpha,

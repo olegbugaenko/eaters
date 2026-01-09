@@ -24,6 +24,7 @@ import {
   applyInterpolatedBulletPositions,
 } from "@ui/renderers/primitives/gpu/bullet";
 import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/ring";
+import { clamp } from "@shared/helpers/numbers.helper";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "./useWebGLRenderLoop";
@@ -31,19 +32,6 @@ import { updateVboStats, updateParticleStats, tickFrame } from "../components/de
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-  if (value < min) {
-    return min;
-  }
-  if (value > max) {
-    return max;
-  }
-  return value;
-};
 
 interface PointerState {
   x: number;
