@@ -878,6 +878,7 @@ export const createDynamicPolygonStrokePrimitive = (
       // Check if stroke reference changed (visual effect applied)
       let strokeRefChanged = false;
       if (hasRefreshStroke && target.data.stroke !== prevInstanceStrokeRef) {
+        console.log('Rebuild stroke on target: ', target, hasRefreshStroke, target.data.stroke !== prevInstanceStrokeRef);
         prevInstanceStrokeRef = target.data.stroke;
         cachedStroke = options.refreshStroke!(target);
         strokeFill = createStrokeFill(cachedStroke);
