@@ -738,9 +738,21 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
 
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
     const reduction = Math.max(unit.knockBackReduction, 1);
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
-    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
   }
 
   private applyEnemyKnockBack(
@@ -770,9 +782,21 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
 
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
     const reduction = Math.max(unit.knockBackReduction, 1);
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
-    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
   }
 
   private cloneUnit(unit: PlayerUnitState): PlayerUnitState {
