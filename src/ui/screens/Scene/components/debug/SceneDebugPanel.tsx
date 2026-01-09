@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from "react";
-import { DataBridge } from "@logic/core/DataBridge";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
 import { RESOURCE_RUN_DURATION_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { debugStats } from "./debugStats";

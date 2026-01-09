@@ -1,4 +1,4 @@
-import { StateFactory } from "../../../core/factories/StateFactory";
+import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import { createSolidFill, cloneStroke } from "../../../services/scene-object-manager/scene-object-manager.helpers";
 import { DEFAULT_COLOR } from "../../../services/scene-object-manager/scene-object-manager.const";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";

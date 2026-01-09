@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { EnemiesModule } from "./enemies.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
 

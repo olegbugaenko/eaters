@@ -1,5 +1,5 @@
 import type { UiApiProxy, UiModuleApi } from "@shared/core/types/ui-api";
-import type { LogicUiApiRegistry } from "@/logic/core/ui/ui-api.registry";
+import type { LogicUiApiRegistry } from "@core/logic/ui/ui-api.registry";
 
 type UiApiImplementations<T> = {
   [K in keyof T]: T[K];

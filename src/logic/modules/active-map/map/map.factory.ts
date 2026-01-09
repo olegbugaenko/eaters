@@ -1,6 +1,6 @@
 import { SkillId } from "../../../../db/skills-db";
-import { ModuleDefinitionContext } from "../../../definitions/modules/context";
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ModuleDefinitionContext } from "../../../../core/logic/engine/module-definitions/context";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";
 import { MapModule } from "./map.module";
 import { MapSceneCleanup } from "./map.scene-cleanup";

@@ -1,5 +1,5 @@
 import { SkillId } from "../../../../db/skills-db";
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { SkillTreeModule } from "../skill-tree/skill-tree.module";
 import { UnitModuleWorkshopModule } from "./unit-module-workshop.module";
 

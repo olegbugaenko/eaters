@@ -1,4 +1,4 @@
-import { StateFactory } from "../../../core/factories/StateFactory";
+import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import { getBrickConfig, BrickType } from "../../../../db/bricks-db";
 import type { SceneVector2, SceneFill } from "../../../services/scene-object-manager/scene-object-manager.types";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";

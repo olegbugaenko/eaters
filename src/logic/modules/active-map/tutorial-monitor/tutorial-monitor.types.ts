@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { MapRunState } from "../map/MapRunState";

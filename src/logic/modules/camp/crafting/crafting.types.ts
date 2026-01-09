@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { CraftingRecipeId } from "../../../../db/crafting-recipes-db";
 import type { ResourceId } from "../../../../db/resources-db";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
@@ -54,7 +54,7 @@ export interface CraftingModuleUiApi {
   setRecipeQueueToMax(id: CraftingRecipeId): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     crafting: CraftingModuleUiApi;
   }

@@ -4,7 +4,7 @@ import type { ExplosionType } from "../../../../db/explosions-db";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { SoundEffectPlayer } from "../../shared/audio/audio.types";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { MapRunState } from "../map/MapRunState";

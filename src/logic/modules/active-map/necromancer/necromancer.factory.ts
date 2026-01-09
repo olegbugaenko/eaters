@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { NecromancerModule } from "./necromancer.module";
 
 export const createNecromancerDefinition = (): ServiceDefinition<NecromancerModule, "necromancer"> => ({

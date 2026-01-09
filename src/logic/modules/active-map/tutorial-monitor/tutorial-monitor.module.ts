@@ -1,4 +1,4 @@
-import { GameModule } from "../../../core/types";
+import { GameModule } from "@core/logic/types";
 import type {
   TutorialMonitorInput,
   TutorialMonitorStatus,
@@ -10,8 +10,8 @@ import {
   DEFAULT_TUTORIAL_MONITOR_STATUS,
   DEFAULT_BRICKS_REQUIRED,
 } from "./tutorial-monitor.const";
-import type { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { MapRunState } from "../map/MapRunState";

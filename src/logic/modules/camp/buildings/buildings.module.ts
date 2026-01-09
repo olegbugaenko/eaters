@@ -1,6 +1,6 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
-import { BaseGameModule } from "../../../core/BaseGameModule";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
+import { BaseGameModule } from "@/core/logic/engine/BaseGameModule";
 import {
   serializeLevelsMap,
   parseLevelsMapFromSaveData,

@@ -1,4 +1,4 @@
-import { BaseGameModule } from "../../../core/BaseGameModule";
+import { BaseGameModule } from "@/core/logic/engine/BaseGameModule";
 import { BonusId, getBonusConfig } from "../../../../db/bonuses-db";
 import {
   BonusEffectContext,

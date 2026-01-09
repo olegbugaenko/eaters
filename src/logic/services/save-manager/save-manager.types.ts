@@ -1,4 +1,4 @@
-import type { SaveSlotId, StoredSaveData } from "../../core/types";
+import type { SaveSlotId, StoredSaveData } from "@core/logic/types";
 
 export interface SaveSlotSummary {
   readonly hasSave: boolean;
@@ -15,7 +15,7 @@ export interface SaveManagerUiApi {
   importToActiveSlot(data: StoredSaveData): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     save: SaveManagerUiApi;
   }

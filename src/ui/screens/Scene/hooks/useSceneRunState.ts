@@ -1,5 +1,5 @@
 import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DataBridge } from "@logic/core/DataBridge";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { MapAutoRestartState, MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 import {
   DEFAULT_MAP_AUTO_RESTART_STATE,

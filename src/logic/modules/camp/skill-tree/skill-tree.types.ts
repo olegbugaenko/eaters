@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { SkillId, SkillConfig, SkillNodePosition } from "../../../../db/skills-db";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { BonusEffectPreview } from "@shared/types/bonuses";
@@ -48,7 +48,7 @@ export interface SkillTreeModuleUiApi {
   tryPurchaseSkill(id: SkillId): boolean;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     skillTree: SkillTreeModuleUiApi;
   }

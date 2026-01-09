@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { ResourcesModule } from "./resources.module";
 
 export const createResourcesDefinition = (): ServiceDefinition<ResourcesModule, "resources"> => ({

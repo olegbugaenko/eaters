@@ -142,7 +142,7 @@ export interface SceneUiApi {
   flushAllPendingRemovals(): string[];
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     scene: SceneUiApi;
   }

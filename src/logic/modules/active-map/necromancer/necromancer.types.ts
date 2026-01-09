@@ -44,7 +44,7 @@ export interface NecromancerSpawnOption {
  * Internal module options interface.
  */
 export interface NecromancerModuleOptions {
-  bridge: import("../../../core/DataBridge").DataBridge;
+  bridge: import("@/core/logic/ui/DataBridge").DataBridge;
   playerUnits: import("../player-units/player-units.module").PlayerUnitsModule;
   scene: import("../../../services/scene-object-manager/SceneObjectManager").SceneObjectManager;
   bonuses: import("../../shared/bonuses/bonuses.module").BonusesModule;
@@ -74,7 +74,7 @@ export interface NecromancerModuleUiApi {
   ensureMinMana(minAmount: number): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     necromancer: NecromancerModuleUiApi;
   }

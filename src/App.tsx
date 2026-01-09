@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
-import { Application } from "./logic/core/Application";
+import { Application } from "@/core/logic/Application";
 import { AppLogicContext } from "./ui/contexts/AppLogicContext";
 import { SaveSlotSelectScreen } from "./ui/screens/SaveSlotSelect/SaveSlotSelectScreen";
 import { VoidCampScreen } from "@screens/VoidCamp/VoidCampScreen";

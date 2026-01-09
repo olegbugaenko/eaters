@@ -2,7 +2,7 @@ import {
   GameModule,
   SaveSlotId,
   StoredSaveData,
-} from "../../core/types";
+} from "@core/logic/types";
 import type { SaveSlotSummary } from "./save-manager.types";
 import { STORAGE_KEY_PREFIX } from "./save-manager.const";
 import { extractTimePlayed } from "./save-manager.helpers";

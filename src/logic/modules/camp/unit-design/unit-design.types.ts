@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { PlayerUnitType } from "../../../../db/player-units-db";
 import type { UnitModuleId, UnitModuleBonusType } from "../../../../db/unit-modules-db";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
@@ -105,7 +105,7 @@ export interface UnitDesignModuleUiApi {
   setDesignTargetingMode(id: UnitDesignId, mode: UnitTargetingMode): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     unitDesign: UnitDesignModuleUiApi;
   }

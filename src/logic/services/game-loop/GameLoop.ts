@@ -1,4 +1,4 @@
-import { GameModule } from "../../core/types";
+import { GameModule } from "@core/logic/types";
 import type { TickListener } from "./game-loop.types";
 import { TICK_INTERVAL, MAX_DELTA_MS } from "./game-loop.const";
 

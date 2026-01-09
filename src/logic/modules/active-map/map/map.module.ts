@@ -1,5 +1,5 @@
-import { GameModule } from "../../../core/types";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { GameModule } from "@core/logic/types";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import type { BrickData } from "../bricks/bricks.types";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";

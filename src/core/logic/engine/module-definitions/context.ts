@@ -1,4 +1,4 @@
-import { MapModule } from "../../modules/active-map/map/map.module";
+import { MapModule } from "../../../../logic/modules/active-map/map/map.module";
 
 export interface ModuleDefinitionContext {
   onAllUnitsDefeated: () => void;

@@ -1,4 +1,4 @@
-import { GameModule } from "../../../core/types";
+import { GameModule } from "@core/logic/types";
 import {
   RESOURCE_IDS,
   ResourceAmount,
@@ -16,8 +16,8 @@ import type {
   ResourcesModuleOptions,
   ResourcesSaveData,
 } from "./resources.types";
-import type { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import type { MapRunState } from "../../active-map/map/MapRunState";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { BonusesModule } from "../bonuses/bonuses.module";

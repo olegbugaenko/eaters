@@ -1,4 +1,4 @@
-import type { ServiceDefinition } from "../../../core/loader/types";
+import type { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { StatusEffectsModule } from "./status-effects.module";
 
 export const createStatusEffectsDefinition = (): ServiceDefinition<

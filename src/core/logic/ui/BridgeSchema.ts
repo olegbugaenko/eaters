@@ -3,23 +3,23 @@
  * Визначає всі ключі та їх типи для перевірки під час компіляції.
  */
 
-import type { MapId } from "../../db/maps-db";
-import type { UnitDesignId } from "../modules/camp/unit-design/unit-design.types";
-import type { PlayerUnitType } from "../../db/player-units-db";
+import type { MapId } from "../../../db/maps-db";
+import type { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
+import type { PlayerUnitType } from "@db/player-units-db";
 import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
-import type { ResourceAmountPayload, ResourceRunSummaryPayload } from "../modules/shared/resources/resources.types";
-import type { MapListEntry, MapAutoRestartState } from "../modules/active-map/map/map.types";
-import type { BuildingsWorkshopBridgeState } from "../modules/camp/buildings/buildings.types";
-import type { CraftingBridgeState } from "../modules/camp/crafting/crafting.types";
-import type { UnitDesignerBridgeState } from "../modules/camp/unit-design/unit-design.types";
-import type { UnitModuleWorkshopBridgeState } from "../modules/camp/unit-module-workshop/unit-module-workshop.types";
-import type { UnitAutomationBridgeState } from "../modules/active-map/unit-automation/unit-automation.types";
-import type { SpellOption } from "../modules/active-map/spellcasting/spellcasting.types";
-import type { NecromancerResourcesPayload, NecromancerSpawnOption } from "../modules/active-map/necromancer/necromancer.types";
-import type { SkillTreeBridgePayload } from "../modules/camp/skill-tree/skill-tree.types";
-import type { AchievementsBridgePayload } from "../modules/shared/achievements/achievements.types";
-import type { TutorialMonitorInput, TutorialMonitorStatus } from "../modules/active-map/tutorial-monitor/tutorial-monitor.types";
-import type { CampStatisticsSnapshot } from "../modules/shared/statistics/statistics.module";
+import type { ResourceAmountPayload, ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
+import type { MapListEntry, MapAutoRestartState } from "@logic/modules/active-map/map/map.types";
+import type { BuildingsWorkshopBridgeState } from "@logic/modules/camp/buildings/buildings.types";
+import type { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
+import type { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
+import type { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
+import type { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import type { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import type { NecromancerResourcesPayload, NecromancerSpawnOption } from "@logic/modules/active-map/necromancer/necromancer.types";
+import type { SkillTreeBridgePayload } from "@logic/modules/camp/skill-tree/skill-tree.types";
+import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
+import type { TutorialMonitorInput, TutorialMonitorStatus } from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.types";
+import type { CampStatisticsSnapshot } from "@logic/modules/shared/statistics/statistics.module";
 
 /**
  * View transform для навігації по картах/скілах.

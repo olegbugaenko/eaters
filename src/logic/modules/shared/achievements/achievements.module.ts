@@ -1,5 +1,5 @@
-import { GameModule } from "../../../core/types";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { GameModule } from "@core/logic/types";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import {
   ACHIEVEMENT_IDS,
   AchievementId,

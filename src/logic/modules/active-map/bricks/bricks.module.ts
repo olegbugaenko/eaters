@@ -1,6 +1,6 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { GameModule } from "@core/logic/types";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { BrickConfig, BrickType, getBrickConfig } from "../../../../db/bricks-db";
 import type {
   SceneFill,
