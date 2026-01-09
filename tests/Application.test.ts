@@ -14,24 +14,24 @@ describe("Application", () => {
 
     const bridge = app.services.bridge;
     const list = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
-    const training = list.find((entry: MapListEntry) => entry.id === "trainingGrounds");
-    assert(training, "expected trainingGrounds map to be listed");
-    assert.strictEqual(training?.attempts, 1, "should count one failed attempt");
+    const tutorial = list.find((entry: MapListEntry) => entry.id === "tutorialZone");
+    assert(tutorial, "expected tutorialZone map to be listed");
+    assert.strictEqual(tutorial?.attempts, 1, "should count one failed attempt");
 
     const stats = app.services.map.getMapStats() as {
-      trainingGrounds?: {
+      tutorialZone?: {
         [level: number]: { success: number; failure: number; bestTimeMs: number | null };
       };
     };
-    assert.strictEqual(stats.trainingGrounds?.[1]?.failure, 1);
+    assert.strictEqual(stats.tutorialZone?.[1]?.failure, 1);
 
     app.restartCurrentMap();
     app.services.mapRunState.complete(true);
 
     const updatedList = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
-    const updatedTraining = updatedList.find((entry: MapListEntry) => entry.id === "trainingGrounds");
-    assert(updatedTraining, "expected trainingGrounds map after success");
-    assert.strictEqual(updatedTraining?.currentLevel, 1);
-    assert.strictEqual(updatedTraining?.bestTimeMs, 0);
+    const updatedTutorial = updatedList.find((entry: MapListEntry) => entry.id === "tutorialZone");
+    assert(updatedTutorial, "expected tutorialZone map after success");
+    assert.strictEqual(updatedTutorial?.currentLevel, 1);
+    assert.strictEqual(updatedTutorial?.bestTimeMs, 0);
   });
 });
