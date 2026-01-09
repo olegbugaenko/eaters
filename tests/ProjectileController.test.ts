@@ -1,13 +1,13 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
-import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { TargetingService } from "../src/logic/modules/active-map/targeting/TargetingService";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
 import type { TargetingProvider } from "../src/logic/modules/active-map/targeting/targeting.types";
 import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
-import type { SceneVector2 } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 const SOLID_FILL = { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } } as const;
 

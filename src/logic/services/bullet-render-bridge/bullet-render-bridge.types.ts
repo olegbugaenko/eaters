@@ -1,4 +1,4 @@
-import type { SceneVector2, SceneColor } from "../scene-object-manager/scene-object-manager.types";
+import type { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BulletSpriteName } from "./bullet-sprites.const";
 
 export type BulletShape = "circle" | "sprite";

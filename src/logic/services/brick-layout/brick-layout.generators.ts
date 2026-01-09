@@ -1,7 +1,7 @@
 import type { BrickType } from "../../../db/bricks-db";
 import { getBrickConfig } from "../../../db/bricks-db";
 import type { BrickData } from "../../modules/active-map/bricks/bricks.types";
-import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type {
   BrickGenerationOptions,
   CircleWithBricksOptions,

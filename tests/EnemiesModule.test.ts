@@ -1,8 +1,8 @@
 import assert from "assert";
 import { ENEMY_COUNT_BRIDGE_KEY, ENEMY_TOTAL_HP_BRIDGE_KEY } from "../src/logic/modules/active-map/enemies/enemies.const";
 import { EnemiesModule } from "../src/logic/modules/active-map/enemies/enemies.module";
-import { DataBridge } from "../src/logic/core/DataBridge";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { TargetingService } from "../src/logic/modules/active-map/targeting/TargetingService";
 import { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
@@ -10,15 +10,15 @@ import type { TargetingProvider } from "../src/logic/modules/active-map/targetin
 import type { PlayerUnitState } from "../src/logic/modules/active-map/player-units/units/UnitTypes";
 import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
-import { createSolidFill } from "../src/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { createSolidFill } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import { createVisualEffectState } from "../src/logic/visuals/VisualEffectState";
 import { describe, test } from "./testRunner";
-import { MovementService } from "../src/logic/services/movement/MovementService";
+import { MovementService } from "../src/core/logic/provided/services/movement/MovementService";
 import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import type { EnemiesModuleOptions } from "../src/logic/modules/active-map/enemies/enemies.types";
 import { PathfindingService } from "../src/logic/shared/navigation/PathfindingService";
 import type { ObstacleDescriptor, ObstacleProvider } from "../src/logic/shared/navigation/navigation.types";
-import type { SceneVector2 } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 const createEnemySpawnData = () => ({

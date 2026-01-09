@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { AudioModule } from "../src/logic/modules/shared/audio/audio.module";
+import { AudioModule } from "../src/core/logic/provided/modules/audio/audio.module";
 
 describe("AudioModule sound throttling", () => {
   const setupEnvironment = () => {

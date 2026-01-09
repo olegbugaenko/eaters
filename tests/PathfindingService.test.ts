@@ -2,7 +2,7 @@ import assert from "assert";
 import { describe, test } from "./testRunner";
 import { PathfindingService } from "../src/logic/shared/navigation/PathfindingService";
 import type { ObstacleDescriptor, ObstacleProvider } from "../src/logic/shared/navigation/navigation.types";
-import type { SceneVector2 } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 class StaticObstacleProvider implements ObstacleProvider {
   constructor(private readonly obstacles: readonly ObstacleDescriptor[]) {}

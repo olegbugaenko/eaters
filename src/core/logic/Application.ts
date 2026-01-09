@@ -12,7 +12,7 @@ import { MapId } from "../../db/maps-db";
 import { DEFAULT_MODULE_CONFIG } from "@logic/config/modules";
 import { ModuleRegistryConfig } from "./engine/ModuleRegistry";
 import { MapModule } from "@logic/modules/active-map/map/map.module";
-import { AudioModule } from "@logic/modules/shared/audio/audio.module";
+import { AudioModule } from "@/core/logic/provided/modules/audio/audio.module";
 import { UiApiProvider } from "./ui/UiApiProvider";
 import type { UiApiProxy } from "@shared/core/types/ui-api";
 import type { LogicUiApiRegistry } from "@core/logic/ui/ui-api.registry";

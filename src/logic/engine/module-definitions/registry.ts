@@ -1,6 +1,6 @@
 import { ModuleRegistry } from "@/core/logic/engine/ModuleRegistry";
 import { createArcDefinition } from "../../modules/scene/arc/arc.factory";
-import { createAudioDefinition } from "../../modules/shared/audio/audio.factory";
+import { createAudioDefinition } from "../../../core/logic/provided/modules/audio/audio.factory";
 import { createBonusesDefinition } from "../../modules/shared/bonuses/bonuses.factory";
 import { createAchievementsDefinition } from "../../modules/shared/achievements/achievements.factory";
 import { createBricksDefinition } from "../../modules/active-map/bricks/bricks.factory";

@@ -1,12 +1,12 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import type { BrickData } from "../src/logic/modules/active-map/bricks/bricks.types";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import { PlayerUnitsModule } from "../src/logic/modules/active-map/player-units/player-units.module";
 import { PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY } from "../src/logic/modules/active-map/player-units/player-units.const";
-import { MovementService } from "../src/logic/services/movement/MovementService";
+import { MovementService } from "../src/core/logic/provided/services/movement/MovementService";
 import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { EffectsModule } from "../src/logic/modules/scene/effects/effects.module";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
