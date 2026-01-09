@@ -1,13 +1,13 @@
 import { MutableRefObject, useEffect, useRef } from "react";
 import { SpellId } from "@db/spells-db";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
-import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import {
   SceneCameraState,
   SceneVector2,
+  SceneUiApi,
 } from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
-import { GameLoop } from "@logic/services/game-loop/GameLoop";
+import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 import {
@@ -68,9 +68,9 @@ export interface ParticleStatsState {
 }
 
 export interface UseSceneCanvasParams {
-  scene: SceneObjectManager;
-  spellcasting: SpellcastingModule;
-  gameLoop: GameLoop;
+  scene: SceneUiApi;
+  spellcasting: SpellcastingModuleUiApi;
+  gameLoop: GameLoopUiApi;
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
   summoningPanelRef: MutableRefObject<HTMLDivElement | null>;
@@ -165,7 +165,7 @@ export const useSceneCanvas = ({
 
     const applyCameraMovement = (
       pointer: Pick<PointerState, "x" | "y" | "inside" | "isRightMousePressed">,
-      scene: SceneObjectManager,
+      scene: SceneUiApi,
       deltaMs: number,
       canvasWidthPx: number,
       canvasHeightPx: number,

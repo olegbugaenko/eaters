@@ -11,7 +11,7 @@ import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
 import "./UnitDesignerView.css";
-import { UnitDesignModule } from "@logic/modules/camp/unit-design/unit-design.module";
+import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 
 interface UnitDesignerViewProps {
   state: UnitDesignerBridgeState;
@@ -40,8 +40,8 @@ const getDefaultType = (units: readonly { type: PlayerUnitType }[], fallback: Pl
   units[0]?.type ?? fallback;
 
 export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resources }) => {
-  const { app } = useAppLogic();
-  const designer = useMemo(() => app.services.unitDesign, [app]) as UnitDesignModule;
+  const { uiApi } = useAppLogic();
+  const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
   const [preview, setPreview] = useState<{

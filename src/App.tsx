@@ -21,19 +21,19 @@ function App(): JSX.Element {
   const [sceneTutorial, setSceneTutorial] = useState<SceneTutorialConfig | null>(null);
 
   const app = useMemo(() => new Application(), []);
+  const uiApi = app.uiApi;
 
   useEffect(() => {
     app.initialize();
   }, [app]);
 
   const refreshSlotSummaries = useCallback(() => {
-    const { saveManager } = app.services;
     const entries: Record<string, SaveSlotSummary> = {};
     SAVE_SLOTS.forEach((slot) => {
-      entries[slot] = saveManager.getSlotSummary(slot);
+      entries[slot] = uiApi.save.getSlotSummary(slot);
     });
     setSlotSummaries(entries);
-  }, [app]);
+  }, [uiApi]);
 
   useEffect(() => {
     refreshSlotSummaries();
@@ -45,41 +45,40 @@ function App(): JSX.Element {
       if (!confirmed) {
         return;
       }
-      const { saveManager } = app.services;
-      saveManager.deleteSlot(slot);
+      uiApi.save.deleteSlot(slot);
       refreshSlotSummaries();
     },
-    [app, refreshSlotSummaries]
+    [refreshSlotSummaries, uiApi]
   );
 
   const handleSlotSelect = useCallback(
     (slot: string) => {
       const summary = slotSummaries[slot];
-      app.selectSlot(slot);
+      uiApi.app.selectSlot(slot);
       const storedAudio = readStoredAudioSettings();
-      app.applyAudioSettings(storedAudio);
+      uiApi.audio.applyPercentageSettings(storedAudio);
 
       if (!summary || !summary.hasSave) {
-        app.playMapPlaylist();
-        app.selectMap("foundations");
-        app.selectMapLevel("foundations", 0);
-        app.restartCurrentMap();
+        uiApi.audio.playPlaylist("map");
+        uiApi.map.selectMap("foundations");
+        uiApi.map.selectMapLevel("foundations", 0);
+        uiApi.map.restartSelectedMap();
         setSceneTutorial({ type: "new-player" });
         setScreen("scene");
         return;
       }
 
-      app.playCampPlaylist();
+      uiApi.audio.playPlaylist("camp");
       setSceneTutorial(null);
       setVoidCampTab("maps");
       setScreen("void-camp");
     },
-    [app, slotSummaries]
+    [slotSummaries, uiApi]
   );
 
   return (
     <AppLogicContext.Provider
-      value={{ app, bridge: app.services.bridge, scene: app.services.sceneObjects }}
+      value={{ uiApi: app.uiApi, bridge: app.services.bridge }}
     >
       <div className="app-root">
         {screen === "save-select" && (
@@ -97,7 +96,7 @@ function App(): JSX.Element {
         {screen === "void-camp" && (
           <VoidCampScreen
             onStart={() => {
-              app.playMapPlaylist();
+              uiApi.audio.playPlaylist("map");
               setScreen("scene");
             }}
             onExit={() => {
@@ -116,17 +115,17 @@ function App(): JSX.Element {
               setSceneTutorial(null);
             }}
             onExit={() => {
-              app.returnToMainMenu();
-              app.playCampPlaylist();
+              uiApi.app.returnToMainMenu();
+              uiApi.audio.playPlaylist("camp");
               setVoidCampTab("maps");
               setScreen("save-select");
               setSceneTutorial(null);
               refreshSlotSummaries();
             }}
             onLeaveToMapSelect={() => {
-              app.leaveCurrentMap();
-              app.playCampPlaylist();
-              app.services.gameLoop.start(); // Ensure game loop runs in camp
+              uiApi.map.leaveCurrentMap();
+              uiApi.audio.playPlaylist("camp");
+              uiApi.gameLoop.start(); // Ensure game loop runs in camp
               setVoidCampTab("skills");
               setScreen("void-camp");
               setSceneTutorial(null);

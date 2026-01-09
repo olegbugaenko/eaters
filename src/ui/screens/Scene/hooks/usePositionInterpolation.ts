@@ -1,7 +1,6 @@
 import { useRef, useEffect } from "react";
-import { SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
-import { GameLoop } from "@logic/services/game-loop/GameLoop";
+import type { SceneVector2, SceneUiApi } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
 import { TICK_INTERVAL } from "@logic/services/game-loop/game-loop.const";
 import { getAllActiveBullets } from "@ui/renderers/primitives/gpu/bullet/BulletGpuRenderer";
 
@@ -42,8 +41,8 @@ const getNow = () =>
  * Provides smooth animation between game ticks.
  */
 export const usePositionInterpolation = (
-  scene: SceneObjectManager,
-  gameLoop: GameLoop
+  scene: SceneUiApi,
+  gameLoop: GameLoopUiApi
 ) => {
   const unitSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const interpolatedPositionsRef = useRef<Map<string, SceneVector2>>(new Map());

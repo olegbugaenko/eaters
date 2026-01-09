@@ -7,24 +7,24 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  SceneCameraState
+import type {
+  SceneCameraState,
+  SceneUiApi,
 } from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
-import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { SpellId } from "@db/spells-db";
 import {
   BufferStats,
   ParticleStatsState,
   useSceneCanvas,
 } from "./useSceneCanvas";
-import { GameLoop } from "@logic/services/game-loop/GameLoop";
+import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
 
 interface UseSceneCameraInteractionArgs {
-  scene: SceneObjectManager;
-  spellcasting: SpellcastingModule;
-  gameLoop: GameLoop;
+  scene: SceneUiApi;
+  spellcasting: SpellcastingModuleUiApi;
+  gameLoop: GameLoopUiApi;
   selectedSpellIdRef: MutableRefObject<SpellId | null>;
   spellOptionsRef: MutableRefObject<SpellOption[]>;
   isPauseOpen: boolean;

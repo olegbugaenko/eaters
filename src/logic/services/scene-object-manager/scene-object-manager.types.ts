@@ -121,3 +121,29 @@ export interface MutableCloneResult<T> {
   clone: T;
   changed: boolean;
 }
+
+export interface SceneUiApi {
+  addObject(type: string, data: SceneObjectData): string;
+  updateObject(id: string, data: SceneObjectData): void;
+  getObjects(): readonly SceneObjectInstance[];
+  getCamera(): SceneCameraState;
+  getScaleRange(): { min: number; max: number };
+  setScale(value: number): void;
+  getMapSize(): SceneSize;
+  setMapSize(size: SceneSize): void;
+  setViewportScreenSize(width: number, height: number): void;
+  setCameraPosition(x: number, y: number): void;
+  panCamera(deltaX: number, deltaY: number): void;
+  flushChanges(): {
+    added: SceneObjectInstance[];
+    updated: SceneObjectInstance[];
+    removed: string[];
+  };
+  flushAllPendingRemovals(): string[];
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    scene: SceneUiApi;
+  }
+}

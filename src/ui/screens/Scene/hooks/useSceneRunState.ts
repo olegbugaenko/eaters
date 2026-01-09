@@ -1,6 +1,6 @@
 import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataBridge } from "@logic/core/DataBridge";
-import { MapAutoRestartState } from "@logic/modules/active-map/map/map.types";
+import type { MapAutoRestartState, MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
@@ -10,6 +10,7 @@ import {
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
 } from "@logic/modules/active-map/necromancer/necromancer.const";
 import type {
+  NecromancerModuleUiApi,
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
 } from "@logic/modules/active-map/necromancer/necromancer.types";
@@ -18,7 +19,7 @@ import {
   DEFAULT_SPELL_OPTIONS,
   SPELL_OPTIONS_BRIDGE_KEY,
 } from "@logic/modules/active-map/spellcasting/spellcasting.const";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import type { UnitAutomationBridgeState, UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
@@ -60,12 +61,9 @@ interface SummoningProps {
 
 interface UseSceneRunStateArgs {
   bridge: DataBridge;
-  app: {
-    restartCurrentMap: () => void;
-    setAutoRestartEnabled: (enabled: boolean) => void;
-  };
-  necromancer: { trySpawnDesign: (designId: UnitDesignId) => boolean };
-  unitAutomation: { setAutomationEnabled: (designId: UnitDesignId, enabled: boolean) => void };
+  map: MapModuleUiApi;
+  necromancer: NecromancerModuleUiApi;
+  unitAutomation: UnitAutomationModuleUiApi;
   cameraInfoRef: MutableRefObject<SceneCameraState>;
   scaleRef: MutableRefObject<number>;
   spellOptionsRef: MutableRefObject<SpellOption[]>;
@@ -89,7 +87,7 @@ interface UseSceneRunStateResult {
 
 export const useSceneRunState = ({
   bridge,
-  app,
+  map,
   necromancer,
   unitAutomation,
   cameraInfoRef,
@@ -169,14 +167,14 @@ export const useSceneRunState = ({
   const restartMap = useCallback(() => {
     clearAllAuraSlots();
     petalAuraGpuRenderer.clearInstances();
-    app.restartCurrentMap();
-  }, [app]);
+    map.restartSelectedMap();
+  }, [map]);
 
   const handleToggleAutoRestart = useCallback(
     (enabled: boolean) => {
-      app.setAutoRestartEnabled(enabled);
+      map.setAutoRestartEnabled(enabled);
     },
-    [app]
+    [map]
   );
 
   const handleRestart = useCallback(() => {

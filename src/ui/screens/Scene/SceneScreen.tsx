@@ -29,9 +29,12 @@ import {
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
 import { usePersistedSpellSelection } from "./hooks/usePersistedSpellSelection";
-import { NecromancerModule } from "@logic/modules/active-map/necromancer/necromancer.module";
-import { UnitAutomationModule } from "@logic/modules/active-map/unit-automation/unit-automation.module";
-import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import type { NecromancerModuleUiApi } from "@logic/modules/active-map/necromancer/necromancer.types";
+import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
+import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
+import type { SceneUiApi } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
 
 interface SceneScreenProps {
   onExit: () => void;
@@ -46,11 +49,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   tutorial,
   onTutorialComplete,
 }) => {
-  const { app, bridge, scene } = useAppLogic();
-  const spellcasting = app.services.spellcasting as SpellcastingModule;
-  const gameLoop = useMemo(() => app.services.gameLoop, [app]);
-  const necromancer = useMemo(() => app.services.necromancer, [app]) as NecromancerModule;
-  const unitAutomation = useMemo(() => app.services.unitAutomation, [app]) as UnitAutomationModule;
+  const { uiApi, bridge } = useAppLogic();
+  const scene = uiApi.scene as SceneUiApi;
+  const spellcasting = uiApi.spellcasting as SpellcastingModuleUiApi;
+  const gameLoop = useMemo(() => uiApi.gameLoop as GameLoopUiApi, [uiApi.gameLoop]);
+  const necromancer = useMemo(() => uiApi.necromancer as NecromancerModuleUiApi, [uiApi.necromancer]);
+  const unitAutomation = useMemo(
+    () => uiApi.unitAutomation as UnitAutomationModuleUiApi,
+    [uiApi.unitAutomation]
+  );
+  const map = uiApi.map as MapModuleUiApi;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
@@ -76,7 +84,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     showRunSummary,
   } = useSceneRunState({
     bridge,
-    app,
+    map,
     necromancer,
     unitAutomation,
     cameraInfoRef,
@@ -243,21 +251,21 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       // Only pause map if NOT waiting for spell cast
       if (!isSpellStepWaitingForCast) {
         console.log('[PauseEffect] Pausing map');
-        app.pauseCurrentMap();
+        map.pauseActiveMap();
       } else {
         // Map was likely paused by previous step - RESUME it for spell casting!
         console.log('[PauseEffect] RESUMING map for spell cast');
-        app.resumeCurrentMap();
+        map.resumeActiveMap();
       }
     } else {
       // Resume everything
       console.log('[PauseEffect] Resuming map and gameLoop');
-      app.resumeCurrentMap();
+      map.resumeActiveMap();
       gameLoop.start();
     }
     
     return undefined;
-  }, [activeTutorialStep?.id, allowTutorialGameplay, app, gameLoop, isPauseOpen, showRunSummary, showTutorial, tutorialSpellCastDone]);
+  }, [activeTutorialStep?.id, allowTutorialGameplay, gameLoop, isPauseOpen, map, showRunSummary, showTutorial, tutorialSpellCastDone]);
 
   const handleSummonDesign = useCallback(
     (designId: UnitDesignId) => {
@@ -378,9 +386,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   // Wrapper for onLeaveToMapSelect that properly cleans up the map before leaving
   const handleLeaveToMapSelect = useCallback(() => {
     cleanupCalledRef.current = true;
-    app.leaveCurrentMap();
+    map.leaveCurrentMap();
     onLeaveToMapSelect();
-  }, [app, onLeaveToMapSelect]);
+  }, [map, onLeaveToMapSelect]);
 
   const handleLeaveToCamp = useCallback(() => {
     setIsPauseOpen(false);
@@ -394,7 +402,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     const handleBeforeUnload = () => {
       if (!cleanupCalledRef.current) {
         try {
-          app.leaveCurrentMap();
+          map.leaveCurrentMap();
         } catch {
           // Ignore errors during cleanup
         }
@@ -405,7 +413,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [app]);
+  }, [map]);
 
   return (
     <div className="scene-screen">

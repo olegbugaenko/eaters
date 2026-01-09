@@ -5,7 +5,7 @@ import {
   SceneFill,
 } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
+import type { SceneUiApi } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { getBrickConfig } from "@db/bricks-db";
 import { getPlayerUnitConfig } from "@db/player-units-db";
 import type { UnitModuleId } from "@db/unit-modules-db";
@@ -437,7 +437,7 @@ export const computeSceneContentBounds = (
 };
 
 export const centerCameraOnBounds = (
-  scene: SceneObjectManager,
+  scene: SceneUiApi,
   bounds: SceneBounds
 ) => {
   const camera = scene.getCamera();
@@ -454,7 +454,7 @@ export const centerCameraOnBounds = (
 };
 
 export const createCreatures = (
-  scene: SceneObjectManager,
+  scene: SceneUiApi,
   titleLayout: TitleLayoutResult
 ): CreatureState[] => {
   const titleBounds = titleLayout.bounds;
@@ -547,7 +547,7 @@ export const createCreatures = (
 };
 
 export const updateCreatures = (
-  scene: SceneObjectManager,
+  scene: SceneUiApi,
   creatures: CreatureState[],
   timestamp: number
 ) => {

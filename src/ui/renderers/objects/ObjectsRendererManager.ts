@@ -12,7 +12,7 @@ import {
   SceneVector2,
 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
+import type { SceneUiApi } from "@/logic/services/scene-object-manager/scene-object-manager.types";
 import { cloneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
@@ -133,7 +133,7 @@ export class ObjectsRendererManager {
   }
 
   public applyChanges(
-    changes: ReturnType<SceneObjectManager["flushChanges"]>
+    changes: ReturnType<SceneUiApi["flushChanges"]>
   ): void {
     changes.removed.forEach((id) => {
       this.removeObject(id);

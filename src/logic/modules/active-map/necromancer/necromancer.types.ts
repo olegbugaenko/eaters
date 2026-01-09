@@ -68,3 +68,14 @@ export interface ResourceState {
   max: number;
   regenPerSecond: number;
 }
+
+export interface NecromancerModuleUiApi {
+  trySpawnDesign(designId: UnitDesignId): boolean;
+  ensureMinMana(minAmount: number): void;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    necromancer: NecromancerModuleUiApi;
+  }
+}

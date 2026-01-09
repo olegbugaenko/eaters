@@ -1,4 +1,4 @@
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
+import type { SceneUiApi } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
 import type { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
@@ -8,7 +8,7 @@ import type { SceneCameraState } from "@logic/services/scene-object-manager/scen
  */
 export type BeforeUpdateCallback = (
   timestamp: number,
-  scene: SceneObjectManager
+  scene: SceneUiApi
 ) => void;
 
 /**
@@ -17,7 +17,7 @@ export type BeforeUpdateCallback = (
  */
 export type AfterApplyChangesCallback = (
   timestamp: number,
-  scene: SceneObjectManager,
+  scene: SceneUiApi,
   cameraState: SceneCameraState
 ) => void;
 
@@ -26,7 +26,7 @@ export type AfterApplyChangesCallback = (
  */
 export type AfterUpdateCallback = (
   timestamp: number,
-  scene: SceneObjectManager,
+  scene: SceneUiApi,
   cameraState: SceneCameraState
 ) => void;
 
@@ -52,7 +52,7 @@ export interface CreateWebGLRenderLoopOptions {
   /** WebGL renderer instance */
   webglRenderer: WebGLSceneRenderer;
   /** Scene object manager */
-  scene: SceneObjectManager;
+  scene: SceneUiApi;
   /** WebGL context */
   gl: WebGL2RenderingContext;
   /** Optional callback before scene update */

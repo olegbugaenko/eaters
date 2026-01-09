@@ -1,4 +1,4 @@
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
+import type { SceneUiApi } from "@logic/services/scene-object-manager/scene-object-manager.types";
 import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { createObjectsRendererManager } from "@ui/renderers/objects";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
@@ -46,7 +46,7 @@ interface WebGLSceneSetupResult {
  */
 export const setupWebGLScene = (
   canvas: HTMLCanvasElement,
-  scene: SceneObjectManager,
+  scene: SceneUiApi,
   options?: WebGLSceneSetupOptions
 ): WebGLSceneSetupResult => {
   const { initBullets = true, initRings = true } = options ?? {};

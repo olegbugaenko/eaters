@@ -14,3 +14,14 @@ export interface AudioModuleOptions {
   playlists?: Record<string, readonly string[]>;
   defaultPlaylistId?: string | null;
 }
+
+export interface AudioModuleUiApi {
+  applyPercentageSettings(settings: import("../../../utils/audioSettings").AudioSettingsPercentages): void;
+  playPlaylist(playlistId: string): void;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    audio: AudioModuleUiApi;
+  }
+}
