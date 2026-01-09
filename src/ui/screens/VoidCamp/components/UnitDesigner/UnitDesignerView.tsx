@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { classNames } from "@ui-shared/classNames";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
-import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";

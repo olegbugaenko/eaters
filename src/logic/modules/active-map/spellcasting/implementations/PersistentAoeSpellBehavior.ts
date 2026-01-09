@@ -17,7 +17,7 @@ import {
   SpellPersistentAoeEffectConfig,
 } from "../../../../../db/spells-db";
 import { clampNumber, clamp01, lerp } from "@shared/helpers/numbers.helper";
-import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
@@ -478,4 +478,3 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     return lerp(ring.startRadius, ring.endRadius, clamped);
   }
 }
-

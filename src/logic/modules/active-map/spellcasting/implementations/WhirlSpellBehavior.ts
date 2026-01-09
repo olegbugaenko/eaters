@@ -7,7 +7,7 @@ import {
   SpellCanCastContext,
   SpellBehaviorDependencies,
 } from "../SpellBehavior";
-import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { OUT_OF_BOUNDS_MARGIN } from "./WhirlSpellBehavior.const";

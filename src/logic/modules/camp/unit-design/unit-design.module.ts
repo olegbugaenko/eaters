@@ -11,7 +11,8 @@ import {
   UnitModuleId,
   getUnitModuleConfig,
 } from "../../../../db/unit-modules-db";
-import { BonusValueMap, BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { UnitModuleWorkshopModule } from "../unit-module-workshop/unit-module-workshop.module";
 import {
   PlayerUnitBlueprintStats,

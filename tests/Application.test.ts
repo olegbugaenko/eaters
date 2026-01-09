@@ -9,7 +9,7 @@ describe("Application", () => {
   test("records attempts when a run finishes", () => {
     const app = new Application();
     app.initialize();
-    app.restartCurrentMap();
+    app.uiApi.map.restartSelectedMap();
 
     app.services.mapRunState.complete(false);
 
@@ -26,7 +26,7 @@ describe("Application", () => {
     };
     assert.strictEqual(stats.tutorialZone?.[1]?.failure, 1);
 
-    app.restartCurrentMap();
+    app.uiApi.map.restartSelectedMap();
     app.services.mapRunState.complete(true);
 
     const updatedList = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
