@@ -242,24 +242,63 @@ export const useSceneRunState = ({
     spells: spellOptions,
     unitCount,
   }));
+  const toolbarStateRef = useRef(toolbarState);
+  const summoningPropsRef = useRef<SummoningProps>({
+    resources: necromancerResources,
+    spawnOptions: necromancerOptions,
+    automation: automationState,
+    spells: spellOptions,
+    unitCount,
+  });
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      setToolbarState({
+      const nextToolbarState = {
         brickTotalHp: brickTotalHpRef.current,
         brickInitialHp: brickInitialHpRef.current,
         unitCount: unitCountRef.current,
         unitTotalHp: unitTotalHpRef.current,
         scale: scaleRef.current,
-        cameraPosition: { ...cameraInfoRef.current.position },
-      });
-      setSummoningProps({
+        cameraPosition: cameraInfoRef.current.position,
+      };
+      const previousToolbarState = toolbarStateRef.current;
+      const hasCameraPositionChange =
+        previousToolbarState.cameraPosition.x !== nextToolbarState.cameraPosition.x ||
+        previousToolbarState.cameraPosition.y !== nextToolbarState.cameraPosition.y;
+      const hasToolbarChange =
+        previousToolbarState.brickTotalHp !== nextToolbarState.brickTotalHp ||
+        previousToolbarState.brickInitialHp !== nextToolbarState.brickInitialHp ||
+        previousToolbarState.unitCount !== nextToolbarState.unitCount ||
+        previousToolbarState.unitTotalHp !== nextToolbarState.unitTotalHp ||
+        previousToolbarState.scale !== nextToolbarState.scale ||
+        hasCameraPositionChange;
+      if (hasToolbarChange) {
+        const cameraPosition = hasCameraPositionChange
+          ? { ...nextToolbarState.cameraPosition }
+          : previousToolbarState.cameraPosition;
+        const updatedToolbarState = { ...nextToolbarState, cameraPosition };
+        toolbarStateRef.current = updatedToolbarState;
+        setToolbarState(updatedToolbarState);
+      }
+
+      const nextSummoningProps = {
         resources: necromancerResourcesRef.current,
         spawnOptions: necromancerOptionsRef.current,
         automation: automationStateRef.current,
         spells: spellOptionsRef.current,
         unitCount: unitCountRef.current,
-      });
+      };
+      const previousSummoningProps = summoningPropsRef.current;
+      const hasSummoningChange =
+        previousSummoningProps.resources !== nextSummoningProps.resources ||
+        previousSummoningProps.spawnOptions !== nextSummoningProps.spawnOptions ||
+        previousSummoningProps.automation !== nextSummoningProps.automation ||
+        previousSummoningProps.spells !== nextSummoningProps.spells ||
+        previousSummoningProps.unitCount !== nextSummoningProps.unitCount;
+      if (hasSummoningChange) {
+        summoningPropsRef.current = nextSummoningProps;
+        setSummoningProps(nextSummoningProps);
+      }
     }, 200);
     return () => window.clearInterval(interval);
   }, [cameraInfoRef, scaleRef]);

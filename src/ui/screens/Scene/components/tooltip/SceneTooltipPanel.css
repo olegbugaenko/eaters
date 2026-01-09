@@ -13,6 +13,7 @@
   transform: translateY(12px);
   transition: opacity 120ms ease, transform 120ms ease;
   z-index: 24;
+  contain: layout paint;
 }
 
 .scene-tooltip-panel--visible {

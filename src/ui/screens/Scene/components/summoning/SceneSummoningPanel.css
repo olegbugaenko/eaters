@@ -8,6 +8,7 @@
   padding: 1rem 1.75rem 1.4rem;
   align-items: flex-end;
   z-index: 20;
+  contain: layout paint;
 }
 
 .scene-summoning-panel__summon {
