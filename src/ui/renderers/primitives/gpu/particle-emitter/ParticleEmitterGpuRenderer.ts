@@ -270,6 +270,7 @@ export const refreshParticleUniformKeys = (
   uniforms.stopColor2Key = serializeArray(uniforms.stopColor2);
   uniforms.stopColor3Key = serializeArray(uniforms.stopColor3);
   uniforms.stopColor4Key = serializeArray(uniforms.stopColor4);
+  uniforms.uniformSignature = `${uniforms.fillType}|${uniforms.stopCount}|${uniforms.fadeStartMs}|${uniforms.sizeGrowthRate}|${uniforms.stopOffsetsKey}|${uniforms.stopColor0Key}`;
 };
 
 const uploadEmitterUniforms = (
@@ -503,11 +504,17 @@ export const uploadEmitterUniformsPublic = (
 const emitterRenderList: ParticleEmitterGpuDrawHandle[] = [];
 
 // Generate a signature for uniform values to enable batching
-const getUniformSignature = (u: ParticleEmitterGpuRenderUniforms): string => {
-  // Use pre-computed keys if available, otherwise compute them
-  const stopOffsetsKey = u.stopOffsetsKey ?? serializeArray(u.stopOffsets);
-  const stopColor0Key = u.stopColor0Key ?? serializeArray(u.stopColor0);
-  return `${u.fillType}|${u.stopCount}|${u.fadeStartMs}|${u.sizeGrowthRate}|${stopOffsetsKey}|${stopColor0Key}`;
+const ensureUniformSignature = (u: ParticleEmitterGpuRenderUniforms): string => {
+  if (!u.stopOffsetsKey) {
+    u.stopOffsetsKey = serializeArray(u.stopOffsets);
+  }
+  if (!u.stopColor0Key) {
+    u.stopColor0Key = serializeArray(u.stopColor0);
+  }
+  if (!u.uniformSignature) {
+    u.uniformSignature = `${u.fillType}|${u.stopCount}|${u.fadeStartMs}|${u.sizeGrowthRate}|${u.stopOffsetsKey}|${u.stopColor0Key}`;
+  }
+  return u.uniformSignature;
 };
 
 export const renderParticleEmitters = (
@@ -540,15 +547,16 @@ export const renderParticleEmitters = (
   emitterRenderList.length = 0;
   emitters.forEach((handle) => {
     if (handle.capacity > 0 && handle.getCurrentVao()) {
+      ensureUniformSignature(handle.uniforms);
       emitterRenderList.push(handle);
     }
   });
   
   // Sort by uniform signature for batching
   emitterRenderList.sort((a, b) => {
-    const sigA = getUniformSignature(a.uniforms);
-    const sigB = getUniformSignature(b.uniforms);
-    return sigA.localeCompare(sigB);
+    return (a.uniforms.uniformSignature ?? "").localeCompare(
+      b.uniforms.uniformSignature ?? ""
+    );
   });
 
   const cache: UniformCache = {};
