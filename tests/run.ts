@@ -61,5 +61,6 @@ import "./UnitModuleWorkshopModule.test";
 import "./BonusCalculator.test";
 import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
+import "./StatusEffectsModule.test";
 
 void run();

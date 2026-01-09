@@ -178,6 +178,12 @@ const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
   },
 };
 
+export const STATUS_EFFECT_OVERLAY_IDS: StatusEffectId[] = Object.values(
+  STATUS_EFFECTS_DB
+)
+  .filter((config) => Boolean(config.visuals?.overlay))
+  .map((config) => config.id);
+
 export const getStatusEffectConfig = (id: StatusEffectId): StatusEffectConfig => {
   const config = STATUS_EFFECTS_DB[id];
   if (!config) {
