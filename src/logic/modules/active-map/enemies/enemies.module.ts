@@ -533,7 +533,7 @@ export class EnemiesModule implements GameModule {
         }
       }
       if (this.damage && enemy.baseDamage > 0) {
-        const knockBackDirection = toTarget;
+        const knockBackDirection = subtractVectors(enemy.position, target.position);
         this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
           armorPenetration: 0,
           knockBackDistance: config.knockBackDistance,
@@ -571,8 +571,8 @@ export class EnemiesModule implements GameModule {
           if (hitContext.targetType === "unit" && this.damage) {
             // Calculate knockback direction from enemy to hit position
             const knockBackDirection = subtractVectors(
-              hitContext.position,
               enemy.position,
+              hitContext.position,
             );
 
             this.damage.applyTargetDamage(
@@ -609,7 +609,7 @@ export class EnemiesModule implements GameModule {
     // Якщо немає конфігу снаряда - instant damage
     if (this.damage) {
       // Calculate knockback direction from enemy to target
-      const knockBackDirection = toTarget;
+      const knockBackDirection = subtractVectors(enemy.position, target.position);
 
       this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
         armorPenetration: 0,
