@@ -996,19 +996,6 @@ export class UnitRuntimeController {
         });
         hpChanged = inflictedDamage > 0;
         
-        // Knockback юніта від ворога при атаці (щоб не застрягав)
-        const knockbackDistance = 15;
-        const knockbackDirection = distance > 0 
-          ? scaleVector(direction, -1 / distance) // Напрямок ВІД ворога
-          : { x: -1, y: 0 };
-        const newPosition = addVectors(
-          unit.position,
-          scaleVector(knockbackDirection, knockbackDistance)
-        );
-        // console.log(`[KNOCKBACK] unit=${unit.id} attacking enemy, distance=${distance.toFixed(1)}, knockback=${knockbackDistance}`);
-        this.movement.setBodyPosition(unit.movementId, newPosition);
-        unit.position = { ...newPosition };
-        
         // Перевіряємо чи ворог вижив
         const updatedEnemy = this.enemies.getEnemyState(target.id);
         surviving = updatedEnemy ?? null;
@@ -1114,13 +1101,16 @@ export class UnitRuntimeController {
       }
     }
 
-    // Knockback тільки для бріків
-    if (targetType === "brick" && surviving) {
-      // Type guard: surviving is BrickRuntimeState when targetType === "brick"
-      const brickSurviving = surviving as BrickRuntimeState;
-      this.applyKnockBack(unit, direction, distance, brickSurviving);
-    }
-
+    // Knockback для цілей з налаштованими параметрами
+    const knockBackTarget = (surviving ?? target) as BrickRuntimeState | EnemyRuntimeState;
+    this.applyKnockBack(
+      unit,
+      direction,
+      distance,
+      knockBackTarget.knockBackDistance,
+      knockBackTarget.knockBackSpeed
+    );
+    
     // Counter damage тільки для бріків
     if (targetType === "brick") {
       const counterSource = surviving ?? target;
@@ -1162,10 +1152,9 @@ export class UnitRuntimeController {
     unit: PlayerUnitState,
     direction: SceneVector2,
     distance: number,
-    brick: BrickRuntimeState
+    knockBackDistance: number,
+    knockBackSpeedRaw: number
   ): void {
-    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
-    const knockBackSpeedRaw = brick.brickKnockBackSpeed ?? 0;
     if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
       return;
     }
@@ -1186,9 +1175,21 @@ export class UnitRuntimeController {
       return;
     }
 
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
     const reduction = Math.max(unit.knockBackReduction, 1);
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
-    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {

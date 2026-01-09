@@ -681,6 +681,10 @@ export class StatusEffectsModule implements GameModule {
       if (!unitAdapter) {
         return;
       }
+      if (!unitAdapter.hasUnit(id)) {
+        this.effectsByTarget.delete(targetKey);
+        return;
+      }
       const applyOverlay = (effectId: string, overlay: StatusEffectVisuals["overlay"] | null) => {
         if (!overlay) {
           unitAdapter.applyOverlay(id, effectId, "fill", null);

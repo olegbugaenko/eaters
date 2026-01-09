@@ -60,6 +60,8 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     const attackRange = clampNumber(config.attackRange ?? 240, 0, Number.POSITIVE_INFINITY);
     const moveSpeed = clampNumber(config.moveSpeed, 0, Number.POSITIVE_INFINITY);
     const physicalSize = clampNumber(config.physicalSize, 0, Number.POSITIVE_INFINITY);
+    const knockBackDistance = clampNumber(config.knockBackDistance ?? 0, 0, Number.POSITIVE_INFINITY);
+    const knockBackSpeed = clampNumber(config.knockBackSpeed ?? 0, 0, Number.POSITIVE_INFINITY);
     
     // Create movement body
     const mass = Math.max(physicalSize * 0.1, 0.001); // Mass based on size
@@ -106,6 +108,8 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       attackRange,
       moveSpeed,
       physicalSize,
+      knockBackDistance,
+      knockBackSpeed,
       reward: stats.rewards,
       fill,
       stroke,

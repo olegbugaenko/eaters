@@ -240,6 +240,7 @@ export class PlayerUnitsModule implements GameModule {
     });
 
     this.statusEffects.registerUnitAdapter({
+      hasUnit: (unitId) => this.units.has(unitId),
       applyOverlay: (unitId, effectId, target, overlay) => {
         const unit = this.units.get(unitId);
         if (!unit) {
@@ -716,8 +717,8 @@ export class PlayerUnitsModule implements GameModule {
     distance: number,
     brick: BrickRuntimeState
   ): void {
-    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
-    const knockBackSpeedRaw = brick.brickKnockBackSpeed ?? 0;
+    const knockBackDistance = Math.max(brick.knockBackDistance ?? 0, 0);
+    const knockBackSpeedRaw = brick.knockBackSpeed ?? 0;
     if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
       return;
     }
@@ -738,9 +739,21 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
 
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
     const reduction = Math.max(unit.knockBackReduction, 1);
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
-    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
   }
 
   private applyEnemyKnockBack(
@@ -770,9 +783,21 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
 
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
     const reduction = Math.max(unit.knockBackReduction, 1);
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
-    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
   }
 
   private cloneUnit(unit: PlayerUnitState): PlayerUnitState {
@@ -790,12 +815,12 @@ export class PlayerUnitsModule implements GameModule {
     if (unit.hp <= 0) {
       this.statistics?.recordCreatureDeath();
     }
+    this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     this.scene.removeObject(unit.objectId);
     this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.arcs?.clearArcsForUnit(unit.id);
-    this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
@@ -805,10 +830,10 @@ export class PlayerUnitsModule implements GameModule {
     this.abilities.clearArcEffects();
     this.effects?.clearAllEffects();
     this.unitOrder.forEach((unit) => {
+      this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
       this.scene.removeObject(unit.objectId);
       this.movement.removeBody(unit.movementId);
       this.arcs?.clearArcsForUnit(unit.id);
-      this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     });
     this.unitOrder = [];
     this.units.clear();

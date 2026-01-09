@@ -43,6 +43,8 @@ export interface EnemyRuntimeState {
   attackRange: number;
   moveSpeed: number;
   physicalSize: number;
+  knockBackDistance: number;
+  knockBackSpeed: number;
   reward?: ResourceStockpile;
 }
 
