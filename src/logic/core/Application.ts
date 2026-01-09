@@ -8,6 +8,10 @@ import { GameModule, SaveSlotId, StoredSaveData } from "./types";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
 import { createServiceLookup } from "./loader/createServiceLookup";
 import { MapId } from "../../db/maps-db";
+import { DEFAULT_MODULE_CONFIG } from "../config/modules";
+import { ModuleRegistryConfig } from "./ModuleRegistry";
+import { MapModule } from "../modules/active-map/map/map.module";
+import { AudioModule } from "../modules/shared/audio/audio.module";
 
 type ModuleDefinitionList = ReturnType<typeof createModuleDefinitions>;
 type ApplicationDefinitionList = readonly [
@@ -23,7 +27,7 @@ export class Application {
   private modules: GameModule[] = [];
   public services: ApplicationServices;
 
-  constructor() {
+  constructor(private moduleConfig: ModuleRegistryConfig = DEFAULT_MODULE_CONFIG) {
     this.serviceContainer = new ServiceContainer();
     const moduleDefinitions = this.createModuleDefinitions();
     const definitions = this.buildDefinitions(moduleDefinitions);
@@ -34,7 +38,7 @@ export class Application {
   }
 
   private createModuleDefinitions(): ModuleDefinitionList {
-    return createModuleDefinitions(createModuleDefinitionContext());
+    return createModuleDefinitions(createModuleDefinitionContext(), this.moduleConfig);
   }
 
   private buildDefinitions(moduleDefinitions: ModuleDefinitionList): ApplicationDefinitionList {
@@ -79,31 +83,31 @@ export class Application {
   }
 
   public restartCurrentMap(): void {
-    this.services.map.restartSelectedMap();
+    (this.services.map as MapModule).restartSelectedMap();
   }
 
   public pauseCurrentMap(): void {
-    this.services.map.pauseActiveMap();
+    (this.services.map as MapModule).pauseActiveMap();
   }
 
   public resumeCurrentMap(): void {
-    this.services.map.resumeActiveMap();
+    (this.services.map as MapModule).resumeActiveMap();
   }
 
   public setAutoRestartEnabled(enabled: boolean): void {
-    this.services.map.setAutoRestartEnabled(enabled);
+    (this.services.map as MapModule).setAutoRestartEnabled(enabled);
   }
 
   public leaveCurrentMap(): void {
-    this.services.map.leaveCurrentMap();
+    (this.services.map as MapModule).leaveCurrentMap();
   }
 
   public selectMap(mapId: MapId): void {
-    this.services.map.selectMap(mapId);
+    (this.services.map as MapModule).selectMap(mapId);
   }
 
   public selectMapLevel(mapId: MapId, level: number): void {
-    this.services.map.selectMapLevel(mapId, level);
+    (this.services.map as MapModule).selectMapLevel(mapId, level);
   }
 
   public hasActiveSaveSlot(): boolean {
@@ -119,19 +123,23 @@ export class Application {
   }
 
   public applyAudioSettings(settings: AudioSettingsPercentages): void {
-    this.services.audio.applyPercentageSettings(settings);
+    const audio = this.services.audio as AudioModule;
+    audio.applyPercentageSettings(settings);
   }
 
   public resumeAudio(): void {
-    this.services.audio.resumeMusic();
+    const audio = this.services.audio as AudioModule;
+    audio.resumeMusic();
   }
 
   public playCampPlaylist(): void {
-    this.services.audio.playPlaylist("camp");
+    const audio = this.services.audio as AudioModule;
+    audio.playPlaylist("camp");
   }
 
   public playMapPlaylist(): void {
-    this.services.audio.playPlaylist("map");
+    const audio = this.services.audio as AudioModule;
+    audio.playPlaylist("map");
   }
 
   private registerDefinition<TDefinition extends ServiceDefinition<unknown, string, any>>(

@@ -4,7 +4,9 @@
 Легковаговий реєстр сінглтонів. Зберігає сервіси в `Map<string, unknown>` та надає доступ через `get(token)`. Реєстрація через `register(token, service)` викидає помилку, якщо токен вже зайнятий.
 
 ### ServiceDefinition та реєстрація
-`ServiceDefinition` містить `token`, `factory` (функцію створення сервісу), та необов'язкові хуки (`registerAsModule`, `onReady`). `Application` викликає `factory` з контейнером для lazy-ініціалізації залежностей, реєструє результат в `ServiceContainer`, а потім викликає `onReady` якщо він визначений.
+`ServiceDefinition` містить `token`, `factory` (функцію створення сервісу), список залежностей `dependsOn` та необов'язкові хуки (`registerAsModule`, `onReady`). `Application` викликає `factory` з контейнером для lazy-ініціалізації залежностей, реєструє результат в `ServiceContainer`, а потім викликає `onReady` якщо він визначений.
+
+`dependsOn` використовується лише для модулів (визначення з `src/logic/definitions/modules/registry.ts`) і дозволяє вказати токени модулів, які мають бути створені раніше. Перед реєстрацією виконується топологічне сортування; якщо знайдена циклічна залежність, Application викидає помилку з переліком токенів циклу.
 
 ### Модульні токени та залежності
 **Модульний токен** — це `token` сервісу з `src/logic/definitions/modules/index.ts` (тобто все, що реєструється через модульні factory-функції). Bootstrap-сервіси на кшталт `bridge`, `sceneObjects`, `mapRunState`, `movement`, `audio` не вважаються модульними токенами і не беруть участі у впорядкуванні модулів.

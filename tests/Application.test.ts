@@ -3,6 +3,7 @@ import { Application } from "../src/logic/core/Application";
 import { MAP_LIST_BRIDGE_KEY } from "../src/logic/modules/active-map/map/map.const";
 import { MapListEntry } from "../src/logic/modules/active-map/map/map.types";
 import { describe, test } from "./testRunner";
+import { MapModule } from "../src/logic/modules/active-map/map/map.module";
 
 describe("Application", () => {
   test("records attempts when a run finishes", () => {
@@ -18,7 +19,7 @@ describe("Application", () => {
     assert(tutorial, "expected tutorialZone map to be listed");
     assert.strictEqual(tutorial?.attempts, 1, "should count one failed attempt");
 
-    const stats = app.services.map.getMapStats() as {
+    const stats = (app.services.map as MapModule).getMapStats() as {
       tutorialZone?: {
         [level: number]: { success: number; failure: number; bestTimeMs: number | null };
       };

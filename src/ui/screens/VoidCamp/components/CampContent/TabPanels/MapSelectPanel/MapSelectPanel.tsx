@@ -17,6 +17,7 @@ import { MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY } from "@logic/modules/active-map/
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import "./MapSelectPanel.css";
+import { MapModule } from "@logic/modules/active-map/map/map.module";
 
 const CELL_SIZE_X = 200;
 const CELL_SIZE_Y = 180;
@@ -204,7 +205,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       // Convert viewport offset to world coordinates for saving
       const worldX = (viewportSize.width / 2 - viewTransform.offsetX) / viewTransform.scale;
       const worldY = (viewportSize.height / 2 - viewTransform.offsetY) / viewTransform.scale;
-      app.services.map.setMapSelectViewTransform({
+      (app.services.map as MapModule).setMapSelectViewTransform({
         scale: viewTransform.scale,
         worldX,
         worldY,

@@ -29,6 +29,9 @@ import {
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
 import { usePersistedSpellSelection } from "./hooks/usePersistedSpellSelection";
+import { NecromancerModule } from "@logic/modules/active-map/necromancer/necromancer.module";
+import { UnitAutomationModule } from "@logic/modules/active-map/unit-automation/unit-automation.module";
+import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
 
 interface SceneScreenProps {
   onExit: () => void;
@@ -44,10 +47,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   onTutorialComplete,
 }) => {
   const { app, bridge, scene } = useAppLogic();
-  const spellcasting = app.services.spellcasting;
+  const spellcasting = app.services.spellcasting as SpellcastingModule;
   const gameLoop = useMemo(() => app.services.gameLoop, [app]);
-  const necromancer = useMemo(() => app.services.necromancer, [app]);
-  const unitAutomation = useMemo(() => app.services.unitAutomation, [app]);
+  const necromancer = useMemo(() => app.services.necromancer, [app]) as NecromancerModule;
+  const unitAutomation = useMemo(() => app.services.unitAutomation, [app]) as UnitAutomationModule;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);

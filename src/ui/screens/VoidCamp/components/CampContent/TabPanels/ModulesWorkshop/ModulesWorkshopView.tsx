@@ -9,6 +9,7 @@ import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
 import "./ModulesWorkshopView.css";
+import { UnitModuleWorkshopModule } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
 
 interface ModulesWorkshopViewProps {
   state?: UnitModuleWorkshopBridgeState;
@@ -50,7 +51,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   resources,
 }) => {
   const { app } = useAppLogic();
-  const workshop = useMemo(() => app.services.unitModuleWorkshop, [app]);
+  const workshop = useMemo(() => app.services.unitModuleWorkshop, [app]) as UnitModuleWorkshopModule;
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {
