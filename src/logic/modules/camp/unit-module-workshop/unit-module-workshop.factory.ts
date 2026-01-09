@@ -16,4 +16,5 @@ export const createUnitModuleWorkshopDefinition = (): ServiceDefinition<
       unlocks: container.get("unlocks"),
     }),
   registerAsModule: true,
+  dependsOn: ["resources", "skillTree", "unlocks"],
 });

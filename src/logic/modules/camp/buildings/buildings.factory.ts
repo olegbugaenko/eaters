@@ -14,4 +14,5 @@ export const createBuildingsDefinition = (): ServiceDefinition<BuildingsModule, 
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
     }),
   registerAsModule: true,
+  dependsOn: ["resources", "bonuses", "unlocks", "skillTree"],
 });

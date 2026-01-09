@@ -10,4 +10,5 @@ export const createSkillTreeDefinition = (): ServiceDefinition<SkillTreeModule, 
       bonuses: container.get("bonuses"),
     }),
   registerAsModule: true,
+  dependsOn: ["resources", "bonuses"],
 });

@@ -475,10 +475,16 @@ export const createDynamicPolygonPrimitive = (
       // Reuse a single scratch buffer to avoid per-frame allocations
       // Check if fill reference changed (visual effect applied)
       let fillRefChanged = false;
-      if (hasRefreshFill && target.data.fill !== prevInstanceFillRef) {
-        prevInstanceFillRef = target.data.fill;
-        cachedFill = options.refreshFill!(target);
-        fillRefChanged = true;
+      if (hasRefreshFill) {
+        const fillChanged = target.data.fill !== prevInstanceFillRef;
+        if (target.id.includes('playerUnit') && fillChanged) {
+          console.log('[FILL CHANGED]', target.id, 'prev:', (prevInstanceFillRef as any)?.color, 'new:', (target.data.fill as any)?.color);
+        }
+        if (fillChanged) {
+          prevInstanceFillRef = target.data.fill;
+          cachedFill = options.refreshFill!(target);
+          fillRefChanged = true;
+        }
       }
       
       // Skip resolveFill for static fill (unless refreshFill triggered)

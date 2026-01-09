@@ -22,5 +22,6 @@ export const createEnemiesDefinition = (): ServiceDefinition<
       statusEffects: container.get("statusEffects"),
     }),
   registerAsModule: true,
-  dependsOn: ["unitProjectiles"],
+
+  dependsOn: ["targeting", "damage", "explosion", "unitProjectiles", "bricks", "statusEffects"],
 });

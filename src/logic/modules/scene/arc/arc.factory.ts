@@ -15,6 +15,7 @@ export const createArcDefinition = (): ServiceDefinition<ArcModule, "arc"> => ({
         container.get<EnemiesModule>("enemies").getEnemyPositionIfAlive,
     }),
   registerAsModule: true,
+  dependsOn: ["playerUnits", "enemies"],
   onReady: (instance: ArcModule, container: ServiceContainer) => {
     (container.get<PlayerUnitsModule>("playerUnits") as any).arcs = instance;
     (container.get<EnemiesModule>("enemies") as any).arcs = instance;

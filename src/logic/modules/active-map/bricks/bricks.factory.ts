@@ -17,4 +17,5 @@ export const createBricksDefinition = (): ServiceDefinition<BricksModule, "brick
       statistics: container.get("statistics"),
     }),
   registerAsModule: true,
+  dependsOn: ["explosion", "resources", "bonuses", "statusEffects", "targeting", "statistics"],
 });
