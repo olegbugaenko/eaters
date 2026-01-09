@@ -19,6 +19,7 @@ import type { StatisticsTracker } from "../../../shared/statistics/statistics.mo
 import { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import { PlayerUnitType } from "../../../../../db/player-units-db";
 import { getUnitModuleConfig } from "../../../../../db/unit-modules-db";
+import { getEnemyConfig } from "../../../../../db/enemies-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { PlayerUnitState } from "./UnitTypes";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
@@ -35,7 +36,6 @@ import {
   TARGETING_SCORE_EPSILON,
 } from "./UnitTypes";
 import { ZERO_VECTOR } from "../../../../../shared/helpers/geometry.const";
-
 
 export interface UnitRuntimeControllerOptions {
   scene: SceneObjectManager;
@@ -995,20 +995,16 @@ export class UnitRuntimeController {
           armorPenetration: unit.armorPenetration,
         });
         hpChanged = inflictedDamage > 0;
-        
-        // Knockback юніта від ворога при атаці (щоб не застрягав)
-        const knockbackDistance = 15;
-        const knockbackDirection = distance > 0 
-          ? scaleVector(direction, -1 / distance) // Напрямок ВІД ворога
-          : { x: -1, y: 0 };
-        const newPosition = addVectors(
-          unit.position,
-          scaleVector(knockbackDirection, knockbackDistance)
+
+        const enemyConfig = getEnemyConfig(target.type);
+        this.applyAttackKnockBack(
+          unit,
+          direction,
+          distance,
+          enemyConfig.knockBackDistance ?? 0,
+          enemyConfig.knockBackSpeed ?? 0,
         );
-        // console.log(`[KNOCKBACK] unit=${unit.id} attacking enemy, distance=${distance.toFixed(1)}, knockback=${knockbackDistance}`);
-        this.movement.setBodyPosition(unit.movementId, newPosition);
-        unit.position = { ...newPosition };
-        
+
         // Перевіряємо чи ворог вижив
         const updatedEnemy = this.enemies.getEnemyState(target.id);
         surviving = updatedEnemy ?? null;
@@ -1164,9 +1160,25 @@ export class UnitRuntimeController {
     distance: number,
     brick: BrickRuntimeState
   ): void {
-    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
-    const knockBackSpeedRaw = brick.brickKnockBackSpeed ?? 0;
-    if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
+    this.applyAttackKnockBack(
+      unit,
+      direction,
+      distance,
+      Math.max(brick.brickKnockBackDistance ?? 0, 0),
+      brick.brickKnockBackSpeed ?? 0,
+    );
+  }
+
+  private applyAttackKnockBack(
+    unit: PlayerUnitState,
+    direction: SceneVector2,
+    distance: number,
+    knockBackDistance: number,
+    knockBackSpeedRaw: number,
+  ): void {
+    const safeDistance = Math.max(knockBackDistance, 0);
+    const safeSpeedRaw = Math.max(knockBackSpeedRaw, 0);
+    if (safeDistance <= 0 && safeSpeedRaw <= 0) {
       return;
     }
 
@@ -1181,7 +1193,7 @@ export class UnitRuntimeController {
       axis = { x: 0, y: -1 };
     }
 
-    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    const knockBackSpeed = Math.max(safeSpeedRaw, safeDistance * 2);
     if (knockBackSpeed <= 0) {
       return;
     }
