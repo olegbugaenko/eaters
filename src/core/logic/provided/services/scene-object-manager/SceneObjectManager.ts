@@ -26,6 +26,7 @@ import {
   createSolidFill,
   extractPrimaryColor,
   cloneStroke,
+  strokesEqual,
 } from "./scene-object-manager.helpers";
 
 import { normalizeRotation } from "@shared/helpers/angle.helper";
@@ -37,6 +38,7 @@ export class SceneObjectManager {
   private idCounter = 0;
 
   private customDataCache = new Map<string, CustomDataCacheEntry>();
+  private strokeCache = new Map<string, SceneStroke | undefined>();
 
   private added = new Map<string, SceneObjectInstance>();
   private updated = new Map<string, SceneObjectInstance>();
@@ -151,6 +153,7 @@ export class SceneObjectManager {
       return;
     }
     this.customDataCache.delete(id);
+    this.strokeCache.delete(id);
     // Mark for deferred removal and hide immediately (alpha = 0)
     // Forcefully hide via fully transparent SOLID fill to avoid gradient artifacts
     const transparentFill: SceneFill = {
@@ -191,6 +194,7 @@ export class SceneObjectManager {
     this.updated.clear();
     this.pendingRemovals.clear();
     this.customDataCache.clear();
+    this.strokeCache.clear();
     for (const id of knownIds) {
       this.removed.add(id);
     }
@@ -380,6 +384,7 @@ export class SceneObjectManager {
     }
     this.added.delete(id);
     this.updated.delete(id);
+    this.strokeCache.delete(id);
     if (!this.removed.has(id)) {
       this.removed.add(id);
     }
@@ -395,6 +400,11 @@ export class SceneObjectManager {
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {
+    const cachedStroke = this.strokeCache.get(instance.id);
+    const stroke = strokesEqual(instance.data.stroke, cachedStroke)
+      ? cachedStroke
+      : cloneStroke(instance.data.stroke);
+    this.strokeCache.set(instance.id, stroke);
     return {
       id: instance.id,
       type: instance.type,
@@ -403,7 +413,7 @@ export class SceneObjectManager {
         size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
         color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
         fill: cloneSceneFill(instance.data.fill),
-        stroke: cloneStroke(instance.data.stroke),
+        stroke,
         rotation:
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
