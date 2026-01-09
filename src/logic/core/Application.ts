@@ -8,6 +8,8 @@ import { GameModule, SaveSlotId, StoredSaveData } from "./types";
 import { AudioSettingsPercentages } from "../utils/audioSettings";
 import { createServiceLookup } from "./loader/createServiceLookup";
 import { MapId } from "../../db/maps-db";
+import { DEFAULT_MODULE_CONFIG } from "../config/modules";
+import { ModuleRegistryConfig } from "./ModuleRegistry";
 
 type ModuleDefinitionList = ReturnType<typeof createModuleDefinitions>;
 type ApplicationDefinitionList = readonly [
@@ -23,7 +25,7 @@ export class Application {
   private modules: GameModule[] = [];
   public services: ApplicationServices;
 
-  constructor() {
+  constructor(private moduleConfig: ModuleRegistryConfig = DEFAULT_MODULE_CONFIG) {
     this.serviceContainer = new ServiceContainer();
     const moduleDefinitions = this.createModuleDefinitions();
     const definitions = this.buildDefinitions(moduleDefinitions);
@@ -34,7 +36,7 @@ export class Application {
   }
 
   private createModuleDefinitions(): ModuleDefinitionList {
-    return createModuleDefinitions(createModuleDefinitionContext());
+    return createModuleDefinitions(createModuleDefinitionContext(), this.moduleConfig);
   }
 
   private buildDefinitions(moduleDefinitions: ModuleDefinitionList): ApplicationDefinitionList {
