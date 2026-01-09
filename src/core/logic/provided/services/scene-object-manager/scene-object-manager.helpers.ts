@@ -531,6 +531,27 @@ export function cloneStroke(stroke: SceneStroke | undefined): SceneStroke | unde
   };
 }
 
+export function strokesEqual(
+  left: SceneStroke | undefined,
+  right: SceneStroke | undefined
+): boolean {
+  if (!left && !right) {
+    return true;
+  }
+  if (!left || !right) {
+    return false;
+  }
+  const leftAlpha = typeof left.color.a === "number" ? left.color.a : 1;
+  const rightAlpha = typeof right.color.a === "number" ? right.color.a : 1;
+  return (
+    left.width === right.width &&
+    left.color.r === right.color.r &&
+    left.color.g === right.color.g &&
+    left.color.b === right.color.b &&
+    leftAlpha === rightAlpha
+  );
+}
+
 // cloneStops is no longer needed - using cloneSceneGradientStops from shared
 
 export function extractPrimaryColor(fill: SceneFill): SceneColor {
@@ -548,4 +569,3 @@ export function extractPrimaryColor(fill: SceneFill): SceneColor {
 // ============================================================================
 // Utility Helpers
 // ============================================================================
-

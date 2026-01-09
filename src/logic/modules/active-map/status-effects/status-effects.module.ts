@@ -4,6 +4,7 @@ import {
   StatusEffectConfig,
   StatusEffectVisuals,
   getStatusEffectConfig,
+  STATUS_EFFECT_OVERLAY_IDS,
 } from "../../../../db/status-effects-db";
 import type {
   StatusEffectApplicationOptions,
@@ -707,11 +708,12 @@ export class StatusEffectsModule implements GameModule {
         });
       };
 
-      if (options?.clearAll || !effectsMap) {
+      const overlayIds = STATUS_EFFECT_OVERLAY_IDS;
+      if (options?.clearAll || !effectsMap || effectsMap.size === 0) {
         unitAdapter.applyOverlay(id, "internalFurnace", "fill", null);
         unitAdapter.applyOverlay(id, "internalFurnace", "stroke", null);
         unitAdapter.removeAura(id, "frenzyAura");
-        effectsMap?.forEach((_instances, effectId) => {
+        overlayIds.forEach((effectId) => {
           unitAdapter.applyOverlay(id, effectId, "fill", null);
           unitAdapter.applyOverlay(id, effectId, "stroke", null);
         });
@@ -741,6 +743,13 @@ export class StatusEffectsModule implements GameModule {
         const instance = instances[0];
         const visual = instance?.visuals?.overlay ?? null;
         applyOverlay(effectId, visual ?? null);
+      });
+
+      overlayIds.forEach((effectId) => {
+        if (effectsMap.has(effectId)) {
+          return;
+        }
+        applyOverlay(effectId, null);
       });
     } else if (type === "brick") {
       if (!this.brickAdapter) {
