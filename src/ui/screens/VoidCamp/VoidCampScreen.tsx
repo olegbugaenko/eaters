@@ -14,7 +14,8 @@ import {
 } from "@logic/modules/active-map/map/map.const";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/time/time.module";
-import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import { RESOURCE_TOTALS_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import {
   CampStatisticsSnapshot,
   DEFAULT_CAMP_STATISTICS,

@@ -5,7 +5,7 @@ import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
 import { CampTabPanels } from "./TabPanels/CampTabPanels";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
-import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
