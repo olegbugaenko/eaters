@@ -62,6 +62,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   stopColor3Key?: string;
   stopColor4: Float32Array;
   stopColor4Key?: string;
+  uniformSignature?: string;
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
