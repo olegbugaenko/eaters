@@ -716,8 +716,8 @@ export class PlayerUnitsModule implements GameModule {
     distance: number,
     brick: BrickRuntimeState
   ): void {
-    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
-    const knockBackSpeedRaw = brick.brickKnockBackSpeed ?? 0;
+    const knockBackDistance = Math.max(brick.knockBackDistance ?? 0, 0);
+    const knockBackSpeedRaw = brick.knockBackSpeed ?? 0;
     if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
       return;
     }

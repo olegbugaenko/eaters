@@ -53,10 +53,10 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
     const stats = calculateBrickStatsForLevel(config, level);
     const maxHp = stats.maxHp;
     const baseDamage = stats.baseDamage;
-    const brickKnockBackDistance = Math.max(destructuble?.brickKnockBackDistance ?? 0, 0);
-    const brickKnockBackSpeed = sanitizeKnockBackSpeed(
-      destructuble?.brickKnockBackSpeed,
-      brickKnockBackDistance
+    const knockBackDistance = Math.max(destructuble?.knockBackDistance ?? 0, 0);
+    const knockBackSpeed = sanitizeKnockBackSpeed(
+      destructuble?.knockBackSpeed,
+      knockBackDistance
     );
     const armor = stats.armor;
     const physicalSize = Math.max(
@@ -65,7 +65,7 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
     );
     const brickKnockBackAmplitude = sanitizeKnockBackAmplitude(
       destructuble?.brickKnockBackAmplitude,
-      brickKnockBackDistance,
+      knockBackDistance,
       config,
       physicalSize
     );
@@ -90,8 +90,8 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
       maxHp,
       armor,
       baseDamage,
-      brickKnockBackDistance,
-      brickKnockBackSpeed,
+      knockBackDistance,
+      knockBackSpeed,
       brickKnockBackAmplitude,
       physicalSize,
       rewards,

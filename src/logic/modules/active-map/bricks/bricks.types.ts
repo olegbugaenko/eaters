@@ -36,8 +36,8 @@ export interface BrickRuntimeState {
   maxHp: number;
   armor: number;
   baseDamage: number;
-  brickKnockBackDistance: number;
-  brickKnockBackSpeed: number;
+  knockBackDistance: number;
+  knockBackSpeed: number;
   brickKnockBackAmplitude: number;
   physicalSize: number;
   rewards: ResourceStockpile;
