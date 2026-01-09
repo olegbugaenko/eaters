@@ -12,6 +12,17 @@ import { DEFAULT_MODULE_CONFIG } from "../config/modules";
 import { ModuleRegistryConfig } from "./ModuleRegistry";
 import { MapModule } from "../modules/active-map/map/map.module";
 import { AudioModule } from "../modules/shared/audio/audio.module";
+import { UiApiProvider } from "./ui/UiApiProvider";
+import type { UiApiProxy } from "@shared/core/types/ui-api";
+import type { LogicUiApiRegistry } from "@/logic/core/ui/ui-api.registry";
+import type { SpellcastingModuleUiApi } from "../modules/active-map/spellcasting/spellcasting.types";
+import type { NecromancerModuleUiApi } from "../modules/active-map/necromancer/necromancer.types";
+import type { UnitAutomationModuleUiApi } from "../modules/active-map/unit-automation/unit-automation.types";
+import type { UnitDesignModuleUiApi } from "../modules/camp/unit-design/unit-design.types";
+import type { UnitModuleWorkshopUiApi } from "../modules/camp/unit-module-workshop/unit-module-workshop.types";
+import type { BuildingsModuleUiApi } from "../modules/camp/buildings/buildings.types";
+import type { CraftingModuleUiApi } from "../modules/camp/crafting/crafting.types";
+import type { SkillTreeModuleUiApi } from "../modules/camp/skill-tree/skill-tree.types";
 
 type ModuleDefinitionList = ReturnType<typeof createModuleDefinitions>;
 type ApplicationDefinitionList = readonly [
@@ -26,6 +37,7 @@ export class Application {
   private dataBridge = new DataBridge();
   private modules: GameModule[] = [];
   public services: ApplicationServices;
+  public readonly uiApi: UiApiProxy<LogicUiApiRegistry>;
 
   constructor(private moduleConfig: ModuleRegistryConfig = DEFAULT_MODULE_CONFIG) {
     this.serviceContainer = new ServiceContainer();
@@ -35,6 +47,8 @@ export class Application {
     this.services = createServiceLookup(this.serviceContainer, definitions);
 
     definitions.forEach((definition) => this.registerDefinition(definition));
+
+    this.uiApi = new UiApiProvider(this.createUiApiModules()).api;
   }
 
   private createModuleDefinitions(): ModuleDefinitionList {
@@ -161,6 +175,25 @@ export class Application {
     this.modules.push(module);
     saveManager.registerModule(module);
     gameLoop.registerModule(module);
+  }
+
+  private createUiApiModules(): LogicUiApiRegistry {
+    return {
+      app: this,
+      audio: this.services.audio as AudioModule,
+      map: this.services.map as MapModule,
+      save: this.services.saveManager,
+      scene: this.services.sceneObjects,
+      gameLoop: this.services.gameLoop,
+      spellcasting: this.services.spellcasting as SpellcastingModuleUiApi,
+      necromancer: this.services.necromancer as NecromancerModuleUiApi,
+      unitAutomation: this.services.unitAutomation as UnitAutomationModuleUiApi,
+      unitDesign: this.services.unitDesign as UnitDesignModuleUiApi,
+      unitModuleWorkshop: this.services.unitModuleWorkshop as UnitModuleWorkshopUiApi,
+      buildings: this.services.buildings as BuildingsModuleUiApi,
+      crafting: this.services.crafting as CraftingModuleUiApi,
+      skillTree: this.services.skillTree as SkillTreeModuleUiApi,
+    };
   }
 
 }

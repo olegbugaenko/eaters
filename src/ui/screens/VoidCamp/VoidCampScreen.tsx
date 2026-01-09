@@ -79,7 +79,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   initialTab,
   onTabChange,
 }) => {
-  const { app, bridge } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState(false);
@@ -138,12 +138,12 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   );
 
   useEffect(() => {
-    app.applyAudioSettings(audioSettings);
+    uiApi.audio.applyPercentageSettings(audioSettings);
   }, [
-    app,
     audioSettings.masterVolume,
     audioSettings.effectsVolume,
     audioSettings.musicVolume,
+    uiApi,
   ]);
 
   const handleAudioSettingChange = useCallback(
@@ -154,9 +154,9 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         [key]: clampedValue,
       };
       setAudioSetting(key, clampedValue);
-      app.applyAudioSettings(nextSettings);
+      uiApi.audio.applyPercentageSettings(nextSettings);
     },
-    [app, audioSettings, setAudioSetting],
+    [audioSettings, setAudioSetting, uiApi],
   );
 
   const handleOpenSettings = useCallback(() => {
@@ -193,7 +193,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
 
   const handleExportSave = useCallback(() => {
     setSettingsTab("game-data");
-    if (!app.hasActiveSaveSlot()) {
+    if (!uiApi.save.getActiveSlotId()) {
       setStatusMessage({
         tone: "error",
         text: "Select a save slot before exporting progress.",
@@ -201,7 +201,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       return;
     }
 
-    const data = app.exportActiveSave();
+    const data = uiApi.save.exportActiveSlot();
     if (!data) {
       setStatusMessage({
         tone: "error",
@@ -235,12 +235,12 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         URL.revokeObjectURL(objectUrl);
       }
     }
-  }, [app]);
+  }, [uiApi]);
 
   const handleImportSave = useCallback(
     async (file: File) => {
       setSettingsTab("game-data");
-      if (!app.hasActiveSaveSlot()) {
+      if (!uiApi.save.getActiveSlotId()) {
         setStatusMessage({
           tone: "error",
           text: "Select a save slot before importing progress.",
@@ -254,7 +254,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         if (!parsed || typeof parsed !== "object" || typeof parsed.modules !== "object") {
           throw new Error("Invalid save structure");
         }
-        app.importActiveSave(parsed);
+        uiApi.save.importToActiveSlot(parsed);
         setStatusMessage({
           tone: "success",
           text: `Imported save from ${file.name}.`,
@@ -267,7 +267,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         });
       }
     },
-    [app]
+    [uiApi]
   );
 
   const handleStartMap = useCallback(
@@ -276,20 +276,20 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       if (!target) {
         return;
       }
-      app.selectMap(mapId);
-      app.restartCurrentMap();
+      uiApi.map.selectMap(mapId);
+      uiApi.map.restartSelectedMap();
       onStart();
     },
-    [app, maps, onStart]
+    [maps, onStart, uiApi]
   );
 
   const handleExit = useCallback(() => {
     setSettingsOpen(false);
     setStatisticsOpen(false);
     setVersionHistoryOpen(false);
-    app.returnToMainMenu();
+    uiApi.app.returnToMainMenu();
     onExit();
-  }, [app, onExit]);
+  }, [onExit, uiApi]);
 
   const favoriteMap = useMemo(() => {
     let best: { id: MapId; name: string; attempts: number } | null = null;
@@ -324,8 +324,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             maps={maps}
             clearedLevelsTotal={clearedLevelsTotal}
             selectedMap={selectedMap}
-            onSelectMap={(mapId) => app.selectMap(mapId)}
-            onSelectMapLevel={(mapId, level) => app.selectMapLevel(mapId, level)}
+            onSelectMap={(mapId) => uiApi.map.selectMap(mapId)}
+            onSelectMapLevel={(mapId, level) => uiApi.map.selectMapLevel(mapId, level)}
             onStartMap={handleStartMap}
             initialTab={initialTab}
             onTabChange={onTabChange}

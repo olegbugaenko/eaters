@@ -21,7 +21,7 @@ import {
   SKILL_TREE_STATE_BRIDGE_KEY,
   SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
 } from "@logic/modules/camp/skill-tree/skill-tree.const";
-import { SkillTreeModule } from "@logic/modules/camp/skill-tree/skill-tree.module";
+import type { SkillTreeModuleUiApi } from "@logic/modules/camp/skill-tree/skill-tree.types";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   ResourceAmountPayload,
@@ -269,7 +269,7 @@ const getMissingResourceNames = (
   );
 
 export const SkillTreeView: React.FC = () => {
-  const { app, bridge } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const skillTree = useBridgeValue(
     bridge,
     SKILL_TREE_STATE_BRIDGE_KEY,
@@ -313,7 +313,10 @@ export const SkillTreeView: React.FC = () => {
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
-  const skillTreeModule = useMemo(() => app.services.skillTree, [app]) as SkillTreeModule;
+  const skillTreeModule = useMemo(
+    () => uiApi.skillTree as SkillTreeModuleUiApi,
+    [uiApi.skillTree]
+  );
   const [purchasedSkillId, setPurchasedSkillId] = useState<SkillId | null>(null);
   const hoveredIdRef = useRef<SkillId | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);

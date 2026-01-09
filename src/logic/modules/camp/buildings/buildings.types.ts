@@ -34,3 +34,13 @@ export interface BuildingsModuleOptions {
 export interface BuildingsSaveData {
   readonly levels?: Partial<Record<BuildingId, number>>;
 }
+
+export interface BuildingsModuleUiApi {
+  tryUpgradeBuilding(id: BuildingId): boolean;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    buildings: BuildingsModuleUiApi;
+  }
+}

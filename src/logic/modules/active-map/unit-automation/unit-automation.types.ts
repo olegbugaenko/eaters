@@ -48,3 +48,14 @@ export interface AutomationSelectionCandidate {
 }
 
 export type AutomationAvailability = "affordable" | "wait" | "skip";
+
+export interface UnitAutomationModuleUiApi {
+  setAutomationEnabled(designId: UnitDesignId, enabled: boolean): void;
+  setAutomationWeight(designId: UnitDesignId, weight: number): void;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    unitAutomation: UnitAutomationModuleUiApi;
+  }
+}

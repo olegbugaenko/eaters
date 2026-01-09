@@ -9,6 +9,7 @@ import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { MapRunState } from "../map/MapRunState";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SkillId } from "../../../../db/skills-db";
+import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 
 export interface SpellOptionBase {
   id: SpellId;
@@ -60,4 +61,14 @@ export interface SpellcastingModuleOptions {
   projectiles: UnitProjectileController;
   getSkillLevel: (id: SkillId) => number;
   runState: MapRunState;
+}
+
+export interface SpellcastingModuleUiApi {
+  tryCastSpell(spellId: SpellId, rawTarget: SceneVector2): boolean;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    spellcasting: SpellcastingModuleUiApi;
+  }
 }

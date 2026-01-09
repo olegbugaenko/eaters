@@ -34,3 +34,13 @@ export interface UnitModuleWorkshopModuleOptions {
 export interface UnitModuleWorkshopSaveData {
   readonly levels?: Partial<Record<UnitModuleId, number>>;
 }
+
+export interface UnitModuleWorkshopUiApi {
+  tryUpgradeModule(id: UnitModuleId): boolean;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    unitModuleWorkshop: UnitModuleWorkshopUiApi;
+  }
+}

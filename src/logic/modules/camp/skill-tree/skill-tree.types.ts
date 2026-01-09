@@ -42,3 +42,14 @@ export interface SkillTreeSaveData {
 }
 
 export type SkillLevelMap = Record<SkillId, number>;
+
+export interface SkillTreeModuleUiApi {
+  setViewTransform(transform: { scale: number; worldX: number; worldY: number } | null): void;
+  tryPurchaseSkill(id: SkillId): boolean;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    skillTree: SkillTreeModuleUiApi;
+  }
+}

@@ -47,3 +47,15 @@ export interface CraftingRecipeSaveState {
 export interface CraftingModuleSaveData {
   readonly recipes?: Partial<Record<CraftingRecipeId, CraftingRecipeSaveState>>;
 }
+
+export interface CraftingModuleUiApi {
+  setRecipeQueue(id: CraftingRecipeId, value: number): void;
+  adjustRecipeQueue(id: CraftingRecipeId, delta: number): void;
+  setRecipeQueueToMax(id: CraftingRecipeId): void;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    crafting: CraftingModuleUiApi;
+  }
+}

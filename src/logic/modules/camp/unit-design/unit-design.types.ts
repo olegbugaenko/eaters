@@ -93,3 +93,20 @@ export interface UnitDesignModuleOptions {
 export type UnitDesignerListener = (
   designs: readonly UnitDesignerUnitState[]
 ) => void;
+
+export interface UnitDesignModuleUiApi {
+  createDesign(type: PlayerUnitType): UnitDesignId;
+  updateDesign(
+    id: UnitDesignId,
+    data: Partial<Pick<UnitDesignerUnitState, "name">> & { modules?: readonly UnitModuleId[] }
+  ): void;
+  deleteDesign(id: UnitDesignId): void;
+  setActiveRoster(roster: readonly UnitDesignId[]): void;
+  setDesignTargetingMode(id: UnitDesignId, mode: UnitTargetingMode): void;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    unitDesign: UnitDesignModuleUiApi;
+  }
+}

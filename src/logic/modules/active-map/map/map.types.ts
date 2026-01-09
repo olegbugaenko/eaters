@@ -91,3 +91,22 @@ export type MapGenerationPayload = {
   spawnUnits: PlayerUnitSpawnData[];
   spawnPoints: { x: number; y: number }[];
 };
+
+export interface MapModuleUiApi {
+  selectMap(mapId: MapId): void;
+  selectMapLevel(mapId: MapId, level: number): void;
+  restartSelectedMap(): void;
+  leaveCurrentMap(): void;
+  pauseActiveMap(): void;
+  resumeActiveMap(): void;
+  setAutoRestartEnabled(enabled: boolean): void;
+  setMapSelectViewTransform(
+    transform: { scale: number; worldX: number; worldY: number } | null
+  ): void;
+}
+
+declare module "@/logic/core/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    map: MapModuleUiApi;
+  }
+}
