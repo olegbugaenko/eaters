@@ -12,6 +12,8 @@ import type {
   BonusValuesListener,
   SanitizedBonusEffects,
   BonusSourceState,
+  BonusRule,
+  BonusRuleContextInput,
 } from "./bonuses.types";
 import {
   createBonusValueMap,
@@ -19,6 +21,7 @@ import {
   sanitizeEffectValue,
   areBonusMapsEqual,
 } from "./bonuses.helpers";
+import { BONUS_RULES } from "./bonuses.rules";
 
 // Re-export types for backward compatibility
 export type { BonusValueMap, BonusValuesListener } from "./bonuses.types";
@@ -30,6 +33,11 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
   private cachedValues: BonusValueMap = createBonusValueMap((config) => config.defaultValue);
   private dirty = true;
   private effectContext: BonusEffectContext = {};
+  private rules: BonusRule[] = BONUS_RULES;
+  private ruleContext = {
+    progressionKeys: new Set<string>(),
+    runtimeFlags: new Set<string>(),
+  };
 
   public initialize(): void {
     this.ensureValues();
@@ -87,6 +95,31 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
 
   public setBonusCurrentLevel(sourceId: string, level: number): void {
     this.setSourceLevel(sourceId, level);
+  }
+
+  public setRules(rules: BonusRule[]): void {
+    this.rules = rules;
+    this.markDirty();
+    this.ensureValues();
+    this.notifyListeners();
+  }
+
+  public setRuleContext(context: BonusRuleContextInput): void {
+    const nextProgression = new Set(context.progressionKeys ?? []);
+    const nextRuntime = new Set(context.runtimeFlags ?? []);
+    if (
+      areSetsEqual(this.ruleContext.progressionKeys, nextProgression) &&
+      areSetsEqual(this.ruleContext.runtimeFlags, nextRuntime)
+    ) {
+      return;
+    }
+    this.ruleContext = {
+      progressionKeys: nextProgression,
+      runtimeFlags: nextRuntime,
+    };
+    this.markDirty();
+    this.ensureValues();
+    this.notifyListeners();
   }
 
   public getBonusValue(id: BonusId): number {
@@ -208,6 +241,8 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
       });
     });
 
+    this.applyRuleEffects(incomes, multipliers);
+
     const next = createBonusValueMap((config, id) => {
       const override = baseOverrides[id];
       const base = Number.isNaN(override) ? config.defaultValue : override;
@@ -224,6 +259,46 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
 
   private markDirty(): void {
     this.dirty = true;
+  }
+
+  private applyRuleEffects(incomes: BonusValueMap, multipliers: BonusValueMap): void {
+    if (!this.rules.length) {
+      return;
+    }
+    this.rules.forEach((rule) => {
+      if (!this.areRuleRequirementsMet(rule)) {
+        return;
+      }
+      const bonusId = rule.bonusId;
+      const { addFlat = 0, addMultiplier = 0 } = rule.effects;
+      if (addFlat !== 0) {
+        incomes[bonusId] += addFlat;
+      }
+      if (addMultiplier !== 0) {
+        multipliers[bonusId] *= 1 + addMultiplier;
+      }
+    });
+  }
+
+  private areRuleRequirementsMet(rule: BonusRule): boolean {
+    const { progressionKeys, runtimeFlags } = rule.requires;
+    if (progressionKeys?.length) {
+      const hasAllProgression = progressionKeys.every((key) =>
+        this.ruleContext.progressionKeys.has(key)
+      );
+      if (!hasAllProgression) {
+        return false;
+      }
+    }
+    if (runtimeFlags?.length) {
+      const hasAllFlags = runtimeFlags.every((flag) =>
+        this.ruleContext.runtimeFlags.has(flag)
+      );
+      if (!hasAllFlags) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public setEffectContext(context: BonusEffectContext): void {
@@ -246,3 +321,14 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
   }
 }
 
+const areSetsEqual = (left: ReadonlySet<string>, right: ReadonlySet<string>): boolean => {
+  if (left.size !== right.size) {
+    return false;
+  }
+  for (const value of left) {
+    if (!right.has(value)) {
+      return false;
+    }
+  }
+  return true;
+};
