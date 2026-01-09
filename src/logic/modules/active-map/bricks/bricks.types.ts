@@ -1,9 +1,9 @@
-import type { SceneVector2, SceneFill, SceneColor } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2, SceneFill, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BrickType } from "../../../../db/bricks-db";
 import type { ExplosionType } from "../../../../db/explosions-db";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { SoundEffectPlayer } from "../../shared/audio/audio.types";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";

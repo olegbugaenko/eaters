@@ -1,7 +1,7 @@
 import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import { getBrickConfig, BrickType } from "../../../../db/bricks-db";
-import type { SceneVector2, SceneFill } from "../../../services/scene-object-manager/scene-object-manager.types";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2, SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { BrickData, InternalBrickState, BrickExplosionState } from "./bricks.types";
 import {
   sanitizeBrickType,

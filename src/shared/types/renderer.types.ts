@@ -1,6 +1,6 @@
 import type {
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { UnitModuleId } from "@db/unit-modules-db";
 import type { SkillId } from "@db/skills-db";
 import type { RendererFillConfig, RendererStrokeConfig } from "./renderer-config";

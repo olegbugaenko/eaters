@@ -4,6 +4,7 @@ import { ServiceDefinition, ServiceLookup } from "./engine/loader/types";
 import { BootstrapDefinitionList, createBootstrapDefinitions } from "./engine/loader/bootstrap";
 import { createModuleDefinitions } from "@/core/logic/engine/module-definitions";
 import { createModuleDefinitionContext } from "@/core/logic/engine/module-definitions/context";
+import { registerModuleDefinitions } from "@/logic/engine/module-definitions/registry";
 import { GameModule, SaveSlotId, StoredSaveData } from "./types";
 import { AudioSettingsPercentages } from "@logic/utils/audioSettings";
 import { createServiceLookup } from "./engine/loader/createServiceLookup";
@@ -52,7 +53,11 @@ export class Application {
   }
 
   private createModuleDefinitions(): ModuleDefinitionList {
-    return createModuleDefinitions(createModuleDefinitionContext(), this.moduleConfig);
+    return createModuleDefinitions(
+      createModuleDefinitionContext(),
+      this.moduleConfig,
+      registerModuleDefinitions,
+    );
   }
 
   private buildDefinitions(moduleDefinitions: ModuleDefinitionList): ApplicationDefinitionList {

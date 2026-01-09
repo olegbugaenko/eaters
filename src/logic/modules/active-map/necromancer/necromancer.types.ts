@@ -46,7 +46,7 @@ export interface NecromancerSpawnOption {
 export interface NecromancerModuleOptions {
   bridge: import("@/core/logic/ui/DataBridge").DataBridge;
   playerUnits: import("../player-units/player-units.module").PlayerUnitsModule;
-  scene: import("../../../services/scene-object-manager/SceneObjectManager").SceneObjectManager;
+  scene: import("@core/logic/provided/services/scene-object-manager/SceneObjectManager").SceneObjectManager;
   bonuses: import("../../shared/bonuses/bonuses.module").BonusesModule;
   unitDesigns: import("../../camp/unit-design/unit-design.module").UnitDesignModule;
   runState: import("../map/MapRunState").MapRunState;

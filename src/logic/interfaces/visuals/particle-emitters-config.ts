@@ -1,4 +1,4 @@
-import type { SceneColor, SceneFill, SceneVector2 } from "../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor, SceneFill, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterShape } from "../../services/particles/ParticleEmitterShared";
 
 /**

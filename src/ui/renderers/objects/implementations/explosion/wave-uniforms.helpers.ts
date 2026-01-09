@@ -6,8 +6,8 @@ import type {
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import type { WaveUniformConfig } from "../../../primitives/gpu/explosion-wave";
 import { clamp01 } from "@shared/helpers/numbers.helper";

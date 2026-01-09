@@ -1,6 +1,6 @@
 import { UnitModuleId } from "../../../../../../db/unit-modules-db";
 import { getUnitModuleConfig } from "@/db/unit-modules-db";
-import type { SceneVector2 } from "../../../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   AbilityCandidate,
   AbilityDescription,

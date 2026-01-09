@@ -1,5 +1,5 @@
-import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
-import type { SceneColor } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 
 export const FIREBALL_SPEED = 150; // pixels per second (reduced from 300 for more realistic movement)

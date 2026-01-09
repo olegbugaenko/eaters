@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../services/scene-object-manager/scene-object-manager.types";
+import { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { cloneVector } from "@shared/helpers/vector.helper";
 
 interface SpatialGridItem<T> {

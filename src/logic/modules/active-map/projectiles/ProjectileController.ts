@@ -2,9 +2,9 @@ import {
   SceneVector2,
   SceneFill,
   SceneColor,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { TargetingService } from "../targeting/TargetingService";
 import { isTargetOfType, type TargetSnapshot } from "../targeting/targeting.types";
 import type { DamageService } from "../targeting/DamageService";

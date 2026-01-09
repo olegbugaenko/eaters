@@ -5,10 +5,10 @@ import {
   SceneFill,
   SceneColor,
   SceneStroke,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { MovementService, MovementBodyState } from "../../../services/movement/MovementService";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { MovementService, MovementBodyState } from "@core/logic/provided/services/movement/MovementService";
 import {
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,

@@ -1,4 +1,4 @@
-import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { isVector, sanitizeOffset } from "@shared/helpers/vector.helper";
 import { DEFAULT_VERTICES } from "./constants";
 import type { PolygonCustomData } from "./types";

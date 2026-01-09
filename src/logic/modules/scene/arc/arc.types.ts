@@ -1,5 +1,5 @@
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ArcType } from "../../../../db/arcs-db";
 
 export type ArcTargetType = "unit" | "enemy";

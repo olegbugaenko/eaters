@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export const BRICK_HIT_SOUND_URL = "/audio/sounds/brick_effects/hit_v2.mp3";
 export const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy-01.mp3";

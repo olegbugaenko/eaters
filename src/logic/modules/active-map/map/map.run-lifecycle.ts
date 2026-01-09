@@ -1,5 +1,5 @@
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { MapRunState } from "./MapRunState";
 import { MapVisualEffects } from "./map.visual-effects";
 import { BricksModule } from "../bricks/bricks.module";

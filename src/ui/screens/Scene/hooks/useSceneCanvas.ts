@@ -6,8 +6,8 @@ import {
   SceneCameraState,
   SceneVector2,
   SceneUiApi,
-} from "@logic/services/scene-object-manager/scene-object-manager.types";
-import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 import {

@@ -10,10 +10,10 @@ import {
   SceneObjectInstance,
   SceneStroke,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import type { SceneUiApi } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { cloneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { cloneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 

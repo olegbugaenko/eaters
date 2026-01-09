@@ -10,7 +10,7 @@ import {
 import type {
   SceneCameraState,
   SceneUiApi,
-} from "@logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { SpellId } from "@db/spells-db";
@@ -19,7 +19,7 @@ import {
   ParticleStatsState,
   useSceneCanvas,
 } from "./useSceneCanvas";
-import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
+import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 
 interface UseSceneCameraInteractionArgs {
   scene: SceneUiApi;

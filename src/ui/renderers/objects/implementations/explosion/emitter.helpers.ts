@@ -1,4 +1,4 @@
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
 import { createParticleEmitterPrimitive } from "../../../primitives";
 import type { GpuSpawnConfig } from "../../../primitives/ParticleEmitterPrimitive";

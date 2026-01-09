@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { particleEmitterGpuRenderer } from "@ui/renderers/primitives/gpu/particle-emitter";

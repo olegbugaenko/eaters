@@ -1,7 +1,7 @@
 import type {
   SceneObjectInstance,
   SceneColor,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { randomBetween, clamp } from "@shared/helpers/numbers.helper";
 import type {
   BulletRendererCustomData,

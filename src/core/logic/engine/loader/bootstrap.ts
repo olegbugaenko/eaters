@@ -1,8 +1,8 @@
-import { GameLoop } from "../../../../logic/services/game-loop/GameLoop";
+import { GameLoop } from "@core/logic/provided/services/game-loop/GameLoop";
 import { MapRunState } from "../../../../logic/modules/active-map/map/MapRunState";
-import { MovementService } from "../../../../logic/services/movement/MovementService";
-import { SaveManager } from "../../../../logic/services/save-manager/SaveManager";
-import { SceneObjectManager } from "../../../../logic/services/scene-object-manager/SceneObjectManager";
+import { MovementService } from "@core/logic/provided/services/movement/MovementService";
+import { SaveManager } from "@core/logic/provided/services/save-manager/SaveManager";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { ServiceDefinition } from "./types";
 
 export type BootstrapDefinitionList = readonly [

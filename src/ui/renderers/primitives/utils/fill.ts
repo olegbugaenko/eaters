@@ -9,8 +9,8 @@ import {
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
   SceneSpriteFill,
-} from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   FILL_COMPONENTS,
   FILL_FILAMENTS1_COMPONENTS,

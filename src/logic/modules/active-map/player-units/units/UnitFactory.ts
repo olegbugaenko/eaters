@@ -1,8 +1,8 @@
 import type { ParticleEmitterConfig } from "../../../../interfaces/visuals/particle-emitters-config";
-import { SceneVector2, SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "../../../../services/scene-object-manager/SceneObjectManager";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { MovementService } from "../../../../services/movement/MovementService";
+import { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { MovementService } from "@core/logic/provided/services/movement/MovementService";
 import {
   PlayerUnitType,
   getPlayerUnitConfig,

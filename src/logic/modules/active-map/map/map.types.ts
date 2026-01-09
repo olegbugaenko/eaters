@@ -1,7 +1,7 @@
 import { SkillId } from "../../../../db/skills-db";
 import { DataBridge } from "@/core/logic/ui/DataBridge";
 import { GameModule } from "@core/logic/types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BricksModule } from "../bricks/bricks.module";
 import type { BrickData } from "../bricks/bricks.types";

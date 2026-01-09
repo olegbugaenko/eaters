@@ -1,5 +1,5 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { BricksModule } from "../../active-map/bricks/bricks.module";
 import type { ExplosionModule } from "../explosion/explosion.module";

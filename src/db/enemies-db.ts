@@ -2,8 +2,8 @@ import {
   SceneColor,
   SceneFill,
   SceneVector2,
-} from "../logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 import { ResourceAmount, normalizeResourceAmount } from "./resources-db";
 import type {

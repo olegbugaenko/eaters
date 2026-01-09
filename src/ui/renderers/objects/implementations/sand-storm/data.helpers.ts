@@ -1,4 +1,4 @@
-import type { SceneObjectInstance, SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { SandStormCustomData, InterpolationData } from "./types";
 import {
   DEFAULT_COLOR_INNER,

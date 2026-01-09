@@ -5,7 +5,7 @@ import { BrickConfig, BrickType, getBrickConfig } from "../../../../db/bricks-db
 import type {
   SceneFill,
   SceneVector2,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import {

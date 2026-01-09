@@ -3,7 +3,7 @@ import {
   ObjectRegistration,
   ObjectRenderer,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { createDynamicCirclePrimitive, createDynamicPolygonPrimitive } from "../../../primitives";
 import type { AuraCustomData, RendererLayer } from "./types";
 import { sanitizeVertices } from "@shared/helpers/vector.helper";

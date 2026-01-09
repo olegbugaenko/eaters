@@ -2,7 +2,7 @@ import type {
   SceneColor,
   SceneFill,
   SceneSolidFill,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export type RendererFillConfig =
   | {

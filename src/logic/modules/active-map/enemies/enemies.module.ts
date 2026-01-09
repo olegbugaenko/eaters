@@ -1,7 +1,7 @@
 import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { GameModule } from "@core/logic/types";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import {
   cloneResourceStockpile,
@@ -11,8 +11,8 @@ import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
 import { DamageService } from "../targeting/DamageService";
-import { MovementService } from "../../../services/movement/MovementService";
-import type { MovementBodyState } from "../../../services/movement/movement.types";
+import { MovementService } from "@core/logic/provided/services/movement/MovementService";
+import type { MovementBodyState } from "@core/logic/provided/services/movement/movement.types";
 import { EnemyStateFactory, EnemyStateInput } from "./enemies.state-factory";
 import {
   subtractVectors,

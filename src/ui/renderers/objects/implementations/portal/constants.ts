@@ -1,5 +1,5 @@
-import type { SceneFill } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import type { SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { PortalEmitterConfig } from "./types";
 
 export const DEFAULT_PORTAL_FILL: SceneFill = {

@@ -1,5 +1,5 @@
 import { ObjectRenderer, ObjectRegistration } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { createDynamicCirclePrimitive } from "../../../primitives";
 import { RING_SEGMENT_COUNT } from "./constants";
 import { getAnimatedRingFill, getAnimatedRingRadius } from "./helpers";

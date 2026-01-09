@@ -2,7 +2,7 @@ import {
   SceneFill,
   SceneObjectInstance,
   SceneVector2,
-} from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   DynamicPrimitive,
   StaticPrimitive,

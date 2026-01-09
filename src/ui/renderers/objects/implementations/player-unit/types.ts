@@ -3,7 +3,7 @@ import type {
   SceneVector2,
   SceneFill,
   SceneFillNoise,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type {
   PlayerUnitRendererConfig,
   PlayerUnitRendererLayerConfig,

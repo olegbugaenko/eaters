@@ -9,7 +9,7 @@
  * - Batch lifecycle
  */
 
-import type { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { IGpuPrimitiveLifecycle, IGpuBatchConfig, IGpuInstanceHandle } from "./types";
 
 // ============================================================================

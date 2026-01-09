@@ -1,4 +1,4 @@
-import type { SceneVector2, SceneColor, SceneFill } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2, SceneColor, SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BrickEffectTint } from "../../bricks/bricks.types";
 import type { ExplosionType } from "../../../../../db/explosions-db";
 

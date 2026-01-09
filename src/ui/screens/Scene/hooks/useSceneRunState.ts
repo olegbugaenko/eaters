@@ -35,7 +35,7 @@ import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
 } from "@logic/modules/shared/resources/resources.const";
 import type { ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
-import { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
 import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";

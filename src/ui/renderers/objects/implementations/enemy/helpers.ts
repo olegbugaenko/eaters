@@ -1,7 +1,7 @@
 import type {
   SceneObjectInstance,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { sanitizeVertices, sanitizeOffset } from "@shared/helpers/vector.helper";
 import type {
   EnemyRendererConfig,

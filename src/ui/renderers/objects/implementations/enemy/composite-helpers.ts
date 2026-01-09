@@ -3,7 +3,7 @@ import type {
   SceneColor,
   SceneFill,
   SceneStroke,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { EnemyRendererCompositeConfig } from "@db/enemies-db";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
 import {

@@ -2,9 +2,9 @@ import type {
   SceneFill,
   SceneStroke,
   SceneVector2,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { DataBridge } from "@/core/logic/ui/DataBridge";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
 import type { DamageService } from "../targeting/DamageService";
@@ -59,7 +59,7 @@ export interface EnemySaveData {
   readonly enemies: EnemySpawnData[];
 }
 
-import type { MovementService } from "../../../services/movement/MovementService";
+import type { MovementService } from "@core/logic/provided/services/movement/MovementService";
 
 export interface EnemiesModuleOptions {
   readonly scene: SceneObjectManager;

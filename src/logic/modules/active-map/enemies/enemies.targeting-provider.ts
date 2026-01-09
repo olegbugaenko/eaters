@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { TargetSnapshot, TargetingFilter, TargetingProvider } from "../targeting/targeting.types";
 import type { EnemyRuntimeState } from "./enemies.types";
 import { EnemiesModule } from "./enemies.module";

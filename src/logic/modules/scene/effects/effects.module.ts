@@ -1,5 +1,5 @@
 import { GameModule } from "@core/logic/types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { getVisualEffectRenderer, VisualEffectId } from "../../../../db/effects-db";
 import type { EffectsModuleOptions, AuraState } from "./effects.types";
 

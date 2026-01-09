@@ -1,4 +1,4 @@
-import { SceneVector2, SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "../../../../../db/player-units-db";
 import type { ParticleEmitterConfig } from "../../../../interfaces/visuals/particle-emitters-config";
 import { PlayerUnitRendererConfig } from "../../../../../db/player-units-db";

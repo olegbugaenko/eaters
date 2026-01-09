@@ -1,5 +1,5 @@
-import type { SceneFill, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneFill, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { BulletConfig, BulletTailConfig, BulletType } from "../../../../db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";

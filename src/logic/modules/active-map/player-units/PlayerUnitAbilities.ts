@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { AbilityVisualService } from "./abilities/AbilityVisualService";
 import type { AbilitySoundId } from "./abilities/ability.types";
 import {

@@ -1,7 +1,7 @@
 import { GameModule } from "@core/logic/types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ArcType, getArcConfig } from "../../../../db/arcs-db";
 import { getNowMs } from "@shared/helpers/time.helper";
 import type { ArcModuleOptions, ArcState, ArcTargetRef } from "./arc.types";

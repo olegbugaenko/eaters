@@ -1,4 +1,4 @@
-import type { SceneVector2, SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export interface SandStormCustomData {
   intensity?: number;
