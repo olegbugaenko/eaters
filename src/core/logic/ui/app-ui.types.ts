@@ -5,7 +5,7 @@ export interface AppUiApi {
   returnToMainMenu(): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     app: AppUiApi;
   }

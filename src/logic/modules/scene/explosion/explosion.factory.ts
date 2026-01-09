@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { ExplosionModule } from "./explosion.module";
 
 export const createExplosionDefinition = (): ServiceDefinition<ExplosionModule, "explosion"> => ({

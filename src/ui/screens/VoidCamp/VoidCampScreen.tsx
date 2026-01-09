@@ -20,7 +20,7 @@ import {
   DEFAULT_CAMP_STATISTICS,
   STATISTICS_BRIDGE_KEY,
 } from "@logic/modules/shared/statistics/statistics.module";
-import type { StoredSaveData } from "@logic/core/types";
+import type { StoredSaveData } from "@/core/logic/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";

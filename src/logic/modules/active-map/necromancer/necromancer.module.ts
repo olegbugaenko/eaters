@@ -1,6 +1,6 @@
-import { GameModule } from "../../../core/types";
-import { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { GameModule } from "@core/logic/types";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import {

@@ -1,6 +1,6 @@
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
-import type { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import { GameModule } from "@core/logic/types";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import {

@@ -1,4 +1,4 @@
-import { StateFactory } from "../../../core/factories/StateFactory";
+import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import type { PlayerUnitState } from "./units/UnitTypes";
 import type { PlayerUnitSpawnData } from "./player-units.types";
 import type { UnitFactory, UnitFactoryResult } from "./units/UnitFactory";

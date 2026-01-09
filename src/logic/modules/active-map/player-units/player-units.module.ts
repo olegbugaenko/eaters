@@ -1,5 +1,5 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { GameModule } from "@core/logic/types";
 import {
   SceneVector2,
   SceneFill,

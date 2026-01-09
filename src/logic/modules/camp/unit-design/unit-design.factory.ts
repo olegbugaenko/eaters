@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { UnitDesignModule } from "./unit-design.module";
 
 export const createUnitDesignDefinition = (): ServiceDefinition<UnitDesignModule, "unitDesign"> => ({

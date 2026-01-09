@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { DamageService } from "./DamageService";
 
 export const createDamageDefinition = (): ServiceDefinition<DamageService, "damage"> => ({

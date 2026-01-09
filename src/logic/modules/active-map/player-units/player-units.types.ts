@@ -4,7 +4,7 @@ import type { UnitModuleId } from "../../../../db/unit-modules-db";
 import type { PlayerUnitRuntimeModifiers } from "@shared/types/player-units";
 import type { UnitDesignId } from "../../camp/unit-design/unit-design.types";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { MovementService } from "../../../services/movement/MovementService";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";

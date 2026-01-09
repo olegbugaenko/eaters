@@ -1,4 +1,4 @@
-import { GameModule } from "../../../core/types";
+import { GameModule } from "@core/logic/types";
 import { getNowMs } from "@shared/helpers/time.helper";
 import {
   AudioSettingsPercentages,

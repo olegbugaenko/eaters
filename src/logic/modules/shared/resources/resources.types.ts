@@ -1,6 +1,6 @@
 import type { ResourceId } from "../../../../db/resources-db";
 import type { ResourceAmount } from "../../../../db/resources-db";
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { MapRunState } from "../../active-map/map/MapRunState";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { BonusesModule } from "../bonuses/bonuses.module";

@@ -1,6 +1,6 @@
-import { DataBridge } from "../../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../../core/DataBridgeHelpers";
-import type { BridgeKey, BridgeValue } from "../../../../core/BridgeSchema";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
+import type { BridgeKey, BridgeValue } from "@/core/logic/ui/BridgeSchema";
 import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import type { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 

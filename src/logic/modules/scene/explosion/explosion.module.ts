@@ -1,4 +1,4 @@
-import { GameModule } from "../../../core/types";
+import { GameModule } from "@core/logic/types";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
 import { ExplosionConfig, ExplosionType, getExplosionConfig } from "../../../../db/explosions-db";
 import type {

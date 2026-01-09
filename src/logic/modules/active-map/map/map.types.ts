@@ -1,6 +1,6 @@
 import { SkillId } from "../../../../db/skills-db";
-import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { GameModule } from "@core/logic/types";
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BricksModule } from "../bricks/bricks.module";
@@ -105,7 +105,7 @@ export interface MapModuleUiApi {
   ): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     map: MapModuleUiApi;
   }

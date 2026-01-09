@@ -1,6 +1,6 @@
-import { GameModule } from "../../../core/types";
-import type { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { GameModule } from "@core/logic/types";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { PLAYER_UNIT_TYPES, PlayerUnitType, isPlayerUnitType } from "../../../../db/player-units-db";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { NecromancerResourceSnapshot } from "../necromancer/necromancer.types";

@@ -1,5 +1,5 @@
-import { ServiceContainer } from "../../../core/ServiceContainer";
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceContainer } from "@/core/logic/engine/ServiceContainer";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { PlayerUnitsModule } from "../../active-map/player-units/player-units.module";
 import { FireballModule } from "./fireball.module";
 

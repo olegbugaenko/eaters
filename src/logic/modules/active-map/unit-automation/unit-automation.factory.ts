@@ -1,5 +1,5 @@
 import { SkillId } from "../../../../db/skills-db";
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { MapModule } from "../map/map.module";
 import { PlayerUnitsModule } from "../player-units/player-units.module";
 import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";

@@ -1,6 +1,6 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { BaseGameModule } from "../../../core/BaseGameModule";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { BaseGameModule } from "@/core/logic/engine/BaseGameModule";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import {
   PLAYER_UNIT_TYPES,
   PlayerUnitType,

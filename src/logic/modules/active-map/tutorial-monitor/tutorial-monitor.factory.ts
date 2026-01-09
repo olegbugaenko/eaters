@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { TutorialMonitorModule } from "./tutorial-monitor.module";
 
 export const createTutorialMonitorDefinition = (): ServiceDefinition<

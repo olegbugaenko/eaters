@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { PlayerUnitType } from "../../../../db/player-units-db";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { UnitDesignId } from "../../camp/unit-design/unit-design.types";
@@ -54,7 +54,7 @@ export interface UnitAutomationModuleUiApi {
   setAutomationWeight(designId: UnitDesignId, weight: number): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     unitAutomation: UnitAutomationModuleUiApi;
   }

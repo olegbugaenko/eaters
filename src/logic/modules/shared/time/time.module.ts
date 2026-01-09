@@ -1,6 +1,6 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
-import { GameModule } from "../../../core/types";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
+import { GameModule } from "@core/logic/types";
 
 const BRIDGE_KEY = "time-played";
 

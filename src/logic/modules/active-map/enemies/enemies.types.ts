@@ -3,7 +3,7 @@ import type {
   SceneStroke,
   SceneVector2,
 } from "../../../services/scene-object-manager/scene-object-manager.types";
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";

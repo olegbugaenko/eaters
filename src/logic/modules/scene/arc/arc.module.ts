@@ -1,4 +1,4 @@
-import { GameModule } from "../../../core/types";
+import { GameModule } from "@core/logic/types";
 import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
 import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";

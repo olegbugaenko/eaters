@@ -1,6 +1,6 @@
-import { GameModule } from "../../../core/types";
-import type { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { GameModule } from "@core/logic/types";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { parseLevelsRecordFromSaveData } from "../../../helpers/save-data.helper";
 import {
   SKILL_IDS,

@@ -1,4 +1,4 @@
-import { GameModule } from "./types";
+import { GameModule } from "../types";
 
 /**
  * Базовий клас для модулів з підтримкою listeners.

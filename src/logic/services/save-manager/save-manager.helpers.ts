@@ -1,4 +1,4 @@
-import type { StoredSaveData } from "../../core/types";
+import type { StoredSaveData } from "@core/logic/types";
 
 /**
  * Extracts time played from save data.

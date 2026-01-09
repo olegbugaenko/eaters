@@ -1,4 +1,4 @@
-import { StateFactory } from "../../../core/factories/StateFactory";
+import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import { BuildingId, getBuildingConfig } from "../../../../db/buildings-db";
 import { ResourceStockpile, normalizeResourceAmount } from "../../../../db/resources-db";
 import { BuildingWorkshopItemState } from "./buildings.types";

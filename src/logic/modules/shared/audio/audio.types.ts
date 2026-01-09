@@ -20,7 +20,7 @@ export interface AudioModuleUiApi {
   playPlaylist(playlistId: string): void;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@/core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     audio: AudioModuleUiApi;
   }

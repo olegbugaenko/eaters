@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { AchievementsModule } from "./achievements.module";
 
 export const createAchievementsDefinition = (): ServiceDefinition<AchievementsModule, "achievements"> => ({

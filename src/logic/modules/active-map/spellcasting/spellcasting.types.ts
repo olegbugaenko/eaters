@@ -1,6 +1,6 @@
 import type { SpellConfig, SpellId, SpellDamageConfig } from "../../../../db/spells-db";
 import type { ResourceAmountMap } from "@shared/types/resources";
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
@@ -67,7 +67,7 @@ export interface SpellcastingModuleUiApi {
   tryCastSpell(spellId: SpellId, rawTarget: SceneVector2): boolean;
 }
 
-declare module "@/logic/core/ui/ui-api.registry" {
+declare module "@core/logic/ui/ui-api.registry" {
   interface LogicUiApiRegistry {
     spellcasting: SpellcastingModuleUiApi;
   }
