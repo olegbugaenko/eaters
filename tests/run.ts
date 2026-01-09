@@ -17,6 +17,7 @@ if (originalResolve) {
   const aliasRoot = path.resolve(__dirname, "../src");
   const aliases: Record<string, string> = {
     "@": aliasRoot,
+    "@core": path.join(aliasRoot, "core"),
     "@ui": path.join(aliasRoot, "ui"),
     "@screens": path.join(aliasRoot, "ui", "screens"),
     "@ui-shared": path.join(aliasRoot, "ui", "shared"),
