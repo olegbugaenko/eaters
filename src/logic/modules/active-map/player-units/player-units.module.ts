@@ -240,6 +240,7 @@ export class PlayerUnitsModule implements GameModule {
     });
 
     this.statusEffects.registerUnitAdapter({
+      hasUnit: (unitId) => this.units.has(unitId),
       applyOverlay: (unitId, effectId, target, overlay) => {
         const unit = this.units.get(unitId);
         if (!unit) {
@@ -814,12 +815,12 @@ export class PlayerUnitsModule implements GameModule {
     if (unit.hp <= 0) {
       this.statistics?.recordCreatureDeath();
     }
+    this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     this.scene.removeObject(unit.objectId);
     this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.arcs?.clearArcsForUnit(unit.id);
-    this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
@@ -829,10 +830,10 @@ export class PlayerUnitsModule implements GameModule {
     this.abilities.clearArcEffects();
     this.effects?.clearAllEffects();
     this.unitOrder.forEach((unit) => {
+      this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
       this.scene.removeObject(unit.objectId);
       this.movement.removeBody(unit.movementId);
       this.arcs?.clearArcsForUnit(unit.id);
-      this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     });
     this.unitOrder = [];
     this.units.clear();

@@ -27,6 +27,7 @@ export interface StatusEffectApplicationOptions {
 }
 
 export interface StatusEffectUnitAdapter {
+  readonly hasUnit: (unitId: string) => boolean;
   readonly applyOverlay: (
     unitId: string,
     effectId: string,
