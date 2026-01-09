@@ -682,8 +682,16 @@ export class PlayerUnitsModule implements GameModule {
       this.statusEffects.handleTargetHit({ type: "unit", id: unitId });
       
       // Apply knockback from enemy attack if configured
-      if (options?.knockBackDirection && (options.knockBackDistance ?? 0) > 0) {
-        this.applyEnemyKnockBack(unit, options.knockBackDirection, options.knockBackDistance ?? 0, options.knockBackSpeed ?? 0);
+      if (
+        options?.knockBackDirection &&
+        ((options.knockBackDistance ?? 0) > 0 || (options.knockBackSpeed ?? 0) > 0)
+      ) {
+        this.applyEnemyKnockBack(
+          unit,
+          options.knockBackDirection,
+          options.knockBackDistance ?? 0,
+          options.knockBackSpeed ?? 0,
+        );
       }
     }
     return previousHp - unit.hp;
