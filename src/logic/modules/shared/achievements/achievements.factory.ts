@@ -9,4 +9,5 @@ export const createAchievementsDefinition = (): ServiceDefinition<AchievementsMo
       bonuses: container.get("bonuses"),
     }),
   registerAsModule: true,
+  dependsOn: ["bonuses"],
 });

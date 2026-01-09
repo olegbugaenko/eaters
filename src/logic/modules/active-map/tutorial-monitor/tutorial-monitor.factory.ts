@@ -14,4 +14,5 @@ export const createTutorialMonitorDefinition = (): ServiceDefinition<
       runState: container.get("mapRunState"),
     }),
   registerAsModule: true,
+  dependsOn: ["necromancer", "resources"],
 });

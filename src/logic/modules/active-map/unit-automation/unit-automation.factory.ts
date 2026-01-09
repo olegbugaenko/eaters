@@ -19,4 +19,5 @@ export const createUnitAutomationDefinition = (): ServiceDefinition<UnitAutomati
       isRunActive: () => container.get<MapModule>("map")?.isRunActive() ?? false,
     }),
   registerAsModule: true,
+  dependsOn: ["necromancer", "unitDesign", "playerUnits", "skillTree"],
 });

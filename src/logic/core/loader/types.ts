@@ -13,6 +13,7 @@ export interface ServiceDefinition<
   factory: (container: ServiceContainer<TServices>) => TInstance;
   registerAsModule?: boolean;
   onReady?: BivariantCallback<[instance: TInstance, container: ServiceContainer<TServices>], void>;
+  dependsOn?: readonly string[];
 }
 
 export type ServiceDefinitionList = readonly ServiceDefinition<any, string, any>[];

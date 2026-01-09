@@ -12,4 +12,5 @@ export const createDamageDefinition = (): ServiceDefinition<DamageService, "dama
       targeting: container.get("targeting"),
     }),
   registerAsModule: false,
+  dependsOn: ["explosion", "targeting"],
 });

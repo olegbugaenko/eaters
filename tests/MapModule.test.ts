@@ -967,9 +967,14 @@ describe("Last played map tracking", () => {
     mapModuleRef = maps;
 
     maps.initialize();
-    // Start with the default training map
+    // Start with the default tutorial map
     maps.restartSelectedMap();
     maps.recordRunResult({ success: true, durationMs: 5000 });
+
+    // Unlock training grounds and then play Foundations
+    maps.selectMap("trainingGrounds");
+    maps.restartSelectedMap();
+    maps.recordRunResult({ success: true, durationMs: 4800 });
 
     // Unlock and play Foundations
     maps.selectMap("foundations");

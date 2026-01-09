@@ -42,4 +42,18 @@ export const createPlayerUnitsDefinition = (
       statistics: container.get("statistics"),
     }),
   registerAsModule: true,
+  dependsOn: [
+    "bricks",
+    "bonuses",
+    "explosion",
+    "statusEffects",
+    "unitProjectiles",
+    "targeting",
+    "damage",
+    "enemies",
+    "unitDesign",
+    "unitModuleWorkshop",
+    "skillTree",
+    "statistics",
+  ],
 });

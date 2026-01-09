@@ -10,4 +10,5 @@ export const createBulletDefinition = (): ServiceDefinition<BulletModule, "bulle
       runState: container.get("mapRunState"),
     }),
   registerAsModule: true,
+  dependsOn: ["explosion"],
 });
