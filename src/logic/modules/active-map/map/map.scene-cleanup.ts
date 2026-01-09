@@ -1,4 +1,4 @@
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { arcGpuRenderer } from "../../../../ui/renderers/primitives/gpu/arc";
 import { particleEmitterGpuRenderer } from "../../../../ui/renderers/primitives/gpu/particle-emitter";
 import { explosionWaveGpuRenderer } from "../../../../ui/renderers/primitives/gpu/explosion-wave";

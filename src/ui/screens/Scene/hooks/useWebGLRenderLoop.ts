@@ -1,7 +1,7 @@
-import type { SceneUiApi } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { setSceneTimelineTimeMs } from "@ui/renderers/primitives/utils/sceneTimeline";
-import type { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 /**
  * Callback called before scene update (flushChanges, applyChanges, syncBuffers)

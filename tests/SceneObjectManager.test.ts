@@ -2,9 +2,9 @@ import assert from "assert";
 import {
   SceneRadialGradientFill,
   SceneLinearGradientFill,
-} from "../src/logic/services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
-import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
+} from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { describe, test } from "./testRunner";
 
 describe("SceneObjectManager fill handling", () => {

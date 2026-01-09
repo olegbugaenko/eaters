@@ -1,12 +1,12 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { PlayerUnitsModule } from "../src/logic/modules/active-map/player-units/player-units.module";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import { normalizeVector } from "../src/shared/helpers/vector.helper";
-import { MovementService } from "../src/logic/services/movement/MovementService";
+import { MovementService } from "../src/core/logic/provided/services/movement/MovementService";
 import { MapModule } from "../src/logic/modules/active-map/map/map.module";
 import {
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,

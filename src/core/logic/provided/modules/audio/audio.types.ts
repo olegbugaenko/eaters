@@ -16,7 +16,7 @@ export interface AudioModuleOptions {
 }
 
 export interface AudioModuleUiApi {
-  applyPercentageSettings(settings: import("../../../utils/audioSettings").AudioSettingsPercentages): void;
+  applyPercentageSettings(settings: import("../../../../../logic/utils/audioSettings").AudioSettingsPercentages): void;
   playPlaylist(playlistId: string): void;
 }
 

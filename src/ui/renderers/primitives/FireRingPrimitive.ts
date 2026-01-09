@@ -1,4 +1,4 @@
-import { SceneColor, SceneObjectInstance } from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneColor, SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { DynamicPrimitive } from "../objects/ObjectRenderer";
 import { ensureColorAlpha } from "@shared/helpers/scene-color.helper";
 import {

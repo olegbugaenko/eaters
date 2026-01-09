@@ -7,7 +7,7 @@ import { VoidCampScreen } from "@screens/VoidCamp/VoidCampScreen";
 import { CampTabKey } from "@screens/VoidCamp/components/CampContent/CampContent";
 import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
 import { SceneTutorialConfig } from "./ui/screens/Scene/components/overlay/SceneTutorialOverlay";
-import { SaveSlotSummary } from "./logic/services/save-manager/SaveManager";
+import { SaveSlotSummary } from "@core/logic/provided/services/save-manager/SaveManager";
 import { readStoredAudioSettings } from "@logic/utils/audioSettings";
 
 type Screen = "save-select" | "void-camp" | "scene";

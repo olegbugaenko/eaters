@@ -13,7 +13,7 @@
  * - Particles store their visual parameters (color, fade, etc.) in per-particle attributes
  */
 
-import type { SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 // Per-particle state (matches simulation shader layout)
 const PARTICLE_STATE_COMPONENTS = 8; // position(2) + velocity(2) + age + lifetime + size + isActive

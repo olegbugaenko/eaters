@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import {
   ResourcesModule,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,

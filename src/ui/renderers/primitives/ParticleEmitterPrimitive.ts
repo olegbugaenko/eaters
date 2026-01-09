@@ -8,14 +8,14 @@ import {
   SceneLinearGradientFill,
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   cloneSceneFill,
 } from "@shared/helpers/scene-fill.helper";
 import { ParticleEmitterShape } from "@/logic/services/particles/ParticleEmitterShared";
 import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
-import { createSolidFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import {
   DynamicPrimitive,
   FILL_COMPONENTS,

@@ -1,7 +1,7 @@
 import type {
   SceneSize,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { isPassableFor, type PassabilityTag } from "./passability.types";
 import type { ObstacleDescriptor, ObstacleProvider } from "./navigation.types";

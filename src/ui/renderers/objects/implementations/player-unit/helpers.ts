@@ -5,12 +5,12 @@ import type {
   SceneFill,
   SceneStroke,
   SceneSolidFill,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
-import { createSolidFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import type {
   PlayerUnitRendererConfig,
   PlayerUnitRendererLayerConfig,

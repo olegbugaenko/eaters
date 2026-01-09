@@ -5,7 +5,7 @@
  * Unified API: extends GpuBatchRenderer for consistent lifecycle and slot management
  */
 
-import type { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { GpuBatchRenderer, type SlotHandle } from "../../core/GpuBatchRenderer";
 import { compileProgram, UNIT_QUAD_STRIP } from "../../core/BaseGpuPrimitive";
 import type {

@@ -1,5 +1,5 @@
 import { TO_CLIP_GLSL } from "../../../shaders/common.glsl";
-import type { SceneColor } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BulletVisualConfig } from "./bullet.types";
 
 export const DEFAULT_BATCH_CAPACITY = 256;

@@ -1,7 +1,7 @@
 import assert from "assert";
-import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
-import type { SceneRadialGradientFill } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneRadialGradientFill } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   ExplosionModule,
   ExplosionRendererCustomData,

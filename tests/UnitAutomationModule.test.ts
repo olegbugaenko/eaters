@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,

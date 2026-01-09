@@ -4,7 +4,7 @@ import type {
   SceneFillNoise,
   SceneGradientStop,
   SceneRadialGradientFill,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ExplosionConfig } from "../../../../db/explosions-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import {

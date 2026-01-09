@@ -1,6 +1,6 @@
-import { SceneObjectManager } from "../../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "../../../../services/scene-object-manager/scene-object-manager.types";
-import { MovementService, MovementBodyState } from "../../../../services/movement/MovementService";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { MovementService, MovementBodyState } from "@core/logic/provided/services/movement/MovementService";
 import { BricksModule } from "../../bricks/bricks.module";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import { TargetingService } from "../../targeting/TargetingService";

@@ -1,7 +1,7 @@
 import {
   SceneObjectInstance,
   SceneVector2,
-} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export const POSITION_COMPONENTS = 2;
 export const FILL_INFO_COMPONENTS = 4;

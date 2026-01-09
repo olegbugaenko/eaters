@@ -1,4 +1,4 @@
-import { SceneSize } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneSize } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { BrickType } from "@db/bricks-db";
 
 export const MAP_SIZE: SceneSize = { width: 2400, height: 1650 };

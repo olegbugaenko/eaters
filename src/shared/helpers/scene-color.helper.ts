@@ -1,5 +1,5 @@
-import type { SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { DEFAULT_COLOR } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 
 /**

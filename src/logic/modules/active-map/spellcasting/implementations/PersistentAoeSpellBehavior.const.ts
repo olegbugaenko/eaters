@@ -1,4 +1,4 @@
-import type { SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export const MIN_DURATION_MS = 16;
 export const DEFAULT_GLOW_COLOR: SceneColor = { r: 1, g: 0.45, b: 0.15, a: 0.9 };

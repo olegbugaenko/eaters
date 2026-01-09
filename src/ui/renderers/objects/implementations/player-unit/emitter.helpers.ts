@@ -1,4 +1,4 @@
-import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterParticleState, GpuSpawnConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";

@@ -4,7 +4,7 @@ import {
   DynamicPrimitive,
   DynamicPrimitiveUpdate,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   createDynamicPolygonPrimitive,
   createDynamicPolygonStrokePrimitive,

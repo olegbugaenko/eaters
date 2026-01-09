@@ -2,7 +2,7 @@ import { BrickType, getBrickConfig } from "./bricks-db";
 import {
   SceneSize,
   SceneVector2,
-} from "../logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitType } from "./player-units-db";
 import type { EnemyType } from "./enemies-db";
 import type { EnemySpawnData } from "../logic/modules/active-map/enemies/enemies.types";

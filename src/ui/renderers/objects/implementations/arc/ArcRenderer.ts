@@ -2,7 +2,7 @@ import { getArcConfig, ArcType } from "../../../../../db/arcs-db";
 import type {
   SceneObjectInstance,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { DynamicPrimitive, ObjectRegistration, ObjectRenderer } from "../../ObjectRenderer";
 import { getParticleEmitterGlContext } from "../../../primitives/utils/gpuContext";
 import {

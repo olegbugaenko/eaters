@@ -2,7 +2,7 @@ import { ObjectRenderer, ObjectRegistration } from "../../ObjectRenderer";
 import type {
   SceneFill,
   SceneObjectInstance,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { createDynamicRectanglePrimitive } from "../../../primitives";
 import { hasStroke, createStrokeFill, expandSize } from "./helpers";
 

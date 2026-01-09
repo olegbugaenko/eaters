@@ -2,7 +2,7 @@ import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visu
 import type {
   SceneObjectInstance,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   normalizeAngle,
   sanitizeAngle,
@@ -15,7 +15,7 @@ import {
 } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
 import { randomBetween } from "@shared/helpers/numbers.helper";
-import { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { DEFAULT_COLOR } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ExplosionEmitterRenderConfig, ExplosionEmitterConfigCache } from "./types";
 
 /**

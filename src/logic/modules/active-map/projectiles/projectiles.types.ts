@@ -1,4 +1,4 @@
-import type { SceneVector2, SceneFill, SceneColor } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2, SceneFill, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { TargetType } from "../targeting/targeting.types";
 import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";

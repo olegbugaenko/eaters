@@ -1,8 +1,8 @@
 import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
-import { createSolidFill, cloneStroke } from "../../../services/scene-object-manager/scene-object-manager.helpers";
-import { DEFAULT_COLOR } from "../../../services/scene-object-manager/scene-object-manager.const";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneFill, SceneStroke } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { createSolidFill, cloneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
+import { DEFAULT_COLOR } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneFill, SceneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
@@ -18,7 +18,7 @@ import {
 } from "./enemies.helpers";
 import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import { cloneResourceStockpile, normalizeResourceAmount } from "../../../../db/resources-db";
-import type { MovementService } from "../../../services/movement/MovementService";
+import type { MovementService } from "@core/logic/provided/services/movement/MovementService";
 
 export interface EnemyStateInput {
   readonly enemyId: string;

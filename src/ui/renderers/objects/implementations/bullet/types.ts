@@ -1,5 +1,5 @@
 import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
-import type { SceneColor, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterBaseConfig } from "../../../primitives/ParticleEmitterPrimitive";
 
 export interface BulletTailRenderConfig {

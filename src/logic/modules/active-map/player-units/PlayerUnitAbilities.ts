@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { AbilityVisualService } from "./abilities/AbilityVisualService";
 import type { AbilitySoundId } from "./abilities/ability.types";
 import {
@@ -19,7 +19,7 @@ import {
   DEFAULT_PHEROMONE_IDLE_THRESHOLD_SECONDS,
 } from "./abilities/ability.const";
 import { UnitProjectileController } from "../projectiles/ProjectileController";
-import type { SoundEffectPlayer } from "../../shared/audio/audio.types";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 // Re-export for backward compatibility

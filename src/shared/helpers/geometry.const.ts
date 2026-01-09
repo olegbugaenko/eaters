@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 /**
  * Tau constant (2 * PI).

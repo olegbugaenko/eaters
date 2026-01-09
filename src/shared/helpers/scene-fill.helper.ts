@@ -1,4 +1,4 @@
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type {
   SceneColor,
   SceneDiamondGradientFill,
@@ -10,7 +10,7 @@ import type {
   SceneRadialGradientFill,
   SceneSolidFill,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { tintSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 

@@ -4,13 +4,13 @@ import {
   scaleVector,
   addVectors,
   subtractVectors,
-} from "../../../shared/helpers/vector.helper";
+} from "@shared/helpers/vector.helper";
 import type {
   MovementBodyOptions,
   MovementBodyState,
   InternalMovementBodyState,
 } from "./movement.types";
-import { ZERO_VECTOR } from "../../../shared/helpers/geometry.const";
+import { ZERO_VECTOR } from "@shared/helpers/geometry.const";
 import { clampPositive } from "./movement.helpers";
 
 export class MovementService {

@@ -3,9 +3,9 @@ import {
   SceneVector2,
   SceneStroke,
   SceneFill,
-} from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import type { SceneUiApi } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { getBrickConfig } from "@db/bricks-db";
 import { getPlayerUnitConfig } from "@db/player-units-db";
 import type { UnitModuleId } from "@db/unit-modules-db";

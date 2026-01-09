@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { BrickRuntimeState } from "../bricks/bricks.types";
 import type {

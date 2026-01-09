@@ -6,8 +6,8 @@ import {
 } from "../SpellBehavior";
 import {
   SceneObjectManager,
-} from "../../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2, SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { BricksModule } from "../../bricks/bricks.module";
 import type { BrickEffectTint, BrickRuntimeState } from "../../bricks/bricks.types";
 import type { ParticleEmitterConfig } from "../../../../interfaces/visuals/particle-emitters-config";

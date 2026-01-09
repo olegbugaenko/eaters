@@ -3,8 +3,8 @@ import {
   SceneObjectInstance,
   SceneVector2,
   SceneStroke,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   DynamicPrimitive,
   StaticPrimitive,

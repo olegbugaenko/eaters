@@ -1,7 +1,7 @@
 import assert from "assert";
-import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
-import type { SceneRadialGradientFill } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneRadialGradientFill } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { BulletModule } from "../src/logic/modules/active-map/bullet/bullet.module";
 import { ExplosionModule, SpawnExplosionByTypeOptions } from "../src/logic/modules/scene/explosion/explosion.module";
 import { getBulletConfig } from "../src/db/bullets-db";

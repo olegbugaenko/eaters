@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { TargetingFilter, TargetingProvider } from "../targeting/targeting.types";
 import type { PlayerUnitsModule } from "./player-units.module";
 import type { PlayerUnitState } from "./units/UnitTypes";

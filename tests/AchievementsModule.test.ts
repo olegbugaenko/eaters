@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { AchievementsModule } from "../src/logic/modules/shared/achievements/achievements.module";
 import type { MapStats } from "../src/logic/modules/active-map/map/map.types";

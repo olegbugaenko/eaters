@@ -4,6 +4,7 @@ import { ServiceDefinition, ServiceLookup } from "./engine/loader/types";
 import { BootstrapDefinitionList, createBootstrapDefinitions } from "./engine/loader/bootstrap";
 import { createModuleDefinitions } from "@/core/logic/engine/module-definitions";
 import { createModuleDefinitionContext } from "@/core/logic/engine/module-definitions/context";
+import { registerModuleDefinitions } from "@/logic/engine/module-definitions/registry";
 import { GameModule, SaveSlotId, StoredSaveData } from "./types";
 import { AudioSettingsPercentages } from "@logic/utils/audioSettings";
 import { createServiceLookup } from "./engine/loader/createServiceLookup";
@@ -11,7 +12,7 @@ import { MapId } from "../../db/maps-db";
 import { DEFAULT_MODULE_CONFIG } from "@logic/config/modules";
 import { ModuleRegistryConfig } from "./engine/ModuleRegistry";
 import { MapModule } from "@logic/modules/active-map/map/map.module";
-import { AudioModule } from "@logic/modules/shared/audio/audio.module";
+import { AudioModule } from "@/core/logic/provided/modules/audio/audio.module";
 import { UiApiProvider } from "./ui/UiApiProvider";
 import type { UiApiProxy } from "@shared/core/types/ui-api";
 import type { LogicUiApiRegistry } from "@core/logic/ui/ui-api.registry";
@@ -52,7 +53,11 @@ export class Application {
   }
 
   private createModuleDefinitions(): ModuleDefinitionList {
-    return createModuleDefinitions(createModuleDefinitionContext(), this.moduleConfig);
+    return createModuleDefinitions(
+      createModuleDefinitionContext(),
+      this.moduleConfig,
+      registerModuleDefinitions,
+    );
   }
 
   private buildDefinitions(moduleDefinitions: ModuleDefinitionList): ApplicationDefinitionList {

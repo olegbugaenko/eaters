@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
-import type { SceneVector2, SceneUiApi } from "@logic/services/scene-object-manager/scene-object-manager.types";
-import type { GameLoopUiApi } from "@logic/services/game-loop/game-loop.types";
-import { TICK_INTERVAL } from "@logic/services/game-loop/game-loop.const";
+import type { SceneVector2, SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
+import { TICK_INTERVAL } from "@core/logic/provided/services/game-loop/game-loop.const";
 import { getAllActiveBullets } from "@ui/renderers/primitives/gpu/bullet/BulletGpuRenderer";
 import { clamp } from "@shared/helpers/numbers.helper";
 

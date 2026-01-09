@@ -3,7 +3,7 @@ import {
   ObjectRegistration,
   ObjectRenderer,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { createDynamicCirclePrimitive } from "../../../primitives";
 import { createParticleEmitterPrimitive } from "../../../primitives/ParticleEmitterPrimitive";
 import { DEFAULT_PORTAL_FILL, DEFAULT_PORTAL_RADIUS, DEFAULT_PORTAL_SEGMENTS } from "./constants";

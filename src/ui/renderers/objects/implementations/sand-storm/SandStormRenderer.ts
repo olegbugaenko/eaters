@@ -3,7 +3,7 @@ import {
   ObjectRegistration,
   DynamicPrimitive,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { whirlGpuRenderer, type WhirlInstance, type WhirlSlotHandle } from "../../../primitives/gpu/whirl";
 import { ensureBatch, acquireSlot } from "./batch.helpers";
 import { computeInterpolatedState } from "./interpolation.helpers";

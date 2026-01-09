@@ -2,7 +2,7 @@ import {
   SceneObjectInstance,
   SceneVector2,
   SceneSize,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   DynamicPrimitive,
   StaticPrimitive,
@@ -10,7 +10,7 @@ import {
   POSITION_COMPONENTS,
   FILL_INFO_COMPONENTS,
 } from "../../objects/ObjectRenderer";
-import { createSpriteFill } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+import { createSpriteFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import {
   createFillVertexComponents,
   copyFillComponents,

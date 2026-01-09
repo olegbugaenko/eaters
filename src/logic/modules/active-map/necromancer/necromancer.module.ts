@@ -8,8 +8,8 @@ import {
   PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
 } from "../../../../db/player-units-db";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ResourceAmountMap } from "@shared/types/resources";
 import { normalizeResourceCost } from "@shared/const/resources.const";
 import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";

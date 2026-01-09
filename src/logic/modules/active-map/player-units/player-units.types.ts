@@ -1,11 +1,11 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { PlayerUnitType } from "../../../../db/player-units-db";
 import type { UnitModuleId } from "../../../../db/unit-modules-db";
 import type { PlayerUnitRuntimeModifiers } from "@shared/types/player-units";
 import type { UnitDesignId } from "../../camp/unit-design/unit-design.types";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { DataBridge } from "@/core/logic/ui/DataBridge";
-import type { MovementService } from "../../../services/movement/MovementService";
+import type { MovementService } from "@core/logic/provided/services/movement/MovementService";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";

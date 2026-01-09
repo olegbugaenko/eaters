@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { SkillId } from "../../../../../db/skills-db";
 import type { UnitModuleConfig, UnitModuleId } from "../../../../../db/unit-modules-db";
 import type { PlayerUnitAbilityState } from "./AbilityUnitState";

@@ -9,7 +9,7 @@
  * 2. GPU Primitives - Use WebGL2 instanced rendering with GPU-side computations
  */
 
-import type { SceneObjectInstance, SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance, SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 // ============================================================================
 // Base Primitive Interface

@@ -16,7 +16,7 @@ import {
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
 } from "../objects";
-import type { SceneCameraState } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
