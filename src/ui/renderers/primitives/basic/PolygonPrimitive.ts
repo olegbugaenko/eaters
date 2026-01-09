@@ -420,7 +420,7 @@ export const createDynamicPolygonPrimitive = (
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   
-  // For refreshFill: cache the resolved fill and track instance.data.fill reference
+  // Cache the resolved fill and track instance.data.fill reference for refreshFill
   let cachedFill: SceneFill = resolveFill(options, instance);
   let prevInstanceFillRef: SceneFill | undefined = hasRefreshFill ? instance.data.fill : undefined;
   
@@ -445,14 +445,6 @@ export const createDynamicPolygonPrimitive = (
     update(target: SceneObjectInstance) {
       const pos = target.data.position;
       const nextRotation = target.data.rotation ?? 0;
-      
-      // Check if instance.data.fill reference changed (visual effect applied)
-      let fillRefChanged = false;
-      if (hasRefreshFill && target.data.fill !== prevInstanceFillRef) {
-        prevInstanceFillRef = target.data.fill;
-        cachedFill = options.refreshFill!(target);
-        fillRefChanged = true;
-      }
       
       // Fast path: skip expensive computations if nothing changed
       // For static vertices/fill, only position and rotation matter
@@ -481,6 +473,14 @@ export const createDynamicPolygonPrimitive = (
       
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
       // Reuse a single scratch buffer to avoid per-frame allocations
+      // Check if fill reference changed (visual effect applied)
+      let fillRefChanged = false;
+      if (hasRefreshFill && target.data.fill !== prevInstanceFillRef) {
+        prevInstanceFillRef = target.data.fill;
+        cachedFill = options.refreshFill!(target);
+        fillRefChanged = true;
+      }
+      
       // Skip resolveFill for static fill (unless refreshFill triggered)
       if (!isStaticFill) {
         fillComponents = writeFillVertexComponents(fillScratch, {
@@ -532,6 +532,11 @@ interface DynamicPolygonStrokePrimitiveOptions {
   getVertices?: (instance: SceneObjectInstance) => SceneVector2[];
   stroke: SceneStroke;
   offset?: SceneVector2;
+  /**
+   * Callback to refresh stroke when instance.data.stroke reference changes.
+   * Used for "base" strokes in composite renderers that depend on visual effects.
+   */
+  refreshStroke?: (instance: SceneObjectInstance) => SceneStroke;
 }
 
 // Optimized: fully inlined transform and vertex writing, no function allocations
@@ -818,6 +823,7 @@ export const createDynamicPolygonStrokePrimitive = (
 ): DynamicPrimitive => {
   // Check if vertices are static (not animated)
   const isStaticVertices = !options.getVertices && !!options.vertices;
+  const hasRefreshStroke = typeof options.refreshStroke === "function";
   
   const resolveVerts = (target: SceneObjectInstance): PolygonVertices => {
     if (typeof options.getVertices === "function") {
@@ -836,7 +842,12 @@ export const createDynamicPolygonStrokePrimitive = (
   let geometry = computeGeometry(inner);
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
-  const strokeFill = createStrokeFill(options.stroke);
+  
+  // Track stroke reference for refreshStroke
+  let cachedStroke: SceneStroke = options.stroke;
+  let prevInstanceStrokeRef: SceneStroke | undefined = hasRefreshStroke ? instance.data.stroke : undefined;
+  
+  let strokeFill = createStrokeFill(cachedStroke);
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   let fillComponents = writeFillVertexComponents(fillScratch, {
@@ -845,17 +856,13 @@ export const createDynamicPolygonStrokePrimitive = (
     rotation,
     size: geometry.size,
   });
-  let outer = expandVertices(inner, geometry.centerOffset, options.stroke.width);
+  let outer = expandVertices(inner, geometry.centerOffset, cachedStroke.width);
   let data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
   
   // Cache previous state for static vertices to skip updates when nothing changed
   let prevPosX = instance.data.position.x;
   let prevPosY = instance.data.position.y;
   let prevRotation = rotation;
-  
-  // For solid color strokes, fillComponents don't depend on position/rotation
-  // so we can skip writeFillVertexComponents entirely
-  const isSolidFill = strokeFill.fillType === 0; // FILL_TYPES.SOLID = 0
 
   const primitive: DynamicPrimitive = {
     get data() {
@@ -865,8 +872,18 @@ export const createDynamicPolygonStrokePrimitive = (
       const pos = target.data.position;
       const nextRotation = target.data.rotation ?? 0;
       
-      // Fast path: skip update if position/rotation unchanged and vertices are static
+      // Check if stroke reference changed (visual effect applied)
+      let strokeRefChanged = false;
+      if (hasRefreshStroke && target.data.stroke !== prevInstanceStrokeRef) {
+        prevInstanceStrokeRef = target.data.stroke;
+        cachedStroke = options.refreshStroke!(target);
+        strokeFill = createStrokeFill(cachedStroke);
+        strokeRefChanged = true;
+      }
+      
+      // Fast path: skip update if position/rotation unchanged, vertices are static, and stroke didn't change
       if (isStaticVertices &&
+          !strokeRefChanged &&
           pos.x === prevPosX &&
           pos.y === prevPosY &&
           nextRotation === prevRotation) {
@@ -883,11 +900,12 @@ export const createDynamicPolygonStrokePrimitive = (
       if (!isStaticVertices) {
         inner = resolveVerts(target);
         computeGeometry(inner, geometry);
-        outer = expandVertices(inner, geometry.centerOffset, options.stroke.width, outer);
+        outer = expandVertices(inner, geometry.centerOffset, cachedStroke.width, outer);
       }
       
-      // Skip fill computation for solid fills (color doesn't depend on position)
-      if (!isSolidFill) {
+      // Always update fill components if stroke changed, or for non-solid fills
+      const isSolidFill = strokeFill.fillType === 0;
+      if (strokeRefChanged || !isSolidFill) {
         fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: strokeFill,
@@ -905,9 +923,9 @@ export const createDynamicPolygonStrokePrimitive = (
         return data;
       }
       
-      // For animated vertices, use fast path (no change detection overhead)
-      // For static vertices, use change detection to skip GPU upload when possible
-      if (!isStaticVertices) {
+      // For animated vertices or stroke changes, use fast path (no change detection overhead)
+      // For static vertices without stroke changes, use change detection to skip GPU upload when possible
+      if (!isStaticVertices || strokeRefChanged) {
         updateStrokeBandDataFast(data, origin, rotation, inner, outer, fillComponents);
         return data;
       }

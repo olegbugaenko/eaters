@@ -658,7 +658,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       arcType: "freeze",
       statusEffectId: "freeze",
       statusEffectOptions: {
-        speedMultiplier: 0.5,
+        speedMultiplier: 0.3,
         durationMs: 2000,
       },
     },

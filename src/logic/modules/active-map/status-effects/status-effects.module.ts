@@ -93,6 +93,7 @@ export class StatusEffectsModule implements GameModule {
         instances.forEach((instance) => {
           if (instance.remainingMs !== undefined) {
             instance.remainingMs = Math.max(instance.remainingMs - deltaMs, 0);
+            // console.log('ticking: ', instance.id, instance.remainingMs, effectId);
           }
 
           if (this.shouldTickInstance(instance, config)) {
@@ -158,6 +159,7 @@ export class StatusEffectsModule implements GameModule {
 
     effectsMap.set(effectId, instances);
     this.effectsByTarget.set(targetKey, effectsMap);
+
 
     this.refreshVisualsForTarget(targetKey);
   }
@@ -602,7 +604,8 @@ export class StatusEffectsModule implements GameModule {
       }
       const existing = instances[0];
       if (existing) {
-        existing.remainingMs = durationMs ?? existing.remainingMs;
+        // Always refresh duration when effect is reapplied
+        existing.remainingMs = durationMs ?? config.durationMs ?? existing.remainingMs;
         existing.data.speedMultiplier = Math.min(existing.data.speedMultiplier ?? 1, speedMultiplier);
         return existing;
       }
@@ -684,8 +687,20 @@ export class StatusEffectsModule implements GameModule {
           unitAdapter.applyOverlay(id, effectId, "stroke", null);
           return;
         }
-        const target = overlay.target ?? "fill";
-        unitAdapter.applyOverlay(id, effectId, target, overlay);
+        const targets = Array.isArray(overlay.target)
+          ? overlay.target
+          : [overlay.target ?? "fill"];
+        // Clear targets not in the list
+        if (!targets.includes("fill")) {
+          unitAdapter.applyOverlay(id, effectId, "fill", null);
+        }
+        if (!targets.includes("stroke")) {
+          unitAdapter.applyOverlay(id, effectId, "stroke", null);
+        }
+        // Apply to specified targets
+        targets.forEach((target) => {
+          unitAdapter.applyOverlay(id, effectId, target, overlay);
+        });
       };
 
       if (options?.clearAll || !effectsMap) {
@@ -719,7 +734,8 @@ export class StatusEffectsModule implements GameModule {
         if (effectId === "frenzy" || effectId === "internalFurnace") {
           return;
         }
-        const visual = instances[0]?.visuals?.overlay ?? null;
+        const instance = instances[0];
+        const visual = instance?.visuals?.overlay ?? null;
         applyOverlay(effectId, visual ?? null);
       });
     } else if (type === "brick") {

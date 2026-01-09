@@ -123,6 +123,8 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
         createDynamicPolygonPrimitive(instance, {
           vertices: rendererData.vertices,
           offset: rendererData.offset,
+          // Відстежуємо зміни fill для візуальних ефектів (freeze, burn тощо)
+          refreshFill: (target) => target.data.fill,
         })
       );
     }

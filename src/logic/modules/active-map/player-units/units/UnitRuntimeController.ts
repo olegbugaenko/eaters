@@ -1005,7 +1005,7 @@ export class UnitRuntimeController {
           unit.position,
           scaleVector(knockbackDirection, knockbackDistance)
         );
-        console.log(`[KNOCKBACK] unit=${unit.id} attacking enemy, distance=${distance.toFixed(1)}, knockback=${knockbackDistance}`);
+        // console.log(`[KNOCKBACK] unit=${unit.id} attacking enemy, distance=${distance.toFixed(1)}, knockback=${knockbackDistance}`);
         this.movement.setBodyPosition(unit.movementId, newPosition);
         unit.position = { ...newPosition };
         

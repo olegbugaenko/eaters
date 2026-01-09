@@ -243,6 +243,7 @@ export class PlayerUnitsModule implements GameModule {
       applyOverlay: (unitId, effectId, target, overlay) => {
         const unit = this.units.get(unitId);
         if (!unit) {
+          console.warn('[PlayerUnitsModule applyOverlay] Unit not found:', unitId);
           return;
         }
         const changed =
@@ -251,6 +252,8 @@ export class PlayerUnitsModule implements GameModule {
             : setVisualEffectFillOverlay(unit.visualEffects, effectId, overlay);
         if (changed) {
           unit.visualEffectsDirty = true;
+          // Оновлюємо сцену одразу після зміни візуальних ефектів
+          this.pushUnitSceneState(unit);
         }
       },
       applyAura: (unitId, effectId) => {
@@ -544,6 +547,7 @@ export class PlayerUnitsModule implements GameModule {
         unit.baseFillColor,
         unit.visualEffects
       );
+
       if (!sceneColorsEqual(nextFillColor, unit.appliedFillColor)) {
         const sanitized = cloneSceneColor(nextFillColor);
         unit.appliedFillColor = sanitized;
@@ -554,7 +558,7 @@ export class PlayerUnitsModule implements GameModule {
       }
     }
 
-    if (shouldUpdateStroke && unit.renderer.stroke && unit.baseStrokeColor) {
+    if (shouldUpdateStroke && unit.baseStrokeColor) {
       const nextStrokeColor = computeVisualEffectStrokeColor(
         unit.baseStrokeColor,
         unit.visualEffects
@@ -567,7 +571,7 @@ export class PlayerUnitsModule implements GameModule {
         unit.appliedStrokeColor = sanitizedStroke;
         strokeUpdate = {
           color: cloneSceneColor(sanitizedStroke),
-          width: unit.renderer.stroke.width,
+          width: unit.renderer.stroke?.width ?? 1,
         };
       }
     }
