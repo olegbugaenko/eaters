@@ -9,6 +9,7 @@
   gap: 2rem;
   padding: 1rem 2rem;
   z-index: 20;
+  contain: layout paint;
 }
 
 .scene-toolbar__section {
