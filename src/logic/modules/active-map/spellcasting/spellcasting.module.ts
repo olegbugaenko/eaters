@@ -11,7 +11,8 @@ import {
 } from "../../../../db/spells-db";
 import { SkillId } from "../../../../db/skills-db";
 import { ResourceAmountMap } from "@shared/types/resources";
-import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { MapRunState } from "../map/MapRunState";

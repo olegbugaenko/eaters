@@ -5,13 +5,14 @@ import {
   BonusEffectFormula,
   BonusEffectMap,
   BonusEffectPreview,
-  BonusEffectType,
 } from "@shared/types/bonuses";
 import type {
   BonusValueMap,
   BonusValuesListener,
   SanitizedBonusEffects,
   BonusSourceState,
+  BonusRule,
+  BonusRuleContextInput,
 } from "./bonuses.types";
 import {
   createBonusValueMap,
@@ -19,6 +20,8 @@ import {
   sanitizeEffectValue,
   areBonusMapsEqual,
 } from "./bonuses.helpers";
+import { BONUS_RULES } from "./bonuses.rules";
+import { BonusCalculator } from "./bonuses.calculator";
 
 // Re-export types for backward compatibility
 export type { BonusValueMap, BonusValuesListener } from "./bonuses.types";
@@ -30,6 +33,8 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
   private cachedValues: BonusValueMap = createBonusValueMap((config) => config.defaultValue);
   private dirty = true;
   private effectContext: BonusEffectContext = {};
+  private rules: BonusRule[] = BONUS_RULES;
+  private ruleContext: BonusRuleContextInput = {};
 
   public initialize(): void {
     this.ensureValues();
@@ -87,6 +92,31 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
 
   public setBonusCurrentLevel(sourceId: string, level: number): void {
     this.setSourceLevel(sourceId, level);
+  }
+
+  public setRules(rules: BonusRule[]): void {
+    this.rules = rules;
+    this.markDirty();
+    this.ensureValues();
+    this.notifyListeners();
+  }
+
+  public setRuleContext(context: BonusRuleContextInput): void {
+    const nextProgression = context.progressionKeys ?? [];
+    const nextRuntime = context.runtimeFlags ?? [];
+    if (
+      areListsEqual(this.ruleContext.progressionKeys, nextProgression) &&
+      areListsEqual(this.ruleContext.runtimeFlags, nextRuntime)
+    ) {
+      return;
+    }
+    this.ruleContext = {
+      progressionKeys: [...nextProgression],
+      runtimeFlags: [...nextRuntime],
+    };
+    this.markDirty();
+    this.ensureValues();
+    this.notifyListeners();
   }
 
   public getBonusValue(id: BonusId): number {
@@ -177,41 +207,11 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
       return;
     }
     const previous = this.cachedValues;
-    const incomes = createBonusValueMap(() => 0);
-    const multipliers = createBonusValueMap(() => 1);
-    const baseOverrides = createBonusValueMap(() => Number.NaN);
-
-    this.sources.forEach((source) => {
-      const level = source.level;
-      Object.entries(source.effects).forEach(([bonusId, effectTypes]) => {
-        if (!effectTypes) {
-          return;
-        }
-        const id = bonusId as BonusId;
-        Object.entries(effectTypes).forEach(([effectType, formula]) => {
-          const value = sanitizeEffectValue(formula(level, this.effectContext), effectType);
-          switch (effectType as BonusEffectType) {
-            case "income":
-              incomes[id] += value;
-              break;
-            case "multiplier":
-              multipliers[id] *= value;
-              break;
-            case "base":
-              baseOverrides[id] = value;
-              break;
-            default:
-              incomes[id] += value;
-              break;
-          }
-        });
-      });
-    });
-
-    const next = createBonusValueMap((config, id) => {
-      const override = baseOverrides[id];
-      const base = Number.isNaN(override) ? config.defaultValue : override;
-      return (base + incomes[id]) * multipliers[id];
+    const next = BonusCalculator.calculate({
+      sources: this.sources.values(),
+      effectContext: this.effectContext,
+      rules: this.rules,
+      ruleContext: this.ruleContext,
     });
 
     this.cachedValues = next;
@@ -246,3 +246,13 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
   }
 }
 
+const areListsEqual = (left: string[] | undefined, right: string[] | undefined): boolean => {
+  const leftList = left ?? [];
+  const rightList = right ?? [];
+  if (leftList.length !== rightList.length) {
+    return false;
+  }
+  const leftSorted = [...leftList].sort();
+  const rightSorted = [...rightList].sort();
+  return leftSorted.every((value, index) => value === rightSorted[index]);
+};

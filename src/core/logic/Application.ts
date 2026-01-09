@@ -6,9 +6,7 @@ import { createModuleDefinitions } from "@/core/logic/engine/module-definitions"
 import { createModuleDefinitionContext } from "@/core/logic/engine/module-definitions/context";
 import { registerModuleDefinitions } from "@/logic/engine/module-definitions/registry";
 import { GameModule, SaveSlotId, StoredSaveData } from "./types";
-import { AudioSettingsPercentages } from "@logic/utils/audioSettings";
 import { createServiceLookup } from "./engine/loader/createServiceLookup";
-import { MapId } from "../../db/maps-db";
 import { DEFAULT_MODULE_CONFIG } from "@logic/config/modules";
 import { ModuleRegistryConfig } from "./engine/ModuleRegistry";
 import { MapModule } from "@logic/modules/active-map/map/map.module";
@@ -96,37 +94,9 @@ export class Application {
   public returnToMainMenu(): void {
     const { saveManager, gameLoop } = this.services;
     gameLoop.stop();
-    this.leaveCurrentMap();
+    (this.services.map as MapModule).leaveCurrentMap();
     saveManager.saveActiveSlot();
     saveManager.clearActiveSlot();
-  }
-
-  public restartCurrentMap(): void {
-    (this.services.map as MapModule).restartSelectedMap();
-  }
-
-  public pauseCurrentMap(): void {
-    (this.services.map as MapModule).pauseActiveMap();
-  }
-
-  public resumeCurrentMap(): void {
-    (this.services.map as MapModule).resumeActiveMap();
-  }
-
-  public setAutoRestartEnabled(enabled: boolean): void {
-    (this.services.map as MapModule).setAutoRestartEnabled(enabled);
-  }
-
-  public leaveCurrentMap(): void {
-    (this.services.map as MapModule).leaveCurrentMap();
-  }
-
-  public selectMap(mapId: MapId): void {
-    (this.services.map as MapModule).selectMap(mapId);
-  }
-
-  public selectMapLevel(mapId: MapId, level: number): void {
-    (this.services.map as MapModule).selectMapLevel(mapId, level);
   }
 
   public hasActiveSaveSlot(): boolean {
@@ -139,26 +109,6 @@ export class Application {
 
   public importActiveSave(data: StoredSaveData): void {
     this.services.saveManager.importToActiveSlot(data);
-  }
-
-  public applyAudioSettings(settings: AudioSettingsPercentages): void {
-    const audio = this.services.audio as AudioModule;
-    audio.applyPercentageSettings(settings);
-  }
-
-  public resumeAudio(): void {
-    const audio = this.services.audio as AudioModule;
-    audio.resumeMusic();
-  }
-
-  public playCampPlaylist(): void {
-    const audio = this.services.audio as AudioModule;
-    audio.playPlaylist("camp");
-  }
-
-  public playMapPlaylist(): void {
-    const audio = this.services.audio as AudioModule;
-    audio.playPlaylist("map");
   }
 
   private registerDefinition<TDefinition extends ServiceDefinition<unknown, string, any>>(

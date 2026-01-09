@@ -1,6 +1,6 @@
 import { getPlayerUnitConfig, PlayerUnitType } from "../../../../db/player-units-db";
 import { getBonusConfig } from "../../../../db/bonuses-db";
-import { BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import { clampProbability } from "@shared/helpers/numbers.helper";
 import {

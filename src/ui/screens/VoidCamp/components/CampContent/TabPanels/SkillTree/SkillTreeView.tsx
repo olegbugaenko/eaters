@@ -22,10 +22,8 @@ import {
   SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
 } from "@logic/modules/camp/skill-tree/skill-tree.const";
 import type { SkillTreeModuleUiApi } from "@logic/modules/camp/skill-tree/skill-tree.types";
-import {
-  RESOURCE_TOTALS_BRIDGE_KEY,
-  ResourceAmountPayload,
-} from "@logic/modules/shared/resources/resources.module";
+import { RESOURCE_TOTALS_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import {
   RESOURCE_IDS,
   ResourceId,
