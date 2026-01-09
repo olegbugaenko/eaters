@@ -18,10 +18,12 @@ import type {
 } from "./resources.types";
 import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
-import type { MapRunState } from "../../active-map/map/MapRunState";
-import type { UnlockService } from "../../../services/unlock/UnlockService";
-import type { BonusesModule } from "../bonuses/bonuses.module";
 import type { StatisticsTracker } from "../statistics/statistics.module";
+import type {
+  BonusValueSource,
+  ProgressionSource,
+  RuntimeContextSource,
+} from "@core/logic/provided/services/gameplay-ports";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
@@ -48,9 +50,9 @@ export class ResourcesModule implements GameModule {
   public readonly id = "resources";
 
   private readonly bridge: DataBridge;
-  private readonly unlocks: UnlockService;
-  private readonly bonuses: BonusesModule;
-  private readonly runState: MapRunState;
+  private readonly progression: ProgressionSource;
+  private readonly bonusValues: BonusValueSource;
+  private readonly runtimeContext: RuntimeContextSource;
   private readonly statistics?: StatisticsTracker;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
@@ -66,9 +68,9 @@ export class ResourcesModule implements GameModule {
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
-    this.unlocks = options.unlocks;
-    this.bonuses = options.bonuses;
-    this.runState = options.runState;
+    this.progression = options.progression;
+    this.bonusValues = options.bonusValues;
+    this.runtimeContext = options.runtimeContext;
     this.statistics = options.statistics;
   }
 
@@ -151,7 +153,7 @@ export class ResourcesModule implements GameModule {
   }
 
   private canAdvanceRunClock(): boolean {
-    return this.runState.shouldProcessTick();
+    return this.runtimeContext.shouldProcessTick();
   }
 
   public startRun(): void {
@@ -303,7 +305,7 @@ export class ResourcesModule implements GameModule {
     if (!bonusId) {
       return 0;
     }
-    const value = this.bonuses.getBonusValue(bonusId);
+    const value = this.bonusValues.getBonusValue(bonusId);
     if (typeof value !== "number" || !Number.isFinite(value)) {
       return 0;
     }
@@ -361,7 +363,7 @@ export class ResourcesModule implements GameModule {
       return false;
     }
     this.lastVisibilityRefreshMs = now;
-    this.unlocks.clearCache();
+    this.progression.clearCache();
     const visible = RESOURCE_IDS.filter((id) => this.isResourceUnlocked(id));
     if (areResourceListsEqual(this.visibleResourceIds, visible)) {
       return false;
@@ -377,7 +379,7 @@ export class ResourcesModule implements GameModule {
 
   private isResourceUnlocked(id: ResourceId): boolean {
     const config = getResourceConfig(id);
-    return this.unlocks.areConditionsMet(config.unlockedBy);
+    return this.progression.areConditionsMet(config.unlockedBy);
   }
 
   private parseSaveData(
@@ -398,4 +400,3 @@ export class ResourcesModule implements GameModule {
     };
   }
 }
-

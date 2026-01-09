@@ -11,6 +11,9 @@ import type { ResourceRunSummaryPayload } from "../src/logic/modules/shared/reso
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
+import { BonusesValueAdapter } from "../src/logic/modules/shared/bonuses/bonuses.adapter";
+import { MapRunContextAdapter } from "../src/logic/modules/active-map/map/map-run-context.adapter";
+import { UnlockProgressionAdapter } from "../src/logic/services/unlock/unlock-progression.adapter";
 
 describe("ResourcesModule", () => {
   test("calculates per-second gain rates for run summary", () => {
@@ -23,7 +26,12 @@ describe("ResourcesModule", () => {
     bonuses.initialize();
     const runState = new MapRunState();
     runState.start();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
+    const module = new ResourcesModule({
+      bridge,
+      progression: new UnlockProgressionAdapter(unlocks),
+      bonusValues: new BonusesValueAdapter(bonuses),
+      runtimeContext: new MapRunContextAdapter(runState),
+    });
 
     module.initialize();
     module.startRun();
@@ -56,7 +64,12 @@ describe("ResourcesModule", () => {
     bonuses.setSourceLevel("test", 1);
     const runState = new MapRunState();
     runState.start();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
+    const module = new ResourcesModule({
+      bridge,
+      progression: new UnlockProgressionAdapter(unlocks),
+      bonusValues: new BonusesValueAdapter(bonuses),
+      runtimeContext: new MapRunContextAdapter(runState),
+    });
 
     module.initialize();
     module.startRun();
@@ -84,7 +97,12 @@ describe("ResourcesModule", () => {
     bonuses.initialize();
     const runState = new MapRunState();
     runState.start();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
+    const module = new ResourcesModule({
+      bridge,
+      progression: new UnlockProgressionAdapter(unlocks),
+      bonusValues: new BonusesValueAdapter(bonuses),
+      runtimeContext: new MapRunContextAdapter(runState),
+    });
 
     module.initialize();
 
