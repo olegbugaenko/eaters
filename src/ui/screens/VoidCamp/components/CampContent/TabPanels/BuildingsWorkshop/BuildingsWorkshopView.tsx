@@ -10,6 +10,7 @@ import { Button } from "@ui-shared/Button";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { formatNumber } from "@ui-shared/format/number";
 import "../ModulesWorkshop/ModulesWorkshopView.css";
+import { BuildingsModule } from "@logic/modules/camp/buildings/buildings.module";
 
 type BuildingsWorkshopViewProps = {
   state?: BuildingsWorkshopBridgeState;
@@ -59,7 +60,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   resources,
 }) => {
   const { app } = useAppLogic();
-  const workshop = useMemo(() => app.services.buildings, [app]);
+  const workshop = useMemo(() => app.services.buildings, [app]) as BuildingsModule;
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {

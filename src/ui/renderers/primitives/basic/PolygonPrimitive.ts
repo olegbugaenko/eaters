@@ -477,9 +477,6 @@ export const createDynamicPolygonPrimitive = (
       let fillRefChanged = false;
       if (hasRefreshFill) {
         const fillChanged = target.data.fill !== prevInstanceFillRef;
-        if (target.id.includes('playerUnit') && fillChanged) {
-          console.log('[FILL CHANGED]', target.id, 'prev:', (prevInstanceFillRef as any)?.color, 'new:', (target.data.fill as any)?.color);
-        }
         if (fillChanged) {
           prevInstanceFillRef = target.data.fill;
           cachedFill = options.refreshFill!(target);

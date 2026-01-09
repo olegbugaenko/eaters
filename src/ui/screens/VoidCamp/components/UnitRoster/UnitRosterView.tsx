@@ -5,10 +5,12 @@ import {
   UnitDesignerBridgeState,
   UnitDesignerUnitState,
 } from "@logic/modules/camp/unit-design/unit-design.types";
+import { UnitDesignModule } from "@logic/modules/camp/unit-design/unit-design.module";
 import { Button } from "@ui-shared/Button";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import "./UnitRosterView.css";
+import { UnitAutomationModule } from "@logic/modules/active-map/unit-automation/unit-automation.module";
 
 interface UnitRosterViewProps {
   state: UnitDesignerBridgeState;
@@ -88,8 +90,8 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
   hasEnemyStrategies,
 }) => {
   const { app } = useAppLogic();
-  const designer = useMemo(() => app.services.unitDesign, [app]);
-  const automationModule = useMemo(() => app.services.unitAutomation, [app]);
+  const designer = useMemo(() => app.services.unitDesign, [app]) as UnitDesignModule;
+  const automationModule = useMemo(() => app.services.unitAutomation, [app]) as UnitAutomationModule;
 
   const roster = state.activeRoster;
   const maxSlots = state.maxActiveUnits;

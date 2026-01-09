@@ -11,7 +11,6 @@ export interface ServiceDefinition<
 > {
   token: TToken;
   factory: (container: ServiceContainer<TServices>) => TInstance;
-  dependsOn?: readonly string[];
   registerAsModule?: boolean;
   onReady?: BivariantCallback<[instance: TInstance, container: ServiceContainer<TServices>], void>;
   dependsOn?: readonly string[];
