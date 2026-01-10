@@ -322,6 +322,7 @@ export class BricksModule implements GameModule {
       this.applyBrickKnockback(brick, hitDirection);
     }
     const nextDamageStage = resolveBrickDamageStage(brick.hp, brick.maxHp);
+    console.log('DMG_STATE: ', nextDamageStage, brick.damageStage);
     if (nextDamageStage !== brick.damageStage) {
       brick.damageStage = nextDamageStage;
       this.updateBrickSceneObject(brick, brick.knockback?.currentOffset ?? ZERO_VECTOR, {

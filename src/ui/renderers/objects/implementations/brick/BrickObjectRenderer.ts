@@ -71,6 +71,7 @@ export class BrickObjectRenderer extends ObjectRenderer {
             strength: crackStrength,
             desat: 1,
           });
+          console.log('CRACK_FILL REGENERATE: ', cachedFill, damageStage, crackVariant, baseFill);
           cachedDamageStage = damageStage;
           cachedCrackVariant = crackVariant;
           cachedBaseFill = baseFill;

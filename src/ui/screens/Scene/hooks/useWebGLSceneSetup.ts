@@ -59,8 +59,8 @@ export const setupWebGLScene = (
   }
 
   textureAtlasRegistry.registerAtlas("cracks", "/images/sprites/cracks/cracks_atlas.png", {
-    cols: 1,
-    rows: 1,
+    cols: 3,
+    rows: 3,
   });
   loadSpriteTexture(gl, "/images/sprites/cracks/cracks_atlas.png").catch((error) => {
     console.warn("[WebGLScene] Failed to load cracks atlas texture", error);
