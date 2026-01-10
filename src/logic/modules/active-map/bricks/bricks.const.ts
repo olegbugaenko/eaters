@@ -9,6 +9,8 @@ export const BRICK_TOTAL_HP_BRIDGE_KEY = "bricks/totalHp";
 export const BRICK_KNOCKBACK_DURATION_MS = 500;
 export const KNOCKBACK_EPSILON = 0.001;
 export const TOTAL_HP_RECOMPUTE_INTERVAL_MS = 3000;
+export const BRICK_DAMAGE_STAGE_COUNT = 3;
+export const BRICK_CRACK_VARIANTS_PER_STAGE = 1;
 
 // Re-export for backward compatibility
 export { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";

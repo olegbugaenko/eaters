@@ -20,6 +20,8 @@ import { disposeFireRing } from "@ui/renderers/primitives/gpu/fire-ring";
 // BulletGpuRenderer now uses unified API
 // RingGpuRenderer now uses unified API - no separate imports needed
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
+import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistry";
+import { loadSpriteTexture } from "@ui/renderers/primitives/basic/SpritePrimitive";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */
@@ -55,6 +57,14 @@ export const setupWebGLScene = (
   if (!gl) {
     throw new Error("WebGL 2 is required but not available");
   }
+
+  textureAtlasRegistry.registerAtlas("cracks", "/images/sprites/cracks/cracks_atlas.png", {
+    cols: 1,
+    rows: 1,
+  });
+  loadSpriteTexture(gl, "/images/sprites/cracks/cracks_atlas.png").catch((error) => {
+    console.warn("[WebGLScene] Failed to load cracks atlas texture", error);
+  });
 
   // Register HMR cleanup to avoid accumulating GL resources on hot reloads
   registerHmrCleanup(() => {

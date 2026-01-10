@@ -76,10 +76,13 @@ in vec3 a_stopOffsets;
 in vec4 a_stopColor0;
 in vec4 a_stopColor1;
 in vec4 a_stopColor2;
+in vec4 a_crackMask;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
 uniform sampler2D u_spriteTexture;
+uniform int u_crackAtlasIndex;
+uniform vec2 u_crackAtlasGrid;
 
 out vec2 v_worldPosition;
 out vec2 v_uv; // UV coordinates for sprite textures
@@ -92,6 +95,7 @@ out vec3 v_stopOffsets;
 out vec4 v_stopColor0;
 out vec4 v_stopColor1;
 out vec4 v_stopColor2;
+out vec4 v_crackMask;
 `;
 
 export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
@@ -109,6 +113,7 @@ void main() {
   v_stopColor0 = a_stopColor0;
   v_stopColor1 = a_stopColor1;
   v_stopColor2 = a_stopColor2;
+  v_crackMask = a_crackMask;
 }
 `;
 
@@ -132,8 +137,12 @@ in vec3 v_stopOffsets;
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
 in vec4 v_stopColor2;
+in vec4 v_crackMask;
 
 uniform sampler2D u_spriteTexture;
+uniform sampler2D u_cracksAtlas;
+uniform int u_crackAtlasIndex;
+uniform vec2 u_crackAtlasGrid;
 
 out vec4 fragColor;
 
@@ -300,8 +309,28 @@ void main() {
     color = sampleGradient(t);
   }
 
-  color = applyFillNoise(applyFillFilaments(color));
-  fragColor = color;
+  vec4 baseColor = applyFillNoise(applyFillFilaments(color));
+  float crackStrength = v_crackMask.z;
+  float crackAtlasId = v_crackMask.y;
+
+  if (crackStrength <= 0.0 || abs(crackAtlasId - float(u_crackAtlasIndex)) > 0.5) {
+    fragColor = baseColor;
+    return;
+  }
+
+  float cols = max(u_crackAtlasGrid.x, 1.0);
+  float rows = max(u_crackAtlasGrid.y, 1.0);
+  float idx = v_crackMask.x;
+  vec2 baseUV = v_uv;
+  vec2 tileScale = vec2(1.0 / cols, 1.0 / rows);
+  vec2 tileOffset = vec2(mod(idx, cols), floor(idx / cols)) * tileScale;
+  vec2 atlasUV = tileOffset + baseUV * tileScale;
+  float crackMask = texture(u_cracksAtlas, atlasUV).r;
+  float desat = v_crackMask.w;
+  vec3 grayColor = vec3(dot(baseColor.rgb, vec3(0.299, 0.587, 0.114)));
+  vec3 tinted = mix(baseColor.rgb, grayColor, crackMask * desat);
+  vec3 finalRgb = tinted * (1.0 - crackMask * crackStrength);
+  fragColor = vec4(finalRgb, baseColor.a);
 }
 `;
 
@@ -322,4 +351,3 @@ export const createSceneFragmentShader = (noiseAnchorFn: string = DEFAULT_NOISE_
   createFillEffectsGLSL(noiseAnchorFn) +
   SAMPLE_GRADIENT_GLSL +
   SCENE_FRAGMENT_SHADER_MAIN;
-
