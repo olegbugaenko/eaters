@@ -1,5 +1,6 @@
 import {
   DynamicPrimitive,
+  DynamicPrimitiveUpdate,
   ObjectRegistration,
   ObjectRenderer,
   StaticPrimitive,
@@ -67,6 +68,8 @@ export class ObjectsRendererManager {
   private readonly autoAnimatingIds = new Set<string>();
   // Individual primitives that need per-frame updates (e.g., particle emitters)
   private readonly autoAnimatingPrimitives = new Map<DynamicPrimitive, { objectId: string }>();
+  private readonly interpolatedPositions = new Map<string, SceneVector2>();
+  private readonly bulletKeyToObjectId = new Map<string, string>();
 
   private staticData: Float32Array | null = null;
   private dynamicData: Float32Array | null = null;
@@ -107,6 +110,7 @@ export class ObjectsRendererManager {
     this.objects.clear();
     this.autoAnimatingIds.clear();
     this.autoAnimatingPrimitives.clear();
+    this.bulletKeyToObjectId.clear();
     this.staticEntries.length = 0;
     this.dynamicEntries.length = 0;
     this.dynamicEntryByPrimitive.clear();
@@ -146,10 +150,32 @@ export class ObjectsRendererManager {
     });
   }
 
+  public applyInterpolatedBulletPositions(
+    positions: Map<string, SceneVector2>
+  ): void {
+    if (positions.size === 0) {
+      return;
+    }
+    const mapped = new Map<string, SceneVector2>();
+    positions.forEach((position, bulletKey) => {
+      const objectId = this.bulletKeyToObjectId.get(bulletKey);
+      if (!objectId) {
+        return;
+      }
+      mapped.set(objectId, position);
+    });
+    if (mapped.size > 0) {
+      this.applyInterpolatedPositions(mapped);
+    }
+  }
+
   public applyInterpolatedPositions(positions: Map<string, SceneVector2>): void {
     if (positions.size === 0) {
       return;
     }
+    positions.forEach((position, objectId) => {
+      this.interpolatedPositions.set(objectId, { x: position.x, y: position.y });
+    });
     let anyUpdated = false;
     positions.forEach((position, objectId) => {
       const managed = this.objects.get(objectId);
@@ -205,6 +231,28 @@ export class ObjectsRendererManager {
     let anyUpdated = false;
     const idsToRemove: string[] = [];
     const primitivesToRemove: DynamicPrimitive[] = [];
+    const applyInterpolatedPosition = <T>(
+      managed: ManagedObject,
+      objectId: string,
+      update: () => T
+    ): T => {
+      const interpolated = this.interpolatedPositions.get(objectId);
+      if (!interpolated) {
+        return update();
+      }
+
+      const originalPosition = managed.instance.data.position;
+      const origX = originalPosition.x;
+      const origY = originalPosition.y;
+      originalPosition.x = interpolated.x;
+      originalPosition.y = interpolated.y;
+
+      const result = update();
+
+      originalPosition.x = origX;
+      originalPosition.y = origY;
+      return result;
+    };
     
     // Update full objects with autoAnimate: true
     if (this.autoAnimatingIds.size > 0) {
@@ -217,7 +265,9 @@ export class ObjectsRendererManager {
         }
         
         // Trigger update using current instance (renderer will recompute based on time)
-        const updates = managed.renderer.update(managed.instance, managed.registration);
+        const updates = applyInterpolatedPosition(managed, objectId, () =>
+          managed.renderer.update(managed.instance, managed.registration)
+        );
         updates.forEach(({ primitive, data }) => {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
           if (!entry) {
@@ -249,7 +299,9 @@ export class ObjectsRendererManager {
         }
         
         // Update only this specific primitive
-        const data = primitive.update(managed.instance);
+        const data = applyInterpolatedPosition(managed, objectId, () =>
+          primitive.update(managed.instance)
+        );
         if (data) {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
           if (!entry) {
@@ -276,6 +328,9 @@ export class ObjectsRendererManager {
     }
     for (const primitive of primitivesToRemove) {
       this.autoAnimatingPrimitives.delete(primitive);
+    }
+    if (this.interpolatedPositions.size > 0) {
+      this.interpolatedPositions.clear();
     }
     
     // If any auto-animating objects/primitives were updated, mark for full dynamic upload
@@ -414,6 +469,10 @@ export class ObjectsRendererManager {
     if (customData?.autoAnimate === true) {
       this.autoAnimatingIds.add(instance.id);
     }
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
+    }
   }
 
   private updateObject(instance: SceneObjectInstance): void {
@@ -422,6 +481,11 @@ export class ObjectsRendererManager {
       return;
     }
     managed.instance = instance;
+    const customData = instance.data.customData as Record<string, unknown> | undefined;
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
+    }
     const updates = managed.renderer.update(instance, managed.registration);
     let anyUpdated = false;
     updates.forEach(({ primitive, data }) => {
@@ -452,6 +516,11 @@ export class ObjectsRendererManager {
     const managed = this.objects.get(id);
     if (!managed) {
       return;
+    }
+    const customData = managed.instance.data.customData as Record<string, unknown> | undefined;
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.delete(bulletGpuKey);
     }
     this.objects.delete(id);
     this.autoAnimatingIds.delete(id);

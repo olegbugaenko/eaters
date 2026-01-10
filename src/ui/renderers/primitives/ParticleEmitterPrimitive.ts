@@ -83,6 +83,8 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   requireGpu: boolean;
   cpuCache: ParticleEmitterCpuCache | null;
   lastConfigRef: Config | null; // Cache config reference to avoid JSON.stringify on every frame
+  warnedCpuSpawnFallback: boolean;
+  warnedCpuMode: boolean;
 }
 
 interface ParticleEmitterCpuCache {
@@ -300,6 +302,37 @@ export const createParticleEmitterPrimitive = <
       state.config = nextConfig;
       // keep buffer capacity stable to prevent frequent reallocations
       state.capacity = Math.max(state.capacity, nextConfig.capacity);
+
+      if (state.mode === "cpu" && !state.gpu) {
+        const gl = getParticleEmitterGlContext();
+        if (gl && state.capacity > 0) {
+          destroyParticleEmitterGpuState(state);
+          state = createParticleEmitterState(
+            target,
+            nextConfig,
+            options,
+            state.requireGpu
+          );
+          return state.data;
+        }
+      }
+
+      if (
+        state.mode === "cpu" &&
+        options.getGpuSpawnConfig &&
+        !state.warnedCpuMode
+      ) {
+        const reason = !getParticleEmitterGlContext()
+          ? "WebGL2 context unavailable"
+          : state.capacity <= 0
+          ? "capacity <= 0"
+          : "GPU state not initialized";
+        console.warn(
+          `[ParticleEmitter] CPU mode active for GPU-capable emitter: ${reason}. ` +
+            `shape=${nextConfig.shape}, particlesPerSecond=${nextConfig.particlesPerSecond}`
+        );
+        state.warnedCpuMode = true;
+      }
       
       // Check if config object changed (by reference) and update GPU uniforms if needed
       if (state.lastConfigRef !== nextConfig && state.gpu) {
@@ -359,6 +392,8 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
       requireGpu,
       cpuCache: null,
       lastConfigRef: config,
+      warnedCpuSpawnFallback: false,
+      warnedCpuMode: false,
     };
   }
 
@@ -378,6 +413,8 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     requireGpu,
     cpuCache: null,
     lastConfigRef: config,
+    warnedCpuSpawnFallback: false,
+    warnedCpuMode: false,
   };
 
   if (gpu) {
@@ -406,6 +443,8 @@ const createEmptyParticleEmitterState = <
   requireGpu,
   cpuCache: null,
   lastConfigRef: null,
+  warnedCpuSpawnFallback: false,
+  warnedCpuMode: false,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -582,6 +621,14 @@ const advanceParticleEmitterStateGpu = <
     state.spawnAccumulator = Math.min(state.spawnAccumulator, state.capacity);
   } else {
     // CPU SPAWN PATH: Legacy - requires slot tracking
+    if (!state.warnedCpuSpawnFallback && options.getGpuSpawnConfig) {
+      console.warn(
+        "[ParticleEmitter] Falling back to CPU spawn in GPU mode: " +
+          `getGpuSpawnConfig returned null/undefined. ` +
+          `shape=${config.shape}, particlesPerSecond=${config.particlesPerSecond}`
+      );
+      state.warnedCpuSpawnFallback = true;
+    }
     const currentTimeMs = state.ageMs;
     const slots = gpu.slots;
     const freeSlots: number[] = [];
@@ -2500,6 +2547,3 @@ export const sanitizeParticleEmitterConfig = (
     alignToVelocity: config.alignToVelocity === true,
   };
 };
-
-
-

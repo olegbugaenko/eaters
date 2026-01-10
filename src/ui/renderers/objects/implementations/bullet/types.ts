@@ -23,6 +23,7 @@ export interface BulletRendererCustomData {
   speed?: number;
   maxSpeed?: number;
   velocity?: SceneVector2;
+  bulletGpuKey?: string;
   shape?: "circle" | "sprite";
   renderComponents?: {
     body?: boolean;
