@@ -69,6 +69,8 @@ export interface InternalBrickState extends BrickRuntimeState {
   baseFill: SceneFill;
   appliedFill: SceneFill;
   activeTint: BrickEffectTint | null;
+  damageStage: number;
+  crackVariant: number;
 }
 
 export interface BrickExplosionState {

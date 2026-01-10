@@ -15,8 +15,10 @@ import {
   FILL_FILAMENTS1_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
+  CRACK_MASK_COMPONENTS,
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -50,6 +52,9 @@ export class WebGLSceneRenderer {
   private cameraPositionLocation: WebGLUniformLocation;
   private viewportSizeLocation: WebGLUniformLocation;
   private spriteTextureLocation: WebGLUniformLocation | null;
+  private crackAtlasIndexLocation: WebGLUniformLocation | null;
+  private crackAtlasGridLocation: WebGLUniformLocation | null;
+  private crackAtlasSamplerLocation: WebGLUniformLocation | null;
   private objectsRenderer: ObjectsRendererManager;
 
   constructor(
@@ -78,6 +83,7 @@ export class WebGLSceneRenderer {
     const stopColor0Location = gl.getAttribLocation(this.program, "a_stopColor0");
     const stopColor1Location = gl.getAttribLocation(this.program, "a_stopColor1");
     const stopColor2Location = gl.getAttribLocation(this.program, "a_stopColor2");
+    const crackMaskLocation = gl.getAttribLocation(this.program, "a_crackMask");
 
     const attributeLocations = [
       positionLocation,
@@ -90,6 +96,7 @@ export class WebGLSceneRenderer {
       stopColor0Location,
       stopColor1Location,
       stopColor2Location,
+      crackMaskLocation,
     ];
 
     if (attributeLocations.some((location) => location < 0)) {
@@ -109,6 +116,7 @@ export class WebGLSceneRenderer {
       { location: stopColor0Location, size: STOP_COLOR_COMPONENTS },
       { location: stopColor1Location, size: STOP_COLOR_COMPONENTS },
       { location: stopColor2Location, size: STOP_COLOR_COMPONENTS },
+      { location: crackMaskLocation, size: CRACK_MASK_COMPONENTS },
     ]);
 
     // Create buffers
@@ -135,6 +143,18 @@ export class WebGLSceneRenderer {
       this.program,
       "u_spriteTexture"
     );
+    const crackAtlasIndexLocation = gl.getUniformLocation(
+      this.program,
+      "u_crackAtlasIndex"
+    );
+    const crackAtlasGridLocation = gl.getUniformLocation(
+      this.program,
+      "u_crackAtlasGrid"
+    );
+    const crackAtlasSamplerLocation = gl.getUniformLocation(
+      this.program,
+      "u_cracksAtlas"
+    );
 
     if (!cameraPositionLocation || !viewportSizeLocation) {
       throw new Error("Unable to resolve camera uniforms");
@@ -143,6 +163,9 @@ export class WebGLSceneRenderer {
     this.cameraPositionLocation = cameraPositionLocation;
     this.viewportSizeLocation = viewportSizeLocation;
     this.spriteTextureLocation = spriteTextureLocation;
+    this.crackAtlasIndexLocation = crackAtlasIndexLocation;
+    this.crackAtlasGridLocation = crackAtlasGridLocation;
+    this.crackAtlasSamplerLocation = crackAtlasSamplerLocation;
 
     // Setup WebGL state
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -195,6 +218,45 @@ export class WebGLSceneRenderer {
       cameraState.viewportSize.width,
       cameraState.viewportSize.height
     );
+
+    if (this.crackAtlasIndexLocation !== null || this.crackAtlasGridLocation !== null) {
+      const crackAtlasIndex = textureAtlasRegistry.getAtlasIndex("cracks");
+      const crackAtlasGrid = textureAtlasRegistry.getAtlasGrid("cracks");
+      if (this.crackAtlasIndexLocation !== null) {
+        this.gl.uniform1i(this.crackAtlasIndexLocation, crackAtlasIndex);
+      }
+      if (this.crackAtlasGridLocation !== null) {
+        this.gl.uniform2f(this.crackAtlasGridLocation, crackAtlasGrid.cols, crackAtlasGrid.rows);
+      }
+    }
+
+    if (this.crackAtlasSamplerLocation !== null) {
+      this.gl.activeTexture(this.gl.TEXTURE1);
+      this.gl.uniform1i(this.crackAtlasSamplerLocation, 1);
+
+      const { getTextureCache } = require("../primitives/basic/SpritePrimitive");
+      const textureCache = getTextureCache();
+      const crackTexture = textureCache.get("/images/sprites/cracks/cracks_atlas.png");
+      if (crackTexture?.texture) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, crackTexture.texture);
+      } else {
+        const dummyTexture = this.gl.createTexture();
+        if (dummyTexture) {
+          this.gl.bindTexture(this.gl.TEXTURE_2D, dummyTexture);
+          this.gl.texImage2D(
+            this.gl.TEXTURE_2D,
+            0,
+            this.gl.RGBA,
+            1,
+            1,
+            0,
+            this.gl.RGBA,
+            this.gl.UNSIGNED_BYTE,
+            new Uint8Array([255, 255, 255, 255])
+          );
+        }
+      }
+    }
     
     // Bind sprite texture if available (texture unit 0)
     if (this.spriteTextureLocation !== null) {

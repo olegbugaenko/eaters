@@ -34,6 +34,7 @@ import {
   sanitizeBrickLevel,
   calculateBrickStatsForLevel,
   scaleResourceStockpile,
+  resolveBrickDamageStage,
 } from "./bricks.helpers";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
 import type { BrickEffectApplication } from "./brick-effects.types";
@@ -320,6 +321,17 @@ export class BricksModule implements GameModule {
     if (!skipKnockback) {
       this.applyBrickKnockback(brick, hitDirection);
     }
+    const nextDamageStage = resolveBrickDamageStage(brick.hp, brick.maxHp);
+    console.log('DMG_STATE: ', nextDamageStage, brick.damageStage);
+    if (nextDamageStage !== brick.damageStage) {
+      brick.damageStage = nextDamageStage;
+      this.updateBrickSceneObject(brick, brick.knockback?.currentOffset ?? ZERO_VECTOR, {
+        customData: {
+          damageStage: brick.damageStage,
+          crackVariant: brick.crackVariant,
+        },
+      });
+    }
     this.pushStats();
     return { destroyed: false, brick: this.cloneState(brick), inflictedDamage };
   }
@@ -524,19 +536,23 @@ export class BricksModule implements GameModule {
   private updateBrickSceneObject(
     brick: InternalBrickState,
     offset: SceneVector2,
-    extras: { fill?: SceneFill } = {}
+    extras: { fill?: SceneFill; customData?: { damageStage: number; crackVariant: number } } = {}
   ): void {
     const position = addVectors(brick.position, offset);
     const payload: {
       position: SceneVector2;
       rotation: number;
       fill?: SceneFill;
+      customData?: { damageStage: number; crackVariant: number };
     } = {
       position,
       rotation: brick.rotation,
     };
     if (extras.fill) {
       payload.fill = cloneSceneFill(extras.fill);
+    }
+    if (extras.customData) {
+      payload.customData = extras.customData;
     }
     this.options.scene.updateObject(brick.sceneObjectId, payload);
   }

@@ -17,6 +17,9 @@ import {
 import { createBrickFill } from "./bricks.fill.helper";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
+import { randomIntInclusive } from "@shared/helpers/numbers.helper";
+import { BRICK_CRACK_VARIANTS_PER_STAGE } from "./bricks.const";
+import { resolveBrickDamageStage } from "./bricks.helpers";
 
 export interface BrickStateInput {
   readonly brick: BrickData;
@@ -78,6 +81,9 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
     const rotation = sanitizeRotation(brick.rotation);
     const rewards = stats.rewards;
     const baseFill = createBrickFill(config);
+    const variantsPerStage = Math.max(BRICK_CRACK_VARIANTS_PER_STAGE, 1);
+    const crackVariant = randomIntInclusive({ min: 0, max: variantsPerStage - 1 });
+    const damageStage = resolveBrickDamageStage(hp, maxHp);
 
     // Створюємо стан без sceneObjectId (буде додано в transform)
     const state: BrickStateIntermediate = {
@@ -110,6 +116,8 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
       baseFill: cloneSceneFill(baseFill),
       appliedFill: cloneSceneFill(baseFill),
       activeTint: null,
+      damageStage,
+      crackVariant,
     };
 
     return state as InternalBrickState;
@@ -132,6 +140,10 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
             width: config.stroke.width,
           }
         : undefined,
+      customData: {
+        damageStage: state.damageStage,
+        crackVariant: state.crackVariant,
+      },
     });
 
     // Мутуємо стан - додаємо sceneObjectId

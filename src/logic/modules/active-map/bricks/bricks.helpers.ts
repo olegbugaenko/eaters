@@ -5,6 +5,7 @@ import { isBrickType, getBrickConfig } from "../../../../db/bricks-db";
 import type { ExplosionType } from "../../../../db/explosions-db";
 import type { DestructubleExplosionConfig } from "../../../interfaces/destructuble";
 import type { ResourceStockpile } from "../../../../db/resources-db";
+import { BRICK_DAMAGE_STAGE_COUNT } from "./bricks.const";
 import {
   RESOURCE_IDS,
   normalizeResourceAmount,
@@ -173,4 +174,15 @@ export const calculateBrickStatsForLevel = (
   const rewards = scaleResourceStockpile(baseRewards, rewardMultiplier);
 
   return { maxHp, baseDamage, armor, rewards };
+};
+
+export const resolveBrickDamageStage = (hp: number, maxHp: number): number => {
+  const normalizedMaxHp = Math.max(maxHp, 1);
+  const sanitizedHp = clampNumber(hp, 0, normalizedMaxHp);
+  const damageRatio = 1 - sanitizedHp / normalizedMaxHp;
+  if (BRICK_DAMAGE_STAGE_COUNT <= 1) {
+    return 0;
+  }
+  const rawStage = Math.floor(damageRatio * BRICK_DAMAGE_STAGE_COUNT);
+  return clampNumber(rawStage, 0, BRICK_DAMAGE_STAGE_COUNT - 1);
 };
