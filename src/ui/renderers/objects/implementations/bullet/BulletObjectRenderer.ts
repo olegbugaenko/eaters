@@ -27,14 +27,19 @@ import type { BulletTailEmitterRenderConfig } from "./types";
 const createEmitterPrimitive = (
   instance: SceneObjectInstance,
   getConfig: (instance: SceneObjectInstance) => BulletTailEmitterRenderConfig | null
-): DynamicPrimitive | null =>
-  createParticleEmitterPrimitive<BulletTailEmitterRenderConfig>(instance, {
+): DynamicPrimitive | null => {
+  const primitive = createParticleEmitterPrimitive<BulletTailEmitterRenderConfig>(instance, {
     getConfig,
     getOrigin: getTailEmitterOrigin,
     spawnParticle: createTailParticle,
     serializeConfig: serializeTailEmitterConfig,
     getGpuSpawnConfig,
   });
+  if (primitive) {
+    primitive.autoAnimate = true;
+  }
+  return primitive;
+};
 
 export class BulletObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
