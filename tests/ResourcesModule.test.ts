@@ -37,7 +37,7 @@ describe("ResourcesModule", () => {
     module.startRun();
     module.tick(2000);
     module.grantResources({ stone: 100 });
-    module.finishRun();
+    module.finishRun(true);
 
     const payload = bridge.getValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY);
     assert(payload, "run summary should be available");
@@ -75,7 +75,7 @@ describe("ResourcesModule", () => {
     module.startRun();
     module.tick(1000);
     module.grantResources({ stone: 5 });
-    module.finishRun();
+    module.finishRun(true);
 
     const payload = bridge.getValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY);
     assert(payload, "run summary should be available");
@@ -124,7 +124,7 @@ describe("ResourcesModule", () => {
         1: { success: 1, failure: 0, bestTimeMs: null },
       },
     };
-    module.finishRun();
+    module.finishRun(true);
 
     const totalsAfter = bridge.getValue(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
     assert(

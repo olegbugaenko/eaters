@@ -1,5 +1,6 @@
 import {
   DynamicPrimitive,
+  DynamicPrimitiveUpdate,
   ObjectRegistration,
   ObjectRenderer,
   StaticPrimitive,
@@ -67,6 +68,7 @@ export class ObjectsRendererManager {
   private readonly autoAnimatingIds = new Set<string>();
   // Individual primitives that need per-frame updates (e.g., particle emitters)
   private readonly autoAnimatingPrimitives = new Map<DynamicPrimitive, { objectId: string }>();
+  private readonly interpolatedPositions = new Map<string, SceneVector2>();
 
   private staticData: Float32Array | null = null;
   private dynamicData: Float32Array | null = null;
@@ -150,6 +152,9 @@ export class ObjectsRendererManager {
     if (positions.size === 0) {
       return;
     }
+    positions.forEach((position, objectId) => {
+      this.interpolatedPositions.set(objectId, { x: position.x, y: position.y });
+    });
     let anyUpdated = false;
     positions.forEach((position, objectId) => {
       const managed = this.objects.get(objectId);
@@ -205,6 +210,28 @@ export class ObjectsRendererManager {
     let anyUpdated = false;
     const idsToRemove: string[] = [];
     const primitivesToRemove: DynamicPrimitive[] = [];
+    const applyInterpolatedPosition = <T>(
+      managed: ManagedObject,
+      objectId: string,
+      update: () => T
+    ): T => {
+      const interpolated = this.interpolatedPositions.get(objectId);
+      if (!interpolated) {
+        return update();
+      }
+
+      const originalPosition = managed.instance.data.position;
+      const origX = originalPosition.x;
+      const origY = originalPosition.y;
+      originalPosition.x = interpolated.x;
+      originalPosition.y = interpolated.y;
+
+      const result = update();
+
+      originalPosition.x = origX;
+      originalPosition.y = origY;
+      return result;
+    };
     
     // Update full objects with autoAnimate: true
     if (this.autoAnimatingIds.size > 0) {
@@ -217,7 +244,9 @@ export class ObjectsRendererManager {
         }
         
         // Trigger update using current instance (renderer will recompute based on time)
-        const updates = managed.renderer.update(managed.instance, managed.registration);
+        const updates = applyInterpolatedPosition(managed, objectId, () =>
+          managed.renderer.update(managed.instance, managed.registration)
+        );
         updates.forEach(({ primitive, data }) => {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
           if (!entry) {
@@ -249,7 +278,9 @@ export class ObjectsRendererManager {
         }
         
         // Update only this specific primitive
-        const data = primitive.update(managed.instance);
+        const data = applyInterpolatedPosition(managed, objectId, () =>
+          primitive.update(managed.instance)
+        );
         if (data) {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
           if (!entry) {
@@ -276,6 +307,9 @@ export class ObjectsRendererManager {
     }
     for (const primitive of primitivesToRemove) {
       this.autoAnimatingPrimitives.delete(primitive);
+    }
+    if (this.interpolatedPositions.size > 0) {
+      this.interpolatedPositions.clear();
     }
     
     // If any auto-animating objects/primitives were updated, mark for full dynamic upload
