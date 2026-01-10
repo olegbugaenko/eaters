@@ -50,6 +50,13 @@ export interface BrickConfig {
    * Defaults to true if not specified.
    */
   cracksEnabled?: boolean;
+  /**
+   * Optional crack shading overrides.
+   */
+  crackMask?: {
+    desat?: number;
+    darken?: number;
+  };
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [

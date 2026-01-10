@@ -18,6 +18,7 @@ import {
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
   CRACK_MASK_COMPONENTS,
+  CRACK_EFFECTS_COMPONENTS,
   CRACK_UV_COMPONENTS,
   MAX_GRADIENT_STOPS,
   POSITION_COMPONENTS,
@@ -274,10 +275,18 @@ const populateFillVertexComponents = (
     crackMask ? crackMask.tileIndex : 0,
     crackMask ? crackMask.atlasId : 0,
     crackMask ? crackMask.strength : 0,
-    crackMask ? crackMask.desat : 0,
+    0,
   ];
   for (let i = 0; i < CRACK_MASK_COMPONENTS; i += 1) {
     components[write++] = crackMaskValues[i] ?? 0;
+  }
+
+  const crackEffectValues = [
+    crackMask ? crackMask.desat : 0,
+    crackMask ? crackMask.darken : 0,
+  ];
+  for (let i = 0; i < CRACK_EFFECTS_COMPONENTS; i += 1) {
+    components[write++] = crackEffectValues[i] ?? 0;
   }
 
   return components;

@@ -37,6 +37,7 @@ export {
   FILL_COMPONENTS,
   CRACK_UV_COMPONENTS,
   CRACK_MASK_COMPONENTS,
+  CRACK_EFFECTS_COMPONENTS,
 } from "./ObjectRenderer";
 
 export const createObjectsRendererManager = (): ObjectsRendererManager => {
