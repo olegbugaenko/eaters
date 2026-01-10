@@ -621,12 +621,10 @@ const advanceParticleEmitterStateGpu = <
     state.spawnAccumulator = Math.min(state.spawnAccumulator, state.capacity);
   } else {
     // CPU SPAWN PATH: Legacy - requires slot tracking
-    if (!state.warnedCpuSpawnFallback) {
-      const reason = options.getGpuSpawnConfig
-        ? "getGpuSpawnConfig returned null/undefined"
-        : "getGpuSpawnConfig not provided";
+    if (!state.warnedCpuSpawnFallback && options.getGpuSpawnConfig) {
       console.warn(
-        `[ParticleEmitter] Falling back to CPU spawn in GPU mode: ${reason}. ` +
+        "[ParticleEmitter] Falling back to CPU spawn in GPU mode: " +
+          `getGpuSpawnConfig returned null/undefined. ` +
           `shape=${config.shape}, particlesPerSecond=${config.particlesPerSecond}`
       );
       state.warnedCpuSpawnFallback = true;
