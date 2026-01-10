@@ -18,6 +18,7 @@ import {
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
   CRACK_MASK_COMPONENTS,
+  CRACK_UV_COMPONENTS,
   MAX_GRADIENT_STOPS,
   POSITION_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
@@ -262,6 +263,10 @@ const populateFillVertexComponents = (
     components[write++] = color.g;
     components[write++] = color.b;
     components[write++] = typeof color.a === "number" ? color.a : 1;
+  }
+
+  for (let i = 0; i < CRACK_UV_COMPONENTS; i += 1) {
+    components[write++] = 0;
   }
 
   const crackMask = fill.crackMask;

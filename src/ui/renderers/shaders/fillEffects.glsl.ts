@@ -76,6 +76,7 @@ in vec3 a_stopOffsets;
 in vec4 a_stopColor0;
 in vec4 a_stopColor1;
 in vec4 a_stopColor2;
+in vec2 a_crackUv;
 in vec4 a_crackMask;
 
 uniform vec2 u_cameraPosition;
@@ -95,6 +96,7 @@ out vec3 v_stopOffsets;
 out vec4 v_stopColor0;
 out vec4 v_stopColor1;
 out vec4 v_stopColor2;
+out vec2 v_crackUv;
 out vec4 v_crackMask;
 `;
 
@@ -113,6 +115,7 @@ void main() {
   v_stopColor0 = a_stopColor0;
   v_stopColor1 = a_stopColor1;
   v_stopColor2 = a_stopColor2;
+  v_crackUv = a_crackUv;
   v_crackMask = a_crackMask;
 }
 `;
@@ -137,6 +140,7 @@ in vec3 v_stopOffsets;
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
 in vec4 v_stopColor2;
+in vec2 v_crackUv;
 in vec4 v_crackMask;
 
 uniform sampler2D u_spriteTexture;
@@ -321,7 +325,7 @@ void main() {
   float cols = max(u_crackAtlasGrid.x, 1.0);
   float rows = max(u_crackAtlasGrid.y, 1.0);
   float idx = v_crackMask.x;
-  vec2 baseUV = v_uv;
+  vec2 baseUV = v_crackUv;
   vec2 tileScale = vec2(1.0 / cols, 1.0 / rows);
   vec2 tileOffset = vec2(mod(idx, cols), floor(idx / cols)) * tileScale;
   vec2 atlasUV = tileOffset + baseUV * tileScale;

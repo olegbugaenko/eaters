@@ -21,7 +21,10 @@ import { disposeFireRing } from "@ui/renderers/primitives/gpu/fire-ring";
 // RingGpuRenderer now uses unified API - no separate imports needed
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistry";
-import { loadSpriteTexture } from "@ui/renderers/primitives/basic/SpritePrimitive";
+import {
+  clearSpriteTextureCache,
+  loadSpriteTexture,
+} from "@ui/renderers/primitives/basic/SpritePrimitive";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */
@@ -52,6 +55,7 @@ export const setupWebGLScene = (
   options?: WebGLSceneSetupOptions
 ): WebGLSceneSetupResult => {
   const { initBullets = true, initRings = true } = options ?? {};
+  clearSpriteTextureCache();
   const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
 
   if (!gl) {
@@ -187,6 +191,8 @@ export const setupWebGLScene = (
     
     arcGpuRenderer.clearInstances();
     arcGpuRenderer.dispose();
+
+    clearSpriteTextureCache();
   };
 
   return {

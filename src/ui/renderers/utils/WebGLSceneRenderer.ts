@@ -15,6 +15,7 @@ import {
   FILL_FILAMENTS1_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
+  CRACK_UV_COMPONENTS,
   CRACK_MASK_COMPONENTS,
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
@@ -83,6 +84,7 @@ export class WebGLSceneRenderer {
     const stopColor0Location = gl.getAttribLocation(this.program, "a_stopColor0");
     const stopColor1Location = gl.getAttribLocation(this.program, "a_stopColor1");
     const stopColor2Location = gl.getAttribLocation(this.program, "a_stopColor2");
+    const crackUvLocation = gl.getAttribLocation(this.program, "a_crackUv");
     const crackMaskLocation = gl.getAttribLocation(this.program, "a_crackMask");
 
     const attributeLocations = [
@@ -96,6 +98,7 @@ export class WebGLSceneRenderer {
       stopColor0Location,
       stopColor1Location,
       stopColor2Location,
+      crackUvLocation,
       crackMaskLocation,
     ];
 
@@ -116,6 +119,7 @@ export class WebGLSceneRenderer {
       { location: stopColor0Location, size: STOP_COLOR_COMPONENTS },
       { location: stopColor1Location, size: STOP_COLOR_COMPONENTS },
       { location: stopColor2Location, size: STOP_COLOR_COMPONENTS },
+      { location: crackUvLocation, size: CRACK_UV_COMPONENTS },
       { location: crackMaskLocation, size: CRACK_MASK_COMPONENTS },
     ]);
 
