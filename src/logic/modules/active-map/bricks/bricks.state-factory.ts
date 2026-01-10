@@ -143,6 +143,7 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
       customData: {
         damageStage: state.damageStage,
         crackVariant: state.crackVariant,
+        cracksEnabled: config.cracksEnabled !== false,
       },
     });
 

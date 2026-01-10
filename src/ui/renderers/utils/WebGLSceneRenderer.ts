@@ -15,10 +15,12 @@ import {
   FILL_FILAMENTS1_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
   STOP_COLOR_COMPONENTS,
+  CRACK_UV_COMPONENTS,
   CRACK_MASK_COMPONENTS,
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
+import { getTextureCache, loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -83,6 +85,7 @@ export class WebGLSceneRenderer {
     const stopColor0Location = gl.getAttribLocation(this.program, "a_stopColor0");
     const stopColor1Location = gl.getAttribLocation(this.program, "a_stopColor1");
     const stopColor2Location = gl.getAttribLocation(this.program, "a_stopColor2");
+    const crackUvLocation = gl.getAttribLocation(this.program, "a_crackUv");
     const crackMaskLocation = gl.getAttribLocation(this.program, "a_crackMask");
 
     const attributeLocations = [
@@ -96,6 +99,7 @@ export class WebGLSceneRenderer {
       stopColor0Location,
       stopColor1Location,
       stopColor2Location,
+      crackUvLocation,
       crackMaskLocation,
     ];
 
@@ -116,6 +120,7 @@ export class WebGLSceneRenderer {
       { location: stopColor0Location, size: STOP_COLOR_COMPONENTS },
       { location: stopColor1Location, size: STOP_COLOR_COMPONENTS },
       { location: stopColor2Location, size: STOP_COLOR_COMPONENTS },
+      { location: crackUvLocation, size: CRACK_UV_COMPONENTS },
       { location: crackMaskLocation, size: CRACK_MASK_COMPONENTS },
     ]);
 
@@ -234,12 +239,16 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE1);
       this.gl.uniform1i(this.crackAtlasSamplerLocation, 1);
 
-      const { getTextureCache } = require("../primitives/basic/SpritePrimitive");
       const textureCache = getTextureCache();
-      const crackTexture = textureCache.get("/images/sprites/cracks/cracks_atlas.png");
-      if (crackTexture?.texture) {
+      const crackPath = "/images/sprites/cracks/cracks_atlas.png";
+      const crackTexture = textureCache.get(crackPath);
+      
+      if (crackTexture?.texture && crackTexture.gl === this.gl) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, crackTexture.texture);
       } else {
+        if (!crackTexture || crackTexture.gl !== this.gl) {
+          loadSpriteTexture(this.gl, crackPath).catch(() => {});
+        }
         const dummyTexture = this.gl.createTexture();
         if (dummyTexture) {
           this.gl.bindTexture(this.gl.TEXTURE_2D, dummyTexture);
@@ -263,11 +272,7 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE0);
       this.gl.uniform1i(this.spriteTextureLocation, 0);
       
-      // Get texture from cache
-      const { getTextureCache } = require("../primitives/basic/SpritePrimitive");
       const textureCache = getTextureCache();
-      
-      // Bind first available texture or create dummy
       const firstTexture = textureCache.values().next().value;
       if (firstTexture?.texture) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, firstTexture.texture);
@@ -341,8 +346,7 @@ export class WebGLSceneRenderer {
   /**
    * Loads a sprite texture
    */
-  public async loadSpriteTexture(spritePath: string): Promise<void> {
-    const { loadSpriteTexture } = require("../primitives/basic/SpritePrimitive");
+  public async loadTexture(spritePath: string): Promise<void> {
     try {
       await loadSpriteTexture(this.gl, spritePath);
     } catch (error) {

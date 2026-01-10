@@ -76,6 +76,7 @@ in vec3 a_stopOffsets;
 in vec4 a_stopColor0;
 in vec4 a_stopColor1;
 in vec4 a_stopColor2;
+in vec2 a_crackUv;
 in vec4 a_crackMask;
 
 uniform vec2 u_cameraPosition;
@@ -95,6 +96,7 @@ out vec3 v_stopOffsets;
 out vec4 v_stopColor0;
 out vec4 v_stopColor1;
 out vec4 v_stopColor2;
+out vec2 v_crackUv;
 out vec4 v_crackMask;
 `;
 
@@ -113,6 +115,7 @@ void main() {
   v_stopColor0 = a_stopColor0;
   v_stopColor1 = a_stopColor1;
   v_stopColor2 = a_stopColor2;
+  v_crackUv = a_crackUv;
   v_crackMask = a_crackMask;
 }
 `;
@@ -137,6 +140,7 @@ in vec3 v_stopOffsets;
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
 in vec4 v_stopColor2;
+in vec2 v_crackUv;
 in vec4 v_crackMask;
 
 uniform sampler2D u_spriteTexture;
@@ -321,15 +325,35 @@ void main() {
   float cols = max(u_crackAtlasGrid.x, 1.0);
   float rows = max(u_crackAtlasGrid.y, 1.0);
   float idx = v_crackMask.x;
-  vec2 baseUV = v_uv;
+  // Apply tiling: fract() wraps UV coordinates for seamless repetition
+  vec2 baseUV = fract(v_crackUv);
   vec2 tileScale = vec2(1.0 / cols, 1.0 / rows);
   vec2 tileOffset = vec2(mod(idx, cols), floor(idx / cols)) * tileScale;
   vec2 atlasUV = tileOffset + baseUV * tileScale;
-  float crackMask = texture(u_cracksAtlas, atlasUV).r;
+  
+  // Sample alpha channel as crack mask (black cracks on transparent background)
+  float crackMask = texture(u_cracksAtlas, atlasUV).a;
   float desat = v_crackMask.w;
-  vec3 grayColor = vec3(dot(baseColor.rgb, vec3(0.299, 0.587, 0.114)));
-  vec3 tinted = mix(baseColor.rgb, grayColor, crackMask * desat);
-  vec3 finalRgb = tinted * (1.0 - crackMask * crackStrength);
+
+  float k = crackMask * crackStrength;
+  if (k <= 0.0) {
+    fragColor = baseColor;
+    return;
+  }
+
+  vec3 base = baseColor.rgb;
+
+  float grayLuma = dot(base, vec3(0.3, 0.3, 0.3));
+  vec3 gray = vec3(grayLuma);
+
+  vec3 saturated = gray + (base - gray) * 2.5;
+
+  saturated = clamp(saturated, 0.0, 1.0);
+
+  vec3 darkened = saturated * 0.55;
+
+  vec3 finalRgb = mix(base, darkened, k);
+
   fragColor = vec4(finalRgb, baseColor.a);
 }
 `;

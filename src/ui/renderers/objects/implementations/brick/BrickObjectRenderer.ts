@@ -12,6 +12,7 @@ import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistr
 type BrickCustomData = {
   damageStage?: number;
   crackVariant?: number;
+  cracksEnabled?: boolean;
 };
 
 export class BrickObjectRenderer extends ObjectRenderer {
@@ -51,6 +52,7 @@ export class BrickObjectRenderer extends ObjectRenderer {
           const customData = target.data.customData as BrickCustomData | undefined;
           const damageStage = customData?.damageStage ?? 0;
           const crackVariant = customData?.crackVariant ?? 0;
+          const cracksEnabled = customData?.cracksEnabled !== false;
           const baseFill = target.data.fill ?? instance.data.fill;
 
           if (
@@ -62,16 +64,23 @@ export class BrickObjectRenderer extends ObjectRenderer {
             return cachedFill;
           }
 
+          if (!cracksEnabled || damageStage === 0) {
+            cachedFill = baseFill;
+            cachedDamageStage = damageStage;
+            cachedCrackVariant = crackVariant;
+            cachedBaseFill = baseFill;
+            return cachedFill;
+          }
+
           const atlasId = textureAtlasRegistry.getAtlasIndex("cracks");
           const tileIndex = Math.max(damageStage - 1, 0) * variantsPerStage + crackVariant;
-          const crackStrength = damageStage === 0 ? 0 : 1;
+          const crackStrength = 0.75;
           cachedFill = withCrackMask(baseFill, {
             atlasId,
             tileIndex,
             strength: crackStrength,
-            desat: 1,
+            desat: 1.4,
           });
-          console.log('CRACK_FILL REGENERATE: ', cachedFill, damageStage, crackVariant, baseFill);
           cachedDamageStage = damageStage;
           cachedCrackVariant = crackVariant;
           cachedBaseFill = baseFill;

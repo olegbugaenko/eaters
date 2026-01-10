@@ -6,6 +6,10 @@ import {
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   DynamicPrimitive,
+  FILL_COMPONENTS,
+  POSITION_COMPONENTS,
+  CRACK_MASK_COMPONENTS,
+  CRACK_UV_COMPONENTS,
   StaticPrimitive,
   VERTEX_COMPONENTS,
   transformObjectPoint,
@@ -32,19 +36,32 @@ interface DynamicRectangleOptions {
 }
 
 const VERTEX_COUNT = 6;
+const CRACK_UV_OFFSET =
+  POSITION_COMPONENTS +
+  FILL_COMPONENTS -
+  CRACK_MASK_COMPONENTS -
+  CRACK_UV_COMPONENTS;
 
 const pushVertex = (
   target: Float32Array,
   offset: number,
   x: number,
   y: number,
+  u: number,
+  v: number,
   fillComponents: Float32Array
 ): number => {
   target[offset + 0] = x;
   target[offset + 1] = y;
   copyFillComponents(target, offset, fillComponents);
+  const uvOffset = offset + CRACK_UV_OFFSET;
+  target[uvOffset + 0] = u;
+  target[uvOffset + 1] = v;
   return offset + VERTEX_COMPONENTS;
 };
+
+// Maximum tile size for crack texture tiling
+const MAX_CRACK_TILE_SIZE = 32;
 
 export const createStaticRectanglePrimitive = (
   options: RectanglePrimitiveOptions
@@ -70,6 +87,10 @@ export const createStaticRectanglePrimitive = (
   const topLeft = transformCorner(-halfWidth, -halfHeight, actualCenter, cos, sin);
   const topRight = transformCorner(halfWidth, -halfHeight, actualCenter, cos, sin);
 
+  // Calculate number of tiles for crack texture
+  const numTilesX = Math.ceil(size.width / MAX_CRACK_TILE_SIZE);
+  const numTilesY = Math.ceil(size.height / MAX_CRACK_TILE_SIZE);
+
   const data = new Float32Array(VERTEX_COUNT * VERTEX_COMPONENTS);
   let writeOffset = 0;
 
@@ -79,6 +100,8 @@ export const createStaticRectanglePrimitive = (
     writeOffset,
     bottomLeft.x,
     bottomLeft.y,
+    0,
+    numTilesY,
     fillComponents
   );
   writeOffset = pushVertex(
@@ -86,20 +109,40 @@ export const createStaticRectanglePrimitive = (
     writeOffset,
     bottomRight.x,
     bottomRight.y,
+    numTilesX,
+    numTilesY,
     fillComponents
   );
-  writeOffset = pushVertex(data, writeOffset, topLeft.x, topLeft.y, fillComponents);
+  writeOffset = pushVertex(
+    data,
+    writeOffset,
+    topLeft.x,
+    topLeft.y,
+    0,
+    0,
+    fillComponents
+  );
 
   // Triangle 2 (top-left, bottom-right, top-right)
-  writeOffset = pushVertex(data, writeOffset, topLeft.x, topLeft.y, fillComponents);
+  writeOffset = pushVertex(
+    data,
+    writeOffset,
+    topLeft.x,
+    topLeft.y,
+    0,
+    0,
+    fillComponents
+  );
   writeOffset = pushVertex(
     data,
     writeOffset,
     bottomRight.x,
     bottomRight.y,
+    numTilesX,
+    numTilesY,
     fillComponents
   );
-  pushVertex(data, writeOffset, topRight.x, topRight.y, fillComponents);
+  pushVertex(data, writeOffset, topRight.x, topRight.y, numTilesX, 0, fillComponents);
 
   return { data };
 };
@@ -203,6 +246,20 @@ export const createDynamicRectanglePrimitive = (
         for (let v = 0; v < VERTEX_COUNT; v++) {
           data.set(fill, v * VERTEX_COMPONENTS + 2);
         }
+        const uvOffset = CRACK_UV_OFFSET;
+        const vertStride = VERTEX_COMPONENTS;
+        data[uvOffset + 0] = 0;
+        data[uvOffset + 1] = 1;
+        data[uvOffset + vertStride + 0] = 1;
+        data[uvOffset + vertStride + 1] = 1;
+        data[uvOffset + vertStride * 2 + 0] = 0;
+        data[uvOffset + vertStride * 2 + 1] = 0;
+        data[uvOffset + vertStride * 3 + 0] = 0;
+        data[uvOffset + vertStride * 3 + 1] = 0;
+        data[uvOffset + vertStride * 4 + 0] = 1;
+        data[uvOffset + vertStride * 4 + 1] = 1;
+        data[uvOffset + vertStride * 5 + 0] = 1;
+        data[uvOffset + vertStride * 5 + 1] = 0;
         return data;
       }
 
@@ -288,11 +345,15 @@ const updateRectangleData = (
   const trX = cx + halfWidth * cos - negHalfH * sin;
   const trY = cy + halfWidth * sin + negHalfH * cos;
 
+  // Calculate number of tiles for crack texture
+  const numTilesX = Math.ceil(size.width / MAX_CRACK_TILE_SIZE);
+  const numTilesY = Math.ceil(size.height / MAX_CRACK_TILE_SIZE);
+
   let changed = false;
   const fillLen = fillComponents.length;
 
   // Helper to write vertex inline
-  const writeVert = (offset: number, x: number, y: number): void => {
+  const writeVert = (offset: number, x: number, y: number, u: number, v: number): void => {
     if (target[offset] !== x) {
       target[offset] = x;
       changed = true;
@@ -301,6 +362,7 @@ const updateRectangleData = (
       target[offset + 1] = y;
       changed = true;
     }
+    // Copy fill components first
     const fillOffset = offset + 2;
     for (let j = 0; j < fillLen; j++) {
       const value = fillComponents[j]!;
@@ -309,16 +371,26 @@ const updateRectangleData = (
         changed = true;
       }
     }
+    // Then override crackUv with actual UV coordinates (fill has zeros)
+    const uvOffset = offset + CRACK_UV_OFFSET;
+    if (target[uvOffset] !== u) {
+      target[uvOffset] = u;
+      changed = true;
+    }
+    if (target[uvOffset + 1] !== v) {
+      target[uvOffset + 1] = v;
+      changed = true;
+    }
   };
 
   // Triangle 1: bottomLeft, bottomRight, topLeft
-  writeVert(0, blX, blY);
-  writeVert(VERTEX_COMPONENTS, brX, brY);
-  writeVert(VERTEX_COMPONENTS * 2, tlX, tlY);
+  writeVert(0, blX, blY, 0, numTilesY);
+  writeVert(VERTEX_COMPONENTS, brX, brY, numTilesX, numTilesY);
+  writeVert(VERTEX_COMPONENTS * 2, tlX, tlY, 0, 0);
   // Triangle 2: topLeft, bottomRight, topRight
-  writeVert(VERTEX_COMPONENTS * 3, tlX, tlY);
-  writeVert(VERTEX_COMPONENTS * 4, brX, brY);
-  writeVert(VERTEX_COMPONENTS * 5, trX, trY);
+  writeVert(VERTEX_COMPONENTS * 3, tlX, tlY, 0, 0);
+  writeVert(VERTEX_COMPONENTS * 4, brX, brY, numTilesX, numTilesY);
+  writeVert(VERTEX_COMPONENTS * 5, trX, trY, numTilesX, 0);
 
   return changed;
 };

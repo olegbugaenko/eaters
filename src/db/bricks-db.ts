@@ -45,6 +45,11 @@ export interface BrickConfig {
    * Empty/undefined means the brick is blocking for everyone.
    */
   passableFor?: readonly PassabilityTag[];
+  /**
+   * Whether cracks should be displayed on this brick when damaged.
+   * Defaults to true if not specified.
+   */
+  cracksEnabled?: boolean;
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
@@ -326,6 +331,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     rewards: {
       stone: 100,
     },
+    cracksEnabled: false,
   },
   smallSquareYellow: {
     size: { width: 24, height: 24 },

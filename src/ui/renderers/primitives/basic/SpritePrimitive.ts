@@ -9,6 +9,9 @@ import {
   VERTEX_COMPONENTS,
   POSITION_COMPONENTS,
   FILL_INFO_COMPONENTS,
+  FILL_COMPONENTS,
+  CRACK_MASK_COMPONENTS,
+  CRACK_UV_COMPONENTS,
 } from "../../objects/ObjectRenderer";
 import { createSpriteFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import {
@@ -20,7 +23,14 @@ import { transformObjectPoint } from "../../objects/ObjectRenderer";
 /**
  * Texture cache for sprites (individual textures)
  */
-const textureCache = new Map<string, { texture: WebGLTexture; width: number; height: number }>();
+type SpriteTextureCacheEntry = {
+  texture: WebGLTexture;
+  width: number;
+  height: number;
+  gl: WebGL2RenderingContext;
+};
+
+const textureCache = new Map<string, SpriteTextureCacheEntry>();
 
 /**
  * Texture path to index mapping for texture array
@@ -49,6 +59,16 @@ const normalizeSpritePath = (spritePath: string): string => {
  */
 export const getTextureCache = () => textureCache;
 
+export const clearSpriteTextureCache = (): void => {
+  textureCache.forEach((entry) => {
+    try {
+      entry.gl.deleteTexture(entry.texture);
+    } catch {}
+  });
+  textureCache.clear();
+  textureIndexMap.clear();
+};
+
 /**
  * Get texture index for a sprite path (for use in shaders)
  */
@@ -69,8 +89,14 @@ export const loadSpriteTexture = (
     const normalizedPath = normalizeSpritePath(imagePath);
     const cached = textureCache.get(normalizedPath);
     if (cached) {
-      resolve(cached);
-      return;
+      if (cached.gl === gl) {
+        resolve(cached);
+        return;
+      }
+      try {
+        cached.gl.deleteTexture(cached.texture);
+      } catch {}
+      textureCache.delete(normalizedPath);
     }
 
     const image = new Image();
@@ -89,7 +115,7 @@ export const loadSpriteTexture = (
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.bindTexture(gl.TEXTURE_2D, null);
 
-      const result = { texture, width: image.width, height: image.height };
+      const result = { texture, width: image.width, height: image.height, gl };
       textureCache.set(normalizedPath, result);
       
       // Assign texture index if not already assigned
@@ -202,6 +228,14 @@ const pushSpriteVertex = (
   target[fillParams0Offset + 0] = u;
   target[fillParams0Offset + 1] = v;
   target[fillParams0Offset + 2] = textureIndex;
+  const crackUvOffset =
+    offset +
+    POSITION_COMPONENTS +
+    FILL_COMPONENTS -
+    CRACK_MASK_COMPONENTS -
+    CRACK_UV_COMPONENTS;
+  target[crackUvOffset + 0] = u;
+  target[crackUvOffset + 1] = v;
   return offset + VERTEX_COMPONENTS;
 };
 
