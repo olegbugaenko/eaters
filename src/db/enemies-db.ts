@@ -22,7 +22,8 @@ export type EnemyType =
   | "tankEnemy"
   | "turretEnemy"
   | "spectreEnemy"
-  | "freezeTurretEnemy";
+  | "freezeTurretEnemy"
+  | "bigGun";
 
 export interface EnemyAuraConfig {
   petalCount: number;
@@ -667,6 +668,94 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       skipTargetsWithEffects: ["freeze"],
       searchPadding: 200,
     },
+  },
+  bigGun: {
+    name: "Big Gun",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.5, g: 0.6, b: 0.6, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -3 },
+            { x: 0, y: -5 },
+            { x: 0, y: 5 },
+            { x: 14, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.2 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: -3, y: -8 },
+            { x: -8, y: -8 },
+            { x: -11, y: -4 },
+            { x: -11, y: 4 },
+            { x: -8, y: 8},
+            { x: -3, y: 8 },
+            { x: 0, y: 4}
+          ],
+          fill: { type: "base", brightness: 0.2 },
+        },
+      ],
+    },
+    maxHp: 1225,
+    armor: 48,
+    baseDamage: 240,
+    attackInterval: 3.5,
+    attackRange: 300,
+    moveSpeed: 0, // Статична турель
+    physicalSize: 30,
+    reward: normalizeResourceAmount({
+      iron: 50,
+      copper: 10,
+    }),
+    projectile: {
+      radius: 8,
+      speed: 80,
+      lifetimeMs: 2500,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.5, g: 0.6, b: 0.6, a: 1 },
+      },
+      shape: "circle",
+      hitRadius: 60,
+      explosion: "bigCannon",
+      tail: {
+        lengthMultiplier: 4.0,
+        widthMultiplier: 1.0,
+        startColor: { r: 0.5, g: 0.6, b: 0.6, a: 0.11 },
+        endColor: { r: 0.5, g: 0.6, b: 0.6, a: 0 },
+      },
+      tailEmitter: {
+        particlesPerSecond: 150,
+        particleLifetimeMs: 800,
+        fadeStartMs: 100,
+        baseSpeed: 0.03,
+        speedVariation: 0.005,
+        spread: Math.PI / 8,
+        sizeEvolutionMult: 3.0,
+        sizeRange: { min: 10.3, max: 14.4 },
+        color: { r: 0.5, g: 0.6, b: 0.6, a: 1 },
+        fill: {
+          fillType: FILL_TYPES.RADIAL_GRADIENT,
+          stops: [
+            { offset: 0, color: { r: 0.5, g: 0.6, b: 0.6, a: 0.1 } },
+            { offset: 1, color: { r: 0.5, g: 0.6, b: 0.6, a: 0 } },
+          ],
+          noise: {
+            colorAmplitude: 0.0,
+            alphaAmplitude: 0.02,
+            scale: 0.45,
+          }
+        },
+        maxParticles: 200,
+      },
+    },
+    knockBackDistance: 120,
+    knockBackSpeed: 160,
   },
 };
 

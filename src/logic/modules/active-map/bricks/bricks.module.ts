@@ -324,10 +324,18 @@ export class BricksModule implements GameModule {
     const nextDamageStage = resolveBrickDamageStage(brick.hp, brick.maxHp);
     if (nextDamageStage !== brick.damageStage) {
       brick.damageStage = nextDamageStage;
+      const type = sanitizeBrickType(brick.type);
+      const config = getBrickConfig(type);
+      const crackMaskConfig = config.crackMask;
+      const crackDesat = crackMaskConfig?.desat ?? 2.0;
+      const crackDarken = crackMaskConfig?.darken ?? 0.5;
       this.updateBrickSceneObject(brick, brick.knockback?.currentOffset ?? ZERO_VECTOR, {
         customData: {
           damageStage: brick.damageStage,
           crackVariant: brick.crackVariant,
+          cracksEnabled: config.cracksEnabled !== false,
+          crackDesat,
+          crackDarken,
         },
       });
     }
@@ -535,14 +543,29 @@ export class BricksModule implements GameModule {
   private updateBrickSceneObject(
     brick: InternalBrickState,
     offset: SceneVector2,
-    extras: { fill?: SceneFill; customData?: { damageStage: number; crackVariant: number } } = {}
+    extras: {
+      fill?: SceneFill;
+      customData?: {
+        damageStage: number;
+        crackVariant: number;
+        cracksEnabled?: boolean;
+        crackDesat?: number;
+        crackDarken?: number;
+      };
+    } = {}
   ): void {
     const position = addVectors(brick.position, offset);
     const payload: {
       position: SceneVector2;
       rotation: number;
       fill?: SceneFill;
-      customData?: { damageStage: number; crackVariant: number };
+      customData?: {
+        damageStage: number;
+        crackVariant: number;
+        cracksEnabled?: boolean;
+        crackDesat?: number;
+        crackDarken?: number;
+      };
     } = {
       position,
       rotation: brick.rotation,

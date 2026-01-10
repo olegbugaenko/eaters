@@ -21,6 +21,7 @@ export interface ResourceRunSummaryItem extends ResourceAmountPayload {
 
 export interface ResourceRunSummaryPayload {
   completed: boolean;
+  success?: boolean;
   resources: ResourceRunSummaryItem[];
   bricksDestroyed: number;
   totalBricksDestroyed: number;

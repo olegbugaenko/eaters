@@ -452,6 +452,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           resources={resourceSummary.resources}
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
+          title={
+            resourceSummary.success === true
+              ? "Map Complete"
+              : resourceSummary.success === false
+              ? "Run Ended"
+              : undefined
+          }
           primaryAction={{ label: "Return to Void Lab", onClick: handleLeaveToMapSelect }}
           secondaryAction={{ label: "Restart Map", onClick: handleRestart }}
           autoRestart={

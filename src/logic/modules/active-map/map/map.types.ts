@@ -20,7 +20,7 @@ import { MapSceneCleanupContract } from "./map.scene-cleanup";
 export interface ResourceRunController {
   startRun(): void;
   cancelRun(): void;
-  finishRun(): void;
+  finishRun(success: boolean): void;
   isRunSummaryAvailable(): boolean;
   getRunDurationMs(): number;
 }

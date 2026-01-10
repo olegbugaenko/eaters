@@ -361,7 +361,7 @@ export class MapModule implements GameModule {
     }
     const durationMs = resources.getRunDurationMs();
     this.recordRunResult({ success, durationMs });
-    resources.finishRun();
+    resources.finishRun(success);
   }
 
   private handleRunStateEvent(event: MapRunEvent): void {

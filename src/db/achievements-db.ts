@@ -8,7 +8,7 @@ export interface AchievementConfig {
   readonly effects: BonusEffectMap;
 }
 
-export const ACHIEVEMENT_IDS = ["megaBrick", "ancientPyramids"] as const;
+export const ACHIEVEMENT_IDS = ["megaBrick", "ancientPyramids", "deathfulGuns"] as const;
 
 export type AchievementId = (typeof ACHIEVEMENT_IDS)[number];
 
@@ -31,6 +31,17 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     maxLevel: 10,
     effects: {
       all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+  },
+  deathfulGuns: {
+    id: "deathfulGuns",
+    name: "Deathful Guns Mastery",
+    description: "Complete Deathful Guns levels to boost unit damage.",
+    maxLevel: 10,
+    effects: {
+      all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
       },
     },

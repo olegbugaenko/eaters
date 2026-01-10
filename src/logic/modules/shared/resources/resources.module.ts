@@ -59,6 +59,7 @@ export class ResourcesModule implements GameModule {
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
   private summaryCompleted = false;
+  private runSuccess: boolean | undefined = undefined;
   private totalBricksDestroyed = 0;
   private runBricksDestroyed = 0;
   private runDurationMs = 0;
@@ -87,6 +88,7 @@ export class ResourcesModule implements GameModule {
     this.runGains = createEmptyResourceStockpile();
     this.runActive = false;
     this.summaryCompleted = false;
+    this.runSuccess = undefined;
     this.totalBricksDestroyed = 0;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
@@ -161,6 +163,7 @@ export class ResourcesModule implements GameModule {
     this.runGains = createEmptyResourceStockpile();
     this.runActive = true;
     this.summaryCompleted = false;
+    this.runSuccess = undefined;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
     this.forceRefreshVisibleResourceIds();
@@ -169,12 +172,13 @@ export class ResourcesModule implements GameModule {
     this.pushRunDuration();
   }
 
-  public finishRun(): void {
+  public finishRun(success: boolean): void {
     if (!this.runActive) {
       return;
     }
     this.runActive = false;
     this.summaryCompleted = true;
+    this.runSuccess = success;
     this.forceRefreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
@@ -187,6 +191,7 @@ export class ResourcesModule implements GameModule {
     }
     this.runActive = false;
     this.summaryCompleted = false;
+    this.runSuccess = undefined;
     this.runGains = createEmptyResourceStockpile();
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
@@ -312,6 +317,7 @@ export class ResourcesModule implements GameModule {
   private pushRunSummary(): void {
     const payload: ResourceRunSummaryPayload = {
       completed: this.summaryCompleted,
+      success: this.runSuccess,
       resources: this.createRunSummaryItems(),
       bricksDestroyed: this.runBricksDestroyed,
       totalBricksDestroyed: this.totalBricksDestroyed,

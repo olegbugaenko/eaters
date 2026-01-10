@@ -36,7 +36,8 @@ export type ExplosionType =
   | "magmaBrickDestroy"
   | "criticalHit"
   | "weakenCurse"
-  | "smallCannon";
+  | "smallCannon"
+  | "bigCannon";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
@@ -478,6 +479,32 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       particleLifetimeMs: 1_000,
       particlesPerSecond: 2760,
       sizeRange: { min: 0.5, max: 4.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      // color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: SMALL_CANNON_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  bigCannon: {
+    lifetimeMs: 2_000,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 20,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.06,
+      speedVariation: 0.035,
+      fadeStartMs: 600,
+      particleLifetimeMs: 1_200,
+      particlesPerSecond: 3760,
+      sizeRange: { min: 0.3, max: 4.4 },
       emissionDurationMs: 400,
       spawnRadius: { min: 0, max: 0.1 },
       spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
