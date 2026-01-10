@@ -275,7 +275,8 @@ export const useSceneCanvas = ({
       },
       afterApplyChanges: (timestamp, scene, cameraState) => {
         const objectsRenderer = webglRenderer.getObjectsRenderer();
-        
+        const interpolatedBulletPositions = getInterpolatedBulletPositionsRef.current();
+
         // Apply interpolated unit positions
         const interpolatedUnitPositions = getInterpolatedUnitPositionsRef.current();
         if (interpolatedUnitPositions.size > 0) {
@@ -304,6 +305,10 @@ export const useSceneCanvas = ({
         const interpolatedEnemyPositions = getInterpolatedEnemyPositionsRef.current();
         if (interpolatedEnemyPositions.size > 0) {
           objectsRenderer.applyInterpolatedPositions(interpolatedEnemyPositions);
+        }
+        // Apply interpolated bullet positions for emitter spawn origins
+        if (interpolatedBulletPositions.size > 0) {
+          objectsRenderer.applyInterpolatedPositions(interpolatedBulletPositions);
         }
       },
 
