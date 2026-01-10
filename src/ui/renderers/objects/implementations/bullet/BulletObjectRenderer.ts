@@ -18,6 +18,7 @@ import {
   getTailEmitterOrigin,
   createTailParticle,
   serializeTailEmitterConfig,
+  getGpuSpawnConfig,
 } from "./emitter.helpers";
 import { getGlowConfig, getGlowRadius, createGlowFill } from "./glow.helpers";
 import { createTriangleVertices } from "./triangle.helpers";
@@ -32,6 +33,7 @@ const createEmitterPrimitive = (
     getOrigin: getTailEmitterOrigin,
     spawnParticle: createTailParticle,
     serializeConfig: serializeTailEmitterConfig,
+    getGpuSpawnConfig,
   });
 
 export class BulletObjectRenderer extends ObjectRenderer {

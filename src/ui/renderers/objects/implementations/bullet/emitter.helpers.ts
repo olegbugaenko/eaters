@@ -1,5 +1,8 @@
 import type { SceneObjectInstance, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
+import type {
+  GpuSpawnConfig,
+  ParticleEmitterParticleState,
+} from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
 import { randomBetween } from "@shared/helpers/numbers.helper";
@@ -202,3 +205,23 @@ export const createTailParticle = (
     size,
   };
 };
+
+/**
+ * Gets GPU spawn config for bullet tail emitters.
+ * Ensures GPU spawn model matches CPU spawn (direction + spread + speed).
+ */
+export const getGpuSpawnConfig = (
+  instance: SceneObjectInstance,
+  config: BulletTailEmitterRenderConfig
+): GpuSpawnConfig => ({
+  baseSpeed: config.baseSpeed,
+  speedVariation: config.speedVariation,
+  sizeMin: config.sizeRange.min,
+  sizeMax: config.sizeRange.max,
+  spawnRadiusMin: 0,
+  spawnRadiusMax: 0,
+  arc: 0,
+  direction: (instance.data.rotation ?? 0) + Math.PI,
+  spread: config.spread,
+  radialVelocity: false,
+});
