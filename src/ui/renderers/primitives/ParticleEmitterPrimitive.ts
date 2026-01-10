@@ -83,6 +83,7 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   requireGpu: boolean;
   cpuCache: ParticleEmitterCpuCache | null;
   lastConfigRef: Config | null; // Cache config reference to avoid JSON.stringify on every frame
+  warnedCpuSpawnFallback: boolean;
 }
 
 interface ParticleEmitterCpuCache {
@@ -300,6 +301,20 @@ export const createParticleEmitterPrimitive = <
       state.config = nextConfig;
       // keep buffer capacity stable to prevent frequent reallocations
       state.capacity = Math.max(state.capacity, nextConfig.capacity);
+
+      if (state.mode === "cpu" && !state.gpu) {
+        const gl = getParticleEmitterGlContext();
+        if (gl && state.capacity > 0) {
+          destroyParticleEmitterGpuState(state);
+          state = createParticleEmitterState(
+            target,
+            nextConfig,
+            options,
+            state.requireGpu
+          );
+          return state.data;
+        }
+      }
       
       // Check if config object changed (by reference) and update GPU uniforms if needed
       if (state.lastConfigRef !== nextConfig && state.gpu) {
@@ -378,6 +393,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     requireGpu,
     cpuCache: null,
     lastConfigRef: config,
+    warnedCpuSpawnFallback: false,
   };
 
   if (gpu) {
@@ -406,6 +422,7 @@ const createEmptyParticleEmitterState = <
   requireGpu,
   cpuCache: null,
   lastConfigRef: null,
+  warnedCpuSpawnFallback: false,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -582,6 +599,16 @@ const advanceParticleEmitterStateGpu = <
     state.spawnAccumulator = Math.min(state.spawnAccumulator, state.capacity);
   } else {
     // CPU SPAWN PATH: Legacy - requires slot tracking
+    if (!state.warnedCpuSpawnFallback) {
+      const reason = options.getGpuSpawnConfig
+        ? "getGpuSpawnConfig returned null/undefined"
+        : "getGpuSpawnConfig not provided";
+      console.warn(
+        `[ParticleEmitter] Falling back to CPU spawn in GPU mode: ${reason}. ` +
+          `shape=${config.shape}, particlesPerSecond=${config.particlesPerSecond}`
+      );
+      state.warnedCpuSpawnFallback = true;
+    }
     const currentTimeMs = state.ageMs;
     const slots = gpu.slots;
     const freeSlots: number[] = [];
@@ -2500,6 +2527,3 @@ export const sanitizeParticleEmitterConfig = (
     alignToVelocity: config.alignToVelocity === true,
   };
 };
-
-
-
