@@ -20,6 +20,7 @@ import {
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
+import { getTextureCache, loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -238,12 +239,16 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE1);
       this.gl.uniform1i(this.crackAtlasSamplerLocation, 1);
 
-      const { getTextureCache } = require("../primitives/basic/SpritePrimitive");
       const textureCache = getTextureCache();
-      const crackTexture = textureCache.get("/images/sprites/cracks/cracks_atlas.png");
-      if (crackTexture?.texture) {
+      const crackPath = "/images/sprites/cracks/cracks_atlas.png";
+      const crackTexture = textureCache.get(crackPath);
+      
+      if (crackTexture?.texture && crackTexture.gl === this.gl) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, crackTexture.texture);
       } else {
+        if (!crackTexture || crackTexture.gl !== this.gl) {
+          loadSpriteTexture(this.gl, crackPath).catch(() => {});
+        }
         const dummyTexture = this.gl.createTexture();
         if (dummyTexture) {
           this.gl.bindTexture(this.gl.TEXTURE_2D, dummyTexture);
@@ -267,11 +272,7 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE0);
       this.gl.uniform1i(this.spriteTextureLocation, 0);
       
-      // Get texture from cache
-      const { getTextureCache } = require("../primitives/basic/SpritePrimitive");
       const textureCache = getTextureCache();
-      
-      // Bind first available texture or create dummy
       const firstTexture = textureCache.values().next().value;
       if (firstTexture?.texture) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, firstTexture.texture);
@@ -345,8 +346,7 @@ export class WebGLSceneRenderer {
   /**
    * Loads a sprite texture
    */
-  public async loadSpriteTexture(spritePath: string): Promise<void> {
-    const { loadSpriteTexture } = require("../primitives/basic/SpritePrimitive");
+  public async loadTexture(spritePath: string): Promise<void> {
     try {
       await loadSpriteTexture(this.gl, spritePath);
     } catch (error) {
