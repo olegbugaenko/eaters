@@ -7,7 +7,12 @@ import type { SceneObjectInstance } from "@core/logic/provided/services/scene-ob
 import { createDynamicCirclePrimitive } from "../../../primitives";
 import { createParticleEmitterPrimitive } from "../../../primitives/ParticleEmitterPrimitive";
 import { DEFAULT_PORTAL_FILL, DEFAULT_PORTAL_RADIUS, DEFAULT_PORTAL_SEGMENTS } from "./constants";
-import { getEmitterConfig, getEmitterOrigin, spawnPortalParticle } from "./helpers";
+import {
+  getEmitterConfig,
+  getEmitterOrigin,
+  getGpuSpawnConfig,
+  spawnPortalParticle,
+} from "./helpers";
 import type { PortalCustomData, PortalEmitterConfig } from "./types";
 
 export class PortalObjectRenderer extends ObjectRenderer {
@@ -31,6 +36,7 @@ export class PortalObjectRenderer extends ObjectRenderer {
       getConfig: getEmitterConfig,
       getOrigin: getEmitterOrigin,
       spawnParticle: spawnPortalParticle,
+      getGpuSpawnConfig,
     });
     if (emitterPrimitive) {
       dynamicPrimitives.push(emitterPrimitive);
