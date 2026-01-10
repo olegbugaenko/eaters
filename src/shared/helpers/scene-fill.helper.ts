@@ -170,7 +170,7 @@ export const cloneFillWithOptions = (
 
 export const withCrackMask = (
   fill: SceneFill,
-  params: { atlasId: number; tileIndex: number; strength: number; desat: number },
+  params: { atlasId: number; tileIndex: number; strength: number; desat: number; darken: number },
 ): SceneFill => ({
   ...cloneSceneFill(fill),
   crackMask: cloneSceneFillCrackMask(params),

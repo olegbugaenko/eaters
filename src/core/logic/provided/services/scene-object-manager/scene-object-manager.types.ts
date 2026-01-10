@@ -46,7 +46,7 @@ export interface SceneFillFilaments {
 interface SceneFillCommon {
   noise?: SceneFillNoise;
   filaments?: SceneFillFilaments;
-  crackMask?: { atlasId: number; tileIndex: number; strength: number; desat: number };
+  crackMask?: { atlasId: number; tileIndex: number; strength: number; desat: number; darken: number };
 }
 
 export interface SceneSolidFill extends SceneFillCommon {

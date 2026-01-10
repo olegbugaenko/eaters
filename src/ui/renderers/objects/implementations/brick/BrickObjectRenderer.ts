@@ -13,6 +13,8 @@ type BrickCustomData = {
   damageStage?: number;
   crackVariant?: number;
   cracksEnabled?: boolean;
+  crackDesat?: number;
+  crackDarken?: number;
 };
 
 export class BrickObjectRenderer extends ObjectRenderer {
@@ -53,6 +55,8 @@ export class BrickObjectRenderer extends ObjectRenderer {
           const damageStage = customData?.damageStage ?? 0;
           const crackVariant = customData?.crackVariant ?? 0;
           const cracksEnabled = customData?.cracksEnabled !== false;
+          const crackDesat = customData?.crackDesat ?? 2.0;
+          const crackDarken = customData?.crackDarken ?? 0.5;
           const baseFill = target.data.fill ?? instance.data.fill;
 
           if (
@@ -79,7 +83,8 @@ export class BrickObjectRenderer extends ObjectRenderer {
             atlasId,
             tileIndex,
             strength: crackStrength,
-            desat: 1.4,
+            desat: crackDesat,
+            darken: crackDarken,
           });
           cachedDamageStage = damageStage;
           cachedCrackVariant = crackVariant;

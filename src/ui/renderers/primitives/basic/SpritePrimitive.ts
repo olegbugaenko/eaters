@@ -11,6 +11,7 @@ import {
   FILL_INFO_COMPONENTS,
   FILL_COMPONENTS,
   CRACK_MASK_COMPONENTS,
+  CRACK_EFFECTS_COMPONENTS,
   CRACK_UV_COMPONENTS,
 } from "../../objects/ObjectRenderer";
 import { createSpriteFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
@@ -232,6 +233,7 @@ const pushSpriteVertex = (
     offset +
     POSITION_COMPONENTS +
     FILL_COMPONENTS -
+    CRACK_EFFECTS_COMPONENTS -
     CRACK_MASK_COMPONENTS -
     CRACK_UV_COMPONENTS;
   target[crackUvOffset + 0] = u;

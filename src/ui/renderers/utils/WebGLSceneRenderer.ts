@@ -17,6 +17,7 @@ import {
   STOP_COLOR_COMPONENTS,
   CRACK_UV_COMPONENTS,
   CRACK_MASK_COMPONENTS,
+  CRACK_EFFECTS_COMPONENTS,
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
@@ -87,6 +88,10 @@ export class WebGLSceneRenderer {
     const stopColor2Location = gl.getAttribLocation(this.program, "a_stopColor2");
     const crackUvLocation = gl.getAttribLocation(this.program, "a_crackUv");
     const crackMaskLocation = gl.getAttribLocation(this.program, "a_crackMask");
+    const crackEffectsLocation = gl.getAttribLocation(
+      this.program,
+      "a_crackEffects"
+    );
 
     const attributeLocations = [
       positionLocation,
@@ -101,6 +106,7 @@ export class WebGLSceneRenderer {
       stopColor2Location,
       crackUvLocation,
       crackMaskLocation,
+      crackEffectsLocation,
     ];
 
     if (attributeLocations.some((location) => location < 0)) {
@@ -122,6 +128,7 @@ export class WebGLSceneRenderer {
       { location: stopColor2Location, size: STOP_COLOR_COMPONENTS },
       { location: crackUvLocation, size: CRACK_UV_COMPONENTS },
       { location: crackMaskLocation, size: CRACK_MASK_COMPONENTS },
+      { location: crackEffectsLocation, size: CRACK_EFFECTS_COMPONENTS },
     ]);
 
     // Create buffers

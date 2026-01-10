@@ -129,6 +129,9 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
   protected override transform(state: InternalBrickState, input: BrickStateInput): void {
     const type = sanitizeBrickType(state.type as BrickType);
     const config = getBrickConfig(type);
+    const crackMaskConfig = config.crackMask;
+    const crackDesat = crackMaskConfig?.desat ?? 2.0;
+    const crackDarken = crackMaskConfig?.darken ?? 0.5;
     const sceneObjectId = this.scene.addObject("brick", {
       position: state.position,
       size: { ...config.size },
@@ -144,6 +147,8 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
         damageStage: state.damageStage,
         crackVariant: state.crackVariant,
         cracksEnabled: config.cracksEnabled !== false,
+        crackDesat,
+        crackDarken,
       },
     });
 

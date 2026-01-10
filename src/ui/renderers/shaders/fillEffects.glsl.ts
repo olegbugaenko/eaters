@@ -78,6 +78,7 @@ in vec4 a_stopColor1;
 in vec4 a_stopColor2;
 in vec2 a_crackUv;
 in vec4 a_crackMask;
+in vec2 a_crackEffects;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
@@ -98,6 +99,7 @@ out vec4 v_stopColor1;
 out vec4 v_stopColor2;
 out vec2 v_crackUv;
 out vec4 v_crackMask;
+out vec2 v_crackEffects;
 `;
 
 export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
@@ -117,6 +119,7 @@ void main() {
   v_stopColor2 = a_stopColor2;
   v_crackUv = a_crackUv;
   v_crackMask = a_crackMask;
+  v_crackEffects = a_crackEffects;
 }
 `;
 
@@ -142,6 +145,7 @@ in vec4 v_stopColor1;
 in vec4 v_stopColor2;
 in vec2 v_crackUv;
 in vec4 v_crackMask;
+in vec2 v_crackEffects;
 
 uniform sampler2D u_spriteTexture;
 uniform sampler2D u_cracksAtlas;
@@ -333,7 +337,8 @@ void main() {
   
   // Sample alpha channel as crack mask (black cracks on transparent background)
   float crackMask = texture(u_cracksAtlas, atlasUV).a;
-  float desat = v_crackMask.w;
+  float desat = v_crackEffects.x;
+  float darken = v_crackEffects.y;
 
   float k = crackMask * crackStrength;
   if (k <= 0.0) {
@@ -346,11 +351,11 @@ void main() {
   float grayLuma = dot(base, vec3(0.3, 0.3, 0.3));
   vec3 gray = vec3(grayLuma);
 
-  vec3 saturated = gray + (base - gray) * 2.5;
+  vec3 saturated = gray + (base - gray) * desat;
 
   saturated = clamp(saturated, 0.0, 1.0);
 
-  vec3 darkened = saturated * 0.55;
+  vec3 darkened = saturated * darken;
 
   vec3 finalRgb = mix(base, darkened, k);
 

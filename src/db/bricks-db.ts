@@ -50,6 +50,13 @@ export interface BrickConfig {
    * Defaults to true if not specified.
    */
   cracksEnabled?: boolean;
+  /**
+   * Optional crack shading overrides.
+   */
+  crackMask?: {
+    desat?: number;
+    darken?: number;
+  };
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
@@ -256,6 +263,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         radiusMultiplier: 0.95,
       },
     },
+    crackMask: {
+      desat: 1.0,
+      darken: 0.4,
+    },
     rewards: {
       stone: 0.5,
     },
@@ -294,6 +305,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       stone: 1,
+    },
+    crackMask: {
+      desat: 1.0,
+      darken: 0.4,
     },
   },
   megaBrick: {
@@ -368,6 +383,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     rewards: {
       sand: 1,
     },
+    crackMask: {
+      desat: 2.0,
+      darken: 0.5,
+    },
   },
   smallOrganic: {
     size: { width: 30, height: 30 },
@@ -403,6 +422,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     rewards: {
       organics: 1,
     },
+    crackMask: {
+      desat: 4.0,
+      darken: 0.6,
+    },
   },
   smallIron: {
     size: { width: 30, height: 30 },
@@ -432,6 +455,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       iron: 1,
+    },
+    crackMask: {
+      desat: 2.5,
+      darken: 0.55,
     },
   },
   compactIron: {
