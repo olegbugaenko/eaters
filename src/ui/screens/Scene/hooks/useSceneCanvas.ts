@@ -308,7 +308,7 @@ export const useSceneCanvas = ({
         }
         // Apply interpolated bullet positions for emitter spawn origins
         if (interpolatedBulletPositions.size > 0) {
-          objectsRenderer.applyInterpolatedPositions(interpolatedBulletPositions);
+          objectsRenderer.applyInterpolatedBulletPositions(interpolatedBulletPositions);
         }
       },
 

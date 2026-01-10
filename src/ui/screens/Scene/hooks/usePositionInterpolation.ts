@@ -198,7 +198,7 @@ export const usePositionInterpolation = (
     
     // Only interpolate for bullets that are still active
     const activeBullets = getAllActiveBullets();
-    const activeKeys = new Set(activeBullets.map((item) => `${item.handle.visualKey}:${item.handle.slotIndex}`));
+    const activeKeys = new Set(activeBullets.map((item) => `${item.handle.batchKey}:${item.handle.slotIndex}`));
     
     const now = getNow();
     snapshots.forEach((snapshot, key) => {

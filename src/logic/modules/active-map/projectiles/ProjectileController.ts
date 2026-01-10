@@ -105,6 +105,7 @@ export class UnitProjectileController {
     const gpuConfig = this.getGpuBulletConfig(visual, shape);
     const gpuSlot = gpuConfig ? acquireGpuBulletSlot(gpuConfig) : null;
 
+    const bulletGpuKey = gpuSlot ? `${gpuSlot.batchKey}:${gpuSlot.slotIndex}` : undefined;
     const rendererCustomData = {
       speed: visual.speed,
       maxSpeed: visual.speed,
@@ -112,6 +113,7 @@ export class UnitProjectileController {
       tail: visual.tail,
       tailEmitter: visual.tailEmitter,
       shape,
+      bulletGpuKey,
       ...(visual.rendererCustomData ?? {}),
     };
 

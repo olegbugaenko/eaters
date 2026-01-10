@@ -69,6 +69,7 @@ export class ObjectsRendererManager {
   // Individual primitives that need per-frame updates (e.g., particle emitters)
   private readonly autoAnimatingPrimitives = new Map<DynamicPrimitive, { objectId: string }>();
   private readonly interpolatedPositions = new Map<string, SceneVector2>();
+  private readonly bulletKeyToObjectId = new Map<string, string>();
 
   private staticData: Float32Array | null = null;
   private dynamicData: Float32Array | null = null;
@@ -109,6 +110,7 @@ export class ObjectsRendererManager {
     this.objects.clear();
     this.autoAnimatingIds.clear();
     this.autoAnimatingPrimitives.clear();
+    this.bulletKeyToObjectId.clear();
     this.staticEntries.length = 0;
     this.dynamicEntries.length = 0;
     this.dynamicEntryByPrimitive.clear();
@@ -146,6 +148,25 @@ export class ObjectsRendererManager {
     changes.updated.forEach((instance) => {
       this.updateObject(instance);
     });
+  }
+
+  public applyInterpolatedBulletPositions(
+    positions: Map<string, SceneVector2>
+  ): void {
+    if (positions.size === 0) {
+      return;
+    }
+    const mapped = new Map<string, SceneVector2>();
+    positions.forEach((position, bulletKey) => {
+      const objectId = this.bulletKeyToObjectId.get(bulletKey);
+      if (!objectId) {
+        return;
+      }
+      mapped.set(objectId, position);
+    });
+    if (mapped.size > 0) {
+      this.applyInterpolatedPositions(mapped);
+    }
   }
 
   public applyInterpolatedPositions(positions: Map<string, SceneVector2>): void {
@@ -448,6 +469,10 @@ export class ObjectsRendererManager {
     if (customData?.autoAnimate === true) {
       this.autoAnimatingIds.add(instance.id);
     }
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
+    }
   }
 
   private updateObject(instance: SceneObjectInstance): void {
@@ -456,6 +481,11 @@ export class ObjectsRendererManager {
       return;
     }
     managed.instance = instance;
+    const customData = instance.data.customData as Record<string, unknown> | undefined;
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
+    }
     const updates = managed.renderer.update(instance, managed.registration);
     let anyUpdated = false;
     updates.forEach(({ primitive, data }) => {
@@ -486,6 +516,11 @@ export class ObjectsRendererManager {
     const managed = this.objects.get(id);
     if (!managed) {
       return;
+    }
+    const customData = managed.instance.data.customData as Record<string, unknown> | undefined;
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.delete(bulletGpuKey);
     }
     this.objects.delete(id);
     this.autoAnimatingIds.delete(id);

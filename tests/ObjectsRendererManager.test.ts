@@ -67,4 +67,38 @@ describe("ObjectsRendererManager interpolated positions", () => {
     manager.tickAutoAnimating();
     assert.deepStrictEqual(updates[afterFirstTickIndex], { x: 0, y: 0 });
   });
+
+  test("maps bullet keys to object IDs for interpolated positions", () => {
+    const updates: Array<{ x: number; y: number }> = [];
+    const renderer = new TestRenderer(updates);
+    const manager = new ObjectsRendererManager(
+      new Map([["test", renderer]]),
+      new TiedObjectsRegistry()
+    );
+
+    const instance: SceneObjectInstance = {
+      id: "object-2",
+      type: "test",
+      data: {
+        position: { x: 1, y: 1 },
+        fill: {
+          fillType: FILL_TYPES.SOLID,
+          color: { r: 1, g: 1, b: 1, a: 1 },
+        },
+        customData: {
+          bulletGpuKey: "batchA:3",
+        },
+      },
+    } as SceneObjectInstance;
+
+    manager.applyChanges({ added: [instance], updated: [], removed: [] });
+
+    const interpolated = new Map([
+      ["batchA:3", { x: 9, y: 8 }],
+    ]);
+    manager.applyInterpolatedBulletPositions(interpolated);
+
+    manager.tickAutoAnimating();
+    assert.deepStrictEqual(updates[updates.length - 1], { x: 9, y: 8 });
+  });
 });
