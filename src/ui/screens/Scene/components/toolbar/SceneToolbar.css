@@ -9,7 +9,8 @@
   gap: 2rem;
   padding: 1rem 2rem;
   z-index: 20;
-  contain: layout paint;
+  contain: layout;
+  overflow: visible;
 }
 
 .scene-toolbar__section {
@@ -28,8 +29,10 @@
   position: relative;
   margin: 0 20%;
   padding: 1rem 2.75rem;
+  padding-bottom: calc(1rem + 50px);
   isolation: isolate;
   z-index: 0;
+  overflow: visible;
 }
 
 .scene-toolbar__center-silhouette {
