@@ -1,5 +1,5 @@
-import { SceneObjectManager } from "../../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2, SceneColor } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { BricksModule } from "../../bricks/bricks.module";
 import {
   SpellBehavior,
@@ -7,7 +7,7 @@ import {
   SpellCanCastContext,
   SpellBehaviorDependencies,
 } from "../SpellBehavior";
-import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { OUT_OF_BOUNDS_MARGIN } from "./WhirlSpellBehavior.const";

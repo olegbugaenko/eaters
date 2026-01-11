@@ -1,7 +1,7 @@
 import assert from "assert";
-import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
-import type { SceneRadialGradientFill } from "../src/logic/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneRadialGradientFill } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   ExplosionModule,
   ExplosionRendererCustomData,
@@ -29,7 +29,7 @@ describe("ExplosionModule", () => {
     const wave = config.waves[0]!;
     assert.strictEqual(radialFill.stops.length, wave.gradientStops.length);
 
-    const expectedAlpha = Math.min(1, (wave.gradientStops[0]?.color.a ?? 1) * wave.startAlpha);
+    const expectedAlpha = wave.gradientStops[0]?.color.a ?? 1;
     const firstStop = radialFill.stops[0];
     assert(firstStop, "Explosion wave should have a first stop");
     assert.strictEqual(firstStop.color.a, expectedAlpha);

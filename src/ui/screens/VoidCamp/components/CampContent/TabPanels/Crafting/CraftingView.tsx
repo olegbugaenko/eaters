@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
-import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
@@ -8,6 +8,7 @@ import { formatNumber } from "@ui-shared/format/number";
 import { CraftingRecipeId } from "@db/crafting-recipes-db";
 import { classNames } from "@ui-shared/classNames";
 import "./CraftingView.css";
+import type { CraftingModuleUiApi } from "@logic/modules/camp/crafting/crafting.types";
 
 interface CraftingViewProps {
   readonly state: CraftingBridgeState;
@@ -66,8 +67,8 @@ const formatCraftTime = (durationMs: number): string => {
 };
 
 export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) => {
-  const { app } = useAppLogic();
-  const crafting = useMemo(() => app.services.crafting, [app]);
+  const { uiApi } = useAppLogic();
+  const crafting = uiApi.crafting as CraftingModuleUiApi;
   const totals = useMemo(() => buildResourceMap(resources), [resources]);
 
   const handleInputChange = useCallback(

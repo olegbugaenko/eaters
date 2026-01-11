@@ -24,7 +24,7 @@ export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze
 /**
  * Default map ID used when no map is selected.
  */
-export const DEFAULT_MAP_ID: MapId = "foundations";
+export const DEFAULT_MAP_ID: MapId = "tutorialZone";
 
 /**
  * Safe radius for spawning player units (prevents spawning too close to map edges).

@@ -1,4 +1,4 @@
-import type { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GpuInstancedPrimitiveLifecycle } from "../GpuInstancedPrimitiveLifecycle";
 import type {
   ParticleRenderProgram,
@@ -270,6 +270,7 @@ export const refreshParticleUniformKeys = (
   uniforms.stopColor2Key = serializeArray(uniforms.stopColor2);
   uniforms.stopColor3Key = serializeArray(uniforms.stopColor3);
   uniforms.stopColor4Key = serializeArray(uniforms.stopColor4);
+  uniforms.uniformSignature = `${uniforms.fillType}|${uniforms.stopCount}|${uniforms.fadeStartMs}|${uniforms.sizeGrowthRate}|${uniforms.stopOffsetsKey}|${uniforms.stopColor0Key}`;
 };
 
 const uploadEmitterUniforms = (
@@ -499,6 +500,23 @@ export const uploadEmitterUniformsPublic = (
   uploadEmitterUniforms(gl, program, uniforms, cache);
 };
 
+// Reusable array to avoid allocations during render
+const emitterRenderList: ParticleEmitterGpuDrawHandle[] = [];
+
+// Generate a signature for uniform values to enable batching
+const ensureUniformSignature = (u: ParticleEmitterGpuRenderUniforms): string => {
+  if (!u.stopOffsetsKey) {
+    u.stopOffsetsKey = serializeArray(u.stopOffsets);
+  }
+  if (!u.stopColor0Key) {
+    u.stopColor0Key = serializeArray(u.stopColor0);
+  }
+  if (!u.uniformSignature) {
+    u.uniformSignature = `${u.fillType}|${u.stopCount}|${u.fadeStartMs}|${u.sizeGrowthRate}|${u.stopOffsetsKey}|${u.stopColor0Key}`;
+  }
+  return u.uniformSignature;
+};
+
 export const renderParticleEmitters = (
   gl: WebGL2RenderingContext,
   cameraPosition: SceneVector2,
@@ -525,24 +543,33 @@ export const renderParticleEmitters = (
     gl.uniform2f(program.uniforms.viewportSize, viewportSize.width, viewportSize.height);
   }
 
-  const cache: UniformCache = {};
+  // Sort emitters by uniform signature to minimize uniform updates
+  emitterRenderList.length = 0;
   emitters.forEach((handle) => {
-    // Render full capacity - inactive particles are clipped in shader via alpha=0
-    // This avoids the slot fragmentation issue where activeCount doesn't match actual active slots
-    const instanceCount = Math.max(0, handle.capacity);
-    if (instanceCount <= 0) {
-      return;
+    if (handle.capacity > 0 && handle.getCurrentVao()) {
+      ensureUniformSignature(handle.uniforms);
+      emitterRenderList.push(handle);
     }
+  });
+  
+  // Sort by uniform signature for batching
+  emitterRenderList.sort((a, b) => {
+    return (a.uniforms.uniformSignature ?? "").localeCompare(
+      b.uniforms.uniformSignature ?? ""
+    );
+  });
+
+  const cache: UniformCache = {};
+  for (let i = 0; i < emitterRenderList.length; i++) {
+    const handle = emitterRenderList[i]!;
     const vao = handle.getCurrentVao();
     if (!vao) {
-      return;
+      continue;
     }
-    const uniforms = handle.uniforms;
-    uploadEmitterUniforms(gl, program, uniforms, cache);
-
+    uploadEmitterUniforms(gl, program, handle.uniforms, cache);
     gl.bindVertexArray(vao);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
-  });
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, handle.capacity);
+  }
 
   gl.bindVertexArray(null);
 };

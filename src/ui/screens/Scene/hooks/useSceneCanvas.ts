@@ -1,13 +1,13 @@
 import { MutableRefObject, useEffect, useRef } from "react";
 import { SpellId } from "@db/spells-db";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
-import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import {
   SceneCameraState,
   SceneVector2,
-} from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
-import { GameLoop } from "@logic/services/game-loop/GameLoop";
+  SceneUiApi,
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 import {
@@ -24,25 +24,19 @@ import {
   applyInterpolatedBulletPositions,
 } from "@ui/renderers/primitives/gpu/bullet";
 import { ringGpuRenderer } from "@ui/renderers/primitives/gpu/ring";
+import { clamp } from "@shared/helpers/numbers.helper";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "./useWebGLRenderLoop";
+import {
+  updateVboStats,
+  updateParticleStats,
+  updateMovableStats,
+  tickFrame,
+} from "../components/debug/debugStats";
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-  if (value < min) {
-    return min;
-  }
-  if (value > max) {
-    return max;
-  }
-  return value;
-};
 
 interface PointerState {
   x: number;
@@ -67,9 +61,9 @@ export interface ParticleStatsState {
 }
 
 export interface UseSceneCanvasParams {
-  scene: SceneObjectManager;
-  spellcasting: SpellcastingModule;
-  gameLoop: GameLoop;
+  scene: SceneUiApi;
+  spellcasting: SpellcastingModuleUiApi;
+  gameLoop: GameLoopUiApi;
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
   summoningPanelRef: MutableRefObject<HTMLDivElement | null>;
@@ -82,9 +76,7 @@ export interface UseSceneCanvasParams {
   setScale: (value: number) => void;
   setCameraInfo: (value: SceneCameraState) => void;
   setScaleRange: (value: { min: number; max: number }) => void;
-  setVboStats: (stats: BufferStats) => void;
   vboStatsRef: MutableRefObject<BufferStats>;
-  setParticleStats: (stats: ParticleStatsState) => void;
   particleStatsRef: MutableRefObject<ParticleStatsState>;
   particleStatsLastUpdateRef: MutableRefObject<number>;
   hasInitializedScaleRef: MutableRefObject<boolean>;
@@ -107,16 +99,14 @@ export const useSceneCanvas = ({
   setScale,
   setCameraInfo,
   setScaleRange,
-  setVboStats,
   vboStatsRef,
-  setParticleStats,
   particleStatsRef,
   particleStatsLastUpdateRef,
   hasInitializedScaleRef,
   onSpellCast,
 }: UseSceneCanvasParams) => {
   // Use position interpolation hook
-  const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions } = usePositionInterpolation(scene, gameLoop);
+  const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions } = usePositionInterpolation(scene, gameLoop);
 
   // Store scene, spellcasting, callbacks, and interpolation functions in refs to avoid recreating useEffect
   const sceneRef = useRef(scene);
@@ -125,6 +115,8 @@ export const useSceneCanvas = ({
   const getInterpolatedUnitPositionsRef = useRef(getInterpolatedUnitPositions);
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
+  const getInterpolatedEnemyPositionsRef = useRef(getInterpolatedEnemyPositions);
+  const movableStatsLastUpdateRef = useRef(0);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
   
@@ -135,7 +127,8 @@ export const useSceneCanvas = ({
     getInterpolatedUnitPositionsRef.current = getInterpolatedUnitPositions;
     getInterpolatedBulletPositionsRef.current = getInterpolatedBulletPositions;
     getInterpolatedBrickPositionsRef.current = getInterpolatedBrickPositions;
-  }, [scene, spellcasting, onSpellCast, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions]);
+    getInterpolatedEnemyPositionsRef.current = getInterpolatedEnemyPositions;
+  }, [scene, spellcasting, onSpellCast, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -145,6 +138,7 @@ export const useSceneCanvas = ({
 
     // Setup WebGL context and renderer
     const { gl, webglRenderer, objectsRenderer, cleanup: webglCleanup } = setupWebGLScene(canvas, sceneRef.current);
+    updateMovableStats(sceneRef.current.getMovableObjectCount());
 
     const pointerState: PointerState = {
       x: 0,
@@ -166,7 +160,7 @@ export const useSceneCanvas = ({
 
     const applyCameraMovement = (
       pointer: Pick<PointerState, "x" | "y" | "inside" | "isRightMousePressed">,
-      scene: SceneObjectManager,
+      scene: SceneUiApi,
       deltaMs: number,
       canvasWidthPx: number,
       canvasHeightPx: number,
@@ -245,6 +239,7 @@ export const useSceneCanvas = ({
 
       // Оновлюємо буфери WebGL
       applySync();
+      updateMovableStats(sceneRef.current.getMovableObjectCount());
 
       // Додатково очищаємо будь-які залишки змін після очищення
       const remainingChanges = sceneRef.current.flushChanges();
@@ -253,6 +248,7 @@ export const useSceneCanvas = ({
           remainingChanges.removed.length > 0) {
         webglRenderer.getObjectsRenderer().applyChanges(remainingChanges);
         applySync();
+        updateMovableStats(sceneRef.current.getMovableObjectCount());
       }
     };
 
@@ -287,20 +283,51 @@ export const useSceneCanvas = ({
         );
       },
       afterApplyChanges: (timestamp, scene, cameraState) => {
+        const objectsRenderer = webglRenderer.getObjectsRenderer();
+        const interpolatedBulletPositions = getInterpolatedBulletPositionsRef.current();
+
         // Apply interpolated unit positions
         const interpolatedUnitPositions = getInterpolatedUnitPositionsRef.current();
         if (interpolatedUnitPositions.size > 0) {
-          webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedUnitPositions);
+          objectsRenderer.applyInterpolatedPositions(interpolatedUnitPositions);
+          
+          // Also update objects tied to interpolated units (e.g., auras)
+          const tiedPositions = new Map<string, { x: number; y: number }>();
+          interpolatedUnitPositions.forEach((pos, unitId) => {
+            const tiedChildren = objectsRenderer.getTiedChildren(unitId);
+            if (tiedChildren) {
+              tiedChildren.forEach((childId) => {
+                tiedPositions.set(childId, pos);
+              });
+            }
+          });
+          if (tiedPositions.size > 0) {
+            objectsRenderer.applyInterpolatedPositions(tiedPositions);
+          }
         }
         // Apply interpolated brick positions
         const interpolatedBrickPositions = getInterpolatedBrickPositionsRef.current();
         if (interpolatedBrickPositions.size > 0) {
-          webglRenderer.getObjectsRenderer().applyInterpolatedPositions(interpolatedBrickPositions);
+          objectsRenderer.applyInterpolatedPositions(interpolatedBrickPositions);
+        }
+        // Apply interpolated enemy positions
+        const interpolatedEnemyPositions = getInterpolatedEnemyPositionsRef.current();
+        if (interpolatedEnemyPositions.size > 0) {
+          objectsRenderer.applyInterpolatedPositions(interpolatedEnemyPositions);
+        }
+        // Apply interpolated bullet positions for emitter spawn origins
+        if (interpolatedBulletPositions.size > 0) {
+          objectsRenderer.applyInterpolatedBulletPositions(interpolatedBulletPositions);
         }
       },
 
       afterUpdate: (timestamp, scene, cameraState) => {
-        // Update VBO stats
+        const now = timestamp;
+        if (now - movableStatsLastUpdateRef.current >= 250) {
+          movableStatsLastUpdateRef.current = now;
+          updateMovableStats(sceneRef.current.getMovableObjectCount());
+        }
+        // Update VBO stats (write to global object, no React re-render)
         const dbs = webglRenderer.getObjectsRenderer().getDynamicBufferStats();
         if (
           dbs.bytesAllocated !== vboStatsRef.current.bytes ||
@@ -310,7 +337,7 @@ export const useSceneCanvas = ({
             bytes: dbs.bytesAllocated,
             reallocs: dbs.reallocations,
           };
-          setVboStats({ bytes: dbs.bytesAllocated, reallocs: dbs.reallocations });
+          updateVboStats(dbs.bytesAllocated, dbs.reallocations);
         }
       },
       beforeEffects: (timestamp, gl, cameraState) => {
@@ -356,7 +383,10 @@ export const useSceneCanvas = ({
         ringGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
       },
       afterRender: (timestamp, gl, cameraState) => {
-        // Update particle stats
+        // Tick FPS counter (no separate rAF needed)
+        tickFrame();
+
+        // Update particle stats (write to global object, no React re-render)
         const stats = particleEmitterGpuRenderer.getStats(gl);
         const now = timestamp;
         if (now - particleStatsLastUpdateRef.current >= 500) {
@@ -367,7 +397,7 @@ export const useSceneCanvas = ({
             stats.emitters !== particleStatsRef.current.emitters
           ) {
             particleStatsRef.current = stats;
-            setParticleStats(stats);
+            updateParticleStats(stats.active, stats.capacity, stats.emitters);
           }
         } else {
           particleStatsRef.current = stats;
@@ -655,7 +685,5 @@ export const useSceneCanvas = ({
     canvasRef,
     setScale,
     setCameraInfo,
-    setVboStats,
-    setParticleStats,
   ]);
 };

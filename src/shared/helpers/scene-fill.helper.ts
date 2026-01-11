@@ -1,4 +1,4 @@
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type {
   SceneColor,
   SceneDiamondGradientFill,
@@ -10,7 +10,7 @@ import type {
   SceneRadialGradientFill,
   SceneSolidFill,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { tintSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
 
@@ -21,6 +21,10 @@ export const cloneSceneFillNoise = (
 export const cloneSceneFillFilaments = (
   filaments: SceneFillFilaments | undefined,
 ): SceneFillFilaments | undefined => (filaments ? { ...filaments } : undefined);
+
+export const cloneSceneFillCrackMask = (
+  crackMask: SceneFill["crackMask"] | undefined,
+): SceneFill["crackMask"] | undefined => (crackMask ? { ...crackMask } : undefined);
 
 export const cloneSceneGradientStops = (
   stops: readonly SceneGradientStop[],
@@ -63,12 +67,15 @@ export const createRadialGradientFill = (
   return fill;
 };
 
-const withNoiseAndFilaments = <T extends { noise?: SceneFillNoise; filaments?: SceneFillFilaments }>(
+const withNoiseAndFilaments = <
+  T extends { noise?: SceneFillNoise; filaments?: SceneFillFilaments; crackMask?: SceneFill["crackMask"] }
+>(
   fill: T,
   source: SceneFill,
 ): T => {
   const noise = cloneSceneFillNoise(source.noise);
   const filaments = cloneSceneFillFilaments(source.filaments);
+  const crackMask = cloneSceneFillCrackMask(source.crackMask);
 
   if (noise) {
     fill.noise = noise;
@@ -76,6 +83,10 @@ const withNoiseAndFilaments = <T extends { noise?: SceneFillNoise; filaments?: S
 
   if (filaments) {
     fill.filaments = filaments;
+  }
+
+  if (crackMask) {
+    fill.crackMask = crackMask;
   }
 
   return fill;
@@ -101,6 +112,9 @@ export const cloneSceneFillWithNoiseAndFilaments = (
   }
   if (options?.filaments) {
     cloned.filaments = cloneSceneFillFilaments(options.filaments);
+  }
+  if (fill.crackMask) {
+    cloned.crackMask = cloneSceneFillCrackMask(fill.crackMask);
   }
   return cloned;
 };
@@ -144,9 +158,23 @@ export const cloneFillWithOptions = (
   } else {
     delete cloned.filaments;
   }
-  
+
+  if (fill.crackMask) {
+    cloned.crackMask = cloneSceneFillCrackMask(fill.crackMask);
+  } else {
+    delete cloned.crackMask;
+  }
+
   return cloned;
 };
+
+export const withCrackMask = (
+  fill: SceneFill,
+  params: { atlasId: number; tileIndex: number; strength: number; desat: number; darken: number },
+): SceneFill => ({
+  ...cloneSceneFill(fill),
+  crackMask: cloneSceneFillCrackMask(params),
+});
 
 export const cloneSceneFill = (fill: SceneFill): SceneFill => {
   switch (fill.fillType) {

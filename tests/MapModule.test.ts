@@ -1,12 +1,12 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import { PlayerUnitsModule } from "../src/logic/modules/active-map/player-units/player-units.module";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
-import { normalizeVector } from "../src/logic/helpers/vector.helper";
-import { MovementService } from "../src/logic/services/movement/MovementService";
+import { normalizeVector } from "../src/shared/helpers/vector.helper";
+import { MovementService } from "../src/core/logic/provided/services/movement/MovementService";
 import { MapModule } from "../src/logic/modules/active-map/map/map.module";
 import {
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
@@ -27,11 +27,14 @@ import type { ArcModule } from "../src/logic/modules/scene/arc/arc.module";
 import type { UnitAutomationModule } from "../src/logic/modules/active-map/unit-automation/unit-automation.module";
 import { NecromancerModule } from "../src/logic/modules/active-map/necromancer/necromancer.module";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
+import type { AchievementsModule } from "../src/logic/modules/shared/achievements/achievements.module";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/unit-design/unit-design.module";
+import type { EnemiesModule } from "../src/logic/modules/active-map/enemies/enemies.module";
 import { getMapConfig } from "../src/db/maps-db";
 import { MapId } from "../src/db/maps-db";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
+import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule): UnitProjectileController => {
   interface ProjectileState {
@@ -156,6 +159,19 @@ const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule):
   } as unknown as UnitProjectileController;
 };
 
+const createEnemiesStub = (): EnemiesModule =>
+  ({
+    id: "enemies",
+    initialize: () => {},
+    reset: () => {},
+    load: () => {},
+    save: () => null,
+    tick: () => {},
+    setEnemies: () => {},
+    spawnEnemy: () => {},
+    getEnemies: () => [],
+  } as unknown as EnemiesModule);
+
 const createUnitDesignerStub = (): UnitDesignModule => {
   const stub = {
     subscribe: (listener: (designs: never[]) => void) => {
@@ -197,6 +213,11 @@ const createBonuses = (): BonusesModule => {
   return bonuses;
 };
 
+const createAchievementsStub = (): AchievementsModule => ({
+  syncFromMapStats: () => {},
+  getLevel: () => 0,
+} as unknown as AchievementsModule);
+
 const createResourceControllerStub = (): ResourceRunController & {
   grantResources: () => void;
   notifyBrickDestroyed: () => void;
@@ -222,7 +243,16 @@ describe("MapModule", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -231,6 +261,7 @@ describe("MapModule", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -259,9 +290,11 @@ describe("MapModule", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -351,9 +384,11 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -404,13 +439,17 @@ describe("Map run control", () => {
 
     maps.restartSelectedMap();
     assert.strictEqual(startRunCalls, 1, "run should start when restarting the selected map");
-    assert.strictEqual(setBricksCalls, 1, "bricks should spawn when restarting the map");
+    assert.strictEqual(setBricksCalls, 2, "bricks should be cleared and spawned when restarting the map");
     assert.strictEqual(
       prepareForMapCalls,
       1,
       "units should prepare when restarting the map"
     );
-    assert.strictEqual(setUnitsCalls, 1, "units should spawn when restarting the map");
+    assert.strictEqual(
+      setUnitsCalls,
+      2,
+      "units should be cleared and spawned when restarting the map"
+    );
     assert.strictEqual(
       configureForMapCalls,
       1,
@@ -479,9 +518,11 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -503,7 +544,7 @@ describe("Map run control", () => {
     assert.strictEqual(cancelRunCalls, 1, "leaving should cancel the active run");
     assert(Array.isArray(lastBricks) && (lastBricks as unknown[]).length === 0);
     assert(Array.isArray(lastUnits) && (lastUnits as unknown[]).length === 0);
-    assert.strictEqual(endCurrentMapCalls, 1, "necromancer should be notified when leaving");
+    assert.strictEqual(endCurrentMapCalls, 2, "necromancer should be notified when leaving");
   });
 
   test("centers camera on the primary portal when starting a map", () => {
@@ -514,7 +555,16 @@ describe("Map run control", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -523,6 +573,7 @@ describe("Map run control", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -551,9 +602,11 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -589,7 +642,16 @@ describe("Map run control", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -598,6 +660,7 @@ describe("Map run control", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -626,9 +689,11 @@ describe("Map run control", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -671,7 +736,16 @@ describe("Map unlocking", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -680,6 +754,7 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -709,9 +784,11 @@ describe("Map unlocking", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -722,7 +799,7 @@ describe("Map unlocking", () => {
     necromancer.initialize();
     maps.initialize();
 
-    const initialList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const initialList = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
     const trainingEntry = initialList.find((entry) => entry.id === "trainingGrounds");
     const foundationEntry = initialList.find((entry) => entry.id === "foundations");
     assert(trainingEntry, "trainingGrounds should always be visible");
@@ -737,7 +814,7 @@ describe("Map unlocking", () => {
 
     maps.recordRunResult({ mapId: "trainingGrounds", success: true });
 
-    const afterTraining = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const afterTraining = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
     const afterTrainingIds = afterTraining.map((entry) => entry.id);
     assert(afterTrainingIds.includes("trainingGrounds"));
     assert(afterTrainingIds.includes("foundations"));
@@ -749,7 +826,7 @@ describe("Map unlocking", () => {
 
     maps.recordRunResult({ mapId: "foundations", success: true });
 
-    const updatedList = bridge.getValue<MapListEntry[]>(MAP_LIST_BRIDGE_KEY) ?? [];
+    const updatedList = bridge.getValue(MAP_LIST_BRIDGE_KEY) ?? [];
     const mapIds = updatedList.map((entry) => entry.id);
     assert(mapIds.includes("foundations"));
     assert(mapIds.includes("initial"));
@@ -770,7 +847,16 @@ describe("Map unlocking", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -779,6 +865,7 @@ describe("Map unlocking", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -808,9 +895,11 @@ describe("Map unlocking", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -865,9 +954,11 @@ describe("Last played map tracking", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -876,18 +967,21 @@ describe("Last played map tracking", () => {
     mapModuleRef = maps;
 
     maps.initialize();
-    // Start with the default training map
+    // Start with the default tutorial map
     maps.restartSelectedMap();
     maps.recordRunResult({ success: true, durationMs: 5000 });
+
+    // Unlock training grounds and then play Foundations
+    maps.selectMap("trainingGrounds");
+    maps.restartSelectedMap();
+    maps.recordRunResult({ success: true, durationMs: 4800 });
 
     // Unlock and play Foundations
     maps.selectMap("foundations");
     maps.restartSelectedMap();
     maps.recordRunResult({ success: true, durationMs: 4200 });
 
-    const lastPlayed = bridge.getValue<{ mapId: MapId; level: number }>(
-      MAP_LAST_PLAYED_BRIDGE_KEY
-    );
+    const lastPlayed = bridge.getValue(MAP_LAST_PLAYED_BRIDGE_KEY);
     assert.deepStrictEqual(lastPlayed, { mapId: "foundations", level: 1 });
 
     const saved = maps.save();
@@ -910,9 +1004,11 @@ describe("Last played map tracking", () => {
       bonuses: nextBonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources: nextResources,
       unlocks: nextUnlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -923,9 +1019,7 @@ describe("Last played map tracking", () => {
     restoredMaps.load(saved);
     restoredMaps.initialize();
 
-    const restoredLastPlayed = nextBridge.getValue<{ mapId: MapId; level: number }>(
-      MAP_LAST_PLAYED_BRIDGE_KEY
-    );
+    const restoredLastPlayed = nextBridge.getValue(MAP_LAST_PLAYED_BRIDGE_KEY);
     assert.deepStrictEqual(restoredLastPlayed, { mapId: "foundations", level: 1 });
   });
 });
@@ -938,7 +1032,16 @@ describe("Map auto restart", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const bricks = new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
     const movement = new MovementService();
     const playerUnits = new PlayerUnitsModule({
       scene,
@@ -947,6 +1050,7 @@ describe("Map auto restart", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -977,9 +1081,11 @@ describe("Map auto restart", () => {
       bonuses,
       bricks,
       playerUnits,
+      enemies: createEnemiesStub(),
       necromancer,
       resources,
       unlocks,
+      achievements: createAchievementsStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -990,31 +1096,23 @@ describe("Map auto restart", () => {
     necromancer.initialize();
     maps.initialize();
 
-    let state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    let state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, false);
     assert.strictEqual(state.enabled, false);
 
     maps.setAutoRestartEnabled(true);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, false);
     assert.strictEqual(state.enabled, false);
 
     skillLevel = 1;
     maps.tick(0);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, true);
     assert.strictEqual(state.enabled, false);
 
     maps.setAutoRestartEnabled(true);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, true);
     assert.strictEqual(state.enabled, true);
 
@@ -1023,9 +1121,7 @@ describe("Map auto restart", () => {
 
     skillLevel = 0;
     maps.tick(0);
-    state =
-      bridge.getValue<MapAutoRestartState>(MAP_AUTO_RESTART_BRIDGE_KEY) ??
-      DEFAULT_MAP_AUTO_RESTART_STATE;
+    state = bridge.getValue(MAP_AUTO_RESTART_BRIDGE_KEY) ?? DEFAULT_MAP_AUTO_RESTART_STATE;
     assert.strictEqual(state.unlocked, false);
     assert.strictEqual(state.enabled, false);
   });

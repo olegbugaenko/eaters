@@ -1,6 +1,6 @@
 import {
   SceneFill,
-} from "@logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import { cloneSceneFillDeep } from "@shared/helpers/scene-fill.helper";
 import { getBrickConfig } from "@db/bricks-db";

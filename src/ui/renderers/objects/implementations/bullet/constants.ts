@@ -1,5 +1,5 @@
 import type { BulletTailRenderConfig } from "./types";
-import type { SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export const DEFAULT_TAIL_CONFIG: BulletTailRenderConfig = {
   lengthMultiplier: 4.5,

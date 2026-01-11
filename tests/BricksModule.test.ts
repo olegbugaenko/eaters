@@ -4,18 +4,19 @@ import {
   BRICK_TOTAL_HP_BRIDGE_KEY,
 } from "../src/logic/modules/active-map/bricks/bricks.const";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import {
   SceneLinearGradientFill,
   SceneRadialGradientFill,
-} from "../src/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+} from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { BrickType, getBrickConfig } from "../src/db/bricks-db";
 import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import { describe, test } from "./testRunner";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
+import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -34,6 +35,7 @@ const createBricksModule = (
   };
   const bonuses = new BonusesModule();
   bonuses.initialize();
+  const statusEffects = new StatusEffectsModule();
   return new BricksModule({
     scene,
     bridge,
@@ -41,6 +43,7 @@ const createBricksModule = (
     resources,
     bonuses,
     runState,
+    statusEffects,
   });
 };
 
@@ -67,9 +70,9 @@ describe("BricksModule", () => {
 
     assert.deepStrictEqual(instance.data.size, config.size);
     const fill = instance.data.fill;
-    const fillConfig = config.fill;
-    if (fillConfig.type === "linear") {
+    if (fill.fillType === FILL_TYPES.LINEAR_GRADIENT) {
       const linearFill = fill as SceneLinearGradientFill;
+      const fillConfig = config.fill as SceneLinearGradientFill;
       assert.strictEqual(linearFill.fillType, FILL_TYPES.LINEAR_GRADIENT);
       assert.strictEqual(linearFill.stops.length, fillConfig.stops.length);
       linearFill.stops.forEach((stop, index) => {
@@ -78,8 +81,9 @@ describe("BricksModule", () => {
         assert.strictEqual(stop.offset, expected.offset);
         assert.deepStrictEqual(stop.color, expected.color);
       });
-    } else if (fillConfig.type === "radial") {
+    } else if (fill.fillType === FILL_TYPES.RADIAL_GRADIENT) {
       const radialFill = fill as SceneRadialGradientFill;
+      const fillConfig = config.fill as SceneRadialGradientFill;
       assert.strictEqual(radialFill.fillType, FILL_TYPES.RADIAL_GRADIENT);
       assert.strictEqual(radialFill.stops.length, fillConfig.stops.length);
       radialFill.stops.forEach((stop, index) => {
@@ -89,7 +93,7 @@ describe("BricksModule", () => {
         assert.deepStrictEqual(stop.color, expected.color);
       });
     } else {
-      assert.fail(`unexpected fill type: ${fillConfig.type}`);
+      assert.fail(`unexpected fill type: ${fill.fillType}`);
     }
 
     assert(instance.data.stroke, "stroke should be defined");
@@ -134,9 +138,9 @@ describe("BricksModule", () => {
     assert.deepStrictEqual(instance.data.size, config.size);
     const fill = instance.data.fill as SceneLinearGradientFill;
     assert.strictEqual(fill.fillType, FILL_TYPES.LINEAR_GRADIENT);
-    const fillConfig = config.fill;
+    const fillConfig = config.fill as SceneLinearGradientFill;
     fill.stops.forEach((stop, index) => {
-      const expected = fillConfig.type === "linear" ? fillConfig.stops[index] : null;
+      const expected = fillConfig.stops[index];
       assert(expected, "expected gradient stop");
       assert.strictEqual(stop.offset, expected.offset);
       assert.deepStrictEqual(stop.color, expected.color);
@@ -273,5 +277,33 @@ describe("BricksModule", () => {
     module.applyDamage(brick.id, 999);
 
     assert.strictEqual(callbackCount, 1, "should notify once when all bricks are gone");
+  });
+
+  test("brick knockback registers scene object as movable", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const module = createBricksModule(scene, bridge);
+
+    module.setBricks([
+      {
+        position: { x: 20, y: 20 },
+        rotation: 0,
+        level: 0,
+        type: "classic",
+      },
+    ]);
+
+    const [brick] = module.getBrickStates();
+    assert(brick, "expected brick state");
+    const sceneObject = scene.getObjects().find((object) => object.type === "brick");
+    assert(sceneObject, "expected brick scene object");
+
+    module.applyDamage(brick.id, 5, { x: 1, y: 0 });
+
+    const movable = scene.getMovableObjects();
+    assert(
+      movable.some((object) => object.id === sceneObject.id),
+      "brick should be marked as movable after knockback"
+    );
   });
 });

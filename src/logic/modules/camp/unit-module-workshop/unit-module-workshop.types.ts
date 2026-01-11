@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { UnitModuleId, UnitModuleBonusType } from "../../../../db/unit-modules-db";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { SkillId } from "../../../../db/skills-db";
@@ -33,4 +33,14 @@ export interface UnitModuleWorkshopModuleOptions {
 
 export interface UnitModuleWorkshopSaveData {
   readonly levels?: Partial<Record<UnitModuleId, number>>;
+}
+
+export interface UnitModuleWorkshopUiApi {
+  tryUpgradeModule(id: UnitModuleId): boolean;
+}
+
+declare module "@core/logic/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    unitModuleWorkshop: UnitModuleWorkshopUiApi;
+  }
 }

@@ -59,6 +59,7 @@ module.exports = (env, argv) => {
         '@ui-shared': path.resolve(__dirname, 'src/ui/shared'),
         '@shared': path.resolve(__dirname, 'src/shared'),
         '@logic': path.resolve(__dirname, 'src/logic'),
+        '@core': path.resolve(__dirname, 'src/core'),
         '@db': path.resolve(__dirname, 'src/db'),
         'react-joyride': path.resolve(__dirname, 'vendor/react-joyride'),
       },

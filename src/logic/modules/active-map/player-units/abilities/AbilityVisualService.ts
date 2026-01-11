@@ -1,8 +1,8 @@
 import {
   SceneVector2,
-} from "../../../../services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { ArcModule } from "../../../scene/arc/arc.module";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { EffectsModule } from "../../../scene/effects/effects.module";
@@ -17,6 +17,7 @@ interface AbilityVisualServiceOptions {
   getArcs: () => ArcModule | undefined;
   getEffects: () => EffectsModule | undefined;
   getFireballs: () => FireballModule | undefined;
+  getUnitObjectId: (unitId: string) => string | undefined;
 }
 
 interface AbilityArcEntry {
@@ -42,6 +43,7 @@ export class AbilityVisualService {
   private readonly getArcs: () => ArcModule | undefined;
   private readonly getEffects: () => EffectsModule | undefined;
   private readonly getFireballs: () => FireballModule | undefined;
+  private readonly getUnitObjectId: (unitId: string) => string | undefined;
   private activeArcEffects: AbilityArcEntry[] = [];
 
   constructor(options: AbilityVisualServiceOptions) {
@@ -50,6 +52,7 @@ export class AbilityVisualService {
     this.getArcs = options.getArcs;
     this.getEffects = options.getEffects;
     this.getFireballs = options.getFireballs;
+    this.getUnitObjectId = options.getUnitObjectId;
   }
 
   public reset(): void {
@@ -106,7 +109,11 @@ export class AbilityVisualService {
   }
 
   public applyEffect(unitId: string, effectId: string): void {
-    this.getEffects()?.applyEffect(unitId, effectId as never);
+    const effects = this.getEffects();
+    if (!effects) return;
+    const unitObjectId = this.getUnitObjectId(unitId);
+    if (!unitObjectId) return;
+    effects.applyEffect(unitId, unitObjectId, effectId as never);
   }
 
   public removeEffect(unitId: string, effectId: string): void {

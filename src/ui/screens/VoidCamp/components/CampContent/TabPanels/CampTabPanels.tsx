@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapId } from "@db/maps-db";
+import { MapId, getMapConfig } from "@db/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { SkillTreeView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/ModulesWorkshop/ModulesWorkshopView";
@@ -7,7 +7,7 @@ import { UnitDesignerView } from "@screens/VoidCamp/components/UnitDesigner/Unit
 import { CampTabKey } from "../CampContent";
 import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
-import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import { BuildingsWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/BuildingsWorkshop/BuildingsWorkshopView";
@@ -15,6 +15,7 @@ import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types
 import { CraftingView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/Crafting/CraftingView";
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -31,6 +32,7 @@ type CampTabPanelsProps = {
   unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
+  achievementsState: AchievementsBridgePayload;
 };
 
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
@@ -47,7 +49,15 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   unitAutomationState,
   buildingsState,
   craftingState,
+  achievementsState,
 }) => {
+  const hasEnemyStrategies = maps.some((map) => {
+    if (!map.selectable) {
+      return false;
+    }
+    const config = getMapConfig(map.id);
+    return Boolean(config.enemySpawnPoints?.length || config.enemies);
+  });
   const moduleTabs: { key: "shop" | "designer" | "roster"; label: string }[] = [
     { key: "shop", label: "Organ Workshop" },
     { key: "designer", label: "Unit Designer" },
@@ -69,6 +79,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         maps={maps}
         clearedLevelsTotal={clearedLevelsTotal}
         selectedMap={selectedMap}
+        achievements={achievementsState}
         onSelectMap={onSelectMap}
         onSelectLevel={onSelectMapLevel}
         onStartMap={onStartMap}
@@ -113,7 +124,11 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
           ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
           ) : (
-            <UnitRosterView state={unitDesignerState} automation={unitAutomationState} />
+            <UnitRosterView
+              state={unitDesignerState}
+              automation={unitAutomationState}
+              hasEnemyStrategies={hasEnemyStrategies}
+            />
           )}
         </div>
       </div>

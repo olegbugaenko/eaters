@@ -1,5 +1,5 @@
-import { GameModule } from "../../../core/types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import { GameModule } from "@core/logic/types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { getVisualEffectRenderer, VisualEffectId } from "../../../../db/effects-db";
 import type { EffectsModuleOptions, AuraState } from "./effects.types";
 
@@ -53,26 +53,32 @@ export class EffectsModule implements GameModule {
     this.clearAll();
   }
 
-  public applyEffect(unitId: string, effectId: VisualEffectId): void {
+  /**
+   * Apply a visual effect (aura) to a unit.
+   * @param unitInternalId - Internal unit ID for position lookup
+   * @param unitObjectId - Scene object ID for tying the aura to the unit
+   * @param effectId - The effect to apply
+   */
+  public applyEffect(unitInternalId: string, unitObjectId: string, effectId: VisualEffectId): void {
     // If already applied, no-op
-    let effectsMap = this.auraByUnit.get(unitId);
+    let effectsMap = this.auraByUnit.get(unitInternalId);
     if (effectsMap && effectsMap.has(effectId)) {
       return;
     }
     const renderer = getVisualEffectRenderer(effectId);
     if (!renderer) return;
-    const pos = this.getUnitPositionIfAlive(unitId);
+    const pos = this.getUnitPositionIfAlive(unitInternalId);
     if (!pos) return;
     const id = this.scene.addObject("aura", {
       position: { x: pos.x, y: pos.y },
       fill: { fillType: 0 as any, color: { r: 1, g: 1, b: 1, a: 0 } as any },
-      customData: { renderer },
+      customData: { renderer, tiedToObjectId: unitObjectId },
     });
     if (!effectsMap) {
       effectsMap = new Map<VisualEffectId, AuraState>();
-      this.auraByUnit.set(unitId, effectsMap);
+      this.auraByUnit.set(unitInternalId, effectsMap);
     }
-    effectsMap.set(effectId, { objectId: id, effectId, unitId });
+    effectsMap.set(effectId, { objectId: id, effectId, unitId: unitInternalId });
   }
 
   public removeEffect(unitId: string, effectId: VisualEffectId): void {

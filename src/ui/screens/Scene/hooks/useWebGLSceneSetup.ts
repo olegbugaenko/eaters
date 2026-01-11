@@ -1,4 +1,4 @@
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
+import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { WebGLSceneRenderer } from "@ui/renderers/utils/WebGLSceneRenderer";
 import { createObjectsRendererManager } from "@ui/renderers/objects";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
@@ -20,6 +20,12 @@ import { disposeFireRing } from "@ui/renderers/primitives/gpu/fire-ring";
 // BulletGpuRenderer now uses unified API
 // RingGpuRenderer now uses unified API - no separate imports needed
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
+import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistry";
+import {
+  clearSpriteTextureCache,
+  loadSpriteTexture,
+} from "@ui/renderers/primitives/basic/SpritePrimitive";
+import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */
@@ -46,15 +52,25 @@ interface WebGLSceneSetupResult {
  */
 export const setupWebGLScene = (
   canvas: HTMLCanvasElement,
-  scene: SceneObjectManager,
+  scene: SceneUiApi,
   options?: WebGLSceneSetupOptions
 ): WebGLSceneSetupResult => {
   const { initBullets = true, initRings = true } = options ?? {};
+  clearSpriteTextureCache();
   const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
 
   if (!gl) {
     throw new Error("WebGL 2 is required but not available");
   }
+
+  textureAtlasRegistry.registerAtlas("cracks", "/images/sprites/cracks/cracks_atlas.png", {
+    cols: 3,
+    rows: 3,
+  });
+  textureResourceManager.setContext(gl);
+  loadSpriteTexture(gl, "/images/sprites/cracks/cracks_atlas.png").catch((error) => {
+    console.warn("[WebGLScene] Failed to load cracks atlas texture", error);
+  });
 
   // Register HMR cleanup to avoid accumulating GL resources on hot reloads
   registerHmrCleanup(() => {
@@ -78,6 +94,7 @@ export const setupWebGLScene = (
       try { ringGpuRenderer.clearInstances(); } catch {}
       try { ringGpuRenderer.dispose(); } catch {}
       try { arcGpuRenderer.clearInstances(); arcGpuRenderer.dispose(); } catch {}
+      try { textureResourceManager.setContext(null); } catch {}
     }
   });
 
@@ -177,6 +194,8 @@ export const setupWebGLScene = (
     
     arcGpuRenderer.clearInstances();
     arcGpuRenderer.dispose();
+
+    clearSpriteTextureCache();
   };
 
   return {

@@ -1,4 +1,4 @@
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { VisualEffectId } from "../../../../db/effects-db";
 
 export interface EffectsModuleOptions {

@@ -1,5 +1,4 @@
-import { SceneObjectManager } from "../../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { BricksModule } from "../../bricks/bricks.module";
 import {
   SpellBehavior,
@@ -8,13 +7,14 @@ import {
   SpellBehaviorDependencies,
 } from "../SpellBehavior";
 import { SpellConfig } from "../../../../../db/spells-db";
-import { BonusValueMap } from "../../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { ExplosionType } from "../../../../../db/explosions-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { UnitProjectileVisualConfig } from "../../projectiles/projectiles.types";
 import type { ProjectileSpellData } from "./ProjectileSpellBehavior.types";
+import { buildProjectileSpreadDirections } from "../../projectiles/projectile-spread.helpers";
 import { randomIntInclusive } from "@shared/helpers/numbers.helper";
 
 const sanitizeAoe = (
@@ -65,22 +65,13 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
     const config = context.config;
     const count = config.projectile.count ?? 1;
-    const spreadAngle = (config.projectile.spreadAngle ?? 0) * (Math.PI / 180);
-    const baseAngle = Math.atan2(context.direction.y, context.direction.x);
+    const directions = buildProjectileSpreadDirections({
+      count,
+      spreadAngleDeg: config.projectile.spreadAngle ?? 0,
+      baseDirection: context.direction,
+    });
 
-    for (let i = 0; i < count; i += 1) {
-      // Розрахунок кута для кожного проджектайла
-      let angle = baseAngle;
-      if (count > 1) {
-        const spreadRange = spreadAngle * 2;
-        const stepAngle = spreadRange / Math.max(1, count - 1);
-        angle = baseAngle - spreadAngle + stepAngle * i;
-      }
-
-      const direction: SceneVector2 = {
-        x: Math.cos(angle),
-        y: Math.sin(angle),
-      };
+    for (const direction of directions) {
 
       const origin = {
         x: context.origin.x + (config.projectile.spawnOffset?.x ?? 0),
@@ -110,6 +101,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         onHit: (hitContext) => {
           const data = this.projectileData.get(objectId);
           if (!data) return true;
+          if (!hitContext.brickId) return true;
 
           const baseDamage = randomIntInclusive(data.damage);
           const damage = Math.max(baseDamage * Math.max(data.damageMultiplier, 0), 0);

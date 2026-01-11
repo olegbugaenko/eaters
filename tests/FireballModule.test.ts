@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { FireballModule } from "../src/logic/modules/scene/fireball/fireball.module";
 import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";

@@ -4,7 +4,7 @@ import {
   DynamicPrimitive,
   DynamicPrimitiveUpdate,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   createDynamicPolygonPrimitive,
   createDynamicPolygonStrokePrimitive,
@@ -16,6 +16,7 @@ import {
   getEmitterOrigin,
   serializeEmitterConfig,
   createEmitterParticle,
+  getGpuSpawnConfig,
 } from "./emitter.helpers";
 import {
   getAuraInstanceMap,
@@ -81,6 +82,7 @@ const createEmitterPrimitive = (
     getOrigin: getEmitterOrigin,
     spawnParticle: createEmitterParticle,
     serializeConfig: serializeEmitterConfig,
+    getGpuSpawnConfig, // Enable GPU particle spawning (no CPU slot tracking!)
   });
   if (primitive) {
     // Enable auto-animation for particle emitter so it updates every render frame
@@ -121,6 +123,8 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
         createDynamicPolygonPrimitive(instance, {
           vertices: rendererData.vertices,
           offset: rendererData.offset,
+          // Відстежуємо зміни fill для візуальних ефектів (freeze, burn тощо)
+          refreshFill: (target) => target.data.fill,
         })
       );
     }
@@ -137,9 +141,17 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
   ): DynamicPrimitiveUpdate[] {
     // Оновлюємо позиції аур при зміні позиції юніта
     updateAuraInstances(instance);
-
     // Викликаємо стандартний update
     return super.update(instance, registration);
+  }
+
+  public override updatePositionOnly(
+    instance: SceneObjectInstance,
+    registration: ObjectRegistration
+  ): DynamicPrimitiveUpdate[] {
+    // Оновлюємо позиції аур при інтерполяції позиції
+    updateAuraInstances(instance);
+    return super.updatePositionOnly(instance, registration);
   }
 
   public override remove(

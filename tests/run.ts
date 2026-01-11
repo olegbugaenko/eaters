@@ -17,9 +17,11 @@ if (originalResolve) {
   const aliasRoot = path.resolve(__dirname, "../src");
   const aliases: Record<string, string> = {
     "@": aliasRoot,
+    "@core": path.join(aliasRoot, "core"),
     "@ui": path.join(aliasRoot, "ui"),
     "@screens": path.join(aliasRoot, "ui", "screens"),
-    "@shared": path.join(aliasRoot, "ui", "shared"),
+    "@ui-shared": path.join(aliasRoot, "ui", "shared"),
+    "@shared": path.join(aliasRoot, "shared"),
     "@logic": path.join(aliasRoot, "logic"),
     "@db": path.join(aliasRoot, "db"),
   };
@@ -54,8 +56,12 @@ import "./MapModule.test";
 import "./UnitAutomationModule.test";
 import "./Application.test";
 import "./ResourcesModule.test";
+import "./ResourceCalculator.test";
 import "./UnitModuleWorkshopModule.test";
+import "./BonusCalculator.test";
 import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
+import "./StatusEffectsModule.test";
+import "./MovementService.test";
 
 void run();

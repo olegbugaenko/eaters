@@ -1,6 +1,6 @@
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { SpellConfig, SpellId } from "../../../../db/spells-db";
-import { BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 
 export interface SpellCastContext {
   readonly spellId: SpellId;
@@ -78,4 +78,3 @@ export interface SpellBehavior {
    */
   deserializeState(data: unknown): void;
 }
-

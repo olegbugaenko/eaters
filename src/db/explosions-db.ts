@@ -5,8 +5,8 @@ import {
   SceneFillNoise,
   SceneGradientStop,
   SceneVector2,
-} from "../logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 
 export type ExplosionType =
@@ -35,7 +35,10 @@ export type ExplosionType =
   | "magmaBrickHit"
   | "magmaBrickDestroy"
   | "criticalHit"
-  | "weakenCurse";
+  | "weakenCurse"
+  | "smallCannon"
+  | "bigCannon"
+  | "smallCannonGrey";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
@@ -79,6 +82,12 @@ const PLASMOID_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 1, g: 0.75, b: 0.3, a: 0.8 } },
   { offset: 0.35, color: { r: 1, g: 0.45, b: 0.15, a: 0.55 } },
   { offset: 1, color: { r: 1, g: 0.1, b: 0, a: 0 } },
+] as const;
+
+const GREY_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.8 } },
+  { offset: 0.35, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.55 } },
+  { offset: 1, color: { r: 0.6, g: 0.75, b: 0.75, a: 0 } },
 ] as const;
 
 const MAGNETIC_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
@@ -206,6 +215,28 @@ const DEFAULT_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.SOLID,
   color: { r: 1, g: 0.85, b: 0.55, a: 1 },
 };
+
+
+const SMALL_CANNON_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    { offset: 0, color: { r: 1.0, g: 0.9, b: 0.8, a: 1.0 } },
+    { offset: 0.45, color: { r: 0.9, g: 0.8, b: 0.7, a: 0.42 } },
+    { offset: 1, color: { r: 0.5, g: 0.4, b: 0.3, a: 0.02 } },
+  ]
+};
+
+const SMALL_GREY_CANNON_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    { offset: 0, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.8 } },
+    { offset: 0.35, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.55 } },
+    { offset: 1, color: { r: 0.6, g: 0.75, b: 0.75, a: 0 } },
+  ],
+};
+
 
 const MAGNETIC_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -446,6 +477,84 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
     }),
     emitter: DEFAULT_EMITTER,
+  },
+  smallCannon: {
+    lifetimeMs: 2_000,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 10,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.04,
+      speedVariation: 0.025,
+      fadeStartMs: 400,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 2760,
+      sizeRange: { min: 0.5, max: 4.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      // color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: SMALL_CANNON_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  smallCannonGrey: {
+    lifetimeMs: 2_000,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 10,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: GREY_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.04,
+      speedVariation: 0.025,
+      fadeStartMs: 400,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 1760,
+      sizeRange: { min: 0.5, max: 3.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      // color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: SMALL_GREY_CANNON_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  bigCannon: {
+    lifetimeMs: 2_000,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 20,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.06,
+      speedVariation: 0.035,
+      fadeStartMs: 600,
+      particleLifetimeMs: 1_200,
+      particlesPerSecond: 3760,
+      sizeRange: { min: 0.3, max: 4.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      // color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: SMALL_CANNON_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
   },
   magnetic: {
     lifetimeMs: 3_000,

@@ -2,6 +2,7 @@ import { useId } from "react";
 import { Button } from "@ui-shared/Button";
 import { ProgressBar } from "@ui-shared/ProgressBar";
 import { formatNumber } from "@ui-shared/format/number";
+import { clamp } from "@shared/helpers/numbers.helper";
 import "./SceneToolbar.css";
 
 interface SceneToolbarProps {
@@ -15,19 +16,6 @@ interface SceneToolbarProps {
   onScaleChange: (value: number) => void;
   cameraPosition: { x: number; y: number };
 }
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-  if (value < min) {
-    return min;
-  }
-  if (value > max) {
-    return max;
-  }
-  return value;
-};
 
 const sanitizeId = (value: string): string => value.replace(/[^a-zA-Z0-9_-]/g, "_");
 

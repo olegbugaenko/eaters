@@ -1,8 +1,9 @@
-import { GameModule } from "../../../core/types";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
-import { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { GameModule } from "@core/logic/types";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
+import { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BrickData } from "../bricks/bricks.types";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
+import type { EnemySpawnData } from "../enemies/enemies.types";
 import {
   MapConfig,
   MapId,
@@ -11,6 +12,7 @@ import {
   getMapList,
   isMapId,
 } from "../../../../db/maps-db";
+import type { BonusEffectMap } from "@shared/types/bonuses";
 import { buildBricksFromBlueprints } from "../../../services/brick-layout/BrickLayoutService";
 import { MapSelectionState } from "./map.selection";
 import { MapVisualEffects } from "./map.visual-effects";
@@ -65,6 +67,7 @@ export class MapModule implements GameModule {
   private mapSelectViewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private readonly options: MapModuleOptions;
   private readonly sceneCleanup: MapSceneCleanupContract;
+  private currentMapBonusSourceId: string | null = null;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
@@ -77,6 +80,7 @@ export class MapModule implements GameModule {
       runState: options.runState,
       resources: options.resources,
       playerUnits: options.playerUnits,
+      enemies: options.enemies,
       bricks: options.bricks,
       unitsAutomation: options.unitsAutomation,
       arcs: options.arcs,
@@ -98,6 +102,7 @@ export class MapModule implements GameModule {
   }
 
   public reset(): void {
+    this.unregisterMapResourceBonus();
     this.runLifecycle.reset();
     this.autoRestartEnabled = false;
     this.refreshAutoRestartState();
@@ -113,6 +118,7 @@ export class MapModule implements GameModule {
     this.mapSelectViewTransform = parsed?.mapSelectViewTransform ?? null;
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
+    this.options.achievements.syncFromMapStats(this.mapStats);
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
@@ -145,11 +151,11 @@ export class MapModule implements GameModule {
     } satisfies MapSaveData;
   }
 
-  public tick(_deltaMs: number): void {
+  public tick(deltaMs: number): void {
     if (!this.options.runState.shouldProcessTick()) {
       return;
     }
-    this.runLifecycle.tick();
+    this.runLifecycle.tick(deltaMs);
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
@@ -191,7 +197,7 @@ export class MapModule implements GameModule {
     }
     this.runLifecycle.cleanupActiveMap();
     this.options.runState.reset();
-    this.startSelectedMap({ generateBricks: true, generateUnits: true });
+    this.startSelectedMap({ generateBricks: true, generateUnits: true, generateEnemies: true });
   }
 
   public leaveCurrentMap(): void {
@@ -205,6 +211,8 @@ export class MapModule implements GameModule {
       this.selection.recordLastPlayed(selectedMapId, level);
       this.pushLastPlayedMap();
     }
+    // Unregister map resource bonus
+    this.unregisterMapResourceBonus();
     this.runLifecycle.cleanupActiveMap();
     this.options.runState.reset();
     this.pushSelectedMap();
@@ -270,6 +278,7 @@ export class MapModule implements GameModule {
     }
     // stats mutated → invalidate cached clone
     this.statsCloneDirty = true;
+    this.options.achievements.syncFromMapStats(this.mapStats);
     this.runLifecycle.completeRun();
     this.pushMapList();
     this.pushSelectedMap();
@@ -305,20 +314,27 @@ export class MapModule implements GameModule {
   private startSelectedMap(options: {
     generateBricks: boolean;
     generateUnits: boolean;
+    generateEnemies: boolean;
   }): void {
     const mapId = this.selection.getSelectedMapId();
     if (!mapId) {
       return;
     }
-    const { generateBricks, generateUnits } = options;
+    const { generateBricks, generateUnits, generateEnemies } = options;
     const config = getMapConfig(mapId);
     const level = this.getSelectedLevel(mapId);
     this.selection.updateSelection(mapId, level);
     this.selection.recordLastPlayed(mapId, level);
     this.pushLastPlayedMap();
+    
+    // Register map resource multiplier bonus if configured
+    this.registerMapResourceBonus(mapId, config);
+    
     const bricks = this.generateBricks(config, level);
     const spawnUnits = this.generatePlayerUnits(config);
     const spawnPoints = this.getSpawnPoints(config, spawnUnits);
+    const enemySpawnPoints = config.enemySpawnPoints ?? [];
+    const staticEnemies = this.generateEnemies(config, level);
 
     this.runLifecycle.startRun({
       level,
@@ -326,8 +342,11 @@ export class MapModule implements GameModule {
       bricks,
       spawnUnits,
       spawnPoints,
+      enemySpawnPoints,
+      staticEnemies,
       generateBricks,
       generateUnits,
+      generateEnemies,
     });
 
     this.pushSelectedMap();
@@ -342,7 +361,7 @@ export class MapModule implements GameModule {
     }
     const durationMs = resources.getRunDurationMs();
     this.recordRunResult({ success, durationMs });
-    resources.finishRun();
+    resources.finishRun(success);
   }
 
   private handleRunStateEvent(event: MapRunEvent): void {
@@ -425,6 +444,13 @@ export class MapModule implements GameModule {
         return dx * dx + dy * dy >= safetyRadiusSq;
       })
     );
+  }
+
+  private generateEnemies(config: MapConfig, mapLevel: number): EnemySpawnData[] {
+    if (!config.enemies) {
+      return [];
+    }
+    return [...config.enemies({ mapLevel })];
   }
 
   private generatePlayerUnits(config: MapConfig): PlayerUnitSpawnData[] {
@@ -649,6 +675,7 @@ export class MapModule implements GameModule {
       selectable,
     };
   }
+
 
   private getHighestUnlockedLevel(mapId: MapId): number {
     const config = getMapConfig(mapId);
@@ -898,5 +925,31 @@ export class MapModule implements GameModule {
     });
     return clone;
   }
-}
 
+  private registerMapResourceBonus(mapId: MapId, config: MapConfig): void {
+    // Unregister previous bonus if any
+    this.unregisterMapResourceBonus();
+
+    // Register new bonus if multiplier is configured
+    if (config.resourceMultiplier !== undefined && config.resourceMultiplier > 0) {
+      const sourceId = `map_${mapId}`;
+      const multiplier = Math.max(config.resourceMultiplier, 0);
+      
+      const effects: BonusEffectMap = {
+        brick_rewards: {
+          multiplier: () => multiplier,
+        },
+      };
+
+      this.options.bonuses.registerSource(sourceId, effects);
+      this.currentMapBonusSourceId = sourceId;
+    }
+  }
+
+  private unregisterMapResourceBonus(): void {
+    if (this.currentMapBonusSourceId !== null) {
+      this.options.bonuses.unregisterSource(this.currentMapBonusSourceId);
+      this.currentMapBonusSourceId = null;
+    }
+  }
+}

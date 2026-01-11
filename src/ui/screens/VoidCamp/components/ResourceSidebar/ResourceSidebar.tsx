@@ -1,4 +1,4 @@
-import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import "./ResourceSidebar.css";
 import { formatNumber } from "@ui-shared/format/number";
@@ -14,7 +14,7 @@ interface ResourceSidebarProps {
 }
 
 export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onStart }) => {
-  const { app, bridge } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const lastPlayedMap = useBridgeValue(
     bridge,
     MAP_LAST_PLAYED_BRIDGE_KEY,
@@ -25,11 +25,11 @@ export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onS
     if (!lastPlayedMap) {
       return;
     }
-    app.selectMap(lastPlayedMap.mapId);
-    app.selectMapLevel(lastPlayedMap.mapId, lastPlayedMap.level);
-    app.restartCurrentMap();
+    uiApi.map.selectMap(lastPlayedMap.mapId);
+    uiApi.map.selectMapLevel(lastPlayedMap.mapId, lastPlayedMap.level);
+    uiApi.map.restartSelectedMap();
     onStart?.();
-  }, [app, lastPlayedMap, onStart]);
+  }, [lastPlayedMap, onStart, uiApi]);
 
   const mapName = lastPlayedMap ? getMapConfig(lastPlayedMap.mapId).name : null;
 

@@ -8,7 +8,7 @@
  * writes to multiple consecutive slots starting from the handle's slotIndex.
  */
 
-import type { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { GpuBatchRenderer, type SlotHandle } from "../../core/GpuBatchRenderer";
 import { compileProgram } from "../../core/BaseGpuPrimitive";
 import type {

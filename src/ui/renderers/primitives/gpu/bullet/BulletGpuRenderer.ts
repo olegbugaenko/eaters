@@ -5,7 +5,7 @@
  * Unified API: extends GpuBatchRenderer for consistent lifecycle and slot management
  */
 
-import type { SceneSize, SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   BULLET_SPRITE_PATHS,
   BULLET_SPRITE_SIZE,
@@ -26,6 +26,7 @@ import {
   FRAGMENT_SHADER,
   DEFAULT_BULLET_VISUAL,
 } from "./bullet.const";
+import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 
 // ============================================================================
 // BulletGpuRenderer Class
@@ -103,69 +104,15 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
       return;
     }
 
-    const texture = gl.createTexture();
+    const texture = textureResourceManager.loadTextureArray(gl, "bullet-sprites", BULLET_SPRITE_PATHS, {
+      size: BULLET_SPRITE_SIZE,
+    });
     if (!texture) {
       return;
     }
 
     this.sharedResourcesExtended.spriteTexture = texture;
     this.sharedResourcesExtended.spriteCount = BULLET_SPRITE_PATHS.length;
-
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
-
-    // Allocate texture array storage
-    gl.texImage3D(
-      gl.TEXTURE_2D_ARRAY,
-      0,
-      gl.RGBA,
-      BULLET_SPRITE_SIZE,
-      BULLET_SPRITE_SIZE,
-      BULLET_SPRITE_PATHS.length,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      null
-    );
-
-    // Set texture parameters
-    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    // Load each sprite image
-    BULLET_SPRITE_PATHS.forEach((path: string, index: number) => {
-      const image = new Image();
-      image.onload = () => {
-        // Check if context/resources are still valid and texture wasn't deleted
-        if (gl !== this.gl || !this.sharedResourcesExtended || !this.sharedResourcesExtended.spriteTexture) {
-          return; // Context changed or texture was deleted
-        }
-
-        try {
-          gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.sharedResourcesExtended.spriteTexture);
-          gl.texSubImage3D(
-            gl.TEXTURE_2D_ARRAY,
-            0,
-            0, 0, index,
-            BULLET_SPRITE_SIZE,
-            BULLET_SPRITE_SIZE,
-            1,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            image
-          );
-        } catch (error) {
-          // Texture was deleted or context lost - silently ignore
-        }
-      };
-      image.onerror = () => {
-        console.error(`[BulletGpu] Failed to load sprite: ${path}`);
-      };
-      image.src = path;
-    });
-
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
   }
 
   protected createBatch(gl: WebGL2RenderingContext, capacity: number): BulletBatch | null {

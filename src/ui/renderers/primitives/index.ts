@@ -20,6 +20,10 @@ export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
 export { createParticleSystemPrimitive } from "./ParticleSystemPrimitive";
 export { createFireRingPrimitive } from "./FireRingPrimitive";
 export {
+  createStaticSpritePrimitive,
+  createDynamicSpritePrimitive,
+} from "./basic/SpritePrimitive";
+export {
   bulletGpuRenderer,
   getAllActiveBullets,
   applyInterpolatedBulletPositions,

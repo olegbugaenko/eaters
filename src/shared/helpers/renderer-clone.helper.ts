@@ -3,8 +3,8 @@ import type {
   SceneFill,
   SceneSolidFill,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import { cloneSceneFill, cloneSceneFillDeep } from "@shared/helpers/scene-fill.helper";
 import type {
@@ -108,7 +108,10 @@ export const cloneRendererStrokeConfig = (
 const cloneRendererLayerShape = (
   layer: PlayerUnitRendererLayerConfig,
   options: CloneRendererOptions = {}
-): { shape: "polygon"; vertices: SceneVector2[] } | { shape: "circle"; radius: number; segments?: number } => {
+): 
+  | { shape: "polygon"; vertices: SceneVector2[] }
+  | { shape: "circle"; radius: number; segments?: number }
+  | { shape: "sprite"; spritePath: string; width: number; height: number } => {
   if (layer.shape === "polygon") {
     return {
       shape: "polygon" as const,
@@ -116,6 +119,16 @@ const cloneRendererLayerShape = (
     };
   }
 
+  if (layer.shape === "sprite") {
+    return {
+      shape: "sprite" as const,
+      spritePath: layer.spritePath,
+      width: layer.width,
+      height: layer.height,
+    };
+  }
+
+  // circle
   return {
     shape: "circle" as const,
     radius: layer.radius,
@@ -152,6 +165,14 @@ export const cloneRendererLayer = (
     } as PlayerUnitRendererLayerConfig;
   }
 
+  if (layer.shape === "sprite") {
+    return {
+      ...shapeFields,
+      ...baseFields,
+    } as PlayerUnitRendererLayerConfig;
+  }
+
+  // circle
   return {
     ...shapeFields,
     ...baseFields,

@@ -7,10 +7,11 @@ import {
   SceneSize,
   SceneStroke,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 
 import { DestructubleData } from "../logic/interfaces/destructuble";
+import type { PassabilityTag } from "@/logic/shared/navigation/passability.types";
 import { ResourceAmount } from "./resources-db";
 
 export type BrickType =
@@ -30,7 +31,8 @@ export type BrickType =
   | "neutronBrick"
   | "neutronBrick2"
   | "darkMatterBrick"
-  | "floodedArch";
+  | "floodedArch"
+  | "megaBrick";
 
 export interface BrickConfig {
   size: SceneSize;
@@ -38,6 +40,23 @@ export interface BrickConfig {
   stroke?: SceneStroke;
   destructubleData?: DestructubleData;
   rewards?: ResourceAmount;
+  /**
+   * Tags describing which actors may pass through the brick without avoidance.
+   * Empty/undefined means the brick is blocking for everyone.
+   */
+  passableFor?: readonly PassabilityTag[];
+  /**
+   * Whether cracks should be displayed on this brick when damaged.
+   * Defaults to true if not specified.
+   */
+  cracksEnabled?: boolean;
+  /**
+   * Optional crack shading overrides.
+   */
+  crackMask?: {
+    desat?: number;
+    darken?: number;
+  };
 }
 
 const CLASSIC_GRADIENT: readonly SceneGradientStop[] = [
@@ -162,8 +181,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 25,
       armor: 2,
       baseDamage: 3,
-      brickKnockBackDistance: 40,
-      brickKnockBackSpeed: 120,
+      knockBackDistance: 40,
+      knockBackSpeed: 120,
       brickKnockBackAmplitude: 6,
       physicalSize: 28,
       damageExplosion: {
@@ -194,8 +213,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 6,
       armor: 0,
       baseDamage: 3,
-      brickKnockBackDistance: 60,
-      brickKnockBackSpeed: 150,
+      knockBackDistance: 60,
+      knockBackSpeed: 150,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -230,8 +249,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 3,
       armor: 0,
       baseDamage: 2,
-      brickKnockBackDistance: 60,
-      brickKnockBackSpeed: 120,
+      knockBackDistance: 60,
+      knockBackSpeed: 120,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -243,6 +262,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         type: "grayBrickDestroy",
         radiusMultiplier: 0.95,
       },
+    },
+    crackMask: {
+      desat: 1.0,
+      darken: 0.4,
     },
     rewards: {
       stone: 0.5,
@@ -266,8 +289,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 6,
       armor: 0,
       baseDamage: 3,
-      brickKnockBackDistance: 60,
-      brickKnockBackSpeed: 120,
+      knockBackDistance: 60,
+      knockBackSpeed: 120,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -283,6 +306,47 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     rewards: {
       stone: 1,
     },
+    crackMask: {
+      desat: 1.0,
+      darken: 0.4,
+    },
+  },
+  megaBrick: {
+    size: { width: 128, height: 128 },
+    fill: {
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 64,
+      stops: SMALL_SQUARE_GRAY_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.6,
+      },
+    },
+    stroke: { color: { r: 0.33, g: 0.33, b: 0.38, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 300,
+      armor: 0,
+      baseDamage: 6,
+      knockBackDistance: 90,
+      knockBackSpeed: 160,
+      brickKnockBackAmplitude: 6,
+      physicalSize: 64,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.7,
+        radiusOffset: -2,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 0.95,
+      },
+    },
+    rewards: {
+      stone: 100,
+    },
+    cracksEnabled: false,
   },
   smallSquareYellow: {
     size: { width: 24, height: 24 },
@@ -302,8 +366,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 20,
       armor: 1,
       baseDamage: 5,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 120,
+      knockBackDistance: 70,
+      knockBackSpeed: 120,
       brickKnockBackAmplitude: 10.5,
       physicalSize: 16,
       damageExplosion: {
@@ -318,6 +382,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       sand: 1,
+    },
+    crackMask: {
+      desat: 2.0,
+      darken: 0.5,
     },
   },
   smallOrganic: {
@@ -335,11 +403,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.1, g: 0.4, b: 0.0, a: 1 }, width: 2.4 },
     destructubleData: {
-      maxHp: 90,
+      maxHp: 85,
       armor: 8,
-      baseDamage: 20,
-      brickKnockBackDistance: 90,
-      brickKnockBackSpeed: 140,
+      baseDamage: 19,
+      knockBackDistance: 90,
+      knockBackSpeed: 140,
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
@@ -354,6 +422,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     rewards: {
       organics: 1,
     },
+    crackMask: {
+      desat: 4.0,
+      darken: 0.6,
+    },
   },
   smallIron: {
     size: { width: 30, height: 30 },
@@ -365,11 +437,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.6, g: 0.35, b: 0.1, a: 0.9 }, width: 2.4 },
     destructubleData: {
-      maxHp: 125,
+      maxHp: 110,
       armor: 12,
-      baseDamage: 18,
-      brickKnockBackDistance: 90,
-      brickKnockBackSpeed: 140,
+      baseDamage: 17,
+      knockBackDistance: 90,
+      knockBackSpeed: 140,
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
@@ -383,6 +455,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       iron: 1,
+    },
+    crackMask: {
+      desat: 2.5,
+      darken: 0.55,
     },
   },
   compactIron: {
@@ -403,8 +479,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 275,
       armor: 20,
       baseDamage: 35,
-      brickKnockBackDistance: 90,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 90,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 4,
       physicalSize: 16,
       damageExplosion: {
@@ -418,6 +494,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       iron: 1.25,
+    },
+    crackMask: {
+      desat: 2.5,
+      darken: 0.55,
     },
   },
   smallWood: {
@@ -438,8 +518,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 265,
       armor: 24,
       baseDamage: 96,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 70,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -470,11 +550,11 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.4, g: 0.2, b: 0.08, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 255,
+      maxHp: 225,
       armor: 42,
       baseDamage: 34,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 70,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -503,8 +583,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 1020,
       armor: 84,
       baseDamage: 92,
-      brickKnockBackDistance: 75,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 75,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -538,8 +618,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 720,
       armor: 70,
       baseDamage: 185,
-      brickKnockBackDistance: 90,
-      brickKnockBackSpeed: 190,
+      knockBackDistance: 90,
+      knockBackSpeed: 190,
       brickKnockBackAmplitude: 6,
       physicalSize: 18,
       damageExplosion: {
@@ -573,8 +653,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 3750,
       armor: 245,
       baseDamage: 355,
-      brickKnockBackDistance: 190,
-      brickKnockBackSpeed: 280,
+      knockBackDistance: 190,
+      knockBackSpeed: 280,
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
@@ -608,8 +688,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 2755,
       armor: 142,
       baseDamage: 534,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 70,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -643,8 +723,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 1022755,
       armor: 10942,
       baseDamage: 53478,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 70,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -678,8 +758,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 1022755,
       armor: 10942,
       baseDamage: 53478,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 70,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -713,8 +793,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       maxHp: 1022755,
       armor: 10942,
       baseDamage: 53478,
-      brickKnockBackDistance: 70,
-      brickKnockBackSpeed: 160,
+      knockBackDistance: 70,
+      knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {

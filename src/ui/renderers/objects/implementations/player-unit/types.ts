@@ -3,7 +3,7 @@ import type {
   SceneVector2,
   SceneFill,
   SceneFillNoise,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type {
   PlayerUnitRendererConfig,
   PlayerUnitRendererLayerConfig,
@@ -76,7 +76,14 @@ export interface RendererCircleLayer extends RendererLayerBase {
   segments: number;
 }
 
-export type RendererLayer = RendererPolygonLayer | RendererCircleLayer;
+export interface RendererSpriteLayer extends RendererLayerBase {
+  shape: "sprite";
+  spritePath: string;
+  width: number;
+  height: number;
+}
+
+export type RendererLayer = RendererPolygonLayer | RendererCircleLayer | RendererSpriteLayer;
 
 export interface RendererLayerFillBase {
   kind: "base";

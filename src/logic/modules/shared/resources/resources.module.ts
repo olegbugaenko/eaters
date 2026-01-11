@@ -1,4 +1,4 @@
-import { GameModule } from "../../../core/types";
+import { GameModule } from "@core/logic/types";
 import {
   RESOURCE_IDS,
   ResourceAmount,
@@ -16,12 +16,14 @@ import type {
   ResourcesModuleOptions,
   ResourcesSaveData,
 } from "./resources.types";
-import type { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
-import type { MapRunState } from "../../active-map/map/MapRunState";
-import type { UnlockService } from "../../../services/unlock/UnlockService";
-import type { BonusesModule } from "../bonuses/bonuses.module";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import type { StatisticsTracker } from "../statistics/statistics.module";
+import type {
+  BonusValueSource,
+  ProgressionSource,
+  RuntimeContextSource,
+} from "@core/logic/provided/services/gameplay-ports";
 import {
   RESOURCE_TOTALS_BRIDGE_KEY,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
@@ -30,6 +32,7 @@ import {
   VISIBILITY_REFRESH_INTERVAL_MS,
 } from "./resources.const";
 import { sanitizeBrickCount, areResourceListsEqual } from "./resources.helpers";
+import { ResourceCalculator } from "./resources.calculator";
 
 // Re-export types and constants for backward compatibility
 export type {
@@ -48,14 +51,15 @@ export class ResourcesModule implements GameModule {
   public readonly id = "resources";
 
   private readonly bridge: DataBridge;
-  private readonly unlocks: UnlockService;
-  private readonly bonuses: BonusesModule;
-  private readonly runState: MapRunState;
+  private readonly progression: ProgressionSource;
+  private readonly bonusValues: BonusValueSource;
+  private readonly runtimeContext: RuntimeContextSource;
   private readonly statistics?: StatisticsTracker;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
   private summaryCompleted = false;
+  private runSuccess: boolean | undefined = undefined;
   private totalBricksDestroyed = 0;
   private runBricksDestroyed = 0;
   private runDurationMs = 0;
@@ -66,9 +70,9 @@ export class ResourcesModule implements GameModule {
 
   constructor(options: ResourcesModuleOptions) {
     this.bridge = options.bridge;
-    this.unlocks = options.unlocks;
-    this.bonuses = options.bonuses;
-    this.runState = options.runState;
+    this.progression = options.progression;
+    this.bonusValues = options.bonusValues;
+    this.runtimeContext = options.runtimeContext;
     this.statistics = options.statistics;
   }
 
@@ -84,6 +88,7 @@ export class ResourcesModule implements GameModule {
     this.runGains = createEmptyResourceStockpile();
     this.runActive = false;
     this.summaryCompleted = false;
+    this.runSuccess = undefined;
     this.totalBricksDestroyed = 0;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
@@ -151,13 +156,14 @@ export class ResourcesModule implements GameModule {
   }
 
   private canAdvanceRunClock(): boolean {
-    return this.runState.shouldProcessTick();
+    return this.runtimeContext.shouldProcessTick();
   }
 
   public startRun(): void {
     this.runGains = createEmptyResourceStockpile();
     this.runActive = true;
     this.summaryCompleted = false;
+    this.runSuccess = undefined;
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
     this.forceRefreshVisibleResourceIds();
@@ -166,12 +172,13 @@ export class ResourcesModule implements GameModule {
     this.pushRunDuration();
   }
 
-  public finishRun(): void {
+  public finishRun(success: boolean): void {
     if (!this.runActive) {
       return;
     }
     this.runActive = false;
     this.summaryCompleted = true;
+    this.runSuccess = success;
     this.forceRefreshVisibleResourceIds();
     this.pushTotals();
     this.pushRunSummary();
@@ -184,6 +191,7 @@ export class ResourcesModule implements GameModule {
     }
     this.runActive = false;
     this.summaryCompleted = false;
+    this.runSuccess = undefined;
     this.runGains = createEmptyResourceStockpile();
     this.runBricksDestroyed = 0;
     this.runDurationMs = 0;
@@ -277,37 +285,29 @@ export class ResourcesModule implements GameModule {
   }
 
   private applyPassiveIncome(deltaSeconds: number): boolean {
-    if (deltaSeconds <= 0) {
-      return false;
-    }
-    let changed = false;
-    RESOURCE_IDS.forEach((id) => {
-      const rate = this.getPassiveIncomeRate(id);
-      if (rate <= 0) {
-        this.passiveIncomeRemainder[id] = 0;
-        return;
-      }
-      const pending = rate * deltaSeconds + (this.passiveIncomeRemainder[id] ?? 0);
-      const granted = Math.floor(pending * 100) / 100;
-      this.passiveIncomeRemainder[id] = pending - granted;
-      if (granted > 0) {
-        this.totals[id] += granted;
-        changed = true;
-      }
+    const { totals, remainder, changed } = ResourceCalculator.applyPassiveIncome({
+      deltaSeconds,
+      totals: this.totals,
+      remainder: this.passiveIncomeRemainder,
+      passiveBonusValues: this.getPassiveBonusValues(),
     });
+    this.totals = totals;
+    this.passiveIncomeRemainder = remainder;
     return changed;
   }
 
-  private getPassiveIncomeRate(resourceId: ResourceId): number {
-    const bonusId = PASSIVE_RESOURCE_BONUS_IDS[resourceId];
-    if (!bonusId) {
-      return 0;
-    }
-    const value = this.bonuses.getBonusValue(bonusId);
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-      return 0;
-    }
-    return Math.max(0, value);
+  private getPassiveBonusValues(): Partial<Record<ResourceId, number>> {
+    const values: Partial<Record<ResourceId, number>> = {};
+    RESOURCE_IDS.forEach((resourceId) => {
+      const bonusId = PASSIVE_RESOURCE_BONUS_IDS[resourceId];
+      if (!bonusId) {
+        values[resourceId] = 0;
+        return;
+      }
+      const value = this.bonusValues.getBonusValue(bonusId);
+      values[resourceId] = typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
+    });
+    return values;
   }
 
   private pushTotals(): void {
@@ -317,6 +317,7 @@ export class ResourcesModule implements GameModule {
   private pushRunSummary(): void {
     const payload: ResourceRunSummaryPayload = {
       completed: this.summaryCompleted,
+      success: this.runSuccess,
       resources: this.createRunSummaryItems(),
       bricksDestroyed: this.runBricksDestroyed,
       totalBricksDestroyed: this.totalBricksDestroyed,
@@ -329,30 +330,16 @@ export class ResourcesModule implements GameModule {
   }
 
   private createTotalsPayload(): ResourceAmountPayload[] {
-    return this.visibleResourceIds.map((id) => {
-      const config = getResourceConfig(id);
-      return {
-        id,
-        name: config.name,
-        amount: this.totals[id] ?? 0,
-      };
-    });
+    return ResourceCalculator.buildTotalsPayload(this.visibleResourceIds, this.totals);
   }
 
   private createRunSummaryItems(): ResourceRunSummaryItem[] {
-    const durationSeconds = this.runDurationMs / 1000;
-    return this.visibleResourceIds.map((id) => {
-      const config = getResourceConfig(id);
-      const gained = this.runGains[id] ?? 0;
-      const ratePerSecond = durationSeconds > 0 ? gained / durationSeconds : 0;
-      return {
-        id,
-        name: config.name,
-        amount: this.totals[id] ?? 0,
-        gained,
-        ratePerSecond,
-      };
-    });
+    return ResourceCalculator.buildRunSummaryItems(
+      this.visibleResourceIds,
+      this.totals,
+      this.runGains,
+      this.runDurationMs,
+    );
   }
 
   private refreshVisibleResourceIds(): boolean {
@@ -361,7 +348,7 @@ export class ResourcesModule implements GameModule {
       return false;
     }
     this.lastVisibilityRefreshMs = now;
-    this.unlocks.clearCache();
+    this.progression.clearCache();
     const visible = RESOURCE_IDS.filter((id) => this.isResourceUnlocked(id));
     if (areResourceListsEqual(this.visibleResourceIds, visible)) {
       return false;
@@ -377,7 +364,7 @@ export class ResourcesModule implements GameModule {
 
   private isResourceUnlocked(id: ResourceId): boolean {
     const config = getResourceConfig(id);
-    return this.unlocks.areConditionsMet(config.unlockedBy);
+    return this.progression.areConditionsMet(config.unlockedBy);
   }
 
   private parseSaveData(
@@ -398,4 +385,3 @@ export class ResourcesModule implements GameModule {
     };
   }
 }
-

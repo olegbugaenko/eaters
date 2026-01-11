@@ -1,6 +1,6 @@
-import { SceneColor } from "../services/scene-object-manager/scene-object-manager.types";
+import { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { cloneSceneColor, sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
-import { DEFAULT_COLOR } from "../services/scene-object-manager/scene-object-manager.const";
+import { DEFAULT_COLOR } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 
 export type VisualEffectBlendMode = "tint" | "add";
 

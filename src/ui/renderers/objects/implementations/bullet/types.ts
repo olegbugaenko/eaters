@@ -1,5 +1,5 @@
 import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
-import type { SceneColor, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterBaseConfig } from "../../../primitives/ParticleEmitterPrimitive";
 
 export interface BulletTailRenderConfig {
@@ -23,6 +23,7 @@ export interface BulletRendererCustomData {
   speed?: number;
   maxSpeed?: number;
   velocity?: SceneVector2;
+  bulletGpuKey?: string;
   shape?: "circle" | "sprite";
   renderComponents?: {
     body?: boolean;

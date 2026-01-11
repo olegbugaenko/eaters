@@ -1,6 +1,6 @@
-import { GameModule } from "../../../core/types";
-import { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { GameModule } from "@core/logic/types";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import {
@@ -8,11 +8,12 @@ import {
   PLAYER_UNIT_TYPES,
   getPlayerUnitConfig,
 } from "../../../../db/player-units-db";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ResourceAmountMap } from "@shared/types/resources";
 import { normalizeResourceCost } from "@shared/const/resources.const";
-import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import {
   UnitDesignId,
   UnitDesignerUnitState,
@@ -549,4 +550,3 @@ export class NecromancerModule implements GameModule {
     }
   }
 }
-

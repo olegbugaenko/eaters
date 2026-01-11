@@ -1,7 +1,7 @@
-import { StateFactory } from "../../../core/factories/StateFactory";
+import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import { getBrickConfig, BrickType } from "../../../../db/bricks-db";
-import type { SceneVector2, SceneFill } from "../../../services/scene-object-manager/scene-object-manager.types";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2, SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { BrickData, InternalBrickState, BrickExplosionState } from "./bricks.types";
 import {
   sanitizeBrickType,
@@ -17,6 +17,9 @@ import {
 import { createBrickFill } from "./bricks.fill.helper";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
+import { randomIntInclusive } from "@shared/helpers/numbers.helper";
+import { BRICK_CRACK_VARIANTS_PER_STAGE } from "./bricks.const";
+import { resolveBrickDamageStage } from "./bricks.helpers";
 
 export interface BrickStateInput {
   readonly brick: BrickData;
@@ -53,10 +56,10 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
     const stats = calculateBrickStatsForLevel(config, level);
     const maxHp = stats.maxHp;
     const baseDamage = stats.baseDamage;
-    const brickKnockBackDistance = Math.max(destructuble?.brickKnockBackDistance ?? 0, 0);
-    const brickKnockBackSpeed = sanitizeKnockBackSpeed(
-      destructuble?.brickKnockBackSpeed,
-      brickKnockBackDistance
+    const knockBackDistance = Math.max(destructuble?.knockBackDistance ?? 0, 0);
+    const knockBackSpeed = sanitizeKnockBackSpeed(
+      destructuble?.knockBackSpeed,
+      knockBackDistance
     );
     const armor = stats.armor;
     const physicalSize = Math.max(
@@ -65,7 +68,7 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
     );
     const brickKnockBackAmplitude = sanitizeKnockBackAmplitude(
       destructuble?.brickKnockBackAmplitude,
-      brickKnockBackDistance,
+      knockBackDistance,
       config,
       physicalSize
     );
@@ -78,6 +81,9 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
     const rotation = sanitizeRotation(brick.rotation);
     const rewards = stats.rewards;
     const baseFill = createBrickFill(config);
+    const variantsPerStage = Math.max(BRICK_CRACK_VARIANTS_PER_STAGE, 1);
+    const crackVariant = randomIntInclusive({ min: 0, max: variantsPerStage - 1 });
+    const damageStage = resolveBrickDamageStage(hp, maxHp);
 
     // Створюємо стан без sceneObjectId (буде додано в transform)
     const state: BrickStateIntermediate = {
@@ -90,11 +96,12 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
       maxHp,
       armor,
       baseDamage,
-      brickKnockBackDistance,
-      brickKnockBackSpeed,
+      knockBackDistance,
+      knockBackSpeed,
       brickKnockBackAmplitude,
       physicalSize,
       rewards,
+      passableFor: config.passableFor,
       damageExplosion: resolveBrickExplosion(
         destructuble?.damageExplosion,
         config,
@@ -109,6 +116,8 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
       baseFill: cloneSceneFill(baseFill),
       appliedFill: cloneSceneFill(baseFill),
       activeTint: null,
+      damageStage,
+      crackVariant,
     };
 
     return state as InternalBrickState;
@@ -120,6 +129,9 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
   protected override transform(state: InternalBrickState, input: BrickStateInput): void {
     const type = sanitizeBrickType(state.type as BrickType);
     const config = getBrickConfig(type);
+    const crackMaskConfig = config.crackMask;
+    const crackDesat = crackMaskConfig?.desat ?? 2.0;
+    const crackDarken = crackMaskConfig?.darken ?? 0.5;
     const sceneObjectId = this.scene.addObject("brick", {
       position: state.position,
       size: { ...config.size },
@@ -131,6 +143,13 @@ export class BrickStateFactory extends StateFactory<InternalBrickState, BrickSta
             width: config.stroke.width,
           }
         : undefined,
+      customData: {
+        damageStage: state.damageStage,
+        crackVariant: state.crackVariant,
+        cracksEnabled: config.cracksEnabled !== false,
+        crackDesat,
+        crackDarken,
+      },
     });
 
     // Мутуємо стан - додаємо sceneObjectId

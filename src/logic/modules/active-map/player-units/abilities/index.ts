@@ -11,4 +11,4 @@ export const PLAYER_UNIT_ABILITY_DEFINITIONS: readonly AbilityDescription<any, a
   TailNeedleAbility,
 ];
 
-export type { PlayerUnitAbilityState, PheromoneAttackBonusState } from "./AbilityUnitState";
+export type { PlayerUnitAbilityState } from "./AbilityUnitState";

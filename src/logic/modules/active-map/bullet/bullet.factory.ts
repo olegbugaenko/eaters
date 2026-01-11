@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { BulletModule } from "./bullet.module";
 
 export const createBulletDefinition = (): ServiceDefinition<BulletModule, "bullet"> => ({
@@ -10,4 +10,5 @@ export const createBulletDefinition = (): ServiceDefinition<BulletModule, "bulle
       runState: container.get("mapRunState"),
     }),
   registerAsModule: true,
+  dependsOn: ["explosion"],
 });

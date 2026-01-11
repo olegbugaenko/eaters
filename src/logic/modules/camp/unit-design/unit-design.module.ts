@@ -1,6 +1,6 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { BaseGameModule } from "../../../core/BaseGameModule";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { BaseGameModule } from "@/core/logic/engine/BaseGameModule";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import {
   PLAYER_UNIT_TYPES,
   PlayerUnitType,
@@ -11,7 +11,8 @@ import {
   UnitModuleId,
   getUnitModuleConfig,
 } from "../../../../db/unit-modules-db";
-import { BonusValueMap, BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { UnitModuleWorkshopModule } from "../unit-module-workshop/unit-module-workshop.module";
 import {
   PlayerUnitBlueprintStats,
@@ -377,6 +378,8 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     if (typeof mode === "string") {
       switch (mode) {
         case "nearest":
+        case "firstBrick":
+        case "firstEnemy":
         case "highestHp":
         case "lowestHp":
         case "highestDamage":

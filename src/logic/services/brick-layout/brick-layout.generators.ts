@@ -1,12 +1,15 @@
 import type { BrickType } from "../../../db/bricks-db";
+import { getBrickConfig } from "../../../db/bricks-db";
 import type { BrickData } from "../../modules/active-map/bricks/bricks.types";
-import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type {
   BrickGenerationOptions,
   CircleWithBricksOptions,
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  ConnectorWithBricksOptions,
+  TemplateWithBricksOptions,
 } from "./brick-layout.types";
 import {
   sanitizeBrickLevel,
@@ -177,6 +180,82 @@ export const generateSquareBricks = (
     y: options.center.y + corner.x * sin + corner.y * cos,
   }));
 
+  // Якщо вказано innerSize, створюємо порожнину
+  const holes: SceneVector2[][] | undefined = options.innerSize
+    ? (() => {
+        const innerHalf = Math.max(0, options.innerSize) / 2;
+        if (innerHalf >= half) {
+          return undefined; // Якщо внутрішній розмір більший або рівний зовнішньому, не створюємо порожнину
+        }
+        const innerVertices: SceneVector2[] = [
+          { x: -innerHalf, y: -innerHalf },
+          { x: innerHalf, y: -innerHalf },
+          { x: innerHalf, y: innerHalf },
+          { x: -innerHalf, y: innerHalf },
+        ].map((corner) => ({
+          x: options.center.x + corner.x * cos - corner.y * sin,
+          y: options.center.y + corner.x * sin + corner.y * cos,
+        }));
+        return [innerVertices];
+      })()
+    : undefined;
+
+  return generatePolygonBricks(
+    brickType,
+    {
+      vertices,
+      holes,
+      spacing: options.spacing,
+      spacingX: options.spacingX,
+      spacingY: options.spacingY,
+      offsetX: options.offsetX,
+      offsetY: options.offsetY,
+      brickRotation: options.brickRotation,
+    },
+    generationOptions
+  );
+};
+
+/**
+ * Generates bricks in a connector pattern (rectangle between two points).
+ */
+export const generateConnectorBricks = (
+  brickType: BrickType,
+  options: ConnectorWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] => {
+  const { start, end, width } = options;
+  const halfWidth = width / 2;
+
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+
+  let vertices: SceneVector2[];
+
+  if (length === 0) {
+    // Якщо точки співпадають, створюємо квадрат
+    vertices = [
+      { x: start.x - halfWidth, y: start.y - halfWidth },
+      { x: start.x + halfWidth, y: start.y - halfWidth },
+      { x: start.x + halfWidth, y: start.y + halfWidth },
+      { x: start.x - halfWidth, y: start.y + halfWidth },
+    ];
+  } else {
+    // Обчислюємо перпендикулярний вектор для ширини
+    const ux = dx / length;
+    const uy = dy / length;
+    const px = -uy * halfWidth;
+    const py = ux * halfWidth;
+
+    vertices = [
+      { x: start.x + px, y: start.y + py },
+      { x: start.x - px, y: start.y - py },
+      { x: end.x - px, y: end.y - py },
+      { x: end.x + px, y: end.y + py },
+    ];
+  }
+
   return generatePolygonBricks(
     brickType,
     {
@@ -190,4 +269,70 @@ export const generateSquareBricks = (
     },
     generationOptions
   );
+};
+
+/**
+ * Generates bricks from a template pattern (e.g., letters, numbers).
+ * Template is an array of strings where "#" = brick, " " = empty.
+ */
+export const generateTemplateBricks = (
+  brickType: BrickType,
+  options: TemplateWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] => {
+  const { template, center, horizontalGap = 1, verticalGap = 1, rotation = 0 } = options;
+  const level = sanitizeBrickLevel(generationOptions?.level);
+  const config = getBrickConfig(brickType);
+  const brickWidth = config.size.width;
+  const brickHeight = config.size.height;
+
+  if (template.length === 0) {
+    return [];
+  }
+
+  // Find the maximum width (columns) in the template
+  const maxColumns = Math.max(...template.map((row) => row.length));
+  if (maxColumns === 0) {
+    return [];
+  }
+
+  const rows = template.length;
+  const totalWidth = maxColumns * brickWidth + Math.max(0, maxColumns - 1) * horizontalGap;
+  const totalHeight = rows * brickHeight + Math.max(0, rows - 1) * verticalGap;
+
+  // Calculate top-left corner (before rotation)
+  const startX = center.x - totalWidth / 2;
+  const startY = center.y - totalHeight / 2;
+
+  const bricks: BrickData[] = [];
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  for (let row = 0; row < rows; row += 1) {
+    const patternRow = template[row] ?? "";
+    const rowY = startY + row * (brickHeight + verticalGap) + brickHeight / 2;
+
+    for (let col = 0; col < patternRow.length; col += 1) {
+      if (patternRow[col] !== "#") {
+        continue;
+      }
+
+      const colX = startX + col * (brickWidth + horizontalGap) + brickWidth / 2;
+
+      // Apply rotation around center
+      const dx = colX - center.x;
+      const dy = rowY - center.y;
+      const rotatedX = center.x + dx * cos - dy * sin;
+      const rotatedY = center.y + dx * sin + dy * cos;
+
+      bricks.push({
+        position: { x: rotatedX, y: rotatedY },
+        rotation: rotation,
+        type: brickType,
+        level,
+      });
+    }
+  }
+
+  return bricks;
 };

@@ -1,5 +1,5 @@
-import type { SceneObjectInstance, SceneColor, SceneFill } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import type { SceneObjectInstance, SceneColor, SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { getBulletRadius, getTailScale } from "./helpers";
 import { sanitizeSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
 import { DEFAULT_GLOW_COLOR, DEFAULT_GLOW_RADIUS_MULTIPLIER } from "./constants";

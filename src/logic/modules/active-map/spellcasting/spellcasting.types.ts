@@ -1,7 +1,7 @@
 import type { SpellConfig, SpellId, SpellDamageConfig } from "../../../../db/spells-db";
 import type { ResourceAmountMap } from "@shared/types/resources";
-import type { DataBridge } from "../../../core/DataBridge";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
@@ -9,6 +9,7 @@ import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { MapRunState } from "../map/MapRunState";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SkillId } from "../../../../db/skills-db";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export interface SpellOptionBase {
   id: SpellId;
@@ -60,4 +61,14 @@ export interface SpellcastingModuleOptions {
   projectiles: UnitProjectileController;
   getSkillLevel: (id: SkillId) => number;
   runState: MapRunState;
+}
+
+export interface SpellcastingModuleUiApi {
+  tryCastSpell(spellId: SpellId, rawTarget: SceneVector2): boolean;
+}
+
+declare module "@core/logic/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    spellcasting: SpellcastingModuleUiApi;
+  }
 }

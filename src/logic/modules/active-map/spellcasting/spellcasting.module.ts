@@ -1,8 +1,8 @@
-import { GameModule } from "../../../core/types";
-import type { DataBridge } from "../../../core/DataBridge";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { GameModule } from "@core/logic/types";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   SpellConfig,
   SpellId,
@@ -11,7 +11,8 @@ import {
 } from "../../../../db/spells-db";
 import { SkillId } from "../../../../db/skills-db";
 import { ResourceAmountMap } from "@shared/types/resources";
-import { BonusesModule, BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { MapRunState } from "../map/MapRunState";

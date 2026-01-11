@@ -14,13 +14,14 @@ import {
 } from "@logic/modules/active-map/map/map.const";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/time/time.module";
-import { RESOURCE_TOTALS_BRIDGE_KEY, ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import { RESOURCE_TOTALS_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import {
   CampStatisticsSnapshot,
   DEFAULT_CAMP_STATISTICS,
   STATISTICS_BRIDGE_KEY,
 } from "@logic/modules/shared/statistics/statistics.module";
-import type { StoredSaveData } from "@logic/core/types";
+import type { StoredSaveData } from "@/core/logic/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
@@ -59,6 +60,12 @@ import { useAudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import { clampVolumePercentage } from "@logic/utils/audioSettings";
 import { StatisticsModal } from "@screens/VoidCamp/components/StatisticsModal/StatisticsModal";
+import { AchievementsModal } from "@screens/VoidCamp/components/AchievementsModal/AchievementsModal";
+import {
+  ACHIEVEMENTS_BRIDGE_KEY,
+  DEFAULT_ACHIEVEMENTS_STATE,
+} from "@logic/modules/shared/achievements/achievements.const";
+import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -73,10 +80,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   initialTab,
   onTabChange,
 }) => {
-  const { app, bridge } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState(false);
+  const [isAchievementsOpen, setAchievementsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("game-data");
   const [statusMessage, setStatusMessage] = useState<SettingsMessage | null>(null);
   const { settings: audioSettings, setAudioSetting } = useAudioSettings();
@@ -98,6 +106,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     STATISTICS_BRIDGE_KEY,
     DEFAULT_CAMP_STATISTICS
+  );
+  const achievementsPayload = useBridgeValue(
+    bridge,
+    ACHIEVEMENTS_BRIDGE_KEY,
+    DEFAULT_ACHIEVEMENTS_STATE
   );
   const moduleWorkshopState = useBridgeValue(
     bridge,
@@ -126,12 +139,12 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   );
 
   useEffect(() => {
-    app.applyAudioSettings(audioSettings);
+    uiApi.audio.applyPercentageSettings(audioSettings);
   }, [
-    app,
     audioSettings.masterVolume,
     audioSettings.effectsVolume,
     audioSettings.musicVolume,
+    uiApi,
   ]);
 
   const handleAudioSettingChange = useCallback(
@@ -142,9 +155,9 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         [key]: clampedValue,
       };
       setAudioSetting(key, clampedValue);
-      app.applyAudioSettings(nextSettings);
+      uiApi.audio.applyPercentageSettings(nextSettings);
     },
-    [app, audioSettings, setAudioSetting],
+    [audioSettings, setAudioSetting, uiApi],
   );
 
   const handleOpenSettings = useCallback(() => {
@@ -165,9 +178,23 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     setStatisticsOpen(false);
   }, []);
 
+  const handleOpenAchievements = useCallback(() => {
+    setAchievementsOpen(true);
+  }, []);
+
+  const handleCloseAchievements = useCallback(() => {
+    setAchievementsOpen(false);
+  }, []);
+
+  // Check if there are any unlocked achievements
+  const hasUnlockedAchievements = useMemo(
+    () => achievementsPayload.achievements.some((achievement) => achievement.level > 0),
+    [achievementsPayload.achievements]
+  );
+
   const handleExportSave = useCallback(() => {
     setSettingsTab("game-data");
-    if (!app.hasActiveSaveSlot()) {
+    if (!uiApi.save.getActiveSlotId()) {
       setStatusMessage({
         tone: "error",
         text: "Select a save slot before exporting progress.",
@@ -175,7 +202,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       return;
     }
 
-    const data = app.exportActiveSave();
+    const data = uiApi.save.exportActiveSlot();
     if (!data) {
       setStatusMessage({
         tone: "error",
@@ -209,12 +236,12 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         URL.revokeObjectURL(objectUrl);
       }
     }
-  }, [app]);
+  }, [uiApi]);
 
   const handleImportSave = useCallback(
     async (file: File) => {
       setSettingsTab("game-data");
-      if (!app.hasActiveSaveSlot()) {
+      if (!uiApi.save.getActiveSlotId()) {
         setStatusMessage({
           tone: "error",
           text: "Select a save slot before importing progress.",
@@ -228,7 +255,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         if (!parsed || typeof parsed !== "object" || typeof parsed.modules !== "object") {
           throw new Error("Invalid save structure");
         }
-        app.importActiveSave(parsed);
+        uiApi.save.importToActiveSlot(parsed);
         setStatusMessage({
           tone: "success",
           text: `Imported save from ${file.name}.`,
@@ -241,7 +268,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         });
       }
     },
-    [app]
+    [uiApi]
   );
 
   const handleStartMap = useCallback(
@@ -250,20 +277,20 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       if (!target) {
         return;
       }
-      app.selectMap(mapId);
-      app.restartCurrentMap();
+      uiApi.map.selectMap(mapId);
+      uiApi.map.restartSelectedMap();
       onStart();
     },
-    [app, maps, onStart]
+    [maps, onStart, uiApi]
   );
 
   const handleExit = useCallback(() => {
     setSettingsOpen(false);
     setStatisticsOpen(false);
     setVersionHistoryOpen(false);
-    app.returnToMainMenu();
+    uiApi.app.returnToMainMenu();
     onExit();
-  }, [app, onExit]);
+  }, [onExit, uiApi]);
 
   const favoriteMap = useMemo(() => {
     let best: { id: MapId; name: string; attempts: number } | null = null;
@@ -287,6 +314,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             versionLabel={currentVersion?.displayName}
             onVersionClick={currentVersion ? () => setVersionHistoryOpen(true) : undefined}
             onStatisticsClick={handleOpenStatistics}
+            onAchievementsClick={handleOpenAchievements}
+            showAchievements={hasUnlockedAchievements}
             onSettingsClick={handleOpenSettings}
             onExitClick={handleExit}
           />
@@ -296,8 +325,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             maps={maps}
             clearedLevelsTotal={clearedLevelsTotal}
             selectedMap={selectedMap}
-            onSelectMap={(mapId) => app.selectMap(mapId)}
-            onSelectMapLevel={(mapId, level) => app.selectMapLevel(mapId, level)}
+            onSelectMap={(mapId) => uiApi.map.selectMap(mapId)}
+            onSelectMapLevel={(mapId, level) => uiApi.map.selectMapLevel(mapId, level)}
             onStartMap={handleStartMap}
             initialTab={initialTab}
             onTabChange={onTabChange}
@@ -307,6 +336,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitDesignerState={unitDesignerState}
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
+            achievementsState={achievementsPayload}
           />
         }
       />
@@ -335,6 +365,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         timePlayedMs={timePlayed}
         favoriteMap={favoriteMap}
         statistics={statistics}
+      />
+      <AchievementsModal
+        isOpen={isAchievementsOpen}
+        onClose={handleCloseAchievements}
+        achievements={achievementsPayload.achievements}
       />
     </>
   );

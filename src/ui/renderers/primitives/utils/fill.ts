@@ -8,14 +8,18 @@ import {
   SceneLinearGradientFill,
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
-} from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+  SceneSpriteFill,
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   FILL_COMPONENTS,
   FILL_FILAMENTS1_COMPONENTS,
   FILL_FILAMENTS0_COMPONENTS,
   FILL_PARAMS0_COMPONENTS,
   FILL_PARAMS1_COMPONENTS,
+  CRACK_MASK_COMPONENTS,
+  CRACK_EFFECTS_COMPONENTS,
+  CRACK_UV_COMPONENTS,
   MAX_GRADIENT_STOPS,
   POSITION_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
@@ -115,6 +119,10 @@ const ensureStops = (fill: SceneFill): SceneGradientStop[] => {
     }
     return cached;
   }
+  if (fill.fillType === FILL_TYPES.SPRITE) {
+    const spriteFill = fill as SceneSpriteFill;
+    return [{ offset: 0, color: spriteFill.color || { r: 1, g: 1, b: 1, a: 1 } }];
+  }
   const gradientFill = fill as SceneLinearGradientFill | SceneRadialGradientFill | SceneDiamondGradientFill;
   if (gradientFill.stops.length === 0) {
     return FALLBACK_SOLID_STOP;
@@ -212,6 +220,14 @@ const populateFillVertexComponents = (
       components[params0Index + 3] = 0;
       break;
     }
+    case FILL_TYPES.SPRITE: {
+      // For sprites, fillParams0.xy stores UV coordinates (will be set per-vertex)
+      // fillParams0.z stores texture index for texture array
+      components[params0Index + 0] = 0; // UV.x will be set per-vertex
+      components[params0Index + 1] = 0; // UV.y will be set per-vertex
+      components[params0Index + 2] = 0; // Texture index (will be set in SpritePrimitive)
+      break;
+    }
     case FILL_TYPES.SOLID:
     default: {
       components[params0Index + 0] = center.x;
@@ -248,6 +264,29 @@ const populateFillVertexComponents = (
     components[write++] = color.g;
     components[write++] = color.b;
     components[write++] = typeof color.a === "number" ? color.a : 1;
+  }
+
+  for (let i = 0; i < CRACK_UV_COMPONENTS; i += 1) {
+    components[write++] = 0;
+  }
+
+  const crackMask = fill.crackMask;
+  const crackMaskValues = [
+    crackMask ? crackMask.tileIndex : 0,
+    crackMask ? crackMask.atlasId : 0,
+    crackMask ? crackMask.strength : 0,
+    0,
+  ];
+  for (let i = 0; i < CRACK_MASK_COMPONENTS; i += 1) {
+    components[write++] = crackMaskValues[i] ?? 0;
+  }
+
+  const crackEffectValues = [
+    crackMask ? crackMask.desat : 0,
+    crackMask ? crackMask.darken : 0,
+  ];
+  for (let i = 0; i < CRACK_EFFECTS_COMPONENTS; i += 1) {
+    components[write++] = crackEffectValues[i] ?? 0;
   }
 
   return components;

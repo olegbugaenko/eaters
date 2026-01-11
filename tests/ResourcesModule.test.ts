@@ -1,16 +1,19 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import {
   ResourcesModule,
   RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
   RESOURCE_TOTALS_BRIDGE_KEY,
 } from "../src/logic/modules/shared/resources/resources.module";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
-import type { ResourceRunSummaryPayload } from "../src/logic/modules/shared/resources/resources.module";
+import type { ResourceRunSummaryPayload } from "../src/logic/modules/shared/resources/resources.types";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
+import { BonusesValueAdapter } from "../src/logic/modules/shared/bonuses/bonuses.adapter";
+import { MapRunContextAdapter } from "../src/logic/modules/active-map/map/map-run-context.adapter";
+import { UnlockProgressionAdapter } from "../src/logic/services/unlock/unlock-progression.adapter";
 
 describe("ResourcesModule", () => {
   test("calculates per-second gain rates for run summary", () => {
@@ -23,17 +26,20 @@ describe("ResourcesModule", () => {
     bonuses.initialize();
     const runState = new MapRunState();
     runState.start();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
+    const module = new ResourcesModule({
+      bridge,
+      progression: new UnlockProgressionAdapter(unlocks),
+      bonusValues: new BonusesValueAdapter(bonuses),
+      runtimeContext: new MapRunContextAdapter(runState),
+    });
 
     module.initialize();
     module.startRun();
     module.tick(2000);
     module.grantResources({ stone: 100 });
-    module.finishRun();
+    module.finishRun(true);
 
-    const payload = bridge.getValue<ResourceRunSummaryPayload>(
-      RESOURCE_RUN_SUMMARY_BRIDGE_KEY
-    );
+    const payload = bridge.getValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY);
     assert(payload, "run summary should be available");
 
     const stone = payload.resources.find((resource) => resource.id === "stone");
@@ -58,17 +64,20 @@ describe("ResourcesModule", () => {
     bonuses.setSourceLevel("test", 1);
     const runState = new MapRunState();
     runState.start();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
+    const module = new ResourcesModule({
+      bridge,
+      progression: new UnlockProgressionAdapter(unlocks),
+      bonusValues: new BonusesValueAdapter(bonuses),
+      runtimeContext: new MapRunContextAdapter(runState),
+    });
 
     module.initialize();
     module.startRun();
     module.tick(1000);
     module.grantResources({ stone: 5 });
-    module.finishRun();
+    module.finishRun(true);
 
-    const payload = bridge.getValue<ResourceRunSummaryPayload>(
-      RESOURCE_RUN_SUMMARY_BRIDGE_KEY
-    );
+    const payload = bridge.getValue(RESOURCE_RUN_SUMMARY_BRIDGE_KEY);
     assert(payload, "run summary should be available");
 
     const stone = payload.resources.find((resource) => resource.id === "stone");
@@ -88,11 +97,16 @@ describe("ResourcesModule", () => {
     bonuses.initialize();
     const runState = new MapRunState();
     runState.start();
-    const module = new ResourcesModule({ bridge, unlocks, bonuses, runState });
+    const module = new ResourcesModule({
+      bridge,
+      progression: new UnlockProgressionAdapter(unlocks),
+      bonusValues: new BonusesValueAdapter(bonuses),
+      runtimeContext: new MapRunContextAdapter(runState),
+    });
 
     module.initialize();
 
-    const totalsBefore = bridge.getValue<{ id: string }[]>(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
+    const totalsBefore = bridge.getValue(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
     assert(
       totalsBefore.every((resource) => resource.id !== "iron"),
       "iron should be hidden before unlocking"
@@ -110,9 +124,9 @@ describe("ResourcesModule", () => {
         1: { success: 1, failure: 0, bestTimeMs: null },
       },
     };
-    module.finishRun();
+    module.finishRun(true);
 
-    const totalsAfter = bridge.getValue<{ id: string }[]>(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
+    const totalsAfter = bridge.getValue(RESOURCE_TOTALS_BRIDGE_KEY) ?? [];
     assert(
       totalsAfter.some((resource) => resource.id === "iron"),
       "iron should be visible after unlocking"

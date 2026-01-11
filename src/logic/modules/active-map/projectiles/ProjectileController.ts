@@ -2,10 +2,12 @@ import {
   SceneVector2,
   SceneFill,
   SceneColor,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import { BricksModule } from "../bricks/bricks.module";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { TargetingService } from "../targeting/TargetingService";
+import { isTargetOfType, type TargetSnapshot } from "../targeting/targeting.types";
+import type { DamageService } from "../targeting/DamageService";
 import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
@@ -45,19 +47,29 @@ import type {
 
 export class UnitProjectileController {
   private readonly scene: SceneObjectManager;
-  private readonly bricks: BricksModule;
+  private readonly targeting: TargetingService;
+  private readonly damage: DamageService;
 
   private projectiles: UnitProjectileState[] = [];
   private projectileIndex = new Map<string, UnitProjectileState>();
   private rings: RingState[] = [];
   private ringsSpawnedThisFrame = 0;
 
-  constructor(options: { scene: SceneObjectManager; bricks: BricksModule }) {
+  constructor(options: {
+    scene: SceneObjectManager;
+    targeting: TargetingService;
+    damage: DamageService;
+  }) {
     this.scene = options.scene;
-    this.bricks = options.bricks;
+    this.targeting = options.targeting;
+    this.damage = options.damage;
   }
 
   public spawn(projectile: UnitProjectileSpawn): string {
+    const targetTypes =
+      projectile.targetTypes && projectile.targetTypes.length > 0
+        ? [...projectile.targetTypes]
+        : ["brick", "enemy"];
     const direction = normalizeVector(projectile.direction) || { x: 1, y: 0 };
     const baseVisual = projectile.visual;
     // Resolve spriteIndex from spriteName if needed
@@ -93,6 +105,7 @@ export class UnitProjectileController {
     const gpuConfig = this.getGpuBulletConfig(visual, shape);
     const gpuSlot = gpuConfig ? acquireGpuBulletSlot(gpuConfig) : null;
 
+    const bulletGpuKey = gpuSlot ? `${gpuSlot.batchKey}:${gpuSlot.slotIndex}` : undefined;
     const rendererCustomData = {
       speed: visual.speed,
       maxSpeed: visual.speed,
@@ -100,6 +113,7 @@ export class UnitProjectileController {
       tail: visual.tail,
       tailEmitter: visual.tailEmitter,
       shape,
+      bulletGpuKey,
       ...(visual.rendererCustomData ?? {}),
     };
 
@@ -151,6 +165,7 @@ export class UnitProjectileController {
 
     const state: UnitProjectileState = {
       ...projectile,
+      targetTypes,
       id: objectId,
       velocity,
       position,
@@ -163,6 +178,7 @@ export class UnitProjectileController {
       hitRadius,
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
+      justSpawned: true, // Не рухати снаряд в перший тік
     };
 
     this.projectiles.push(state);
@@ -298,7 +314,18 @@ export class UnitProjectileController {
     let writeIndex = 0;
     for (let i = 0; i < this.projectiles.length; i += 1) {
       const projectile = this.projectiles[i]!;
-      let hitBrickId: string | null = null;
+      let hitTarget: TargetSnapshot | null = null;
+
+      // Якщо снаряд щойно створений - пропускаємо рух, тільки оновлюємо візуал
+      if (projectile.justSpawned) {
+        projectile.justSpawned = false;
+        this.updateProjectilePosition(projectile);
+        if (projectile.ringTrail) {
+          projectile.ringTrail.accumulatorMs += deltaMs;
+        }
+        this.projectiles[writeIndex++] = projectile;
+        continue;
+      }
 
       const totalMoveX = projectile.velocity.x * deltaSeconds;
       const totalMoveY = projectile.velocity.y * deltaSeconds;
@@ -317,15 +344,17 @@ export class UnitProjectileController {
         projectile.position.x += stepX;
         projectile.position.y += stepY;
 
-        const collided = this.findHitBrick(projectile.position, projectile.hitRadius);
+        const collided = this.findHitTarget(projectile.position, projectile.hitRadius, projectile);
         if (collided) {
-          hitBrickId = collided.id;
+          hitTarget = collided;
           const handled = projectile.onHit?.({
-            brickId: collided.id,
+            targetId: collided.id,
+            targetType: collided.type,
+            brickId: isTargetOfType(collided, "brick") ? collided.id : undefined,
             position: { ...projectile.position },
           });
           if (handled !== true) {
-            this.applyProjectileDamage(projectile, collided.id);
+            this.applyProjectileDamage(projectile, collided);
           }
           this.removeProjectile(projectile);
           if (projectile.ringTrail) {
@@ -335,7 +364,7 @@ export class UnitProjectileController {
         }
       }
 
-      if (hitBrickId) {
+      if (hitTarget) {
         continue;
       }
 
@@ -451,29 +480,45 @@ export class UnitProjectileController {
     this.tickRings(0); // Pass 0 delta, it uses performance.now() internally
   }
 
-  private applyProjectileDamage(projectile: UnitProjectileState, brickId: string): void {
-    this.bricks.applyDamage(brickId, projectile.damage, projectile.direction, {
+  private applyProjectileDamage(projectile: UnitProjectileState, target: TargetSnapshot): void {
+    this.damage.applyTargetDamage(target.id, projectile.damage, {
       rewardMultiplier: projectile.rewardMultiplier,
       armorPenetration: projectile.armorPenetration,
       skipKnockback: projectile.skipKnockback === true,
+      knockBackDistance: projectile.knockBackDistance,
+      knockBackSpeed: projectile.knockBackSpeed,
+      knockBackDirection: projectile.knockBackDirection,
+      direction: projectile.direction,
     });
   }
 
-  private findHitBrick(position: SceneVector2, radius: number): { id: string } | null {
-    let closest: { id: string; distanceSq: number } | null = null;
+  private findHitTarget(
+    position: SceneVector2,
+    radius: number,
+    projectile: UnitProjectileState,
+  ): TargetSnapshot | null {
+    let closest: TargetSnapshot | null = null;
+    let closestDistanceSq = Number.POSITIVE_INFINITY;
     const expanded = Math.max(0, radius + 12);
-    this.bricks.forEachBrickNear(position, expanded, (brick) => {
-      const dx = brick.position.x - position.x;
-      const dy = brick.position.y - position.y;
-      const distanceSq = dx * dx + dy * dy;
-      const combined = Math.max(0, (brick.physicalSize ?? 0) + radius);
-      const combinedSq = combined * combined;
-      if (distanceSq <= combinedSq) {
-        if (!closest || distanceSq < closest.distanceSq) {
-          closest = { id: brick.id, distanceSq };
+    const types = projectile.targetTypes && projectile.targetTypes.length > 0 ? projectile.targetTypes : undefined;
+    this.targeting.forEachTargetNear(
+      position,
+      expanded,
+      (target) => {
+        if (types && !types.includes(target.type)) {
+          return;
         }
-      }
-    });
+        const combined = Math.max(0, (target.physicalSize ?? 0) + radius);
+        const dx = target.position.x - position.x;
+        const dy = target.position.y - position.y;
+        const distanceSq = dx * dx + dy * dy;
+        if (distanceSq <= combined * combined && distanceSq < closestDistanceSq) {
+          closest = target;
+          closestDistanceSq = distanceSq;
+        }
+      },
+      types ? { types } : undefined,
+    );
     return closest;
   }
 

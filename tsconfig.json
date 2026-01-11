@@ -39,6 +39,7 @@
       "@shared/*": ["shared/*"],
       "@logic/*": ["logic/*"],
       "@db/*": ["db/*"],
+      "@core/*": ["core/*"],
       "react-joyride": ["../vendor/react-joyride"]
     }
   },

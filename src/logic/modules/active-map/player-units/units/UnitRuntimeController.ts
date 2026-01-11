@@ -1,10 +1,15 @@
-import { SceneObjectManager } from "../../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "../../../../services/scene-object-manager/scene-object-manager.types";
-import { MovementService, MovementBodyState } from "../../../../services/movement/MovementService";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { MovementService, MovementBodyState } from "@core/logic/provided/services/movement/MovementService";
 import { BricksModule } from "../../bricks/bricks.module";
 import type { BrickRuntimeState } from "../../bricks/bricks.types";
+import { TargetingService } from "../../targeting/TargetingService";
+import { isTargetOfType, type TargetSnapshot } from "../../targeting/targeting.types";
+import type { DamageService } from "../../targeting/DamageService";
+import type { EnemiesModule } from "../../enemies/enemies.module";
+import type { EnemyRuntimeState } from "../../enemies/enemies.types";
+import type { StatusEffectsModule } from "../../status-effects/status-effects.module";
 import {
-  BURNING_TAIL_DAMAGE_RATIO_PER_SECOND,
   BURNING_TAIL_DURATION_MS,
   FREEZING_TAIL_DURATION_MS,
 } from "../../bricks/brick-effects.const";
@@ -36,10 +41,14 @@ export interface UnitRuntimeControllerOptions {
   scene: SceneObjectManager;
   movement: MovementService;
   bricks: BricksModule;
+  targeting: TargetingService;
   abilities: PlayerUnitAbilities;
   statistics?: StatisticsTracker;
   explosions: ExplosionModule;
   projectiles: UnitProjectileController;
+  damage?: DamageService;
+  enemies?: EnemiesModule;
+  statusEffects: StatusEffectsModule;
   getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -50,7 +59,6 @@ export interface UnitRuntimeControllerOptions {
     unit: PlayerUnitState,
     options?: { forceFill?: boolean; forceStroke?: boolean }
   ) => void;
-  updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
 }
 
 
@@ -68,16 +76,21 @@ import {
   vectorLength,
   vectorHasLength,
   vectorEquals,
+  normalizeVector,
 } from "../../../../../shared/helpers/vector.helper";
 
 export class UnitRuntimeController {
   private readonly scene: SceneObjectManager;
   private readonly movement: MovementService;
   private readonly bricks: BricksModule;
+  private readonly targeting: TargetingService;
   private readonly abilities: PlayerUnitAbilities;
   private readonly statistics?: StatisticsTracker;
   private readonly explosions: ExplosionModule;
   private readonly projectiles: UnitProjectileController;
+  private readonly damage?: DamageService;
+  private readonly enemies?: EnemiesModule;
+  private readonly statusEffects: StatusEffectsModule;
   private readonly getDesignTargetingMode: (
     designId: string | null,
     type: PlayerUnitType
@@ -88,21 +101,23 @@ export class UnitRuntimeController {
     unit: PlayerUnitState,
     options?: { forceFill?: boolean; forceStroke?: boolean }
   ) => void;
-  private readonly updateInternalFurnaceEffect: (unit: PlayerUnitState) => void;
 
   constructor(options: UnitRuntimeControllerOptions) {
     this.scene = options.scene;
     this.movement = options.movement;
     this.bricks = options.bricks;
+    this.targeting = options.targeting;
     this.abilities = options.abilities;
     this.statistics = options.statistics;
     this.explosions = options.explosions;
     this.projectiles = options.projectiles;
+    this.damage = options.damage;
+    this.enemies = options.enemies;
+    this.statusEffects = options.statusEffects;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.syncUnitTargetingMode = options.syncUnitTargetingMode;
     this.removeUnit = options.removeUnit;
     this.updateSceneState = options.updateSceneState;
-    this.updateInternalFurnaceEffect = options.updateInternalFurnaceEffect;
   }
 
   public updateUnits(
@@ -171,8 +186,9 @@ export class UnitRuntimeController {
         unit.lastNonZeroVelocity = cloneVector(movementState.velocity);
       }
 
-      const target = this.resolveTarget(unit);
-      plannedTargets.set(unit.id, target?.id ?? null);
+      const resolved = this.resolveTarget(unit);
+      const target = resolved?.target ?? null;
+      plannedTargets.set(unit.id, resolved?.target.id ?? null);
 
       const force = this.computeDesiredForce(unit, movementState, target);
       this.movement.setForce(unit.movementId, force);
@@ -218,17 +234,40 @@ export class UnitRuntimeController {
       unit.position = { ...resolvedPosition };
 
       let targetId = plannedTargets.get(unit.id) ?? null;
-      let target: BrickRuntimeState | null = null;
+      let target: BrickRuntimeState | EnemyRuntimeState | null = null;
+      let targetType: "brick" | "enemy" | null = null;
+      
       if (targetId) {
-        target = this.bricks.getBrickState(targetId);
-        if (!target) {
+        // Перевіряємо чи це брік
+        const brickTarget = this.bricks.getBrickState(targetId);
+        if (brickTarget) {
+          target = brickTarget;
+          targetType = "brick";
+        } else if (this.enemies) {
+          // Перевіряємо чи це ворог
+          const enemyTarget = this.enemies.getEnemyState(targetId);
+          if (enemyTarget) {
+            target = enemyTarget;
+            targetType = "enemy";
+          } else {
+            targetId = null;
+            plannedTargets.set(unit.id, null);
+          }
+        } else {
           targetId = null;
           plannedTargets.set(unit.id, null);
         }
       }
+      
       if (!target) {
-        target = this.resolveTarget(unit);
-        plannedTargets.set(unit.id, target?.id ?? null);
+        const resolved = this.resolveTarget(unit);
+        if (resolved) {
+          target = resolved.target;
+          targetType = resolved.type;
+          plannedTargets.set(unit.id, resolved.target.id);
+        } else {
+          plannedTargets.set(unit.id, null);
+        }
       }
 
       if (collidedBrickIds.length > 0) {
@@ -238,6 +277,7 @@ export class UnitRuntimeController {
             continue;
           }
           target = collidedBrick;
+          targetType = "brick";
           unit.targetBrickId = collidedBrick.id;
           plannedTargets.set(unit.id, collidedBrick.id);
           break;
@@ -248,7 +288,7 @@ export class UnitRuntimeController {
       unit.rotation = rotation;
       this.updateSceneState(unit);
 
-      if (!target) {
+      if (!target || !targetType) {
         return;
       }
 
@@ -260,7 +300,7 @@ export class UnitRuntimeController {
         distance <= attackRange + ATTACK_DISTANCE_EPSILON &&
         unit.attackCooldown <= 0
       ) {
-        const hpChanged = this.performAttack(unit, target, direction, distance);
+        const hpChanged = this.performAttack(unit, target, targetType, direction, distance);
         if (hpChanged) {
           statsDirty = true;
         }
@@ -278,7 +318,7 @@ export class UnitRuntimeController {
     return { statsChanged: statsDirty, unitsRemoved };
   }
 
-  private resolveTarget(unit: PlayerUnitState): BrickRuntimeState | null {
+  private resolveTarget(unit: PlayerUnitState): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
     const mode = this.syncUnitTargetingMode(unit);
     if (mode === "none") {
       unit.targetBrickId = null;
@@ -286,45 +326,263 @@ export class UnitRuntimeController {
     }
 
     if (unit.targetBrickId) {
-      const current = this.bricks.getBrickState(unit.targetBrickId);
-      if (current && current.hp > 0) {
-        return current;
+      // Перевіряємо чи це брік
+      const brickTarget = this.getBrickTarget(unit.targetBrickId);
+      if (brickTarget && brickTarget.hp > 0) {
+        return { target: brickTarget, type: "brick" };
       }
+      
+      // Перевіряємо чи це ворог
+      if (this.enemies) {
+        const enemyTarget = this.enemies.getEnemyState(unit.targetBrickId);
+        if (enemyTarget && enemyTarget.hp > 0) {
+          return { target: enemyTarget, type: "enemy" };
+        }
+      }
+      
       unit.targetBrickId = null;
     }
 
     const selected = this.selectTargetForMode(unit, mode);
-    unit.targetBrickId = selected?.id ?? null;
-    return selected;
+    if (selected) {
+      unit.targetBrickId = selected.target.id;
+      return selected;
+    }
+    unit.targetBrickId = null;
+    return null;
   }
 
   private selectTargetForMode(
     unit: PlayerUnitState,
     mode: UnitTargetingMode
-  ): BrickRuntimeState | null {
+  ): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
     if (mode === "nearest") {
-      return this.bricks.findNearestBrick(unit.position);
+      return this.findNearestTarget(unit.position);
     }
-    return this.findBrickByCriterion(unit, mode);
+    if (mode === "firstBrick") {
+      return (
+        this.findNearestTargetByType(unit.position, "brick") ??
+        this.findNearestTargetByType(unit.position, "enemy") ??
+        this.findNearestTarget(unit.position)
+      );
+    }
+    if (mode === "firstEnemy") {
+      return (
+        this.findNearestTargetByType(unit.position, "enemy") ??
+        this.findNearestTargetByType(unit.position, "brick") ??
+        this.findNearestTarget(unit.position)
+      );
+    }
+    return this.findTargetByCriterion(unit, mode);
   }
 
-  private findBrickByCriterion(
+  private findNearestTargetByType(
+    position: SceneVector2,
+    preferredType: "brick" | "enemy"
+  ): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
+    const target = this.targeting.findNearestTarget(position, { types: [preferredType] });
+    if (!target) {
+      return null;
+    }
+    if (preferredType === "brick" && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      const brick = target.data ?? this.bricks.getBrickState(target.id);
+      if (brick && brick.hp > 0) {
+        return { target: brick, type: "brick" };
+      }
+      return null;
+    }
+    if (
+      preferredType === "enemy" &&
+      isTargetOfType<"enemy", EnemyRuntimeState>(target, "enemy")
+    ) {
+      const enemy = target.data ?? (this.enemies ? this.enemies.getEnemyState(target.id) : null);
+      if (enemy && enemy.hp > 0) {
+        return { target: enemy, type: "enemy" };
+      }
+    }
+    return null;
+  }
+
+  private findTargetByCriterion(
     unit: PlayerUnitState,
     mode: UnitTargetingMode
-  ): BrickRuntimeState | null {
+  ): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
     const mapSize = this.scene.getMapSize();
     const maxRadius = Math.max(Math.hypot(mapSize.width, mapSize.height), TARGETING_RADIUS_STEP);
     let radius = TARGETING_RADIUS_STEP;
     const evaluated = new Set<string>();
     while (radius <= maxRadius + TARGETING_RADIUS_STEP) {
-      const bricks = this.bricks.findBricksNear(unit.position, radius);
-      const candidate = this.pickBestBrickCandidate(unit.position, bricks, mode, evaluated);
+      const targets = this.findTargetsNear(unit.position, radius);
+      const candidate = this.pickBestTargetCandidate(unit.position, targets, mode, evaluated);
       if (candidate) {
         return candidate;
       }
       radius += TARGETING_RADIUS_STEP;
     }
-    return this.bricks.findNearestBrick(unit.position);
+    return this.findNearestTarget(unit.position);
+  }
+  
+  private findTargetsNear(position: SceneVector2, radius: number): Array<{ target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" }> {
+    if (radius < 0) {
+      return [];
+    }
+    const targets = this.targeting.findTargetsNear(position, radius, { types: ["brick", "enemy"] });
+    const result: Array<{ target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" }> = [];
+    
+    targets.forEach((target) => {
+      if (isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+        const brick = target.data ?? this.bricks.getBrickState(target.id);
+        if (brick && brick.hp > 0) {
+          result.push({ target: brick, type: "brick" });
+        }
+      } else if (isTargetOfType<"enemy", EnemyRuntimeState>(target, "enemy")) {
+        const enemy = target.data ?? (this.enemies ? this.enemies.getEnemyState(target.id) : null);
+        if (enemy && enemy.hp > 0) {
+          result.push({ target: enemy, type: "enemy" });
+        }
+      }
+    });
+    
+    return result;
+  }
+  
+  private pickBestTargetCandidate(
+    origin: SceneVector2,
+    targets: Array<{ target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" }>,
+    mode: UnitTargetingMode,
+    evaluated?: Set<string>
+  ): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
+    let best: { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null = null;
+    let bestScore = 0;
+    let bestDistanceSq = 0;
+    
+    targets.forEach(({ target, type }) => {
+      if (!target || target.hp <= 0) {
+        return;
+      }
+      if (evaluated) {
+        if (evaluated.has(target.id)) {
+          return;
+        }
+        evaluated.add(target.id);
+      }
+      
+      const score = this.computeTargetScore(target, type, mode);
+      if (score === null) {
+        return;
+      }
+      
+      const dx = target.position.x - origin.x;
+      const dy = target.position.y - origin.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (!Number.isFinite(distanceSq)) {
+        return;
+      }
+      
+      if (!best) {
+        best = { target, type };
+        bestScore = score;
+        bestDistanceSq = distanceSq;
+        return;
+      }
+      
+      if (this.isCandidateBetter(mode, score, distanceSq, bestScore, bestDistanceSq)) {
+        best = { target, type };
+        bestScore = score;
+        bestDistanceSq = distanceSq;
+      }
+    });
+    
+    return best;
+  }
+  
+  private computeTargetScore(
+    target: BrickRuntimeState | EnemyRuntimeState,
+    type: "brick" | "enemy",
+    mode: UnitTargetingMode
+  ): number | null {
+    switch (mode) {
+      case "highestHp":
+      case "lowestHp":
+        return Math.max(target.hp, 0);
+      case "highestDamage":
+      case "lowestDamage":
+        return Math.max(target.baseDamage, 0);
+      default:
+        return null;
+    }
+  }
+
+  private getBrickTarget(brickId: string): BrickRuntimeState | null {
+    const target = this.targeting.getTargetById(brickId, { types: ["brick"] });
+    if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      return target.data ?? this.bricks.getBrickState(target.id);
+    }
+    return null;
+  }
+
+  private findNearestTarget(position: SceneVector2): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
+    // Шукаємо найближчу ціль серед бріків та ворогів
+    const target = this.targeting.findNearestTarget(position, { types: ["brick", "enemy"] });
+    if (!target) {
+      return null;
+    }
+    
+    if (isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      const brick = target.data ?? this.bricks.getBrickState(target.id);
+      if (brick && brick.hp > 0) {
+        return { target: brick, type: "brick" };
+      }
+    } else if (isTargetOfType<"enemy", EnemyRuntimeState>(target, "enemy")) {
+      const enemy = target.data ?? (this.enemies ? this.enemies.getEnemyState(target.id) : null);
+      if (enemy && enemy.hp > 0) {
+        return { target: enemy, type: "enemy" };
+      }
+    }
+    
+    return null;
+  }
+
+  private findBricksNear(position: SceneVector2, radius: number): BrickRuntimeState[] {
+    if (radius < 0) {
+      return [];
+    }
+    const targets = this.targeting.findTargetsNear(position, radius, { types: ["brick"] });
+    const bricks: BrickRuntimeState[] = [];
+    targets.forEach((target) => {
+      if (!isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+        return;
+      }
+      const brick = target.data ?? this.bricks.getBrickState(target.id);
+      if (brick) {
+        bricks.push(brick);
+      }
+    });
+    return bricks;
+  }
+
+  private forEachBrickNear(
+    position: SceneVector2,
+    radius: number,
+    visitor: (brick: BrickRuntimeState) => void,
+  ): void {
+    if (radius < 0) {
+      return;
+    }
+    this.targeting.forEachTargetNear(
+      position,
+      radius,
+      (target) => {
+        if (!isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+          return;
+        }
+        const brick = target.data ?? this.bricks.getBrickState(target.id);
+        if (brick) {
+          visitor(brick);
+        }
+      },
+      { types: ["brick"] },
+    );
   }
 
   private pickBestBrickCandidate(
@@ -422,7 +680,7 @@ export class UnitRuntimeController {
   private computeDesiredForce(
     unit: PlayerUnitState,
     movementState: MovementBodyState,
-    target: BrickRuntimeState | null
+    target: BrickRuntimeState | EnemyRuntimeState | null
   ): SceneVector2 {
     if (!target) {
       if (unit.targetingMode === "none") {
@@ -445,13 +703,85 @@ export class UnitRuntimeController {
       return ZERO_VECTOR;
     }
 
+    const moveSpeed = this.getEffectiveMoveSpeed(unit);
     const desiredSpeed = Math.max(
-      Math.min(unit.moveSpeed, distanceOutsideRange),
-      unit.moveSpeed * 0.25
+      Math.min(moveSpeed, distanceOutsideRange),
+      moveSpeed * 0.25
     );
-    const desiredVelocity = scaleVector(direction, desiredSpeed);
+    let desiredVelocity = scaleVector(direction, desiredSpeed);
+
+    // Додаємо obstacle avoidance щоб не налазити на цеглу
+    const avoidance = this.computeObstacleAvoidance(unit, desiredVelocity);
+    if (vectorHasLength(avoidance)) {
+      desiredVelocity = addVectors(desiredVelocity, avoidance);
+    }
 
     return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
+  }
+
+  /**
+   * Обчислює силу уникнення перешкод (цегли)
+   */
+  private computeObstacleAvoidance(
+    unit: PlayerUnitState,
+    desiredVelocity: SceneVector2
+  ): SceneVector2 {
+    if (!vectorHasLength(desiredVelocity)) {
+      return ZERO_VECTOR;
+    }
+
+    const avoidanceRadius = unit.physicalSize * 3;
+    let avoidanceVector = { ...ZERO_VECTOR };
+
+    this.forEachBrickNear(unit.position, avoidanceRadius, (brick) => {
+      // Перевіряємо чи цегла прохідна для юніта
+      if (brick.passableFor && brick.passableFor.length > 0) {
+        // Якщо є passableFor - цегла прохідна, пропускаємо
+        return;
+      }
+
+      const toBrick = subtractVectors(brick.position, unit.position);
+      const distance = vectorLength(toBrick);
+      const combinedRadius = brick.physicalSize + unit.physicalSize;
+      const normalizedToBrick = normalizeVector(toBrick);
+      if (!normalizedToBrick) {
+        return;
+      }
+
+      // Перевіряємо чи перешкода попереду
+      const isAhead =
+        normalizedToBrick.x * desiredVelocity.x + normalizedToBrick.y * desiredVelocity.y > 0;
+      if (distance <= 0 || distance > avoidanceRadius || !isAhead) {
+        return;
+      }
+
+      // Обчислюємо силу відштовхування
+      const overlap = combinedRadius + 4 - distance;
+      if (overlap <= 0) {
+        return;
+      }
+
+      const pushDirection = scaleVector(toBrick, -1 / Math.max(distance, 1));
+      const strength = overlap / Math.max(combinedRadius, 1);
+      avoidanceVector = addVectors(avoidanceVector, scaleVector(pushDirection, strength));
+    });
+
+    const length = vectorLength(avoidanceVector);
+    if (length <= 0) {
+      return ZERO_VECTOR;
+    }
+
+    // Обмежуємо силу уникнення
+    const maxAvoidance = this.getEffectiveMoveSpeed(unit) * 0.5; // Менша ніж у ворогів, щоб не заважати атаці
+    return scaleVector(avoidanceVector, Math.min(maxAvoidance / length, 1));
+  }
+
+  private getEffectiveMoveSpeed(unit: PlayerUnitState): number {
+    const multiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    return Math.max(unit.moveSpeed * Math.max(multiplier, 0), 0);
   }
 
   private computeBrakingForce(
@@ -481,8 +811,9 @@ export class UnitRuntimeController {
       unit.wanderTarget = null;
       return this.computeBrakingForce(unit, movementState);
     }
-    const desiredSpeed = Math.max(unit.moveSpeed * IDLE_WANDER_SPEED_FACTOR, unit.moveSpeed * 0.2);
-    const cappedSpeed = Math.min(desiredSpeed, Math.max(distance, unit.moveSpeed * 0.2));
+    const moveSpeed = this.getEffectiveMoveSpeed(unit);
+    const desiredSpeed = Math.max(moveSpeed * IDLE_WANDER_SPEED_FACTOR, moveSpeed * 0.2);
+    const cappedSpeed = Math.min(desiredSpeed, Math.max(distance, moveSpeed * 0.2));
     const desiredVelocity = scaleVector(direction, cappedSpeed);
     return this.computeSteeringForce(unit, movementState.velocity, desiredVelocity);
   }
@@ -527,7 +858,7 @@ export class UnitRuntimeController {
 
     for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
       let collided = false;
-      this.bricks.forEachBrickNear(resolvedPosition, unit.physicalSize, (brick) => {
+      this.forEachBrickNear(resolvedPosition, unit.physicalSize, (brick) => {
         const brickRadius = Math.max(brick.physicalSize, 0);
         const combinedRadius = unit.physicalSize + brickRadius;
         if (combinedRadius <= 0) {
@@ -595,7 +926,7 @@ export class UnitRuntimeController {
 
   private computeRotation(
     unit: PlayerUnitState,
-    target: BrickRuntimeState | null,
+    target: BrickRuntimeState | EnemyRuntimeState | null,
     velocity: SceneVector2
   ): number {
     if (target) {
@@ -615,11 +946,7 @@ export class UnitRuntimeController {
   private getAttackOutcome(
     unit: PlayerUnitState
   ): { damage: number; isCritical: boolean } {
-    const cappedStack = Math.min(
-      Math.max(unit.currentAttackStackBonus, 0),
-      Math.max(unit.attackStackBonusCap, 0)
-    );
-    const stackMultiplier = 1 + cappedStack;
+    const stackMultiplier = this.statusEffects.getUnitAttackMultiplier(unit.id);
     const baseDamage = Math.max(unit.baseAttackDamage * stackMultiplier, 0);
     const variance = 0.2;
     const varianceMultiplier = 1 - variance + Math.random() * (variance * 2);
@@ -635,7 +962,8 @@ export class UnitRuntimeController {
 
   private performAttack(
     unit: PlayerUnitState,
-    target: BrickRuntimeState,
+    target: BrickRuntimeState | EnemyRuntimeState,
+    targetType: "brick" | "enemy",
     direction: SceneVector2,
     distance: number
   ): boolean {
@@ -645,79 +973,109 @@ export class UnitRuntimeController {
     const { damage, isCritical } = this.getAttackOutcome(unit);
     const bonusDamage = this.abilities.consumeAttackBonuses(unit as any);
     const totalDamage = Math.max(damage + bonusDamage, 0);
-    const result = this.bricks.applyDamage(target.id, totalDamage, direction, {
-      rewardMultiplier: unit.rewardMultiplier,
-      armorPenetration: unit.armorPenetration,
-    });
-    const surviving = result.brick ?? target;
+    
+    let inflictedDamage = 0;
+    let surviving: BrickRuntimeState | EnemyRuntimeState | null = null;
+    let targetDestroyed = false;
+    
+    if (targetType === "brick") {
+      const result = this.bricks.applyDamage(target.id, totalDamage, direction, {
+        rewardMultiplier: unit.rewardMultiplier,
+        armorPenetration: unit.armorPenetration,
+      });
+      inflictedDamage = result.inflictedDamage;
+      surviving = result.brick ?? target;
+      targetDestroyed = result.destroyed;
+      hpChanged = inflictedDamage > 0;
+    } else if (targetType === "enemy" && this.damage && this.enemies) {
+      // Використовуємо DamageService для атаки ворогів
+      const targetSnapshot = this.targeting.getTargetById(target.id, { types: ["enemy"] });
+      if (targetSnapshot && isTargetOfType<"enemy", EnemyRuntimeState>(targetSnapshot, "enemy")) {
+        inflictedDamage = this.damage.applyTargetDamage(target.id, totalDamage, {
+          armorPenetration: unit.armorPenetration,
+        });
+        hpChanged = inflictedDamage > 0;
+        
+        // Перевіряємо чи ворог вижив
+        const updatedEnemy = this.enemies.getEnemyState(target.id);
+        surviving = updatedEnemy ?? null;
+        targetDestroyed = !surviving;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
 
     if (isCritical && totalDamage > 0) {
-      const effectPosition = result.brick?.position ?? target.position;
+      const effectPosition = surviving?.position ?? target.position;
       this.spawnCriticalHitEffect(effectPosition);
     }
 
-    const inflictedDamage = result.inflictedDamage;
-    const effectOrigin = result.brick?.position ?? target.position;
-    const skipBrickId = !result.destroyed && surviving ? surviving.id : null;
+    const effectOrigin = surviving?.position ?? target.position;
+    const skipBrickId = targetType === "brick" && !targetDestroyed && surviving ? surviving.id : null;
 
-    const meltingLevel = unit.moduleLevels?.burningTail ?? 0;
-    if (meltingLevel > 0 && inflictedDamage > 0) {
-      const meltingConfig = getUnitModuleConfig("burningTail");
-      const meltingRadius = meltingConfig.meta?.areaRadius ?? 0;
-      const base = Number.isFinite(meltingConfig.baseBonusValue) ? meltingConfig.baseBonusValue : 0;
-      const perLevel = Number.isFinite(meltingConfig.bonusPerLevel) ? meltingConfig.bonusPerLevel : 0;
-      const multiplier = Math.max(base + perLevel * Math.max(meltingLevel - 1, 0), 1);
+    // Ефекти застосовуються тільки до бріків
+    if (targetType === "brick") {
+      const meltingLevel = unit.moduleLevels?.burningTail ?? 0;
+      if (meltingLevel > 0 && inflictedDamage > 0) {
+        const meltingConfig = getUnitModuleConfig("burningTail");
+        const meltingRadius = meltingConfig.meta?.areaRadius ?? 0;
+        const base = Number.isFinite(meltingConfig.baseBonusValue) ? meltingConfig.baseBonusValue : 0;
+        const perLevel = Number.isFinite(meltingConfig.bonusPerLevel) ? meltingConfig.bonusPerLevel : 0;
+        const multiplier = Math.max(base + perLevel * Math.max(meltingLevel - 1, 0), 1);
 
-      if (!result.destroyed && surviving) {
-        this.bricks.applyEffect({
-          type: "meltingTail",
-          brickId: surviving.id,
-          durationMs: BURNING_TAIL_DURATION_MS,
-          multiplier,
-        });
-      }
-
-      if (meltingRadius > 0) {
-        this.bricks.forEachBrickNear(effectOrigin, meltingRadius, (brick) => {
-          if (skipBrickId && brick.id === skipBrickId) {
-            return;
-          }
+        if (!targetDestroyed && surviving) {
           this.bricks.applyEffect({
             type: "meltingTail",
-            brickId: brick.id,
+            brickId: surviving.id,
             durationMs: BURNING_TAIL_DURATION_MS,
             multiplier,
           });
-        });
+        }
+
+        if (meltingRadius > 0) {
+          this.forEachBrickNear(effectOrigin, meltingRadius, (brick) => {
+            if (skipBrickId && brick.id === skipBrickId) {
+              return;
+            }
+            this.bricks.applyEffect({
+              type: "meltingTail",
+              brickId: brick.id,
+              durationMs: BURNING_TAIL_DURATION_MS,
+              multiplier,
+            });
+          });
+        }
       }
-    }
 
-    const freezingLevel = unit.moduleLevels?.freezingTail ?? 0;
-    if (freezingLevel > 0 && totalDamage > 0) {
-      const divisor = 1.5 + 0.05 * freezingLevel;
-      const freezingRadius = getUnitModuleConfig("freezingTail").meta?.areaRadius ?? 0;
+      const freezingLevel = unit.moduleLevels?.freezingTail ?? 0;
+      if (freezingLevel > 0 && totalDamage > 0) {
+        const divisor = 1.5 + 0.05 * freezingLevel;
+        const freezingRadius = getUnitModuleConfig("freezingTail").meta?.areaRadius ?? 0;
 
-      if (!result.destroyed && surviving) {
-        this.bricks.applyEffect({
-          type: "freezingTail",
-          brickId: surviving.id,
-          durationMs: FREEZING_TAIL_DURATION_MS,
-          divisor,
-        });
-      }
-
-      if (freezingRadius > 0) {
-        this.bricks.forEachBrickNear(effectOrigin, freezingRadius, (brick) => {
-          if (skipBrickId && brick.id === skipBrickId) {
-            return;
-          }
+        if (!targetDestroyed && surviving) {
           this.bricks.applyEffect({
             type: "freezingTail",
-            brickId: brick.id,
+            brickId: surviving.id,
             durationMs: FREEZING_TAIL_DURATION_MS,
             divisor,
           });
-        });
+        }
+
+        if (freezingRadius > 0) {
+          this.forEachBrickNear(effectOrigin, freezingRadius, (brick) => {
+            if (skipBrickId && brick.id === skipBrickId) {
+              return;
+            }
+            this.bricks.applyEffect({
+              type: "freezingTail",
+              brickId: brick.id,
+              durationMs: FREEZING_TAIL_DURATION_MS,
+              divisor,
+            });
+          });
+        }
       }
     }
 
@@ -731,7 +1089,7 @@ export class UnitRuntimeController {
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
-        this.bricks.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
+        this.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
           if (brick.id === target.id) {
             return;
           }
@@ -743,32 +1101,39 @@ export class UnitRuntimeController {
       }
     }
 
-    if (surviving) {
-      this.applyKnockBack(unit, direction, distance, surviving);
-    }
-
-    const counterSource = surviving ?? target;
-    const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
-    const flatReduction = this.bricks.getOutgoingDamageFlatReduction(counterSource.id);
-    const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
-    const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
-    if (counterDamage > 0) {
-      const previousHp = unit.hp;
-      unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
-      const taken = Math.max(0, previousHp - unit.hp);
-      if (taken > 0) {
-        this.statistics?.recordDamageTaken(taken);
-        hpChanged = true;
+    // Knockback для цілей з налаштованими параметрами
+    const knockBackTarget = (surviving ?? target) as BrickRuntimeState | EnemyRuntimeState;
+    this.applyKnockBack(
+      unit,
+      direction,
+      distance,
+      knockBackTarget.knockBackDistance,
+      knockBackTarget.knockBackSpeed
+    );
+    
+    // Counter damage тільки для бріків
+    if (targetType === "brick") {
+      const counterSource = surviving ?? target;
+      const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
+      const flatReduction = this.bricks.getOutgoingDamageFlatReduction(counterSource.id);
+      const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
+      const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
+      if (counterDamage > 0) {
+        const previousHp = unit.hp;
+        unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
+        const taken = Math.max(0, previousHp - unit.hp);
+        if (taken > 0) {
+          this.statistics?.recordDamageTaken(taken);
+          hpChanged = true;
+        }
       }
     }
 
     if (unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0) {
-      const nextStack = unit.currentAttackStackBonus + unit.attackStackBonusPerHit;
-      unit.currentAttackStackBonus = Math.min(nextStack, unit.attackStackBonusCap);
-      this.updateInternalFurnaceEffect(unit);
+      this.statusEffects.handleUnitAttack(unit.id);
     }
 
-    if (result.destroyed) {
+    if (targetDestroyed) {
       unit.targetBrickId = null;
     }
 
@@ -787,10 +1152,9 @@ export class UnitRuntimeController {
     unit: PlayerUnitState,
     direction: SceneVector2,
     distance: number,
-    brick: BrickRuntimeState
+    knockBackDistance: number,
+    knockBackSpeedRaw: number
   ): void {
-    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
-    const knockBackSpeedRaw = brick.brickKnockBackSpeed ?? 0;
     if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
       return;
     }
@@ -811,9 +1175,21 @@ export class UnitRuntimeController {
       return;
     }
 
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
     const reduction = Math.max(unit.knockBackReduction, 1);
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
-    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {

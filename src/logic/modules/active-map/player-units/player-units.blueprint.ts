@@ -1,6 +1,6 @@
 import { getPlayerUnitConfig, PlayerUnitType } from "../../../../db/player-units-db";
 import { getBonusConfig } from "../../../../db/bonuses-db";
-import { BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import { clampProbability } from "@shared/helpers/numbers.helper";
 import {
@@ -39,6 +39,10 @@ export const computePlayerUnitBlueprint = (
   );
   const globalHpMultiplier = sanitizeMultiplier(values["all_units_hp_multiplier"], 1);
   const globalArmorBonus = sanitizeAdditive(values["all_units_armor"], 0);
+  const globalArmorMultiplier = sanitizeMultiplier(
+    values["all_units_armor_multiplier"],
+    1
+  );
   const globalCritChanceBonus = sanitizeAdditive(values["all_units_crit_chance"], 0);
   const globalCritMultiplierRaw = sanitizeMultiplier(
     values["all_units_crit_mult"],
@@ -123,7 +127,9 @@ export const computePlayerUnitBlueprint = (
       multiplier: Math.max(critMultiplierMultiplier, 0),
       effective: Math.max(effectiveCritMultiplier, 1),
     },
-    armor: Math.max(config.armor, 0) + globalArmorBonus,
+    armor: roundStat(
+      (Math.max(config.armor, 0) + globalArmorBonus) * Math.max(globalArmorMultiplier, 0)
+    ),
     hpRegenPerSecond,
     hpRegenPercentage: globalHpRegenPercentage,
     armorPenetration: globalArmorPenetration,

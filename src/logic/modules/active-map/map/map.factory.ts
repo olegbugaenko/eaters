@@ -1,6 +1,6 @@
 import { SkillId } from "../../../../db/skills-db";
-import { ModuleDefinitionContext } from "../../../definitions/modules/context";
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ModuleDefinitionContext } from "../../../../core/logic/engine/module-definitions/context";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { SkillTreeModule } from "../../camp/skill-tree/skill-tree.module";
 import { MapModule } from "./map.module";
 import { MapSceneCleanup } from "./map.scene-cleanup";
@@ -26,9 +26,11 @@ export const createMapDefinition = (
       bonuses: container.get("bonuses"),
       bricks: container.get("bricks"),
       playerUnits: container.get("playerUnits"),
+      enemies: container.get("enemies"),
       necromancer: container.get("necromancer"),
       resources: container.get("resources"),
       unlocks: container.get("unlocks"),
+      achievements: container.get("achievements"),
       unitsAutomation: container.get("unitAutomation"),
       arcs: container.get("arc"),
       sceneCleanup,
@@ -36,6 +38,23 @@ export const createMapDefinition = (
     });
   },
   registerAsModule: true,
+  dependsOn: [
+    "fireball",
+    "bullet",
+    "explosion",
+    "arc",
+    "effects",
+    "bonuses",
+    "bricks",
+    "playerUnits",
+    "enemies",
+    "necromancer",
+    "resources",
+    "unlocks",
+    "achievements",
+    "unitAutomation",
+    "skillTree",
+  ],
   onReady: (instance: MapModule) => {
     context.setMapModule(instance);
   },

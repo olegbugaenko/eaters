@@ -1,7 +1,7 @@
 import { SkillId } from "../../../../db/skills-db";
-import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { GameModule } from "@core/logic/types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BricksModule } from "../bricks/bricks.module";
 import type { BrickData } from "../bricks/bricks.types";
@@ -10,7 +10,9 @@ import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { AchievementsModule } from "../../shared/achievements/achievements.module";
 import { ArcModule } from "../../scene/arc/arc.module";
+import { EnemiesModule } from "../enemies/enemies.module";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
@@ -18,7 +20,7 @@ import { MapSceneCleanupContract } from "./map.scene-cleanup";
 export interface ResourceRunController {
   startRun(): void;
   cancelRun(): void;
-  finishRun(): void;
+  finishRun(success: boolean): void;
   isRunSummaryAvailable(): boolean;
   getRunDurationMs(): number;
 }
@@ -30,9 +32,11 @@ export interface MapModuleOptions {
   bonuses: BonusesModule;
   bricks: BricksModule;
   playerUnits: PlayerUnitsModule;
+  enemies: EnemiesModule;
   necromancer: NecromancerModule;
   resources: ResourceRunController;
   unlocks: UnlockService;
+  achievements: AchievementsModule;
   unitsAutomation: UnitAutomationModule;
   arcs: ArcModule;
   sceneCleanup: MapSceneCleanupContract;
@@ -88,3 +92,21 @@ export type MapGenerationPayload = {
   spawnPoints: { x: number; y: number }[];
 };
 
+export interface MapModuleUiApi {
+  selectMap(mapId: MapId): void;
+  selectMapLevel(mapId: MapId, level: number): void;
+  restartSelectedMap(): void;
+  leaveCurrentMap(): void;
+  pauseActiveMap(): void;
+  resumeActiveMap(): void;
+  setAutoRestartEnabled(enabled: boolean): void;
+  setMapSelectViewTransform(
+    transform: { scale: number; worldX: number; worldY: number } | null
+  ): void;
+}
+
+declare module "@core/logic/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    map: MapModuleUiApi;
+  }
+}

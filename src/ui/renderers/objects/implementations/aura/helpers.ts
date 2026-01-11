@@ -1,8 +1,8 @@
 import type {
   SceneFill,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { computeCenter, sanitizeVertices } from "@shared/helpers/vector.helper";
 import { resolveRendererFillConfig } from "@shared/helpers/renderer-clone.helper";
 import { cloneSceneColor } from "@shared/helpers/scene-color.helper";

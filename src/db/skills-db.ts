@@ -85,7 +85,8 @@ export const SKILL_IDS = [
   "arcane_awareness",
   "weaken_curse",
   "perseverance",
-  "inspiration"
+  "inspiration",
+  "spell_power"
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -388,6 +389,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { glass_latticework: 1 },
+    cost: createStoneCost(4, 1.35),
+  },
+  spell_power: {
+    id: "spell_power",
+    name: "Spell Power",
+    description:
+      "Increase your spell power.",
+    nodePosition: { x: -1, y: -3 },
+    maxLevel: 5,
+    icon: "spell_power_1_5.png",
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.2 * level,
+      },
+    },
+    nodesRequired: { arcane_awareness: 1 },
     cost: createStoneCost(8, 1.35),
   },
   weaken_curse: {
@@ -781,7 +798,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { heavy_drill: 5 },
-    cost: createResourceCost('silver', 60, 1.5),
+    cost: createResourceCost('silver', 90, 1.5),
   },
   critical_chance: {
     id: "critical_chance",
@@ -1054,7 +1071,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality3: 5 },
-    cost: createResourceCost('coal', 60, 1.5),
+    cost: createResourceCost('coal', 90, 1.5),
   },
   paper_milling: {
     id: "paper_milling",

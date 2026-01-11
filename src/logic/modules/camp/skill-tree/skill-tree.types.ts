@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { SkillId, SkillConfig, SkillNodePosition } from "../../../../db/skills-db";
 import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { BonusEffectPreview } from "@shared/types/bonuses";
@@ -42,3 +42,14 @@ export interface SkillTreeSaveData {
 }
 
 export type SkillLevelMap = Record<SkillId, number>;
+
+export interface SkillTreeModuleUiApi {
+  setViewTransform(transform: { scale: number; worldX: number; worldY: number } | null): void;
+  tryPurchaseSkill(id: SkillId): boolean;
+}
+
+declare module "@core/logic/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    skillTree: SkillTreeModuleUiApi;
+  }
+}

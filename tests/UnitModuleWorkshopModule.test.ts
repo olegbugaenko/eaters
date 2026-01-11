@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import {
   UnitModuleWorkshopModule,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
@@ -32,10 +32,7 @@ describe("UnitModuleWorkshopModule", () => {
 
     module.initialize();
 
-    const initialState =
-      bridge.getValue<UnitModuleWorkshopBridgeState>(
-        UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY
-      );
+    const initialState = bridge.getValue(UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY);
     assert(initialState, "initial state should be available");
     assert(initialState.unlocked, "workshop should be unlocked");
     assert.deepStrictEqual(
@@ -62,10 +59,7 @@ describe("UnitModuleWorkshopModule", () => {
 
     module.tick(0);
 
-    const unlockedState =
-      bridge.getValue<UnitModuleWorkshopBridgeState>(
-        UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY
-      );
+    const unlockedState = bridge.getValue(UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY);
     assert(unlockedState, "state should be pushed after unlocking");
     assert.deepStrictEqual(
       unlockedState.modules.map((item: { id: string }) => item.id),

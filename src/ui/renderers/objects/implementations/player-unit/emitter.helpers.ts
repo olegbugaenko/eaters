@@ -1,5 +1,5 @@
-import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
+import type { SceneObjectInstance, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { ParticleEmitterParticleState, GpuSpawnConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
 import { randomBetween } from "@shared/helpers/numbers.helper";
@@ -130,6 +130,26 @@ export const getEmitterOrigin = (
   };
   return transformObjectPoint(instance.data.position, instance.data.rotation, offset);
 };
+
+/**
+ * Gets GPU spawn config for player unit emitter.
+ * Enables GPU-based particle spawning (no CPU slot tracking needed!)
+ */
+export const getGpuSpawnConfig = (
+  instance: SceneObjectInstance,
+  config: PlayerUnitEmitterRenderConfig
+): GpuSpawnConfig => ({
+  baseSpeed: config.baseSpeed,
+  speedVariation: config.speedVariation,
+  sizeMin: config.sizeRange.min,
+  sizeMax: config.sizeRange.max,
+  spawnRadiusMin: 0,
+  spawnRadiusMax: 0,
+  arc: 0, // Not used - spread handles direction variation
+  direction: (instance.data.rotation ?? 0) + Math.PI, // Emit backwards from unit
+  spread: config.spread,
+  radialVelocity: false,
+});
 
 /**
  * Creates a particle state for player unit emitter

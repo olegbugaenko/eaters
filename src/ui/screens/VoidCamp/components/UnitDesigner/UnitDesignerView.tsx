@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { classNames } from "@ui-shared/classNames";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
-import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
@@ -11,6 +11,7 @@ import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
 import "./UnitDesignerView.css";
+import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 
 interface UnitDesignerViewProps {
   state: UnitDesignerBridgeState;
@@ -39,8 +40,8 @@ const getDefaultType = (units: readonly { type: PlayerUnitType }[], fallback: Pl
   units[0]?.type ?? fallback;
 
 export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resources }) => {
-  const { app } = useAppLogic();
-  const designer = useMemo(() => app.services.unitDesign, [app]);
+  const { uiApi } = useAppLogic();
+  const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
   const [preview, setPreview] = useState<{

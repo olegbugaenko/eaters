@@ -1,12 +1,11 @@
 import { createContext, useContext } from "react";
-import { Application } from "../../logic/core/Application";
-import { DataBridge } from "../../logic/core/DataBridge";
-import { SceneObjectManager } from "../../logic/services/scene-object-manager/SceneObjectManager";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
+import type { UiApiProxy } from "@shared/core/types/ui-api";
+import type { LogicUiApiRegistry } from "@core/logic/ui/ui-api.registry";
 
 interface AppLogicContextValue {
-  app: Application;
   bridge: DataBridge;
-  scene: SceneObjectManager;
+  uiApi: UiApiProxy<LogicUiApiRegistry>;
 }
 
 export const AppLogicContext = createContext<AppLogicContextValue | null>(null);

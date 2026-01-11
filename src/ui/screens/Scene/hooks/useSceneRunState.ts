@@ -1,6 +1,6 @@
-import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DataBridge } from "@logic/core/DataBridge";
-import { MapAutoRestartState } from "@logic/modules/active-map/map/map.types";
+import { MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import type { MapAutoRestartState, MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
@@ -10,6 +10,7 @@ import {
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
 } from "@logic/modules/active-map/necromancer/necromancer.const";
 import type {
+  NecromancerModuleUiApi,
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
 } from "@logic/modules/active-map/necromancer/necromancer.types";
@@ -18,7 +19,7 @@ import {
   DEFAULT_SPELL_OPTIONS,
   SPELL_OPTIONS_BRIDGE_KEY,
 } from "@logic/modules/active-map/spellcasting/spellcasting.const";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
+import type { UnitAutomationBridgeState, UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
@@ -34,12 +35,18 @@ import {
   DEFAULT_RESOURCE_RUN_SUMMARY,
 } from "@logic/modules/shared/resources/resources.const";
 import type { ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
-import { SceneCameraState } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { useBridgeRef } from "@ui-shared/useBridgeRef";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
 import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 
 const AUTO_RESTART_SECONDS = 5;
+const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = {
+  mana: { current: 0, max: 0 },
+  sanity: { current: 0, max: 0 },
+};
+const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 
 interface ToolbarState {
   brickTotalHp: number;
@@ -60,12 +67,9 @@ interface SummoningProps {
 
 interface UseSceneRunStateArgs {
   bridge: DataBridge;
-  app: {
-    restartCurrentMap: () => void;
-    setAutoRestartEnabled: (enabled: boolean) => void;
-  };
-  necromancer: { trySpawnDesign: (designId: UnitDesignId) => boolean };
-  unitAutomation: { setAutomationEnabled: (designId: UnitDesignId, enabled: boolean) => void };
+  map: MapModuleUiApi;
+  necromancer: NecromancerModuleUiApi;
+  unitAutomation: UnitAutomationModuleUiApi;
   cameraInfoRef: MutableRefObject<SceneCameraState>;
   scaleRef: MutableRefObject<number>;
   spellOptionsRef: MutableRefObject<SpellOption[]>;
@@ -89,40 +93,17 @@ interface UseSceneRunStateResult {
 
 export const useSceneRunState = ({
   bridge,
-  app,
+  map,
   necromancer,
   unitAutomation,
   cameraInfoRef,
   scaleRef,
   spellOptionsRef,
 }: UseSceneRunStateArgs): UseSceneRunStateResult => {
-  const brickTotalHp = useBridgeValue(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
-  const unitCount = useBridgeValue(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
-  const unitTotalHp = useBridgeValue(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
-  const necromancerResources = useBridgeValue(
-    bridge,
-    NECROMANCER_RESOURCES_BRIDGE_KEY,
-    { mana: { current: 0, max: 0 }, sanity: { current: 0, max: 0 } } as NecromancerResourcesPayload
-  );
-  const necromancerOptions = useBridgeValue(
-    bridge,
-    NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
-    [] as NecromancerSpawnOption[]
-  );
-  const spellOptions = useBridgeValue(
-    bridge,
-    SPELL_OPTIONS_BRIDGE_KEY,
-    DEFAULT_SPELL_OPTIONS
-  );
   const resourceSummary = useBridgeValue(
     bridge,
     RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
     DEFAULT_RESOURCE_RUN_SUMMARY
-  );
-  const automationState = useBridgeValue(
-    bridge,
-    UNIT_AUTOMATION_STATE_BRIDGE_KEY,
-    DEFAULT_UNIT_AUTOMATION_STATE
   );
   const autoRestartState = useBridgeValue(
     bridge,
@@ -131,52 +112,68 @@ export const useSceneRunState = ({
   );
   const [autoRestartCountdown, setAutoRestartCountdown] = useState(AUTO_RESTART_SECONDS);
   const autoRestartHandledRef = useRef(false);
-  const automationStateRef = useRef<UnitAutomationBridgeState>(DEFAULT_UNIT_AUTOMATION_STATE);
-  const necromancerResourcesRef = useRef<NecromancerResourcesPayload>(necromancerResources);
-  const necromancerOptionsRef = useRef<NecromancerSpawnOption[]>(necromancerOptions);
-  const unitCountRef = useRef(unitCount);
-  const unitTotalHpRef = useRef(unitTotalHp);
-  const brickTotalHpRef = useRef(brickTotalHp);
   const brickInitialHpRef = useRef(0);
+  const unitCountRef = useBridgeRef(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
+  const unitTotalHpRef = useBridgeRef(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
+  const necromancerResourcesRef = useBridgeRef(
+    bridge,
+    NECROMANCER_RESOURCES_BRIDGE_KEY,
+    DEFAULT_NECROMANCER_RESOURCES
+  );
+  const necromancerOptionsRef = useBridgeRef(
+    bridge,
+    NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+    EMPTY_SPAWN_OPTIONS
+  );
+  const automationStateRef = useBridgeRef(
+    bridge,
+    UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_AUTOMATION_STATE
+  );
+  const handleSpellOptionsChange = useCallback(
+    (value: SpellOption[]) => {
+      spellOptionsRef.current = value;
+    },
+    [spellOptionsRef]
+  );
+  const spellOptionsBridgeRef = useBridgeRef(
+    bridge,
+    SPELL_OPTIONS_BRIDGE_KEY,
+    DEFAULT_SPELL_OPTIONS,
+    handleSpellOptionsChange
+  );
+  const brickTotalHpRef = useRef(0);
 
   useEffect(() => {
-    if (brickTotalHp > brickInitialHpRef.current) {
-      brickInitialHpRef.current = brickTotalHp;
-    } else if (brickInitialHpRef.current === 0 && brickTotalHp > 0) {
-      brickInitialHpRef.current = brickTotalHp;
-    }
-  }, [brickTotalHp]);
+    const applyBrickTotals = (value: number | undefined) => {
+      const next = value ?? 0;
+      brickTotalHpRef.current = next;
+      if (next > brickInitialHpRef.current) {
+        brickInitialHpRef.current = next;
+      } else if (brickInitialHpRef.current === 0 && next > 0) {
+        brickInitialHpRef.current = next;
+      }
+    };
+    applyBrickTotals(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY));
+    const unsubscribe = bridge.subscribe(BRICK_TOTAL_HP_BRIDGE_KEY, applyBrickTotals);
+    return unsubscribe;
+  }, [bridge]);
 
-  // Sync all state values to refs in a single effect to reduce overhead
   useEffect(() => {
-    spellOptionsRef.current = spellOptions;
-    automationStateRef.current = automationState;
-    necromancerResourcesRef.current = necromancerResources;
-    necromancerOptionsRef.current = necromancerOptions;
-    unitCountRef.current = unitCount;
-    unitTotalHpRef.current = unitTotalHp;
-    brickTotalHpRef.current = brickTotalHp;
-  }, [
-    spellOptions,
-    automationState,
-    necromancerResources,
-    necromancerOptions,
-    unitCount,
-    unitTotalHp,
-    brickTotalHp,
-  ]);
+    spellOptionsRef.current = spellOptionsBridgeRef.current;
+  }, [spellOptionsBridgeRef, spellOptionsRef]);
 
   const restartMap = useCallback(() => {
     clearAllAuraSlots();
     petalAuraGpuRenderer.clearInstances();
-    app.restartCurrentMap();
-  }, [app]);
+    map.restartSelectedMap();
+  }, [map]);
 
   const handleToggleAutoRestart = useCallback(
     (enabled: boolean) => {
-      app.setAutoRestartEnabled(enabled);
+      map.setAutoRestartEnabled(enabled);
     },
-    [app]
+    [map]
   );
 
   const handleRestart = useCallback(() => {
@@ -223,51 +220,88 @@ export const useSceneRunState = ({
     };
   }, [autoRestartState.enabled, autoRestartState.unlocked, resourceSummary.completed, restartMap]);
 
-  const brickInitialHp = brickInitialHpRef.current;
-  const initialToolbarState = useMemo(
-    () => ({
-      brickTotalHp,
-      brickInitialHp,
-      unitCount,
-      unitTotalHp,
-      scale: scaleRef.current,
-      cameraPosition: cameraInfoRef.current.position,
-    }),
-    [brickInitialHp, brickTotalHp, cameraInfoRef, scaleRef, unitCount, unitTotalHp]
-  );
-
-  const [toolbarState, setToolbarState] = useState<ToolbarState>(initialToolbarState);
-  const [summoningProps, setSummoningProps] = useState<SummoningProps>(() => ({
-    resources: necromancerResources,
-    spawnOptions: necromancerOptions,
-    automation: automationState,
-    spells: spellOptions,
-    unitCount,
+  const [toolbarState, setToolbarState] = useState<ToolbarState>(() => ({
+    brickTotalHp: brickTotalHpRef.current,
+    brickInitialHp: brickInitialHpRef.current,
+    unitCount: unitCountRef.current,
+    unitTotalHp: unitTotalHpRef.current,
+    scale: scaleRef.current,
+    cameraPosition: cameraInfoRef.current.position,
   }));
+  const [summoningProps, setSummoningProps] = useState<SummoningProps>(() => ({
+    resources: necromancerResourcesRef.current,
+    spawnOptions: necromancerOptionsRef.current,
+    automation: automationStateRef.current,
+    spells: spellOptionsBridgeRef.current,
+    unitCount: unitCountRef.current,
+  }));
+  const toolbarStateRef = useRef(toolbarState);
+  const summoningPropsRef = useRef<SummoningProps>({
+    resources: necromancerResourcesRef.current,
+    spawnOptions: necromancerOptionsRef.current,
+    automation: automationStateRef.current,
+    spells: spellOptionsBridgeRef.current,
+    unitCount: unitCountRef.current,
+  });
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      setToolbarState({
+      const nextToolbarState = {
         brickTotalHp: brickTotalHpRef.current,
         brickInitialHp: brickInitialHpRef.current,
         unitCount: unitCountRef.current,
         unitTotalHp: unitTotalHpRef.current,
         scale: scaleRef.current,
-        cameraPosition: { ...cameraInfoRef.current.position },
-      });
-      setSummoningProps({
+        cameraPosition: cameraInfoRef.current.position,
+      };
+      const previousToolbarState = toolbarStateRef.current;
+      const hasCameraPositionChange =
+        previousToolbarState.cameraPosition.x !== nextToolbarState.cameraPosition.x ||
+        previousToolbarState.cameraPosition.y !== nextToolbarState.cameraPosition.y;
+      const hasToolbarChange =
+        previousToolbarState.brickTotalHp !== nextToolbarState.brickTotalHp ||
+        previousToolbarState.brickInitialHp !== nextToolbarState.brickInitialHp ||
+        previousToolbarState.unitCount !== nextToolbarState.unitCount ||
+        previousToolbarState.unitTotalHp !== nextToolbarState.unitTotalHp ||
+        previousToolbarState.scale !== nextToolbarState.scale ||
+        hasCameraPositionChange;
+      if (hasToolbarChange) {
+        const cameraPosition = hasCameraPositionChange
+          ? { ...nextToolbarState.cameraPosition }
+          : previousToolbarState.cameraPosition;
+        const updatedToolbarState = { ...nextToolbarState, cameraPosition };
+        toolbarStateRef.current = updatedToolbarState;
+        setToolbarState(updatedToolbarState);
+      }
+
+      const nextSummoningProps = {
         resources: necromancerResourcesRef.current,
         spawnOptions: necromancerOptionsRef.current,
         automation: automationStateRef.current,
         spells: spellOptionsRef.current,
         unitCount: unitCountRef.current,
-      });
+      };
+      const previousSummoningProps = summoningPropsRef.current;
+      const hasSummoningChange =
+        previousSummoningProps.resources !== nextSummoningProps.resources ||
+        previousSummoningProps.spawnOptions !== nextSummoningProps.spawnOptions ||
+        previousSummoningProps.automation !== nextSummoningProps.automation ||
+        previousSummoningProps.spells !== nextSummoningProps.spells ||
+        previousSummoningProps.unitCount !== nextSummoningProps.unitCount;
+      if (hasSummoningChange) {
+        summoningPropsRef.current = nextSummoningProps;
+        setSummoningProps(nextSummoningProps);
+      }
     }, 200);
     return () => window.clearInterval(interval);
   }, [cameraInfoRef, scaleRef]);
 
+  const necromancerResources = summoningProps.resources;
+  const spellOptions = summoningProps.spells;
+  const automationState = summoningProps.automation;
+
   return {
-    brickInitialHp,
+    brickInitialHp: brickInitialHpRef.current,
     toolbarState,
     summoningProps,
     resourceSummary,

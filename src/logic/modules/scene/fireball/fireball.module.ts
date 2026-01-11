@@ -1,9 +1,9 @@
-import { GameModule } from "../../../core/types";
+import { GameModule } from "@core/logic/types";
 import { cloneSceneFill, createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
 import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
-import type { SceneFill } from "../../../services/scene-object-manager/scene-object-manager.types";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   FireballModuleOptions,
   FireballSpawnOptions,
@@ -154,10 +154,12 @@ export class FireballModule implements GameModule {
         hitRadius: FIREBALL_RADIUS,
         rendererCustomData,
       },
-      onHit: (context) => {
-        this.explodeFireball(fireball, context.brickId, context.position);
-        return true;
-      },
+        onHit: (context) => {
+          if (context.brickId) {
+            this.explodeFireball(fireball, context.brickId, context.position);
+          }
+          return true;
+        },
       onExpired: () => this.removeFireballInstance(fireball),
     });
   }

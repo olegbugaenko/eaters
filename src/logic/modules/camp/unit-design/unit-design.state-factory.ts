@@ -1,4 +1,4 @@
-import { StateFactory } from "../../../core/factories/StateFactory";
+import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import { UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import { UnitDesignModuleDetail } from "./unit-design.types";
 import { computeModuleValue } from "./unit-design.helpers";

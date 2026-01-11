@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { SkillTreeModule } from "./skill-tree.module";
 
 export const createSkillTreeDefinition = (): ServiceDefinition<SkillTreeModule, "skillTree"> => ({
@@ -10,4 +10,5 @@ export const createSkillTreeDefinition = (): ServiceDefinition<SkillTreeModule, 
       bonuses: container.get("bonuses"),
     }),
   registerAsModule: true,
+  dependsOn: ["resources", "bonuses"],
 });

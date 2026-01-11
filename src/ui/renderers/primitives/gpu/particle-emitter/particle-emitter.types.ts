@@ -1,4 +1,4 @@
-import type { SceneVector2 } from "@logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export interface ParticleRenderProgram {
   program: WebGLProgram;
@@ -62,6 +62,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   stopColor3Key?: string;
   stopColor4: Float32Array;
   stopColor4Key?: string;
+  uniformSignature?: string;
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;

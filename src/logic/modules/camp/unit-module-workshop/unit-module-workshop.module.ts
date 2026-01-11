@@ -1,10 +1,10 @@
-import { BaseGameModule } from "../../../core/BaseGameModule";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { BaseGameModule } from "@/core/logic/engine/BaseGameModule";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import {
   serializeLevelsMap,
   parseLevelsMapFromSaveData,
 } from "../../../helpers/save-data.helper";
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import {
   UNIT_MODULE_IDS,
   UnitModuleId,

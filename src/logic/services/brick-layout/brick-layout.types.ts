@@ -1,5 +1,5 @@
 import type { BrickType } from "../../../db/bricks-db";
-import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export interface BrickGenerationOptions {
   readonly level?: number;
@@ -40,7 +40,23 @@ export interface SquareWithBricksOptions
   extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
   readonly center: SceneVector2;
   readonly size: number;
+  readonly innerSize?: number; // Якщо вказано, створює порожнинний квадрат (контур)
   readonly rotation?: number;
+}
+
+export interface ConnectorWithBricksOptions
+  extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
+  readonly start: SceneVector2;
+  readonly end: SceneVector2;
+  readonly width: number; // Ширина з'єднання (halfWidth * 2)
+}
+
+export interface TemplateWithBricksOptions {
+  readonly center: SceneVector2;
+  readonly template: readonly string[]; // Array of strings, where "#" = brick, " " = empty
+  readonly horizontalGap?: number; // Gap between bricks horizontally (default: 1)
+  readonly verticalGap?: number; // Gap between bricks vertically (default: 1)
+  readonly rotation?: number; // Rotation in radians (default: 0)
 }
 
 export type BrickShapeBlueprint =
@@ -66,6 +82,18 @@ export type BrickShapeBlueprint =
       readonly shape: "square";
       readonly brickType: BrickType;
       readonly options: SquareWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "connector";
+      readonly brickType: BrickType;
+      readonly options: ConnectorWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "template";
+      readonly brickType: BrickType;
+      readonly options: TemplateWithBricksOptions;
       readonly generationOptions?: BrickGenerationOptions;
     };
 

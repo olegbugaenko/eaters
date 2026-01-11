@@ -8,6 +8,7 @@
   padding: 0;
   pointer-events: none;
   z-index: 24;
+  contain: layout paint;
 }
 
 .scene-run-resources__list {

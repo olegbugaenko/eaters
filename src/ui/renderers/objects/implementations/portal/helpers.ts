@@ -1,5 +1,8 @@
-import type { SceneObjectInstance, SceneVector2 } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
+import type { SceneObjectInstance, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type {
+  GpuSpawnConfig,
+  ParticleEmitterParticleState,
+} from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
 import { DEFAULT_PORTAL_EMITTER } from "./constants";
@@ -84,3 +87,22 @@ export const spawnPortalParticle = (
     size,
   };
 };
+
+/**
+ * Gets GPU spawn config for portal emitter.
+ */
+export const getGpuSpawnConfig = (
+  _instance: SceneObjectInstance,
+  config: PortalEmitterConfig
+): GpuSpawnConfig => ({
+  baseSpeed: config.baseSpeed,
+  speedVariation: config.speedVariation,
+  sizeMin: config.sizeRange.min,
+  sizeMax: config.sizeRange.max,
+  spawnRadiusMin: 0,
+  spawnRadiusMax: 0,
+  arc: Math.PI * 2,
+  direction: 0,
+  spread: 0,
+  radialVelocity: false,
+});

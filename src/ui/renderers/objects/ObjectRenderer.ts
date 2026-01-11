@@ -1,7 +1,7 @@
 import {
   SceneObjectInstance,
   SceneVector2,
-} from "../../../logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export const POSITION_COMPONENTS = 2;
 export const FILL_INFO_COMPONENTS = 4;
@@ -14,13 +14,19 @@ export const FILL_FILAMENTS_COMPONENTS =
 export const STOP_OFFSETS_COMPONENTS = 3;
 export const STOP_COLOR_COMPONENTS = 4;
 export const MAX_GRADIENT_STOPS = 3;
+export const CRACK_UV_COMPONENTS = 2;
+export const CRACK_MASK_COMPONENTS = 4;
+export const CRACK_EFFECTS_COMPONENTS = 2;
 export const FILL_COMPONENTS =
   FILL_INFO_COMPONENTS +
   FILL_PARAMS0_COMPONENTS +
   FILL_PARAMS1_COMPONENTS +
   FILL_FILAMENTS_COMPONENTS +
   STOP_OFFSETS_COMPONENTS +
-  STOP_COLOR_COMPONENTS * MAX_GRADIENT_STOPS;
+  STOP_COLOR_COMPONENTS * MAX_GRADIENT_STOPS +
+  CRACK_UV_COMPONENTS +
+  CRACK_MASK_COMPONENTS +
+  CRACK_EFFECTS_COMPONENTS;
 export const VERTEX_COMPONENTS = POSITION_COMPONENTS + FILL_COMPONENTS;
 
 export interface Primitive {
@@ -31,6 +37,7 @@ export interface StaticPrimitive extends Primitive {}
 
 export interface DynamicPrimitive extends Primitive {
   update(instance: SceneObjectInstance): Float32Array | null;
+  updatePositionOnly?(instance: SceneObjectInstance): Float32Array | null;
   dispose?(): void;
   /**
    * If true, this primitive will be updated every render frame via tickAutoAnimatingPrimitives().
@@ -80,6 +87,23 @@ export abstract class ObjectRenderer {
     const updates: DynamicPrimitiveUpdate[] = [];
     registration.dynamicPrimitives.forEach((primitive) => {
       const data = primitive.update(instance);
+      if (data) {
+        updates.push({ primitive, data });
+      }
+    });
+    return updates;
+  }
+
+  public updatePositionOnly(
+    instance: SceneObjectInstance,
+    registration: ObjectRegistration
+  ): DynamicPrimitiveUpdate[] {
+    const updates: DynamicPrimitiveUpdate[] = [];
+    registration.dynamicPrimitives.forEach((primitive) => {
+      const data =
+        typeof primitive.updatePositionOnly === "function"
+          ? primitive.updatePositionOnly(instance)
+          : primitive.update(instance);
       if (data) {
         updates.push({ primitive, data });
       }

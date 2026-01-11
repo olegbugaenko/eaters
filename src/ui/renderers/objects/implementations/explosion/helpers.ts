@@ -2,7 +2,7 @@ import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visu
 import type {
   SceneObjectInstance,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   normalizeAngle,
   sanitizeAngle,
@@ -15,7 +15,7 @@ import {
 } from "../../../primitives/ParticleEmitterPrimitive";
 import { transformObjectPoint } from "../../ObjectRenderer";
 import { randomBetween } from "@shared/helpers/numbers.helper";
-import { DEFAULT_COLOR } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import { DEFAULT_COLOR } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ExplosionEmitterRenderConfig, ExplosionEmitterConfigCache } from "./types";
 
 /**
@@ -57,6 +57,7 @@ export const sanitizeExplosionEmitterConfig = (
     spawnRadius: { min: spawnMin, max: spawnMax },
     arc: sanitizeArc(config.arc),
     direction: sanitizeAngle(config.direction),
+    radialVelocity: config.radialVelocity ?? false,
   };
 };
 
@@ -111,7 +112,6 @@ export const createExplosionParticle = (
   _instance: SceneObjectInstance,
   config: ExplosionEmitterRenderConfig
 ): ParticleEmitterParticleState => {
-  const direction = pickParticleDirection(config);
   const speed = Math.max(
     0,
     config.baseSpeed +
@@ -120,18 +120,37 @@ export const createExplosionParticle = (
         : 0)
   );
   const spawnRadius = randomBetween(config.spawnRadius.min, config.spawnRadius.max);
-  const spawnAngle = pickSpawnAngle(config, direction);
+  const spawnAngle = pickSpawnAngle(config, pickParticleDirection(config));
+  
+  const position = {
+    x: origin.x + Math.cos(spawnAngle) * spawnRadius,
+    y: origin.y + Math.sin(spawnAngle) * spawnRadius,
+  };
+
+  // If radialVelocity is enabled, calculate direction from origin to spawn position
+  let velocityDirection: number;
+  if (config.radialVelocity) {
+    const dx = position.x - origin.x;
+    const dy = position.y - origin.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance > 1e-6) {
+      velocityDirection = Math.atan2(dy, dx);
+    } else {
+      // Fallback if spawn position is at origin
+      velocityDirection = pickParticleDirection(config);
+    }
+  } else {
+    velocityDirection = pickParticleDirection(config);
+  }
+
   const size =
     config.sizeRange.min === config.sizeRange.max
       ? config.sizeRange.min
       : randomBetween(config.sizeRange.min, config.sizeRange.max);
 
   return {
-    position: {
-      x: origin.x + Math.cos(spawnAngle) * spawnRadius,
-      y: origin.y + Math.sin(spawnAngle) * spawnRadius,
-    },
-    velocity: { x: Math.cos(direction) * speed, y: Math.sin(direction) * speed },
+    position,
+    velocity: { x: Math.cos(velocityDirection) * speed, y: Math.sin(velocityDirection) * speed },
     ageMs: 0,
     lifetimeMs: config.particleLifetimeMs,
     size,

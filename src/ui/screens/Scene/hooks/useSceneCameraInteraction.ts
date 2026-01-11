@@ -7,24 +7,24 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  SceneCameraState
-} from "@logic/services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "@logic/services/scene-object-manager/SceneObjectManager";
+import type {
+  SceneCameraState,
+  SceneUiApi,
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
-import { SpellcastingModule } from "@logic/modules/active-map/spellcasting/spellcasting.module";
+import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { SpellId } from "@db/spells-db";
 import {
   BufferStats,
   ParticleStatsState,
   useSceneCanvas,
 } from "./useSceneCanvas";
-import { GameLoop } from "@logic/services/game-loop/GameLoop";
+import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 
 interface UseSceneCameraInteractionArgs {
-  scene: SceneObjectManager;
-  spellcasting: SpellcastingModule;
-  gameLoop: GameLoop;
+  scene: SceneUiApi;
+  spellcasting: SpellcastingModuleUiApi;
+  gameLoop: GameLoopUiApi;
   selectedSpellIdRef: MutableRefObject<SpellId | null>;
   spellOptionsRef: MutableRefObject<SpellOption[]>;
   isPauseOpen: boolean;
@@ -50,8 +50,6 @@ interface UseSceneCameraInteractionResult {
   scale: number;
   cameraInfo: SceneCameraState;
   scaleRange: { min: number; max: number };
-  vboStats: BufferStats;
-  particleStatsState: ParticleStatsState;
   handleScaleChange: (value: number) => void;
 }
 
@@ -82,13 +80,8 @@ export const useSceneCameraInteraction = ({
     () => cameraInfoRef.current ?? scene.getCamera()
   );
   const [scaleRange, setScaleRange] = useState(() => scene.getScaleRange());
-  const [vboStats, setVboStats] = useState<BufferStats>({ bytes: 0, reallocs: 0 });
+  // Debug stats are now written to global debugStats object (no React state)
   const vboStatsRef = useRef<BufferStats>({ bytes: 0, reallocs: 0 });
-  const [particleStatsState, setParticleStatsState] = useState<ParticleStatsState>({
-    active: 0,
-    capacity: 0,
-    emitters: 0,
-  });
   const particleStatsRef = useRef<ParticleStatsState>({ active: 0, capacity: 0, emitters: 0 });
   const particleStatsLastUpdateRef = useRef(0);
 
@@ -126,9 +119,7 @@ export const useSceneCameraInteraction = ({
     setScale,
     setCameraInfo,
     setScaleRange,
-    setVboStats,
     vboStatsRef,
-    setParticleStats: setParticleStatsState,
     particleStatsRef,
     particleStatsLastUpdateRef,
     hasInitializedScaleRef,
@@ -201,8 +192,6 @@ export const useSceneCameraInteraction = ({
     scale,
     cameraInfo,
     scaleRange,
-    vboStats,
-    particleStatsState,
     handleScaleChange,
   };
 };

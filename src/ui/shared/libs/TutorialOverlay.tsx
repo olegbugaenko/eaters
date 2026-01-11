@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { clamp } from "@shared/helpers/numbers.helper";
 
 export type TutorialOverlayPlacement = "top" | "bottom" | "left" | "right" | "center";
 
@@ -41,8 +42,6 @@ type Props = {
 };
 
 type Rect = { x: number; y: number; w: number; h: number };
-
-const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 function resolveTarget(t: TutorialStep["target"]): HTMLElement | null {
   if (!t) return null;

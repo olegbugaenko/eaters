@@ -3,12 +3,12 @@ import {
   ObjectRegistration,
   ObjectRenderer,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type {
   SceneFill,
   SceneSolidFill,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { getParticleEmitterGlContext } from "../../../primitives/utils/gpuContext";
 import {
   explosionWaveGpuRenderer,

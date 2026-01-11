@@ -76,11 +76,18 @@ in vec3 a_stopOffsets;
 in vec4 a_stopColor0;
 in vec4 a_stopColor1;
 in vec4 a_stopColor2;
+in vec2 a_crackUv;
+in vec4 a_crackMask;
+in vec2 a_crackEffects;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
+uniform sampler2D u_spriteTexture;
+uniform int u_crackAtlasIndex;
+uniform vec2 u_crackAtlasGrid;
 
 out vec2 v_worldPosition;
+out vec2 v_uv; // UV coordinates for sprite textures
 out vec4 v_fillInfo;
 out vec4 v_fillParams0;
 out vec4 v_fillParams1;
@@ -90,12 +97,17 @@ out vec3 v_stopOffsets;
 out vec4 v_stopColor0;
 out vec4 v_stopColor1;
 out vec4 v_stopColor2;
+out vec2 v_crackUv;
+out vec4 v_crackMask;
+out vec2 v_crackEffects;
 `;
 
 export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
 void main() {
   gl_Position = vec4(toClip(a_position), 0.0, 1.0);
   v_worldPosition = a_position;
+  // Use fillParams0.xy for UV coordinates when rendering sprites
+  v_uv = a_fillParams0.xy;
   v_fillInfo = a_fillInfo;
   v_fillParams0 = a_fillParams0;
   v_fillParams1 = a_fillParams1;
@@ -105,6 +117,9 @@ void main() {
   v_stopColor0 = a_stopColor0;
   v_stopColor1 = a_stopColor1;
   v_stopColor2 = a_stopColor2;
+  v_crackUv = a_crackUv;
+  v_crackMask = a_crackMask;
+  v_crackEffects = a_crackEffects;
 }
 `;
 
@@ -118,6 +133,7 @@ export const SCENE_FRAGMENT_SHADER_HEADER = `#version 300 es
 precision highp float;
 
 in vec2 v_worldPosition;
+in vec2 v_uv; // UV coordinates for sprite textures
 in vec4 v_fillInfo;
 in vec4 v_fillParams0;
 in vec4 v_fillParams1;
@@ -127,6 +143,14 @@ in vec3 v_stopOffsets;
 in vec4 v_stopColor0;
 in vec4 v_stopColor1;
 in vec4 v_stopColor2;
+in vec2 v_crackUv;
+in vec4 v_crackMask;
+in vec2 v_crackEffects;
+
+uniform sampler2D u_spriteTexture;
+uniform sampler2D u_cracksAtlas;
+uniform int u_crackAtlasIndex;
+uniform vec2 u_crackAtlasGrid;
 
 out vec4 fragColor;
 
@@ -261,6 +285,13 @@ void main() {
   float fillType = v_fillInfo.x;
   vec4 color = v_stopColor0;
 
+  // Sprite texture fill (fillType == 4.0)
+  if (fillType >= 3.5 && fillType < 4.5) {
+    vec4 spriteColor = texture(u_spriteTexture, v_uv);
+    fragColor = spriteColor;
+    return;
+  }
+
   if (fillType >= 0.5) {
     float t = 0.0;
     if (fillType < 1.5) {
@@ -286,8 +317,49 @@ void main() {
     color = sampleGradient(t);
   }
 
-  color = applyFillNoise(applyFillFilaments(color));
-  fragColor = color;
+  vec4 baseColor = applyFillNoise(applyFillFilaments(color));
+  float crackStrength = v_crackMask.z;
+  float crackAtlasId = v_crackMask.y;
+
+  if (crackStrength <= 0.0 || abs(crackAtlasId - float(u_crackAtlasIndex)) > 0.5) {
+    fragColor = baseColor;
+    return;
+  }
+
+  float cols = max(u_crackAtlasGrid.x, 1.0);
+  float rows = max(u_crackAtlasGrid.y, 1.0);
+  float idx = v_crackMask.x;
+  // Apply tiling: fract() wraps UV coordinates for seamless repetition
+  vec2 baseUV = fract(v_crackUv);
+  vec2 tileScale = vec2(1.0 / cols, 1.0 / rows);
+  vec2 tileOffset = vec2(mod(idx, cols), floor(idx / cols)) * tileScale;
+  vec2 atlasUV = tileOffset + baseUV * tileScale;
+  
+  // Sample alpha channel as crack mask (black cracks on transparent background)
+  float crackMask = texture(u_cracksAtlas, atlasUV).a;
+  float desat = v_crackEffects.x;
+  float darken = v_crackEffects.y;
+
+  float k = crackMask * crackStrength;
+  if (k <= 0.0) {
+    fragColor = baseColor;
+    return;
+  }
+
+  vec3 base = baseColor.rgb;
+
+  float grayLuma = dot(base, vec3(0.3, 0.3, 0.3));
+  vec3 gray = vec3(grayLuma);
+
+  vec3 saturated = gray + (base - gray) * desat;
+
+  saturated = clamp(saturated, 0.0, 1.0);
+
+  vec3 darkened = saturated * darken;
+
+  vec3 finalRgb = mix(base, darkened, k);
+
+  fragColor = vec4(finalRgb, baseColor.a);
 }
 `;
 
@@ -308,4 +380,3 @@ export const createSceneFragmentShader = (noiseAnchorFn: string = DEFAULT_NOISE_
   createFillEffectsGLSL(noiseAnchorFn) +
   SAMPLE_GRADIENT_GLSL +
   SCENE_FRAGMENT_SHADER_MAIN;
-

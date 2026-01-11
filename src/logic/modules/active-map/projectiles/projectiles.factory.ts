@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { UnitProjectileController } from "./ProjectileController";
 
 export const createUnitProjectilesDefinition = (): ServiceDefinition<
@@ -9,7 +9,9 @@ export const createUnitProjectilesDefinition = (): ServiceDefinition<
   factory: (container) =>
     new UnitProjectileController({
       scene: container.get("sceneObjects"),
-      bricks: container.get("bricks"),
+      targeting: container.get("targeting"),
+      damage: container.get("damage"),
     }),
   registerAsModule: false,
+  dependsOn: ["targeting", "damage"],
 });

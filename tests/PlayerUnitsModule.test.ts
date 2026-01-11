@@ -1,14 +1,12 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { SceneObjectManager } from "../src/logic/services/scene-object-manager/SceneObjectManager";
+import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import type { BrickData } from "../src/logic/modules/active-map/bricks/bricks.types";
-import { DataBridge } from "../src/logic/core/DataBridge";
-import {
-  PlayerUnitsModule,
-  PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
-} from "../src/logic/modules/active-map/player-units/player-units.module";
-import { MovementService } from "../src/logic/services/movement/MovementService";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
+import { PlayerUnitsModule } from "../src/logic/modules/active-map/player-units/player-units.module";
+import { PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY } from "../src/logic/modules/active-map/player-units/player-units.const";
+import { MovementService } from "../src/core/logic/provided/services/movement/MovementService";
 import { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { EffectsModule } from "../src/logic/modules/scene/effects/effects.module";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
@@ -17,6 +15,7 @@ import type { ParticleEmitterConfig } from "../src/logic/interfaces/visuals/part
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import { normalizeVector } from "../src/shared/helpers/vector.helper";
+import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 
 const createResourceControllerStub = () => ({
   startRun: () => {},
@@ -33,10 +32,19 @@ const createBricksModule = (
   bridge: DataBridge,
   bonuses: BonusesModule,
   explosions: ExplosionModule,
-  runState: MapRunState
+  runState: MapRunState,
+  statusEffects: StatusEffectsModule,
 ) => {
   const resources = createResourceControllerStub();
-  return new BricksModule({ scene, bridge, explosions, resources, bonuses, runState });
+  return new BricksModule({
+    scene,
+    bridge,
+    explosions,
+    resources,
+    bonuses,
+    runState,
+    statusEffects,
+  });
 };
 
 const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule): UnitProjectileController => {
@@ -177,7 +185,8 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState);
+    const statusEffects = new StatusEffectsModule();
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
     const units = new PlayerUnitsModule({
       scene,
       bricks,
@@ -185,6 +194,7 @@ describe("PlayerUnitsModule", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -253,7 +263,7 @@ describe("PlayerUnitsModule", () => {
     }
 
     assert.strictEqual(bricks.getBrickStates().length, 0, "brick should be destroyed");
-    const totalHp = bridge.getValue<number>(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY) ?? 0;
+    const totalHp = bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY) ?? 0;
     assert(totalHp >= 0);
   });
 
@@ -267,7 +277,8 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState);
+    const statusEffects = new StatusEffectsModule();
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
     const units = new PlayerUnitsModule({
       scene,
       bricks,
@@ -275,6 +286,7 @@ describe("PlayerUnitsModule", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
@@ -375,7 +387,8 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState);
+    const statusEffects = new StatusEffectsModule();
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
     let clearCalls = 0;
     const effectsStub = {
       applyEffect: () => {
@@ -397,6 +410,7 @@ describe("PlayerUnitsModule", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       effects: effectsStub,
@@ -434,7 +448,8 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState);
+    const statusEffects = new StatusEffectsModule();
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
 
     bricks.setBricks([
       {
@@ -470,6 +485,7 @@ describe("PlayerUnitsModule", () => {
       movement,
       bonuses,
       explosions,
+      statusEffects,
       runState,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: (id) => (id === "tailNeedles" ? 1 : 0),

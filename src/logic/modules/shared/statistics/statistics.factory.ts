@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { StatisticsModule } from "./statistics.module";
 
 export const createStatisticsDefinition = (): ServiceDefinition<StatisticsModule, "statistics"> => ({

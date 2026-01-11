@@ -14,7 +14,10 @@ import type { MapUnlockCondition } from "@shared/types/unlocks";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
+import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
+import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import "./MapSelectPanel.css";
+import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 
 const CELL_SIZE_X = 200;
 const CELL_SIZE_Y = 180;
@@ -38,6 +41,7 @@ interface MapSelectPanelProps {
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
+  achievements: AchievementsBridgePayload;
   onSelectMap: (mapId: MapId) => void;
   onSelectLevel: (mapId: MapId, level: number) => void;
   onStartMap: (mapId: MapId) => void;
@@ -125,11 +129,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
   clearedLevelsTotal,
   selectedMap,
+  achievements,
   onSelectMap,
   onSelectLevel,
   onStartMap,
 }) => {
-  const { app, bridge } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const savedViewTransform = useBridgeValue(
     bridge,
     MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
@@ -200,13 +205,13 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       // Convert viewport offset to world coordinates for saving
       const worldX = (viewportSize.width / 2 - viewTransform.offsetX) / viewTransform.scale;
       const worldY = (viewportSize.height / 2 - viewTransform.offsetY) / viewTransform.scale;
-      app.services.map.setMapSelectViewTransform({
+      (uiApi.map as MapModuleUiApi).setMapSelectViewTransform({
         scale: viewTransform.scale,
         worldX,
         worldY,
       });
     }
-  }, [viewTransform, app, viewportSize.width, viewportSize.height]);
+  }, [viewTransform, uiApi.map, viewportSize.width, viewportSize.height]);
 
   useResizeObserver(viewportRef, ({ width, height }) => {
     setViewportSize({ width, height });
@@ -329,6 +334,16 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
 
   const activeId = hoveredId ?? selectedMap ?? null;
   const activeMap = (activeId ? mapById.get(activeId) : undefined) ?? null;
+  const activeAchievement = useMemo(() => {
+    if (!activeMap) {
+      return null;
+    }
+    const achievementId = getMapConfig(activeMap.id).achievementId;
+    if (!achievementId) {
+      return null;
+    }
+    return achievements.achievements.find((entry) => entry.id === achievementId) ?? null;
+  }, [achievements.achievements, activeMap]);
 
   const setPopoverForMap = useCallback(
     (map: MapListEntry) => {
@@ -544,10 +559,14 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 return null;
               }
               const isSelected = map.id === selectedMap;
+              const mapConfig = getMapConfig(map.id);
+              const hasAchievement = !!mapConfig.achievementId;
+              
               const nodeClasses = classNames(
                 "map-tree-node",
                 isSelected && "map-tree-node--active",
-                !map.selectable && "map-tree-node--locked"
+                !map.selectable && "map-tree-node--locked",
+                hasAchievement && "map-tree-node--achievement"
               );
 
               const getMapInitials = (name: string): string =>
@@ -792,7 +811,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     setPopover(null);
                   }}
                 >
-                  <div className="map-tree__popover-name">{popoverMap.name}</div>
+                  <div className={classNames(
+                    "map-tree__popover-name",
+                    getMapConfig(popoverMap.id).achievementId && "map-tree__popover-name--achievement"
+                  )}>
+                    {popoverMap.name}
+                  </div>
                   <div className="map-tree__popover-level">
                     Level {popoverMap.selectedLevel} / {popoverMap.currentLevel}
                   </div>
@@ -842,11 +866,32 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
           {activeMap ? (
             <>
               <div className="map-tree__details-header">
-                <h2>{activeMap.name}</h2>
+                <h2 className={classNames(
+                  getMapConfig(activeMap.id).achievementId && "map-tree__details-title--achievement"
+                )}>
+                  {activeMap.name}
+                </h2>
                 <span className="map-tree__details-level">
                   Level {activeMap.selectedLevel} / {activeMap.currentLevel}
                 </span>
               </div>
+              {getMapConfig(activeMap.id).achievementId && (
+                <div className="map-tree__details-achievement-notice">
+                  <strong>🏆 Challenge Map</strong>
+                  <p>Completing levels on this map grants permanent bonuses through achievements!</p>
+                </div>
+              )}
+              {activeAchievement ? (
+                <div className="map-tree__details-achievement-bonuses">
+                  <div className="map-tree__details-achievement-bonuses-title">
+                    Bonus now → next level
+                  </div>
+                  <BonusEffectsPreviewList
+                    effects={activeAchievement.bonusEffects}
+                    emptyLabel="No bonuses yet."
+                  />
+                </div>
+              ) : null}
               <div className="map-tree__details-list">
                 <span className="map-tree__details-level">
                   Max. Level Available: {activeMap.maxLevel}

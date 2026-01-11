@@ -2,8 +2,8 @@ import assert from "assert";
 import {
   SceneLinearGradientFill,
   SceneRadialGradientFill,
-} from "../src/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "../src/logic/services/scene-object-manager/scene-object-manager.const";
+} from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   FILL_COMPONENTS,
   FILL_INFO_COMPONENTS,

@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { DataBridge } from "@logic/core/DataBridge";
-import type { BridgeKey, BridgeValue } from "@logic/core/BridgeSchema";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import type { BridgeKey, BridgeValue } from "@/core/logic/ui/BridgeSchema";
 
 /**
  * Хук для підписки на значення DataBridge з типобезпечною перевіркою.

@@ -4,7 +4,7 @@
  * without directly depending on rendering code.
  */
 
-import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type {
   BulletVisualConfig,
   BulletSlotHandle,

@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { PlayerUnitType } from "../../../../db/player-units-db";
 import type { UnitModuleId, UnitModuleBonusType } from "../../../../db/unit-modules-db";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
@@ -93,3 +93,20 @@ export interface UnitDesignModuleOptions {
 export type UnitDesignerListener = (
   designs: readonly UnitDesignerUnitState[]
 ) => void;
+
+export interface UnitDesignModuleUiApi {
+  createDesign(type: PlayerUnitType): UnitDesignId;
+  updateDesign(
+    id: UnitDesignId,
+    data: Partial<Pick<UnitDesignerUnitState, "name">> & { modules?: readonly UnitModuleId[] }
+  ): void;
+  deleteDesign(id: UnitDesignId): void;
+  setActiveRoster(roster: readonly UnitDesignId[]): void;
+  setDesignTargetingMode(id: UnitDesignId, mode: UnitTargetingMode): void;
+}
+
+declare module "@core/logic/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    unitDesign: UnitDesignModuleUiApi;
+  }
+}

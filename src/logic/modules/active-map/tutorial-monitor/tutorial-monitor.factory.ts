@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { TutorialMonitorModule } from "./tutorial-monitor.module";
 
 export const createTutorialMonitorDefinition = (): ServiceDefinition<
@@ -14,4 +14,5 @@ export const createTutorialMonitorDefinition = (): ServiceDefinition<
       runState: container.get("mapRunState"),
     }),
   registerAsModule: true,
+  dependsOn: ["necromancer", "resources"],
 });

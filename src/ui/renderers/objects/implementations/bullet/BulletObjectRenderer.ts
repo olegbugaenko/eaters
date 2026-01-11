@@ -3,7 +3,7 @@ import {
   ObjectRegistration,
   ObjectRenderer,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   createDynamicCirclePrimitive,
   createDynamicTrianglePrimitive,
@@ -18,6 +18,7 @@ import {
   getTailEmitterOrigin,
   createTailParticle,
   serializeTailEmitterConfig,
+  getGpuSpawnConfig,
 } from "./emitter.helpers";
 import { getGlowConfig, getGlowRadius, createGlowFill } from "./glow.helpers";
 import { createTriangleVertices } from "./triangle.helpers";
@@ -26,13 +27,19 @@ import type { BulletTailEmitterRenderConfig } from "./types";
 const createEmitterPrimitive = (
   instance: SceneObjectInstance,
   getConfig: (instance: SceneObjectInstance) => BulletTailEmitterRenderConfig | null
-): DynamicPrimitive | null =>
-  createParticleEmitterPrimitive<BulletTailEmitterRenderConfig>(instance, {
+): DynamicPrimitive | null => {
+  const primitive = createParticleEmitterPrimitive<BulletTailEmitterRenderConfig>(instance, {
     getConfig,
     getOrigin: getTailEmitterOrigin,
     spawnParticle: createTailParticle,
     serializeConfig: serializeTailEmitterConfig,
+    getGpuSpawnConfig,
   });
+  if (primitive) {
+    primitive.autoAnimate = true;
+  }
+  return primitive;
+};
 
 export class BulletObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {

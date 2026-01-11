@@ -3,7 +3,7 @@ import {
   SceneObjectInstance,
   SceneSize,
   SceneVector2,
-} from "../../../../logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   DynamicPrimitive,
   POSITION_COMPONENTS,
@@ -33,6 +33,12 @@ interface DynamicCircleOptions {
   getRadius?: (instance: SceneObjectInstance, previousRadius: number) => number;
   fill?: SceneFill;
   getFill?: (instance: SceneObjectInstance) => SceneFill;
+  /**
+   * Callback to refresh fill when instance.data.fill reference changes.
+   * Used for "base" fills in composite renderers that depend on visual effects.
+   * Only called when instance.data.fill !== prevInstanceFill (reference changed).
+   */
+  refreshFill?: (instance: SceneObjectInstance) => SceneFill;
 }
 
 const DEFAULT_SEGMENTS = 24;
@@ -256,7 +262,10 @@ export const createDynamicCirclePrimitive = (
   // Check if fill and radius are static for fast-path
   const isStaticFill = !options.getFill && !!options.fill;
   const isStaticRadius = typeof options.radius === "number";
-  const canFastPath = isStaticFill && isStaticRadius;
+  // refreshFill tracks instance.data.fill reference changes for visual effects
+  const hasRefreshFill = typeof options.refreshFill === "function";
+  // Can only fast-path if fill doesn't need refresh tracking
+  const canFastPath = isStaticFill && isStaticRadius && !hasRefreshFill;
   
   // For solid fills, components don't depend on center/rotation
   const staticFill = isStaticFill ? options.fill : null;
@@ -269,8 +278,13 @@ export const createDynamicCirclePrimitive = (
     resolveRadius(options, instance, getRadiusFromSize(instance.data.size, 0)),
     0
   );
+  
+  // For refreshFill: cache the resolved fill and track instance.data.fill reference
+  let cachedFill: SceneFill = resolveFill(options, instance);
+  let prevInstanceFillRef: SceneFill | undefined = hasRefreshFill ? instance.data.fill : undefined;
+  
   const initialFillComponents = createFillVertexComponents({
-    fill: resolveFill(options, instance),
+    fill: cachedFill,
     center: initialCenter,
     rotation: instance.data.rotation ?? 0,
     size: {
@@ -303,6 +317,14 @@ export const createDynamicCirclePrimitive = (
       const pos = target.data.position;
       const nextRotation = target.data.rotation ?? 0;
       
+      // Check if instance.data.fill reference changed (visual effect applied)
+      let fillRefChanged = false;
+      if (hasRefreshFill && target.data.fill !== prevInstanceFillRef) {
+        prevInstanceFillRef = target.data.fill;
+        cachedFill = options.refreshFill!(target);
+        fillRefChanged = true;
+      }
+      
       // Fast path: skip expensive computations if nothing changed
       if (canFastPath &&
           pos.x === prevPosX &&
@@ -319,8 +341,20 @@ export const createDynamicCirclePrimitive = (
       
       // Skip fill computation for solid fills (color doesn't depend on position)
       let fillComponents: Float32Array;
-      if (isSolidFill) {
+      if (isSolidFill && !fillRefChanged) {
         fillComponents = fillScratch; // Reuse cached solid fill
+      } else if (fillRefChanged) {
+        // refreshFill was triggered - use the newly cached fill
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: cachedFill,
+          center: nextCenter,
+          rotation: target.data.rotation ?? 0,
+          size: {
+            width: nextRadius * 2,
+            height: nextRadius * 2,
+          },
+          radius: nextRadius,
+        });
       } else {
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: resolveFill(options, target),
@@ -365,6 +399,54 @@ export const createDynamicCirclePrimitive = (
       if (fillChanged) {
         previousFill.set(fillComponents);
       }
+      return data;
+    },
+    updatePositionOnly(target: SceneObjectInstance) {
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      const nextCenter = getCenter(target, options.offset);
+      const centerChanged =
+        nextCenter.x !== previousCenterX || nextCenter.y !== previousCenterY;
+      const rotationChanged = nextRotation !== prevRotation;
+      if (!centerChanged && !rotationChanged) {
+        return null;
+      }
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = nextRotation;
+      previousCenterX = nextCenter.x;
+      previousCenterY = nextCenter.y;
+
+      const shouldUpdateFill =
+        cachedFill.fillType !== 0 ||
+        Boolean(cachedFill.noise || cachedFill.filaments || cachedFill.crackMask);
+      let fillComponents: Float32Array = fillScratch;
+      let fillChanged = false;
+      if (shouldUpdateFill) {
+        const updatedFill = writeFillVertexComponents(fillScratch, {
+          fill: cachedFill,
+          center: nextCenter,
+          rotation: nextRotation,
+          size: {
+            width: radius * 2,
+            height: radius * 2,
+          },
+          radius,
+        }) as Float32Array;
+        fillComponents = updatedFill;
+        fillChanged = true;
+        previousFill.set(updatedFill);
+      }
+      updateCircleData(
+        data,
+        nextCenter,
+        radius,
+        fillComponents,
+        segments,
+        trig,
+        true,
+        fillChanged
+      );
       return data;
     },
   };

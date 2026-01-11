@@ -1,5 +1,5 @@
 import { SkillId } from "../../../../db/skills-db";
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { SkillTreeModule } from "../skill-tree/skill-tree.module";
 import { BuildingsModule } from "./buildings.module";
 
@@ -14,4 +14,5 @@ export const createBuildingsDefinition = (): ServiceDefinition<BuildingsModule, 
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
     }),
   registerAsModule: true,
+  dependsOn: ["resources", "bonuses", "unlocks", "skillTree"],
 });

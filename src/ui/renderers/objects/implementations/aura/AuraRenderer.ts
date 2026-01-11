@@ -3,7 +3,7 @@ import {
   ObjectRegistration,
   ObjectRenderer,
 } from "../../ObjectRenderer";
-import type { SceneObjectInstance } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { createDynamicCirclePrimitive, createDynamicPolygonPrimitive } from "../../../primitives";
 import type { AuraCustomData, RendererLayer } from "./types";
 import { sanitizeVertices } from "@shared/helpers/vector.helper";
@@ -51,27 +51,36 @@ export class AuraRenderer extends ObjectRenderer {
         return;
       }
 
-      // circle
-      const radius = Math.max(layer.radius, 0);
-      const segments = Math.max(Math.floor(layer.segments ?? 32), 8);
-      if (layer.stroke) {
+      if (layer.shape === "circle") {
+        // circle
+        const radius = Math.max(layer.radius, 0);
+        const segments = Math.max(Math.floor(layer.segments ?? 32), 8);
+        if (layer.stroke) {
+          dynamicPrimitives.push(
+            createDynamicCirclePrimitive(instance, {
+              segments,
+              offset: layer.offset,
+              radius: radius + Math.max(getStrokeWidth(layer.stroke), 0),
+              getFill: (_t) => resolveStrokeFill(layer.stroke!),
+            })
+          );
+        }
         dynamicPrimitives.push(
           createDynamicCirclePrimitive(instance, {
             segments,
             offset: layer.offset,
-            radius: radius + Math.max(getStrokeWidth(layer.stroke), 0),
-            getFill: (_t) => resolveStrokeFill(layer.stroke!),
+            radius,
+            getFill: (_t) => resolveFill(layer.fill),
           })
         );
+        return;
       }
-      dynamicPrimitives.push(
-        createDynamicCirclePrimitive(instance, {
-          segments,
-          offset: layer.offset,
-          radius,
-          getFill: (_t) => resolveFill(layer.fill),
-        })
-      );
+
+      if (layer.shape === "sprite") {
+        // Sprite layer - TODO: implement sprite rendering for auras
+        console.warn("[AuraRenderer] Sprite layers are not yet implemented");
+        return;
+      }
     });
 
     return { staticPrimitives: [], dynamicPrimitives };

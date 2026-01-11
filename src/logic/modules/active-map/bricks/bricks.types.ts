@@ -1,14 +1,17 @@
-import type { SceneVector2, SceneFill, SceneColor } from "../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2, SceneFill, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BrickType } from "../../../../db/bricks-db";
 import type { ExplosionType } from "../../../../db/explosions-db";
 import type { ResourceStockpile } from "../../../../db/resources-db";
-import type { SoundEffectPlayer } from "../../shared/audio/audio.types";
-import type { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { DataBridge } from "../../../core/DataBridge";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
+import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { MapRunState } from "../map/MapRunState";
 import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
+import type { TargetingService } from "../targeting/TargetingService";
+import type { PassabilityTag } from "@/logic/shared/navigation/passability.types";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 export interface ResourceCollector {
   grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
@@ -33,11 +36,12 @@ export interface BrickRuntimeState {
   maxHp: number;
   armor: number;
   baseDamage: number;
-  brickKnockBackDistance: number;
-  brickKnockBackSpeed: number;
+  knockBackDistance: number;
+  knockBackSpeed: number;
   brickKnockBackAmplitude: number;
   physicalSize: number;
   rewards: ResourceStockpile;
+  passableFor?: readonly PassabilityTag[];
 }
 
 export interface BricksModuleOptions {
@@ -47,6 +51,8 @@ export interface BricksModuleOptions {
   resources: ResourceCollector;
   bonuses: BonusesModule;
   runState: MapRunState;
+  statusEffects: StatusEffectsModule;
+  targeting?: TargetingService;
   audio?: SoundEffectPlayer;
   statistics?: StatisticsTracker;
 }
@@ -63,6 +69,8 @@ export interface InternalBrickState extends BrickRuntimeState {
   baseFill: SceneFill;
   appliedFill: SceneFill;
   activeTint: BrickEffectTint | null;
+  damageStage: number;
+  crackVariant: number;
 }
 
 export interface BrickExplosionState {

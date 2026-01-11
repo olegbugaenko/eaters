@@ -1,11 +1,11 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
-import { DataBridgeHelpers } from "../../../core/DataBridgeHelpers";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { GameModule } from "@core/logic/types";
+import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { BrickConfig, BrickType, getBrickConfig } from "../../../../db/bricks-db";
 import type {
   SceneFill,
   SceneVector2,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import {
@@ -34,9 +34,9 @@ import {
   sanitizeBrickLevel,
   calculateBrickStatsForLevel,
   scaleResourceStockpile,
+  resolveBrickDamageStage,
 } from "./bricks.helpers";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
-import { BrickEffectsManager } from "./BrickEffectsManager";
 import type { BrickEffectApplication } from "./brick-effects.types";
 import type {
   BrickData,
@@ -59,6 +59,9 @@ import {
 import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
 import { MapRunState } from "../map/MapRunState";
 import { BrickStateFactory, BrickStateInput } from "./bricks.state-factory";
+import { TargetingService } from "../targeting/TargetingService";
+import { BricksTargetingProvider } from "../targeting/BricksTargetingProvider";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 export class BricksModule implements GameModule {
   public readonly id = "bricks";
@@ -70,18 +73,21 @@ export class BricksModule implements GameModule {
   private readonly bricksWithKnockback = new Set<string>();
   private totalHpCached = 0;
   private hpRecomputeElapsedMs = 0;
-  private readonly effects: BrickEffectsManager;
+  private readonly statusEffects: StatusEffectsModule;
   private lastPushedBrickCount = -1;
   private lastPushedTotalHp = -1;
   private readonly runState: MapRunState;
   private readonly stateFactory: BrickStateFactory;
+  private readonly targeting?: TargetingService;
 
   constructor(private readonly options: BricksModuleOptions) {
     this.runState = options.runState;
     this.stateFactory = new BrickStateFactory({ scene: options.scene });
-    this.effects = new BrickEffectsManager({
+    this.targeting = options.targeting;
+    this.statusEffects = options.statusEffects;
+    this.statusEffects.registerBrickAdapter({
       hasBrick: (brickId) => this.bricks.has(brickId),
-      dealDamage: (brickId, damage, opts) => {
+      damageBrick: (brickId, damage, opts) => {
         this.applyEffectDamage(brickId, damage, opts);
       },
       setTint: (brickId, tint) => {
@@ -92,6 +98,10 @@ export class BricksModule implements GameModule {
         this.applyEffectTint(brick, tint);
       },
     });
+
+    if (this.targeting) {
+      this.targeting.registerProvider(new BricksTargetingProvider(this));
+    }
   }
 
   public initialize(): void {
@@ -124,7 +134,6 @@ export class BricksModule implements GameModule {
       return;
     }
     if (deltaMs > 0) {
-      this.effects.update(deltaMs);
       this.hpRecomputeElapsedMs += deltaMs;
       if (this.hpRecomputeElapsedMs >= TOTAL_HP_RECOMPUTE_INTERVAL_MS) {
         this.hpRecomputeElapsedMs = 0;
@@ -154,6 +163,7 @@ export class BricksModule implements GameModule {
         brick.knockback = null;
         finished.push(brickId);
         this.updateBrickSceneObject(brick, ZERO_VECTOR);
+        this.options.scene.unmarkMovable(brick.sceneObjectId);
         return;
       }
 
@@ -219,16 +229,48 @@ export class BricksModule implements GameModule {
     });
   }
 
+  /**
+   * Ітерує через ВСІ цеглини без просторової фільтрації.
+   * Швидше ніж forEachBrickNear з величезним радіусом.
+   */
+  public forEachBrick(visitor: (brick: Readonly<BrickRuntimeState>) => void): void {
+    this.spatialIndex.forEachItem(visitor);
+  }
+
   public applyEffect(effect: BrickEffectApplication): void {
-    this.effects.applyEffect(effect);
+    if (effect.type === "meltingTail") {
+      this.statusEffects.applyEffect(
+        "meltingTail",
+        { type: "brick", id: effect.brickId },
+        { durationMs: effect.durationMs, multiplier: effect.multiplier, tint: effect.tint ?? null },
+      );
+    } else if (effect.type === "freezingTail") {
+      this.statusEffects.applyEffect(
+        "freezingTail",
+        { type: "brick", id: effect.brickId },
+        { durationMs: effect.durationMs, divisor: effect.divisor, tint: effect.tint ?? null },
+      );
+    } else if (effect.type === "weakeningCurse") {
+      this.statusEffects.applyEffect(
+        "weakeningCurse",
+        { type: "brick", id: effect.brickId },
+        { durationMs: effect.durationMs, multiplier: effect.multiplier, tint: effect.tint ?? null },
+      );
+    } else if (effect.type === "weakeningCurseFlat") {
+      this.statusEffects.applyEffect(
+        "weakeningCurseFlat",
+        { type: "brick", id: effect.brickId },
+        { durationMs: effect.durationMs, flatReduction: effect.flatReduction, tint: effect.tint ?? null },
+      );
+    }
   }
 
   public getOutgoingDamageMultiplier(brickId: string): number {
-    return this.effects.getOutgoingDamageMultiplier(brickId);
+    return this.statusEffects.getBrickOutgoingDamageMultiplier(brickId);
   }
 
   public getOutgoingDamageFlatReduction(brickId: string): number {
-    return this.effects.getOutgoingDamageFlatReduction(brickId);
+    return this.statusEffects.getBrickOutgoingDamageFlatReduction(brickId);
   }
 
   public applyDamage(
@@ -250,8 +292,10 @@ export class BricksModule implements GameModule {
     const rewardMultiplier = Math.max(options?.rewardMultiplier ?? 1, 0);
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
     const skipKnockback = options?.skipKnockback === true;
-    const effectiveArmor = Math.max(brick.armor - armorPenetration, 0) * (options?.overTime ?? 1);
-    const incomingMultiplier = this.effects.getIncomingDamageMultiplier(brickId);
+    const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "brick", id: brickId });
+    const effectiveArmor =
+      Math.max(brick.armor + armorDelta - armorPenetration, 0) * (options?.overTime ?? 1);
+    const incomingMultiplier = this.statusEffects.getBrickIncomingDamageMultiplier(brickId);
     const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0) * Math.max(incomingMultiplier, 1);
     if (effectiveDamage <= 0) {
       return { destroyed: false, brick: this.cloneState(brick), inflictedDamage: 0 };
@@ -262,6 +306,7 @@ export class BricksModule implements GameModule {
     const inflictedDamage = Math.max(0, previousHp - brick.hp);
     if (inflictedDamage > 0) {
       this.options.statistics?.recordDamageDealt(inflictedDamage);
+      this.statusEffects.handleTargetHit({ type: "brick", id: brickId });
     }
     this.totalHpCached += brick.hp - previousHp;
 
@@ -276,6 +321,24 @@ export class BricksModule implements GameModule {
     this.spawnBrickExplosion(brick.damageExplosion, brick);
     if (!skipKnockback) {
       this.applyBrickKnockback(brick, hitDirection);
+    }
+    const nextDamageStage = resolveBrickDamageStage(brick.hp, brick.maxHp);
+    if (nextDamageStage !== brick.damageStage) {
+      brick.damageStage = nextDamageStage;
+      const type = sanitizeBrickType(brick.type);
+      const config = getBrickConfig(type);
+      const crackMaskConfig = config.crackMask;
+      const crackDesat = crackMaskConfig?.desat ?? 2.0;
+      const crackDarken = crackMaskConfig?.darken ?? 0.5;
+      this.updateBrickSceneObject(brick, brick.knockback?.currentOffset ?? ZERO_VECTOR, {
+        customData: {
+          damageStage: brick.damageStage,
+          crackVariant: brick.crackVariant,
+          cracksEnabled: config.cracksEnabled !== false,
+          crackDesat,
+          crackDarken,
+        },
+      });
     }
     this.pushStats();
     return { destroyed: false, brick: this.cloneState(brick), inflictedDamage };
@@ -371,7 +434,7 @@ export class BricksModule implements GameModule {
         this.options.resources.grantResources(rewards);
       }
     }
-    this.effects.clearEffects(brick.id);
+    this.statusEffects.clearTargetEffects({ type: "brick", id: brick.id });
     this.options.scene.removeObject(brick.sceneObjectId);
     this.bricks.delete(brick.id);
     this.brickOrder = this.brickOrder.filter((item) => item.id !== brick.id);
@@ -435,13 +498,13 @@ export class BricksModule implements GameModule {
   private clearSceneObjects(): void {
     this.brickOrder.forEach((brick) => {
       this.options.scene.removeObject(brick.sceneObjectId);
+      this.statusEffects.clearTargetEffects({ type: "brick", id: brick.id });
     });
     this.bricks.clear();
     this.brickOrder = [];
     this.spatialIndex.clear();
     this.bricksWithKnockback.clear();
     this.totalHpCached = 0;
-    this.effects.clearAllEffects();
   }
 
   private applyBrickKnockback(
@@ -475,25 +538,45 @@ export class BricksModule implements GameModule {
       };
       this.bricksWithKnockback.add(brick.id);
       this.updateBrickSceneObject(brick, combinedOffset);
+      this.options.scene.markMovable(brick.sceneObjectId);
     }
   }
 
   private updateBrickSceneObject(
     brick: InternalBrickState,
     offset: SceneVector2,
-    extras: { fill?: SceneFill } = {}
+    extras: {
+      fill?: SceneFill;
+      customData?: {
+        damageStage: number;
+        crackVariant: number;
+        cracksEnabled?: boolean;
+        crackDesat?: number;
+        crackDarken?: number;
+      };
+    } = {}
   ): void {
     const position = addVectors(brick.position, offset);
     const payload: {
       position: SceneVector2;
       rotation: number;
       fill?: SceneFill;
+      customData?: {
+        damageStage: number;
+        crackVariant: number;
+        cracksEnabled?: boolean;
+        crackDesat?: number;
+        crackDarken?: number;
+      };
     } = {
       position,
       rotation: brick.rotation,
     };
     if (extras.fill) {
       payload.fill = cloneSceneFill(extras.fill);
+    }
+    if (extras.customData) {
+      payload.customData = extras.customData;
     }
     this.options.scene.updateObject(brick.sceneObjectId, payload);
   }
@@ -544,8 +627,8 @@ export class BricksModule implements GameModule {
       maxHp: state.maxHp,
       armor: state.armor,
       baseDamage: state.baseDamage,
-      brickKnockBackDistance: state.brickKnockBackDistance,
-      brickKnockBackSpeed: state.brickKnockBackSpeed,
+      knockBackDistance: state.knockBackDistance,
+      knockBackSpeed: state.knockBackSpeed,
       brickKnockBackAmplitude: state.brickKnockBackAmplitude,
       physicalSize: state.physicalSize,
       rewards: cloneResourceStockpile(state.rewards),

@@ -1,5 +1,6 @@
 import {
   DynamicPrimitive,
+  DynamicPrimitiveUpdate,
   ObjectRegistration,
   ObjectRenderer,
   StaticPrimitive,
@@ -10,11 +11,12 @@ import {
   SceneObjectInstance,
   SceneStroke,
   SceneVector2,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { SceneObjectManager } from "@/logic/services/scene-object-manager/SceneObjectManager";
-import { cloneStroke } from "@/logic/services/scene-object-manager/scene-object-manager.helpers";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { cloneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 
 interface ManagedObject {
   instance: SceneObjectInstance;
@@ -66,6 +68,8 @@ export class ObjectsRendererManager {
   private readonly autoAnimatingIds = new Set<string>();
   // Individual primitives that need per-frame updates (e.g., particle emitters)
   private readonly autoAnimatingPrimitives = new Map<DynamicPrimitive, { objectId: string }>();
+  private readonly interpolatedPositions = new Map<string, SceneVector2>();
+  private readonly bulletKeyToObjectId = new Map<string, string>();
 
   private staticData: Float32Array | null = null;
   private dynamicData: Float32Array | null = null;
@@ -77,14 +81,27 @@ export class ObjectsRendererManager {
   private dynamicLayoutDirty = false;
   private autoAnimatingNeedsUpload = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
+  private pendingDynamicUpdateLength = 0;
   private lastDynamicRebuildMs = 0;
   private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
+  private static readonly DYNAMIC_UPDATE_THRESHOLD_RATIO = 0.25;
+  private static readonly DEBUG_LOG_INTERVAL_MS = 1000;
+
+  private debugStatsEnabled = false;
+  private debugFrames = 0;
+  private debugLastLogMs = 0;
+  private debugChanges = { added: 0, updated: 0, removed: 0 };
+  private debugUpdateCallsByType = new Map<string, number>();
+  private debugInterpolationsByType = new Map<string, number>();
 
   // Stats
   private dynamicBytesAllocated = 0;
   private dynamicReallocations = 0;
 
-  constructor(private readonly renderers: Map<string, ObjectRenderer>) {}
+  constructor(
+    private readonly renderers: Map<string, ObjectRenderer>,
+    private readonly tiedObjects: TiedObjectsRegistry
+  ) {}
 
   public bootstrap(instances: readonly SceneObjectInstance[]): void {
     instances.forEach((instance) => {
@@ -103,9 +120,11 @@ export class ObjectsRendererManager {
     this.objects.clear();
     this.autoAnimatingIds.clear();
     this.autoAnimatingPrimitives.clear();
+    this.bulletKeyToObjectId.clear();
     this.staticEntries.length = 0;
     this.dynamicEntries.length = 0;
     this.dynamicEntryByPrimitive.clear();
+    this.tiedObjects.clear();
     this.staticData = null;
     this.dynamicData = null;
     this.staticVertexCount = 0;
@@ -114,14 +133,29 @@ export class ObjectsRendererManager {
     this.dynamicLayoutDirty = false;
     this.autoAnimatingNeedsUpload = false;
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateLength = 0;
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
+    this.resetDebugStats();
+  }
+
+  /**
+   * Get all object IDs that are tied to a parent object.
+   * Used for applying interpolated positions to tied children.
+   */
+  public getTiedChildren(parentId: string): ReadonlySet<string> | undefined {
+    return this.tiedObjects.getChildren(parentId);
   }
 
   public applyChanges(
-    changes: ReturnType<SceneObjectManager["flushChanges"]>
+    changes: ReturnType<SceneUiApi["flushChanges"]>
   ): void {
+    if (this.debugStatsEnabled) {
+      this.debugChanges.added += changes.added.length;
+      this.debugChanges.updated += changes.updated.length;
+      this.debugChanges.removed += changes.removed.length;
+    }
     changes.removed.forEach((id) => {
       this.removeObject(id);
     });
@@ -133,11 +167,32 @@ export class ObjectsRendererManager {
     });
   }
 
+  public applyInterpolatedBulletPositions(
+    positions: Map<string, SceneVector2>
+  ): void {
+    if (positions.size === 0) {
+      return;
+    }
+    const mapped = new Map<string, SceneVector2>();
+    positions.forEach((position, bulletKey) => {
+      const objectId = this.bulletKeyToObjectId.get(bulletKey);
+      if (!objectId) {
+        return;
+      }
+      mapped.set(objectId, position);
+    });
+    if (mapped.size > 0) {
+      this.applyInterpolatedPositions(mapped);
+    }
+  }
+
   public applyInterpolatedPositions(positions: Map<string, SceneVector2>): void {
     if (positions.size === 0) {
       return;
     }
-    let anyUpdated = false;
+    positions.forEach((position, objectId) => {
+      this.interpolatedPositions.set(objectId, { x: position.x, y: position.y });
+    });
     positions.forEach((position, objectId) => {
       const managed = this.objects.get(objectId);
       if (!managed) {
@@ -151,10 +206,11 @@ export class ObjectsRendererManager {
       originalPosition.x = position.x;
       originalPosition.y = position.y;
       
-      const updates = managed.renderer.update(
+      const updates = managed.renderer.updatePositionOnly(
         managed.instance,
         managed.registration
       );
+      this.recordDebugUpdate(managed.instance.type);
       
       // Restore original position
       originalPosition.x = origX;
@@ -170,13 +226,10 @@ export class ObjectsRendererManager {
         }
         // Update in-place, no copy needed - will do full upload at end
         this.dynamicData.set(data, entry.offset);
-        anyUpdated = true;
+        this.queueDynamicUpdate(entry, data);
       });
+      this.recordDebugInterpolation(managed.instance.type);
     });
-    // Mark for full dynamic upload instead of many small bufferSubData calls
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
-    }
   }
 
   /**
@@ -189,9 +242,31 @@ export class ObjectsRendererManager {
    * and mark that a full dynamic buffer upload is needed.
    */
   public tickAutoAnimating(): void {
-    let anyUpdated = false;
     const idsToRemove: string[] = [];
     const primitivesToRemove: DynamicPrimitive[] = [];
+    const applyInterpolatedPosition = <T>(
+      managed: ManagedObject,
+      objectId: string,
+      update: () => T
+    ): T => {
+      const interpolated = this.interpolatedPositions.get(objectId);
+      if (!interpolated) {
+        return update();
+      }
+
+      this.recordDebugInterpolation(managed.instance.type);
+      const originalPosition = managed.instance.data.position;
+      const origX = originalPosition.x;
+      const origY = originalPosition.y;
+      originalPosition.x = interpolated.x;
+      originalPosition.y = interpolated.y;
+
+      const result = update();
+
+      originalPosition.x = origX;
+      originalPosition.y = origY;
+      return result;
+    };
     
     // Update full objects with autoAnimate: true
     if (this.autoAnimatingIds.size > 0) {
@@ -204,7 +279,10 @@ export class ObjectsRendererManager {
         }
         
         // Trigger update using current instance (renderer will recompute based on time)
-        const updates = managed.renderer.update(managed.instance, managed.registration);
+        const updates = applyInterpolatedPosition(managed, objectId, () =>
+          managed.renderer.update(managed.instance, managed.registration)
+        );
+        this.recordDebugUpdate(managed.instance.type);
         updates.forEach(({ primitive, data }) => {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
           if (!entry) {
@@ -220,7 +298,7 @@ export class ObjectsRendererManager {
           }
           // Update in-place, no copy needed
           this.dynamicData.set(data, entry.offset);
-          anyUpdated = true;
+          this.queueDynamicUpdate(entry, data);
         });
       });
     }
@@ -236,7 +314,9 @@ export class ObjectsRendererManager {
         }
         
         // Update only this specific primitive
-        const data = primitive.update(managed.instance);
+        const data = applyInterpolatedPosition(managed, objectId, () =>
+          primitive.update(managed.instance)
+        );
         if (data) {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
           if (!entry) {
@@ -252,7 +332,7 @@ export class ObjectsRendererManager {
           }
           // Update in-place, no copy needed
           this.dynamicData.set(data, entry.offset);
-          anyUpdated = true;
+          this.queueDynamicUpdate(entry, data);
         }
       });
     }
@@ -264,15 +344,14 @@ export class ObjectsRendererManager {
     for (const primitive of primitivesToRemove) {
       this.autoAnimatingPrimitives.delete(primitive);
     }
-    
-    // If any auto-animating objects/primitives were updated, mark for full dynamic upload
-    // This is more efficient than many small bufferSubData calls
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
+    if (this.interpolatedPositions.size > 0) {
+      this.interpolatedPositions.clear();
     }
+    
   }
 
   public consumeSyncInstructions(): SyncInstructions {
+    this.recordDebugFrame();
     const result: SyncInstructions = {
       staticData: null,
       dynamicData: null,
@@ -298,6 +377,8 @@ export class ObjectsRendererManager {
     }
 
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateLength = 0;
+    this.maybeLogDebugStats();
 
     return result;
   }
@@ -362,6 +443,12 @@ export class ObjectsRendererManager {
     };
     this.objects.set(instance.id, managed);
 
+    // Register tied object relationship if present
+    const tiedToObjectId = (instance.data.customData as { tiedToObjectId?: string } | undefined)?.tiedToObjectId;
+    if (tiedToObjectId) {
+      this.tiedObjects.register(instance.id, tiedToObjectId);
+    }
+
     registration.staticPrimitives.forEach((primitive) => {
       this.staticEntries.push({ objectId: instance.id, primitive });
     });
@@ -395,6 +482,10 @@ export class ObjectsRendererManager {
     if (customData?.autoAnimate === true) {
       this.autoAnimatingIds.add(instance.id);
     }
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
+    }
   }
 
   private updateObject(instance: SceneObjectInstance): void {
@@ -402,9 +493,18 @@ export class ObjectsRendererManager {
     if (!managed) {
       return;
     }
+    const previousInstance = managed.instance;
+    const isTransformOnly = this.isTransformOnlyUpdate(previousInstance, instance);
     managed.instance = instance;
-    const updates = managed.renderer.update(instance, managed.registration);
-    let anyUpdated = false;
+    const customData = instance.data.customData as Record<string, unknown> | undefined;
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
+    }
+    const updates = isTransformOnly
+      ? managed.renderer.updatePositionOnly(instance, managed.registration)
+      : managed.renderer.update(instance, managed.registration);
+    this.recordDebugUpdate(managed.instance.type);
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);
       if (!entry) {
@@ -421,12 +521,8 @@ export class ObjectsRendererManager {
       }
       // Update in-place, no copy needed - will do full upload
       this.dynamicData.set(data, entry.offset);
-      anyUpdated = true;
+      this.queueDynamicUpdate(entry, data);
     });
-    // Mark for full dynamic upload instead of per-update copies
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
-    }
   }
 
   private removeObject(id: string): void {
@@ -434,8 +530,17 @@ export class ObjectsRendererManager {
     if (!managed) {
       return;
     }
+    const customData = managed.instance.data.customData as Record<string, unknown> | undefined;
+    const bulletGpuKey = customData?.bulletGpuKey;
+    if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
+      this.bulletKeyToObjectId.delete(bulletGpuKey);
+    }
     this.objects.delete(id);
     this.autoAnimatingIds.delete(id);
+
+    // Unregister from tied objects (handles both parent and child cases)
+    this.tiedObjects.unregisterChild(id);
+    this.tiedObjects.unregisterParent(id);
     
     // Remove all primitives from this object from auto-animating list
     managed.registration.dynamicPrimitives.forEach((primitive) => {
@@ -527,7 +632,171 @@ export class ObjectsRendererManager {
     this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateLength = 0;
     this.dynamicBytesAllocated = data.byteLength;
+  }
+
+  private queueDynamicUpdate(entry: DynamicEntry, data: Float32Array): void {
+    if (this.dynamicLayoutDirty || this.autoAnimatingNeedsUpload || !this.dynamicData) {
+      return;
+    }
+    const threshold =
+      this.dynamicData.length *
+      ObjectsRendererManager.DYNAMIC_UPDATE_THRESHOLD_RATIO;
+
+    this.pendingDynamicUpdates.push({ offset: entry.offset, data });
+    this.pendingDynamicUpdateLength += data.length;
+
+    if (this.pendingDynamicUpdateLength >= threshold) {
+      this.autoAnimatingNeedsUpload = true;
+      this.pendingDynamicUpdates = [];
+      this.pendingDynamicUpdateLength = 0;
+    }
+  }
+
+  public setDebugStatsEnabled(enabled: boolean): void {
+    if (this.debugStatsEnabled === enabled) {
+      return;
+    }
+    this.debugStatsEnabled = enabled;
+    this.resetDebugStats();
+  }
+
+  private recordDebugUpdate(type: string): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    this.debugUpdateCallsByType.set(
+      type,
+      (this.debugUpdateCallsByType.get(type) ?? 0) + 1
+    );
+  }
+
+  private recordDebugInterpolation(type: string): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    this.debugInterpolationsByType.set(
+      type,
+      (this.debugInterpolationsByType.get(type) ?? 0) + 1
+    );
+  }
+
+  private recordDebugFrame(): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    this.debugFrames += 1;
+  }
+
+  private maybeLogDebugStats(nowMs: number = Date.now()): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    if (this.debugLastLogMs === 0) {
+      this.debugLastLogMs = nowMs;
+      return;
+    }
+    const elapsedMs = nowMs - this.debugLastLogMs;
+    if (elapsedMs < ObjectsRendererManager.DEBUG_LOG_INTERVAL_MS) {
+      return;
+    }
+    const elapsedSec = elapsedMs / 1000;
+    const frames = Math.max(this.debugFrames, 1);
+
+    const changesPerFrame = {
+      added: this.debugChanges.added / frames,
+      updated: this.debugChanges.updated / frames,
+      removed: this.debugChanges.removed / frames,
+    };
+    const changesPerSecond = {
+      added: this.debugChanges.added / elapsedSec,
+      updated: this.debugChanges.updated / elapsedSec,
+      removed: this.debugChanges.removed / elapsedSec,
+    };
+
+    const updatesByType = Array.from(this.debugUpdateCallsByType.entries())
+      .map(([type, count]) => {
+        const perFrame = count / frames;
+        const perSecond = count / elapsedSec;
+        return `${type}: ${perFrame.toFixed(2)}/frame, ${perSecond.toFixed(2)}/s`;
+      })
+      .join(" | ");
+
+    const interpolationsByType = Array.from(
+      this.debugInterpolationsByType.entries()
+    )
+      .map(([type, count]) => {
+        const perFrame = count / frames;
+        const perSecond = count / elapsedSec;
+        return `${type}: ${perFrame.toFixed(2)}/frame, ${perSecond.toFixed(2)}/s`;
+      })
+      .join(" | ");
+
+    console.info(
+      `[ObjectsRendererManager][debug] changes avg/frame a:${changesPerFrame.added.toFixed(
+        2
+      )} u:${changesPerFrame.updated.toFixed(
+        2
+      )} d:${changesPerFrame.removed.toFixed(
+        2
+      )} | avg/sec a:${changesPerSecond.added.toFixed(
+        2
+      )} u:${changesPerSecond.updated.toFixed(
+        2
+      )} d:${changesPerSecond.removed.toFixed(
+        2
+      )} | update calls: ${updatesByType || "none"} | interpolations: ${
+        interpolationsByType || "none"
+      }`
+    );
+
+    this.resetDebugStats();
+    this.debugLastLogMs = nowMs;
+  }
+
+  private resetDebugStats(): void {
+    this.debugFrames = 0;
+    this.debugLastLogMs = 0;
+    this.debugChanges = { added: 0, updated: 0, removed: 0 };
+    this.debugUpdateCallsByType.clear();
+    this.debugInterpolationsByType.clear();
+  }
+
+  private isTransformOnlyUpdate(
+    previous: SceneObjectInstance,
+    next: SceneObjectInstance
+  ): boolean {
+    if (previous.type !== next.type || previous.id !== next.id) {
+      return false;
+    }
+    const prevData = previous.data;
+    const nextData = next.data;
+    const positionChanged =
+      prevData.position.x !== nextData.position.x ||
+      prevData.position.y !== nextData.position.y;
+    const prevRotation = prevData.rotation ?? 0;
+    const nextRotation = nextData.rotation ?? 0;
+    const rotationChanged = prevRotation !== nextRotation;
+    if (!positionChanged && !rotationChanged) {
+      return false;
+    }
+    const sizeEqual =
+      prevData.size === nextData.size ||
+      (!prevData.size && !nextData.size) ||
+      (prevData.size?.width === nextData.size?.width &&
+        prevData.size?.height === nextData.size?.height);
+    const colorEqual =
+      prevData.color === nextData.color ||
+      (!prevData.color && !nextData.color) ||
+      (prevData.color?.r === nextData.color?.r &&
+        prevData.color?.g === nextData.color?.g &&
+        prevData.color?.b === nextData.color?.b &&
+        (prevData.color?.a ?? 1) === (nextData.color?.a ?? 1));
+    const fillEqual = prevData.fill === nextData.fill;
+    const strokeEqual = prevData.stroke === nextData.stroke;
+    const customDataEqual = prevData.customData === nextData.customData;
+    return sizeEqual && colorEqual && fillEqual && strokeEqual && customDataEqual;
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {

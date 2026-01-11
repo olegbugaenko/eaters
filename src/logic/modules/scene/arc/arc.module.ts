@@ -1,21 +1,27 @@
-import { GameModule } from "../../../core/types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import { FILL_TYPES } from "../../../services/scene-object-manager/scene-object-manager.const";
-import type { SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { GameModule } from "@core/logic/types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ArcType, getArcConfig } from "../../../../db/arcs-db";
 import { getNowMs } from "@shared/helpers/time.helper";
-import type { ArcModuleOptions, ArcState } from "./arc.types";
+import type { ArcModuleOptions, ArcState, ArcTargetRef } from "./arc.types";
 
 export class ArcModule implements GameModule {
   public readonly id = "arcs";
 
   private readonly scene: SceneObjectManager;
-  private readonly getUnitPositionIfAlive: (unitId: string) => SceneVector2 | null;
+  private readonly getUnitPositionIfAlive: (
+    unitId: string,
+  ) => SceneVector2 | null;
+  private readonly getEnemyPositionIfAlive?: (
+    enemyId: string,
+  ) => SceneVector2 | null;
   private arcs: ArcState[] = [];
 
   constructor(options: ArcModuleOptions) {
     this.scene = options.scene;
     this.getUnitPositionIfAlive = options.getUnitPositionIfAlive;
+    this.getEnemyPositionIfAlive = options.getEnemyPositionIfAlive;
   }
 
   public initialize(): void {}
@@ -40,8 +46,8 @@ export class ArcModule implements GameModule {
     const realNow = Date.now();
     for (let i = 0; i < this.arcs.length; i += 1) {
       const a = this.arcs[i]!;
-      const from = this.getUnitPositionIfAlive(a.sourceUnitId);
-      const to = this.getUnitPositionIfAlive(a.targetUnitId);
+      const from = this.getArcTargetPosition(a.source);
+      const to = this.getArcTargetPosition(a.target);
       if (!from || !to) {
         this.scene.removeObject(a.id);
         continue;
@@ -56,7 +62,11 @@ export class ArcModule implements GameModule {
           to: { ...to },
         },
       });
-      const elapsed = Math.max(dec, now - a.lastUpdateTimestampMs, realNow - a.lastRealTimestampMs);
+      const elapsed = Math.max(
+        dec,
+        now - a.lastUpdateTimestampMs,
+        realNow - a.lastRealTimestampMs,
+      );
       const next = a.remainingMs - elapsed;
       if (next <= 0) {
         this.scene.removeObject(a.id);
@@ -72,10 +82,26 @@ export class ArcModule implements GameModule {
     this.arcs = survivors;
   }
 
-  public spawnArcBetweenUnits(type: ArcType, sourceUnitId: string, targetUnitId: string): void {
+  public spawnArcBetweenUnits(
+    type: ArcType,
+    sourceUnitId: string,
+    targetUnitId: string,
+  ): void {
+    this.spawnArcBetweenTargets(
+      type,
+      { type: "unit", id: sourceUnitId },
+      { type: "unit", id: targetUnitId },
+    );
+  }
+
+  public spawnArcBetweenTargets(
+    type: ArcType,
+    source: ArcTargetRef,
+    target: ArcTargetRef,
+  ): void {
     const cfg = getArcConfig(type);
-    const from = this.getUnitPositionIfAlive(sourceUnitId);
-    const to = this.getUnitPositionIfAlive(targetUnitId);
+    const from = this.getArcTargetPosition(source);
+    const to = this.getArcTargetPosition(target);
     if (!from || !to) {
       return;
     }
@@ -95,8 +121,8 @@ export class ArcModule implements GameModule {
     this.arcs.push({
       id,
       type,
-      sourceUnitId,
-      targetUnitId,
+      source,
+      target,
       remainingMs: cfg.lifetimeMs,
       lifetimeMs: cfg.lifetimeMs,
       fadeStartMs: cfg.fadeStartMs,
@@ -112,7 +138,10 @@ export class ArcModule implements GameModule {
     const survivors: ArcState[] = [];
     for (let i = 0; i < this.arcs.length; i += 1) {
       const arc = this.arcs[i]!;
-      if (arc.sourceUnitId === unitId || arc.targetUnitId === unitId) {
+      if (
+        (arc.source.type === "unit" && arc.source.id === unitId) ||
+        (arc.target.type === "unit" && arc.target.id === unitId)
+      ) {
         this.scene.removeObject(arc.id);
         continue;
       }
@@ -128,6 +157,13 @@ export class ArcModule implements GameModule {
     this.arcs = [];
   }
 
+  private getArcTargetPosition(target: ArcTargetRef): SceneVector2 | null {
+    if (target.type === "unit") {
+      return this.getUnitPositionIfAlive(target.id);
+    }
+    if (target.type === "enemy") {
+      return this.getEnemyPositionIfAlive?.(target.id) ?? null;
+    }
+    return null;
+  }
 }
-
-

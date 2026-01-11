@@ -1,9 +1,10 @@
-import type { SceneVector2 } from "../../../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { SkillId } from "../../../../../db/skills-db";
 import type { UnitModuleConfig, UnitModuleId } from "../../../../../db/unit-modules-db";
 import type { PlayerUnitAbilityState } from "./AbilityUnitState";
 import type { AbilityVisualService } from "./AbilityVisualService";
 import type { UnitProjectileController } from "../../projectiles/ProjectileController"; 
+import type { StatusEffectsModule } from "../../status-effects/status-effects.module";
 
 export type AbilitySoundId = "heal" | "frenzy" | "fireball" | "tailNeedle";
 
@@ -42,6 +43,7 @@ export interface AbilityRuntimeDependencies {
   readonly damageUnit: (unitId: string, damage: number) => void;
   readonly findNearestBrick: (position: SceneVector2) => string | null;
   readonly projectiles?: UnitProjectileController;
+  readonly statusEffects: StatusEffectsModule;
 }
 
 export interface AbilityCooldownInfo {

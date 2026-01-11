@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { BuildingId } from "../../../../db/buildings-db";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
@@ -33,4 +33,14 @@ export interface BuildingsModuleOptions {
 
 export interface BuildingsSaveData {
   readonly levels?: Partial<Record<BuildingId, number>>;
+}
+
+export interface BuildingsModuleUiApi {
+  tryUpgradeBuilding(id: BuildingId): boolean;
+}
+
+declare module "@core/logic/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    buildings: BuildingsModuleUiApi;
+  }
 }

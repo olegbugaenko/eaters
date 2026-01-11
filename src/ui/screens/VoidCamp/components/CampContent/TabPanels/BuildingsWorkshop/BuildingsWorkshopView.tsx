@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.module";
+import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import { DEFAULT_BUILDINGS_WORKSHOP_STATE } from "@/logic/modules/camp/buildings/buildings.const";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
@@ -10,6 +10,7 @@ import { Button } from "@ui-shared/Button";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { formatNumber } from "@ui-shared/format/number";
 import "../ModulesWorkshop/ModulesWorkshopView.css";
+import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
 
 type BuildingsWorkshopViewProps = {
   state?: BuildingsWorkshopBridgeState;
@@ -58,8 +59,8 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   state = DEFAULT_BUILDINGS_WORKSHOP_STATE,
   resources,
 }) => {
-  const { app } = useAppLogic();
-  const workshop = useMemo(() => app.services.buildings, [app]);
+  const { uiApi } = useAppLogic();
+  const workshop = uiApi.buildings as BuildingsModuleUiApi;
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {

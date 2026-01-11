@@ -1,20 +1,19 @@
-import { DataBridge } from "../../../core/DataBridge";
-import { GameModule } from "../../../core/types";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
+import { GameModule } from "@core/logic/types";
 import {
   SceneVector2,
   SceneFill,
   SceneColor,
   SceneStroke,
-} from "../../../services/scene-object-manager/scene-object-manager.types";
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
-import { MovementService, MovementBodyState } from "../../../services/movement/MovementService";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { MovementService, MovementBodyState } from "@core/logic/provided/services/movement/MovementService";
 import {
-  VisualEffectState,
-  createVisualEffectState,
-  setVisualEffectFillOverlay,
   computeVisualEffectFillColor,
   computeVisualEffectStrokeColor,
+  setVisualEffectFillOverlay,
+  setVisualEffectStrokeOverlay,
 } from "../../../visuals/VisualEffectState";
 import {
   PlayerUnitType,
@@ -47,7 +46,8 @@ import {
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import { BricksModule } from "../bricks/bricks.module";
 import type { BrickRuntimeState } from "../bricks/bricks.types";
-import { BonusValueMap, BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { UnitDesignId } from "../../camp/unit-design/unit-design.types";
 import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
 import { ArcModule } from "../../scene/arc/arc.module";
@@ -56,25 +56,24 @@ import { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { FireballModule } from "../../scene/fireball/fireball.module";
 import { MapRunState } from "../map/MapRunState";
 import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
-import {
-  AbilitySoundPlayer,
-  PlayerUnitAbilities,
-  PheromoneAttackBonusState,
-} from "./PlayerUnitAbilities";
+import { AbilitySoundPlayer, PlayerUnitAbilities } from "./PlayerUnitAbilities";
 import { AbilityVisualService } from "./abilities/AbilityVisualService";
 import { UnitFactory, UnitCreationData } from "./units/UnitFactory";
 import { UnitProjectileController } from "../projectiles/ProjectileController";
 import { UnitRuntimeController } from "./units/UnitRuntimeController";
 import { UnitStatisticsReporter } from "./units/UnitStatisticsReporter";
 import type { PlayerUnitState } from "./units/UnitTypes";
+import { TargetingService } from "../targeting/TargetingService";
+import { isTargetOfType } from "../targeting/targeting.types";
+import { BricksTargetingProvider } from "../targeting/BricksTargetingProvider";
+import { PlayerUnitsTargetingProvider } from "./PlayerUnitsTargetingProvider";
+import type { DamageService } from "../targeting/DamageService";
+import type { EnemiesModule } from "../enemies/enemies.module";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
   CRITICAL_HIT_EXPLOSION_RADIUS,
-  INTERNAL_FURNACE_EFFECT_ID,
-  INTERNAL_FURNACE_TINT_COLOR,
-  INTERNAL_FURNACE_MAX_INTENSITY,
-  INTERNAL_FURNACE_EFFECT_PRIORITY,
   PHEROMONE_TIMER_CAP_SECONDS,
   TARGETING_RADIUS_STEP,
   IDLE_WANDER_RADIUS,
@@ -106,6 +105,10 @@ export class PlayerUnitsModule implements GameModule {
   private readonly movement: MovementService;
   private readonly bonuses: BonusesModule;
   private readonly explosions: ExplosionModule;
+  private readonly targeting: TargetingService;
+  private readonly damage?: DamageService;
+  private readonly enemies?: EnemiesModule;
+  private readonly statusEffects: StatusEffectsModule;
   private readonly arcs?: ArcModule;
   private readonly effects?: EffectsModule;
   private readonly fireballs?: FireballModule;
@@ -138,6 +141,13 @@ export class PlayerUnitsModule implements GameModule {
     this.movement = options.movement;
     this.bonuses = options.bonuses;
     this.explosions = options.explosions;
+    this.statusEffects = options.statusEffects;
+    const targeting = options.targeting ?? new TargetingService();
+    if (!options.targeting) {
+      targeting.registerProvider(new BricksTargetingProvider(this.bricks));
+    }
+    targeting.registerProvider(new PlayerUnitsTargetingProvider(this));
+    this.targeting = targeting;
     this.arcs = options.arcs;
     this.effects = options.effects;
     this.fireballs = options.fireballs;
@@ -155,16 +165,21 @@ export class PlayerUnitsModule implements GameModule {
       getArcs: () => this.arcs,
       getEffects: () => this.effects,
       getFireballs: () => this.fireballs,
+      getUnitObjectId: (unitId: string) => {
+        const unit = this.units.get(unitId);
+        return unit?.objectId;
+      },
     });
 
     this.abilities = new PlayerUnitAbilities({
       sceneService: abilitySceneService,
+      statusEffects: this.statusEffects,
       logEvent: (message: string) => this.logPheromoneEvent(message),
       formatUnitLabel: (unit) => this.formatUnitLogLabel(unit),
       getUnits: () => this.unitOrder,
       getUnitById: (id: string) => this.units.get(id),
       getBrickPosition: (brickId: string) => {
-        const brick = this.bricks.getBrickState(brickId);
+        const brick = this.getBrickTarget(brickId);
         return brick?.position || null;
       },
       damageBrick: (brickId: string, damage: number) => {
@@ -177,22 +192,13 @@ export class PlayerUnitsModule implements GameModule {
         }
       },
       getBricksInRadius: (position: SceneVector2, radius: number) => {
-        const nearbyBricks = this.bricks.findBricksNear(position, radius);
-        return nearbyBricks.map((brick: BrickRuntimeState) => brick.id);
+        return this.getBrickIdsInRadius(position, radius);
       },
       damageUnit: (unitId: string, damage: number) => {
-        const unit = this.units.get(unitId);
-        if (unit) {
-          const previousHp = unit.hp;
-          unit.hp = Math.max(unit.hp - damage, 0);
-          const taken = Math.max(0, previousHp - unit.hp);
-          if (taken > 0) {
-            this.statistics?.recordDamageTaken(taken);
-          }
-        }
+        this.applyDamage(unitId, damage);
       },
       findNearestBrick: (position: SceneVector2) => {
-        const brick = this.bricks.findNearestBrick(position);
+        const brick = this.findNearestBrickTarget(position);
         return brick?.id || null;
       },
       audio: options.audio,
@@ -209,24 +215,61 @@ export class PlayerUnitsModule implements GameModule {
       getDesignTargetingMode: this.getDesignTargetingMode,
     });
 
+    this.damage = options.damage;
+    this.enemies = options.enemies;
+
     this.runtimeController = new UnitRuntimeController({
       scene: this.scene,
       movement: this.movement,
       bricks: this.bricks,
+      targeting: this.targeting,
       abilities: this.abilities,
       statistics: this.statistics,
       explosions: this.explosions,
       projectiles: this.projectiles,
+      damage: this.damage,
+      enemies: this.enemies,
+      statusEffects: this.statusEffects,
       getDesignTargetingMode: this.getDesignTargetingMode,
       syncUnitTargetingMode: (unit) => this.syncUnitTargetingMode(unit),
       removeUnit: (unit) => this.removeUnit(unit),
       updateSceneState: (unit, options) => this.pushUnitSceneState(unit, options),
-      updateInternalFurnaceEffect: (unit) => this.updateInternalFurnaceEffect(unit),
     });
 
     this.unitStateFactory = new UnitStateFactory({
-      updateInternalFurnaceEffect: (unit) => this.updateInternalFurnaceEffect(unit),
       pushUnitSceneState: (unit, options) => this.pushUnitSceneState(unit, options),
+    });
+
+    this.statusEffects.registerUnitAdapter({
+      hasUnit: (unitId) => this.units.has(unitId),
+      applyOverlay: (unitId, effectId, target, overlay) => {
+        const unit = this.units.get(unitId);
+        if (!unit) {
+          console.warn('[PlayerUnitsModule applyOverlay] Unit not found:', unitId);
+          return;
+        }
+        const changed =
+          target === "stroke"
+            ? setVisualEffectStrokeOverlay(unit.visualEffects, effectId, overlay)
+            : setVisualEffectFillOverlay(unit.visualEffects, effectId, overlay);
+        if (changed) {
+          unit.visualEffectsDirty = true;
+          // Оновлюємо сцену одразу після зміни візуальних ефектів
+          this.pushUnitSceneState(unit);
+        }
+      },
+      applyAura: (unitId, effectId) => {
+        const unit = this.units.get(unitId);
+        if (unit) {
+          this.effects?.applyEffect(unitId, unit.objectId, effectId as never);
+        }
+      },
+      removeAura: (unitId, effectId) => {
+        this.effects?.removeEffect(unitId, effectId as never);
+      },
+      damageUnit: (unitId, amount) => {
+        this.applyDamage(unitId, amount);
+      },
     });
   }
 
@@ -462,7 +505,13 @@ export class PlayerUnitsModule implements GameModule {
       getAbilityCooldownSeconds: () => this.abilities.getAbilityCooldownSeconds(),
     };
 
-    return this.unitStateFactory.createWithTransform(input);
+    const state = this.unitStateFactory.createWithTransform(input);
+    this.statusEffects.ensureInternalFurnace(
+      state.id,
+      state.attackStackBonusPerHit,
+      state.attackStackBonusCap,
+    );
+    return state;
   }
 
   private syncUnitTargetingMode(unit: PlayerUnitState): UnitTargetingMode {
@@ -500,6 +549,7 @@ export class PlayerUnitsModule implements GameModule {
         unit.baseFillColor,
         unit.visualEffects
       );
+
       if (!sceneColorsEqual(nextFillColor, unit.appliedFillColor)) {
         const sanitized = cloneSceneColor(nextFillColor);
         unit.appliedFillColor = sanitized;
@@ -510,7 +560,7 @@ export class PlayerUnitsModule implements GameModule {
       }
     }
 
-    if (shouldUpdateStroke && unit.renderer.stroke && unit.baseStrokeColor) {
+    if (shouldUpdateStroke && unit.baseStrokeColor) {
       const nextStrokeColor = computeVisualEffectStrokeColor(
         unit.baseStrokeColor,
         unit.visualEffects
@@ -523,7 +573,7 @@ export class PlayerUnitsModule implements GameModule {
         unit.appliedStrokeColor = sanitizedStroke;
         strokeUpdate = {
           color: cloneSceneColor(sanitizedStroke),
-          width: unit.renderer.stroke.width,
+          width: unit.renderer.stroke?.width ?? 1,
         };
       }
     }
@@ -540,42 +590,126 @@ export class PlayerUnitsModule implements GameModule {
     });
   }
 
-  private updateInternalFurnaceEffect(unit: PlayerUnitState): void {
-    const hasStacks =
-      unit.attackStackBonusPerHit > 0 && unit.attackStackBonusCap > 0 && unit.hp > 0;
-    const cap = Math.max(unit.attackStackBonusCap, 1e-6);
-    const ratio = hasStacks
-      ? clampNumber(unit.currentAttackStackBonus / cap, 0, 1)
-      : 0;
-    let intensity = 0;
-    if (ratio > 0) {
-      const normalized = Math.sqrt(ratio);
-      intensity = Math.min(
-        normalized * INTERNAL_FURNACE_MAX_INTENSITY,
-        INTERNAL_FURNACE_MAX_INTENSITY
-      );
-    }
-    const overlayChanged = setVisualEffectFillOverlay(
-      unit.visualEffects,
-      INTERNAL_FURNACE_EFFECT_ID,
-      intensity > 0
-        ? {
-            color: INTERNAL_FURNACE_TINT_COLOR,
-            intensity,
-            priority: INTERNAL_FURNACE_EFFECT_PRIORITY,
-          }
-        : null
-    );
-    if (overlayChanged) {
-      unit.visualEffectsDirty = true;
-    }
-  }
-
   private spawnCriticalHitEffect(position: SceneVector2): void {
     this.explosions.spawnExplosionByType("criticalHit", {
       position: { ...position },
       initialRadius: CRITICAL_HIT_EXPLOSION_RADIUS,
     });
+  }
+
+  public getUnitState(unitId: string): PlayerUnitState | null {
+    const unit = this.units.get(unitId);
+    return unit ? this.cloneUnit(unit) : null;
+  }
+
+  public findNearestUnit(position: SceneVector2): PlayerUnitState | null {
+    let best: PlayerUnitState | null = null;
+    let bestDistanceSq = Number.POSITIVE_INFINITY;
+    this.unitOrder.forEach((unit) => {
+      const dx = unit.position.x - position.x;
+      const dy = unit.position.y - position.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq < bestDistanceSq) {
+        best = unit;
+        bestDistanceSq = distanceSq;
+      }
+    });
+    return best ? this.cloneUnit(best) : null;
+  }
+
+  public findUnitsNear(position: SceneVector2, radius: number): PlayerUnitState[] {
+    if (radius < 0) {
+      return [];
+    }
+    const radiusSq = radius * radius;
+    const found: PlayerUnitState[] = [];
+    this.unitOrder.forEach((unit) => {
+      const dx = unit.position.x - position.x;
+      const dy = unit.position.y - position.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq <= radiusSq) {
+        found.push(this.cloneUnit(unit));
+      }
+    });
+    return found;
+  }
+
+  public forEachUnitNear(
+    position: SceneVector2,
+    radius: number,
+    visitor: (unit: PlayerUnitState) => void,
+  ): void {
+    if (radius < 0) {
+      return;
+    }
+    const radiusSq = radius * radius;
+    this.unitOrder.forEach((unit) => {
+      const dx = unit.position.x - position.x;
+      const dy = unit.position.y - position.y;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq <= radiusSq) {
+        visitor(this.cloneUnit(unit));
+      }
+    });
+  }
+
+  public applyDamage(
+    unitId: string,
+    damage: number,
+    options?: { 
+      armorPenetration?: number;
+      knockBackDistance?: number;
+      knockBackSpeed?: number;
+      knockBackDirection?: SceneVector2;
+    },
+  ): number {
+    if (damage <= 0) {
+      return 0;
+    }
+    const unit = this.units.get(unitId);
+    if (!unit) {
+      return 0;
+    }
+    const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
+    const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unitId });
+    const effectiveArmor = Math.max(unit.armor + armorDelta - armorPenetration, 0);
+    const inflicted = Math.max(damage - effectiveArmor, 0);
+    if (inflicted <= 0) {
+      return 0;
+    }
+    const previousHp = unit.hp;
+    unit.hp = Math.max(unit.hp - inflicted, 0);
+    if (previousHp !== unit.hp) {
+      this.statistics?.recordDamageTaken(previousHp - unit.hp);
+      this.statusEffects.handleTargetHit({ type: "unit", id: unitId });
+      
+      // Apply knockback from enemy attack if configured
+      if (options?.knockBackDirection && (options.knockBackDistance ?? 0) > 0) {
+        this.applyEnemyKnockBack(unit, options.knockBackDirection, options.knockBackDistance ?? 0, options.knockBackSpeed ?? 0);
+      }
+    }
+    return previousHp - unit.hp;
+  }
+
+  private findNearestBrickTarget(position: SceneVector2): BrickRuntimeState | null {
+    const target = this.targeting.findNearestTarget(position, { types: ["brick"] });
+    if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      return target.data ?? this.bricks.getBrickState(target.id);
+    }
+    return null;
+  }
+
+  private getBrickTarget(brickId: string): BrickRuntimeState | null {
+    const target = this.targeting.getTargetById(brickId, { types: ["brick"] });
+    if (target && isTargetOfType<"brick", BrickRuntimeState>(target, "brick")) {
+      return target.data ?? this.bricks.getBrickState(target.id);
+    }
+    return null;
+  }
+
+  private getBrickIdsInRadius(position: SceneVector2, radius: number): string[] {
+    const targets = this.targeting.findTargetsNear(position, radius, { types: ["brick"] });
+    return targets.map((target) => target.id);
   }
 
   private applyKnockBack(
@@ -584,8 +718,8 @@ export class PlayerUnitsModule implements GameModule {
     distance: number,
     brick: BrickRuntimeState
   ): void {
-    const knockBackDistance = Math.max(brick.brickKnockBackDistance ?? 0, 0);
-    const knockBackSpeedRaw = brick.brickKnockBackSpeed ?? 0;
+    const knockBackDistance = Math.max(brick.knockBackDistance ?? 0, 0);
+    const knockBackSpeedRaw = brick.knockBackSpeed ?? 0;
     if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
       return;
     }
@@ -606,15 +740,83 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
 
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
     const reduction = Math.max(unit.knockBackReduction, 1);
-    const knockbackVelocity = scaleVector(axis, -knockBackSpeed / reduction);
-    this.movement.applyKnockback(unit.movementId, knockbackVelocity, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
+  }
+
+  private applyEnemyKnockBack(
+    unit: PlayerUnitState,
+    direction: SceneVector2,
+    knockBackDistance: number,
+    knockBackSpeedRaw: number
+  ): void {
+    if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
+      return;
+    }
+
+    let axis = direction;
+    const distance = vectorLength(direction);
+    if (distance > 0) {
+      axis = scaleVector(direction, 1 / distance);
+    } else if (!vectorHasLength(axis)) {
+      axis = { x: Math.cos(unit.rotation), y: Math.sin(unit.rotation) };
+    }
+
+    if (!vectorHasLength(axis)) {
+      axis = { x: 0, y: -1 };
+    }
+
+    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    if (knockBackSpeed <= 0) {
+      return;
+    }
+
+    const speedMultiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    const effectiveSpeedMultiplier = Math.max(speedMultiplier, 0);
+    const effectiveKnockBackSpeed = Math.max(knockBackSpeed * effectiveSpeedMultiplier, 0);
+    if (effectiveKnockBackSpeed <= 0) {
+      return;
+    }
+
+    const minMultiplier = 0.1;
+    const duration = 1 / Math.max(effectiveSpeedMultiplier, minMultiplier);
+    const reduction = Math.max(unit.knockBackReduction, 1);
+    const knockbackVelocity = scaleVector(axis, -effectiveKnockBackSpeed / reduction);
+    this.movement.applyKnockback(unit.movementId, knockbackVelocity, duration);
+  }
+
+  private cloneUnit(unit: PlayerUnitState): PlayerUnitState {
+    return {
+      ...unit,
+      position: { ...unit.position },
+      spawnPosition: { ...unit.spawnPosition },
+      preCollisionVelocity: { ...unit.preCollisionVelocity },
+      lastNonZeroVelocity: { ...unit.lastNonZeroVelocity },
+      wanderTarget: unit.wanderTarget ? { ...unit.wanderTarget } : null,
+    };
   }
 
   private removeUnit(unit: PlayerUnitState): void {
     if (unit.hp <= 0) {
       this.statistics?.recordCreatureDeath();
     }
+    this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     this.scene.removeObject(unit.objectId);
     this.movement.removeBody(unit.movementId);
     this.units.delete(unit.id);
@@ -629,6 +831,7 @@ export class PlayerUnitsModule implements GameModule {
     this.abilities.clearArcEffects();
     this.effects?.clearAllEffects();
     this.unitOrder.forEach((unit) => {
+      this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
       this.scene.removeObject(unit.objectId);
       this.movement.removeBody(unit.movementId);
       this.arcs?.clearArcsForUnit(unit.id);

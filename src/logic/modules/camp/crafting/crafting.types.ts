@@ -1,4 +1,4 @@
-import type { DataBridge } from "../../../core/DataBridge";
+import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { CraftingRecipeId } from "../../../../db/crafting-recipes-db";
 import type { ResourceId } from "../../../../db/resources-db";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
@@ -46,4 +46,16 @@ export interface CraftingRecipeSaveState {
 
 export interface CraftingModuleSaveData {
   readonly recipes?: Partial<Record<CraftingRecipeId, CraftingRecipeSaveState>>;
+}
+
+export interface CraftingModuleUiApi {
+  setRecipeQueue(id: CraftingRecipeId, value: number): void;
+  adjustRecipeQueue(id: CraftingRecipeId, delta: number): void;
+  setRecipeQueueToMax(id: CraftingRecipeId): void;
+}
+
+declare module "@core/logic/ui/ui-api.registry" {
+  interface LogicUiApiRegistry {
+    crafting: CraftingModuleUiApi;
+  }
 }

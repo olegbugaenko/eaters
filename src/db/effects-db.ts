@@ -2,19 +2,21 @@ import type {
   SceneColor,
   SceneFill,
   SceneSolidFill,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "@/logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
 import type { BaseRendererLayerConfig, BaseRendererLayerFields, RendererCompositeConfig } from "@shared/types/renderer.types";
 
 export type VisualEffectId = "frenzyAura";
+
+export type VisualEffectOverlayTarget = "fill" | "stroke";
 
 export interface VisualEffectOverlayConfig {
   readonly color: SceneColor;
   readonly intensity: number; // 0..1
   readonly blendMode?: "tint" | "add";
   readonly priority?: number;
-  readonly target?: "fill" | "stroke";
+  readonly target?: VisualEffectOverlayTarget | readonly VisualEffectOverlayTarget[];
 }
 
 export type AuraRendererLayer = BaseRendererLayerConfig<BaseRendererLayerFields>;

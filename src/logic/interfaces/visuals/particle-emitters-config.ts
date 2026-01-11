@@ -1,4 +1,4 @@
-import type { SceneColor, SceneFill, SceneVector2 } from "../../services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor, SceneFill, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterShape } from "../../services/particles/ParticleEmitterShared";
 
 /**
@@ -47,6 +47,12 @@ export interface ParticleEmitterConfig {
   spawnRadiusMultiplier?: number;
   arc?: number; // Arc angle in radians
   direction?: number; // Direction angle in radians
+  /**
+   * If true, particles move radially outward from the explosion center.
+   * Direction is calculated from origin to spawn position.
+   * If false, uses the configured direction/arc as normal.
+   */
+  radialVelocity?: boolean;
 
   // Spell-specific properties (optional)
   spawnJitter?: { radial?: number; angular?: number };

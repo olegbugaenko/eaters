@@ -5,14 +5,17 @@ import {
   UnitDesignerBridgeState,
   UnitDesignerUnitState,
 } from "@logic/modules/camp/unit-design/unit-design.types";
+import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 import { Button } from "@ui-shared/Button";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import "./UnitRosterView.css";
+import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 
 interface UnitRosterViewProps {
   state: UnitDesignerBridgeState;
   automation: UnitAutomationBridgeState;
+  hasEnemyStrategies: boolean;
 }
 
 const buildUnitMap = (
@@ -25,7 +28,7 @@ const buildUnitMap = (
   return map;
 };
 
-const TARGETING_OPTIONS: ReadonlyArray<{
+const BASE_TARGETING_OPTIONS: ReadonlyArray<{
   mode: UnitTargetingMode;
   label: string;
   description: string;
@@ -33,7 +36,17 @@ const TARGETING_OPTIONS: ReadonlyArray<{
   {
     mode: "nearest",
     label: "Nearest target",
-    description: "Engage the closest brick within reach.",
+    description: "Engage the closest target within reach.",
+  },
+  {
+    mode: "firstBrick",
+    label: "Brick first",
+    description: "Prioritise the nearest brick before enemies.",
+  },
+  {
+    mode: "firstEnemy",
+    label: "Enemy first",
+    description: "Prioritise the nearest enemy before bricks.",
   },
   {
     mode: "highestHp",
@@ -62,23 +75,38 @@ const TARGETING_OPTIONS: ReadonlyArray<{
   },
 ];
 
-const DEFAULT_TARGETING_MODE: UnitTargetingMode = TARGETING_OPTIONS[0]!.mode;
+const DEFAULT_TARGETING_MODE: UnitTargetingMode = "nearest";
 
-export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automation }) => {
-  const { app } = useAppLogic();
-  const designer = useMemo(() => app.services.unitDesign, [app]);
-  const automationModule = useMemo(() => app.services.unitAutomation, [app]);
+const buildTargetingOptions = (hasEnemyStrategies: boolean) =>
+  hasEnemyStrategies
+    ? BASE_TARGETING_OPTIONS
+    : BASE_TARGETING_OPTIONS.filter(
+        (option) => option.mode !== "firstBrick" && option.mode !== "firstEnemy"
+      );
+
+export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
+  state,
+  automation,
+  hasEnemyStrategies,
+}) => {
+  const { uiApi } = useAppLogic();
+  const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
+  const automationModule = uiApi.unitAutomation as UnitAutomationModuleUiApi;
 
   const roster = state.activeRoster;
   const maxSlots = state.maxActiveUnits;
   const targetingByUnit = state.targetingByUnit ?? {};
+  const targetingOptions = useMemo(
+    () => buildTargetingOptions(hasEnemyStrategies),
+    [hasEnemyStrategies]
+  );
   const targetingLookup = useMemo(() => {
-    const map = new Map<UnitTargetingMode, (typeof TARGETING_OPTIONS)[number]>();
-    TARGETING_OPTIONS.forEach((option) => {
+    const map = new Map<UnitTargetingMode, (typeof BASE_TARGETING_OPTIONS)[number]>();
+    targetingOptions.forEach((option) => {
       map.set(option.mode, option);
     });
     return map;
-  }, []);
+  }, [targetingOptions]);
 
   const unitsById = useMemo(() => buildUnitMap(state.units), [state.units]);
   const rosterUnits = useMemo(
@@ -216,7 +244,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
     () => (editingStrategyDesignId ? unitsById.get(editingStrategyDesignId) ?? null : null),
     [editingStrategyDesignId, unitsById]
   );
-  const draftOption = targetingLookup.get(draftMode) ?? TARGETING_OPTIONS[0]!;
+  const draftOption = targetingLookup.get(draftMode) ?? targetingOptions[0]!;
 
   return (
     <div className="unit-roster stack-lg">
@@ -242,7 +270,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
             {Array.from({ length: maxSlots }).map((_, index) => {
               const unit = rosterUnits[index] ?? null;
               const currentMode = unit ? resolveTargetingMode(unit.id) : DEFAULT_TARGETING_MODE;
-              const currentOption = targetingLookup.get(currentMode) ?? TARGETING_OPTIONS[0]!;
+              const currentOption = targetingLookup.get(currentMode) ?? targetingOptions[0]!;
               return (
                 <li
                   key={`roster-slot-${index}`}
@@ -453,7 +481,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({ state, automatio
               </p>
             </div>
             <div className="unit-roster__strategy-options">
-              {TARGETING_OPTIONS.map((option) => {
+              {targetingOptions.map((option) => {
                 const active = draftMode === option.mode;
                 return (
                   <label

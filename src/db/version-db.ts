@@ -6,6 +6,16 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.0",
+    releaseDate: "2026-01-11",
+    changes: [
+      "Added new maps",
+      "Added new type of targets and enemies",
+      "Added brick damage visualisation",
+      "Few bugfixes and performance improvements",
+    ],
+  },
+  {
     displayName: "v0.0.5c",
     releaseDate: "2026-01-05",
     changes: [

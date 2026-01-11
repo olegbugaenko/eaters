@@ -3,8 +3,8 @@ import {
   SceneFill,
   SceneSolidFill,
   SceneVector2,
-} from "../logic/services/scene-object-manager/scene-object-manager.types";
-import { FILL_TYPES } from "../logic/services/scene-object-manager/scene-object-manager.const";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle-emitters-config";
 import { ResourceCost } from "@shared/types/resources";
 import type { UnitModuleId } from "./unit-modules-db";
@@ -118,6 +118,10 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     renderer: {
       kind: "composite",
       fill: { r: 0.4, g: 0.8, b: 0.95, a: 1 },
+      stroke: {
+        color: { r: 0.55, g: 0.8, b: 0.95, a: 0.2 },
+        width: 1.8,
+      },
       layers: [
         {
           shape: "circle",
@@ -187,9 +191,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             },
           },
           stroke: { 
-            type: "solid", 
-            width: 1.8, 
-            color: { r: 0.55, g: 0.8, b: 0.95, a: 0.2 } 
+            type: "base", 
+            width: 1.8,
           },
           anim: { type: "sway", periodMs: 1500, amplitudePercentage: 0.13, falloff: "tip", axis: "movement-tangent", phase: 0 }
         },
@@ -551,8 +554,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     baseAttackDamage: 1.25,
     baseAttackInterval: 0.6,
     baseAttackDistance: 5,
-    moveSpeed: 180,
-    moveAcceleration: 180,
+    moveSpeed: 100,
+    moveAcceleration: 100,
     mass: 0.6,
     physicalSize: 12,
     baseCritChance: 0,
@@ -566,7 +569,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       sizeRange: { min: 14.2, max: 28.4 },
       sizeEvolutionMult: 1.75, // Particles grow from 1x to 1.25x size over lifetime
       spread: Math.PI / 5.5,
-      offset: { x: -0.35, y: 0 },
+      offset: { x: -0.75, y: 0 },
       color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },
       fill: {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
@@ -583,7 +586,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         },
       },
       shape: "circle",
-      maxParticles: 60,
+      maxParticles: 100,
     },
     cost: {
       mana: 5,

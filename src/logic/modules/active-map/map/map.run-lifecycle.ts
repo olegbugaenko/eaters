@@ -1,11 +1,15 @@
-import { SceneObjectManager } from "../../../services/scene-object-manager/SceneObjectManager";
-import type { SceneSize, SceneVector2 } from "../../../services/scene-object-manager/scene-object-manager.types";
+import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { MapRunState } from "./MapRunState";
 import { MapVisualEffects } from "./map.visual-effects";
 import { BricksModule } from "../bricks/bricks.module";
 import type { BrickData } from "../bricks/bricks.types";
 import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
+import { EnemiesModule } from "../enemies/enemies.module";
+import { EnemySpawnController } from "../enemies/enemies.spawn-controller";
+import type { MapEnemySpawnPointConfig } from "../../../../db/maps-db";
+import type { EnemySpawnData } from "../enemies/enemies.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { ResourceRunController } from "./map.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
@@ -15,6 +19,7 @@ interface MapRunLifecycleOptions {
   runState: MapRunState;
   resources: ResourceRunController;
   playerUnits: PlayerUnitsModule;
+  enemies: EnemiesModule;
   bricks: BricksModule;
   unitsAutomation: UnitAutomationModule;
   arcs: ArcModule;
@@ -29,21 +34,30 @@ interface StartRunPayload {
   bricks: BrickData[];
   spawnUnits: PlayerUnitSpawnData[];
   spawnPoints: SceneVector2[];
+  enemySpawnPoints: readonly MapEnemySpawnPointConfig[];
+  staticEnemies: EnemySpawnData[];
   generateBricks: boolean;
   generateUnits: boolean;
+  generateEnemies: boolean;
 }
 
 export class MapRunLifecycle {
   private activeMapLevel = 0;
   private runActive = false;
+  private readonly enemySpawnController: EnemySpawnController;
+  private enemySpawnPoints: readonly MapEnemySpawnPointConfig[] = [];
 
-  constructor(private readonly options: MapRunLifecycleOptions) {}
+  constructor(private readonly options: MapRunLifecycleOptions) {
+    this.enemySpawnController = new EnemySpawnController();
+  }
 
   public reset(): void {
     this.options.runState.reset();
     this.runActive = false;
     this.activeMapLevel = 0;
     this.options.visuals.reset();
+    this.enemySpawnController.reset();
+    this.enemySpawnPoints = [];
   }
 
   public isRunActive(): boolean {
@@ -75,6 +89,9 @@ export class MapRunLifecycle {
     this.options.playerUnits.prepareForMap();
     this.options.bricks.setBricks(payload.generateBricks ? payload.bricks : []);
     this.options.playerUnits.setUnits(payload.generateUnits ? payload.spawnUnits : []);
+    this.options.enemies.setEnemies(payload.generateEnemies ? payload.staticEnemies : []); // Set static enemies
+    this.enemySpawnPoints = payload.enemySpawnPoints;
+    this.enemySpawnController.reset();
     this.options.necromancer.configureForMap({
       spawnPoints: payload.spawnPoints,
     });
@@ -95,6 +112,9 @@ export class MapRunLifecycle {
     this.options.visuals.reset();
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
+    this.options.enemies.setEnemies([]);
+    this.enemySpawnController.reset();
+    this.enemySpawnPoints = [];
     this.options.unitsAutomation.onMapEnd();
     this.options.arcs.clearArcs();
     this.options.necromancer.endCurrentMap();
@@ -108,8 +128,16 @@ export class MapRunLifecycle {
     this.options.necromancer.pauseMap();
   }
 
-  public tick(): void {
+  public tick(deltaMs: number): void {
     this.options.visuals.tick();
+    if (this.runActive && this.enemySpawnPoints.length > 0) {
+      this.enemySpawnController.tick(
+        deltaMs,
+        this.enemySpawnPoints,
+        this.options.enemies,
+        this.activeMapLevel
+      );
+    }
   }
 }
 

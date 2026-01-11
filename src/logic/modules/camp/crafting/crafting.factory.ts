@@ -1,4 +1,4 @@
-import { ServiceDefinition } from "../../../core/loader/types";
+import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { CraftingModule } from "./crafting.module";
 
 export const createCraftingDefinition = (): ServiceDefinition<CraftingModule, "crafting"> => ({
@@ -11,4 +11,5 @@ export const createCraftingDefinition = (): ServiceDefinition<CraftingModule, "c
       bonuses: container.get("bonuses"),
     }),
   registerAsModule: true,
+  dependsOn: ["resources", "unlocks", "bonuses"],
 });

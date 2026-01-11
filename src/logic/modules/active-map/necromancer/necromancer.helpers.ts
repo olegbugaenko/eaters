@@ -1,6 +1,6 @@
 import { computePlayerUnitBlueprint } from "../player-units/player-units.blueprint";
 import type { PlayerUnitType } from "../../../../db/player-units-db";
-import type { BonusValueMap } from "../../shared/bonuses/bonuses.module";
+import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import type { PlayerUnitBlueprintStats, PlayerUnitRuntimeModifiers } from "@shared/types/player-units";
 
 /**

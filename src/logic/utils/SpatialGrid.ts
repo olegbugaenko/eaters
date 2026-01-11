@@ -1,4 +1,4 @@
-import { SceneVector2 } from "../services/scene-object-manager/scene-object-manager.types";
+import { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { cloneVector } from "@shared/helpers/vector.helper";
 
 interface SpatialGridItem<T> {
@@ -6,7 +6,7 @@ interface SpatialGridItem<T> {
   readonly position: SceneVector2;
   readonly radius: number;
   readonly payload: T;
-  readonly cells: readonly string[];
+  readonly cells: readonly number[]; // Числові ключі
 }
 
 interface CellRange {
@@ -23,10 +23,20 @@ const clampRadius = (radius: number): number => {
   return radius;
 };
 
+// Числовий ключ для клітинки - набагато швидше ніж строки
+const packCellKey = (x: number, y: number): number => {
+  // Зсуваємо координати щоб підтримувати негативні значення
+  // Використовуємо 16-bit для кожної координати (-32768 до 32767)
+  const sx = (x + 32768) & 0xFFFF;
+  const sy = (y + 32768) & 0xFFFF;
+  return (sx << 16) | sy;
+};
+
 export class SpatialGrid<T> {
   private readonly cellSize: number;
   private items = new Map<string, SpatialGridItem<T>>();
-  private cells = new Map<string, Set<string>>();
+  private cells = new Map<number, Set<string>>();
+  private readonly visitedSet = new Set<string>(); // Переиспользовуваний Set
 
   constructor(cellSize: number) {
     this.cellSize = Math.max(cellSize, 1);
@@ -58,16 +68,18 @@ export class SpatialGrid<T> {
       return;
     }
 
-    existing.cells.forEach((cellKey) => {
+    const cells = existing.cells;
+    for (let i = 0; i < cells.length; i++) {
+      const cellKey = cells[i]!;
       const cell = this.cells.get(cellKey);
       if (!cell) {
-        return;
+        continue;
       }
       cell.delete(id);
       if (cell.size === 0) {
         this.cells.delete(cellKey);
       }
-    });
+    }
 
     this.items.delete(id);
   }
@@ -79,38 +91,39 @@ export class SpatialGrid<T> {
     }
 
     const range = this.computeCellRange(position, safeRadius);
-    const resultIds = new Set<string>();
+    const visited = this.visitedSet;
+    visited.clear();
+
+    const result: T[] = [];
+    const radiusSq = safeRadius * safeRadius;
 
     for (let cellY = range.minY; cellY <= range.maxY; cellY += 1) {
       for (let cellX = range.minX; cellX <= range.maxX; cellX += 1) {
-        const cell = this.cells.get(this.getCellKey(cellX, cellY));
+        const cell = this.cells.get(packCellKey(cellX, cellY));
         if (!cell) {
           continue;
         }
-        cell.forEach((id) => resultIds.add(id));
+        for (const id of cell) {
+          if (visited.has(id)) {
+            continue;
+          }
+          visited.add(id);
+          const item = this.items.get(id);
+          if (!item) {
+            continue;
+          }
+          const dx = item.position.x - position.x;
+          const dy = item.position.y - position.y;
+          const combinedRadius = item.radius + safeRadius;
+          if (combinedRadius <= 0) {
+            continue;
+          }
+          if (dx * dx + dy * dy <= combinedRadius * combinedRadius + 1e-4) {
+            result.push(item.payload);
+          }
+        }
       }
     }
-
-    if (resultIds.size === 0) {
-      return [];
-    }
-
-    const result: T[] = [];
-    resultIds.forEach((id) => {
-      const item = this.items.get(id);
-      if (!item) {
-        return;
-      }
-      const dx = item.position.x - position.x;
-      const dy = item.position.y - position.y;
-      const combinedRadius = item.radius + safeRadius;
-      if (combinedRadius <= 0) {
-        return;
-      }
-      if (dx * dx + dy * dy <= combinedRadius * combinedRadius + 1e-4) {
-        result.push(item.payload);
-      }
-    });
 
     return result;
   }
@@ -126,35 +139,57 @@ export class SpatialGrid<T> {
     }
 
     const range = this.computeCellRange(position, safeRadius);
-    const visited = new Set<string>();
+    const visited = this.visitedSet;
+    visited.clear();
 
     for (let cellY = range.minY; cellY <= range.maxY; cellY += 1) {
       for (let cellX = range.minX; cellX <= range.maxX; cellX += 1) {
-        const cell = this.cells.get(this.getCellKey(cellX, cellY));
+        const cell = this.cells.get(packCellKey(cellX, cellY));
         if (!cell) {
           continue;
         }
-        cell.forEach((id) => {
+        for (const id of cell) {
           if (visited.has(id)) {
-            return;
+            continue;
           }
           visited.add(id);
           const item = this.items.get(id);
           if (!item) {
-            return;
+            continue;
           }
           const dx = item.position.x - position.x;
           const dy = item.position.y - position.y;
           const combinedRadius = item.radius + safeRadius;
           if (combinedRadius <= 0) {
-            return;
+            continue;
           }
           if (dx * dx + dy * dy <= combinedRadius * combinedRadius + 1e-4) {
             visitor(item.payload);
           }
-        });
+        }
       }
     }
+  }
+
+  /**
+   * Ітерує через ВСІ елементи без просторової фільтрації.
+   * Набагато швидше ніж forEachInCircle з величезним радіусом.
+   */
+  public forEachItem(visitor: (payload: T) => void): void {
+    for (const item of this.items.values()) {
+      visitor(item.payload);
+    }
+  }
+
+  /**
+   * Повертає всі елементи як масив.
+   */
+  public getAllItems(): T[] {
+    const result: T[] = [];
+    for (const item of this.items.values()) {
+      result.push(item.payload);
+    }
+    return result;
   }
 
   public queryNearest(position: SceneVector2, options?: { maxLayers?: number }): T | null {
@@ -169,29 +204,22 @@ export class SpatialGrid<T> {
     let bestId: string | null = null;
     let bestDistSq = Infinity;
 
-    const considerCell = (cellX: number, cellY: number): void => {
-      const cell = this.cells.get(this.getCellKey(cellX, cellY));
-      if (!cell) {
-        return;
-      }
-      cell.forEach((id) => {
-        const item = this.items.get(id);
-        if (!item) {
-          return;
-        }
-        const dx = item.position.x - position.x;
-        const dy = item.position.y - position.y;
-        const distSq = dx * dx + dy * dy;
-        if (distSq < bestDistSq) {
-          bestDistSq = distSq;
-          bestId = id;
-        }
-      });
-    };
-
     for (let layer = 0; layer <= maxLayers; layer += 1) {
       if (layer === 0) {
-        considerCell(centerCellX, centerCellY);
+        const cell = this.cells.get(packCellKey(centerCellX, centerCellY));
+        if (cell) {
+          for (const id of cell) {
+            const item = this.items.get(id);
+            if (!item) continue;
+            const dx = item.position.x - position.x;
+            const dy = item.position.y - position.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < bestDistSq) {
+              bestDistSq = distSq;
+              bestId = id;
+            }
+          }
+        }
       } else {
         const minX = centerCellX - layer;
         const maxX = centerCellX + layer;
@@ -200,13 +228,33 @@ export class SpatialGrid<T> {
 
         // top and bottom rows
         for (let x = minX; x <= maxX; x += 1) {
-          considerCell(x, minY);
-          considerCell(x, maxY);
+          this.considerCellForNearest(x, minY, position, bestDistSq, (distSq, id) => {
+            if (distSq < bestDistSq) {
+              bestDistSq = distSq;
+              bestId = id;
+            }
+          });
+          this.considerCellForNearest(x, maxY, position, bestDistSq, (distSq, id) => {
+            if (distSq < bestDistSq) {
+              bestDistSq = distSq;
+              bestId = id;
+            }
+          });
         }
         // left and right columns (excluding corners already handled)
         for (let y = minY + 1; y <= maxY - 1; y += 1) {
-          considerCell(minX, y);
-          considerCell(maxX, y);
+          this.considerCellForNearest(minX, y, position, bestDistSq, (distSq, id) => {
+            if (distSq < bestDistSq) {
+              bestDistSq = distSq;
+              bestId = id;
+            }
+          });
+          this.considerCellForNearest(maxX, y, position, bestDistSq, (distSq, id) => {
+            if (distSq < bestDistSq) {
+              bestDistSq = distSq;
+              bestId = id;
+            }
+          });
         }
       }
 
@@ -219,21 +267,42 @@ export class SpatialGrid<T> {
     return null;
   }
 
-  private insertIntoCells(id: string, position: SceneVector2, radius: number): string[] {
+  private considerCellForNearest(
+    cellX: number,
+    cellY: number,
+    position: SceneVector2,
+    currentBest: number,
+    update: (distSq: number, id: string) => void
+  ): void {
+    const cell = this.cells.get(packCellKey(cellX, cellY));
+    if (!cell) return;
+    for (const id of cell) {
+      const item = this.items.get(id);
+      if (!item) continue;
+      const dx = item.position.x - position.x;
+      const dy = item.position.y - position.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < currentBest) {
+        update(distSq, id);
+      }
+    }
+  }
+
+  private insertIntoCells(id: string, position: SceneVector2, radius: number): number[] {
     if (radius <= 0) {
       const cellX = this.coordinateToCell(position.x);
       const cellY = this.coordinateToCell(position.y);
-      const key = this.getCellKey(cellX, cellY);
+      const key = packCellKey(cellX, cellY);
       this.addToCell(key, id);
       return [key];
     }
 
     const range = this.computeCellRange(position, radius);
-    const result: string[] = [];
+    const result: number[] = [];
 
     for (let cellY = range.minY; cellY <= range.maxY; cellY += 1) {
       for (let cellX = range.minX; cellX <= range.maxX; cellX += 1) {
-        const key = this.getCellKey(cellX, cellY);
+        const key = packCellKey(cellX, cellY);
         this.addToCell(key, id);
         result.push(key);
       }
@@ -242,7 +311,7 @@ export class SpatialGrid<T> {
     return result;
   }
 
-  private addToCell(key: string, id: string): void {
+  private addToCell(key: number, id: string): void {
     let cell = this.cells.get(key);
     if (!cell) {
       cell = new Set<string>();
@@ -264,9 +333,5 @@ export class SpatialGrid<T> {
       return 0;
     }
     return Math.floor(value / this.cellSize);
-  }
-
-  private getCellKey(x: number, y: number): string {
-    return `${x}:${y}`;
   }
 }

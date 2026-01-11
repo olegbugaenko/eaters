@@ -3,11 +3,12 @@ import type {
   SceneVector2,
   SceneFill,
   SceneStroke,
-} from "@/logic/services/scene-object-manager/scene-object-manager.types";
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   createDynamicCirclePrimitive,
   createDynamicPolygonPrimitive,
   createDynamicPolygonStrokePrimitive,
+  createDynamicSpritePrimitive,
 } from "../../../primitives";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
 import type { CompositeRendererData, RendererLayer, PlayerUnitCustomData } from "./types";
@@ -268,6 +269,7 @@ export const createCompositePrimitives = (
         })();
 
         if (layer.stroke) {
+          const layerStrokeForTentacle = layer.stroke;
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
@@ -281,17 +283,26 @@ export const createCompositePrimitives = (
               getVertices: sampleVertices,
               stroke: sceneStroke,
               offset: layer.offset,
+              refreshStroke: layerStrokeForTentacle.kind === "base"
+                ? (inst) => ({
+                    width: layerStrokeForTentacle.width,
+                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
+                  })
+                : undefined,
             })
           );
         }
 
         // OPTIMIZATION: Cache fill for tentacle layers - vertices animate but fill is static
+        // Always add refreshFill to track visual effect changes
         const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForTentacle = layer.fill;
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: sampleVertices,
             offset: layer.offset,
             fill: tentacleFill,
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
           })
         );
         return; // handled animated tentacle layer
@@ -324,49 +335,52 @@ export const createCompositePrimitives = (
             ? { x: -1, y: 0 }
             : null;
 
-        const vertexMeta = baseVertices.map((v) => {
+        const vertexCount = baseVertices.length;
+        const baseX = new Float32Array(vertexCount);
+        const baseY = new Float32Array(vertexCount);
+        const normalX = new Float32Array(vertexCount);
+        const normalY = new Float32Array(vertexCount);
+        const tangentX = new Float32Array(vertexCount);
+        const tangentY = new Float32Array(vertexCount);
+        const normalMagnitude = new Float32Array(vertexCount);
+        const tangentMagnitude = new Float32Array(vertexCount);
+        for (let i = 0; i < vertexCount; i += 1) {
+          const v = baseVertices[i]!;
           const dx = v.x - center.x;
           const dy = v.y - center.y;
           const radius = Math.hypot(dx, dy);
           const invRadius = radius > 1e-6 ? 1 / radius : 0;
-          const normalX = dx * invRadius;
-          const normalY = dy * invRadius;
-          const tangentX = -normalY;
-          const tangentY = normalX;
-          const normalMagnitude =
+          baseX[i] = v.x;
+          baseY[i] = v.y;
+          normalX[i] = dx * invRadius;
+          normalY[i] = dy * invRadius;
+          tangentX[i] = -normalY[i]!;
+          tangentY[i] = normalX[i]!;
+          normalMagnitude[i] =
             amplitudePercentage !== undefined ? radius * amplitudePercentage : amplitude;
-          return {
-            baseX: v.x,
-            baseY: v.y,
-            normalX,
-            normalY,
-            tangentX,
-            tangentY,
-            normalMagnitude,
-            tangentMagnitude: amplitude,
-          };
-        });
-        const movementMeta = movementPerp
-          ? baseVertices.map((v) => {
-              const signedDist = v.x * movementPerp.x + v.y * movementPerp.y;
-              const toward = -Math.sign(signedDist) || 0;
-              const magnitude =
-                amplitudePercentage !== undefined
-                  ? Math.abs(signedDist) * amplitudePercentage
-                  : amplitude;
-              return {
-                toward,
-                magnitude,
-              };
-            })
-          : null;
-        const hasMovement = Boolean(movementPerp && movementMeta);
+          tangentMagnitude[i] = amplitude;
+        }
+        const deformed = baseVertices.map((v) => ({ x: v.x, y: v.y }));
+        const moveToward = movementPerp ? new Float32Array(vertexCount) : null;
+        const moveMagnitude = movementPerp ? new Float32Array(vertexCount) : null;
+        if (movementPerp && moveToward && moveMagnitude) {
+          for (let i = 0; i < vertexCount; i += 1) {
+            const signedDist =
+              baseX[i]! * movementPerp.x + baseY[i]! * movementPerp.y;
+            moveToward[i] = -Math.sign(signedDist) || 0;
+            moveMagnitude[i] =
+              amplitudePercentage !== undefined
+                ? Math.abs(signedDist) * amplitudePercentage
+                : amplitude;
+          }
+        }
+        const hasMovement = Boolean(movementPerp && moveToward && moveMagnitude);
         const sinPhaseStep = Math.sin(POLYGON_SWAY_PHASE_STEP);
         const cosPhaseStep = Math.cos(POLYGON_SWAY_PHASE_STEP);
 
         const sampleSway = (timeMs: number): SceneVector2[] => {
-          if (vertexMeta.length === 0) {
-            return [];
+          if (vertexCount === 0) {
+            return deformed;
           }
           const omega = TAU / period;
           const baseAngle = omega * timeMs + phase;
@@ -376,33 +390,20 @@ export const createCompositePrimitives = (
           const cosStep = usesVertexPhase ? cosPhaseStep : 1;
           let sinValue = globalSin;
           let cosValue = Math.cos(baseAngle);
-          const deformed = new Array<SceneVector2>(vertexMeta.length);
-          for (let i = 0; i < vertexMeta.length; i += 1) {
-            const meta = vertexMeta[i]!;
-            if (!meta) {
-              deformed[i] = { x: 0, y: 0 };
-              continue;
-            }
+          for (let i = 0; i < vertexCount; i += 1) {
             const sinForVertex = usesVertexPhase ? sinValue : globalSin;
-            if (movementPerp && movementMeta && hasMovement) {
-              const moveInfo = movementMeta[i]!;
-              const magnitude = moveInfo.magnitude * sinForVertex * moveInfo.toward;
-              deformed[i] = {
-                x: meta.baseX + movementPerp.x * magnitude,
-                y: meta.baseY + movementPerp.y * magnitude,
-              };
+            if (movementPerp && moveToward && moveMagnitude && hasMovement) {
+              const magnitude = moveMagnitude[i]! * sinForVertex * moveToward[i]!;
+              deformed[i]!.x = baseX[i]! + movementPerp.x * magnitude;
+              deformed[i]!.y = baseY[i]! + movementPerp.y * magnitude;
             } else if (axis === "tangent") {
-              const magnitude = meta.tangentMagnitude * sinForVertex;
-              deformed[i] = {
-                x: meta.baseX + meta.tangentX * magnitude,
-                y: meta.baseY + meta.tangentY * magnitude,
-              };
+              const magnitude = tangentMagnitude[i]! * sinForVertex;
+              deformed[i]!.x = baseX[i]! + tangentX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + tangentY[i]! * magnitude;
             } else {
-              const magnitude = meta.normalMagnitude * sinForVertex;
-              deformed[i] = {
-                x: meta.baseX + meta.normalX * magnitude,
-                y: meta.baseY + meta.normalY * magnitude,
-              };
+              const magnitude = normalMagnitude[i]! * sinForVertex;
+              deformed[i]!.x = baseX[i]! + normalX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + normalY[i]! * magnitude;
             }
             if (usesVertexPhase) {
               const prevSin = sinValue;
@@ -415,38 +416,35 @@ export const createCompositePrimitives = (
         };
 
         const samplePulse = (timeMs: number): SceneVector2[] => {
-          if (vertexMeta.length === 0) {
-            return [];
+          if (vertexCount === 0) {
+            return deformed;
           }
           const omega = TAU / period;
-          const angle = omega * timeMs + phase;
-          const s = Math.sin(angle);
-          const deformed = new Array<SceneVector2>(vertexMeta.length);
-          for (let i = 0; i < vertexMeta.length; i += 1) {
-            const meta = vertexMeta[i]!;
-            if (!meta) {
-              deformed[i] = { x: 0, y: 0 };
-              continue;
-            }
-            if (movementPerp && movementMeta) {
-              const moveInfo = movementMeta[i]!;
-              const magnitude = moveInfo.magnitude * s * moveInfo.toward;
-              deformed[i] = {
-                x: meta.baseX + movementPerp.x * magnitude,
-                y: meta.baseY + movementPerp.y * magnitude,
-              };
+          const baseAngle = omega * timeMs + phase;
+          const sinStep = 0;
+          const cosStep = 1;
+          let sinValue = Math.sin(baseAngle);
+          let cosValue = Math.cos(baseAngle);
+          for (let i = 0; i < vertexCount; i += 1) {
+            const s = sinValue;
+            if (movementPerp && moveToward && moveMagnitude) {
+              const magnitude = moveMagnitude[i]! * s * moveToward[i]!;
+              deformed[i]!.x = baseX[i]! + movementPerp.x * magnitude;
+              deformed[i]!.y = baseY[i]! + movementPerp.y * magnitude;
             } else if (axis === "tangent") {
               const magnitude = amplitude * s;
-              deformed[i] = {
-                x: meta.baseX + meta.tangentX * magnitude,
-                y: meta.baseY + meta.tangentY * magnitude,
-              };
+              deformed[i]!.x = baseX[i]! + tangentX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + tangentY[i]! * magnitude;
             } else {
               const magnitude = amplitude * s;
-              deformed[i] = {
-                x: meta.baseX + meta.normalX * magnitude,
-                y: meta.baseY + meta.normalY * magnitude,
-              };
+              deformed[i]!.x = baseX[i]! + normalX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + normalY[i]! * magnitude;
+            }
+            if (sinStep !== 0) {
+              const prevSin = sinValue;
+              const prevCos = cosValue;
+              sinValue = prevSin * cosStep + prevCos * sinStep;
+              cosValue = prevCos * cosStep - prevSin * sinStep;
             }
           }
           return deformed;
@@ -455,19 +453,23 @@ export const createCompositePrimitives = (
         const getDeformedVertices = (() => {
           const UPDATE_INTERVAL_MS = 32; // Оновлюємо анімацію кожні 32ms (~30 FPS)
           let lastUpdateTime = -1;
-          let lastSample = baseVertices.map((v) => ({ x: v.x, y: v.y }));
           return () => {
             const now = getTentacleTimeMs();
             if (now - lastUpdateTime < UPDATE_INTERVAL_MS) {
-              return lastSample; // Повертаємо закешовані вершини
+              return deformed; // Повертаємо закешовані вершини
             }
             lastUpdateTime = now;
-            lastSample = animCfg.type === "sway" ? sampleSway(now) : samplePulse(now);
-            return lastSample;
+            if (animCfg.type === "sway") {
+              sampleSway(now);
+            } else {
+              samplePulse(now);
+            }
+            return deformed;
           };
         })();
 
         if (layer.stroke) {
+          const layerStrokeForAnimated = layer.stroke;
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
@@ -478,20 +480,30 @@ export const createCompositePrimitives = (
               getVertices: () => getDeformedVertices(),
               stroke: sceneStroke,
               offset: layer.offset,
+              refreshStroke: layerStrokeForAnimated.kind === "base"
+                ? (inst) => ({
+                    width: layerStrokeForAnimated.width,
+                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
+                  })
+                : undefined,
             })
           );
         }
         // OPTIMIZATION: Cache fill for animated layers too - vertices change but fill is usually static
+        // Always add refreshFill to track visual effect changes
         const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForAnimated = layer.fill;
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: () => getDeformedVertices(),
             offset: layer.offset,
             fill: animatedLayerFill,
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
           })
         );
       } else {
         if (layer.stroke) {
+          const layerStrokeForStatic = layer.stroke;
           const strokeColor =
             layer.stroke.kind === "solid"
               ? layer.stroke.color
@@ -505,42 +517,74 @@ export const createCompositePrimitives = (
               vertices: layer.vertices,
               stroke: sceneStroke,
               offset: layer.offset,
+              refreshStroke: layerStrokeForStatic.kind === "base"
+                ? (inst) => ({
+                    width: layerStrokeForStatic.width,
+                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
+                  })
+                : undefined,
             })
           );
         }
         // OPTIMIZATION: Cache fill at registration time for static layers
+        // Always add refreshFill to track visual effect changes
         const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForStatic = layer.fill;
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             vertices: layer.vertices,
             offset: layer.offset,
             fill: cachedFill,
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
           })
         );
       }
       return;
     }
 
-    // OPTIMIZATION: Cache fills at registration time for static layers
-    if (layer.stroke) {
-      const cachedStrokeFill = resolveLayerStrokeFill(instance, layer.stroke, renderer);
+    if (layer.shape === "circle") {
+      // OPTIMIZATION: Cache fills at registration time for static layers
+      if (layer.stroke) {
+        const layerStrokeForCircle = layer.stroke;
+        const cachedStrokeFill = resolveLayerStrokeFill(instance, layer.stroke, renderer);
+        dynamicPrimitives.push(
+          createDynamicCirclePrimitive(instance, {
+            segments: layer.segments,
+            offset: layer.offset,
+            radius: layer.radius + layer.stroke.width,
+            fill: cachedStrokeFill,
+            refreshFill: layerStrokeForCircle.kind === "base"
+              ? (inst) => resolveLayerStrokeFill(inst, layerStrokeForCircle, renderer)
+              : undefined,
+          })
+        );
+      }
+      // Always add refreshFill to track visual effect changes
+      const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+      const layerFillForCircle = layer.fill;
       dynamicPrimitives.push(
         createDynamicCirclePrimitive(instance, {
           segments: layer.segments,
           offset: layer.offset,
-          radius: layer.radius + layer.stroke.width,
-          fill: cachedStrokeFill,
+          radius: layer.radius,
+          fill: cachedFill,
+          refreshFill: (inst) => resolveLayerFill(inst, layerFillForCircle, renderer),
         })
       );
+      return;
     }
-    const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
-    dynamicPrimitives.push(
-      createDynamicCirclePrimitive(instance, {
-        segments: layer.segments,
-        offset: layer.offset,
-        radius: layer.radius,
-        fill: cachedFill,
-      })
-    );
+
+    if (layer.shape === "sprite") {
+      // Sprite layer - uses RectanglePrimitive as fallback until texture support is added
+      dynamicPrimitives.push(
+        createDynamicSpritePrimitive(instance, {
+          spritePath: layer.spritePath,
+          getWidth: () => layer.width,
+          getHeight: () => layer.height,
+          offset: layer.offset,
+        })
+      );
+      return;
+    }
   });
 };

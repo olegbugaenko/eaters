@@ -1,4 +1,4 @@
-import type { SceneColor } from "@/logic/services/scene-object-manager/scene-object-manager.types";
+import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
 export interface AnimatedRingCustomData {
   createdAt?: number;
@@ -14,7 +14,7 @@ export interface AnimatedRingCustomData {
 }
 
 export interface CachedFill {
-  fill: import("@/logic/services/scene-object-manager/scene-object-manager.types").SceneFill;
+  fill: import("@core/logic/provided/services/scene-object-manager/scene-object-manager.types").SceneFill;
   stops: Array<{ offset: number; color: SceneColor }>;
   colors: SceneColor[];
 }

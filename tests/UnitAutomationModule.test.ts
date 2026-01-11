@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
-import { DataBridge } from "../src/logic/core/DataBridge";
+import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
@@ -12,8 +12,8 @@ import {
 import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
 import type { UnitDesignId, UnitDesignerUnitState } from "../src/logic/modules/camp/unit-design/unit-design.types";
 import type { NecromancerResourceSnapshot } from "../src/logic/modules/active-map/necromancer/necromancer.types";
-import { createEmptyResourceAmount } from "../src/types/resources";
-import { PlayerUnitBlueprintStats } from "../src/types/player-units";
+import { createEmptyResourceAmount } from "../src/shared/const/resources.const";
+import { PlayerUnitBlueprintStats } from "../src/shared/types/player-units";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
 const createFullResources = (): NecromancerResourceSnapshot => ({
@@ -96,9 +96,7 @@ describe("UnitAutomationModule", () => {
 
     module.initialize();
     const initialState =
-      bridge.getValue<UnitAutomationBridgeState>(
-        UNIT_AUTOMATION_STATE_BRIDGE_KEY
-      ) ?? DEFAULT_UNIT_AUTOMATION_STATE;
+      bridge.getValue(UNIT_AUTOMATION_STATE_BRIDGE_KEY) ?? DEFAULT_UNIT_AUTOMATION_STATE;
     assert.strictEqual(initialState.unlocked, false);
 
     module.setAutomationEnabled(design.id, true);
@@ -111,9 +109,7 @@ describe("UnitAutomationModule", () => {
     assert.strictEqual(attempts[0], design.id);
 
     const unlockedState =
-      bridge.getValue<UnitAutomationBridgeState>(
-        UNIT_AUTOMATION_STATE_BRIDGE_KEY
-      ) ?? DEFAULT_UNIT_AUTOMATION_STATE;
+      bridge.getValue(UNIT_AUTOMATION_STATE_BRIDGE_KEY) ?? DEFAULT_UNIT_AUTOMATION_STATE;
     const unitState = unlockedState.units.find((entry: { designId: string }) => entry.designId === design.id);
     assert.strictEqual(unlockedState.unlocked, true);
     assert.strictEqual(unitState?.enabled, true);
@@ -194,9 +190,7 @@ describe("UnitAutomationModule", () => {
     module.setAutomationEnabled(design.id, true);
     module.setAutomationWeight(design.id, 5);
 
-    const state =
-      bridge.getValue<UnitAutomationBridgeState>(UNIT_AUTOMATION_STATE_BRIDGE_KEY) ??
-      DEFAULT_UNIT_AUTOMATION_STATE;
+    const state = bridge.getValue(UNIT_AUTOMATION_STATE_BRIDGE_KEY) ?? DEFAULT_UNIT_AUTOMATION_STATE;
     const unitState = state.units.find((entry: { designId: string }) => entry.designId === design.id);
     assert.strictEqual(unitState?.weight, 5);
 
