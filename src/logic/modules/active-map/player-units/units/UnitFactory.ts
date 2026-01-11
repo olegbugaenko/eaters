@@ -230,6 +230,7 @@ export class UnitFactory {
         skills: ownedSkills,
       },
     });
+    this.movement.registerSceneObject(movementId, objectId);
 
     return {
       id: unitId,

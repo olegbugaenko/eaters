@@ -18,7 +18,7 @@ export function createBootstrapDefinitions(): BootstrapDefinitionList {
     { token: "saveManager", factory: () => new SaveManager() },
     { token: "gameLoop", factory: () => new GameLoop() },
     { token: "sceneObjects", factory: () => new SceneObjectManager() },
-    { token: "movement", factory: () => new MovementService() },
+    { token: "movement", factory: (container) => new MovementService(container.get("sceneObjects")) },
     { token: "mapRunState", factory: () => new MapRunState() },
   ] as const;
 }

@@ -135,5 +135,6 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       },
     });
     state.sceneObjectId = sceneObjectId;
+    this.movement.registerSceneObject(state.movementId, sceneObjectId);
   }
 }

@@ -278,4 +278,32 @@ describe("BricksModule", () => {
 
     assert.strictEqual(callbackCount, 1, "should notify once when all bricks are gone");
   });
+
+  test("brick knockback registers scene object as movable", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const module = createBricksModule(scene, bridge);
+
+    module.setBricks([
+      {
+        position: { x: 20, y: 20 },
+        rotation: 0,
+        level: 0,
+        type: "classic",
+      },
+    ]);
+
+    const [brick] = module.getBrickStates();
+    assert(brick, "expected brick state");
+    const sceneObject = scene.getObjects().find((object) => object.type === "brick");
+    assert(sceneObject, "expected brick scene object");
+
+    module.applyDamage(brick.id, 5, { x: 1, y: 0 });
+
+    const movable = scene.getMovableObjects();
+    assert(
+      movable.some((object) => object.id === sceneObject.id),
+      "brick should be marked as movable after knockback"
+    );
+  });
 });

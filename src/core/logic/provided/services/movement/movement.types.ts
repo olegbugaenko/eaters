@@ -20,6 +20,7 @@ export interface InternalMovementBodyState {
   maxSpeed: number;
   force: SceneVector2;
   dampings: MovementDamping[];
+  idleTicks: number;
 }
 
 export interface MovementDamping {

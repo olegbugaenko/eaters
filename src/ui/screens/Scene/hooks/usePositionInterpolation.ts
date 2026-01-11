@@ -34,6 +34,10 @@ export const usePositionInterpolation = (
 ) => {
   const unitSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const interpolatedPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
+  const interpolatedBulletPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
+  const interpolatedBrickPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
+  const interpolatedEnemyPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
+  const activeBulletKeysRef = useRef<Set<string>>(new Set());
   const bulletSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const brickSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const enemySnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
@@ -44,7 +48,7 @@ export const usePositionInterpolation = (
       const nextIds = new Set<string>();
       const snapshots = unitSnapshotsRef.current;
       scene
-        .getObjects()
+        .getMovableObjects()
         .filter((instance) => instance.type === "playerUnit")
         .forEach((instance) => {
           nextIds.add(instance.id);
@@ -106,7 +110,7 @@ export const usePositionInterpolation = (
       const nextIds = new Set<string>();
       const snapshots = brickSnapshotsRef.current;
       scene
-        .getObjects()
+        .getMovableObjects()
         .filter((instance) => instance.type === "brick")
         .forEach((instance) => {
           nextIds.add(instance.id);
@@ -129,7 +133,7 @@ export const usePositionInterpolation = (
       const nextIds = new Set<string>();
       const snapshots = enemySnapshotsRef.current;
       scene
-        .getObjects()
+        .getMovableObjects()
         .filter((instance) => instance.type === "enemy")
         .forEach((instance) => {
           nextIds.add(instance.id);
@@ -191,14 +195,19 @@ export const usePositionInterpolation = (
 
   const getInterpolatedBulletPositions = () => {
     const snapshots = bulletSnapshotsRef.current;
-    const positions = new Map<string, SceneVector2>();
+    const positions = interpolatedBulletPositionsRef.current;
+    positions.clear();
     if (snapshots.size === 0) {
       return positions;
     }
     
     // Only interpolate for bullets that are still active
     const activeBullets = getAllActiveBullets();
-    const activeKeys = new Set(activeBullets.map((item) => `${item.handle.batchKey}:${item.handle.slotIndex}`));
+    const activeKeys = activeBulletKeysRef.current;
+    activeKeys.clear();
+    activeBullets.forEach((item) => {
+      activeKeys.add(`${item.handle.batchKey}:${item.handle.slotIndex}`);
+    });
     
     const now = getNow();
     snapshots.forEach((snapshot, key) => {
@@ -231,7 +240,8 @@ export const usePositionInterpolation = (
 
   const getInterpolatedBrickPositions = () => {
     const snapshots = brickSnapshotsRef.current;
-    const positions = new Map<string, SceneVector2>();
+    const positions = interpolatedBrickPositionsRef.current;
+    positions.clear();
     if (snapshots.size === 0) {
       return positions;
     }
@@ -257,7 +267,8 @@ export const usePositionInterpolation = (
 
   const getInterpolatedEnemyPositions = () => {
     const snapshots = enemySnapshotsRef.current;
-    const positions = new Map<string, SceneVector2>();
+    const positions = interpolatedEnemyPositionsRef.current;
+    positions.clear();
     if (snapshots.size === 0) {
       return positions;
     }

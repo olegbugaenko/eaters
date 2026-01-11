@@ -35,6 +35,7 @@ import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
 export class SceneObjectManager {
   private objects = new Map<string, SceneObjectInstance>();
   private ordered: SceneObjectInstance[] = [];
+  private movableObjects = new Set<string>();
   private idCounter = 0;
 
   private customDataCache = new Map<string, CustomDataCacheEntry>();
@@ -89,6 +90,17 @@ export class SceneObjectManager {
     this.added.set(id, instance);
     this.updated.delete(id);
     return id;
+  }
+
+  public markMovable(id: string): void {
+    if (!this.objects.has(id)) {
+      return;
+    }
+    this.movableObjects.add(id);
+  }
+
+  public unmarkMovable(id: string): void {
+    this.movableObjects.delete(id);
   }
 
   public updateObject(id: string, data: SceneObjectData): void {
@@ -152,6 +164,7 @@ export class SceneObjectManager {
     if (!instance) {
       return;
     }
+    this.unmarkMovable(id);
     this.customDataCache.delete(id);
     this.strokeCache.delete(id);
     // Mark for deferred removal and hide immediately (alpha = 0)
@@ -189,6 +202,7 @@ export class SceneObjectManager {
     }
     this.objects.clear();
     this.ordered.length = 0;
+    this.movableObjects.clear();
     this.idCounter = 0;
     this.added.clear();
     this.updated.clear();
@@ -207,6 +221,20 @@ export class SceneObjectManager {
 
   public getObjects(): readonly SceneObjectInstance[] {
     return this.ordered;
+  }
+
+  public getMovableObjects(): readonly SceneObjectInstance[] {
+    if (this.movableObjects.size === 0) {
+      return [];
+    }
+    const result: SceneObjectInstance[] = [];
+    this.movableObjects.forEach((id) => {
+      const instance = this.objects.get(id);
+      if (instance) {
+        result.push(instance);
+      }
+    });
+    return result;
   }
 
   public flushChanges(): {
@@ -375,6 +403,7 @@ export class SceneObjectManager {
     if (!this.pendingRemovals.delete(id)) {
       return;
     }
+    this.unmarkMovable(id);
     const had = this.objects.delete(id);
     if (had) {
       const index = this.ordered.findIndex((object) => object.id === id);

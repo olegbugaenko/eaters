@@ -163,6 +163,7 @@ export class BricksModule implements GameModule {
         brick.knockback = null;
         finished.push(brickId);
         this.updateBrickSceneObject(brick, ZERO_VECTOR);
+        this.options.scene.unmarkMovable(brick.sceneObjectId);
         return;
       }
 
@@ -537,6 +538,7 @@ export class BricksModule implements GameModule {
       };
       this.bricksWithKnockback.add(brick.id);
       this.updateBrickSceneObject(brick, combinedOffset);
+      this.options.scene.markMovable(brick.sceneObjectId);
     }
   }
 
