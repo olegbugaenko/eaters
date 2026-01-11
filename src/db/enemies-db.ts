@@ -715,7 +715,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     projectile: {
       radius: 8,
       speed: 80,
-      lifetimeMs: 2500,
+      lifetimeMs: 4500,
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.5, g: 0.6, b: 0.6, a: 1 },
