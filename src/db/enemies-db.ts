@@ -743,11 +743,11 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         ),
       ],
     },
-    maxHp: 7500,
+    maxHp: 25000,
     armor: 100,
     baseDamage: 600,
     attackInterval: 1.8,
-    attackRange: 80,
+    attackRange: 40,
     moveSpeed: 20,
     physicalSize: 35,
     reward: {
