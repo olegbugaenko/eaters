@@ -81,8 +81,10 @@ export class ObjectsRendererManager {
   private dynamicLayoutDirty = false;
   private autoAnimatingNeedsUpload = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
+  private pendingDynamicUpdateFloats = 0;
   private lastDynamicRebuildMs = 0;
   private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
+  private static readonly PARTIAL_UPLOAD_THRESHOLD = 0.25;
 
   // Stats
   private dynamicBytesAllocated = 0;
@@ -123,6 +125,7 @@ export class ObjectsRendererManager {
     this.dynamicLayoutDirty = false;
     this.autoAnimatingNeedsUpload = false;
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateFloats = 0;
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
@@ -209,12 +212,17 @@ export class ObjectsRendererManager {
         }
         // Update in-place, no copy needed - will do full upload at end
         this.dynamicData.set(data, entry.offset);
+        this.pendingDynamicUpdates.push({ offset: entry.offset, data });
+        this.pendingDynamicUpdateFloats += data.length;
         anyUpdated = true;
       });
     });
-    // Mark for full dynamic upload instead of many small bufferSubData calls
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
+    // Mark for full dynamic upload only if partial updates exceed threshold
+    if (anyUpdated && !this.dynamicLayoutDirty && this.dynamicData) {
+      const threshold = ObjectsRendererManager.PARTIAL_UPLOAD_THRESHOLD * this.dynamicData.length;
+      if (this.pendingDynamicUpdateFloats >= threshold) {
+        this.autoAnimatingNeedsUpload = true;
+      }
     }
   }
 
@@ -283,6 +291,8 @@ export class ObjectsRendererManager {
           }
           // Update in-place, no copy needed
           this.dynamicData.set(data, entry.offset);
+          this.pendingDynamicUpdates.push({ offset: entry.offset, data });
+          this.pendingDynamicUpdateFloats += data.length;
           anyUpdated = true;
         });
       });
@@ -317,6 +327,8 @@ export class ObjectsRendererManager {
           }
           // Update in-place, no copy needed
           this.dynamicData.set(data, entry.offset);
+          this.pendingDynamicUpdates.push({ offset: entry.offset, data });
+          this.pendingDynamicUpdateFloats += data.length;
           anyUpdated = true;
         }
       });
@@ -333,10 +345,12 @@ export class ObjectsRendererManager {
       this.interpolatedPositions.clear();
     }
     
-    // If any auto-animating objects/primitives were updated, mark for full dynamic upload
-    // This is more efficient than many small bufferSubData calls
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
+    // If any auto-animating objects/primitives were updated, mark for full dynamic upload only if needed
+    if (anyUpdated && !this.dynamicLayoutDirty && this.dynamicData) {
+      const threshold = ObjectsRendererManager.PARTIAL_UPLOAD_THRESHOLD * this.dynamicData.length;
+      if (this.pendingDynamicUpdateFloats >= threshold) {
+        this.autoAnimatingNeedsUpload = true;
+      }
     }
   }
 
@@ -366,6 +380,7 @@ export class ObjectsRendererManager {
     }
 
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateFloats = 0;
 
     return result;
   }
@@ -504,11 +519,16 @@ export class ObjectsRendererManager {
       }
       // Update in-place, no copy needed - will do full upload
       this.dynamicData.set(data, entry.offset);
+      this.pendingDynamicUpdates.push({ offset: entry.offset, data });
+      this.pendingDynamicUpdateFloats += data.length;
       anyUpdated = true;
     });
-    // Mark for full dynamic upload instead of per-update copies
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
+    // Mark for full dynamic upload only if partial updates exceed threshold
+    if (anyUpdated && !this.dynamicLayoutDirty && this.dynamicData) {
+      const threshold = ObjectsRendererManager.PARTIAL_UPLOAD_THRESHOLD * this.dynamicData.length;
+      if (this.pendingDynamicUpdateFloats >= threshold) {
+        this.autoAnimatingNeedsUpload = true;
+      }
     }
   }
 
@@ -619,6 +639,7 @@ export class ObjectsRendererManager {
     this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateFloats = 0;
     this.dynamicBytesAllocated = data.byteLength;
   }
 

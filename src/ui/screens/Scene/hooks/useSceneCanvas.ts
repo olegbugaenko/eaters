@@ -116,6 +116,7 @@ export const useSceneCanvas = ({
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
   const getInterpolatedEnemyPositionsRef = useRef(getInterpolatedEnemyPositions);
+  const movableStatsLastUpdateRef = useRef(0);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
   
@@ -137,7 +138,7 @@ export const useSceneCanvas = ({
 
     // Setup WebGL context and renderer
     const { gl, webglRenderer, objectsRenderer, cleanup: webglCleanup } = setupWebGLScene(canvas, sceneRef.current);
-    updateMovableStats(sceneRef.current.getMovableObjects().length);
+    updateMovableStats(sceneRef.current.getMovableObjectCount());
 
     const pointerState: PointerState = {
       x: 0,
@@ -238,7 +239,7 @@ export const useSceneCanvas = ({
 
       // Оновлюємо буфери WebGL
       applySync();
-      updateMovableStats(sceneRef.current.getMovableObjects().length);
+      updateMovableStats(sceneRef.current.getMovableObjectCount());
 
       // Додатково очищаємо будь-які залишки змін після очищення
       const remainingChanges = sceneRef.current.flushChanges();
@@ -247,7 +248,7 @@ export const useSceneCanvas = ({
           remainingChanges.removed.length > 0) {
         webglRenderer.getObjectsRenderer().applyChanges(remainingChanges);
         applySync();
-        updateMovableStats(sceneRef.current.getMovableObjects().length);
+        updateMovableStats(sceneRef.current.getMovableObjectCount());
       }
     };
 
@@ -321,7 +322,11 @@ export const useSceneCanvas = ({
       },
 
       afterUpdate: (timestamp, scene, cameraState) => {
-        updateMovableStats(sceneRef.current.getMovableObjects().length);
+        const now = timestamp;
+        if (now - movableStatsLastUpdateRef.current >= 250) {
+          movableStatsLastUpdateRef.current = now;
+          updateMovableStats(sceneRef.current.getMovableObjectCount());
+        }
         // Update VBO stats (write to global object, no React re-render)
         const dbs = webglRenderer.getObjectsRenderer().getDynamicBufferStats();
         if (
