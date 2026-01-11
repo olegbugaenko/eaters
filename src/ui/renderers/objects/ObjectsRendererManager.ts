@@ -85,6 +85,14 @@ export class ObjectsRendererManager {
   private lastDynamicRebuildMs = 0;
   private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
   private static readonly DYNAMIC_UPDATE_THRESHOLD_RATIO = 0.25;
+  private static readonly DEBUG_LOG_INTERVAL_MS = 1000;
+
+  private debugStatsEnabled = false;
+  private debugFrames = 0;
+  private debugLastLogMs = 0;
+  private debugChanges = { added: 0, updated: 0, removed: 0 };
+  private debugUpdateCallsByType = new Map<string, number>();
+  private debugInterpolationsByType = new Map<string, number>();
 
   // Stats
   private dynamicBytesAllocated = 0;
@@ -129,6 +137,7 @@ export class ObjectsRendererManager {
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
+    this.resetDebugStats();
   }
 
   /**
@@ -142,6 +151,11 @@ export class ObjectsRendererManager {
   public applyChanges(
     changes: ReturnType<SceneUiApi["flushChanges"]>
   ): void {
+    if (this.debugStatsEnabled) {
+      this.debugChanges.added += changes.added.length;
+      this.debugChanges.updated += changes.updated.length;
+      this.debugChanges.removed += changes.removed.length;
+    }
     changes.removed.forEach((id) => {
       this.removeObject(id);
     });
@@ -196,6 +210,7 @@ export class ObjectsRendererManager {
         managed.instance,
         managed.registration
       );
+      this.recordDebugUpdate(managed.instance.type);
       
       // Restore original position
       originalPosition.x = origX;
@@ -213,6 +228,7 @@ export class ObjectsRendererManager {
         this.dynamicData.set(data, entry.offset);
         this.queueDynamicUpdate(entry, data);
       });
+      this.recordDebugInterpolation(managed.instance.type);
     });
   }
 
@@ -238,6 +254,7 @@ export class ObjectsRendererManager {
         return update();
       }
 
+      this.recordDebugInterpolation(managed.instance.type);
       const originalPosition = managed.instance.data.position;
       const origX = originalPosition.x;
       const origY = originalPosition.y;
@@ -265,6 +282,7 @@ export class ObjectsRendererManager {
         const updates = applyInterpolatedPosition(managed, objectId, () =>
           managed.renderer.update(managed.instance, managed.registration)
         );
+        this.recordDebugUpdate(managed.instance.type);
         updates.forEach(({ primitive, data }) => {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
           if (!entry) {
@@ -333,6 +351,7 @@ export class ObjectsRendererManager {
   }
 
   public consumeSyncInstructions(): SyncInstructions {
+    this.recordDebugFrame();
     const result: SyncInstructions = {
       staticData: null,
       dynamicData: null,
@@ -359,6 +378,7 @@ export class ObjectsRendererManager {
 
     this.pendingDynamicUpdates = [];
     this.pendingDynamicUpdateLength = 0;
+    this.maybeLogDebugStats();
 
     return result;
   }
@@ -480,6 +500,7 @@ export class ObjectsRendererManager {
       this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
     }
     const updates = managed.renderer.update(instance, managed.registration);
+    this.recordDebugUpdate(managed.instance.type);
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);
       if (!entry) {
@@ -627,6 +648,115 @@ export class ObjectsRendererManager {
       this.pendingDynamicUpdates = [];
       this.pendingDynamicUpdateLength = 0;
     }
+  }
+
+  public setDebugStatsEnabled(enabled: boolean): void {
+    if (this.debugStatsEnabled === enabled) {
+      return;
+    }
+    this.debugStatsEnabled = enabled;
+    this.resetDebugStats();
+  }
+
+  private recordDebugUpdate(type: string): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    this.debugUpdateCallsByType.set(
+      type,
+      (this.debugUpdateCallsByType.get(type) ?? 0) + 1
+    );
+  }
+
+  private recordDebugInterpolation(type: string): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    this.debugInterpolationsByType.set(
+      type,
+      (this.debugInterpolationsByType.get(type) ?? 0) + 1
+    );
+  }
+
+  private recordDebugFrame(): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    this.debugFrames += 1;
+  }
+
+  private maybeLogDebugStats(nowMs: number = Date.now()): void {
+    if (!this.debugStatsEnabled) {
+      return;
+    }
+    if (this.debugLastLogMs === 0) {
+      this.debugLastLogMs = nowMs;
+      return;
+    }
+    const elapsedMs = nowMs - this.debugLastLogMs;
+    if (elapsedMs < ObjectsRendererManager.DEBUG_LOG_INTERVAL_MS) {
+      return;
+    }
+    const elapsedSec = elapsedMs / 1000;
+    const frames = Math.max(this.debugFrames, 1);
+
+    const changesPerFrame = {
+      added: this.debugChanges.added / frames,
+      updated: this.debugChanges.updated / frames,
+      removed: this.debugChanges.removed / frames,
+    };
+    const changesPerSecond = {
+      added: this.debugChanges.added / elapsedSec,
+      updated: this.debugChanges.updated / elapsedSec,
+      removed: this.debugChanges.removed / elapsedSec,
+    };
+
+    const updatesByType = Array.from(this.debugUpdateCallsByType.entries())
+      .map(([type, count]) => {
+        const perFrame = count / frames;
+        const perSecond = count / elapsedSec;
+        return `${type}: ${perFrame.toFixed(2)}/frame, ${perSecond.toFixed(2)}/s`;
+      })
+      .join(" | ");
+
+    const interpolationsByType = Array.from(
+      this.debugInterpolationsByType.entries()
+    )
+      .map(([type, count]) => {
+        const perFrame = count / frames;
+        const perSecond = count / elapsedSec;
+        return `${type}: ${perFrame.toFixed(2)}/frame, ${perSecond.toFixed(2)}/s`;
+      })
+      .join(" | ");
+
+    console.info(
+      `[ObjectsRendererManager][debug] changes avg/frame a:${changesPerFrame.added.toFixed(
+        2
+      )} u:${changesPerFrame.updated.toFixed(
+        2
+      )} d:${changesPerFrame.removed.toFixed(
+        2
+      )} | avg/sec a:${changesPerSecond.added.toFixed(
+        2
+      )} u:${changesPerSecond.updated.toFixed(
+        2
+      )} d:${changesPerSecond.removed.toFixed(
+        2
+      )} | update calls: ${updatesByType || "none"} | interpolations: ${
+        interpolationsByType || "none"
+      }`
+    );
+
+    this.resetDebugStats();
+    this.debugLastLogMs = nowMs;
+  }
+
+  private resetDebugStats(): void {
+    this.debugFrames = 0;
+    this.debugLastLogMs = 0;
+    this.debugChanges = { added: 0, updated: 0, removed: 0 };
+    this.debugUpdateCallsByType.clear();
+    this.debugInterpolationsByType.clear();
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {
