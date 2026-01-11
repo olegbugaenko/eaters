@@ -13,7 +13,9 @@ import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
   circleWithBricks,
+  connectorWithBricks,
   polygonWithBricks,
+  squareWithBricks,
   templateWithBricks,
 } from "../logic/services/brick-layout/BrickLayoutService";
 
@@ -37,7 +39,8 @@ export type MapId =
   | "volcano"
   | "megaBrick"
   | "ancientPyramids"
-  | "deathfulGuns";
+  | "deathfulGuns"
+  | "deadlyTunnels";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
@@ -473,7 +476,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     return {
       name: "Deathful Guns",
       size,
-      icon: "pyramids.png",
+      icon: "turrets_of_death.png",
       spawnPoints: [spawnPoint],
       unlockedBy: [
         {
@@ -525,6 +528,145 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       mapsRequired: { ancientPyramids: 1 },
+    } satisfies MapConfig;
+  })(),
+  deadlyTunnels: (() => {
+    const size: SceneSize = { width: 1200, height: 1200 };
+    const center: SceneVector2 = { x: 600, y: 600 };
+    const spawnPoint: SceneVector2 = { x: 600, y: 600 };
+
+    const satelliteCount = 8;
+    const satelliteRadius = 80;
+    const orbitRadius = 350 + satelliteRadius;
+
+    const satellites = Array.from({ length: satelliteCount }, (_, index) => {
+      const angle = (index / satelliteCount) * Math.PI * 2;
+      const position: SceneVector2 = {
+        x: center.x + Math.cos(angle) * orbitRadius,
+        y: center.y + Math.sin(angle) * orbitRadius,
+      };
+      return position;
+    });
+
+    return {
+      name: "Deadly Tunnels",
+      size,
+      icon: "turrets_of_death.png",
+      spawnPoints: [spawnPoint],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "deathfulGuns",
+          level: 1,
+        },
+      ],
+      nodePosition: { x: -4, y: 0 },
+      maxLevel: 10,
+      bricks: ({ mapLevel }) => {
+        const satelliteCount = 8;
+        const satelliteRadius = 80;
+        const orbitRadius = 350 + satelliteRadius;
+        const stoneLevel = mapLevel + 3;
+
+        // Перераховуємо позиції супутників
+        const satellitePositions = Array.from({ length: satelliteCount }, (_, index) => {
+          const angle = (index / satelliteCount) * Math.PI * 2;
+          return {
+            x: center.x + Math.cos(angle) * orbitRadius,
+            y: center.y + Math.sin(angle) * orbitRadius,
+          };
+        });
+
+        // Створюємо квадрати з міді
+        const copperSquares = satellitePositions.map((position) => {
+          const squareSize = satelliteRadius * 2;
+          return squareWithBricks(
+            "smallCopper",
+            {
+              center: position,
+              size: squareSize,
+              innerSize: satelliteRadius * 0.6,
+            },
+            { level: mapLevel },
+          );
+        });
+
+        // Створюємо з'єднання з каменю між супутниками
+        const stoneConnectors = satellitePositions.flatMap((position, index) => {
+          const nextIndex = (index + 1) % satelliteCount;
+          const nextPosition = satellitePositions[nextIndex];
+          if (!nextPosition) {
+            return [];
+          }
+
+          // Обчислюємо точки на зовнішніх краях квадратів для з'єднання
+          const squareSize = satelliteRadius * 2;
+          const halfSize = squareSize / 2;
+
+          // Напрямок від першого квадрата до другого
+          const dx = nextPosition.x - position.x;
+          const dy = nextPosition.y - position.y;
+          const length = Math.hypot(dx, dy);
+          
+          if (length === 0) {
+            return [];
+          }
+
+          // Нормалізуємо вектор напрямку
+          const ux = dx / length;
+          const uy = dy / length;
+
+          // Для квадрата без обертання: знаходимо точку на грані
+          // Використовуємо максимальну координату для визначення грані
+          const absUx = Math.abs(ux);
+          const absUy = Math.abs(uy);
+          const maxAbs = Math.max(absUx, absUy);
+
+          // Масштабуємо для досягнення грані квадрата
+          const scale1 = halfSize / maxAbs;
+          const edgePoint1: SceneVector2 = {
+            x: position.x + ux * scale1,
+            y: position.y + uy * scale1,
+          };
+
+          // Аналогічно для другого квадрата (в зворотному напрямку)
+          const scale2 = halfSize / maxAbs;
+          const edgePoint2: SceneVector2 = {
+            x: nextPosition.x - ux * scale2,
+            y: nextPosition.y - uy * scale2,
+          };
+
+          const connectorWidth = satelliteRadius * 0.8;
+          return connectorWithBricks(
+            "smallSquareGray",
+            {
+              start: edgePoint1,
+              end: edgePoint2,
+              width: connectorWidth,
+            },
+            { level: stoneLevel },
+          );
+        });
+
+        return [...copperSquares, ...stoneConnectors];
+      },
+      enemies: ({ mapLevel }) => {
+        const level = Math.max(1, Math.floor(mapLevel));
+        return satellites.map((position) => {
+          return {
+            type: "volleyTurretEnemy",
+            level,
+            position,
+          } satisfies EnemySpawnData;
+        });
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      mapsRequired: { deathfulGuns: 1 },
     } satisfies MapConfig;
   })(),
   initial: {
@@ -1135,15 +1277,6 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
     const outerSize = 700;
     const cavitySize = 500;
-    const createSquareVertices = (squareSize: number): SceneVector2[] => {
-      const half = squareSize / 2;
-      return [
-        { x: center.x - half, y: center.y - half },
-        { x: center.x + half, y: center.y - half },
-        { x: center.x + half, y: center.y + half },
-        { x: center.x - half, y: center.y + half },
-      ];
-    };
 
     const enemySpawnPosition: SceneVector2 = {
       x: center.x,
@@ -1173,23 +1306,22 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         const ironThickness = getBrickConfig("smallIron").size.width;
         const innerRingSize = Math.max(cavitySize - ironThickness * 8, 0);
 
-        const forgeFloor = polygonWithBricks(
+        const forgeFloor = squareWithBricks(
           "smallSquareGray",
           {
-            vertices: createSquareVertices(outerSize),
-            holes: [createSquareVertices(cavitySize)],
+            center,
+            size: outerSize,
+            innerSize: cavitySize,
           },
           { level: walkwayLevel },
         );
 
-        const ironLining = polygonWithBricks(
+        const ironLining = squareWithBricks(
           "smallIron",
           {
-            vertices: createSquareVertices(cavitySize),
-            holes:
-              innerRingSize > 0
-                ? [createSquareVertices(innerRingSize)]
-                : undefined,
+            center,
+            size: cavitySize,
+            innerSize: innerRingSize > 0 ? innerRingSize : undefined,
           },
           { level: baseLevel },
         );
@@ -2214,17 +2346,6 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   })(),
   wire: (() => {
     const size: SceneSize = { width: 1500, height: 1500 };
-    const createRectangle = (
-      x: number,
-      y: number,
-      width: number,
-      height: number,
-    ): SceneVector2[] => [
-      { x, y },
-      { x: x + width, y },
-      { x: x + width, y: y + height },
-      { x, y: y + height },
-    ];
     const cableCenters: readonly SceneVector2[] = [
       { x: 350, y: 350 },
       { x: 520, y: 260 },
@@ -2236,34 +2357,6 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       { x: 620, y: 900 },
       { x: 420, y: 1080 },
     ];
-
-    const createConnector = (
-      start: SceneVector2,
-      end: SceneVector2,
-      halfWidth: number,
-    ): SceneVector2[] => {
-      const dx = end.x - start.x;
-      const dy = end.y - start.y;
-      const length = Math.hypot(dx, dy);
-      if (length === 0) {
-        return createRectangle(
-          start.x - halfWidth,
-          start.y - halfWidth,
-          halfWidth * 2,
-          halfWidth * 2,
-        );
-      }
-      const ux = dx / length;
-      const uy = dy / length;
-      const px = -uy * halfWidth;
-      const py = ux * halfWidth;
-      return [
-        { x: start.x + px, y: start.y + py },
-        { x: start.x - px, y: start.y - py },
-        { x: end.x - px, y: end.y - py },
-        { x: end.x + px, y: end.y + py },
-      ];
-    };
 
     const spawnPoint: SceneVector2 = { x: 180, y: 300 };
 
@@ -2299,10 +2392,12 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             return [circle];
           }
 
-          const connector = polygonWithBricks(
+          const connector = connectorWithBricks(
             "smallSquareGray",
             {
-              vertices: createConnector(center, nextCenter, outerRadius),
+              start: center,
+              end: nextCenter,
+              width: outerRadius * 2,
             },
             { level: outerLevel },
           );
@@ -2330,10 +2425,12 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             return [circle];
           }
 
-          const connector = polygonWithBricks(
+          const connector = connectorWithBricks(
             "smallCopper",
             {
-              vertices: createConnector(center, nextCenter, innerRadius),
+              start: center,
+              end: nextCenter,
+              width: innerRadius * 2,
             },
             { level: baseLevel },
           );
