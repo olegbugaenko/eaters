@@ -1,9 +1,11 @@
 import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
+import type { SceneObjectManager } from "../scene-object-manager/SceneObjectManager";
 import {
   cloneVector,
   scaleVector,
   addVectors,
   subtractVectors,
+  vectorHasLength,
 } from "@shared/helpers/vector.helper";
 import type {
   MovementBodyOptions,
@@ -16,7 +18,13 @@ import { clampPositive } from "./movement.helpers";
 export class MovementService {
   private bodies = new Map<string, InternalMovementBodyState>();
   private bodyOrder: InternalMovementBodyState[] = [];
+  private sceneObjects: SceneObjectManager | null;
+  private bodySceneMap = new Map<string, string>();
   private idCounter = 0;
+
+  constructor(sceneObjects?: SceneObjectManager | null) {
+    this.sceneObjects = sceneObjects ?? null;
+  }
 
   public createBody(options: MovementBodyOptions): string {
     const id = this.createBodyId();
@@ -32,6 +40,7 @@ export class MovementService {
       maxSpeed,
       force: { ...ZERO_VECTOR },
       dampings: [],
+      idleTicks: 0,
     };
 
     this.bodies.set(id, body);
@@ -40,11 +49,27 @@ export class MovementService {
     return id;
   }
 
+  public registerSceneObject(bodyId: string, sceneObjectId: string): void {
+    if (!this.bodies.has(bodyId)) {
+      return;
+    }
+    this.bodySceneMap.set(bodyId, sceneObjectId);
+  }
+
+  public unregisterSceneObject(bodyId: string): void {
+    const sceneObjectId = this.bodySceneMap.get(bodyId);
+    if (sceneObjectId) {
+      this.sceneObjects?.unmarkMovable(sceneObjectId);
+      this.bodySceneMap.delete(bodyId);
+    }
+  }
+
   public removeBody(bodyId: string): void {
     const body = this.bodies.get(bodyId);
     if (!body) {
       return;
     }
+    this.unregisterSceneObject(bodyId);
     this.bodies.delete(bodyId);
     this.bodyOrder = this.bodyOrder.filter((current) => current.id !== bodyId);
   }
@@ -169,6 +194,19 @@ export class MovementService {
       }
 
       body.position = addVectors(body.position, scaleVector(body.velocity, deltaSeconds));
+
+      const sceneObjectId = this.bodySceneMap.get(body.id);
+      if (sceneObjectId) {
+        if (vectorHasLength(body.velocity)) {
+          body.idleTicks = 0;
+          this.sceneObjects?.markMovable(sceneObjectId);
+        } else {
+          body.idleTicks += 1;
+          if (body.idleTicks >= 2) {
+            this.sceneObjects?.unmarkMovable(sceneObjectId);
+          }
+        }
+      }
     });
 
     this.resetForces();

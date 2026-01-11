@@ -28,7 +28,12 @@ import { clamp } from "@shared/helpers/numbers.helper";
 import { usePositionInterpolation } from "./usePositionInterpolation";
 import { setupWebGLScene } from "./useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "./useWebGLRenderLoop";
-import { updateVboStats, updateParticleStats, tickFrame } from "../components/debug/debugStats";
+import {
+  updateVboStats,
+  updateParticleStats,
+  updateMovableStats,
+  tickFrame,
+} from "../components/debug/debugStats";
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
@@ -132,6 +137,7 @@ export const useSceneCanvas = ({
 
     // Setup WebGL context and renderer
     const { gl, webglRenderer, objectsRenderer, cleanup: webglCleanup } = setupWebGLScene(canvas, sceneRef.current);
+    updateMovableStats(sceneRef.current.getMovableObjects().length);
 
     const pointerState: PointerState = {
       x: 0,
@@ -232,6 +238,7 @@ export const useSceneCanvas = ({
 
       // Оновлюємо буфери WebGL
       applySync();
+      updateMovableStats(sceneRef.current.getMovableObjects().length);
 
       // Додатково очищаємо будь-які залишки змін після очищення
       const remainingChanges = sceneRef.current.flushChanges();
@@ -240,6 +247,7 @@ export const useSceneCanvas = ({
           remainingChanges.removed.length > 0) {
         webglRenderer.getObjectsRenderer().applyChanges(remainingChanges);
         applySync();
+        updateMovableStats(sceneRef.current.getMovableObjects().length);
       }
     };
 
@@ -313,6 +321,7 @@ export const useSceneCanvas = ({
       },
 
       afterUpdate: (timestamp, scene, cameraState) => {
+        updateMovableStats(sceneRef.current.getMovableObjects().length);
         // Update VBO stats (write to global object, no React re-render)
         const dbs = webglRenderer.getObjectsRenderer().getDynamicBufferStats();
         if (

@@ -12,6 +12,7 @@ export interface DebugStats {
   particleActive: number;
   particleCapacity: number;
   particleEmitters: number;
+  movableObjects: number;
   // FPS tracking - updated by render loop
   frameCount: number;
   lastFpsUpdate: number;
@@ -25,6 +26,7 @@ export const debugStats: DebugStats = {
   particleActive: 0,
   particleCapacity: 0,
   particleEmitters: 0,
+  movableObjects: 0,
   frameCount: 0,
   lastFpsUpdate: 0,
   currentFps: 0,
@@ -45,6 +47,11 @@ export const updateParticleStats = (
   debugStats.particleActive = active;
   debugStats.particleCapacity = capacity;
   debugStats.particleEmitters = emitters;
+};
+
+/** Update movable objects count (called from useSceneCanvas) */
+export const updateMovableStats = (count: number): void => {
+  debugStats.movableObjects = count;
 };
 
 /** 

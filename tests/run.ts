@@ -62,5 +62,6 @@ import "./BonusCalculator.test";
 import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
 import "./StatusEffectsModule.test";
+import "./MovementService.test";
 
 void run();
