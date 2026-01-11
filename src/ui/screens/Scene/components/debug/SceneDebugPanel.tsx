@@ -22,10 +22,12 @@ const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ bridge }) => {
   const fpsRef = useRef<HTMLDivElement | null>(null);
   const vboRef = useRef<HTMLDivElement | null>(null);
   const particlesRef = useRef<HTMLDivElement | null>(null);
+  const movableRef = useRef<HTMLDivElement | null>(null);
   const lastDisplayedTime = useRef<string | null>(null);
   const lastDisplayedFps = useRef<number | null>(null);
   const lastDisplayedVbo = useRef<string | null>(null);
   const lastDisplayedParticles = useRef<string | null>(null);
+  const lastDisplayedMovable = useRef<string | null>(null);
 
   useEffect(() => {
     const update = () => {
@@ -63,6 +65,14 @@ const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ bridge }) => {
           particlesRef.current.textContent = next;
         }
       }
+
+      if (movableRef.current) {
+        const next = `Movable: ${debugStats.movableObjects}`;
+        if (lastDisplayedMovable.current !== next) {
+          lastDisplayedMovable.current = next;
+          movableRef.current.textContent = next;
+        }
+      }
     };
 
     update();
@@ -79,6 +89,7 @@ const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ bridge }) => {
       <div className="scene-debug-panel__item" ref={fpsRef} />
       <div className="scene-debug-panel__item" ref={vboRef} />
       <div className="scene-debug-panel__item" ref={particlesRef} />
+      <div className="scene-debug-panel__item" ref={movableRef} />
     </div>
   );
 };
