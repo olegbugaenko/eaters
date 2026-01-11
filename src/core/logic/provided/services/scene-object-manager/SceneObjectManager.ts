@@ -237,6 +237,19 @@ export class SceneObjectManager {
     return result;
   }
 
+  public forEachMovableObject(callback: (instance: SceneObjectInstance) => void): void {
+    this.movableObjects.forEach((id) => {
+      const instance = this.objects.get(id);
+      if (instance) {
+        callback(instance);
+      }
+    });
+  }
+
+  public getMovableObjectCount(): number {
+    return this.movableObjects.size;
+  }
+
   public flushChanges(): {
     added: SceneObjectInstance[];
     updated: SceneObjectInstance[];

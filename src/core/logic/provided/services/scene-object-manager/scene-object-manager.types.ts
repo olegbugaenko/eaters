@@ -128,6 +128,8 @@ export interface SceneUiApi {
   updateObject(id: string, data: SceneObjectData): void;
   getObjects(): readonly SceneObjectInstance[];
   getMovableObjects(): readonly SceneObjectInstance[];
+  forEachMovableObject(callback: (instance: SceneObjectInstance) => void): void;
+  getMovableObjectCount(): number;
   getCamera(): SceneCameraState;
   getScaleRange(): { min: number; max: number };
   setScale(value: number): void;

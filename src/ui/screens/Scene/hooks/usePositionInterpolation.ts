@@ -44,29 +44,6 @@ export const usePositionInterpolation = (
 
   // Sync snapshots with game loop ticks
   useEffect(() => {
-    const syncUnitSnapshots = (timestamp: number) => {
-      const nextIds = new Set<string>();
-      const snapshots = unitSnapshotsRef.current;
-      scene
-        .getMovableObjects()
-        .filter((instance) => instance.type === "playerUnit")
-        .forEach((instance) => {
-          nextIds.add(instance.id);
-          const existing = snapshots.get(instance.id);
-          const previous = existing?.next ?? { ...instance.data.position };
-          snapshots.set(instance.id, {
-            prev: previous,
-            next: { ...instance.data.position },
-            lastTickAt: timestamp,
-          });
-        });
-      Array.from(snapshots.keys()).forEach((id) => {
-        if (!nextIds.has(id)) {
-          snapshots.delete(id);
-        }
-      });
-    };
-
     const syncBulletSnapshots = (timestamp: number) => {
       const nextKeys = new Set<string>();
       const snapshots = bulletSnapshotsRef.current;
@@ -106,61 +83,76 @@ export const usePositionInterpolation = (
       });
     };
 
-    const syncBrickSnapshots = (timestamp: number) => {
-      const nextIds = new Set<string>();
-      const snapshots = brickSnapshotsRef.current;
-      scene
-        .getMovableObjects()
-        .filter((instance) => instance.type === "brick")
-        .forEach((instance) => {
-          nextIds.add(instance.id);
-          const existing = snapshots.get(instance.id);
-          const previous = existing?.next ?? { ...instance.data.position };
-          snapshots.set(instance.id, {
-            prev: previous,
-            next: { ...instance.data.position },
-            lastTickAt: timestamp,
-          });
-        });
-      Array.from(snapshots.keys()).forEach((id) => {
-        if (!nextIds.has(id)) {
-          snapshots.delete(id);
+    const syncMovableSnapshots = (timestamp: number) => {
+      const unitSnapshots = unitSnapshotsRef.current;
+      const brickSnapshots = brickSnapshotsRef.current;
+      const enemySnapshots = enemySnapshotsRef.current;
+      const nextUnitIds = new Set<string>();
+      const nextBrickIds = new Set<string>();
+      const nextEnemyIds = new Set<string>();
+
+      scene.forEachMovableObject((instance) => {
+        switch (instance.type) {
+          case "playerUnit": {
+            nextUnitIds.add(instance.id);
+            const existing = unitSnapshots.get(instance.id);
+            const previous = existing?.next ?? { ...instance.data.position };
+            unitSnapshots.set(instance.id, {
+              prev: previous,
+              next: { ...instance.data.position },
+              lastTickAt: timestamp,
+            });
+            break;
+          }
+          case "brick": {
+            nextBrickIds.add(instance.id);
+            const existing = brickSnapshots.get(instance.id);
+            const previous = existing?.next ?? { ...instance.data.position };
+            brickSnapshots.set(instance.id, {
+              prev: previous,
+              next: { ...instance.data.position },
+              lastTickAt: timestamp,
+            });
+            break;
+          }
+          case "enemy": {
+            nextEnemyIds.add(instance.id);
+            const existing = enemySnapshots.get(instance.id);
+            const previous = existing?.next ?? { ...instance.data.position };
+            enemySnapshots.set(instance.id, {
+              prev: previous,
+              next: { ...instance.data.position },
+              lastTickAt: timestamp,
+            });
+            break;
+          }
+          default:
+            break;
+        }
+      });
+
+      Array.from(unitSnapshots.keys()).forEach((id) => {
+        if (!nextUnitIds.has(id)) {
+          unitSnapshots.delete(id);
+        }
+      });
+      Array.from(brickSnapshots.keys()).forEach((id) => {
+        if (!nextBrickIds.has(id)) {
+          brickSnapshots.delete(id);
+        }
+      });
+      Array.from(enemySnapshots.keys()).forEach((id) => {
+        if (!nextEnemyIds.has(id)) {
+          enemySnapshots.delete(id);
         }
       });
     };
 
-    const syncEnemySnapshots = (timestamp: number) => {
-      const nextIds = new Set<string>();
-      const snapshots = enemySnapshotsRef.current;
-      scene
-        .getMovableObjects()
-        .filter((instance) => instance.type === "enemy")
-        .forEach((instance) => {
-          nextIds.add(instance.id);
-          const existing = snapshots.get(instance.id);
-          const previous = existing?.next ?? { ...instance.data.position };
-          snapshots.set(instance.id, {
-            prev: previous,
-            next: { ...instance.data.position },
-            lastTickAt: timestamp,
-          });
-        });
-      Array.from(snapshots.keys()).forEach((id) => {
-        if (!nextIds.has(id)) {
-          snapshots.delete(id);
-        }
-      });
-    };
-
-    syncUnitSnapshots(gameLoop.getLastTickTimestamp() || getNow());
+    syncMovableSnapshots(gameLoop.getLastTickTimestamp() || getNow());
     syncBulletSnapshots(gameLoop.getLastTickTimestamp() || getNow());
-    syncBrickSnapshots(gameLoop.getLastTickTimestamp() || getNow());
-    syncEnemySnapshots(gameLoop.getLastTickTimestamp() || getNow());
     const unsubscribe = gameLoop.addTickListener(({ timestamp }) => {
-      syncUnitSnapshots(timestamp);
+      syncMovableSnapshots(timestamp);
       syncBulletSnapshots(timestamp);
-      syncBrickSnapshots(timestamp);
-      syncEnemySnapshots(timestamp);
     });
     return () => {
       unsubscribe();
