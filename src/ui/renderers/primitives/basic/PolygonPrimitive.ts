@@ -314,6 +314,50 @@ const updatePolygonData = (
   return changed;
 };
 
+const updatePolygonPositionData = (
+  target: Float32Array,
+  center: SceneVector2,
+  rotation: number,
+  vertices: PolygonVertices
+): boolean => {
+  const triangleCount = Math.max(vertices.length - 2, 0);
+  if (triangleCount <= 0) {
+    return false;
+  }
+  const cx = center.x;
+  const cy = center.y;
+  const hasRotation = rotation !== 0;
+  const cos = hasRotation ? Math.cos(rotation) : 1;
+  const sin = hasRotation ? Math.sin(rotation) : 0;
+
+  let offset = 0;
+  let changed = false;
+  const anchor = vertices[0]!;
+  const anchorX = hasRotation ? cx + anchor.x * cos - anchor.y * sin : cx + anchor.x;
+  const anchorY = hasRotation ? cy + anchor.x * sin + anchor.y * cos : cy + anchor.y;
+
+  for (let i = 1; i < vertices.length - 1; i += 1) {
+    if (target[offset] !== anchorX) { target[offset] = anchorX; changed = true; }
+    if (target[offset + 1] !== anchorY) { target[offset + 1] = anchorY; changed = true; }
+    offset += VERTEX_COMPONENTS;
+
+    const current = vertices[i]!;
+    const currX = hasRotation ? cx + current.x * cos - current.y * sin : cx + current.x;
+    const currY = hasRotation ? cy + current.x * sin + current.y * cos : cy + current.y;
+    if (target[offset] !== currX) { target[offset] = currX; changed = true; }
+    if (target[offset + 1] !== currY) { target[offset + 1] = currY; changed = true; }
+    offset += VERTEX_COMPONENTS;
+
+    const next = vertices[i + 1]!;
+    const nextX = hasRotation ? cx + next.x * cos - next.y * sin : cx + next.x;
+    const nextY = hasRotation ? cy + next.x * sin + next.y * cos : cy + next.y;
+    if (target[offset] !== nextX) { target[offset] = nextX; changed = true; }
+    if (target[offset + 1] !== nextY) { target[offset + 1] = nextY; changed = true; }
+    offset += VERTEX_COMPONENTS;
+  }
+  return changed;
+};
+
 // Optimized: reuse output array when size matches
 const expandVertices = (
   vertices: PolygonVertices,
@@ -432,6 +476,7 @@ export const createDynamicPolygonPrimitive = (
   });
 
   let data = buildPolygonData(origin, rotation, initialVertices, fillComponents);
+  let currentVertices = initialVertices;
   
   // Cache previous state for fast-path (use raw position, not transformed origin)
   let prevPosX = instance.data.position.x;
@@ -469,6 +514,7 @@ export const createDynamicPolygonPrimitive = (
         nextVertices = resolveVertices(options, target);
         computeGeometry(nextVertices, geometry);
       }
+      currentVertices = nextVertices;
       const nextVertexCount = nextVertices.length;
       
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
@@ -522,6 +568,35 @@ export const createDynamicPolygonPrimitive = (
         rotation,
         nextVertices,
         fillComponents
+      );
+      return changed ? data : null;
+    },
+    updatePositionOnly(target: SceneObjectInstance) {
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      if (
+        pos.x === prevPosX &&
+        pos.y === prevPosY &&
+        nextRotation === prevRotation
+      ) {
+        return null;
+      }
+      origin = getCenter(target);
+      rotation = nextRotation;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = rotation;
+
+      const expectedSize = Math.max(currentVertices.length - 2, 0) * 3 * VERTEX_COMPONENTS;
+      if (data.length !== expectedSize) {
+        return null;
+      }
+
+      const changed = updatePolygonPositionData(
+        data,
+        origin,
+        rotation,
+        currentVertices
       );
       return changed ? data : null;
     },
@@ -820,6 +895,82 @@ const updateStrokeBandData = (
   return changed;
 };
 
+const updateStrokeBandPositionData = (
+  target: Float32Array,
+  center: SceneVector2,
+  rotation: number,
+  inner: PolygonVertices,
+  outer: PolygonVertices
+): boolean => {
+  const n = Math.min(inner.length, outer.length);
+  if (n < MIN_VERTEX_COUNT) {
+    return false;
+  }
+  const cx = center.x;
+  const cy = center.y;
+  const hasRotation = rotation !== 0;
+  const cos = hasRotation ? Math.cos(rotation) : 1;
+  const sin = hasRotation ? Math.sin(rotation) : 0;
+
+  let write = 0;
+  let changed = false;
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const outerI = outer[i]!;
+    const outerJ = outer[j]!;
+    const innerI = inner[i]!;
+    const innerJ = inner[j]!;
+
+    let Ax: number, Ay: number, Bx: number, By: number;
+    let ax: number, ay: number, bx: number, by: number;
+    if (hasRotation) {
+      Ax = cx + outerI.x * cos - outerI.y * sin;
+      Ay = cy + outerI.x * sin + outerI.y * cos;
+      Bx = cx + outerJ.x * cos - outerJ.y * sin;
+      By = cy + outerJ.x * sin + outerJ.y * cos;
+      ax = cx + innerI.x * cos - innerI.y * sin;
+      ay = cy + innerI.x * sin + innerI.y * cos;
+      bx = cx + innerJ.x * cos - innerJ.y * sin;
+      by = cy + innerJ.x * sin + innerJ.y * cos;
+    } else {
+      Ax = cx + outerI.x;
+      Ay = cy + outerI.y;
+      Bx = cx + outerJ.x;
+      By = cy + outerJ.y;
+      ax = cx + innerI.x;
+      ay = cy + innerI.y;
+      bx = cx + innerJ.x;
+      by = cy + innerJ.y;
+    }
+
+    if (target[write] !== Ax) { target[write] = Ax; changed = true; }
+    if (target[write + 1] !== Ay) { target[write + 1] = Ay; changed = true; }
+    write += VERTEX_COMPONENTS;
+
+    if (target[write] !== Bx) { target[write] = Bx; changed = true; }
+    if (target[write + 1] !== By) { target[write + 1] = By; changed = true; }
+    write += VERTEX_COMPONENTS;
+
+    if (target[write] !== ax) { target[write] = ax; changed = true; }
+    if (target[write + 1] !== ay) { target[write + 1] = ay; changed = true; }
+    write += VERTEX_COMPONENTS;
+
+    if (target[write] !== ax) { target[write] = ax; changed = true; }
+    if (target[write + 1] !== ay) { target[write + 1] = ay; changed = true; }
+    write += VERTEX_COMPONENTS;
+
+    if (target[write] !== Bx) { target[write] = Bx; changed = true; }
+    if (target[write + 1] !== By) { target[write + 1] = By; changed = true; }
+    write += VERTEX_COMPONENTS;
+
+    if (target[write] !== bx) { target[write] = bx; changed = true; }
+    if (target[write + 1] !== by) { target[write + 1] = by; changed = true; }
+    write += VERTEX_COMPONENTS;
+  }
+
+  return changed;
+};
+
 export const createDynamicPolygonStrokePrimitive = (
   instance: SceneObjectInstance,
   options: DynamicPolygonStrokePrimitiveOptions
@@ -934,6 +1085,37 @@ export const createDynamicPolygonStrokePrimitive = (
       }
       
       const changed = updateStrokeBandData(data, origin, rotation, inner, outer, fillComponents);
+      return changed ? data : null;
+    },
+    updatePositionOnly(target: SceneObjectInstance) {
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      if (
+        pos.x === prevPosX &&
+        pos.y === prevPosY &&
+        nextRotation === prevRotation
+      ) {
+        return null;
+      }
+      origin = getCenter(target);
+      rotation = nextRotation;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = rotation;
+
+      const n = Math.min(inner.length, outer.length);
+      const expectedSize = n * 2 * 3 * VERTEX_COMPONENTS;
+      if (data.length !== expectedSize) {
+        return null;
+      }
+
+      const changed = updateStrokeBandPositionData(
+        data,
+        origin,
+        rotation,
+        inner,
+        outer
+      );
       return changed ? data : null;
     },
   };

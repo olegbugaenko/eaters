@@ -37,6 +37,7 @@ export interface StaticPrimitive extends Primitive {}
 
 export interface DynamicPrimitive extends Primitive {
   update(instance: SceneObjectInstance): Float32Array | null;
+  updatePositionOnly?(instance: SceneObjectInstance): Float32Array | null;
   dispose?(): void;
   /**
    * If true, this primitive will be updated every render frame via tickAutoAnimatingPrimitives().
@@ -86,6 +87,23 @@ export abstract class ObjectRenderer {
     const updates: DynamicPrimitiveUpdate[] = [];
     registration.dynamicPrimitives.forEach((primitive) => {
       const data = primitive.update(instance);
+      if (data) {
+        updates.push({ primitive, data });
+      }
+    });
+    return updates;
+  }
+
+  public updatePositionOnly(
+    instance: SceneObjectInstance,
+    registration: ObjectRegistration
+  ): DynamicPrimitiveUpdate[] {
+    const updates: DynamicPrimitiveUpdate[] = [];
+    registration.dynamicPrimitives.forEach((primitive) => {
+      const data =
+        typeof primitive.updatePositionOnly === "function"
+          ? primitive.updatePositionOnly(instance)
+          : primitive.update(instance);
       if (data) {
         updates.push({ primitive, data });
       }

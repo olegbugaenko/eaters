@@ -401,6 +401,38 @@ export const createDynamicCirclePrimitive = (
       }
       return data;
     },
+    updatePositionOnly(target: SceneObjectInstance) {
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      const nextCenter = getCenter(target, options.offset);
+      const centerChanged =
+        nextCenter.x !== previousCenterX || nextCenter.y !== previousCenterY;
+      if (!centerChanged) {
+        if (nextRotation === prevRotation) {
+          return null;
+        }
+        prevPosX = pos.x;
+        prevPosY = pos.y;
+        prevRotation = nextRotation;
+        return null;
+      }
+      previousCenterX = nextCenter.x;
+      previousCenterY = nextCenter.y;
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = nextRotation;
+      updateCircleData(
+        data,
+        nextCenter,
+        radius,
+        fillScratch,
+        segments,
+        trig,
+        true,
+        false
+      );
+      return data;
+    },
   };
 };
 

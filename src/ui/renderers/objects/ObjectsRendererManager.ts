@@ -206,7 +206,7 @@ export class ObjectsRendererManager {
       originalPosition.x = position.x;
       originalPosition.y = position.y;
       
-      const updates = managed.renderer.update(
+      const updates = managed.renderer.updatePositionOnly(
         managed.instance,
         managed.registration
       );
@@ -493,13 +493,17 @@ export class ObjectsRendererManager {
     if (!managed) {
       return;
     }
+    const previousInstance = managed.instance;
+    const isTransformOnly = this.isTransformOnlyUpdate(previousInstance, instance);
     managed.instance = instance;
     const customData = instance.data.customData as Record<string, unknown> | undefined;
     const bulletGpuKey = customData?.bulletGpuKey;
     if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
       this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
     }
-    const updates = managed.renderer.update(instance, managed.registration);
+    const updates = isTransformOnly
+      ? managed.renderer.updatePositionOnly(instance, managed.registration)
+      : managed.renderer.update(instance, managed.registration);
     this.recordDebugUpdate(managed.instance.type);
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);
@@ -757,6 +761,42 @@ export class ObjectsRendererManager {
     this.debugChanges = { added: 0, updated: 0, removed: 0 };
     this.debugUpdateCallsByType.clear();
     this.debugInterpolationsByType.clear();
+  }
+
+  private isTransformOnlyUpdate(
+    previous: SceneObjectInstance,
+    next: SceneObjectInstance
+  ): boolean {
+    if (previous.type !== next.type || previous.id !== next.id) {
+      return false;
+    }
+    const prevData = previous.data;
+    const nextData = next.data;
+    const positionChanged =
+      prevData.position.x !== nextData.position.x ||
+      prevData.position.y !== nextData.position.y;
+    const prevRotation = prevData.rotation ?? 0;
+    const nextRotation = nextData.rotation ?? 0;
+    const rotationChanged = prevRotation !== nextRotation;
+    if (!positionChanged && !rotationChanged) {
+      return false;
+    }
+    const sizeEqual =
+      prevData.size === nextData.size ||
+      (!prevData.size && !nextData.size) ||
+      (prevData.size?.width === nextData.size?.width &&
+        prevData.size?.height === nextData.size?.height);
+    const colorEqual =
+      prevData.color === nextData.color ||
+      (!prevData.color && !nextData.color) ||
+      (prevData.color?.r === nextData.color?.r &&
+        prevData.color?.g === nextData.color?.g &&
+        prevData.color?.b === nextData.color?.b &&
+        (prevData.color?.a ?? 1) === (nextData.color?.a ?? 1));
+    const fillEqual = prevData.fill === nextData.fill;
+    const strokeEqual = prevData.stroke === nextData.stroke;
+    const customDataEqual = prevData.customData === nextData.customData;
+    return sizeEqual && colorEqual && fillEqual && strokeEqual && customDataEqual;
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {

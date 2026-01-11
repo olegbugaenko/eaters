@@ -193,6 +193,29 @@ const updateTriangleData = (
   return changed;
 };
 
+const updateTrianglePositionData = (
+  target: Float32Array,
+  center: SceneVector2,
+  rotation: number,
+  vertices: TriangleVertices
+): boolean => {
+  let offset = 0;
+  let changed = false;
+  for (let i = 0; i < vertices.length; i += 1) {
+    const point = transformObjectPoint(center, rotation, vertices[i]);
+    if (target[offset] !== point.x) {
+      target[offset] = point.x;
+      changed = true;
+    }
+    if (target[offset + 1] !== point.y) {
+      target[offset + 1] = point.y;
+      changed = true;
+    }
+    offset += VERTEX_COMPONENTS;
+  }
+  return changed;
+};
+
 export const createStaticTrianglePrimitive = (
   options: TrianglePrimitiveOptions
 ): StaticPrimitive => {
@@ -248,6 +271,7 @@ export const createDynamicTrianglePrimitive = (
   });
 
   const data = buildTriangleData(origin, rotation, initialVertices, fillComponents);
+  let currentVertices = initialVertices;
 
   // OPTIMIZATION: Cache previous position/rotation for fast-path
   let prevPosX = instance.data.position.x;
@@ -276,6 +300,7 @@ export const createDynamicTrianglePrimitive = (
       if (!isStaticVertices) {
         geometry = computeGeometry(nextVertices);
       }
+      currentVertices = nextVertices;
       origin = getCenter(target);
       rotation = nextRotation;
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
@@ -292,6 +317,29 @@ export const createDynamicTrianglePrimitive = (
         rotation,
         nextVertices,
         fillComponents
+      );
+      return changed ? data : null;
+    },
+    updatePositionOnly(target: SceneObjectInstance) {
+      const pos = target.data.position;
+      const nextRotation = target.data.rotation ?? 0;
+      if (
+        pos.x === prevPosX &&
+        pos.y === prevPosY &&
+        nextRotation === prevRotation
+      ) {
+        return null;
+      }
+      prevPosX = pos.x;
+      prevPosY = pos.y;
+      prevRotation = nextRotation;
+      origin = getCenter(target);
+      rotation = nextRotation;
+      const changed = updateTrianglePositionData(
+        data,
+        origin,
+        rotation,
+        currentVertices
       );
       return changed ? data : null;
     },
