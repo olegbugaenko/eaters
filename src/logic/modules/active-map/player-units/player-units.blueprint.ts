@@ -39,6 +39,10 @@ export const computePlayerUnitBlueprint = (
   );
   const globalHpMultiplier = sanitizeMultiplier(values["all_units_hp_multiplier"], 1);
   const globalArmorBonus = sanitizeAdditive(values["all_units_armor"], 0);
+  const globalArmorMultiplier = sanitizeMultiplier(
+    values["all_units_armor_multiplier"],
+    1
+  );
   const globalCritChanceBonus = sanitizeAdditive(values["all_units_crit_chance"], 0);
   const globalCritMultiplierRaw = sanitizeMultiplier(
     values["all_units_crit_mult"],
@@ -123,7 +127,9 @@ export const computePlayerUnitBlueprint = (
       multiplier: Math.max(critMultiplierMultiplier, 0),
       effective: Math.max(effectiveCritMultiplier, 1),
     },
-    armor: Math.max(config.armor, 0) + globalArmorBonus,
+    armor: roundStat(
+      (Math.max(config.armor, 0) + globalArmorBonus) * Math.max(globalArmorMultiplier, 0)
+    ),
     hpRegenPerSecond,
     hpRegenPercentage: globalHpRegenPercentage,
     armorPenetration: globalArmorPenetration,

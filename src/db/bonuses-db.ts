@@ -16,6 +16,7 @@ export const BONUS_IDS = [
   "all_units_hp_multiplier",
   "all_units_attack_multiplier",
   "all_units_armor",
+  "all_units_armor_multiplier",
   "all_units_crit_mult",
   "all_units_crit_chance",
   "all_units_hp_regen_percentage",
@@ -78,6 +79,11 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_armor",
     name: "All Units Armor",
     defaultValue: 0,
+  },
+  all_units_armor_multiplier: {
+    id: "all_units_armor_multiplier",
+    name: "All Units Armor Multiplier",
+    defaultValue: 1,
   },
   all_units_crit_chance: {
     id: "all_units_crit_chance",
