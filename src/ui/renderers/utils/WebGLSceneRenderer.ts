@@ -194,15 +194,68 @@ export class WebGLSceneRenderer {
 
   private logTranslatedShaders(): void {
     const debugExtension = this.gl.getExtension("WEBGL_debug_shaders");
+    const originalVertexSource = VERTEX_SHADER;
+    const originalFragmentSource = FRAGMENT_SHADER;
+
+    this.logRelevantShaderLines("Original vertex", originalVertexSource);
+    this.logRelevantShaderLines("Original fragment", originalFragmentSource);
+
     if (!debugExtension) {
+      console.warn(
+        "[WebGLSceneRenderer] WEBGL_debug_shaders is unavailable; translated shader sources cannot be logged."
+      );
       return;
     }
 
-    const vertexSource = debugExtension.getTranslatedShaderSource(this.vertexShader);
-    const fragmentSource = debugExtension.getTranslatedShaderSource(this.fragmentShader);
+    const translatedVertexSource =
+      debugExtension.getTranslatedShaderSource(this.vertexShader) ?? "";
+    const translatedFragmentSource =
+      debugExtension.getTranslatedShaderSource(this.fragmentShader) ?? "";
 
-    console.debug("[WebGLSceneRenderer] Translated vertex shader source:", vertexSource);
-    console.debug("[WebGLSceneRenderer] Translated fragment shader source:", fragmentSource);
+    if (!translatedVertexSource.trim()) {
+      console.warn(
+        "[WebGLSceneRenderer] Translated vertex shader source is empty; output may be unavailable from WEBGL_debug_shaders."
+      );
+    }
+    if (!translatedFragmentSource.trim()) {
+      console.warn(
+        "[WebGLSceneRenderer] Translated fragment shader source is empty; output may be unavailable from WEBGL_debug_shaders."
+      );
+    }
+
+    this.logRelevantShaderLines("Translated vertex", translatedVertexSource);
+    this.logRelevantShaderLines("Translated fragment", translatedFragmentSource);
+  }
+
+  private logRelevantShaderLines(label: string, source: string): void {
+    if (!source.trim()) {
+      console.debug(
+        `[WebGLSceneRenderer] ${label} shader debug lines: <empty source>`
+      );
+      return;
+    }
+
+    const patterns = [
+      /precision\s+(lowp|mediump|highp)\s+(float|int)\s*;/i,
+      /\bu_crackAtlas(Index|Grid)\b/,
+      /\bu_cracksAtlas\b/,
+    ];
+    const lines = source.split("\n");
+    const matches = lines
+      .map((line, index) => ({ line, index }))
+      .filter(({ line }) => patterns.some((pattern) => pattern.test(line)))
+      .map(({ line, index }) => `[${index + 1}] ${line.trim()}`);
+
+    if (matches.length === 0) {
+      console.debug(
+        `[WebGLSceneRenderer] ${label} shader debug lines: <no matching lines>`
+      );
+      return;
+    }
+
+    console.debug(
+      `[WebGLSceneRenderer] ${label} shader debug lines:\n${matches.join("\n")}`
+    );
   }
 
   private createAttributeConfigs(
