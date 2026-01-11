@@ -37,7 +37,8 @@ export type ExplosionType =
   | "criticalHit"
   | "weakenCurse"
   | "smallCannon"
-  | "bigCannon";
+  | "bigCannon"
+  | "smallCannonGrey";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
@@ -81,6 +82,12 @@ const PLASMOID_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 1, g: 0.75, b: 0.3, a: 0.8 } },
   { offset: 0.35, color: { r: 1, g: 0.45, b: 0.15, a: 0.55 } },
   { offset: 1, color: { r: 1, g: 0.1, b: 0, a: 0 } },
+] as const;
+
+const GREY_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.8 } },
+  { offset: 0.35, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.55 } },
+  { offset: 1, color: { r: 0.6, g: 0.75, b: 0.75, a: 0 } },
 ] as const;
 
 const MAGNETIC_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
@@ -218,6 +225,16 @@ const SMALL_CANNON_EMITTER_FILL: SceneFill = {
     { offset: 0.45, color: { r: 0.9, g: 0.8, b: 0.7, a: 0.42 } },
     { offset: 1, color: { r: 0.5, g: 0.4, b: 0.3, a: 0.02 } },
   ]
+};
+
+const SMALL_GREY_CANNON_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    { offset: 0, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.8 } },
+    { offset: 0.35, color: { r: 0.6, g: 0.75, b: 0.75, a: 0.55 } },
+    { offset: 1, color: { r: 0.6, g: 0.75, b: 0.75, a: 0 } },
+  ],
 };
 
 
@@ -484,6 +501,32 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
       // color: { r: 1, g: 1, b: 1, a: 1 },
       fill: SMALL_CANNON_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  smallCannonGrey: {
+    lifetimeMs: 2_000,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 10,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: GREY_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.04,
+      speedVariation: 0.025,
+      fadeStartMs: 400,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 1760,
+      sizeRange: { min: 0.5, max: 3.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      // color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: SMALL_GREY_CANNON_EMITTER_FILL,
       radialVelocity: true, // Частинки рухаються від центру вибуху
     },
   },
