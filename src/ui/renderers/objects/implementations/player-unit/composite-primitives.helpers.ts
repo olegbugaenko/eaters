@@ -335,49 +335,51 @@ export const createCompositePrimitives = (
             ? { x: -1, y: 0 }
             : null;
 
-        const vertexMeta = baseVertices.map((v) => {
+        const vertexCount = baseVertices.length;
+        const baseX = new Float32Array(vertexCount);
+        const baseY = new Float32Array(vertexCount);
+        const normalX = new Float32Array(vertexCount);
+        const normalY = new Float32Array(vertexCount);
+        const tangentX = new Float32Array(vertexCount);
+        const tangentY = new Float32Array(vertexCount);
+        const normalMagnitude = new Float32Array(vertexCount);
+        const tangentMagnitude = new Float32Array(vertexCount);
+        for (let i = 0; i < vertexCount; i += 1) {
+          const v = baseVertices[i]!;
           const dx = v.x - center.x;
           const dy = v.y - center.y;
           const radius = Math.hypot(dx, dy);
           const invRadius = radius > 1e-6 ? 1 / radius : 0;
-          const normalX = dx * invRadius;
-          const normalY = dy * invRadius;
-          const tangentX = -normalY;
-          const tangentY = normalX;
-          const normalMagnitude =
+          baseX[i] = v.x;
+          baseY[i] = v.y;
+          normalX[i] = dx * invRadius;
+          normalY[i] = dy * invRadius;
+          tangentX[i] = -normalY[i]!;
+          tangentY[i] = normalX[i]!;
+          normalMagnitude[i] =
             amplitudePercentage !== undefined ? radius * amplitudePercentage : amplitude;
-          return {
-            baseX: v.x,
-            baseY: v.y,
-            normalX,
-            normalY,
-            tangentX,
-            tangentY,
-            normalMagnitude,
-            tangentMagnitude: amplitude,
-          };
-        });
+          tangentMagnitude[i] = amplitude;
+        }
         const deformed = baseVertices.map((v) => ({ x: v.x, y: v.y }));
-        const movementMeta = movementPerp
-          ? baseVertices.map((v) => {
-              const signedDist = v.x * movementPerp.x + v.y * movementPerp.y;
-              const toward = -Math.sign(signedDist) || 0;
-              const magnitude =
-                amplitudePercentage !== undefined
-                  ? Math.abs(signedDist) * amplitudePercentage
-                  : amplitude;
-              return {
-                toward,
-                magnitude,
-              };
-            })
-          : null;
-        const hasMovement = Boolean(movementPerp && movementMeta);
+        const moveToward = movementPerp ? new Float32Array(vertexCount) : null;
+        const moveMagnitude = movementPerp ? new Float32Array(vertexCount) : null;
+        if (movementPerp && moveToward && moveMagnitude) {
+          for (let i = 0; i < vertexCount; i += 1) {
+            const signedDist =
+              baseX[i]! * movementPerp.x + baseY[i]! * movementPerp.y;
+            moveToward[i] = -Math.sign(signedDist) || 0;
+            moveMagnitude[i] =
+              amplitudePercentage !== undefined
+                ? Math.abs(signedDist) * amplitudePercentage
+                : amplitude;
+          }
+        }
+        const hasMovement = Boolean(movementPerp && moveToward && moveMagnitude);
         const sinPhaseStep = Math.sin(POLYGON_SWAY_PHASE_STEP);
         const cosPhaseStep = Math.cos(POLYGON_SWAY_PHASE_STEP);
 
         const sampleSway = (timeMs: number): SceneVector2[] => {
-          if (vertexMeta.length === 0) {
+          if (vertexCount === 0) {
             return deformed;
           }
           const omega = TAU / period;
@@ -388,27 +390,20 @@ export const createCompositePrimitives = (
           const cosStep = usesVertexPhase ? cosPhaseStep : 1;
           let sinValue = globalSin;
           let cosValue = Math.cos(baseAngle);
-          for (let i = 0; i < vertexMeta.length; i += 1) {
-            const meta = vertexMeta[i]!;
-            if (!meta) {
-              deformed[i]!.x = 0;
-              deformed[i]!.y = 0;
-              continue;
-            }
+          for (let i = 0; i < vertexCount; i += 1) {
             const sinForVertex = usesVertexPhase ? sinValue : globalSin;
-            if (movementPerp && movementMeta && hasMovement) {
-              const moveInfo = movementMeta[i]!;
-              const magnitude = moveInfo.magnitude * sinForVertex * moveInfo.toward;
-              deformed[i]!.x = meta.baseX + movementPerp.x * magnitude;
-              deformed[i]!.y = meta.baseY + movementPerp.y * magnitude;
+            if (movementPerp && moveToward && moveMagnitude && hasMovement) {
+              const magnitude = moveMagnitude[i]! * sinForVertex * moveToward[i]!;
+              deformed[i]!.x = baseX[i]! + movementPerp.x * magnitude;
+              deformed[i]!.y = baseY[i]! + movementPerp.y * magnitude;
             } else if (axis === "tangent") {
-              const magnitude = meta.tangentMagnitude * sinForVertex;
-              deformed[i]!.x = meta.baseX + meta.tangentX * magnitude;
-              deformed[i]!.y = meta.baseY + meta.tangentY * magnitude;
+              const magnitude = tangentMagnitude[i]! * sinForVertex;
+              deformed[i]!.x = baseX[i]! + tangentX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + tangentY[i]! * magnitude;
             } else {
-              const magnitude = meta.normalMagnitude * sinForVertex;
-              deformed[i]!.x = meta.baseX + meta.normalX * magnitude;
-              deformed[i]!.y = meta.baseY + meta.normalY * magnitude;
+              const magnitude = normalMagnitude[i]! * sinForVertex;
+              deformed[i]!.x = baseX[i]! + normalX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + normalY[i]! * magnitude;
             }
             if (usesVertexPhase) {
               const prevSin = sinValue;
@@ -421,32 +416,25 @@ export const createCompositePrimitives = (
         };
 
         const samplePulse = (timeMs: number): SceneVector2[] => {
-          if (vertexMeta.length === 0) {
+          if (vertexCount === 0) {
             return deformed;
           }
           const omega = TAU / period;
           const angle = omega * timeMs + phase;
           const s = Math.sin(angle);
-          for (let i = 0; i < vertexMeta.length; i += 1) {
-            const meta = vertexMeta[i]!;
-            if (!meta) {
-              deformed[i]!.x = 0;
-              deformed[i]!.y = 0;
-              continue;
-            }
-            if (movementPerp && movementMeta) {
-              const moveInfo = movementMeta[i]!;
-              const magnitude = moveInfo.magnitude * s * moveInfo.toward;
-              deformed[i]!.x = meta.baseX + movementPerp.x * magnitude;
-              deformed[i]!.y = meta.baseY + movementPerp.y * magnitude;
+          for (let i = 0; i < vertexCount; i += 1) {
+            if (movementPerp && moveToward && moveMagnitude) {
+              const magnitude = moveMagnitude[i]! * s * moveToward[i]!;
+              deformed[i]!.x = baseX[i]! + movementPerp.x * magnitude;
+              deformed[i]!.y = baseY[i]! + movementPerp.y * magnitude;
             } else if (axis === "tangent") {
               const magnitude = amplitude * s;
-              deformed[i]!.x = meta.baseX + meta.tangentX * magnitude;
-              deformed[i]!.y = meta.baseY + meta.tangentY * magnitude;
+              deformed[i]!.x = baseX[i]! + tangentX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + tangentY[i]! * magnitude;
             } else {
               const magnitude = amplitude * s;
-              deformed[i]!.x = meta.baseX + meta.normalX * magnitude;
-              deformed[i]!.y = meta.baseY + meta.normalY * magnitude;
+              deformed[i]!.x = baseX[i]! + normalX[i]! * magnitude;
+              deformed[i]!.y = baseY[i]! + normalY[i]! * magnitude;
             }
           }
           return deformed;
