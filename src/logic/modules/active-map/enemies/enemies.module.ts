@@ -20,6 +20,7 @@ import {
   vectorLength,
   vectorHasLength,
   addVectors,
+  vectorEquals,
 } from "../../../../shared/helpers/vector.helper";
 import { ZERO_VECTOR } from "../../../../shared/helpers/geometry.const";
 import {
@@ -57,6 +58,7 @@ import type { StatusEffectsModule } from "../status-effects/status-effects.modul
 import type { ArcModule } from "../../scene/arc/arc.module";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
+const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -222,8 +224,34 @@ export class EnemiesModule implements GameModule {
         return;
       }
 
+      const clampedPosition = this.clampToMap(movementState.position);
+      let resolvedPosition = clampedPosition;
+      let resolvedVelocity = movementState.velocity;
+
+      const collisionResolution = this.resolveEnemyCollisions(
+        enemy,
+        resolvedPosition,
+        resolvedVelocity,
+      );
+      resolvedPosition = collisionResolution.position;
+      resolvedVelocity = collisionResolution.velocity;
+
+      if (!vectorEquals(resolvedPosition, movementState.position)) {
+        this.movement.setBodyPosition(enemy.movementId, resolvedPosition);
+      }
+
+      if (!vectorEquals(resolvedVelocity, movementState.velocity)) {
+        this.movement.setBodyVelocity(enemy.movementId, resolvedVelocity);
+      }
+
+      const resolvedMovementState: MovementBodyState = {
+        id: movementState.id,
+        position: resolvedPosition,
+        velocity: resolvedVelocity,
+      };
+
       // Update position
-      const newPosition = this.clampToMap(movementState.position);
+      const newPosition = resolvedPosition;
       if (
         newPosition.x !== enemy.position.x ||
         newPosition.y !== enemy.position.y
@@ -243,13 +271,13 @@ export class EnemiesModule implements GameModule {
       const desiredRotation = this.computeEnemyRotation(
         enemy,
         target ?? null,
-        movementState,
+        resolvedMovementState,
       );
       const newRotation = this.applyRotationSpeedLimit(
         enemy.rotation,
         desiredRotation,
         deltaSeconds,
-        movementState.velocity,
+        resolvedMovementState.velocity,
       );
       if (newRotation !== enemy.rotation) {
         enemy.rotation = newRotation;
@@ -991,6 +1019,83 @@ export class EnemiesModule implements GameModule {
 
     const maxAvoidance = this.getEffectiveMoveSpeed(enemy);
     return scaleVector(avoidanceVector, maxAvoidance / length);
+  }
+
+  private resolveEnemyCollisions(
+    enemy: InternalEnemyState,
+    position: SceneVector2,
+    velocity: SceneVector2,
+  ): { position: SceneVector2; velocity: SceneVector2 } {
+    if (enemy.physicalSize <= 0) {
+      return { position, velocity };
+    }
+
+    let resolvedPosition = { ...position };
+    let resolvedVelocity = { ...velocity };
+    let adjusted = false;
+
+    for (
+      let iteration = 0;
+      iteration < ENEMY_COLLISION_RESOLUTION_ITERATIONS;
+      iteration += 1
+    ) {
+      let collided = false;
+      this.obstacles.forEachObstacleNear(
+        resolvedPosition,
+        enemy.physicalSize,
+        (obstacle: ObstacleDescriptor) => {
+          if (isPassableFor(obstacle, ENEMY_PASSABILITY)) {
+            return;
+          }
+
+          const obstacleRadius = Math.max(obstacle.radius, 0);
+          const combinedRadius = enemy.physicalSize + obstacleRadius;
+          if (combinedRadius <= 0) {
+            return;
+          }
+
+          const offset = subtractVectors(resolvedPosition, obstacle.position);
+          const distance = vectorLength(offset);
+          if (!Number.isFinite(distance) || distance >= combinedRadius) {
+            return;
+          }
+
+          const normal =
+            distance > 0 ? scaleVector(offset, 1 / distance) : { x: 1, y: 0 };
+          const correction = combinedRadius - distance;
+          resolvedPosition = addVectors(
+            resolvedPosition,
+            scaleVector(normal, correction),
+          );
+
+          const velocityAlongNormal =
+            resolvedVelocity.x * normal.x + resolvedVelocity.y * normal.y;
+          if (velocityAlongNormal < 0) {
+            resolvedVelocity = subtractVectors(
+              resolvedVelocity,
+              scaleVector(normal, velocityAlongNormal),
+            );
+          }
+
+          collided = true;
+          adjusted = true;
+        },
+      );
+
+      if (!collided) {
+        break;
+      }
+    }
+
+    if (!adjusted) {
+      return { position, velocity };
+    }
+
+    resolvedPosition = this.clampToMap(resolvedPosition);
+    return {
+      position: resolvedPosition,
+      velocity: resolvedVelocity,
+    };
   }
 
   private getEffectiveMoveSpeed(enemy: InternalEnemyState): number {
