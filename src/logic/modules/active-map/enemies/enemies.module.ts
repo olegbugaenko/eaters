@@ -572,7 +572,8 @@ export class EnemiesModule implements GameModule {
         );
       }
 
-      if (explosionAttack.statusEffectId) {
+      const explosionStatusEffectId = explosionAttack.statusEffectId;
+      if (explosionStatusEffectId) {
         this.targeting.forEachTargetNear(
           enemy.position,
           Math.max(0, explosionAttack.radius),
@@ -581,9 +582,9 @@ export class EnemiesModule implements GameModule {
               return;
             }
             const effectTarget = { type: "unit", id: target.id } as const;
-            if (!this.statusEffects.hasEffect(explosionAttack.statusEffectId, effectTarget)) {
+            if (!this.statusEffects.hasEffect(explosionStatusEffectId, effectTarget)) {
               this.statusEffects.applyEffect(
-                explosionAttack.statusEffectId,
+                explosionStatusEffectId,
                 effectTarget,
                 explosionAttack.statusEffectOptions,
               );
@@ -598,6 +599,8 @@ export class EnemiesModule implements GameModule {
 
     // Якщо є конфіг снаряда - створюємо снаряд
     if (config.projectile && this.projectiles) {
+      const projectiles = this.projectiles;
+      const projectileConfig = config.projectile;
       const direction = normalizeVector(toTarget) || { x: 1, y: 0 };
       const volley = config.projectileVolley;
       const directions = buildProjectileSpreadDirections({
@@ -617,14 +620,14 @@ export class EnemiesModule implements GameModule {
         : { ...enemy.position };
 
       directions.forEach((projectileDirection) => {
-        this.projectiles.spawn({
+        projectiles.spawn({
           origin,
           direction: projectileDirection,
           damage: enemy.baseDamage,
           rewardMultiplier: 1, // Вороги не дають нагороди за атаку
           armorPenetration: 0,
           targetTypes: ["unit"], // Вороги атакують тільки юнітів
-          visual: config.projectile,
+          visual: projectileConfig,
           onHit: (hitContext: UnitProjectileHitContext) => {
             if (hitContext.targetType === "unit" && this.damage) {
               // Calculate knockback direction from enemy to hit position
