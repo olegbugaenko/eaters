@@ -564,38 +564,26 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       nodePosition: { x: -4, y: 0 },
       maxLevel: 10,
       bricks: ({ mapLevel }) => {
-        const satelliteCount = 8;
-        const satelliteRadius = 80;
-        const orbitRadius = 350 + satelliteRadius;
         const stoneLevel = mapLevel + 3;
 
-        // Перераховуємо позиції супутників
-        const satellitePositions = Array.from({ length: satelliteCount }, (_, index) => {
-          const angle = (index / satelliteCount) * Math.PI * 2;
-          return {
-            x: center.x + Math.cos(angle) * orbitRadius,
-            y: center.y + Math.sin(angle) * orbitRadius,
-          };
-        });
-
         // Створюємо квадрати з міді
-        const copperSquares = satellitePositions.map((position) => {
+        const copperSquares = satellites.map((position) => {
           const squareSize = satelliteRadius * 2;
           return squareWithBricks(
             "smallCopper",
             {
               center: position,
               size: squareSize,
-              innerSize: satelliteRadius * 0.6,
+              innerSize: satelliteRadius * 0.9,
             },
             { level: mapLevel },
           );
         });
 
         // Створюємо з'єднання з каменю між супутниками
-        const stoneConnectors = satellitePositions.flatMap((position, index) => {
+        const stoneConnectors = satellites.flatMap((position, index) => {
           const nextIndex = (index + 1) % satelliteCount;
-          const nextPosition = satellitePositions[nextIndex];
+          const nextPosition = satellites[nextIndex];
           if (!nextPosition) {
             return [];
           }
