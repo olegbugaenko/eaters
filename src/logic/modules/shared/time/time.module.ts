@@ -1,8 +1,7 @@
 import { DataBridge } from "@/core/logic/ui/DataBridge";
 import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { GameModule } from "@core/logic/types";
-
-const BRIDGE_KEY = "time-played";
+import { TIME_BRIDGE_KEY, TIME_PLAYED_PUBLISH_INTERVAL_MS } from "./time.const";
 
 interface TestTimeModuleOptions {
   bridge: DataBridge;
@@ -11,6 +10,7 @@ interface TestTimeModuleOptions {
 export class TestTimeModule implements GameModule {
   public readonly id = "test-time";
   private timePlayedMs = 0;
+  private lastPublishedMs = 0;
 
   constructor(private readonly options: TestTimeModuleOptions) {}
 
@@ -20,6 +20,7 @@ export class TestTimeModule implements GameModule {
 
   public reset(): void {
     this.timePlayedMs = 0;
+    this.lastPublishedMs = 0;
     this.pushState();
   }
 
@@ -28,6 +29,7 @@ export class TestTimeModule implements GameModule {
       const typed = data as { timePlayedMs: number };
       this.timePlayedMs = typed.timePlayedMs ?? 0;
     }
+    this.lastPublishedMs = this.timePlayedMs;
     this.pushState();
   }
 
@@ -39,12 +41,15 @@ export class TestTimeModule implements GameModule {
 
   public tick(deltaMs: number): void {
     this.timePlayedMs += deltaMs;
-    this.pushState();
+    if (this.timePlayedMs - this.lastPublishedMs >= TIME_PLAYED_PUBLISH_INTERVAL_MS) {
+      this.lastPublishedMs = this.timePlayedMs;
+      this.pushState();
+    }
   }
 
   private pushState(): void {
-    DataBridgeHelpers.pushState(this.options.bridge, BRIDGE_KEY, this.timePlayedMs);
+    DataBridgeHelpers.pushState(this.options.bridge, TIME_BRIDGE_KEY, this.timePlayedMs);
   }
 }
 
-export const TIME_BRIDGE_KEY = BRIDGE_KEY;
+export { TIME_BRIDGE_KEY } from "./time.const";
