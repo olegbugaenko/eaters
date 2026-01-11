@@ -420,9 +420,13 @@ export const createCompositePrimitives = (
             return deformed;
           }
           const omega = TAU / period;
-          const angle = omega * timeMs + phase;
-          const s = Math.sin(angle);
+          const baseAngle = omega * timeMs + phase;
+          const sinStep = 0;
+          const cosStep = 1;
+          let sinValue = Math.sin(baseAngle);
+          let cosValue = Math.cos(baseAngle);
           for (let i = 0; i < vertexCount; i += 1) {
+            const s = sinValue;
             if (movementPerp && moveToward && moveMagnitude) {
               const magnitude = moveMagnitude[i]! * s * moveToward[i]!;
               deformed[i]!.x = baseX[i]! + movementPerp.x * magnitude;
@@ -435,6 +439,12 @@ export const createCompositePrimitives = (
               const magnitude = amplitude * s;
               deformed[i]!.x = baseX[i]! + normalX[i]! * magnitude;
               deformed[i]!.y = baseY[i]! + normalY[i]! * magnitude;
+            }
+            if (sinStep !== 0) {
+              const prevSin = sinValue;
+              const prevCos = cosValue;
+              sinValue = prevSin * cosStep + prevCos * sinStep;
+              cosValue = prevCos * cosStep - prevSin * sinStep;
             }
           }
           return deformed;
