@@ -145,6 +145,15 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     return super.update(instance, registration);
   }
 
+  public override updatePositionOnly(
+    instance: SceneObjectInstance,
+    registration: ObjectRegistration
+  ): DynamicPrimitiveUpdate[] {
+    // Оновлюємо позиції аур при інтерполяції позиції
+    updateAuraInstances(instance);
+    return super.updatePositionOnly(instance, registration);
+  }
+
   public override remove(
     instance: SceneObjectInstance,
     registration: ObjectRegistration
