@@ -25,6 +25,7 @@ export type EnemyType =
   | "volleyTurretEnemy"
   | "explosionTurretEnemy"
   | "spectreEnemy"
+  | "encagedBeastEnemy"
   | "freezeTurretEnemy"
   | "bigGun";
 
@@ -536,6 +537,119 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     knockBackDistance: 80,
     knockBackSpeed: 120,
   },
+  encagedBeastEnemy: {
+    name: "Encaged Beast",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.9, g: 0.7, b: 0.8, a: 1 },
+      layers: [
+        // Chord
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: 0, y: 0 },
+            { x: -6, y: -5 },
+            { x: -6, y: 5 },
+          ],
+        },
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: -6, y: -3 },
+            { x: -10, y: -8 },
+            { x: -20, y: -8 },
+            { x: -24, y: -3 },
+            { x: -24, y: 3 },
+            { x: -20, y: 8 },
+            { x: -10, y: 8 },
+            { x: -6, y: 3 },
+          ],
+        },
+        {
+          shape: "circle",
+          radius: 42,
+          segments: 48,
+          offset: { x: 0, y: 0 },
+          fill: {
+            type: "gradient",
+
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 32,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.8, b: 1, a: 0.45 } },
+                { offset: 0.6, color: { r: 1, g: 0.8, b: 1, a: 0.3 } },
+                { offset: 1, color: { r: 1.0, g: 0.7, b: 0.8, a: 0.0 } },
+              ],
+            },
+          },
+        },
+        
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -1, y: 2, width: 4.6 },
+            { x: 7, y: 3, width: 4.4 },
+            { x: 12, y: 5, width: 3.9 },
+            { x: 16, y: 8, width: 3.6 },
+            { x: 18, y: 11, width: 3.3 },
+            { x: 19, y: 14, width: 2.6 },
+            { x: 18, y: 17, width: 2.4 },
+            { x: 16, y: 20, width: 2.2 },
+            { x: 12, y: 23, width: 2.0 },
+            { x: 7, y: 24, width: 1.8 },
+            { x: -1, y: 25, width: 1.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        
+      ],
+    },
+    maxHp: 7500,
+    armor: 100,
+    baseDamage: 600,
+    attackInterval: 1.8,
+    attackRange: 80,
+    moveSpeed: 20,
+    physicalSize: 40,
+    reward: {
+      stone: 2000,
+      iron: 200,
+    },
+    /*
+    projectile: {
+      radius: 6,
+      speed: 200,
+      lifetimeMs: 2000,
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        stops: [
+          { offset: 0, color: { r: 0.8, g: 0.9, b: 1, a: 1 } },
+          { offset: 1, color: { r: 0.8, g: 0.9, b: 1, a: 0 } },
+        ],
+      },
+      shape: "circle",
+      hitRadius: 10,
+      explosion: "iceBrickHit",
+    },*/
+    knockBackDistance: 80,
+    knockBackSpeed: 120,
+  },
   turretEnemy: {
     name: "Turret",
     renderer: {
@@ -680,7 +794,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       shape: "sprite",
       spriteName: "needle",
       hitRadius: 7,
-      explosion: "smallCannon",
+      explosion: "smallCannonGrey",
       ringTrail: {
         spawnIntervalMs: 60,
         lifetimeMs: 820,
@@ -710,14 +824,36 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     name: "Blast Turret",
     renderer: {
       kind: "composite",
-      fill: { r: 0.75, g: 0.55, b: 0.45, a: 1 },
+      fill: { r: 0.75, g: 0.55, b: 0.85, a: 1 },
       layers: [
+        {
+          shape: "circle",
+          radius: 30,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.75, g: 0.55, b: 0.85, a: 0.8 } },
+                { offset: 1, color: { r: 0.75, g: 0.55, b: 0.85, a: 0 } },
+              ],
+            }
+          }
+        },
+        {
+          shape: "circle",
+          radius: 20,
+          fill: {
+            type: "base",
+            brightness: 0.0,
+          }
+        },
         {
           shape: "polygon",
           vertices: [
             { x: 14, y: -2 },
-            { x: 0, y: -4 },
-            { x: 0, y: 4 },
+            { x: -14, y: -2 },
+            { x: -14, y: 2 },
             { x: 14, y: 2 },
           ],
           fill: { type: "base", brightness: 0.25 },
@@ -725,39 +861,20 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         {
           shape: "polygon",
           vertices: [
-            { x: 0, y: -4 },
-            { x: -3, y: -8 },
-            { x: -3, y: 8 },
-            { x: 0, y: 4 },
+            { x: 2, y: -14 },
+            { x: -2, y: -14 },
+            { x: -2, y: 14 },
+            { x: 2, y: 14 },
           ],
-          fill: { type: "base", brightness: 0.2 },
+          fill: { type: "base", brightness: 0.25 },
         },
-        {
-          shape: "polygon",
-          vertices: [
-            { x: -3, y: -8 },
-            { x: -9, y: -11 },
-            { x: -9, y: -5 },
-            { x: -3, y: 3 },
-          ],
-          fill: { type: "base", brightness: 0.15 },
-        },
-        {
-          shape: "polygon",
-          vertices: [
-            { x: -3, y: 8 },
-            { x: -9, y: 11 },
-            { x: -9, y: 5 },
-            { x: -3, y: -3 },
-          ],
-          fill: { type: "base", brightness: 0.15 },
-        },
+        
       ],
     },
-    maxHp: 140,
-    armor: 10,
-    baseDamage: 20,
-    attackInterval: 2.2,
+    maxHp: 2140,
+    armor: 30,
+    baseDamage: 160,
+    attackInterval: 3.2,
     attackRange: 320,
     moveSpeed: 0,
     physicalSize: 30,
@@ -766,9 +883,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       iron: 14,
     }),
     explosionAttack: {
-      radius: 90,
+      radius: 320,
       damageMultiplier: 1,
-      explosionType: "smallCannon",
+      explosionType: "magnetic",
       explosionRadius: 60,
     },
     knockBackDistance: 140,

@@ -407,29 +407,45 @@ export const createDynamicCirclePrimitive = (
       const nextCenter = getCenter(target, options.offset);
       const centerChanged =
         nextCenter.x !== previousCenterX || nextCenter.y !== previousCenterY;
-      if (!centerChanged) {
-        if (nextRotation === prevRotation) {
-          return null;
-        }
-        prevPosX = pos.x;
-        prevPosY = pos.y;
-        prevRotation = nextRotation;
+      const rotationChanged = nextRotation !== prevRotation;
+      if (!centerChanged && !rotationChanged) {
         return null;
       }
-      previousCenterX = nextCenter.x;
-      previousCenterY = nextCenter.y;
       prevPosX = pos.x;
       prevPosY = pos.y;
       prevRotation = nextRotation;
+      previousCenterX = nextCenter.x;
+      previousCenterY = nextCenter.y;
+
+      const shouldUpdateFill =
+        cachedFill.fillType !== 0 ||
+        Boolean(cachedFill.noise || cachedFill.filaments || cachedFill.crackMask);
+      let fillComponents: Float32Array = fillScratch;
+      let fillChanged = false;
+      if (shouldUpdateFill) {
+        const updatedFill = writeFillVertexComponents(fillScratch, {
+          fill: cachedFill,
+          center: nextCenter,
+          rotation: nextRotation,
+          size: {
+            width: radius * 2,
+            height: radius * 2,
+          },
+          radius,
+        }) as Float32Array;
+        fillComponents = updatedFill;
+        fillChanged = true;
+        previousFill.set(updatedFill);
+      }
       updateCircleData(
         data,
         nextCenter,
         radius,
-        fillScratch,
+        fillComponents,
         segments,
         trig,
         true,
-        false
+        fillChanged
       );
       return data;
     },

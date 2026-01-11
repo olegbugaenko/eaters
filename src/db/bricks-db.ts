@@ -495,6 +495,10 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     rewards: {
       iron: 1.25,
     },
+    crackMask: {
+      desat: 2.5,
+      darken: 0.55,
+    },
   },
   smallWood: {
     size: { width: 24, height: 24 },

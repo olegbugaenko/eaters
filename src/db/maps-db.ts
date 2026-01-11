@@ -40,7 +40,8 @@ export type MapId =
   | "megaBrick"
   | "ancientPyramids"
   | "deathfulGuns"
-  | "deadlyTunnels";
+  | "deadlyTunnels"
+  | "encagedBeast";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;
@@ -551,7 +552,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     return {
       name: "Deadly Tunnels",
       size,
-      icon: "turrets_of_death.png",
+      icon: "deadly_tunnels.png",
       spawnPoints: [spawnPoint],
       unlockedBy: [
         {
@@ -659,6 +660,89 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             position,
           } satisfies EnemySpawnData;
         });
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      mapsRequired: { deathfulGuns: 1 },
+    } satisfies MapConfig;
+  })(),
+  encagedBeast: (() => {
+    const size: SceneSize = { width: 1200, height: 1200 };
+    const center: SceneVector2 = { x: 600, y: 600 };
+    const spawnPoint: SceneVector2 = { x: 600, y: 100 };
+
+    const satelliteCount = 4;
+    const satelliteRadius = 80;
+    const orbitRadius = 350 + satelliteRadius;
+
+    const satellites = Array.from({ length: satelliteCount }, (_, index) => {
+      const angle = (index / satelliteCount) * Math.PI * 2 + Math.PI / 4;
+      const position: SceneVector2 = {
+        x: center.x + Math.cos(angle) * orbitRadius,
+        y: center.y + Math.sin(angle) * orbitRadius,
+      };
+      return position;
+    });
+
+    return {
+      name: "Encaged Beast",
+      size,
+      icon: "encaged_beast.png",
+      spawnPoints: [spawnPoint],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "deathfulGuns",
+          level: 1,
+        },
+      ],
+      nodePosition: { x: -3, y: 2 },
+      maxLevel: 10,
+      bricks: ({ mapLevel }) => {
+        
+        const copperSquares = satellites.map((position) => {
+          const squareSize = satelliteRadius * 2;
+          return squareWithBricks(
+            "smallCopper",
+            {
+              center: position,
+              size: squareSize,
+              innerSize: satelliteRadius,
+            },
+            { level: mapLevel + 1 },
+          );
+        });
+
+        const centerSquare = squareWithBricks(
+          "smallWood",
+          {
+            center: center,
+            size: (orbitRadius - satelliteRadius) * 1.3,
+            innerSize: (orbitRadius - satelliteRadius) * 0.9,
+          },
+          { level: mapLevel + 1 },
+        );
+
+
+        return [...copperSquares, centerSquare];
+      },
+      enemies: ({ mapLevel }) => {
+        const level = Math.max(1, Math.floor(mapLevel));
+        return [...satellites.map((position) => {
+          return {
+            type: "explosionTurretEnemy",
+            level,
+            position,
+          } satisfies EnemySpawnData;
+        }), {
+          type: "encagedBeastEnemy",
+          level,
+          position: center,
+        } satisfies EnemySpawnData];
       },
       playerUnits: [
         {
