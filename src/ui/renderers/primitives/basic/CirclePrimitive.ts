@@ -420,10 +420,10 @@ export const createDynamicCirclePrimitive = (
       const shouldUpdateFill =
         cachedFill.fillType !== 0 ||
         Boolean(cachedFill.noise || cachedFill.filaments || cachedFill.crackMask);
-      let fillComponents = fillScratch;
+      let fillComponents: Float32Array = fillScratch;
       let fillChanged = false;
       if (shouldUpdateFill) {
-        fillComponents = writeFillVertexComponents(fillScratch, {
+        const updatedFill = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: nextCenter,
           rotation: nextRotation,
@@ -432,9 +432,10 @@ export const createDynamicCirclePrimitive = (
             height: radius * 2,
           },
           radius,
-        });
+        }) as Float32Array;
+        fillComponents = updatedFill;
         fillChanged = true;
-        previousFill.set(fillComponents);
+        previousFill.set(updatedFill);
       }
       updateCircleData(
         data,
