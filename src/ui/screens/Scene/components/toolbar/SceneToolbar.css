@@ -29,7 +29,6 @@
   position: relative;
   margin: 0 20%;
   padding: 1rem 2.75rem;
-  padding-bottom: calc(1rem + 50px);
   isolation: isolate;
   z-index: 0;
   overflow: visible;
