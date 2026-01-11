@@ -362,8 +362,27 @@ export class SceneObjectManager {
   }
 
   public setCameraPosition(x: number, y: number): void {
-    const clampedX = clampNumber(x, 0, Math.max(0, this.mapSize.width - this.camera.viewportSize.width));
-    const clampedY = clampNumber(y, 0, Math.max(0, this.mapSize.height - this.camera.viewportSize.height));
+    const viewportWidth = this.camera.viewportSize.width;
+    const viewportHeight = this.camera.viewportSize.height;
+    
+    let clampedX: number;
+    let clampedY: number;
+    
+    // Якщо viewport більший за карту - центруємо (ігноруємо вхідні координати)
+    if (viewportWidth >= this.mapSize.width) {
+      clampedX = (this.mapSize.width - viewportWidth) / 2;
+    } else {
+      const maxX = this.mapSize.width - viewportWidth;
+      clampedX = clampNumber(x, 0, maxX);
+    }
+    
+    if (viewportHeight >= this.mapSize.height) {
+      clampedY = (this.mapSize.height - viewportHeight) / 2;
+    } else {
+      const maxY = this.mapSize.height - viewportHeight;
+      clampedY = clampNumber(y, 0, maxY);
+    }
+    
     if (clampedX === this.camera.position.x && clampedY === this.camera.position.y) {
       return;
     }
@@ -408,8 +427,8 @@ export class SceneObjectManager {
     const minScaleHeight = safeScreenHeight / safeMapHeight;
     // Use Math.min to ensure map fits in viewport without scrolling
     const minScale = Math.min(minScaleWidth, minScaleHeight);
-    // Allow slightly smaller zoom (multiply by 0.9)
-    return clampNumber(minScale * 0.9, 0.1, MAX_SCALE);
+    // Allow slightly smaller zoom (multiply by 0.75)
+    return clampNumber(minScale * 0.75, 0.1, MAX_SCALE);
   }
 
   private finalizeRemoval(id: string, accumulator: string[]): void {
@@ -434,10 +453,30 @@ export class SceneObjectManager {
   }
 
   private clampCamera(): void {
-    const maxX = Math.max(0, this.mapSize.width - this.camera.viewportSize.width);
-    const maxY = Math.max(0, this.mapSize.height - this.camera.viewportSize.height);
-    const clampedX = clampNumber(this.camera.position.x, 0, maxX);
-    const clampedY = clampNumber(this.camera.position.y, 0, maxY);
+    const viewportWidth = this.camera.viewportSize.width;
+    const viewportHeight = this.camera.viewportSize.height;
+    
+    let clampedX: number;
+    let clampedY: number;
+    
+    // Якщо viewport більший за карту по ширині - центруємо по X
+    if (viewportWidth >= this.mapSize.width) {
+      clampedX = (this.mapSize.width - viewportWidth) / 2;
+    } else {
+      // Інакше - обмежуємо як зараз
+      const maxX = this.mapSize.width - viewportWidth;
+      clampedX = clampNumber(this.camera.position.x, 0, maxX);
+    }
+    
+    // Якщо viewport більший за карту по висоті - центруємо по Y
+    if (viewportHeight >= this.mapSize.height) {
+      clampedY = (this.mapSize.height - viewportHeight) / 2;
+    } else {
+      // Інакше - обмежуємо як зараз
+      const maxY = this.mapSize.height - viewportHeight;
+      clampedY = clampNumber(this.camera.position.y, 0, maxY);
+    }
+    
     this.camera.position = { x: clampedX, y: clampedY };
   }
 

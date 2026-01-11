@@ -4,6 +4,7 @@ import { createObjectsRendererManager } from "@ui/renderers/objects";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
 import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 import { setParticleEmitterGlContext } from "@ui/renderers/primitives/utils/gpuContext";
+import { particleEmitterGpuRenderer } from "@ui/renderers/primitives/gpu/particle-emitter";
 import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/whirl";
 import {
   bulletGpuRenderer,
@@ -101,6 +102,7 @@ export const setupWebGLScene = (
   const objectsRenderer = createObjectsRendererManager();
 
   setParticleEmitterGlContext(gl);
+  particleEmitterGpuRenderer.onContextAcquired(gl);
   
   if (initBullets) {
     bulletGpuRenderer.setContext(gl);
@@ -154,6 +156,9 @@ export const setupWebGLScene = (
     }
     
     if (gl) {
+      try {
+        particleEmitterGpuRenderer.onContextLost(gl);
+      } catch {}
       try {
         whirlGpuRenderer.setContext(null);
       } catch {}

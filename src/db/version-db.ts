@@ -6,6 +6,14 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.0a",
+    releaseDate: "2026-01-11",
+    changes: [
+      "Fixed camera zoom calculation and positioning",
+      "Layout fixes",
+    ],
+  },
+  {
     displayName: "v0.1.0",
     releaseDate: "2026-01-11",
     changes: [

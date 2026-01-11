@@ -40,7 +40,7 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
   return (
     <div className="scene-toolbar">
       <div className="scene-toolbar__section scene-toolbar__section--left">
-        <Button onClick={onExit}>Main Menu</Button>
+        <Button onClick={onExit}>Exit Map [ESC]</Button>
       </div>
       <div className="scene-toolbar__section scene-toolbar__section--center">
         <svg
