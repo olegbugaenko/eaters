@@ -15,12 +15,15 @@ import { mapLineToPolygonShape } from "@/shared/helpers/paths.helper";
 import type { ArcType } from "./arcs-db";
 import type { StatusEffectId } from "./status-effects-db";
 import type { StatusEffectApplicationOptions } from "@/logic/modules/active-map/status-effects/status-effects.types";
+import type { ExplosionType } from "./explosions-db";
 
 export type EnemyType =
   | "basicEnemy"
   | "fastEnemy"
   | "tankEnemy"
   | "turretEnemy"
+  | "volleyTurretEnemy"
+  | "explosionTurretEnemy"
   | "spectreEnemy"
   | "freezeTurretEnemy"
   | "bigGun";
@@ -89,6 +92,19 @@ export interface EnemyConfig {
   readonly reward?: ResourceAmount;
   readonly emitter?: ParticleEmitterConfig;
   readonly projectile?: UnitProjectileVisualConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
+  readonly projectileVolley?: {
+    readonly count: number;
+    readonly spreadAngleDeg: number;
+    readonly spawnOffset?: SceneVector2;
+  };
+  readonly explosionAttack?: {
+    readonly radius: number;
+    readonly damageMultiplier?: number;
+    readonly explosionType?: ExplosionType;
+    readonly explosionRadius?: number;
+    readonly statusEffectId?: StatusEffectId;
+    readonly statusEffectOptions?: StatusEffectApplicationOptions;
+  };
   readonly arcAttack?: EnemyArcAttackConfig;
   readonly targeting?: EnemyTargetingOptions;
   readonly knockBackDistance?: number; // Відстань knockback при атаці юнітів
@@ -593,6 +609,152 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     },
     knockBackDistance: 120,
     knockBackSpeed: 160,
+  },
+  volleyTurretEnemy: {
+    name: "Volley Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.55, g: 0.7, b: 0.5, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -2 },
+            { x: 0, y: -4 },
+            { x: 0, y: 4 },
+            { x: 14, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.25 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: -3, y: -8 },
+            { x: -3, y: 8 },
+            { x: 0, y: 4 },
+          ],
+          fill: { type: "base", brightness: 0.2 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: -8 },
+            { x: -9, y: -11 },
+            { x: -9, y: -5 },
+            { x: -3, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.15 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: 8 },
+            { x: -9, y: 11 },
+            { x: -9, y: 5 },
+            { x: -3, y: -3 },
+          ],
+          fill: { type: "base", brightness: 0.15 },
+        },
+      ],
+    },
+    maxHp: 135,
+    armor: 9,
+    baseDamage: 20,
+    attackInterval: 1.7,
+    attackRange: 380,
+    moveSpeed: 0,
+    physicalSize: 30,
+    reward: normalizeResourceAmount({
+      stone: 55,
+      iron: 12,
+    }),
+    projectile: {
+      radius: 4,
+      speed: 170,
+      lifetimeMs: 2200,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.5, g: 0.7, b: 0.45, a: 1 },
+      },
+      shape: "circle",
+      hitRadius: 7,
+      explosion: "smallCannon",
+    },
+    projectileVolley: {
+      count: 3,
+      spreadAngleDeg: 18,
+    },
+    knockBackDistance: 110,
+    knockBackSpeed: 150,
+  },
+  explosionTurretEnemy: {
+    name: "Blast Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.75, g: 0.55, b: 0.45, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -2 },
+            { x: 0, y: -4 },
+            { x: 0, y: 4 },
+            { x: 14, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.25 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: -3, y: -8 },
+            { x: -3, y: 8 },
+            { x: 0, y: 4 },
+          ],
+          fill: { type: "base", brightness: 0.2 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: -8 },
+            { x: -9, y: -11 },
+            { x: -9, y: -5 },
+            { x: -3, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.15 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: 8 },
+            { x: -9, y: 11 },
+            { x: -9, y: 5 },
+            { x: -3, y: -3 },
+          ],
+          fill: { type: "base", brightness: 0.15 },
+        },
+      ],
+    },
+    maxHp: 140,
+    armor: 10,
+    baseDamage: 20,
+    attackInterval: 2.2,
+    attackRange: 320,
+    moveSpeed: 0,
+    physicalSize: 30,
+    reward: normalizeResourceAmount({
+      stone: 60,
+      iron: 14,
+    }),
+    explosionAttack: {
+      radius: 90,
+      damageMultiplier: 1,
+      explosionType: "smallCannon",
+      explosionRadius: 60,
+    },
+    knockBackDistance: 140,
+    knockBackSpeed: 180,
   },
   freezeTurretEnemy: {
     knockBackDistance: 160,
