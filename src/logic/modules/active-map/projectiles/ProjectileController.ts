@@ -485,6 +485,9 @@ export class UnitProjectileController {
       rewardMultiplier: projectile.rewardMultiplier,
       armorPenetration: projectile.armorPenetration,
       skipKnockback: projectile.skipKnockback === true,
+      knockBackDistance: projectile.knockBackDistance,
+      knockBackSpeed: projectile.knockBackSpeed,
+      knockBackDirection: projectile.knockBackDirection,
       direction: projectile.direction,
     });
   }
