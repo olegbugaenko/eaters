@@ -17,6 +17,9 @@ const createModuleProxy = <TModule>(
       if (prop === "then") {
         return undefined;
       }
+      if (typeof prop === "symbol") {
+        return Reflect.get(target, prop, receiver);
+      }
       if (!(prop in target)) {
         throw new Error(`UI API method "${String(prop)}" is not available on "${moduleName}"`);
       }
