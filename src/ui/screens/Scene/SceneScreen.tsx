@@ -418,7 +418,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   return (
     <div className="scene-screen">
       <SceneToolbar
-        onExit={onExit}
+        onExit={() => setIsPauseOpen((open) => !open)}
         brickTotalHp={toolbarState.brickTotalHp}
         brickInitialHp={toolbarState.brickInitialHp}
         unitCount={toolbarState.unitCount}
