@@ -357,6 +357,7 @@ export const createCompositePrimitives = (
             tangentMagnitude: amplitude,
           };
         });
+        const deformed = baseVertices.map((v) => ({ x: v.x, y: v.y }));
         const movementMeta = movementPerp
           ? baseVertices.map((v) => {
               const signedDist = v.x * movementPerp.x + v.y * movementPerp.y;
@@ -377,7 +378,7 @@ export const createCompositePrimitives = (
 
         const sampleSway = (timeMs: number): SceneVector2[] => {
           if (vertexMeta.length === 0) {
-            return [];
+            return deformed;
           }
           const omega = TAU / period;
           const baseAngle = omega * timeMs + phase;
@@ -387,33 +388,27 @@ export const createCompositePrimitives = (
           const cosStep = usesVertexPhase ? cosPhaseStep : 1;
           let sinValue = globalSin;
           let cosValue = Math.cos(baseAngle);
-          const deformed = new Array<SceneVector2>(vertexMeta.length);
           for (let i = 0; i < vertexMeta.length; i += 1) {
             const meta = vertexMeta[i]!;
             if (!meta) {
-              deformed[i] = { x: 0, y: 0 };
+              deformed[i]!.x = 0;
+              deformed[i]!.y = 0;
               continue;
             }
             const sinForVertex = usesVertexPhase ? sinValue : globalSin;
             if (movementPerp && movementMeta && hasMovement) {
               const moveInfo = movementMeta[i]!;
               const magnitude = moveInfo.magnitude * sinForVertex * moveInfo.toward;
-              deformed[i] = {
-                x: meta.baseX + movementPerp.x * magnitude,
-                y: meta.baseY + movementPerp.y * magnitude,
-              };
+              deformed[i]!.x = meta.baseX + movementPerp.x * magnitude;
+              deformed[i]!.y = meta.baseY + movementPerp.y * magnitude;
             } else if (axis === "tangent") {
               const magnitude = meta.tangentMagnitude * sinForVertex;
-              deformed[i] = {
-                x: meta.baseX + meta.tangentX * magnitude,
-                y: meta.baseY + meta.tangentY * magnitude,
-              };
+              deformed[i]!.x = meta.baseX + meta.tangentX * magnitude;
+              deformed[i]!.y = meta.baseY + meta.tangentY * magnitude;
             } else {
               const magnitude = meta.normalMagnitude * sinForVertex;
-              deformed[i] = {
-                x: meta.baseX + meta.normalX * magnitude,
-                y: meta.baseY + meta.normalY * magnitude,
-              };
+              deformed[i]!.x = meta.baseX + meta.normalX * magnitude;
+              deformed[i]!.y = meta.baseY + meta.normalY * magnitude;
             }
             if (usesVertexPhase) {
               const prevSin = sinValue;
@@ -427,37 +422,31 @@ export const createCompositePrimitives = (
 
         const samplePulse = (timeMs: number): SceneVector2[] => {
           if (vertexMeta.length === 0) {
-            return [];
+            return deformed;
           }
           const omega = TAU / period;
           const angle = omega * timeMs + phase;
           const s = Math.sin(angle);
-          const deformed = new Array<SceneVector2>(vertexMeta.length);
           for (let i = 0; i < vertexMeta.length; i += 1) {
             const meta = vertexMeta[i]!;
             if (!meta) {
-              deformed[i] = { x: 0, y: 0 };
+              deformed[i]!.x = 0;
+              deformed[i]!.y = 0;
               continue;
             }
             if (movementPerp && movementMeta) {
               const moveInfo = movementMeta[i]!;
               const magnitude = moveInfo.magnitude * s * moveInfo.toward;
-              deformed[i] = {
-                x: meta.baseX + movementPerp.x * magnitude,
-                y: meta.baseY + movementPerp.y * magnitude,
-              };
+              deformed[i]!.x = meta.baseX + movementPerp.x * magnitude;
+              deformed[i]!.y = meta.baseY + movementPerp.y * magnitude;
             } else if (axis === "tangent") {
               const magnitude = amplitude * s;
-              deformed[i] = {
-                x: meta.baseX + meta.tangentX * magnitude,
-                y: meta.baseY + meta.tangentY * magnitude,
-              };
+              deformed[i]!.x = meta.baseX + meta.tangentX * magnitude;
+              deformed[i]!.y = meta.baseY + meta.tangentY * magnitude;
             } else {
               const magnitude = amplitude * s;
-              deformed[i] = {
-                x: meta.baseX + meta.normalX * magnitude,
-                y: meta.baseY + meta.normalY * magnitude,
-              };
+              deformed[i]!.x = meta.baseX + meta.normalX * magnitude;
+              deformed[i]!.y = meta.baseY + meta.normalY * magnitude;
             }
           }
           return deformed;
@@ -466,15 +455,18 @@ export const createCompositePrimitives = (
         const getDeformedVertices = (() => {
           const UPDATE_INTERVAL_MS = 32; // Оновлюємо анімацію кожні 32ms (~30 FPS)
           let lastUpdateTime = -1;
-          let lastSample = baseVertices.map((v) => ({ x: v.x, y: v.y }));
           return () => {
             const now = getTentacleTimeMs();
             if (now - lastUpdateTime < UPDATE_INTERVAL_MS) {
-              return lastSample; // Повертаємо закешовані вершини
+              return deformed; // Повертаємо закешовані вершини
             }
             lastUpdateTime = now;
-            lastSample = animCfg.type === "sway" ? sampleSway(now) : samplePulse(now);
-            return lastSample;
+            if (animCfg.type === "sway") {
+              sampleSway(now);
+            } else {
+              samplePulse(now);
+            }
+            return deformed;
           };
         })();
 
