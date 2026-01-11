@@ -81,8 +81,10 @@ export class ObjectsRendererManager {
   private dynamicLayoutDirty = false;
   private autoAnimatingNeedsUpload = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
+  private pendingDynamicUpdateLength = 0;
   private lastDynamicRebuildMs = 0;
   private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
+  private static readonly DYNAMIC_UPDATE_THRESHOLD_RATIO = 0.25;
 
   // Stats
   private dynamicBytesAllocated = 0;
@@ -123,6 +125,7 @@ export class ObjectsRendererManager {
     this.dynamicLayoutDirty = false;
     this.autoAnimatingNeedsUpload = false;
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateLength = 0;
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
@@ -176,7 +179,6 @@ export class ObjectsRendererManager {
     positions.forEach((position, objectId) => {
       this.interpolatedPositions.set(objectId, { x: position.x, y: position.y });
     });
-    let anyUpdated = false;
     positions.forEach((position, objectId) => {
       const managed = this.objects.get(objectId);
       if (!managed) {
@@ -209,13 +211,9 @@ export class ObjectsRendererManager {
         }
         // Update in-place, no copy needed - will do full upload at end
         this.dynamicData.set(data, entry.offset);
-        anyUpdated = true;
+        this.queueDynamicUpdate(entry, data);
       });
     });
-    // Mark for full dynamic upload instead of many small bufferSubData calls
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
-    }
   }
 
   /**
@@ -228,7 +226,6 @@ export class ObjectsRendererManager {
    * and mark that a full dynamic buffer upload is needed.
    */
   public tickAutoAnimating(): void {
-    let anyUpdated = false;
     const idsToRemove: string[] = [];
     const primitivesToRemove: DynamicPrimitive[] = [];
     const applyInterpolatedPosition = <T>(
@@ -283,7 +280,7 @@ export class ObjectsRendererManager {
           }
           // Update in-place, no copy needed
           this.dynamicData.set(data, entry.offset);
-          anyUpdated = true;
+          this.queueDynamicUpdate(entry, data);
         });
       });
     }
@@ -317,7 +314,7 @@ export class ObjectsRendererManager {
           }
           // Update in-place, no copy needed
           this.dynamicData.set(data, entry.offset);
-          anyUpdated = true;
+          this.queueDynamicUpdate(entry, data);
         }
       });
     }
@@ -333,11 +330,6 @@ export class ObjectsRendererManager {
       this.interpolatedPositions.clear();
     }
     
-    // If any auto-animating objects/primitives were updated, mark for full dynamic upload
-    // This is more efficient than many small bufferSubData calls
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
-    }
   }
 
   public consumeSyncInstructions(): SyncInstructions {
@@ -366,6 +358,7 @@ export class ObjectsRendererManager {
     }
 
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateLength = 0;
 
     return result;
   }
@@ -487,7 +480,6 @@ export class ObjectsRendererManager {
       this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
     }
     const updates = managed.renderer.update(instance, managed.registration);
-    let anyUpdated = false;
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);
       if (!entry) {
@@ -504,12 +496,8 @@ export class ObjectsRendererManager {
       }
       // Update in-place, no copy needed - will do full upload
       this.dynamicData.set(data, entry.offset);
-      anyUpdated = true;
+      this.queueDynamicUpdate(entry, data);
     });
-    // Mark for full dynamic upload instead of per-update copies
-    if (anyUpdated && !this.dynamicLayoutDirty) {
-      this.autoAnimatingNeedsUpload = true;
-    }
   }
 
   private removeObject(id: string): void {
@@ -619,7 +607,26 @@ export class ObjectsRendererManager {
     this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
+    this.pendingDynamicUpdateLength = 0;
     this.dynamicBytesAllocated = data.byteLength;
+  }
+
+  private queueDynamicUpdate(entry: DynamicEntry, data: Float32Array): void {
+    if (this.dynamicLayoutDirty || this.autoAnimatingNeedsUpload || !this.dynamicData) {
+      return;
+    }
+    const threshold =
+      this.dynamicData.length *
+      ObjectsRendererManager.DYNAMIC_UPDATE_THRESHOLD_RATIO;
+
+    this.pendingDynamicUpdates.push({ offset: entry.offset, data });
+    this.pendingDynamicUpdateLength += data.length;
+
+    if (this.pendingDynamicUpdateLength >= threshold) {
+      this.autoAnimatingNeedsUpload = true;
+      this.pendingDynamicUpdates = [];
+      this.pendingDynamicUpdateLength = 0;
+    }
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {
