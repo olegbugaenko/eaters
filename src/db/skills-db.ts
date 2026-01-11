@@ -798,7 +798,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { heavy_drill: 5 },
-    cost: createResourceCost('silver', 60, 1.5),
+    cost: createResourceCost('silver', 90, 1.5),
   },
   critical_chance: {
     id: "critical_chance",
@@ -1071,7 +1071,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality3: 5 },
-    cost: createResourceCost('coal', 60, 1.5),
+    cost: createResourceCost('coal', 90, 1.5),
   },
   paper_milling: {
     id: "paper_milling",
