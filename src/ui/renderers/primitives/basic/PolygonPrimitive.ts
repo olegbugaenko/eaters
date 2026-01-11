@@ -592,12 +592,22 @@ export const createDynamicPolygonPrimitive = (
         return null;
       }
 
-      const changed = updatePolygonPositionData(
-        data,
-        origin,
-        rotation,
-        currentVertices
-      );
+      const shouldUpdateFill =
+        cachedFill.fillType !== FILL_TYPES.SOLID ||
+        Boolean(cachedFill.noise || cachedFill.filaments || cachedFill.crackMask);
+      if (shouldUpdateFill) {
+        const fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
+        fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: cachedFill,
+          center: fillCenter,
+          rotation,
+          size: geometry.size,
+        });
+      }
+
+      const changed = shouldUpdateFill
+        ? updatePolygonData(data, origin, rotation, currentVertices, fillComponents)
+        : updatePolygonPositionData(data, origin, rotation, currentVertices);
       return changed ? data : null;
     },
   };
