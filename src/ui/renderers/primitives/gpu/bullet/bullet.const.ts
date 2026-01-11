@@ -10,6 +10,7 @@ export const INSTANCE_STRIDE = INSTANCE_FLOATS * Float32Array.BYTES_PER_ELEMENT;
 
 export const VERTEX_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 // Per-vertex (unit quad)
 in vec2 a_unitPosition;
@@ -79,6 +80,7 @@ void main() {
 
 export const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 v_localPos;
 in vec2 v_uv;
