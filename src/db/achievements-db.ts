@@ -8,7 +8,7 @@ export interface AchievementConfig {
   readonly effects: BonusEffectMap;
 }
 
-export const ACHIEVEMENT_IDS = ["megaBrick", "ancientPyramids", "deathfulGuns"] as const;
+export const ACHIEVEMENT_IDS = ["megaBrick", "ancientPyramids", "deathfulGuns", "deadly_tunnels", "encaged_beast"] as const;
 
 export type AchievementId = (typeof ACHIEVEMENT_IDS)[number];
 
@@ -43,6 +43,28 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+  },
+  deadly_tunnels: {
+    id: "deadly_tunnels",
+    name: "Deadly Tunnels Mastery",
+    description: "Complete Deadly Tunnels levels to boost unit damage.",
+    maxLevel: 10,
+    effects: {
+      all_units_armor_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+  },
+  encaged_beast: {
+    id: "encaged_beast",
+    name: "Encaged Beast Mastery",
+    description: "Complete Encaged Beast levels to boost unit damage.",
+    maxLevel: 10,
+    effects: {
+      sanity_cap: {
+        income: (level) => 2 * level,
       },
     },
   },
