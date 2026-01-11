@@ -549,8 +549,8 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
           fill: { type: "base", brightness: 0.2 },
           vertices: [
             { x: 0, y: 0 },
-            { x: -6, y: -5 },
-            { x: -6, y: 5 },
+            { x: -7, y: -6 },
+            { x: -7, y: 6 },
           ],
         },
         {
@@ -592,17 +592,18 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
           Omit<EnemyRendererLayerConfig, "shape" | "vertices">
         >(
           [
-            { x: -1, y: 2, width: 4.6 },
-            { x: 7, y: 3, width: 4.4 },
-            { x: 12, y: 5, width: 3.9 },
-            { x: 16, y: 8, width: 3.6 },
-            { x: 18, y: 11, width: 3.3 },
-            { x: 19, y: 14, width: 2.6 },
-            { x: 18, y: 17, width: 2.4 },
-            { x: 16, y: 20, width: 2.2 },
-            { x: 12, y: 23, width: 2.0 },
-            { x: 7, y: 24, width: 1.8 },
-            { x: -1, y: 25, width: 1.6 },
+            { x: -4, y: 3, width: 4.6 },
+            { x: -1, y: 4, width: 4.6 },
+            { x: 7, y: 5, width: 4.4 },
+            { x: 12, y: 7, width: 3.9 },
+            { x: 16, y: 10, width: 3.6 },
+            { x: 18, y: 13, width: 3.3 },
+            { x: 19, y: 16, width: 2.6 },
+            { x: 18, y: 19, width: 2.4 },
+            { x: 16, y: 22, width: 2.2 },
+            { x: 12, y: 25, width: 2.0 },
+            { x: 7, y: 26, width: 1.8 },
+            { x: 2, y: 27, width: 1.6 },
           ],
           {
             fill: { type: "base", brightness: 0.3 },
@@ -617,7 +618,129 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
           },
           { epsilon: 0.25, winding: "CCW" },
         ),
-        
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -4, y: -3, width: 4.6 },
+            { x: -1, y: -4, width: 4.6 },
+            { x: 7, y: -5, width: 4.4 },
+            { x: 12, y: -7, width: 3.9 },
+            { x: 16, y: -10, width: 3.6 },
+            { x: 18, y: -13, width: 3.3 },
+            { x: 19, y: -16, width: 2.6 },
+            { x: 18, y: -19, width: 2.4 },
+            { x: 16, y: -22, width: 2.2 },
+            { x: 12, y: -25, width: 2.0 },
+            { x: 7, y: -26, width: 1.8 },
+            { x: 2, y: -27, width: 1.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -24, y: -3, width: 1.9 },
+            { x: -29, y: -8, width: 1.6 },
+            { x: -31, y: -14, width: 1.3 },
+            { x: -35, y: -19, width: 1.0 },
+            { x: -38, y: -23, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -20, y: -8, width: 1.9 },
+            { x: -21, y: -14, width: 1.6 },
+            { x: -24, y: -18, width: 1.3 },
+            { x: -25, y: -22, width: 1.0 },
+            { x: -28, y: -26, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -24, y: 3, width: 1.9 },
+            { x: -29, y: 8, width: 1.6 },
+            { x: -31, y: 14, width: 1.3 },
+            { x: -35, y: 19, width: 1.0 },
+            { x: -38, y: 23, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -20, y: 8, width: 1.9 },
+            { x: -21, y: 14, width: 1.6 },
+            { x: -24, y: 18, width: 1.3 },
+            { x: -25, y: 22, width: 1.0 },
+            { x: -28, y: 26, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
       ],
     },
     maxHp: 7500,
@@ -626,7 +749,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackInterval: 1.8,
     attackRange: 80,
     moveSpeed: 20,
-    physicalSize: 40,
+    physicalSize: 35,
     reward: {
       stone: 2000,
       iron: 200,
