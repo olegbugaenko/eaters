@@ -241,6 +241,51 @@ const pushSpriteVertex = (
   return offset + VERTEX_COMPONENTS;
 };
 
+const updateSpritePositions = (
+  target: Float32Array,
+  center: SceneVector2,
+  width: number,
+  height: number,
+  rotation: number
+): boolean => {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const cx = center.x;
+  const cy = center.y;
+
+  const blX = cx + -halfWidth * cos - halfHeight * sin;
+  const blY = cy + -halfWidth * sin + halfHeight * cos;
+  const brX = cx + halfWidth * cos - halfHeight * sin;
+  const brY = cy + halfWidth * sin + halfHeight * cos;
+  const tlX = cx + -halfWidth * cos - -halfHeight * sin;
+  const tlY = cy + -halfWidth * sin + -halfHeight * cos;
+  const trX = cx + halfWidth * cos - -halfHeight * sin;
+  const trY = cy + halfWidth * sin + -halfHeight * cos;
+
+  let changed = false;
+  const writePosition = (offset: number, x: number, y: number): void => {
+    if (target[offset] !== x) {
+      target[offset] = x;
+      changed = true;
+    }
+    if (target[offset + 1] !== y) {
+      target[offset + 1] = y;
+      changed = true;
+    }
+  };
+
+  writePosition(0, blX, blY);
+  writePosition(VERTEX_COMPONENTS, brX, brY);
+  writePosition(VERTEX_COMPONENTS * 2, tlX, tlY);
+  writePosition(VERTEX_COMPONENTS * 3, tlX, tlY);
+  writePosition(VERTEX_COMPONENTS * 4, brX, brY);
+  writePosition(VERTEX_COMPONENTS * 5, trX, trY);
+
+  return changed;
+};
+
 /**
  * Creates a dynamic sprite primitive with texture support
  * Automatically starts loading the texture asynchronously
@@ -367,6 +412,31 @@ export const createDynamicSpritePrimitive = (
         return data;
       }
       return null;
+    },
+    updatePositionOnly(target: SceneObjectInstance) {
+      const nextRotation = target.data.rotation ?? 0;
+      const nextCenter = transformObjectPoint(target.data.position, nextRotation, options.offset);
+
+      if (
+        nextCenter.x === prevCenterX &&
+        nextCenter.y === prevCenterY &&
+        nextRotation === prevRotation
+      ) {
+        return null;
+      }
+
+      prevCenterX = nextCenter.x;
+      prevCenterY = nextCenter.y;
+      prevRotation = nextRotation;
+
+      const changed = updateSpritePositions(
+        data,
+        nextCenter,
+        prevWidth,
+        prevHeight,
+        nextRotation
+      );
+      return changed ? data : null;
     },
   };
 };

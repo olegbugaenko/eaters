@@ -291,6 +291,52 @@ export const createDynamicRectanglePrimitive = (
       );
       return changed ? data : null;
     },
+    updatePositionOnly(target: SceneObjectInstance) {
+      const nextRotation = resolveRotation(target, options);
+      const pos = target.data.position;
+      const offset = options.offset;
+      let nextCenterX: number;
+      let nextCenterY: number;
+      if (!offset) {
+        nextCenterX = pos.x;
+        nextCenterY = pos.y;
+      } else {
+        const angle = nextRotation;
+        if (angle === 0) {
+          nextCenterX = pos.x + offset.x;
+          nextCenterY = pos.y + offset.y;
+        } else {
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          nextCenterX = pos.x + offset.x * cos - offset.y * sin;
+          nextCenterY = pos.y + offset.x * sin + offset.y * cos;
+        }
+      }
+
+      if (
+        nextCenterX === prevCenterX &&
+        nextCenterY === prevCenterY &&
+        nextRotation === prevRotation
+      ) {
+        return null;
+      }
+
+      prevCenterX = nextCenterX;
+      prevCenterY = nextCenterY;
+      prevRotation = nextRotation;
+
+      centerScratch.x = nextCenterX;
+      centerScratch.y = nextCenterY;
+
+      const size = { width: prevWidth, height: prevHeight };
+      const changed = updateRectanglePositionData(
+        data,
+        centerScratch,
+        size,
+        nextRotation
+      );
+      return changed ? data : null;
+    },
   };
 };
 
@@ -393,6 +439,52 @@ const updateRectangleData = (
   writeVert(VERTEX_COMPONENTS * 3, tlX, tlY, 0, 0);
   writeVert(VERTEX_COMPONENTS * 4, brX, brY, numTilesX, numTilesY);
   writeVert(VERTEX_COMPONENTS * 5, trX, trY, numTilesX, 0);
+
+  return changed;
+};
+
+const updateRectanglePositionData = (
+  target: Float32Array,
+  center: SceneVector2,
+  size: SceneSize,
+  rotation: number
+): boolean => {
+  const halfWidth = size.width / 2;
+  const halfHeight = size.height / 2;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const cx = center.x;
+  const cy = center.y;
+
+  const negHalfW = -halfWidth;
+  const negHalfH = -halfHeight;
+  const blX = cx + negHalfW * cos - halfHeight * sin;
+  const blY = cy + negHalfW * sin + halfHeight * cos;
+  const brX = cx + halfWidth * cos - halfHeight * sin;
+  const brY = cy + halfWidth * sin + halfHeight * cos;
+  const tlX = cx + negHalfW * cos - negHalfH * sin;
+  const tlY = cy + negHalfW * sin + negHalfH * cos;
+  const trX = cx + halfWidth * cos - negHalfH * sin;
+  const trY = cy + halfWidth * sin + negHalfH * cos;
+
+  let changed = false;
+  const writePosition = (offset: number, x: number, y: number): void => {
+    if (target[offset] !== x) {
+      target[offset] = x;
+      changed = true;
+    }
+    if (target[offset + 1] !== y) {
+      target[offset + 1] = y;
+      changed = true;
+    }
+  };
+
+  writePosition(0, blX, blY);
+  writePosition(VERTEX_COMPONENTS, brX, brY);
+  writePosition(VERTEX_COMPONENTS * 2, tlX, tlY);
+  writePosition(VERTEX_COMPONENTS * 3, tlX, tlY);
+  writePosition(VERTEX_COMPONENTS * 4, brX, brY);
+  writePosition(VERTEX_COMPONENTS * 5, trX, trY);
 
   return changed;
 };
