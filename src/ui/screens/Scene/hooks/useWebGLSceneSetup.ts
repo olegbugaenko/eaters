@@ -25,6 +25,7 @@ import {
   clearSpriteTextureCache,
   loadSpriteTexture,
 } from "@ui/renderers/primitives/basic/SpritePrimitive";
+import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */
@@ -66,6 +67,7 @@ export const setupWebGLScene = (
     cols: 3,
     rows: 3,
   });
+  textureResourceManager.setContext(gl);
   loadSpriteTexture(gl, "/images/sprites/cracks/cracks_atlas.png").catch((error) => {
     console.warn("[WebGLScene] Failed to load cracks atlas texture", error);
   });
@@ -92,6 +94,7 @@ export const setupWebGLScene = (
       try { ringGpuRenderer.clearInstances(); } catch {}
       try { ringGpuRenderer.dispose(); } catch {}
       try { arcGpuRenderer.clearInstances(); arcGpuRenderer.dispose(); } catch {}
+      try { textureResourceManager.setContext(null); } catch {}
     }
   });
 

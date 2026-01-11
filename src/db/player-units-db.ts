@@ -569,7 +569,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
       sizeRange: { min: 14.2, max: 28.4 },
       sizeEvolutionMult: 1.75, // Particles grow from 1x to 1.25x size over lifetime
       spread: Math.PI / 5.5,
-      offset: { x: -0.35, y: 0 },
+      offset: { x: -0.75, y: 0 },
       color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },
       fill: {
         fillType: FILL_TYPES.RADIAL_GRADIENT,

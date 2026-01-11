@@ -42,6 +42,7 @@ import { normalizeVector } from "../../../../shared/helpers/vector.helper";
 import { normalizeAngle } from "../../../../shared/helpers/angle.helper";
 import type { UnitProjectileHitContext } from "../projectiles/projectiles.types";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
+import { buildProjectileSpreadDirections } from "../projectiles/projectile-spread.helpers";
 import {
   isPassableFor,
   type PassabilityTag,
@@ -547,9 +548,66 @@ export class EnemiesModule implements GameModule {
       return true;
     }
 
+    if (config.explosionAttack && this.damage) {
+      const explosionAttack = config.explosionAttack;
+      const radius = Math.max(0, explosionAttack.radius);
+      if (radius > 0) {
+        const damageMultiplier = Math.max(explosionAttack.damageMultiplier ?? 1, 0);
+        const knockBackDirection =
+          vectorLength(toTarget) > 0
+            ? toTarget
+            : normalizeVector(toTarget) || { x: 1, y: 0 };
+        this.damage.applyAreaDamage(
+          enemy.position,
+          radius,
+          enemy.baseDamage * damageMultiplier,
+          {
+            types: ["unit"],
+            explosionType: explosionAttack.explosionType,
+            explosionRadius: explosionAttack.explosionRadius,
+            knockBackDistance: config.knockBackDistance,
+            knockBackSpeed: config.knockBackSpeed,
+            knockBackDirection,
+          },
+        );
+      }
+
+      const explosionStatusEffectId = explosionAttack.statusEffectId;
+      if (explosionStatusEffectId) {
+        this.targeting.forEachTargetNear(
+          enemy.position,
+          Math.max(0, explosionAttack.radius),
+          (target) => {
+            if (target.type !== "unit") {
+              return;
+            }
+            const effectTarget = { type: "unit", id: target.id } as const;
+            if (!this.statusEffects.hasEffect(explosionStatusEffectId, effectTarget)) {
+              this.statusEffects.applyEffect(
+                explosionStatusEffectId,
+                effectTarget,
+                explosionAttack.statusEffectOptions,
+              );
+            }
+          },
+          { types: ["unit"] },
+        );
+      }
+
+      return true;
+    }
+
     // Якщо є конфіг снаряда - створюємо снаряд
     if (config.projectile && this.projectiles) {
+      const projectiles = this.projectiles;
+      const projectileConfig = config.projectile;
       const direction = normalizeVector(toTarget) || { x: 1, y: 0 };
+      const volley = config.projectileVolley;
+      const directions = buildProjectileSpreadDirections({
+        count: volley?.count ?? 1,
+        spreadAngleDeg: volley?.spreadAngleDeg ?? 0,
+        baseDirection: direction,
+      });
       // Зміщуємо спавн снаряда на край турелі (відстань = physicalSize + радіус снаряда)
       /* const spawnOffset = enemy.physicalSize/2 + (config.projectile.radius ?? 6);
       const origin = {
@@ -557,50 +615,54 @@ export class EnemiesModule implements GameModule {
         y: enemy.position.y + direction.y * spawnOffset,
       };
       */
-      const origin = { ...enemy.position };
+      const origin = volley?.spawnOffset
+        ? addVectors(enemy.position, volley.spawnOffset)
+        : { ...enemy.position };
 
-      this.projectiles.spawn({
-        origin,
-        direction,
-        damage: enemy.baseDamage,
-        rewardMultiplier: 1, // Вороги не дають нагороди за атаку
-        armorPenetration: 0,
-        targetTypes: ["unit"], // Вороги атакують тільки юнітів
-        visual: config.projectile,
-        onHit: (hitContext: UnitProjectileHitContext) => {
-          if (hitContext.targetType === "unit" && this.damage) {
-            // Calculate knockback direction from enemy to hit position
-            const knockBackDirection = subtractVectors(
-              hitContext.position,
-              enemy.position,
-            );
+      directions.forEach((projectileDirection) => {
+        projectiles.spawn({
+          origin,
+          direction: projectileDirection,
+          damage: enemy.baseDamage,
+          rewardMultiplier: 1, // Вороги не дають нагороди за атаку
+          armorPenetration: 0,
+          targetTypes: ["unit"], // Вороги атакують тільки юнітів
+          visual: projectileConfig,
+          onHit: (hitContext: UnitProjectileHitContext) => {
+            if (hitContext.targetType === "unit" && this.damage) {
+              // Calculate knockback direction from enemy to hit position
+              const knockBackDirection = subtractVectors(
+                hitContext.position,
+                enemy.position,
+              );
 
-            this.damage.applyTargetDamage(
-              hitContext.targetId,
-              enemy.baseDamage,
-              {
-                armorPenetration: 0,
-                knockBackDistance: config.knockBackDistance,
-                knockBackSpeed: config.knockBackSpeed,
-                knockBackDirection:
-                  vectorLength(knockBackDirection) > 0
-                    ? knockBackDirection
-                    : direction,
-              },
-            );
-
-            if (this.explosions && config.projectile?.explosion) {
-              this.explosions.spawnExplosionByType(
-                config.projectile.explosion,
+              this.damage.applyTargetDamage(
+                hitContext.targetId,
+                enemy.baseDamage,
                 {
-                  position: { ...hitContext.position },
-                  initialRadius: Math.max(8, enemy.physicalSize),
+                  armorPenetration: 0,
+                  knockBackDistance: config.knockBackDistance,
+                  knockBackSpeed: config.knockBackSpeed,
+                  knockBackDirection:
+                    vectorLength(knockBackDirection) > 0
+                      ? knockBackDirection
+                      : projectileDirection,
                 },
               );
+
+              if (this.explosions && config.projectile?.explosion) {
+                this.explosions.spawnExplosionByType(
+                  config.projectile.explosion,
+                  {
+                    position: { ...hitContext.position },
+                    initialRadius: Math.max(8, enemy.physicalSize),
+                  },
+                );
+              }
             }
-          }
-          return true; // Снаряд зникає після влучання
-        },
+            return true; // Снаряд зникає після влучання
+          },
+        });
       });
 
       return true;

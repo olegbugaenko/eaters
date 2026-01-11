@@ -21,7 +21,8 @@ import {
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
-import { getTextureCache, loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
+import { loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
+import { textureResourceManager } from "../textures/TextureResourceManager";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -246,9 +247,8 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE1);
       this.gl.uniform1i(this.crackAtlasSamplerLocation, 1);
 
-      const textureCache = getTextureCache();
       const crackPath = "/images/sprites/cracks/cracks_atlas.png";
-      const crackTexture = textureCache.get(crackPath);
+      const crackTexture = textureResourceManager.getTexture(crackPath);
       
       if (crackTexture?.texture && crackTexture.gl === this.gl) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, crackTexture.texture);
@@ -279,8 +279,7 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE0);
       this.gl.uniform1i(this.spriteTextureLocation, 0);
       
-      const textureCache = getTextureCache();
-      const firstTexture = textureCache.values().next().value;
+      const firstTexture = textureResourceManager.getAnyTexture();
       if (firstTexture?.texture) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, firstTexture.texture);
       } else {

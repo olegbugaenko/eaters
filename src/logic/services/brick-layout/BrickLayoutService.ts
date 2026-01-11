@@ -6,6 +6,7 @@ import type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
   BrickShapeBlueprint,
 } from "./brick-layout.types";
@@ -14,6 +15,7 @@ import {
   generateArcBricks,
   generatePolygonBricks,
   generateSquareBricks,
+  generateConnectorBricks,
   generateTemplateBricks,
 } from "./brick-layout.generators";
 
@@ -61,6 +63,17 @@ export const squareWithBricks = (
   generationOptions,
 });
 
+export const connectorWithBricks = (
+  brickType: BrickType,
+  options: ConnectorWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "connector",
+  brickType,
+  options,
+  generationOptions,
+});
+
 export const templateWithBricks = (
   brickType: BrickType,
   options: TemplateWithBricksOptions,
@@ -101,6 +114,12 @@ export const buildBricksFromBlueprints = (
           blueprint.options,
           blueprint.generationOptions
         );
+      case "connector":
+        return generateConnectorBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       case "template":
         return generateTemplateBricks(
           blueprint.brickType,
@@ -119,6 +138,7 @@ export type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
   BrickShapeBlueprint,
 } from "./brick-layout.types";

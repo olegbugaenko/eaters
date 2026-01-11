@@ -1,4 +1,4 @@
-import { getTextureCache } from "./SpritePrimitive";
+import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 
 /**
  * Manages sprite texture array for efficient rendering of multiple sprites
@@ -68,8 +68,7 @@ class SpriteTextureManager {
       return;
     }
 
-    const textureCache = getTextureCache();
-    const paths = Array.from(textureCache.keys());
+    const paths = textureResourceManager.getTexturePaths();
 
     // Find new textures that need to be added
     const newPaths = paths.filter(path => !this.loadedPaths.includes(path));
@@ -87,7 +86,7 @@ class SpriteTextureManager {
         break;
       }
 
-      const cached = textureCache.get(path);
+      const cached = textureResourceManager.getTexture(path);
       if (!cached) {
         continue;
       }

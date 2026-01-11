@@ -3,6 +3,7 @@ import {
   SceneVector2,
   SceneSize,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 import {
   DynamicPrimitive,
   StaticPrimitive,
@@ -21,61 +22,15 @@ import {
 } from "../utils/fill";
 import { transformObjectPoint } from "../../objects/ObjectRenderer";
 
-/**
- * Texture cache for sprites (individual textures)
- */
-type SpriteTextureCacheEntry = {
-  texture: WebGLTexture;
-  width: number;
-  height: number;
-  gl: WebGL2RenderingContext;
-};
-
-const textureCache = new Map<string, SpriteTextureCacheEntry>();
-
-/**
- * Texture path to index mapping for texture array
- */
-const textureIndexMap = new Map<string, number>();
-
-/**
- * Normalizes sprite path to full path and assigns texture index
- */
-const normalizeSpritePath = (spritePath: string): string => {
-  // If path already starts with /, assume it's already normalized
-  const normalized = spritePath.startsWith("/") 
-    ? spritePath 
-    : `/images/sprites/${spritePath}`;
-  
-  // Assign texture index if not already assigned
-  if (!textureIndexMap.has(normalized)) {
-    textureIndexMap.set(normalized, textureIndexMap.size);
-  }
-  
-  return normalized;
-};
-
-/**
- * Export texture cache for use in rendering
- */
-export const getTextureCache = () => textureCache;
-
 export const clearSpriteTextureCache = (): void => {
-  textureCache.forEach((entry) => {
-    try {
-      entry.gl.deleteTexture(entry.texture);
-    } catch {}
-  });
-  textureCache.clear();
-  textureIndexMap.clear();
+  textureResourceManager.clearCache(true);
 };
 
 /**
  * Get texture index for a sprite path (for use in shaders)
  */
 export const getTextureIndex = (spritePath: string): number => {
-  const normalized = normalizeSpritePath(spritePath);
-  return textureIndexMap.get(normalized) ?? 0;
+  return textureResourceManager.getTextureIndex(spritePath);
 };
 
 /**
@@ -86,53 +41,7 @@ export const loadSpriteTexture = (
   gl: WebGL2RenderingContext,
   imagePath: string
 ): Promise<{ texture: WebGLTexture; width: number; height: number }> => {
-  return new Promise((resolve, reject) => {
-    const normalizedPath = normalizeSpritePath(imagePath);
-    const cached = textureCache.get(normalizedPath);
-    if (cached) {
-      if (cached.gl === gl) {
-        resolve(cached);
-        return;
-      }
-      try {
-        cached.gl.deleteTexture(cached.texture);
-      } catch {}
-      textureCache.delete(normalizedPath);
-    }
-
-    const image = new Image();
-    image.onload = () => {
-      const texture = gl.createTexture();
-      if (!texture) {
-        reject(new Error(`Failed to create texture for ${normalizedPath}`));
-        return;
-      }
-
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.bindTexture(gl.TEXTURE_2D, null);
-
-      const result = { texture, width: image.width, height: image.height, gl };
-      textureCache.set(normalizedPath, result);
-      
-      // Assign texture index if not already assigned
-      if (!textureIndexMap.has(normalizedPath)) {
-        textureIndexMap.set(normalizedPath, textureIndexMap.size);
-      }
-      
-      console.log(`[SpritePrimitive] Loaded texture: ${normalizedPath} (${image.width}x${image.height}) index=${textureIndexMap.get(normalizedPath)}`);
-      resolve(result);
-    };
-    image.onerror = () => {
-      console.error(`[SpritePrimitive] Failed to load image: ${normalizedPath}`);
-      reject(new Error(`Failed to load image: ${normalizedPath}`));
-    };
-    image.src = normalizedPath;
-  });
+  return textureResourceManager.loadTexture(gl, imagePath);
 };
 
 interface SpritePrimitiveOptions {

@@ -40,7 +40,15 @@ export interface SquareWithBricksOptions
   extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
   readonly center: SceneVector2;
   readonly size: number;
+  readonly innerSize?: number; // Якщо вказано, створює порожнинний квадрат (контур)
   readonly rotation?: number;
+}
+
+export interface ConnectorWithBricksOptions
+  extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
+  readonly start: SceneVector2;
+  readonly end: SceneVector2;
+  readonly width: number; // Ширина з'єднання (halfWidth * 2)
 }
 
 export interface TemplateWithBricksOptions {
@@ -74,6 +82,12 @@ export type BrickShapeBlueprint =
       readonly shape: "square";
       readonly brickType: BrickType;
       readonly options: SquareWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "connector";
+      readonly brickType: BrickType;
+      readonly options: ConnectorWithBricksOptions;
       readonly generationOptions?: BrickGenerationOptions;
     }
   | {
