@@ -17,6 +17,7 @@ export const UNIT_QUAD_VERTICES = new Float32Array([
 
 export const PARTICLE_VERTEX_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 a_unitPosition;
 in vec2 a_position;
@@ -190,6 +191,7 @@ void main() {
 
 export const PARTICLE_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 v_worldPosition;
 in vec4 v_fillInfo;

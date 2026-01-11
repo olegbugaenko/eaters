@@ -65,6 +65,7 @@ float filamentNoise(vec2 p, float density) {
 
 export const SCENE_VERTEX_SHADER_HEADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 a_position;
 in vec4 a_fillInfo;
@@ -131,6 +132,7 @@ export const SCENE_VERTEX_SHADER = SCENE_VERTEX_SHADER_HEADER + SCENE_VERTEX_SHA
 
 export const SCENE_FRAGMENT_SHADER_HEADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 v_worldPosition;
 in vec2 v_uv; // UV coordinates for sprite textures
