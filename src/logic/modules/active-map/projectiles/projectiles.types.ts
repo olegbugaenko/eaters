@@ -35,6 +35,9 @@ export interface UnitProjectileSpawn {
   damage: number;
   rewardMultiplier: number;
   armorPenetration: number;
+  knockBackDistance?: number;
+  knockBackSpeed?: number;
+  knockBackDirection?: SceneVector2;
   skipKnockback?: boolean;
   targetTypes?: TargetType[];
   visual: UnitProjectileVisualConfig;
