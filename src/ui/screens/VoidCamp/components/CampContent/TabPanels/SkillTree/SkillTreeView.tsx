@@ -115,10 +115,17 @@ const getSkillIconPath = (icon?: string): string | null => {
   return `/images/skills/${hasExtension ? icon : `${icon}.svg`}`;
 };
 
-const getWobblePhaseSeed = (id: SkillId): number =>
-  id
-    .split("")
-    .reduce((acc, char, index) => acc + char.charCodeAt(0) * (index + 1), 0) * 0.001;
+/**
+ * Generates a phase offset for the wobble animation based on grid position.
+ * Uses linear combination with irrational-ish multipliers and offset to ensure
+ * neighboring nodes have visually distinct phases without symmetry issues.
+ */
+const getWobblePhaseSeed = (position: { x: number; y: number }): number => {
+  // Offset by 10 to break symmetry around origin (avoids sin(-x) = -sin(x) issues)
+  // Use different irrational-like multipliers for x and y
+  const raw = position.x  +  3*position.y + 5*position.x * position.y + 0.5*position.x * position.x + 0.3*position.y * position.y;
+  return raw % (Math.PI * 2);
+};
 
 /**
  * Determines if a skill node should be visible based on prerequisites.
@@ -269,7 +276,6 @@ export const SkillTreeView: React.FC = () => {
   const edgesByIdRef = useRef<Map<string, SkillTreeEdge>>(new Map());
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
   const wobblePhaseRef = useRef<Map<SkillId, number>>(new Map());
   const lastAnimationTimestampRef = useRef<number | null>(null);
   const wobbleNodesRef = useRef<Array<{ id: SkillId; seed: number }>>([]);
@@ -294,21 +300,18 @@ export const SkillTreeView: React.FC = () => {
     }
   }, [focusHoveredId, pointerHoveredId, visibleNodes]);
 
-  // Initialize wobble seeds lazily (only when needed, not in useEffect)
+  // Initialize wobble phase tracking for visible nodes
   useEffect(() => {
     const knownIds = new Set(visibleNodes.map((node) => node.id));
     visibleNodes.forEach((node) => {
-      if (!wobblePhaseSeedsRef.current.has(node.id)) {
-        wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
-      }
       if (!wobblePhaseRef.current.has(node.id)) {
         wobblePhaseRef.current.set(node.id, 0);
       }
     });
 
-    Array.from(wobblePhaseSeedsRef.current.keys()).forEach((id) => {
+    // Clean up phases for nodes that are no longer visible
+    Array.from(wobblePhaseRef.current.keys()).forEach((id) => {
       if (!knownIds.has(id)) {
-        wobblePhaseSeedsRef.current.delete(id);
         wobblePhaseRef.current.delete(id);
       }
     });
@@ -456,16 +459,19 @@ export const SkillTreeView: React.FC = () => {
     return map;
   }, [visibleNodes]);
 
-  const wobbleNodes = useMemo(
-    () =>
-      Array.from(nodeAffordability.entries())
-        .filter(([, value]) => value.purchasable)
-        .map(([id]) => ({
-          id,
-          seed: wobblePhaseSeedsRef.current.get(id) ?? 0,
-        })),
-    [nodeAffordability]
-  );
+  const wobbleNodes = useMemo(() => {
+    // Build a map of node positions for seed calculation
+    const nodePositions = new Map(visibleNodes.map((n) => [n.id, n.position]));
+    
+    return Array.from(nodeAffordability.entries())
+      .filter(([, value]) => value.purchasable)
+      .map(([id]) => {
+        // Compute seed synchronously using position (not from ref which may be stale)
+        const position = nodePositions.get(id);
+        const seed = position ? getWobblePhaseSeed(position) : 0;
+        return { id, seed };
+      });
+  }, [nodeAffordability, visibleNodes]);
 
   const wobbleNodesCount = wobbleNodes.length;
   wobbleNodesRef.current = wobbleNodes;

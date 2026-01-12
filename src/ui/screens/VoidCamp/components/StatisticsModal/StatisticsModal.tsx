@@ -44,24 +44,13 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
 }) => {
   const titleId = useId();
   const [activeTab, setActiveTab] = useState<"general" | "history">("general");
-  const formatTimestamp = useCallback((timestamp: number): string => {
-    try {
-      return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(timestamp);
-    } catch (error) {
-      console.error("Failed to format event time", error);
-      return new Date(timestamp).toLocaleString();
-    }
-  }, []);
   const historyEntries = useMemo(() => {
     return eventLog.map((entry, index) => ({
       id: `${entry.realTimeMs}-${entry.type}-${index}`,
-      time: formatTimestamp(entry.realTimeMs),
+      gameTimeMs: entry.gameTimeMs,
       text: entry.text,
     }));
-  }, [eventLog, formatTimestamp]);
+  }, [eventLog]);
 
   const handleDialogClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
@@ -181,7 +170,7 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
                 <ul className="statistics-modal__history-list">
                   {historyEntries.map((entry) => (
                       <li key={entry.id} className="statistics-modal__history-item">
-                        <span className="statistics-modal__history-time">{entry.time}</span>
+                        <span className="statistics-modal__history-time">{formatDuration(entry.gameTimeMs)}</span>
                         <span className="statistics-modal__history-separator">—</span>
                         <span className="statistics-modal__history-text">{entry.text}</span>
                       </li>

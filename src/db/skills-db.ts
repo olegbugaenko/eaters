@@ -95,7 +95,6 @@ export const SKILL_IDS = [
 export type SkillId = (typeof SKILL_IDS)[number];
 
 const getClearedLevelsTotal = (context?: BonusEffectContext, level?: number): number => {
-  console.log("context", context, level);
   return Math.max(0, context?.clearedMapLevelsTotal ?? 0);
 }
 
