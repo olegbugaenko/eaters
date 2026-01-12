@@ -1,5 +1,6 @@
 import type { DynamicBufferUpdate, ObjectsRendererManager } from "../objects";
 
+const COALESCE_DYNAMIC_UPDATES = true;
 const MAX_MERGED_RANGES = 64;
 const BLOCK_SIZE = 256;
 const MAX_BUCKETS = 4096;
@@ -57,6 +58,16 @@ export function applySyncInstructions(
     bufferState.dynamicBytes = dynamicBytes;
   } else if (sync.dynamicUpdates.length > 0) {
     gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
+    if (!COALESCE_DYNAMIC_UPDATES) {
+      sync.dynamicUpdates.forEach(({ offset, data }) => {
+        gl.bufferSubData(
+          gl.ARRAY_BUFFER,
+          offset * Float32Array.BYTES_PER_ELEMENT,
+          data
+        );
+      });
+      return bufferState;
+    }
     const bucketCount = Math.ceil(sync.dynamicUsedLength / BLOCK_SIZE);
     const canBucketize = bucketCount > 0 && bucketCount <= MAX_BUCKETS;
     const updates = canBucketize
@@ -146,7 +157,10 @@ function bucketizeDynamicUpdates(
   updates: DynamicBufferUpdate[],
   bucketCount: number
 ): DynamicBufferUpdate[] {
-  const buckets = Array.from({ length: bucketCount }, () => []);
+  const buckets: DynamicBufferUpdate[][] = Array.from(
+    { length: bucketCount },
+    () => []
+  );
   updates.forEach((update) => {
     const bucketIndex = Math.floor(update.offset / BLOCK_SIZE);
     const safeBucketIndex = Math.max(0, Math.min(bucketIndex, bucketCount - 1));
