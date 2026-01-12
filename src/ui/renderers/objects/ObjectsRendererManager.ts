@@ -45,6 +45,8 @@ export interface SyncInstructions {
   staticData: Float32Array | null;
   dynamicData: Float32Array | null;
   dynamicUpdates: DynamicBufferUpdate[];
+  dynamicUsedLength: number;
+  dynamicUpdatesSorted: boolean;
 }
 
 export interface DynamicBufferStats {
@@ -76,12 +78,15 @@ export class ObjectsRendererManager {
 
   private staticVertexCount = 0;
   private dynamicVertexCount = 0;
+  private dynamicUsedLength = 0;
 
   private staticDirty = false;
   private dynamicLayoutDirty = false;
   private autoAnimatingNeedsUpload = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
   private pendingDynamicUpdateLength = 0;
+  private dynamicUpdatesSorted = true;
+  private lastDynamicUpdateOffset = 0;
   private lastDynamicRebuildMs = 0;
   private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
   private static readonly DYNAMIC_UPDATE_THRESHOLD_RATIO = 0.25;
@@ -129,11 +134,14 @@ export class ObjectsRendererManager {
     this.dynamicData = null;
     this.staticVertexCount = 0;
     this.dynamicVertexCount = 0;
+    this.dynamicUsedLength = 0;
     this.staticDirty = false;
     this.dynamicLayoutDirty = false;
     this.autoAnimatingNeedsUpload = false;
     this.pendingDynamicUpdates = [];
     this.pendingDynamicUpdateLength = 0;
+    this.dynamicUpdatesSorted = true;
+    this.lastDynamicUpdateOffset = 0;
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
@@ -356,6 +364,8 @@ export class ObjectsRendererManager {
       staticData: null,
       dynamicData: null,
       dynamicUpdates: [],
+      dynamicUsedLength: 0,
+      dynamicUpdatesSorted: true,
     };
 
     if (this.staticDirty) {
@@ -380,6 +390,10 @@ export class ObjectsRendererManager {
     this.pendingDynamicUpdateLength = 0;
     this.maybeLogDebugStats();
 
+    result.dynamicUsedLength = this.dynamicUsedLength;
+    result.dynamicUpdatesSorted = this.dynamicUpdatesSorted;
+    this.dynamicUpdatesSorted = true;
+    this.lastDynamicUpdateOffset = 0;
     return result;
   }
 
@@ -396,6 +410,10 @@ export class ObjectsRendererManager {
       bytesAllocated: this.dynamicBytesAllocated,
       reallocations: this.dynamicReallocations,
     };
+  }
+
+  public getDynamicData(): Float32Array | null {
+    return this.dynamicData;
   }
 
   public getDynamicBufferBreakdown(): DynamicBufferBreakdownItem[] {
@@ -630,6 +648,7 @@ export class ObjectsRendererManager {
     }
     
     this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
+    this.dynamicUsedLength = totalLength;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
     this.pendingDynamicUpdateLength = 0;
@@ -646,6 +665,10 @@ export class ObjectsRendererManager {
 
     this.pendingDynamicUpdates.push({ offset: entry.offset, data });
     this.pendingDynamicUpdateLength += data.length;
+    if (entry.offset < this.lastDynamicUpdateOffset) {
+      this.dynamicUpdatesSorted = false;
+    }
+    this.lastDynamicUpdateOffset = entry.offset;
 
     if (this.pendingDynamicUpdateLength >= threshold) {
       this.autoAnimatingNeedsUpload = true;

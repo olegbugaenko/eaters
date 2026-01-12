@@ -60,6 +60,7 @@ export class WebGLSceneRenderer {
   private crackAtlasGridLocation: WebGLUniformLocation | null;
   private crackAtlasSamplerLocation: WebGLUniformLocation | null;
   private objectsRenderer: ObjectsRendererManager;
+  private bufferState = { staticBytes: 0, dynamicBytes: 0 };
 
   constructor(
     gl: WebGL2RenderingContext,
@@ -207,11 +208,12 @@ export class WebGLSceneRenderer {
    * Syncs object renderer changes to WebGL buffers
    */
   public syncBuffers(): void {
-    applySyncInstructions(
+    this.bufferState = applySyncInstructions(
       this.gl,
       this.objectsRenderer,
       this.staticBuffer,
-      this.dynamicBuffer
+      this.dynamicBuffer,
+      this.bufferState
     );
   }
 
