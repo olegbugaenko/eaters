@@ -11,6 +11,7 @@ import {
 import {
   normalizeResourceAmount,
   cloneResourceStockpile,
+  createEmptyResourceStockpile,
   RESOURCE_IDS,
 } from "../../../../db/resources-db";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
@@ -26,8 +27,8 @@ import type {
 import {
   SKILL_TREE_STATE_BRIDGE_KEY,
   SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
-  DEFAULT_SKILL_TREE_STATE,
 } from "./skill-tree.const";
+import { RESOURCE_TOTALS_BRIDGE_KEY } from "../../shared/resources/resources.module";
 import {
   createDefaultLevels,
   clampLevel,
@@ -50,6 +51,19 @@ export class SkillTreeModule implements GameModule {
     this.bonuses = options.bonuses;
     DataBridgeHelpers.registerComparator(
       this.bridge,
+      SKILL_TREE_STATE_BRIDGE_KEY,
+      (previous, next) => {
+        if (!previous) {
+          return false;
+        }
+        if (previous.nodes.length !== next.nodes.length) {
+          return false;
+        }
+        return previous.nodes.every((node, index) => node === next.nodes[index]);
+      }
+    );
+    DataBridgeHelpers.registerComparator(
+      this.bridge,
       SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
       (previous, next) => {
         if (!previous && !next) {
@@ -68,6 +82,9 @@ export class SkillTreeModule implements GameModule {
     this.registerBonusSources();
     this.syncAllBonusLevels();
     this.unsubscribeBonuses = this.bonuses.subscribe(() => {
+      this.pushState();
+    });
+    this.bridge.subscribe(RESOURCE_TOTALS_BRIDGE_KEY, () => {
       this.pushState();
     });
   }
@@ -142,14 +159,18 @@ export class SkillTreeModule implements GameModule {
   }
 
   private pushState(): void {
+    const totals = this.resources.getTotals();
     const payload: SkillTreeBridgePayload = {
-      nodes: SKILL_IDS.map((id) => this.getNodePayload(id)),
+      nodes: SKILL_IDS.map((id) => this.getNodePayload(id, totals)),
     };
     DataBridgeHelpers.pushState(this.bridge, SKILL_TREE_STATE_BRIDGE_KEY, payload);
   }
 
-  private getNodePayload(id: SkillId): SkillNodeBridgePayload {
-    const next = this.createNodePayload(id);
+  private getNodePayload(
+    id: SkillId,
+    totals: ReturnType<ResourcesModule["getTotals"]>
+  ): SkillNodeBridgePayload {
+    const next = this.createNodePayload(id, totals);
     const previous = this.nodePayloadCache.get(id);
     if (previous && this.isNodePayloadEqual(previous, next)) {
       return previous;
@@ -158,15 +179,29 @@ export class SkillTreeModule implements GameModule {
     return next;
   }
 
-  private createNodePayload(id: SkillId): SkillNodeBridgePayload {
+  private createNodePayload(
+    id: SkillId,
+    totals: ReturnType<ResourcesModule["getTotals"]>
+  ): SkillNodeBridgePayload {
     const config = getSkillConfig(id);
     const level = this.levels[id] ?? 0;
+    const maxed = level >= config.maxLevel;
     const unlocked = this.areRequirementsMet(config);
     const nextLevel = level + 1;
     const nextCost =
       unlocked && nextLevel <= config.maxLevel
         ? cloneResourceStockpile(normalizeResourceAmount(config.cost(nextLevel)))
         : null;
+    const affordable = nextCost ? this.resources.canAfford(nextCost) : false;
+    const purchasable = unlocked && !maxed && affordable;
+    const missingResources = createEmptyResourceStockpile();
+    if (nextCost) {
+      RESOURCE_IDS.forEach((resourceId) => {
+        const required = nextCost[resourceId] ?? 0;
+        const available = totals[resourceId] ?? 0;
+        missingResources[resourceId] = Math.max(required - available, 0);
+      });
+    }
 
     return {
       id,
@@ -178,7 +213,10 @@ export class SkillTreeModule implements GameModule {
       position: config.nodePosition,
       requirements: this.createRequirementPayloads(config),
       unlocked,
-      maxed: level >= config.maxLevel,
+      maxed,
+      affordable,
+      purchasable,
+      missingResources,
       nextCost,
       bonusEffects: this.bonuses.getBonusEffects(this.getBonusSourceId(id)),
     };
@@ -211,6 +249,8 @@ export class SkillTreeModule implements GameModule {
       previous.maxLevel !== next.maxLevel ||
       previous.unlocked !== next.unlocked ||
       previous.maxed !== next.maxed ||
+      previous.affordable !== next.affordable ||
+      previous.purchasable !== next.purchasable ||
       previous.position.x !== next.position.x ||
       previous.position.y !== next.position.y
     ) {
@@ -220,6 +260,9 @@ export class SkillTreeModule implements GameModule {
       return false;
     }
     if (!this.areCostsEqual(previous.nextCost, next.nextCost)) {
+      return false;
+    }
+    if (!this.areCostsEqual(previous.missingResources, next.missingResources)) {
       return false;
     }
     return this.areBonusEffectsEqual(previous.bonusEffects, next.bonusEffects);

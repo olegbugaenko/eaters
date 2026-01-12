@@ -22,12 +22,9 @@ import {
   SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
 } from "@logic/modules/camp/skill-tree/skill-tree.const";
 import type { SkillTreeModuleUiApi } from "@logic/modules/camp/skill-tree/skill-tree.types";
-import { RESOURCE_TOTALS_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
-import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import {
   RESOURCE_IDS,
   ResourceId,
-  ResourceStockpile,
   createEmptyResourceStockpile,
   getResourceConfig,
 } from "@db/resources-db";
@@ -224,41 +221,6 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   };
 };
 
-const toTotalsMap = (totals: ResourceAmountPayload[]): Record<ResourceId, number> => {
-  const map = createEmptyResourceStockpile();
-  totals.forEach((resource) => {
-    const id = resource.id as ResourceId;
-    map[id] = resource.amount;
-  });
-  return map;
-};
-
-const computeMissing = (
-  cost: ResourceStockpile | null,
-  totals: Record<ResourceId, number>
-): Record<ResourceId, number> => {
-  const missing = createEmptyResourceStockpile();
-  if (!cost) {
-    return missing;
-  }
-  RESOURCE_IDS.forEach((id) => {
-    const required = cost[id] ?? 0;
-    const available = totals[id] ?? 0;
-    missing[id] = Math.max(required - available, 0);
-  });
-  return missing;
-};
-
-const canAffordCost = (
-  cost: ResourceStockpile | null,
-  totals: Record<ResourceId, number>
-): boolean => {
-  if (!cost) {
-    return false;
-  }
-  return RESOURCE_IDS.every((id) => (totals[id] ?? 0) >= (cost[id] ?? 0));
-};
-
 const getMissingResourceNames = (
   missing: Record<ResourceId, number>
 ): string[] =>
@@ -277,11 +239,6 @@ export const SkillTreeView: React.FC = () => {
     bridge,
     SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
     null as { scale: number; worldX: number; worldY: number } | null
-  );
-  const totals = useBridgeValue(
-    bridge,
-    RESOURCE_TOTALS_BRIDGE_KEY,
-    [] as ResourceAmountPayload[]
   );
   const [pointerHoveredId, setPointerHoveredId] = useState<SkillId | null>(null);
   const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
@@ -338,7 +295,6 @@ export const SkillTreeView: React.FC = () => {
     }
   });
 
-  const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
   const hoveredId = pointerHoveredId ?? focusHoveredId;
   // Update ref directly instead of useEffect
@@ -475,12 +431,10 @@ export const SkillTreeView: React.FC = () => {
   const nodeAffordability = useMemo(() => {
     const map = new Map<SkillId, { affordable: boolean; purchasable: boolean }>();
     visibleNodes.forEach((node) => {
-      const affordable = canAffordCost(node.nextCost, totalsMap);
-      const purchasable = node.unlocked && !node.maxed && affordable;
-      map.set(node.id, { affordable, purchasable });
+      map.set(node.id, { affordable: node.affordable, purchasable: node.purchasable });
     });
     return map;
-  }, [totalsMap, visibleNodes]);
+  }, [visibleNodes]);
 
   const wobbleNodes = useMemo(
     () =>
@@ -673,12 +627,12 @@ export const SkillTreeView: React.FC = () => {
   }, [layout, visibleNodes]);
 
   const activeMissing = useMemo(
-    () => computeMissing(activeNode?.nextCost ?? null, totalsMap),
-    [activeNode, totalsMap]
+    () => activeNode?.missingResources ?? createEmptyResourceStockpile(),
+    [activeNode]
   );
   const activeAffordable = useMemo(
-    () => canAffordCost(activeNode?.nextCost ?? null, totalsMap),
-    [activeNode, totalsMap]
+    () => activeNode?.affordable ?? false,
+    [activeNode]
   );
   const missingResourceNames = useMemo(
     () => getMissingResourceNames(activeMissing),
