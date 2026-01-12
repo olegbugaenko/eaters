@@ -14,6 +14,8 @@ import { AchievementsModule } from "../../shared/achievements/achievements.modul
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
 
@@ -103,6 +105,10 @@ export interface MapModuleUiApi {
   setMapSelectViewTransform(
     transform: { scale: number; worldX: number; worldY: number } | null
   ): void;
+  inspectTargetAtPosition(
+    position: SceneVector2,
+    radius?: number
+  ): TargetSnapshot<"brick" | "enemy"> | null;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

@@ -81,6 +81,7 @@ export interface UseSceneCanvasParams {
   particleStatsLastUpdateRef: MutableRefObject<number>;
   hasInitializedScaleRef: MutableRefObject<boolean>;
   onSpellCast?: (spellId: SpellId) => void;
+  onInspectTarget?: (position: SceneVector2) => void;
 }
 
 export const useSceneCanvas = ({
@@ -104,6 +105,7 @@ export const useSceneCanvas = ({
   particleStatsLastUpdateRef,
   hasInitializedScaleRef,
   onSpellCast,
+  onInspectTarget,
 }: UseSceneCanvasParams) => {
   // Use position interpolation hook
   const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions } = usePositionInterpolation(scene, gameLoop);
@@ -112,6 +114,7 @@ export const useSceneCanvas = ({
   const sceneRef = useRef(scene);
   const spellcastingRef = useRef(spellcasting);
   const onSpellCastRef = useRef(onSpellCast);
+  const onInspectTargetRef = useRef(onInspectTarget);
   const getInterpolatedUnitPositionsRef = useRef(getInterpolatedUnitPositions);
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
@@ -119,16 +122,18 @@ export const useSceneCanvas = ({
   const movableStatsLastUpdateRef = useRef(0);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const rightMouseDownPositionRef = useRef<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     sceneRef.current = scene;
     spellcastingRef.current = spellcasting;
     onSpellCastRef.current = onSpellCast;
+    onInspectTargetRef.current = onInspectTarget;
     getInterpolatedUnitPositionsRef.current = getInterpolatedUnitPositions;
     getInterpolatedBulletPositionsRef.current = getInterpolatedBulletPositions;
     getInterpolatedBrickPositionsRef.current = getInterpolatedBrickPositions;
     getInterpolatedEnemyPositionsRef.current = getInterpolatedEnemyPositions;
-  }, [scene, spellcasting, onSpellCast, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions]);
+  }, [scene, spellcasting, onSpellCast, onInspectTarget, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -488,6 +493,21 @@ export const useSceneCanvas = ({
       };
     };
 
+    const getCanvasPosition = (event: PointerEvent): { x: number; y: number } | null => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        return null;
+      }
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const clampedX = clamp(x, 0, rect.width);
+      const clampedY = clamp(y, 0, rect.height);
+      return {
+        x: (clampedX / rect.width) * canvas.width,
+        y: (clampedY / rect.height) * canvas.height,
+      };
+    };
+
     const getOverlayHeight = () => {
       const panel = summoningPanelRef.current;
       if (!panel) {
@@ -533,6 +553,7 @@ export const useSceneCanvas = ({
       updatePointerPressed(false);
       updateRightMousePressed(false);
       rightMouseLastPositionRef.current = null;
+      rightMouseDownPositionRef.current = null;
     };
 
     const tryCastSpellAtPosition = (event: PointerEvent) => {
@@ -580,6 +601,7 @@ export const useSceneCanvas = ({
         // Right mouse button - camera panning
         event.preventDefault(); // Prevent context menu
         updateRightMousePressed(true);
+        rightMouseDownPositionRef.current = getCanvasPosition(event);
         // Initialize right mouse position for panning
         if (rect.width > 0 && rect.height > 0) {
           const x = event.clientX - rect.left;
@@ -601,6 +623,23 @@ export const useSceneCanvas = ({
         // Right mouse button
         updateRightMousePressed(false);
         rightMouseLastPositionRef.current = null;
+        const downPosition = rightMouseDownPositionRef.current;
+        const currentPosition = getCanvasPosition(event);
+        rightMouseDownPositionRef.current = null;
+        if (!downPosition || !currentPosition || !onInspectTargetRef.current) {
+          return;
+        }
+        const deltaX = currentPosition.x - downPosition.x;
+        const deltaY = currentPosition.y - downPosition.y;
+        const travelDistance = Math.hypot(deltaX, deltaY);
+        if (travelDistance > 6) {
+          return;
+        }
+        const worldPosition = getWorldPosition(event);
+        if (!worldPosition) {
+          return;
+        }
+        onInspectTargetRef.current(worldPosition);
       }
     };
 

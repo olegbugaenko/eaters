@@ -11,6 +11,7 @@ import {
   SceneTooltipContent,
   SceneTooltipPanel,
 } from "./components/tooltip/SceneTooltipPanel";
+import { createTargetTooltip } from "./components/tooltip/createTargetTooltip";
 import {
   SceneTutorialConfig,
   SceneTutorialOverlay,
@@ -153,6 +154,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     [activeTutorialStep?.id, showTutorial]
   );
 
+  const handleInspectTarget = useCallback(
+    (position) => {
+      const target = map.inspectTargetAtPosition(position);
+      if (!target) {
+        setHoverContent(null);
+        return;
+      }
+      setHoverContent(createTargetTooltip(target));
+    },
+    [map],
+  );
+
   const { scale, cameraInfo, scaleRange, handleScaleChange } =
     useSceneCameraInteraction({
       scene,
@@ -170,6 +183,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       pointerPressedRef,
       lastPointerPositionRef,
       onSpellCast: handleSpellCast,
+      onInspectTarget: handleInspectTarget,
     });
 
   // Clear UI overlays when modals/overlays become visible
