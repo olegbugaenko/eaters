@@ -45,6 +45,7 @@ export interface SyncInstructions {
   staticData: Float32Array | null;
   dynamicData: Float32Array | null;
   dynamicUpdates: DynamicBufferUpdate[];
+  dynamicUsedLength: number;
 }
 
 export interface DynamicBufferStats {
@@ -76,6 +77,7 @@ export class ObjectsRendererManager {
 
   private staticVertexCount = 0;
   private dynamicVertexCount = 0;
+  private dynamicUsedLength = 0;
 
   private staticDirty = false;
   private dynamicLayoutDirty = false;
@@ -129,6 +131,7 @@ export class ObjectsRendererManager {
     this.dynamicData = null;
     this.staticVertexCount = 0;
     this.dynamicVertexCount = 0;
+    this.dynamicUsedLength = 0;
     this.staticDirty = false;
     this.dynamicLayoutDirty = false;
     this.autoAnimatingNeedsUpload = false;
@@ -356,6 +359,7 @@ export class ObjectsRendererManager {
       staticData: null,
       dynamicData: null,
       dynamicUpdates: [],
+      dynamicUsedLength: this.dynamicUsedLength,
     };
 
     if (this.staticDirty) {
@@ -630,6 +634,7 @@ export class ObjectsRendererManager {
     }
     
     this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
+    this.dynamicUsedLength = totalLength;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
     this.pendingDynamicUpdateLength = 0;

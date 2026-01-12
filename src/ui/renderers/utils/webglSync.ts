@@ -14,21 +14,42 @@ export function applySyncInstructions(
   gl: WebGL2RenderingContext,
   objectsRenderer: ObjectsRendererManager,
   staticBuffer: WebGLBuffer,
-  dynamicBuffer: WebGLBuffer
-): void {
+  dynamicBuffer: WebGLBuffer,
+  bufferState: { staticBytes: number; dynamicBytes: number }
+): { staticBytes: number; dynamicBytes: number } {
   // Update auto-animating objects (time-based animations) before syncing
   objectsRenderer.tickAutoAnimating();
   
   const sync = objectsRenderer.consumeSyncInstructions();
   
   if (sync.staticData) {
+    const staticBytes = sync.staticData.byteLength;
     gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, sync.staticData, gl.STATIC_DRAW);
+    if (staticBytes > bufferState.staticBytes) {
+      gl.bufferData(gl.ARRAY_BUFFER, sync.staticData, gl.STATIC_DRAW);
+    } else {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, sync.staticData);
+    }
+    bufferState.staticBytes = staticBytes;
   }
   
   if (sync.dynamicData) {
+    const usedLength = Math.min(
+      sync.dynamicData.length,
+      Math.max(sync.dynamicUsedLength, 0)
+    );
+    const dynamicData =
+      usedLength > 0 ? sync.dynamicData.subarray(0, usedLength) : null;
+    const dynamicBytes = dynamicData ? dynamicData.byteLength : 0;
     gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, sync.dynamicData, gl.DYNAMIC_DRAW);
+    if (dynamicBytes > 0) {
+      if (dynamicBytes > bufferState.dynamicBytes) {
+        gl.bufferData(gl.ARRAY_BUFFER, dynamicData!, gl.DYNAMIC_DRAW);
+      } else {
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, dynamicData!);
+      }
+    }
+    bufferState.dynamicBytes = dynamicBytes;
   } else if (sync.dynamicUpdates.length > 0) {
     gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
     sync.dynamicUpdates.forEach(({ offset, data }) => {
@@ -39,4 +60,5 @@ export function applySyncInstructions(
       );
     });
   }
+  return bufferState;
 }
