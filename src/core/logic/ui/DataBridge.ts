@@ -1,16 +1,25 @@
 import type { BridgeKey, BridgeSchema, BridgeValue } from "./BridgeSchema";
 
 export type BridgeListener<T> = (value: T) => void;
+export type BridgeComparator<T> = (previous: T | undefined, next: T) => boolean;
 
 export class DataBridge {
   private values = new Map<BridgeKey, unknown>();
   private listeners = new Map<BridgeKey, Set<BridgeListener<unknown>>>();
+  private comparators = new Map<BridgeKey, BridgeComparator<unknown>>();
 
   /**
    * Встановлює значення для ключа з типобезпечною перевіркою.
    * TypeScript перевірить, що тип значення відповідає типу ключа.
    */
   public setValue<K extends BridgeKey>(key: K, value: BridgeValue<K>): void {
+    const previous = this.values.get(key) as BridgeValue<K> | undefined;
+    const comparator = this.comparators.get(key) as
+      | BridgeComparator<BridgeValue<K>>
+      | undefined;
+    if (comparator && comparator(previous, value)) {
+      return;
+    }
     this.values.set(key, value);
     const keyListeners = this.listeners.get(key);
     if (!keyListeners) {
@@ -52,5 +61,15 @@ export class DataBridge {
         this.listeners.delete(key);
       }
     };
+  }
+
+  /**
+   * Реєструє кастомний компаратор, який визначає чи вважати значення зміненим.
+   */
+  public setComparator<K extends BridgeKey>(
+    key: K,
+    comparator: BridgeComparator<BridgeValue<K>>
+  ): void {
+    this.comparators.set(key, comparator as BridgeComparator<unknown>);
   }
 }

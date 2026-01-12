@@ -11,6 +11,7 @@ import {
 import {
   normalizeResourceAmount,
   cloneResourceStockpile,
+  RESOURCE_IDS,
 } from "../../../../db/resources-db";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
@@ -41,11 +42,29 @@ export class SkillTreeModule implements GameModule {
   private levels: SkillLevelMap = createDefaultLevels();
   private viewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private unsubscribeBonuses: (() => void) | null = null;
+  private nodePayloadCache = new Map<SkillId, SkillNodeBridgePayload>();
 
   constructor(options: SkillTreeModuleOptions) {
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.bonuses = options.bonuses;
+    DataBridgeHelpers.registerComparator(
+      this.bridge,
+      SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
+      (previous, next) => {
+        if (!previous && !next) {
+          return true;
+        }
+        if (!previous || !next) {
+          return false;
+        }
+        return (
+          previous.scale === next.scale &&
+          previous.worldX === next.worldX &&
+          previous.worldY === next.worldY
+        );
+      }
+    );
     this.registerBonusSources();
     this.syncAllBonusLevels();
     this.unsubscribeBonuses = this.bonuses.subscribe(() => {
@@ -124,9 +143,19 @@ export class SkillTreeModule implements GameModule {
 
   private pushState(): void {
     const payload: SkillTreeBridgePayload = {
-      nodes: SKILL_IDS.map((id) => this.createNodePayload(id)),
+      nodes: SKILL_IDS.map((id) => this.getNodePayload(id)),
     };
     DataBridgeHelpers.pushState(this.bridge, SKILL_TREE_STATE_BRIDGE_KEY, payload);
+  }
+
+  private getNodePayload(id: SkillId): SkillNodeBridgePayload {
+    const next = this.createNodePayload(id);
+    const previous = this.nodePayloadCache.get(id);
+    if (previous && this.isNodePayloadEqual(previous, next)) {
+      return previous;
+    }
+    this.nodePayloadCache.set(id, next);
+    return next;
   }
 
   private createNodePayload(id: SkillId): SkillNodeBridgePayload {
@@ -163,6 +192,88 @@ export class SkillTreeModule implements GameModule {
         requiredLevel: requiredLevel ?? 0,
         currentLevel: this.levels[id] ?? 0,
       };
+    });
+  }
+
+  private isNodePayloadEqual(
+    previous: SkillNodeBridgePayload,
+    next: SkillNodeBridgePayload
+  ): boolean {
+    if (previous === next) {
+      return true;
+    }
+    if (
+      previous.id !== next.id ||
+      previous.name !== next.name ||
+      previous.description !== next.description ||
+      previous.icon !== next.icon ||
+      previous.level !== next.level ||
+      previous.maxLevel !== next.maxLevel ||
+      previous.unlocked !== next.unlocked ||
+      previous.maxed !== next.maxed ||
+      previous.position.x !== next.position.x ||
+      previous.position.y !== next.position.y
+    ) {
+      return false;
+    }
+    if (!this.areRequirementsEqual(previous.requirements, next.requirements)) {
+      return false;
+    }
+    if (!this.areCostsEqual(previous.nextCost, next.nextCost)) {
+      return false;
+    }
+    return this.areBonusEffectsEqual(previous.bonusEffects, next.bonusEffects);
+  }
+
+  private areRequirementsEqual(
+    previous: SkillNodeRequirementPayload[],
+    next: SkillNodeRequirementPayload[]
+  ): boolean {
+    if (previous.length !== next.length) {
+      return false;
+    }
+    return previous.every((item, index) => {
+      const nextItem = next[index];
+      if (!nextItem) {
+        return false;
+      }
+      return (
+        item.id === nextItem.id &&
+        item.requiredLevel === nextItem.requiredLevel &&
+        item.currentLevel === nextItem.currentLevel
+      );
+    });
+  }
+
+  private areCostsEqual(
+    previous: SkillNodeBridgePayload["nextCost"],
+    next: SkillNodeBridgePayload["nextCost"]
+  ): boolean {
+    if (!previous || !next) {
+      return previous === next;
+    }
+    return RESOURCE_IDS.every((id) => (previous[id] ?? 0) === (next[id] ?? 0));
+  }
+
+  private areBonusEffectsEqual(
+    previous: SkillNodeBridgePayload["bonusEffects"],
+    next: SkillNodeBridgePayload["bonusEffects"]
+  ): boolean {
+    if (previous.length !== next.length) {
+      return false;
+    }
+    return previous.every((item, index) => {
+      const nextItem = next[index];
+      if (!nextItem) {
+        return false;
+      }
+      return (
+        item.bonusId === nextItem.bonusId &&
+        item.bonusName === nextItem.bonusName &&
+        item.effectType === nextItem.effectType &&
+        item.currentValue === nextItem.currentValue &&
+        item.nextValue === nextItem.nextValue
+      );
     });
   }
 
