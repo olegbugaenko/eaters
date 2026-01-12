@@ -551,8 +551,7 @@ export const SkillTreeView: React.FC = () => {
 
       const element = nodeRefs.current.get(node.id);
       if (element) {
-        element.style.setProperty("--skill-node-wobble-x", "0px");
-        element.style.setProperty("--skill-node-wobble-y", "0px");
+        element.style.transform = "translate3d(0px, 0px, 0) translate(-50%, -50%)";
       }
     });
 
@@ -584,8 +583,7 @@ export const SkillTreeView: React.FC = () => {
 
         const element = nodeRefs.current.get(node.id);
         if (element) {
-          element.style.setProperty("--skill-node-wobble-x", `${offset.x}px`);
-          element.style.setProperty("--skill-node-wobble-y", `${offset.y}px`);
+          element.style.transform = `translate3d(${offset.x}px, ${offset.y}px, 0) translate(-50%, -50%)`;
         }
 
         const edges = edgesByNodeId.get(node.id) ?? [];
@@ -1105,20 +1103,22 @@ export const SkillTreeView: React.FC = () => {
                 aria-disabled={inactive}
                 aria-label={`${node.name} level ${node.level} of ${node.maxLevel}`}
               >
-                <div className="skill-tree-node__level">
-                  {node.level} / {node.maxLevel}
-                </div>
-                <div className="skill-tree-node__icon">
-                  {iconSrc ? (
-                    <img
-                      src={iconSrc}
-                      alt=""
-                      aria-hidden="true"
-                      className="skill-tree-node__image"
-                    />
-                  ) : (
-                    nodeInitials
-                  )}
+                <div className="skill-tree-node__content">
+                  <div className="skill-tree-node__level">
+                    {node.level} / {node.maxLevel}
+                  </div>
+                  <div className="skill-tree-node__icon">
+                    {iconSrc ? (
+                      <img
+                        src={iconSrc}
+                        alt=""
+                        aria-hidden="true"
+                        className="skill-tree-node__image"
+                      />
+                    ) : (
+                      nodeInitials
+                    )}
+                  </div>
                 </div>
               </button>
             );
