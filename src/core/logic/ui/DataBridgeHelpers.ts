@@ -1,4 +1,4 @@
-import type { DataBridge } from "./DataBridge";
+import type { BridgeComparator, DataBridge } from "./DataBridge";
 import type { BridgeKey, BridgeValue } from "./BridgeSchema";
 
 /**
@@ -38,5 +38,17 @@ export class DataBridgeHelpers {
     return (payload: BridgeValue<K>) => {
       bridge.setValue(key, payload);
     };
+  }
+
+  /**
+   * Реєструє кастомний компаратор для конкретного ключа.
+   * Повертає true, якщо значення можна вважати незмінним.
+   */
+  public static registerComparator<K extends BridgeKey>(
+    bridge: DataBridge,
+    key: K,
+    comparator: BridgeComparator<BridgeValue<K>>
+  ): void {
+    bridge.setComparator(key, comparator);
   }
 }

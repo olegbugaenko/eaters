@@ -22,6 +22,9 @@ export interface SkillNodeBridgePayload {
   requirements: SkillNodeRequirementPayload[];
   unlocked: boolean;
   maxed: boolean;
+  affordable: boolean;
+  purchasable: boolean;
+  missingResources: ResourceStockpile;
   nextCost: ResourceStockpile | null;
   bonusEffects: BonusEffectPreview[];
 }

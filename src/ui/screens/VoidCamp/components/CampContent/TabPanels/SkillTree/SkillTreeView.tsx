@@ -22,12 +22,9 @@ import {
   SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
 } from "@logic/modules/camp/skill-tree/skill-tree.const";
 import type { SkillTreeModuleUiApi } from "@logic/modules/camp/skill-tree/skill-tree.types";
-import { RESOURCE_TOTALS_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
-import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import {
   RESOURCE_IDS,
   ResourceId,
-  ResourceStockpile,
   createEmptyResourceStockpile,
   getResourceConfig,
 } from "@db/resources-db";
@@ -224,41 +221,6 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   };
 };
 
-const toTotalsMap = (totals: ResourceAmountPayload[]): Record<ResourceId, number> => {
-  const map = createEmptyResourceStockpile();
-  totals.forEach((resource) => {
-    const id = resource.id as ResourceId;
-    map[id] = resource.amount;
-  });
-  return map;
-};
-
-const computeMissing = (
-  cost: ResourceStockpile | null,
-  totals: Record<ResourceId, number>
-): Record<ResourceId, number> => {
-  const missing = createEmptyResourceStockpile();
-  if (!cost) {
-    return missing;
-  }
-  RESOURCE_IDS.forEach((id) => {
-    const required = cost[id] ?? 0;
-    const available = totals[id] ?? 0;
-    missing[id] = Math.max(required - available, 0);
-  });
-  return missing;
-};
-
-const canAffordCost = (
-  cost: ResourceStockpile | null,
-  totals: Record<ResourceId, number>
-): boolean => {
-  if (!cost) {
-    return false;
-  }
-  return RESOURCE_IDS.every((id) => (totals[id] ?? 0) >= (cost[id] ?? 0));
-};
-
 const getMissingResourceNames = (
   missing: Record<ResourceId, number>
 ): string[] =>
@@ -277,11 +239,6 @@ export const SkillTreeView: React.FC = () => {
     bridge,
     SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
     null as { scale: number; worldX: number; worldY: number } | null
-  );
-  const totals = useBridgeValue(
-    bridge,
-    RESOURCE_TOTALS_BRIDGE_KEY,
-    [] as ResourceAmountPayload[]
   );
   const [pointerHoveredId, setPointerHoveredId] = useState<SkillId | null>(null);
   const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
@@ -303,14 +260,20 @@ export const SkillTreeView: React.FC = () => {
   const hasInitializedViewRef = useRef(false);
   const previousViewportSizeRef = useRef({ width: 0, height: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
-  const animatedOffsetsRef = useRef<Map<SkillId, { x: number; y: number }>>(new Map());
   const renderPositionsRef = useRef<
     Map<SkillId, { x: number; y: number }>
   >(new Map());
   const previousLayoutRef = useRef<SkillTreeLayout | null>(null);
+  const layoutRef = useRef<SkillTreeLayout | null>(null);
+  const edgesByNodeIdRef = useRef<Map<SkillId, SkillTreeEdge[]>>(new Map());
+  const edgesByIdRef = useRef<Map<string, SkillTreeEdge>>(new Map());
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
+  const wobblePhaseRef = useRef<Map<SkillId, number>>(new Map());
+  const lastAnimationTimestampRef = useRef<number | null>(null);
+  const wobbleNodesRef = useRef<Array<{ id: SkillId; seed: number }>>([]);
+  const previousLayoutKeyRef = useRef<string | null>(null);
   const skillTreeModule = useMemo(
     () => uiApi.skillTree as SkillTreeModuleUiApi,
     [uiApi.skillTree]
@@ -332,18 +295,30 @@ export const SkillTreeView: React.FC = () => {
   }, [focusHoveredId, pointerHoveredId, visibleNodes]);
 
   // Initialize wobble seeds lazily (only when needed, not in useEffect)
-  // This runs during render but only mutates ref, so it's safe
-  visibleNodes.forEach((node) => {
-    if (!wobblePhaseSeedsRef.current.has(node.id)) {
-      wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
-    }
-  });
+  useEffect(() => {
+    const knownIds = new Set(visibleNodes.map((node) => node.id));
+    visibleNodes.forEach((node) => {
+      if (!wobblePhaseSeedsRef.current.has(node.id)) {
+        wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
+      }
+      if (!wobblePhaseRef.current.has(node.id)) {
+        wobblePhaseRef.current.set(node.id, 0);
+      }
+    });
 
-  const totalsMap = useMemo(() => toTotalsMap(totals), [totals]);
+    Array.from(wobblePhaseSeedsRef.current.keys()).forEach((id) => {
+      if (!knownIds.has(id)) {
+        wobblePhaseSeedsRef.current.delete(id);
+        wobblePhaseRef.current.delete(id);
+      }
+    });
+  }, [visibleNodes]);
+
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
   const hoveredId = pointerHoveredId ?? focusHoveredId;
   // Update ref directly instead of useEffect
   hoveredIdRef.current = hoveredId;
+  layoutRef.current = layout;
 
   // Compute initial view transform synchronously using fixed viewport size
   // This prevents visible jump on first render
@@ -476,109 +451,181 @@ export const SkillTreeView: React.FC = () => {
   const nodeAffordability = useMemo(() => {
     const map = new Map<SkillId, { affordable: boolean; purchasable: boolean }>();
     visibleNodes.forEach((node) => {
-      const affordable = canAffordCost(node.nextCost, totalsMap);
-      const purchasable = node.unlocked && !node.maxed && affordable;
-      map.set(node.id, { affordable, purchasable });
+      map.set(node.id, { affordable: node.affordable, purchasable: node.purchasable });
     });
     return map;
-  }, [totalsMap, visibleNodes]);
+  }, [visibleNodes]);
 
-  const wobbleNodeIds = useMemo(() => {
-    const ids = new Set<SkillId>();
-    nodeAffordability.forEach((value, id) => {
-      if (value.purchasable) {
-        ids.add(id);
+  const wobbleNodes = useMemo(
+    () =>
+      Array.from(nodeAffordability.entries())
+        .filter(([, value]) => value.purchasable)
+        .map(([id]) => ({
+          id,
+          seed: wobblePhaseSeedsRef.current.get(id) ?? 0,
+        })),
+    [nodeAffordability]
+  );
+
+  const wobbleNodesCount = wobbleNodes.length;
+  wobbleNodesRef.current = wobbleNodes;
+
+  const edgesByNodeId = useMemo(() => {
+    const map = new Map<SkillId, SkillTreeEdge[]>();
+    layout.edges.forEach((edge) => {
+      const fromEdges = map.get(edge.fromId) ?? [];
+      fromEdges.push(edge);
+      map.set(edge.fromId, fromEdges);
+      const toEdges = map.get(edge.toId) ?? [];
+      toEdges.push(edge);
+      map.set(edge.toId, toEdges);
+    });
+    return map;
+  }, [layout.edges]);
+
+  const edgesById = useMemo(() => {
+    const map = new Map<string, SkillTreeEdge>();
+    layout.edges.forEach((edge) => {
+      map.set(edge.id, edge);
+    });
+    return map;
+  }, [layout.edges]);
+  edgesByNodeIdRef.current = edgesByNodeId;
+  edgesByIdRef.current = edgesById;
+
+  const layoutKey = useMemo(() => {
+    const entries = Array.from(layout.positions.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    return entries
+      .map(([id, position]) => `${id}:${position.x},${position.y}`)
+      .join("|");
+  }, [layout.positions]);
+
+  const updateEdgePositions = useCallback((edge: SkillTreeEdge) => {
+    const from =
+      renderPositionsRef.current.get(edge.fromId) ?? edge.from;
+    const to = renderPositionsRef.current.get(edge.toId) ?? edge.to;
+
+    const line = edgeLineRefs.current.get(edge.id);
+    if (line) {
+      line.setAttribute("x1", `${from.x}`);
+      line.setAttribute("y1", `${from.y}`);
+      line.setAttribute("x2", `${to.x}`);
+      line.setAttribute("y2", `${to.y}`);
+    }
+
+    const counters = edgeCounterRefs.current.get(edge.id);
+    if (counters) {
+      const midX = (from.x + to.x) / 2;
+      const midY = (from.y + to.y) / 2;
+
+      counters.circle?.setAttribute("cx", `${midX}`);
+      counters.circle?.setAttribute("cy", `${midY}`);
+      counters.text?.setAttribute("x", `${midX}`);
+      counters.text?.setAttribute("y", `${midY}`);
+    }
+  }, []);
+
+  const initializeRenderPositions = useCallback(() => {
+    const nextPositions = new Map<SkillId, { x: number; y: number }>();
+
+    visibleNodes.forEach((node) => {
+      const base = layout.positions.get(node.id);
+      if (!base) {
+        return;
+      }
+      nextPositions.set(node.id, { ...base });
+
+      const element = nodeRefs.current.get(node.id);
+      if (element) {
+        element.style.transform = "translate3d(0px, 0px, 0) translate(-50%, -50%)";
       }
     });
-    return ids;
-  }, [nodeAffordability]);
 
-  const updateRenderPositions = useCallback(
-    (offsets: Map<SkillId, { x: number; y: number }>) => {
-      const nextPositions = new Map<SkillId, { x: number; y: number }>();
+    renderPositionsRef.current = nextPositions;
 
-      visibleNodes.forEach((node) => {
-        const base = layout.positions.get(node.id);
+    layout.edges.forEach((edge) => {
+      updateEdgePositions(edge);
+    });
+  }, [layout.edges, layout.positions, updateEdgePositions, visibleNodes]);
+
+  const updateAnimatedPositions = useCallback(
+    (timestamp: number, hoveredNodeId: SkillId | null) => {
+      const lastTimestamp = lastAnimationTimestampRef.current;
+      const deltaMs = lastTimestamp ? timestamp - lastTimestamp : 0;
+      lastAnimationTimestampRef.current = timestamp;
+      const nextPositions = renderPositionsRef.current;
+      const affectedEdges = new Set<string>();
+
+      const currentLayout = layoutRef.current;
+      if (!currentLayout) {
+        return;
+      }
+
+      wobbleNodesRef.current.forEach((node) => {
+        const base = currentLayout.positions.get(node.id);
         if (!base) {
           return;
         }
 
-        const offset = offsets.get(node.id) ?? { x: 0, y: 0 };
-        const position = { x: base.x + offset.x, y: base.y + offset.y };
-        nextPositions.set(node.id, position);
+        const shouldWobble = hoveredNodeId !== node.id;
+        const currentPhase = wobblePhaseRef.current.get(node.id) ?? 0;
+        const nextPhase = shouldWobble
+          ? currentPhase + deltaMs * WOBBLE_SPEED
+          : 0;
+        wobblePhaseRef.current.set(node.id, nextPhase);
+        const angle = node.seed + nextPhase;
+        const offset = shouldWobble
+          ? { x: Math.cos(angle) * WOBBLE_RADIUS, y: Math.sin(angle) * WOBBLE_RADIUS }
+          : { x: 0, y: 0 };
+
+        nextPositions.set(node.id, { x: base.x + offset.x, y: base.y + offset.y });
 
         const element = nodeRefs.current.get(node.id);
         if (element) {
-          element.style.setProperty("--skill-node-wobble-x", `${offset.x}px`);
-          element.style.setProperty("--skill-node-wobble-y", `${offset.y}px`);
+          element.style.transform = `translate3d(${offset.x}px, ${offset.y}px, 0) translate(-50%, -50%)`;
         }
+
+        const edges = edgesByNodeIdRef.current.get(node.id) ?? [];
+        edges.forEach((edge) => affectedEdges.add(edge.id));
       });
 
-      renderPositionsRef.current = nextPositions;
+      if (affectedEdges.size === 0) {
+        return;
+      }
 
-      layout.edges.forEach((edge) => {
-        const from = nextPositions.get(edge.fromId) ?? edge.from;
-        const to = nextPositions.get(edge.toId) ?? edge.to;
-
-        const line = edgeLineRefs.current.get(edge.id);
-        if (line) {
-          line.setAttribute("x1", `${from.x}`);
-          line.setAttribute("y1", `${from.y}`);
-          line.setAttribute("x2", `${to.x}`);
-          line.setAttribute("y2", `${to.y}`);
-        }
-
-        const counters = edgeCounterRefs.current.get(edge.id);
-        if (counters) {
-          const midX = (from.x + to.x) / 2;
-          const midY = (from.y + to.y) / 2;
-
-          counters.circle?.setAttribute("cx", `${midX}`);
-          counters.circle?.setAttribute("cy", `${midY}`);
-          counters.text?.setAttribute("x", `${midX}`);
-          counters.text?.setAttribute("y", `${midY}`);
+      affectedEdges.forEach((edgeId) => {
+        const edge = edgesByIdRef.current.get(edgeId);
+        if (edge) {
+          updateEdgePositions(edge);
         }
       });
     },
-    [layout.edges, layout.positions, visibleNodes]
+    [updateEdgePositions]
   );
 
   useEffect(() => {
-    const offsets = animatedOffsetsRef.current;
-    offsets.clear();
+    // Only reset positions when the actual layout changes, not on every callback reference change
+    if (previousLayoutKeyRef.current === layoutKey) {
+      return;
+    }
+    previousLayoutKeyRef.current = layoutKey;
+    initializeRenderPositions();
+    lastAnimationTimestampRef.current = null;
+  }, [initializeRenderPositions, layoutKey]);
 
-    const renderStillFrame = () => {
-      visibleNodes.forEach((node) => {
-        offsets.set(node.id, { x: 0, y: 0 });
-      });
-      updateRenderPositions(offsets);
-    };
-
-    if (wobbleNodeIds.size === 0) {
-      renderStillFrame();
+  useEffect(() => {
+    if (wobbleNodesCount === 0) {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
       return undefined;
     }
 
     const step = (timestamp: number) => {
-      const currentHoveredId = hoveredIdRef.current;
-      offsets.clear();
-
-      visibleNodes.forEach((node) => {
-        const shouldWobble = wobbleNodeIds.has(node.id) && currentHoveredId !== node.id;
-        if (!shouldWobble) {
-          offsets.set(node.id, { x: 0, y: 0 });
-          return;
-        }
-
-        const seed = wobblePhaseSeedsRef.current.get(node.id) ?? 0;
-        const angle = seed + timestamp * WOBBLE_SPEED;
-        offsets.set(node.id, {
-          x: Math.cos(angle) * WOBBLE_RADIUS,
-          y: Math.sin(angle) * WOBBLE_RADIUS,
-        });
-      });
-
-      updateRenderPositions(offsets);
+      updateAnimatedPositions(timestamp, hoveredIdRef.current);
       animationFrameRef.current = requestAnimationFrame(step);
     };
 
@@ -593,7 +640,7 @@ export const SkillTreeView: React.FC = () => {
         animationFrameRef.current = null;
       }
     };
-  }, [updateRenderPositions, visibleNodes, wobbleNodeIds]);
+  }, [updateAnimatedPositions, wobbleNodesCount]);
 
   // Only show details for hovered node, no fallback to avoid confusion
   const activeNode = hoveredId ? visibleNodes.find((node) => node.id === hoveredId) ?? null : null;
@@ -639,12 +686,12 @@ export const SkillTreeView: React.FC = () => {
   }, [layout, visibleNodes]);
 
   const activeMissing = useMemo(
-    () => computeMissing(activeNode?.nextCost ?? null, totalsMap),
-    [activeNode, totalsMap]
+    () => activeNode?.missingResources ?? createEmptyResourceStockpile(),
+    [activeNode]
   );
   const activeAffordable = useMemo(
-    () => canAffordCost(activeNode?.nextCost ?? null, totalsMap),
-    [activeNode, totalsMap]
+    () => activeNode?.affordable ?? false,
+    [activeNode]
   );
   const missingResourceNames = useMemo(
     () => getMissingResourceNames(activeMissing),
@@ -892,15 +939,8 @@ export const SkillTreeView: React.FC = () => {
     [layout.height, layout.width, viewTransform]
   );
 
-  const renderEdges = useMemo(
-    () =>
-      layout.edges.map((edge) => {
-        const from = renderPositionsRef.current.get(edge.fromId) ?? edge.from;
-        const to = renderPositionsRef.current.get(edge.toId) ?? edge.to;
-        return { ...edge, from, to };
-      }),
-    [layout.edges]
-  );
+  // Use base edge positions for initial render - animation updates via refs
+  const renderEdges = layout.edges;
 
   return (
     <div className="skill-tree">
@@ -928,9 +968,11 @@ export const SkillTreeView: React.FC = () => {
               shapeRendering="crispEdges"
             >
           {renderEdges.map((edge) => {
+            // Use base positions from layout - animation updates via refs
+            const { from, to } = edge;
             // Calculate midpoint for counter label
-            const midX = (edge.from.x + edge.to.x) / 2;
-            const midY = (edge.from.y + edge.to.y) / 2;
+            const midX = (from.x + to.x) / 2;
+            const midY = (from.y + to.y) / 2;
               
               return (
                 <g key={edge.id}>
@@ -1012,8 +1054,9 @@ export const SkillTreeView: React.FC = () => {
             })}
           </svg>
           {visibleNodes.map((node) => {
-            const position =
-              renderPositionsRef.current.get(node.id) ?? layout.positions.get(node.id);
+            // Use base position from layout for left/top - wobble is applied via transform
+            // by the animation frame. Don't use renderPositionsRef here to avoid double offset.
+            const position = layout.positions.get(node.id);
             if (!position) {
               return null;
             }
@@ -1069,20 +1112,22 @@ export const SkillTreeView: React.FC = () => {
                 aria-disabled={inactive}
                 aria-label={`${node.name} level ${node.level} of ${node.maxLevel}`}
               >
-                <div className="skill-tree-node__level">
-                  {node.level} / {node.maxLevel}
-                </div>
-                <div className="skill-tree-node__icon">
-                  {iconSrc ? (
-                    <img
-                      src={iconSrc}
-                      alt=""
-                      aria-hidden="true"
-                      className="skill-tree-node__image"
-                    />
-                  ) : (
-                    nodeInitials
-                  )}
+                <div className="skill-tree-node__content">
+                  <div className="skill-tree-node__level">
+                    {node.level} / {node.maxLevel}
+                  </div>
+                  <div className="skill-tree-node__icon">
+                    {iconSrc ? (
+                      <img
+                        src={iconSrc}
+                        alt=""
+                        aria-hidden="true"
+                        className="skill-tree-node__image"
+                      />
+                    ) : (
+                      nodeInitials
+                    )}
+                  </div>
                 </div>
               </button>
             );
