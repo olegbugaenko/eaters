@@ -359,7 +359,7 @@ export class ObjectsRendererManager {
       staticData: null,
       dynamicData: null,
       dynamicUpdates: [],
-      dynamicUsedLength: this.dynamicUsedLength,
+      dynamicUsedLength: 0,
     };
 
     if (this.staticDirty) {
@@ -384,6 +384,7 @@ export class ObjectsRendererManager {
     this.pendingDynamicUpdateLength = 0;
     this.maybeLogDebugStats();
 
+    result.dynamicUsedLength = this.dynamicUsedLength;
     return result;
   }
 
