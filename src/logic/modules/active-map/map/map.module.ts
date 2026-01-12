@@ -268,6 +268,7 @@ export class MapModule implements GameModule {
   }
 
   private toBrickTarget(brick: BrickRuntimeState): TargetSnapshot<"brick", BrickRuntimeState> {
+    const rewardMultiplier = this.getRewardMultiplier();
     return {
       id: brick.id,
       type: "brick",
@@ -277,11 +278,13 @@ export class MapModule implements GameModule {
       armor: brick.armor,
       baseDamage: brick.baseDamage,
       physicalSize: brick.physicalSize,
+      rewardMultiplier,
       data: brick,
     };
   }
 
   private toEnemyTarget(enemy: EnemyRuntimeState): TargetSnapshot<"enemy", EnemyRuntimeState> {
+    const rewardMultiplier = this.getRewardMultiplier();
     return {
       id: enemy.id,
       type: "enemy",
@@ -291,8 +294,15 @@ export class MapModule implements GameModule {
       armor: enemy.armor,
       baseDamage: enemy.baseDamage,
       physicalSize: enemy.physicalSize,
+      rewardMultiplier,
       data: enemy,
     };
+  }
+
+  private getRewardMultiplier(): number {
+    const multiplierRaw = this.options.bonuses.getBonusValue("brick_rewards");
+    const multiplier = Number.isFinite(multiplierRaw) ? multiplierRaw : 1;
+    return Math.max(multiplier, 0);
   }
 
   private getDistanceSq(a: SceneVector2, b: SceneVector2): number {
