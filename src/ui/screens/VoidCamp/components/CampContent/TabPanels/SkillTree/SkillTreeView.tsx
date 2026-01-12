@@ -267,6 +267,8 @@ export const SkillTreeView: React.FC = () => {
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
+  const wobblePhaseRef = useRef<Map<SkillId, number>>(new Map());
+  const lastAnimationTimestampRef = useRef<number | null>(null);
   const skillTreeModule = useMemo(
     () => uiApi.skillTree as SkillTreeModuleUiApi,
     [uiApi.skillTree]
@@ -292,6 +294,9 @@ export const SkillTreeView: React.FC = () => {
   visibleNodes.forEach((node) => {
     if (!wobblePhaseSeedsRef.current.has(node.id)) {
       wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
+    }
+    if (!wobblePhaseRef.current.has(node.id)) {
+      wobblePhaseRef.current.set(node.id, 0);
     }
   });
 
@@ -518,6 +523,9 @@ export const SkillTreeView: React.FC = () => {
 
   const updateAnimatedPositions = useCallback(
     (timestamp: number, hoveredNodeId: SkillId | null) => {
+      const lastTimestamp = lastAnimationTimestampRef.current;
+      const deltaMs = lastTimestamp ? timestamp - lastTimestamp : 0;
+      lastAnimationTimestampRef.current = timestamp;
       const nextPositions = renderPositionsRef.current;
       const affectedEdges = new Set<string>();
 
@@ -528,7 +536,12 @@ export const SkillTreeView: React.FC = () => {
         }
 
         const shouldWobble = hoveredNodeId !== node.id;
-        const angle = node.seed + timestamp * WOBBLE_SPEED;
+        const currentPhase = wobblePhaseRef.current.get(node.id) ?? 0;
+        const nextPhase = shouldWobble
+          ? currentPhase + deltaMs * WOBBLE_SPEED
+          : 0;
+        wobblePhaseRef.current.set(node.id, nextPhase);
+        const angle = node.seed + nextPhase;
         const offset = shouldWobble
           ? { x: Math.cos(angle) * WOBBLE_RADIUS, y: Math.sin(angle) * WOBBLE_RADIUS }
           : { x: 0, y: 0 };
@@ -560,6 +573,7 @@ export const SkillTreeView: React.FC = () => {
 
   useEffect(() => {
     initializeRenderPositions();
+    lastAnimationTimestampRef.current = null;
 
     if (wobbleNodes.length === 0) {
       return undefined;
