@@ -264,11 +264,15 @@ export const SkillTreeView: React.FC = () => {
     Map<SkillId, { x: number; y: number }>
   >(new Map());
   const previousLayoutRef = useRef<SkillTreeLayout | null>(null);
+  const layoutRef = useRef<SkillTreeLayout | null>(null);
+  const edgesByNodeIdRef = useRef<Map<SkillId, SkillTreeEdge[]>>(new Map());
+  const edgesByIdRef = useRef<Map<string, SkillTreeEdge>>(new Map());
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const wobblePhaseSeedsRef = useRef<Map<SkillId, number>>(new Map());
   const wobblePhaseRef = useRef<Map<SkillId, number>>(new Map());
   const lastAnimationTimestampRef = useRef<number | null>(null);
+  const wobbleNodesRef = useRef<Array<{ id: SkillId; seed: number }>>([]);
   const skillTreeModule = useMemo(
     () => uiApi.skillTree as SkillTreeModuleUiApi,
     [uiApi.skillTree]
@@ -290,20 +294,30 @@ export const SkillTreeView: React.FC = () => {
   }, [focusHoveredId, pointerHoveredId, visibleNodes]);
 
   // Initialize wobble seeds lazily (only when needed, not in useEffect)
-  // This runs during render but only mutates ref, so it's safe
-  visibleNodes.forEach((node) => {
-    if (!wobblePhaseSeedsRef.current.has(node.id)) {
-      wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
-    }
-    if (!wobblePhaseRef.current.has(node.id)) {
-      wobblePhaseRef.current.set(node.id, 0);
-    }
-  });
+  useEffect(() => {
+    const knownIds = new Set(visibleNodes.map((node) => node.id));
+    visibleNodes.forEach((node) => {
+      if (!wobblePhaseSeedsRef.current.has(node.id)) {
+        wobblePhaseSeedsRef.current.set(node.id, getWobblePhaseSeed(node.id));
+      }
+      if (!wobblePhaseRef.current.has(node.id)) {
+        wobblePhaseRef.current.set(node.id, 0);
+      }
+    });
+
+    Array.from(wobblePhaseSeedsRef.current.keys()).forEach((id) => {
+      if (!knownIds.has(id)) {
+        wobblePhaseSeedsRef.current.delete(id);
+        wobblePhaseRef.current.delete(id);
+      }
+    });
+  }, [visibleNodes]);
 
   const layout = useMemo(() => computeLayout(nodes), [nodes]);
   const hoveredId = pointerHoveredId ?? focusHoveredId;
   // Update ref directly instead of useEffect
   hoveredIdRef.current = hoveredId;
+  layoutRef.current = layout;
 
   // Compute initial view transform synchronously using fixed viewport size
   // This prevents visible jump on first render
@@ -452,6 +466,9 @@ export const SkillTreeView: React.FC = () => {
     [nodeAffordability]
   );
 
+  const wobbleNodesCount = wobbleNodes.length;
+  wobbleNodesRef.current = wobbleNodes;
+
   const edgesByNodeId = useMemo(() => {
     const map = new Map<SkillId, SkillTreeEdge[]>();
     layout.edges.forEach((edge) => {
@@ -472,6 +489,17 @@ export const SkillTreeView: React.FC = () => {
     });
     return map;
   }, [layout.edges]);
+  edgesByNodeIdRef.current = edgesByNodeId;
+  edgesByIdRef.current = edgesById;
+
+  const layoutKey = useMemo(() => {
+    const entries = Array.from(layout.positions.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    return entries
+      .map(([id, position]) => `${id}:${position.x},${position.y}`)
+      .join("|");
+  }, [layout.positions]);
 
   const updateEdgePositions = useCallback((edge: SkillTreeEdge) => {
     const from =
@@ -529,8 +557,13 @@ export const SkillTreeView: React.FC = () => {
       const nextPositions = renderPositionsRef.current;
       const affectedEdges = new Set<string>();
 
-      wobbleNodes.forEach((node) => {
-        const base = layout.positions.get(node.id);
+      const currentLayout = layoutRef.current;
+      if (!currentLayout) {
+        return;
+      }
+
+      wobbleNodesRef.current.forEach((node) => {
+        const base = currentLayout.positions.get(node.id);
         if (!base) {
           return;
         }
@@ -553,7 +586,7 @@ export const SkillTreeView: React.FC = () => {
           element.style.transform = `translate3d(${offset.x}px, ${offset.y}px, 0) translate(-50%, -50%)`;
         }
 
-        const edges = edgesByNodeId.get(node.id) ?? [];
+        const edges = edgesByNodeIdRef.current.get(node.id) ?? [];
         edges.forEach((edge) => affectedEdges.add(edge.id));
       });
 
@@ -562,20 +595,26 @@ export const SkillTreeView: React.FC = () => {
       }
 
       affectedEdges.forEach((edgeId) => {
-        const edge = edgesById.get(edgeId);
+        const edge = edgesByIdRef.current.get(edgeId);
         if (edge) {
           updateEdgePositions(edge);
         }
       });
     },
-    [edgesById, edgesByNodeId, layout.positions, updateEdgePositions, wobbleNodes]
+    [updateEdgePositions]
   );
 
   useEffect(() => {
     initializeRenderPositions();
     lastAnimationTimestampRef.current = null;
+  }, [initializeRenderPositions, layoutKey]);
 
-    if (wobbleNodes.length === 0) {
+  useEffect(() => {
+    if (wobbleNodesCount === 0) {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
       return undefined;
     }
 
@@ -595,7 +634,7 @@ export const SkillTreeView: React.FC = () => {
         animationFrameRef.current = null;
       }
     };
-  }, [initializeRenderPositions, updateAnimatedPositions, wobbleNodes.length]);
+  }, [updateAnimatedPositions, wobbleNodesCount]);
 
   // Only show details for hovered node, no fallback to avoid confusion
   const activeNode = hoveredId ? visibleNodes.find((node) => node.id === hoveredId) ?? null : null;
