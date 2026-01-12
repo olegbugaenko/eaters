@@ -34,7 +34,7 @@ import type { NecromancerModuleUiApi } from "@logic/modules/active-map/necromanc
 import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
-import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneUiApi, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 
 interface SceneScreenProps {
@@ -155,7 +155,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   );
 
   const handleInspectTarget = useCallback(
-    (position) => {
+    (position: SceneVector2) => {
       const target = map.inspectTargetAtPosition(position);
       if (!target) {
         setHoverContent(null);

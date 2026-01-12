@@ -226,12 +226,12 @@ export class MapModule implements GameModule {
   public inspectTargetAtPosition(
     position: SceneVector2,
     radius = 32
-  ): TargetSnapshot<"brick" | "enemy"> | null {
+  ): TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null {
     const brick = this.options.bricks.findNearestBrick(position);
     const enemy = this.options.enemies.findNearestEnemy(position);
 
     const candidates: Array<{
-      target: TargetSnapshot<"brick" | "enemy">;
+      target: TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState>;
       distanceSq: number;
     }> = [];
 
