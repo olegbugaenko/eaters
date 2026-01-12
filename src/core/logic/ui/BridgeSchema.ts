@@ -20,6 +20,9 @@ import type { SkillTreeBridgePayload } from "@logic/modules/camp/skill-tree/skil
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import type { TutorialMonitorInput, TutorialMonitorStatus } from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.types";
 import type { CampStatisticsSnapshot } from "@logic/modules/shared/statistics/statistics.module";
+import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
+import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
+import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
 
 /**
  * View transform для навігації по картах/скілах.
@@ -48,6 +51,7 @@ export interface BridgeSchema {
   "maps/autoRestart": MapAutoRestartState;
   "maps/selectViewTransform": ViewTransform | null;
   "maps/controlHintsCollapsed": boolean;
+  "maps/inspectedTarget": TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
 
   // Player Units
   "playerUnits/count": number;

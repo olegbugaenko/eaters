@@ -8,11 +8,8 @@ import { SceneControlHintsPanel } from "./components/panels/SceneControlHintsPan
 import { SceneRunResourcePanel } from "./components/panels/SceneRunResourcePanel";
 import { SceneSummoningPanel } from "./components/summoning/SceneSummoningPanel";
 import { SceneToolbar } from "./components/toolbar/SceneToolbar";
-import {
-  SceneTooltipContent,
-  SceneTooltipPanel,
-} from "./components/tooltip/SceneTooltipPanel";
-import { createTargetTooltip } from "./components/tooltip/createTargetTooltip";
+import { SceneTooltipBridgePanel } from "./components/tooltip/SceneTooltipBridgePanel";
+import type { SceneTooltipContent } from "./components/tooltip/SceneTooltipPanel";
 import {
   SceneTutorialConfig,
   SceneTutorialOverlay,
@@ -70,7 +67,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const cameraInfoRef = useRef(initialCamera);
   const scaleRef = useRef(initialCamera.scale);
   const spellOptionsRef = useRef<SpellOption[]>([]);
-  const [hoverContent, setHoverContent] = useState<SceneTooltipContent | null>(null);
+  const [summoningTooltipContent, setSummoningTooltipContent] =
+    useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
   const {
     toolbarState,
@@ -157,12 +155,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   const handleInspectTarget = useCallback(
     (position: SceneVector2) => {
-      const target = map.inspectTargetAtPosition(position);
-      if (!target) {
-        setHoverContent(null);
-        return;
-      }
-      setHoverContent(createTargetTooltip(target));
+      map.setInspectedTargetAtPosition(position);
     },
     [map],
   );
@@ -190,17 +183,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   // Clear UI overlays when modals/overlays become visible
   useEffect(() => {
     if (showRunSummary) {
-      setHoverContent(null);
+      map.clearInspectedTarget();
+      setSummoningTooltipContent(null);
       setIsPauseOpen(false);
     }
     if (isPauseOpen) {
-      setHoverContent(null);
+      map.clearInspectedTarget();
+      setSummoningTooltipContent(null);
     }
     if (showTutorial) {
-      setHoverContent(null);
+      map.clearInspectedTarget();
+      setSummoningTooltipContent(null);
       setIsPauseOpen(false);
     }
-  }, [showRunSummary, isPauseOpen, showTutorial]);
+  }, [map, showRunSummary, isPauseOpen, showTutorial]);
 
   useEffect(() => {
     if (!showTutorial) {
@@ -445,7 +441,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneControlHintsPanel />
-      <SceneTooltipPanel content={hoverContent} />
+      <SceneTooltipBridgePanel contentOverride={summoningTooltipContent} />
       <SceneDebugPanel bridge={bridge} />
       <SceneSummoningPanel
         ref={summoningPanelRef}
@@ -455,7 +451,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         selectedSpellId={selectedSpellId}
         onSelectSpell={handleSelectSpell}
         onSummon={handleSummonDesign}
-        onHoverInfoChange={setHoverContent}
+        onHoverInfoChange={setSummoningTooltipContent}
         automation={summoningProps.automation}
         onToggleAutomation={handleToggleAutomation}
         unitCount={summoningProps.unitCount}
