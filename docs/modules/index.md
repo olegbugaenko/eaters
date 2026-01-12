@@ -14,6 +14,7 @@
 - [unit-design.md](unit-design.md)
 - [unit-module-workshop.md](unit-module-workshop.md)
 - [statistics.md](statistics.md)
+- [event-log.md](event-log.md)
 - [audio.md](audio.md)
 - [test-time.md](test-time.md)
 

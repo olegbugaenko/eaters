@@ -18,6 +18,9 @@ export interface SkillConfig {
   readonly effects: BonusEffectMap;
   readonly nodesRequired: Partial<Record<SkillId, number>>;
   readonly cost: SkillCostFunction;
+  readonly registerEvent?: {
+    readonly text: string;
+  };
 }
 
 export const SKILL_IDS = [
@@ -180,6 +183,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_lore: 1 },
     cost: createStoneCost(10, 1),
+    registerEvent: {
+      text: "You awaken your creator instinct.",
+    },
   },
   autorestart_rituals: {
     id: "autorestart_rituals",
@@ -192,6 +198,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_automatons: 1 },
     cost: createStoneCost(500, 1),
+    registerEvent: {
+      text: "Sigils now repeat the ritual unbidden.",
+    },
   },
   construction_guild: {
     id: "construction_guild",
@@ -204,6 +213,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { autorestart_rituals: 1 },
     cost: createResourceCost("copper", 50, 1),
+    registerEvent: {
+      text: "A permanent guild answers your call.",
+    },
   },
   advanced_construction: {
     id: "advanced_construction",
@@ -308,6 +320,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_lore: 3 },
     cost: createSandCost(150, 1),
+    registerEvent: {
+      text: "A chord resonates for organs and parts.",
+    },
   },
   tail_spines: {
     id: "tail_spines",

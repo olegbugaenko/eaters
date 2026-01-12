@@ -4,6 +4,7 @@ import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { BonusEffectPreview } from "@shared/types/bonuses";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { EventLogModule } from "../../shared/event-log/event-log.module";
 
 export interface SkillNodeRequirementPayload {
   id: SkillId;
@@ -37,6 +38,7 @@ export interface SkillTreeModuleOptions {
   bridge: DataBridge;
   resources: ResourcesModule;
   bonuses: BonusesModule;
+  eventLog: EventLogModule;
 }
 
 export interface SkillTreeSaveData {

@@ -433,12 +433,20 @@ export class MapModule implements GameModule {
     this.pushLastPlayedMap();
     const stats = this.ensureLevelStats(mapId, level);
     if (result.success) {
+      const isFirstSuccess = stats.success === 0;
       stats.success += 1;
       const duration = sanitizeDuration(result.durationMs);
       if (duration !== null) {
         if (stats.bestTimeMs === null || duration < stats.bestTimeMs) {
           stats.bestTimeMs = duration;
         }
+      }
+      if (isFirstSuccess) {
+        const config = getMapConfig(mapId);
+        this.options.eventLog.registerEvent(
+          "map-cleared",
+          `Map ${config.name} cleared (Level ${level})`
+        );
       }
     } else {
       stats.failure += 1;

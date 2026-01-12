@@ -21,6 +21,7 @@ import { createSkillTreeDefinition } from "../../modules/camp/skill-tree/skill-t
 import { createSpellcastingDefinition } from "../../modules/active-map/spellcasting/spellcasting.factory";
 import { createStatisticsDefinition } from "../../modules/shared/statistics/statistics.factory";
 import { createTimeDefinition } from "../../modules/shared/time/time.factory";
+import { createEventLogDefinition } from "../../modules/shared/event-log/event-log.factory";
 import { createStatusEffectsDefinition } from "../../modules/active-map/status-effects/status-effects.factory";
 import { createTutorialMonitorDefinition } from "../../modules/active-map/tutorial-monitor/tutorial-monitor.factory";
 import { createUnitAutomationDefinition } from "../../modules/active-map/unit-automation/unit-automation.factory";
@@ -40,12 +41,13 @@ export const registerModuleDefinitions = (
     createAchievementsDefinition(),
     createStatisticsDefinition(),
     createResourcesDefinition(),
+    createTimeDefinition(),
+    createEventLogDefinition(),
     createSkillTreeDefinition(),
     createCraftingDefinition(),
     createBuildingsDefinition(),
     createUnitModuleWorkshopDefinition(),
     createUnitDesignDefinition(),
-    createTimeDefinition(),
     createExplosionDefinition(),
     createAudioDefinition(),
     createStatusEffectsDefinition(),
