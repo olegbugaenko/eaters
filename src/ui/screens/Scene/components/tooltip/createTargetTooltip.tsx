@@ -1,7 +1,7 @@
 import { getBrickConfig } from "@db/bricks-db";
+import type { ReactNode } from "react";
 import { EnemyConfig, getEnemyConfig } from "@db/enemies-db";
 import {
-  getResourceConfig,
   hasAnyResources,
   normalizeResourceAmount,
   RESOURCE_IDS,
@@ -12,6 +12,7 @@ import { getStatusEffectConfig } from "@db/status-effects-db";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
+import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import { formatNumber } from "@ui-shared/format/number";
 import type { SceneTooltipContent, SceneTooltipStat } from "./SceneTooltipPanel";
 
@@ -27,23 +28,40 @@ const formatSeconds = (value: number): string =>
 const formatDistance = (value: number): string =>
   `${formatNumber(value, { maximumFractionDigits: 0 })} units`;
 
+const applyRewardMultiplier = (
+  rewards: ResourceStockpile,
+  multiplier: number,
+): ResourceStockpile => {
+  if (!Number.isFinite(multiplier) || Math.abs(multiplier - 1) < 1e-9) {
+    return rewards;
+  }
+  const scaled = normalizeResourceAmount(rewards);
+  RESOURCE_IDS.forEach((id) => {
+    const base = scaled[id] ?? 0;
+    const value = Math.round(base * Math.max(multiplier, 0) * 100) / 100;
+    scaled[id] = value > 0 ? value : 0;
+  });
+  return scaled;
+};
+
 const formatRewards = (
   rewards?: ResourceStockpile | ResourceAmount | null,
-): string | null => {
+  rewardMultiplier = 1,
+): ReactNode[] | null => {
   if (!rewards) {
     return null;
   }
   const normalized = normalizeResourceAmount(rewards);
-  if (!hasAnyResources(normalized)) {
+  const scaled = applyRewardMultiplier(normalized, rewardMultiplier);
+  if (!hasAnyResources(scaled)) {
     return null;
   }
-  const rewardParts = RESOURCE_IDS.filter((id) => normalized[id] > 0).map(
-    (id) =>
-      `${getResourceConfig(id).name} ${formatNumber(normalized[id], {
-        maximumFractionDigits: 0,
-      })}`,
-  );
-  return rewardParts.join(", ");
+  return RESOURCE_IDS.filter((id) => scaled[id] > 0).map((id) => (
+    <span key={id} className="scene-tooltip-panel__reward-item">
+      <ResourceIcon resourceId={id} />
+      {formatNumber(scaled[id], { maximumFractionDigits: 2 })}
+    </span>
+  ));
 };
 
 const buildCommonStats = (target: TargetSnapshot): SceneTooltipStat[] => [
@@ -107,7 +125,7 @@ export const createTargetTooltip = (
     const brick = target.data as BrickRuntimeState;
     const brickConfig = getBrickConfig(brick.type);
     const title = brickConfig.name ?? `Brick: ${brick.type}`;
-    const rewardLabel = formatRewards(brick.rewards);
+    const rewardLabel = formatRewards(brick.rewards, target.rewardMultiplier ?? 1);
     return {
       title,
       subtitle: `Level ${brick.level}`,
@@ -120,7 +138,10 @@ export const createTargetTooltip = (
 
   const enemy = target.data as EnemyRuntimeState;
   const enemyConfig = getEnemyConfig(enemy.type);
-  const rewardLabel = formatRewards(enemy.reward ?? enemyConfig.reward);
+  const rewardLabel = formatRewards(
+    enemy.reward ?? enemyConfig.reward,
+    target.rewardMultiplier ?? 1,
+  );
   return {
     title: enemyConfig.name,
     subtitle: `Level ${enemy.level}`,

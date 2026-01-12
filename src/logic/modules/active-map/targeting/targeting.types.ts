@@ -11,6 +11,7 @@ export interface TargetSnapshot<TType extends TargetType = TargetType, TData = u
   readonly armor: number;
   readonly baseDamage: number;
   readonly physicalSize: number;
+  readonly rewardMultiplier?: number;
   readonly data?: TData;
 }
 
