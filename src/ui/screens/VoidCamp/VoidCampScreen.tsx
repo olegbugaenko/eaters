@@ -21,6 +21,10 @@ import {
   DEFAULT_CAMP_STATISTICS,
   STATISTICS_BRIDGE_KEY,
 } from "@logic/modules/shared/statistics/statistics.module";
+import {
+  EVENT_LOG_BRIDGE_KEY,
+} from "@logic/modules/shared/event-log/event-log.const";
+import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.types";
 import type { StoredSaveData } from "@/core/logic/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
@@ -109,6 +113,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     STATISTICS_BRIDGE_KEY,
     DEFAULT_CAMP_STATISTICS
   );
+  const eventLog = useBridgeValue(bridge, EVENT_LOG_BRIDGE_KEY, [] as EventLogEntry[]);
   const achievementsPayload = useBridgeValue(
     bridge,
     ACHIEVEMENTS_BRIDGE_KEY,
@@ -367,6 +372,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         timePlayedMs={timePlayed}
         favoriteMap={favoriteMap}
         statistics={statistics}
+        eventLog={eventLog}
       />
       <AchievementsModal
         isOpen={isAchievementsOpen}

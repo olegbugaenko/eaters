@@ -47,6 +47,10 @@ export class TestTimeModule implements GameModule {
     }
   }
 
+  public getTimePlayedMs(): number {
+    return this.timePlayedMs;
+  }
+
   private pushState(): void {
     DataBridgeHelpers.pushState(this.options.bridge, TIME_BRIDGE_KEY, this.timePlayedMs);
   }

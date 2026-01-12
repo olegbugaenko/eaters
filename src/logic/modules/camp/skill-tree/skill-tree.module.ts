@@ -16,6 +16,7 @@ import {
 } from "../../../../db/resources-db";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
+import { EventLogModule } from "../../shared/event-log/event-log.module";
 import type {
   SkillNodeRequirementPayload,
   SkillNodeBridgePayload,
@@ -40,6 +41,7 @@ export class SkillTreeModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly resources: ResourcesModule;
   private readonly bonuses: BonusesModule;
+  private readonly eventLog: EventLogModule;
   private levels: SkillLevelMap = createDefaultLevels();
   private viewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private unsubscribeBonuses: (() => void) | null = null;
@@ -49,6 +51,7 @@ export class SkillTreeModule implements GameModule {
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.bonuses = options.bonuses;
+    this.eventLog = options.eventLog;
     DataBridgeHelpers.registerComparator(
       this.bridge,
       SKILL_TREE_STATE_BRIDGE_KEY,
@@ -144,6 +147,12 @@ export class SkillTreeModule implements GameModule {
     this.levels[id] = targetLevel;
     this.syncBonusLevel(id);
     this.pushState();
+    if (config.registerEvent) {
+      this.eventLog.registerEvent(
+        "skill-obtained",
+        `Skill ${config.name} obtained: ${config.registerEvent.text}`
+      );
+    }
     return true;
   }
 

@@ -30,6 +30,7 @@ import type { UnitAutomationModule } from "../src/logic/modules/active-map/unit-
 import { NecromancerModule } from "../src/logic/modules/active-map/necromancer/necromancer.module";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import type { AchievementsModule } from "../src/logic/modules/shared/achievements/achievements.module";
+import type { EventLogModule } from "../src/logic/modules/shared/event-log/event-log.module";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import type { UnitDesignModule } from "../src/logic/modules/camp/unit-design/unit-design.module";
 import type { EnemiesModule } from "../src/logic/modules/active-map/enemies/enemies.module";
@@ -235,6 +236,18 @@ const createResourceControllerStub = (): ResourceRunController & {
   notifyBrickDestroyed: () => {},
 });
 
+const createEventLogStub = (): EventLogModule =>
+  ({
+    id: "eventLog",
+    initialize: () => {},
+    reset: () => {},
+    load: () => {},
+    save: () => null,
+    tick: () => {},
+    registerEvent: () => {},
+    getEvents: () => [],
+  } as unknown as EventLogModule);
+
 const createSceneCleanupStub = (): MapSceneCleanupContract => ({
   resetAfterRun: () => {},
 });
@@ -299,6 +312,7 @@ describe("MapModule", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -389,6 +403,7 @@ describe("Map inspected target", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -489,6 +504,7 @@ describe("Map inspected target", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -594,6 +610,7 @@ describe("Map run control", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -728,6 +745,7 @@ describe("Map run control", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -812,6 +830,7 @@ describe("Map run control", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -899,6 +918,7 @@ describe("Map run control", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -994,6 +1014,7 @@ describe("Map unlocking", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -1105,6 +1126,7 @@ describe("Map unlocking", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -1164,6 +1186,7 @@ describe("Last played map tracking", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -1214,6 +1237,7 @@ describe("Last played map tracking", () => {
       resources: nextResources,
       unlocks: nextUnlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
@@ -1291,6 +1315,7 @@ describe("Map auto restart", () => {
       resources,
       unlocks,
       achievements: createAchievementsStub(),
+      eventLog: createEventLogStub(),
       unitsAutomation: createUnitAutomationStub(),
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),

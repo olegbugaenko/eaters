@@ -11,6 +11,7 @@ import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { AchievementsModule } from "../../shared/achievements/achievements.module";
+import { EventLogModule } from "../../shared/event-log/event-log.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
 import type { EnemyRuntimeState } from "../enemies/enemies.types";
@@ -40,6 +41,7 @@ export interface MapModuleOptions {
   resources: ResourceRunController;
   unlocks: UnlockService;
   achievements: AchievementsModule;
+  eventLog: EventLogModule;
   unitsAutomation: UnitAutomationModule;
   arcs: ArcModule;
   sceneCleanup: MapSceneCleanupContract;

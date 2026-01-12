@@ -20,6 +20,7 @@ import type { SkillTreeBridgePayload } from "@logic/modules/camp/skill-tree/skil
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import type { TutorialMonitorInput, TutorialMonitorStatus } from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.types";
 import type { CampStatisticsSnapshot } from "@logic/modules/shared/statistics/statistics.module";
+import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.types";
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
@@ -94,6 +95,7 @@ export interface BridgeSchema {
 
   // Statistics
   "statistics/summary": CampStatisticsSnapshot;
+  "statistics/history": EventLogEntry[];
 
   // Time
   "time-played": number;
