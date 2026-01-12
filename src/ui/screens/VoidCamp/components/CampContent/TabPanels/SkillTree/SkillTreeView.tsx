@@ -273,6 +273,7 @@ export const SkillTreeView: React.FC = () => {
   const wobblePhaseRef = useRef<Map<SkillId, number>>(new Map());
   const lastAnimationTimestampRef = useRef<number | null>(null);
   const wobbleNodesRef = useRef<Array<{ id: SkillId; seed: number }>>([]);
+  const previousLayoutKeyRef = useRef<string | null>(null);
   const skillTreeModule = useMemo(
     () => uiApi.skillTree as SkillTreeModuleUiApi,
     [uiApi.skillTree]
@@ -605,6 +606,11 @@ export const SkillTreeView: React.FC = () => {
   );
 
   useEffect(() => {
+    // Only reset positions when the actual layout changes, not on every callback reference change
+    if (previousLayoutKeyRef.current === layoutKey) {
+      return;
+    }
+    previousLayoutKeyRef.current = layoutKey;
     initializeRenderPositions();
     lastAnimationTimestampRef.current = null;
   }, [initializeRenderPositions, layoutKey]);
@@ -933,15 +939,8 @@ export const SkillTreeView: React.FC = () => {
     [layout.height, layout.width, viewTransform]
   );
 
-  const renderEdges = useMemo(
-    () =>
-      layout.edges.map((edge) => {
-        const from = renderPositionsRef.current.get(edge.fromId) ?? edge.from;
-        const to = renderPositionsRef.current.get(edge.toId) ?? edge.to;
-        return { ...edge, from, to };
-      }),
-    [layout.edges]
-  );
+  // Use base edge positions for initial render - animation updates via refs
+  const renderEdges = layout.edges;
 
   return (
     <div className="skill-tree">
@@ -969,9 +968,11 @@ export const SkillTreeView: React.FC = () => {
               shapeRendering="crispEdges"
             >
           {renderEdges.map((edge) => {
+            // Use base positions from layout - animation updates via refs
+            const { from, to } = edge;
             // Calculate midpoint for counter label
-            const midX = (edge.from.x + edge.to.x) / 2;
-            const midY = (edge.from.y + edge.to.y) / 2;
+            const midX = (from.x + to.x) / 2;
+            const midY = (from.y + to.y) / 2;
               
               return (
                 <g key={edge.id}>
@@ -1053,8 +1054,9 @@ export const SkillTreeView: React.FC = () => {
             })}
           </svg>
           {visibleNodes.map((node) => {
-            const position =
-              renderPositionsRef.current.get(node.id) ?? layout.positions.get(node.id);
+            // Use base position from layout for left/top - wobble is applied via transform
+            // by the animation frame. Don't use renderPositionsRef here to avoid double offset.
+            const position = layout.positions.get(node.id);
             if (!position) {
               return null;
             }
