@@ -76,10 +76,13 @@ function App(): JSX.Element {
     [slotSummaries, uiApi]
   );
 
+  const appLogicValue = useMemo(
+    () => ({ uiApi: app.uiApi, bridge: app.services.bridge }),
+    [app.services.bridge, app.uiApi]
+  );
+
   return (
-    <AppLogicContext.Provider
-      value={{ uiApi: app.uiApi, bridge: app.services.bridge }}
-    >
+    <AppLogicContext.Provider value={appLogicValue}>
       <div className="app-root">
         {screen === "save-select" && (
           <SaveSlotSelectScreen
