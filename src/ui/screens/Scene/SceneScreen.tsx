@@ -4,6 +4,7 @@ import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting
 import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import { SceneDebugPanel } from "./components/debug/SceneDebugPanel";
 import { SceneRunSummaryModal } from "./components/modals/SceneRunSummaryModal";
+import { SceneControlHintsPanel } from "./components/panels/SceneControlHintsPanel";
 import { SceneRunResourcePanel } from "./components/panels/SceneRunResourcePanel";
 import { SceneSummoningPanel } from "./components/summoning/SceneSummoningPanel";
 import { SceneToolbar } from "./components/toolbar/SceneToolbar";
@@ -443,6 +444,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         cameraPosition={toolbarState.cameraPosition}
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
+      <SceneControlHintsPanel />
       <SceneTooltipPanel content={hoverContent} />
       <SceneDebugPanel bridge={bridge} />
       <SceneSummoningPanel

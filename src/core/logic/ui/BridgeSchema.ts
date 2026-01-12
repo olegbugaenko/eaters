@@ -47,6 +47,7 @@ export interface BridgeSchema {
   "maps/lastPlayed": { mapId: MapId; level: number } | null;
   "maps/autoRestart": MapAutoRestartState;
   "maps/selectViewTransform": ViewTransform | null;
+  "maps/controlHintsCollapsed": boolean;
 
   // Player Units
   "playerUnits/count": number;

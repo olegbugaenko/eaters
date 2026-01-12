@@ -52,6 +52,7 @@ export interface MapSaveData {
   stats?: MapStats;
   selectedLevels?: Partial<Record<MapId, number>>;
   autoRestartEnabled?: boolean;
+  controlHintsCollapsed?: boolean;
   lastPlayedMap?: { mapId: MapId; level: number };
   mapSelectViewTransform?: { scale: number; worldX: number; worldY: number };
 }
@@ -106,6 +107,7 @@ export interface MapModuleUiApi {
   setMapSelectViewTransform(
     transform: { scale: number; worldX: number; worldY: number } | null
   ): void;
+  setControlHintsCollapsed(collapsed: boolean): void;
   inspectTargetAtPosition(
     position: SceneVector2,
     radius?: number

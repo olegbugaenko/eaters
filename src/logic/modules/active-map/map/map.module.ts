@@ -40,7 +40,9 @@ import {
   MAP_LAST_PLAYED_BRIDGE_KEY,
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
+  MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
+  DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
   DEFAULT_MAP_ID,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
   AUTO_RESTART_SKILL_ID,
@@ -67,6 +69,7 @@ export class MapModule implements GameModule {
   private statsCloneDirty = true;
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
+  private controlHintsCollapsed = DEFAULT_MAP_CONTROL_HINTS_COLLAPSED;
   private mapSelectViewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private readonly options: MapModuleOptions;
   private readonly sceneCleanup: MapSceneCleanupContract;
@@ -101,6 +104,7 @@ export class MapModule implements GameModule {
     this.pushAutoRestartState();
     this.pushMapList();
     this.pushMapSelectViewTransform();
+    this.pushControlHintsState();
     this.ensureSelection();
   }
 
@@ -118,6 +122,8 @@ export class MapModule implements GameModule {
     this.mapStats = parsed?.stats ?? {};
     this.selection.loadFromSave(parsed);
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
+    this.controlHintsCollapsed =
+      parsed?.controlHintsCollapsed ?? DEFAULT_MAP_CONTROL_HINTS_COLLAPSED;
     this.mapSelectViewTransform = parsed?.mapSelectViewTransform ?? null;
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
@@ -127,6 +133,7 @@ export class MapModule implements GameModule {
     this.pushMapList();
     this.pushLastPlayedMap();
     this.pushMapSelectViewTransform();
+    this.pushControlHintsState();
 
     this.selection.applySavedSelection(
       parsed?.mapId ?? null,
@@ -144,6 +151,7 @@ export class MapModule implements GameModule {
       stats: this.cloneStatsForSave(),
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
+      controlHintsCollapsed: this.controlHintsCollapsed,
       lastPlayedMap: this.selection.getLastPlayedMap()
         ? {
             mapId: this.selection.getLastPlayedMap()!.mapId,
@@ -485,9 +493,25 @@ export class MapModule implements GameModule {
     );
   }
 
+  private pushControlHintsState(): void {
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
+      MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
+      this.controlHintsCollapsed
+    );
+  }
+
   public setMapSelectViewTransform(transform: { scale: number; worldX: number; worldY: number } | null): void {
     this.mapSelectViewTransform = transform;
     this.pushMapSelectViewTransform();
+  }
+
+  public setControlHintsCollapsed(collapsed: boolean): void {
+    if (this.controlHintsCollapsed === collapsed) {
+      return;
+    }
+    this.controlHintsCollapsed = collapsed;
+    this.pushControlHintsState();
   }
 
   private generateBricks(config: MapConfig, mapLevel: number): BrickData[] {
@@ -612,6 +636,7 @@ export class MapModule implements GameModule {
       mapLevel?: unknown;
       selectedLevels?: unknown;
       autoRestartEnabled?: unknown;
+      controlHintsCollapsed?: unknown;
       lastPlayedMap?: unknown;
       mapSelectViewTransform?: unknown;
     };
@@ -622,9 +647,19 @@ export class MapModule implements GameModule {
     const mapLevel = typeof raw.mapLevel === "number" ? deserializeLevel(raw.mapLevel) : undefined;
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
     const autoRestartEnabled = raw.autoRestartEnabled === true;
+    const controlHintsCollapsed = raw.controlHintsCollapsed === true;
     const lastPlayedMap = this.parseLastPlayedMap(raw.lastPlayedMap);
     const mapSelectViewTransform = this.parseViewTransform(raw.mapSelectViewTransform);
-    return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled, lastPlayedMap, mapSelectViewTransform };
+    return {
+      mapId: raw.mapId,
+      mapLevel,
+      stats,
+      selectedLevels,
+      autoRestartEnabled,
+      controlHintsCollapsed,
+      lastPlayedMap,
+      mapSelectViewTransform,
+    };
   }
 
   private parseViewTransform(data: unknown): { scale: number; worldX: number; worldY: number } | undefined {
