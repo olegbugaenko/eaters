@@ -1,4 +1,7 @@
-import type { ObjectsRendererManager } from "../objects";
+import type { DynamicBufferUpdate, ObjectsRendererManager } from "../objects";
+
+const MAX_MERGED_RANGES = 64;
+let dynamicUpdatesScratch: Float32Array | null = null;
 
 /**
  * Applies sync instructions from ObjectsRendererManager to WebGL buffers.
@@ -52,13 +55,83 @@ export function applySyncInstructions(
     bufferState.dynamicBytes = dynamicBytes;
   } else if (sync.dynamicUpdates.length > 0) {
     gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
-    sync.dynamicUpdates.forEach(({ offset, data }) => {
+    const updates = sync.dynamicUpdatesSorted
+      ? sync.dynamicUpdates
+      : [...sync.dynamicUpdates].sort((a, b) => a.offset - b.offset);
+    const merged = mergeDynamicUpdates(updates);
+    if (merged.length > MAX_MERGED_RANGES) {
+      const dynamicData = objectsRenderer.getDynamicData();
+      if (dynamicData) {
+        const usedLength = Math.min(
+          dynamicData.length,
+          Math.max(sync.dynamicUsedLength, 0)
+        );
+        const fullUpload = usedLength > 0 ? dynamicData.subarray(0, usedLength) : null;
+        const dynamicBytes = fullUpload ? fullUpload.byteLength : 0;
+        if (dynamicBytes > 0) {
+          if (dynamicBytes > bufferState.dynamicBytes) {
+            gl.bufferData(gl.ARRAY_BUFFER, fullUpload!, gl.DYNAMIC_DRAW);
+          } else {
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, fullUpload!);
+          }
+        }
+        bufferState.dynamicBytes = dynamicBytes;
+        return bufferState;
+      }
+    }
+    merged.forEach((range) => {
+      if (range.updates.length === 1) {
+        const update = range.updates[0]!;
+        gl.bufferSubData(
+          gl.ARRAY_BUFFER,
+          update.offset * Float32Array.BYTES_PER_ELEMENT,
+          update.data
+        );
+        return;
+      }
+      const rangeLength = range.end - range.offset;
+      if (!dynamicUpdatesScratch || dynamicUpdatesScratch.length < rangeLength) {
+        dynamicUpdatesScratch = new Float32Array(rangeLength);
+      }
+      const scratch = dynamicUpdatesScratch.subarray(0, rangeLength);
+      range.updates.forEach((update) => {
+        scratch.set(update.data, update.offset - range.offset);
+      });
       gl.bufferSubData(
         gl.ARRAY_BUFFER,
-        offset * Float32Array.BYTES_PER_ELEMENT,
-        data
+        range.offset * Float32Array.BYTES_PER_ELEMENT,
+        scratch
       );
     });
   }
   return bufferState;
+}
+
+function mergeDynamicUpdates(
+  updates: DynamicBufferUpdate[]
+): Array<{ offset: number; end: number; updates: DynamicBufferUpdate[] }> {
+  const merged: Array<{ offset: number; end: number; updates: DynamicBufferUpdate[] }> = [];
+  let current: { offset: number; end: number; updates: DynamicBufferUpdate[] } | null = null;
+
+  updates.forEach((update) => {
+    const updateStart = update.offset;
+    const updateEnd = update.offset + update.data.length;
+    if (!current) {
+      current = { offset: updateStart, end: updateEnd, updates: [update] };
+      return;
+    }
+    if (updateStart <= current.end) {
+      current.end = Math.max(current.end, updateEnd);
+      current.updates.push(update);
+      return;
+    }
+    merged.push(current);
+    current = { offset: updateStart, end: updateEnd, updates: [update] };
+  });
+
+  if (current) {
+    merged.push(current);
+  }
+
+  return merged;
 }
