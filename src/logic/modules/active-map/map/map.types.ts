@@ -4,7 +4,7 @@ import { GameModule } from "@core/logic/types";
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BricksModule } from "../bricks/bricks.module";
-import type { BrickData } from "../bricks/bricks.types";
+import type { BrickData, BrickRuntimeState } from "../bricks/bricks.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
@@ -13,7 +13,10 @@ import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { AchievementsModule } from "../../shared/achievements/achievements.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
+import type { EnemyRuntimeState } from "../enemies/enemies.types";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
 
@@ -103,6 +106,10 @@ export interface MapModuleUiApi {
   setMapSelectViewTransform(
     transform: { scale: number; worldX: number; worldY: number } | null
   ): void;
+  inspectTargetAtPosition(
+    position: SceneVector2,
+    radius?: number
+  ): TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

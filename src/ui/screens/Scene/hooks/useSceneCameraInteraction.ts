@@ -10,6 +10,7 @@ import {
 import type {
   SceneCameraState,
   SceneUiApi,
+  SceneVector2,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
@@ -37,6 +38,7 @@ interface UseSceneCameraInteractionArgs {
   pointerPressedRef: MutableRefObject<boolean>;
   lastPointerPositionRef: MutableRefObject<{ x: number; y: number } | null>;
   onSpellCast?: (spellId: SpellId) => void;
+  onInspectTarget?: (position: SceneVector2) => void;
 }
 
 interface UseSceneCameraInteractionResult {
@@ -69,6 +71,7 @@ export const useSceneCameraInteraction = ({
   pointerPressedRef,
   lastPointerPositionRef,
   onSpellCast,
+  onInspectTarget,
 }: UseSceneCameraInteractionArgs): UseSceneCameraInteractionResult => {
   // Delay scale initialization until viewport is properly sized
   const hasInitializedScaleRef = useRef(false);
@@ -124,6 +127,7 @@ export const useSceneCameraInteraction = ({
     particleStatsLastUpdateRef,
     hasInitializedScaleRef,
     onSpellCast,
+    onInspectTarget,
   });
 
   useEffect(() => {

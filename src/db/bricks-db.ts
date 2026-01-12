@@ -35,6 +35,7 @@ export type BrickType =
   | "megaBrick";
 
 export interface BrickConfig {
+  name?: string;
   size: SceneSize;
   fill: SceneFill;
   stroke?: SceneStroke;

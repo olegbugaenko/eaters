@@ -11,6 +11,7 @@ import {
   SceneTooltipContent,
   SceneTooltipPanel,
 } from "./components/tooltip/SceneTooltipPanel";
+import { createTargetTooltip } from "./components/tooltip/createTargetTooltip";
 import {
   SceneTutorialConfig,
   SceneTutorialOverlay,
@@ -33,7 +34,7 @@ import type { NecromancerModuleUiApi } from "@logic/modules/active-map/necromanc
 import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
-import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneUiApi, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 
 interface SceneScreenProps {
@@ -153,6 +154,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     [activeTutorialStep?.id, showTutorial]
   );
 
+  const handleInspectTarget = useCallback(
+    (position: SceneVector2) => {
+      const target = map.inspectTargetAtPosition(position);
+      if (!target) {
+        setHoverContent(null);
+        return;
+      }
+      setHoverContent(createTargetTooltip(target));
+    },
+    [map],
+  );
+
   const { scale, cameraInfo, scaleRange, handleScaleChange } =
     useSceneCameraInteraction({
       scene,
@@ -170,6 +183,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       pointerPressedRef,
       lastPointerPositionRef,
       onSpellCast: handleSpellCast,
+      onInspectTarget: handleInspectTarget,
     });
 
   // Clear UI overlays when modals/overlays become visible
