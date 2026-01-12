@@ -44,6 +44,24 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
 }) => {
   const titleId = useId();
   const [activeTab, setActiveTab] = useState<"general" | "history">("general");
+  const formatTimestamp = useCallback((timestamp: number): string => {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(timestamp);
+    } catch (error) {
+      console.error("Failed to format event time", error);
+      return new Date(timestamp).toLocaleString();
+    }
+  }, []);
+  const historyEntries = useMemo(() => {
+    return eventLog.map((entry, index) => ({
+      id: `${entry.realTimeMs}-${entry.type}-${index}`,
+      time: formatTimestamp(entry.realTimeMs),
+      text: entry.text,
+    }));
+  }, [eventLog, formatTimestamp]);
 
   const handleDialogClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
@@ -98,26 +116,6 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
       note: undefined,
     },
   ];
-
-  const formatTimestamp = useCallback((timestamp: number): string => {
-    try {
-      return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(timestamp);
-    } catch (error) {
-      console.error("Failed to format event time", error);
-      return new Date(timestamp).toLocaleString();
-    }
-  }, []);
-
-  const historyEntries = useMemo(() => {
-    return eventLog.map((entry, index) => ({
-      id: `${entry.realTimeMs}-${entry.type}-${index}`,
-      time: formatTimestamp(entry.realTimeMs),
-      text: entry.text,
-    }));
-  }, [eventLog, formatTimestamp]);
 
   return (
     <div className="statistics-modal" onClick={onClose} role="presentation">
