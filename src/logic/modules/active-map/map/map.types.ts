@@ -108,6 +108,8 @@ export interface MapModuleUiApi {
     transform: { scale: number; worldX: number; worldY: number } | null
   ): void;
   setControlHintsCollapsed(collapsed: boolean): void;
+  setInspectedTargetAtPosition(position: SceneVector2, radius?: number): void;
+  clearInspectedTarget(): void;
   inspectTargetAtPosition(
     position: SceneVector2,
     radius?: number

@@ -41,12 +41,14 @@ import {
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
   MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
+  MAP_INSPECTED_TARGET_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
   DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
   DEFAULT_MAP_ID,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
   AUTO_RESTART_SKILL_ID,
   BONUS_CONTEXT_CLEARED_LEVELS,
+  INSPECT_TARGET_TOOLTIP_THROTTLE_MS,
 } from "./map.const";
 import {
   sanitizeLevel,
@@ -59,6 +61,9 @@ import {
 export class MapModule implements GameModule {
   public readonly id = "maps";
 
+  private inspectedTarget: { type: "brick" | "enemy"; id: string } | null = null;
+  private inspectedTargetElapsedMs = 0;
+  private inspectedTargetLastPublishMs = 0;
   private readonly selection: MapSelectionState;
   private readonly runLifecycle: MapRunLifecycle;
   private readonly unlocks;
@@ -105,6 +110,7 @@ export class MapModule implements GameModule {
     this.pushMapList();
     this.pushMapSelectViewTransform();
     this.pushControlHintsState();
+    this.resetInspectedTargetState();
     this.ensureSelection();
   }
 
@@ -114,6 +120,7 @@ export class MapModule implements GameModule {
     this.autoRestartEnabled = false;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
+    this.resetInspectedTargetState();
     this.ensureSelection();
   }
 
@@ -166,7 +173,9 @@ export class MapModule implements GameModule {
     if (!this.options.runState.shouldProcessTick()) {
       return;
     }
+    this.inspectedTargetElapsedMs += Math.max(deltaMs, 0);
     this.runLifecycle.tick(deltaMs);
+    this.publishInspectedTarget();
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
@@ -212,6 +221,7 @@ export class MapModule implements GameModule {
   }
 
   public leaveCurrentMap(): void {
+    this.resetInspectedTargetState();
     // Save last played map before leaving
     const selectedMapId = this.selection.getSelectedMapId();
     if (selectedMapId !== null) {
@@ -267,6 +277,25 @@ export class MapModule implements GameModule {
     return candidates[0]?.target ?? null;
   }
 
+  public setInspectedTargetAtPosition(position: SceneVector2, radius = 32): void {
+    const target = this.inspectTargetAtPosition(position, radius);
+    if (!target) {
+      this.clearInspectedTarget();
+      return;
+    }
+    if (this.inspectedTarget?.id === target.id && this.inspectedTarget?.type === target.type) {
+      this.publishInspectedTarget(true);
+      return;
+    }
+    this.inspectedTarget = { id: target.id, type: target.type };
+    this.publishInspectedTarget(true);
+  }
+
+  public clearInspectedTarget(): void {
+    this.inspectedTarget = null;
+    this.publishInspectedTarget(true);
+  }
+
   private toBrickTarget(brick: BrickRuntimeState): TargetSnapshot<"brick", BrickRuntimeState> {
     const rewardMultiplier = this.getRewardMultiplier();
     return {
@@ -303,6 +332,53 @@ export class MapModule implements GameModule {
     const multiplierRaw = this.options.bonuses.getBonusValue("brick_rewards");
     const multiplier = Number.isFinite(multiplierRaw) ? multiplierRaw : 1;
     return Math.max(multiplier, 0);
+  }
+
+  private resetInspectedTargetState(): void {
+    this.inspectedTarget = null;
+    this.inspectedTargetElapsedMs = 0;
+    this.inspectedTargetLastPublishMs = 0;
+    this.publishInspectedTarget(true);
+  }
+
+  private publishInspectedTarget(force = false): void {
+    if (!force && !this.inspectedTarget) {
+      return;
+    }
+    const interval = Math.max(INSPECT_TARGET_TOOLTIP_THROTTLE_MS, 0);
+    const elapsed = this.inspectedTargetElapsedMs - this.inspectedTargetLastPublishMs;
+    if (!force && elapsed < interval) {
+      return;
+    }
+    this.inspectedTargetLastPublishMs = this.inspectedTargetElapsedMs;
+    const snapshot = this.getInspectedTargetSnapshot();
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
+      MAP_INSPECTED_TARGET_BRIDGE_KEY,
+      snapshot
+    );
+  }
+
+  private getInspectedTargetSnapshot():
+    | TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState>
+    | null {
+    if (!this.inspectedTarget) {
+      return null;
+    }
+    if (this.inspectedTarget.type === "brick") {
+      const brick = this.options.bricks.getBrickState(this.inspectedTarget.id);
+      if (!brick) {
+        this.inspectedTarget = null;
+        return null;
+      }
+      return this.toBrickTarget(brick);
+    }
+    const enemy = this.options.enemies.getEnemyState(this.inspectedTarget.id);
+    if (!enemy) {
+      this.inspectedTarget = null;
+      return null;
+    }
+    return this.toEnemyTarget(enemy);
   }
 
   private getDistanceSq(a: SceneVector2, b: SceneVector2): number {
@@ -407,6 +483,7 @@ export class MapModule implements GameModule {
     generateUnits: boolean;
     generateEnemies: boolean;
   }): void {
+    this.resetInspectedTargetState();
     const mapId = this.selection.getSelectedMapId();
     if (!mapId) {
       return;
@@ -446,6 +523,7 @@ export class MapModule implements GameModule {
   }
 
   private handleMapRunCompleted(success: boolean): void {
+    this.resetInspectedTargetState();
     const { resources } = this.options;
     if (resources.isRunSummaryAvailable()) {
       return;
@@ -457,6 +535,7 @@ export class MapModule implements GameModule {
 
   private handleRunStateEvent(event: MapRunEvent): void {
     if (event.type === "reset") {
+      this.resetInspectedTargetState();
       this.sceneCleanup.resetAfterRun();
       return;
     }

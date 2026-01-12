@@ -24,6 +24,7 @@ import {
 import type { StoredSaveData } from "@/core/logic/types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { useThrottledBridgeValue } from "@ui-shared/useThrottledBridgeValue";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
@@ -97,10 +98,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     MAP_CLEARED_LEVELS_BRIDGE_KEY,
     0
   );
-  const resources = useBridgeValue(
+  const resources = useThrottledBridgeValue(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
-    [] as ResourceAmountPayload[]
+    [] as ResourceAmountPayload[],
+    250
   );
   const statistics = useBridgeValue(
     bridge,

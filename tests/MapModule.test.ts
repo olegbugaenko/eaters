@@ -14,6 +14,8 @@ import {
   DEFAULT_MAP_AUTO_RESTART_STATE,
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MAP_LAST_PLAYED_BRIDGE_KEY,
+  MAP_INSPECTED_TARGET_BRIDGE_KEY,
+  INSPECT_TARGET_TOOLTIP_THROTTLE_MS,
 } from "../src/logic/modules/active-map/map/map.const";
 import type {
   MapListEntry,
@@ -170,6 +172,8 @@ const createEnemiesStub = (): EnemiesModule =>
     setEnemies: () => {},
     spawnEnemy: () => {},
     getEnemies: () => [],
+    findNearestEnemy: () => null,
+    getEnemyState: () => null,
   } as unknown as EnemiesModule);
 
 const createUnitDesignerStub = (): UnitDesignModule => {
@@ -322,6 +326,207 @@ describe("MapModule", () => {
         "brick should be spawned outside of the safety radius"
       );
     });
+  });
+});
+
+describe("Map inspected target", () => {
+  test("publishes inspected target data with throttled updates", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const runState = new MapRunState();
+    const explosions = new ExplosionModule({ scene });
+    const bonuses = createBonuses();
+    const resources = createResourceControllerStub();
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
+    const movement = new MovementService();
+    const playerUnits = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+      statusEffects,
+      runState,
+      projectiles: createProjectilesStub(scene, bricks),
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
+      getDesignTargetingMode: () => "nearest",
+    });
+    const unitDesigns = createUnitDesignerStub();
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits,
+      scene,
+      bonuses,
+      unitDesigns,
+      runState,
+    });
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      runState,
+      bonuses,
+      bricks,
+      playerUnits,
+      enemies: createEnemiesStub(),
+      necromancer,
+      resources,
+      unlocks,
+      achievements: createAchievementsStub(),
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
+      getSkillLevel: () => 0,
+    });
+    mapModuleRef = maps;
+
+    necromancer.initialize();
+    maps.initialize();
+
+    scene.setMapSize({ width: 500, height: 500 });
+    bricks.setBricks([
+      {
+        position: { x: 120, y: 120 },
+        rotation: 0,
+        type: "classic",
+        level: 1,
+      },
+    ]);
+    const [brick] = bricks.getBrickStates();
+    assert(brick, "brick should be available for inspection");
+
+    maps.setInspectedTargetAtPosition({ x: 120, y: 120 });
+    const initialSnapshot = bridge.getValue(MAP_INSPECTED_TARGET_BRIDGE_KEY);
+    assert(initialSnapshot, "inspected target snapshot should be published");
+    assert.strictEqual(initialSnapshot.id, brick.id);
+    const initialHp = initialSnapshot.hp;
+
+    const damage = Math.max(1, Math.floor(brick.hp / 2)) + brick.armor;
+    bricks.applyDamage(brick.id, damage);
+    maps.tick(INSPECT_TARGET_TOOLTIP_THROTTLE_MS - 50);
+    const throttledSnapshot = bridge.getValue(MAP_INSPECTED_TARGET_BRIDGE_KEY);
+    assert(throttledSnapshot, "snapshot should remain during throttling");
+    assert.strictEqual(throttledSnapshot.hp, initialHp);
+
+    maps.tick(60);
+    const updatedSnapshot = bridge.getValue(MAP_INSPECTED_TARGET_BRIDGE_KEY);
+    assert(updatedSnapshot, "snapshot should update after throttle window");
+    assert(updatedSnapshot.hp < initialHp, "snapshot should reflect updated HP");
+  });
+
+  test("clears inspected target on restart and leave", () => {
+    const scene = new SceneObjectManager();
+    const bridge = new DataBridge();
+    const runState = new MapRunState();
+    const explosions = new ExplosionModule({ scene });
+    const bonuses = createBonuses();
+    const resources = createResourceControllerStub();
+    const statusEffects = new StatusEffectsModule();
+    const bricks = new BricksModule({
+      scene,
+      bridge,
+      explosions,
+      resources,
+      bonuses,
+      runState,
+      statusEffects,
+    });
+    const movement = new MovementService();
+    const playerUnits = new PlayerUnitsModule({
+      scene,
+      bricks,
+      bridge,
+      movement,
+      bonuses,
+      explosions,
+      statusEffects,
+      runState,
+      projectiles: createProjectilesStub(scene, bricks),
+      getModuleLevel: () => 0,
+      hasSkill: () => false,
+      getDesignTargetingMode: () => "nearest",
+    });
+    const unitDesigns = createUnitDesignerStub();
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits,
+      scene,
+      bonuses,
+      unitDesigns,
+      runState,
+    });
+    let mapModuleRef: MapModule | null = null;
+    const unlocks = new UnlockService({
+      getMapStats: () => mapModuleRef?.getMapStats() ?? {},
+      getSkillLevel: () => 0,
+    });
+
+    const maps = new MapModule({
+      scene,
+      bridge,
+      runState,
+      bonuses,
+      bricks,
+      playerUnits,
+      enemies: createEnemiesStub(),
+      necromancer,
+      resources,
+      unlocks,
+      achievements: createAchievementsStub(),
+      unitsAutomation: createUnitAutomationStub(),
+      arcs: createArcModuleStub(),
+      sceneCleanup: createSceneCleanupStub(),
+      getSkillLevel: () => 0,
+    });
+    mapModuleRef = maps;
+
+    necromancer.initialize();
+    maps.initialize();
+
+    scene.setMapSize({ width: 500, height: 500 });
+    bricks.setBricks([
+      {
+        position: { x: 80, y: 80 },
+        rotation: 0,
+        type: "classic",
+        level: 1,
+      },
+    ]);
+    maps.setInspectedTargetAtPosition({ x: 80, y: 80 });
+    assert(bridge.getValue(MAP_INSPECTED_TARGET_BRIDGE_KEY));
+
+    maps.restartSelectedMap();
+    assert.strictEqual(bridge.getValue(MAP_INSPECTED_TARGET_BRIDGE_KEY), null);
+
+    bricks.setBricks([
+      {
+        position: { x: 90, y: 90 },
+        rotation: 0,
+        type: "classic",
+        level: 1,
+      },
+    ]);
+    maps.setInspectedTargetAtPosition({ x: 90, y: 90 });
+    assert(bridge.getValue(MAP_INSPECTED_TARGET_BRIDGE_KEY));
+
+    maps.leaveCurrentMap();
+    assert.strictEqual(bridge.getValue(MAP_INSPECTED_TARGET_BRIDGE_KEY), null);
   });
 });
 

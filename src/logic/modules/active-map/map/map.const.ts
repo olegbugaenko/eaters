@@ -13,6 +13,7 @@ export const MAP_LAST_PLAYED_BRIDGE_KEY = "maps/lastPlayed";
 export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
 export const MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY = "maps/selectViewTransform";
 export const MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY = "maps/controlHintsCollapsed";
+export const MAP_INSPECTED_TARGET_BRIDGE_KEY = "maps/inspectedTarget";
 
 /**
  * Default map auto-restart state.
@@ -23,6 +24,7 @@ export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze
 });
 
 export const DEFAULT_MAP_CONTROL_HINTS_COLLAPSED = false;
+export const INSPECT_TARGET_TOOLTIP_THROTTLE_MS = 200;
 
 /**
  * Default map ID used when no map is selected.
