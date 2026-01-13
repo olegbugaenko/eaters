@@ -89,11 +89,15 @@ export class UnitProjectileController {
       ...baseVisual,
       spriteIndex, // This will be undefined if not resolved, which is fine
     };
+    const origin = {
+      x: projectile.origin.x + (visual.spawnOffset?.x ?? 0),
+      y: projectile.origin.y + (visual.spawnOffset?.y ?? 0),
+    };
     const velocity = {
       x: direction.x * visual.speed,
       y: direction.y * visual.speed,
     };
-    const position = { ...projectile.origin };
+    const position = { ...origin };
     const createdAt = performance.now();
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
@@ -165,6 +169,7 @@ export class UnitProjectileController {
 
     const state: UnitProjectileState = {
       ...projectile,
+      origin,
       targetTypes,
       id: objectId,
       velocity,
