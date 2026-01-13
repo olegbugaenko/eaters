@@ -16,24 +16,30 @@ import {
 } from "./components/overlay/SceneTutorialOverlay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { useBridgeRef } from "@ui-shared/useBridgeRef";
 import "./SceneScreen.css";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";
-import { TutorialMonitorStatus } from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.types";
 import {
-  DEFAULT_TUTORIAL_MONITOR_STATUS,
-  TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
-  TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
-} from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.const";
+  DEFAULT_SPELL_OPTIONS,
+  SPELL_OPTIONS_BRIDGE_KEY,
+} from "@logic/modules/active-map/spellcasting/spellcasting.const";
+import { NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY } from "@logic/modules/active-map/necromancer/necromancer.const";
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
 import { usePersistedSpellSelection } from "./hooks/usePersistedSpellSelection";
-import type { NecromancerModuleUiApi } from "@logic/modules/active-map/necromancer/necromancer.types";
+import type {
+  NecromancerModuleUiApi,
+  NecromancerSpawnOption,
+} from "@logic/modules/active-map/necromancer/necromancer.types";
 import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 import type { SceneUiApi, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
+import { SceneTutorialBridgeMonitor } from "./components/tutorial/SceneTutorialBridgeMonitor";
+
+const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 
 interface SceneScreenProps {
   onExit: () => void;
@@ -71,13 +77,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
   const {
-    toolbarState,
-    summoningProps,
     resourceSummary,
-    necromancerResources,
     autoRestartState,
     autoRestartCountdown,
-    spellOptions,
     handleToggleAutomation,
     handleToggleAutoRestart,
     handleRestart,
@@ -85,20 +87,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   } = useSceneRunState({
     bridge,
     map,
-    necromancer,
     unitAutomation,
-    cameraInfoRef,
-    scaleRef,
-    spellOptionsRef,
   });
-  const tutorialMonitorStatus = useBridgeValue(
+  const spellOptions = useBridgeValue(bridge, SPELL_OPTIONS_BRIDGE_KEY, DEFAULT_SPELL_OPTIONS);
+  const spawnOptionsRef = useBridgeRef(
     bridge,
-    TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
-    DEFAULT_TUTORIAL_MONITOR_STATUS
+    NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+    EMPTY_SPAWN_OPTIONS
   );
   const { selectedSpellId, selectedSpellIdRef, handleSelectSpell } =
     usePersistedSpellSelection(spellOptions);
-  const tutorialMonitorVersionRef = useRef(0);
+  useEffect(() => {
+    spellOptionsRef.current = spellOptions;
+  }, [spellOptions]);
   const cleanupCalledRef = useRef(false);
   const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
@@ -120,18 +121,19 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   });
 
   const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
+  const activeTutorialStepId = activeTutorialStep?.id;
   // For cast-magic-arrow step: allow gameplay after spell is cast
-  const isSpellStepAfterCast = activeTutorialStep?.id === "cast-magic-arrow" && tutorialSpellCastDone;
+  const isSpellStepAfterCast = activeTutorialStepId === "cast-magic-arrow" && tutorialSpellCastDone;
   const allowTutorialGameplay = isSpellStepAfterCast || Boolean(activeTutorialStep?.allowGameplay);
 
   const handlePlayStepAdvance = useCallback(() => {
     setCanAdvancePlayStep(true);
     // Register action for cast-magic-arrow before advancing
-    if (activeTutorialStep?.id === "cast-magic-arrow" && tutorialSpellCastDone) {
+    if (activeTutorialStepId === "cast-magic-arrow" && tutorialSpellCastDone) {
       registerTutorialAction("cast-magic-arrow");
     }
     handleTutorialAdvance(tutorialStepIndex + 1);
-  }, [activeTutorialStep?.id, handleTutorialAdvance, registerTutorialAction, tutorialStepIndex, tutorialSpellCastDone]);
+  }, [activeTutorialStepId, handleTutorialAdvance, registerTutorialAction, tutorialStepIndex, tutorialSpellCastDone]);
 
   // Ref to avoid timer reset when callback reference changes
   const handlePlayStepAdvanceRef = useRef(handlePlayStepAdvance);
@@ -141,8 +143,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   const handleSpellCast = useCallback(
     (spellId: SpellId) => {
-      console.log('[handleSpellCast] called:', { spellId, showTutorial, stepId: activeTutorialStep?.id });
-      const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+      console.log('[handleSpellCast] called:', { spellId, showTutorial, stepId: activeTutorialStepId });
+      const isSpellStep = showTutorial && activeTutorialStepId === "cast-magic-arrow";
       if (isSpellStep && spellId === "magic-arrow") {
         console.log('[handleSpellCast] Setting tutorialSpellCastDone to true');
         // Don't register action immediately to prevent auto-advance
@@ -150,7 +152,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         setTutorialSpellCastDone(true);
       }
     },
-    [activeTutorialStep?.id, showTutorial]
+    [activeTutorialStepId, showTutorial]
   );
 
   const handleInspectTarget = useCallback(
@@ -241,7 +243,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     // For cast-magic-arrow step before cast, don't pause the map (to allow spell casting)
     const isSpellStepWaitingForCast = 
       showTutorial && 
-      activeTutorialStep?.id === "cast-magic-arrow" && 
+      activeTutorialStepId === "cast-magic-arrow" && 
       !tutorialSpellCastDone;
     
     console.log('[PauseEffect]', {
@@ -250,7 +252,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       allowTutorialGameplay,
       isSpellStepWaitingForCast,
       tutorialSpellCastDone,
-      stepId: activeTutorialStep?.id,
+      stepId: activeTutorialStepId,
       isPauseOpen,
       showRunSummary,
       showTutorial,
@@ -276,20 +278,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
     
     return undefined;
-  }, [activeTutorialStep?.id, allowTutorialGameplay, gameLoop, isPauseOpen, map, showRunSummary, showTutorial, tutorialSpellCastDone]);
+  }, [activeTutorialStepId, allowTutorialGameplay, gameLoop, isPauseOpen, map, showRunSummary, showTutorial, tutorialSpellCastDone]);
 
   const handleSummonDesign = useCallback(
     (designId: UnitDesignId) => {
       const wasSummoned = necromancer.trySpawnDesign(designId);
       if (wasSummoned) {
-        const option = summoningProps.spawnOptions.find((entry) => entry.designId === designId);
+        const option = spawnOptionsRef.current.find((entry) => entry.designId === designId);
         if (option?.type === "bluePentagon") {
           registerTutorialAction("summon-blue-vanguard");
           setTutorialSummonDone(true);
         }
       }
     },
-    [necromancer, registerTutorialAction, summoningProps.spawnOptions]
+    [necromancer, registerTutorialAction, spawnOptionsRef]
   );
 
   useEffect(() => {
@@ -298,58 +300,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     });
   }, [handleSummonDesign]);
 
-  // Tutorial monitor: input bridge, status response, and sanity fallback
-  useEffect(() => {
-    const isSummonStep = showTutorial && activeTutorialStep?.id === "summon-blue-vanguard";
-    
-    // Update bridge input
-    if (!isSummonStep) {
-      bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, { active: false });
-    } else {
-      bridge.setValue(TUTORIAL_MONITOR_INPUT_BRIDGE_KEY, {
-        active: true,
-        stepId: "summon-blue-vanguard",
-        actionCompleted: tutorialSummonDone,
-        bricksRequired: 3,
-      });
-    }
-    
-    // Skip advancement logic if not on summon step
-    if (!isSummonStep) {
-      return;
-    }
-    
-    // Check if monitor signaled completion (version changed)
-    if (
-      tutorialMonitorStatus.ready &&
-      tutorialMonitorStatus.stepId === "summon-blue-vanguard" &&
-      tutorialMonitorVersionRef.current !== tutorialMonitorStatus.version
-    ) {
-      tutorialMonitorVersionRef.current = tutorialMonitorStatus.version;
-      handlePlayStepAdvance();
-      return;
-    }
-    
-    // Fallback: advance when sanity runs out after summoning
-    if (tutorialSummonDone && !canAdvancePlayStep && necromancerResources.sanity.current <= 2) {
-      handlePlayStepAdvance();
-    }
-  }, [
-    activeTutorialStep?.id,
-    bridge,
-    canAdvancePlayStep,
-    handlePlayStepAdvance,
-    necromancerResources.sanity.current,
-    showTutorial,
-    tutorialMonitorStatus.ready,
-    tutorialMonitorStatus.stepId,
-    tutorialMonitorStatus.version,
-    tutorialSummonDone,
-  ]);
 
   // Tutorial spell step: advance after 3 seconds (primary condition)
   useEffect(() => {
-    const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
+    const isSpellStep = showTutorial && activeTutorialStepId === "cast-magic-arrow";
     
     if (!isSpellStep || !tutorialSpellCastDone || canAdvancePlayStep) {
       return;
@@ -364,28 +318,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       clearTimeout(timeoutId);
     };
   }, [
-    activeTutorialStep?.id,
+    activeTutorialStepId,
     canAdvancePlayStep,
-    showTutorial,
-    tutorialSpellCastDone,
-  ]);
-
-  // Tutorial spell step: sanity fallback - advance early if sanity drops too low
-  useEffect(() => {
-    const isSpellStep = showTutorial && activeTutorialStep?.id === "cast-magic-arrow";
-    
-    if (!isSpellStep || !tutorialSpellCastDone || canAdvancePlayStep) {
-      return;
-    }
-
-    // Fallback: advance immediately if sanity is critical
-    if (necromancerResources.sanity.current <= 1) {
-      handlePlayStepAdvanceRef.current();
-    }
-  }, [
-    activeTutorialStep?.id,
-    canAdvancePlayStep,
-    necromancerResources.sanity.current,
     showTutorial,
     tutorialSpellCastDone,
   ]);
@@ -429,32 +363,33 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   return (
     <div className="scene-screen">
       <SceneToolbar
+        bridge={bridge}
         onExit={() => setIsPauseOpen((open) => !open)}
-        brickTotalHp={toolbarState.brickTotalHp}
-        brickInitialHp={toolbarState.brickInitialHp}
-        unitCount={toolbarState.unitCount}
-        unitTotalHp={toolbarState.unitTotalHp}
-        scale={toolbarState.scale}
+        scale={scale}
         scaleRange={scaleRange}
         onScaleChange={handleScaleChange}
-        cameraPosition={toolbarState.cameraPosition}
+        cameraPosition={cameraInfo.position}
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneControlHintsPanel />
       <SceneTooltipBridgePanel contentOverride={summoningTooltipContent} />
       <SceneDebugPanel bridge={bridge} />
+      <SceneTutorialBridgeMonitor
+        bridge={bridge}
+        showTutorial={showTutorial}
+        activeTutorialStepId={activeTutorialStepId}
+        tutorialSummonDone={tutorialSummonDone}
+        tutorialSpellCastDone={tutorialSpellCastDone}
+        canAdvancePlayStep={canAdvancePlayStep}
+        onAdvanceStepRef={handlePlayStepAdvanceRef}
+      />
       <SceneSummoningPanel
         ref={summoningPanelRef}
-        resources={summoningProps.resources}
-        spawnOptions={summoningProps.spawnOptions}
-        spells={summoningProps.spells}
         selectedSpellId={selectedSpellId}
         onSelectSpell={handleSelectSpell}
         onSummon={handleSummonDesign}
         onHoverInfoChange={setSummoningTooltipContent}
-        automation={summoningProps.automation}
         onToggleAutomation={handleToggleAutomation}
-        unitCount={summoningProps.unitCount}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
