@@ -18,8 +18,8 @@
 
 .new-unlock-wrapper__indicator {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: -5px;
+  right: -5px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
