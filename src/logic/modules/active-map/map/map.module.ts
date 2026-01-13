@@ -68,6 +68,7 @@ export class MapModule implements GameModule {
   private readonly runLifecycle: MapRunLifecycle;
   private readonly unlocks;
   private readonly getSkillLevel;
+  private readonly newUnlocks;
   private mapStats: MapStats = {};
   // Cached deep-clone of mapStats for read-only consumers (e.g., UnlockService)
   private statsCloneCache: MapStats | null = null;
@@ -79,12 +80,14 @@ export class MapModule implements GameModule {
   private readonly options: MapModuleOptions;
   private readonly sceneCleanup: MapSceneCleanupContract;
   private currentMapBonusSourceId: string | null = null;
+  private hasRegisteredUnlocks = false;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
     this.sceneCleanup = options.sceneCleanup;
     this.unlocks = options.unlocks;
     this.getSkillLevel = options.getSkillLevel;
+    this.newUnlocks = options.newUnlocks;
     this.selection = new MapSelectionState(DEFAULT_MAP_ID);
     const visuals = new MapVisualEffects(options.scene);
     this.runLifecycle = new MapRunLifecycle({
@@ -104,6 +107,7 @@ export class MapModule implements GameModule {
   }
 
   public initialize(): void {
+    this.registerUnlockNotifications();
     this.runLifecycle.reset();
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
@@ -700,6 +704,17 @@ export class MapModule implements GameModule {
     const list = this.getAvailableMaps();
     this.pushClearedLevelsTotal();
     DataBridgeHelpers.pushState(this.options.bridge, MAP_LIST_BRIDGE_KEY, list);
+    this.newUnlocks.invalidate("maps");
+  }
+
+  private registerUnlockNotifications(): void {
+    if (this.hasRegisteredUnlocks) {
+      return;
+    }
+    this.hasRegisteredUnlocks = true;
+    getMapList().forEach((map) => {
+      this.newUnlocks.registerUnlock(`maps.${map.id}`, () => this.isMapSelectable(map.id));
+    });
   }
 
   private pushSelectedMap(): void {
