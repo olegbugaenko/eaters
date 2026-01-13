@@ -2,6 +2,7 @@ import { GameModule } from "@core/logic/types";
 import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { UnlockService } from "../../../services/unlock/UnlockService";
+import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { ResourcesModule } from "../../shared/resources/resources.module";
@@ -46,6 +47,7 @@ export class CraftingModule implements GameModule {
   private readonly resources: ResourcesModule;
   private readonly unlocks: UnlockService;
   private readonly bonuses: BonusesModule;
+  private readonly newUnlocks: NewUnlockNotificationService;
 
   private runtimeStates = new Map<CraftingRecipeId, CraftingRecipeRuntimeState>();
   private visibleRecipeIds: CraftingRecipeId[] = [];
@@ -53,12 +55,14 @@ export class CraftingModule implements GameModule {
   private progressBroadcastTimer = 0;
   private craftingSpeedMultiplier = 1;
   private craftingSpeedDirty = true;
+  private hasRegisteredUnlocks = false;
 
   constructor(options: CraftingModuleOptions) {
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.unlocks = options.unlocks;
     this.bonuses = options.bonuses;
+    this.newUnlocks = options.newUnlocks;
     this.craftingSpeedMultiplier = this.sanitizeCraftingSpeedMultiplier(
       this.bonuses.getBonusValue("crafting_speed_mult")
     );
@@ -69,7 +73,9 @@ export class CraftingModule implements GameModule {
   }
 
   public initialize(): void {
+    this.registerUnlockNotifications();
     this.refreshVisibility();
+    this.newUnlocks.invalidate("crafting");
     this.pushState();
   }
 
@@ -80,6 +86,7 @@ export class CraftingModule implements GameModule {
       state.progressMs = 0;
     });
     this.refreshVisibility();
+    this.newUnlocks.invalidate("crafting");
     this.pushState();
     this.craftingSpeedDirty = true;
   }
@@ -87,6 +94,7 @@ export class CraftingModule implements GameModule {
   public load(data: unknown | undefined): void {
     this.applySaveData(data);
     this.refreshVisibility();
+    this.newUnlocks.invalidate("crafting");
     this.pushState();
   }
 
@@ -164,6 +172,9 @@ export class CraftingModule implements GameModule {
       hasActiveRecipe && this.progressBroadcastTimer >= PROGRESS_PUSH_INTERVAL_MS;
 
     if (visibilityChanged || stateChanged || periodicUpdate) {
+      if (visibilityChanged) {
+        this.newUnlocks.invalidate("crafting");
+      }
       this.pushState();
       this.progressBroadcastTimer = 0;
     }
@@ -288,6 +299,19 @@ export class CraftingModule implements GameModule {
       this.visibleRecipeIds = visible;
     }
     return changed;
+  }
+
+  private registerUnlockNotifications(): void {
+    if (this.hasRegisteredUnlocks) {
+      return;
+    }
+    this.hasRegisteredUnlocks = true;
+    CRAFTING_RECIPE_IDS.forEach((id) => {
+      const config = getCraftingRecipeConfig(id);
+      this.newUnlocks.registerUnlock(`crafting.${id}`, () => {
+        return this.unlocks.areConditionsMet(config.unlockedBy ?? []);
+      });
+    });
   }
 
   private pushState(): void {

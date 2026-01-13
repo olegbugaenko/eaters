@@ -17,6 +17,7 @@ import {
 import { ResourcesModule } from "../../shared/resources/resources.module";
 import type { SkillId } from "../../../../db/skills-db";
 import { UnlockService } from "../../../services/unlock/UnlockService";
+import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 import type {
   UnitModuleWorkshopItemState,
   UnitModuleWorkshopBridgeState,
@@ -50,11 +51,13 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   private readonly resources: ResourcesModule;
   private readonly getSkillLevel: (id: SkillId) => number;
   private readonly unlocks: UnlockService;
+  private readonly newUnlocks: NewUnlockNotificationService;
 
   private unlocked = false;
   private visibleModuleIds: UnitModuleId[] = [];
   private levels: Map<UnitModuleId, number> = createDefaultLevels();
   private readonly stateFactory: UnitModuleStateFactory;
+  private hasRegisteredUnlocks = false;
 
   constructor(options: UnitModuleWorkshopModuleOptions) {
     super();
@@ -62,11 +65,14 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     this.resources = options.resources;
     this.getSkillLevel = options.getSkillLevel;
     this.unlocks = options.unlocks;
+    this.newUnlocks = options.newUnlocks;
     this.stateFactory = new UnitModuleStateFactory();
   }
 
   public initialize(): void {
+    this.registerUnlockNotifications();
     this.refreshUnlockState();
+    this.newUnlocks.invalidate("biolab");
     this.pushState();
     this.notifyListeners();
   }
@@ -74,6 +80,7 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   public reset(): void {
     this.levels = createDefaultLevels();
     this.refreshUnlockState();
+    this.newUnlocks.invalidate("biolab");
     this.pushState();
     this.notifyListeners();
   }
@@ -81,6 +88,7 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   public load(data: unknown | undefined): void {
     this.levels = this.parseSaveData(data);
     this.refreshUnlockState();
+    this.newUnlocks.invalidate("biolab");
     this.pushState();
     this.notifyListeners();
   }
@@ -93,6 +101,7 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
 
   public tick(_deltaMs: number): void {
     if (this.refreshUnlockState()) {
+      this.newUnlocks.invalidate("biolab");
       this.pushState();
       this.notifyListeners();
     }
@@ -153,6 +162,22 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     return false;
   }
 
+  private registerUnlockNotifications(): void {
+    if (this.hasRegisteredUnlocks) {
+      return;
+    }
+    this.hasRegisteredUnlocks = true;
+    UNIT_MODULE_IDS.forEach((id) => {
+      const config = getUnitModuleConfig(id);
+      this.newUnlocks.registerUnlock(`biolab.organs.${id}`, () => {
+        if (this.getSkillLevel(MODULE_UNLOCK_SKILL_ID) <= 0) {
+          return false;
+        }
+        return this.unlocks.areConditionsMet(config.unlockedBy);
+      });
+    });
+  }
+
   private getUpgradeCost(id: UnitModuleId, level: number): ResourceStockpile {
     const config = getUnitModuleConfig(id);
     const baseCost = normalizeResourceAmount(config.baseCost);
@@ -191,4 +216,3 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     );
   }
 }
-

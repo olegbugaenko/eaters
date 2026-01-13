@@ -20,6 +20,7 @@ import type { SceneVector2 } from "@core/logic/provided/services/scene-object-ma
 import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
+import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 
 export interface ResourceRunController {
   startRun(): void;
@@ -46,6 +47,7 @@ export interface MapModuleOptions {
   arcs: ArcModule;
   sceneCleanup: MapSceneCleanupContract;
   getSkillLevel: (id: SkillId) => number;
+  newUnlocks: NewUnlockNotificationService;
 }
 
 export interface MapSaveData {

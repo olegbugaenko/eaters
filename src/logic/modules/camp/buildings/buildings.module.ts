@@ -8,6 +8,7 @@ import {
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
 import { UnlockService } from "../../../services/unlock/UnlockService";
+import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 import {
   BUILDING_IDS,
   BuildingId,
@@ -49,12 +50,14 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   private readonly resources: ResourcesModule;
   private readonly bonuses: BonusesModule;
   private readonly unlocks: UnlockService;
+  private readonly newUnlocks: NewUnlockNotificationService;
   private readonly getSkillLevel: (id: SkillId) => number;
 
   private unlocked = false;
   private visibleBuildingIds: BuildingId[] = [];
   private levels: Map<BuildingId, number> = createDefaultLevels();
   private readonly stateFactory: BuildingStateFactory;
+  private hasRegisteredUnlocks = false;
 
   constructor(options: BuildingsModuleOptions) {
     super();
@@ -62,14 +65,17 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     this.resources = options.resources;
     this.bonuses = options.bonuses;
     this.unlocks = options.unlocks;
+    this.newUnlocks = options.newUnlocks;
     this.getSkillLevel = options.getSkillLevel;
     this.stateFactory = new BuildingStateFactory();
     this.registerBonusSources();
   }
 
   public initialize(): void {
+    this.registerUnlockNotifications();
     this.syncAllBonusLevels();
     this.refreshUnlockState();
+    this.newUnlocks.invalidate("buildings");
     this.pushState();
     this.notifyListeners();
   }
@@ -78,6 +84,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     this.levels = createDefaultLevels();
     this.syncAllBonusLevels();
     this.refreshUnlockState();
+    this.newUnlocks.invalidate("buildings");
     this.pushState();
     this.notifyListeners();
   }
@@ -86,6 +93,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     this.levels = this.parseSaveData(data);
     this.syncAllBonusLevels();
     this.refreshUnlockState();
+    this.newUnlocks.invalidate("buildings");
     this.pushState();
     this.notifyListeners();
   }
@@ -96,6 +104,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
 
   public tick(_deltaMs: number): void {
     if (this.refreshUnlockState()) {
+      this.newUnlocks.invalidate("buildings");
       this.pushState();
       this.notifyListeners();
     }
@@ -181,6 +190,22 @@ export class BuildingsModule extends BaseGameModule<() => void> {
       this.visibleBuildingIds = orderedVisible;
     }
     return changed;
+  }
+
+  private registerUnlockNotifications(): void {
+    if (this.hasRegisteredUnlocks) {
+      return;
+    }
+    this.hasRegisteredUnlocks = true;
+    BUILDING_IDS.forEach((id) => {
+      const config = getBuildingConfig(id);
+      this.newUnlocks.registerUnlock(`buildings.${id}`, () => {
+        if (this.getSkillLevel(BUILDINGS_UNLOCK_SKILL_ID) <= 0) {
+          return false;
+        }
+        return this.unlocks.areConditionsMet(config.unlockedBy);
+      });
+    });
   }
 
   private pushState(): void {
