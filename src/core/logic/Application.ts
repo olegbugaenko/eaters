@@ -22,6 +22,7 @@ import type { UnitModuleWorkshopUiApi } from "@logic//modules/camp/unit-module-w
 import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
 import type { CraftingModuleUiApi } from "@logic/modules/camp/crafting/crafting.types";
 import type { SkillTreeModuleUiApi } from "@logic/modules/camp/skill-tree/skill-tree.types";
+import type { NewUnlockNotificationUiApi } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 
 type ModuleDefinitionList = ReturnType<typeof createModuleDefinitions>;
 type ApplicationDefinitionList = readonly [
@@ -148,6 +149,7 @@ export class Application {
       buildings: this.services.buildings as BuildingsModuleUiApi,
       crafting: this.services.crafting as CraftingModuleUiApi,
       skillTree: this.services.skillTree as SkillTreeModuleUiApi,
+      newUnlocks: this.services.newUnlocks as NewUnlockNotificationUiApi,
     };
   }
 

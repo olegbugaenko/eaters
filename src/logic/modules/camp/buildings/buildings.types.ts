@@ -5,6 +5,7 @@ import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { SkillId } from "../../../../db/skills-db";
 import type { BonusEffectPreview } from "@shared/types/bonuses";
+import type { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 
 export interface BuildingWorkshopItemState {
   readonly id: BuildingId;
@@ -28,6 +29,7 @@ export interface BuildingsModuleOptions {
   readonly resources: ResourcesModule;
   readonly bonuses: BonusesModule;
   readonly unlocks: UnlockService;
+  readonly newUnlocks: NewUnlockNotificationService;
   readonly getSkillLevel: (id: SkillId) => number;
 }
 
