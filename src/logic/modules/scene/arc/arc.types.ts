@@ -15,11 +15,16 @@ export interface ArcModuleOptions {
   getEnemyPositionIfAlive?: (enemyId: string) => SceneVector2 | null;
 }
 
+export interface ArcSpawnOptions {
+  readonly sourceOffset?: SceneVector2;
+}
+
 export interface ArcState {
   id: string; // scene object id
   type: ArcType;
   source: ArcTargetRef;
   target: ArcTargetRef;
+  sourceOffset?: SceneVector2;
   remainingMs: number;
   lifetimeMs: number;
   fadeStartMs: number;

@@ -10,6 +10,7 @@ import { BulletTailConfig } from "./bullets-db";
 import type { BulletSpriteName } from "../logic/services/bullet-render-bridge/bullet-sprites.const";
 import { SkillId } from "./skills-db";
 import { ExplosionType } from "./explosions-db";
+import type { AttackSeriesConfig } from "@shared/types/attack-series.types";
 
 export type SpellId =
   | "magic-arrow"
@@ -43,6 +44,7 @@ export interface SpellProjectileConfig {
   ringTrail?: SpellProjectileRingTrailConfig;
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
+  attackSeries?: AttackSeriesConfig;
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
   spriteName?: BulletSpriteName; // Sprite name when shape === "sprite"
   aoe?: { radius: number; splash: number };

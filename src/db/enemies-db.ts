@@ -16,6 +16,7 @@ import type { ArcType } from "./arcs-db";
 import type { StatusEffectId } from "./status-effects-db";
 import type { StatusEffectApplicationOptions } from "@/logic/modules/active-map/status-effects/status-effects.types";
 import type { ExplosionType } from "./explosions-db";
+import type { AttackSeriesConfig } from "@shared/types/attack-series.types";
 
 export type EnemyType =
   | "basicEnemy"
@@ -71,10 +72,16 @@ export type EnemyRendererConfig =
 
 export interface EnemyArcAttackConfig {
   readonly arcType: ArcType;
+  readonly spawnOffset?: SceneVector2;
+  readonly attackSeries?: AttackSeriesConfig;
   readonly statusEffectId?: StatusEffectId;
   readonly statusEffectOptions?: StatusEffectApplicationOptions;
   readonly explosionType?: ExplosionType;
   readonly explosionRadius?: number;
+}
+
+export interface EnemyProjectileConfig extends UnitProjectileVisualConfig {
+  readonly attackSeries?: AttackSeriesConfig;
 }
 
 export interface EnemyTargetingOptions {
@@ -95,7 +102,7 @@ export interface EnemyConfig {
   readonly physicalSize: number;
   readonly reward?: ResourceAmount;
   readonly emitter?: ParticleEmitterConfig;
-  readonly projectile?: UnitProjectileVisualConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
+  readonly projectile?: EnemyProjectileConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
   readonly projectileVolley?: {
     readonly count: number;
     readonly spreadAngleDeg: number;

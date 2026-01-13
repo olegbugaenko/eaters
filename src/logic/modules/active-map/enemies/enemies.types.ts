@@ -18,6 +18,12 @@ import type { BricksModule } from "../bricks/bricks.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
 
+export interface AttackSeriesState {
+  remainingShots: number;
+  cooldownMs: number;
+  intervalMs: number;
+}
+
 export interface EnemySpawnData {
   readonly id?: string;
   readonly type: EnemyType;
@@ -41,6 +47,7 @@ export interface EnemyRuntimeState {
   attackInterval: number;
   attackCooldown: number;
   attackRange: number;
+  attackSeriesState?: AttackSeriesState;
   moveSpeed: number;
   physicalSize: number;
   knockBackDistance: number;
