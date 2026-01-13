@@ -23,12 +23,17 @@ interface SceneTooltipPanelProps {
 export const SceneTooltipPanel: React.FC<SceneTooltipPanelProps> = ({ content }) => {
   const isVisible = Boolean(content);
 
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+  };
+
   return (
     <div
       className={`scene-tooltip-panel ${
         isVisible ? "scene-tooltip-panel--visible" : ""
       }`}
       aria-hidden={!isVisible}
+      onContextMenu={handleContextMenu}
     >
       {content && (
         <>

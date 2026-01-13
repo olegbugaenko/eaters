@@ -3,6 +3,7 @@ import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { GameModule } from "@core/logic/types";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
+import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
 import {
   cloneResourceStockpile,
   normalizeResourceAmount,
@@ -404,11 +405,12 @@ export class EnemiesModule implements GameModule {
       type: "enemy",
       id: enemyId,
     });
-    const effectiveArmor = Math.max(
-      enemy.armor + armorDelta - armorPenetration,
-      0,
-    );
-    const appliedDamage = Math.max(damage - effectiveArmor, 0);
+    const appliedDamage = calculateMitigatedDamage({
+      rawDamage: damage,
+      armor: enemy.armor,
+      armorDelta,
+      armorPenetration,
+    });
     if (appliedDamage <= 0) {
       return 0;
     }
@@ -572,6 +574,16 @@ export class EnemiesModule implements GameModule {
               ? knockBackDirection
               : normalizeVector(toTarget) || { x: 1, y: 0 },
         });
+      }
+      // Spawn explosion at target position if configured
+      if (arcAttack.explosionType && this.explosions) {
+        this.explosions.spawnExplosionByType(
+          arcAttack.explosionType,
+          {
+            position: target.position,
+            initialRadius: arcAttack.explosionRadius,
+          }
+        );
       }
       return true;
     }

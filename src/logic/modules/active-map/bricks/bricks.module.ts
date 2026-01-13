@@ -28,6 +28,7 @@ import {
 import { createBrickFill } from "./bricks.fill.helper";
 import { tintSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sceneColorsEqual } from "@shared/helpers/scene-color.helper";
+import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
 import {
   sanitizeHp,
   sanitizeBrickType,
@@ -293,10 +294,15 @@ export class BricksModule implements GameModule {
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
     const skipKnockback = options?.skipKnockback === true;
     const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "brick", id: brickId });
-    const effectiveArmor =
-      Math.max(brick.armor + armorDelta - armorPenetration, 0) * (options?.overTime ?? 1);
     const incomingMultiplier = this.statusEffects.getBrickIncomingDamageMultiplier(brickId);
-    const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0) * Math.max(incomingMultiplier, 1);
+    const effectiveDamage = calculateMitigatedDamage({
+      rawDamage,
+      armor: brick.armor,
+      armorDelta,
+      armorPenetration,
+      incomingMultiplier,
+      overTime: options?.overTime,
+    });
     if (effectiveDamage <= 0) {
       return { destroyed: false, brick: this.cloneState(brick), inflictedDamage: 0 };
     }

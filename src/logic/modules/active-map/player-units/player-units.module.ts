@@ -22,6 +22,7 @@ import {
 import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { SkillId } from "../../../../db/skills-db";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
+import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
@@ -672,8 +673,12 @@ export class PlayerUnitsModule implements GameModule {
     }
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
     const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unitId });
-    const effectiveArmor = Math.max(unit.armor + armorDelta - armorPenetration, 0);
-    const inflicted = Math.max(damage - effectiveArmor, 0);
+    const inflicted = calculateMitigatedDamage({
+      rawDamage: damage,
+      armor: unit.armor,
+      armorDelta,
+      armorPenetration,
+    });
     if (inflicted <= 0) {
       return 0;
     }
