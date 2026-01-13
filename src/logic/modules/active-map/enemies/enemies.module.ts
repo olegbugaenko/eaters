@@ -199,19 +199,6 @@ export class EnemiesModule implements GameModule {
         this.updateNavigationState(enemy, target, deltaSeconds);
         const force = this.computeMovementForce(enemy, target);
         this.movement.setForce(enemy.movementId, force);
-      } else {
-        // Статичні вороги все одно обертаються до цілі
-        if (target) {
-          const toTarget = subtractVectors(target.position, enemy.position);
-          const distance = vectorLength(toTarget);
-          if (distance > 0) {
-            enemy.rotation = Math.atan2(toTarget.y, toTarget.x);
-            this.scene.updateObject(enemy.sceneObjectId, {
-              position: { ...enemy.position },
-              rotation: enemy.rotation,
-            });
-          }
-        }
       }
     });
 
@@ -732,12 +719,14 @@ export class EnemiesModule implements GameModule {
         y: enemy.position.y + direction.y * spawnOffset,
       };
       */
-      const origin = volley?.spawnOffset
-        ? addVectors(enemy.position, volley.spawnOffset)
-        : { ...enemy.position };
+      const origin = { ...enemy.position };
+      const spawnOffset = projectileConfig.spawnOffset;
+      const effectiveOrigin = spawnOffset
+        ? addVectors(origin, spawnOffset)
+        : origin;
 
       directions.forEach((projectileDirection) => {
-        const knockBackDirection = subtractVectors(origin, target.position);
+        const knockBackDirection = subtractVectors(effectiveOrigin, target.position);
         projectiles.spawn({
           origin,
           direction: projectileDirection,

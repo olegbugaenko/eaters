@@ -107,7 +107,6 @@ export interface EnemyConfig {
   readonly projectileVolley?: {
     readonly count: number;
     readonly spreadAngleDeg: number;
-    readonly spawnOffset?: SceneVector2;
   };
   readonly explosionAttack?: {
     readonly radius: number;

@@ -119,10 +119,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     });
 
     for (const direction of directions) {
-      const origin = {
-        x: context.origin.x + (projectileConfig.spawnOffset?.x ?? 0),
-        y: context.origin.y + (projectileConfig.spawnOffset?.y ?? 0),
-      };
+      const origin = { ...context.origin };
 
       // Convert SpellProjectileConfig to UnitProjectileVisualConfig
       const visual: UnitProjectileVisualConfig = {
@@ -130,6 +127,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         speed: projectileConfig.speed,
         lifetimeMs: Math.max(0, projectileConfig.lifetimeMs),
         fill: projectileConfig.fill,
+        spawnOffset: projectileConfig.spawnOffset,
         tail: projectileConfig.tail,
         tailEmitter: projectileConfig.tailEmitter,
         ringTrail: projectileConfig.ringTrail,
