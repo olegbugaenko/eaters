@@ -24,6 +24,7 @@ import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.ty
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 
 /**
  * View transform для навігації по картах/скілах.
@@ -99,6 +100,9 @@ export interface BridgeSchema {
 
   // Time
   "time-played": number;
+
+  // New unlock notifications
+  "newUnlocks/state": NewUnlockNotificationBridgeState;
 }
 
 /**
