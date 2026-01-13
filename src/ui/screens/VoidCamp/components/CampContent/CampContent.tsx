@@ -10,6 +10,7 @@ import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/bui
 import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import "./CampContent.css";
 
 export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting";
@@ -30,6 +31,7 @@ interface CampContentProps {
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
   achievementsState: AchievementsBridgePayload;
+  newUnlocksState: NewUnlockNotificationBridgeState;
 }
 
 export const CampContent: React.FC<CampContentProps> = ({
@@ -48,6 +50,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   buildingsState,
   craftingState,
   achievementsState,
+  newUnlocksState,
 }) => {
   const [activeTab, setActiveTab] = useState<CampTabKey>(initialTab);
   const fallbackTab = useMemo<CampTabKey>(() => {
@@ -85,6 +88,16 @@ export const CampContent: React.FC<CampContentProps> = ({
     },
     [onTabChange, sanitizeTab]
   );
+  const tabHasNew = useMemo(
+    () => ({
+      maps: (newUnlocksState.unseenByPrefix.maps ?? []).length > 0,
+      skills: false,
+      modules: (newUnlocksState.unseenByPrefix.biolab ?? []).length > 0,
+      crafting: (newUnlocksState.unseenByPrefix.crafting ?? []).length > 0,
+      buildings: (newUnlocksState.unseenByPrefix.buildings ?? []).length > 0,
+    }),
+    [newUnlocksState.unseenByPrefix]
+  );
 
   return (
     <div className="camp-content surface-panel stack-lg">
@@ -95,6 +108,7 @@ export const CampContent: React.FC<CampContentProps> = ({
           modulesUnlocked={moduleWorkshopState.unlocked}
           buildingsUnlocked={buildingsState.unlocked}
           craftingUnlocked={craftingState.unlocked}
+          tabHasNew={tabHasNew}
         />
       </header>
       <CampTabPanels

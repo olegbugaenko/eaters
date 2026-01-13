@@ -34,6 +34,11 @@ import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
 } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
+import {
+  DEFAULT_NEW_UNLOCKS_STATE,
+  NEW_UNLOCKS_BRIDGE_KEY,
+} from "@logic/services/new-unlock-notification/new-unlock-notification.const";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
@@ -118,6 +123,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     ACHIEVEMENTS_BRIDGE_KEY,
     DEFAULT_ACHIEVEMENTS_STATE
+  );
+  const newUnlocksState = useBridgeValue(
+    bridge,
+    NEW_UNLOCKS_BRIDGE_KEY,
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
   );
   const moduleWorkshopState = useBridgeValue(
     bridge,
@@ -344,6 +354,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
             achievementsState={achievementsPayload}
+            newUnlocksState={newUnlocksState}
           />
         }
       />

@@ -1,4 +1,5 @@
 import { classNames } from "@ui-shared/classNames";
+import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { CampTabKey } from "../CampContent";
 import "./CampTabsMenu.css";
 
@@ -8,6 +9,7 @@ type CampTabsMenuProps = {
   modulesUnlocked: boolean;
   buildingsUnlocked: boolean;
   craftingUnlocked: boolean;
+  tabHasNew: Record<CampTabKey, boolean>;
 };
 
 export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
@@ -16,7 +18,15 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
   modulesUnlocked,
   buildingsUnlocked,
   craftingUnlocked,
+  tabHasNew,
 }) => {
+  const tabPathByKey: Record<CampTabKey, string> = {
+    maps: "maps",
+    skills: "skills",
+    modules: "biolab",
+    crafting: "crafting",
+    buildings: "buildings",
+  };
   const tabs: { key: CampTabKey; label: string }[] = [
     { key: "maps", label: "Map Selector" },
     { key: "skills", label: "Skill Tree" },
@@ -51,7 +61,12 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
               className={classes}
               onClick={() => onChange(tab.key)}
             >
-              {tab.label}
+              <NewUnlockWrapper
+                path={tabPathByKey[tab.key]}
+                hasNew={tabHasNew[tab.key]}
+              >
+                {tab.label}
+              </NewUnlockWrapper>
             </button>
           );
         })}

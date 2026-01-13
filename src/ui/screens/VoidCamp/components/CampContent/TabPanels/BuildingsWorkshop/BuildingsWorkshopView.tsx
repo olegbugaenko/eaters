@@ -11,6 +11,13 @@ import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { formatNumber } from "@ui-shared/format/number";
 import "../ModulesWorkshop/ModulesWorkshopView.css";
 import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import {
+  DEFAULT_NEW_UNLOCKS_STATE,
+  NEW_UNLOCKS_BRIDGE_KEY,
+} from "@logic/services/new-unlock-notification/new-unlock-notification.const";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
+import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 
 type BuildingsWorkshopViewProps = {
   state?: BuildingsWorkshopBridgeState;
@@ -59,8 +66,17 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   state = DEFAULT_BUILDINGS_WORKSHOP_STATE,
   resources,
 }) => {
-  const { uiApi } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const workshop = uiApi.buildings as BuildingsModuleUiApi;
+  const newUnlocksState = useBridgeValue(
+    bridge,
+    NEW_UNLOCKS_BRIDGE_KEY,
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
+  );
+  const unseenPaths = useMemo(
+    () => new Set(newUnlocksState.unseenPaths),
+    [newUnlocksState.unseenPaths]
+  );
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {
@@ -132,30 +148,39 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
           <ul className="modules-workshop__list">
             {state.buildings.map((building) => {
               const isActive = building.id === (hoveredId ?? selectedId ?? building.id);
+              const unlockPath = `buildings.${building.id}`;
               return (
                 <li key={building.id}>
-                  <button
-                    type="button"
-                    className={
-                      "modules-workshop__card" + (isActive ? " modules-workshop__card--active" : "")
-                    }
-                    onClick={() => setSelectedId(building.id)}
-                    onMouseEnter={() => setHoveredId(building.id)}
-                    onMouseLeave={() =>
-                      setHoveredId((current) => (current === building.id ? null : current))
-                    }
-                    onFocus={() => setHoveredId(building.id)}
-                    onBlur={() =>
-                      setHoveredId((current) => (current === building.id ? null : current))
-                    }
+                  <NewUnlockWrapper
+                    path={unlockPath}
+                    hasNew={unseenPaths.has(unlockPath)}
+                    markOnHover
+                    className="new-unlock-wrapper--block"
                   >
-                    <span className="modules-workshop__card-title">{building.name}</span>
-                    <span className="modules-workshop__card-level">Level {building.level}</span>
-                    <p className="modules-workshop__card-description">{building.description}</p>
-                    <span className="modules-workshop__card-cost">
-                      {formatCostSummary(building.nextCost)}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      className={
+                        "modules-workshop__card" +
+                        (isActive ? " modules-workshop__card--active" : "")
+                      }
+                      onClick={() => setSelectedId(building.id)}
+                      onMouseEnter={() => setHoveredId(building.id)}
+                      onMouseLeave={() =>
+                        setHoveredId((current) => (current === building.id ? null : current))
+                      }
+                      onFocus={() => setHoveredId(building.id)}
+                      onBlur={() =>
+                        setHoveredId((current) => (current === building.id ? null : current))
+                      }
+                    >
+                      <span className="modules-workshop__card-title">{building.name}</span>
+                      <span className="modules-workshop__card-level">Level {building.level}</span>
+                      <p className="modules-workshop__card-description">{building.description}</p>
+                      <span className="modules-workshop__card-cost">
+                        {formatCostSummary(building.nextCost)}
+                      </span>
+                    </button>
+                  </NewUnlockWrapper>
                 </li>
               );
             })}

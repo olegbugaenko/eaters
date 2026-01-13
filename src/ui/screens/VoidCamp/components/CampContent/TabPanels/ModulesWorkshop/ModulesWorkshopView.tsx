@@ -8,6 +8,13 @@ import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import {
+  DEFAULT_NEW_UNLOCKS_STATE,
+  NEW_UNLOCKS_BRIDGE_KEY,
+} from "@logic/services/new-unlock-notification/new-unlock-notification.const";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
+import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import "./ModulesWorkshopView.css";
 import type { UnitModuleWorkshopUiApi } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 
@@ -50,8 +57,17 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   state = DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   resources,
 }) => {
-  const { uiApi } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const workshop = uiApi.unitModuleWorkshop as UnitModuleWorkshopUiApi;
+  const newUnlocksState = useBridgeValue(
+    bridge,
+    NEW_UNLOCKS_BRIDGE_KEY,
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
+  );
+  const unseenPaths = useMemo(
+    () => new Set(newUnlocksState.unseenPaths),
+    [newUnlocksState.unseenPaths]
+  );
   const totals = useMemo(() => {
     const map: Record<string, number> = {};
     resources.forEach((entry) => {
@@ -123,37 +139,45 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
             const isActive = module.id === (hoveredId ?? selectedId ?? module.id);
             const moduleMissing = computeMissingCost(module.nextCost, totals);
             const hasMissingResources = Object.keys(moduleMissing).length > 0;
+            const unlockPath = `biolab.organs.${module.id}`;
             return (
               <li key={module.id}>
-                <button
-                  type="button"
-                  className={
-                    "modules-workshop__card" + 
-                    (isActive ? " modules-workshop__card--active" : "") +
-                    (hasMissingResources ? " modules-workshop__card--missing-resources" : "")
-                  }
-                  onClick={() => setSelectedId(module.id)}
-                  onMouseEnter={() => setHoveredId(module.id)}
-                  onMouseLeave={() =>
-                    setHoveredId((current) => (current === module.id ? null : current))
-                  }
-                  onFocus={() => setHoveredId(module.id)}
-                  onBlur={() => setHoveredId((current) => (current === module.id ? null : current))}
+                <NewUnlockWrapper
+                  path={unlockPath}
+                  hasNew={unseenPaths.has(unlockPath)}
+                  markOnHover
+                  className="new-unlock-wrapper--block"
                 >
-                  <span className="modules-workshop__card-title">{module.name}</span>
-                  <span className="modules-workshop__card-level">Level {module.level}</span>
-                  <p className="modules-workshop__card-description">{module.description}</p>
-                  <div className="modules-workshop__card-cost">
-                    {module.nextCost ? (
-                      <ResourceCostDisplay
-                        cost={module.nextCost}
-                        missing={moduleMissing}
-                      />
-                    ) : (
-                      <span className="text-muted">Unavailable</span>
-                    )}
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    className={
+                      "modules-workshop__card" + 
+                      (isActive ? " modules-workshop__card--active" : "") +
+                      (hasMissingResources ? " modules-workshop__card--missing-resources" : "")
+                    }
+                    onClick={() => setSelectedId(module.id)}
+                    onMouseEnter={() => setHoveredId(module.id)}
+                    onMouseLeave={() =>
+                      setHoveredId((current) => (current === module.id ? null : current))
+                    }
+                    onFocus={() => setHoveredId(module.id)}
+                    onBlur={() => setHoveredId((current) => (current === module.id ? null : current))}
+                  >
+                    <span className="modules-workshop__card-title">{module.name}</span>
+                    <span className="modules-workshop__card-level">Level {module.level}</span>
+                    <p className="modules-workshop__card-description">{module.description}</p>
+                    <div className="modules-workshop__card-cost">
+                      {module.nextCost ? (
+                        <ResourceCostDisplay
+                          cost={module.nextCost}
+                          missing={moduleMissing}
+                        />
+                      ) : (
+                        <span className="text-muted">Unavailable</span>
+                      )}
+                    </div>
+                  </button>
+                </NewUnlockWrapper>
               </li>
             );
           })}

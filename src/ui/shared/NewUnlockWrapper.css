@@ -1,0 +1,42 @@
+.new-unlock-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.new-unlock-wrapper--block {
+  display: block;
+  width: 100%;
+}
+
+.new-unlock-wrapper--fill {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-unlock-wrapper__indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2f9cff;
+  box-shadow: 0 0 6px rgba(47, 156, 255, 0.8);
+  pointer-events: none;
+  animation: new-unlock-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes new-unlock-pulse {
+  0%,
+  100% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
