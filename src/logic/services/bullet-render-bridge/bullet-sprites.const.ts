@@ -1,6 +1,6 @@
 export const BULLET_SPRITE_SIZE = 32; // All sprites must be 32x32
 
-export const BULLET_SPRITE_NAMES = ["needle", "fireball", "magic_arrow"] as const;
+export const BULLET_SPRITE_NAMES = ["needle", "fireball", "magic_arrow", "energetic_strike"] as const;
 export type BulletSpriteName = (typeof BULLET_SPRITE_NAMES)[number];
 
 export const BULLET_SPRITE_PATHS = BULLET_SPRITE_NAMES.map(

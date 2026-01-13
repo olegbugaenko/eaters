@@ -967,7 +967,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "armor2.png",
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.5 * level,
+        income: (level) => 0 + level,
       },
     },
     nodesRequired: { stone_armor: 3 },
@@ -999,7 +999,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.75 * level,
+        income: (level) => 0 + 2.0 * level,
       },
     },
     nodesRequired: { armor_lore: 5 },
@@ -1015,7 +1015,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_armor: {
-        income: (level) => 2*level,
+        income: (level) => 5*level,
       },
     },
     nodesRequired: { armor_lore2: 5 },
@@ -1031,7 +1031,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "armor5.png",
     effects: {
       all_units_armor: {
-        income: (level) => 5*level,
+        income: (level) => 15*level,
       },
     },
     nodesRequired: { armor_lore3: 5 },

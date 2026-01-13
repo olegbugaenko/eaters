@@ -862,8 +862,22 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     name: "Burst Turret",
     renderer: {
       kind: "composite",
-      fill: { r: 0.55, g: 0.7, b: 0.7, a: 1 },
+      fill: { r: 0.55, g: 0.8, b: 0.7, a: 1 },
       layers: [
+        {
+          shape: "circle",
+          radius: 30,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.55, g: 0.8, b: 0.7, a: 0.4 } },
+                { offset: 1, color: { r: 0.55, g: 0.8, b: 0.7, a: 0 } },
+              ],
+            }
+          }
+        },
         {
           shape: "polygon",
           vertices: [
@@ -906,10 +920,10 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         },
       ],
     },
-    maxHp: 125,
-    armor: 8,
-    baseDamage: 24,
-    attackInterval: 1.5,
+    maxHp: 7500,
+    armor: 400,
+    baseDamage: 240,
+    attackInterval: 2.5,
     attackRange: 400,
     moveSpeed: 0, // Статична турель
     physicalSize: 30,
@@ -918,19 +932,48 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       iron: 10,
     }),
     projectile: {
-      radius: 5,
-      speed: 150,
-      lifetimeMs: 2500,
+      radius: 12,
+      speed: 130,
+      lifetimeMs: 4500,
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.6, g: 0.6, b: 0.4, a: 1 },
       },
-      shape: "circle",
+      shape: "sprite",
+      spriteName: "energetic_strike",
       hitRadius: 8,
-      explosion: "smallCannon",
+      explosion: "smallEnergetic",
       attackSeries: {
         shots: 3,
         intervalMs: 200,
+      },
+      tail: {
+        lengthMultiplier: 4.0,
+        widthMultiplier: 1.0,
+        startColor: { r: 0.6, g: 0.8, b: 0.8, a: 0.11 },
+        endColor: { r: 0.6, g: 0.8, b: 0.8, a: 0 },
+      },
+      tailEmitter: {
+        baseSpeed: 0.03,
+        speedVariation: 0.0,
+        particleLifetimeMs: 400,
+        fadeStartMs: 700,
+        color: { r: 1, g: 0.85, b: 0.55, a: 1 },
+        arc: Math.PI * 0.15,
+        direction: 0,
+        particlesPerSecond: 1000,
+        sizeRange: { min: 14.5, max: 18.4 },
+        spawnRadius: { min: 0, max: 0.1 },
+        spawnRadiusMultiplier: 1.25,
+        sizeEvolutionMult: 2.0,
+        fill: {
+          fillType: FILL_TYPES.RADIAL_GRADIENT,
+          stops: [
+            { offset: 0, color: { r: 0.4, g: 0.9, b: 0.8, a: 0.05 } },
+            { offset: 1, color: { r: 0.4, g: 0.9, b: 0.8, a: 0 } },
+          ],
+        },
+        maxParticles: 1000,
       },
     },
     knockBackDistance: 120,
@@ -1331,6 +1374,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       arcType: "laser",
       explosionType: "smallLaser",
       explosionRadius: 21,
+      spawnOffset: { x: 1, y: 0 },
     },
   },
 };
