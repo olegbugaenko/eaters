@@ -16,6 +16,12 @@ import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
+import {
+  DEFAULT_NEW_UNLOCKS_STATE,
+  NEW_UNLOCKS_BRIDGE_KEY,
+} from "@logic/services/new-unlock-notification/new-unlock-notification.const";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
+import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import "./MapSelectPanel.css";
 import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 
@@ -140,6 +146,11 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
     null as { scale: number; worldX: number; worldY: number } | null
   );
+  const newUnlocksState = useBridgeValue(
+    bridge,
+    NEW_UNLOCKS_BRIDGE_KEY,
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
+  );
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [hoveredId, setHoveredId] = useState<MapId | null>(null);
@@ -159,6 +170,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
 
   const layout = useMemo(() => computeLayout(maps), [maps]);
   const mapById = useMemo(() => new Map(maps.map((map) => [map.id, map])), [maps]);
+  const unseenPaths = useMemo(
+    () => new Set(newUnlocksState.unseenPaths),
+    [newUnlocksState.unseenPaths]
+  );
   const hasInitializedViewRef = useRef(false);
   const previousViewportSizeRef = useRef({ width: 0, height: 0 });
   const popoverHoverTimeoutRef = useRef<number | null>(null);
@@ -587,6 +602,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 onStartMap(map.id);
                 setPopover(null);
               };
+              const unlockPath = `maps.${map.id}`;
 
               // Calculate progress arcs
               const nodeSize = 70; // Reduced by 10%
@@ -735,21 +751,28 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     onDoubleClick={handleDoubleClick}
                     aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
                   >
-                    <div className="map-tree-node__level">
-                      {map.selectedLevel} / {map.currentLevel}
-                    </div>
-                    <div className="map-tree-node__icon">
-                      {iconSrc ? (
-                        <img
-                          src={iconSrc}
-                          alt=""
-                          aria-hidden="true"
-                          className="map-tree-node__image"
-                        />
-                      ) : (
-                        initials
-                      )}
-                    </div>
+                    <NewUnlockWrapper
+                      path={unlockPath}
+                      hasNew={unseenPaths.has(unlockPath)}
+                      markOnHover
+                      className="new-unlock-wrapper--fill"
+                    >
+                      <div className="map-tree-node__level">
+                        {map.selectedLevel} / {map.currentLevel}
+                      </div>
+                      <div className="map-tree-node__icon">
+                        {iconSrc ? (
+                          <img
+                            src={iconSrc}
+                            alt=""
+                            aria-hidden="true"
+                            className="map-tree-node__image"
+                          />
+                        ) : (
+                          initials
+                        )}
+                      </div>
+                    </NewUnlockWrapper>
                   </button>
                 </div>
               );
