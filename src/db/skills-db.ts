@@ -46,6 +46,7 @@ export const SKILL_IDS = [
   "ice_mastery",
   "fire_mastery",
   "emberglass_reactors",
+  "spiritual_powers",
   // "damage_lore",
   "improved_membranes",
   "hunger",
@@ -525,7 +526,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "mana_cap_1.png",
     effects: {
       mana_cap: {
-        income: (level) => 3 * level,
+        income: (level) => 2 * level,
       },
       spell_power: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -543,14 +544,27 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     icon: "mana_regen_2.png",
     effects: {
-      mana_cap: {
-        income: (level) => 2 * level,
-      },
       mana_regen: {
         income: (level) => 0.1 * level,
       },
     },
     nodesRequired: { mana_reservior: 2 },
+    cost: createStoneCost(100, 1.5),
+  },
+  spiritual_powers: {
+    id: "spiritual_powers",
+    name: "Spiritual Powers",
+    description:
+      "Increase your spiritual power.",
+    nodePosition: { x: -3, y: -3 },
+    maxLevel: 5,
+    icon: "mana_regen_2_5.png",
+    effects: {
+      mana_regen: {
+        income: (level) => 0.12 * level,
+      },
+    },
+    nodesRequired: { emberglass_reactors: 2 },
     cost: createStoneCost(100, 1.5),
   },
   sand_scribing: {
@@ -582,7 +596,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "mana_regen_3.png",
     effects: {
       mana_cap: {
-        income: (level) => 2 * level,
+        income: (level) => 1 * level,
       },
       mana_regen: {
         income: (level) => 0.15*level
@@ -601,7 +615,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "mana_cap_3.png",
     effects: {
       mana_cap: {
-        income: (level) => 5 * level,
+        income: (level) => 3 * level,
       },
       spell_power: {
         multiplier: (level) => 1 + 0.1 * level,
