@@ -575,6 +575,16 @@ export class EnemiesModule implements GameModule {
               : normalizeVector(toTarget) || { x: 1, y: 0 },
         });
       }
+      // Spawn explosion at target position if configured
+      if (arcAttack.explosionType && this.explosions) {
+        this.explosions.spawnExplosionByType(
+          arcAttack.explosionType,
+          {
+            position: target.position,
+            initialRadius: arcAttack.explosionRadius,
+          }
+        );
+      }
       return true;
     }
 

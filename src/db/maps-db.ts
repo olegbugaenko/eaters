@@ -1995,6 +1995,21 @@ const MAPS_DB: Record<MapId, MapConfig> = {
 
         return [ironWalls, coalVein, entryTunnel, ...supports];
       },
+      enemies: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        return [
+          {
+            type: "laserTurretEnemy",
+            level: baseLevel,
+            position: { x: 100, y: center.y },
+          } satisfies EnemySpawnData,
+          {
+            type: "laserTurretEnemy",
+            level: baseLevel,
+            position: { x: size.width - 100, y: center.y },
+          } satisfies EnemySpawnData,
+        ];
+      },
       playerUnits: [
         {
           type: "bluePentagon",

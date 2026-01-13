@@ -1,6 +1,6 @@
 import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
-export type ArcType = "heal" | "frenzy" | "freeze";
+export type ArcType = "heal" | "frenzy" | "freeze" | "laser";
 
 export interface ArcConfig {
   readonly coreColor: SceneColor;
@@ -21,6 +21,8 @@ const FRENZY_ARC_COLOR: SceneColor = { r: 1.0, g: 0.9, b: 0.2, a: 1.0 };
 const FRENZY_ARC_BLUR: SceneColor = { r: 1.0, g: 0.4, b: 0.4, a: 0.6 };
 const FREEZE_ARC_COLOR: SceneColor = { r: 0.6, g: 0.85, b: 1.0, a: 0.9 };
 const FREEZE_ARC_BLUR: SceneColor = { r: 0.4, g: 0.7, b: 1.0, a: 0.5 };
+const LASER_ARC_COLOR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.99 };
+const LASER_ARC_BLUR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.25 };
 
 const ARC_DB: Record<ArcType, ArcConfig> = {
   heal: {
@@ -58,6 +60,18 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     noiseAmplitude: 5,
     oscillationPeriodMs: 280,
     oscillationAmplitude: 0.6,
+  },
+  laser: {
+    coreColor: LASER_ARC_COLOR,
+    blurColor: LASER_ARC_BLUR,
+    coreWidth: 1,
+    blurWidth: 3,
+    lifetimeMs: 600,
+    fadeStartMs: 350,
+    bendsPer100Px: 0,
+    noiseAmplitude: 0,
+    oscillationPeriodMs: 0,
+    oscillationAmplitude: 0.0,
   },
 };
 

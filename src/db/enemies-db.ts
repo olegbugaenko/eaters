@@ -27,7 +27,8 @@ export type EnemyType =
   | "spectreEnemy"
   | "encagedBeastEnemy"
   | "freezeTurretEnemy"
-  | "bigGun";
+  | "bigGun"
+  | "laserTurretEnemy";
 
 export interface EnemyAuraConfig {
   petalCount: number;
@@ -72,6 +73,8 @@ export interface EnemyArcAttackConfig {
   readonly arcType: ArcType;
   readonly statusEffectId?: StatusEffectId;
   readonly statusEffectOptions?: StatusEffectApplicationOptions;
+  readonly explosionType?: ExplosionType;
+  readonly explosionRadius?: number;
 }
 
 export interface EnemyTargetingOptions {
@@ -1176,6 +1179,73 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     },
     knockBackDistance: 120,
     knockBackSpeed: 160,
+  },
+  laserTurretEnemy: {
+    knockBackDistance: 160,
+    knockBackSpeed: 160,
+    name: "Laser Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.15, g: 0.15, b: 0.25, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -2 },
+            { x: 0, y: -2.5 },
+            { x: 0, y: 2.5 },
+            { x: 14, y: 2 },
+          ],
+          fill: { type: "base", brightness: -0.25 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -5 },
+            { x: -9, y: -7 },
+            { x: -9, y: 7 },
+            { x: 0, y: 5 },
+          ],
+          fill: { type: "base", brightness: 0.7 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: -6 },
+            { x: -6, y: -17 },
+            { x: -8, y: -17 },
+            { x: -8, y: -6 },
+          ],
+          fill: { type: "base", brightness: 0.5 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: 6 },
+            { x: -6, y: 17 },
+            { x: -8, y: 17 },
+            { x: -8, y: 6 },
+          ],
+          fill: { type: "base", brightness: 0.5 },
+        },
+      ],
+    },
+    maxHp: 14000,
+    armor: 100,
+    baseDamage: 200,
+    attackInterval: 1.8,
+    attackRange: 600,
+    moveSpeed: 0,
+    physicalSize: 26,
+    reward: normalizeResourceAmount({
+      iron: 30,
+      coal: 5,
+    }),
+    arcAttack: {
+      arcType: "laser",
+      explosionType: "smallLaser",
+      explosionRadius: 21,
+    },
   },
 };
 
