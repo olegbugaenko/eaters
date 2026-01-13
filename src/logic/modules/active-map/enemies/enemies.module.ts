@@ -300,9 +300,23 @@ export class EnemiesModule implements GameModule {
         }
       }
 
+      if (enemy.attackSeriesState) {
+        const seriesUpdated = this.processAttackSeries(
+          enemy,
+          target ?? null,
+          deltaMs,
+        );
+        if (seriesUpdated) {
+          anyChanged = true;
+        }
+      }
+
       // Try to attack
-      if (enemy.attackCooldown <= 0 && this.tryAttack(enemy, target ?? null)) {
-        enemy.attackCooldown = enemy.attackInterval;
+      if (
+        !enemy.attackSeriesState &&
+        enemy.attackCooldown <= 0 &&
+        this.tryAttack(enemy, target ?? null)
+      ) {
         anyChanged = true;
       }
 
@@ -535,16 +549,78 @@ export class EnemiesModule implements GameModule {
       return false;
     }
 
-    const toTarget = subtractVectors(target.position, enemy.position);
-    const distance = vectorLength(toTarget);
-    const attackRange =
-      enemy.attackRange + enemy.physicalSize + target.physicalSize;
-
-    if (distance > attackRange) {
+    if (!this.isTargetInRange(enemy, target)) {
       return false;
     }
 
     const config = getEnemyConfig(enemy.type);
+    if (!this.spawnAttackShot(enemy, target, config)) {
+      return false;
+    }
+
+    const seriesConfig = this.getAttackSeriesConfig(config);
+    const sanitizedSeries = this.sanitizeAttackSeries(seriesConfig);
+    if (sanitizedSeries && sanitizedSeries.shots > 1) {
+      enemy.attackSeriesState = {
+        remainingShots: sanitizedSeries.shots - 1,
+        cooldownMs: sanitizedSeries.intervalMs,
+        intervalMs: sanitizedSeries.intervalMs,
+      };
+      return true;
+    }
+
+    enemy.attackCooldown = enemy.attackInterval;
+    enemy.attackSeriesState = undefined;
+    return true;
+  }
+
+  private processAttackSeries(
+    enemy: InternalEnemyState,
+    target: { id: string; position: SceneVector2; physicalSize: number } | null,
+    deltaMs: number,
+  ): boolean {
+    const series = enemy.attackSeriesState;
+    if (!series) {
+      return false;
+    }
+    if (!this.targeting || !target) {
+      enemy.attackSeriesState = undefined;
+      enemy.attackCooldown = enemy.attackInterval;
+      return true;
+    }
+
+    if (!this.isTargetInRange(enemy, target)) {
+      enemy.attackSeriesState = undefined;
+      enemy.attackCooldown = enemy.attackInterval;
+      return true;
+    }
+
+    const config = getEnemyConfig(enemy.type);
+    series.cooldownMs = Math.max(series.cooldownMs - Math.max(0, deltaMs), 0);
+
+    while (series.remainingShots > 0 && series.cooldownMs <= 0) {
+      if (!this.spawnAttackShot(enemy, target, config)) {
+        enemy.attackSeriesState = undefined;
+        enemy.attackCooldown = enemy.attackInterval;
+        return true;
+      }
+      series.remainingShots -= 1;
+      series.cooldownMs += series.intervalMs;
+    }
+
+    if (series.remainingShots <= 0) {
+      enemy.attackSeriesState = undefined;
+      enemy.attackCooldown = enemy.attackInterval;
+    }
+    return true;
+  }
+
+  private spawnAttackShot(
+    enemy: InternalEnemyState,
+    target: { id: string; position: SceneVector2; physicalSize: number },
+    config: EnemyConfig,
+  ): boolean {
+    const toTarget = subtractVectors(target.position, enemy.position);
 
     if (config.arcAttack) {
       const arcAttack = config.arcAttack;
@@ -552,6 +628,7 @@ export class EnemiesModule implements GameModule {
         arcAttack.arcType,
         { type: "enemy", id: enemy.id },
         { type: "unit", id: target.id },
+        { sourceOffset: arcAttack.spawnOffset },
       );
       if (arcAttack.statusEffectId) {
         const effectTarget = { type: "unit", id: target.id } as const;
@@ -614,14 +691,14 @@ export class EnemiesModule implements GameModule {
 
       const explosionStatusEffectId = explosionAttack.statusEffectId;
       if (explosionStatusEffectId) {
-        this.targeting.forEachTargetNear(
+        this.targeting?.forEachTargetNear(
           enemy.position,
           Math.max(0, explosionAttack.radius),
-          (target) => {
-            if (target.type !== "unit") {
+          (attackTarget) => {
+            if (attackTarget.type !== "unit") {
               return;
             }
-            const effectTarget = { type: "unit", id: target.id } as const;
+            const effectTarget = { type: "unit", id: attackTarget.id } as const;
             if (!this.statusEffects.hasEffect(explosionStatusEffectId, effectTarget)) {
               this.statusEffects.applyEffect(
                 explosionStatusEffectId,
@@ -715,9 +792,42 @@ export class EnemiesModule implements GameModule {
           initialRadius: Math.max(8, enemy.physicalSize),
         });
       }
+      return true;
     }
 
-    return true;
+    return false;
+  }
+
+  private getAttackSeriesConfig(config: EnemyConfig) {
+    if (config.arcAttack?.attackSeries) {
+      return config.arcAttack.attackSeries;
+    }
+    if (config.projectile?.attackSeries) {
+      return config.projectile.attackSeries;
+    }
+    return undefined;
+  }
+
+  private sanitizeAttackSeries(
+    series: { shots: number; intervalMs: number } | undefined,
+  ): { shots: number; intervalMs: number } | null {
+    if (!series) {
+      return null;
+    }
+    const shots = clampNumber(series.shots, 1, Number.POSITIVE_INFINITY);
+    const intervalMs = clampNumber(series.intervalMs, 0, Number.POSITIVE_INFINITY);
+    return { shots, intervalMs };
+  }
+
+  private isTargetInRange(
+    enemy: InternalEnemyState,
+    target: { position: SceneVector2; physicalSize: number },
+  ): boolean {
+    const toTarget = subtractVectors(target.position, enemy.position);
+    const distance = vectorLength(toTarget);
+    const attackRange =
+      enemy.attackRange + enemy.physicalSize + target.physicalSize;
+    return distance <= attackRange;
   }
 
   private clearSceneObjects(): void {

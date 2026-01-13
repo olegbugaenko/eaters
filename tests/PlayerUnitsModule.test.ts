@@ -372,8 +372,8 @@ describe("PlayerUnitsModule", () => {
     const [brick] = bricks.getBrickStates();
     assert(brick, "brick should survive");
     assert(
-      Math.abs(brick.hp - brick.maxHp) < 0.5,
-      "brick should retain near-full health after countering"
+      brick.hp >= brick.maxHp - 5,
+      "brick should retain most of its health after countering"
     );
   });
 

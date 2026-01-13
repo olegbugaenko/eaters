@@ -20,6 +20,8 @@ import { PathfindingService } from "../src/logic/shared/navigation/PathfindingSe
 import type { ObstacleDescriptor, ObstacleProvider } from "../src/logic/shared/navigation/navigation.types";
 import type { SceneVector2 } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import type { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
+import type { TargetSnapshot } from "../src/logic/modules/active-map/targeting/targeting.types";
 
 const createEnemySpawnData = () => ({
   type: "basicEnemy" as const,
@@ -31,6 +33,17 @@ const createEmptyBricks = (): BricksModule =>
   ({
     forEachBrickNear: () => {},
   } as unknown as BricksModule);
+
+class ProjectileSpy {
+  public spawned = 0;
+  public spawn(): string {
+    this.spawned += 1;
+    return `projectile-${this.spawned}`;
+  }
+  public tick(): void {}
+  public clear(): void {}
+  public cleanupExpired(): void {}
+}
 
 class StaticObstacleProvider implements ObstacleProvider {
   constructor(private readonly obstacles: readonly ObstacleDescriptor[]) {}
@@ -328,6 +341,70 @@ describe("EnemiesModule", () => {
     const unitAfterHit = units[0]!;
     assert(unitAfterHit.hp < 10, "enemy attack should deal damage to units");
     assert(explosionCalls > 0, "enemy attack should spawn explosion visuals");
+  });
+
+  test("advances attack series over time for projectile enemies", () => {
+    const runState = new MapRunState();
+    runState.start();
+    const targeting = new TargetingService();
+    const projectileSpy = new ProjectileSpy();
+    const projectiles = projectileSpy as unknown as UnitProjectileController;
+
+    const unitTarget = {
+      id: "unit-1",
+      type: "unit" as const,
+      position: { x: 10, y: 0 },
+      hp: 10,
+      maxHp: 10,
+      armor: 0,
+      baseDamage: 0,
+      physicalSize: 10,
+    };
+
+    targeting.registerProvider({
+      types: ["unit"],
+      getById: (id: string) => (id === unitTarget.id ? unitTarget : null),
+      findNearest: () => unitTarget,
+      findInRadius: () => [unitTarget],
+      forEachInRadius: (
+        _position: SceneVector2,
+        _radius: number,
+        visitor: (target: TargetSnapshot) => void,
+      ) => {
+        visitor(unitTarget);
+      },
+    } as unknown as TargetingProvider);
+
+    const { module } = createEnemiesModuleWithDeps({
+      runState,
+      targeting,
+      projectiles,
+    });
+
+    module.setEnemies([
+      {
+        type: "tankEnemy",
+        level: 1,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    const enemy = (module as any).enemyOrder[0];
+    enemy.attackCooldown = 0;
+    enemy.attackSeriesState = {
+      remainingShots: 2,
+      cooldownMs: 0,
+      intervalMs: 100,
+    };
+
+    module.tick(10);
+    assert.strictEqual(projectileSpy.spawned, 1, "should spawn first series shot");
+
+    module.tick(100);
+    assert.strictEqual(projectileSpy.spawned, 2, "should spawn second series shot");
+
+    assert(enemy.attackSeriesState === undefined, "series should complete after final shot");
+    assert(enemy.attackCooldown > 0, "cooldown should reset after series completion");
   });
 
   test("navigates around blocking obstacles to reach attack distance", () => {

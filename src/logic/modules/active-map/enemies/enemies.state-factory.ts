@@ -106,6 +106,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       attackInterval,
       attackCooldown,
       attackRange,
+      attackSeriesState: undefined,
       moveSpeed,
       physicalSize,
       knockBackDistance,

@@ -16,12 +16,14 @@ import type { ArcType } from "./arcs-db";
 import type { StatusEffectId } from "./status-effects-db";
 import type { StatusEffectApplicationOptions } from "@/logic/modules/active-map/status-effects/status-effects.types";
 import type { ExplosionType } from "./explosions-db";
+import type { AttackSeriesConfig } from "@shared/types/attack-series.types";
 
 export type EnemyType =
   | "basicEnemy"
   | "fastEnemy"
   | "tankEnemy"
   | "turretEnemy"
+  | "burstTurretEnemy"
   | "volleyTurretEnemy"
   | "explosionTurretEnemy"
   | "spectreEnemy"
@@ -71,10 +73,16 @@ export type EnemyRendererConfig =
 
 export interface EnemyArcAttackConfig {
   readonly arcType: ArcType;
+  readonly spawnOffset?: SceneVector2;
+  readonly attackSeries?: AttackSeriesConfig;
   readonly statusEffectId?: StatusEffectId;
   readonly statusEffectOptions?: StatusEffectApplicationOptions;
   readonly explosionType?: ExplosionType;
   readonly explosionRadius?: number;
+}
+
+export interface EnemyProjectileConfig extends UnitProjectileVisualConfig {
+  readonly attackSeries?: AttackSeriesConfig;
 }
 
 export interface EnemyTargetingOptions {
@@ -95,7 +103,7 @@ export interface EnemyConfig {
   readonly physicalSize: number;
   readonly reward?: ResourceAmount;
   readonly emitter?: ParticleEmitterConfig;
-  readonly projectile?: UnitProjectileVisualConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
+  readonly projectile?: EnemyProjectileConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
   readonly projectileVolley?: {
     readonly count: number;
     readonly spreadAngleDeg: number;
@@ -850,6 +858,127 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     knockBackDistance: 120,
     knockBackSpeed: 160,
   },
+  burstTurretEnemy: {
+    name: "Burst Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.55, g: 0.8, b: 0.7, a: 1 },
+      layers: [
+        {
+          shape: "circle",
+          radius: 30,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.55, g: 0.8, b: 0.7, a: 0.4 } },
+                { offset: 1, color: { r: 0.55, g: 0.8, b: 0.7, a: 0 } },
+              ],
+            }
+          }
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -2 },
+            { x: 0, y: -4 },
+            { x: 0, y: 4 },
+            { x: 14, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.25 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: -3, y: -8 },
+            { x: -3, y: 8 },
+            { x: 0, y: 4 },
+          ],
+          fill: { type: "base", brightness: 0.2 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: -8 },
+            { x: -9, y: -11 },
+            { x: -9, y: -5 },
+            { x: -3, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.1 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: 8 },
+            { x: -9, y: 11 },
+            { x: -9, y: 5 },
+            { x: -3, y: -3 },
+          ],
+          fill: { type: "base", brightness: 0.1 },
+        },
+      ],
+    },
+    maxHp: 7500,
+    armor: 400,
+    baseDamage: 240,
+    attackInterval: 2.5,
+    attackRange: 400,
+    moveSpeed: 0, // Статична турель
+    physicalSize: 30,
+    reward: normalizeResourceAmount({
+      stone: 50,
+      iron: 10,
+    }),
+    projectile: {
+      radius: 12,
+      speed: 130,
+      lifetimeMs: 4500,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.6, g: 0.6, b: 0.4, a: 1 },
+      },
+      shape: "sprite",
+      spriteName: "energetic_strike",
+      hitRadius: 8,
+      explosion: "smallEnergetic",
+      attackSeries: {
+        shots: 3,
+        intervalMs: 200,
+      },
+      tail: {
+        lengthMultiplier: 4.0,
+        widthMultiplier: 1.0,
+        startColor: { r: 0.6, g: 0.8, b: 0.8, a: 0.11 },
+        endColor: { r: 0.6, g: 0.8, b: 0.8, a: 0 },
+      },
+      tailEmitter: {
+        baseSpeed: 0.03,
+        speedVariation: 0.0,
+        particleLifetimeMs: 400,
+        fadeStartMs: 700,
+        color: { r: 1, g: 0.85, b: 0.55, a: 1 },
+        arc: Math.PI * 0.15,
+        direction: 0,
+        particlesPerSecond: 1000,
+        sizeRange: { min: 14.5, max: 18.4 },
+        spawnRadius: { min: 0, max: 0.1 },
+        spawnRadiusMultiplier: 1.25,
+        sizeEvolutionMult: 2.0,
+        fill: {
+          fillType: FILL_TYPES.RADIAL_GRADIENT,
+          stops: [
+            { offset: 0, color: { r: 0.4, g: 0.9, b: 0.8, a: 0.05 } },
+            { offset: 1, color: { r: 0.4, g: 0.9, b: 0.8, a: 0 } },
+          ],
+        },
+        maxParticles: 1000,
+      },
+    },
+    knockBackDistance: 120,
+    knockBackSpeed: 160,
+  },
   volleyTurretEnemy: {
     name: "Volley Turret",
     renderer: {
@@ -1245,6 +1374,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       arcType: "laser",
       explosionType: "smallLaser",
       explosionRadius: 21,
+      spawnOffset: { x: 1, y: 0 },
     },
   },
 };

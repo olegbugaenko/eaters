@@ -4,7 +4,8 @@ import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/s
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ArcType, getArcConfig } from "../../../../db/arcs-db";
 import { getNowMs } from "@shared/helpers/time.helper";
-import type { ArcModuleOptions, ArcState, ArcTargetRef } from "./arc.types";
+import { addVectors, sanitizeOffset } from "@shared/helpers/vector.helper";
+import type { ArcModuleOptions, ArcSpawnOptions, ArcState, ArcTargetRef } from "./arc.types";
 
 export class ArcModule implements GameModule {
   public readonly id = "arcs";
@@ -46,7 +47,7 @@ export class ArcModule implements GameModule {
     const realNow = Date.now();
     for (let i = 0; i < this.arcs.length; i += 1) {
       const a = this.arcs[i]!;
-      const from = this.getArcTargetPosition(a.source);
+      const from = this.getArcTargetPosition(a.source, a.sourceOffset);
       const to = this.getArcTargetPosition(a.target);
       if (!from || !to) {
         this.scene.removeObject(a.id);
@@ -86,11 +87,13 @@ export class ArcModule implements GameModule {
     type: ArcType,
     sourceUnitId: string,
     targetUnitId: string,
+    options?: ArcSpawnOptions,
   ): void {
     this.spawnArcBetweenTargets(
       type,
       { type: "unit", id: sourceUnitId },
       { type: "unit", id: targetUnitId },
+      options,
     );
   }
 
@@ -98,9 +101,11 @@ export class ArcModule implements GameModule {
     type: ArcType,
     source: ArcTargetRef,
     target: ArcTargetRef,
+    options?: ArcSpawnOptions,
   ): void {
     const cfg = getArcConfig(type);
-    const from = this.getArcTargetPosition(source);
+    const sourceOffset = sanitizeOffset(options?.sourceOffset);
+    const from = this.getArcTargetPosition(source, sourceOffset);
     const to = this.getArcTargetPosition(target);
     if (!from || !to) {
       return;
@@ -123,6 +128,7 @@ export class ArcModule implements GameModule {
       type,
       source,
       target,
+      sourceOffset,
       remainingMs: cfg.lifetimeMs,
       lifetimeMs: cfg.lifetimeMs,
       fadeStartMs: cfg.fadeStartMs,
@@ -157,12 +163,23 @@ export class ArcModule implements GameModule {
     this.arcs = [];
   }
 
-  private getArcTargetPosition(target: ArcTargetRef): SceneVector2 | null {
+  private getArcTargetPosition(
+    target: ArcTargetRef,
+    offset?: SceneVector2,
+  ): SceneVector2 | null {
     if (target.type === "unit") {
-      return this.getUnitPositionIfAlive(target.id);
+      const position = this.getUnitPositionIfAlive(target.id);
+      if (!position) {
+        return null;
+      }
+      return offset ? addVectors(position, offset) : position;
     }
     if (target.type === "enemy") {
-      return this.getEnemyPositionIfAlive?.(target.id) ?? null;
+      const position = this.getEnemyPositionIfAlive?.(target.id) ?? null;
+      if (!position) {
+        return null;
+      }
+      return offset ? addVectors(position, offset) : position;
     }
     return null;
   }

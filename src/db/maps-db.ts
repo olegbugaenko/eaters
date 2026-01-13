@@ -2603,6 +2603,23 @@ const MAPS_DB: Record<MapId, MapConfig> = {
 
         return [silverRing, copperGem, copperGem2, copperGem3];
       },
+      enemies: ({ mapLevel }) => {
+        const level = Math.max(1, Math.floor(mapLevel));
+        const offsets: SceneVector2[] = [
+          { x: -100, y: -100 },
+          { x: 100, y: -100 },
+          { x: 100, y: 100 },
+          { x: -100, y: 100 },
+        ];
+        return offsets.map((offset) => ({
+          type: "burstTurretEnemy",
+          level,
+          position: {
+            x: center.x + offset.x,
+            y: center.y + offset.y,
+          },
+        }));
+      },
       playerUnits: [
         {
           type: "bluePentagon",
