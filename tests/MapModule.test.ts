@@ -32,12 +32,19 @@ import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.modul
 import type { AchievementsModule } from "../src/logic/modules/shared/achievements/achievements.module";
 import type { EventLogModule } from "../src/logic/modules/shared/event-log/event-log.module";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
+import { NewUnlockNotificationService } from "../src/logic/services/new-unlock-notification/NewUnlockNotification";
 import type { UnitDesignModule } from "../src/logic/modules/camp/unit-design/unit-design.module";
 import type { EnemiesModule } from "../src/logic/modules/active-map/enemies/enemies.module";
 import { getMapConfig } from "../src/db/maps-db";
 import { MapId } from "../src/db/maps-db";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+
+const createNewUnlocks = (bridge: DataBridge): NewUnlockNotificationService => {
+  const service = new NewUnlockNotificationService({ bridge });
+  service.initialize();
+  return service;
+};
 
 const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule): UnitProjectileController => {
   interface ProjectileState {
@@ -317,6 +324,7 @@ describe("MapModule", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -408,6 +416,7 @@ describe("Map inspected target", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -509,6 +518,7 @@ describe("Map inspected target", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -615,6 +625,7 @@ describe("Map run control", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -750,6 +761,7 @@ describe("Map run control", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -835,6 +847,7 @@ describe("Map run control", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -923,6 +936,7 @@ describe("Map run control", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -1019,6 +1033,7 @@ describe("Map unlocking", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -1131,6 +1146,7 @@ describe("Map unlocking", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -1191,6 +1207,7 @@ describe("Last played map tracking", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 
@@ -1242,6 +1259,7 @@ describe("Last played map tracking", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => 0,
+      newUnlocks: createNewUnlocks(bridge),
     });
     restoredModuleRef = restoredMaps;
 
@@ -1320,6 +1338,7 @@ describe("Map auto restart", () => {
       arcs: createArcModuleStub(),
       sceneCleanup: createSceneCleanupStub(),
       getSkillLevel: () => skillLevel,
+      newUnlocks: createNewUnlocks(bridge),
     });
     mapModuleRef = maps;
 

@@ -11,5 +11,4 @@ export const createNewUnlockNotificationDefinition = (): ServiceDefinition<
       bridge: container.get("bridge"),
     }),
   registerAsModule: true,
-  dependsOn: ["bridge"],
 });

@@ -174,10 +174,9 @@ export class NewUnlockNotificationService implements GameModule {
       let prefix = "";
       segments.forEach((segment, index) => {
         prefix = prefix ? `${prefix}.${segment}` : segment;
-        if (!unseenByPrefix[prefix]) {
-          unseenByPrefix[prefix] = [];
-        }
-        unseenByPrefix[prefix].push(path);
+        const bucket = unseenByPrefix[prefix] ?? [];
+        bucket.push(path);
+        unseenByPrefix[prefix] = bucket;
         if (index === 0 && !topLevelSeen.has(prefix)) {
           topLevelSeen.add(prefix);
           topLevelUnseen.push(prefix);
