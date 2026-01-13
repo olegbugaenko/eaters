@@ -23,6 +23,7 @@ export type EnemyType =
   | "fastEnemy"
   | "tankEnemy"
   | "turretEnemy"
+  | "burstTurretEnemy"
   | "volleyTurretEnemy"
   | "explosionTurretEnemy"
   | "spectreEnemy"
@@ -853,6 +854,84 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       shape: "circle",
       hitRadius: 8,
       explosion: "smallCannon", // Тип експлозії при влучанні снаряда
+    },
+    knockBackDistance: 120,
+    knockBackSpeed: 160,
+  },
+  burstTurretEnemy: {
+    name: "Burst Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.55, g: 0.7, b: 0.7, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -2 },
+            { x: 0, y: -4 },
+            { x: 0, y: 4 },
+            { x: 14, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.25 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: -3, y: -8 },
+            { x: -3, y: 8 },
+            { x: 0, y: 4 },
+          ],
+          fill: { type: "base", brightness: 0.2 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: -8 },
+            { x: -9, y: -11 },
+            { x: -9, y: -5 },
+            { x: -3, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.1 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: 8 },
+            { x: -9, y: 11 },
+            { x: -9, y: 5 },
+            { x: -3, y: -3 },
+          ],
+          fill: { type: "base", brightness: 0.1 },
+        },
+      ],
+    },
+    maxHp: 125,
+    armor: 8,
+    baseDamage: 24,
+    attackInterval: 1.5,
+    attackRange: 400,
+    moveSpeed: 0, // Статична турель
+    physicalSize: 30,
+    reward: normalizeResourceAmount({
+      stone: 50,
+      iron: 10,
+    }),
+    projectile: {
+      radius: 5,
+      speed: 150,
+      lifetimeMs: 2500,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.6, g: 0.6, b: 0.4, a: 1 },
+      },
+      shape: "circle",
+      hitRadius: 8,
+      explosion: "smallCannon",
+      attackSeries: {
+        shots: 3,
+        intervalMs: 200,
+      },
     },
     knockBackDistance: 120,
     knockBackSpeed: 160,
