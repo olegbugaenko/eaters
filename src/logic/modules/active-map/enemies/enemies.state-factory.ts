@@ -60,13 +60,19 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     const attackRange = clampNumber(config.attackRange ?? 240, 0, Number.POSITIVE_INFINITY);
     const moveSpeed = clampNumber(config.moveSpeed, 0, Number.POSITIVE_INFINITY);
     const physicalSize = clampNumber(config.physicalSize, 0, Number.POSITIVE_INFINITY);
+    const DEFAULT_SELF_KNOCKBACK_DISTANCE = 6;
+    const DEFAULT_SELF_KNOCKBACK_SPEED = 30;
     const selfKnockBackDistance = clampNumber(
-      config.selfKnockBackDistance ?? config.knockBackDistance ?? 0,
+      Number.isFinite(config.selfKnockBackDistance)
+        ? Number(config.selfKnockBackDistance)
+        : DEFAULT_SELF_KNOCKBACK_DISTANCE,
       0,
       Number.POSITIVE_INFINITY
     );
     const selfKnockBackSpeed = clampNumber(
-      config.selfKnockBackSpeed ?? config.knockBackSpeed ?? 0,
+      Number.isFinite(config.selfKnockBackSpeed)
+        ? Number(config.selfKnockBackSpeed)
+        : DEFAULT_SELF_KNOCKBACK_SPEED,
       0,
       Number.POSITIVE_INFINITY
     );
