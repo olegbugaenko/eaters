@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SpellId } from "@db/spells-db";
-import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import { SceneDebugPanel } from "./components/debug/SceneDebugPanel";
 import { SceneRunSummaryModal } from "./components/modals/SceneRunSummaryModal";
 import { SceneControlHintsPanel } from "./components/panels/SceneControlHintsPanel";
 import { SceneRunResourcePanel } from "./components/panels/SceneRunResourcePanel";
-import { SceneSummoningPanel } from "./components/summoning/SceneSummoningPanel";
 import { SceneToolbar } from "./components/toolbar/SceneToolbar";
 import { SceneTooltipBridgePanel } from "./components/tooltip/SceneTooltipBridgePanel";
 import type { SceneTooltipContent } from "./components/tooltip/SceneTooltipPanel";
@@ -15,7 +13,6 @@ import {
   SceneTutorialOverlay,
 } from "./components/overlay/SceneTutorialOverlay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { useBridgeRef } from "@ui-shared/useBridgeRef";
 import "./SceneScreen.css";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
@@ -27,7 +24,6 @@ import {
 import { NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY } from "@logic/modules/active-map/necromancer/necromancer.const";
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
-import { usePersistedSpellSelection } from "./hooks/usePersistedSpellSelection";
 import type {
   NecromancerModuleUiApi,
   NecromancerSpawnOption,
@@ -38,6 +34,7 @@ import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 import type { SceneUiApi, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 import { SceneTutorialBridgeMonitor } from "./components/tutorial/SceneTutorialBridgeMonitor";
+import { SceneSummoningPanelContainer } from "./components/summoning/SceneSummoningPanelContainer";
 
 const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 
@@ -72,7 +69,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const initialCamera = useMemo(() => scene.getCamera(), [scene]);
   const cameraInfoRef = useRef(initialCamera);
   const scaleRef = useRef(initialCamera.scale);
-  const spellOptionsRef = useRef<SpellOption[]>([]);
+  const spellOptionsRef = useBridgeRef(
+    bridge,
+    SPELL_OPTIONS_BRIDGE_KEY,
+    DEFAULT_SPELL_OPTIONS
+  );
   const [summoningTooltipContent, setSummoningTooltipContent] =
     useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
@@ -89,17 +90,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     map,
     unitAutomation,
   });
-  const spellOptions = useBridgeValue(bridge, SPELL_OPTIONS_BRIDGE_KEY, DEFAULT_SPELL_OPTIONS);
   const spawnOptionsRef = useBridgeRef(
     bridge,
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
     EMPTY_SPAWN_OPTIONS
   );
-  const { selectedSpellId, selectedSpellIdRef, handleSelectSpell } =
-    usePersistedSpellSelection(spellOptions);
-  useEffect(() => {
-    spellOptionsRef.current = spellOptions;
-  }, [spellOptions]);
+  const selectedSpellIdRef = useRef<SpellId | null>(null);
   const cleanupCalledRef = useRef(false);
   const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
@@ -383,10 +379,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         canAdvancePlayStep={canAdvancePlayStep}
         onAdvanceStepRef={handlePlayStepAdvanceRef}
       />
-      <SceneSummoningPanel
-        ref={summoningPanelRef}
-        selectedSpellId={selectedSpellId}
-        onSelectSpell={handleSelectSpell}
+      <SceneSummoningPanelContainer
+        panelRef={summoningPanelRef}
+        selectedSpellIdRef={selectedSpellIdRef}
         onSummon={handleSummonDesign}
         onHoverInfoChange={setSummoningTooltipContent}
         onToggleAutomation={handleToggleAutomation}
