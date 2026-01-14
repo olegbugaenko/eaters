@@ -120,6 +120,8 @@ export interface EnemyConfig {
   readonly targeting?: EnemyTargetingOptions;
   readonly knockBackDistance?: number; // Відстань knockback при атаці юнітів
   readonly knockBackSpeed?: number; // Швидкість knockback при атаці юнітів
+  readonly selfKnockBackDistance?: number; // Відстань knockback для ворога при отриманні урону
+  readonly selfKnockBackSpeed?: number; // Швидкість knockback для ворога при отриманні урону
 }
 
 const BASIC_ENEMY_VERTICES: readonly SceneVector2[] = [

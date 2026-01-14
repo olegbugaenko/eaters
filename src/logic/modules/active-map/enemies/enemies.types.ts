@@ -50,9 +50,13 @@ export interface EnemyRuntimeState {
   attackSeriesState?: AttackSeriesState;
   moveSpeed: number;
   physicalSize: number;
-  knockBackDistance: number;
-  knockBackSpeed: number;
+  selfKnockBackDistance: number;
+  selfKnockBackSpeed: number;
   reward?: ResourceStockpile;
+}
+
+export interface EnemyResourceCollector {
+  grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
 }
 
 export interface InternalEnemyState extends EnemyRuntimeState {
@@ -60,6 +64,13 @@ export interface InternalEnemyState extends EnemyRuntimeState {
   movementId: string;
   fill?: SceneFill;
   stroke?: SceneStroke;
+  knockback: EnemyKnockbackState | null;
+}
+
+export interface EnemyKnockbackState {
+  initialOffset: SceneVector2;
+  currentOffset: SceneVector2;
+  elapsed: number;
 }
 
 export interface EnemySaveData {
@@ -73,6 +84,7 @@ export interface EnemiesModuleOptions {
   readonly bridge: DataBridge;
   readonly runState: MapRunState;
   readonly movement: MovementService;
+  readonly resources: EnemyResourceCollector;
   readonly targeting?: TargetingService;
   readonly damage?: DamageService;
   readonly explosions?: ExplosionModule;
