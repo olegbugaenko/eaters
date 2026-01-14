@@ -1001,21 +1001,21 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     defaultInitialRadius: 3,
     waves: createSimpleWave({
       defaultInitialRadius: 2,
-      radiusExtension: 7,
+      radiusExtension: 5,
       startAlpha: 0.95,
       endAlpha: 0,
       gradientStops: SMALL_ENERGETIC_WAVE_GRADIENT_STOPS,
     }),
     emitter: {
       ...DEFAULT_EMITTER,
-      baseSpeed: 0.04,
-      speedVariation: 0.025,
-      fadeStartMs: 400,
+      baseSpeed: 0.2,
+      speedVariation: 0.05,
+      fadeStartMs: 600,
       particleLifetimeMs: 1_000,
       particlesPerSecond: 1760,
       sizeRange: { min: 0.25, max: 1.4 },
       emissionDurationMs: 400,
-      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadius: { min: 0, max: 0.2 },
       spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
       fill: SMALL_ENERGETIC_EMITTER_FILL,
       radialVelocity: true, // Частинки рухаються від центру вибуху
