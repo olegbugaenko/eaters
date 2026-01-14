@@ -509,8 +509,12 @@ export class ObjectsRendererManager {
     const previousRenderPosition =
       previousInstance.data.renderPosition ?? previousInstance.data.position;
     managed.instance = instance;
-    if (!instance.data.renderPosition) {
-      instance.data.renderPosition = { ...previousRenderPosition };
+    if (this.interpolatedPositions.has(instance.id)) {
+      instance.data.renderPosition = instance.data.renderPosition
+        ? { ...instance.data.renderPosition }
+        : { ...previousRenderPosition };
+    } else {
+      instance.data.renderPosition = { ...instance.data.position };
     }
     const customData = instance.data.customData as Record<string, unknown> | undefined;
     const bulletGpuKey = customData?.bulletGpuKey;
