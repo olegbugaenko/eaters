@@ -72,6 +72,7 @@ export class WebGLSceneRenderer {
     // Compile shaders
     this.vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
     this.fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+    this.logTranslatedShaders();
     this.program = linkProgram(gl, this.vertexShader, this.fragmentShader);
 
     // Get attribute locations
@@ -190,6 +191,19 @@ export class WebGLSceneRenderer {
       gl.ONE,
       gl.ONE_MINUS_SRC_ALPHA
     );
+  }
+
+  private logTranslatedShaders(): void {
+    const debugExtension = this.gl.getExtension("WEBGL_debug_shaders");
+    if (!debugExtension) {
+      return;
+    }
+
+    const vertexSource = debugExtension.getTranslatedShaderSource(this.vertexShader);
+    const fragmentSource = debugExtension.getTranslatedShaderSource(this.fragmentShader);
+
+    console.debug("[WebGLSceneRenderer] Translated vertex shader source:", vertexSource);
+    console.debug("[WebGLSceneRenderer] Translated fragment shader source:", fragmentSource);
   }
 
   private createAttributeConfigs(
