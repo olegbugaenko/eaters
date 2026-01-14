@@ -13,6 +13,7 @@ import {
   CRACK_UV_COMPONENTS,
   StaticPrimitive,
   VERTEX_COMPONENTS,
+  getInstanceRenderPosition,
   transformObjectPoint,
 } from "../../objects/ObjectRenderer";
 import {
@@ -155,7 +156,7 @@ export const createDynamicRectanglePrimitive = (
 ): DynamicPrimitive => {
   const initialRotation = resolveRotation(instance, options);
   const initialCenter = transformObjectPoint(
-    instance.data.position,
+    getInstanceRenderPosition(instance),
     initialRotation,
     options.offset
   );
@@ -193,7 +194,7 @@ export const createDynamicRectanglePrimitive = (
     update(target: SceneObjectInstance) {
       const nextRotation = resolveRotation(target, options);
       // Inline transformObjectPoint to avoid object allocation
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const offset = options.offset;
       let nextCenterX: number;
       let nextCenterY: number;
@@ -293,7 +294,7 @@ export const createDynamicRectanglePrimitive = (
     },
     updatePositionOnly(target: SceneObjectInstance) {
       const nextRotation = resolveRotation(target, options);
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const offset = options.offset;
       let nextCenterX: number;
       let nextCenterY: number;

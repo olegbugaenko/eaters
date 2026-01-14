@@ -4,7 +4,7 @@ import type {
   ParticleEmitterParticleState,
 } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
-import { transformObjectPoint } from "../../ObjectRenderer";
+import { getInstanceRenderPosition, transformObjectPoint } from "../../ObjectRenderer";
 import { randomBetween } from "@shared/helpers/numbers.helper";
 import type {
   BulletRendererCustomData,
@@ -170,7 +170,11 @@ export const getTailEmitterOrigin = (
     x: config.offset.x * radius,
     y: config.offset.y * radius,
   };
-  return transformObjectPoint(instance.data.position, instance.data.rotation, offset);
+  return transformObjectPoint(
+    getInstanceRenderPosition(instance),
+    instance.data.rotation,
+    offset
+  );
 };
 
 /**

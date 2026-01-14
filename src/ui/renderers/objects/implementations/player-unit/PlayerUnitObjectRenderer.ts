@@ -11,6 +11,7 @@ import {
 } from "../../../primitives";
 import { extractRendererData } from "./helpers";
 import { hasStroke, expandVerticesForStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
+import { getInstanceRenderPosition } from "../../ObjectRenderer";
 import {
   getEmitterConfig,
   getEmitterOrigin,
@@ -39,7 +40,7 @@ const updateAuraInstances = (instance: SceneObjectInstance): void => {
     return;
   }
 
-  const position = instance.data.position;
+  const position = getInstanceRenderPosition(instance);
 
   // OPTIMIZATION: Skip bufferSubData if position hasn't changed
   const lastPos = auraLastPositionCache.get(instanceId);

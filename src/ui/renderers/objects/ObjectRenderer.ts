@@ -77,6 +77,10 @@ export const transformObjectPoint = (
   };
 };
 
+export const getInstanceRenderPosition = (
+  instance: SceneObjectInstance
+): SceneVector2 => instance.data.renderPosition ?? instance.data.position;
+
 export abstract class ObjectRenderer {
   public abstract register(instance: SceneObjectInstance): ObjectRegistration;
 
@@ -123,7 +127,7 @@ export abstract class ObjectRenderer {
     offset?: SceneVector2
   ): SceneVector2 {
     return transformObjectPoint(
-      instance.data.position,
+      getInstanceRenderPosition(instance),
       instance.data.rotation,
       offset
     );

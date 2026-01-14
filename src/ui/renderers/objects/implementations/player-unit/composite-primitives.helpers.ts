@@ -10,6 +10,7 @@ import {
   createDynamicPolygonStrokePrimitive,
   createDynamicSpritePrimitive,
 } from "../../../primitives";
+import { getInstanceRenderPosition } from "../../ObjectRenderer";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
 import type { CompositeRendererData, RendererLayer, PlayerUnitCustomData } from "./types";
 import {
@@ -72,8 +73,9 @@ export const createCompositePrimitives = (
       });
 
       // Записуємо пелюстки одразу
+      const renderPosition = getInstanceRenderPosition(instance);
       writeAuraInstance(handle, {
-        position: { ...instance.data.position },
+        position: { ...renderPosition },
         basePhase,
         active: true,
         petalCount: auraConfig.petalCount,

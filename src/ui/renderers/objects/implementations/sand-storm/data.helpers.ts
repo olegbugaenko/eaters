@@ -1,4 +1,5 @@
 import type { SceneObjectInstance, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { getInstanceRenderPosition } from "../../ObjectRenderer";
 import type { SandStormCustomData, InterpolationData } from "./types";
 import {
   DEFAULT_COLOR_INNER,
@@ -26,7 +27,7 @@ export const extractCustomData = (
 } => {
   const size = instance.data.size ?? { width: 0, height: 0 };
   const radius = Math.max(0, Math.max(size.width, size.height) / 2);
-  const basePosition = { ...instance.data.position };
+  const basePosition = { ...getInstanceRenderPosition(instance) };
   const custom = (instance.data.customData ?? {}) as SandStormCustomData;
   const intensityRaw = typeof custom.intensity === "number" ? custom.intensity : 0;
   const intensity = Math.min(Math.max(intensityRaw, 0), 1);
