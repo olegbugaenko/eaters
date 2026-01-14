@@ -1102,13 +1102,19 @@ export class UnitRuntimeController {
     }
 
     // Knockback для цілей з налаштованими параметрами
-    const knockBackTarget = (surviving ?? target) as BrickRuntimeState | EnemyRuntimeState;
+    const knockBackTarget = surviving ?? target;
+    const knockBackDistance = targetType === "enemy"
+      ? (knockBackTarget as EnemyRuntimeState).selfKnockBackDistance
+      : (knockBackTarget as BrickRuntimeState).knockBackDistance;
+    const knockBackSpeed = targetType === "enemy"
+      ? (knockBackTarget as EnemyRuntimeState).selfKnockBackSpeed
+      : (knockBackTarget as BrickRuntimeState).knockBackSpeed;
     this.applyKnockBack(
       unit,
       direction,
       distance,
-      knockBackTarget.knockBackDistance,
-      knockBackTarget.knockBackSpeed
+      knockBackDistance,
+      knockBackSpeed
     );
     
     // Counter damage тільки для бріків

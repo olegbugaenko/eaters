@@ -1414,8 +1414,8 @@ export class EnemiesModule implements GameModule {
       attackRange: enemy.attackRange,
       moveSpeed: enemy.moveSpeed,
       physicalSize: enemy.physicalSize,
-      knockBackDistance: enemy.knockBackDistance,
-      knockBackSpeed: enemy.knockBackSpeed,
+      selfKnockBackDistance: enemy.selfKnockBackDistance,
+      selfKnockBackSpeed: enemy.selfKnockBackSpeed,
       reward: enemy.reward
         ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward))
         : undefined,
