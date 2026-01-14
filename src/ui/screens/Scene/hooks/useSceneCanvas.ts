@@ -73,9 +73,11 @@ export interface UseSceneCanvasParams {
   lastPointerPositionRef: MutableRefObject<{ x: number; y: number } | null>;
   cameraInfoRef: MutableRefObject<SceneCameraState>;
   scaleRef: MutableRefObject<number>;
-  setScale: (value: number) => void;
-  setCameraInfo: (value: SceneCameraState) => void;
-  setScaleRange: (value: { min: number; max: number }) => void;
+  onCameraUiChange: (value: {
+    scale?: number;
+    cameraInfo?: SceneCameraState;
+    scaleRange?: { min: number; max: number };
+  }) => void;
   vboStatsRef: MutableRefObject<BufferStats>;
   particleStatsRef: MutableRefObject<ParticleStatsState>;
   particleStatsLastUpdateRef: MutableRefObject<number>;
@@ -97,9 +99,7 @@ export const useSceneCanvas = ({
   lastPointerPositionRef,
   cameraInfoRef,
   scaleRef,
-  setScale,
-  setCameraInfo,
-  setScaleRange,
+  onCameraUiChange,
   vboStatsRef,
   particleStatsRef,
   particleStatsLastUpdateRef,
@@ -414,7 +414,7 @@ export const useSceneCanvas = ({
           Math.abs(latestCamera.scale - scaleRef.current) > 0.0001
         ) {
           scaleRef.current = latestCamera.scale;
-          setScale(latestCamera.scale);
+          onCameraUiChange({ scale: latestCamera.scale });
         }
         if (
           Math.abs(latestCamera.position.x - cameraInfoRef.current.position.x) >
@@ -427,7 +427,7 @@ export const useSceneCanvas = ({
             0.0001
         ) {
           cameraInfoRef.current = latestCamera;
-          setCameraInfo(latestCamera);
+          onCameraUiChange({ cameraInfo: latestCamera });
         }
       },
     });
@@ -454,12 +454,11 @@ export const useSceneCanvas = ({
       const current = sceneRef.current.getCamera();
       scaleRef.current = current.scale;
       cameraInfoRef.current = current;
-      setScale(current.scale);
-      setCameraInfo(current);
+      onCameraUiChange({ scale: current.scale, cameraInfo: current });
       
       // Update scale range after viewport changes
       const newScaleRange = sceneRef.current.getScaleRange();
-      setScaleRange(newScaleRange);
+      onCameraUiChange({ scaleRange: newScaleRange });
       
       // Mark scale as initialized after first resize
       // This ensures scale is set AFTER minScale is properly calculated
@@ -675,8 +674,7 @@ export const useSceneCanvas = ({
         const updatedCamera = sceneRef.current.getCamera();
         scaleRef.current = updatedCamera.scale;
         cameraInfoRef.current = updatedCamera;
-        setScale(updatedCamera.scale);
-        setCameraInfo(updatedCamera);
+        onCameraUiChange({ scale: updatedCamera.scale, cameraInfo: updatedCamera });
       }
     };
 
@@ -722,7 +720,6 @@ export const useSceneCanvas = ({
     // scene/spellcasting/interpolation functions accessed via refs to avoid recreating useEffect
     // Only include setState functions (they're stable) and canvasRef for initial mount
     canvasRef,
-    setScale,
-    setCameraInfo,
+    onCameraUiChange,
   ]);
 };
