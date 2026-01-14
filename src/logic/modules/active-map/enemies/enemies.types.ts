@@ -60,6 +60,13 @@ export interface InternalEnemyState extends EnemyRuntimeState {
   movementId: string;
   fill?: SceneFill;
   stroke?: SceneStroke;
+  knockback: EnemyKnockbackState | null;
+}
+
+export interface EnemyKnockbackState {
+  initialOffset: SceneVector2;
+  currentOffset: SceneVector2;
+  elapsed: number;
 }
 
 export interface EnemySaveData {

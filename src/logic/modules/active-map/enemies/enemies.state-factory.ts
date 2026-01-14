@@ -130,6 +130,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       stroke,
       movementId,
       sceneObjectId: "",
+      knockback: null,
     };
   }
 

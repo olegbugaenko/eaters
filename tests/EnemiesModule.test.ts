@@ -372,7 +372,7 @@ describe("EnemiesModule", () => {
 
     const nextState = movement.getBodyState(enemy.movementId);
     assert(nextState, "expected movement body state after knockback");
-    assert(nextState.velocity.x < 0, "expected knockback velocity to push opposite direction");
+    assert(nextState.velocity.x > 0, "expected knockback velocity to push away from attacker");
     assert.notStrictEqual(nextState.velocity.x, 0);
   });
 
@@ -405,6 +405,47 @@ describe("EnemiesModule", () => {
     assert(nextState, "expected movement body state after damage");
     assert.strictEqual(nextState.velocity.x, 0);
     assert.strictEqual(nextState.velocity.y, 0);
+  });
+
+  test("static enemies use knockback offsets and return to base position", () => {
+    const runState = new MapRunState();
+    runState.start();
+    const scene = new SceneObjectManager();
+    const movement = new MovementService();
+    const { module } = createEnemiesModuleWithDeps({ runState, scene, movement });
+
+    module.setEnemies([
+      {
+        type: "turretEnemy",
+        level: 1,
+        position: { x: 20, y: 10 },
+        hp: 10,
+      },
+    ]);
+
+    const enemy = (module as unknown as { enemyOrder: InternalEnemyState[] }).enemyOrder[0];
+    assert(enemy, "expected internal enemy state");
+    const basePosition = { ...enemy.position };
+
+    module.applyDamage(enemy.id, 4, {
+      armorPenetration: 999,
+      direction: { x: 1, y: 0 },
+    });
+    module.tick(60);
+
+    const sceneObject = scene.getObject(enemy.sceneObjectId);
+    assert(sceneObject, "expected scene object");
+    assert(
+      sceneObject.data.position.x !== basePosition.x ||
+        sceneObject.data.position.y !== basePosition.y,
+      "expected knockback offset to move render position"
+    );
+
+    module.tick(240);
+    const settled = scene.getObject(enemy.sceneObjectId);
+    assert(settled, "expected scene object after settling");
+    assert.strictEqual(settled.data.position.x, basePosition.x);
+    assert.strictEqual(settled.data.position.y, basePosition.y);
   });
 
   test("advances attack series over time for projectile enemies", () => {
