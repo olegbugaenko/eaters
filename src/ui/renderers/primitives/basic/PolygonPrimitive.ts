@@ -10,6 +10,7 @@ import {
   StaticPrimitive,
   VERTEX_COMPONENTS,
   FILL_COMPONENTS,
+  getInstanceRenderPosition,
   transformObjectPoint,
 } from "../../objects/ObjectRenderer";
 import {
@@ -457,7 +458,11 @@ export const createDynamicPolygonPrimitive = (
   let vertexCount = initialVertices.length;
   let geometry = computeGeometry(initialVertices);
   const getCenter = (target: SceneObjectInstance): SceneVector2 =>
-    transformObjectPoint(target.data.position, target.data.rotation, options.offset);
+    transformObjectPoint(
+      getInstanceRenderPosition(target),
+      target.data.rotation,
+      options.offset
+    );
 
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
@@ -479,8 +484,8 @@ export const createDynamicPolygonPrimitive = (
   let currentVertices = initialVertices;
   
   // Cache previous state for fast-path (use raw position, not transformed origin)
-  let prevPosX = instance.data.position.x;
-  let prevPosY = instance.data.position.y;
+  let prevPosX = getInstanceRenderPosition(instance).x;
+  let prevPosY = getInstanceRenderPosition(instance).y;
   let prevRotation = rotation;
 
   const primitive: DynamicPrimitive = {
@@ -488,7 +493,7 @@ export const createDynamicPolygonPrimitive = (
       return data;
     },
     update(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       
       // Fast path: skip expensive computations if nothing changed
@@ -572,7 +577,7 @@ export const createDynamicPolygonPrimitive = (
       return changed ? data : null;
     },
     updatePositionOnly(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       if (
         pos.x === prevPosX &&
@@ -1000,7 +1005,11 @@ export const createDynamicPolygonStrokePrimitive = (
     return ensureVertices(data?.vertices);
   };
   const getCenter = (target: SceneObjectInstance): SceneVector2 =>
-    transformObjectPoint(target.data.position, target.data.rotation, options.offset);
+    transformObjectPoint(
+      getInstanceRenderPosition(target),
+      target.data.rotation,
+      options.offset
+    );
 
   let inner = resolveVerts(instance);
   let geometry = computeGeometry(inner);
@@ -1024,8 +1033,8 @@ export const createDynamicPolygonStrokePrimitive = (
   let data = buildStrokeBandData(origin, rotation, inner, outer, fillComponents);
   
   // Cache previous state for static vertices to skip updates when nothing changed
-  let prevPosX = instance.data.position.x;
-  let prevPosY = instance.data.position.y;
+  let prevPosX = getInstanceRenderPosition(instance).x;
+  let prevPosY = getInstanceRenderPosition(instance).y;
   let prevRotation = rotation;
 
   const primitive: DynamicPrimitive = {
@@ -1033,7 +1042,7 @@ export const createDynamicPolygonStrokePrimitive = (
       return data;
     },
     update(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       
       // Check if stroke reference changed (visual effect applied)
@@ -1098,7 +1107,7 @@ export const createDynamicPolygonStrokePrimitive = (
       return changed ? data : null;
     },
     updatePositionOnly(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       if (
         pos.x === prevPosX &&

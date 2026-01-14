@@ -206,23 +206,17 @@ export class ObjectsRendererManager {
       if (!managed) {
         return;
       }
-      // OPTIMIZATION: Mutate position in-place instead of creating new objects
-      // Save original position to restore after update
-      const originalPosition = managed.instance.data.position;
-      const origX = originalPosition.x;
-      const origY = originalPosition.y;
-      originalPosition.x = position.x;
-      originalPosition.y = position.y;
+      const renderPosition =
+        managed.instance.data.renderPosition ?? managed.instance.data.position;
+      renderPosition.x = position.x;
+      renderPosition.y = position.y;
+      managed.instance.data.renderPosition = renderPosition;
       
       const updates = managed.renderer.updatePositionOnly(
         managed.instance,
         managed.registration
       );
       this.recordDebugUpdate(managed.instance.type);
-      
-      // Restore original position
-      originalPosition.x = origX;
-      originalPosition.y = origY;
       
       updates.forEach(({ primitive, data }) => {
         const entry = this.dynamicEntryByPrimitive.get(primitive);
@@ -263,17 +257,13 @@ export class ObjectsRendererManager {
       }
 
       this.recordDebugInterpolation(managed.instance.type);
-      const originalPosition = managed.instance.data.position;
-      const origX = originalPosition.x;
-      const origY = originalPosition.y;
-      originalPosition.x = interpolated.x;
-      originalPosition.y = interpolated.y;
+      const renderPosition =
+        managed.instance.data.renderPosition ?? managed.instance.data.position;
+      renderPosition.x = interpolated.x;
+      renderPosition.y = interpolated.y;
+      managed.instance.data.renderPosition = renderPosition;
 
-      const result = update();
-
-      originalPosition.x = origX;
-      originalPosition.y = origY;
-      return result;
+      return update();
     };
     
     // Update full objects with autoAnimate: true
@@ -454,6 +444,9 @@ export class ObjectsRendererManager {
     }
     const registration = renderer.register(instance);
     const storedInstance = cloneInstance ? this.cloneInstance(instance) : instance;
+    if (!storedInstance.data.renderPosition) {
+      storedInstance.data.renderPosition = { ...storedInstance.data.position };
+    }
     const managed: ManagedObject = {
       instance: storedInstance,
       renderer,
@@ -513,7 +506,16 @@ export class ObjectsRendererManager {
     }
     const previousInstance = managed.instance;
     const isTransformOnly = this.isTransformOnlyUpdate(previousInstance, instance);
+    const previousRenderPosition =
+      previousInstance.data.renderPosition ?? previousInstance.data.position;
     managed.instance = instance;
+    if (this.interpolatedPositions.has(instance.id)) {
+      instance.data.renderPosition = instance.data.renderPosition
+        ? { ...instance.data.renderPosition }
+        : { ...previousRenderPosition };
+    } else {
+      instance.data.renderPosition = { ...instance.data.position };
+    }
     const customData = instance.data.customData as Record<string, unknown> | undefined;
     const bulletGpuKey = customData?.bulletGpuKey;
     if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
@@ -828,6 +830,9 @@ export class ObjectsRendererManager {
       type: instance.type,
       data: {
         position: { ...instance.data.position },
+        renderPosition: instance.data.renderPosition
+          ? { ...instance.data.renderPosition }
+          : undefined,
         size: instance.data.size ? { ...instance.data.size } : undefined,
         color: instance.data.color ? { ...instance.data.color } : undefined,
         fill: cloneSceneFill(instance.data.fill),

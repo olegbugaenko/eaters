@@ -9,6 +9,7 @@ import {
   POSITION_COMPONENTS,
   StaticPrimitive,
   VERTEX_COMPONENTS,
+  getInstanceRenderPosition,
   transformObjectPoint,
 } from "../../objects/ObjectRenderer";
 import {
@@ -307,14 +308,14 @@ export const createDynamicCirclePrimitive = (
   let previousCenterX = initialCenter.x;
   let previousCenterY = initialCenter.y;
   // Cache raw position for fast-path
-  let prevPosX = instance.data.position.x;
-  let prevPosY = instance.data.position.y;
+  let prevPosX = getInstanceRenderPosition(instance).x;
+  let prevPosY = getInstanceRenderPosition(instance).y;
   let prevRotation = instance.data.rotation ?? 0;
 
   return {
     data,
     update(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       
       // Check if instance.data.fill reference changed (visual effect applied)
@@ -402,7 +403,7 @@ export const createDynamicCirclePrimitive = (
       return data;
     },
     updatePositionOnly(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       const nextCenter = getCenter(target, options.offset);
       const centerChanged =
@@ -457,7 +458,7 @@ const getCenter = (
   offset: SceneVector2 | undefined
 ): SceneVector2 => {
   return transformObjectPoint(
-    instance.data.position,
+    getInstanceRenderPosition(instance),
     instance.data.rotation,
     offset
   );

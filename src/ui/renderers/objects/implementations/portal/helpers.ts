@@ -4,7 +4,7 @@ import type {
   ParticleEmitterParticleState,
 } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
-import { transformObjectPoint } from "../../ObjectRenderer";
+import { getInstanceRenderPosition, transformObjectPoint } from "../../ObjectRenderer";
 import { DEFAULT_PORTAL_EMITTER } from "./constants";
 import type { PortalCustomData, PortalEmitterConfig } from "./types";
 import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
@@ -57,7 +57,11 @@ export const getEmitterOrigin = (
   config: PortalEmitterConfig
 ): SceneVector2 => {
   const offset = config.offset ?? { x: 0, y: 0 };
-  return transformObjectPoint(instance.data.position, instance.data.rotation, offset);
+  return transformObjectPoint(
+    getInstanceRenderPosition(instance),
+    instance.data.rotation,
+    offset
+  );
 };
 
 /**
