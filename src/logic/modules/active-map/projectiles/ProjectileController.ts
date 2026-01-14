@@ -109,6 +109,7 @@ export class UnitProjectileController {
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
     const hitRadius = Math.max(1, visual.hitRadius ?? radius);
+    const damageRadius = Math.max(0, visual.damageRadius ?? 0);
     const rotation = Math.atan2(direction.y, direction.x);
     const shape = visual.shape ?? "circle";
     
@@ -188,6 +189,7 @@ export class UnitProjectileController {
       ringTrail,
       shape,
       hitRadius,
+      damageRadius,
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
       justSpawned: true, // Не рухати снаряд в перший тік
@@ -366,7 +368,25 @@ export class UnitProjectileController {
             position: { ...projectile.position },
           });
           if (handled !== true) {
-            this.applyProjectileDamage(projectile, collided);
+            if (projectile.damageRadius > 0) {
+              this.damage.applyAreaDamage(
+                projectile.position,
+                projectile.damageRadius,
+                projectile.damage,
+                {
+                  rewardMultiplier: projectile.rewardMultiplier,
+                  armorPenetration: projectile.armorPenetration,
+                  skipKnockback: projectile.skipKnockback === true,
+                  knockBackDistance: projectile.knockBackDistance,
+                  knockBackSpeed: projectile.knockBackSpeed,
+                  knockBackDirection: projectile.knockBackDirection,
+                  direction: projectile.direction,
+                  types: projectile.targetTypes,
+                }
+              );
+            } else {
+              this.applyProjectileDamage(projectile, collided);
+            }
           }
           this.removeProjectile(projectile);
           if (projectile.ringTrail) {

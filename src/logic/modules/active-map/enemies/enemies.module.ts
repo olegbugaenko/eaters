@@ -868,7 +868,7 @@ export class EnemiesModule implements GameModule {
                 },
               );
             }
-            return true; // Снаряд зникає після влучання
+            return false; // Дозволяємо стандартне нанесення шкоди
           },
         });
       });
