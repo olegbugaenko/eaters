@@ -2,9 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SpellId } from "@db/spells-db";
 import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import { SceneDebugPanel } from "./components/debug/SceneDebugPanel";
-import { SceneRunSummaryModal } from "./components/modals/SceneRunSummaryModal";
 import { SceneControlHintsPanel } from "./components/panels/SceneControlHintsPanel";
-import { SceneRunResourcePanel } from "./components/panels/SceneRunResourcePanel";
+import { SceneRunSummaryContainer } from "./components/panels/SceneRunSummaryContainer";
 import { SceneToolbarContainer } from "./components/toolbar/SceneToolbarContainer";
 import { SceneTooltipBridgePanel } from "./components/tooltip/SceneTooltipBridgePanel";
 import type { SceneTooltipContent } from "./components/tooltip/SceneTooltipPanel";
@@ -77,18 +76,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const [summoningTooltipContent, setSummoningTooltipContent] =
     useState<SceneTooltipContent | null>(null);
   const [isPauseOpen, setIsPauseOpen] = useState(false);
+  const [runCompleted, setRunCompleted] = useState(false);
   const {
-    resourceSummary,
     autoRestartState,
     autoRestartCountdown,
     handleToggleAutomation,
     handleToggleAutoRestart,
     handleRestart,
-    showRunSummary,
   } = useSceneRunState({
     bridge,
     map,
     unitAutomation,
+    runCompleted,
   });
   const spawnOptionsRef = useBridgeRef(
     bridge,
@@ -179,7 +178,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   // Clear UI overlays when modals/overlays become visible
   useEffect(() => {
-    if (showRunSummary) {
+    if (runCompleted) {
       map.clearInspectedTarget();
       setSummoningTooltipContent(null);
       setIsPauseOpen(false);
@@ -193,7 +192,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setSummoningTooltipContent(null);
       setIsPauseOpen(false);
     }
-  }, [map, showRunSummary, isPauseOpen, showTutorial]);
+  }, [map, runCompleted, isPauseOpen, showTutorial]);
 
   useEffect(() => {
     if (!showTutorial) {
@@ -219,7 +218,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       if (event.key !== "Escape") {
         return;
       }
-      if (showRunSummary) {
+      if (runCompleted) {
         return;
       }
       event.preventDefault();
@@ -230,11 +229,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [showRunSummary]);
+  }, [runCompleted]);
 
   useEffect(() => {
     const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
-    const shouldPause = isPauseOpen || shouldPauseForTutorial || showRunSummary;
+    const shouldPause = isPauseOpen || shouldPauseForTutorial || runCompleted;
     // For cast-magic-arrow step before cast, don't pause the map (to allow spell casting)
     const isSpellStepWaitingForCast = 
       showTutorial && 
@@ -249,7 +248,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       tutorialSpellCastDone,
       stepId: activeTutorialStepId,
       isPauseOpen,
-      showRunSummary,
+      showRunSummary: runCompleted,
       showTutorial,
     });
     
@@ -273,7 +272,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     }
     
     return undefined;
-  }, [activeTutorialStepId, allowTutorialGameplay, gameLoop, isPauseOpen, map, showRunSummary, showTutorial, tutorialSpellCastDone]);
+  }, [
+    activeTutorialStepId,
+    allowTutorialGameplay,
+    gameLoop,
+    isPauseOpen,
+    map,
+    runCompleted,
+    showTutorial,
+    tutorialSpellCastDone,
+  ]);
 
   const handleSummonDesign = useCallback(
     (designId: UnitDesignId) => {
@@ -294,6 +302,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       summonBlueVanguard: () => handleSummonDesign("bluePentagon"),
     });
   }, [handleSummonDesign]);
+
+  const handleRunCompletionChange = useCallback((completed: boolean) => {
+    setRunCompleted(completed);
+  }, []);
 
 
   // Tutorial spell step: advance after 3 seconds (primary condition)
@@ -363,7 +375,18 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         cameraUiStore={cameraUiStore}
         onScaleChange={handleScaleChange}
       />
-      <SceneRunResourcePanel resources={resourceSummary.resources} />
+      <SceneRunSummaryContainer
+        bridge={bridge}
+        autoRestartState={autoRestartState}
+        autoRestartCountdown={autoRestartCountdown}
+        onToggleAutoRestart={handleToggleAutoRestart}
+        onRestart={handleRestart}
+        onLeaveToMapSelect={handleLeaveToMapSelect}
+        isPauseOpen={isPauseOpen}
+        onResume={handleResume}
+        onLeaveToCamp={handleLeaveToCamp}
+        onRunCompletionChange={handleRunCompletionChange}
+      />
       <SceneControlHintsPanel />
       <SceneTooltipBridgePanel contentOverride={summoningTooltipContent} />
       <SceneDebugPanel bridge={bridge} />
@@ -386,42 +409,6 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
       </div>
-      {showRunSummary && (
-        <SceneRunSummaryModal
-          resources={resourceSummary.resources}
-          bricksDestroyed={resourceSummary.bricksDestroyed}
-          totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          title={
-            resourceSummary.success === true
-              ? "Map Complete"
-              : resourceSummary.success === false
-              ? "Run Ended"
-              : undefined
-          }
-          primaryAction={{ label: "Return to Void Lab", onClick: handleLeaveToMapSelect }}
-          secondaryAction={{ label: "Restart Map", onClick: handleRestart }}
-          autoRestart={
-            autoRestartState.unlocked
-              ? {
-                  enabled: autoRestartState.enabled,
-                  countdown: autoRestartCountdown,
-                  onToggle: handleToggleAutoRestart,
-                }
-              : undefined
-          }
-        />
-      )}
-      {isPauseOpen && !showRunSummary && (
-        <SceneRunSummaryModal
-          title="Run Paused"
-          subtitle="Resources recovered so far:"
-          resources={resourceSummary.resources}
-          bricksDestroyed={resourceSummary.bricksDestroyed}
-          totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          primaryAction={{ label: "Continue", onClick: handleResume }}
-          secondaryAction={{ label: "Return to Void Lab", onClick: handleLeaveToCamp }}
-        />
-      )}
       {showTutorial && (
         <SceneTutorialOverlay
           steps={tutorialSteps}

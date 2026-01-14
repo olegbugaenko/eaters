@@ -7,11 +7,6 @@ import {
 } from "@logic/modules/active-map/map/map.const";
 import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
-import {
-  RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
-  DEFAULT_RESOURCE_RUN_SUMMARY,
-} from "@logic/modules/shared/resources/resources.const";
-import type { ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { clearAllAuraSlots } from "@ui/renderers/objects";
 import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
@@ -21,28 +16,23 @@ interface UseSceneRunStateArgs {
   bridge: DataBridge;
   map: MapModuleUiApi;
   unitAutomation: UnitAutomationModuleUiApi;
+  runCompleted: boolean;
 }
 
 interface UseSceneRunStateResult {
-  resourceSummary: ResourceRunSummaryPayload;
   autoRestartState: MapAutoRestartState;
   autoRestartCountdown: number;
   handleToggleAutomation: (designId: UnitDesignId, enabled: boolean) => void;
   handleToggleAutoRestart: (enabled: boolean) => void;
   handleRestart: () => void;
-  showRunSummary: boolean;
 }
 
 export const useSceneRunState = ({
   bridge,
   map,
   unitAutomation,
+  runCompleted,
 }: UseSceneRunStateArgs): UseSceneRunStateResult => {
-  const resourceSummary = useBridgeValue(
-    bridge,
-    RESOURCE_RUN_SUMMARY_BRIDGE_KEY,
-    DEFAULT_RESOURCE_RUN_SUMMARY
-  );
   const autoRestartState = useBridgeValue(
     bridge,
     MAP_AUTO_RESTART_BRIDGE_KEY,
@@ -76,7 +66,7 @@ export const useSceneRunState = ({
   );
 
   useEffect(() => {
-    if (!resourceSummary.completed) {
+    if (!runCompleted) {
       autoRestartHandledRef.current = false;
       setAutoRestartCountdown(AUTO_RESTART_SECONDS);
       return;
@@ -105,15 +95,13 @@ export const useSceneRunState = ({
     return () => {
       window.clearInterval(interval);
     };
-  }, [autoRestartState.enabled, autoRestartState.unlocked, resourceSummary.completed, restartMap]);
+  }, [autoRestartState.enabled, autoRestartState.unlocked, restartMap, runCompleted]);
 
   return {
-    resourceSummary,
     autoRestartState,
     autoRestartCountdown,
     handleToggleAutomation,
     handleToggleAutoRestart,
     handleRestart,
-    showRunSummary: resourceSummary.completed,
   };
 };
