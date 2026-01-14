@@ -343,7 +343,7 @@ export const createParticleEmitterPrimitive = <
 
       return state.data;
     },
-    update(target: SceneObjectInstance) {
+    update(target: SceneObjectInstance, frameDeltaMs = 0) {
       const nextConfig = options.getConfig(target);
       if (!nextConfig) {
         const hadGpu = Boolean(state.gpu);
@@ -409,9 +409,7 @@ export const createParticleEmitterPrimitive = <
         updateParticleEmitterGpuUniforms(state.gpu, nextConfig);
       }
 
-      const now = getNowMs();
-      const deltaMs = Math.max(0, Math.min(now - state.lastTimestamp, MAX_DELTA_MS));
-      state.lastTimestamp = now;
+      const deltaMs = Math.max(0, Math.min(frameDeltaMs, MAX_DELTA_MS));
 
       return advanceParticleEmitterState(state, target, deltaMs, options);
     },

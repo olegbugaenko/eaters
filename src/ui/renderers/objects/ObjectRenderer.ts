@@ -36,7 +36,10 @@ export interface Primitive {
 export interface StaticPrimitive extends Primitive {}
 
 export interface DynamicPrimitive extends Primitive {
-  update(instance: SceneObjectInstance): Float32Array | null;
+  update(
+    instance: SceneObjectInstance,
+    frameDeltaMs?: number
+  ): Float32Array | null;
   updatePositionOnly?(instance: SceneObjectInstance): Float32Array | null;
   dispose?(): void;
   /**
@@ -86,11 +89,12 @@ export abstract class ObjectRenderer {
 
   public update(
     instance: SceneObjectInstance,
-    registration: ObjectRegistration
+    registration: ObjectRegistration,
+    frameDeltaMs?: number
   ): DynamicPrimitiveUpdate[] {
     const updates: DynamicPrimitiveUpdate[] = [];
     registration.dynamicPrimitives.forEach((primitive) => {
-      const data = primitive.update(instance);
+      const data = primitive.update(instance, frameDeltaMs);
       if (data) {
         updates.push({ primitive, data });
       }

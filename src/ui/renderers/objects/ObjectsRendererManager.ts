@@ -157,7 +157,8 @@ export class ObjectsRendererManager {
   }
 
   public applyChanges(
-    changes: ReturnType<SceneUiApi["flushChanges"]>
+    changes: ReturnType<SceneUiApi["flushChanges"]>,
+    frameDeltaMs?: number
   ): void {
     if (this.debugStatsEnabled) {
       this.debugChanges.added += changes.added.length;
@@ -171,7 +172,7 @@ export class ObjectsRendererManager {
       this.addObject(instance);
     });
     changes.updated.forEach((instance) => {
-      this.updateObject(instance);
+      this.updateObject(instance, frameDeltaMs);
     });
   }
 
@@ -243,7 +244,7 @@ export class ObjectsRendererManager {
    * creates new Float32Arrays every frame), we just update dynamicData in-place
    * and mark that a full dynamic buffer upload is needed.
    */
-  public tickAutoAnimating(): void {
+  public tickAutoAnimating(frameDeltaMs: number): void {
     const idsToRemove: string[] = [];
     const primitivesToRemove: DynamicPrimitive[] = [];
     const applyInterpolatedPosition = <T>(
@@ -278,7 +279,11 @@ export class ObjectsRendererManager {
         
         // Trigger update using current instance (renderer will recompute based on time)
         const updates = applyInterpolatedPosition(managed, objectId, () =>
-          managed.renderer.update(managed.instance, managed.registration)
+          managed.renderer.update(
+            managed.instance,
+            managed.registration,
+            frameDeltaMs
+          )
         );
         this.recordDebugUpdate(managed.instance.type);
         updates.forEach(({ primitive, data }) => {
@@ -313,7 +318,7 @@ export class ObjectsRendererManager {
         
         // Update only this specific primitive
         const data = applyInterpolatedPosition(managed, objectId, () =>
-          primitive.update(managed.instance)
+          primitive.update(managed.instance, frameDeltaMs)
         );
         if (data) {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
@@ -499,7 +504,7 @@ export class ObjectsRendererManager {
     }
   }
 
-  private updateObject(instance: SceneObjectInstance): void {
+  private updateObject(instance: SceneObjectInstance, frameDeltaMs?: number): void {
     const managed = this.objects.get(instance.id);
     if (!managed) {
       return;
@@ -523,7 +528,7 @@ export class ObjectsRendererManager {
     }
     const updates = isTransformOnly
       ? managed.renderer.updatePositionOnly(instance, managed.registration)
-      : managed.renderer.update(instance, managed.registration);
+      : managed.renderer.update(instance, managed.registration, frameDeltaMs);
     this.recordDebugUpdate(managed.instance.type);
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);

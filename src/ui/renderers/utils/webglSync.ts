@@ -21,10 +21,11 @@ export function applySyncInstructions(
   objectsRenderer: ObjectsRendererManager,
   staticBuffer: WebGLBuffer,
   dynamicBuffer: WebGLBuffer,
-  bufferState: { staticBytes: number; dynamicBytes: number }
+  bufferState: { staticBytes: number; dynamicBytes: number },
+  frameDeltaMs: number
 ): { staticBytes: number; dynamicBytes: number } {
   // Update auto-animating objects (time-based animations) before syncing
-  objectsRenderer.tickAutoAnimating();
+  objectsRenderer.tickAutoAnimating(frameDeltaMs);
   
   const sync = objectsRenderer.consumeSyncInstructions();
   
