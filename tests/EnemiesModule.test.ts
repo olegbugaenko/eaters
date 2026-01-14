@@ -11,6 +11,7 @@ import type { PlayerUnitState } from "../src/logic/modules/active-map/player-uni
 import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import { PLAYER_UNIT_TYPES } from "../src/db/player-units-db";
 import { createSolidFill } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
+import { hasAnyResources } from "../src/db/resources-db";
 import { createVisualEffectState } from "../src/logic/visuals/VisualEffectState";
 import { describe, test } from "./testRunner";
 import { MovementService } from "../src/core/logic/provided/services/movement/MovementService";
@@ -74,6 +75,11 @@ const createEnemiesModuleWithDeps = (
   const movement = options.movement ?? new MovementService();
   const bricks = options.bricks ?? createEmptyBricks();
   const statusEffects = options.statusEffects ?? new StatusEffectsModule();
+  const resources =
+    options.resources ??
+    ({
+      grantResources: () => {},
+    } as EnemiesModuleOptions["resources"]);
   const obstacles = options.obstacles ?? undefined;
   const pathfinder =
     options.pathfinder ??
@@ -90,6 +96,7 @@ const createEnemiesModuleWithDeps = (
       bridge,
       runState,
       movement,
+      resources,
       bricks,
       statusEffects,
       targeting: options.targeting,
@@ -169,6 +176,34 @@ describe("EnemiesModule", () => {
     const [updated] = module.getEnemies();
     assert(updated, "expected cooldown state to update");
     assert(updated!.attackCooldown < prevCooldown, "cooldown should tick down while running");
+  });
+
+  test("grants resources when enemy is destroyed", () => {
+    const runState = new MapRunState();
+    runState.start();
+    const rewards: Array<Parameters<EnemiesModuleOptions["resources"]["grantResources"]>[0]> = [];
+    const { module } = createEnemiesModuleWithDeps({
+      runState,
+      resources: {
+        grantResources: (amount) => rewards.push(amount),
+      },
+    });
+
+    module.setEnemies([
+      {
+        ...createEnemySpawnData(),
+        position: { x: 0, y: 0 },
+        hp: 2,
+      },
+    ]);
+
+    const [enemy] = module.getEnemies();
+    assert(enemy, "expected enemy state");
+
+    module.applyDamage(enemy.id, 10, { armorPenetration: 999 });
+
+    assert.strictEqual(rewards.length, 1, "expected resources to be granted");
+    assert(hasAnyResources(rewards[0]), "expected granted resources to be non-empty");
   });
 
   test("attacks nearby units via damage service and spawns explosions", () => {

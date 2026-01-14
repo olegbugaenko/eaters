@@ -6,6 +6,7 @@ import { clampNumber } from "@shared/helpers/numbers.helper";
 import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
 import {
   cloneResourceStockpile,
+  hasAnyResources,
   normalizeResourceAmount,
 } from "../../../../db/resources-db";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
@@ -37,6 +38,7 @@ import type {
   EnemySpawnData,
   InternalEnemyState,
 } from "./enemies.types";
+import { scaleEnemyResourceStockpile } from "./enemies.helpers";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { getEnemyConfig, type EnemyConfig } from "../../../../db/enemies-db";
@@ -87,6 +89,7 @@ export class EnemiesModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly runState: MapRunState;
   private readonly movement: MovementService;
+  private readonly resources: EnemiesModuleOptions["resources"];
   private readonly targeting?: TargetingService;
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
@@ -114,6 +117,7 @@ export class EnemiesModule implements GameModule {
     this.bridge = options.bridge;
     this.runState = options.runState;
     this.movement = options.movement;
+    this.resources = options.resources;
     this.targeting = options.targeting;
     this.damage = options.damage;
     this.explosions = options.explosions;
@@ -401,6 +405,7 @@ export class EnemiesModule implements GameModule {
       knockBackSpeed?: number;
       skipKnockback?: boolean;
       direction?: SceneVector2;
+      rewardMultiplier?: number;
     },
   ): number {
     if (damage <= 0) {
@@ -446,7 +451,7 @@ export class EnemiesModule implements GameModule {
     this.totalHpCached = Math.max(0, this.totalHpCached - dealt);
 
     if (enemy.hp <= 0) {
-      this.destroyEnemy(enemy);
+      this.destroyEnemy(enemy, options?.rewardMultiplier ?? 1);
     }
 
     this.pushStats();
@@ -490,7 +495,17 @@ export class EnemiesModule implements GameModule {
     return `${ENEMY_SCENE_OBJECT_TYPE}-${this.enemyIdCounter}`;
   }
 
-  private destroyEnemy(enemy: InternalEnemyState): void {
+  private destroyEnemy(enemy: InternalEnemyState, rewardMultiplier = 1): void {
+    if (enemy.reward && hasAnyResources(enemy.reward)) {
+      const multiplier = Math.max(rewardMultiplier, 0);
+      const rewards =
+        multiplier !== 1
+          ? scaleEnemyResourceStockpile(enemy.reward, multiplier)
+          : enemy.reward;
+      if (hasAnyResources(rewards)) {
+        this.resources.grantResources(rewards);
+      }
+    }
     this.scene.removeObject(enemy.sceneObjectId);
     this.movement.removeBody(enemy.movementId);
     this.enemies.delete(enemy.id);
@@ -853,7 +868,7 @@ export class EnemiesModule implements GameModule {
                 },
               );
             }
-            return true; // Снаряд зникає після влучання
+            return false; // Дозволяємо стандартне нанесення шкоди
           },
         });
       });

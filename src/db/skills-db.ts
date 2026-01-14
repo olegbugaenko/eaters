@@ -565,7 +565,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { emberglass_reactors: 2 },
-    cost: createStoneCost(100, 1.5),
+    cost: createSandCost(20, 1.5),
   },
   sand_scribing: {
     id: "sand_scribing",

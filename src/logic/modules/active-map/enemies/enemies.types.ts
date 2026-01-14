@@ -55,6 +55,10 @@ export interface EnemyRuntimeState {
   reward?: ResourceStockpile;
 }
 
+export interface EnemyResourceCollector {
+  grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
+}
+
 export interface InternalEnemyState extends EnemyRuntimeState {
   sceneObjectId: string;
   movementId: string;
@@ -80,6 +84,7 @@ export interface EnemiesModuleOptions {
   readonly bridge: DataBridge;
   readonly runState: MapRunState;
   readonly movement: MovementService;
+  readonly resources: EnemyResourceCollector;
   readonly targeting?: TargetingService;
   readonly damage?: DamageService;
   readonly explosions?: ExplosionModule;

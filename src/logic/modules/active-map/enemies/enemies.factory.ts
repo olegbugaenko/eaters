@@ -13,6 +13,7 @@ export const createEnemiesDefinition = (): ServiceDefinition<
       bridge: container.get("bridge"),
       runState: container.get("mapRunState"),
       movement: container.get("movement"),
+      resources: container.get("resources"),
       targeting: container.get("targeting"),
       damage: container.get("damage"),
       explosions: container.get("explosion"),
@@ -23,5 +24,5 @@ export const createEnemiesDefinition = (): ServiceDefinition<
     }),
   registerAsModule: true,
 
-  dependsOn: ["targeting", "damage", "explosion", "unitProjectiles", "bricks", "statusEffects"],
+  dependsOn: ["targeting", "damage", "explosion", "unitProjectiles", "bricks", "statusEffects", "resources"],
 });

@@ -994,6 +994,7 @@ export class UnitRuntimeController {
         inflictedDamage = this.damage.applyTargetDamage(target.id, totalDamage, {
           armorPenetration: unit.armorPenetration,
           direction,
+          rewardMultiplier: unit.rewardMultiplier,
         });
         hpChanged = inflictedDamage > 0;
         

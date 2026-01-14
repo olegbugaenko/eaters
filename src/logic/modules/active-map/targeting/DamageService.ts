@@ -110,6 +110,7 @@ export class DamageService {
         knockBackSpeed: options.knockBackSpeed,
         skipKnockback: options.skipKnockback,
         direction: options.direction,
+        rewardMultiplier: options.rewardMultiplier,
       });
     }
 
