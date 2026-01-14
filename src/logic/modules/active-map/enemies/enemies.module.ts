@@ -60,6 +60,9 @@ import type { ArcModule } from "../../scene/arc/arc.module";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
+const ENEMY_KNOCKBACK_DURATION_MS = 180;
+const ENEMY_KNOCKBACK_EPSILON = 0.001;
+const ENEMY_STATIC_KNOCKBACK_SPEED_SCALE = 0.05;
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -272,9 +275,12 @@ export class EnemiesModule implements GameModule {
         anyChanged = true;
       }
 
+      const knockbackOffset = this.updateEnemyKnockback(enemy, deltaMs);
+      const renderPosition = addVectors(enemy.position, knockbackOffset);
+
       // Update scene object position and rotation
       this.scene.updateObject(enemy.sceneObjectId, {
-        position: { ...enemy.position },
+        position: { ...renderPosition },
         rotation: enemy.rotation,
       });
 
@@ -388,7 +394,14 @@ export class EnemiesModule implements GameModule {
   public applyDamage(
     enemyId: string,
     damage: number,
-    options?: { armorPenetration?: number },
+    options?: {
+      armorPenetration?: number;
+      knockBackDirection?: SceneVector2;
+      knockBackDistance?: number;
+      knockBackSpeed?: number;
+      skipKnockback?: boolean;
+      direction?: SceneVector2;
+    },
   ): number {
     if (damage <= 0) {
       return 0;
@@ -421,6 +434,14 @@ export class EnemiesModule implements GameModule {
     enemy.hp = remainingHp;
     if (dealt > 0) {
       this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });
+      if (options?.skipKnockback !== true) {
+        this.applySelfKnockBack(
+          enemy,
+          options?.knockBackDirection ?? options?.direction,
+          options?.knockBackDistance,
+          options?.knockBackSpeed,
+        );
+      }
     }
     this.totalHpCached = Math.max(0, this.totalHpCached - dealt);
 
@@ -477,6 +498,87 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.delete(enemy.id);
     this.navigationState.delete(enemy.id);
     this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
+  }
+
+  private applySelfKnockBack(
+    enemy: InternalEnemyState,
+    direction: SceneVector2 | undefined,
+    knockBackDistanceOverride?: number,
+    knockBackSpeedOverride?: number,
+  ): void {
+    const knockBackDistance = Math.max(
+      knockBackDistanceOverride ?? enemy.selfKnockBackDistance,
+      0
+    );
+    const knockBackSpeedRaw = Math.max(
+      knockBackSpeedOverride ?? enemy.selfKnockBackSpeed,
+      0
+    );
+    if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
+      return;
+    }
+
+    let axis = direction ?? { x: 0, y: 0 };
+    const distance = vectorLength(axis);
+    if (distance > 0) {
+      axis = scaleVector(axis, 1 / distance);
+    } else {
+      axis = { x: Math.cos(enemy.rotation), y: Math.sin(enemy.rotation) };
+    }
+
+    if (!vectorHasLength(axis)) {
+      axis = { x: 0, y: -1 };
+    }
+
+    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    if (knockBackSpeed <= 0) {
+      return;
+    }
+
+    if (this.getEffectiveMoveSpeed(enemy) <= 0) {
+      const amplitude =
+        knockBackDistance > 0
+          ? knockBackDistance
+          : knockBackSpeedRaw * ENEMY_STATIC_KNOCKBACK_SPEED_SCALE;
+      if (amplitude <= ENEMY_KNOCKBACK_EPSILON) {
+        return;
+      }
+      const offset = scaleVector(axis, amplitude);
+      enemy.knockback = {
+        initialOffset: offset,
+        currentOffset: offset,
+        elapsed: 0,
+      };
+      return;
+    }
+
+    const duration = 1;
+    const knockbackVelocity = scaleVector(axis, knockBackSpeed);
+    this.movement.applyKnockback(enemy.movementId, knockbackVelocity, duration);
+  }
+
+  private updateEnemyKnockback(
+    enemy: InternalEnemyState,
+    deltaMs: number
+  ): SceneVector2 {
+    if (!enemy.knockback || deltaMs <= 0) {
+      return ZERO_VECTOR;
+    }
+
+    const state = enemy.knockback;
+    state.elapsed = Math.min(state.elapsed + deltaMs, ENEMY_KNOCKBACK_DURATION_MS);
+    const progress = clampNumber(state.elapsed / ENEMY_KNOCKBACK_DURATION_MS, 0, 1);
+    const remaining = 1 - progress;
+    const eased = remaining * remaining;
+
+    if (eased <= ENEMY_KNOCKBACK_EPSILON) {
+      enemy.knockback = null;
+      return ZERO_VECTOR;
+    }
+
+    const offset = scaleVector(state.initialOffset, eased);
+    state.currentOffset = offset;
+    return offset;
   }
 
   private findTargetForEnemy(
@@ -1414,8 +1516,8 @@ export class EnemiesModule implements GameModule {
       attackRange: enemy.attackRange,
       moveSpeed: enemy.moveSpeed,
       physicalSize: enemy.physicalSize,
-      knockBackDistance: enemy.knockBackDistance,
-      knockBackSpeed: enemy.knockBackSpeed,
+      selfKnockBackDistance: enemy.selfKnockBackDistance,
+      selfKnockBackSpeed: enemy.selfKnockBackSpeed,
       reward: enemy.reward
         ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward))
         : undefined,

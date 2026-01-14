@@ -15,7 +15,7 @@ import { createVisualEffectState } from "../src/logic/visuals/VisualEffectState"
 import { describe, test } from "./testRunner";
 import { MovementService } from "../src/core/logic/provided/services/movement/MovementService";
 import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
-import type { EnemiesModuleOptions } from "../src/logic/modules/active-map/enemies/enemies.types";
+import type { EnemiesModuleOptions, InternalEnemyState } from "../src/logic/modules/active-map/enemies/enemies.types";
 import { PathfindingService } from "../src/logic/shared/navigation/PathfindingService";
 import type { ObstacleDescriptor, ObstacleProvider } from "../src/logic/shared/navigation/navigation.types";
 import type { SceneVector2 } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
@@ -341,6 +341,111 @@ describe("EnemiesModule", () => {
     const unitAfterHit = units[0]!;
     assert(unitAfterHit.hp < 10, "enemy attack should deal damage to units");
     assert(explosionCalls > 0, "enemy attack should spawn explosion visuals");
+  });
+
+  test("applies self-knockback to enemies when taking damage", () => {
+    const runState = new MapRunState();
+    runState.start();
+    const movement = new MovementService();
+    const { module } = createEnemiesModuleWithDeps({ runState, movement });
+
+    module.setEnemies([
+      {
+        ...createEnemySpawnData(),
+        hp: 10,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    const enemy = (module as unknown as { enemyOrder: InternalEnemyState[] }).enemyOrder[0];
+    assert(enemy, "expected internal enemy state");
+    const initialState = movement.getBodyState(enemy.movementId);
+    assert(initialState, "expected movement body state");
+    assert.strictEqual(initialState.velocity.x, 0);
+    assert.strictEqual(initialState.velocity.y, 0);
+
+    const dealt = module.applyDamage(enemy.id, 4, {
+      armorPenetration: 999,
+      direction: { x: 1, y: 0 },
+    });
+    assert(dealt > 0, "expected damage to be applied");
+
+    const nextState = movement.getBodyState(enemy.movementId);
+    assert(nextState, "expected movement body state after knockback");
+    assert(nextState.velocity.x > 0, "expected knockback velocity to push away from attacker");
+    assert.notStrictEqual(nextState.velocity.x, 0);
+  });
+
+  test("does not apply self-knockback when enemy self-knockback is zero", () => {
+    const runState = new MapRunState();
+    runState.start();
+    const movement = new MovementService();
+    const { module } = createEnemiesModuleWithDeps({ runState, movement });
+
+    module.setEnemies([
+      {
+        ...createEnemySpawnData(),
+        hp: 10,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    const enemy = (module as unknown as { enemyOrder: InternalEnemyState[] }).enemyOrder[0];
+    assert(enemy, "expected internal enemy state");
+    enemy.selfKnockBackDistance = 0;
+    enemy.selfKnockBackSpeed = 0;
+
+    const dealt = module.applyDamage(enemy.id, 4, {
+      armorPenetration: 999,
+      direction: { x: 1, y: 0 },
+    });
+    assert(dealt > 0, "expected damage to be applied");
+
+    const nextState = movement.getBodyState(enemy.movementId);
+    assert(nextState, "expected movement body state after damage");
+    assert.strictEqual(nextState.velocity.x, 0);
+    assert.strictEqual(nextState.velocity.y, 0);
+  });
+
+  test("static enemies use knockback offsets and return to base position", () => {
+    const runState = new MapRunState();
+    runState.start();
+    const scene = new SceneObjectManager();
+    const movement = new MovementService();
+    const { module } = createEnemiesModuleWithDeps({ runState, scene, movement });
+
+    module.setEnemies([
+      {
+        type: "turretEnemy",
+        level: 1,
+        position: { x: 20, y: 10 },
+        hp: 10,
+      },
+    ]);
+
+    const enemy = (module as unknown as { enemyOrder: InternalEnemyState[] }).enemyOrder[0];
+    assert(enemy, "expected internal enemy state");
+    const basePosition = { ...enemy.position };
+
+    module.applyDamage(enemy.id, 4, {
+      armorPenetration: 999,
+      direction: { x: 1, y: 0 },
+    });
+    module.tick(60);
+
+    const sceneObject = scene.getObject(enemy.sceneObjectId);
+    assert(sceneObject, "expected scene object");
+    assert(
+      sceneObject.data.position.x !== basePosition.x ||
+        sceneObject.data.position.y !== basePosition.y,
+      "expected knockback offset to move render position"
+    );
+
+    module.tick(240);
+    const settled = scene.getObject(enemy.sceneObjectId);
+    assert(settled, "expected scene object after settling");
+    assert.strictEqual(settled.data.position.x, basePosition.x);
+    assert.strictEqual(settled.data.position.y, basePosition.y);
   });
 
   test("advances attack series over time for projectile enemies", () => {
