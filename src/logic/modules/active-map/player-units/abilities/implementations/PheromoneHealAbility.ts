@@ -123,7 +123,6 @@ const executeHeal = (
 
   return {
     success: true,
-    soundId: "heal",
     statsChanged: true,
   };
 };

@@ -12,6 +12,7 @@ import type { ExplosionType } from "../../../../../db/explosions-db";
 import { getArcConfig } from "../../../../../db/arcs-db";
 import type { PlayerUnitAbilityState } from "./AbilityUnitState";
 import { addVectors, sanitizeOffset } from "@/shared/helpers/vector.helper";
+import type { SoundEffectPlayer } from "../../../../../core/logic/provided/modules/audio/audio.types";
 
 interface AbilityVisualServiceOptions {
   scene: SceneObjectManager;
@@ -20,6 +21,7 @@ interface AbilityVisualServiceOptions {
   getEffects: () => EffectsModule | undefined;
   getFireballs: () => FireballModule | undefined;
   getUnitObjectId: (unitId: string) => string | undefined;
+  audio?: SoundEffectPlayer;
 }
 
 interface AbilityArcEntry {
@@ -47,6 +49,7 @@ export class AbilityVisualService {
   private readonly getEffects: () => EffectsModule | undefined;
   private readonly getFireballs: () => FireballModule | undefined;
   private readonly getUnitObjectId: (unitId: string) => string | undefined;
+  private readonly audio?: SoundEffectPlayer;
   private activeArcEffects: AbilityArcEntry[] = [];
 
   constructor(options: AbilityVisualServiceOptions) {
@@ -56,6 +59,7 @@ export class AbilityVisualService {
     this.getEffects = options.getEffects;
     this.getFireballs = options.getFireballs;
     this.getUnitObjectId = options.getUnitObjectId;
+    this.audio = options.audio;
   }
 
   public reset(): void {
@@ -148,6 +152,9 @@ export class AbilityVisualService {
 
     try {
       const config = getArcConfig(arcType);
+      if (config.soundEffectUrl) {
+        this.audio?.playSoundEffect(config.soundEffectUrl);
+      }
       const sourceOffset = sanitizeOffset(options?.sourceOffset);
       const sourcePosition = sourceOffset
         ? addVectors(source.position, sourceOffset)

@@ -25,10 +25,7 @@ import type { StatusEffectsModule } from "../status-effects/status-effects.modul
 // Re-export for backward compatibility
 export type AbilitySoundPlayer = SoundEffectPlayer;
 
-const ABILITY_SOUND_URLS: Record<AbilitySoundId, string> = {
-  heal: "/audio/sounds/brick_effects/heal.mp3",
-  frenzy: "/audio/sounds/brick_effects/buff.mp3",
-  fireball: "/audio/sounds/brick_effects/fireball.mp3",
+const ABILITY_SOUND_URLS: Partial<Record<AbilitySoundId, string>> = {
   tailNeedle: "/audio/sounds/brick_effects/fireball.mp3", // TODO: Add specific sound if needed
 };
 

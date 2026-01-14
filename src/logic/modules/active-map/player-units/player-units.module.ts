@@ -170,6 +170,7 @@ export class PlayerUnitsModule implements GameModule {
         const unit = this.units.get(unitId);
         return unit?.objectId;
       },
+      audio: options.audio,
     });
 
     this.abilities = new PlayerUnitAbilities({

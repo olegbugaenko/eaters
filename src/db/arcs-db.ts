@@ -7,6 +7,7 @@ export interface ArcConfig {
   readonly blurColor: SceneColor;
   readonly coreWidth: number;
   readonly blurWidth: number;
+  readonly soundEffectUrl?: string;
   readonly lifetimeMs: number;
   readonly fadeStartMs: number;
   readonly bendsPer100Px: number;
@@ -30,6 +31,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: HEAL_ARC_BLUR,
     coreWidth: 2,
     blurWidth: 30,
+    soundEffectUrl: "/audio/sounds/unit_effects/heal.mp3",
     lifetimeMs: 1000,
     fadeStartMs: 500,
     bendsPer100Px: 2,
@@ -42,6 +44,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: FRENZY_ARC_BLUR,
     coreWidth: 2,
     blurWidth: 25,
+    soundEffectUrl: "/audio/sounds/unit_effects/buff.mp3",
     lifetimeMs: 1000,
     fadeStartMs: 500,
     bendsPer100Px: 2,
@@ -66,6 +69,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: LASER_ARC_BLUR,
     coreWidth: 1,
     blurWidth: 3,
+    soundEffectUrl: "/audio/sounds/unit_effects/laser_01.mp3",
     lifetimeMs: 600,
     fadeStartMs: 350,
     bendsPer100Px: 0,

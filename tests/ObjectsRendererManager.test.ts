@@ -59,12 +59,12 @@ describe("ObjectsRendererManager interpolated positions", () => {
     manager.applyInterpolatedPositions(interpolated);
     const afterApplyIndex = updates.length;
 
-    manager.tickAutoAnimating();
+    manager.tickAutoAnimating(0);
     assert.deepStrictEqual(updates[afterApplyIndex], { x: 5, y: 6 });
     assert.deepStrictEqual(instance.data.position, { x: 0, y: 0 });
 
     const afterFirstTickIndex = updates.length;
-    manager.tickAutoAnimating();
+    manager.tickAutoAnimating(0);
     assert.deepStrictEqual(updates[afterFirstTickIndex], { x: 0, y: 0 });
   });
 
@@ -98,7 +98,7 @@ describe("ObjectsRendererManager interpolated positions", () => {
     ]);
     manager.applyInterpolatedBulletPositions(interpolated);
 
-    manager.tickAutoAnimating();
+    manager.tickAutoAnimating(0);
     assert.deepStrictEqual(updates[updates.length - 1], { x: 9, y: 8 });
   });
 });

@@ -148,6 +148,7 @@ export class FireballModule implements GameModule {
         speed: FIREBALL_SPEED,
         lifetimeMs: (maxDistance / FIREBALL_SPEED) * 1000,
         fill,
+        soundEffectUrl: "/audio/sounds/unit_effects/fireball.mp3",
         tail: FIREBALL_TAIL_RENDER,
         shape: "sprite",
         spriteName: "fireball",

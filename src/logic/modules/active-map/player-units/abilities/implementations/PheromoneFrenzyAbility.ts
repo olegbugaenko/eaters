@@ -103,7 +103,6 @@ const executeFrenzy = (
 
   return {
     success: true,
-    soundId: "frenzy",
   };
 };
 

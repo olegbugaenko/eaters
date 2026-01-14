@@ -6,6 +6,7 @@ import { ArcType, getArcConfig } from "../../../../db/arcs-db";
 import { getNowMs } from "@shared/helpers/time.helper";
 import { addVectors, sanitizeOffset } from "@shared/helpers/vector.helper";
 import type { ArcModuleOptions, ArcSpawnOptions, ArcState, ArcTargetRef } from "./arc.types";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 
 export class ArcModule implements GameModule {
   public readonly id = "arcs";
@@ -17,12 +18,14 @@ export class ArcModule implements GameModule {
   private readonly getEnemyPositionIfAlive?: (
     enemyId: string,
   ) => SceneVector2 | null;
+  private readonly audio?: SoundEffectPlayer;
   private arcs: ArcState[] = [];
 
   constructor(options: ArcModuleOptions) {
     this.scene = options.scene;
     this.getUnitPositionIfAlive = options.getUnitPositionIfAlive;
     this.getEnemyPositionIfAlive = options.getEnemyPositionIfAlive;
+    this.audio = options.audio;
   }
 
   public initialize(): void {}
@@ -104,6 +107,9 @@ export class ArcModule implements GameModule {
     options?: ArcSpawnOptions,
   ): void {
     const cfg = getArcConfig(type);
+    if (cfg.soundEffectUrl) {
+      this.audio?.playSoundEffect(cfg.soundEffectUrl);
+    }
     const sourceOffset = sanitizeOffset(options?.sourceOffset);
     const from = this.getArcTargetPosition(source, sourceOffset);
     const to = this.getArcTargetPosition(target);

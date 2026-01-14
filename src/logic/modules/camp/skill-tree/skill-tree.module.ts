@@ -42,6 +42,7 @@ export class SkillTreeModule implements GameModule {
   private readonly resources: ResourcesModule;
   private readonly bonuses: BonusesModule;
   private readonly eventLog: EventLogModule;
+  private readonly audio?: SkillTreeModuleOptions["audio"];
   private levels: SkillLevelMap = createDefaultLevels();
   private viewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private unsubscribeBonuses: (() => void) | null = null;
@@ -52,6 +53,7 @@ export class SkillTreeModule implements GameModule {
     this.resources = options.resources;
     this.bonuses = options.bonuses;
     this.eventLog = options.eventLog;
+    this.audio = options.audio;
     DataBridgeHelpers.registerComparator(
       this.bridge,
       SKILL_TREE_STATE_BRIDGE_KEY,
@@ -147,6 +149,7 @@ export class SkillTreeModule implements GameModule {
     this.levels[id] = targetLevel;
     this.syncBonusLevel(id);
     this.pushState();
+    this.audio?.playSoundEffect("/audio/sounds/ui/purchase_v0.mp3");
     if (config.registerEvent) {
       this.eventLog.registerEvent(
         "skill-obtained",
