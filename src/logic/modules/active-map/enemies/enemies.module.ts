@@ -388,7 +388,14 @@ export class EnemiesModule implements GameModule {
   public applyDamage(
     enemyId: string,
     damage: number,
-    options?: { armorPenetration?: number },
+    options?: {
+      armorPenetration?: number;
+      knockBackDirection?: SceneVector2;
+      knockBackDistance?: number;
+      knockBackSpeed?: number;
+      skipKnockback?: boolean;
+      direction?: SceneVector2;
+    },
   ): number {
     if (damage <= 0) {
       return 0;
@@ -421,6 +428,14 @@ export class EnemiesModule implements GameModule {
     enemy.hp = remainingHp;
     if (dealt > 0) {
       this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });
+      if (options?.skipKnockback !== true) {
+        this.applySelfKnockBack(
+          enemy,
+          options?.knockBackDirection ?? options?.direction,
+          options?.knockBackDistance,
+          options?.knockBackSpeed,
+        );
+      }
     }
     this.totalHpCached = Math.max(0, this.totalHpCached - dealt);
 
@@ -477,6 +492,46 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.delete(enemy.id);
     this.navigationState.delete(enemy.id);
     this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
+  }
+
+  private applySelfKnockBack(
+    enemy: InternalEnemyState,
+    direction: SceneVector2 | undefined,
+    knockBackDistanceOverride?: number,
+    knockBackSpeedOverride?: number,
+  ): void {
+    const knockBackDistance = Math.max(
+      knockBackDistanceOverride ?? enemy.selfKnockBackDistance,
+      0
+    );
+    const knockBackSpeedRaw = Math.max(
+      knockBackSpeedOverride ?? enemy.selfKnockBackSpeed,
+      0
+    );
+    if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
+      return;
+    }
+
+    let axis = direction ?? { x: 0, y: 0 };
+    const distance = vectorLength(axis);
+    if (distance > 0) {
+      axis = scaleVector(axis, 1 / distance);
+    } else {
+      axis = { x: Math.cos(enemy.rotation), y: Math.sin(enemy.rotation) };
+    }
+
+    if (!vectorHasLength(axis)) {
+      axis = { x: 0, y: -1 };
+    }
+
+    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    if (knockBackSpeed <= 0) {
+      return;
+    }
+
+    const duration = 1;
+    const knockbackVelocity = scaleVector(axis, -knockBackSpeed);
+    this.movement.applyKnockback(enemy.movementId, knockbackVelocity, duration);
   }
 
   private findTargetForEnemy(

@@ -105,6 +105,11 @@ export class DamageService {
     if (target.type === "enemy" && enemies) {
       return enemies.applyDamage(target.id, damage, {
         armorPenetration: options.armorPenetration,
+        knockBackDirection: options.knockBackDirection,
+        knockBackDistance: options.knockBackDistance,
+        knockBackSpeed: options.knockBackSpeed,
+        skipKnockback: options.skipKnockback,
+        direction: options.direction,
       });
     }
 

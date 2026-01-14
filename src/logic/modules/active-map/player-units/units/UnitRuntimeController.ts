@@ -993,6 +993,7 @@ export class UnitRuntimeController {
       if (targetSnapshot && isTargetOfType<"enemy", EnemyRuntimeState>(targetSnapshot, "enemy")) {
         inflictedDamage = this.damage.applyTargetDamage(target.id, totalDamage, {
           armorPenetration: unit.armorPenetration,
+          direction,
         });
         hpChanged = inflictedDamage > 0;
         
