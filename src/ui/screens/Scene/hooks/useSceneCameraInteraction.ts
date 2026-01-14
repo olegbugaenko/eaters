@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import type {
   SceneCameraState,
@@ -49,11 +48,22 @@ interface UseSceneCameraInteractionResult {
   lastPointerPositionRef: MutableRefObject<{ x: number; y: number } | null>;
   cameraInfoRef: MutableRefObject<SceneCameraState>;
   scaleRef: MutableRefObject<number>;
+  cameraUiStore: CameraUiStore;
+  handleScaleChange: (value: number) => void;
+}
+
+export interface CameraUiState {
   scale: number;
   cameraInfo: SceneCameraState;
   scaleRange: { min: number; max: number };
-  handleScaleChange: (value: number) => void;
 }
+
+export interface CameraUiStore {
+  getSnapshot: () => CameraUiState;
+  subscribe: (listener: () => void) => () => void;
+}
+
+type CameraUiUpdate = Partial<CameraUiState>;
 
 export const useSceneCameraInteraction = ({
   scene,
@@ -75,14 +85,67 @@ export const useSceneCameraInteraction = ({
 }: UseSceneCameraInteractionArgs): UseSceneCameraInteractionResult => {
   // Delay scale initialization until viewport is properly sized
   const hasInitializedScaleRef = useRef(false);
-  const [scale, setScale] = useState(() => {
-    // Don't initialize from scene yet - wait for first resize
-    return scaleRef.current ?? 1;
+  const cameraUiStateRef = useRef<CameraUiState>({
+    scale: scaleRef.current ?? 1,
+    cameraInfo: cameraInfoRef.current ?? scene.getCamera(),
+    scaleRange: scene.getScaleRange(),
   });
-  const [cameraInfo, setCameraInfo] = useState(
-    () => cameraInfoRef.current ?? scene.getCamera()
+  const cameraUiListenersRef = useRef(new Set<() => void>());
+  const cameraUiStore = useMemo<CameraUiStore>(
+    () => ({
+      getSnapshot: () => cameraUiStateRef.current,
+      subscribe: (listener) => {
+        cameraUiListenersRef.current.add(listener);
+        return () => {
+          cameraUiListenersRef.current.delete(listener);
+        };
+      },
+    }),
+    []
   );
-  const [scaleRange, setScaleRange] = useState(() => scene.getScaleRange());
+  const notifyCameraUi = useCallback(() => {
+    cameraUiListenersRef.current.forEach((listener) => listener());
+  }, []);
+  const updateCameraUi = useCallback(
+    (next: CameraUiUpdate) => {
+      const current = cameraUiStateRef.current;
+      let hasChange = false;
+      const updated: CameraUiState = { ...current };
+
+      if (next.scale !== undefined && next.scale !== current.scale) {
+        updated.scale = next.scale;
+        hasChange = true;
+      }
+      if (next.cameraInfo !== undefined) {
+        const nextCamera = next.cameraInfo;
+        const prevCamera = current.cameraInfo;
+        const hasCameraChange =
+          Math.abs(nextCamera.position.x - prevCamera.position.x) > 0.0001 ||
+          Math.abs(nextCamera.position.y - prevCamera.position.y) > 0.0001 ||
+          Math.abs(nextCamera.viewportSize.width - prevCamera.viewportSize.width) > 0.0001 ||
+          Math.abs(nextCamera.viewportSize.height - prevCamera.viewportSize.height) > 0.0001 ||
+          Math.abs(nextCamera.scale - prevCamera.scale) > 0.0001;
+        if (hasCameraChange) {
+          updated.cameraInfo = nextCamera;
+          hasChange = true;
+        }
+      }
+      if (next.scaleRange !== undefined) {
+        const nextRange = next.scaleRange;
+        const prevRange = current.scaleRange;
+        if (nextRange.min !== prevRange.min || nextRange.max !== prevRange.max) {
+          updated.scaleRange = nextRange;
+          hasChange = true;
+        }
+      }
+
+      if (hasChange) {
+        cameraUiStateRef.current = updated;
+        notifyCameraUi();
+      }
+    },
+    [notifyCameraUi]
+  );
   // Debug stats are now written to global debugStats object (no React state)
   const vboStatsRef = useRef<BufferStats>({ bytes: 0, reallocs: 0 });
   const particleStatsRef = useRef<ParticleStatsState>({ active: 0, capacity: 0, emitters: 0 });
@@ -92,19 +155,12 @@ export const useSceneCameraInteraction = ({
     (nextScale: number) => {
       scene.setScale(nextScale);
       const current = scene.getCamera();
-      setScale(current.scale);
-      setCameraInfo(current);
+      scaleRef.current = current.scale;
+      cameraInfoRef.current = current;
+      updateCameraUi({ scale: current.scale, cameraInfo: current });
     },
-    [scene]
+    [cameraInfoRef, scaleRef, scene, updateCameraUi]
   );
-
-  useEffect(() => {
-    cameraInfoRef.current = cameraInfo;
-  }, [cameraInfo]);
-
-  useEffect(() => {
-    scaleRef.current = scale;
-  }, [scale]);
 
   useSceneCanvas({
     scene,
@@ -119,9 +175,7 @@ export const useSceneCameraInteraction = ({
     lastPointerPositionRef,
     cameraInfoRef,
     scaleRef,
-    setScale,
-    setCameraInfo,
-    setScaleRange,
+    onCameraUiChange: updateCameraUi,
     vboStatsRef,
     particleStatsRef,
     particleStatsLastUpdateRef,
@@ -193,9 +247,7 @@ export const useSceneCameraInteraction = ({
     lastPointerPositionRef,
     cameraInfoRef,
     scaleRef,
-    scale,
-    cameraInfo,
-    scaleRange,
+    cameraUiStore,
     handleScaleChange,
   };
 };

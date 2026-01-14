@@ -5,7 +5,7 @@ import { SceneDebugPanel } from "./components/debug/SceneDebugPanel";
 import { SceneRunSummaryModal } from "./components/modals/SceneRunSummaryModal";
 import { SceneControlHintsPanel } from "./components/panels/SceneControlHintsPanel";
 import { SceneRunResourcePanel } from "./components/panels/SceneRunResourcePanel";
-import { SceneToolbar } from "./components/toolbar/SceneToolbar";
+import { SceneToolbarContainer } from "./components/toolbar/SceneToolbarContainer";
 import { SceneTooltipBridgePanel } from "./components/tooltip/SceneTooltipBridgePanel";
 import type { SceneTooltipContent } from "./components/tooltip/SceneTooltipPanel";
 import {
@@ -158,8 +158,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     [map],
   );
 
-  const { scale, cameraInfo, scaleRange, handleScaleChange } =
-    useSceneCameraInteraction({
+  const { cameraUiStore, handleScaleChange } = useSceneCameraInteraction({
       scene,
       spellcasting,
       gameLoop,
@@ -358,13 +357,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   return (
     <div className="scene-screen">
-      <SceneToolbar
+      <SceneToolbarContainer
         bridge={bridge}
         onExit={() => setIsPauseOpen((open) => !open)}
-        scale={scale}
-        scaleRange={scaleRange}
+        cameraUiStore={cameraUiStore}
         onScaleChange={handleScaleChange}
-        cameraPosition={cameraInfo.position}
       />
       <SceneRunResourcePanel resources={resourceSummary.resources} />
       <SceneControlHintsPanel />
