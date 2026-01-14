@@ -833,16 +833,16 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         },
       ],
     },
-    maxHp: 125,
-    armor: 8,
-    baseDamage: 24,
+    maxHp: 175,
+    armor: 14,
+    baseDamage: 34,
     attackInterval: 1.5,
     attackRange: 400,
     moveSpeed: 0, // Статична турель
     physicalSize: 30,
     reward: normalizeResourceAmount({
-      stone: 50,
-      iron: 10,
+      stone: 20,
+      iron: 4,
     }),
     projectile: {
       radius: 5,
@@ -854,6 +854,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       },
       shape: "circle",
       hitRadius: 8,
+      damageRadius: 14,
       explosion: "smallCannon", // Тип експлозії при влучанні снаряда
     },
     knockBackDistance: 120,
@@ -936,6 +937,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       radius: 12,
       speed: 130,
       lifetimeMs: 4500,
+      damageRadius: 18,
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.6, g: 0.6, b: 0.4, a: 1 },
@@ -1275,6 +1277,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       },
       shape: "circle",
       hitRadius: 60,
+      damageRadius: 50,
       explosion: "bigCannon",
       tail: {
         lengthMultiplier: 4.0,

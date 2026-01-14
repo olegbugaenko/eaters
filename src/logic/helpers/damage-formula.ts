@@ -13,6 +13,6 @@ export const calculateMitigatedDamage = (options: DamageFormulaOptions): number 
   const effectiveArmor =
     Math.max(options.armor + armorDelta - armorPenetration, 0) * (options.overTime ?? 1);
   const incomingMultiplier = Math.max(options.incomingMultiplier ?? 1, 1);
-  const armorDmgMitigation = options.rawDamage / (options.rawDamage + effectiveArmor + 1);
+  const armorDmgMitigation = options.rawDamage / (options.rawDamage + effectiveArmor + 0.001);
   return Math.max(options.rawDamage * armorDmgMitigation, 0) * incomingMultiplier;
 };
