@@ -66,7 +66,6 @@ const executeFireball = (
   );
   return {
     success: true,
-    soundId: "fireball",
   };
 };
 

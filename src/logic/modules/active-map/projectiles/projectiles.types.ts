@@ -16,6 +16,7 @@ export interface UnitProjectileVisualConfig {
   lifetimeMs: number;
   fill: SceneFill;
   spawnOffset?: SceneVector2;
+  soundEffectUrl?: string;
   tail?: BulletTailConfig;
   tailEmitter?: ParticleEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;

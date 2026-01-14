@@ -33,6 +33,7 @@ import {
   type RingSlotHandle,
 } from "@ui/renderers/primitives/gpu/ring";
 import { resolveBulletSpriteIndex } from "@logic/services/bullet-render-bridge/bullet-sprites.helpers";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 import type {
   UnitProjectileShape,
   UnitProjectileVisualConfig,
@@ -49,6 +50,7 @@ export class UnitProjectileController {
   private readonly scene: SceneObjectManager;
   private readonly targeting: TargetingService;
   private readonly damage: DamageService;
+  private readonly audio?: SoundEffectPlayer;
 
   private projectiles: UnitProjectileState[] = [];
   private projectileIndex = new Map<string, UnitProjectileState>();
@@ -59,10 +61,12 @@ export class UnitProjectileController {
     scene: SceneObjectManager;
     targeting: TargetingService;
     damage: DamageService;
+    audio?: SoundEffectPlayer;
   }) {
     this.scene = options.scene;
     this.targeting = options.targeting;
     this.damage = options.damage;
+    this.audio = options.audio;
   }
 
   public spawn(projectile: UnitProjectileSpawn): string {
@@ -89,6 +93,9 @@ export class UnitProjectileController {
       ...baseVisual,
       spriteIndex, // This will be undefined if not resolved, which is fine
     };
+    if (visual.soundEffectUrl) {
+      this.audio?.playSoundEffect(visual.soundEffectUrl);
+    }
     const origin = {
       x: projectile.origin.x + (visual.spawnOffset?.x ?? 0),
       y: projectile.origin.y + (visual.spawnOffset?.y ?? 0),

@@ -59,6 +59,7 @@ export interface ExplosionConfig {
   defaultInitialRadius: number;
   waves: readonly ExplosionWaveConfig[];
   emitter: ParticleEmitterConfig;
+  soundEffectUrl?: string;
 }
 
 const createSimpleWave = (options: {
@@ -509,6 +510,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   smallCannon: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 10,
@@ -535,6 +537,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   smallCannonGrey: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 10,
@@ -561,6 +564,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   bigCannon: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 20,
@@ -999,6 +1003,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   smallEnergetic: {
     lifetimeMs: 1_200,
     defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
     waves: createSimpleWave({
       defaultInitialRadius: 2,
       radiusExtension: 5,

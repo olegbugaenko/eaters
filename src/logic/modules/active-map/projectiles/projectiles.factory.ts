@@ -11,6 +11,7 @@ export const createUnitProjectilesDefinition = (): ServiceDefinition<
       scene: container.get("sceneObjects"),
       targeting: container.get("targeting"),
       damage: container.get("damage"),
+      audio: container.getOptional("audio") ?? undefined,
     }),
   registerAsModule: false,
   dependsOn: ["targeting", "damage"],

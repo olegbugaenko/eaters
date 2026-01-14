@@ -6,6 +6,7 @@ export const createExplosionDefinition = (): ServiceDefinition<ExplosionModule, 
   factory: (container) =>
     new ExplosionModule({
       scene: container.get("sceneObjects"),
+      audio: container.getOptional("audio") ?? undefined,
     }),
   registerAsModule: true,
 });
