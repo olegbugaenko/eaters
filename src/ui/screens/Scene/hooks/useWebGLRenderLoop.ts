@@ -107,8 +107,12 @@ export const createWebGLRenderLoop = (
   } = options;
 
   let frameId: number | null = null;
+  let lastTimestamp: number | null = null;
 
   const render = (timestamp: number) => {
+    const frameDeltaMs =
+      lastTimestamp === null ? 0 : Math.max(0, timestamp - lastTimestamp);
+    lastTimestamp = timestamp;
     // Step 1: Update timeline
     setSceneTimelineTimeMs(timestamp);
 
@@ -120,7 +124,7 @@ export const createWebGLRenderLoop = (
     // Step 3-4: Update scene and apply changes
     const cameraState = scene.getCamera();
     const changes = scene.flushChanges();
-    webglRenderer.getObjectsRenderer().applyChanges(changes);
+    webglRenderer.getObjectsRenderer().applyChanges(changes, frameDeltaMs);
 
     // Step 5: After applyChanges callback (useful for interpolated positions)
     if (afterApplyChanges) {
@@ -128,7 +132,7 @@ export const createWebGLRenderLoop = (
     }
 
     // Step 6: Sync buffers
-    webglRenderer.syncBuffers();
+    webglRenderer.syncBuffers(frameDeltaMs);
 
     // Step 7: After update callback
     if (afterUpdate) {

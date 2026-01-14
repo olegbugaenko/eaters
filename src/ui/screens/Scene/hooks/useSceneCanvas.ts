@@ -221,7 +221,7 @@ export const useSceneCanvas = ({
     };
 
     const applySync = () => {
-      webglRenderer.syncBuffers();
+      webglRenderer.syncBuffers(0);
     };
 
     const initialChanges = sceneRef.current.flushChanges();

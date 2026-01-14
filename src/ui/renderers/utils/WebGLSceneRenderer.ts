@@ -207,13 +207,14 @@ export class WebGLSceneRenderer {
   /**
    * Syncs object renderer changes to WebGL buffers
    */
-  public syncBuffers(): void {
+  public syncBuffers(frameDeltaMs: number): void {
     this.bufferState = applySyncInstructions(
       this.gl,
       this.objectsRenderer,
       this.staticBuffer,
       this.dynamicBuffer,
-      this.bufferState
+      this.bufferState,
+      frameDeltaMs
     );
   }
 
