@@ -76,6 +76,7 @@ export class SpellcastingModule implements GameModule {
       bonuses: this.bonuses,
       explosions: options.explosions,
       projectiles: options.projectiles,
+      damage: options.damage,
       getSpellPowerMultiplier: () => this.spellPowerMultiplier,
     });
 

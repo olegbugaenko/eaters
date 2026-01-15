@@ -2,6 +2,7 @@ import assert from "assert";
 import { describe, test } from "./testRunner";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 import { STATUS_EFFECT_OVERLAY_IDS } from "../src/db/status-effects-db";
+import { createDamageServiceStub } from "./testHelpers";
 
 type OverlayEntry = {
   effectId: string;
@@ -31,7 +32,7 @@ const createOverlayStore = () => {
 
 describe("StatusEffectsModule visuals cleanup", () => {
   test("clears missing overlays when one of multiple effects is removed", () => {
-    const module = new StatusEffectsModule();
+    const module = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const overlays = createOverlayStore();
     module.registerUnitAdapter({
       hasUnit: () => true,
@@ -76,7 +77,7 @@ describe("StatusEffectsModule visuals cleanup", () => {
   });
 
   test("clears overlays when the last effect expires", () => {
-    const module = new StatusEffectsModule();
+    const module = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const overlays = createOverlayStore();
     module.registerUnitAdapter({
       hasUnit: () => true,
@@ -103,5 +104,29 @@ describe("StatusEffectsModule visuals cleanup", () => {
         `overlay ${effectId} should be cleared on stroke`
       );
     });
+  });
+
+  test("damage over time routes through DamageService with overTime defaults", () => {
+    const calls: Array<{
+      target: { type: string; id: string };
+      amount: number;
+      options: { overTime?: number; skipKnockback?: boolean };
+    }> = [];
+    const module = new StatusEffectsModule({
+      damage: createDamageServiceStub({
+        applyStatusEffectDamage: (target, amount, options) => {
+          calls.push({ target, amount, options: options ?? {} });
+          return amount;
+        },
+      }),
+    });
+
+    module.applyEffect("burn", { type: "brick", id: "b1" }, { damagePerSecond: 10 });
+    module.tick(1000);
+
+    assert.strictEqual(calls.length, 1, "should apply one damage tick");
+    assert.deepStrictEqual(calls[0]?.target, { type: "brick", id: "b1" });
+    assert.strictEqual(calls[0]?.options.overTime, 1);
+    assert.strictEqual(calls[0]?.options.skipKnockback, true);
   });
 });

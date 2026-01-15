@@ -21,6 +21,7 @@ export interface AreaDamageOptions extends DamageApplicationOptions {
   readonly types?: readonly TargetType[];
   readonly explosionType?: string;
   readonly explosionRadius?: number;
+  readonly excludeTargetIds?: readonly string[];
 }
 
 interface DamageServiceOptions {
@@ -77,9 +78,20 @@ export class DamageService {
     }
 
     const filter = options.types?.length ? { types: options.types } : undefined;
-    this.targeting.forEachTargetNear(position, radius, (target) => {
-      this.applyDamageSnapshot(target, damage, damageOptions);
-    }, filter);
+    const excludedIds = options.excludeTargetIds?.length
+      ? new Set(options.excludeTargetIds)
+      : null;
+    this.targeting.forEachTargetNear(
+      position,
+      radius,
+      (target) => {
+        if (excludedIds?.has(target.id)) {
+          return;
+        }
+        this.applyDamageSnapshot(target, damage, damageOptions);
+      },
+      filter,
+    );
   }
 
   private applyDamageSnapshot(
@@ -125,5 +137,23 @@ export class DamageService {
     }
 
     return 0;
+  }
+
+  public applyStatusEffectDamage(
+    target: { readonly type: TargetType; readonly id: string },
+    damage: number,
+    options: DamageApplicationOptions = {},
+  ): number {
+    const snapshot = this.targeting.getTargetById(target.id, { types: [target.type] });
+    if (!snapshot) {
+      return 0;
+    }
+    const combinedOptions: DamageApplicationOptions = {
+      overTime: 1,
+      skipKnockback: true,
+      rewardMultiplier: 1,
+      ...options,
+    };
+    return this.applyDamageSnapshot(snapshot, damage, combinedOptions);
   }
 }

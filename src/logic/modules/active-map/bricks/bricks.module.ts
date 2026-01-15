@@ -28,7 +28,7 @@ import {
 import { createBrickFill } from "./bricks.fill.helper";
 import { tintSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sceneColorsEqual } from "@shared/helpers/scene-color.helper";
-import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
+import { resolveDamageApplication } from "../../../helpers/damage-pipeline";
 import {
   sanitizeHp,
   sanitizeBrickType,
@@ -295,21 +295,23 @@ export class BricksModule implements GameModule {
     const skipKnockback = options?.skipKnockback === true;
     const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "brick", id: brickId });
     const incomingMultiplier = this.statusEffects.getBrickIncomingDamageMultiplier(brickId);
-    const effectiveDamage = calculateMitigatedDamage({
+    const { effectiveDamage, appliedDamage, remainingHp } = resolveDamageApplication({
       rawDamage,
       armor: brick.armor,
       armorDelta,
       armorPenetration,
       incomingMultiplier,
       overTime: options?.overTime,
+      currentHp: brick.hp,
+      maxHp: brick.maxHp,
     });
     if (effectiveDamage <= 0) {
       return { destroyed: false, brick: this.cloneState(brick), inflictedDamage: 0 };
     }
 
     const previousHp = brick.hp;
-    brick.hp = clampNumber(brick.hp - effectiveDamage, 0, brick.maxHp);
-    const inflictedDamage = Math.max(0, previousHp - brick.hp);
+    brick.hp = remainingHp;
+    const inflictedDamage = appliedDamage;
     if (inflictedDamage > 0) {
       this.options.statistics?.recordDamageDealt(inflictedDamage);
       this.statusEffects.handleTargetHit({ type: "brick", id: brickId });

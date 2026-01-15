@@ -4,12 +4,14 @@ import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle
 import type { BricksModule } from "../../active-map/bricks/bricks.module";
 import type { ExplosionModule } from "../explosion/explosion.module";
 import type { UnitProjectileController } from "../../active-map/projectiles/ProjectileController";
+import type { DamageService } from "../../active-map/targeting/DamageService";
 
 export interface FireballModuleOptions {
   scene: SceneObjectManager;
   bricks: BricksModule;
   explosions: ExplosionModule;
   projectiles: UnitProjectileController;
+  damage: DamageService;
   logEvent: (message: string) => void;
 }
 
@@ -31,4 +33,3 @@ export interface FireballSpawnOptions {
   explosionRadius: number;
   maxDistance: number;
 }
-

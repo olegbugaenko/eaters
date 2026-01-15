@@ -13,6 +13,7 @@ import type {
   StatusEffectBrickAdapter,
   StatusEffectEnemyAdapter,
 } from "./status-effects.types";
+import type { DamageService } from "../targeting/DamageService";
 
 interface StatusEffectInstance {
   readonly id: StatusEffectId;
@@ -51,6 +52,11 @@ export class StatusEffectsModule implements GameModule {
   private unitAdapter: StatusEffectUnitAdapter | null = null;
   private brickAdapter: StatusEffectBrickAdapter | null = null;
   private enemyAdapter: StatusEffectEnemyAdapter | null = null;
+  private readonly damage: DamageService;
+
+  constructor(options: { damage: DamageService }) {
+    this.damage = options.damage;
+  }
 
   public registerUnitAdapter(adapter: StatusEffectUnitAdapter): void {
     this.unitAdapter = adapter;
@@ -657,17 +663,12 @@ export class StatusEffectsModule implements GameModule {
     if (amount <= 0) {
       return;
     }
-    if (target.type === "unit" && this.unitAdapter) {
-      this.unitAdapter.damageUnit(target.id, amount);
-    } else if (target.type === "brick" && this.brickAdapter) {
-      this.brickAdapter.damageBrick(target.id, amount, {
-        rewardMultiplier: 1,
-        armorPenetration: 0,
-        overTime: 1,
-      });
-    } else if (target.type === "enemy" && this.enemyAdapter) {
-      this.enemyAdapter.damageEnemy(target.id, amount);
-    }
+    this.damage.applyStatusEffectDamage(target, amount, {
+      rewardMultiplier: 1,
+      armorPenetration: 0,
+      overTime: 1,
+      skipKnockback: true,
+    });
   }
 
   private refreshVisualsForTarget(

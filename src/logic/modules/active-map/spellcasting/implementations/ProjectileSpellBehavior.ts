@@ -1,5 +1,4 @@
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
-import { BricksModule } from "../../bricks/bricks.module";
 import {
   SpellBehavior,
   SpellCastContext,
@@ -8,7 +7,6 @@ import {
 } from "../SpellBehavior";
 import { SpellConfig } from "../../../../../db/spells-db";
 import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
-import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { ExplosionType } from "../../../../../db/explosions-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
@@ -18,6 +16,7 @@ import { buildProjectileSpreadDirections } from "../../projectiles/projectile-sp
 import { clampNumber, randomIntInclusive } from "@shared/helpers/numbers.helper";
 import type { SpellDamageConfig, SpellProjectileConfig } from "@/db/spells-db";
 import type { AttackSeriesConfig } from "@/shared/types/attack-series.types";
+import type { DamageService } from "../../targeting/DamageService";
 
 const sanitizeAoe = (
   aoe: { radius: number; splash: number } | undefined,
@@ -33,10 +32,10 @@ export class ProjectileSpellBehavior implements SpellBehavior {
   public readonly spellType = "projectile" as const;
 
   private readonly scene: SceneObjectManager;
-  private readonly bricks: BricksModule;
   private readonly explosions?: ExplosionModule;
   private readonly getSpellPowerMultiplier: () => number;
   private readonly projectiles: UnitProjectileController;
+  private readonly damage: DamageService;
 
   // Track spell-specific data per projectile (damage, aoe, explosion)
   private readonly projectileData = new Map<string, ProjectileSpellData>();
@@ -46,9 +45,9 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
   constructor(dependencies: SpellBehaviorDependencies) {
     this.scene = dependencies.scene;
-    this.bricks = dependencies.bricks;
     this.explosions = dependencies.explosions;
     this.projectiles = dependencies.projectiles;
+    this.damage = dependencies.damage;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
@@ -149,14 +148,22 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
           const baseDamage = randomIntInclusive(data.damage);
           const damage = Math.max(baseDamage * Math.max(data.damageMultiplier, 0), 0);
-          this.bricks.applyDamage(hitContext.brickId, damage, direction);
+          this.damage.applyTargetDamage(hitContext.brickId, damage, {
+            direction,
+          });
 
           const aoe = data.aoe;
           if (aoe && aoe.radius > 0 && aoe.splash > 0 && damage > 0) {
-            this.bricks.forEachBrickNear(hitContext.position, aoe.radius, (brick: BrickRuntimeState) => {
-              if (brick.id === hitContext.brickId) return;
-              this.bricks.applyDamage(brick.id, damage * aoe.splash, direction);
-            });
+            this.damage.applyAreaDamage(
+              hitContext.position,
+              aoe.radius,
+              damage * aoe.splash,
+              {
+                types: ["brick"],
+                direction,
+                excludeTargetIds: [hitContext.brickId],
+              },
+            );
           }
 
           // Вибух при влучанні

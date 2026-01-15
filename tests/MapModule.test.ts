@@ -39,6 +39,7 @@ import { getMapConfig } from "../src/db/maps-db";
 import { MapId } from "../src/db/maps-db";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import { createDamageServiceStub } from "./testHelpers";
 
 const createNewUnlocks = (bridge: DataBridge): NewUnlockNotificationService => {
   const service = new NewUnlockNotificationService({ bridge });
@@ -267,7 +268,7 @@ describe("MapModule", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,
@@ -359,7 +360,7 @@ describe("Map inspected target", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,
@@ -461,7 +462,7 @@ describe("Map inspected target", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,
@@ -790,7 +791,7 @@ describe("Map run control", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,
@@ -879,7 +880,7 @@ describe("Map run control", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,
@@ -975,7 +976,7 @@ describe("Map unlocking", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,
@@ -1088,7 +1089,7 @@ describe("Map unlocking", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,
@@ -1279,7 +1280,7 @@ describe("Map auto restart", () => {
     const explosions = new ExplosionModule({ scene });
     const bonuses = createBonuses();
     const resources = createResourceControllerStub();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = new BricksModule({
       scene,
       bridge,

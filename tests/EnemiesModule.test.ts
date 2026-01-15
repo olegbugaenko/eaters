@@ -23,6 +23,7 @@ import type { SceneVector2 } from "../src/core/logic/provided/services/scene-obj
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 import type { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import type { TargetSnapshot } from "../src/logic/modules/active-map/targeting/targeting.types";
+import { createDamageServiceStub } from "./testHelpers";
 
 const createEnemySpawnData = () => ({
   type: "basicEnemy" as const,
@@ -74,7 +75,7 @@ const createEnemiesModuleWithDeps = (
   const runState = options.runState ?? new MapRunState();
   const movement = options.movement ?? new MovementService();
   const bricks = options.bricks ?? createEmptyBricks();
-  const statusEffects = options.statusEffects ?? new StatusEffectsModule();
+  const statusEffects = options.statusEffects ?? new StatusEffectsModule({ damage: createDamageServiceStub() });
   const resources =
     options.resources ??
     ({
