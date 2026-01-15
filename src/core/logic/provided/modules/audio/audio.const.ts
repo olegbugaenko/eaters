@@ -13,4 +13,5 @@ export const DEFAULT_PLAYLISTS = {
 
 export const MIN_EFFECT_INTERVAL_MS = 400;
 export const MAX_EFFECT_INSTANCES = 24;
+export const MAX_EFFECT_INSTANCES_PER_SOUND = 4;
 export const MUSIC_VOLUME_MULTIPLIER = 0.3;

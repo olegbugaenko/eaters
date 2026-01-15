@@ -11,6 +11,7 @@ import type { AudioModuleOptions } from "./audio.types";
 import {
   DEFAULT_PLAYLISTS,
   MAX_EFFECT_INSTANCES,
+  MAX_EFFECT_INSTANCES_PER_SOUND,
   MIN_EFFECT_INTERVAL_MS,
   MUSIC_VOLUME_MULTIPLIER,
 } from "./audio.const";
@@ -32,6 +33,7 @@ export class AudioModule implements GameModule {
   private readonly effectTemplates = new Map<string, HTMLAudioElement>();
   private readonly activeEffectElements = new Set<HTMLAudioElement>();
   private effectElementQueue: HTMLAudioElement[] = [];
+  private readonly activeEffectCounts = new Map<string, number>();
   private readonly effectCleanupHandlers = new Map<HTMLAudioElement, () => void>();
   private readonly lastEffectPlayTimestamps = new Map<string, number>();
 
@@ -130,6 +132,11 @@ export class AudioModule implements GameModule {
       return;
     }
 
+    const activeCount = this.activeEffectCounts.get(normalizedUrl) ?? 0;
+    if (activeCount >= MAX_EFFECT_INSTANCES_PER_SOUND) {
+      return;
+    }
+
     this.trimActiveEffects();
     this.lastEffectPlayTimestamps.set(normalizedUrl, now);
 
@@ -141,6 +148,12 @@ export class AudioModule implements GameModule {
       this.activeEffectElements.delete(element);
       this.effectCleanupHandlers.delete(element);
       this.effectElementQueue = this.effectElementQueue.filter((entry) => entry !== element);
+      const currentCount = this.activeEffectCounts.get(normalizedUrl) ?? 0;
+      if (currentCount <= 1) {
+        this.activeEffectCounts.delete(normalizedUrl);
+      } else {
+        this.activeEffectCounts.set(normalizedUrl, currentCount - 1);
+      }
       element.removeEventListener("ended", cleanup);
       element.removeEventListener("pause", cleanup);
       element.removeEventListener("error", cleanup);
@@ -153,6 +166,7 @@ export class AudioModule implements GameModule {
     this.activeEffectElements.add(element);
     this.effectCleanupHandlers.set(element, cleanup);
     this.effectElementQueue.push(element);
+    this.activeEffectCounts.set(normalizedUrl, activeCount + 1);
 
     const playPromise = element.play();
     if (playPromise && typeof playPromise.then === "function") {
