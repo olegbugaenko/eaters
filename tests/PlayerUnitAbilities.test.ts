@@ -12,6 +12,7 @@ import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explo
 import type { PlayerUnitType } from "../src/db/player-units-db";
 import { AbilityVisualService } from "../src/logic/modules/active-map/player-units/abilities/AbilityVisualService";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
 
 describe("PlayerUnitAbilities sound effects", () => {
   const createBaseState = (overrides: Partial<PlayerUnitAbilityState> = {}): PlayerUnitAbilityState => ({
@@ -59,7 +60,9 @@ describe("PlayerUnitAbilities sound effects", () => {
       getFireballs: () => fireballs,
       getUnitObjectId: () => undefined,
     });
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({
+      damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
+    });
 
     return new PlayerUnitAbilities({
       sceneService: visuals,

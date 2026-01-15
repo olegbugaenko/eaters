@@ -25,6 +25,8 @@ export interface SpellBehaviorDependencies {
   readonly bonuses: any; // BonusesModule
   readonly explosions?: any; // ExplosionModule (опціонально)
   readonly projectiles: any; // UnitProjectileController
+  readonly damage: any; // DamageService
+  readonly targeting: any; // TargetingService
   readonly getSpellPowerMultiplier: () => number;
 }
 

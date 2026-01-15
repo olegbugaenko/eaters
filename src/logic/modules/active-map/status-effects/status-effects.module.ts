@@ -13,6 +13,7 @@ import type {
   StatusEffectBrickAdapter,
   StatusEffectEnemyAdapter,
 } from "./status-effects.types";
+import type { DamageService } from "../targeting/DamageService";
 
 interface StatusEffectInstance {
   readonly id: StatusEffectId;
@@ -48,9 +49,14 @@ export class StatusEffectsModule implements GameModule {
     TargetKey,
     Map<StatusEffectId, StatusEffectInstance[]>
   >();
+  private readonly damage: DamageService;
   private unitAdapter: StatusEffectUnitAdapter | null = null;
   private brickAdapter: StatusEffectBrickAdapter | null = null;
   private enemyAdapter: StatusEffectEnemyAdapter | null = null;
+
+  constructor(options: { damage: DamageService }) {
+    this.damage = options.damage;
+  }
 
   public registerUnitAdapter(adapter: StatusEffectUnitAdapter): void {
     this.unitAdapter = adapter;
@@ -432,7 +438,7 @@ export class StatusEffectsModule implements GameModule {
     if (damagePerTick <= 0) {
       return;
     }
-    this.applyDamage(instance.target, damagePerTick);
+    this.applyDamage(instance.target, damagePerTick, config, interval);
   }
 
   private resolveDuration(
@@ -653,21 +659,31 @@ export class StatusEffectsModule implements GameModule {
     return null;
   }
 
-  private applyDamage(target: StatusEffectTarget, amount: number): void {
+  private applyDamage(
+    target: StatusEffectTarget,
+    amount: number,
+    config: StatusEffectConfig,
+    intervalMs: number,
+  ): void {
     if (amount <= 0) {
       return;
     }
-    if (target.type === "unit" && this.unitAdapter) {
-      this.unitAdapter.damageUnit(target.id, amount);
-    } else if (target.type === "brick" && this.brickAdapter) {
-      this.brickAdapter.damageBrick(target.id, amount, {
-        rewardMultiplier: 1,
-        armorPenetration: 0,
-        overTime: 1,
-      });
-    } else if (target.type === "enemy" && this.enemyAdapter) {
-      this.enemyAdapter.damageEnemy(target.id, amount);
-    }
+    const overTime = Math.max(intervalMs / 1000, 0);
+    this.damage.applyTargetDamage(target.id, amount, {
+      overTime,
+      skipKnockback: true,
+      payload: {
+        amount,
+        context: {
+          sourceType: "statusEffect",
+          sourceId: target.id,
+          effectId: config.id,
+          attackType: "status-effect",
+          tag: config.id,
+          baseDamage: amount,
+        },
+      },
+    });
   }
 
   private refreshVisualsForTarget(

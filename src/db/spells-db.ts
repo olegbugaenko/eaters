@@ -11,6 +11,7 @@ import type { BulletSpriteName } from "../logic/services/bullet-render-bridge/bu
 import { SkillId } from "./skills-db";
 import { ExplosionType } from "./explosions-db";
 import type { AttackSeriesConfig } from "@shared/types/attack-series.types";
+import type { TargetType } from "../logic/modules/active-map/targeting/targeting.types";
 
 export type SpellId =
   | "magic-arrow"
@@ -47,6 +48,7 @@ export interface SpellProjectileConfig {
   attackSeries?: AttackSeriesConfig;
   shape?: ProjectileShape; // Форма проджектайла (за замовчуванням "circle")
   spriteName?: BulletSpriteName; // Sprite name when shape === "sprite"
+  targetTypes?: TargetType[];
   aoe?: { radius: number; splash: number };
   explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
 }
@@ -56,6 +58,7 @@ export interface SpellWhirlConfig {
   speed: number;
   damagePerSecond: number;
   maxHealth: number;
+  targetTypes?: TargetType[];
   spinSpeed?: number;
   // Візуальні параметри
   rotationSpeedMultiplier?: number; // Множник швидкості обертання (за замовчуванням 1.0)
@@ -110,6 +113,7 @@ export interface SpellPersistentAoeConfig {
   ring: SpellPersistentAoeRingConfig;
   visuals?: SpellPersistentAoeVisualConfig;
   effects?: SpellPersistentAoeEffectConfig[];
+  targetTypes?: TargetType[];
 }
 
 interface SpellBaseConfig {

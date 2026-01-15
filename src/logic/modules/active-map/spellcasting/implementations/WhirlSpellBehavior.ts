@@ -1,6 +1,5 @@
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { BricksModule } from "../../bricks/bricks.module";
 import {
   SpellBehavior,
   SpellCastContext,
@@ -8,27 +7,31 @@ import {
   SpellBehaviorDependencies,
 } from "../SpellBehavior";
 import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
-import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { OUT_OF_BOUNDS_MARGIN } from "./WhirlSpellBehavior.const";
 import type { SandStormCustomData, WhirlState } from "./WhirlSpellBehavior.types";
 import { getNowMs } from "@shared/helpers/time.helper";
 import { normalizeVector } from "../../../../../shared/helpers/vector.helper";
+import type { DamageService } from "../../targeting/DamageService";
+import type { TargetingService } from "../../targeting/TargetingService";
+import type { TargetType } from "../../targeting/targeting.types";
 
 export class WhirlSpellBehavior implements SpellBehavior {
   public readonly spellType = "whirl" as const;
 
   private readonly scene: SceneObjectManager;
-  private readonly bricks: BricksModule;
   private readonly getSpellPowerMultiplier: () => number;
+  private readonly damage: DamageService;
+  private readonly targeting: TargetingService;
 
   private storms: WhirlState[] = [];
   private spellPowerMultiplier = 1;
 
   constructor(dependencies: SpellBehaviorDependencies) {
     this.scene = dependencies.scene;
-    this.bricks = dependencies.bricks;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
+    this.damage = dependencies.damage;
+    this.targeting = dependencies.targeting;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
 
@@ -56,6 +59,10 @@ export class WhirlSpellBehavior implements SpellBehavior {
     const damageMultiplier = context.spellPowerMultiplier;
     const baseMaxHealth = Math.max(0, whirl.maxHealth);
     const maxHealth = baseMaxHealth * damageMultiplier;
+    const targetTypes =
+      whirl.targetTypes && whirl.targetTypes.length > 0
+        ? whirl.targetTypes
+        : (["brick"] as TargetType[]);
 
     const spinSpeed = Math.max(0, whirl.spinSpeed ?? 2.5);
     const rotationSpeedMultiplier = whirl.rotationSpeedMultiplier ?? 1.0;
@@ -101,6 +108,7 @@ export class WhirlSpellBehavior implements SpellBehavior {
       position,
       velocity,
       radius,
+      targetTypes,
       baseDamagePerSecond: Math.max(0, whirl.damagePerSecond),
       baseMaxHealth,
       maxHealth,
@@ -150,27 +158,38 @@ export class WhirlSpellBehavior implements SpellBehavior {
       );
       let inflictedTotal = 0;
       if (damage > 0) {
-        this.bricks.forEachBrickNear(storm.position, storm.radius, (brick: BrickRuntimeState) => {
-          const beforeHp = Math.max(brick.hp, 0);
-          if (beforeHp <= 0) {
-            return;
-          }
-          const direction = normalizeVector({
-            x: brick.position.x - storm.position.x,
-            y: brick.position.y - storm.position.y,
-          });
-          const result = this.bricks.applyDamage(
-            brick.id,
-            damage,
-            direction ?? { x: 0, y: 0 },
-            { overTime: deltaSeconds }
-          );
-          const afterHp = result.brick ? Math.max(result.brick.hp, 0) : 0;
-          const inflicted = Math.min(beforeHp, Math.max(beforeHp - afterHp, 0));
-          if (inflicted > 0) {
-            inflictedTotal += inflicted;
-          }
-        });
+        this.targeting.forEachTargetNear(
+          storm.position,
+          storm.radius,
+          (target) => {
+            const direction = normalizeVector({
+              x: target.position.x - storm.position.x,
+              y: target.position.y - storm.position.y,
+            }) ?? { x: 0, y: 0 };
+            const inflicted = this.damage.applyTargetDamage(target.id, damage, {
+              direction,
+              overTime: deltaSeconds,
+              payload: {
+                amount: damage,
+                context: {
+                  source: { type: "spell", id: storm.spellId },
+                  attackType: "spell-whirl",
+                  tag: storm.spellId,
+                  direction,
+                  baseDamage: damage,
+                  modifiers: {
+                    spellPowerMultiplier: storm.damageMultiplier,
+                  },
+                },
+                area: { radius: storm.radius, types: storm.targetTypes },
+              },
+            });
+            if (inflicted > 0) {
+              inflictedTotal += inflicted;
+            }
+          },
+          storm.targetTypes.length > 0 ? { types: storm.targetTypes } : undefined,
+        );
       }
 
       if (inflictedTotal > 0) {

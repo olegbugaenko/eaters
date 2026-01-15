@@ -5,6 +5,8 @@ import type { SpellConfig } from "../src/db/spells-db";
 import { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
+import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
+import type { TargetingService } from "../src/logic/modules/active-map/targeting/TargetingService";
 import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { SpellBehaviorDependencies } from "../src/logic/modules/active-map/spellcasting/SpellBehavior";
 import type { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
@@ -29,6 +31,13 @@ describe("ProjectileSpellBehavior", () => {
       applyDamage: () => ({ destroyed: false, brick: null, inflictedDamage: 0 }),
       forEachBrickNear: () => {},
     } as unknown as BricksModule;
+    const damage = {
+      applyTargetDamage: () => 0,
+      applyAreaDamage: () => 0,
+    } as unknown as DamageService;
+    const targeting = {
+      forEachTargetNear: () => {},
+    } as unknown as TargetingService;
 
     const dependencies: SpellBehaviorDependencies = {
       scene,
@@ -36,6 +45,8 @@ describe("ProjectileSpellBehavior", () => {
       bonuses: {},
       projectiles,
       explosions: {} as ExplosionModule,
+      damage,
+      targeting,
       getSpellPowerMultiplier: () => 1,
     };
 
