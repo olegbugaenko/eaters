@@ -18,6 +18,7 @@ import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.modul
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 import { calculateMitigatedDamage } from "../src/logic/helpers/damage-formula";
+import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -26,6 +27,7 @@ const createBricksModule = (
 ) => {
   const explosions = new ExplosionModule({ scene });
   runState.start();
+  const damage = { applyTargetDamage: () => 0 } as unknown as DamageService;
   const resources = {
     grantResources: () => {
       // no-op for tests
@@ -36,7 +38,7 @@ const createBricksModule = (
   };
   const bonuses = new BonusesModule();
   bonuses.initialize();
-  const statusEffects = new StatusEffectsModule();
+  const statusEffects = new StatusEffectsModule({ damage });
   return new BricksModule({
     scene,
     bridge,

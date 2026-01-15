@@ -44,7 +44,9 @@ const createBricksModule = () => {
   const explosions = new ExplosionModule({ scene });
   const bonuses = new BonusesModule();
   bonuses.initialize();
-  const statusEffects = new StatusEffectsModule();
+  const statusEffects = new StatusEffectsModule({
+    damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
+  });
   const resources = {
     grantResources: () => undefined,
     notifyBrickDestroyed: () => undefined,

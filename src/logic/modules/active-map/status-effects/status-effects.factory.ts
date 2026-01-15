@@ -6,6 +6,10 @@ export const createStatusEffectsDefinition = (): ServiceDefinition<
   "statusEffects"
 > => ({
   token: "statusEffects",
-  factory: () => new StatusEffectsModule(),
+  factory: (container) =>
+    new StatusEffectsModule({
+      damage: container.get("damage"),
+    }),
   registerAsModule: true,
+  dependsOn: ["damage"],
 });

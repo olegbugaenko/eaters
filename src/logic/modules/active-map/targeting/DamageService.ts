@@ -32,6 +32,9 @@ export interface DamageSource {
 
 export interface DamageContext {
   readonly source?: DamageSource;
+  readonly sourceType?: string;
+  readonly sourceId?: string;
+  readonly effectId?: string;
   readonly attackType?: string;
   readonly tag?: string;
   readonly seriesId?: string;
