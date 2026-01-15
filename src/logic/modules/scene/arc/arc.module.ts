@@ -107,9 +107,7 @@ export class ArcModule implements GameModule {
     options?: ArcSpawnOptions,
   ): void {
     const cfg = getArcConfig(type);
-    if (cfg.soundEffectUrl) {
-      this.audio?.playSoundEffect(cfg.soundEffectUrl);
-    }
+    
     const sourceOffset = sanitizeOffset(options?.sourceOffset);
     const from = this.getArcTargetPosition(source, sourceOffset);
     const to = this.getArcTargetPosition(target);
@@ -141,6 +139,9 @@ export class ArcModule implements GameModule {
       lastUpdateTimestampMs: now,
       lastRealTimestampMs: realNow,
     });
+    if (cfg.soundEffectUrl) {
+      this.audio?.playSoundEffect(cfg.soundEffectUrl);
+    }
   }
 
   public clearArcsForUnit(unitId: string): void {
