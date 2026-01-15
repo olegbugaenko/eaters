@@ -651,8 +651,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.5, g: 0.7, b: 0.9, a: 1 }, width: 2.4 },
     destructubleData: {
-      maxHp: 3750,
-      armor: 245,
+      maxHp: 6750,
+      armor: 445,
       baseDamage: 355,
       knockBackDistance: 190,
       knockBackSpeed: 280,
@@ -668,7 +668,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
     rewards: {
-      ice: 1,
+      ice: 0.5,
     },
   },
   smallMagma: {
@@ -686,8 +686,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 2755,
-      armor: 142,
+      maxHp: 3755,
+      armor: 342,
       baseDamage: 534,
       knockBackDistance: 70,
       knockBackSpeed: 160,
@@ -703,7 +703,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
     rewards: {
-      magma: 1,
+      magma: 0.5,
     },
   },
   neutronBrick: {

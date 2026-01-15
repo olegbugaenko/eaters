@@ -1365,7 +1365,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     },
     maxHp: 14000,
     armor: 140,
-    baseDamage: 420,
+    baseDamage: 350,
     attackInterval: 1.8,
     attackRange: 600,
     moveSpeed: 0,
