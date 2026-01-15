@@ -4,11 +4,9 @@ import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/bui
 import { DEFAULT_BUILDINGS_WORKSHOP_STATE } from "@/logic/modules/camp/buildings/buildings.const";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { ResourceId, getResourceConfig } from "@db/resources-db";
 import { BuildingId } from "@db/buildings-db";
 import { Button } from "@ui-shared/Button";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
-import { formatNumber } from "@ui-shared/format/number";
 import "../ModulesWorkshop/ModulesWorkshopView.css";
 import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
@@ -43,23 +41,6 @@ const computeMissingCost = (
     }
   });
   return missing;
-};
-
-const formatCostSummary = (cost: Record<string, number> | null): string => {
-  if (!cost) {
-    return "Unavailable";
-  }
-  const entries = Object.entries(cost).filter(([, amount]) => amount > 0);
-  if (entries.length === 0) {
-    return "Free";
-  }
-  return entries
-    .map(([id, amount]) => {
-      const config = getResourceConfig(id as ResourceId);
-      const label = config ? config.name : id;
-      return `${formatNumber(amount, { maximumFractionDigits: 0 })} ${label}`;
-    })
-    .join(" · ");
 };
 
 export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
@@ -148,6 +129,8 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
           <ul className="modules-workshop__list">
             {state.buildings.map((building) => {
               const isActive = building.id === (hoveredId ?? selectedId ?? building.id);
+              const missing = computeMissingCost(building.nextCost, totals);
+              const hasMissingResources = Object.keys(missing).length > 0;
               const unlockPath = `buildings.${building.id}`;
               return (
                 <li key={building.id}>
@@ -161,7 +144,8 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                       type="button"
                       className={
                         "modules-workshop__card" +
-                        (isActive ? " modules-workshop__card--active" : "")
+                        (isActive ? " modules-workshop__card--active" : "") +
+                        (hasMissingResources ? " modules-workshop__card--missing-resources" : "")
                       }
                       onClick={() => setSelectedId(building.id)}
                       onMouseEnter={() => setHoveredId(building.id)}
@@ -176,9 +160,13 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                       <span className="modules-workshop__card-title">{building.name}</span>
                       <span className="modules-workshop__card-level">Level {building.level}</span>
                       <p className="modules-workshop__card-description">{building.description}</p>
-                      <span className="modules-workshop__card-cost">
-                        {formatCostSummary(building.nextCost)}
-                      </span>
+                      <div className="modules-workshop__card-cost">
+                        {building.nextCost ? (
+                          <ResourceCostDisplay cost={building.nextCost} missing={missing} />
+                        ) : (
+                          <span className="text-muted">Unavailable</span>
+                        )}
+                      </div>
                     </button>
                   </NewUnlockWrapper>
                 </li>

@@ -262,6 +262,30 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
 
     return handle;
   }
+
+  /**
+   * Override releaseSlot to always decrement activeCount for arcs.
+   */
+  public override releaseSlot(handle: SlotHandle): void {
+    const batch = this.batches.get(handle.batchKey);
+    if (!batch || !this.gl) {
+      return;
+    }
+
+    const { slotIndex } = handle;
+    if (slotIndex < 0 || slotIndex >= batch.capacity) {
+      return;
+    }
+
+    batch.instances[slotIndex] = null;
+    batch.freeSlots.push(slotIndex);
+    batch.activeCount = Math.max(0, batch.activeCount - 1);
+
+    const instanceFloats = this.getInstanceFloats();
+    const activeIndex = this.getActiveFloatIndex();
+    batch.instanceData[slotIndex * instanceFloats + activeIndex] = 0;
+    batch.needsUpload = true;
+  }
 }
 
 // ============================================================================
