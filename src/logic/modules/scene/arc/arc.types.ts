@@ -19,6 +19,8 @@ export interface ArcModuleOptions {
 
 export interface ArcSpawnOptions {
   readonly sourceOffset?: SceneVector2;
+  /** If true, arc will persist at last known position when target dies */
+  readonly persistOnDeath?: boolean;
 }
 
 export interface ArcState {
@@ -33,4 +35,10 @@ export interface ArcState {
   createdAtMs: number;
   lastUpdateTimestampMs: number;
   lastRealTimestampMs: number;
+  /** If true, arc will persist at last known position when target dies */
+  persistOnDeath?: boolean;
+  /** Last known source position (for persistOnDeath) */
+  lastFrom?: SceneVector2;
+  /** Last known target position (for persistOnDeath) */
+  lastTo?: SceneVector2;
 }

@@ -735,7 +735,10 @@ export class EnemiesModule implements GameModule {
         arcAttack.arcType,
         { type: "enemy", id: enemy.id },
         { type: "unit", id: target.id },
-        { sourceOffset: arcAttack.spawnOffset },
+        { 
+          sourceOffset: arcAttack.spawnOffset,
+          persistOnDeath: true,
+        },
       );
       if (arcAttack.statusEffectId) {
         const effectTarget = { type: "unit", id: target.id } as const;

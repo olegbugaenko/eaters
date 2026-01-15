@@ -50,9 +50,25 @@ export class ArcModule implements GameModule {
     const realNow = Date.now();
     for (let i = 0; i < this.arcs.length; i += 1) {
       const a = this.arcs[i]!;
-      const from = this.getArcTargetPosition(a.source, a.sourceOffset);
-      const to = this.getArcTargetPosition(a.target);
+      let from = this.getArcTargetPosition(a.source, a.sourceOffset);
+      let to = this.getArcTargetPosition(a.target);
+      
+      // If target died, use last known position if persistOnDeath is enabled
+      if (a.persistOnDeath) {
+        if (!from && a.lastFrom) from = a.lastFrom;
+        if (!to && a.lastTo) to = a.lastTo;
+      }
+      
       if (!from || !to) {
+        // Don't remove arc on the same tick it was created - 
+        // this causes a race condition where customData is cleared
+        // before the renderer has a chance to process it
+        const timeSinceCreation = now - a.createdAtMs;
+        if (timeSinceCreation < 16) {
+          // Skip this tick, let the arc live at least one render frame
+          survivors.push(a);
+          continue;
+        }
         this.scene.removeObject(a.id);
         continue;
       }
@@ -83,6 +99,8 @@ export class ArcModule implements GameModule {
           remainingMs: next,
           lastUpdateTimestampMs: now,
           lastRealTimestampMs: realNow,
+          lastFrom: from,
+          lastTo: to,
         });
       }
     }
@@ -143,6 +161,9 @@ export class ArcModule implements GameModule {
       createdAtMs: now,
       lastUpdateTimestampMs: now,
       lastRealTimestampMs: realNow,
+      persistOnDeath: options?.persistOnDeath,
+      lastFrom: from,
+      lastTo: to,
     });
     if (cfg.soundEffectUrl) {
       this.audio?.playSoundEffect(cfg.soundEffectUrl);
@@ -153,6 +174,7 @@ export class ArcModule implements GameModule {
     if (!unitId || this.arcs.length === 0) {
       return;
     }
+    const now = getNowMs();
     const survivors: ArcState[] = [];
     for (let i = 0; i < this.arcs.length; i += 1) {
       const arc = this.arcs[i]!;
@@ -160,6 +182,19 @@ export class ArcModule implements GameModule {
         (arc.source.type === "unit" && arc.source.id === unitId) ||
         (arc.target.type === "unit" && arc.target.id === unitId)
       ) {
+        // If persistOnDeath is enabled, keep the arc alive
+        if (arc.persistOnDeath) {
+          survivors.push(arc);
+          continue;
+        }
+        // Don't remove arc on the same tick it was created - 
+        // this causes a race condition where customData is cleared
+        // before the renderer has a chance to process it
+        const timeSinceCreation = now - arc.createdAtMs;
+        if (timeSinceCreation < 16) {
+          survivors.push(arc);
+          continue;
+        }
         this.scene.removeObject(arc.id);
         continue;
       }

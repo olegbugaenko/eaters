@@ -93,10 +93,14 @@ export class ArcRenderer extends ObjectRenderer {
             batchKey,
             uniforms,
           };
+        }
 
-          // Acquire slot to ensure batch exists
+        // Acquire slot if not already acquired
+        if (!slotHandle && batchConfig) {
           slotHandle = arcGpuRenderer.acquireSlot(batchConfig);
-          if (!slotHandle) return null;
+          if (!slotHandle) {
+            return null;
+          }
         }
 
         const now =
@@ -110,12 +114,6 @@ export class ArcRenderer extends ObjectRenderer {
           const dt = Math.max(0, Math.min(now - lastTs, 100));
           lastTs = now;
           age = Math.min(lifetime, age + dt);
-        }
-
-        // Acquire slot if not already acquired
-        if (!slotHandle && batchConfig) {
-          slotHandle = arcGpuRenderer.acquireSlot(batchConfig);
-          if (!slotHandle) return null;
         }
 
         if (slotHandle && batchConfig) {
