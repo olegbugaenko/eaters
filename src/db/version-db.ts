@@ -10,6 +10,7 @@ export const GAME_VERSIONS: GameVersionInfo[] = [
     releaseDate: "2026-01-15",
     changes: [
       "Significant balance changes",
+      "Added new sounds",
     ],
   },
   {
