@@ -30,6 +30,7 @@ export interface ArcState {
   remainingMs: number;
   lifetimeMs: number;
   fadeStartMs: number;
+  createdAtMs: number;
   lastUpdateTimestampMs: number;
   lastRealTimestampMs: number;
 }
