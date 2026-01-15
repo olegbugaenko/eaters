@@ -65,6 +65,8 @@ export class ArcModule implements GameModule {
           from: { ...from },
           to: { ...to },
           createdAtMs: a.createdAtMs,
+          lifetimeMs: a.lifetimeMs,
+          fadeStartMs: a.fadeStartMs,
         },
       });
       const elapsed = Math.max(
