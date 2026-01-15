@@ -22,6 +22,7 @@ import { getUnitModuleConfig } from "../../../../../db/unit-modules-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { PlayerUnitState } from "./UnitTypes";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
+import { resolveDamageApplication } from "../../../../helpers/damage-pipeline";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -1125,13 +1126,20 @@ export class UnitRuntimeController {
       const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
       const flatReduction = this.bricks.getOutgoingDamageFlatReduction(counterSource.id);
       const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
-      const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
-      if (counterDamage > 0) {
+      const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unit.id });
+      const { effectiveDamage, appliedDamage, remainingHp } = resolveDamageApplication({
+        rawDamage: scaledBaseDamage,
+        armor: unit.armor,
+        armorDelta,
+        currentHp: unit.hp,
+        maxHp: unit.maxHp,
+      });
+      if (effectiveDamage > 0) {
         const previousHp = unit.hp;
-        unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
-        const taken = Math.max(0, previousHp - unit.hp);
-        if (taken > 0) {
-          this.statistics?.recordDamageTaken(taken);
+        unit.hp = remainingHp;
+        if (previousHp !== unit.hp) {
+          this.statistics?.recordDamageTaken(appliedDamage);
+          this.statusEffects.handleTargetHit({ type: "unit", id: unit.id });
           hpChanged = true;
         }
       }

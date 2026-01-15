@@ -8,6 +8,7 @@ import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import type { MapRunState } from "../map/MapRunState";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
+import type { DamageService } from "../targeting/DamageService";
 import type { SkillId } from "../../../../db/skills-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
@@ -59,6 +60,7 @@ export interface SpellcastingModuleOptions {
   bonuses: BonusesModule;
   explosions?: ExplosionModule;
   projectiles: UnitProjectileController;
+  damage: DamageService;
   getSkillLevel: (id: SkillId) => number;
   runState: MapRunState;
 }

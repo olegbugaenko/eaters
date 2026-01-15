@@ -14,9 +14,10 @@ export const createSpellcastingDefinition = (): ServiceDefinition<SpellcastingMo
       bonuses: container.get("bonuses"),
       explosions: container.get("explosion"),
       projectiles: container.get("unitProjectiles"),
+      damage: container.get("damage"),
       runState: container.get("mapRunState"),
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
     }),
   registerAsModule: true,
-  dependsOn: ["necromancer", "bricks", "bonuses", "explosion", "unitProjectiles", "skillTree"],
+  dependsOn: ["necromancer", "bricks", "bonuses", "explosion", "unitProjectiles", "skillTree", "damage"],
 });

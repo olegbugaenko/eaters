@@ -17,6 +17,7 @@ import { describe, test } from "./testRunner";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import { createDamageServiceStub } from "./testHelpers";
 import { calculateMitigatedDamage } from "../src/logic/helpers/damage-formula";
 
 const createBricksModule = (
@@ -36,7 +37,7 @@ const createBricksModule = (
   };
   const bonuses = new BonusesModule();
   bonuses.initialize();
-  const statusEffects = new StatusEffectsModule();
+  const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
   return new BricksModule({
     scene,
     bridge,

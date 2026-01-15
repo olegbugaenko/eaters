@@ -3,7 +3,7 @@ import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { GameModule } from "@core/logic/types";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
-import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
+import { resolveDamageApplication } from "../../../helpers/damage-pipeline";
 import {
   cloneResourceStockpile,
   hasAnyResources,
@@ -424,18 +424,18 @@ export class EnemiesModule implements GameModule {
       type: "enemy",
       id: enemyId,
     });
-    const appliedDamage = calculateMitigatedDamage({
+    const { effectiveDamage, appliedDamage, remainingHp } = resolveDamageApplication({
       rawDamage: damage,
       armor: enemy.armor,
       armorDelta,
       armorPenetration,
+      currentHp: enemy.hp,
     });
-    if (appliedDamage <= 0) {
+    if (effectiveDamage <= 0) {
       return 0;
     }
 
-    const remainingHp = Math.max(enemy.hp - appliedDamage, 0);
-    const dealt = enemy.hp - remainingHp;
+    const dealt = appliedDamage;
     enemy.hp = remainingHp;
     if (dealt > 0) {
       this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });

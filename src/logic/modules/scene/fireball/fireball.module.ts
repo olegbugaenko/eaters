@@ -60,9 +60,11 @@ export class FireballModule implements GameModule {
 
   private fireballs: FireballState[] = [];
   private readonly projectiles: UnitProjectileController;
+  private readonly damage: FireballModuleOptions["damage"];
 
   constructor(private readonly options: FireballModuleOptions) {
     this.projectiles = options.projectiles;
+    this.damage = options.damage;
   }
 
   public initialize(): void {}
@@ -157,7 +159,7 @@ export class FireballModule implements GameModule {
       },
         onHit: (context) => {
           if (context.brickId) {
-            this.explodeFireball(fireball, context.brickId, context.position);
+            this.explodeFireball(fireball, context.position);
           }
           return true;
         },
@@ -167,7 +169,6 @@ export class FireballModule implements GameModule {
 
   private explodeFireball(
     fireball: FireballState,
-    primaryBrickId: string,
     position: SceneVector2,
   ): void {
     this.options.explosions.spawnExplosionByType("fireball", {
@@ -175,20 +176,11 @@ export class FireballModule implements GameModule {
       initialRadius: fireball.explosionRadius,
     });
 
-    const applyDamage = (brickId: string): void => {
-      this.options.bricks.applyDamage(brickId, fireball.damage, { x: 0, y: 0 }, {
-        rewardMultiplier: 1,
-        armorPenetration: 0,
-      });
-    };
-
-    applyDamage(primaryBrickId);
-
-    const nearby = this.options.bricks.findBricksNear(position, fireball.explosionRadius);
-    nearby.forEach((brick) => {
-      if (brick.id !== primaryBrickId) {
-        applyDamage(brick.id);
-      }
+    this.damage.applyAreaDamage(position, fireball.explosionRadius, fireball.damage, {
+      types: ["brick"],
+      direction: { x: 0, y: 0 },
+      rewardMultiplier: 1,
+      armorPenetration: 0,
     });
 
     this.removeFireballInstance(fireball);

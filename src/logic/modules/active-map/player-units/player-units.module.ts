@@ -22,7 +22,7 @@ import {
 import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { SkillId } from "../../../../db/skills-db";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
-import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
+import { resolveDamageApplication } from "../../../helpers/damage-pipeline";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
@@ -674,19 +674,20 @@ export class PlayerUnitsModule implements GameModule {
     }
     const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
     const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unitId });
-    const inflicted = calculateMitigatedDamage({
+    const { effectiveDamage, appliedDamage, remainingHp } = resolveDamageApplication({
       rawDamage: damage,
       armor: unit.armor,
       armorDelta,
       armorPenetration,
+      currentHp: unit.hp,
     });
-    if (inflicted <= 0) {
+    if (effectiveDamage <= 0) {
       return 0;
     }
     const previousHp = unit.hp;
-    unit.hp = Math.max(unit.hp - inflicted, 0);
+    unit.hp = remainingHp;
     if (previousHp !== unit.hp) {
-      this.statistics?.recordDamageTaken(previousHp - unit.hp);
+      this.statistics?.recordDamageTaken(appliedDamage);
       this.statusEffects.handleTargetHit({ type: "unit", id: unitId });
       
       // Apply knockback from enemy attack if configured

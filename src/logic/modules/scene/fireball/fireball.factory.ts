@@ -11,10 +11,11 @@ export const createFireballDefinition = (): ServiceDefinition<FireballModule, "f
       bricks: container.get("bricks"),
       explosions: container.get("explosion"),
       projectiles: container.get("unitProjectiles"),
+      damage: container.get("damage"),
       logEvent: (message) => console.log(`[FireballModule] ${message}`),
     }),
   registerAsModule: true,
-  dependsOn: ["bricks", "explosion", "unitProjectiles", "playerUnits"],
+  dependsOn: ["bricks", "explosion", "unitProjectiles", "playerUnits", "damage"],
   onReady: (instance: FireballModule, container: ServiceContainer) => {
     (container.get<PlayerUnitsModule>("playerUnits") as any).fireballs = instance;
   },

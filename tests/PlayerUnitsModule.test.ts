@@ -16,6 +16,7 @@ import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import { normalizeVector } from "../src/shared/helpers/vector.helper";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import { createDamageServiceStub } from "./testHelpers";
 
 const createResourceControllerStub = () => ({
   startRun: () => {},
@@ -185,7 +186,7 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
     const units = new PlayerUnitsModule({
       scene,
@@ -277,7 +278,7 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
     const units = new PlayerUnitsModule({
       scene,
@@ -387,7 +388,7 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
     let clearCalls = 0;
     const effectsStub = {
@@ -448,7 +449,7 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
-    const statusEffects = new StatusEffectsModule();
+    const statusEffects = new StatusEffectsModule({ damage: createDamageServiceStub() });
     const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
 
     bricks.setBricks([
