@@ -45,6 +45,8 @@ export interface SyncInstructions {
   staticData: Float32Array | null;
   dynamicData: Float32Array | null;
   dynamicUpdates: DynamicBufferUpdate[];
+  dynamicUsedLength: number;
+  dynamicUpdatesSorted: boolean;
 }
 
 export interface DynamicBufferStats {
@@ -76,12 +78,15 @@ export class ObjectsRendererManager {
 
   private staticVertexCount = 0;
   private dynamicVertexCount = 0;
+  private dynamicUsedLength = 0;
 
   private staticDirty = false;
   private dynamicLayoutDirty = false;
   private autoAnimatingNeedsUpload = false;
   private pendingDynamicUpdates: DynamicBufferUpdate[] = [];
   private pendingDynamicUpdateLength = 0;
+  private dynamicUpdatesSorted = true;
+  private lastDynamicUpdateOffset = 0;
   private lastDynamicRebuildMs = 0;
   private static readonly DYNAMIC_REBUILD_COOLDOWN_MS = 0;
   private static readonly DYNAMIC_UPDATE_THRESHOLD_RATIO = 0.25;
@@ -129,11 +134,14 @@ export class ObjectsRendererManager {
     this.dynamicData = null;
     this.staticVertexCount = 0;
     this.dynamicVertexCount = 0;
+    this.dynamicUsedLength = 0;
     this.staticDirty = false;
     this.dynamicLayoutDirty = false;
     this.autoAnimatingNeedsUpload = false;
     this.pendingDynamicUpdates = [];
     this.pendingDynamicUpdateLength = 0;
+    this.dynamicUpdatesSorted = true;
+    this.lastDynamicUpdateOffset = 0;
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
@@ -149,7 +157,8 @@ export class ObjectsRendererManager {
   }
 
   public applyChanges(
-    changes: ReturnType<SceneUiApi["flushChanges"]>
+    changes: ReturnType<SceneUiApi["flushChanges"]>,
+    frameDeltaMs?: number
   ): void {
     if (this.debugStatsEnabled) {
       this.debugChanges.added += changes.added.length;
@@ -163,7 +172,7 @@ export class ObjectsRendererManager {
       this.addObject(instance);
     });
     changes.updated.forEach((instance) => {
-      this.updateObject(instance);
+      this.updateObject(instance, frameDeltaMs);
     });
   }
 
@@ -198,23 +207,17 @@ export class ObjectsRendererManager {
       if (!managed) {
         return;
       }
-      // OPTIMIZATION: Mutate position in-place instead of creating new objects
-      // Save original position to restore after update
-      const originalPosition = managed.instance.data.position;
-      const origX = originalPosition.x;
-      const origY = originalPosition.y;
-      originalPosition.x = position.x;
-      originalPosition.y = position.y;
+      const renderPosition =
+        managed.instance.data.renderPosition ?? managed.instance.data.position;
+      renderPosition.x = position.x;
+      renderPosition.y = position.y;
+      managed.instance.data.renderPosition = renderPosition;
       
       const updates = managed.renderer.updatePositionOnly(
         managed.instance,
         managed.registration
       );
       this.recordDebugUpdate(managed.instance.type);
-      
-      // Restore original position
-      originalPosition.x = origX;
-      originalPosition.y = origY;
       
       updates.forEach(({ primitive, data }) => {
         const entry = this.dynamicEntryByPrimitive.get(primitive);
@@ -241,7 +244,7 @@ export class ObjectsRendererManager {
    * creates new Float32Arrays every frame), we just update dynamicData in-place
    * and mark that a full dynamic buffer upload is needed.
    */
-  public tickAutoAnimating(): void {
+  public tickAutoAnimating(frameDeltaMs: number): void {
     const idsToRemove: string[] = [];
     const primitivesToRemove: DynamicPrimitive[] = [];
     const applyInterpolatedPosition = <T>(
@@ -255,17 +258,13 @@ export class ObjectsRendererManager {
       }
 
       this.recordDebugInterpolation(managed.instance.type);
-      const originalPosition = managed.instance.data.position;
-      const origX = originalPosition.x;
-      const origY = originalPosition.y;
-      originalPosition.x = interpolated.x;
-      originalPosition.y = interpolated.y;
+      const renderPosition =
+        managed.instance.data.renderPosition ?? managed.instance.data.position;
+      renderPosition.x = interpolated.x;
+      renderPosition.y = interpolated.y;
+      managed.instance.data.renderPosition = renderPosition;
 
-      const result = update();
-
-      originalPosition.x = origX;
-      originalPosition.y = origY;
-      return result;
+      return update();
     };
     
     // Update full objects with autoAnimate: true
@@ -280,7 +279,11 @@ export class ObjectsRendererManager {
         
         // Trigger update using current instance (renderer will recompute based on time)
         const updates = applyInterpolatedPosition(managed, objectId, () =>
-          managed.renderer.update(managed.instance, managed.registration)
+          managed.renderer.update(
+            managed.instance,
+            managed.registration,
+            frameDeltaMs
+          )
         );
         this.recordDebugUpdate(managed.instance.type);
         updates.forEach(({ primitive, data }) => {
@@ -315,7 +318,7 @@ export class ObjectsRendererManager {
         
         // Update only this specific primitive
         const data = applyInterpolatedPosition(managed, objectId, () =>
-          primitive.update(managed.instance)
+          primitive.update(managed.instance, frameDeltaMs)
         );
         if (data) {
           const entry = this.dynamicEntryByPrimitive.get(primitive);
@@ -356,6 +359,8 @@ export class ObjectsRendererManager {
       staticData: null,
       dynamicData: null,
       dynamicUpdates: [],
+      dynamicUsedLength: 0,
+      dynamicUpdatesSorted: true,
     };
 
     if (this.staticDirty) {
@@ -380,6 +385,10 @@ export class ObjectsRendererManager {
     this.pendingDynamicUpdateLength = 0;
     this.maybeLogDebugStats();
 
+    result.dynamicUsedLength = this.dynamicUsedLength;
+    result.dynamicUpdatesSorted = this.dynamicUpdatesSorted;
+    this.dynamicUpdatesSorted = true;
+    this.lastDynamicUpdateOffset = 0;
     return result;
   }
 
@@ -396,6 +405,10 @@ export class ObjectsRendererManager {
       bytesAllocated: this.dynamicBytesAllocated,
       reallocations: this.dynamicReallocations,
     };
+  }
+
+  public getDynamicData(): Float32Array | null {
+    return this.dynamicData;
   }
 
   public getDynamicBufferBreakdown(): DynamicBufferBreakdownItem[] {
@@ -436,6 +449,9 @@ export class ObjectsRendererManager {
     }
     const registration = renderer.register(instance);
     const storedInstance = cloneInstance ? this.cloneInstance(instance) : instance;
+    if (!storedInstance.data.renderPosition) {
+      storedInstance.data.renderPosition = { ...storedInstance.data.position };
+    }
     const managed: ManagedObject = {
       instance: storedInstance,
       renderer,
@@ -488,14 +504,23 @@ export class ObjectsRendererManager {
     }
   }
 
-  private updateObject(instance: SceneObjectInstance): void {
+  private updateObject(instance: SceneObjectInstance, frameDeltaMs?: number): void {
     const managed = this.objects.get(instance.id);
     if (!managed) {
       return;
     }
     const previousInstance = managed.instance;
     const isTransformOnly = this.isTransformOnlyUpdate(previousInstance, instance);
+    const previousRenderPosition =
+      previousInstance.data.renderPosition ?? previousInstance.data.position;
     managed.instance = instance;
+    if (this.interpolatedPositions.has(instance.id)) {
+      instance.data.renderPosition = instance.data.renderPosition
+        ? { ...instance.data.renderPosition }
+        : { ...previousRenderPosition };
+    } else {
+      instance.data.renderPosition = { ...instance.data.position };
+    }
     const customData = instance.data.customData as Record<string, unknown> | undefined;
     const bulletGpuKey = customData?.bulletGpuKey;
     if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
@@ -503,7 +528,7 @@ export class ObjectsRendererManager {
     }
     const updates = isTransformOnly
       ? managed.renderer.updatePositionOnly(instance, managed.registration)
-      : managed.renderer.update(instance, managed.registration);
+      : managed.renderer.update(instance, managed.registration, frameDeltaMs);
     this.recordDebugUpdate(managed.instance.type);
     updates.forEach(({ primitive, data }) => {
       const entry = this.dynamicEntryByPrimitive.get(primitive);
@@ -630,6 +655,7 @@ export class ObjectsRendererManager {
     }
     
     this.dynamicVertexCount = totalLength / VERTEX_COMPONENTS;
+    this.dynamicUsedLength = totalLength;
     this.dynamicLayoutDirty = false;
     this.pendingDynamicUpdates = [];
     this.pendingDynamicUpdateLength = 0;
@@ -646,6 +672,10 @@ export class ObjectsRendererManager {
 
     this.pendingDynamicUpdates.push({ offset: entry.offset, data });
     this.pendingDynamicUpdateLength += data.length;
+    if (entry.offset < this.lastDynamicUpdateOffset) {
+      this.dynamicUpdatesSorted = false;
+    }
+    this.lastDynamicUpdateOffset = entry.offset;
 
     if (this.pendingDynamicUpdateLength >= threshold) {
       this.autoAnimatingNeedsUpload = true;
@@ -805,6 +835,9 @@ export class ObjectsRendererManager {
       type: instance.type,
       data: {
         position: { ...instance.data.position },
+        renderPosition: instance.data.renderPosition
+          ? { ...instance.data.renderPosition }
+          : undefined,
         size: instance.data.size ? { ...instance.data.size } : undefined,
         color: instance.data.color ? { ...instance.data.color } : undefined,
         fill: cloneSceneFill(instance.data.fill),

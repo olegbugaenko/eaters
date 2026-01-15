@@ -4,6 +4,8 @@ import type { ResourceStockpile } from "../../../../db/resources-db";
 import type { BonusEffectPreview } from "@shared/types/bonuses";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import type { EventLogModule } from "../../shared/event-log/event-log.module";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 
 export interface SkillNodeRequirementPayload {
   id: SkillId;
@@ -22,6 +24,9 @@ export interface SkillNodeBridgePayload {
   requirements: SkillNodeRequirementPayload[];
   unlocked: boolean;
   maxed: boolean;
+  affordable: boolean;
+  purchasable: boolean;
+  missingResources: ResourceStockpile;
   nextCost: ResourceStockpile | null;
   bonusEffects: BonusEffectPreview[];
 }
@@ -34,6 +39,8 @@ export interface SkillTreeModuleOptions {
   bridge: DataBridge;
   resources: ResourcesModule;
   bonuses: BonusesModule;
+  eventLog: EventLogModule;
+  audio?: SoundEffectPlayer;
 }
 
 export interface SkillTreeSaveData {

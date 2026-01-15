@@ -90,6 +90,7 @@ export type SceneFill =
 
 export interface SceneObjectData {
   position: SceneVector2;
+  renderPosition?: SceneVector2;
   size?: SceneSize;
   color?: SceneColor;
   fill?: SceneFill;

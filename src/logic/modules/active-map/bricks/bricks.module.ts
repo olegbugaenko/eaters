@@ -28,6 +28,7 @@ import {
 import { createBrickFill } from "./bricks.fill.helper";
 import { tintSceneFill } from "@shared/helpers/scene-fill.helper";
 import { sceneColorsEqual } from "@shared/helpers/scene-color.helper";
+import { applyDamagePipeline, sanitizeDamageOptions } from "../../../helpers/damage-application";
 import {
   sanitizeHp,
   sanitizeBrickType,
@@ -289,25 +290,38 @@ export class BricksModule implements GameModule {
       return { destroyed: false, brick: null, inflictedDamage: 0 };
     }
 
-    const rewardMultiplier = Math.max(options?.rewardMultiplier ?? 1, 0);
-    const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
-    const skipKnockback = options?.skipKnockback === true;
+    const { rewardMultiplier, armorPenetration, skipKnockback, overTime } =
+      sanitizeDamageOptions(options);
     const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "brick", id: brickId });
-    const effectiveArmor =
-      Math.max(brick.armor + armorDelta - armorPenetration, 0) * (options?.overTime ?? 1);
     const incomingMultiplier = this.statusEffects.getBrickIncomingDamageMultiplier(brickId);
-    const effectiveDamage = Math.max(rawDamage - effectiveArmor, 0) * Math.max(incomingMultiplier, 1);
-    if (effectiveDamage <= 0) {
+    const previousHp = brick.hp;
+    const { inflictedDamage, nextHp } = applyDamagePipeline(
+      {
+        rawDamage,
+        armor: brick.armor,
+        armorDelta,
+        armorPenetration,
+        incomingMultiplier,
+        overTime,
+        currentHp: brick.hp,
+        maxHp: brick.maxHp,
+      },
+      { skipKnockback },
+      {
+        onInflicted: (amount) => {
+          this.options.statistics?.recordDamageDealt(amount);
+          this.statusEffects.handleTargetHit({ type: "brick", id: brickId });
+        },
+        onKnockback: () => {
+          this.applyBrickKnockback(brick, hitDirection);
+        },
+      },
+    );
+    if (inflictedDamage <= 0) {
       return { destroyed: false, brick: this.cloneState(brick), inflictedDamage: 0 };
     }
 
-    const previousHp = brick.hp;
-    brick.hp = clampNumber(brick.hp - effectiveDamage, 0, brick.maxHp);
-    const inflictedDamage = Math.max(0, previousHp - brick.hp);
-    if (inflictedDamage > 0) {
-      this.options.statistics?.recordDamageDealt(inflictedDamage);
-      this.statusEffects.handleTargetHit({ type: "brick", id: brickId });
-    }
+    brick.hp = nextHp;
     this.totalHpCached += brick.hp - previousHp;
 
     if (brick.hp <= 0) {
@@ -319,9 +333,6 @@ export class BricksModule implements GameModule {
 
     this.playBrickSound("hit");
     this.spawnBrickExplosion(brick.damageExplosion, brick);
-    if (!skipKnockback) {
-      this.applyBrickKnockback(brick, hitDirection);
-    }
     const nextDamageStage = resolveBrickDamageStage(brick.hp, brick.maxHp);
     if (nextDamageStage !== brick.damageStage) {
       brick.damageStage = nextDamageStage;

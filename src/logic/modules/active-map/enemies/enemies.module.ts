@@ -3,10 +3,15 @@ import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { GameModule } from "@core/logic/types";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
+import { applyDamagePipeline, sanitizeDamageOptions } from "../../../helpers/damage-application";
 import {
   cloneResourceStockpile,
+  createEmptyResourceStockpile,
+  hasAnyResources,
   normalizeResourceAmount,
+  RESOURCE_IDS,
 } from "../../../../db/resources-db";
+import type { ResourceStockpile } from "../../../../db/resources-db";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
@@ -36,6 +41,7 @@ import type {
   EnemySpawnData,
   InternalEnemyState,
 } from "./enemies.types";
+import { scaleEnemyResourceStockpile } from "./enemies.helpers";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { getEnemyConfig, type EnemyConfig } from "../../../../db/enemies-db";
@@ -56,9 +62,13 @@ import { PathfindingService } from "@/logic/shared/navigation/PathfindingService
 import { BrickObstacleProvider } from "./brick-obstacle-provider";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
+import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
+const ENEMY_KNOCKBACK_DURATION_MS = 180;
+const ENEMY_KNOCKBACK_EPSILON = 0.001;
+const ENEMY_STATIC_KNOCKBACK_SPEED_SCALE = 0.05;
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -83,6 +93,8 @@ export class EnemiesModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly runState: MapRunState;
   private readonly movement: MovementService;
+  private readonly resources: EnemiesModuleOptions["resources"];
+  private readonly bonuses: BonusesModule;
   private readonly targeting?: TargetingService;
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
@@ -110,6 +122,8 @@ export class EnemiesModule implements GameModule {
     this.bridge = options.bridge;
     this.runState = options.runState;
     this.movement = options.movement;
+    this.resources = options.resources;
+    this.bonuses = options.bonuses;
     this.targeting = options.targeting;
     this.damage = options.damage;
     this.explosions = options.explosions;
@@ -198,19 +212,6 @@ export class EnemiesModule implements GameModule {
         this.updateNavigationState(enemy, target, deltaSeconds);
         const force = this.computeMovementForce(enemy, target);
         this.movement.setForce(enemy.movementId, force);
-      } else {
-        // Статичні вороги все одно обертаються до цілі
-        if (target) {
-          const toTarget = subtractVectors(target.position, enemy.position);
-          const distance = vectorLength(toTarget);
-          if (distance > 0) {
-            enemy.rotation = Math.atan2(toTarget.y, toTarget.x);
-            this.scene.updateObject(enemy.sceneObjectId, {
-              position: { ...enemy.position },
-              rotation: enemy.rotation,
-            });
-          }
-        }
       }
     });
 
@@ -284,9 +285,12 @@ export class EnemiesModule implements GameModule {
         anyChanged = true;
       }
 
+      const knockbackOffset = this.updateEnemyKnockback(enemy, deltaMs);
+      const renderPosition = addVectors(enemy.position, knockbackOffset);
+
       // Update scene object position and rotation
       this.scene.updateObject(enemy.sceneObjectId, {
-        position: { ...enemy.position },
+        position: { ...renderPosition },
         rotation: enemy.rotation,
       });
 
@@ -299,9 +303,23 @@ export class EnemiesModule implements GameModule {
         }
       }
 
+      if (enemy.attackSeriesState) {
+        const seriesUpdated = this.processAttackSeries(
+          enemy,
+          target ?? null,
+          deltaMs,
+        );
+        if (seriesUpdated) {
+          anyChanged = true;
+        }
+      }
+
       // Try to attack
-      if (enemy.attackCooldown <= 0 && this.tryAttack(enemy, target ?? null)) {
-        enemy.attackCooldown = enemy.attackInterval;
+      if (
+        !enemy.attackSeriesState &&
+        enemy.attackCooldown <= 0 &&
+        this.tryAttack(enemy, target ?? null)
+      ) {
         anyChanged = true;
       }
 
@@ -386,7 +404,15 @@ export class EnemiesModule implements GameModule {
   public applyDamage(
     enemyId: string,
     damage: number,
-    options?: { armorPenetration?: number },
+    options?: {
+      armorPenetration?: number;
+      knockBackDirection?: SceneVector2;
+      knockBackDistance?: number;
+      knockBackSpeed?: number;
+      skipKnockback?: boolean;
+      direction?: SceneVector2;
+      rewardMultiplier?: number;
+    },
   ): number {
     if (damage <= 0) {
       return 0;
@@ -395,38 +421,50 @@ export class EnemiesModule implements GameModule {
     if (!enemy) {
       return 0;
     }
-    const armorPenetration = clampNumber(
-      options?.armorPenetration ?? 0,
-      0,
-      Number.POSITIVE_INFINITY,
-    );
+    const { armorPenetration, rewardMultiplier, skipKnockback } =
+      sanitizeDamageOptions(options);
     const armorDelta = this.statusEffects.getTargetArmorDelta({
       type: "enemy",
       id: enemyId,
     });
-    const effectiveArmor = Math.max(
-      enemy.armor + armorDelta - armorPenetration,
-      0,
+
+    const previousHp = enemy.hp;
+    const { inflictedDamage, nextHp } = applyDamagePipeline(
+      {
+        rawDamage: damage,
+        armor: enemy.armor,
+        armorDelta,
+        armorPenetration,
+        currentHp: enemy.hp,
+        maxHp: enemy.maxHp,
+      },
+      { skipKnockback },
+      {
+        onInflicted: () => {
+          this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });
+        },
+        onKnockback: () => {
+          this.applySelfKnockBack(
+            enemy,
+            options?.knockBackDirection ?? options?.direction,
+            options?.knockBackDistance,
+            options?.knockBackSpeed,
+          );
+        },
+      },
     );
-    const appliedDamage = Math.max(damage - effectiveArmor, 0);
-    if (appliedDamage <= 0) {
+    if (inflictedDamage <= 0) {
       return 0;
     }
-
-    const remainingHp = Math.max(enemy.hp - appliedDamage, 0);
-    const dealt = enemy.hp - remainingHp;
-    enemy.hp = remainingHp;
-    if (dealt > 0) {
-      this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });
-    }
-    this.totalHpCached = Math.max(0, this.totalHpCached - dealt);
+    enemy.hp = nextHp;
+    this.totalHpCached = Math.max(0, this.totalHpCached - inflictedDamage);
 
     if (enemy.hp <= 0) {
-      this.destroyEnemy(enemy);
+      this.destroyEnemy(enemy, rewardMultiplier);
     }
 
     this.pushStats();
-    return dealt;
+    return previousHp - enemy.hp;
   }
 
   private applyEnemies(enemies: EnemySpawnData[]): void {
@@ -466,7 +504,17 @@ export class EnemiesModule implements GameModule {
     return `${ENEMY_SCENE_OBJECT_TYPE}-${this.enemyIdCounter}`;
   }
 
-  private destroyEnemy(enemy: InternalEnemyState): void {
+  private destroyEnemy(enemy: InternalEnemyState, rewardMultiplier = 1): void {
+    if (enemy.reward && hasAnyResources(enemy.reward)) {
+      let rewards = this.applyEnemyRewardBonuses(enemy.reward);
+      const multiplier = Math.max(rewardMultiplier, 0);
+      if (multiplier !== 1) {
+        rewards = scaleEnemyResourceStockpile(rewards, multiplier);
+      }
+      if (hasAnyResources(rewards)) {
+        this.resources.grantResources(rewards);
+      }
+    }
     this.scene.removeObject(enemy.sceneObjectId);
     this.movement.removeBody(enemy.movementId);
     this.enemies.delete(enemy.id);
@@ -474,6 +522,103 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.delete(enemy.id);
     this.navigationState.delete(enemy.id);
     this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
+  }
+
+  private applyEnemyRewardBonuses(rewards: ResourceStockpile): ResourceStockpile {
+    const multiplierRaw = this.bonuses.getBonusValue("brick_rewards");
+    const multiplier = Number.isFinite(multiplierRaw) ? multiplierRaw : 1;
+    if (Math.abs(multiplier - 1) < 1e-9) {
+      return cloneResourceStockpile(rewards);
+    }
+
+    const scaled = createEmptyResourceStockpile();
+    RESOURCE_IDS.forEach((id) => {
+      const base = rewards[id] ?? 0;
+      const value = Math.round(base * multiplier * 100) / 100;
+      scaled[id] = value > 0 ? value : 0;
+    });
+    return scaled;
+  }
+
+  private applySelfKnockBack(
+    enemy: InternalEnemyState,
+    direction: SceneVector2 | undefined,
+    knockBackDistanceOverride?: number,
+    knockBackSpeedOverride?: number,
+  ): void {
+    const knockBackDistance = Math.max(
+      knockBackDistanceOverride ?? enemy.selfKnockBackDistance,
+      0
+    );
+    const knockBackSpeedRaw = Math.max(
+      knockBackSpeedOverride ?? enemy.selfKnockBackSpeed,
+      0
+    );
+    if (knockBackDistance <= 0 && knockBackSpeedRaw <= 0) {
+      return;
+    }
+
+    let axis = direction ?? { x: 0, y: 0 };
+    const distance = vectorLength(axis);
+    if (distance > 0) {
+      axis = scaleVector(axis, 1 / distance);
+    } else {
+      axis = { x: Math.cos(enemy.rotation), y: Math.sin(enemy.rotation) };
+    }
+
+    if (!vectorHasLength(axis)) {
+      axis = { x: 0, y: -1 };
+    }
+
+    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    if (knockBackSpeed <= 0) {
+      return;
+    }
+
+    if (this.getEffectiveMoveSpeed(enemy) <= 0) {
+      const amplitude =
+        knockBackDistance > 0
+          ? knockBackDistance
+          : knockBackSpeedRaw * ENEMY_STATIC_KNOCKBACK_SPEED_SCALE;
+      if (amplitude <= ENEMY_KNOCKBACK_EPSILON) {
+        return;
+      }
+      const offset = scaleVector(axis, amplitude);
+      enemy.knockback = {
+        initialOffset: offset,
+        currentOffset: offset,
+        elapsed: 0,
+      };
+      return;
+    }
+
+    const duration = 1;
+    const knockbackVelocity = scaleVector(axis, knockBackSpeed);
+    this.movement.applyKnockback(enemy.movementId, knockbackVelocity, duration);
+  }
+
+  private updateEnemyKnockback(
+    enemy: InternalEnemyState,
+    deltaMs: number
+  ): SceneVector2 {
+    if (!enemy.knockback || deltaMs <= 0) {
+      return ZERO_VECTOR;
+    }
+
+    const state = enemy.knockback;
+    state.elapsed = Math.min(state.elapsed + deltaMs, ENEMY_KNOCKBACK_DURATION_MS);
+    const progress = clampNumber(state.elapsed / ENEMY_KNOCKBACK_DURATION_MS, 0, 1);
+    const remaining = 1 - progress;
+    const eased = remaining * remaining;
+
+    if (eased <= ENEMY_KNOCKBACK_EPSILON) {
+      enemy.knockback = null;
+      return ZERO_VECTOR;
+    }
+
+    const offset = scaleVector(state.initialOffset, eased);
+    state.currentOffset = offset;
+    return offset;
   }
 
   private findTargetForEnemy(
@@ -533,16 +678,78 @@ export class EnemiesModule implements GameModule {
       return false;
     }
 
-    const toTarget = subtractVectors(target.position, enemy.position);
-    const distance = vectorLength(toTarget);
-    const attackRange =
-      enemy.attackRange + enemy.physicalSize + target.physicalSize;
-
-    if (distance > attackRange) {
+    if (!this.isTargetInRange(enemy, target)) {
       return false;
     }
 
     const config = getEnemyConfig(enemy.type);
+    if (!this.spawnAttackShot(enemy, target, config)) {
+      return false;
+    }
+
+    const seriesConfig = this.getAttackSeriesConfig(config);
+    const sanitizedSeries = this.sanitizeAttackSeries(seriesConfig);
+    if (sanitizedSeries && sanitizedSeries.shots > 1) {
+      enemy.attackSeriesState = {
+        remainingShots: sanitizedSeries.shots - 1,
+        cooldownMs: sanitizedSeries.intervalMs,
+        intervalMs: sanitizedSeries.intervalMs,
+      };
+      return true;
+    }
+
+    enemy.attackCooldown = enemy.attackInterval;
+    enemy.attackSeriesState = undefined;
+    return true;
+  }
+
+  private processAttackSeries(
+    enemy: InternalEnemyState,
+    target: { id: string; position: SceneVector2; physicalSize: number } | null,
+    deltaMs: number,
+  ): boolean {
+    const series = enemy.attackSeriesState;
+    if (!series) {
+      return false;
+    }
+    if (!this.targeting || !target) {
+      enemy.attackSeriesState = undefined;
+      enemy.attackCooldown = enemy.attackInterval;
+      return true;
+    }
+
+    if (!this.isTargetInRange(enemy, target)) {
+      enemy.attackSeriesState = undefined;
+      enemy.attackCooldown = enemy.attackInterval;
+      return true;
+    }
+
+    const config = getEnemyConfig(enemy.type);
+    series.cooldownMs = Math.max(series.cooldownMs - Math.max(0, deltaMs), 0);
+
+    while (series.remainingShots > 0 && series.cooldownMs <= 0) {
+      if (!this.spawnAttackShot(enemy, target, config)) {
+        enemy.attackSeriesState = undefined;
+        enemy.attackCooldown = enemy.attackInterval;
+        return true;
+      }
+      series.remainingShots -= 1;
+      series.cooldownMs += series.intervalMs;
+    }
+
+    if (series.remainingShots <= 0) {
+      enemy.attackSeriesState = undefined;
+      enemy.attackCooldown = enemy.attackInterval;
+    }
+    return true;
+  }
+
+  private spawnAttackShot(
+    enemy: InternalEnemyState,
+    target: { id: string; position: SceneVector2; physicalSize: number },
+    config: EnemyConfig,
+  ): boolean {
+    const toTarget = subtractVectors(target.position, enemy.position);
 
     if (config.arcAttack) {
       const arcAttack = config.arcAttack;
@@ -550,6 +757,10 @@ export class EnemiesModule implements GameModule {
         arcAttack.arcType,
         { type: "enemy", id: enemy.id },
         { type: "unit", id: target.id },
+        { 
+          sourceOffset: arcAttack.spawnOffset,
+          persistOnDeath: true,
+        },
       );
       if (arcAttack.statusEffectId) {
         const effectTarget = { type: "unit", id: target.id } as const;
@@ -572,6 +783,16 @@ export class EnemiesModule implements GameModule {
               ? knockBackDirection
               : normalizeVector(toTarget) || { x: 1, y: 0 },
         });
+      }
+      // Spawn explosion at target position if configured
+      if (arcAttack.explosionType && this.explosions) {
+        this.explosions.spawnExplosionByType(
+          arcAttack.explosionType,
+          {
+            position: target.position,
+            initialRadius: arcAttack.explosionRadius,
+          }
+        );
       }
       return true;
     }
@@ -602,14 +823,14 @@ export class EnemiesModule implements GameModule {
 
       const explosionStatusEffectId = explosionAttack.statusEffectId;
       if (explosionStatusEffectId) {
-        this.targeting.forEachTargetNear(
+        this.targeting?.forEachTargetNear(
           enemy.position,
           Math.max(0, explosionAttack.radius),
-          (target) => {
-            if (target.type !== "unit") {
+          (attackTarget) => {
+            if (attackTarget.type !== "unit") {
               return;
             }
-            const effectTarget = { type: "unit", id: target.id } as const;
+            const effectTarget = { type: "unit", id: attackTarget.id } as const;
             if (!this.statusEffects.hasEffect(explosionStatusEffectId, effectTarget)) {
               this.statusEffects.applyEffect(
                 explosionStatusEffectId,
@@ -643,12 +864,14 @@ export class EnemiesModule implements GameModule {
         y: enemy.position.y + direction.y * spawnOffset,
       };
       */
-      const origin = volley?.spawnOffset
-        ? addVectors(enemy.position, volley.spawnOffset)
-        : { ...enemy.position };
+      const origin = { ...enemy.position };
+      const spawnOffset = projectileConfig.spawnOffset;
+      const effectiveOrigin = spawnOffset
+        ? addVectors(origin, spawnOffset)
+        : origin;
 
       directions.forEach((projectileDirection) => {
-        const knockBackDirection = subtractVectors(origin, target.position);
+        const knockBackDirection = subtractVectors(effectiveOrigin, target.position);
         projectiles.spawn({
           origin,
           direction: projectileDirection,
@@ -673,7 +896,7 @@ export class EnemiesModule implements GameModule {
                 },
               );
             }
-            return true; // Снаряд зникає після влучання
+            return false; // Дозволяємо стандартне нанесення шкоди
           },
         });
       });
@@ -703,9 +926,42 @@ export class EnemiesModule implements GameModule {
           initialRadius: Math.max(8, enemy.physicalSize),
         });
       }
+      return true;
     }
 
-    return true;
+    return false;
+  }
+
+  private getAttackSeriesConfig(config: EnemyConfig) {
+    if (config.arcAttack?.attackSeries) {
+      return config.arcAttack.attackSeries;
+    }
+    if (config.projectile?.attackSeries) {
+      return config.projectile.attackSeries;
+    }
+    return undefined;
+  }
+
+  private sanitizeAttackSeries(
+    series: { shots: number; intervalMs: number } | undefined,
+  ): { shots: number; intervalMs: number } | null {
+    if (!series) {
+      return null;
+    }
+    const shots = clampNumber(series.shots, 1, Number.POSITIVE_INFINITY);
+    const intervalMs = clampNumber(series.intervalMs, 0, Number.POSITIVE_INFINITY);
+    return { shots, intervalMs };
+  }
+
+  private isTargetInRange(
+    enemy: InternalEnemyState,
+    target: { position: SceneVector2; physicalSize: number },
+  ): boolean {
+    const toTarget = subtractVectors(target.position, enemy.position);
+    const distance = vectorLength(toTarget);
+    const attackRange =
+      enemy.attackRange + enemy.physicalSize + target.physicalSize;
+    return distance <= attackRange;
   }
 
   private clearSceneObjects(): void {
@@ -1303,8 +1559,8 @@ export class EnemiesModule implements GameModule {
       attackRange: enemy.attackRange,
       moveSpeed: enemy.moveSpeed,
       physicalSize: enemy.physicalSize,
-      knockBackDistance: enemy.knockBackDistance,
-      knockBackSpeed: enemy.knockBackSpeed,
+      selfKnockBackDistance: enemy.selfKnockBackDistance,
+      selfKnockBackSpeed: enemy.selfKnockBackSpeed,
       reward: enemy.reward
         ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward))
         : undefined,

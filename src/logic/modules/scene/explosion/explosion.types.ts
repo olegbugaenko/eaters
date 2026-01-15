@@ -9,9 +9,11 @@ import type {
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { ExplosionType } from "../../../../db/explosions-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 
 export interface ExplosionModuleOptions {
   scene: SceneObjectManager;
+  audio?: SoundEffectPlayer;
 }
 
 export interface WaveState {

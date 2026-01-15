@@ -4,18 +4,23 @@ import { GameModule } from "@core/logic/types";
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { UnlockService } from "../../../services/unlock/UnlockService";
 import { BricksModule } from "../bricks/bricks.module";
-import type { BrickData } from "../bricks/bricks.types";
+import type { BrickData, BrickRuntimeState } from "../bricks/bricks.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { AchievementsModule } from "../../shared/achievements/achievements.module";
+import { EventLogModule } from "../../shared/event-log/event-log.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
+import type { EnemyRuntimeState } from "../enemies/enemies.types";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
+import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 
 export interface ResourceRunController {
   startRun(): void;
@@ -37,10 +42,12 @@ export interface MapModuleOptions {
   resources: ResourceRunController;
   unlocks: UnlockService;
   achievements: AchievementsModule;
+  eventLog: EventLogModule;
   unitsAutomation: UnitAutomationModule;
   arcs: ArcModule;
   sceneCleanup: MapSceneCleanupContract;
   getSkillLevel: (id: SkillId) => number;
+  newUnlocks: NewUnlockNotificationService;
 }
 
 export interface MapSaveData {
@@ -49,6 +56,7 @@ export interface MapSaveData {
   stats?: MapStats;
   selectedLevels?: Partial<Record<MapId, number>>;
   autoRestartEnabled?: boolean;
+  controlHintsCollapsed?: boolean;
   lastPlayedMap?: { mapId: MapId; level: number };
   mapSelectViewTransform?: { scale: number; worldX: number; worldY: number };
 }
@@ -103,6 +111,13 @@ export interface MapModuleUiApi {
   setMapSelectViewTransform(
     transform: { scale: number; worldX: number; worldY: number } | null
   ): void;
+  setControlHintsCollapsed(collapsed: boolean): void;
+  setInspectedTargetAtPosition(position: SceneVector2, radius?: number): void;
+  clearInspectedTarget(): void;
+  inspectTargetAtPosition(
+    position: SceneVector2,
+    radius?: number
+  ): TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

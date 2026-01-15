@@ -4,7 +4,9 @@ import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/s
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { ArcType, getArcConfig } from "../../../../db/arcs-db";
 import { getNowMs } from "@shared/helpers/time.helper";
-import type { ArcModuleOptions, ArcState, ArcTargetRef } from "./arc.types";
+import { addVectors, sanitizeOffset } from "@shared/helpers/vector.helper";
+import type { ArcModuleOptions, ArcSpawnOptions, ArcState, ArcTargetRef } from "./arc.types";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 
 export class ArcModule implements GameModule {
   public readonly id = "arcs";
@@ -16,12 +18,14 @@ export class ArcModule implements GameModule {
   private readonly getEnemyPositionIfAlive?: (
     enemyId: string,
   ) => SceneVector2 | null;
+  private readonly audio?: SoundEffectPlayer;
   private arcs: ArcState[] = [];
 
   constructor(options: ArcModuleOptions) {
     this.scene = options.scene;
     this.getUnitPositionIfAlive = options.getUnitPositionIfAlive;
     this.getEnemyPositionIfAlive = options.getEnemyPositionIfAlive;
+    this.audio = options.audio;
   }
 
   public initialize(): void {}
@@ -46,9 +50,25 @@ export class ArcModule implements GameModule {
     const realNow = Date.now();
     for (let i = 0; i < this.arcs.length; i += 1) {
       const a = this.arcs[i]!;
-      const from = this.getArcTargetPosition(a.source);
-      const to = this.getArcTargetPosition(a.target);
+      let from = this.getArcTargetPosition(a.source, a.sourceOffset);
+      let to = this.getArcTargetPosition(a.target);
+      
+      // If target died, use last known position if persistOnDeath is enabled
+      if (a.persistOnDeath) {
+        if (!from && a.lastFrom) from = a.lastFrom;
+        if (!to && a.lastTo) to = a.lastTo;
+      }
+      
       if (!from || !to) {
+        // Don't remove arc on the same tick it was created - 
+        // this causes a race condition where customData is cleared
+        // before the renderer has a chance to process it
+        const timeSinceCreation = now - a.createdAtMs;
+        if (timeSinceCreation < 16) {
+          // Skip this tick, let the arc live at least one render frame
+          survivors.push(a);
+          continue;
+        }
         this.scene.removeObject(a.id);
         continue;
       }
@@ -60,6 +80,9 @@ export class ArcModule implements GameModule {
           arcType: a.type,
           from: { ...from },
           to: { ...to },
+          createdAtMs: a.createdAtMs,
+          lifetimeMs: a.lifetimeMs,
+          fadeStartMs: a.fadeStartMs,
         },
       });
       const elapsed = Math.max(
@@ -76,6 +99,8 @@ export class ArcModule implements GameModule {
           remainingMs: next,
           lastUpdateTimestampMs: now,
           lastRealTimestampMs: realNow,
+          lastFrom: from,
+          lastTo: to,
         });
       }
     }
@@ -86,11 +111,13 @@ export class ArcModule implements GameModule {
     type: ArcType,
     sourceUnitId: string,
     targetUnitId: string,
+    options?: ArcSpawnOptions,
   ): void {
     this.spawnArcBetweenTargets(
       type,
       { type: "unit", id: sourceUnitId },
       { type: "unit", id: targetUnitId },
+      options,
     );
   }
 
@@ -98,9 +125,12 @@ export class ArcModule implements GameModule {
     type: ArcType,
     source: ArcTargetRef,
     target: ArcTargetRef,
+    options?: ArcSpawnOptions,
   ): void {
     const cfg = getArcConfig(type);
-    const from = this.getArcTargetPosition(source);
+    
+    const sourceOffset = sanitizeOffset(options?.sourceOffset);
+    const from = this.getArcTargetPosition(source, sourceOffset);
     const to = this.getArcTargetPosition(target);
     if (!from || !to) {
       return;
@@ -116,6 +146,7 @@ export class ArcModule implements GameModule {
         to: { ...to },
         lifetimeMs: cfg.lifetimeMs,
         fadeStartMs: cfg.fadeStartMs,
+        createdAtMs: now,
       },
     });
     this.arcs.push({
@@ -123,18 +154,27 @@ export class ArcModule implements GameModule {
       type,
       source,
       target,
+      sourceOffset,
       remainingMs: cfg.lifetimeMs,
       lifetimeMs: cfg.lifetimeMs,
       fadeStartMs: cfg.fadeStartMs,
+      createdAtMs: now,
       lastUpdateTimestampMs: now,
       lastRealTimestampMs: realNow,
+      persistOnDeath: options?.persistOnDeath,
+      lastFrom: from,
+      lastTo: to,
     });
+    if (cfg.soundEffectUrl) {
+      this.audio?.playSoundEffect(cfg.soundEffectUrl);
+    }
   }
 
   public clearArcsForUnit(unitId: string): void {
     if (!unitId || this.arcs.length === 0) {
       return;
     }
+    const now = getNowMs();
     const survivors: ArcState[] = [];
     for (let i = 0; i < this.arcs.length; i += 1) {
       const arc = this.arcs[i]!;
@@ -142,6 +182,19 @@ export class ArcModule implements GameModule {
         (arc.source.type === "unit" && arc.source.id === unitId) ||
         (arc.target.type === "unit" && arc.target.id === unitId)
       ) {
+        // If persistOnDeath is enabled, keep the arc alive
+        if (arc.persistOnDeath) {
+          survivors.push(arc);
+          continue;
+        }
+        // Don't remove arc on the same tick it was created - 
+        // this causes a race condition where customData is cleared
+        // before the renderer has a chance to process it
+        const timeSinceCreation = now - arc.createdAtMs;
+        if (timeSinceCreation < 16) {
+          survivors.push(arc);
+          continue;
+        }
         this.scene.removeObject(arc.id);
         continue;
       }
@@ -157,12 +210,23 @@ export class ArcModule implements GameModule {
     this.arcs = [];
   }
 
-  private getArcTargetPosition(target: ArcTargetRef): SceneVector2 | null {
+  private getArcTargetPosition(
+    target: ArcTargetRef,
+    offset?: SceneVector2,
+  ): SceneVector2 | null {
     if (target.type === "unit") {
-      return this.getUnitPositionIfAlive(target.id);
+      const position = this.getUnitPositionIfAlive(target.id);
+      if (!position) {
+        return null;
+      }
+      return offset ? addVectors(position, offset) : position;
     }
     if (target.type === "enemy") {
-      return this.getEnemyPositionIfAlive?.(target.id) ?? null;
+      const position = this.getEnemyPositionIfAlive?.(target.id) ?? null;
+      if (!position) {
+        return null;
+      }
+      return offset ? addVectors(position, offset) : position;
     }
     return null;
   }

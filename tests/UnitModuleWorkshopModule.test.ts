@@ -8,6 +8,7 @@ import {
 import type { UnitModuleWorkshopBridgeState } from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.module";
 import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
+import { NewUnlockNotificationService } from "../src/logic/services/new-unlock-notification/NewUnlockNotification";
 import type { ResourcesModule } from "../src/logic/modules/shared/resources/resources.module";
 
 describe("UnitModuleWorkshopModule", () => {
@@ -19,6 +20,8 @@ describe("UnitModuleWorkshopModule", () => {
       getMapStats: () => mapStats,
       getSkillLevel: () => 0,
     });
+    const newUnlocks = new NewUnlockNotificationService({ bridge });
+    newUnlocks.initialize();
     const resources = {
       spendResources: () => true,
     } as unknown as ResourcesModule;
@@ -28,6 +31,7 @@ describe("UnitModuleWorkshopModule", () => {
       resources,
       getSkillLevel: () => workshopLevel,
       unlocks,
+      newUnlocks,
     });
 
     module.initialize();

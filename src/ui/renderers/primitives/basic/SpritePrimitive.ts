@@ -20,7 +20,7 @@ import {
   createFillVertexComponents,
   copyFillComponents,
 } from "../utils/fill";
-import { transformObjectPoint } from "../../objects/ObjectRenderer";
+import { getInstanceRenderPosition, transformObjectPoint } from "../../objects/ObjectRenderer";
 
 export const clearSpriteTextureCache = (): void => {
   textureResourceManager.clearCache(true);
@@ -222,7 +222,11 @@ export const createDynamicSpritePrimitive = (
   }
 
   const rotation = instance.data.rotation ?? 0;
-  const center = transformObjectPoint(instance.data.position, rotation, options.offset);
+  const center = transformObjectPoint(
+    getInstanceRenderPosition(instance),
+    rotation,
+    options.offset
+  );
   const halfWidth = width / 2;
   const halfHeight = height / 2;
   const cos = Math.cos(rotation);
@@ -274,7 +278,11 @@ export const createDynamicSpritePrimitive = (
     data,
     update(target: SceneObjectInstance) {
       const nextRotation = target.data.rotation ?? 0;
-      const nextCenter = transformObjectPoint(target.data.position, nextRotation, options.offset);
+      const nextCenter = transformObjectPoint(
+        getInstanceRenderPosition(target),
+        nextRotation,
+        options.offset
+      );
       const nextWidth = options.getWidth?.(target) ?? 32;
       const nextHeight = options.getHeight?.(target) ?? 32;
 
@@ -324,7 +332,11 @@ export const createDynamicSpritePrimitive = (
     },
     updatePositionOnly(target: SceneObjectInstance) {
       const nextRotation = target.data.rotation ?? 0;
-      const nextCenter = transformObjectPoint(target.data.position, nextRotation, options.offset);
+      const nextCenter = transformObjectPoint(
+        getInstanceRenderPosition(target),
+        nextRotation,
+        options.offset
+      );
 
       if (
         nextCenter.x === prevCenterX &&

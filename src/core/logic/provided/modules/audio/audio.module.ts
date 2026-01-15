@@ -8,7 +8,13 @@ import {
 } from "../../../../../logic/utils/audioSettings";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 import type { AudioModuleOptions } from "./audio.types";
-import { DEFAULT_PLAYLISTS, MIN_EFFECT_INTERVAL_MS, MUSIC_VOLUME_MULTIPLIER } from "./audio.const";
+import {
+  DEFAULT_PLAYLISTS,
+  MAX_EFFECT_INSTANCES,
+  MAX_EFFECT_INSTANCES_PER_SOUND,
+  MIN_EFFECT_INTERVAL_MS,
+  MUSIC_VOLUME_MULTIPLIER,
+} from "./audio.const";
 import { pickRandomTrackIndex, normalizeEffectUrl } from "./audio.helpers";
 
 export class AudioModule implements GameModule {
@@ -26,6 +32,9 @@ export class AudioModule implements GameModule {
   private effectsVolume = 1;
   private readonly effectTemplates = new Map<string, HTMLAudioElement>();
   private readonly activeEffectElements = new Set<HTMLAudioElement>();
+  private effectElementQueue: HTMLAudioElement[] = [];
+  private readonly activeEffectCounts = new Map<string, number>();
+  private readonly effectCleanupHandlers = new Map<HTMLAudioElement, () => void>();
   private readonly lastEffectPlayTimestamps = new Map<string, number>();
 
   constructor(options: AudioModuleOptions = {}) {
@@ -123,6 +132,12 @@ export class AudioModule implements GameModule {
       return;
     }
 
+    const activeCount = this.activeEffectCounts.get(normalizedUrl) ?? 0;
+    if (activeCount >= MAX_EFFECT_INSTANCES_PER_SOUND) {
+      return;
+    }
+
+    this.trimActiveEffects();
     this.lastEffectPlayTimestamps.set(normalizedUrl, now);
 
     const element = template.cloneNode(true) as HTMLAudioElement;
@@ -131,6 +146,14 @@ export class AudioModule implements GameModule {
 
     const cleanup = () => {
       this.activeEffectElements.delete(element);
+      this.effectCleanupHandlers.delete(element);
+      this.effectElementQueue = this.effectElementQueue.filter((entry) => entry !== element);
+      const currentCount = this.activeEffectCounts.get(normalizedUrl) ?? 0;
+      if (currentCount <= 1) {
+        this.activeEffectCounts.delete(normalizedUrl);
+      } else {
+        this.activeEffectCounts.set(normalizedUrl, currentCount - 1);
+      }
       element.removeEventListener("ended", cleanup);
       element.removeEventListener("pause", cleanup);
       element.removeEventListener("error", cleanup);
@@ -141,6 +164,9 @@ export class AudioModule implements GameModule {
     element.addEventListener("error", cleanup);
 
     this.activeEffectElements.add(element);
+    this.effectCleanupHandlers.set(element, cleanup);
+    this.effectElementQueue.push(element);
+    this.activeEffectCounts.set(normalizedUrl, activeCount + 1);
 
     const playPromise = element.play();
     if (playPromise && typeof playPromise.then === "function") {
@@ -327,11 +353,12 @@ export class AudioModule implements GameModule {
   }
 
   private stopAllEffects(): void {
-    this.activeEffectElements.forEach((element) => {
+    Array.from(this.activeEffectElements).forEach((element) => {
       element.pause();
       element.currentTime = 0;
+      this.forceCleanupEffect(element);
     });
-    this.activeEffectElements.clear();
+    this.effectElementQueue = [];
   }
 
   private resolveTrackUrl(index: number): string {
@@ -368,6 +395,32 @@ export class AudioModule implements GameModule {
       this.effectTemplates.set(normalizedUrl, template);
     }
     return template;
+  }
+
+  private trimActiveEffects(): void {
+    if (this.activeEffectElements.size < MAX_EFFECT_INSTANCES) {
+      return;
+    }
+
+    while (this.activeEffectElements.size >= MAX_EFFECT_INSTANCES) {
+      const oldest = this.effectElementQueue.shift();
+      if (!oldest) {
+        break;
+      }
+      oldest.pause();
+      oldest.currentTime = 0;
+      this.forceCleanupEffect(oldest);
+    }
+  }
+
+  private forceCleanupEffect(element: HTMLAudioElement): void {
+    const cleanup = this.effectCleanupHandlers.get(element);
+    if (cleanup) {
+      cleanup();
+      return;
+    }
+    this.activeEffectElements.delete(element);
+    this.effectElementQueue = this.effectElementQueue.filter((entry) => entry !== element);
   }
 
 }

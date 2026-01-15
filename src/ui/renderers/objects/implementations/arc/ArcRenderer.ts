@@ -29,22 +29,33 @@ export class ArcRenderer extends ObjectRenderer {
 
     const primitive: DynamicPrimitive = {
       data: new Float32Array(0),
+      autoAnimate: true,
       update(target: SceneObjectInstance) {
         const data = target.data.customData as ArcRendererCustomData | undefined;
-        if (!data) return null;
+        if (!data) {
+          if (slotHandle) {
+            arcGpuRenderer.releaseSlot(slotHandle);
+            slotHandle = null;
+          }
+          return null;
+        }
+        const gl = getParticleEmitterGlContext();
+        if (!gl) {
+          if (slotHandle) {
+            arcGpuRenderer.releaseSlot(slotHandle);
+            slotHandle = null;
+          }
+          return null;
+        }
+        if (arcGpuRenderer["gl"] !== gl) {
+          arcGpuRenderer.setContext(gl);
+          slotHandle = null;
+        }
         const config = getArcConfig(data.arcType);
         lifetime = Math.max(1, data.lifetimeMs ?? config.lifetimeMs);
 
         // lazy acquire GL + batch keyed by visual params only
         if (!batchConfig) {
-          const gl = getParticleEmitterGlContext();
-          if (!gl) return null;
-
-          // Set context if not already set
-          if (arcGpuRenderer["gl"] !== gl) {
-            arcGpuRenderer.setContext(gl);
-          }
-
           const uniforms: ArcGpuUniforms = {
             coreColor: new Float32Array([
               config.coreColor.r,
@@ -82,24 +93,27 @@ export class ArcRenderer extends ObjectRenderer {
             batchKey,
             uniforms,
           };
+        }
 
-          // Acquire slot to ensure batch exists
+        // Acquire slot if not already acquired
+        if (!slotHandle && batchConfig) {
           slotHandle = arcGpuRenderer.acquireSlot(batchConfig);
-          if (!slotHandle) return null;
+          if (!slotHandle) {
+            return null;
+          }
         }
 
         const now =
           typeof performance !== "undefined" && performance.now
             ? performance.now()
             : Date.now();
-        const dt = Math.max(0, Math.min(now - lastTs, 100));
-        lastTs = now;
-        age = Math.min(lifetime, age + dt);
-
-        // Acquire slot if not already acquired
-        if (!slotHandle && batchConfig) {
-          slotHandle = arcGpuRenderer.acquireSlot(batchConfig);
-          if (!slotHandle) return null;
+        if (typeof data.createdAtMs === "number") {
+          age = Math.min(lifetime, Math.max(0, now - data.createdAtMs));
+          lastTs = now;
+        } else {
+          const dt = Math.max(0, Math.min(now - lastTs, 100));
+          lastTs = now;
+          age = Math.min(lifetime, age + dt);
         }
 
         if (slotHandle && batchConfig) {
@@ -115,6 +129,10 @@ export class ArcRenderer extends ObjectRenderer {
         }
 
         if (age >= lifetime) {
+          if (slotHandle) {
+            arcGpuRenderer.releaseSlot(slotHandle);
+            slotHandle = null;
+          }
           return null;
         }
 

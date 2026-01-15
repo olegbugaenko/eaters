@@ -1,5 +1,3 @@
-import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
-import { BricksModule } from "../../bricks/bricks.module";
 import {
   SpellBehavior,
   SpellCastContext,
@@ -8,14 +6,17 @@ import {
 } from "../SpellBehavior";
 import { SpellConfig } from "../../../../../db/spells-db";
 import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
-import type { BrickRuntimeState } from "../../bricks/bricks.types";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { ExplosionType } from "../../../../../db/explosions-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { UnitProjectileVisualConfig } from "../../projectiles/projectiles.types";
 import type { ProjectileSpellData } from "./ProjectileSpellBehavior.types";
 import { buildProjectileSpreadDirections } from "../../projectiles/projectile-spread.helpers";
-import { randomIntInclusive } from "@shared/helpers/numbers.helper";
+import { clampNumber, randomIntInclusive } from "@shared/helpers/numbers.helper";
+import type { SpellDamageConfig, SpellProjectileConfig } from "@/db/spells-db";
+import type { AttackSeriesConfig } from "@/shared/types/attack-series.types";
+import type { DamageService } from "../../targeting/DamageService";
+import type { TargetType } from "../../targeting/targeting.types";
 
 const sanitizeAoe = (
   aoe: { radius: number; splash: number } | undefined,
@@ -30,23 +31,22 @@ const sanitizeAoe = (
 export class ProjectileSpellBehavior implements SpellBehavior {
   public readonly spellType = "projectile" as const;
 
-  private readonly scene: SceneObjectManager;
-  private readonly bricks: BricksModule;
   private readonly explosions?: ExplosionModule;
   private readonly getSpellPowerMultiplier: () => number;
   private readonly projectiles: UnitProjectileController;
+  private readonly damage: DamageService;
 
   // Track spell-specific data per projectile (damage, aoe, explosion)
   private readonly projectileData = new Map<string, ProjectileSpellData>();
+  private readonly activeSeries: SpellProjectileSeriesState[] = [];
 
   private spellPowerMultiplier = 1;
 
   constructor(dependencies: SpellBehaviorDependencies) {
-    this.scene = dependencies.scene;
-    this.bricks = dependencies.bricks;
     this.explosions = dependencies.explosions;
     this.projectiles = dependencies.projectiles;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
+    this.damage = dependencies.damage;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
 
@@ -64,31 +64,77 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     }
 
     const config = context.config;
-    const count = config.projectile.count ?? 1;
+    const seriesConfig = this.sanitizeAttackSeries(config.projectile.attackSeries);
+
+    this.spawnProjectileVolley(context, config.projectile, config.damage);
+
+    if (seriesConfig && seriesConfig.shots > 1) {
+      this.activeSeries.push({
+        context,
+        projectileConfig: config.projectile,
+        damageConfig: config.damage,
+        remainingShots: seriesConfig.shots - 1,
+        cooldownMs: seriesConfig.intervalMs,
+        intervalMs: seriesConfig.intervalMs,
+      });
+    }
+
+    return true;
+  }
+
+  public tick(deltaMs: number): void {
+    if (deltaMs <= 0) {
+      return;
+    }
+    this.tickAttackSeries(deltaMs);
+    this.projectiles.tick(deltaMs);
+  }
+
+  public clear(): void {
+    this.projectiles.clear();
+    this.projectileData.clear();
+    this.activeSeries.length = 0;
+  }
+
+  public cleanupExpired(): void {
+    this.projectiles.cleanupExpired();
+    // Clean up orphaned data entries
+    const activeIds = new Set<string>();
+    // Note: UnitProjectileController doesn't expose active IDs, so we'll clean up on next hit/expire
+  }
+
+  private spawnProjectileVolley(
+    context: SpellCastContext,
+    projectileConfig: SpellProjectileConfig,
+    damageConfig: SpellDamageConfig,
+  ): void {
+    const count = projectileConfig.count ?? 1;
     const directions = buildProjectileSpreadDirections({
       count,
-      spreadAngleDeg: config.projectile.spreadAngle ?? 0,
+      spreadAngleDeg: projectileConfig.spreadAngle ?? 0,
       baseDirection: context.direction,
     });
 
-    for (const direction of directions) {
+    const targetTypes =
+      projectileConfig.targetTypes && projectileConfig.targetTypes.length > 0
+        ? projectileConfig.targetTypes
+        : (["brick"] as TargetType[]);
 
-      const origin = {
-        x: context.origin.x + (config.projectile.spawnOffset?.x ?? 0),
-        y: context.origin.y + (config.projectile.spawnOffset?.y ?? 0),
-      };
+    for (const direction of directions) {
+      const origin = { ...context.origin };
 
       // Convert SpellProjectileConfig to UnitProjectileVisualConfig
       const visual: UnitProjectileVisualConfig = {
-        radius: config.projectile.radius,
-        speed: config.projectile.speed,
-        lifetimeMs: Math.max(0, config.projectile.lifetimeMs),
-        fill: config.projectile.fill,
-        tail: config.projectile.tail,
-        tailEmitter: config.projectile.tailEmitter,
-        ringTrail: config.projectile.ringTrail,
-        shape: config.projectile.shape ?? "circle",
-        spriteName: config.projectile.spriteName,
+        radius: projectileConfig.radius,
+        speed: projectileConfig.speed,
+        lifetimeMs: Math.max(0, projectileConfig.lifetimeMs),
+        fill: projectileConfig.fill,
+        spawnOffset: projectileConfig.spawnOffset,
+        tail: projectileConfig.tail,
+        tailEmitter: projectileConfig.tailEmitter,
+        ringTrail: projectileConfig.ringTrail,
+        shape: projectileConfig.shape ?? "circle",
+        spriteName: projectileConfig.spriteName,
       };
 
       const objectId = this.projectiles.spawn({
@@ -97,31 +143,75 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         damage: 0, // Will be calculated on hit
         rewardMultiplier: 1,
         armorPenetration: 0,
+        targetTypes,
         visual,
         onHit: (hitContext) => {
           const data = this.projectileData.get(objectId);
           if (!data) return true;
-          if (!hitContext.brickId) return true;
 
           const baseDamage = randomIntInclusive(data.damage);
           const damage = Math.max(baseDamage * Math.max(data.damageMultiplier, 0), 0);
-          this.bricks.applyDamage(hitContext.brickId, damage, direction);
-          
+          const payload = {
+            amount: damage,
+            context: {
+              source: { type: "spell", id: context.spellId },
+              attackType: "spell-projectile",
+              tag: context.spellId,
+              seriesId: data.seriesId,
+              direction,
+              baseDamage,
+              modifiers: {
+                spellPowerMultiplier: data.damageMultiplier,
+              },
+            },
+          };
+          this.damage.applyTargetDamage(hitContext.targetId, damage, {
+            direction,
+            payload,
+          });
+
           const aoe = data.aoe;
           if (aoe && aoe.radius > 0 && aoe.splash > 0 && damage > 0) {
-            this.bricks.forEachBrickNear(hitContext.position, aoe.radius, (brick: BrickRuntimeState) => {
-              if (brick.id === hitContext.brickId) return;
-              this.bricks.applyDamage(brick.id, damage * aoe.splash, direction);
+            const splashDamage = damage * aoe.splash;
+            this.damage.applyAreaDamage(hitContext.position, aoe.radius, splashDamage, {
+              direction,
+              types: targetTypes,
+              excludeTargetIds: [hitContext.targetId],
+              payload: {
+                amount: splashDamage,
+                context: {
+                  source: { type: "spell", id: context.spellId },
+                  attackType: "spell-projectile-aoe",
+                  tag: context.spellId,
+                  seriesId: data.seriesId,
+                  direction,
+                  baseDamage: splashDamage,
+                  modifiers: {
+                    spellPowerMultiplier: data.damageMultiplier,
+                  },
+                },
+                area: { radius: aoe.radius, types: targetTypes },
+              },
             });
           }
-          
+
           // Вибух при влучанні
           if (data.explosion && this.explosions) {
-            this.explosions.spawnExplosionByType(data.explosion, {
-              position: { ...hitContext.position },
+            this.damage.applyAreaDamage(hitContext.position, 0, 0, {
+              explosionType: data.explosion,
+              payload: {
+                amount: 0,
+                context: {
+                  source: { type: "spell", id: context.spellId },
+                  attackType: "spell-projectile-explosion",
+                  tag: context.spellId,
+                  seriesId: data.seriesId,
+                },
+                explosion: { type: data.explosion },
+              },
             });
           }
-          
+
           this.projectileData.delete(objectId);
           return true;
         },
@@ -133,33 +223,50 @@ export class ProjectileSpellBehavior implements SpellBehavior {
       // Store spell-specific data
       this.projectileData.set(objectId, {
         spellId: context.spellId,
-        damage: config.damage,
+        damage: damageConfig,
         damageMultiplier: context.spellPowerMultiplier,
-        aoe: sanitizeAoe(config.projectile.aoe),
-        explosion: config.projectile.explosion,
+        aoe: sanitizeAoe(projectileConfig.aoe),
+        explosion: projectileConfig.explosion,
+        seriesId: context.spellId,
       });
     }
-
-    return true;
   }
 
-  public tick(deltaMs: number): void {
-    if (deltaMs <= 0) {
+  private sanitizeAttackSeries(
+    series: AttackSeriesConfig | undefined,
+  ): AttackSeriesConfig | null {
+    if (!series) {
+      return null;
+    }
+    const shots = clampNumber(series.shots, 1, Number.POSITIVE_INFINITY);
+    const intervalMs = clampNumber(series.intervalMs, 0, Number.POSITIVE_INFINITY);
+    return { shots, intervalMs };
+  }
+
+  private tickAttackSeries(deltaMs: number): void {
+    if (this.activeSeries.length === 0) {
       return;
     }
-    this.projectiles.tick(deltaMs);
-  }
+    const elapsed = Math.max(0, deltaMs);
+    const survivors: SpellProjectileSeriesState[] = [];
 
-  public clear(): void {
-    this.projectiles.clear();
-    this.projectileData.clear();
-  }
+    for (const entry of this.activeSeries) {
+      entry.cooldownMs = Math.max(entry.cooldownMs - elapsed, 0);
+      while (entry.remainingShots > 0 && entry.cooldownMs <= 0) {
+        this.spawnProjectileVolley(
+          entry.context,
+          entry.projectileConfig,
+          entry.damageConfig,
+        );
+        entry.remainingShots -= 1;
+        entry.cooldownMs += entry.intervalMs;
+      }
+      if (entry.remainingShots > 0) {
+        survivors.push(entry);
+      }
+    }
 
-  public cleanupExpired(): void {
-    this.projectiles.cleanupExpired();
-    // Clean up orphaned data entries
-    const activeIds = new Set<string>();
-    // Note: UnitProjectileController doesn't expose active IDs, so we'll clean up on next hit/expire
+    this.activeSeries.splice(0, this.activeSeries.length, ...survivors);
   }
 
   public onBonusValuesChanged(values: BonusValueMap): void {
@@ -182,4 +289,13 @@ export class ProjectileSpellBehavior implements SpellBehavior {
   public deserializeState(_data: unknown): void {
     // Not implemented
   }
+}
+
+interface SpellProjectileSeriesState {
+  context: SpellCastContext;
+  projectileConfig: SpellProjectileConfig;
+  damageConfig: SpellDamageConfig;
+  remainingShots: number;
+  cooldownMs: number;
+  intervalMs: number;
 }

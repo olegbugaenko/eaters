@@ -22,6 +22,7 @@ import {
 import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import type { SkillId } from "../../../../db/skills-db";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
+import { applyDamagePipeline, sanitizeDamageOptions } from "../../../helpers/damage-application";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
@@ -169,6 +170,7 @@ export class PlayerUnitsModule implements GameModule {
         const unit = this.units.get(unitId);
         return unit?.objectId;
       },
+      audio: options.audio,
     });
 
     this.abilities = new PlayerUnitAbilities({
@@ -670,24 +672,40 @@ export class PlayerUnitsModule implements GameModule {
     if (!unit) {
       return 0;
     }
-    const armorPenetration = Math.max(options?.armorPenetration ?? 0, 0);
+    const { armorPenetration } = sanitizeDamageOptions(options);
     const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unitId });
-    const effectiveArmor = Math.max(unit.armor + armorDelta - armorPenetration, 0);
-    const inflicted = Math.max(damage - effectiveArmor, 0);
-    if (inflicted <= 0) {
+    const previousHp = unit.hp;
+    const { inflictedDamage, nextHp } = applyDamagePipeline(
+      {
+        rawDamage: damage,
+        armor: unit.armor,
+        armorDelta,
+        armorPenetration,
+        currentHp: unit.hp,
+        maxHp: unit.maxHp,
+      },
+      {},
+      {
+        onInflicted: (amount) => {
+          this.statistics?.recordDamageTaken(amount);
+          this.statusEffects.handleTargetHit({ type: "unit", id: unitId });
+        },
+        onKnockback: () => {
+          if (options?.knockBackDirection && (options.knockBackDistance ?? 0) > 0) {
+            this.applyEnemyKnockBack(
+              unit,
+              options.knockBackDirection,
+              options.knockBackDistance ?? 0,
+              options.knockBackSpeed ?? 0,
+            );
+          }
+        },
+      },
+    );
+    if (inflictedDamage <= 0) {
       return 0;
     }
-    const previousHp = unit.hp;
-    unit.hp = Math.max(unit.hp - inflicted, 0);
-    if (previousHp !== unit.hp) {
-      this.statistics?.recordDamageTaken(previousHp - unit.hp);
-      this.statusEffects.handleTargetHit({ type: "unit", id: unitId });
-      
-      // Apply knockback from enemy attack if configured
-      if (options?.knockBackDirection && (options.knockBackDistance ?? 0) > 0) {
-        this.applyEnemyKnockBack(unit, options.knockBackDirection, options.knockBackDistance ?? 0, options.knockBackSpeed ?? 0);
-      }
-    }
+    unit.hp = nextHp;
     return previousHp - unit.hp;
   }
 

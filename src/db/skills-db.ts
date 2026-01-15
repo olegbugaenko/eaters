@@ -18,6 +18,9 @@ export interface SkillConfig {
   readonly effects: BonusEffectMap;
   readonly nodesRequired: Partial<Record<SkillId, number>>;
   readonly cost: SkillCostFunction;
+  readonly registerEvent?: {
+    readonly text: string;
+  };
 }
 
 export const SKILL_IDS = [
@@ -43,6 +46,7 @@ export const SKILL_IDS = [
   "ice_mastery",
   "fire_mastery",
   "emberglass_reactors",
+  "spiritual_powers",
   // "damage_lore",
   "improved_membranes",
   "hunger",
@@ -92,7 +96,6 @@ export const SKILL_IDS = [
 export type SkillId = (typeof SKILL_IDS)[number];
 
 const getClearedLevelsTotal = (context?: BonusEffectContext, level?: number): number => {
-  console.log("context", context, level);
   return Math.max(0, context?.clearedMapLevelsTotal ?? 0);
 }
 
@@ -180,6 +183,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_lore: 1 },
     cost: createStoneCost(10, 1),
+    registerEvent: {
+      text: "You awaken your creator instinct.",
+    },
   },
   autorestart_rituals: {
     id: "autorestart_rituals",
@@ -192,6 +198,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_automatons: 1 },
     cost: createStoneCost(500, 1),
+    registerEvent: {
+      text: "Sigils now repeat the ritual unbidden.",
+    },
   },
   construction_guild: {
     id: "construction_guild",
@@ -203,7 +212,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "constructions_1.png",
     effects: {},
     nodesRequired: { autorestart_rituals: 1 },
-    cost: createResourceCost("copper", 50, 1),
+    cost: createResourceCost("copper", 500, 1),
+    registerEvent: {
+      text: "A permanent guild answers your call.",
+    },
   },
   advanced_construction: {
     id: "advanced_construction",
@@ -308,6 +320,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { stone_lore: 3 },
     cost: createSandCost(150, 1),
+    registerEvent: {
+      text: "A chord resonates for organs and parts.",
+    },
   },
   tail_spines: {
     id: "tail_spines",
@@ -511,7 +526,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "mana_cap_1.png",
     effects: {
       mana_cap: {
-        income: (level) => 3 * level,
+        income: (level) => 2 * level,
       },
       spell_power: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -529,15 +544,28 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 5,
     icon: "mana_regen_2.png",
     effects: {
-      mana_cap: {
-        income: (level) => 2 * level,
-      },
       mana_regen: {
         income: (level) => 0.1 * level,
       },
     },
     nodesRequired: { mana_reservior: 2 },
     cost: createStoneCost(100, 1.5),
+  },
+  spiritual_powers: {
+    id: "spiritual_powers",
+    name: "Spiritual Powers",
+    description:
+      "Increase your spiritual power.",
+    nodePosition: { x: -3, y: -3 },
+    maxLevel: 5,
+    icon: "mana_regen_2_5.png",
+    effects: {
+      mana_regen: {
+        income: (level) => 0.12 * level,
+      },
+    },
+    nodesRequired: { emberglass_reactors: 2 },
+    cost: createSandCost(20, 1.5),
   },
   sand_scribing: {
     id: "sand_scribing",
@@ -568,7 +596,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "mana_regen_3.png",
     effects: {
       mana_cap: {
-        income: (level) => 2 * level,
+        income: (level) => 1 * level,
       },
       mana_regen: {
         income: (level) => 0.15*level
@@ -587,7 +615,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "mana_cap_3.png",
     effects: {
       mana_cap: {
-        income: (level) => 5 * level,
+        income: (level) => 3 * level,
       },
       spell_power: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -798,7 +826,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { heavy_drill: 5 },
-    cost: createResourceCost('silver', 90, 1.5),
+    cost: createResourceCost('silver', 150, 1.5),
   },
   critical_chance: {
     id: "critical_chance",
@@ -842,7 +870,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "penetration_1.png",
     effects: {
       all_units_armor_penetration: {
-        income: (level) => 1.25 * level,
+        income: (level) => 2 * level,
       },
     },
     nodesRequired: { critical_chance: 5 },
@@ -858,7 +886,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "penetration_2.png",
     effects: {
       all_units_armor_penetration: {
-        income: (level) => 2 * level,
+        income: (level) => 3 * level,
       },
     },
     nodesRequired: { penetration: 5 },
@@ -923,7 +951,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "armor1.png",
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.25 * level,
+        income: (level) => 0 + 0.4 * level,
       },
     },
     nodesRequired: { vitality: 2 },
@@ -939,7 +967,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "armor2.png",
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.5 * level,
+        income: (level) => 0 + level,
       },
     },
     nodesRequired: { stone_armor: 3 },
@@ -971,7 +999,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.75 * level,
+        income: (level) => 0 + 1.5 * level,
       },
     },
     nodesRequired: { armor_lore: 5 },
@@ -987,7 +1015,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_armor: {
-        income: (level) => 2*level,
+        income: (level) => 5*level,
       },
     },
     nodesRequired: { armor_lore2: 5 },
@@ -1003,7 +1031,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "armor5.png",
     effects: {
       all_units_armor: {
-        income: (level) => 5*level,
+        income: (level) => 15*level,
       },
     },
     nodesRequired: { armor_lore3: 5 },
@@ -1071,7 +1099,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality3: 5 },
-    cost: createResourceCost('coal', 90, 1.5),
+    cost: createResourceCost('coal', 150, 1.5),
   },
   paper_milling: {
     id: "paper_milling",

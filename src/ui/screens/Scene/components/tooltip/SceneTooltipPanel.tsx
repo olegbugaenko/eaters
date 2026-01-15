@@ -1,9 +1,11 @@
 import React from "react";
 import "./SceneTooltipPanel.css";
 
+export type SceneTooltipValue = React.ReactNode | readonly React.ReactNode[];
+
 export interface SceneTooltipStat {
   readonly label: string;
-  readonly value: string;
+  readonly value: SceneTooltipValue;
   readonly hint?: string;
 }
 
@@ -21,12 +23,17 @@ interface SceneTooltipPanelProps {
 export const SceneTooltipPanel: React.FC<SceneTooltipPanelProps> = ({ content }) => {
   const isVisible = Boolean(content);
 
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+  };
+
   return (
     <div
       className={`scene-tooltip-panel ${
         isVisible ? "scene-tooltip-panel--visible" : ""
       }`}
       aria-hidden={!isVisible}
+      onContextMenu={handleContextMenu}
     >
       {content && (
         <>
@@ -41,7 +48,19 @@ export const SceneTooltipPanel: React.FC<SceneTooltipPanelProps> = ({ content })
               <div key={stat.label} className="scene-tooltip-panel__stat">
                 <dt className="scene-tooltip-panel__stat-label">{stat.label}</dt>
                 <dd className="scene-tooltip-panel__stat-value">
-                  <span>{stat.value}</span>
+                  {Array.isArray(stat.value) ? (
+                    <div className="scene-tooltip-panel__stat-value-list">
+                      {stat.value.map((entry, index) => (
+                        <span key={index} className="scene-tooltip-panel__stat-value-item">
+                          {entry}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="scene-tooltip-panel__stat-value-item">
+                      {stat.value}
+                    </span>
+                  )}
                   {stat.hint ? (
                     <span className="scene-tooltip-panel__stat-hint">{stat.hint}</span>
                   ) : null}

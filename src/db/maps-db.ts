@@ -284,7 +284,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const innerVertices = createPolygon(innerRadius);
     const middleVertices = createPolygon(middleRadius);
     const expandedVertices = createPolygon(
-      outerRadius + getBrickConfig("smallSquareGray").size.width * 1.5,
+      outerRadius + getBrickConfig("smallSquareGray").size.width * 1.2,
     );
 
     return {
@@ -329,7 +329,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             {
               center: vertex,
               innerRadius: 0,
-              outerRadius: getBrickConfig("smallSquareGray").size.width * 3,
+              outerRadius: getBrickConfig("smallSquareGray").size.width * 2.3,
             },
             { level: mapLevel },
           ),
@@ -771,7 +771,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         "smallSquareYellow",
         {
           center,
-          innerRadius: 130,
+          innerRadius: 150,
           outerRadius: 210,
         },
         { level: baseLevel },
@@ -1282,23 +1282,23 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     ];
     const sandVertices = createRectangle(
       0,
-      size.height - sandHeight,
+      size.height - sandHeight - 200,
       size.width,
       sandHeight,
     );
     const bushClusters: readonly { center: SceneVector2; radius: number }[] = [
-      { center: { x: 320, y: 760 }, radius: 110 },
-      { center: { x: 500, y: 640 }, radius: 100 },
-      { center: { x: 720, y: 700 }, radius: 105 },
-      { center: { x: 880, y: 560 }, radius: 115 },
-      { center: { x: 620, y: 820 }, radius: 90 },
+      { center: { x: 320, y: 560 }, radius: 110 },
+      { center: { x: 500, y: 440 }, radius: 100 },
+      { center: { x: 720, y: 500 }, radius: 105 },
+      { center: { x: 880, y: 360 }, radius: 115 },
+      { center: { x: 620, y: 620 }, radius: 90 },
     ];
 
     return {
       name: "Overgrown Thicket",
       size,
       icon: "thicket.png",
-      spawnPoints: [{ x: 50, y: size.height - sandHeight - 220 }],
+      spawnPoints: [{ x: 50, y: size.height - sandHeight - 420 }],
       nodePosition: { x: 2, y: 3 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
@@ -1995,6 +1995,21 @@ const MAPS_DB: Record<MapId, MapConfig> = {
 
         return [ironWalls, coalVein, entryTunnel, ...supports];
       },
+      enemies: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        return [
+          {
+            type: "laserTurretEnemy",
+            level: baseLevel,
+            position: { x: 100, y: center.y },
+          } satisfies EnemySpawnData,
+          {
+            type: "laserTurretEnemy",
+            level: baseLevel,
+            position: { x: size.width - 100, y: center.y },
+          } satisfies EnemySpawnData,
+        ];
+      },
       playerUnits: [
         {
           type: "bluePentagon",
@@ -2587,6 +2602,23 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         );
 
         return [silverRing, copperGem, copperGem2, copperGem3];
+      },
+      enemies: ({ mapLevel }) => {
+        const level = Math.max(1, Math.floor(mapLevel));
+        const offsets: SceneVector2[] = [
+          { x: -100, y: -100 },
+          { x: 100, y: -100 },
+          { x: 100, y: 100 },
+          { x: -100, y: 100 },
+        ];
+        return offsets.map((offset) => ({
+          type: "burstTurretEnemy",
+          level,
+          position: {
+            x: center.x + offset.x,
+            y: center.y + offset.y,
+          },
+        }));
       },
       playerUnits: [
         {

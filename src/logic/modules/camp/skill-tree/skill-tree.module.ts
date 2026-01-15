@@ -11,9 +11,12 @@ import {
 import {
   normalizeResourceAmount,
   cloneResourceStockpile,
+  createEmptyResourceStockpile,
+  RESOURCE_IDS,
 } from "../../../../db/resources-db";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { ResourcesModule } from "../../shared/resources/resources.module";
+import { EventLogModule } from "../../shared/event-log/event-log.module";
 import type {
   SkillNodeRequirementPayload,
   SkillNodeBridgePayload,
@@ -25,8 +28,8 @@ import type {
 import {
   SKILL_TREE_STATE_BRIDGE_KEY,
   SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
-  DEFAULT_SKILL_TREE_STATE,
 } from "./skill-tree.const";
+import { RESOURCE_TOTALS_BRIDGE_KEY } from "../../shared/resources/resources.module";
 import {
   createDefaultLevels,
   clampLevel,
@@ -38,17 +41,55 @@ export class SkillTreeModule implements GameModule {
   private readonly bridge: DataBridge;
   private readonly resources: ResourcesModule;
   private readonly bonuses: BonusesModule;
+  private readonly eventLog: EventLogModule;
+  private readonly audio?: SkillTreeModuleOptions["audio"];
   private levels: SkillLevelMap = createDefaultLevels();
   private viewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private unsubscribeBonuses: (() => void) | null = null;
+  private nodePayloadCache = new Map<SkillId, SkillNodeBridgePayload>();
 
   constructor(options: SkillTreeModuleOptions) {
     this.bridge = options.bridge;
     this.resources = options.resources;
     this.bonuses = options.bonuses;
+    this.eventLog = options.eventLog;
+    this.audio = options.audio;
+    DataBridgeHelpers.registerComparator(
+      this.bridge,
+      SKILL_TREE_STATE_BRIDGE_KEY,
+      (previous, next) => {
+        if (!previous) {
+          return false;
+        }
+        if (previous.nodes.length !== next.nodes.length) {
+          return false;
+        }
+        return previous.nodes.every((node, index) => node === next.nodes[index]);
+      }
+    );
+    DataBridgeHelpers.registerComparator(
+      this.bridge,
+      SKILL_TREE_VIEW_TRANSFORM_BRIDGE_KEY,
+      (previous, next) => {
+        if (!previous && !next) {
+          return true;
+        }
+        if (!previous || !next) {
+          return false;
+        }
+        return (
+          previous.scale === next.scale &&
+          previous.worldX === next.worldX &&
+          previous.worldY === next.worldY
+        );
+      }
+    );
     this.registerBonusSources();
     this.syncAllBonusLevels();
     this.unsubscribeBonuses = this.bonuses.subscribe(() => {
+      this.pushState();
+    });
+    this.bridge.subscribe(RESOURCE_TOTALS_BRIDGE_KEY, () => {
       this.pushState();
     });
   }
@@ -108,6 +149,13 @@ export class SkillTreeModule implements GameModule {
     this.levels[id] = targetLevel;
     this.syncBonusLevel(id);
     this.pushState();
+    this.audio?.playSoundEffect("/audio/sounds/ui/purchase_v0.mp3");
+    if (config.registerEvent) {
+      this.eventLog.registerEvent(
+        "skill-obtained",
+        `Skill ${config.name} obtained: ${config.registerEvent.text}`
+      );
+    }
     return true;
   }
 
@@ -123,21 +171,49 @@ export class SkillTreeModule implements GameModule {
   }
 
   private pushState(): void {
+    const totals = this.resources.getTotals();
     const payload: SkillTreeBridgePayload = {
-      nodes: SKILL_IDS.map((id) => this.createNodePayload(id)),
+      nodes: SKILL_IDS.map((id) => this.getNodePayload(id, totals)),
     };
     DataBridgeHelpers.pushState(this.bridge, SKILL_TREE_STATE_BRIDGE_KEY, payload);
   }
 
-  private createNodePayload(id: SkillId): SkillNodeBridgePayload {
+  private getNodePayload(
+    id: SkillId,
+    totals: ReturnType<ResourcesModule["getTotals"]>
+  ): SkillNodeBridgePayload {
+    const next = this.createNodePayload(id, totals);
+    const previous = this.nodePayloadCache.get(id);
+    if (previous && this.isNodePayloadEqual(previous, next)) {
+      return previous;
+    }
+    this.nodePayloadCache.set(id, next);
+    return next;
+  }
+
+  private createNodePayload(
+    id: SkillId,
+    totals: ReturnType<ResourcesModule["getTotals"]>
+  ): SkillNodeBridgePayload {
     const config = getSkillConfig(id);
     const level = this.levels[id] ?? 0;
+    const maxed = level >= config.maxLevel;
     const unlocked = this.areRequirementsMet(config);
     const nextLevel = level + 1;
     const nextCost =
       unlocked && nextLevel <= config.maxLevel
         ? cloneResourceStockpile(normalizeResourceAmount(config.cost(nextLevel)))
         : null;
+    const affordable = nextCost ? this.resources.canAfford(nextCost) : false;
+    const purchasable = unlocked && !maxed && affordable;
+    const missingResources = createEmptyResourceStockpile();
+    if (nextCost) {
+      RESOURCE_IDS.forEach((resourceId) => {
+        const required = nextCost[resourceId] ?? 0;
+        const available = totals[resourceId] ?? 0;
+        missingResources[resourceId] = Math.max(required - available, 0);
+      });
+    }
 
     return {
       id,
@@ -149,7 +225,10 @@ export class SkillTreeModule implements GameModule {
       position: config.nodePosition,
       requirements: this.createRequirementPayloads(config),
       unlocked,
-      maxed: level >= config.maxLevel,
+      maxed,
+      affordable,
+      purchasable,
+      missingResources,
       nextCost,
       bonusEffects: this.bonuses.getBonusEffects(this.getBonusSourceId(id)),
     };
@@ -163,6 +242,93 @@ export class SkillTreeModule implements GameModule {
         requiredLevel: requiredLevel ?? 0,
         currentLevel: this.levels[id] ?? 0,
       };
+    });
+  }
+
+  private isNodePayloadEqual(
+    previous: SkillNodeBridgePayload,
+    next: SkillNodeBridgePayload
+  ): boolean {
+    if (previous === next) {
+      return true;
+    }
+    if (
+      previous.id !== next.id ||
+      previous.name !== next.name ||
+      previous.description !== next.description ||
+      previous.icon !== next.icon ||
+      previous.level !== next.level ||
+      previous.maxLevel !== next.maxLevel ||
+      previous.unlocked !== next.unlocked ||
+      previous.maxed !== next.maxed ||
+      previous.affordable !== next.affordable ||
+      previous.purchasable !== next.purchasable ||
+      previous.position.x !== next.position.x ||
+      previous.position.y !== next.position.y
+    ) {
+      return false;
+    }
+    if (!this.areRequirementsEqual(previous.requirements, next.requirements)) {
+      return false;
+    }
+    if (!this.areCostsEqual(previous.nextCost, next.nextCost)) {
+      return false;
+    }
+    if (!this.areCostsEqual(previous.missingResources, next.missingResources)) {
+      return false;
+    }
+    return this.areBonusEffectsEqual(previous.bonusEffects, next.bonusEffects);
+  }
+
+  private areRequirementsEqual(
+    previous: SkillNodeRequirementPayload[],
+    next: SkillNodeRequirementPayload[]
+  ): boolean {
+    if (previous.length !== next.length) {
+      return false;
+    }
+    return previous.every((item, index) => {
+      const nextItem = next[index];
+      if (!nextItem) {
+        return false;
+      }
+      return (
+        item.id === nextItem.id &&
+        item.requiredLevel === nextItem.requiredLevel &&
+        item.currentLevel === nextItem.currentLevel
+      );
+    });
+  }
+
+  private areCostsEqual(
+    previous: SkillNodeBridgePayload["nextCost"],
+    next: SkillNodeBridgePayload["nextCost"]
+  ): boolean {
+    if (!previous || !next) {
+      return previous === next;
+    }
+    return RESOURCE_IDS.every((id) => (previous[id] ?? 0) === (next[id] ?? 0));
+  }
+
+  private areBonusEffectsEqual(
+    previous: SkillNodeBridgePayload["bonusEffects"],
+    next: SkillNodeBridgePayload["bonusEffects"]
+  ): boolean {
+    if (previous.length !== next.length) {
+      return false;
+    }
+    return previous.every((item, index) => {
+      const nextItem = next[index];
+      if (!nextItem) {
+        return false;
+      }
+      return (
+        item.bonusId === nextItem.bonusId &&
+        item.bonusName === nextItem.bonusName &&
+        item.effectType === nextItem.effectType &&
+        item.currentValue === nextItem.currentValue &&
+        item.nextValue === nextItem.nextValue
+      );
     });
   }
 

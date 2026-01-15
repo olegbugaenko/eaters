@@ -1,6 +1,7 @@
 import assert from "assert";
 import { describe, test } from "./testRunner";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
 import { STATUS_EFFECT_OVERLAY_IDS } from "../src/db/status-effects-db";
 
 type OverlayEntry = {
@@ -31,7 +32,9 @@ const createOverlayStore = () => {
 
 describe("StatusEffectsModule visuals cleanup", () => {
   test("clears missing overlays when one of multiple effects is removed", () => {
-    const module = new StatusEffectsModule();
+    const module = new StatusEffectsModule({
+      damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
+    });
     const overlays = createOverlayStore();
     module.registerUnitAdapter({
       hasUnit: () => true,
@@ -76,7 +79,9 @@ describe("StatusEffectsModule visuals cleanup", () => {
   });
 
   test("clears overlays when the last effect expires", () => {
-    const module = new StatusEffectsModule();
+    const module = new StatusEffectsModule({
+      damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
+    });
     const overlays = createOverlayStore();
     module.registerUnitAdapter({
       hasUnit: () => true,

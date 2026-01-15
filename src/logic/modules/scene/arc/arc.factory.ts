@@ -13,6 +13,7 @@ export const createArcDefinition = (): ServiceDefinition<ArcModule, "arc"> => ({
         container.get<PlayerUnitsModule>("playerUnits").getUnitPositionIfAlive,
       getEnemyPositionIfAlive:
         container.get<EnemiesModule>("enemies").getEnemyPositionIfAlive,
+      audio: container.getOptional("audio") ?? undefined,
     }),
   registerAsModule: true,
   dependsOn: ["playerUnits", "enemies"],

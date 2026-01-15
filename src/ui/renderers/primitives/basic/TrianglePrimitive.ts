@@ -7,6 +7,7 @@ import {
   DynamicPrimitive,
   StaticPrimitive,
   VERTEX_COMPONENTS,
+  getInstanceRenderPosition,
   transformObjectPoint,
 } from "../../objects/ObjectRenderer";
 import {
@@ -256,7 +257,11 @@ export const createDynamicTrianglePrimitive = (
   const initialVertices = resolveVertices(options, instance);
   let geometry = computeGeometry(initialVertices);
   const getCenter = (target: SceneObjectInstance): SceneVector2 =>
-    transformObjectPoint(target.data.position, target.data.rotation, options.offset);
+    transformObjectPoint(
+      getInstanceRenderPosition(target),
+      target.data.rotation,
+      options.offset
+    );
 
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
@@ -274,14 +279,14 @@ export const createDynamicTrianglePrimitive = (
   let currentVertices = initialVertices;
 
   // OPTIMIZATION: Cache previous position/rotation for fast-path
-  let prevPosX = instance.data.position.x;
-  let prevPosY = instance.data.position.y;
+  let prevPosX = getInstanceRenderPosition(instance).x;
+  let prevPosY = getInstanceRenderPosition(instance).y;
   let prevRotation = rotation;
 
   return {
     data,
     update(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       
       // OPTIMIZATION: Fast-path for static vertices/fill - skip if position unchanged
@@ -321,7 +326,7 @@ export const createDynamicTrianglePrimitive = (
       return changed ? data : null;
     },
     updatePositionOnly(target: SceneObjectInstance) {
-      const pos = target.data.position;
+      const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       if (
         pos.x === prevPosX &&

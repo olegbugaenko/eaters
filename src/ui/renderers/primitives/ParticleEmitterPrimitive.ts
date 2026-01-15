@@ -275,7 +275,75 @@ export const createParticleEmitterPrimitive = <
     get data() {
       return state.data;
     },
-    update(target: SceneObjectInstance) {
+    updatePositionOnly(target: SceneObjectInstance) {
+      const nextConfig = options.getConfig(target);
+      if (!nextConfig) {
+        const hadGpu = Boolean(state.gpu);
+        if (!hadGpu && state.data.length === 0) {
+          return null;
+        }
+        destroyParticleEmitterGpuState(state);
+        state = createEmptyParticleEmitterState(state.requireGpu);
+        return state.data;
+      }
+
+      // Avoid expensive per-frame serialization; only recreate when capacity increases
+      if (nextConfig.capacity > state.capacity) {
+        destroyParticleEmitterGpuState(state);
+        state = createParticleEmitterState(
+          target,
+          nextConfig,
+          options,
+          state.requireGpu
+        );
+        return state.data;
+      }
+
+      state.config = nextConfig;
+      // keep buffer capacity stable to prevent frequent reallocations
+      state.capacity = Math.max(state.capacity, nextConfig.capacity);
+
+      if (state.mode === "cpu" && !state.gpu) {
+        const gl = getParticleEmitterGlContext();
+        if (gl && state.capacity > 0) {
+          destroyParticleEmitterGpuState(state);
+          state = createParticleEmitterState(
+            target,
+            nextConfig,
+            options,
+            state.requireGpu
+          );
+          return state.data;
+        }
+      }
+
+      if (
+        state.mode === "cpu" &&
+        options.getGpuSpawnConfig &&
+        !state.warnedCpuMode
+      ) {
+        const reason = !getParticleEmitterGlContext()
+          ? "WebGL2 context unavailable"
+          : state.capacity <= 0
+          ? "capacity <= 0"
+          : "GPU state not initialized";
+        console.warn(
+          `[ParticleEmitter] CPU mode active for GPU-capable emitter: ${reason}. ` +
+            `shape=${nextConfig.shape}, particlesPerSecond=${nextConfig.particlesPerSecond}`
+        );
+        state.warnedCpuMode = true;
+      }
+
+      // Check if config object changed (by reference) and update GPU uniforms if needed
+      if (state.lastConfigRef !== nextConfig && state.gpu) {
+        state.lastConfigRef = nextConfig;
+        state.signature = serializeConfig(nextConfig, options);
+        updateParticleEmitterGpuUniforms(state.gpu, nextConfig);
+      }
+
+      return state.data;
+    },
+    update(target: SceneObjectInstance, frameDeltaMs = 0) {
       const nextConfig = options.getConfig(target);
       if (!nextConfig) {
         const hadGpu = Boolean(state.gpu);
@@ -341,9 +409,7 @@ export const createParticleEmitterPrimitive = <
         updateParticleEmitterGpuUniforms(state.gpu, nextConfig);
       }
 
-      const now = getNowMs();
-      const deltaMs = Math.max(0, Math.min(now - state.lastTimestamp, MAX_DELTA_MS));
-      state.lastTimestamp = now;
+      const deltaMs = Math.max(0, Math.min(frameDeltaMs, MAX_DELTA_MS));
 
       return advanceParticleEmitterState(state, target, deltaMs, options);
     },

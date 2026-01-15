@@ -20,6 +20,7 @@ import {
   computeEffectLifetime,
 } from "./explosion.helpers";
 import { clamp01, clampNumber, lerp } from "@shared/helpers/numbers.helper";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 export type {
   ExplosionRendererCustomData,
   SpawnExplosionByTypeOptions,
@@ -30,8 +31,11 @@ export class ExplosionModule implements GameModule {
   public readonly id = "explosions";
 
   private explosions: ExplosionState[] = [];
+  private readonly audio?: SoundEffectPlayer;
 
-  constructor(private readonly options: ExplosionModuleOptions) {}
+  constructor(private readonly options: ExplosionModuleOptions) {
+    this.audio = options.audio;
+  }
 
   public initialize(): void {}
 
@@ -98,6 +102,9 @@ export class ExplosionModule implements GameModule {
     config: ExplosionConfig,
     options: SpawnExplosionOptions
   ): void {
+    if (config.soundEffectUrl) {
+      this.audio?.playSoundEffect(config.soundEffectUrl);
+    }
     const createdAt = performance.now();
     const baseInitialRadius = Math.max(1, options.initialRadius);
     const defaultInitialRadius = Math.max(1, config.defaultInitialRadius);
@@ -278,4 +285,3 @@ export class ExplosionModule implements GameModule {
     this.explosions = [];
   }
 }
-

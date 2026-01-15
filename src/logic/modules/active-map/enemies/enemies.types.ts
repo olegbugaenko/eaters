@@ -15,8 +15,15 @@ import type { UnitProjectileController } from "../projectiles/ProjectileControll
 import type { ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
 import type { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import type { BricksModule } from "../bricks/bricks.module";
+import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
+
+export interface AttackSeriesState {
+  remainingShots: number;
+  cooldownMs: number;
+  intervalMs: number;
+}
 
 export interface EnemySpawnData {
   readonly id?: string;
@@ -41,11 +48,16 @@ export interface EnemyRuntimeState {
   attackInterval: number;
   attackCooldown: number;
   attackRange: number;
+  attackSeriesState?: AttackSeriesState;
   moveSpeed: number;
   physicalSize: number;
-  knockBackDistance: number;
-  knockBackSpeed: number;
+  selfKnockBackDistance: number;
+  selfKnockBackSpeed: number;
   reward?: ResourceStockpile;
+}
+
+export interface EnemyResourceCollector {
+  grantResources(amount: ResourceStockpile, options?: { includeInRunSummary?: boolean }): void;
 }
 
 export interface InternalEnemyState extends EnemyRuntimeState {
@@ -53,6 +65,13 @@ export interface InternalEnemyState extends EnemyRuntimeState {
   movementId: string;
   fill?: SceneFill;
   stroke?: SceneStroke;
+  knockback: EnemyKnockbackState | null;
+}
+
+export interface EnemyKnockbackState {
+  initialOffset: SceneVector2;
+  currentOffset: SceneVector2;
+  elapsed: number;
 }
 
 export interface EnemySaveData {
@@ -66,6 +85,8 @@ export interface EnemiesModuleOptions {
   readonly bridge: DataBridge;
   readonly runState: MapRunState;
   readonly movement: MovementService;
+  readonly resources: EnemyResourceCollector;
+  readonly bonuses: BonusesModule;
   readonly targeting?: TargetingService;
   readonly damage?: DamageService;
   readonly explosions?: ExplosionModule;

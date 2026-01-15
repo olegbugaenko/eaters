@@ -1,6 +1,7 @@
 import type { SceneVector2, SceneColor, SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { BrickEffectTint } from "../../bricks/bricks.types";
 import type { ExplosionType } from "../../../../../db/explosions-db";
+import type { TargetType } from "../../targeting/targeting.types";
 
 export interface PersistentAoeRingRuntimeConfig {
   startRadius: number;
@@ -33,6 +34,7 @@ export interface PersistentAoeState {
   id: string;
   spellId: string;
   center: SceneVector2;
+  targetTypes: readonly TargetType[];
   elapsedMs: number;
   createdAt: number; // For cleanup when tab becomes active
   durationMs: number;

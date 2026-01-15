@@ -95,7 +95,7 @@ export const SaveSlotBackgroundScene: React.FC = () => {
 
     const initialChanges = scene.flushChanges();
     webglRenderer.getObjectsRenderer().applyChanges(initialChanges);
-    webglRenderer.syncBuffers();
+    webglRenderer.syncBuffers(0);
 
     // Create render loop with shared logic
     const renderLoop = createWebGLRenderLoop({

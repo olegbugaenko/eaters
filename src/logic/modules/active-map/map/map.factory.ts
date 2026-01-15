@@ -31,10 +31,12 @@ export const createMapDefinition = (
       resources: container.get("resources"),
       unlocks: container.get("unlocks"),
       achievements: container.get("achievements"),
+      eventLog: container.get("eventLog"),
       unitsAutomation: container.get("unitAutomation"),
       arcs: container.get("arc"),
       sceneCleanup,
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
+      newUnlocks: container.get("newUnlocks"),
     });
   },
   registerAsModule: true,
@@ -52,8 +54,10 @@ export const createMapDefinition = (
     "resources",
     "unlocks",
     "achievements",
+    "eventLog",
     "unitAutomation",
     "skillTree",
+    "newUnlocks",
   ],
   onReady: (instance: MapModule) => {
     context.setMapModule(instance);

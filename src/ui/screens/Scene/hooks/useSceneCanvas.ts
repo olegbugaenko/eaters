@@ -73,14 +73,17 @@ export interface UseSceneCanvasParams {
   lastPointerPositionRef: MutableRefObject<{ x: number; y: number } | null>;
   cameraInfoRef: MutableRefObject<SceneCameraState>;
   scaleRef: MutableRefObject<number>;
-  setScale: (value: number) => void;
-  setCameraInfo: (value: SceneCameraState) => void;
-  setScaleRange: (value: { min: number; max: number }) => void;
+  onCameraUiChange: (value: {
+    scale?: number;
+    cameraInfo?: SceneCameraState;
+    scaleRange?: { min: number; max: number };
+  }) => void;
   vboStatsRef: MutableRefObject<BufferStats>;
   particleStatsRef: MutableRefObject<ParticleStatsState>;
   particleStatsLastUpdateRef: MutableRefObject<number>;
   hasInitializedScaleRef: MutableRefObject<boolean>;
   onSpellCast?: (spellId: SpellId) => void;
+  onInspectTarget?: (position: SceneVector2) => void;
 }
 
 export const useSceneCanvas = ({
@@ -96,14 +99,13 @@ export const useSceneCanvas = ({
   lastPointerPositionRef,
   cameraInfoRef,
   scaleRef,
-  setScale,
-  setCameraInfo,
-  setScaleRange,
+  onCameraUiChange,
   vboStatsRef,
   particleStatsRef,
   particleStatsLastUpdateRef,
   hasInitializedScaleRef,
   onSpellCast,
+  onInspectTarget,
 }: UseSceneCanvasParams) => {
   // Use position interpolation hook
   const { getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions } = usePositionInterpolation(scene, gameLoop);
@@ -112,6 +114,7 @@ export const useSceneCanvas = ({
   const sceneRef = useRef(scene);
   const spellcastingRef = useRef(spellcasting);
   const onSpellCastRef = useRef(onSpellCast);
+  const onInspectTargetRef = useRef(onInspectTarget);
   const getInterpolatedUnitPositionsRef = useRef(getInterpolatedUnitPositions);
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
@@ -119,16 +122,18 @@ export const useSceneCanvas = ({
   const movableStatsLastUpdateRef = useRef(0);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const rightMouseDownPositionRef = useRef<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     sceneRef.current = scene;
     spellcastingRef.current = spellcasting;
     onSpellCastRef.current = onSpellCast;
+    onInspectTargetRef.current = onInspectTarget;
     getInterpolatedUnitPositionsRef.current = getInterpolatedUnitPositions;
     getInterpolatedBulletPositionsRef.current = getInterpolatedBulletPositions;
     getInterpolatedBrickPositionsRef.current = getInterpolatedBrickPositions;
     getInterpolatedEnemyPositionsRef.current = getInterpolatedEnemyPositions;
-  }, [scene, spellcasting, onSpellCast, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions]);
+  }, [scene, spellcasting, onSpellCast, onInspectTarget, getInterpolatedUnitPositions, getInterpolatedBulletPositions, getInterpolatedBrickPositions, getInterpolatedEnemyPositions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -216,7 +221,7 @@ export const useSceneCanvas = ({
     };
 
     const applySync = () => {
-      webglRenderer.syncBuffers();
+      webglRenderer.syncBuffers(0);
     };
 
     const initialChanges = sceneRef.current.flushChanges();
@@ -409,7 +414,7 @@ export const useSceneCanvas = ({
           Math.abs(latestCamera.scale - scaleRef.current) > 0.0001
         ) {
           scaleRef.current = latestCamera.scale;
-          setScale(latestCamera.scale);
+          onCameraUiChange({ scale: latestCamera.scale });
         }
         if (
           Math.abs(latestCamera.position.x - cameraInfoRef.current.position.x) >
@@ -422,7 +427,7 @@ export const useSceneCanvas = ({
             0.0001
         ) {
           cameraInfoRef.current = latestCamera;
-          setCameraInfo(latestCamera);
+          onCameraUiChange({ cameraInfo: latestCamera });
         }
       },
     });
@@ -449,12 +454,11 @@ export const useSceneCanvas = ({
       const current = sceneRef.current.getCamera();
       scaleRef.current = current.scale;
       cameraInfoRef.current = current;
-      setScale(current.scale);
-      setCameraInfo(current);
+      onCameraUiChange({ scale: current.scale, cameraInfo: current });
       
       // Update scale range after viewport changes
       const newScaleRange = sceneRef.current.getScaleRange();
-      setScaleRange(newScaleRange);
+      onCameraUiChange({ scaleRange: newScaleRange });
       
       // Mark scale as initialized after first resize
       // This ensures scale is set AFTER minScale is properly calculated
@@ -485,6 +489,21 @@ export const useSceneCanvas = ({
         y:
           cameraState.position.y +
           normalizedY * cameraState.viewportSize.height,
+      };
+    };
+
+    const getCanvasPosition = (event: PointerEvent): { x: number; y: number } | null => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        return null;
+      }
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const clampedX = clamp(x, 0, rect.width);
+      const clampedY = clamp(y, 0, rect.height);
+      return {
+        x: (clampedX / rect.width) * canvas.width,
+        y: (clampedY / rect.height) * canvas.height,
       };
     };
 
@@ -533,6 +552,7 @@ export const useSceneCanvas = ({
       updatePointerPressed(false);
       updateRightMousePressed(false);
       rightMouseLastPositionRef.current = null;
+      rightMouseDownPositionRef.current = null;
     };
 
     const tryCastSpellAtPosition = (event: PointerEvent) => {
@@ -580,6 +600,7 @@ export const useSceneCanvas = ({
         // Right mouse button - camera panning
         event.preventDefault(); // Prevent context menu
         updateRightMousePressed(true);
+        rightMouseDownPositionRef.current = getCanvasPosition(event);
         // Initialize right mouse position for panning
         if (rect.width > 0 && rect.height > 0) {
           const x = event.clientX - rect.left;
@@ -601,6 +622,23 @@ export const useSceneCanvas = ({
         // Right mouse button
         updateRightMousePressed(false);
         rightMouseLastPositionRef.current = null;
+        const downPosition = rightMouseDownPositionRef.current;
+        const currentPosition = getCanvasPosition(event);
+        rightMouseDownPositionRef.current = null;
+        if (!downPosition || !currentPosition || !onInspectTargetRef.current) {
+          return;
+        }
+        const deltaX = currentPosition.x - downPosition.x;
+        const deltaY = currentPosition.y - downPosition.y;
+        const travelDistance = Math.hypot(deltaX, deltaY);
+        if (travelDistance > 6) {
+          return;
+        }
+        const worldPosition = getWorldPosition(event);
+        if (!worldPosition) {
+          return;
+        }
+        onInspectTargetRef.current(worldPosition);
       }
     };
 
@@ -636,8 +674,7 @@ export const useSceneCanvas = ({
         const updatedCamera = sceneRef.current.getCamera();
         scaleRef.current = updatedCamera.scale;
         cameraInfoRef.current = updatedCamera;
-        setScale(updatedCamera.scale);
-        setCameraInfo(updatedCamera);
+        onCameraUiChange({ scale: updatedCamera.scale, cameraInfo: updatedCamera });
       }
     };
 
@@ -683,7 +720,6 @@ export const useSceneCanvas = ({
     // scene/spellcasting/interpolation functions accessed via refs to avoid recreating useEffect
     // Only include setState functions (they're stable) and canvasRef for initial mount
     canvasRef,
-    setScale,
-    setCameraInfo,
+    onCameraUiChange,
   ]);
 };

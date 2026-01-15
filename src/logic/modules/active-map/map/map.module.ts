@@ -29,6 +29,9 @@ import {
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { MapRunEvent } from "./MapRunState";
 import { MapSceneCleanup, MapSceneCleanupContract } from "./map.scene-cleanup";
+import type { BrickRuntimeState } from "../bricks/bricks.types";
+import type { EnemyRuntimeState } from "../enemies/enemies.types";
+import type { TargetSnapshot } from "../targeting/targeting.types";
 import {
   MAP_LIST_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
@@ -37,11 +40,15 @@ import {
   MAP_LAST_PLAYED_BRIDGE_KEY,
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
+  MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
+  MAP_INSPECTED_TARGET_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
+  DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
   DEFAULT_MAP_ID,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
   AUTO_RESTART_SKILL_ID,
   BONUS_CONTEXT_CLEARED_LEVELS,
+  INSPECT_TARGET_TOOLTIP_THROTTLE_MS,
 } from "./map.const";
 import {
   sanitizeLevel,
@@ -54,26 +61,33 @@ import {
 export class MapModule implements GameModule {
   public readonly id = "maps";
 
+  private inspectedTarget: { type: "brick" | "enemy"; id: string } | null = null;
+  private inspectedTargetElapsedMs = 0;
+  private inspectedTargetLastPublishMs = 0;
   private readonly selection: MapSelectionState;
   private readonly runLifecycle: MapRunLifecycle;
   private readonly unlocks;
   private readonly getSkillLevel;
+  private readonly newUnlocks;
   private mapStats: MapStats = {};
   // Cached deep-clone of mapStats for read-only consumers (e.g., UnlockService)
   private statsCloneCache: MapStats | null = null;
   private statsCloneDirty = true;
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
+  private controlHintsCollapsed = DEFAULT_MAP_CONTROL_HINTS_COLLAPSED;
   private mapSelectViewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private readonly options: MapModuleOptions;
   private readonly sceneCleanup: MapSceneCleanupContract;
   private currentMapBonusSourceId: string | null = null;
+  private hasRegisteredUnlocks = false;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
     this.sceneCleanup = options.sceneCleanup;
     this.unlocks = options.unlocks;
     this.getSkillLevel = options.getSkillLevel;
+    this.newUnlocks = options.newUnlocks;
     this.selection = new MapSelectionState(DEFAULT_MAP_ID);
     const visuals = new MapVisualEffects(options.scene);
     this.runLifecycle = new MapRunLifecycle({
@@ -93,11 +107,14 @@ export class MapModule implements GameModule {
   }
 
   public initialize(): void {
+    this.registerUnlockNotifications();
     this.runLifecycle.reset();
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
     this.pushMapSelectViewTransform();
+    this.pushControlHintsState();
+    this.resetInspectedTargetState();
     this.ensureSelection();
   }
 
@@ -107,6 +124,7 @@ export class MapModule implements GameModule {
     this.autoRestartEnabled = false;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
+    this.resetInspectedTargetState();
     this.ensureSelection();
   }
 
@@ -115,6 +133,8 @@ export class MapModule implements GameModule {
     this.mapStats = parsed?.stats ?? {};
     this.selection.loadFromSave(parsed);
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
+    this.controlHintsCollapsed =
+      parsed?.controlHintsCollapsed ?? DEFAULT_MAP_CONTROL_HINTS_COLLAPSED;
     this.mapSelectViewTransform = parsed?.mapSelectViewTransform ?? null;
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
@@ -124,6 +144,7 @@ export class MapModule implements GameModule {
     this.pushMapList();
     this.pushLastPlayedMap();
     this.pushMapSelectViewTransform();
+    this.pushControlHintsState();
 
     this.selection.applySavedSelection(
       parsed?.mapId ?? null,
@@ -141,6 +162,7 @@ export class MapModule implements GameModule {
       stats: this.cloneStatsForSave(),
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
+      controlHintsCollapsed: this.controlHintsCollapsed,
       lastPlayedMap: this.selection.getLastPlayedMap()
         ? {
             mapId: this.selection.getLastPlayedMap()!.mapId,
@@ -155,7 +177,9 @@ export class MapModule implements GameModule {
     if (!this.options.runState.shouldProcessTick()) {
       return;
     }
+    this.inspectedTargetElapsedMs += Math.max(deltaMs, 0);
     this.runLifecycle.tick(deltaMs);
+    this.publishInspectedTarget();
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
@@ -201,6 +225,7 @@ export class MapModule implements GameModule {
   }
 
   public leaveCurrentMap(): void {
+    this.resetInspectedTargetState();
     // Save last played map before leaving
     const selectedMapId = this.selection.getSelectedMapId();
     if (selectedMapId !== null) {
@@ -218,6 +243,152 @@ export class MapModule implements GameModule {
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
     this.pushMapList();
+  }
+
+  public inspectTargetAtPosition(
+    position: SceneVector2,
+    radius = 32
+  ): TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null {
+    const brick = this.options.bricks.findNearestBrick(position);
+    const enemy = this.options.enemies.findNearestEnemy(position);
+
+    const candidates: Array<{
+      target: TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState>;
+      distanceSq: number;
+    }> = [];
+
+    if (brick) {
+      const distanceSq = this.getDistanceSq(position, brick.position);
+      const allowedRadius = Math.max(radius, brick.physicalSize);
+      if (distanceSq <= allowedRadius * allowedRadius) {
+        candidates.push({ target: this.toBrickTarget(brick), distanceSq });
+      }
+    }
+
+    if (enemy) {
+      const distanceSq = this.getDistanceSq(position, enemy.position);
+      const allowedRadius = Math.max(radius, enemy.physicalSize);
+      if (distanceSq <= allowedRadius * allowedRadius) {
+        candidates.push({ target: this.toEnemyTarget(enemy), distanceSq });
+      }
+    }
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    candidates.sort((a, b) => a.distanceSq - b.distanceSq);
+    return candidates[0]?.target ?? null;
+  }
+
+  public setInspectedTargetAtPosition(position: SceneVector2, radius = 32): void {
+    const target = this.inspectTargetAtPosition(position, radius);
+    if (!target) {
+      this.clearInspectedTarget();
+      return;
+    }
+    if (this.inspectedTarget?.id === target.id && this.inspectedTarget?.type === target.type) {
+      this.publishInspectedTarget(true);
+      return;
+    }
+    this.inspectedTarget = { id: target.id, type: target.type };
+    this.publishInspectedTarget(true);
+  }
+
+  public clearInspectedTarget(): void {
+    this.inspectedTarget = null;
+    this.publishInspectedTarget(true);
+  }
+
+  private toBrickTarget(brick: BrickRuntimeState): TargetSnapshot<"brick", BrickRuntimeState> {
+    const rewardMultiplier = this.getRewardMultiplier();
+    return {
+      id: brick.id,
+      type: "brick",
+      position: { ...brick.position },
+      hp: brick.hp,
+      maxHp: brick.maxHp,
+      armor: brick.armor,
+      baseDamage: brick.baseDamage,
+      physicalSize: brick.physicalSize,
+      rewardMultiplier,
+      data: brick,
+    };
+  }
+
+  private toEnemyTarget(enemy: EnemyRuntimeState): TargetSnapshot<"enemy", EnemyRuntimeState> {
+    const rewardMultiplier = this.getRewardMultiplier();
+    return {
+      id: enemy.id,
+      type: "enemy",
+      position: { ...enemy.position },
+      hp: enemy.hp,
+      maxHp: enemy.maxHp,
+      armor: enemy.armor,
+      baseDamage: enemy.baseDamage,
+      physicalSize: enemy.physicalSize,
+      rewardMultiplier,
+      data: enemy,
+    };
+  }
+
+  private getRewardMultiplier(): number {
+    const multiplierRaw = this.options.bonuses.getBonusValue("brick_rewards");
+    const multiplier = Number.isFinite(multiplierRaw) ? multiplierRaw : 1;
+    return Math.max(multiplier, 0);
+  }
+
+  private resetInspectedTargetState(): void {
+    this.inspectedTarget = null;
+    this.inspectedTargetElapsedMs = 0;
+    this.inspectedTargetLastPublishMs = 0;
+    this.publishInspectedTarget(true);
+  }
+
+  private publishInspectedTarget(force = false): void {
+    if (!force && !this.inspectedTarget) {
+      return;
+    }
+    const interval = Math.max(INSPECT_TARGET_TOOLTIP_THROTTLE_MS, 0);
+    const elapsed = this.inspectedTargetElapsedMs - this.inspectedTargetLastPublishMs;
+    if (!force && elapsed < interval) {
+      return;
+    }
+    this.inspectedTargetLastPublishMs = this.inspectedTargetElapsedMs;
+    const snapshot = this.getInspectedTargetSnapshot();
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
+      MAP_INSPECTED_TARGET_BRIDGE_KEY,
+      snapshot
+    );
+  }
+
+  private getInspectedTargetSnapshot():
+    | TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState>
+    | null {
+    if (!this.inspectedTarget) {
+      return null;
+    }
+    if (this.inspectedTarget.type === "brick") {
+      const brick = this.options.bricks.getBrickState(this.inspectedTarget.id);
+      if (!brick) {
+        this.inspectedTarget = null;
+        return null;
+      }
+      return this.toBrickTarget(brick);
+    }
+    const enemy = this.options.enemies.getEnemyState(this.inspectedTarget.id);
+    if (!enemy) {
+      this.inspectedTarget = null;
+      return null;
+    }
+    return this.toEnemyTarget(enemy);
+  }
+
+  private getDistanceSq(a: SceneVector2, b: SceneVector2): number {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return dx * dx + dy * dy;
   }
 
   public isAutoRestartEnabled(): boolean {
@@ -266,12 +437,20 @@ export class MapModule implements GameModule {
     this.pushLastPlayedMap();
     const stats = this.ensureLevelStats(mapId, level);
     if (result.success) {
+      const isFirstSuccess = stats.success === 0;
       stats.success += 1;
       const duration = sanitizeDuration(result.durationMs);
       if (duration !== null) {
         if (stats.bestTimeMs === null || duration < stats.bestTimeMs) {
           stats.bestTimeMs = duration;
         }
+      }
+      if (isFirstSuccess) {
+        const config = getMapConfig(mapId);
+        this.options.eventLog.registerEvent(
+          "map-cleared",
+          `Map ${config.name} cleared (Level ${level})`
+        );
       }
     } else {
       stats.failure += 1;
@@ -316,6 +495,7 @@ export class MapModule implements GameModule {
     generateUnits: boolean;
     generateEnemies: boolean;
   }): void {
+    this.resetInspectedTargetState();
     const mapId = this.selection.getSelectedMapId();
     if (!mapId) {
       return;
@@ -355,6 +535,7 @@ export class MapModule implements GameModule {
   }
 
   private handleMapRunCompleted(success: boolean): void {
+    this.resetInspectedTargetState();
     const { resources } = this.options;
     if (resources.isRunSummaryAvailable()) {
       return;
@@ -366,6 +547,7 @@ export class MapModule implements GameModule {
 
   private handleRunStateEvent(event: MapRunEvent): void {
     if (event.type === "reset") {
+      this.resetInspectedTargetState();
       this.sceneCleanup.resetAfterRun();
       return;
     }
@@ -412,9 +594,25 @@ export class MapModule implements GameModule {
     );
   }
 
+  private pushControlHintsState(): void {
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
+      MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
+      this.controlHintsCollapsed
+    );
+  }
+
   public setMapSelectViewTransform(transform: { scale: number; worldX: number; worldY: number } | null): void {
     this.mapSelectViewTransform = transform;
     this.pushMapSelectViewTransform();
+  }
+
+  public setControlHintsCollapsed(collapsed: boolean): void {
+    if (this.controlHintsCollapsed === collapsed) {
+      return;
+    }
+    this.controlHintsCollapsed = collapsed;
+    this.pushControlHintsState();
   }
 
   private generateBricks(config: MapConfig, mapLevel: number): BrickData[] {
@@ -506,6 +704,17 @@ export class MapModule implements GameModule {
     const list = this.getAvailableMaps();
     this.pushClearedLevelsTotal();
     DataBridgeHelpers.pushState(this.options.bridge, MAP_LIST_BRIDGE_KEY, list);
+    this.newUnlocks.invalidate("maps");
+  }
+
+  private registerUnlockNotifications(): void {
+    if (this.hasRegisteredUnlocks) {
+      return;
+    }
+    this.hasRegisteredUnlocks = true;
+    getMapList().forEach((map) => {
+      this.newUnlocks.registerUnlock(`maps.${map.id}`, () => this.isMapSelectable(map.id));
+    });
   }
 
   private pushSelectedMap(): void {
@@ -539,6 +748,7 @@ export class MapModule implements GameModule {
       mapLevel?: unknown;
       selectedLevels?: unknown;
       autoRestartEnabled?: unknown;
+      controlHintsCollapsed?: unknown;
       lastPlayedMap?: unknown;
       mapSelectViewTransform?: unknown;
     };
@@ -549,9 +759,19 @@ export class MapModule implements GameModule {
     const mapLevel = typeof raw.mapLevel === "number" ? deserializeLevel(raw.mapLevel) : undefined;
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
     const autoRestartEnabled = raw.autoRestartEnabled === true;
+    const controlHintsCollapsed = raw.controlHintsCollapsed === true;
     const lastPlayedMap = this.parseLastPlayedMap(raw.lastPlayedMap);
     const mapSelectViewTransform = this.parseViewTransform(raw.mapSelectViewTransform);
-    return { mapId: raw.mapId, mapLevel, stats, selectedLevels, autoRestartEnabled, lastPlayedMap, mapSelectViewTransform };
+    return {
+      mapId: raw.mapId,
+      mapLevel,
+      stats,
+      selectedLevels,
+      autoRestartEnabled,
+      controlHintsCollapsed,
+      lastPlayedMap,
+      mapSelectViewTransform,
+    };
   }
 
   private parseViewTransform(data: unknown): { scale: number; worldX: number; worldY: number } | undefined {

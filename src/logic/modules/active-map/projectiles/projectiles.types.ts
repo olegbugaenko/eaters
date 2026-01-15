@@ -15,6 +15,8 @@ export interface UnitProjectileVisualConfig {
   speed: number;
   lifetimeMs: number;
   fill: SceneFill;
+  spawnOffset?: SceneVector2;
+  soundEffectUrl?: string;
   tail?: BulletTailConfig;
   tailEmitter?: ParticleEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;
@@ -24,6 +26,7 @@ export interface UnitProjectileVisualConfig {
   /** Sprite index when shape === "sprite" */
   spriteIndex?: number;
   hitRadius?: number;
+  damageRadius?: number;
   /** Explosion type when projectile hits target (optional) */
   explosion?: ExplosionType;
   rendererCustomData?: Record<string, unknown>;
@@ -80,6 +83,7 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
   ringTrail?: UnitProjectileRingTrailState;
   shape: UnitProjectileShape;
   hitRadius: number;
+  damageRadius: number;
   position: SceneVector2;
   // GPU rendering slot (if using GPU instanced rendering)
   gpuSlot?: BulletSlotHandle;

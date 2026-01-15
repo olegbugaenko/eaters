@@ -17,6 +17,8 @@ import { describe, test } from "./testRunner";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import { calculateMitigatedDamage } from "../src/logic/helpers/damage-formula";
+import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
 
 const createBricksModule = (
   scene: SceneObjectManager,
@@ -25,6 +27,7 @@ const createBricksModule = (
 ) => {
   const explosions = new ExplosionModule({ scene });
   runState.start();
+  const damage = { applyTargetDamage: () => 0 } as unknown as DamageService;
   const resources = {
     grantResources: () => {
       // no-op for tests
@@ -35,7 +38,7 @@ const createBricksModule = (
   };
   const bonuses = new BonusesModule();
   bonuses.initialize();
-  const statusEffects = new StatusEffectsModule();
+  const statusEffects = new StatusEffectsModule({ damage });
   return new BricksModule({
     scene,
     bridge,
@@ -168,10 +171,14 @@ describe("BricksModule", () => {
     assert.strictEqual(firstHit.destroyed, false);
     const stateAfterFirst = module.getBrickState(brick.id);
     assert(stateAfterFirst, "brick should survive first hit");
-    assert.strictEqual(stateAfterFirst?.hp, brick.maxHp - Math.max(2 - brick.armor, 0));
+    const expectedDamage = calculateMitigatedDamage({
+      rawDamage: 2,
+      armor: brick.armor,
+    });
+    assert.strictEqual(stateAfterFirst?.hp, brick.maxHp - expectedDamage);
     assert.strictEqual(
       bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY),
-      stateAfterFirst?.hp,
+      Math.floor(stateAfterFirst?.hp ?? 0),
       "total HP should reflect damage"
     );
 
@@ -196,7 +203,11 @@ describe("BricksModule", () => {
     const explosionObjects = remainingObjects.filter((object) => object.type === "explosion");
 
     assert.strictEqual(brickObjects.length, 0, "brick scene object should be removed");
-    assert.strictEqual(explosionObjects.length, 1, "destroy explosion should be spawned");
+    assert.strictEqual(
+      explosionObjects.length,
+      2,
+      "damage and destroy explosions should be spawned"
+    );
     assert.strictEqual(bridge.getValue(BRICK_TOTAL_HP_BRIDGE_KEY), 0);
   });
 

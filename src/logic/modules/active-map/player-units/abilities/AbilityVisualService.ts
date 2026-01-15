@@ -4,12 +4,15 @@ import {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { ArcModule } from "../../../scene/arc/arc.module";
+import type { ArcSpawnOptions } from "../../../scene/arc/arc.types";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { EffectsModule } from "../../../scene/effects/effects.module";
 import type { FireballModule } from "../../../scene/fireball/fireball.module";
 import type { ExplosionType } from "../../../../../db/explosions-db";
 import { getArcConfig } from "../../../../../db/arcs-db";
 import type { PlayerUnitAbilityState } from "./AbilityUnitState";
+import { addVectors, sanitizeOffset } from "@/shared/helpers/vector.helper";
+import type { SoundEffectPlayer } from "../../../../../core/logic/provided/modules/audio/audio.types";
 
 interface AbilityVisualServiceOptions {
   scene: SceneObjectManager;
@@ -18,6 +21,7 @@ interface AbilityVisualServiceOptions {
   getEffects: () => EffectsModule | undefined;
   getFireballs: () => FireballModule | undefined;
   getUnitObjectId: (unitId: string) => string | undefined;
+  audio?: SoundEffectPlayer;
 }
 
 interface AbilityArcEntry {
@@ -26,6 +30,7 @@ interface AbilityArcEntry {
   sourceUnitId: string;
   targetUnitId: string;
   arcType: "heal" | "frenzy";
+  sourceOffset?: SceneVector2;
 }
 
 interface FireballLaunchOptions {
@@ -44,6 +49,7 @@ export class AbilityVisualService {
   private readonly getEffects: () => EffectsModule | undefined;
   private readonly getFireballs: () => FireballModule | undefined;
   private readonly getUnitObjectId: (unitId: string) => string | undefined;
+  private readonly audio?: SoundEffectPlayer;
   private activeArcEffects: AbilityArcEntry[] = [];
 
   constructor(options: AbilityVisualServiceOptions) {
@@ -53,6 +59,7 @@ export class AbilityVisualService {
     this.getEffects = options.getEffects;
     this.getFireballs = options.getFireballs;
     this.getUnitObjectId = options.getUnitObjectId;
+    this.audio = options.audio;
   }
 
   public reset(): void {
@@ -83,12 +90,15 @@ export class AbilityVisualService {
         this.scene.removeObject(entry.id);
         continue;
       }
+      const sourcePosition = entry.sourceOffset
+        ? addVectors(source.position, entry.sourceOffset)
+        : source.position;
       this.scene.updateObject(entry.id, {
-        position: { ...source.position },
+        position: { ...sourcePosition },
         fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } },
         customData: {
           arcType: entry.arcType,
-          from: { ...source.position },
+          from: { ...sourcePosition },
           to: { ...target.position },
         },
       });
@@ -128,11 +138,12 @@ export class AbilityVisualService {
     arcType: "heal" | "frenzy",
     source: PlayerUnitAbilityState,
     target: PlayerUnitAbilityState,
+    options?: ArcSpawnOptions,
   ): void {
     const arcModule = this.getArcs();
     if (arcModule) {
       try {
-        arcModule.spawnArcBetweenUnits(arcType, source.id, target.id);
+        arcModule.spawnArcBetweenUnits(arcType, source.id, target.id, options);
         return;
       } catch {
         // fall through to manual arc if ArcModule fails
@@ -141,12 +152,19 @@ export class AbilityVisualService {
 
     try {
       const config = getArcConfig(arcType);
+      if (config.soundEffectUrl) {
+        this.audio?.playSoundEffect(config.soundEffectUrl);
+      }
+      const sourceOffset = sanitizeOffset(options?.sourceOffset);
+      const sourcePosition = sourceOffset
+        ? addVectors(source.position, sourceOffset)
+        : source.position;
       const arcId = this.scene.addObject("arc", {
-        position: { ...source.position },
+        position: { ...sourcePosition },
         fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 0 } },
         customData: {
           arcType,
-          from: { ...source.position },
+          from: { ...sourcePosition },
           to: { ...target.position },
           lifetimeMs: config.lifetimeMs,
           fadeStartMs: config.fadeStartMs,
@@ -158,6 +176,7 @@ export class AbilityVisualService {
         sourceUnitId: source.id,
         targetUnitId: target.id,
         arcType,
+        sourceOffset,
       });
     } catch {
       // ignore arc failures; abilities still apply

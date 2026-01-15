@@ -13,7 +13,7 @@ import {
   ParticleEmitterParticleState,
   sanitizeParticleEmitterConfig,
 } from "../../../primitives/ParticleEmitterPrimitive";
-import { transformObjectPoint } from "../../ObjectRenderer";
+import { getInstanceRenderPosition, transformObjectPoint } from "../../ObjectRenderer";
 import { randomBetween } from "@shared/helpers/numbers.helper";
 import { DEFAULT_COLOR } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ExplosionEmitterRenderConfig, ExplosionEmitterConfigCache } from "./types";
@@ -101,7 +101,11 @@ export const getEmitterOrigin = (
   config: ExplosionEmitterRenderConfig
 ): SceneVector2 => {
   const offset = config.offset ?? { x: 0, y: 0 };
-  return transformObjectPoint(instance.data.position, instance.data.rotation, offset);
+  return transformObjectPoint(
+    getInstanceRenderPosition(instance),
+    instance.data.rotation,
+    offset
+  );
 };
 
 /**

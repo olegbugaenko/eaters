@@ -33,6 +33,7 @@ import {
   type RingSlotHandle,
 } from "@ui/renderers/primitives/gpu/ring";
 import { resolveBulletSpriteIndex } from "@logic/services/bullet-render-bridge/bullet-sprites.helpers";
+import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 import type {
   UnitProjectileShape,
   UnitProjectileVisualConfig,
@@ -49,6 +50,7 @@ export class UnitProjectileController {
   private readonly scene: SceneObjectManager;
   private readonly targeting: TargetingService;
   private readonly damage: DamageService;
+  private readonly audio?: SoundEffectPlayer;
 
   private projectiles: UnitProjectileState[] = [];
   private projectileIndex = new Map<string, UnitProjectileState>();
@@ -59,10 +61,12 @@ export class UnitProjectileController {
     scene: SceneObjectManager;
     targeting: TargetingService;
     damage: DamageService;
+    audio?: SoundEffectPlayer;
   }) {
     this.scene = options.scene;
     this.targeting = options.targeting;
     this.damage = options.damage;
+    this.audio = options.audio;
   }
 
   public spawn(projectile: UnitProjectileSpawn): string {
@@ -89,15 +93,23 @@ export class UnitProjectileController {
       ...baseVisual,
       spriteIndex, // This will be undefined if not resolved, which is fine
     };
+    if (visual.soundEffectUrl) {
+      this.audio?.playSoundEffect(visual.soundEffectUrl);
+    }
+    const origin = {
+      x: projectile.origin.x + (visual.spawnOffset?.x ?? 0),
+      y: projectile.origin.y + (visual.spawnOffset?.y ?? 0),
+    };
     const velocity = {
       x: direction.x * visual.speed,
       y: direction.y * visual.speed,
     };
-    const position = { ...projectile.origin };
+    const position = { ...origin };
     const createdAt = performance.now();
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
     const hitRadius = Math.max(1, visual.hitRadius ?? radius);
+    const damageRadius = Math.max(0, visual.damageRadius ?? 0);
     const rotation = Math.atan2(direction.y, direction.x);
     const shape = visual.shape ?? "circle";
     
@@ -165,6 +177,7 @@ export class UnitProjectileController {
 
     const state: UnitProjectileState = {
       ...projectile,
+      origin,
       targetTypes,
       id: objectId,
       velocity,
@@ -176,6 +189,7 @@ export class UnitProjectileController {
       ringTrail,
       shape,
       hitRadius,
+      damageRadius,
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
       justSpawned: true, // Не рухати снаряд в перший тік
@@ -354,7 +368,25 @@ export class UnitProjectileController {
             position: { ...projectile.position },
           });
           if (handled !== true) {
-            this.applyProjectileDamage(projectile, collided);
+            if (projectile.damageRadius > 0) {
+              this.damage.applyAreaDamage(
+                projectile.position,
+                projectile.damageRadius,
+                projectile.damage,
+                {
+                  rewardMultiplier: projectile.rewardMultiplier,
+                  armorPenetration: projectile.armorPenetration,
+                  skipKnockback: projectile.skipKnockback === true,
+                  knockBackDistance: projectile.knockBackDistance,
+                  knockBackSpeed: projectile.knockBackSpeed,
+                  knockBackDirection: projectile.knockBackDirection,
+                  direction: projectile.direction,
+                  types: projectile.targetTypes,
+                }
+              );
+            } else {
+              this.applyProjectileDamage(projectile, collided);
+            }
           }
           this.removeProjectile(projectile);
           if (projectile.ringTrail) {

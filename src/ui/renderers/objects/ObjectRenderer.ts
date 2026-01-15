@@ -36,7 +36,10 @@ export interface Primitive {
 export interface StaticPrimitive extends Primitive {}
 
 export interface DynamicPrimitive extends Primitive {
-  update(instance: SceneObjectInstance): Float32Array | null;
+  update(
+    instance: SceneObjectInstance,
+    frameDeltaMs?: number
+  ): Float32Array | null;
   updatePositionOnly?(instance: SceneObjectInstance): Float32Array | null;
   dispose?(): void;
   /**
@@ -77,16 +80,21 @@ export const transformObjectPoint = (
   };
 };
 
+export const getInstanceRenderPosition = (
+  instance: SceneObjectInstance
+): SceneVector2 => instance.data.renderPosition ?? instance.data.position;
+
 export abstract class ObjectRenderer {
   public abstract register(instance: SceneObjectInstance): ObjectRegistration;
 
   public update(
     instance: SceneObjectInstance,
-    registration: ObjectRegistration
+    registration: ObjectRegistration,
+    frameDeltaMs?: number
   ): DynamicPrimitiveUpdate[] {
     const updates: DynamicPrimitiveUpdate[] = [];
     registration.dynamicPrimitives.forEach((primitive) => {
-      const data = primitive.update(instance);
+      const data = primitive.update(instance, frameDeltaMs);
       if (data) {
         updates.push({ primitive, data });
       }
@@ -123,7 +131,7 @@ export abstract class ObjectRenderer {
     offset?: SceneVector2
   ): SceneVector2 {
     return transformObjectPoint(
-      instance.data.position,
+      getInstanceRenderPosition(instance),
       instance.data.rotation,
       offset
     );

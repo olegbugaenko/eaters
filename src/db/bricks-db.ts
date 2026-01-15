@@ -35,6 +35,7 @@ export type BrickType =
   | "megaBrick";
 
 export interface BrickConfig {
+  name?: string;
   size: SceneSize;
   fill: SceneFill;
   stroke?: SceneStroke;
@@ -403,9 +404,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.1, g: 0.4, b: 0.0, a: 1 }, width: 2.4 },
     destructubleData: {
-      maxHp: 85,
-      armor: 8,
-      baseDamage: 19,
+      maxHp: 95,
+      armor: 12,
+      baseDamage: 24,
       knockBackDistance: 90,
       knockBackSpeed: 140,
       brickKnockBackAmplitude: 4,
@@ -437,9 +438,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.6, g: 0.35, b: 0.1, a: 0.9 }, width: 2.4 },
     destructubleData: {
-      maxHp: 110,
-      armor: 12,
-      baseDamage: 17,
+      maxHp: 125,
+      armor: 32,
+      baseDamage: 19,
       knockBackDistance: 90,
       knockBackSpeed: 140,
       brickKnockBackAmplitude: 4,
@@ -476,9 +477,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.6, g: 0.45, b: 0.2, a: 0.9 }, width: 2.4 },
     destructubleData: {
-      maxHp: 275,
-      armor: 20,
-      baseDamage: 35,
+      maxHp: 375,
+      armor: 70,
+      baseDamage: 45,
       knockBackDistance: 90,
       knockBackSpeed: 160,
       brickKnockBackAmplitude: 4,
@@ -550,9 +551,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.4, g: 0.2, b: 0.08, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 225,
-      armor: 42,
-      baseDamage: 34,
+      maxHp: 325,
+      armor: 92,
+      baseDamage: 37,
       knockBackDistance: 70,
       knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
@@ -580,9 +581,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.55, g: 0.56, b: 0.62, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 1020,
-      armor: 84,
-      baseDamage: 92,
+      maxHp: 1520,
+      armor: 124,
+      baseDamage: 142,
       knockBackDistance: 75,
       knockBackSpeed: 160,
       brickKnockBackAmplitude: 7,
@@ -615,9 +616,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.08, g: 0.08, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 720,
+      maxHp: 840,
       armor: 70,
-      baseDamage: 185,
+      baseDamage: 225,
       knockBackDistance: 90,
       knockBackSpeed: 190,
       brickKnockBackAmplitude: 6,
@@ -650,8 +651,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.5, g: 0.7, b: 0.9, a: 1 }, width: 2.4 },
     destructubleData: {
-      maxHp: 3750,
-      armor: 245,
+      maxHp: 6750,
+      armor: 445,
       baseDamage: 355,
       knockBackDistance: 190,
       knockBackSpeed: 280,
@@ -667,7 +668,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
     rewards: {
-      ice: 1,
+      ice: 0.5,
     },
   },
   smallMagma: {
@@ -685,8 +686,8 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 2755,
-      armor: 142,
+      maxHp: 3755,
+      armor: 342,
       baseDamage: 534,
       knockBackDistance: 70,
       knockBackSpeed: 160,
@@ -702,7 +703,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
     rewards: {
-      magma: 1,
+      magma: 0.5,
     },
   },
   neutronBrick: {

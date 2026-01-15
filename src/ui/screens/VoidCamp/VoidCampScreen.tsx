@@ -21,14 +21,25 @@ import {
   DEFAULT_CAMP_STATISTICS,
   STATISTICS_BRIDGE_KEY,
 } from "@logic/modules/shared/statistics/statistics.module";
+import {
+  EVENT_LOG_BRIDGE_KEY,
+} from "@logic/modules/shared/event-log/event-log.const";
+import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.types";
 import type { StoredSaveData } from "@/core/logic/types";
+import { extractTimePlayed } from "@core/logic/provided/services/save-manager/save-manager.helpers";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { useThrottledBridgeValue } from "@ui-shared/useThrottledBridgeValue";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import {
   DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
 } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
+import {
+  DEFAULT_NEW_UNLOCKS_STATE,
+  NEW_UNLOCKS_BRIDGE_KEY,
+} from "@logic/services/new-unlock-notification/new-unlock-notification.const";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/buildings.types";
 import {
   BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
@@ -50,6 +61,7 @@ import {
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
 } from "@logic/modules/active-map/unit-automation/unit-automation.const";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
+import { formatDuration } from "@ui/utils/formatDuration";
 import { VoidCampTopBar } from "@screens/VoidCamp/components/VoidCamp/VoidCampTopBar";
 import {
   SettingsMessage,
@@ -97,20 +109,27 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     MAP_CLEARED_LEVELS_BRIDGE_KEY,
     0
   );
-  const resources = useBridgeValue(
+  const resources = useThrottledBridgeValue(
     bridge,
     RESOURCE_TOTALS_BRIDGE_KEY,
-    [] as ResourceAmountPayload[]
+    [] as ResourceAmountPayload[],
+    250
   );
   const statistics = useBridgeValue(
     bridge,
     STATISTICS_BRIDGE_KEY,
     DEFAULT_CAMP_STATISTICS
   );
+  const eventLog = useBridgeValue(bridge, EVENT_LOG_BRIDGE_KEY, [] as EventLogEntry[]);
   const achievementsPayload = useBridgeValue(
     bridge,
     ACHIEVEMENTS_BRIDGE_KEY,
     DEFAULT_ACHIEVEMENTS_STATE
+  );
+  const newUnlocksState = useBridgeValue(
+    bridge,
+    NEW_UNLOCKS_BRIDGE_KEY,
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
   );
   const moduleWorkshopState = useBridgeValue(
     bridge,
@@ -216,10 +235,15 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       const json = JSON.stringify(data, null, 2);
       const blob = new Blob([json], { type: "application/json" });
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const timePlayedMs = extractTimePlayed(data);
+      const timePlayedLabel =
+        timePlayedMs !== null
+          ? `-playtime-${formatDuration(timePlayedMs).replace(":", "m")}s`
+          : "";
       objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
-      anchor.download = `voidcamp-save-${timestamp}.json`;
+      anchor.download = `voidcamp-save-${timestamp}${timePlayedLabel}.json`;
       anchor.click();
       setStatusMessage({
         tone: "success",
@@ -337,6 +361,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
             achievementsState={achievementsPayload}
+            newUnlocksState={newUnlocksState}
           />
         }
       />
@@ -365,6 +390,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         timePlayedMs={timePlayed}
         favoriteMap={favoriteMap}
         statistics={statistics}
+        eventLog={eventLog}
       />
       <AchievementsModal
         isOpen={isAchievementsOpen}

@@ -1,4 +1,4 @@
-import { ObjectRegistration, ObjectRenderer } from "../../ObjectRenderer";
+import { getInstanceRenderPosition, ObjectRegistration, ObjectRenderer } from "../../ObjectRenderer";
 import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   createStaticPolygonPrimitive,
@@ -15,7 +15,7 @@ export class PolygonObjectRenderer extends ObjectRenderer {
 
     if (hasStroke(instance.data.stroke)) {
       const strokePrimitive = createStaticPolygonStrokePrimitive({
-        center: instance.data.position,
+        center: getInstanceRenderPosition(instance),
         vertices,
         stroke: instance.data.stroke,
         rotation,
@@ -28,7 +28,7 @@ export class PolygonObjectRenderer extends ObjectRenderer {
 
     primitives.push(
       createStaticPolygonPrimitive({
-        center: instance.data.position,
+        center: getInstanceRenderPosition(instance),
         vertices,
         fill: instance.data.fill,
         rotation,

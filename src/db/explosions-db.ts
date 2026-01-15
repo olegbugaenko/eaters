@@ -38,7 +38,9 @@ export type ExplosionType =
   | "weakenCurse"
   | "smallCannon"
   | "bigCannon"
-  | "smallCannonGrey";
+  | "smallCannonGrey"
+  | "smallLaser"
+  | "smallEnergetic";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
@@ -57,6 +59,7 @@ export interface ExplosionConfig {
   defaultInitialRadius: number;
   waves: readonly ExplosionWaveConfig[];
   emitter: ParticleEmitterConfig;
+  soundEffectUrl?: string;
 }
 
 const createSimpleWave = (options: {
@@ -224,6 +227,32 @@ const SMALL_CANNON_EMITTER_FILL: SceneFill = {
     { offset: 0, color: { r: 1.0, g: 0.9, b: 0.8, a: 1.0 } },
     { offset: 0.45, color: { r: 0.9, g: 0.8, b: 0.7, a: 0.42 } },
     { offset: 1, color: { r: 0.5, g: 0.4, b: 0.3, a: 0.02 } },
+  ]
+};
+
+const SMALL_LASER_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    { offset: 0, color: { r: 1.0, g: 0.7, b: 0.8, a: 1.0 } },
+    { offset: 0.45, color: { r: 0.9, g: 0.6, b: 0.7, a: 0.42 } },
+    { offset: 1, color: { r: 0.9, g: 0.5, b: 0.6, a: 0.32 } },
+  ]
+};
+
+const SMALL_ENERGETIC_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.5, g: 0.8, b: 0.8, a: 0.4 } },
+  { offset: 0.75, color: { r: 0.4, g: 0.7, b: 0.6, a: 0.9 } },
+  { offset: 1, color: { r: 0.4, g: 0.7, b: 0.6, a: 0 } },
+] as const;
+
+const SMALL_ENERGETIC_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    { offset: 0, color: { r: 0.7, g: 1.0, b: 1.0, a: 1.0 } },
+    { offset: 0.45, color: { r: 0.4, g: 0.9, b: 0.8, a: 0.6 } },
+    { offset: 1, color: { r: 0.4, g: 0.9, b: 0.8, a: 0.2 } },
   ]
 };
 
@@ -481,6 +510,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   smallCannon: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 10,
@@ -507,6 +537,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   smallCannonGrey: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 10,
@@ -533,6 +564,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   bigCannon: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 20,
@@ -940,6 +972,58 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       fill: GRAY_BRICK_EMITTER_FILL,
       shape: "circle",
       sizeGrowthRate: 2.35,
+    },
+  },
+  smallLaser: {
+    lifetimeMs: 1_200,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 2,
+      radiusExtension: 7,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.04,
+      speedVariation: 0.025,
+      fadeStartMs: 400,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 1760,
+      sizeRange: { min: 0.25, max: 1.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      // color: { r: 1, g: 1, b: 1, a: 1 },
+      fill: SMALL_LASER_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  smallEnergetic: {
+    lifetimeMs: 1_200,
+    defaultInitialRadius: 3,
+    soundEffectUrl: "/audio/sounds/general_effects/explosion.mp3",
+    waves: createSimpleWave({
+      defaultInitialRadius: 2,
+      radiusExtension: 5,
+      startAlpha: 0.95,
+      endAlpha: 0,
+      gradientStops: SMALL_ENERGETIC_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.2,
+      speedVariation: 0.05,
+      fadeStartMs: 600,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 1760,
+      sizeRange: { min: 0.25, max: 1.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.2 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      fill: SMALL_ENERGETIC_EMITTER_FILL,
+      radialVelocity: true, // Частинки рухаються від центру вибуху
     },
   },
 };

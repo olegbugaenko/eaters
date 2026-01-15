@@ -1,4 +1,5 @@
 import type { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { TargetType } from "../../targeting/targeting.types";
 
 export interface SandStormCustomData {
   intensity: number;
@@ -22,6 +23,7 @@ export interface WhirlState {
   position: SceneVector2;
   velocity: SceneVector2;
   radius: number;
+  targetTypes: readonly TargetType[];
   baseDamagePerSecond: number;
   baseMaxHealth: number;
   maxHealth: number;

@@ -6,15 +6,29 @@ import {
   useRef,
   useState,
 } from "react";
-import { MAX_UNITS_ON_MAP } from "@logic/modules/active-map/necromancer/necromancer.const";
+import {
+  MAX_UNITS_ON_MAP,
+  NECROMANCER_RESOURCES_BRIDGE_KEY,
+  NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+} from "@logic/modules/active-map/necromancer/necromancer.const";
 import type {
   NecromancerResourcesPayload,
   NecromancerSpawnOption,
 } from "@logic/modules/active-map/necromancer/necromancer.types";
 import { createEmptyResourceAmount } from "@shared/const/resources.const";
 import { SpellOption } from "@logic/modules/active-map/spellcasting/spellcasting.types";
-import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
-import { PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY } from "@logic/modules/active-map/player-units/player-units.const";
+import {
+  DEFAULT_SPELL_OPTIONS,
+  SPELL_OPTIONS_BRIDGE_KEY,
+} from "@logic/modules/active-map/spellcasting/spellcasting.const";
+import {
+  DEFAULT_UNIT_AUTOMATION_STATE,
+  UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+} from "@logic/modules/active-map/unit-automation/unit-automation.const";
+import {
+  PLAYER_UNIT_COUNT_BRIDGE_KEY,
+  PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
+} from "@logic/modules/active-map/player-units/player-units.const";
 import {
   UnitDesignId,
   UnitDesignModuleDetail,
@@ -32,17 +46,18 @@ import { SceneTooltipContent } from "../tooltip/SceneTooltipPanel";
 import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
 import { createSpellTooltip } from "./tooltip-factory/createSpellTooltip";
 
+const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = {
+  mana: { current: 0, max: 0 },
+  sanity: { current: 0, max: 0 },
+};
+const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
+
 interface SceneSummoningPanelProps {
-  resources: NecromancerResourcesPayload;
-  spawnOptions: readonly NecromancerSpawnOption[];
-  spells: readonly SpellOption[];
   selectedSpellId: SpellId | null;
   onSelectSpell: (spellId: SpellId) => void;
   onSummon: (designId: UnitDesignId) => void;
   onHoverInfoChange: (content: SceneTooltipContent | null) => void;
-  automation: UnitAutomationBridgeState;
   onToggleAutomation: (designId: UnitDesignId, enabled: boolean) => void;
-  unitCount: number;
 }
 
 const formatResourceValue = (
@@ -64,20 +79,32 @@ export const SceneSummoningPanel = forwardRef<
 >(
   (
     {
-      resources,
-      spawnOptions,
-      spells,
       selectedSpellId,
       onSelectSpell,
       onSummon,
       onHoverInfoChange,
-      automation,
       onToggleAutomation,
-      unitCount,
     },
     ref,
   ) => {
     const { bridge } = useAppLogic();
+    const resources = useBridgeValue(
+      bridge,
+      NECROMANCER_RESOURCES_BRIDGE_KEY,
+      DEFAULT_NECROMANCER_RESOURCES,
+    );
+    const spawnOptions = useBridgeValue(
+      bridge,
+      NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
+      EMPTY_SPAWN_OPTIONS,
+    );
+    const spells = useBridgeValue(bridge, SPELL_OPTIONS_BRIDGE_KEY, DEFAULT_SPELL_OPTIONS);
+    const automationState = useBridgeValue(
+      bridge,
+      UNIT_AUTOMATION_STATE_BRIDGE_KEY,
+      DEFAULT_UNIT_AUTOMATION_STATE,
+    );
+    const unitCount = useBridgeValue(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
     const unitCountsByDesign = useBridgeValue(
       bridge,
       PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
@@ -93,11 +120,11 @@ export const SceneSummoningPanel = forwardRef<
 
     const automationLookup = useMemo(() => {
       const map = new Map<UnitDesignId, { enabled: boolean }>();
-      automation.units.forEach((entry) => {
+      automationState.units.forEach((entry) => {
         map.set(entry.designId, { enabled: entry.enabled });
       });
       return map;
-    }, [automation]);
+    }, [automationState]);
 
     const sanityConsuming = useResourceConsumptionPulse(
       resources.sanity.current,
@@ -225,7 +252,7 @@ export const SceneSummoningPanel = forwardRef<
                             </span>
                           )}
                         </div>
-                        {automation.unlocked && (
+                        {automationState.unlocked && (
                           <label className="scene-summoning-panel__automation-toggle" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"

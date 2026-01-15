@@ -27,6 +27,7 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
 
     const emitterPrimitive = createExplosionEmitterPrimitive(instance);
     if (emitterPrimitive) {
+      emitterPrimitive.autoAnimate = true;
       dynamicPrimitives.push(emitterPrimitive);
     }
 

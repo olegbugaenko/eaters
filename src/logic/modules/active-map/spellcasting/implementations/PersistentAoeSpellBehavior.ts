@@ -38,6 +38,9 @@ import type {
   PersistentAoeParticleCustomData,
   PersistentAoeObjectCustomData,
 } from "./PersistentAoeSpellBehavior.types";
+import type { DamageService } from "../../targeting/DamageService";
+import type { TargetingService } from "../../targeting/TargetingService";
+import type { TargetSnapshot, TargetType } from "../../targeting/targeting.types";
 
 
 export class PersistentAoeSpellBehavior implements SpellBehavior {
@@ -47,6 +50,8 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
   private readonly bricks: BricksModule;
   private readonly explosions: ExplosionModule | undefined;
   private readonly getSpellPowerMultiplier: () => number;
+  private readonly damage: DamageService;
+  private readonly targeting: TargetingService;
 
   private readonly instances: PersistentAoeState[] = [];
   private spellPowerMultiplier = 1;
@@ -56,6 +61,8 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     this.bricks = dependencies.bricks;
     this.explosions = dependencies.explosions;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
+    this.damage = dependencies.damage;
+    this.targeting = dependencies.targeting;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
 
@@ -100,6 +107,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       id: objectId,
       spellId: context.spellId,
       center,
+      targetTypes: sanitized.targetTypes,
       elapsedMs: 0,
       createdAt: now,
       durationMs: sanitized.durationMs,
@@ -199,13 +207,18 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     ring: PersistentAoeRingRuntimeConfig;
     effects: PersistentAoeEffectRuntimeConfig[];
     visual: PersistentAoeVisualRuntimeConfig;
+    targetTypes: TargetType[];
   } {
     const durationMs = Math.max(MIN_DURATION_MS, Math.floor(config.durationMs));
     const damagePerSecond = Math.max(0, config.damagePerSecond);
     const ring = this.sanitizeRingConfig(config.ring);
     const visual = this.sanitizeVisualConfig(config.visuals);
     const effects = this.sanitizeEffects(config.effects);
-    return { durationMs, damagePerSecond, ring, visual, effects };
+    const targetTypes =
+      config.targetTypes && config.targetTypes.length > 0
+        ? config.targetTypes
+        : (["brick"] as TargetType[]);
+    return { durationMs, damagePerSecond, ring, visual, effects, targetTypes };
   }
 
   private sanitizeEffects(
@@ -403,16 +416,34 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       return;
     }
 
-    this.forEachBrickInRing(state, (brick, direction) => {
-      this.bricks.applyDamage(brick.id, damage, direction, {
+    this.forEachTargetInRing(state, (target, direction) => {
+      this.damage.applyTargetDamage(target.id, damage, {
+        direction,
         overTime: deltaSeconds,
         skipKnockback: true,
+        payload: {
+          amount: damage,
+          context: {
+            source: { type: "spell", id: state.spellId },
+            attackType: "spell-persistent-aoe",
+            tag: state.spellId,
+            direction,
+            baseDamage: damage,
+            modifiers: {
+              spellPowerMultiplier: state.damageMultiplier,
+            },
+          },
+          area: {
+            radius: this.getOuterRadius(state.ring, clamp01(state.elapsedMs / Math.max(state.durationMs, MIN_DURATION_MS))),
+            types: state.targetTypes,
+          },
+        },
       });
     });
   }
 
   private applyRingEffects(state: PersistentAoeState): void {
-    if (state.effects.length === 0) {
+    if (state.effects.length === 0 || !state.targetTypes.includes("brick")) {
       return;
     }
 
@@ -471,6 +502,39 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
 
       visitor(brick, direction);
     });
+  }
+
+  private forEachTargetInRing(
+    state: PersistentAoeState,
+    visitor: (target: TargetSnapshot, direction: SceneVector2) => void,
+  ): void {
+    const progress = clamp01(state.elapsedMs / Math.max(state.durationMs, MIN_DURATION_MS));
+    const outerRadius = this.getOuterRadius(state.ring, progress);
+    const innerRadius = Math.max(0, outerRadius - state.ring.thickness);
+    const searchRadius = outerRadius + Math.max(state.ring.thickness, BRICK_QUERY_MARGIN);
+
+    this.targeting.forEachTargetNear(
+      state.center,
+      searchRadius,
+      (target) => {
+        const dx = target.position.x - state.center.x;
+        const dy = target.position.y - state.center.y;
+        const distance = Math.hypot(dx, dy);
+        const targetRadius = Math.max(0, target.physicalSize ?? 0);
+        const nearest = Math.max(0, distance - targetRadius);
+        const farthest = distance + targetRadius;
+        if (nearest > outerRadius || farthest < innerRadius) {
+          return;
+        }
+
+        const direction = distance > 0
+          ? { x: dx / distance, y: dy / distance }
+          : { x: 0, y: 0 };
+
+        visitor(target, direction);
+      },
+      state.targetTypes.length > 0 ? { types: state.targetTypes } : undefined,
+    );
   }
 
   private getOuterRadius(ring: PersistentAoeRingRuntimeConfig, progress: number): number {

@@ -7,6 +7,13 @@ import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import { formatNumber } from "@ui-shared/format/number";
 import { CraftingRecipeId } from "@db/crafting-recipes-db";
 import { classNames } from "@ui-shared/classNames";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import {
+  DEFAULT_NEW_UNLOCKS_STATE,
+  NEW_UNLOCKS_BRIDGE_KEY,
+} from "@logic/services/new-unlock-notification/new-unlock-notification.const";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
+import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import "./CraftingView.css";
 import type { CraftingModuleUiApi } from "@logic/modules/camp/crafting/crafting.types";
 
@@ -67,9 +74,18 @@ const formatCraftTime = (durationMs: number): string => {
 };
 
 export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) => {
-  const { uiApi } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const crafting = uiApi.crafting as CraftingModuleUiApi;
   const totals = useMemo(() => buildResourceMap(resources), [resources]);
+  const newUnlocksState = useBridgeValue(
+    bridge,
+    NEW_UNLOCKS_BRIDGE_KEY,
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
+  );
+  const unseenPaths = useMemo(
+    () => new Set(newUnlocksState.unseenPaths),
+    [newUnlocksState.unseenPaths]
+  );
 
   const handleInputChange = useCallback(
     (recipeId: CraftingRecipeId, value: string) => {
@@ -133,65 +149,73 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
             }
             return "Idle";
           })();
+          const unlockPath = `crafting.${recipe.id}`;
 
           return (
             <li key={recipe.id} className="crafting-recipe">
-              <div className="crafting-recipe__header">
-                <ResourceIcon
-                  resourceId={recipe.productId}
-                  className="crafting-recipe__icon"
-                  label={recipe.productName}
-                />
-                <div>
-                  <h3 className="heading-3 crafting-recipe__title">{recipe.productName}</h3>
-                  <p className="body-sm text-muted">
-                    Produces {formatNumber(recipe.productAmount, { maximumFractionDigits: 0 })}{" "}
-                    {recipe.productName.toLowerCase()} per batch · Craft time {formatCraftTime(
-                      recipe.durationMs
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div className="crafting-recipe__cost">
-                <ResourceCostDisplay cost={recipe.cost} missing={missing} />
-              </div>
-              <div className="crafting-recipe__queue">
-                <label className="crafting-recipe__queue-label">
-                  <span className="text-muted">Queue</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    className="crafting-recipe__queue-input"
-                    value={recipe.queue}
-                    onChange={(event) => handleInputChange(recipe.id, event.target.value)}
+              <NewUnlockWrapper
+                path={unlockPath}
+                hasNew={unseenPaths.has(unlockPath)}
+                markOnHover
+                className="new-unlock-wrapper--block"
+              >
+                <div className="crafting-recipe__header">
+                  <ResourceIcon
+                    resourceId={recipe.productId}
+                    className="crafting-recipe__icon"
+                    label={recipe.productName}
                   />
-                </label>
-                <div className="crafting-recipe__quick-buttons">
-                  {QUICK_BUTTONS.map((button) => (
-                    <button
-                      key={button.label}
-                      type="button"
-                      className={classNames("secondary-button", "small-button", "button")}
-                      onClick={() => handleButtonClick(recipe.id, button.type, button.value)}
-                    >
-                      {button.label}
-                    </button>
-                  ))}
+                  <div>
+                    <h3 className="heading-3 crafting-recipe__title">{recipe.productName}</h3>
+                    <p className="body-sm text-muted">
+                      Produces {formatNumber(recipe.productAmount, { maximumFractionDigits: 0 })}{" "}
+                      {recipe.productName.toLowerCase()} per batch · Craft time {formatCraftTime(
+                        recipe.durationMs
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <span className="crafting-recipe__queue-max text-muted">
-                  Max craftable now: {formatNumber(recipe.maxQueue, { maximumFractionDigits: 0 })}
-                </span>
-              </div>
-              <div className="crafting-recipe__status">
-                <span className="crafting-recipe__status-label">{statusLabel}</span>
-                <div className="crafting-recipe__progress" aria-hidden={!recipe.inProgress}>
-                  <div
-                    className="crafting-recipe__progress-bar"
-                    style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
-                  />
+                <div className="crafting-recipe__cost">
+                  <ResourceCostDisplay cost={recipe.cost} missing={missing} />
                 </div>
-              </div>
+                <div className="crafting-recipe__queue">
+                  <label className="crafting-recipe__queue-label">
+                    <span className="text-muted">Queue</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      className="crafting-recipe__queue-input"
+                      value={recipe.queue}
+                      onChange={(event) => handleInputChange(recipe.id, event.target.value)}
+                    />
+                  </label>
+                  <div className="crafting-recipe__quick-buttons">
+                    {QUICK_BUTTONS.map((button) => (
+                      <button
+                        key={button.label}
+                        type="button"
+                        className={classNames("secondary-button", "small-button", "button")}
+                        onClick={() => handleButtonClick(recipe.id, button.type, button.value)}
+                      >
+                        {button.label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="crafting-recipe__queue-max text-muted">
+                    Max craftable now: {formatNumber(recipe.maxQueue, { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <div className="crafting-recipe__status">
+                  <span className="crafting-recipe__status-label">{statusLabel}</span>
+                  <div className="crafting-recipe__progress" aria-hidden={!recipe.inProgress}>
+                    <div
+                      className="crafting-recipe__progress-bar"
+                      style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+                    />
+                  </div>
+                </div>
+              </NewUnlockWrapper>
             </li>
           );
         })}

@@ -34,7 +34,8 @@ import {
   IDLE_WANDER_SPEED_FACTOR,
   TARGETING_SCORE_EPSILON,
 } from "./UnitTypes";
-import { ZERO_VECTOR } from "../../../../../shared/helpers/geometry.const";
+import { ZERO_VECTOR } from "@shared/helpers/geometry.const";
+import { applyDamagePipeline } from "@logic/helpers/damage-application";
 
 
 export interface UnitRuntimeControllerOptions {
@@ -993,6 +994,8 @@ export class UnitRuntimeController {
       if (targetSnapshot && isTargetOfType<"enemy", EnemyRuntimeState>(targetSnapshot, "enemy")) {
         inflictedDamage = this.damage.applyTargetDamage(target.id, totalDamage, {
           armorPenetration: unit.armorPenetration,
+          direction,
+          rewardMultiplier: unit.rewardMultiplier,
         });
         hpChanged = inflictedDamage > 0;
         
@@ -1102,13 +1105,19 @@ export class UnitRuntimeController {
     }
 
     // Knockback для цілей з налаштованими параметрами
-    const knockBackTarget = (surviving ?? target) as BrickRuntimeState | EnemyRuntimeState;
+    const knockBackTarget = surviving ?? target;
+    const knockBackDistance = targetType === "enemy"
+      ? (knockBackTarget as EnemyRuntimeState).selfKnockBackDistance
+      : (knockBackTarget as BrickRuntimeState).knockBackDistance;
+    const knockBackSpeed = targetType === "enemy"
+      ? (knockBackTarget as EnemyRuntimeState).selfKnockBackSpeed
+      : (knockBackTarget as BrickRuntimeState).knockBackSpeed;
     this.applyKnockBack(
       unit,
       direction,
       distance,
-      knockBackTarget.knockBackDistance,
-      knockBackTarget.knockBackSpeed
+      knockBackDistance,
+      knockBackSpeed
     );
     
     // Counter damage тільки для бріків
@@ -1116,14 +1125,29 @@ export class UnitRuntimeController {
       const counterSource = surviving ?? target;
       const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
       const flatReduction = this.bricks.getOutgoingDamageFlatReduction(counterSource.id);
-      const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
-      const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
-      if (counterDamage > 0) {
-        const previousHp = unit.hp;
-        unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
-        const taken = Math.max(0, previousHp - unit.hp);
-        if (taken > 0) {
-          this.statistics?.recordDamageTaken(taken);
+      const rawCounterDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
+      
+      if (rawCounterDamage > 0) {
+        const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unit.id });
+        const { inflictedDamage, nextHp } = applyDamagePipeline(
+          {
+            rawDamage: rawCounterDamage,
+            armor: unit.armor,
+            armorDelta,
+            armorPenetration: 0,
+            currentHp: unit.hp,
+            maxHp: unit.maxHp,
+          },
+          { skipKnockback: true },
+          {
+            onInflicted: (amount) => {
+              this.statistics?.recordDamageTaken(amount);
+              this.statusEffects.handleTargetHit({ type: "unit", id: unit.id });
+            },
+          },
+        );
+        if (inflictedDamage > 0) {
+          unit.hp = nextHp;
           hpChanged = true;
         }
       }

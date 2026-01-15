@@ -1,16 +1,19 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
+import { DataBridge } from "@/core/logic/ui/DataBridge";
 import { Button } from "@ui-shared/Button";
 import { ProgressBar } from "@ui-shared/ProgressBar";
 import { formatNumber } from "@ui-shared/format/number";
-import { clamp } from "@shared/helpers/numbers.helper";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import { BRICK_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bricks.const";
+import {
+  PLAYER_UNIT_COUNT_BRIDGE_KEY,
+  PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
+} from "@logic/modules/active-map/player-units/player-units.const";
 import "./SceneToolbar.css";
 
 interface SceneToolbarProps {
+  bridge: DataBridge;
   onExit: () => void;
-  brickTotalHp: number;
-  brickInitialHp: number;
-  unitCount: number;
-  unitTotalHp: number;
   scale: number;
   scaleRange: { min: number; max: number };
   onScaleChange: (value: number) => void;
@@ -20,16 +23,30 @@ interface SceneToolbarProps {
 const sanitizeId = (value: string): string => value.replace(/[^a-zA-Z0-9_-]/g, "_");
 
 export const SceneToolbar: React.FC<SceneToolbarProps> = ({
+  bridge,
   onExit,
-  brickTotalHp,
-  brickInitialHp,
-  unitCount,
-  unitTotalHp,
   scale,
   scaleRange,
   onScaleChange,
   cameraPosition,
 }) => {
+  const brickTotalHp = useBridgeValue(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
+  const unitCount = useBridgeValue(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
+  const unitTotalHp = useBridgeValue(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
+  const [brickInitialHp, setBrickInitialHp] = useState(0);
+
+  useEffect(() => {
+    if (brickTotalHp <= 0) {
+      return;
+    }
+    setBrickInitialHp((current) => {
+      if (current === 0 || brickTotalHp > current) {
+        return brickTotalHp;
+      }
+      return current;
+    });
+  }, [brickTotalHp]);
+
   const clampedInitialHp = brickInitialHp > 0 ? brickInitialHp : brickTotalHp;
   const shapePrefix = sanitizeId(`${useId()}-scene-toolbar`);
   const fillGradientId = `${shapePrefix}-fill`;

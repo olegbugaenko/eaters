@@ -4,6 +4,7 @@ import { SceneObjectManager } from "../src/core/logic/provided/services/scene-ob
 import { FireballModule } from "../src/logic/modules/scene/fireball/fireball.module";
 import type { ExplosionModule } from "../src/logic/modules/scene/explosion/explosion.module";
 import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
+import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 
 describe("FireballModule", () => {
@@ -11,6 +12,10 @@ describe("FireballModule", () => {
     const scene = new SceneObjectManager();
     const explosions: Pick<ExplosionModule, "spawnExplosionByType"> = {
       spawnExplosionByType: () => undefined,
+    };
+    const damage: Pick<DamageService, "applyTargetDamage" | "applyAreaDamage"> = {
+      applyTargetDamage: () => 0,
+      applyAreaDamage: () => 0,
     };
     const bricks: Pick<
       BricksModule,
@@ -74,6 +79,7 @@ describe("FireballModule", () => {
     const module = new FireballModule({
       scene,
       bricks: bricks as BricksModule,
+      damage: damage as DamageService,
       explosions: explosions as ExplosionModule,
       projectiles,
       logEvent: () => undefined,

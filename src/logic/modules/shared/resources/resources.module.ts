@@ -74,6 +74,11 @@ export class ResourcesModule implements GameModule {
     this.bonusValues = options.bonusValues;
     this.runtimeContext = options.runtimeContext;
     this.statistics = options.statistics;
+    DataBridgeHelpers.registerComparator(
+      this.bridge,
+      RESOURCE_TOTALS_BRIDGE_KEY,
+      (previous, next) => this.areTotalsEqual(previous, next)
+    );
   }
 
   public initialize(): void {
@@ -340,6 +345,25 @@ export class ResourcesModule implements GameModule {
       this.runGains,
       this.runDurationMs,
     );
+  }
+
+  private areTotalsEqual(
+    previous: ResourceAmountPayload[] | undefined,
+    next: ResourceAmountPayload[]
+  ): boolean {
+    if (!previous) {
+      return false;
+    }
+    if (previous.length !== next.length) {
+      return false;
+    }
+    return previous.every((item, index) => {
+      const nextItem = next[index];
+      if (!nextItem || item.id !== nextItem.id) {
+        return false;
+      }
+      return Math.abs(item.amount - nextItem.amount) <= 1e-4;
+    });
   }
 
   private refreshVisibleResourceIds(): boolean {
