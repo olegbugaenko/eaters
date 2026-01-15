@@ -212,7 +212,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "constructions_1.png",
     effects: {},
     nodesRequired: { autorestart_rituals: 1 },
-    cost: createResourceCost("copper", 50, 1),
+    cost: createResourceCost("copper", 500, 1),
     registerEvent: {
       text: "A permanent guild answers your call.",
     },
@@ -870,7 +870,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "penetration_1.png",
     effects: {
       all_units_armor_penetration: {
-        income: (level) => 1.25 * level,
+        income: (level) => 2 * level,
       },
     },
     nodesRequired: { critical_chance: 5 },
@@ -886,7 +886,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "penetration_2.png",
     effects: {
       all_units_armor_penetration: {
-        income: (level) => 2 * level,
+        income: (level) => 3 * level,
       },
     },
     nodesRequired: { penetration: 5 },
@@ -999,7 +999,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 2.0 * level,
+        income: (level) => 0 + 1.5 * level,
       },
     },
     nodesRequired: { armor_lore: 5 },

@@ -77,6 +77,7 @@ export class DamageService {
     }
 
     const filter = options.types?.length ? { types: options.types } : undefined;
+    // console.log('POS: ', position, filter, radius, damage, options);
     this.targeting.forEachTargetNear(position, radius, (target) => {
       this.applyDamageSnapshot(target, damage, damageOptions);
     }, filter);

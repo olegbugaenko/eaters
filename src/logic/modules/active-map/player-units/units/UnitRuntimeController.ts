@@ -34,7 +34,8 @@ import {
   IDLE_WANDER_SPEED_FACTOR,
   TARGETING_SCORE_EPSILON,
 } from "./UnitTypes";
-import { ZERO_VECTOR } from "../../../../../shared/helpers/geometry.const";
+import { ZERO_VECTOR } from "@shared/helpers/geometry.const";
+import { calculateMitigatedDamage } from "@logic/helpers/damage-formula";
 
 
 export interface UnitRuntimeControllerOptions {
@@ -1124,15 +1125,25 @@ export class UnitRuntimeController {
       const counterSource = surviving ?? target;
       const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
       const flatReduction = this.bricks.getOutgoingDamageFlatReduction(counterSource.id);
-      const scaledBaseDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
-      const counterDamage = Math.max(scaledBaseDamage - unit.armor, 0);
-      if (counterDamage > 0) {
-        const previousHp = unit.hp;
-        unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
-        const taken = Math.max(0, previousHp - unit.hp);
-        if (taken > 0) {
-          this.statistics?.recordDamageTaken(taken);
-          hpChanged = true;
+      const rawCounterDamage = Math.max(counterSource.baseDamage * outgoingMultiplier - flatReduction, 0);
+      
+      if (rawCounterDamage > 0) {
+        const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unit.id });
+        const counterDamage = calculateMitigatedDamage({
+          rawDamage: rawCounterDamage,
+          armor: unit.armor,
+          armorDelta,
+          armorPenetration: 0,
+        });
+        
+        if (counterDamage > 0) {
+          const previousHp = unit.hp;
+          unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
+          const taken = Math.max(0, previousHp - unit.hp);
+          if (taken > 0) {
+            this.statistics?.recordDamageTaken(taken);
+            hpChanged = true;
+          }
         }
       }
     }

@@ -854,7 +854,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       },
       shape: "circle",
       hitRadius: 8,
-      damageRadius: 14,
+      damageRadius: 34,
       explosion: "smallCannon", // Тип експлозії при влучанні снаряда
     },
     knockBackDistance: 120,
@@ -1277,7 +1277,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       },
       shape: "circle",
       hitRadius: 60,
-      damageRadius: 50,
+      damageRadius: 70,
       explosion: "bigCannon",
       tail: {
         lengthMultiplier: 4.0,

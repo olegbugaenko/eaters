@@ -1282,23 +1282,23 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     ];
     const sandVertices = createRectangle(
       0,
-      size.height - sandHeight,
+      size.height - sandHeight - 200,
       size.width,
       sandHeight,
     );
     const bushClusters: readonly { center: SceneVector2; radius: number }[] = [
-      { center: { x: 320, y: 760 }, radius: 110 },
-      { center: { x: 500, y: 640 }, radius: 100 },
-      { center: { x: 720, y: 700 }, radius: 105 },
-      { center: { x: 880, y: 560 }, radius: 115 },
-      { center: { x: 620, y: 820 }, radius: 90 },
+      { center: { x: 320, y: 560 }, radius: 110 },
+      { center: { x: 500, y: 440 }, radius: 100 },
+      { center: { x: 720, y: 500 }, radius: 105 },
+      { center: { x: 880, y: 360 }, radius: 115 },
+      { center: { x: 620, y: 620 }, radius: 90 },
     ];
 
     return {
       name: "Overgrown Thicket",
       size,
       icon: "thicket.png",
-      spawnPoints: [{ x: 50, y: size.height - sandHeight - 220 }],
+      spawnPoints: [{ x: 50, y: size.height - sandHeight - 420 }],
       nodePosition: { x: 2, y: 3 },
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
