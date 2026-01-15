@@ -26,6 +26,7 @@ import {
 } from "@logic/modules/shared/event-log/event-log.const";
 import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.types";
 import type { StoredSaveData } from "@/core/logic/types";
+import { extractTimePlayed } from "@core/logic/provided/services/save-manager/save-manager.helpers";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { useThrottledBridgeValue } from "@ui-shared/useThrottledBridgeValue";
@@ -60,6 +61,7 @@ import {
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
 } from "@logic/modules/active-map/unit-automation/unit-automation.const";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
+import { formatDuration } from "@ui/utils/formatDuration";
 import { VoidCampTopBar } from "@screens/VoidCamp/components/VoidCamp/VoidCampTopBar";
 import {
   SettingsMessage,
@@ -233,10 +235,15 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       const json = JSON.stringify(data, null, 2);
       const blob = new Blob([json], { type: "application/json" });
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const timePlayedMs = extractTimePlayed(data);
+      const timePlayedLabel =
+        timePlayedMs !== null
+          ? `-playtime-${formatDuration(timePlayedMs).replace(":", "m")}s`
+          : "";
       objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
-      anchor.download = `voidcamp-save-${timestamp}.json`;
+      anchor.download = `voidcamp-save-${timestamp}${timePlayedLabel}.json`;
       anchor.click();
       setStatusMessage({
         tone: "success",
