@@ -99,9 +99,14 @@ export class ArcRenderer extends ObjectRenderer {
           typeof performance !== "undefined" && performance.now
             ? performance.now()
             : Date.now();
-        const dt = Math.max(0, Math.min(now - lastTs, 100));
-        lastTs = now;
-        age = Math.min(lifetime, age + dt);
+        if (typeof data.createdAtMs === "number") {
+          age = Math.min(lifetime, Math.max(0, now - data.createdAtMs));
+          lastTs = now;
+        } else {
+          const dt = Math.max(0, Math.min(now - lastTs, 100));
+          lastTs = now;
+          age = Math.min(lifetime, age + dt);
+        }
 
         // Acquire slot if not already acquired
         if (!slotHandle && batchConfig) {

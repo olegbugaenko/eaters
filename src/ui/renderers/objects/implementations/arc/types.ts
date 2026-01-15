@@ -10,4 +10,5 @@ export interface ArcRendererCustomData {
   to: SceneVector2;
   lifetimeMs?: number;
   fadeStartMs?: number;
+  createdAtMs?: number;
 }

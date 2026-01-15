@@ -64,6 +64,7 @@ export class ArcModule implements GameModule {
           arcType: a.type,
           from: { ...from },
           to: { ...to },
+          createdAtMs: a.createdAtMs,
         },
       });
       const elapsed = Math.max(
@@ -127,6 +128,7 @@ export class ArcModule implements GameModule {
         to: { ...to },
         lifetimeMs: cfg.lifetimeMs,
         fadeStartMs: cfg.fadeStartMs,
+        createdAtMs: now,
       },
     });
     this.arcs.push({
@@ -138,6 +140,7 @@ export class ArcModule implements GameModule {
       remainingMs: cfg.lifetimeMs,
       lifetimeMs: cfg.lifetimeMs,
       fadeStartMs: cfg.fadeStartMs,
+      createdAtMs: now,
       lastUpdateTimestampMs: now,
       lastRealTimestampMs: realNow,
     });
