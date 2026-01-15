@@ -951,7 +951,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "armor1.png",
     effects: {
       all_units_armor: {
-        income: (level) => 0 + 0.25 * level,
+        income: (level) => 0 + 0.4 * level,
       },
     },
     nodesRequired: { vitality: 2 },

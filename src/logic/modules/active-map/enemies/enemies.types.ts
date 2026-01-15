@@ -15,6 +15,7 @@ import type { UnitProjectileController } from "../projectiles/ProjectileControll
 import type { ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
 import type { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import type { BricksModule } from "../bricks/bricks.module";
+import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
 
@@ -85,6 +86,7 @@ export interface EnemiesModuleOptions {
   readonly runState: MapRunState;
   readonly movement: MovementService;
   readonly resources: EnemyResourceCollector;
+  readonly bonuses: BonusesModule;
   readonly targeting?: TargetingService;
   readonly damage?: DamageService;
   readonly explosions?: ExplosionModule;

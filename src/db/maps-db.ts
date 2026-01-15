@@ -284,7 +284,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const innerVertices = createPolygon(innerRadius);
     const middleVertices = createPolygon(middleRadius);
     const expandedVertices = createPolygon(
-      outerRadius + getBrickConfig("smallSquareGray").size.width * 1.5,
+      outerRadius + getBrickConfig("smallSquareGray").size.width * 1.2,
     );
 
     return {
@@ -329,7 +329,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             {
               center: vertex,
               innerRadius: 0,
-              outerRadius: getBrickConfig("smallSquareGray").size.width * 3,
+              outerRadius: getBrickConfig("smallSquareGray").size.width * 2.3,
             },
             { level: mapLevel },
           ),
@@ -771,7 +771,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         "smallSquareYellow",
         {
           center,
-          innerRadius: 130,
+          innerRadius: 150,
           outerRadius: 210,
         },
         { level: baseLevel },

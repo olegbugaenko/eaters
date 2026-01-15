@@ -6,9 +6,12 @@ import { clampNumber } from "@shared/helpers/numbers.helper";
 import { applyDamagePipeline, sanitizeDamageOptions } from "../../../helpers/damage-application";
 import {
   cloneResourceStockpile,
+  createEmptyResourceStockpile,
   hasAnyResources,
   normalizeResourceAmount,
+  RESOURCE_IDS,
 } from "../../../../db/resources-db";
+import type { ResourceStockpile } from "../../../../db/resources-db";
 import { SpatialGrid } from "../../../utils/SpatialGrid";
 import { MapRunState } from "../map/MapRunState";
 import type { TargetingService } from "../targeting/TargetingService";
@@ -59,6 +62,7 @@ import { PathfindingService } from "@/logic/shared/navigation/PathfindingService
 import { BrickObstacleProvider } from "./brick-obstacle-provider";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
+import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -90,6 +94,7 @@ export class EnemiesModule implements GameModule {
   private readonly runState: MapRunState;
   private readonly movement: MovementService;
   private readonly resources: EnemiesModuleOptions["resources"];
+  private readonly bonuses: BonusesModule;
   private readonly targeting?: TargetingService;
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
@@ -118,6 +123,7 @@ export class EnemiesModule implements GameModule {
     this.runState = options.runState;
     this.movement = options.movement;
     this.resources = options.resources;
+    this.bonuses = options.bonuses;
     this.targeting = options.targeting;
     this.damage = options.damage;
     this.explosions = options.explosions;
@@ -500,11 +506,11 @@ export class EnemiesModule implements GameModule {
 
   private destroyEnemy(enemy: InternalEnemyState, rewardMultiplier = 1): void {
     if (enemy.reward && hasAnyResources(enemy.reward)) {
+      let rewards = this.applyEnemyRewardBonuses(enemy.reward);
       const multiplier = Math.max(rewardMultiplier, 0);
-      const rewards =
-        multiplier !== 1
-          ? scaleEnemyResourceStockpile(enemy.reward, multiplier)
-          : enemy.reward;
+      if (multiplier !== 1) {
+        rewards = scaleEnemyResourceStockpile(rewards, multiplier);
+      }
       if (hasAnyResources(rewards)) {
         this.resources.grantResources(rewards);
       }
@@ -516,6 +522,22 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.delete(enemy.id);
     this.navigationState.delete(enemy.id);
     this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
+  }
+
+  private applyEnemyRewardBonuses(rewards: ResourceStockpile): ResourceStockpile {
+    const multiplierRaw = this.bonuses.getBonusValue("brick_rewards");
+    const multiplier = Number.isFinite(multiplierRaw) ? multiplierRaw : 1;
+    if (Math.abs(multiplier - 1) < 1e-9) {
+      return cloneResourceStockpile(rewards);
+    }
+
+    const scaled = createEmptyResourceStockpile();
+    RESOURCE_IDS.forEach((id) => {
+      const base = rewards[id] ?? 0;
+      const value = Math.round(base * multiplier * 100) / 100;
+      scaled[id] = value > 0 ? value : 0;
+    });
+    return scaled;
   }
 
   private applySelfKnockBack(
