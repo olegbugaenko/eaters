@@ -39,19 +39,23 @@ export class ArcRenderer extends ObjectRenderer {
           }
           return null;
         }
+        const gl = getParticleEmitterGlContext();
+        if (!gl) {
+          if (slotHandle) {
+            arcGpuRenderer.releaseSlot(slotHandle);
+            slotHandle = null;
+          }
+          return null;
+        }
+        if (arcGpuRenderer["gl"] !== gl) {
+          arcGpuRenderer.setContext(gl);
+          slotHandle = null;
+        }
         const config = getArcConfig(data.arcType);
         lifetime = Math.max(1, data.lifetimeMs ?? config.lifetimeMs);
 
         // lazy acquire GL + batch keyed by visual params only
         if (!batchConfig) {
-          const gl = getParticleEmitterGlContext();
-          if (!gl) return null;
-
-          // Set context if not already set
-          if (arcGpuRenderer["gl"] !== gl) {
-            arcGpuRenderer.setContext(gl);
-          }
-
           const uniforms: ArcGpuUniforms = {
             coreColor: new Float32Array([
               config.coreColor.r,
