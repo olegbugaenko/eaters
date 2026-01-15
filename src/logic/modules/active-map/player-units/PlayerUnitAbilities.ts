@@ -26,7 +26,7 @@ import type { StatusEffectsModule } from "../status-effects/status-effects.modul
 export type AbilitySoundPlayer = SoundEffectPlayer;
 
 const ABILITY_SOUND_URLS: Partial<Record<AbilitySoundId, string>> = {
-  tailNeedle: "/audio/sounds/unit_effects/fireball.mp3", // TODO: Add specific sound if needed
+  tailNeedle: "/audio/sounds/unit_effects/tail_volley.mp3", // TODO: Add specific sound if needed
 };
 
 interface PlayerUnitAbilitiesOptions {

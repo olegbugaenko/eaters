@@ -69,7 +69,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: LASER_ARC_BLUR,
     coreWidth: 1,
     blurWidth: 3,
-    soundEffectUrl: "/audio/sounds/unit_effects/laser_01.mp3",
+    soundEffectUrl: "/audio/sounds/unit_effects/laser_02.mp3",
     lifetimeMs: 1000,
     fadeStartMs: 450,
     bendsPer100Px: 0,
