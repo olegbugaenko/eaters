@@ -29,9 +29,16 @@ export class ArcRenderer extends ObjectRenderer {
 
     const primitive: DynamicPrimitive = {
       data: new Float32Array(0),
+      autoAnimate: true,
       update(target: SceneObjectInstance) {
         const data = target.data.customData as ArcRendererCustomData | undefined;
-        if (!data) return null;
+        if (!data) {
+          if (slotHandle) {
+            arcGpuRenderer.releaseSlot(slotHandle);
+            slotHandle = null;
+          }
+          return null;
+        }
         const config = getArcConfig(data.arcType);
         lifetime = Math.max(1, data.lifetimeMs ?? config.lifetimeMs);
 
@@ -115,6 +122,10 @@ export class ArcRenderer extends ObjectRenderer {
         }
 
         if (age >= lifetime) {
+          if (slotHandle) {
+            arcGpuRenderer.releaseSlot(slotHandle);
+            slotHandle = null;
+          }
           return null;
         }
 
