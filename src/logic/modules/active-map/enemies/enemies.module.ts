@@ -3,7 +3,7 @@ import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { GameModule } from "@core/logic/types";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
-import { calculateMitigatedDamage } from "../../../helpers/damage-formula";
+import { applyDamagePipeline, sanitizeDamageOptions } from "../../../helpers/damage-application";
 import {
   cloneResourceStockpile,
   hasAnyResources,
@@ -415,47 +415,50 @@ export class EnemiesModule implements GameModule {
     if (!enemy) {
       return 0;
     }
-    const armorPenetration = clampNumber(
-      options?.armorPenetration ?? 0,
-      0,
-      Number.POSITIVE_INFINITY,
-    );
+    const { armorPenetration, rewardMultiplier, skipKnockback } =
+      sanitizeDamageOptions(options);
     const armorDelta = this.statusEffects.getTargetArmorDelta({
       type: "enemy",
       id: enemyId,
     });
-    const appliedDamage = calculateMitigatedDamage({
-      rawDamage: damage,
-      armor: enemy.armor,
-      armorDelta,
-      armorPenetration,
-    });
-    if (appliedDamage <= 0) {
+
+    const previousHp = enemy.hp;
+    const { inflictedDamage, nextHp } = applyDamagePipeline(
+      {
+        rawDamage: damage,
+        armor: enemy.armor,
+        armorDelta,
+        armorPenetration,
+        currentHp: enemy.hp,
+        maxHp: enemy.maxHp,
+      },
+      { skipKnockback },
+      {
+        onInflicted: () => {
+          this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });
+        },
+        onKnockback: () => {
+          this.applySelfKnockBack(
+            enemy,
+            options?.knockBackDirection ?? options?.direction,
+            options?.knockBackDistance,
+            options?.knockBackSpeed,
+          );
+        },
+      },
+    );
+    if (inflictedDamage <= 0) {
       return 0;
     }
-
-    const remainingHp = Math.max(enemy.hp - appliedDamage, 0);
-    const dealt = enemy.hp - remainingHp;
-    enemy.hp = remainingHp;
-    if (dealt > 0) {
-      this.statusEffects.handleTargetHit({ type: "enemy", id: enemyId });
-      if (options?.skipKnockback !== true) {
-        this.applySelfKnockBack(
-          enemy,
-          options?.knockBackDirection ?? options?.direction,
-          options?.knockBackDistance,
-          options?.knockBackSpeed,
-        );
-      }
-    }
-    this.totalHpCached = Math.max(0, this.totalHpCached - dealt);
+    enemy.hp = nextHp;
+    this.totalHpCached = Math.max(0, this.totalHpCached - inflictedDamage);
 
     if (enemy.hp <= 0) {
-      this.destroyEnemy(enemy, options?.rewardMultiplier ?? 1);
+      this.destroyEnemy(enemy, rewardMultiplier);
     }
 
     this.pushStats();
-    return dealt;
+    return previousHp - enemy.hp;
   }
 
   private applyEnemies(enemies: EnemySpawnData[]): void {

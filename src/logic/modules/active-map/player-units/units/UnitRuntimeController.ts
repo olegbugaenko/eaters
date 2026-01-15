@@ -35,7 +35,7 @@ import {
   TARGETING_SCORE_EPSILON,
 } from "./UnitTypes";
 import { ZERO_VECTOR } from "@shared/helpers/geometry.const";
-import { calculateMitigatedDamage } from "@logic/helpers/damage-formula";
+import { applyDamagePipeline } from "@logic/helpers/damage-application";
 
 
 export interface UnitRuntimeControllerOptions {
@@ -1129,21 +1129,26 @@ export class UnitRuntimeController {
       
       if (rawCounterDamage > 0) {
         const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unit.id });
-        const counterDamage = calculateMitigatedDamage({
-          rawDamage: rawCounterDamage,
-          armor: unit.armor,
-          armorDelta,
-          armorPenetration: 0,
-        });
-        
-        if (counterDamage > 0) {
-          const previousHp = unit.hp;
-          unit.hp = clampNumber(unit.hp - counterDamage, 0, unit.maxHp);
-          const taken = Math.max(0, previousHp - unit.hp);
-          if (taken > 0) {
-            this.statistics?.recordDamageTaken(taken);
-            hpChanged = true;
-          }
+        const { inflictedDamage, nextHp } = applyDamagePipeline(
+          {
+            rawDamage: rawCounterDamage,
+            armor: unit.armor,
+            armorDelta,
+            armorPenetration: 0,
+            currentHp: unit.hp,
+            maxHp: unit.maxHp,
+          },
+          { skipKnockback: true },
+          {
+            onInflicted: (amount) => {
+              this.statistics?.recordDamageTaken(amount);
+              this.statusEffects.handleTargetHit({ type: "unit", id: unit.id });
+            },
+          },
+        );
+        if (inflictedDamage > 0) {
+          unit.hp = nextHp;
+          hpChanged = true;
         }
       }
     }

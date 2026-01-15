@@ -10,6 +10,8 @@ import type { MapRunState } from "../map/MapRunState";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SkillId } from "../../../../db/skills-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { DamageService } from "../targeting/DamageService";
+import type { TargetingService } from "../targeting/TargetingService";
 
 export interface SpellOptionBase {
   id: SpellId;
@@ -59,6 +61,8 @@ export interface SpellcastingModuleOptions {
   bonuses: BonusesModule;
   explosions?: ExplosionModule;
   projectiles: UnitProjectileController;
+  damage: DamageService;
+  targeting: TargetingService;
   getSkillLevel: (id: SkillId) => number;
   runState: MapRunState;
 }
