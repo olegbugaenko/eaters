@@ -2,16 +2,16 @@
   "name": "eaters-react-electron",
   "version": "1.0.0",
   "description": "React + TypeScript application with Electron support",
-  "main": "public/electron.js",
+  "main": "electron/main.js",
   "private": true,
   "scripts": {
     "start": "webpack serve --mode development",
     "build": "webpack --mode production",
-    "build:electron": "npm run build && electron-builder",
-    "electron": "electron .",
-    "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "build:electron": "npm run build && electron-builder --config electron-builder.config.js --win --mac",
+    "electron": "node scripts/run-electron-dev.js",
+    "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && node scripts/run-electron-dev.js\"",
     "dist": "npm run build:electron",
-    "pack": "electron-builder --dir",
+    "pack": "electron-builder --config electron-builder.config.js --dir",
     "test": "tsc -p tsconfig.tests.json && node build/tests/tests/run.js"
   },
   "dependencies": {
@@ -39,29 +39,6 @@
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
-  },
-  "build": {
-    "appId": "com.example.eaters-react-electron",
-    "productName": "Eaters App",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "src/**/*",
-      "public/**/*",
-      "node_modules/**/*",
-      "index.html",
-      "*.json"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
   },
   "browserslist": {
     "production": [
