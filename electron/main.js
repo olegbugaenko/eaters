@@ -31,16 +31,27 @@ function createWindow() {
 
 app.whenReady().then(() => {
   protocol.registerFileProtocol('file', (request, callback) => {
-    const url = decodeURI(request.url.replace('file://', ''));
+    const urlPath = decodeURIComponent(new URL(request.url).pathname);
+    const normalizedPath = urlPath.replace(/\\/g, '/');
+    const audioIndex = normalizedPath.indexOf('/audio');
+    const imageIndex = normalizedPath.indexOf('/images');
+    const assetIndex =
+      audioIndex !== -1 ? audioIndex : imageIndex !== -1 ? imageIndex : -1;
 
-    if (url.startsWith('/audio') || url.startsWith('/images')) {
+    if (assetIndex !== -1) {
+      const assetPath = normalizedPath.slice(assetIndex);
       callback({
-        path: path.join(app.getAppPath(), 'dist', url),
+        path: path.join(app.getAppPath(), 'dist', assetPath),
       });
       return;
     }
 
-    callback({ path: url });
+    let resolvedPath = path.normalize(urlPath);
+    if (process.platform === 'win32' && resolvedPath.startsWith('\\')) {
+      resolvedPath = resolvedPath.slice(1);
+    }
+
+    callback({ path: resolvedPath });
   });
 
   createWindow();
