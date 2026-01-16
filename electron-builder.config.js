@@ -5,9 +5,6 @@ module.exports = {
     output: 'dist',
   },
   files: ['dist/**/*', 'electron/**/*', 'package.json'],
-  mac: {
-    category: 'public.app-category.productivity',
-  },
   win: {
     target: 'nsis',
   },
