@@ -1,5 +1,6 @@
 import { GameModule } from "@core/logic/types";
 import { cloneSceneFill, createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SceneFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
@@ -151,7 +152,7 @@ export class FireballModule implements GameModule {
         speed: FIREBALL_SPEED,
         lifetimeMs: (maxDistance / FIREBALL_SPEED) * 1000,
         fill,
-        soundEffectUrl: "/audio/sounds/unit_effects/fireball.mp3",
+        soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/fireball.mp3"),
         tail: FIREBALL_TAIL_RENDER,
         shape: "sprite",
         spriteName: "fireball",

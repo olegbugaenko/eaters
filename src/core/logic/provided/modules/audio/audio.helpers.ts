@@ -1,3 +1,5 @@
+import { getAssetUrl } from "@shared/helpers/assets.helper";
+
 /**
  * Picks a random track index from the available tracks.
  * @param totalTracks - Total number of tracks
@@ -14,13 +16,8 @@ export const pickRandomTrackIndex = (totalTracks: number): number => {
 };
 
 /**
- * Normalizes an effect URL by ensuring it starts with "/".
+ * Normalizes an effect URL by turning it into a usable asset URL.
  * @param url - URL to normalize
- * @returns Normalized URL starting with "/", or empty string if url is falsy
+ * @returns Normalized asset URL, or empty string if url is falsy
  */
-export const normalizeEffectUrl = (url: string): string => {
-  if (!url) {
-    return "";
-  }
-  return url.startsWith("/") ? url : `/${url}`;
-};
+export const normalizeEffectUrl = (url: string): string => getAssetUrl(url);

@@ -27,6 +27,7 @@ import {
   loadSpriteTexture,
 } from "@ui/renderers/primitives/basic/SpritePrimitive";
 import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */
@@ -64,12 +65,16 @@ export const setupWebGLScene = (
     throw new Error("WebGL 2 is required but not available");
   }
 
-  textureAtlasRegistry.registerAtlas("cracks", "/images/sprites/cracks/cracks_atlas.png", {
+  textureAtlasRegistry.registerAtlas(
+    "cracks",
+    getAssetUrl("images/sprites/cracks/cracks_atlas.png"),
+    {
     cols: 3,
     rows: 3,
-  });
+    }
+  );
   textureResourceManager.setContext(gl);
-  loadSpriteTexture(gl, "/images/sprites/cracks/cracks_atlas.png").catch((error) => {
+  loadSpriteTexture(gl, getAssetUrl("images/sprites/cracks/cracks_atlas.png")).catch((error) => {
     console.warn("[WebGLScene] Failed to load cracks atlas texture", error);
   });
 

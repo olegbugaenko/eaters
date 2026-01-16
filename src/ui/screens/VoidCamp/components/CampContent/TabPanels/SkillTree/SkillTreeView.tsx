@@ -29,6 +29,7 @@ import {
   getResourceConfig,
 } from "@db/resources-db";
 import { SkillId, getSkillConfig } from "@db/skills-db";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { classNames } from "@ui-shared/classNames";
@@ -112,7 +113,7 @@ const getSkillIconPath = (icon?: string): string | null => {
     return null;
   }
   const hasExtension = icon.includes(".");
-  return `/images/skills/${hasExtension ? icon : `${icon}.svg`}`;
+  return getAssetUrl(`images/skills/${hasExtension ? icon : `${icon}.svg`}`);
 };
 
 /**
