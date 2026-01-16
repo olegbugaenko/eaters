@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, protocol } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -29,7 +29,22 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  protocol.registerFileProtocol('file', (request, callback) => {
+    const url = decodeURI(request.url.replace('file://', ''));
+
+    if (url.startsWith('/audio') || url.startsWith('/images')) {
+      callback({
+        path: path.join(app.getAppPath(), 'dist', url),
+      });
+      return;
+    }
+
+    callback({ path: url });
+  });
+
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
