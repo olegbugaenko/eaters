@@ -20,13 +20,14 @@ import {
 } from "./abilities/ability.const";
 import { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 
 // Re-export for backward compatibility
 export type AbilitySoundPlayer = SoundEffectPlayer;
 
 const ABILITY_SOUND_URLS: Partial<Record<AbilitySoundId, string>> = {
-  tailNeedle: "/audio/sounds/unit_effects/tail_volley.mp3", // TODO: Add specific sound if needed
+  tailNeedle: getAssetUrl("audio/sounds/unit_effects/tail_volley.mp3"), // TODO: Add specific sound if needed
 };
 
 interface PlayerUnitAbilitiesOptions {

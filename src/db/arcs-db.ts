@@ -1,4 +1,5 @@
 import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 
 export type ArcType = "heal" | "frenzy" | "freeze" | "laser";
 
@@ -31,7 +32,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: HEAL_ARC_BLUR,
     coreWidth: 2,
     blurWidth: 30,
-    soundEffectUrl: "/audio/sounds/unit_effects/heal.mp3",
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/heal.mp3"),
     lifetimeMs: 1000,
     fadeStartMs: 500,
     bendsPer100Px: 2,
@@ -44,7 +45,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: FRENZY_ARC_BLUR,
     coreWidth: 2,
     blurWidth: 25,
-    soundEffectUrl: "/audio/sounds/unit_effects/buff.mp3",
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/buff.mp3"),
     lifetimeMs: 1000,
     fadeStartMs: 500,
     bendsPer100Px: 2,
@@ -69,7 +70,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: LASER_ARC_BLUR,
     coreWidth: 1,
     blurWidth: 3,
-    soundEffectUrl: "/audio/sounds/unit_effects/laser_02.mp3",
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
     lifetimeMs: 1000,
     fadeStartMs: 450,
     bendsPer100Px: 0,

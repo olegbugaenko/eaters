@@ -2,6 +2,7 @@ import { GameModule } from "@core/logic/types";
 import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import { parseLevelsRecordFromSaveData } from "../../../helpers/save-data.helper";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import {
   SKILL_IDS,
   SkillConfig,
@@ -149,7 +150,7 @@ export class SkillTreeModule implements GameModule {
     this.levels[id] = targetLevel;
     this.syncBonusLevel(id);
     this.pushState();
-    this.audio?.playSoundEffect("/audio/sounds/ui/purchase_v0.mp3");
+    this.audio?.playSoundEffect(getAssetUrl("audio/sounds/ui/purchase_v0.mp3"));
     if (config.registerEvent) {
       this.eventLog.registerEvent(
         "skill-obtained",

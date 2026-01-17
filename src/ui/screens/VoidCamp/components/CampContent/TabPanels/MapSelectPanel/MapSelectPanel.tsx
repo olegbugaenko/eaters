@@ -5,6 +5,7 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { MapId, getMapConfig } from "@db/maps-db";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { classNames } from "@ui-shared/classNames";
 import { formatNumber } from "@ui-shared/format/number";
@@ -128,7 +129,7 @@ const getMapIconPath = (icon?: string): string | null => {
     return null;
   }
   const hasExtension = icon.includes(".");
-  return `/images/maps/${hasExtension ? icon : `${icon}.svg`}`;
+  return getAssetUrl(`images/maps/${hasExtension ? icon : `${icon}.svg`}`);
 };
 
 export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({

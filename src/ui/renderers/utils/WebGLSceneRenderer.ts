@@ -1,6 +1,7 @@
 import type { ObjectsRendererManager } from "../objects";
 import { compileShader, linkProgram } from "./webglProgram";
 import { applySyncInstructions } from "./webglSync";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import {
   SCENE_VERTEX_SHADER,
   createSceneFragmentShader,
@@ -250,7 +251,7 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE1);
       this.gl.uniform1i(this.crackAtlasSamplerLocation, 1);
 
-      const crackPath = "/images/sprites/cracks/cracks_atlas.png";
+      const crackPath = getAssetUrl("images/sprites/cracks/cracks_atlas.png");
       const crackTexture = textureResourceManager.getTexture(crackPath);
       
       if (crackTexture?.texture && crackTexture.gl === this.gl) {

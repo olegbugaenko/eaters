@@ -1,7 +1,11 @@
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 
-export const BRICK_HIT_SOUND_URL = "/audio/sounds/brick_effects/hit-soft.mp3";
-export const BRICK_DESTROY_SOUND_URL = "/audio/sounds/brick_effects/destroy-soft.mp3";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
+
+export const BRICK_HIT_SOUND_URL = getAssetUrl("audio/sounds/brick_effects/hit-soft.mp3");
+export const BRICK_DESTROY_SOUND_URL = getAssetUrl(
+  "audio/sounds/brick_effects/destroy-soft.mp3"
+);
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";
 export const BRICK_TOTAL_HP_BRIDGE_KEY = "bricks/totalHp";
