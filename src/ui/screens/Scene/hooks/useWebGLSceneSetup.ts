@@ -74,7 +74,7 @@ export const setupWebGLScene = (
     }
   );
   textureResourceManager.setContext(gl);
-  loadSpriteTexture(gl, getAssetUrl("images/sprites/cracks/cracks_atlas.png")).catch((error) => {
+  loadSpriteTexture(gl, "images/sprites/cracks/cracks_atlas.png").catch((error) => {
     console.warn("[WebGLScene] Failed to load cracks atlas texture", error);
   });
 

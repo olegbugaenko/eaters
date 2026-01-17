@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -252,6 +253,12 @@ export const SkillTreeView: React.FC = () => {
   const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const pendingFreezeSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const [frozenCanvasSize, setFrozenCanvasSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const nodeRefs = useRef<Map<SkillId, HTMLButtonElement | null>>(new Map());
   const edgeLineRefs = useRef<Map<string, SVGLineElement | null>>(new Map());
   const edgeCounterRefs = useRef<
@@ -374,6 +381,22 @@ export const SkillTreeView: React.FC = () => {
   useResizeObserver(viewportRef, ({ width, height }) => {
     setViewportSize({ width, height });
   });
+
+  useLayoutEffect(() => {
+    if (!frozenCanvasSize) {
+      return undefined;
+    }
+
+    let rafId = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(() => {
+        setFrozenCanvasSize(null);
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [frozenCanvasSize]);
 
   // Update view transform when real viewport size becomes available
   useEffect(() => {
@@ -713,8 +736,18 @@ export const SkillTreeView: React.FC = () => {
 
   const handleNodeClick = useCallback(
     (id: SkillId) => {
+      if (!frozenCanvasSize) {
+        const rect = canvasRef.current?.getBoundingClientRect();
+        pendingFreezeSizeRef.current = rect
+          ? { width: rect.width, height: rect.height }
+          : null;
+      }
+
       const success = skillTreeModule.tryPurchaseSkill(id);
       if (success) {
+        if (pendingFreezeSizeRef.current && !frozenCanvasSize) {
+          setFrozenCanvasSize(pendingFreezeSizeRef.current);
+        }
         // Force React to immediately update UI with new bridge state
         flushSync(() => {
           setPurchasedSkillId(id);
@@ -724,8 +757,9 @@ export const SkillTreeView: React.FC = () => {
           setPurchasedSkillId(null);
         }, 600);
       }
+      pendingFreezeSizeRef.current = null;
     },
-    [skillTreeModule]
+    [frozenCanvasSize, skillTreeModule]
   );
 
   const updatePointerHover = useCallback(
@@ -937,13 +971,18 @@ export const SkillTreeView: React.FC = () => {
   );
 
   const canvasStyle = useMemo(
-    () => ({
-      width: `${Math.max(layout.width, 360)}px`,
-      height: `${Math.max(layout.height, 320)}px`,
-      transform: `translate(${viewTransform.offsetX}px, ${viewTransform.offsetY}px) scale(${viewTransform.scale})`,
-      transformOrigin: "0 0",
-    }),
-    [layout.height, layout.width, viewTransform]
+    () => {
+      const width = frozenCanvasSize?.width ?? Math.max(layout.width, 360);
+      const height = frozenCanvasSize?.height ?? Math.max(layout.height, 320);
+
+      return {
+        width: `${width}px`,
+        height: `${height}px`,
+        transform: `translate(${viewTransform.offsetX}px, ${viewTransform.offsetY}px) scale(${viewTransform.scale})`,
+        transformOrigin: "0 0",
+      };
+    },
+    [frozenCanvasSize, layout.height, layout.width, viewTransform]
   );
 
   // Use base edge positions for initial render - animation updates via refs
@@ -962,6 +1001,7 @@ export const SkillTreeView: React.FC = () => {
         onWheel={handleWheel}
       >
         <div
+          ref={canvasRef}
           className="skill-tree__canvas"
           style={{
             ...canvasStyle,

@@ -251,7 +251,7 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE1);
       this.gl.uniform1i(this.crackAtlasSamplerLocation, 1);
 
-      const crackPath = getAssetUrl("images/sprites/cracks/cracks_atlas.png");
+      const crackPath = "images/sprites/cracks/cracks_atlas.png";
       const crackTexture = textureResourceManager.getTexture(crackPath);
       
       if (crackTexture?.texture && crackTexture.gl === this.gl) {
