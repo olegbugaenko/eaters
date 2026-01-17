@@ -144,12 +144,11 @@ const isNodeVisible = (node: SkillNodeBridgePayload): boolean => {
   return node.requirements.some((req) => req.currentLevel > 0);
 };
 
-const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
-  // Filter to only visible nodes for layout calculations
-  const visibleNodes = nodes.filter(isNodeVisible);
-  const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
-
-  if (visibleNodes.length === 0) {
+const computeLayout = (
+  nodes: SkillNodeBridgePayload[],
+  visibleNodes: SkillNodeBridgePayload[]
+): SkillTreeLayout => {
+  if (nodes.length === 0) {
     return {
       width: 0,
       height: 0,
@@ -158,7 +157,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
     };
   }
 
-  const first = visibleNodes[0];
+  const first = nodes[0];
   if (!first) {
     return {
       width: 0,
@@ -173,7 +172,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   let minY = first.position.y;
   let maxY = first.position.y;
 
-  visibleNodes.forEach((node) => {
+  nodes.forEach((node) => {
     minX = Math.min(minX, node.position.x);
     maxX = Math.max(maxX, node.position.x);
     minY = Math.min(minY, node.position.y);
@@ -193,6 +192,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
     });
   });
 
+  const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
   const edges: SkillTreeEdge[] = [];
   visibleNodes.forEach((node) => {
     const to = positions.get(node.id);
@@ -318,7 +318,10 @@ export const SkillTreeView: React.FC = () => {
     });
   }, [visibleNodes]);
 
-  const layout = useMemo(() => computeLayout(nodes), [nodes]);
+  const layout = useMemo(
+    () => computeLayout(nodes, visibleNodes),
+    [nodes, visibleNodes]
+  );
   const hoveredId = pointerHoveredId ?? focusHoveredId;
   // Update ref directly instead of useEffect
   hoveredIdRef.current = hoveredId;
