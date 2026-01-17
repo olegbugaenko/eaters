@@ -253,8 +253,7 @@ export const SkillTreeView: React.FC = () => {
   const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
-  const pendingFreezeSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const previousCanvasSizeRef = useRef<{ width: number; height: number } | null>(null);
   const [frozenCanvasSize, setFrozenCanvasSize] = useState<{
     width: number;
     height: number;
@@ -381,6 +380,24 @@ export const SkillTreeView: React.FC = () => {
   useResizeObserver(viewportRef, ({ width, height }) => {
     setViewportSize({ width, height });
   });
+
+  useLayoutEffect(() => {
+    const nextSize = {
+      width: Math.max(layout.width, 360),
+      height: Math.max(layout.height, 320),
+    };
+    const previousSize = previousCanvasSizeRef.current;
+
+    if (
+      previousSize &&
+      !frozenCanvasSize &&
+      (nextSize.width > previousSize.width || nextSize.height > previousSize.height)
+    ) {
+      setFrozenCanvasSize(previousSize);
+    }
+
+    previousCanvasSizeRef.current = nextSize;
+  }, [frozenCanvasSize, layout.height, layout.width]);
 
   useLayoutEffect(() => {
     if (!frozenCanvasSize) {
@@ -736,18 +753,8 @@ export const SkillTreeView: React.FC = () => {
 
   const handleNodeClick = useCallback(
     (id: SkillId) => {
-      if (!frozenCanvasSize) {
-        const rect = canvasRef.current?.getBoundingClientRect();
-        pendingFreezeSizeRef.current = rect
-          ? { width: rect.width, height: rect.height }
-          : null;
-      }
-
       const success = skillTreeModule.tryPurchaseSkill(id);
       if (success) {
-        if (pendingFreezeSizeRef.current && !frozenCanvasSize) {
-          setFrozenCanvasSize(pendingFreezeSizeRef.current);
-        }
         // Force React to immediately update UI with new bridge state
         flushSync(() => {
           setPurchasedSkillId(id);
@@ -757,9 +764,8 @@ export const SkillTreeView: React.FC = () => {
           setPurchasedSkillId(null);
         }, 600);
       }
-      pendingFreezeSizeRef.current = null;
     },
-    [frozenCanvasSize, skillTreeModule]
+    [skillTreeModule]
   );
 
   const updatePointerHover = useCallback(
@@ -1001,7 +1007,6 @@ export const SkillTreeView: React.FC = () => {
         onWheel={handleWheel}
       >
         <div
-          ref={canvasRef}
           className="skill-tree__canvas"
           style={{
             ...canvasStyle,
