@@ -5,10 +5,16 @@ function createWindow() {
   let mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    hideMenuBar: true,
+    autoHideMenuBar: true,
+    fullscreen: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
+      backgroundThrottling: false, // ❗ критично для запису відео
+      offscreen: false,            // залишаємо GPU
+      devTools: false,  
     },
     titleBarStyle: 'default',
   });

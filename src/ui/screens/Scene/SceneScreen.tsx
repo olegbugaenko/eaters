@@ -389,7 +389,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       />
       <SceneControlHintsPanel />
       <SceneTooltipBridgePanel contentOverride={summoningTooltipContent} />
-      <SceneDebugPanel bridge={bridge} />
+      {/*<SceneDebugPanel bridge={bridge} />*/}
       <SceneTutorialBridgeMonitor
         bridge={bridge}
         showTutorial={showTutorial}
