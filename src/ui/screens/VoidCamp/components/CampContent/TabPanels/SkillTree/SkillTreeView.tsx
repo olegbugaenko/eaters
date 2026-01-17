@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -253,12 +252,6 @@ export const SkillTreeView: React.FC = () => {
   const [focusHoveredId, setFocusHoveredId] = useState<SkillId | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const previousCanvasSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const pendingLayoutKeyRef = useRef<string | null>(null);
-  const [frozenCanvasSize, setFrozenCanvasSize] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
   const nodeRefs = useRef<Map<SkillId, HTMLButtonElement | null>>(new Map());
   const edgeLineRefs = useRef<Map<string, SVGLineElement | null>>(new Map());
   const edgeCounterRefs = useRef<
@@ -330,15 +323,6 @@ export const SkillTreeView: React.FC = () => {
   // Update ref directly instead of useEffect
   hoveredIdRef.current = hoveredId;
   layoutRef.current = layout;
-  const layoutKey = useMemo(() => {
-    const entries = Array.from(layout.positions.entries()).sort((a, b) =>
-      a[0].localeCompare(b[0])
-    );
-    return entries
-      .map(([id, position]) => `${id}:${position.x},${position.y}`)
-      .join("|");
-  }, [layout.positions]);
-  const [activeLayoutKey, setActiveLayoutKey] = useState(layoutKey);
 
   // Compute initial view transform synchronously using fixed viewport size
   // This prevents visible jump on first render
@@ -390,43 +374,6 @@ export const SkillTreeView: React.FC = () => {
   useResizeObserver(viewportRef, ({ width, height }) => {
     setViewportSize({ width, height });
   });
-
-  useLayoutEffect(() => {
-    const nextSize = {
-      width: Math.max(layout.width, 360),
-      height: Math.max(layout.height, 320),
-    };
-    const previousSize = previousCanvasSizeRef.current;
-
-    if (
-      previousSize &&
-      !frozenCanvasSize &&
-      (nextSize.width > previousSize.width || nextSize.height > previousSize.height)
-    ) {
-      setFrozenCanvasSize(previousSize);
-      pendingLayoutKeyRef.current = layoutKey;
-    } else if (!frozenCanvasSize && layoutKey !== activeLayoutKey) {
-      setActiveLayoutKey(layoutKey);
-    }
-
-    previousCanvasSizeRef.current = nextSize;
-  }, [activeLayoutKey, frozenCanvasSize, layout.height, layout.width, layoutKey]);
-
-  useLayoutEffect(() => {
-    if (!frozenCanvasSize || pendingLayoutKeyRef.current !== layoutKey) {
-      return undefined;
-    }
-
-    const rafId = requestAnimationFrame(() => {
-      setFrozenCanvasSize(null);
-      setActiveLayoutKey(layoutKey);
-      pendingLayoutKeyRef.current = null;
-    });
-
-    return () => {
-      cancelAnimationFrame(rafId);
-    };
-  }, [frozenCanvasSize, layoutKey]);
 
   // Update view transform when real viewport size becomes available
   useEffect(() => {
@@ -553,6 +500,15 @@ export const SkillTreeView: React.FC = () => {
   edgesByNodeIdRef.current = edgesByNodeId;
   edgesByIdRef.current = edgesById;
 
+  const layoutKey = useMemo(() => {
+    const entries = Array.from(layout.positions.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    return entries
+      .map(([id, position]) => `${id}:${position.x},${position.y}`)
+      .join("|");
+  }, [layout.positions]);
+
   const updateEdgePositions = useCallback((edge: SkillTreeEdge) => {
     const from =
       renderPositionsRef.current.get(edge.fromId) ?? edge.from;
@@ -657,14 +613,14 @@ export const SkillTreeView: React.FC = () => {
   );
 
   useEffect(() => {
-    // Only reset positions when the active layout changes, not on every callback reference change
-    if (previousLayoutKeyRef.current === activeLayoutKey) {
+    // Only reset positions when the actual layout changes, not on every callback reference change
+    if (previousLayoutKeyRef.current === layoutKey) {
       return;
     }
-    previousLayoutKeyRef.current = activeLayoutKey;
+    previousLayoutKeyRef.current = layoutKey;
     initializeRenderPositions();
     lastAnimationTimestampRef.current = null;
-  }, [initializeRenderPositions, activeLayoutKey]);
+  }, [initializeRenderPositions, layoutKey]);
 
   useEffect(() => {
     if (wobbleNodesCount === 0) {
@@ -981,24 +937,17 @@ export const SkillTreeView: React.FC = () => {
   );
 
   const canvasStyle = useMemo(
-    () => {
-      const width = frozenCanvasSize?.width ?? Math.max(layout.width, 360);
-      const height = frozenCanvasSize?.height ?? Math.max(layout.height, 320);
-
-      return {
-        width: `${width}px`,
-        height: `${height}px`,
-        transform: `translate(${viewTransform.offsetX}px, ${viewTransform.offsetY}px) scale(${viewTransform.scale})`,
-        transformOrigin: "0 0",
-      };
-    },
-    [frozenCanvasSize, layout.height, layout.width, viewTransform]
+    () => ({
+      width: `${Math.max(layout.width, 360)}px`,
+      height: `${Math.max(layout.height, 320)}px`,
+      transform: `translate(${viewTransform.offsetX}px, ${viewTransform.offsetY}px) scale(${viewTransform.scale})`,
+      transformOrigin: "0 0",
+    }),
+    [layout.height, layout.width, viewTransform]
   );
 
   // Use base edge positions for initial render - animation updates via refs
   const renderEdges = layout.edges;
-  const viewBoxWidth = Math.max(frozenCanvasSize?.width ?? layout.width, 1);
-  const viewBoxHeight = Math.max(frozenCanvasSize?.height ?? layout.height, 1);
 
   return (
     <div className="skill-tree">
@@ -1021,7 +970,7 @@ export const SkillTreeView: React.FC = () => {
         >
             <svg
               className="skill-tree__links"
-              viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+              viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
               preserveAspectRatio="xMidYMid meet"
               shapeRendering="crispEdges"
             >
