@@ -226,6 +226,12 @@ class TextureResourceManager {
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
+    if (path.startsWith("./") || path.startsWith("../")) {
+      return path;
+    }
+    if (path.startsWith("images/")) {
+      return getAssetUrl(path);
+    }
     if (path.startsWith("/")) {
       return getAssetUrl(path);
     }
