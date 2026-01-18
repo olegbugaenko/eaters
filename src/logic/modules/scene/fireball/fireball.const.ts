@@ -26,11 +26,11 @@ export const FIREBALL_TAIL_RENDER = {
 };
 
 export const FIREBALL_TRAIL_EMITTER: ParticleEmitterConfig = {
-  particlesPerSecond: 90,
+  particlesPerSecond: 490,
   particleLifetimeMs: 750,
   fadeStartMs: 200,
   baseSpeed: 0.02,
-  speedVariation: 0.002,
+  speedVariation: 0.005,
   sizeRange: { min: 24.2, max: 38.4 },
   spread: Math.PI,
   offset: { x: -1.35, y: 0 },
@@ -39,18 +39,18 @@ export const FIREBALL_TRAIL_EMITTER: ParticleEmitterConfig = {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
     stops: [
-      { offset: 0, color: { r: 1, g: 0.85, b: 0.55, a: 0.15 } },
-      { offset: 0.25, color: { r: 1, g: 0.65, b: 0.2, a: 0.1 } },
-      { offset: 1, color: { r: 1, g: 0.4, b: 0.05, a: 0.01 } },
+      { offset: 0, color: { r: 1, g: 0.85, b: 0.55, a: 0.05 } },
+      { offset: 0.25, color: { r: 1, g: 0.65, b: 0.2, a: 0.02 } },
+      { offset: 1, color: { r: 1, g: 0.4, b: 0.05, a: 0.0 } },
     ],
     noise: {
       colorAmplitude: 0.01,
-      alphaAmplitude: 0.03,
+      alphaAmplitude: 0.01,
       scale: 0.35,
     },
   },
   shape: "circle",
-  maxParticles: 120,
+  maxParticles: 720,
 };
 
 export const FIREBALL_SMOKE_EMITTER: ParticleEmitterConfig = {

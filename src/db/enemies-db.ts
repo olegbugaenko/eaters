@@ -959,7 +959,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       tailEmitter: {
         baseSpeed: 0.03,
         speedVariation: 0.0,
-        particleLifetimeMs: 400,
+        particleLifetimeMs: 600,
         fadeStartMs: 700,
         color: { r: 1, g: 0.85, b: 0.55, a: 1 },
         arc: Math.PI * 0.15,
@@ -975,6 +975,11 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             { offset: 0, color: { r: 0.4, g: 0.9, b: 0.8, a: 0.05 } },
             { offset: 1, color: { r: 0.4, g: 0.9, b: 0.8, a: 0 } },
           ],
+          noise: {
+            colorAmplitude: 0.0,
+            alphaAmplitude: 0.003,
+            scale: 0.35,
+          },
         },
         maxParticles: 1000,
       },

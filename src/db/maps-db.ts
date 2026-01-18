@@ -390,14 +390,18 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const size: SceneSize = { width: 1200, height: 1200 };
     const spawnPoint: SceneVector2 = { x: 150, y: 150 };
     const pyramidTemplate: readonly string[] = [
-      "       #       ",
-      "      ###      ",
-      "     #####     ",
-      "    #######    ",
-      "   #########   ",
-      "  ###########  ",
-      " ############# ",
-      "###############",
+      "           #           ",
+      "          ###          ",
+      "         #####         ",
+      "        #######        ",
+      "       #########       ",
+      "      ###########      ",
+      "     #############     ",
+      "    ###############    ",
+      "   #################   ",
+      "  ###################  ",
+      " ##################### ",
+      "#######################",
     ];
 
     return {
@@ -432,7 +436,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       },
       enemies: ({ mapLevel }) => {
         const level = Math.max(1, Math.floor(mapLevel));
-        const turretCount = 3;
+        const turretCount = 4;
         const turretRadius = 320;
         return Array.from({ length: turretCount }, (_, index) => {
           const angle = (index / turretCount) * Math.PI * 2;
@@ -1280,6 +1284,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       { x: x + width, y: y + height },
       { x, y: y + height },
     ];
+    const cactusStart = size.height - sandHeight - 200;
     const sandVertices = createRectangle(
       0,
       size.height - sandHeight - 200,
@@ -1313,7 +1318,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           { level: sandLevel },
         );
 
-        const bushes = bushClusters.map((cluster) =>
+        /*const bushes = bushClusters.map((cluster) =>
           circleWithBricks(
             "smallOrganic",
             {
@@ -1323,9 +1328,102 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             },
             { level: organicLevel },
           ),
+        );*/
+
+        const cactus = [];
+
+        cactus.push(
+          polygonWithBricks(
+            "smallOrganic",
+            {
+              vertices: createRectangle(420, cactusStart - 360, 120, 360),
+            },
+            { level: organicLevel },
+          )
         );
 
-        return [sandBank, ...bushes];
+        cactus.push(
+          circleWithBricks(
+            "smallOrganic",
+            {
+              center: { x: 480, y: cactusStart - 360 },
+              innerRadius: 0,
+              outerRadius: 60,
+            },
+            { level: organicLevel },
+          )
+        );
+
+        cactus.push(
+          polygonWithBricks(
+            "smallOrganic",
+            {
+              vertices: createRectangle(280, cactusStart - 460, 90, 310),
+            },
+            { level: organicLevel },
+          )
+        );
+
+        cactus.push(
+          circleWithBricks(
+            "smallOrganic",
+            {
+              center: { x: 320, y: cactusStart - 460 },
+              innerRadius: 0,
+              outerRadius: 45,
+            },
+            { level: organicLevel },
+          )
+        );
+
+        cactus.push(
+          circleWithBricks(
+            "smallOrganic",
+            {
+              center: { x: 390, y: cactusStart - 160 },
+              innerRadius: 0,
+              outerRadius: 120,
+            },
+            { level: organicLevel },
+          )
+        );
+
+        cactus.push(
+          polygonWithBricks(
+            "smallOrganic",
+            {
+              vertices: createRectangle(640, cactusStart - 360, 90, 210),
+            },
+            { level: organicLevel },
+          )
+        );
+
+        cactus.push(
+          circleWithBricks(
+            "smallOrganic",
+            {
+              center: { x: 680, y: cactusStart - 360 },
+              innerRadius: 0,
+              outerRadius: 45,
+            },
+            { level: organicLevel },
+          )
+        );
+
+        cactus.push(
+          circleWithBricks(
+            "smallOrganic",
+            {
+              center: { x: 600, y: cactusStart - 120 },
+              innerRadius: 0,
+              outerRadius: 120,
+            },
+            { level: organicLevel },
+          )
+        );
+
+
+        return [sandBank, ...cactus];
       },
       playerUnits: [
         {
@@ -1418,7 +1516,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     } satisfies MapConfig;
   })(),
   spruce: (() => {
-    const size: SceneSize = { width: 1500, height: 1500 };
+    const size: SceneSize = { width: 1500, height: 1600 };
     const createRectangle = (
       x: number,
       y: number,
@@ -1742,9 +1840,9 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     } satisfies MapConfig;
   })(),
   stoneCottage: (() => {
-    const size: SceneSize = { width: 1300, height: 1200 };
-    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
-    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 160 };
+    const size: SceneSize = { width: 1300, height: 1400 };
+    const center: SceneVector2 = { x: size.width / 2, y: (size.height-200) / 2 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 360 };
 
     const createRectangle = (
       x: number,
@@ -1767,9 +1865,9 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       enemySpawnPoints: [
         {
           position: enemySpawnPosition,
-          spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
+          spawnRate: 0.1, // 1 ворог на 5 секунд (1/5 = 0.2)
           enemyTypes: [{ type: "spectreEnemy", weight: 1.0 }],
-          maxConcurrent: 10,
+          maxConcurrent: 5,
         },
       ],
       nodePosition: { x: 1, y: 4 },
@@ -1911,12 +2009,12 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     } satisfies MapConfig;
   })(),
   mine: (() => {
-    const size: SceneSize = { width: 1200, height: 1200 };
-    const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+    const size: SceneSize = { width: 1200, height: 1300 };
+    const center: SceneVector2 = { x: size.width / 2, y: (size.height-100) / 2 };
     const shaftRadius = 320;
     const wallThickness = 120;
     const entryWidth = 140;
-    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 160 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 260 };
 
     const createSupport = (
       angle: number,
@@ -2603,7 +2701,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
 
         return [silverRing, copperGem, copperGem2, copperGem3];
       },
-      enemies: ({ mapLevel }) => {
+      /* enemies: ({ mapLevel }) => {
         const level = Math.max(1, Math.floor(mapLevel));
         const offsets: SceneVector2[] = [
           { x: -100, y: -100 },
@@ -2619,7 +2717,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             y: center.y + offset.y,
           },
         }));
-      },
+      },*/
       playerUnits: [
         {
           type: "bluePentagon",
