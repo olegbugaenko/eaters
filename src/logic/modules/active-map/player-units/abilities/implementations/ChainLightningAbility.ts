@@ -7,13 +7,21 @@ import {
   AbilityExecutionResult,
   AbilityStateBase,
 } from "../ability.types";
-import type { TargetSnapshot, TargetType } from "../../../targeting/targeting.types";
+import type { TargetSnapshot } from "../../../targeting/targeting.types";
+import type { ArcTargetType } from "../../../../scene/arc/arc.types";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { subtractVectors, vectorHasLength } from "@/shared/helpers/vector.helper";
 
 interface ChainLightningState extends AbilityStateBase {
   chainRadius: number;
   chainJumps: number;
   damagePercent: number;
+}
+
+interface ChainLightningTarget {
+  id: string;
+  type: "brick" | "enemy";
+  position: SceneVector2;
 }
 
 const CHAIN_MODULE_ID = "conductorTentacles" satisfies UnitModuleId;
@@ -27,9 +35,14 @@ const computeDamagePercent = (level: number, moduleId: UnitModuleId): number => 
   return Math.max(base + perLevel * Math.max(level - 1, 0), 0);
 };
 
+const isChainTarget = (
+  candidate: TargetSnapshot,
+): candidate is TargetSnapshot<"brick" | "enemy"> =>
+  candidate.type === "brick" || candidate.type === "enemy";
+
 const evaluateChainLightning = (
   context: AbilityEvaluationContext<ChainLightningState>,
-): AbilityCandidate<TargetSnapshot> | null => {
+): AbilityCandidate<ChainLightningTarget> | null => {
   if (context.event !== "hit") {
     return null;
   }
@@ -64,14 +77,14 @@ const evaluateChainLightning = (
     priority: 1,
     target: {
       id: context.targetId,
-      type: context.targetType,
+      type: "brick",
       position: context.targetPosition,
     },
   };
 };
 
 const executeChainLightning = (
-  context: AbilityExecutionContext<ChainLightningState, TargetSnapshot>,
+  context: AbilityExecutionContext<ChainLightningState, ChainLightningTarget>,
 ): AbilityExecutionResult => {
   const { unit, state, dependencies, services, target } = context;
   if (target.type !== "brick") {
@@ -100,16 +113,21 @@ const executeChainLightning = (
     const candidates = getTargetsInRadius(currentTarget.position, state.chainRadius, [
       "brick",
       "enemy",
-    ]).filter((candidate) => {
+    ]).filter((candidate): candidate is TargetSnapshot<"brick" | "enemy"> => {
       const key = `${candidate.type}:${candidate.id}`;
-      return !visited.has(key);
+      return !visited.has(key) && isChainTarget(candidate);
     });
 
     if (candidates.length === 0) {
       break;
     }
 
-    const nextTarget = candidates[Math.floor(Math.random() * candidates.length)]!;
+    const nextCandidate = candidates[Math.floor(Math.random() * candidates.length)]!;
+    const nextTarget: ChainLightningTarget = {
+      id: nextCandidate.id,
+      type: nextCandidate.type,
+      position: nextCandidate.position,
+    };
     const direction = subtractVectors(nextTarget.position, currentTarget.position);
     const damageOptions = {
       ...applyDamageOptions,
@@ -124,8 +142,8 @@ const executeChainLightning = (
 
     services.spawnArcBetweenTargets(
       "chainLightning",
-      { type: currentTarget.type as TargetType, id: currentTarget.id },
-      { type: nextTarget.type as TargetType, id: nextTarget.id },
+      { type: currentTarget.type as ArcTargetType, id: currentTarget.id },
+      { type: nextTarget.type as ArcTargetType, id: nextTarget.id },
       { persistOnDeath: true },
     );
 
@@ -139,7 +157,7 @@ const executeChainLightning = (
 
 export const ChainLightningAbility: AbilityDescription<
   ChainLightningState,
-  TargetSnapshot
+  ChainLightningTarget
 > = {
   abilityId: "chainLightning",
   requiredModules: [CHAIN_MODULE_ID],

@@ -68,6 +68,15 @@ export interface AbilityActivationResult {
   statsChanged: boolean;
 }
 
+interface AbilityAttackContext {
+  attackDirection: SceneVector2;
+  inflictedDamage: number;
+  totalDamage: number;
+  targetType?: TargetType;
+  targetId?: string;
+  targetPosition?: SceneVector2;
+}
+
 interface AbilityRuntimeEntry {
   definition: AbilityDescription<any, any>;
   state: AbilityStateBase;
@@ -169,11 +178,7 @@ export class PlayerUnitAbilities {
     unit: PlayerUnitAbilityState,
     deltaSeconds: number,
     event: "tick" | "hit" = "tick",
-    attackContext?: {
-      attackDirection: SceneVector2;
-      inflictedDamage: number;
-      totalDamage: number;
-    },
+    attackContext?: AbilityAttackContext,
   ): AbilityActivationResult | null {
     const runtime = this.ensureUnitRuntime(unit);
     this.advanceCooldowns(runtime, deltaSeconds);
@@ -273,14 +278,7 @@ export class PlayerUnitAbilities {
     unit: PlayerUnitAbilityState,
     runtime: UnitAbilityRuntime,
     event: "tick" | "hit" = "tick",
-    attackContext?: {
-      attackDirection: SceneVector2;
-      inflictedDamage: number;
-      totalDamage: number;
-      targetType: TargetType;
-      targetId: string;
-      targetPosition: SceneVector2;
-    },
+    attackContext?: AbilityAttackContext,
   ): Array<{
     runtimeEntry: AbilityRuntimeEntry;
     cooldown: AbilityCooldownState;
