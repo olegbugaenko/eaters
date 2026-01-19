@@ -446,20 +446,6 @@ export const useSceneCanvas = ({
               radiation.postProcess
             );
             gl.enable(gl.BLEND);
-            if (timestamp - postProcessLastSampleLogRef.current > 2000) {
-              postProcessLastSampleLogRef.current = timestamp;
-              const sample = postProcessRef.current.sampleFramebufferPixel(gl);
-              if (sample) {
-                console.info("[RadiationPostProcess] FBO sample:", {
-                  r: sample[0],
-                  g: sample[1],
-                  b: sample[2],
-                  a: sample[3],
-                });
-              } else {
-                console.warn("[RadiationPostProcess] FBO sample unavailable.");
-              }
-            }
             if (!rendered) {
               console.warn("[RadiationPostProcess] Render failed; falling back to blit.");
               postProcessRef.current.blitToScreen(gl);
