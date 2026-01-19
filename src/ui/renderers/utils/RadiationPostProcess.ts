@@ -23,6 +23,7 @@ export class RadiationPostProcess {
   private loggedFramebufferFailure = false;
   private loggedMissingTexture = false;
   private loggedZeroSize = false;
+  private loggedSampleFailure = false;
 
   public beginFrame(gl: WebGL2RenderingContext, width: number, height: number): boolean {
     if (width <= 0 || height <= 0) {
@@ -122,6 +123,27 @@ export class RadiationPostProcess {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
+  public sampleFramebufferPixel(gl: WebGL2RenderingContext): Uint8Array | null {
+    if (!this.resources) {
+      return null;
+    }
+    const previousFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.resources.framebuffer);
+    const pixel = new Uint8Array(4);
+    try {
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    } catch (error) {
+      if (!this.loggedSampleFailure) {
+        this.loggedSampleFailure = true;
+        console.error("[RadiationPostProcess] Failed to sample framebuffer.", error);
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+      return null;
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+    return pixel;
+  }
+
   public dispose(gl: WebGL2RenderingContext): void {
     if (!this.resources) {
       return;
@@ -211,6 +233,7 @@ export class RadiationPostProcess {
     }
     this.loggedFramebufferFailure = false;
     this.loggedZeroSize = false;
+    this.loggedSampleFailure = false;
     this.width = width;
     this.height = height;
     gl.bindTexture(gl.TEXTURE_2D, this.resources.texture);
