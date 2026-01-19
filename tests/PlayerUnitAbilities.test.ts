@@ -13,6 +13,7 @@ import type { PlayerUnitType } from "../src/db/player-units-db";
 import { AbilityVisualService } from "../src/logic/modules/active-map/player-units/abilities/AbilityVisualService";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
 import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
+import type { ArcModule } from "../src/logic/modules/scene/arc/arc.module";
 
 describe("PlayerUnitAbilities sound effects", () => {
   const createBaseState = (overrides: Partial<PlayerUnitAbilityState> = {}): PlayerUnitAbilityState => ({
@@ -39,8 +40,19 @@ describe("PlayerUnitAbilities sound effects", () => {
       effects?: EffectsModule;
       fireballs?: FireballModule;
       explosions?: ExplosionModule;
+      arcs?: ArcModule;
       findNearestBrick?: () => string | null;
       damageUnit?: (id: string, damage: number) => void;
+      getTargetsInRadius?: () => Array<{
+        id: string;
+        type: "brick" | "enemy";
+        position: { x: number; y: number };
+        hp: number;
+        maxHp: number;
+        armor: number;
+        baseDamage: number;
+        physicalSize: number;
+      }>;
     } = {}
   ) => {
     const scene = new SceneObjectManager();
@@ -51,11 +63,12 @@ describe("PlayerUnitAbilities sound effects", () => {
     const audio = options.audio;
     const findNearestBrick = options.findNearestBrick ?? (() => null);
     const damageUnit = options.damageUnit ?? (() => {});
+    const getTargetsInRadius = options.getTargetsInRadius ?? (() => []);
 
     const visuals = new AbilityVisualService({
       scene,
       explosions,
-      getArcs: () => undefined,
+      getArcs: () => options.arcs,
       getEffects: () => effects,
       getFireballs: () => fireballs,
       getUnitObjectId: () => undefined,
@@ -75,7 +88,7 @@ describe("PlayerUnitAbilities sound effects", () => {
       damageBrick: () => {},
       applyBrickDamage: () => 0,
       getBricksInRadius: () => [],
-      getTargetsInRadius: () => [],
+      getTargetsInRadius,
       damageUnit,
       findNearestBrick: () => findNearestBrick(),
       audio,
@@ -134,6 +147,54 @@ describe("PlayerUnitAbilities sound effects", () => {
 
     assert.strictEqual(result?.abilityId, "frenzy");
     assert.deepStrictEqual(audioCalls, ["/audio/sounds/brick_effects/buff.mp3"]);
+  });
+
+  test("spawns chain lightning arc on brick hit", () => {
+    const arcCalls: Array<{ source: string; target: string }> = [];
+    const arcs = {
+      spawnArcBetweenTargets: (
+        _type: string,
+        source: { id: string },
+        target: { id: string },
+      ) => {
+        arcCalls.push({ source: source.id, target: target.id });
+      },
+    } as unknown as ArcModule;
+
+    const striker = createBaseState({
+      id: "striker",
+      baseAttackDamage: 10,
+      equippedModules: ["conductorTentacles"],
+      moduleLevels: { conductorTentacles: 1 },
+    });
+
+    const abilities = createAbilities([striker], {
+      arcs,
+      getTargetsInRadius: () => [
+        {
+          id: "enemy-1",
+          type: "enemy",
+          position: { x: 10, y: 0 },
+          hp: 10,
+          maxHp: 10,
+          armor: 0,
+          baseDamage: 1,
+          physicalSize: 1,
+        },
+      ],
+    });
+
+    abilities.processUnitAbilitiesOnAttack(
+      striker,
+      { x: 1, y: 0 },
+      10,
+      10,
+      "brick",
+      "brick-1",
+      { x: 0, y: 0 },
+    );
+
+    assert.deepStrictEqual(arcCalls, [{ source: "brick-1", target: "enemy-1" }]);
   });
 
   test("plays fireball sound when fireball ability triggers", () => {

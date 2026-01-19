@@ -193,11 +193,7 @@ export class AbilityVisualService {
     if (!arcModule) {
       return;
     }
-    try {
-      arcModule.spawnArcBetweenTargets(arcType, source, target, options);
-    } catch {
-      // ignore arc failures; abilities still apply
-    }
+    arcModule.spawnArcBetweenTargets(arcType, source, target, options);
   }
 
   public launchFireball(options: FireballLaunchOptions): boolean {
