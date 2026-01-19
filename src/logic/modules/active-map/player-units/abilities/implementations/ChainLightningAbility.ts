@@ -144,7 +144,11 @@ const executeChainLightning = (
       "chainLightning",
       { type: currentTarget.type as ArcTargetType, id: currentTarget.id },
       { type: nextTarget.type as ArcTargetType, id: nextTarget.id },
-      { persistOnDeath: true },
+      {
+        persistOnDeath: true,
+        sourcePosition: currentTarget.position,
+        targetPosition: nextTarget.position,
+      },
     );
 
     const key = `${nextTarget.type}:${nextTarget.id}`;

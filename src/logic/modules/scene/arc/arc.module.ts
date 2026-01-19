@@ -54,8 +54,8 @@ export class ArcModule implements GameModule {
     const realNow = Date.now();
     for (let i = 0; i < this.arcs.length; i += 1) {
       const a = this.arcs[i]!;
-      let from = this.getArcTargetPosition(a.source, a.sourceOffset);
-      let to = this.getArcTargetPosition(a.target);
+      let from = this.getArcTargetPosition(a.source, a.sourceOffset, a.lastFrom);
+      let to = this.getArcTargetPosition(a.target, undefined, a.lastTo);
       
       // If target died, use last known position if persistOnDeath is enabled
       if (a.persistOnDeath) {
@@ -134,8 +134,10 @@ export class ArcModule implements GameModule {
     const cfg = getArcConfig(type);
     
     const sourceOffset = sanitizeOffset(options?.sourceOffset);
-    const from = this.getArcTargetPosition(source, sourceOffset);
-    const to = this.getArcTargetPosition(target);
+    const fallbackFrom = options?.sourcePosition;
+    const fallbackTo = options?.targetPosition;
+    const from = this.getArcTargetPosition(source, sourceOffset, fallbackFrom);
+    const to = this.getArcTargetPosition(target, undefined, fallbackTo);
     if (!from || !to) {
       return;
     }
@@ -166,8 +168,8 @@ export class ArcModule implements GameModule {
       lastUpdateTimestampMs: now,
       lastRealTimestampMs: realNow,
       persistOnDeath: options?.persistOnDeath,
-      lastFrom: from,
-      lastTo: to,
+      lastFrom: fallbackFrom ?? from,
+      lastTo: fallbackTo ?? to,
     });
     if (cfg.soundEffectUrl) {
       this.audio?.playSoundEffect(cfg.soundEffectUrl);
@@ -217,25 +219,26 @@ export class ArcModule implements GameModule {
   private getArcTargetPosition(
     target: ArcTargetRef,
     offset?: SceneVector2,
+    fallbackPosition?: SceneVector2,
   ): SceneVector2 | null {
     if (target.type === "unit") {
       const position = this.getUnitPositionIfAlive(target.id);
       if (!position) {
-        return null;
+        return fallbackPosition ?? null;
       }
       return offset ? addVectors(position, offset) : position;
     }
     if (target.type === "enemy") {
       const position = this.getEnemyPositionIfAlive?.(target.id) ?? null;
       if (!position) {
-        return null;
+        return fallbackPosition ?? null;
       }
       return offset ? addVectors(position, offset) : position;
     }
     if (target.type === "brick") {
       const position = this.getBrickPositionIfAlive?.(target.id) ?? null;
       if (!position) {
-        return null;
+        return fallbackPosition ?? null;
       }
       return offset ? addVectors(position, offset) : position;
     }

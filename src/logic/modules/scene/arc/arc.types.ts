@@ -22,6 +22,8 @@ export interface ArcSpawnOptions {
   readonly sourceOffset?: SceneVector2;
   /** If true, arc will persist at last known position when target dies */
   readonly persistOnDeath?: boolean;
+  readonly sourcePosition?: SceneVector2;
+  readonly targetPosition?: SceneVector2;
 }
 
 export interface ArcState {
