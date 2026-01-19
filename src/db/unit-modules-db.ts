@@ -22,6 +22,7 @@ export const UNIT_MODULE_IDS = [
   "burningTail",
   "freezingTail",
   "tailNeedles",
+  "conductorTentacles",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -68,6 +69,8 @@ export interface UnitModuleConfig {
     readonly lateralProjectileRange?: number;
     readonly lateralProjectileHitRadius?: number;
     readonly lateralProjectileVisual?: UnitModuleProjectileVisualConfig;
+    readonly chainRadius?: number;
+    readonly chainJumps?: number;
   };
 }
 
@@ -199,6 +202,24 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
         spriteName: "needle",
         hitRadius: 12,
       },
+    },
+  },
+  conductorTentacles: {
+    id: "conductorTentacles",
+    name: "Conductor Tentacles",
+    description:
+      "Copper-filamented feelers discharge volatile surges that leap between nearby masonry and foes.",
+    bonusLabel: "Chain lightning damage",
+    bonusType: "percent",
+    baseBonusValue: 0.35,
+    bonusPerLevel: 0.03,
+    manaCostMultiplier: 2.2,
+    sanityCost: 0,
+    baseCost: { copper: 200 },
+    unlockedBy: [{ type: "map", id: "oldForge", level: 1 }],
+    meta: {
+      chainRadius: 170,
+      chainJumps: 3,
     },
   },
   silverArmor: {

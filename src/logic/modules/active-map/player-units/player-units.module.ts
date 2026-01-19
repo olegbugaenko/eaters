@@ -193,8 +193,28 @@ export class PlayerUnitsModule implements GameModule {
           });
         }
       },
+      applyBrickDamage: (brickId: string, damage: number, options) => {
+        const direction = options?.direction ?? { x: 0, y: 0 };
+        const result = this.bricks.applyDamage(brickId, damage, direction, {
+          rewardMultiplier: options?.rewardMultiplier,
+          armorPenetration: options?.armorPenetration,
+          skipKnockback: options?.skipKnockback,
+          overTime: options?.overTime,
+        });
+        return result.inflictedDamage;
+      },
+      applyTargetDamage: (targetId: string, damage: number, options) => {
+        if (!this.damage) {
+          return 0;
+        }
+        return this.damage.applyTargetDamage(targetId, damage, options);
+      },
       getBricksInRadius: (position: SceneVector2, radius: number) => {
         return this.getBrickIdsInRadius(position, radius);
+      },
+      getTargetsInRadius: (position: SceneVector2, radius: number, types) => {
+        const filter = types?.length ? { types } : undefined;
+        return this.targeting.findTargetsNear(position, radius, filter);
       },
       damageUnit: (unitId: string, damage: number) => {
         this.applyDamage(unitId, damage);

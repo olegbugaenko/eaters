@@ -308,6 +308,26 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           stroke: { type: "base", width: 1.1, brightness: -0.10 }
         },
 
+        // Conductor tentacles
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: 0.8, y: 2.8, width: 1.4 }, { x: 6.8, y: 6.2, width: 0.6 } ],
+          {
+            requiresModule: "conductorTentacles",
+            fill: { type: "base", brightness: -0.02 },
+            stroke: { type: "base", width: 1.2, brightness: 0.08 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: 0.8, y: -2.8, width: 1.4 }, { x: 6.8, y: -6.2, width: 0.6 } ],
+          {
+            requiresModule: "conductorTentacles",
+            fill: { type: "base", brightness: -0.02 },
+            stroke: { type: "base", width: 1.2, brightness: 0.08 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+
         // Tail needles (long quills anchored at the chord tip)
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -7.6, y: 0.6 }, { x: -23.6, y: 3.4 }, { x: -8.4, y: 2.4 } ],

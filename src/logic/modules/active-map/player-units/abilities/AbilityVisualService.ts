@@ -4,7 +4,7 @@ import {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { ArcModule } from "../../../scene/arc/arc.module";
-import type { ArcSpawnOptions } from "../../../scene/arc/arc.types";
+import type { ArcSpawnOptions, ArcTargetRef } from "../../../scene/arc/arc.types";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import type { EffectsModule } from "../../../scene/effects/effects.module";
 import type { FireballModule } from "../../../scene/fireball/fireball.module";
@@ -178,6 +178,23 @@ export class AbilityVisualService {
         arcType,
         sourceOffset,
       });
+    } catch {
+      // ignore arc failures; abilities still apply
+    }
+  }
+
+  public spawnArcBetweenTargets(
+    arcType: "chainLightning",
+    source: ArcTargetRef,
+    target: ArcTargetRef,
+    options?: ArcSpawnOptions,
+  ): void {
+    const arcModule = this.getArcs();
+    if (!arcModule) {
+      return;
+    }
+    try {
+      arcModule.spawnArcBetweenTargets(arcType, source, target, options);
     } catch {
       // ignore arc failures; abilities still apply
     }

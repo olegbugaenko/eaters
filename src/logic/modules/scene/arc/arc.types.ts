@@ -3,7 +3,7 @@ import type { SceneVector2 } from "@core/logic/provided/services/scene-object-ma
 import type { ArcType } from "../../../../db/arcs-db";
 import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
 
-export type ArcTargetType = "unit" | "enemy";
+export type ArcTargetType = "unit" | "enemy" | "brick";
 
 export interface ArcTargetRef {
   readonly type: ArcTargetType;
@@ -14,6 +14,7 @@ export interface ArcModuleOptions {
   scene: SceneObjectManager;
   getUnitPositionIfAlive: (unitId: string) => SceneVector2 | null;
   getEnemyPositionIfAlive?: (enemyId: string) => SceneVector2 | null;
+  getBrickPositionIfAlive?: (brickId: string) => SceneVector2 | null;
   audio?: SoundEffectPlayer;
 }
 

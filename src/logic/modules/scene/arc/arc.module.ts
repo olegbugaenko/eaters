@@ -18,6 +18,9 @@ export class ArcModule implements GameModule {
   private readonly getEnemyPositionIfAlive?: (
     enemyId: string,
   ) => SceneVector2 | null;
+  private readonly getBrickPositionIfAlive?: (
+    brickId: string,
+  ) => SceneVector2 | null;
   private readonly audio?: SoundEffectPlayer;
   private arcs: ArcState[] = [];
 
@@ -25,6 +28,7 @@ export class ArcModule implements GameModule {
     this.scene = options.scene;
     this.getUnitPositionIfAlive = options.getUnitPositionIfAlive;
     this.getEnemyPositionIfAlive = options.getEnemyPositionIfAlive;
+    this.getBrickPositionIfAlive = options.getBrickPositionIfAlive;
     this.audio = options.audio;
   }
 
@@ -223,6 +227,13 @@ export class ArcModule implements GameModule {
     }
     if (target.type === "enemy") {
       const position = this.getEnemyPositionIfAlive?.(target.id) ?? null;
+      if (!position) {
+        return null;
+      }
+      return offset ? addVectors(position, offset) : position;
+    }
+    if (target.type === "brick") {
+      const position = this.getBrickPositionIfAlive?.(target.id) ?? null;
       if (!position) {
         return null;
       }
