@@ -24,6 +24,7 @@ export class RadiationPostProcess {
   private loggedMissingTexture = false;
   private loggedZeroSize = false;
   private loggedSampleFailure = false;
+  private loggedScreenCaptureFailure = false;
 
   public beginFrame(gl: WebGL2RenderingContext, width: number, height: number): boolean {
     if (width <= 0 || height <= 0) {
@@ -52,6 +53,36 @@ export class RadiationPostProcess {
       return false;
     }
     gl.viewport(0, 0, width, height);
+    return true;
+  }
+
+  public captureFromScreen(gl: WebGL2RenderingContext, width: number, height: number): boolean {
+    if (width <= 0 || height <= 0) {
+      if (!this.loggedZeroSize) {
+        this.loggedZeroSize = true;
+        console.error("[RadiationPostProcess] Invalid screen capture size.", { width, height });
+      }
+      return false;
+    }
+    if (!this.ensureResources(gl)) {
+      if (!this.loggedInitFailure) {
+        this.loggedInitFailure = true;
+        console.error("[RadiationPostProcess] Failed to initialize shader resources.");
+      }
+      return false;
+    }
+    this.resize(gl, width, height);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, this.resources!.texture);
+    try {
+      gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, width, height, 0);
+    } catch (error) {
+      if (!this.loggedScreenCaptureFailure) {
+        this.loggedScreenCaptureFailure = true;
+        console.error("[RadiationPostProcess] Failed to capture screen texture.", error);
+      }
+      return false;
+    }
     return true;
   }
 
@@ -234,6 +265,7 @@ export class RadiationPostProcess {
     this.loggedFramebufferFailure = false;
     this.loggedZeroSize = false;
     this.loggedSampleFailure = false;
+    this.loggedScreenCaptureFailure = false;
     this.width = width;
     this.height = height;
     gl.bindTexture(gl.TEXTURE_2D, this.resources.texture);

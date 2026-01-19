@@ -128,6 +128,7 @@ export const useSceneCanvas = ({
   const postProcessActiveRef = useRef(false);
   const postProcessLastReasonRef = useRef<string | null>(null);
   const postProcessLastSampleLogRef = useRef(0);
+  const postProcessLastCaptureLogRef = useRef(0);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
   const rightMouseDownPositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -373,20 +374,9 @@ export const useSceneCanvas = ({
             intensity: Number(intensity.toFixed(3)),
           });
         }
-        if (active) {
-          postProcessActiveRef.current = postProcessRef.current.beginFrame(
-            gl,
-            canvas.width,
-            canvas.height
-          );
-          if (!postProcessActiveRef.current) {
-            console.warn("[RadiationPostProcess] Disabled due to framebuffer setup failure.");
-          }
-        } else {
-          postProcessActiveRef.current = false;
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-          gl.viewport(0, 0, canvas.width, canvas.height);
-        }
+        postProcessActiveRef.current = active;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
       },
       beforeEffects: (timestamp, gl, cameraState) => {
         // Render additional effects (particles, whirls, auras, arcs, fire rings, bullets, rings)
@@ -436,6 +426,18 @@ export const useSceneCanvas = ({
           const intensity =
             radiation && radiation.maxLevel > 0 ? radiation.level / radiation.maxLevel : 0;
           if (radiation?.postProcess && intensity > 0.01) {
+            const captured = postProcessRef.current.captureFromScreen(
+              gl,
+              canvas.width,
+              canvas.height
+            );
+            if (!captured) {
+              if (timestamp - postProcessLastCaptureLogRef.current > 2000) {
+                postProcessLastCaptureLogRef.current = timestamp;
+                console.warn("[RadiationPostProcess] Screen capture failed; skipping post-process.");
+              }
+              return;
+            }
             gl.disable(gl.BLEND);
             const rendered = postProcessRef.current.render(
               gl,
