@@ -63,6 +63,9 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
       fadeStartMs: gl.getUniformLocation(programResult.program, "u_fadeStartMs"),
       noiseAmplitude: gl.getUniformLocation(programResult.program, "u_noiseAmplitude"),
       noiseDensity: gl.getUniformLocation(programResult.program, "u_noiseDensity"),
+      aperiodicStrength: gl.getUniformLocation(programResult.program, "u_aperiodicStrength"),
+      kinkAmplitude: gl.getUniformLocation(programResult.program, "u_kinkAmplitude"),
+      kinkFrequency: gl.getUniformLocation(programResult.program, "u_kinkFrequency"),
       oscAmplitude: gl.getUniformLocation(programResult.program, "u_oscAmplitude"),
       oscAngularSpeed: gl.getUniformLocation(programResult.program, "u_oscAngularSpeed"),
     };
@@ -154,6 +157,9 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
         fadeStartMs: 0,
         noiseAmplitude: 0,
         noiseDensity: 0,
+        aperiodicStrength: 0,
+        kinkAmplitude: 0,
+        kinkFrequency: 0,
         oscAmplitude: 0,
         oscAngularSpeed: 0,
       },
@@ -206,6 +212,9 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
     if (sharedUniforms.fadeStartMs) gl.uniform1f(sharedUniforms.fadeStartMs, batchUniforms.fadeStartMs);
     if (sharedUniforms.noiseAmplitude) gl.uniform1f(sharedUniforms.noiseAmplitude, batchUniforms.noiseAmplitude);
     if (sharedUniforms.noiseDensity) gl.uniform1f(sharedUniforms.noiseDensity, batchUniforms.noiseDensity);
+    if (sharedUniforms.aperiodicStrength) gl.uniform1f(sharedUniforms.aperiodicStrength, batchUniforms.aperiodicStrength);
+    if (sharedUniforms.kinkAmplitude) gl.uniform1f(sharedUniforms.kinkAmplitude, batchUniforms.kinkAmplitude);
+    if (sharedUniforms.kinkFrequency) gl.uniform1f(sharedUniforms.kinkFrequency, batchUniforms.kinkFrequency);
     if (sharedUniforms.oscAmplitude) gl.uniform1f(sharedUniforms.oscAmplitude, batchUniforms.oscAmplitude);
     if (sharedUniforms.oscAngularSpeed) gl.uniform1f(sharedUniforms.oscAngularSpeed, batchUniforms.oscAngularSpeed);
   }
@@ -255,6 +264,9 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
         fadeStartMs: config.uniforms.fadeStartMs,
         noiseAmplitude: config.uniforms.noiseAmplitude,
         noiseDensity: config.uniforms.noiseDensity,
+        aperiodicStrength: config.uniforms.aperiodicStrength,
+        kinkAmplitude: config.uniforms.kinkAmplitude,
+        kinkFrequency: config.uniforms.kinkFrequency,
         oscAmplitude: config.uniforms.oscAmplitude,
         oscAngularSpeed: config.uniforms.oscAngularSpeed,
       };

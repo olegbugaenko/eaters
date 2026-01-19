@@ -83,6 +83,9 @@ uniform float u_coreWidth;
 uniform float u_blurWidth;
 uniform float u_fadeStartMs;
 uniform float u_noiseAmplitude;
+uniform float u_aperiodicStrength;
+uniform float u_kinkAmplitude;
+uniform float u_kinkFrequency;
 uniform float u_oscAmplitude;
 uniform float u_oscAngularSpeed;
 
@@ -95,6 +98,23 @@ float noise1(float t){
   return sin(t) * 0.7 + sin(t*1.7+1.3)*0.3;
 }
 
+float hash1(float x) {
+  return fract(sin(x) * 43758.5453);
+}
+
+float valueNoise(float x) {
+  float i = floor(x);
+  float f = fract(x);
+  float a = hash1(i);
+  float b = hash1(i + 1.0);
+  float u = f * f * (3.0 - 2.0 * f);
+  return mix(a, b, u) * 2.0 - 1.0;
+}
+
+float tri(float x) {
+  return abs(fract(x) - 0.5) * 2.0 - 0.5;
+}
+
 void main(){
   float len = max(v_length, 0.0001);
   vec2 rel = v_worldPos - v_from;
@@ -104,8 +124,13 @@ void main(){
 
   float phase = t * v_noisePhaseScale;
   float timeOsc = u_oscAngularSpeed * v_age;
-  float n = noise1(phase + timeOsc) * u_noiseAmplitude * (1.0 + u_oscAmplitude * 0.5);
-  float dist = abs(baseOffset - n);
+  float seed = hash1(dot(v_from, vec2(12.9898, 78.233)) + dot(v_axis, vec2(39.346, 11.135)));
+  float periodic = noise1(phase + timeOsc);
+  float aperiodic = valueNoise(phase + timeOsc * 0.37 + seed * 12.0);
+  float mixedNoise = mix(periodic, aperiodic, u_aperiodicStrength);
+  float n = mixedNoise * u_noiseAmplitude * (1.0 + u_oscAmplitude * 0.5);
+  float kink = tri(phase * u_kinkFrequency + seed) * u_kinkAmplitude;
+  float dist = abs(baseOffset - n - kink);
 
   float taperFrac = 0.2;
   float endIn  = smoothstep(0.0, taperFrac, t);

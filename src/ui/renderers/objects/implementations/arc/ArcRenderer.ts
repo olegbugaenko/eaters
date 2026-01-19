@@ -74,6 +74,9 @@ export class ArcRenderer extends ObjectRenderer {
             fadeStartMs: data.fadeStartMs ?? config.fadeStartMs,
             noiseAmplitude: config.noiseAmplitude,
             noiseDensity: Math.max(0, config.bendsPer100Px / 100),
+            aperiodicStrength: Math.max(0, config.aperiodicStrength ?? 0),
+            kinkAmplitude: Math.max(0, config.kinkAmplitude ?? 0),
+            kinkFrequency: Math.max(0, config.kinkFrequency ?? 0),
             oscAmplitude: config.oscillationAmplitude,
             oscAngularSpeed: (Math.PI * 2) / Math.max(1, config.oscillationPeriodMs),
           };
@@ -85,6 +88,9 @@ export class ArcRenderer extends ObjectRenderer {
             uniforms.fadeStartMs,
             uniforms.noiseAmplitude,
             uniforms.noiseDensity,
+            uniforms.aperiodicStrength,
+            uniforms.kinkAmplitude,
+            uniforms.kinkFrequency,
             uniforms.oscAmplitude,
             uniforms.oscAngularSpeed,
           ].join("|");
