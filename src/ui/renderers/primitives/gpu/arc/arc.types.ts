@@ -17,6 +17,7 @@ export type ArcGpuUniforms = {
   fadeStartMs: number;
   noiseAmplitude: number;
   noiseDensity: number; // cycles per length unit
+  aperiodicStrength: number;
   oscAmplitude: number;
   oscAngularSpeed: number; // radians per ms
 };
@@ -43,6 +44,7 @@ export interface ArcSharedResources {
     fadeStartMs: WebGLUniformLocation | null;
     noiseAmplitude: WebGLUniformLocation | null;
     noiseDensity: WebGLUniformLocation | null;
+    aperiodicStrength: WebGLUniformLocation | null;
     oscAmplitude: WebGLUniformLocation | null;
     oscAngularSpeed: WebGLUniformLocation | null;
   };
