@@ -357,10 +357,14 @@ export const useSceneCanvas = ({
           radiation && radiation.maxLevel > 0 ? radiation.level / radiation.maxLevel : 0;
         const config = radiation?.postProcess;
         const active = Boolean(config && intensity > 0.01);
-        postProcessActiveRef.current = active;
         if (active) {
-          postProcessRef.current.beginFrame(gl, canvas.width, canvas.height);
+          postProcessActiveRef.current = postProcessRef.current.beginFrame(
+            gl,
+            canvas.width,
+            canvas.height
+          );
         } else {
+          postProcessActiveRef.current = false;
           gl.bindFramebuffer(gl.FRAMEBUFFER, null);
           gl.viewport(0, 0, canvas.width, canvas.height);
         }
@@ -413,12 +417,14 @@ export const useSceneCanvas = ({
           const intensity =
             radiation && radiation.maxLevel > 0 ? radiation.level / radiation.maxLevel : 0;
           if (radiation?.postProcess && intensity > 0.01) {
+            gl.disable(gl.BLEND);
             postProcessRef.current.render(
               gl,
               timestamp / 1000,
               intensity,
               radiation.postProcess
             );
+            gl.enable(gl.BLEND);
           } else {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
           }
