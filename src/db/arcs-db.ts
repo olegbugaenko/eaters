@@ -90,7 +90,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     fadeStartMs: 350,
     bendsPer100Px: 3,
     noiseAmplitude: 16,
-    aperiodicStrength: 0.35,
+    aperiodicStrength: 0.55,
     oscillationPeriodMs: 170,
     oscillationAmplitude: 0.4,
   },
