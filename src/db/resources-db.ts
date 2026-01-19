@@ -14,7 +14,8 @@ export type ResourceId =
   | "tools"
   | "paper"
   | "ice"
-  | "magma";
+  | "magma"
+  | "uranium";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
@@ -153,6 +154,18 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       {
         type: "map",
         id: "mine",
+        level: 1,
+      },
+    ],
+  },
+  uranium: {
+    id: "uranium",
+    name: "Uranium Fields",
+    description: "",
+    unlockedBy: [
+      {
+        type: "map",
+        id: "uranium_fields",
         level: 1,
       },
     ],
