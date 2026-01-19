@@ -656,6 +656,10 @@ export class PlayerUnitsModule implements GameModule {
     return found;
   }
 
+  public forEachUnit(visitor: (unit: PlayerUnitState) => void): void {
+    this.unitOrder.forEach((unit) => visitor(this.cloneUnit(unit)));
+  }
+
   public forEachUnitNear(
     position: SceneVector2,
     radius: number,

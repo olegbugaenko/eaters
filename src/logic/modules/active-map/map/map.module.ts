@@ -17,6 +17,7 @@ import { buildBricksFromBlueprints } from "../../../services/brick-layout/BrickL
 import { MapSelectionState } from "./map.selection";
 import { MapVisualEffects } from "./map.visual-effects";
 import { MapRunLifecycle } from "./map.run-lifecycle";
+import { MapEffectsModule } from "../map-effects/map-effects.module";
 import {
   MapAutoRestartState,
   MapLevelStats,
@@ -90,6 +91,10 @@ export class MapModule implements GameModule {
     this.newUnlocks = options.newUnlocks;
     this.selection = new MapSelectionState(DEFAULT_MAP_ID);
     const visuals = new MapVisualEffects(options.scene);
+    const mapEffects = new MapEffectsModule({
+      playerUnits: options.playerUnits,
+      enemies: options.enemies,
+    });
     this.runLifecycle = new MapRunLifecycle({
       runState: options.runState,
       resources: options.resources,
@@ -101,6 +106,7 @@ export class MapModule implements GameModule {
       necromancer: options.necromancer,
       visuals,
       scene: options.scene,
+      mapEffects,
     });
 
     options.runState.subscribe((event) => this.handleRunStateEvent(event));
@@ -527,6 +533,7 @@ export class MapModule implements GameModule {
       generateBricks,
       generateUnits,
       generateEnemies,
+      mapEffects: config.mapEffects ?? [],
     });
 
     this.pushSelectedMap();
