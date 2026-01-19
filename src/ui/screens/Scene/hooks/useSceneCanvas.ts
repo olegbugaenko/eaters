@@ -363,6 +363,9 @@ export const useSceneCanvas = ({
             canvas.width,
             canvas.height
           );
+          if (!postProcessActiveRef.current) {
+            console.warn("[RadiationPostProcess] Disabled due to framebuffer setup failure.");
+          }
         } else {
           postProcessActiveRef.current = false;
           gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -426,7 +429,8 @@ export const useSceneCanvas = ({
             );
             gl.enable(gl.BLEND);
           } else {
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            console.warn("[RadiationPostProcess] Skipped render; falling back to blit.");
+            postProcessRef.current.blitToScreen(gl);
           }
         }
         // Tick FPS counter (no separate rAF needed)

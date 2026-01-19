@@ -19,13 +19,28 @@ export class RadiationPostProcess {
   private resources: PostProcessResources | null = null;
   private width = 0;
   private height = 0;
+  private loggedInitFailure = false;
+  private loggedFramebufferFailure = false;
 
   public beginFrame(gl: WebGL2RenderingContext, width: number, height: number): boolean {
     if (!this.ensureResources(gl)) {
+      if (!this.loggedInitFailure) {
+        this.loggedInitFailure = true;
+        console.error("[RadiationPostProcess] Failed to initialize shader resources.");
+      }
       return false;
     }
     this.resize(gl, width, height);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.resources!.framebuffer);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      if (!this.loggedFramebufferFailure) {
+        this.loggedFramebufferFailure = true;
+        console.error("[RadiationPostProcess] Framebuffer incomplete.", status);
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return false;
+    }
     gl.viewport(0, 0, width, height);
     return true;
   }
@@ -69,6 +84,27 @@ export class RadiationPostProcess {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
+  public blitToScreen(gl: WebGL2RenderingContext): void {
+    if (!this.resources) {
+      return;
+    }
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.resources.framebuffer);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    gl.blitFramebuffer(
+      0,
+      0,
+      this.width,
+      this.height,
+      0,
+      0,
+      this.width,
+      this.height,
+      gl.COLOR_BUFFER_BIT,
+      gl.NEAREST
+    );
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
   public dispose(gl: WebGL2RenderingContext): void {
     if (!this.resources) {
       return;
@@ -87,17 +123,25 @@ export class RadiationPostProcess {
     if (this.resources) {
       return true;
     }
-    const vertexShader = compileShader(
-      gl,
-      gl.VERTEX_SHADER,
-      RADIATION_POST_PROCESS_VERTEX_SHADER
-    );
-    const fragmentShader = compileShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      RADIATION_POST_PROCESS_FRAGMENT_SHADER
-    );
-    const program = linkProgram(gl, vertexShader, fragmentShader);
+    let vertexShader: WebGLShader;
+    let fragmentShader: WebGLShader;
+    let program: WebGLProgram;
+    try {
+      vertexShader = compileShader(
+        gl,
+        gl.VERTEX_SHADER,
+        RADIATION_POST_PROCESS_VERTEX_SHADER
+      );
+      fragmentShader = compileShader(
+        gl,
+        gl.FRAGMENT_SHADER,
+        RADIATION_POST_PROCESS_FRAGMENT_SHADER
+      );
+      program = linkProgram(gl, vertexShader, fragmentShader);
+    } catch (error) {
+      console.error("[RadiationPostProcess] Shader compilation/link failed.", error);
+      return false;
+    }
 
     const vertexBuffer = gl.createBuffer();
     const vertexArray = gl.createVertexArray();
@@ -148,6 +192,7 @@ export class RadiationPostProcess {
     if (!this.resources || (this.width === width && this.height === height)) {
       return;
     }
+    this.loggedFramebufferFailure = false;
     this.width = width;
     this.height = height;
     gl.bindTexture(gl.TEXTURE_2D, this.resources.texture);
