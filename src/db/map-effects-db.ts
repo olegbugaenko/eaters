@@ -11,6 +11,11 @@ export interface MapEffectVisualConfig {
   readonly maxNoiseColor: number;
   readonly noiseScale: number;
   readonly noiseDensity?: number;
+  readonly filamentColorContrast: number;
+  readonly filamentAlphaContrast: number;
+  readonly filamentWidth: number;
+  readonly filamentDensity: number;
+  readonly filamentEdgeBlur: number;
 }
 
 export interface MapEffectConfig {
@@ -29,7 +34,7 @@ const MAP_EFFECTS_DB: Record<MapEffectId, MapEffectConfig> = {
     name: "Radioactivity",
     maxLevel: 1,
     growthPerSecond: 0.01,
-    hpDrainPercentPerSecond: 0.5,
+    hpDrainPercentPerSecond: 25,
     targets: ["playerUnits"],
     visuals: {
       tintColor: { r: 0.1, g: 0.9, b: 0.45, a: 1 },
@@ -38,6 +43,11 @@ const MAP_EFFECTS_DB: Record<MapEffectId, MapEffectConfig> = {
       maxNoiseColor: 0.25,
       noiseScale: 1.4,
       noiseDensity: 0.8,
+      filamentColorContrast: 0.18,
+      filamentAlphaContrast: 0.25,
+      filamentWidth: 0.35,
+      filamentDensity: 0.65,
+      filamentEdgeBlur: 0.4,
     },
   },
 };

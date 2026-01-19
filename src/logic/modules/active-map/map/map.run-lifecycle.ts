@@ -136,7 +136,7 @@ export class MapRunLifecycle {
   }
 
   public tick(deltaMs: number): void {
-    this.options.visuals.tick();
+    this.options.visuals.tick(deltaMs);
     this.options.mapEffects.tick(deltaMs);
     if (this.runActive && this.enemySpawnPoints.length > 0) {
       this.enemySpawnController.tick(

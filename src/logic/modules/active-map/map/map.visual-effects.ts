@@ -13,6 +13,7 @@ export class MapVisualEffects {
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
   private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
   private radioactivityOverlayId: string | null = null;
+  private radioactivityElapsedMs = 0;
 
   constructor(
     private readonly scene: SceneObjectManager,
@@ -78,10 +79,10 @@ export class MapVisualEffects {
     });
   }
 
-  public tick(): void {
+  public tick(deltaMs: number): void {
     this.applyPendingCameraFocus();
     this.updatePortalObjects();
-    this.updateRadioactivityOverlay();
+    this.updateRadioactivityOverlay(deltaMs);
   }
 
   public clearPortalObjects(): void {
@@ -126,7 +127,8 @@ export class MapVisualEffects {
     };
   }
 
-  private updateRadioactivityOverlay(): void {
+  private updateRadioactivityOverlay(deltaMs: number): void {
+    this.radioactivityElapsedMs += Math.max(deltaMs, 0);
     const level = this.mapEffects.getEffectLevel("radioactivity");
     if (level === null) {
       this.clearRadioactivityOverlay();
@@ -144,6 +146,12 @@ export class MapVisualEffects {
       0,
       1
     );
+    const timeSeconds = this.radioactivityElapsedMs / 1000;
+    const pulse = 0.7 + 0.3 * Math.sin(timeSeconds * 2.1);
+    const flicker = 0.7 + 0.3 * Math.sin(timeSeconds * 5.4 + 1.2);
+    const spikeBase = (Math.sin(timeSeconds * 3.6) + 1) / 2;
+    const spike = Math.pow(spikeBase, 3);
+    const artifactStrength = clampNumber(intensity * (0.6 + 0.6 * spike), 0, 1);
     const camera = this.scene.getCamera();
     const center = {
       x: camera.position.x + camera.viewportSize.width / 2,
@@ -155,14 +163,21 @@ export class MapVisualEffects {
         r: visuals.tintColor.r,
         g: visuals.tintColor.g,
         b: visuals.tintColor.b,
-        a: visuals.maxTintAlpha * intensity,
+        a: visuals.maxTintAlpha * intensity * (0.85 + 0.15 * flicker),
       },
       {
         noise: {
-          colorAmplitude: visuals.maxNoiseColor * intensity,
-          alphaAmplitude: visuals.maxNoiseAlpha * intensity,
+          colorAmplitude: visuals.maxNoiseColor * artifactStrength * (0.75 + 0.25 * pulse),
+          alphaAmplitude: visuals.maxNoiseAlpha * artifactStrength * (0.75 + 0.25 * flicker),
           scale: visuals.noiseScale,
           density: visuals.noiseDensity,
+        },
+        filaments: {
+          colorContrast: visuals.filamentColorContrast * artifactStrength,
+          alphaContrast: visuals.filamentAlphaContrast * artifactStrength,
+          width: visuals.filamentWidth,
+          density: visuals.filamentDensity * artifactStrength,
+          edgeBlur: visuals.filamentEdgeBlur,
         },
       }
     );
