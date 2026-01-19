@@ -21,8 +21,17 @@ export class RadiationPostProcess {
   private height = 0;
   private loggedInitFailure = false;
   private loggedFramebufferFailure = false;
+  private loggedMissingTexture = false;
+  private loggedZeroSize = false;
 
   public beginFrame(gl: WebGL2RenderingContext, width: number, height: number): boolean {
+    if (width <= 0 || height <= 0) {
+      if (!this.loggedZeroSize) {
+        this.loggedZeroSize = true;
+        console.error("[RadiationPostProcess] Invalid framebuffer size.", { width, height });
+      }
+      return false;
+    }
     if (!this.ensureResources(gl)) {
       if (!this.loggedInitFailure) {
         this.loggedInitFailure = true;
@@ -50,9 +59,9 @@ export class RadiationPostProcess {
     timeSeconds: number,
     intensity: number,
     config: MapEffectPostProcessConfig,
-  ): void {
+  ): boolean {
     if (!this.resources || intensity <= 0) {
-      return;
+      return false;
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.width, this.height);
@@ -67,6 +76,12 @@ export class RadiationPostProcess {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.resources.texture);
       gl.uniform1i(textureLocation, 0);
+    } else {
+      if (!this.loggedMissingTexture) {
+        this.loggedMissingTexture = true;
+        console.error("[RadiationPostProcess] Missing scene texture uniform.");
+      }
+      return false;
     }
 
     this.setUniform(gl, "u_time", timeSeconds);
@@ -82,6 +97,7 @@ export class RadiationPostProcess {
     this.setUniform(gl, "u_bandIntensity", config.bandIntensity);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
+    return true;
   }
 
   public blitToScreen(gl: WebGL2RenderingContext): void {
@@ -194,6 +210,7 @@ export class RadiationPostProcess {
       return;
     }
     this.loggedFramebufferFailure = false;
+    this.loggedZeroSize = false;
     this.width = width;
     this.height = height;
     gl.bindTexture(gl.TEXTURE_2D, this.resources.texture);

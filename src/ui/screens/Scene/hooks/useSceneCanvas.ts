@@ -436,13 +436,17 @@ export const useSceneCanvas = ({
             radiation && radiation.maxLevel > 0 ? radiation.level / radiation.maxLevel : 0;
           if (radiation?.postProcess && intensity > 0.01) {
             gl.disable(gl.BLEND);
-            postProcessRef.current.render(
+            const rendered = postProcessRef.current.render(
               gl,
               timestamp / 1000,
               intensity,
               radiation.postProcess
             );
             gl.enable(gl.BLEND);
+            if (!rendered) {
+              console.warn("[RadiationPostProcess] Render failed; falling back to blit.");
+              postProcessRef.current.blitToScreen(gl);
+            }
           } else {
             console.warn("[RadiationPostProcess] Skipped render; falling back to blit.");
             postProcessRef.current.blitToScreen(gl);
