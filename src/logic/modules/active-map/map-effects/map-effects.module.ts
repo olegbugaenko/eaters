@@ -28,6 +28,7 @@ export class MapEffectsModule {
         growthPerSecond: Math.max(config.growthPerSecond, 0),
         hpDrainPercentPerSecond: Math.max(config.hpDrainPercentPerSecond, 0),
         targets: config.targets,
+        postProcess: config.postProcess,
       };
     });
   }
@@ -35,6 +36,20 @@ export class MapEffectsModule {
   public getEffectLevel(effectId: MapEffectId): number | null {
     const effect = this.activeEffects.find((active) => active.id === effectId);
     return effect ? effect.level : null;
+  }
+
+  public getEffectSnapshot(
+    effectId: MapEffectId
+  ): { level: number; maxLevel: number; postProcess?: MapEffectRuntimeState["postProcess"] } | null {
+    const effect = this.activeEffects.find((active) => active.id === effectId);
+    if (!effect) {
+      return null;
+    }
+    return {
+      level: effect.level,
+      maxLevel: effect.maxLevel,
+      postProcess: effect.postProcess,
+    };
   }
 
   public tick(deltaMs: number): void {

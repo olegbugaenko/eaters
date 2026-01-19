@@ -20,6 +20,7 @@ import { MapRunLifecycle } from "./map.run-lifecycle";
 import { MapEffectsModule } from "../map-effects/map-effects.module";
 import {
   MapAutoRestartState,
+  MapEffectsBridgeState,
   MapLevelStats,
   MapListEntry,
   MapModuleOptions,
@@ -43,6 +44,7 @@ import {
   MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
   MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
   MAP_INSPECTED_TARGET_BRIDGE_KEY,
+  MAP_EFFECTS_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
   DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
   DEFAULT_MAP_ID,
@@ -67,6 +69,7 @@ export class MapModule implements GameModule {
   private inspectedTargetLastPublishMs = 0;
   private readonly selection: MapSelectionState;
   private readonly runLifecycle: MapRunLifecycle;
+  private readonly mapEffects: MapEffectsModule;
   private readonly unlocks;
   private readonly getSkillLevel;
   private readonly newUnlocks;
@@ -82,6 +85,9 @@ export class MapModule implements GameModule {
   private readonly sceneCleanup: MapSceneCleanupContract;
   private currentMapBonusSourceId: string | null = null;
   private hasRegisteredUnlocks = false;
+  private mapEffectsElapsedMs = 0;
+  private mapEffectsLastPublishMs = 0;
+  private lastMapEffectsSnapshot: MapEffectsBridgeState | null = null;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
@@ -94,6 +100,7 @@ export class MapModule implements GameModule {
       playerUnits: options.playerUnits,
       enemies: options.enemies,
     });
+    this.mapEffects = mapEffects;
     const visuals = new MapVisualEffects(options.scene, mapEffects);
     this.runLifecycle = new MapRunLifecycle({
       runState: options.runState,
@@ -121,6 +128,7 @@ export class MapModule implements GameModule {
     this.pushMapSelectViewTransform();
     this.pushControlHintsState();
     this.resetInspectedTargetState();
+    this.resetMapEffectsState();
     this.ensureSelection();
   }
 
@@ -131,6 +139,7 @@ export class MapModule implements GameModule {
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.resetInspectedTargetState();
+    this.resetMapEffectsState();
     this.ensureSelection();
   }
 
@@ -184,8 +193,10 @@ export class MapModule implements GameModule {
       return;
     }
     this.inspectedTargetElapsedMs += Math.max(deltaMs, 0);
+    this.mapEffectsElapsedMs += Math.max(deltaMs, 0);
     this.runLifecycle.tick(deltaMs);
     this.publishInspectedTarget();
+    this.publishMapEffects();
     const changed = this.refreshAutoRestartState();
     if (changed) {
       this.pushAutoRestartState();
@@ -555,12 +566,75 @@ export class MapModule implements GameModule {
   private handleRunStateEvent(event: MapRunEvent): void {
     if (event.type === "reset") {
       this.resetInspectedTargetState();
+      this.resetMapEffectsState();
       this.sceneCleanup.resetAfterRun();
       return;
     }
     if (event.type === "complete") {
       this.handleMapRunCompleted(event.success);
     }
+  }
+
+  private resetMapEffectsState(): void {
+    this.mapEffectsElapsedMs = 0;
+    this.mapEffectsLastPublishMs = 0;
+    this.lastMapEffectsSnapshot = null;
+    DataBridgeHelpers.pushState(this.options.bridge, MAP_EFFECTS_BRIDGE_KEY, {
+      radioactivity: null,
+    });
+  }
+
+  private publishMapEffects(force = false): void {
+    const intervalMs = 100;
+    const elapsed = this.mapEffectsElapsedMs - this.mapEffectsLastPublishMs;
+    if (!force && elapsed < intervalMs) {
+      return;
+    }
+    this.mapEffectsLastPublishMs = this.mapEffectsElapsedMs;
+    const radioactivity = this.mapEffects.getEffectSnapshot("radioactivity");
+    const snapshot: MapEffectsBridgeState = {
+      radioactivity: radioactivity
+        ? {
+            level: radioactivity.level,
+            maxLevel: radioactivity.maxLevel,
+            postProcess: radioactivity.postProcess,
+          }
+        : null,
+    };
+    if (!force && this.isMapEffectsSnapshotEqual(this.lastMapEffectsSnapshot, snapshot)) {
+      return;
+    }
+    this.lastMapEffectsSnapshot = snapshot;
+    DataBridgeHelpers.pushState(this.options.bridge, MAP_EFFECTS_BRIDGE_KEY, snapshot);
+  }
+
+  private isMapEffectsSnapshotEqual(
+    left: MapEffectsBridgeState | null,
+    right: MapEffectsBridgeState
+  ): boolean {
+    if (!left) {
+      return false;
+    }
+    if (!left.radioactivity && !right.radioactivity) {
+      return true;
+    }
+    if (!left.radioactivity || !right.radioactivity) {
+      return false;
+    }
+    const leftPost = left.radioactivity.postProcess;
+    const rightPost = right.radioactivity.postProcess;
+    return (
+      left.radioactivity.level === right.radioactivity.level &&
+      left.radioactivity.maxLevel === right.radioactivity.maxLevel &&
+      leftPost?.waveAmplitude === rightPost?.waveAmplitude &&
+      leftPost?.waveFrequency === rightPost?.waveFrequency &&
+      leftPost?.waveSpeed === rightPost?.waveSpeed &&
+      leftPost?.jitterStrength === rightPost?.jitterStrength &&
+      leftPost?.jitterFrequency === rightPost?.jitterFrequency &&
+      leftPost?.bandSpeed === rightPost?.bandSpeed &&
+      leftPost?.bandWidth === rightPost?.bandWidth &&
+      leftPost?.bandIntensity === rightPost?.bandIntensity
+    );
   }
 
   private updateSelection(mapId: MapId): void {

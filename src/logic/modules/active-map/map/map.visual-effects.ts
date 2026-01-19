@@ -1,6 +1,5 @@
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import { createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { getMapEffectConfig } from "../../../../db/map-effects-db";
@@ -158,27 +157,50 @@ export class MapVisualEffects {
       y: camera.position.y + camera.viewportSize.height / 2,
     };
     const size = this.resolveViewportSize(camera.viewportSize);
-    const fill = createSolidFill(
-      {
-        r: visuals.tintColor.r,
-        g: visuals.tintColor.g,
-        b: visuals.tintColor.b,
-        a: visuals.maxTintAlpha * intensity * (0.85 + 0.15 * flicker),
-      },
-      {
-        noise: {
-          colorAmplitude: visuals.maxNoiseColor * artifactStrength * (0.75 + 0.25 * pulse),
-          alphaAmplitude: visuals.maxNoiseAlpha * artifactStrength * (0.75 + 0.25 * flicker),
-          scale: visuals.noiseScale,
-          density: visuals.noiseDensity,
+    const baseAlpha = visuals.maxTintAlpha * intensity * (0.9 + 0.1 * flicker);
+    const radius = Math.max(size.width, size.height) * (0.6 + 0.2 * pulse);
+    const noiseEnabled = visuals.maxNoiseAlpha > 0 || visuals.maxNoiseColor > 0;
+    const fill = createRadialGradientFill(
+      radius,
+      [
+        {
+          offset: 0,
+          color: {
+            r: visuals.tintColor.r,
+            g: visuals.tintColor.g,
+            b: visuals.tintColor.b,
+            a: baseAlpha,
+          },
         },
-        filaments: {
-          colorContrast: visuals.filamentColorContrast * artifactStrength,
-          alphaContrast: visuals.filamentAlphaContrast * artifactStrength,
-          width: visuals.filamentWidth,
-          density: visuals.filamentDensity * artifactStrength,
-          edgeBlur: visuals.filamentEdgeBlur,
+        {
+          offset: 0.55,
+          color: {
+            r: visuals.tintColor.r,
+            g: visuals.tintColor.g,
+            b: visuals.tintColor.b,
+            a: baseAlpha * 0.6,
+          },
         },
+        {
+          offset: 1,
+          color: {
+            r: visuals.tintColor.r,
+            g: visuals.tintColor.g,
+            b: visuals.tintColor.b,
+            a: 0,
+          },
+        },
+      ],
+      {
+        start: { x: 0, y: 0 },
+        noise: noiseEnabled
+          ? {
+              colorAmplitude: visuals.maxNoiseColor * artifactStrength,
+              alphaAmplitude: visuals.maxNoiseAlpha * artifactStrength,
+              scale: visuals.noiseScale,
+              density: visuals.noiseDensity,
+            }
+          : undefined,
       }
     );
 

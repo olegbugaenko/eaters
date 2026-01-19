@@ -21,6 +21,7 @@ import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
 import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
+import type { MapEffectPostProcessConfig } from "../../../../db/map-effects-db";
 
 export interface ResourceRunController {
   startRun(): void;
@@ -89,6 +90,14 @@ export interface MapRunResult {
 export interface MapAutoRestartState {
   readonly unlocked: boolean;
   readonly enabled: boolean;
+}
+
+export interface MapEffectsBridgeState {
+  readonly radioactivity: {
+    level: number;
+    maxLevel: number;
+    postProcess?: MapEffectPostProcessConfig;
+  } | null;
 }
 
 export type MapModuleInstance = GameModule & { id: string };
