@@ -1,18 +1,28 @@
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import { createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
+import { clampNumber } from "@shared/helpers/numbers.helper";
+import { getMapEffectConfig } from "../../../../db/map-effects-db";
+import type { MapEffectsModule } from "../map-effects/map-effects.module";
 
 const CAMERA_FOCUS_TICKS = 6;
+const RADIOACTIVITY_OVERLAY_ID = "map-radioactivity-overlay";
 
 export class MapVisualEffects {
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
   private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
+  private radioactivityOverlayId: string | null = null;
 
-  constructor(private readonly scene: SceneObjectManager) {}
+  constructor(
+    private readonly scene: SceneObjectManager,
+    private readonly mapEffects: MapEffectsModule
+  ) {}
 
   public reset(): void {
     this.clearPortalObjects();
     this.pendingCameraFocus = null;
+    this.clearRadioactivityOverlay();
   }
 
   public setCameraFocus(point: SceneVector2): void {
@@ -71,6 +81,7 @@ export class MapVisualEffects {
   public tick(): void {
     this.applyPendingCameraFocus();
     this.updatePortalObjects();
+    this.updateRadioactivityOverlay();
   }
 
   public clearPortalObjects(): void {
@@ -114,5 +125,77 @@ export class MapVisualEffects {
       ticksRemaining: pending.ticksRemaining - 1,
     };
   }
-}
 
+  private updateRadioactivityOverlay(): void {
+    const level = this.mapEffects.getEffectLevel("radioactivity");
+    if (level === null) {
+      this.clearRadioactivityOverlay();
+      return;
+    }
+    const config = getMapEffectConfig("radioactivity");
+    const visuals = config.visuals;
+    if (!visuals) {
+      this.clearRadioactivityOverlay();
+      return;
+    }
+
+    const intensity = clampNumber(
+      config.maxLevel > 0 ? level / config.maxLevel : 0,
+      0,
+      1
+    );
+    const camera = this.scene.getCamera();
+    const center = {
+      x: camera.position.x + camera.viewportSize.width / 2,
+      y: camera.position.y + camera.viewportSize.height / 2,
+    };
+    const size = this.resolveViewportSize(camera.viewportSize);
+    const fill = createSolidFill(
+      {
+        r: visuals.tintColor.r,
+        g: visuals.tintColor.g,
+        b: visuals.tintColor.b,
+        a: visuals.maxTintAlpha * intensity,
+      },
+      {
+        noise: {
+          colorAmplitude: visuals.maxNoiseColor * intensity,
+          alphaAmplitude: visuals.maxNoiseAlpha * intensity,
+          scale: visuals.noiseScale,
+          density: visuals.noiseDensity,
+        },
+      }
+    );
+
+    if (!this.radioactivityOverlayId) {
+      this.radioactivityOverlayId = this.scene.addObject("screenOverlay", {
+        position: center,
+        size,
+        fill,
+        rotation: 0,
+        customData: { id: RADIOACTIVITY_OVERLAY_ID },
+      });
+      return;
+    }
+
+    this.scene.updateObject(this.radioactivityOverlayId, {
+      position: center,
+      size,
+      fill,
+    });
+  }
+
+  private resolveViewportSize(viewport: SceneSize): SceneSize {
+    const width = Math.max(0, viewport.width);
+    const height = Math.max(0, viewport.height);
+    return { width, height };
+  }
+
+  private clearRadioactivityOverlay(): void {
+    if (!this.radioactivityOverlayId) {
+      return;
+    }
+    this.scene.removeObject(this.radioactivityOverlayId);
+    this.radioactivityOverlayId = null;
+  }
+}

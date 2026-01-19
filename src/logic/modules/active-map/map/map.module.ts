@@ -90,11 +90,11 @@ export class MapModule implements GameModule {
     this.getSkillLevel = options.getSkillLevel;
     this.newUnlocks = options.newUnlocks;
     this.selection = new MapSelectionState(DEFAULT_MAP_ID);
-    const visuals = new MapVisualEffects(options.scene);
     const mapEffects = new MapEffectsModule({
       playerUnits: options.playerUnits,
       enemies: options.enemies,
     });
+    const visuals = new MapVisualEffects(options.scene, mapEffects);
     this.runLifecycle = new MapRunLifecycle({
       runState: options.runState,
       resources: options.resources,

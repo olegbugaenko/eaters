@@ -32,6 +32,11 @@ export class MapEffectsModule {
     });
   }
 
+  public getEffectLevel(effectId: MapEffectId): number | null {
+    const effect = this.activeEffects.find((active) => active.id === effectId);
+    return effect ? effect.level : null;
+  }
+
   public tick(deltaMs: number): void {
     if (deltaMs <= 0 || this.activeEffects.length === 0) {
       return;
@@ -53,7 +58,9 @@ export class MapEffectsModule {
         return;
       }
 
-      const damagePercentPerSecond = effect.level * effect.hpDrainPercentPerSecond;
+      const normalizedLevel =
+        effect.maxLevel > 0 ? clampNumber(effect.level / effect.maxLevel, 0, 1) : 0;
+      const damagePercentPerSecond = normalizedLevel * effect.hpDrainPercentPerSecond;
       const damageMultiplier = (damagePercentPerSecond / 100) * deltaSeconds;
       if (damageMultiplier <= 0) {
         return;
