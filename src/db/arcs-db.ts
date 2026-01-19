@@ -14,6 +14,8 @@ export interface ArcConfig {
   readonly bendsPer100Px: number;
   readonly noiseAmplitude: number;
   readonly aperiodicStrength?: number;
+  readonly kinkAmplitude?: number;
+  readonly kinkFrequency?: number;
   readonly oscillationPeriodMs: number;
   readonly oscillationAmplitude: number;
 }
@@ -91,6 +93,8 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     bendsPer100Px: 3,
     noiseAmplitude: 16,
     aperiodicStrength: 0.35,
+    kinkAmplitude: 2,
+    kinkFrequency: 1.2,
     oscillationPeriodMs: 170,
     oscillationAmplitude: 0.4,
   },

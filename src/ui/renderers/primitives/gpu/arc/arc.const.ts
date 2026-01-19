@@ -84,6 +84,8 @@ uniform float u_blurWidth;
 uniform float u_fadeStartMs;
 uniform float u_noiseAmplitude;
 uniform float u_aperiodicStrength;
+uniform float u_kinkAmplitude;
+uniform float u_kinkFrequency;
 uniform float u_oscAmplitude;
 uniform float u_oscAngularSpeed;
 
@@ -109,6 +111,10 @@ float valueNoise(float x) {
   return mix(a, b, u) * 2.0 - 1.0;
 }
 
+float tri(float x) {
+  return abs(fract(x) - 0.5) * 2.0 - 0.5;
+}
+
 void main(){
   float len = max(v_length, 0.0001);
   vec2 rel = v_worldPos - v_from;
@@ -123,7 +129,8 @@ void main(){
   float aperiodic = valueNoise(phase + timeOsc * 0.37 + seed * 12.0);
   float mixedNoise = mix(periodic, aperiodic, u_aperiodicStrength);
   float n = mixedNoise * u_noiseAmplitude * (1.0 + u_oscAmplitude * 0.5);
-  float dist = abs(baseOffset - n);
+  float kink = tri(phase * u_kinkFrequency + seed) * u_kinkAmplitude;
+  float dist = abs(baseOffset - n - kink);
 
   float taperFrac = 0.2;
   float endIn  = smoothstep(0.0, taperFrac, t);
