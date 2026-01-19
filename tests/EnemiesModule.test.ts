@@ -21,6 +21,7 @@ import { PathfindingService } from "../src/logic/shared/navigation/PathfindingSe
 import type { ObstacleDescriptor, ObstacleProvider } from "../src/logic/shared/navigation/navigation.types";
 import type { SceneVector2 } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
+import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import type { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import type { TargetSnapshot } from "../src/logic/modules/active-map/targeting/targeting.types";
 import type { DamageService as DamageServiceType } from "../src/logic/modules/active-map/targeting/DamageService";
@@ -85,6 +86,7 @@ const createEnemiesModuleWithDeps = (
     ({
       grantResources: () => {},
     } as EnemiesModuleOptions["resources"]);
+  const bonuses = options.bonuses ?? new BonusesModule();
   const obstacles = options.obstacles ?? undefined;
   const pathfinder =
     options.pathfinder ??
@@ -102,6 +104,7 @@ const createEnemiesModuleWithDeps = (
       runState,
       movement,
       resources,
+      bonuses,
       bricks,
       statusEffects,
       targeting: options.targeting,

@@ -194,6 +194,14 @@ export class BricksModule implements GameModule {
     return this.cloneState(state);
   }
 
+  public getBrickPositionIfAlive(brickId: string): SceneVector2 | null {
+    const state = this.bricks.get(brickId);
+    if (!state) {
+      return null;
+    }
+    return { ...state.position };
+  }
+
   public findNearestBrick(position: SceneVector2): BrickRuntimeState | null {
     const nearest = this.spatialIndex.queryNearest(position, { maxLayers: 128 });
     return nearest ? this.cloneState(nearest) : null;

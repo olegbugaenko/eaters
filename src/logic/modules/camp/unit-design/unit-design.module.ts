@@ -675,6 +675,24 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           hint: `Stacks up to +${roundedCap}% attack`,
         };
       }
+      case "conductorTentacles": {
+        const meta = getUnitModuleConfig(detail.id).meta;
+        const radius = Math.max(meta?.chainRadius ?? 0, 0);
+        const jumps = Math.max(meta?.chainJumps ?? 0, 0);
+        const hintParts: string[] = [];
+        if (jumps > 0) {
+          hintParts.push(`Chains ${jumps} times`);
+        }
+        if (radius > 0) {
+          hintParts.push(`within ${radius} units`);
+        }
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "percent",
+          hint: hintParts.length > 0 ? hintParts.join(", ") : undefined,
+        };
+      }
       default:
         return {
           label: detail.bonusLabel,
