@@ -18,6 +18,8 @@ export type ArcGpuUniforms = {
   noiseAmplitude: number;
   noiseDensity: number; // cycles per length unit
   aperiodicStrength: number;
+  kinkAmplitude: number;
+  kinkFrequency: number;
   oscAmplitude: number;
   oscAngularSpeed: number; // radians per ms
 };
@@ -45,6 +47,8 @@ export interface ArcSharedResources {
     noiseAmplitude: WebGLUniformLocation | null;
     noiseDensity: WebGLUniformLocation | null;
     aperiodicStrength: WebGLUniformLocation | null;
+    kinkAmplitude: WebGLUniformLocation | null;
+    kinkFrequency: WebGLUniformLocation | null;
     oscAmplitude: WebGLUniformLocation | null;
     oscAngularSpeed: WebGLUniformLocation | null;
   };
