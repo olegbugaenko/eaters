@@ -88,6 +88,7 @@ export class RadiationPostProcess {
     if (!this.resources) {
       return;
     }
+    console.warn("[RadiationPostProcess] Blitting scene to screen (fallback).");
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.resources.framebuffer);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
     gl.blitFramebuffer(

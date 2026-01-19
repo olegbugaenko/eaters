@@ -126,6 +126,7 @@ export const useSceneCanvas = ({
   const movableStatsLastUpdateRef = useRef(0);
   const postProcessRef = useRef(new RadiationPostProcess());
   const postProcessActiveRef = useRef(false);
+  const postProcessLastReasonRef = useRef<string | null>(null);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
   const rightMouseDownPositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -357,6 +358,20 @@ export const useSceneCanvas = ({
           radiation && radiation.maxLevel > 0 ? radiation.level / radiation.maxLevel : 0;
         const config = radiation?.postProcess;
         const active = Boolean(config && intensity > 0.01);
+        const nextReason = active
+          ? "active"
+          : !radiation
+            ? "no-radioactivity"
+            : !config
+              ? "no-postprocess-config"
+              : "intensity-too-low";
+        if (postProcessLastReasonRef.current !== nextReason) {
+          postProcessLastReasonRef.current = nextReason;
+          console.info("[RadiationPostProcess] State:", {
+            reason: nextReason,
+            intensity: Number(intensity.toFixed(3)),
+          });
+        }
         if (active) {
           postProcessActiveRef.current = postProcessRef.current.beginFrame(
             gl,
