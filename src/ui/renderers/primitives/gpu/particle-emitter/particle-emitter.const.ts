@@ -76,6 +76,7 @@ out vec4 v_stopColor2;
 out vec4 v_stopColor3;
 out vec4 v_stopColor4;
 out float v_shape;
+out vec2 v_alignDir;
 out vec2 v_particleCenter;
 out float v_particleRadius;
 
@@ -102,10 +103,10 @@ void main() {
   float lengthMul = max(u_lengthMultiplier, 1.0);
   vec2 baseOffset = vec2(a_unitPosition.x * size * lengthMul, a_unitPosition.y * size);
   vec2 world;
+  vec2 dir = a_velocity;
+  float len = length(dir);
+  vec2 ndir = len > 0.0001 ? dir / len : vec2(1.0, 0.0);
   if (u_alignToVelocity == 1) {
-    vec2 dir = a_velocity;
-    float len = length(dir);
-    vec2 ndir = len > 0.0001 ? dir / len : vec2(1.0, 0.0);
     vec2 perp = vec2(-ndir.y, ndir.x);
     vec2 rotated = ndir * baseOffset.x + perp * baseOffset.y;
     world = center + rotated;
@@ -177,6 +178,7 @@ void main() {
   }
 
   v_shape = float(u_shape);
+  v_alignDir = u_alignToVelocity == 1 ? ndir : vec2(1.0, 0.0);
   v_particleCenter = center;
   v_particleRadius = size * 0.5;
 
@@ -206,6 +208,7 @@ in vec4 v_stopColor2;
 in vec4 v_stopColor3;
 in vec4 v_stopColor4;
 in float v_shape;
+in vec2 v_alignDir;
 in vec2 v_particleCenter;
 in float v_particleRadius;
 
@@ -274,7 +277,10 @@ void main() {
     }
   } else if (v_shape > 1.5) {
     // Triangle masking: slightly stretched isosceles to avoid "circle" look
-    vec2 localPos = (v_worldPosition - v_particleCenter) / max(v_particleRadius, 0.01);
+    vec2 toCenter = v_worldPosition - v_particleCenter;
+    vec2 perp = vec2(-v_alignDir.y, v_alignDir.x);
+    vec2 aligned = vec2(dot(toCenter, v_alignDir), dot(toCenter, perp));
+    vec2 localPos = aligned / max(v_particleRadius, 0.01);
     float x = localPos.x;
     float absY = abs(localPos.y);
     float baseX = -0.35;
