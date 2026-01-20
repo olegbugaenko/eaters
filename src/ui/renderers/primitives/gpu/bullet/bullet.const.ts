@@ -134,7 +134,8 @@ void main() {
     // pos is in world-relative coords (pixels)
     
     // Sprite is square, sized to be visible (3x radius so it's not too tiny)
-    vec2 spritePos = v_localPos * vec2(v_radius, v_radius);
+    float spriteScaleX = scaleY / max(scaleX, 0.0001);
+    vec2 spritePos = vec2(pos.x * spriteScaleX, pos.y);
     float spriteHalf = v_radius;
     
     // Sprite center is at origin (where bullet center is)
