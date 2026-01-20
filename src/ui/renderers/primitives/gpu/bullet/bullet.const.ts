@@ -134,18 +134,14 @@ void main() {
     // pos is in world-relative coords (pixels)
     
     // Sprite is square, sized to be visible (3x radius so it's not too tiny)
-    vec2 spritePos = vec2(
-      pos.x * (v_radius / max(scaleX, 0.0001)),
-      pos.y * (v_radius / max(scaleY, 0.0001))
-    );
     float spriteHalf = v_radius;
     
     // Sprite center is at origin (where bullet center is)
-    if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
+    if (abs(pos.x) < spriteHalf && abs(pos.y) < spriteHalf) {
       // Map pos to UV [0,1]
       // pos.x from -spriteHalf to +spriteHalf -> u from 0 to 1
-      float u = (spritePos.x / spriteHalf) * 0.5 + 0.5;
-      float v = (spritePos.y / spriteHalf) * 0.5 + 0.5;
+      float u = (pos.x / spriteHalf) * 0.5 + 0.5;
+      float v = (pos.y / spriteHalf) * 0.5 + 0.5;
       // Flip V for correct orientation (texture Y is inverted)
       v = 1.0 - v;
       
