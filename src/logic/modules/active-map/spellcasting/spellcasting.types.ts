@@ -6,6 +6,7 @@ import type { BricksModule } from "../bricks/bricks.module";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
+import type { ArcModule } from "../../scene/arc/arc.module";
 import type { MapRunState } from "../map/MapRunState";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SkillId } from "../../../../db/skills-db";
@@ -60,6 +61,7 @@ export interface SpellcastingModuleOptions {
   bricks: BricksModule;
   bonuses: BonusesModule;
   explosions?: ExplosionModule;
+  arcs?: ArcModule;
   projectiles: UnitProjectileController;
   damage: DamageService;
   targeting: TargetingService;

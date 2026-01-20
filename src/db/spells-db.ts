@@ -17,6 +17,7 @@ export type SpellId =
   | "magic-arrow"
   | "sand-storm"
   | "void-darts"
+  | "electric-shards"
   | "ring-of-fire"
   | "weaken-curse";
 
@@ -34,6 +35,19 @@ export interface SpellDamageConfig {
 
 export type ProjectileShape = "circle" | "sprite";
 
+export interface SpellProjectileWanderConfig {
+  /** Time between direction adjustments in milliseconds. */
+  intervalMs: number;
+  /** Maximum deviation angle from the current direction in degrees. */
+  angleRangeDeg: number;
+}
+
+export interface SpellProjectileChainConfig {
+  radius: number;
+  jumps: number;
+  damageMultiplier: number;
+}
+
 export interface SpellProjectileConfig {
   radius: number;
   speed: number;
@@ -43,6 +57,7 @@ export interface SpellProjectileConfig {
   tailEmitter?: ParticleEmitterConfig;
   spawnOffset?: SceneVector2;
   ringTrail?: SpellProjectileRingTrailConfig;
+  rotationSpinningDegPerSec?: number;
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   attackSeries?: AttackSeriesConfig;
@@ -51,6 +66,8 @@ export interface SpellProjectileConfig {
   targetTypes?: TargetType[];
   aoe?: { radius: number; splash: number };
   explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
+  wander?: SpellProjectileWanderConfig;
+  chain?: SpellProjectileChainConfig;
 }
 
 export interface SpellWhirlConfig {
@@ -217,6 +234,26 @@ const VOID_DARTS_TAIL_EMITTER: ParticleEmitterConfig = {
   maxParticles: 290,
 };
 
+const ELECTRIC_SHARDS_TAIL_EMITTER: ParticleEmitterConfig = {
+  particlesPerSecond: 60,
+  particleLifetimeMs: 700,
+  fadeStartMs: 220,
+  baseSpeed: 0.18,
+  speedVariation: 0.2,
+  sizeRange: { min: 3.5, max: 7.2 },
+  spread: Math.PI / 6,
+  offset: { x: -1, y: 0 },
+  color: { r: 0.35, g: 0.75, b: 1, a: 0.2 },
+  fill: {
+    fillType: FILL_TYPES.RADIAL_GRADIENT,
+    stops: [
+      { offset: 0, color: { r: 0.65, g: 0.95, b: 1, a: 0.2 } },
+      { offset: 1, color: { r: 0.35, g: 0.75, b: 1, a: 0 } },
+    ],
+  },
+  maxParticles: 300,
+};
+
 const SPELL_DB: Record<SpellId, SpellConfig> = {
   "magic-arrow": {
     id: "magic-arrow",
@@ -350,6 +387,47 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       spriteName: "needle",
     },
     unlock: { skillId: "black_darts", level: 1 },
+  },
+  "electric-shards": {
+    id: "electric-shards",
+    type: "projectile",
+    name: "Electric Shards",
+    description:
+      "Launch crackling shards that drift unpredictably and arc electricity between targets.",
+    cost: { mana: 7.5, sanity: 0 },
+    cooldownSeconds: 1.6,
+    damage: { min: 2, max: 5 },
+    projectile: {
+      radius: 32,
+      speed: 65,
+      lifetimeMs: 9_500,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.6, g: 0.85, b: 1, a: 0.65 },
+      },
+      tail: {
+        lengthMultiplier: 3.2,
+        widthMultiplier: 1.1,
+        startColor: { r: 0.4, g: 0.7, b: 1, a: 0.4 },
+        endColor: { r: 0.2, g: 0.45, b: 0.95, a: 0 },
+      },
+      tailEmitter: ELECTRIC_SHARDS_TAIL_EMITTER,
+      rotationSpinningDegPerSec: 180,
+      count: 4,
+      spreadAngle: 18,
+      shape: "sprite",
+      spriteName: "electricity_orb",
+      wander: {
+        intervalMs: 320,
+        angleRangeDeg: 28,
+      },
+      chain: {
+        radius: 150,
+        jumps: 2,
+        damageMultiplier: 0.6,
+      },
+    },
+    unlock: { skillId: "electric_shards", level: 1 },
   },
   "ring-of-fire": {
     id: "ring-of-fire",

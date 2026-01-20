@@ -10,6 +10,11 @@ import type { ExplosionType } from "@/db/explosions-db";
 
 export type UnitProjectileShape = "circle" | "sprite";
 
+export interface UnitProjectileWanderConfig {
+  intervalMs: number;
+  angleRangeDeg: number;
+}
+
 export interface UnitProjectileVisualConfig {
   radius: number;
   speed: number;
@@ -20,6 +25,7 @@ export interface UnitProjectileVisualConfig {
   tail?: BulletTailConfig;
   tailEmitter?: ParticleEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;
+  rotationSpinningDegPerSec?: number;
   shape?: UnitProjectileShape;
   /** Sprite name when shape === "sprite" */
   spriteName?: BulletSpriteName;
@@ -30,6 +36,7 @@ export interface UnitProjectileVisualConfig {
   /** Explosion type when projectile hits target (optional) */
   explosion?: ExplosionType;
   rendererCustomData?: Record<string, unknown>;
+  wander?: UnitProjectileWanderConfig;
 }
 
 export interface UnitProjectileSpawn {
@@ -85,6 +92,15 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
   hitRadius: number;
   damageRadius: number;
   position: SceneVector2;
+  wander?: {
+    intervalMs: number;
+    angleRangeRad: number;
+    accumulatorMs: number;
+  };
+  rotationSpin?: {
+    radiansPerMs: number;
+    rotationRad: number;
+  };
   // GPU rendering slot (if using GPU instanced rendering)
   gpuSlot?: BulletSlotHandle;
   // Прапорець для пропуску руху в перший тік

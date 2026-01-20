@@ -1,4 +1,5 @@
 import type { ExplosionType } from "../../../../../db/explosions-db";
+import type { SpellProjectileChainConfig } from "../../../../../db/spells-db";
 
 export interface ProjectileSpellData {
   spellId: string;
@@ -7,4 +8,5 @@ export interface ProjectileSpellData {
   damageMultiplier: number;
   aoe?: { radius: number; splash: number };
   explosion?: ExplosionType;
+  chain?: SpellProjectileChainConfig;
 }

@@ -8,9 +8,8 @@ import {
   AbilityStateBase,
 } from "../ability.types";
 import type { TargetSnapshot } from "../../../targeting/targeting.types";
-import type { ArcTargetType } from "../../../../scene/arc/arc.types";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { subtractVectors, vectorHasLength } from "@/shared/helpers/vector.helper";
+import { executeChainLightning } from "../../../chain-lightning.helpers";
 
 interface ChainLightningState extends AbilityStateBase {
   chainRadius: number;
@@ -83,7 +82,7 @@ const evaluateChainLightning = (
   };
 };
 
-const executeChainLightning = (
+const executeChainLightningAbility = (
   context: AbilityExecutionContext<ChainLightningState, ChainLightningTarget>,
 ): AbilityExecutionResult => {
   const { unit, state, dependencies, services, target } = context;
@@ -101,62 +100,29 @@ const executeChainLightning = (
     return { success: false };
   }
 
-  let currentTarget = target;
-  const visited = new Set<string>([`${target.type}:${target.id}`]);
   const applyDamageOptions = {
     rewardMultiplier: unit.rewardMultiplier,
     armorPenetration: unit.armorPenetration,
     skipKnockback: true,
   };
 
-  for (let i = 0; i < state.chainJumps; i += 1) {
-    const candidates = getTargetsInRadius(currentTarget.position, state.chainRadius, [
-      "brick",
-      "enemy",
-    ]).filter((candidate): candidate is TargetSnapshot<"brick" | "enemy"> => {
-      const key = `${candidate.type}:${candidate.id}`;
-      return !visited.has(key) && isChainTarget(candidate);
-    });
+  const chained = executeChainLightning({
+    startTarget: target,
+    chainRadius: state.chainRadius,
+    chainJumps: state.chainJumps,
+    damage: chainDamage,
+    damageOptions: applyDamageOptions,
+    dependencies: {
+      getTargetsInRadius,
+      applyTargetDamage: dependencies.applyTargetDamage,
+      applyBrickDamage: dependencies.applyBrickDamage,
+      spawnArcBetweenTargets: (_arcType, source, target, options) =>
+        services.spawnArcBetweenTargets("chainLightning", source, target, options),
+    },
+    arcType: "chainLightning",
+  });
 
-    if (candidates.length === 0) {
-      break;
-    }
-
-    const nextCandidate = candidates[Math.floor(Math.random() * candidates.length)]!;
-    const nextTarget: ChainLightningTarget = {
-      id: nextCandidate.id,
-      type: nextCandidate.type,
-      position: nextCandidate.position,
-    };
-    const direction = subtractVectors(nextTarget.position, currentTarget.position);
-    const damageOptions = {
-      ...applyDamageOptions,
-      direction: vectorHasLength(direction) ? direction : undefined,
-    };
-
-    if (dependencies.applyTargetDamage) {
-      dependencies.applyTargetDamage(nextTarget.id, chainDamage, damageOptions);
-    } else if (nextTarget.type === "brick") {
-      dependencies.applyBrickDamage(nextTarget.id, chainDamage, damageOptions);
-    }
-
-    services.spawnArcBetweenTargets(
-      "chainLightning",
-      { type: currentTarget.type as ArcTargetType, id: currentTarget.id },
-      { type: nextTarget.type as ArcTargetType, id: nextTarget.id },
-      {
-        persistOnDeath: true,
-        sourcePosition: currentTarget.position,
-        targetPosition: nextTarget.position,
-      },
-    );
-
-    const key = `${nextTarget.type}:${nextTarget.id}`;
-    visited.add(key);
-    currentTarget = nextTarget;
-  }
-
-  return { success: true };
+  return { success: chained };
 };
 
 export const ChainLightningAbility: AbilityDescription<
@@ -196,5 +162,5 @@ export const ChainLightningAbility: AbilityDescription<
     };
   },
   evaluate: (context) => evaluateChainLightning(context),
-  execute: (context) => executeChainLightning(context),
+  execute: (context) => executeChainLightningAbility(context),
 };

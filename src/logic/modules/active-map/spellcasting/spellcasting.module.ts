@@ -75,6 +75,7 @@ export class SpellcastingModule implements GameModule {
       bricks: this.bricks,
       bonuses: this.bonuses,
       explosions: options.explosions,
+      arcs: options.arcs,
       projectiles: options.projectiles,
       damage: options.damage,
       targeting: options.targeting,
