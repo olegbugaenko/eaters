@@ -239,7 +239,7 @@ export class UnitProjectileController {
       tailStartColor: tailColors.start,
       tailEndColor: tailColors.end,
       tailLengthMultiplier: visual.tail?.lengthMultiplier ?? 4.5,
-      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 1.75,
+      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 2,
       tailOffsetMultiplier: visual.tail?.offsetMultiplier,
       shape,
       centerColor: radialColors?.center,

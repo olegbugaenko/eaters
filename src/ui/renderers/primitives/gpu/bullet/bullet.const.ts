@@ -61,8 +61,9 @@ void main() {
   vec2 bulletLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
-  float tailC = cos(a_instanceMovementRotation);
-  float tailS = sin(a_instanceMovementRotation);
+  float tailRotation = a_instanceMovementRotation + 3.141592653589793;
+  float tailC = cos(tailRotation);
+  float tailS = sin(tailRotation);
   vec2 rotatedTailPos = vec2(
     tailLocalPos.x * tailC - tailLocalPos.y * tailS,
     tailLocalPos.x * tailS + tailLocalPos.y * tailC
@@ -184,7 +185,7 @@ export const DEFAULT_BULLET_VISUAL: BulletVisualConfig = {
   tailStartColor: { r: 0.25, g: 0.45, b: 1.0, a: 0.65 },
   tailEndColor: { r: 0.05, g: 0.15, b: 0.6, a: 0.0 },
   tailLengthMultiplier: 4.5,
-  tailWidthMultiplier: 1.75,
+  tailWidthMultiplier: 2,
   shape: "circle",
 };
 

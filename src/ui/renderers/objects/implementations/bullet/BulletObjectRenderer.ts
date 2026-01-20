@@ -9,7 +9,7 @@ import {
   createDynamicTrianglePrimitive,
   createParticleEmitterPrimitive,
 } from "../../../primitives";
-import { getRenderComponents, getProjectileShape, getMovementRotation } from "./helpers";
+import { getRenderComponents, getProjectileShape, getTailRotation } from "./helpers";
 import { getTailConfig, createTailVertices, createTailFill } from "./tail.helpers";
 import {
   getTailEmitterConfig,
@@ -71,7 +71,7 @@ export class BulletObjectRenderer extends ObjectRenderer {
         createDynamicTrianglePrimitive(instance, {
           vertices: tailVertices,
           fill: tailFill,
-          getRotation: getMovementRotation,
+          getRotation: getTailRotation,
         })
       );
     }
