@@ -12,6 +12,46 @@ import type { SceneVector2 } from "../src/core/logic/provided/services/scene-obj
 const SOLID_FILL = { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 1, b: 1, a: 1 } } as const;
 
 describe("UnitProjectileController", () => {
+  test("keeps movement rotation separate from visual spin rotation", () => {
+    const scene = new SceneObjectManager();
+    scene.setMapSize({ width: 200, height: 200 });
+
+    const targeting = new TargetingService();
+    const bricksStub = {
+      applyDamage: () => ({ destroyed: false, brick: null, inflictedDamage: 0 }),
+    } as unknown as BricksModule;
+    const damage = new DamageService({ bricks: () => bricksStub, targeting });
+    const projectiles = new UnitProjectileController({ scene, targeting, damage });
+
+    const projectileId = projectiles.spawn({
+      origin: { x: 0, y: 0 },
+      direction: { x: 1, y: 0 },
+      damage: 1,
+      rewardMultiplier: 1,
+      armorPenetration: 0,
+      visual: {
+        radius: 3,
+        speed: 60,
+        lifetimeMs: 1000,
+        fill: SOLID_FILL,
+        rotationSpinningDegPerSec: 180,
+      },
+    });
+
+    projectiles.tick(1000);
+
+    const instance = scene.getObject(projectileId);
+    assert.ok(instance, "projectile instance should exist");
+
+    const customData = instance?.data.customData as
+      | { movementRotation?: number; visualRotation?: number }
+      | undefined;
+    assert.ok(customData, "projectile customData should be defined");
+    assert.strictEqual(customData?.movementRotation, 0);
+    assert.strictEqual(customData?.visualRotation, Math.PI);
+    assert.strictEqual(instance?.data.rotation, Math.PI);
+  });
+
   test("defaults to hostile targets instead of friendly units", () => {
     const scene = new SceneObjectManager();
     scene.setMapSize({ width: 200, height: 200 });

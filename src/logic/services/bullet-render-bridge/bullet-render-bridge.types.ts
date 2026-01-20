@@ -32,7 +32,8 @@ export type AcquireSlotFn = (config: BulletVisualConfig) => BulletSlotHandle | n
 export type UpdateSlotFn = (
   handle: BulletSlotHandle,
   position: SceneVector2,
-  rotation: number,
+  movementRotation: number,
+  visualRotation: number,
   radius: number,
   active: boolean
 ) => void;

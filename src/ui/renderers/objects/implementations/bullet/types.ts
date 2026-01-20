@@ -23,6 +23,8 @@ export interface BulletRendererCustomData {
   speed?: number;
   maxSpeed?: number;
   velocity?: SceneVector2;
+  movementRotation?: number;
+  visualRotation?: number;
   bulletGpuKey?: string;
   shape?: "circle" | "sprite";
   renderComponents?: {

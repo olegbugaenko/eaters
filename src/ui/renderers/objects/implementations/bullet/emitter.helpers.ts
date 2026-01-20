@@ -12,7 +12,7 @@ import type {
   BulletEmitterKey,
 } from "./types";
 import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
-import { getBulletRadius } from "./helpers";
+import { getBulletRadius, getMovementRotation } from "./helpers";
 
 // Caches for emitter configs
 const tailEmitterConfigCache = new WeakMap<
@@ -172,7 +172,7 @@ export const getTailEmitterOrigin = (
   };
   return transformObjectPoint(
     getInstanceRenderPosition(instance),
-    instance.data.rotation,
+    getMovementRotation(instance),
     offset
   );
 };
@@ -185,7 +185,7 @@ export const createTailParticle = (
   instance: SceneObjectInstance,
   config: BulletTailEmitterRenderConfig
 ): ParticleEmitterParticleState => {
-  const baseDirection = (instance.data.rotation ?? 0) + Math.PI;
+  const baseDirection = getMovementRotation(instance) + Math.PI;
   const halfSpread = config.spread / 2;
   const direction =
     baseDirection + (config.spread > 0 ? randomBetween(-halfSpread, halfSpread) : 0);
@@ -225,7 +225,7 @@ export const getGpuSpawnConfig = (
   spawnRadiusMin: 0,
   spawnRadiusMax: 0,
   arc: 0,
-  direction: (instance.data.rotation ?? 0) + Math.PI,
+  direction: getMovementRotation(instance) + Math.PI,
   spread: config.spread,
   radialVelocity: false,
 });

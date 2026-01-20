@@ -80,7 +80,8 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
     const attributes = {
       unitPosition: gl.getAttribLocation(programResult.program, "a_unitPosition"),
       instancePosition: gl.getAttribLocation(programResult.program, "a_instancePosition"),
-      instanceRotation: gl.getAttribLocation(programResult.program, "a_instanceRotation"),
+      instanceMovementRotation: gl.getAttribLocation(programResult.program, "a_instanceMovementRotation"),
+      instanceVisualRotation: gl.getAttribLocation(programResult.program, "a_instanceVisualRotation"),
       instanceRadius: gl.getAttribLocation(programResult.program, "a_instanceRadius"),
       instanceActive: gl.getAttribLocation(programResult.program, "a_instanceActive"),
     };
@@ -150,10 +151,16 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
     gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instancePosition, 1);
     offset += 2 * 4;
 
-    // rotation (float)
-    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.instanceRotation);
-    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.instanceRotation, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
-    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instanceRotation, 1);
+    // movement rotation (float)
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.instanceMovementRotation);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.instanceMovementRotation, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instanceMovementRotation, 1);
+    offset += 1 * 4;
+
+    // visual rotation (float)
+    gl.enableVertexAttribArray(this.sharedResourcesExtended.attributes.instanceVisualRotation);
+    gl.vertexAttribPointer(this.sharedResourcesExtended.attributes.instanceVisualRotation, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(this.sharedResourcesExtended.attributes.instanceVisualRotation, 1);
     offset += 1 * 4;
 
     // radius (float)
@@ -200,9 +207,10 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
 
     data[offset + 0] = instance.position.x;
     data[offset + 1] = instance.position.y;
-    data[offset + 2] = instance.rotation;
-    data[offset + 3] = instance.radius;
-    data[offset + 4] = instance.active ? 1 : 0;
+    data[offset + 2] = instance.movementRotation;
+    data[offset + 3] = instance.visualRotation;
+    data[offset + 4] = instance.radius;
+    data[offset + 5] = instance.active ? 1 : 0;
   }
 
   protected setupRenderState(
@@ -278,7 +286,7 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
   }
 
   protected getActiveFloatIndex(): number {
-    return 4; // active flag
+    return 5; // active flag
   }
 
   protected getVertexCount(_batch: BulletBatch): number {

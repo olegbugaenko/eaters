@@ -118,10 +118,11 @@ export const setupWebGLScene = (
           config,
         });
       },
-      updateSlot: (handle, position, rotation, radius, active) => {
+      updateSlot: (handle, position, movementRotation, visualRotation, radius, active) => {
         bulletGpuRenderer.updateSlot(handle, {
           position,
-          rotation,
+          movementRotation,
+          visualRotation,
           radius,
           active,
         });

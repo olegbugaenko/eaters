@@ -63,11 +63,12 @@ export const acquireGpuBulletSlot = (config: BulletVisualConfig): BulletSlotHand
 export const updateGpuBulletSlot = (
   handle: BulletSlotHandle,
   position: SceneVector2,
-  rotation: number,
+  movementRotation: number,
+  visualRotation: number,
   radius: number,
   active: boolean
 ): void => {
-  bridge.updateSlot(handle, position, rotation, radius, active);
+  bridge.updateSlot(handle, position, movementRotation, visualRotation, radius, active);
 };
 
 /**

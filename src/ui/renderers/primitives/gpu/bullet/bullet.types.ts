@@ -32,7 +32,8 @@ export interface BulletVisualConfig {
 
 export interface BulletInstance {
   position: SceneVector2;
-  rotation: number;
+  movementRotation: number;
+  visualRotation: number;
   radius: number;
   active: boolean;
 }
@@ -72,7 +73,8 @@ export interface BulletSharedResources {
   attributes: {
     unitPosition: number;
     instancePosition: number;
-    instanceRotation: number;
+    instanceMovementRotation: number;
+    instanceVisualRotation: number;
     instanceRadius: number;
     instanceActive: number;
   };
