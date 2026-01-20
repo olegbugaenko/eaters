@@ -307,7 +307,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         radiusOffset: -2,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "grayBrickDestroyV2",
         radiusMultiplier: 0.95,
       },
     },
@@ -694,9 +694,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.3, g: 0.5, b: 0.2, a: 1 }, width: 2.4 },
     destructubleData: {
-      maxHp: 36750,
-      armor: 12445,
-      baseDamage: 3355,
+      maxHp: 16750,
+      armor: 2445,
+      baseDamage: 1355,
       knockBackDistance: 190,
       knockBackSpeed: 280,
       brickKnockBackAmplitude: 4,
@@ -711,7 +711,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
     rewards: {
-      uranium: 0.5,
+      uranium: 0.1,
     },
   },
   smallMagma: {

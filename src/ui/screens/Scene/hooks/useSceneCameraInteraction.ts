@@ -20,11 +20,13 @@ import {
   useSceneCanvas,
 } from "./useSceneCanvas";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
+import type { MapEffectsBridgeState } from "@logic/modules/active-map/map/map.types";
 
 interface UseSceneCameraInteractionArgs {
   scene: SceneUiApi;
   spellcasting: SpellcastingModuleUiApi;
   gameLoop: GameLoopUiApi;
+  mapEffectsRef: MutableRefObject<MapEffectsBridgeState>;
   selectedSpellIdRef: MutableRefObject<SpellId | null>;
   spellOptionsRef: MutableRefObject<SpellOption[]>;
   isPauseOpen: boolean;
@@ -82,6 +84,7 @@ export const useSceneCameraInteraction = ({
   lastPointerPositionRef,
   onSpellCast,
   onInspectTarget,
+  mapEffectsRef,
 }: UseSceneCameraInteractionArgs): UseSceneCameraInteractionResult => {
   // Delay scale initialization until viewport is properly sized
   const hasInitializedScaleRef = useRef(false);
@@ -166,6 +169,7 @@ export const useSceneCameraInteraction = ({
     scene,
     spellcasting,
     gameLoop,
+    mapEffectsRef,
     canvasRef,
     wrapperRef,
     summoningPanelRef,

@@ -14,6 +14,7 @@ export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
 export const MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY = "maps/selectViewTransform";
 export const MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY = "maps/controlHintsCollapsed";
 export const MAP_INSPECTED_TARGET_BRIDGE_KEY = "maps/inspectedTarget";
+export const MAP_EFFECTS_BRIDGE_KEY = "maps/effects";
 
 /**
  * Default map auto-restart state.

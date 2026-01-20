@@ -9,6 +9,7 @@ import type { EnemySpawnData } from "../logic/modules/active-map/enemies/enemies
 import type { UnlockCondition } from "@shared/types/unlocks";
 import type { SkillId } from "./skills-db";
 import type { AchievementId } from "./achievements-db";
+import type { MapEffectId } from "./map-effects-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
@@ -89,6 +90,7 @@ export interface MapConfig {
   readonly spawnPoints?: readonly SceneVector2[];
   readonly enemySpawnPoints?: readonly MapEnemySpawnPointConfig[];
   readonly enemies?: MapEnemyGenerator; // Статичні вороги (турелі), що генеруються один раз при ініціалізації
+  readonly mapEffects?: readonly MapEffectId[];
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly icon?: string;
   readonly nodePosition: MapNodePosition;
@@ -2137,6 +2139,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       spawnPoints: [spawnPoint],
       nodePosition: { x: 4, y: 6 },
       icon: "uranium_fields.png",
+      mapEffects: ["radioactivity"],
       bricks: ({ mapLevel }) => {
 
         const numPetals = 3;

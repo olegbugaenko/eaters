@@ -20,6 +20,7 @@ import {
   DEFAULT_SPELL_OPTIONS,
   SPELL_OPTIONS_BRIDGE_KEY,
 } from "@logic/modules/active-map/spellcasting/spellcasting.const";
+import { MAP_EFFECTS_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
 import { NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY } from "@logic/modules/active-map/necromancer/necromancer.const";
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
@@ -36,6 +37,7 @@ import { SceneTutorialBridgeMonitor } from "./components/tutorial/SceneTutorialB
 import { SceneSummoningPanelContainer } from "./components/summoning/SceneSummoningPanelContainer";
 
 const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
+const DEFAULT_MAP_EFFECTS_STATE = { radioactivity: null };
 
 interface SceneScreenProps {
   onExit: () => void;
@@ -72,6 +74,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     bridge,
     SPELL_OPTIONS_BRIDGE_KEY,
     DEFAULT_SPELL_OPTIONS
+  );
+  const mapEffectsRef = useBridgeRef(
+    bridge,
+    MAP_EFFECTS_BRIDGE_KEY,
+    DEFAULT_MAP_EFFECTS_STATE
   );
   const [summoningTooltipContent, setSummoningTooltipContent] =
     useState<SceneTooltipContent | null>(null);
@@ -161,6 +168,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       scene,
       spellcasting,
       gameLoop,
+      mapEffectsRef,
       selectedSpellIdRef,
       spellOptionsRef,
       isPauseOpen,

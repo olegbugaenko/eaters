@@ -8,7 +8,11 @@ import type { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.t
 import type { PlayerUnitType } from "@db/player-units-db";
 import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import type { ResourceAmountPayload, ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
-import type { MapListEntry, MapAutoRestartState } from "@logic/modules/active-map/map/map.types";
+import type {
+  MapListEntry,
+  MapAutoRestartState,
+  MapEffectsBridgeState,
+} from "@logic/modules/active-map/map/map.types";
 import type { BuildingsWorkshopBridgeState } from "@logic/modules/camp/buildings/buildings.types";
 import type { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import type { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
@@ -54,6 +58,7 @@ export interface BridgeSchema {
   "maps/selectViewTransform": ViewTransform | null;
   "maps/controlHintsCollapsed": boolean;
   "maps/inspectedTarget": TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
+  "maps/effects": MapEffectsBridgeState;
 
   // Player Units
   "playerUnits/count": number;

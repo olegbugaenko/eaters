@@ -14,6 +14,8 @@ import { NecromancerModule } from "../necromancer/necromancer.module";
 import { ResourceRunController } from "./map.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
 import { ArcModule } from "../../scene/arc/arc.module";
+import { MapEffectsModule } from "../map-effects/map-effects.module";
+import type { MapEffectId } from "../../../../db/map-effects-db";
 
 interface MapRunLifecycleOptions {
   runState: MapRunState;
@@ -26,6 +28,7 @@ interface MapRunLifecycleOptions {
   necromancer: NecromancerModule;
   visuals: MapVisualEffects;
   scene: SceneObjectManager;
+  mapEffects: MapEffectsModule;
 }
 
 interface StartRunPayload {
@@ -39,6 +42,7 @@ interface StartRunPayload {
   generateBricks: boolean;
   generateUnits: boolean;
   generateEnemies: boolean;
+  mapEffects: readonly MapEffectId[];
 }
 
 export class MapRunLifecycle {
@@ -56,6 +60,7 @@ export class MapRunLifecycle {
     this.runActive = false;
     this.activeMapLevel = 0;
     this.options.visuals.reset();
+    this.options.mapEffects.reset();
     this.enemySpawnController.reset();
     this.enemySpawnPoints = [];
   }
@@ -100,6 +105,7 @@ export class MapRunLifecycle {
     }
     this.options.visuals.spawnPortals(payload.spawnPoints);
     this.options.resources.startRun();
+    this.options.mapEffects.startRun(payload.mapEffects);
   }
 
   public cleanupActiveMap(): void {
@@ -110,6 +116,7 @@ export class MapRunLifecycle {
     }
     this.runActive = false;
     this.options.visuals.reset();
+    this.options.mapEffects.reset();
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
     this.options.enemies.setEnemies([]);
@@ -129,7 +136,8 @@ export class MapRunLifecycle {
   }
 
   public tick(deltaMs: number): void {
-    this.options.visuals.tick();
+    this.options.visuals.tick(deltaMs);
+    this.options.mapEffects.tick(deltaMs);
     if (this.runActive && this.enemySpawnPoints.length > 0) {
       this.enemySpawnController.tick(
         deltaMs,
@@ -140,4 +148,3 @@ export class MapRunLifecycle {
     }
   }
 }
-

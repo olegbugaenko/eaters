@@ -8,6 +8,7 @@ import {
   SceneUiApi,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
+import type { MapEffectsBridgeState } from "@logic/modules/active-map/map/map.types";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 import {
@@ -34,6 +35,7 @@ import {
   updateMovableStats,
   tickFrame,
 } from "../components/debug/debugStats";
+import { RadiationPostProcess } from "@ui/renderers/utils/RadiationPostProcess";
 
 const EDGE_THRESHOLD = 48;
 const CAMERA_SPEED = 400; // world units per second
@@ -64,6 +66,7 @@ export interface UseSceneCanvasParams {
   scene: SceneUiApi;
   spellcasting: SpellcastingModuleUiApi;
   gameLoop: GameLoopUiApi;
+  mapEffectsRef: MutableRefObject<MapEffectsBridgeState>;
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
   summoningPanelRef: MutableRefObject<HTMLDivElement | null>;
@@ -90,6 +93,7 @@ export const useSceneCanvas = ({
   scene,
   spellcasting,
   gameLoop,
+  mapEffectsRef,
   canvasRef,
   wrapperRef,
   summoningPanelRef,
@@ -120,6 +124,11 @@ export const useSceneCanvas = ({
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
   const getInterpolatedEnemyPositionsRef = useRef(getInterpolatedEnemyPositions);
   const movableStatsLastUpdateRef = useRef(0);
+  const postProcessRef = useRef(new RadiationPostProcess());
+  const postProcessActiveRef = useRef(false);
+  const postProcessLastReasonRef = useRef<string | null>(null);
+  const postProcessLastSampleLogRef = useRef(0);
+  const postProcessLastCaptureLogRef = useRef(0);
   // Separate ref for right mouse panning to track previous position
   const rightMouseLastPositionRef = useRef<{ x: number; y: number } | null>(null);
   const rightMouseDownPositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -345,6 +354,30 @@ export const useSceneCanvas = ({
           updateVboStats(dbs.bytesAllocated, dbs.reallocations);
         }
       },
+      beforeRender: (timestamp, gl) => {
+        const radiation = mapEffectsRef.current?.radioactivity;
+        const intensity =
+          radiation && radiation.maxLevel > 0 ? radiation.level / radiation.maxLevel : 0;
+        const config = radiation?.postProcess;
+        const active = Boolean(config && intensity > 0.01);
+        const nextReason = active
+          ? "active"
+          : !radiation
+            ? "no-radioactivity"
+            : !config
+              ? "no-postprocess-config"
+              : "intensity-too-low";
+        if (postProcessLastReasonRef.current !== nextReason) {
+          postProcessLastReasonRef.current = nextReason;
+          console.info("[RadiationPostProcess] State:", {
+            reason: nextReason,
+            intensity: Number(intensity.toFixed(3)),
+          });
+        }
+        postProcessActiveRef.current = active;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      },
       beforeEffects: (timestamp, gl, cameraState) => {
         // Render additional effects (particles, whirls, auras, arcs, fire rings, bullets, rings)
         // Explosion waves - rendered separately (not via ParticleEmitter system)
@@ -388,6 +421,40 @@ export const useSceneCanvas = ({
         ringGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
       },
       afterRender: (timestamp, gl, cameraState) => {
+        if (postProcessActiveRef.current) {
+          const radiation = mapEffectsRef.current?.radioactivity;
+          const intensity =
+            radiation && radiation.maxLevel > 0 ? radiation.level / radiation.maxLevel : 0;
+          if (radiation?.postProcess && intensity > 0.01) {
+            const captured = postProcessRef.current.captureFromScreen(
+              gl,
+              canvas.width,
+              canvas.height
+            );
+            if (!captured) {
+              if (timestamp - postProcessLastCaptureLogRef.current > 2000) {
+                postProcessLastCaptureLogRef.current = timestamp;
+                console.warn("[RadiationPostProcess] Screen capture failed; skipping post-process.");
+              }
+              return;
+            }
+            gl.disable(gl.BLEND);
+            const rendered = postProcessRef.current.render(
+              gl,
+              timestamp / 1000,
+              intensity,
+              radiation.postProcess
+            );
+            gl.enable(gl.BLEND);
+            if (!rendered) {
+              console.warn("[RadiationPostProcess] Render failed; falling back to blit.");
+              postProcessRef.current.blitToScreen(gl);
+            }
+          } else {
+            console.warn("[RadiationPostProcess] Skipped render; falling back to blit.");
+            postProcessRef.current.blitToScreen(gl);
+          }
+        }
         // Tick FPS counter (no separate rAF needed)
         tickFrame();
 
@@ -704,6 +771,7 @@ export const useSceneCanvas = ({
       renderLoop.stop();
       // Cleanup WebGL resources
       webglCleanup();
+      postProcessRef.current.dispose(gl);
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pointermove", handlePointerMoveWithCast);

@@ -31,6 +31,15 @@ export type AfterUpdateCallback = (
 ) => void;
 
 /**
+ * Callback called before base scene render
+ */
+export type BeforeRenderCallback = (
+  timestamp: number,
+  gl: WebGL2RenderingContext,
+  cameraState: SceneCameraState
+) => void;
+
+/**
  * Callback called after base scene render but before effects
  */
 export type BeforeEffectsCallback = (
@@ -61,6 +70,8 @@ export interface CreateWebGLRenderLoopOptions {
   afterApplyChanges?: AfterApplyChangesCallback;
   /** Optional callback after scene update */
   afterUpdate?: AfterUpdateCallback;
+  /** Optional callback before base scene render */
+  beforeRender?: BeforeRenderCallback;
   /** Optional callback before effects rendering */
   beforeEffects?: BeforeEffectsCallback;
   /** Optional callback after all rendering */
@@ -102,6 +113,7 @@ export const createWebGLRenderLoop = (
     beforeUpdate,
     afterApplyChanges,
     afterUpdate,
+    beforeRender,
     beforeEffects,
     afterRender,
   } = options;
@@ -137,6 +149,11 @@ export const createWebGLRenderLoop = (
     // Step 7: After update callback
     if (afterUpdate) {
       afterUpdate(timestamp, scene, cameraState);
+    }
+
+    // Step 7.5: Before render callback
+    if (beforeRender) {
+      beforeRender(timestamp, gl, cameraState);
     }
 
     // Step 7: Render base scene
