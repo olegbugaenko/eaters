@@ -446,20 +446,23 @@ const DEFAULT_EMITTER: ParticleEmitterConfig = {
 
 const GRAY_BRICK_DAMAGE_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 140,
-  particlesPerSecond: 34,
+  particlesPerSecond: 340,
   baseSpeed: 0.04,
   speedVariation: 0.01,
   particleLifetimeMs: 650,
   fadeStartMs: 280,
-  sizeRange: { min: 16, max: 31.2 },
+  sizeRange: { min: 1, max: 2 },
   spawnRadius: { min: 0, max: 5 },
   spawnRadiusMultiplier: 1.2,
   color: { r: 0.82, g: 0.84, b: 0.88, a: 1 },
   arc: Math.PI * 2,
   direction: 0,
-  fill: GRAY_BRICK_EMITTER_FILL,
-  shape: "circle",
-  sizeGrowthRate: 1.35,
+  fill: {
+    fillType: FILL_TYPES.SOLID,
+    color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
+  },
+  shape: "triangle",
+  sizeGrowthRate: 1.0,
 };
 
 const GRAY_BRICK_DESTRUCTION_EMITTER: ParticleEmitterConfig = {
@@ -483,10 +486,10 @@ const GRAY_BRICK_DESTRUCTION_EMITTER: ParticleEmitterConfig = {
 
 const GRAY_BRICK_DESTRUCTION_EMITTER_V2: ParticleEmitterConfig = {
   emissionDurationMs: 220,
-  particlesPerSecond: 420,
-  baseSpeed: 0.1,
+  particlesPerSecond: 720,
+  baseSpeed: 0.05,
   speedVariation: 0.01,
-  particleLifetimeMs: 750,
+  particleLifetimeMs: 950,
   fadeStartMs: 480,
   sizeRange: { min: 1, max: 3 },
   spawnRadius: { min: 0, max: 8 },
@@ -500,6 +503,7 @@ const GRAY_BRICK_DESTRUCTION_EMITTER_V2: ParticleEmitterConfig = {
   },
   shape: "triangle",
   sizeGrowthRate: 1.0,
+  maxParticles: 1000,
 };
 
 const CRITICAL_HIT_EMITTER: ParticleEmitterConfig = {
@@ -726,7 +730,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       endAlpha: 0.0,
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     }),
-    emitter: GRAY_BRICK_DESTRUCTION_EMITTER,
+    emitter: GRAY_BRICK_DESTRUCTION_EMITTER_V2,
   },
   grayBrickDestroyV2: {
     lifetimeMs: 1_200,
@@ -734,7 +738,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
     waves: createSimpleWave({
       defaultInitialRadius: 10,
       radiusExtension: 60,
-      startAlpha: 0.6,
+      startAlpha: 0.5,
       endAlpha: 0.0,
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     }),

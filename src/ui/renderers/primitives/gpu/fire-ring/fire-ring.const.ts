@@ -41,7 +41,7 @@ void main() {
     return;
   }
 
-  float maxRadius = a_outerRadius + ${FIRE_RING_EXTRA_RADIUS}; // extra space for tongues
+  float maxRadius = a_outerRadius + 220.0; // extra space for tongues
   vec2 offset   = a_unitPosition * maxRadius;
   vec2 worldPos = a_center + offset;
 
@@ -125,7 +125,7 @@ void main() {
     discard;
   }
 
-  if (dist > v_outerRadius + ${FIRE_RING_EXTRA_RADIUS}) discard;
+  if (dist > v_outerRadius + 270.0) discard;
 
   // 1) soft ring = difference of circles
   float innerStep = 1.0 - smoothstep(v_innerRadius - INNER_SOFT, v_innerRadius + INNER_SOFT, dist);
