@@ -221,6 +221,13 @@ class ExplosionWaveGpuRenderer extends GpuBatchRenderer<WaveInstance, WaveBatch,
     if (!this.sharedResourcesExtended) {
       return;
     }
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(
+      gl.SRC_ALPHA,
+      gl.ONE_MINUS_SRC_ALPHA,
+      gl.ONE,
+      gl.ONE_MINUS_SRC_ALPHA
+    );
     // Upload uniforms for this batch
     uploadEmitterUniformsPublic(gl, batch.uniforms, cameraPosition, viewportSize);
   }

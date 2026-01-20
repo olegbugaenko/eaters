@@ -159,7 +159,6 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                     >
                       <span className="modules-workshop__card-title">{building.name}</span>
                       <span className="modules-workshop__card-level">Level {building.level}</span>
-                      <p className="modules-workshop__card-description">{building.description}</p>
                       <div className="modules-workshop__card-cost">
                         {building.nextCost ? (
                           <ResourceCostDisplay cost={building.nextCost} missing={missing} />
