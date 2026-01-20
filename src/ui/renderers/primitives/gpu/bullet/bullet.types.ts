@@ -61,6 +61,7 @@ export interface BulletSharedResources {
     tailLengthMul: WebGLUniformLocation | null;
     tailWidthMul: WebGLUniformLocation | null;
     shapeType: WebGLUniformLocation | null;
+    renderPass: WebGLUniformLocation | null;
     centerColor: WebGLUniformLocation | null;
     edgeColor: WebGLUniformLocation | null;
     useRadialGradient: WebGLUniformLocation | null;

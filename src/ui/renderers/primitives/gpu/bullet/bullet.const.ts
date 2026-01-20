@@ -28,10 +28,12 @@ uniform float u_tailLengthMul;
 uniform float u_tailWidthMul;
 uniform float u_tailOffsetMul;
 uniform int u_shapeType; // 0 = circle, 1 = sprite
+uniform int u_renderPass; // 0 = tail, 1 = bullet
 
 // Outputs
 out vec2 v_tailPos;
-out vec2 v_spritePos;
+out vec2 v_bulletPos;
+out vec2 v_bulletLocalPos;
 out vec2 v_uv;
 out float v_radius;
 out float v_tailLength;
@@ -48,14 +50,14 @@ void main() {
   
   float tailLength = a_instanceRadius * u_tailLengthMul;
   float tailWidth = a_instanceRadius * u_tailWidthMul;
-  float tailOffset = a_instanceRadius * u_tailOffsetMul;
+  float tailOffset = -tailLength * 0.5 + a_instanceRadius * u_tailOffsetMul;
   
   // Scale local position to cover bullet + tail
-  float scaleX = a_instanceRadius + tailLength;
-  float scaleY = max(a_instanceRadius, tailWidth);
+  float tailScaleX = a_instanceRadius + tailLength;
+  float tailScaleY = max(a_instanceRadius, tailWidth);
   
-  vec2 tailLocalPos = a_unitPosition * vec2(scaleX, scaleY);
-  vec2 spriteLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
+  vec2 tailLocalPos = a_unitPosition * vec2(tailScaleX, tailScaleY) + vec2(tailOffset, 0.0);
+  vec2 bulletLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
   float c = cos(a_instanceRotation);
@@ -64,18 +66,20 @@ void main() {
     tailLocalPos.x * c - tailLocalPos.y * s,
     tailLocalPos.x * s + tailLocalPos.y * c
   );
-  vec2 rotatedSpritePos = vec2(
-    spriteLocalPos.x * c - spriteLocalPos.y * s,
-    spriteLocalPos.x * s + spriteLocalPos.y * c
+  vec2 rotatedBulletPos = vec2(
+    bulletLocalPos.x * c - bulletLocalPos.y * s,
+    bulletLocalPos.x * s + bulletLocalPos.y * c
   );
   
-  // World position
-  vec2 worldPos = a_instancePosition + rotatedTailPos;
+  vec2 worldPos = u_renderPass == 0
+    ? a_instancePosition + rotatedTailPos
+    : a_instancePosition + rotatedBulletPos;
   
   // To clip space (same formula as PetalAuraGpuRenderer)
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_tailPos = rotatedTailPos;
-  v_spritePos = rotatedSpritePos;
+  v_bulletPos = rotatedBulletPos;
+  v_bulletLocalPos = bulletLocalPos;
   // UV for sprite sampling: map [-1,1] to [0,1]
   v_uv = a_unitPosition * 0.5 + 0.5;
   v_radius = a_instanceRadius;
@@ -90,7 +94,8 @@ precision highp float;
 precision highp int;
 
 in vec2 v_tailPos;
-in vec2 v_spritePos;
+in vec2 v_bulletPos;
+in vec2 v_bulletLocalPos;
 in vec2 v_uv;
 in float v_radius;
 in float v_tailLength;
@@ -101,6 +106,7 @@ uniform vec4 u_bodyColor;
 uniform vec4 u_tailStartColor;
 uniform vec4 u_tailEndColor;
 uniform int u_shapeType; // 0 = circle, 1 = sprite
+uniform int u_renderPass; // 0 = tail, 1 = bullet
 uniform vec4 u_centerColor;
 uniform vec4 u_edgeColor;
 uniform int u_useRadialGradient;
@@ -110,67 +116,53 @@ uniform int u_spriteIndex;
 out vec4 fragColor;
 
 void main() {
-  float scaleX = v_radius + v_tailLength;
-  float scaleY = max(v_radius, v_tailWidth);
-  
-  // Convert back to world-relative coords
-  vec2 pos = v_tailPos;
-  
-  // Distance from center for body
-  float dist = length(pos);
-  
-  // Body (circle or sprite at front)
-  if (u_shapeType == 0) {
-    // Circle body
-    if (dist < v_radius) {
-      float edge = smoothstep(v_radius, v_radius - 1.0, dist);
-      
-      // Radial gradient or solid color
-      vec4 bodyCol;
-      if (u_useRadialGradient == 1) {
-        float t = dist / v_radius;
-        bodyCol = mix(u_centerColor, u_edgeColor, t);
-      } else {
-        bodyCol = u_bodyColor;
-      }
-      
-      fragColor = vec4(bodyCol.rgb, bodyCol.a * edge);
-      return;
-    }
-  } else {
-  // Sprite body - sample from texture array
-  // pos is in world-relative coords (pixels)
-    
-  // Sprite is square, sized to be visible (3x radius so it's not too tiny)
-  float spriteHalf = v_radius;
-  vec2 spritePos = v_spritePos;
-    
-  // Sprite center is at origin (where bullet center is)
-  if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
-    // Map pos to UV [0,1]
-    // pos.x from -spriteHalf to +spriteHalf -> u from 0 to 1
-    float u = (spritePos.x / spriteHalf) * 0.5 + 0.5;
-    float v = (spritePos.y / spriteHalf) * 0.5 + 0.5;
-      // Flip V for correct orientation (texture Y is inverted)
-      v = 1.0 - v;
-      
-      vec4 spriteColor = texture(u_spriteArray, vec3(u, v, float(u_spriteIndex)));
-      if (spriteColor.a > 0.01) {
-        fragColor = spriteColor;
+  if (u_renderPass == 1) {
+    vec2 pos = v_bulletPos;
+    float dist = length(pos);
+
+    if (u_shapeType == 0) {
+      if (dist < v_radius) {
+        float edge = smoothstep(v_radius, v_radius - 1.0, dist);
+
+        vec4 bodyCol;
+        if (u_useRadialGradient == 1) {
+          float t = dist / v_radius;
+          bodyCol = mix(u_centerColor, u_edgeColor, t);
+        } else {
+          bodyCol = u_bodyColor;
+        }
+
+        fragColor = vec4(bodyCol.rgb, bodyCol.a * edge);
         return;
       }
+    } else {
+      float spriteHalf = v_radius * 0.5;
+      vec2 spritePos = v_bulletLocalPos;
+
+      if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
+        float u = (spritePos.x / spriteHalf) * 0.5 + 0.5;
+        float v = (spritePos.y / spriteHalf) * 0.5 + 0.5;
+        v = 1.0 - v;
+
+        vec4 spriteColor = texture(u_spriteArray, vec3(u, v, float(u_spriteIndex)));
+        if (spriteColor.a > 0.01) {
+          fragColor = spriteColor;
+          return;
+        }
+      }
     }
+
+    discard;
   }
-  
-  // Tail (behind the bullet, with offset)
-  // tailOffset > 0 moves tail forward, < 0 moves it backward
+
+  vec2 pos = v_tailPos;
   float tailStartX = v_tailOffset;
   float tailEndX = v_tailOffset - v_tailLength;
-  
+
   if (pos.x < tailStartX && pos.x > tailEndX) {
-    float t = (tailStartX - pos.x) / v_tailLength; // 0 at start, 1 at end
-    float tailWidthAtX = v_tailWidth * (1.0 - t * 0.7); // Taper
-    
+    float t = (tailStartX - pos.x) / v_tailLength;
+    float tailWidthAtX = v_tailWidth * (1.0 - t * 0.7);
+
     if (abs(pos.y) < tailWidthAtX) {
       float edgeFade = 1.0 - abs(pos.y) / tailWidthAtX;
       vec4 tailColor = mix(u_tailStartColor, u_tailEndColor, t);
@@ -178,7 +170,7 @@ void main() {
       return;
     }
   }
-  
+
   discard;
 }
 `;
