@@ -24,6 +24,7 @@ export interface SpellBehaviorDependencies {
   readonly bricks: any; // BricksModule
   readonly bonuses: any; // BonusesModule
   readonly explosions?: any; // ExplosionModule (опціонально)
+  readonly arcs?: any; // ArcModule (опціонально)
   readonly projectiles: any; // UnitProjectileController
   readonly damage: any; // DamageService
   readonly targeting: any; // TargetingService

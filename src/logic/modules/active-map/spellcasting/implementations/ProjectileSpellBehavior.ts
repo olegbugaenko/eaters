@@ -7,16 +7,19 @@ import {
 import { SpellConfig } from "../../../../../db/spells-db";
 import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
+import type { ArcModule } from "../../../scene/arc/arc.module";
 import type { ExplosionType } from "../../../../../db/explosions-db";
 import { UnitProjectileController } from "../../projectiles/ProjectileController";
 import type { UnitProjectileVisualConfig } from "../../projectiles/projectiles.types";
 import type { ProjectileSpellData } from "./ProjectileSpellBehavior.types";
 import { buildProjectileSpreadDirections } from "../../projectiles/projectile-spread.helpers";
 import { clampNumber, randomIntInclusive } from "@shared/helpers/numbers.helper";
-import type { SpellDamageConfig, SpellProjectileConfig } from "@/db/spells-db";
+import type { SpellDamageConfig, SpellProjectileChainConfig, SpellProjectileConfig } from "@/db/spells-db";
 import type { AttackSeriesConfig } from "@/shared/types/attack-series.types";
 import type { DamageService } from "../../targeting/DamageService";
 import type { TargetType } from "../../targeting/targeting.types";
+import type { TargetingService } from "../../targeting/TargetingService";
+import { executeChainLightning } from "../../chain-lightning.helpers";
 
 const sanitizeAoe = (
   aoe: { radius: number; splash: number } | undefined,
@@ -28,13 +31,35 @@ const sanitizeAoe = (
   return { radius, splash };
 };
 
+const sanitizeChain = (
+  chain: SpellProjectileChainConfig | undefined,
+): SpellProjectileChainConfig | undefined => {
+  if (!chain || typeof chain !== "object") {
+    return undefined;
+  }
+  const radius = clampNumber(chain.radius, 0, Number.POSITIVE_INFINITY);
+  const jumps = Math.floor(clampNumber(chain.jumps, 0, Number.POSITIVE_INFINITY));
+  const damageMultiplier = clampNumber(
+    chain.damageMultiplier,
+    0,
+    Number.POSITIVE_INFINITY,
+  );
+  if (radius <= 0 || jumps <= 0 || damageMultiplier <= 0) {
+    return undefined;
+  }
+  return { radius, jumps, damageMultiplier };
+};
+
+
 export class ProjectileSpellBehavior implements SpellBehavior {
   public readonly spellType = "projectile" as const;
 
   private readonly explosions?: ExplosionModule;
+  private readonly arcs?: ArcModule;
   private readonly getSpellPowerMultiplier: () => number;
   private readonly projectiles: UnitProjectileController;
   private readonly damage: DamageService;
+  private readonly targeting: TargetingService;
 
   // Track spell-specific data per projectile (damage, aoe, explosion)
   private readonly projectileData = new Map<string, ProjectileSpellData>();
@@ -44,9 +69,11 @@ export class ProjectileSpellBehavior implements SpellBehavior {
 
   constructor(dependencies: SpellBehaviorDependencies) {
     this.explosions = dependencies.explosions;
+    this.arcs = dependencies.arcs;
     this.projectiles = dependencies.projectiles;
     this.getSpellPowerMultiplier = dependencies.getSpellPowerMultiplier;
     this.damage = dependencies.damage;
+    this.targeting = dependencies.targeting;
     this.spellPowerMultiplier = dependencies.getSpellPowerMultiplier();
   }
 
@@ -135,6 +162,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         ringTrail: projectileConfig.ringTrail,
         shape: projectileConfig.shape ?? "circle",
         spriteName: projectileConfig.spriteName,
+        wander: projectileConfig.wander,
       };
 
       const objectId = this.projectiles.spawn({
@@ -195,6 +223,55 @@ export class ProjectileSpellBehavior implements SpellBehavior {
             });
           }
 
+          const chain = data.chain;
+          if (chain && (hitContext.targetType === "brick" || hitContext.targetType === "enemy")) {
+            const chainDamage = Math.max(damage * chain.damageMultiplier, 0);
+            if (chainDamage > 0) {
+              executeChainLightning({
+                startTarget: {
+                  id: hitContext.targetId,
+                  type: hitContext.targetType,
+                  position: hitContext.position,
+                },
+                chainRadius: chain.radius,
+                chainJumps: chain.jumps,
+                damage: chainDamage,
+                damageOptions: {
+                  skipKnockback: true,
+                  payload: {
+                    amount: chainDamage,
+                    context: {
+                      source: { type: "spell", id: context.spellId },
+                      attackType: "spell-projectile-chain",
+                      tag: context.spellId,
+                      seriesId: data.seriesId,
+                      baseDamage: chainDamage,
+                      modifiers: {
+                        spellPowerMultiplier: data.damageMultiplier,
+                        chainDamageMultiplier: chain.damageMultiplier,
+                      },
+                    },
+                  },
+                },
+                dependencies: {
+                  getTargetsInRadius: (position, radius, types) =>
+                    this.targeting.findTargetsNear(
+                      position,
+                      radius,
+                      types ? { types } : undefined,
+                    ),
+                  applyTargetDamage: (targetId, damageValue, options) =>
+                    this.damage.applyTargetDamage(targetId, damageValue, options),
+                  spawnArcBetweenTargets: this.arcs?.spawnArcBetweenTargets
+                    ? (arcType, source, target, options) =>
+                        this.arcs?.spawnArcBetweenTargets(arcType, source, target, options)
+                    : undefined,
+                },
+                arcType: "chainLightning",
+              });
+            }
+          }
+
           // Вибух при влучанні
           if (data.explosion && this.explosions) {
             this.damage.applyAreaDamage(hitContext.position, 0, 0, {
@@ -227,6 +304,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         damageMultiplier: context.spellPowerMultiplier,
         aoe: sanitizeAoe(projectileConfig.aoe),
         explosion: projectileConfig.explosion,
+        chain: sanitizeChain(projectileConfig.chain),
         seriesId: context.spellId,
       });
     }

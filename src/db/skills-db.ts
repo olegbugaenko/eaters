@@ -37,6 +37,7 @@ export const SKILL_IDS = [
   "arcane_amplifier",
   "sandstorm_ritual",
   "black_darts",
+  "electric_shards",
   "ring_of_fire",
   "sharp_mind",
   "sharp_mind2",
@@ -473,6 +474,18 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { sandstorm_ritual: 1 },
     cost: createResourceCost('iron', 140, 1.65),
+  },
+  electric_shards: {
+    id: "electric_shards",
+    name: "Electric Shards",
+    description:
+      "Crackle the lattice with unstable sparks, unlocking erratic shards of electricity.",
+    nodePosition: { x: 2, y: -6 },
+    maxLevel: 1,
+    icon: "electricity_orb",
+    effects: {},
+    nodesRequired: { black_darts: 1 },
+    cost: createResourceCost('copper', 180, 1.6),
   },
   ring_of_fire: {
     id: "ring_of_fire",

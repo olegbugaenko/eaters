@@ -43,6 +43,7 @@ import type {
   UnitProjectileRingTrailState,
   RingState,
   UnitProjectileState,
+  UnitProjectileWanderConfig,
 } from "./projectiles.types";
 
 
@@ -179,6 +180,7 @@ export class UnitProjectileController {
       ...projectile,
       origin,
       targetTypes,
+      direction,
       id: objectId,
       velocity,
       position,
@@ -190,6 +192,7 @@ export class UnitProjectileController {
       shape,
       hitRadius,
       damageRadius,
+      wander: this.createWanderState(visual.wander),
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
       justSpawned: true, // Не рухати снаряд в перший тік
@@ -330,6 +333,8 @@ export class UnitProjectileController {
       const projectile = this.projectiles[i]!;
       let hitTarget: TargetSnapshot | null = null;
 
+      this.updateProjectileWander(projectile, deltaMs);
+
       // Якщо снаряд щойно створений - пропускаємо рух, тільки оновлюємо візуал
       if (projectile.justSpawned) {
         projectile.justSpawned = false;
@@ -439,6 +444,57 @@ export class UnitProjectileController {
     }
     this.projectileIndex.delete(projectile.id);
   }
+
+  private createWanderState(
+    config: UnitProjectileWanderConfig | undefined,
+  ): UnitProjectileState["wander"] | undefined {
+    if (!config) {
+      return undefined;
+    }
+    const intervalMs = clampNumber(config.intervalMs, 0, Number.POSITIVE_INFINITY);
+    const angleRangeDeg = clampNumber(config.angleRangeDeg, 0, Number.POSITIVE_INFINITY);
+    if (intervalMs <= 0 || angleRangeDeg <= 0) {
+      return undefined;
+    }
+    return {
+      intervalMs,
+      angleRangeRad: (angleRangeDeg * Math.PI) / 180,
+      accumulatorMs: 0,
+    };
+  }
+
+  private updateProjectileWander(projectile: UnitProjectileState, deltaMs: number): void {
+    const wander = projectile.wander;
+    if (!wander) {
+      return;
+    }
+    const elapsed = Math.max(0, deltaMs);
+    if (elapsed <= 0) {
+      return;
+    }
+    wander.accumulatorMs += elapsed;
+    if (wander.accumulatorMs < wander.intervalMs) {
+      return;
+    }
+
+    while (wander.accumulatorMs >= wander.intervalMs) {
+      wander.accumulatorMs -= wander.intervalMs;
+      const angle = (Math.random() * 2 - 1) * wander.angleRangeRad;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const rotated = {
+        x: projectile.direction.x * cos - projectile.direction.y * sin,
+        y: projectile.direction.x * sin + projectile.direction.y * cos,
+      };
+      projectile.direction = normalizeVector(rotated) ?? projectile.direction;
+    }
+
+    const speed = projectile.visual.speed;
+    projectile.velocity = {
+      x: projectile.direction.x * speed,
+      y: projectile.direction.y * speed,
+    };
+  }
   
   /**
    * Updates projectile position in GPU slot or scene.
@@ -456,6 +512,7 @@ export class UnitProjectileController {
     } else {
       this.scene.updateObject(projectile.id, {
         position: { ...projectile.position },
+        rotation,
       });
     }
 
