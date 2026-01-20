@@ -25,6 +25,7 @@ export interface UnitProjectileVisualConfig {
   tail?: BulletTailConfig;
   tailEmitter?: ParticleEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;
+  rotationSpinningDegPerSec?: number;
   shape?: UnitProjectileShape;
   /** Sprite name when shape === "sprite" */
   spriteName?: BulletSpriteName;
@@ -95,6 +96,10 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
     intervalMs: number;
     angleRangeRad: number;
     accumulatorMs: number;
+  };
+  rotationSpin?: {
+    radiansPerMs: number;
+    rotationRad: number;
   };
   // GPU rendering slot (if using GPU instanced rendering)
   gpuSlot?: BulletSlotHandle;

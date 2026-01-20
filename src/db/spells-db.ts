@@ -57,6 +57,7 @@ export interface SpellProjectileConfig {
   tailEmitter?: ParticleEmitterConfig;
   spawnOffset?: SceneVector2;
   ringTrail?: SpellProjectileRingTrailConfig;
+  rotationSpinningDegPerSec?: number;
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   attackSeries?: AttackSeriesConfig;
@@ -411,6 +412,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         endColor: { r: 0.2, g: 0.45, b: 0.95, a: 0 },
       },
       tailEmitter: ELECTRIC_SHARDS_TAIL_EMITTER,
+      rotationSpinningDegPerSec: 180,
       ringTrail: {
         spawnIntervalMs: 70,
         lifetimeMs: 700,
