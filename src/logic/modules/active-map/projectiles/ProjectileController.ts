@@ -193,6 +193,7 @@ export class UnitProjectileController {
       hitRadius,
       damageRadius,
       wander: this.createWanderState(visual.wander),
+      rotationSpin: this.createRotationSpinState(visual.rotationSpinningDegPerSec),
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
       justSpawned: true, // Не рухати снаряд в перший тік
@@ -334,6 +335,7 @@ export class UnitProjectileController {
       let hitTarget: TargetSnapshot | null = null;
 
       this.updateProjectileWander(projectile, deltaMs);
+      this.updateProjectileRotationSpin(projectile, deltaMs);
 
       // Якщо снаряд щойно створений - пропускаємо рух, тільки оновлюємо візуал
       if (projectile.justSpawned) {
@@ -495,31 +497,63 @@ export class UnitProjectileController {
       y: projectile.direction.y * speed,
     };
   }
+
+  private createRotationSpinState(
+    rotationSpinningDegPerSec: number | undefined,
+  ): UnitProjectileState["rotationSpin"] | undefined {
+    if (!Number.isFinite(rotationSpinningDegPerSec)) {
+      return undefined;
+    }
+    const degreesPerSec = Math.abs(rotationSpinningDegPerSec ?? 0);
+    if (degreesPerSec <= 0) {
+      return undefined;
+    }
+    return {
+      radiansPerMs: (degreesPerSec * Math.PI) / 180 / 1000,
+      rotationRad: 0,
+    };
+  }
+
+  private updateProjectileRotationSpin(
+    projectile: UnitProjectileState,
+    deltaMs: number,
+  ): void {
+    const rotationSpin = projectile.rotationSpin;
+    if (!rotationSpin) {
+      return;
+    }
+    const elapsed = Math.max(0, deltaMs);
+    if (elapsed <= 0) {
+      return;
+    }
+    rotationSpin.rotationRad += rotationSpin.radiansPerMs * elapsed;
+  }
   
   /**
    * Updates projectile position in GPU slot or scene.
    */
   private updateProjectilePosition(projectile: UnitProjectileState): void {
     const rotation = Math.atan2(projectile.velocity.y, projectile.velocity.x);
+    const totalRotation = rotation + (projectile.rotationSpin?.rotationRad ?? 0);
     if (projectile.gpuSlot) {
       updateGpuBulletSlot(
         projectile.gpuSlot,
         projectile.position,
-        rotation,
+        totalRotation,
         projectile.radius,
         true
       );
     } else {
       this.scene.updateObject(projectile.id, {
         position: { ...projectile.position },
-        rotation,
+        rotation: totalRotation,
       });
     }
 
     if (projectile.effectsObjectId) {
       this.scene.updateObject(projectile.effectsObjectId, {
         position: { ...projectile.position },
-        rotation,
+        rotation: totalRotation,
       });
     }
   }

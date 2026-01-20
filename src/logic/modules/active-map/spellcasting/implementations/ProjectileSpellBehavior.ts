@@ -160,6 +160,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         tail: projectileConfig.tail,
         tailEmitter: projectileConfig.tailEmitter,
         ringTrail: projectileConfig.ringTrail,
+        rotationSpinningDegPerSec: projectileConfig.rotationSpinningDegPerSec,
         shape: projectileConfig.shape ?? "circle",
         spriteName: projectileConfig.spriteName,
         wander: projectileConfig.wander,
