@@ -425,7 +425,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       count: 4,
       spreadAngle: 18,
       shape: "sprite",
-      spriteName: "needle",
+      spriteName: "electricity_orb",
       wander: {
         intervalMs: 320,
         angleRangeDeg: 28,
