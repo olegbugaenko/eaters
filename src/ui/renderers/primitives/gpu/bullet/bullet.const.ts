@@ -133,7 +133,7 @@ void main() {
         return;
       }
     } else {
-      float spriteHalf = v_radius;
+      float spriteHalf = v_radius * 0.5;
       vec2 spritePos = v_bulletPos;
 
       if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
