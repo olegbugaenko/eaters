@@ -33,6 +33,7 @@ uniform int u_renderPass; // 0 = tail, 1 = bullet
 // Outputs
 out vec2 v_tailPos;
 out vec2 v_bulletPos;
+out vec2 v_bulletLocalPos;
 out vec2 v_uv;
 out float v_radius;
 out float v_tailLength;
@@ -78,6 +79,7 @@ void main() {
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_tailPos = rotatedTailPos;
   v_bulletPos = rotatedBulletPos;
+  v_bulletLocalPos = bulletLocalPos;
   // UV for sprite sampling: map [-1,1] to [0,1]
   v_uv = a_unitPosition * 0.5 + 0.5;
   v_radius = a_instanceRadius;
@@ -93,6 +95,7 @@ precision highp int;
 
 in vec2 v_tailPos;
 in vec2 v_bulletPos;
+in vec2 v_bulletLocalPos;
 in vec2 v_uv;
 in float v_radius;
 in float v_tailLength;
@@ -134,7 +137,7 @@ void main() {
       }
     } else {
       float spriteHalf = v_radius * 0.5;
-      vec2 spritePos = v_bulletPos;
+      vec2 spritePos = v_bulletLocalPos;
 
       if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
         float u = (spritePos.x / spriteHalf) * 0.5 + 0.5;
