@@ -163,7 +163,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                     onFocus={() => setHoveredId(module.id)}
                     onBlur={() => setHoveredId((current) => (current === module.id ? null : current))}
                   >
-                    <span className="modules-workshop__card-title">{module.name}</span>
+                    <span className="modules-workshop__card-title heading-3">{module.name}</span>
                     <span className="modules-workshop__card-level">Level {module.level}</span>
                     <div className="modules-workshop__card-cost">
                       {module.nextCost ? (

@@ -157,7 +157,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                         setHoveredId((current) => (current === building.id ? null : current))
                       }
                     >
-                      <span className="modules-workshop__card-title">{building.name}</span>
+                      <span className="modules-workshop__card-title heading-3">{building.name}</span>
                       <span className="modules-workshop__card-level">Level {building.level}</span>
                       <div className="modules-workshop__card-cost">
                         {building.nextCost ? (
