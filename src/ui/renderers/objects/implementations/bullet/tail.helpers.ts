@@ -93,9 +93,9 @@ export const createTailVertices = (
   const tailLength = radius * tail.lengthMultiplier;
   const tailHalfWidth = (radius * tail.widthMultiplier) / 2;
   const vertices: [SceneVector2, SceneVector2, SceneVector2] = [
-    { x: -radius / 2, y: tailHalfWidth },
-    { x: -radius / 2, y: -tailHalfWidth },
-    { x: -radius / 2 - tailLength, y: 0 },
+    { x: 0, y: tailHalfWidth },
+    { x: 0, y: -tailHalfWidth },
+    { x: -tailLength, y: 0 },
   ];
 
   tailVerticesCache.set(instance, { radius, tailRef: tail, vertices });
@@ -116,8 +116,8 @@ export const createTailFill = (instance: SceneObjectInstance): SceneLinearGradie
   const tailLength = radius * tail.lengthMultiplier;
   const fill: SceneLinearGradientFill = {
     fillType: FILL_TYPES.LINEAR_GRADIENT,
-    start: { x: tailLength, y: 0 },
-    end: { x: 0, y: 0 },
+    start: { x: 0, y: 0 },
+    end: { x: -tailLength, y: 0 },
     stops: [
       { offset: 0, color: { ...tail.startColor } },
       { offset: 1, color: { ...tail.endColor } },

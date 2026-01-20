@@ -4,8 +4,8 @@ import type { BulletVisualConfig } from "./bullet.types";
 
 export const DEFAULT_BATCH_CAPACITY = 256;
 
-// Instance data layout: posX, posY, rotation, radius, active
-export const INSTANCE_FLOATS = 5;
+// Instance data layout: posX, posY, movementRotation, visualRotation, radius, active
+export const INSTANCE_FLOATS = 6;
 export const INSTANCE_STRIDE = INSTANCE_FLOATS * Float32Array.BYTES_PER_ELEMENT;
 
 export const VERTEX_SHADER = `#version 300 es
@@ -17,7 +17,8 @@ in vec2 a_unitPosition;
 
 // Per-instance
 in vec2 a_instancePosition;
-in float a_instanceRotation;
+in float a_instanceMovementRotation;
+in float a_instanceVisualRotation;
 in float a_instanceRadius;
 in float a_instanceActive;
 
@@ -50,7 +51,7 @@ void main() {
   
   float tailLength = a_instanceRadius * u_tailLengthMul;
   float tailWidth = a_instanceRadius * u_tailWidthMul;
-  float tailOffset = -tailLength * 0.5 + a_instanceRadius * u_tailOffsetMul;
+  float tailOffset = a_instanceRadius * u_tailOffsetMul;
   
   // Scale local position to cover bullet + tail
   float tailScaleX = a_instanceRadius + tailLength;
@@ -60,15 +61,17 @@ void main() {
   vec2 bulletLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
-  float c = cos(a_instanceRotation);
-  float s = sin(a_instanceRotation);
+  float tailC = cos(a_instanceMovementRotation);
+  float tailS = sin(a_instanceMovementRotation);
   vec2 rotatedTailPos = vec2(
-    tailLocalPos.x * c - tailLocalPos.y * s,
-    tailLocalPos.x * s + tailLocalPos.y * c
+    tailLocalPos.x * tailC - tailLocalPos.y * tailS,
+    tailLocalPos.x * tailS + tailLocalPos.y * tailC
   );
+  float bulletC = cos(a_instanceVisualRotation);
+  float bulletS = sin(a_instanceVisualRotation);
   vec2 rotatedBulletPos = vec2(
-    bulletLocalPos.x * c - bulletLocalPos.y * s,
-    bulletLocalPos.x * s + bulletLocalPos.y * c
+    bulletLocalPos.x * bulletC - bulletLocalPos.y * bulletS,
+    bulletLocalPos.x * bulletS + bulletLocalPos.y * bulletC
   );
   
   vec2 worldPos = u_renderPass == 0

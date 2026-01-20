@@ -101,6 +101,7 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
     radiansPerMs: number;
     rotationRad: number;
   };
+  rendererCustomData: Record<string, unknown>;
   // GPU rendering slot (if using GPU instanced rendering)
   gpuSlot?: BulletSlotHandle;
   // Прапорець для пропуску руху в перший тік
