@@ -135,7 +135,7 @@ void main() {
     
   // Sprite is square, sized to be visible (3x radius so it's not too tiny)
   float spriteHalf = v_radius;
-  vec2 spritePos = v_localPos * vec2(v_radius, v_radius);
+  vec2 spritePos = pos;
     
   // Sprite center is at origin (where bullet center is)
   if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
