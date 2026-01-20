@@ -273,13 +273,16 @@ void main() {
       discard;
     }
   } else if (v_shape > 1.5) {
-    // Triangle masking: pointing in direction of velocity
+    // Triangle masking: slightly stretched isosceles to avoid "circle" look
     vec2 localPos = (v_worldPosition - v_particleCenter) / max(v_particleRadius, 0.01);
-    // Isosceles triangle: base at x=-0.5, tip at x=0.5, height 1.0
     float x = localPos.x;
     float absY = abs(localPos.y);
-    // Triangle edges: |y| < 0.5 * (1.0 - x) for x in [-0.5, 0.5]
-    if (x < -0.5 || x > 0.5 || absY > 0.5 * (1.0 - 2.0 * x)) discard;
+    float baseX = -0.35;
+    float tipX = 0.55;
+    float baseHalfHeight = 0.35;
+    float t = clamp01((x - baseX) / max(tipX - baseX, 0.0001));
+    float halfHeight = mix(baseHalfHeight, 0.0, t);
+    if (x < baseX || x > tipX || absY > halfHeight) discard;
   }
   float fillType = v_fillInfo.x;
   vec4 color;
