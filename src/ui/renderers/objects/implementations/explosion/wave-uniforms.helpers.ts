@@ -155,6 +155,7 @@ export const toWaveUniformsFromFill = (
     defaultLifetimeMs: 1000,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    alignToVelocityFlip: false,
   };
 
   return { uniforms, key };

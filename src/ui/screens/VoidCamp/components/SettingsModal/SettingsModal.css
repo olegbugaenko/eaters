@@ -156,6 +156,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+.settings-modal__toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.settings-modal__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.settings-modal__toggle input[type="checkbox"] {
+  accent-color: var(--color-accent);
+}
+
 @media (max-width: 720px) {
   .settings-modal__dialog {
     padding: var(--spacing-lg);

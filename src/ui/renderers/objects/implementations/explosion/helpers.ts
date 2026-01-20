@@ -35,6 +35,8 @@ export const sanitizeExplosionEmitterConfig = (
       color: config.color,
       fill: config.fill,
       shape: config.shape,
+      alignToVelocity: config.alignToVelocity,
+      alignToVelocityFlip: config.alignToVelocityFlip,
       maxParticles: config.maxParticles,
     },
     { defaultColor: DEFAULT_COLOR, minCapacity: 1 }
@@ -89,6 +91,8 @@ export const serializeExplosionEmitterConfig = (
     config.spawnRadius.max,
     config.arc,
     config.direction,
+    config.alignToVelocity ? 1 : 0,
+    config.alignToVelocityFlip ? 1 : 0,
     serializedFill,
     config.shape,
   ].join(":");

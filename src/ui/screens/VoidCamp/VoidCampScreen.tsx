@@ -71,6 +71,8 @@ import {
 import { useAudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import { clampVolumePercentage } from "@logic/utils/audioSettings";
+import { useGraphicsSettings } from "@screens/VoidCamp/hooks/useGraphicsSettings";
+import type { GraphicsSettingKey } from "@screens/VoidCamp/hooks/useGraphicsSettings";
 import { StatisticsModal } from "@screens/VoidCamp/components/StatisticsModal/StatisticsModal";
 import { AchievementsModal } from "@screens/VoidCamp/components/AchievementsModal/AchievementsModal";
 import {
@@ -100,6 +102,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("game-data");
   const [statusMessage, setStatusMessage] = useState<SettingsMessage | null>(null);
   const { settings: audioSettings, setAudioSetting } = useAudioSettings();
+  const { settings: graphicsSettings, setGraphicsSetting } = useGraphicsSettings();
   const currentVersion = GAME_VERSIONS[0] ?? null;
   const timePlayed = useBridgeValue(bridge, TIME_BRIDGE_KEY, 0);
   const maps = useBridgeValue(bridge, MAP_LIST_BRIDGE_KEY, [] as MapListEntry[]);
@@ -177,6 +180,13 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       uiApi.audio.applyPercentageSettings(nextSettings);
     },
     [audioSettings, setAudioSetting, uiApi],
+  );
+
+  const handleGraphicsSettingChange = useCallback(
+    (key: GraphicsSettingKey, value: boolean) => {
+      setGraphicsSetting(key, value);
+    },
+    [setGraphicsSetting],
   );
 
   const handleOpenSettings = useCallback(() => {
@@ -383,6 +393,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         statusMessage={statusMessage}
         audioSettings={audioSettings}
         onAudioSettingChange={handleAudioSettingChange}
+        graphicsSettings={graphicsSettings}
+        onGraphicsSettingChange={handleGraphicsSettingChange}
       />
       <StatisticsModal
         isOpen={isStatisticsOpen}

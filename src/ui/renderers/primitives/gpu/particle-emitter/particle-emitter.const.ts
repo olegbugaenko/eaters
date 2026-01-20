@@ -36,6 +36,7 @@ uniform float u_defaultLifetimeMs;
 uniform float u_minParticleSize;
 uniform float u_lengthMultiplier;
 uniform int u_alignToVelocity;
+uniform int u_alignToVelocityFlip;
 uniform float u_sizeGrowthRate;
 
 uniform int u_fillType;
@@ -76,6 +77,7 @@ out vec4 v_stopColor2;
 out vec4 v_stopColor3;
 out vec4 v_stopColor4;
 out float v_shape;
+out vec2 v_alignDir;
 out vec2 v_particleCenter;
 out float v_particleRadius;
 
@@ -102,10 +104,13 @@ void main() {
   float lengthMul = max(u_lengthMultiplier, 1.0);
   vec2 baseOffset = vec2(a_unitPosition.x * size * lengthMul, a_unitPosition.y * size);
   vec2 world;
+  vec2 dir = a_velocity;
+  float len = length(dir);
+  vec2 ndir = len > 0.0001 ? dir / len : vec2(1.0, 0.0);
+  if (u_alignToVelocityFlip == 1) {
+    ndir = -ndir;
+  }
   if (u_alignToVelocity == 1) {
-    vec2 dir = a_velocity;
-    float len = length(dir);
-    vec2 ndir = len > 0.0001 ? dir / len : vec2(1.0, 0.0);
     vec2 perp = vec2(-ndir.y, ndir.x);
     vec2 rotated = ndir * baseOffset.x + perp * baseOffset.y;
     world = center + rotated;
@@ -177,6 +182,7 @@ void main() {
   }
 
   v_shape = float(u_shape);
+  v_alignDir = u_alignToVelocity == 1 ? ndir : vec2(1.0, 0.0);
   v_particleCenter = center;
   v_particleRadius = size * 0.5;
 
@@ -206,6 +212,7 @@ in vec4 v_stopColor2;
 in vec4 v_stopColor3;
 in vec4 v_stopColor4;
 in float v_shape;
+in vec2 v_alignDir;
 in vec2 v_particleCenter;
 in float v_particleRadius;
 
@@ -273,13 +280,19 @@ void main() {
       discard;
     }
   } else if (v_shape > 1.5) {
-    // Triangle masking: pointing in direction of velocity
-    vec2 localPos = (v_worldPosition - v_particleCenter) / max(v_particleRadius, 0.01);
-    // Isosceles triangle: base at x=-0.5, tip at x=0.5, height 1.0
+    // Triangle masking: slightly stretched isosceles to avoid "circle" look
+    vec2 toCenter = v_worldPosition - v_particleCenter;
+    vec2 perp = vec2(-v_alignDir.y, v_alignDir.x);
+    vec2 aligned = vec2(dot(toCenter, v_alignDir), dot(toCenter, perp));
+    vec2 localPos = aligned / max(v_particleRadius, 0.01);
     float x = localPos.x;
     float absY = abs(localPos.y);
-    // Triangle edges: |y| < 0.5 * (1.0 - x) for x in [-0.5, 0.5]
-    if (x < -0.5 || x > 0.5 || absY > 0.5 * (1.0 - 2.0 * x)) discard;
+    float baseX = -0.35;
+    float tipX = 0.55;
+    float baseHalfHeight = 0.35;
+    float t = clamp01((x - baseX) / max(tipX - baseX, 0.0001));
+    float halfHeight = mix(baseHalfHeight, 0.0, t);
+    if (x < baseX || x > tipX || absY > halfHeight) discard;
   }
   float fillType = v_fillInfo.x;
   vec4 color;

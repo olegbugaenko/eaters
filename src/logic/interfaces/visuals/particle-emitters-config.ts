@@ -60,6 +60,14 @@ export interface ParticleEmitterConfig {
   // Visual properties (optional)
   fill?: SceneFill;
   shape?: ParticleEmitterShape;
+  /**
+   * If true, rotate particle quads to face their velocity direction.
+   */
+  alignToVelocity?: boolean;
+  /**
+   * If true, flip velocity-aligned particles by 180 degrees.
+   */
+  alignToVelocityFlip?: boolean;
 
   // Limits (optional)
   maxParticles?: number;
