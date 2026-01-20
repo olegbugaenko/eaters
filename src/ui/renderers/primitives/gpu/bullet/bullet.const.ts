@@ -30,7 +30,8 @@ uniform float u_tailOffsetMul;
 uniform int u_shapeType; // 0 = circle, 1 = sprite
 
 // Outputs
-out vec2 v_localPos;
+out vec2 v_tailPos;
+out vec2 v_spritePos;
 out vec2 v_uv;
 out float v_radius;
 out float v_tailLength;
@@ -53,22 +54,28 @@ void main() {
   float scaleX = a_instanceRadius + tailLength;
   float scaleY = max(a_instanceRadius, tailWidth);
   
-  vec2 localPos = a_unitPosition * vec2(scaleX, scaleY);
+  vec2 tailLocalPos = a_unitPosition * vec2(scaleX, scaleY);
+  vec2 spriteLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
   float c = cos(a_instanceRotation);
   float s = sin(a_instanceRotation);
-  vec2 rotatedPos = vec2(
-    localPos.x * c - localPos.y * s,
-    localPos.x * s + localPos.y * c
+  vec2 rotatedTailPos = vec2(
+    tailLocalPos.x * c - tailLocalPos.y * s,
+    tailLocalPos.x * s + tailLocalPos.y * c
+  );
+  vec2 rotatedSpritePos = vec2(
+    spriteLocalPos.x * c - spriteLocalPos.y * s,
+    spriteLocalPos.x * s + spriteLocalPos.y * c
   );
   
   // World position
-  vec2 worldPos = a_instancePosition + rotatedPos;
+  vec2 worldPos = a_instancePosition + rotatedTailPos;
   
   // To clip space (same formula as PetalAuraGpuRenderer)
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
-  v_localPos = a_unitPosition;
+  v_tailPos = rotatedTailPos;
+  v_spritePos = rotatedSpritePos;
   // UV for sprite sampling: map [-1,1] to [0,1]
   v_uv = a_unitPosition * 0.5 + 0.5;
   v_radius = a_instanceRadius;
@@ -82,7 +89,8 @@ export const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 precision highp int;
 
-in vec2 v_localPos;
+in vec2 v_tailPos;
+in vec2 v_spritePos;
 in vec2 v_uv;
 in float v_radius;
 in float v_tailLength;
@@ -106,7 +114,7 @@ void main() {
   float scaleY = max(v_radius, v_tailWidth);
   
   // Convert back to world-relative coords
-  vec2 pos = v_localPos * vec2(scaleX, scaleY);
+  vec2 pos = v_tailPos;
   
   // Distance from center for body
   float dist = length(pos);
@@ -135,7 +143,7 @@ void main() {
     
   // Sprite is square, sized to be visible (3x radius so it's not too tiny)
   float spriteHalf = v_radius;
-  vec2 spritePos = pos;
+  vec2 spritePos = v_spritePos;
     
   // Sprite center is at origin (where bullet center is)
   if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
