@@ -95,6 +95,7 @@ const createRenderProgram = (
     minParticleSize: gl.getUniformLocation(program, "u_minParticleSize"),
     lengthMultiplier: gl.getUniformLocation(program, "u_lengthMultiplier"),
     alignToVelocity: gl.getUniformLocation(program, "u_alignToVelocity"),
+    alignToVelocityFlip: gl.getUniformLocation(program, "u_alignToVelocityFlip"),
     sizeGrowthRate: gl.getUniformLocation(program, "u_sizeGrowthRate"),
     fillType: gl.getUniformLocation(program, "u_fillType"),
     stopCount: gl.getUniformLocation(program, "u_stopCount"),
@@ -317,6 +318,16 @@ const uploadEmitterUniforms = (
     gl.uniform1i(
       program.uniforms.alignToVelocity,
       (cache.alignToVelocity = alignVal)
+    );
+  }
+  const alignFlipVal = u.alignToVelocityFlip ? 1 : 0;
+  if (
+    program.uniforms.alignToVelocityFlip &&
+    cache.alignToVelocityFlip !== alignFlipVal
+  ) {
+    gl.uniform1i(
+      program.uniforms.alignToVelocityFlip,
+      (cache.alignToVelocityFlip = alignFlipVal)
     );
   }
   if (

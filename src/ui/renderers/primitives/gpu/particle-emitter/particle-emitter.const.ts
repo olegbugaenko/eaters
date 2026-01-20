@@ -36,6 +36,7 @@ uniform float u_defaultLifetimeMs;
 uniform float u_minParticleSize;
 uniform float u_lengthMultiplier;
 uniform int u_alignToVelocity;
+uniform int u_alignToVelocityFlip;
 uniform float u_sizeGrowthRate;
 
 uniform int u_fillType;
@@ -106,6 +107,9 @@ void main() {
   vec2 dir = a_velocity;
   float len = length(dir);
   vec2 ndir = len > 0.0001 ? dir / len : vec2(1.0, 0.0);
+  if (u_alignToVelocityFlip == 1) {
+    ndir = -ndir;
+  }
   if (u_alignToVelocity == 1) {
     vec2 perp = vec2(-ndir.y, ndir.x);
     vec2 rotated = ndir * baseOffset.x + perp * baseOffset.y;

@@ -56,6 +56,7 @@ export interface ParticleEmitterBaseConfig {
   // Optional rendering tweaks
   aspectRatio?: number; // width/height; 1 = square, >1 stretched along X
   alignToVelocity?: boolean; // if true, rotate quad to face particle velocity
+  alignToVelocityFlip?: boolean; // if true, rotate 180 degrees when aligned to velocity
   emissionDurationMs?: number;
   capacity: number;
   sizeGrowthRate?: number; // Multiplier per second: 1.0 = no growth, 2.0 = doubles per second
@@ -1580,6 +1581,7 @@ const createParticleEmitterGpuState = (
     minParticleSize: MIN_PARTICLE_SIZE,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    alignToVelocityFlip: false,
     sizeGrowthRate: 1.0,
   };
   refreshParticleUniformKeys(uniforms);
@@ -1899,6 +1901,7 @@ const createParticleEmitterGpuStateFromPool = (
     minParticleSize: MIN_PARTICLE_SIZE,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    alignToVelocityFlip: false,
     sizeGrowthRate: 1.0,
   };
   refreshParticleUniformKeys(uniforms);
@@ -2074,6 +2077,7 @@ const updateParticleEmitterGpuUniforms = <
   uniforms.minParticleSize = MIN_PARTICLE_SIZE;
   uniforms.lengthMultiplier = Math.max(config.aspectRatio ?? 1, 1);
   uniforms.alignToVelocity = config.alignToVelocity === true;
+  uniforms.alignToVelocityFlip = config.alignToVelocityFlip === true;
   uniforms.sizeGrowthRate = typeof config.sizeGrowthRate === "number" && Number.isFinite(config.sizeGrowthRate) ? config.sizeGrowthRate : 1.0;
 
   const fill = resolveParticleFill(config);
@@ -2532,6 +2536,7 @@ export const sanitizeParticleEmitterConfig = (
     maxParticles?: number;
     aspectRatio?: number;
     alignToVelocity?: boolean;
+    alignToVelocityFlip?: boolean;
   },
   options: ParticleEmitterSanitizerOptions = {}
 ): ParticleEmitterBaseConfig | null => {
@@ -2611,5 +2616,6 @@ export const sanitizeParticleEmitterConfig = (
     capacity,
     aspectRatio: Number.isFinite(config.aspectRatio) ? Math.max(Number(config.aspectRatio), 0.01) : undefined,
     alignToVelocity: config.alignToVelocity === true,
+    alignToVelocityFlip: config.alignToVelocityFlip === true,
   };
 };
