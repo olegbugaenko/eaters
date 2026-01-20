@@ -21,6 +21,7 @@ export interface ParticleRenderProgram {
     minParticleSize: WebGLUniformLocation | null;
     lengthMultiplier: WebGLUniformLocation | null;
     alignToVelocity: WebGLUniformLocation | null;
+    alignToVelocityFlip: WebGLUniformLocation | null;
     sizeGrowthRate: WebGLUniformLocation | null;
     fillType: WebGLUniformLocation | null;
     stopCount: WebGLUniformLocation | null;
@@ -86,6 +87,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   minParticleSize: number;
   lengthMultiplier: number;
   alignToVelocity: boolean;
+  alignToVelocityFlip: boolean;
   sizeGrowthRate: number;
 }
 
@@ -113,6 +115,7 @@ export interface UniformCache {
   minParticleSize?: number;
   lengthMultiplier?: number;
   alignToVelocity?: number;
+  alignToVelocityFlip?: number;
   sizeGrowthRate?: number;
   fillType?: number;
   stopCount?: number;

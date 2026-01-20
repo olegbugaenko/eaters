@@ -165,6 +165,7 @@ export const createEmitterCustomData = (
     maxParticles,
     shape: config.emitter.shape,
     alignToVelocity: config.emitter.alignToVelocity ?? false,
+    alignToVelocityFlip: config.emitter.alignToVelocityFlip ?? false,
     sizeGrowthRate: config.emitter.sizeGrowthRate,
     radialVelocity: config.emitter.radialVelocity ?? false,
   };

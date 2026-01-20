@@ -276,6 +276,7 @@ export const GRAY_BRICK_DAMAGE_EMITTER: ParticleEmitterConfig = {
   fill: createSolidEmitterFill({ r: 0.85, g: 0.87, b: 0.92, a: 1 }),
   shape: "triangle",
   alignToVelocity: true,
+  alignToVelocityFlip: true,
   sizeGrowthRate: 1.0,
   maxParticles: 1000,
 };
@@ -314,6 +315,7 @@ export const GRAY_BRICK_DESTRUCTION_EMITTER_V2: ParticleEmitterConfig = {
   fill: createSolidEmitterFill({ r: 0.85, g: 0.87, b: 0.92, a: 1 }),
   shape: "triangle",
   alignToVelocity: true,
+  alignToVelocityFlip: true,
   sizeGrowthRate: 1.0,
   maxParticles: 1000,
 };
