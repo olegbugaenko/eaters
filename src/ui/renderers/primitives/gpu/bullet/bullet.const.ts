@@ -130,18 +130,19 @@ void main() {
       return;
     }
   } else {
-    // Sprite body - sample from texture array
-    // pos is in world-relative coords (pixels)
+  // Sprite body - sample from texture array
+  // pos is in world-relative coords (pixels)
     
-    // Sprite is square, sized to be visible (3x radius so it's not too tiny)
-    float spriteHalf = v_radius;
+  // Sprite is square, sized to be visible (3x radius so it's not too tiny)
+  float spriteHalf = v_radius;
+  vec2 spritePos = v_localPos * vec2(v_radius, v_radius);
     
-    // Sprite center is at origin (where bullet center is)
-    if (abs(pos.x) < spriteHalf && abs(pos.y) < spriteHalf) {
-      // Map pos to UV [0,1]
-      // pos.x from -spriteHalf to +spriteHalf -> u from 0 to 1
-      float u = (pos.x / spriteHalf) * 0.5 + 0.5;
-      float v = (pos.y / spriteHalf) * 0.5 + 0.5;
+  // Sprite center is at origin (where bullet center is)
+  if (abs(spritePos.x) < spriteHalf && abs(spritePos.y) < spriteHalf) {
+    // Map pos to UV [0,1]
+    // pos.x from -spriteHalf to +spriteHalf -> u from 0 to 1
+    float u = (spritePos.x / spriteHalf) * 0.5 + 0.5;
+    float v = (spritePos.y / spriteHalf) * 0.5 + 0.5;
       // Flip V for correct orientation (texture Y is inverted)
       v = 1.0 - v;
       
