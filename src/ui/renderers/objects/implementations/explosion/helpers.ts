@@ -35,6 +35,7 @@ export const sanitizeExplosionEmitterConfig = (
       color: config.color,
       fill: config.fill,
       shape: config.shape,
+      alignToVelocity: config.alignToVelocity,
       maxParticles: config.maxParticles,
     },
     { defaultColor: DEFAULT_COLOR, minCapacity: 1 }
