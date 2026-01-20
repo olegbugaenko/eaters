@@ -51,7 +51,7 @@ void main() {
   
   float tailLength = a_instanceRadius * u_tailLengthMul;
   float tailWidth = a_instanceRadius * u_tailWidthMul;
-  float tailOffset = -a_instanceRadius + a_instanceRadius * u_tailOffsetMul;
+  float tailOffset = a_instanceRadius * u_tailOffsetMul;
   
   // Scale local position to cover bullet + tail
   float tailScaleX = a_instanceRadius + tailLength;
