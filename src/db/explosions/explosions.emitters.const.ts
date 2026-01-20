@@ -305,7 +305,7 @@ export const GRAY_BRICK_DESTRUCTION_EMITTER_V2: ParticleEmitterConfig = {
   speedVariation: 0.01,
   particleLifetimeMs: 950,
   fadeStartMs: 480,
-  sizeRange: { min: 2, max: 4 },
+  sizeRange: { min: 2, max: 16 },
   spawnRadius: { min: 0, max: 8 },
   spawnRadiusMultiplier: 1.5,
   color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
