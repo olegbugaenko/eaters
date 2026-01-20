@@ -158,6 +158,7 @@ class ExplosionWaveGpuRenderer extends GpuBatchRenderer<WaveInstance, WaveBatch,
       minParticleSize: 0.0001,
       lengthMultiplier: 1,
       alignToVelocity: false,
+      alignToVelocityFlip: false,
       sizeGrowthRate: 1.0,
     };
 
@@ -366,6 +367,7 @@ class ExplosionWaveGpuRenderer extends GpuBatchRenderer<WaveInstance, WaveBatch,
       minParticleSize: 0.0001,
       lengthMultiplier: 1,
       alignToVelocity: false,
+      alignToVelocityFlip: false,
       sizeGrowthRate: 1.0,
     };
   }

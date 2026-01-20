@@ -1,4 +1,5 @@
 import type {
+  SceneColor,
   SceneFill,
   SceneFillFilaments,
   SceneSolidFill,
