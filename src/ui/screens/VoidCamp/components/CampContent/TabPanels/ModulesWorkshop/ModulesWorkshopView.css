@@ -59,7 +59,7 @@
   text-align: left;
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  height: 220px;
+  height: 140px;
 }
 
 .modules-workshop__card:hover {
@@ -85,7 +85,7 @@
 
 .modules-workshop__card-level {
   font-size: 0.85rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-subtle);
 }

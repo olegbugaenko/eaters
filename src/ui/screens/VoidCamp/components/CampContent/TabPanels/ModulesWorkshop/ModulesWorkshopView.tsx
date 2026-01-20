@@ -165,7 +165,6 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                   >
                     <span className="modules-workshop__card-title">{module.name}</span>
                     <span className="modules-workshop__card-level">Level {module.level}</span>
-                    <p className="modules-workshop__card-description">{module.description}</p>
                     <div className="modules-workshop__card-cost">
                       {module.nextCost ? (
                         <ResourceCostDisplay
