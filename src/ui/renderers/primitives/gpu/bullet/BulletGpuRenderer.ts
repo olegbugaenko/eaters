@@ -68,6 +68,7 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
       tailLengthMul: gl.getUniformLocation(programResult.program, "u_tailLengthMul"),
       tailWidthMul: gl.getUniformLocation(programResult.program, "u_tailWidthMul"),
       shapeType: gl.getUniformLocation(programResult.program, "u_shapeType"),
+      renderPass: gl.getUniformLocation(programResult.program, "u_renderPass"),
       centerColor: gl.getUniformLocation(programResult.program, "u_centerColor"),
       edgeColor: gl.getUniformLocation(programResult.program, "u_edgeColor"),
       useRadialGradient: gl.getUniformLocation(programResult.program, "u_useRadialGradient"),
@@ -215,7 +216,7 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
       return;
     }
 
-    const { uniforms, spriteTexture } = this.sharedResourcesExtended;
+    const { uniforms } = this.sharedResourcesExtended;
     const { config } = batch;
 
     // Camera uniforms (shared)
@@ -265,19 +266,6 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
       }
       if (uniforms.edgeColor) {
         gl.uniform4f(uniforms.edgeColor, ec.r, ec.g, ec.b, ec.a ?? 1);
-      }
-    }
-
-    // Bind sprite texture array once for all batches
-    if (spriteTexture && this.sharedResourcesExtended.spriteTexture === spriteTexture) {
-      try {
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D_ARRAY, spriteTexture);
-        if (uniforms.spriteArray) {
-          gl.uniform1i(uniforms.spriteArray, 0);
-        }
-      } catch (error) {
-        // Texture was deleted or context lost - skip texture binding
       }
     }
 
@@ -333,18 +321,50 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
     return null;
   }
 
-  /**
-   * Override render to unbind texture after rendering.
-   */
   public override render(
     gl: WebGL2RenderingContext,
     cameraPosition: SceneVector2,
     viewportSize: SceneSize,
     timestampMs: number
   ): void {
-    super.render(gl, cameraPosition, viewportSize, timestampMs);
+    if (!this.sharedResourcesExtended || this.gl !== gl) {
+      return;
+    }
 
-    // Unbind texture
+    gl.useProgram(this.sharedResourcesExtended.program);
+    const drawMode = this.getDrawMode(gl);
+
+    this.batches.forEach((batch) => {
+      if (batch.gl !== gl || batch.activeCount <= 0) {
+        return;
+      }
+
+      this.setupRenderState(gl, batch, cameraPosition, viewportSize, timestampMs);
+
+      const vertexCount = this.getVertexCount(batch);
+      gl.bindVertexArray(batch.vao);
+
+      if (this.sharedResourcesExtended.uniforms.renderPass) {
+        gl.uniform1i(this.sharedResourcesExtended.uniforms.renderPass, 0);
+      }
+      gl.drawArraysInstanced(drawMode, 0, vertexCount, batch.capacity);
+
+      if (this.sharedResourcesExtended.uniforms.renderPass) {
+        gl.uniform1i(this.sharedResourcesExtended.uniforms.renderPass, 1);
+      }
+
+      if (this.sharedResourcesExtended.spriteTexture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.sharedResourcesExtended.spriteTexture);
+        if (this.sharedResourcesExtended.uniforms.spriteArray) {
+          gl.uniform1i(this.sharedResourcesExtended.uniforms.spriteArray, 0);
+        }
+      }
+
+      gl.drawArraysInstanced(drawMode, 0, vertexCount, batch.capacity);
+      gl.bindVertexArray(null);
+    });
+
     if (this.sharedResourcesExtended?.spriteTexture) {
       gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
     }
