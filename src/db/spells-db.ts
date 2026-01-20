@@ -397,8 +397,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     cooldownSeconds: 1.6,
     damage: { min: 2, max: 5 },
     projectile: {
-      radius: 5,
-      speed: 135,
+      radius: 32,
+      speed: 65,
       lifetimeMs: 9_500,
       fill: {
         fillType: FILL_TYPES.SOLID,
@@ -411,17 +411,6 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         endColor: { r: 0.2, g: 0.45, b: 0.95, a: 0 },
       },
       tailEmitter: ELECTRIC_SHARDS_TAIL_EMITTER,
-      ringTrail: {
-        spawnIntervalMs: 70,
-        lifetimeMs: 700,
-        startRadius: 3,
-        endRadius: 22,
-        startAlpha: 0.08,
-        endAlpha: 0,
-        innerStop: 0.42,
-        outerStop: 0.76,
-        color: { r: 0.5, g: 0.85, b: 1, a: 0.05 },
-      },
       count: 4,
       spreadAngle: 18,
       shape: "sprite",
