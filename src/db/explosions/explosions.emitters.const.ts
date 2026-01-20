@@ -6,6 +6,11 @@ import type {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../../logic/interfaces/visuals/particle-emitters-config";
 
+export const createSolidEmitterFill = (color: SceneFill["color"]): SceneFill => ({
+  fillType: FILL_TYPES.SOLID,
+  color,
+});
+
 export const DEFAULT_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.SOLID,
   color: { r: 1, g: 0.85, b: 0.55, a: 1 },
@@ -267,10 +272,7 @@ export const GRAY_BRICK_DAMAGE_EMITTER: ParticleEmitterConfig = {
   color: { r: 0.82, g: 0.84, b: 0.88, a: 1 },
   arc: Math.PI * 2,
   direction: 0,
-  fill: {
-    fillType: FILL_TYPES.SOLID,
-    color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
-  },
+  fill: createSolidEmitterFill({ r: 0.85, g: 0.87, b: 0.92, a: 1 }),
   shape: "triangle",
   sizeGrowthRate: 1.0,
 };
@@ -306,10 +308,7 @@ export const GRAY_BRICK_DESTRUCTION_EMITTER_V2: ParticleEmitterConfig = {
   color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
   arc: Math.PI * 2,
   direction: 0,
-  fill: {
-    fillType: FILL_TYPES.SOLID,
-    color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
-  },
+  fill: createSolidEmitterFill({ r: 0.85, g: 0.87, b: 0.92, a: 1 }),
   shape: "triangle",
   sizeGrowthRate: 1.0,
   maxParticles: 1000,
