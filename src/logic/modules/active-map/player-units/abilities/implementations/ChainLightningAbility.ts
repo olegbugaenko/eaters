@@ -116,7 +116,8 @@ const executeChainLightningAbility = (
       getTargetsInRadius,
       applyTargetDamage: dependencies.applyTargetDamage,
       applyBrickDamage: dependencies.applyBrickDamage,
-      spawnArcBetweenTargets: services.spawnArcBetweenTargets,
+      spawnArcBetweenTargets: (_arcType, source, target, options) =>
+        services.spawnArcBetweenTargets("chainLightning", source, target, options),
     },
     arcType: "chainLightning",
   });
