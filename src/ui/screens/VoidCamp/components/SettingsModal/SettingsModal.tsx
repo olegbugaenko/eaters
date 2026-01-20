@@ -1,9 +1,13 @@
 import { ChangeEvent, MouseEventHandler, useCallback, useId, useMemo, useRef } from "react";
 import { classNames } from "@ui/shared/classNames";
 import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
+import type {
+  GraphicsSettingKey,
+  GraphicsSettings,
+} from "@screens/VoidCamp/hooks/useGraphicsSettings";
 import "./SettingsModal.css";
 
-export type SettingsTab = "game-data" | "audio";
+export type SettingsTab = "game-data" | "audio" | "graphics";
 
 export interface SettingsMessage {
   readonly tone: "success" | "error";
@@ -20,6 +24,8 @@ interface SettingsModalProps {
   readonly statusMessage: SettingsMessage | null;
   readonly audioSettings: AudioSettings;
   readonly onAudioSettingChange: (key: AudioSettingKey, value: number) => void;
+  readonly graphicsSettings: GraphicsSettings;
+  readonly onGraphicsSettingChange: (key: GraphicsSettingKey, value: boolean) => void;
 }
 
 const formatPercentage = (value: number): string => `${value}%`;
@@ -34,12 +40,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   statusMessage,
   audioSettings,
   onAudioSettingChange,
+  graphicsSettings,
+  onGraphicsSettingChange,
 }) => {
   const titleId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const globalVolumeId = useId();
   const effectsVolumeId = useId();
   const musicVolumeId = useId();
+  const brickHitParticlesId = useId();
+  const brickDestroyParticlesId = useId();
 
   const handleBackdropClick = useCallback(() => {
     onClose();
@@ -72,6 +82,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     () => [
       { key: "game-data" as SettingsTab, label: "Game Data" },
       { key: "audio" as SettingsTab, label: "Audio" },
+      { key: "graphics" as SettingsTab, label: "Graphics" },
     ],
     []
   );
@@ -153,7 +164,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               )}
             </section>
-          ) : (
+          ) : null}
+          {activeTab === "audio" ? (
             <section className="settings-modal__section">
               <h3 className="settings-modal__section-title">Audio Levels</h3>
               <p className="settings-modal__description">
@@ -219,7 +231,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
             </section>
-          )}
+          ) : null}
+          {activeTab === "graphics" ? (
+            <section className="settings-modal__section">
+              <h3 className="settings-modal__section-title">Graphical Effects</h3>
+              <p className="settings-modal__description">
+                Control the particle effects for brick impacts and destruction.
+              </p>
+              <div className="settings-modal__toggles">
+                <label className="settings-modal__toggle" htmlFor={brickHitParticlesId}>
+                  <input
+                    id={brickHitParticlesId}
+                    type="checkbox"
+                    checked={graphicsSettings.brickHitParticles}
+                    onChange={(event) =>
+                      onGraphicsSettingChange("brickHitParticles", event.target.checked)
+                    }
+                  />
+                  Show brick hit particles
+                </label>
+                <label className="settings-modal__toggle" htmlFor={brickDestroyParticlesId}>
+                  <input
+                    id={brickDestroyParticlesId}
+                    type="checkbox"
+                    checked={graphicsSettings.brickDestroyParticles}
+                    onChange={(event) =>
+                      onGraphicsSettingChange("brickDestroyParticles", event.target.checked)
+                    }
+                  />
+                  Show brick destruction particles
+                </label>
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </div>

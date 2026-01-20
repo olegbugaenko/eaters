@@ -1,4 +1,5 @@
 import type {
+  SceneColor,
   SceneFill,
   SceneFillFilaments,
   SceneFillNoise,
@@ -6,7 +7,7 @@ import type {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../../logic/interfaces/visuals/particle-emitters-config";
 
-export const createSolidEmitterFill = (color: SceneFill["color"]): SceneFill => ({
+export const createSolidEmitterFill = (color: SceneColor): SceneFill => ({
   fillType: FILL_TYPES.SOLID,
   color,
 });
