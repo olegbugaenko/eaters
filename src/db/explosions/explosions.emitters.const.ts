@@ -1,12 +1,13 @@
 import type {
   SceneFill,
   SceneFillFilaments,
+  SceneSolidFill,
   SceneFillNoise,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { ParticleEmitterConfig } from "../../logic/interfaces/visuals/particle-emitters-config";
 
-export const createSolidEmitterFill = (color: SceneFill["color"]): SceneFill => ({
+export const createSolidEmitterFill = (color: SceneSolidFill["color"]): SceneFill => ({
   fillType: FILL_TYPES.SOLID,
   color,
 });
@@ -260,13 +261,13 @@ export const DEFAULT_EMITTER: ParticleEmitterConfig = {
 };
 
 export const GRAY_BRICK_DAMAGE_EMITTER: ParticleEmitterConfig = {
-  emissionDurationMs: 140,
-  particlesPerSecond: 340,
+  emissionDurationMs: 200,
+  particlesPerSecond: 440,
   baseSpeed: 0.04,
   speedVariation: 0.01,
-  particleLifetimeMs: 650,
-  fadeStartMs: 280,
-  sizeRange: { min: 1, max: 2 },
+  particleLifetimeMs: 850,
+  fadeStartMs: 480,
+  sizeRange: { min: 2, max: 3 },
   spawnRadius: { min: 0, max: 5 },
   spawnRadiusMultiplier: 1.2,
   color: { r: 0.82, g: 0.84, b: 0.88, a: 1 },
@@ -275,6 +276,7 @@ export const GRAY_BRICK_DAMAGE_EMITTER: ParticleEmitterConfig = {
   fill: createSolidEmitterFill({ r: 0.85, g: 0.87, b: 0.92, a: 1 }),
   shape: "triangle",
   sizeGrowthRate: 1.0,
+  maxParticles: 1000,
 };
 
 export const GRAY_BRICK_DESTRUCTION_EMITTER: ParticleEmitterConfig = {
@@ -302,7 +304,7 @@ export const GRAY_BRICK_DESTRUCTION_EMITTER_V2: ParticleEmitterConfig = {
   speedVariation: 0.01,
   particleLifetimeMs: 950,
   fadeStartMs: 480,
-  sizeRange: { min: 1, max: 3 },
+  sizeRange: { min: 2, max: 4 },
   spawnRadius: { min: 0, max: 8 },
   spawnRadiusMultiplier: 1.5,
   color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },

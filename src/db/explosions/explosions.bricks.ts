@@ -76,7 +76,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DAMAGE_EMITTER,
       color: { r: 1, g: 0.95, b: 0.6, a: 1 },
-      fill: createSolidEmitterFill({ r: 1, g: 0.95, b: 0.6, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.9, g: 0.85, b: 0.5, a: 1 }),
     },
   },
   yellowBrickDestroy: {
@@ -92,7 +92,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DESTRUCTION_EMITTER_V2,
       color: { r: 1, g: 0.95, b: 0.6, a: 1 },
-      fill: createSolidEmitterFill({ r: 1, g: 0.95, b: 0.6, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.8, g: 0.75, b: 0.4, a: 1 }),
     },
   },
   organicBrickHit: {
@@ -124,7 +124,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DESTRUCTION_EMITTER_V2,
       color: { r: 0.6, g: 1, b: 0.7, a: 1 },
-      fill: createSolidEmitterFill({ r: 0.6, g: 1, b: 0.7, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.3, g: 0.8, b: 0.2, a: 1 }),
     },
   },
   ironBrickHit: {
@@ -172,7 +172,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DAMAGE_EMITTER,
       color: { r: 0.75, g: 0.55, b: 0.35, a: 1 },
-      fill: createSolidEmitterFill({ r: 0.75, g: 0.55, b: 0.35, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.85, g: 0.65, b: 0.35, a: 1 }),
     },
   },
   woodBrickDestroy: {
@@ -188,7 +188,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DESTRUCTION_EMITTER_V2,
       color: { r: 0.75, g: 0.55, b: 0.35, a: 1 },
-      fill: createSolidEmitterFill({ r: 0.75, g: 0.55, b: 0.35, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.85, g: 0.65, b: 0.35, a: 1 }),
     },
   },
   copperBrickHit: {
@@ -236,7 +236,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DAMAGE_EMITTER,
       color: { r: 0.92, g: 0.93, b: 0.96, a: 1 },
-      fill: createSolidEmitterFill({ r: 0.92, g: 0.93, b: 0.96, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.72, g: 0.93, b: 0.96, a: 1 }),
     },
   },
   silverBrickDestroy: {
@@ -252,7 +252,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DESTRUCTION_EMITTER_V2,
       color: { r: 0.92, g: 0.93, b: 0.96, a: 1 },
-      fill: createSolidEmitterFill({ r: 0.92, g: 0.93, b: 0.96, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.72, g: 0.93, b: 0.96, a: 1 }),
     },
   },
   coalBrickHit: {
