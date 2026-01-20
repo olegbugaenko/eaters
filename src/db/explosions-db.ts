@@ -17,6 +17,7 @@ export type ExplosionType =
   | "fireball"
   | "grayBrickHit"
   | "grayBrickDestroy"
+  | "grayBrickDestroyV2"
   | "yellowBrickHit"
   | "yellowBrickDestroy"
   | "organicBrickHit"
@@ -479,6 +480,28 @@ const GRAY_BRICK_DESTRUCTION_EMITTER: ParticleEmitterConfig = {
   sizeGrowthRate: 1.35,
 };
 
+
+const GRAY_BRICK_DESTRUCTION_EMITTER_V2: ParticleEmitterConfig = {
+  emissionDurationMs: 220,
+  particlesPerSecond: 420,
+  baseSpeed: 0.1,
+  speedVariation: 0.01,
+  particleLifetimeMs: 750,
+  fadeStartMs: 480,
+  sizeRange: { min: 1, max: 3 },
+  spawnRadius: { min: 0, max: 8 },
+  spawnRadiusMultiplier: 1.5,
+  color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
+  arc: Math.PI * 2,
+  direction: 0,
+  fill: {
+    fillType: FILL_TYPES.SOLID,
+    color: { r: 0.85, g: 0.87, b: 0.92, a: 1 },
+  },
+  shape: "triangle",
+  sizeGrowthRate: 1.0,
+};
+
 const CRITICAL_HIT_EMITTER: ParticleEmitterConfig = {
   emissionDurationMs: 240,
   particlesPerSecond: 220,
@@ -704,6 +727,18 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
       gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
     }),
     emitter: GRAY_BRICK_DESTRUCTION_EMITTER,
+  },
+  grayBrickDestroyV2: {
+    lifetimeMs: 1_200,
+    defaultInitialRadius: 10,
+    waves: createSimpleWave({
+      defaultInitialRadius: 10,
+      radiusExtension: 60,
+      startAlpha: 0.6,
+      endAlpha: 0.0,
+      gradientStops: GRAY_BRICK_DESTROY_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: GRAY_BRICK_DESTRUCTION_EMITTER_V2,
   },
   yellowBrickHit: {
     lifetimeMs: 1_000,

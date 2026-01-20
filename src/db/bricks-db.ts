@@ -307,7 +307,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         radiusOffset: -2,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "grayBrickDestroyV2",
         radiusMultiplier: 0.95,
       },
     },
