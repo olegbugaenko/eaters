@@ -327,11 +327,12 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
     viewportSize: SceneSize,
     timestampMs: number
   ): void {
-    if (!this.sharedResourcesExtended || this.gl !== gl) {
+    const sharedResources = this.sharedResourcesExtended;
+    if (!sharedResources || this.gl !== gl) {
       return;
     }
 
-    gl.useProgram(this.sharedResourcesExtended.program);
+    gl.useProgram(sharedResources.program);
     const drawMode = this.getDrawMode(gl);
 
     this.batches.forEach((batch) => {
@@ -344,20 +345,20 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
       const vertexCount = this.getVertexCount(batch);
       gl.bindVertexArray(batch.vao);
 
-      if (this.sharedResourcesExtended.uniforms.renderPass) {
-        gl.uniform1i(this.sharedResourcesExtended.uniforms.renderPass, 0);
+      if (sharedResources.uniforms.renderPass) {
+        gl.uniform1i(sharedResources.uniforms.renderPass, 0);
       }
       gl.drawArraysInstanced(drawMode, 0, vertexCount, batch.capacity);
 
-      if (this.sharedResourcesExtended.uniforms.renderPass) {
-        gl.uniform1i(this.sharedResourcesExtended.uniforms.renderPass, 1);
+      if (sharedResources.uniforms.renderPass) {
+        gl.uniform1i(sharedResources.uniforms.renderPass, 1);
       }
 
-      if (this.sharedResourcesExtended.spriteTexture) {
+      if (sharedResources.spriteTexture) {
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.sharedResourcesExtended.spriteTexture);
-        if (this.sharedResourcesExtended.uniforms.spriteArray) {
-          gl.uniform1i(this.sharedResourcesExtended.uniforms.spriteArray, 0);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, sharedResources.spriteTexture);
+        if (sharedResources.uniforms.spriteArray) {
+          gl.uniform1i(sharedResources.uniforms.spriteArray, 0);
         }
       }
 
@@ -365,7 +366,7 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
       gl.bindVertexArray(null);
     });
 
-    if (this.sharedResourcesExtended?.spriteTexture) {
+    if (sharedResources.spriteTexture) {
       gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
     }
   }
