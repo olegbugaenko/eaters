@@ -1,5 +1,7 @@
 import { TO_CLIP_GLSL } from "../../../shaders/common.glsl";
 
+const FIRE_RING_EXTRA_RADIUS = 160.0;
+
 // center(2) + inner(1) + outer(1) + birth(1) + lifetime(1) + intensity(1) + active(1) + color(3)
 export const INSTANCE_COMPONENTS = 11;
 export const INSTANCE_STRIDE = INSTANCE_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
@@ -39,7 +41,7 @@ void main() {
     return;
   }
 
-  float maxRadius = a_outerRadius + 130.0; // extra space for tongues
+  float maxRadius = a_outerRadius + ${FIRE_RING_EXTRA_RADIUS}; // extra space for tongues
   vec2 offset   = a_unitPosition * maxRadius;
   vec2 worldPos = a_center + offset;
 
@@ -123,7 +125,7 @@ void main() {
     discard;
   }
 
-  if (dist > v_outerRadius + 140.0) discard;
+  if (dist > v_outerRadius + ${FIRE_RING_EXTRA_RADIUS}) discard;
 
   // 1) soft ring = difference of circles
   float innerStep = 1.0 - smoothstep(v_innerRadius - INNER_SOFT, v_innerRadius + INNER_SOFT, dist);
