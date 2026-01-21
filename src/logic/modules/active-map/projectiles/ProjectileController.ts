@@ -113,11 +113,12 @@ export class UnitProjectileController {
     const damageRadius = Math.max(0, visual.damageRadius ?? 0);
     const rotation = Math.atan2(direction.y, direction.x);
     const movementRotation = rotation;
-    const shape = visual.shape ?? "circle";
+    const shape = visual.shape ?? (visual.spriteName ? "sprite" : "circle");
     
     // Try GPU instanced rendering first (much faster for many projectiles)
     const gpuConfig = this.getGpuBulletConfig(visual, shape);
     const gpuSlot = gpuConfig ? acquireGpuBulletSlot(gpuConfig) : null;
+    console.log("gpuSlot", gpuSlot, gpuConfig);
 
     const bulletGpuKey = gpuSlot ? `${gpuSlot.batchKey}:${gpuSlot.slotIndex}` : undefined;
     const rendererCustomData = {
@@ -239,7 +240,8 @@ export class UnitProjectileController {
       tailStartColor: tailColors.start,
       tailEndColor: tailColors.end,
       tailLengthMultiplier: visual.tail?.lengthMultiplier ?? 4.5,
-      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 1.75,
+      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 2,
+      tailTaperMultiplier: visual.tail?.taperMultiplier ?? 0.7,
       tailOffsetMultiplier: visual.tail?.offsetMultiplier,
       shape,
       centerColor: radialColors?.center,

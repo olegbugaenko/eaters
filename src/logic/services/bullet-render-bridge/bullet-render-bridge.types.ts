@@ -10,6 +10,8 @@ export interface BulletVisualConfig {
   readonly tailEndColor: SceneColor;
   readonly tailLengthMultiplier: number;
   readonly tailWidthMultiplier: number;
+  /** Tail width taper along length (0 = rectangle, 1 = triangle) */
+  readonly tailTaperMultiplier?: number;
   /** Tail offset along movement axis (positive = forward, negative = backward) */
   readonly tailOffsetMultiplier?: number;
   readonly shape: BulletShape;

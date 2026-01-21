@@ -67,6 +67,7 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
       tailEndColor: gl.getUniformLocation(programResult.program, "u_tailEndColor"),
       tailLengthMul: gl.getUniformLocation(programResult.program, "u_tailLengthMul"),
       tailWidthMul: gl.getUniformLocation(programResult.program, "u_tailWidthMul"),
+      tailTaperMul: gl.getUniformLocation(programResult.program, "u_tailTaperMul"),
       shapeType: gl.getUniformLocation(programResult.program, "u_shapeType"),
       renderPass: gl.getUniformLocation(programResult.program, "u_renderPass"),
       centerColor: gl.getUniformLocation(programResult.program, "u_centerColor"),
@@ -250,6 +251,9 @@ class BulletGpuRenderer extends GpuBatchRenderer<BulletInstance, BulletBatch, Bu
     }
     if (uniforms.tailWidthMul) {
       gl.uniform1f(uniforms.tailWidthMul, config.tailWidthMultiplier);
+    }
+    if (uniforms.tailTaperMul) {
+      gl.uniform1f(uniforms.tailTaperMul, config.tailTaperMultiplier ?? 0.7);
     }
     if (uniforms.tailOffsetMul) {
       gl.uniform1f(uniforms.tailOffsetMul, config.tailOffsetMultiplier ?? 0);

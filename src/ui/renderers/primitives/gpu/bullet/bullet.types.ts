@@ -17,6 +17,8 @@ export interface BulletVisualConfig {
   readonly tailLengthMultiplier: number;
   /** Tail width multiplier relative to bullet radius */
   readonly tailWidthMultiplier: number;
+  /** Tail width taper along length (0 = rectangle, 1 = triangle) */
+  readonly tailTaperMultiplier?: number;
   /** Tail offset along movement axis (positive = forward, negative = backward) */
   readonly tailOffsetMultiplier?: number;
   /** Shape: "circle" for procedural, "sprite" for texture */
@@ -61,6 +63,7 @@ export interface BulletSharedResources {
     tailEndColor: WebGLUniformLocation | null;
     tailLengthMul: WebGLUniformLocation | null;
     tailWidthMul: WebGLUniformLocation | null;
+    tailTaperMul: WebGLUniformLocation | null;
     shapeType: WebGLUniformLocation | null;
     renderPass: WebGLUniformLocation | null;
     centerColor: WebGLUniformLocation | null;

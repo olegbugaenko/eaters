@@ -107,12 +107,14 @@ export const GPU_BULLET_CONFIGS = {
     bodyColor: { r: 0.6, g: 0.85, b: 1.0, a: 1.0 },
     tailStartColor: { r: 0.5, g: 0.8, b: 1.0, a: 0.7 },
     tailEndColor: { r: 0.3, g: 0.6, b: 0.9, a: 0.0 },
+    tailTaperMultiplier: 0.7,
   }),
   
   fire: (): BulletVisualConfig => createGpuBulletConfig("fire", {
     bodyColor: { r: 1.0, g: 0.6, b: 0.2, a: 1.0 },
     tailStartColor: { r: 1.0, g: 0.4, b: 0.1, a: 0.8 },
     tailEndColor: { r: 0.8, g: 0.2, b: 0.0, a: 0.0 },
+    tailTaperMultiplier: 0.7,
   }),
 
   fireball: (): BulletVisualConfig =>
@@ -121,7 +123,8 @@ export const GPU_BULLET_CONFIGS = {
       tailStartColor: { r: 1.0, g: 0.55, b: 0.18, a: 0.85 },
       tailEndColor: { r: 0.85, g: 0.25, b: 0.02, a: 0.1 },
       tailLengthMultiplier: 3.4,
-      tailWidthMultiplier: 1.35,
+      tailWidthMultiplier: 2,
+      tailTaperMultiplier: 0.7,
       shape: "sprite",
       spriteName: "fireball",
     }),
@@ -131,7 +134,8 @@ export const GPU_BULLET_CONFIGS = {
     tailStartColor: { r: 0.5, g: 0.7, b: 0.9, a: 0.6 },
     tailEndColor: { r: 0.3, g: 0.5, b: 0.8, a: 0.0 },
     tailLengthMultiplier: 3.0,
-    tailWidthMultiplier: 1.2,
+    tailWidthMultiplier: 2,
+    tailTaperMultiplier: 0.7,
     shape: "sprite",
     spriteName: "needle",
   }),

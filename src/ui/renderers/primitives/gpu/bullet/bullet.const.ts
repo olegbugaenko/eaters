@@ -27,12 +27,14 @@ uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
 uniform float u_tailLengthMul;
 uniform float u_tailWidthMul;
+uniform float u_tailTaperMul;
 uniform float u_tailOffsetMul;
 uniform int u_shapeType; // 0 = circle, 1 = sprite
 uniform int u_renderPass; // 0 = tail, 1 = bullet
 
 // Outputs
 out vec2 v_tailPos;
+out vec2 v_tailLocalPos;
 out vec2 v_bulletPos;
 out vec2 v_bulletLocalPos;
 out vec2 v_uv;
@@ -57,7 +59,7 @@ void main() {
   float tailScaleX = a_instanceRadius + tailLength;
   float tailScaleY = max(a_instanceRadius, tailWidth);
   
-  vec2 tailLocalPos = a_unitPosition * vec2(tailScaleX, tailScaleY) + vec2(tailOffset, 0.0);
+  vec2 tailLocalPos = a_unitPosition * vec2(tailScaleX, tailScaleY);
   vec2 bulletLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
@@ -81,6 +83,7 @@ void main() {
   // To clip space (same formula as PetalAuraGpuRenderer)
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_tailPos = rotatedTailPos;
+  v_tailLocalPos = tailLocalPos;
   v_bulletPos = rotatedBulletPos;
   v_bulletLocalPos = bulletLocalPos;
   // UV for sprite sampling: map [-1,1] to [0,1]
@@ -97,6 +100,7 @@ precision highp float;
 precision highp int;
 
 in vec2 v_tailPos;
+in vec2 v_tailLocalPos;
 in vec2 v_bulletPos;
 in vec2 v_bulletLocalPos;
 in vec2 v_uv;
@@ -108,6 +112,7 @@ in float v_tailOffset;
 uniform vec4 u_bodyColor;
 uniform vec4 u_tailStartColor;
 uniform vec4 u_tailEndColor;
+uniform float u_tailTaperMul;
 uniform int u_shapeType; // 0 = circle, 1 = sprite
 uniform int u_renderPass; // 0 = tail, 1 = bullet
 uniform vec4 u_centerColor;
@@ -158,13 +163,13 @@ void main() {
     discard;
   }
 
-  vec2 pos = v_tailPos;
+  vec2 pos = v_tailLocalPos;
   float tailStartX = v_tailOffset;
   float tailEndX = v_tailOffset - v_tailLength;
 
   if (pos.x < tailStartX && pos.x > tailEndX) {
     float t = (tailStartX - pos.x) / v_tailLength;
-    float tailWidthAtX = v_tailWidth * (1.0 - t * 0.7);
+    float tailWidthAtX = v_tailWidth * (1.0 - t * u_tailTaperMul);
 
     if (abs(pos.y) < tailWidthAtX) {
       float edgeFade = 1.0 - abs(pos.y) / tailWidthAtX;
@@ -184,7 +189,8 @@ export const DEFAULT_BULLET_VISUAL: BulletVisualConfig = {
   tailStartColor: { r: 0.25, g: 0.45, b: 1.0, a: 0.65 },
   tailEndColor: { r: 0.05, g: 0.15, b: 0.6, a: 0.0 },
   tailLengthMultiplier: 4.5,
-  tailWidthMultiplier: 1.75,
+  tailWidthMultiplier: 2,
+  tailTaperMultiplier: 0.7,
   shape: "circle",
 };
 
