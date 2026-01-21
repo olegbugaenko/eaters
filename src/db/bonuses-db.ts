@@ -43,7 +43,7 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
   mana_regen: {
     id: "mana_regen",
     name: "Mana Regeneration",
-    defaultValue: 0.6,
+    defaultValue: 0.8,
   },
   brick_rewards: {
     id: "brick_rewards",

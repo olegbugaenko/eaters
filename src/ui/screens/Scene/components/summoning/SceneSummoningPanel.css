@@ -337,15 +337,15 @@
 
 .scene-summoning-panel__spell-pulse {
   position: absolute;
-  border-radius: calc(var(--radius-sm) + 14px);
+  border-radius: 50%;
   background: radial-gradient(
-    circle,
+    ellipse at center,
     rgba(129, 140, 248, 0.6) 0%,
     rgba(56, 189, 248, 0.45) 45%,
     rgba(15, 23, 42, 0) 70%
   );
   opacity: 0;
-  transform: scale(0.92);
+  transform: scale(0.72);
   animation: spell-cast-pulse 700ms ease-out;
 }
 
@@ -380,7 +380,7 @@
 @keyframes spell-cast-pulse {
   0% {
     opacity: 0;
-    transform: scale(0.92);
+    transform: scale(0.72);
   }
   40% {
     opacity: 1;
@@ -388,7 +388,7 @@
   }
   100% {
     opacity: 0;
-    transform: scale(1.08);
+    transform: scale(1.48);
   }
 }
 
