@@ -59,7 +59,7 @@ void main() {
   float tailScaleX = a_instanceRadius + tailLength;
   float tailScaleY = max(a_instanceRadius, tailWidth);
   
-  vec2 tailLocalPos = a_unitPosition * vec2(tailScaleX, tailScaleY);
+  vec2 tailLocalPos = a_unitPosition * vec2(tailScaleX, tailScaleY) + vec2(tailOffset, 0.0);
   vec2 bulletLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
