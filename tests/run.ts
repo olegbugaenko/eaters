@@ -63,5 +63,6 @@ import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
 import "./StatusEffectsModule.test";
 import "./MovementService.test";
+import "./NecromancerModule.test";
 
 void run();
