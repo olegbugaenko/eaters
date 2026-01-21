@@ -749,6 +749,10 @@ export const SkillTreeView: React.FC = () => {
       const target = event.target as HTMLElement;
       const isOverNode = target.closest("button.skill-tree-node");
 
+      if (isOverNode) {
+        return;
+      }
+
       if (pointerHoveredId) {
         const position = layout.positions.get(pointerHoveredId);
         if (position) {
@@ -759,13 +763,6 @@ export const SkillTreeView: React.FC = () => {
             setPointerHoveredId(null);
           }
         }
-        if (isOverNode) {
-          return;
-        }
-      }
-
-      if (isOverNode) {
-        return;
       }
 
       let closestId: SkillId | null = null;
