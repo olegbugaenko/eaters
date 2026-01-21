@@ -235,21 +235,19 @@ const VOID_DARTS_TAIL_EMITTER: ParticleEmitterConfig = {
 };
 
 const ELECTRIC_SHARDS_TAIL_EMITTER: ParticleEmitterConfig = {
-  particlesPerSecond: 60,
+  particlesPerSecond: 260,
   particleLifetimeMs: 700,
   fadeStartMs: 220,
   baseSpeed: 0.18,
   speedVariation: 0.2,
-  sizeRange: { min: 3.5, max: 7.2 },
-  spread: Math.PI / 6,
+  sizeRange: { min: 1.5, max: 3.2 },
+  spread: 2*Math.PI,
   offset: { x: -1, y: 0 },
   color: { r: 0.35, g: 0.75, b: 1, a: 0.2 },
+  shape: "triangle",
   fill: {
-    fillType: FILL_TYPES.RADIAL_GRADIENT,
-    stops: [
-      { offset: 0, color: { r: 0.65, g: 0.95, b: 1, a: 0.2 } },
-      { offset: 1, color: { r: 0.35, g: 0.75, b: 1, a: 0 } },
-    ],
+    fillType: FILL_TYPES.SOLID,
+    color: { r: 0.85, g: 0.95, b: 1, a: 1 },
   },
   maxParticles: 300,
 };
@@ -406,10 +404,10 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         color: { r: 0.6, g: 0.85, b: 1, a: 0.65 },
       },
       tail: {
-        lengthMultiplier: 3.2,
-        widthMultiplier: 1.1,
+        lengthMultiplier: 2.2,
+        widthMultiplier: 1.0,
         taperMultiplier: 1,
-        startColor: { r: 0.4, g: 0.7, b: 1, a: 0.4 },
+        startColor: { r: 0.4, g: 0.7, b: 1, a: 0.1 },
         endColor: { r: 0.2, g: 0.45, b: 0.95, a: 0 },
       },
       tailEmitter: ELECTRIC_SHARDS_TAIL_EMITTER,

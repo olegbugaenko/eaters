@@ -59,8 +59,9 @@ void main() {
   float tailScaleX = a_instanceRadius + tailLength;
   float tailScaleY = max(a_instanceRadius, tailWidth);
   
-  vec2 tailLocalPos = a_unitPosition * vec2(tailScaleX, tailScaleY);
-  vec2 bulletLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
+  vec2 unitPosition = a_unitPosition * 2.0;
+  vec2 tailLocalPos = unitPosition * vec2(tailScaleX, tailScaleY) + vec2(tailOffset, 0.0);
+  vec2 bulletLocalPos = unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
   float tailC = cos(a_instanceMovementRotation);
@@ -87,7 +88,7 @@ void main() {
   v_bulletPos = rotatedBulletPos;
   v_bulletLocalPos = bulletLocalPos;
   // UV for sprite sampling: map [-1,1] to [0,1]
-  v_uv = a_unitPosition * 0.5 + 0.5;
+  v_uv = unitPosition * 0.5 + 0.5;
   v_radius = a_instanceRadius;
   v_tailLength = tailLength;
   v_tailWidth = tailWidth;
