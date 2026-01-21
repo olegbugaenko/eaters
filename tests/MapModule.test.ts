@@ -338,16 +338,15 @@ describe("MapModule", () => {
     maps.selectMap("initial");
     maps.restartSelectedMap();
 
-    const unitObject = scene
-      .getObjects()
-      .find((object) => object.type === "playerUnit");
-    assert(unitObject, "unit scene object should be spawned");
-    const unitPosition = unitObject!.data.position;
+    const config = getMapConfig("initial");
+    const spawnPoint =
+      config.spawnPoints?.[0] ?? config.playerUnits?.[0]?.position;
+    assert(spawnPoint, "spawn point should be defined");
 
     const safetyRadiusSq = PLAYER_UNIT_SPAWN_SAFE_RADIUS * PLAYER_UNIT_SPAWN_SAFE_RADIUS;
     bricks.getBrickStates().forEach((brick) => {
       assert(
-        distanceSq(brick.position, unitPosition) >= safetyRadiusSq,
+        distanceSq(brick.position, spawnPoint) >= safetyRadiusSq,
         "brick should be spawned outside of the safety radius"
       );
     });

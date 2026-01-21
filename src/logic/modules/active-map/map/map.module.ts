@@ -238,7 +238,7 @@ export class MapModule implements GameModule {
     }
     this.runLifecycle.cleanupActiveMap();
     this.options.runState.reset();
-    this.startSelectedMap({ generateBricks: true, generateUnits: true, generateEnemies: true });
+    this.startSelectedMap({ generateBricks: true, generateUnits: false, generateEnemies: true });
   }
 
   public leaveCurrentMap(): void {
@@ -759,6 +759,11 @@ export class MapModule implements GameModule {
     if (config.spawnPoints && config.spawnPoints.length > 0) {
       return config.spawnPoints.map((point) =>
         this.clampToMap(point, config.size)
+      );
+    }
+    if (config.playerUnits && config.playerUnits.length > 0) {
+      return config.playerUnits.map((unit) =>
+        this.clampToMap(unit.position, config.size)
       );
     }
     return units.map((unit) => unit.position);
