@@ -54,6 +54,7 @@ const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 
 interface SceneSummoningPanelProps {
   selectedSpellId: SpellId | null;
+  spellCastPulse: { id: SpellId; token: number } | null;
   onSelectSpell: (spellId: SpellId) => void;
   onSummon: (designId: UnitDesignId) => void;
   onHoverInfoChange: (content: SceneTooltipContent | null) => void;
@@ -80,6 +81,7 @@ export const SceneSummoningPanel = forwardRef<
   (
     {
       selectedSpellId,
+      spellCastPulse,
       onSelectSpell,
       onSummon,
       onHoverInfoChange,
@@ -110,6 +112,7 @@ export const SceneSummoningPanel = forwardRef<
       PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
       {} as Record<string, number>,
     );
+    const [castPulseId, setCastPulseId] = useState<SpellId | null>(null);
 
     const available = {
       mana: resources.mana.current,
@@ -117,6 +120,25 @@ export const SceneSummoningPanel = forwardRef<
     };
     const remainingUnitSlots = Math.max(MAX_UNITS_ON_MAP - unitCount, 0);
     const atUnitCap = remainingUnitSlots <= 0;
+
+    useEffect(() => {
+      if (!spellCastPulse) {
+        return;
+      }
+
+      setCastPulseId(null);
+      const frame = requestAnimationFrame(() => {
+        setCastPulseId(spellCastPulse.id);
+      });
+      const timeout = window.setTimeout(() => {
+        setCastPulseId(null);
+      }, 650);
+
+      return () => {
+        cancelAnimationFrame(frame);
+        window.clearTimeout(timeout);
+      };
+    }, [spellCastPulse]);
 
     const automationLookup = useMemo(() => {
       const map = new Map<UnitDesignId, { enabled: boolean }>();
@@ -299,6 +321,7 @@ export const SceneSummoningPanel = forwardRef<
                   !canAfford && "scene-summoning-panel__spell--disabled",
                   onCooldown && "scene-summoning-panel__spell--cooldown",
                   isSelected && "scene-summoning-panel__spell--selected",
+                  castPulseId === spell.id && "scene-summoning-panel__spell--cast",
                 );
                 const statusLabel = onCooldown
                   ? `Ready in ${formatCooldownRemaining(spell.remainingCooldownMs)}`

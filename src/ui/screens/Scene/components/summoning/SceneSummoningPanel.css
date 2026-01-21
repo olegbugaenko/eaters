@@ -285,6 +285,7 @@
 }
 
 .scene-summoning-panel__spell {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -326,6 +327,20 @@
   border-color: var(--color-border-accent);
 }
 
+.scene-summoning-panel__spell--cast::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: calc(var(--radius-sm) + 6px);
+  border: 1px solid rgba(129, 140, 248, 0.85);
+  box-shadow:
+    0 0 12px rgba(129, 140, 248, 0.4),
+    0 0 20px rgba(56, 189, 248, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  animation: spell-cast-pulse 650ms ease-out;
+}
+
 .scene-summoning-panel__spell--cooldown .scene-summoning-panel__spell-status {
   color: #facc15;
 }
@@ -352,6 +367,20 @@
 
 .scene-summoning-panel__spell-cost {
   font-size: 0.8rem;
+}
+
+@keyframes spell-cast-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
 }
 
 @media (max-width: 1400px) {
