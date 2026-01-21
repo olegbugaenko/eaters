@@ -73,6 +73,7 @@ export interface NecromancerModuleUiApi {
   trySpawnDesign(designId: UnitDesignId): boolean;
   ensureMinMana(minAmount: number): void;
   ensureMinSanity(minAmount: number): void;
+  setSanityFloor(minAmount: number | null): void;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

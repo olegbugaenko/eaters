@@ -211,20 +211,24 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setTutorialSummonDone(false);
       setTutorialSpellCastDone(false);
       setCanAdvancePlayStep(false);
+      necromancer.setSanityFloor(null);
       return;
     }
     const currentStep = tutorialSteps[tutorialStepIndex];
     if (currentStep?.id === "summon-blue-vanguard" && currentStep.isLocked) {
       setCanAdvancePlayStep(false);
       setIsPauseOpen(false);
-      necromancer.ensureMinSanity(TUTORIAL_SANITY_MIN_SUMMON);
+      necromancer.setSanityFloor(TUTORIAL_SANITY_MIN_SUMMON);
+      return;
     }
     if (currentStep?.id === "cast-magic-arrow" && currentStep.isLocked) {
       setCanAdvancePlayStep(false);
       // Ensure player has enough mana to cast the spell (costs 1 mana)
       necromancer.ensureMinMana(1.1);
-      necromancer.ensureMinSanity(TUTORIAL_SANITY_MIN_SPELL);
+      necromancer.setSanityFloor(TUTORIAL_SANITY_MIN_SPELL);
+      return;
     }
+    necromancer.setSanityFloor(null);
   }, [necromancer, showTutorial, tutorialStepIndex, tutorialSteps]);
 
   useEffect(() => {

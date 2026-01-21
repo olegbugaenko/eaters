@@ -10,14 +10,16 @@ import type { BonusValueMap } from "../src/logic/modules/shared/bonuses/bonuses.
 import type { SceneObjectManager } from "../src/core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 
-const createBonusesStub = (values: BonusValueMap): BonusesModule =>
-  ({
+const createBonusesStub = (values: Partial<BonusValueMap>): BonusesModule => {
+  const typedValues = values as BonusValueMap;
+  return ({
     subscribe: (listener: (updated: BonusValueMap) => void) => {
-      listener(values);
+      listener(typedValues);
       return () => {};
     },
-    getAllValues: () => values,
+    getAllValues: () => typedValues,
   } as BonusesModule);
+};
 
 const createUnitDesignsStub = (): UnitDesignModule =>
   ({
@@ -26,17 +28,17 @@ const createUnitDesignsStub = (): UnitDesignModule =>
       return () => {};
     },
     getActiveRosterDesigns: () => [],
-  } as UnitDesignModule);
+  } as unknown as UnitDesignModule);
 
 const createPlayerUnitsStub = (): PlayerUnitsModule =>
   ({
     getActiveUnitCount: () => 0,
-  } as PlayerUnitsModule);
+  } as unknown as PlayerUnitsModule);
 
 const createSceneStub = (): SceneObjectManager =>
   ({
     getMapSize: () => ({ width: 1000, height: 1000 }),
-  } as SceneObjectManager);
+  } as unknown as SceneObjectManager);
 
 describe("NecromancerModule", () => {
   test("ensureMinSanity clamps sanity to the minimum without exceeding max", () => {
@@ -70,5 +72,38 @@ describe("NecromancerModule", () => {
     const capped = bridge.getValue(NECROMANCER_RESOURCES_BRIDGE_KEY);
     assert(capped);
     assert.strictEqual(capped.sanity.current, 3);
+  });
+
+  test("setSanityFloor enforces the minimum on every tick while active", () => {
+    const bridge = new DataBridge();
+    const runState = new MapRunState();
+    const bonuses = createBonusesStub({ mana_cap: 0, sanity_cap: 3, mana_regen: 0 });
+    const necromancer = new NecromancerModule({
+      bridge,
+      playerUnits: createPlayerUnitsStub(),
+      scene: createSceneStub(),
+      bonuses,
+      unitDesigns: createUnitDesignsStub(),
+      runState,
+    });
+
+    necromancer.initialize();
+    necromancer.load({ mana: 0, sanity: 3 });
+    runState.start();
+    necromancer.configureForMap({ spawnPoints: [] });
+
+    necromancer.setSanityFloor(2);
+    necromancer.tick(10000);
+
+    const clamped = bridge.getValue(NECROMANCER_RESOURCES_BRIDGE_KEY);
+    assert(clamped);
+    assert.strictEqual(clamped.sanity.current, 2);
+
+    necromancer.setSanityFloor(null);
+    necromancer.tick(10000);
+
+    const lowered = bridge.getValue(NECROMANCER_RESOURCES_BRIDGE_KEY);
+    assert(lowered);
+    assert(lowered.sanity.current < 2);
   });
 });
