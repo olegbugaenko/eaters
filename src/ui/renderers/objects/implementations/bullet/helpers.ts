@@ -89,12 +89,6 @@ export const getMovementRotation = (instance: SceneObjectInstance): number => {
 };
 
 /**
- * Gets tail rotation (opposite of movement rotation).
- */
-export const getTailRotation = (instance: SceneObjectInstance): number =>
-  getMovementRotation(instance) + Math.PI;
-
-/**
  * Gets projectile shape (circle or sprite)
  */
 export const getProjectileShape = (instance: SceneObjectInstance): "circle" | "sprite" => {

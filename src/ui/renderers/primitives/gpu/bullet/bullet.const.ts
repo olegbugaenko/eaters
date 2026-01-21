@@ -61,9 +61,8 @@ void main() {
   vec2 bulletLocalPos = a_unitPosition * vec2(a_instanceRadius, a_instanceRadius);
   
   // Rotate
-  float tailRotation = a_instanceMovementRotation + 3.141592653589793;
-  float tailC = cos(tailRotation);
-  float tailS = sin(tailRotation);
+  float tailC = cos(a_instanceMovementRotation);
+  float tailS = sin(a_instanceMovementRotation);
   vec2 rotatedTailPos = vec2(
     tailLocalPos.x * tailC - tailLocalPos.y * tailS,
     tailLocalPos.x * tailS + tailLocalPos.y * tailC
