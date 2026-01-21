@@ -15,6 +15,10 @@ import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeRef } from "@ui-shared/useBridgeRef";
 import "./SceneScreen.css";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
+import {
+  TUTORIAL_SANITY_MIN_SPELL,
+  TUTORIAL_SANITY_MIN_SUMMON,
+} from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.const";
 import { useSceneTutorial } from "./hooks/useSceneTutorial";
 import {
   DEFAULT_SPELL_OPTIONS,
@@ -207,18 +211,24 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       setTutorialSummonDone(false);
       setTutorialSpellCastDone(false);
       setCanAdvancePlayStep(false);
+      necromancer.setSanityFloor(null);
       return;
     }
     const currentStep = tutorialSteps[tutorialStepIndex];
     if (currentStep?.id === "summon-blue-vanguard" && currentStep.isLocked) {
       setCanAdvancePlayStep(false);
       setIsPauseOpen(false);
+      necromancer.setSanityFloor(TUTORIAL_SANITY_MIN_SUMMON);
+      return;
     }
     if (currentStep?.id === "cast-magic-arrow" && currentStep.isLocked) {
       setCanAdvancePlayStep(false);
       // Ensure player has enough mana to cast the spell (costs 1 mana)
       necromancer.ensureMinMana(1.1);
+      necromancer.setSanityFloor(TUTORIAL_SANITY_MIN_SPELL);
+      return;
     }
+    necromancer.setSanityFloor(null);
   }, [necromancer, showTutorial, tutorialStepIndex, tutorialSteps]);
 
   useEffect(() => {

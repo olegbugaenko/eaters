@@ -15,6 +15,10 @@ import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { MapRunState } from "../map/MapRunState";
+import {
+  DEFAULT_CAMP_STATISTICS,
+  STATISTICS_BRIDGE_KEY,
+} from "../../shared/statistics/statistics.module";
 
 export class TutorialMonitorModule implements GameModule {
   public readonly id = "tutorial-monitor";
@@ -110,6 +114,13 @@ export class TutorialMonitorModule implements GameModule {
     if (sanity <= 1) {
       return true;
     }
+    const attacksRequired = this.watch.attacksRequired ?? 0;
+    if (attacksRequired > 0) {
+      const attacks = this.getAttacksDealt();
+      if (attacks >= attacksRequired) {
+        return true;
+      }
+    }
     const affordableSpawns = this.necromancer.getAffordableSpawnCount();
     if (affordableSpawns > 0) {
       return false;
@@ -124,6 +135,15 @@ export class TutorialMonitorModule implements GameModule {
     if (sanity <= 1) {
       return "sanity";
     }
+    const attacksRequired = this.watch.attacksRequired ?? 0;
+    if (attacksRequired > 0 && this.getAttacksDealt() >= attacksRequired) {
+      return "attacks";
+    }
     return "resources";
+  }
+
+  private getAttacksDealt(): number {
+    const stats = this.bridge.getValue(STATISTICS_BRIDGE_KEY) ?? DEFAULT_CAMP_STATISTICS;
+    return stats.attacksDealt ?? 0;
   }
 }
