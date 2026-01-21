@@ -60,6 +60,7 @@ export const SceneTutorialBridgeMonitor: React.FC<SceneTutorialBridgeMonitorProp
       stepId: "summon-blue-vanguard",
       actionCompleted: tutorialSummonDone,
       bricksRequired: 3,
+      attacksRequired: 2,
     });
 
     if (

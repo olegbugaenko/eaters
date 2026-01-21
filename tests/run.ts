@@ -64,5 +64,6 @@ import "./ParticleEmitterPrimitive.test";
 import "./StatusEffectsModule.test";
 import "./MovementService.test";
 import "./NecromancerModule.test";
+import "./TutorialMonitorModule.test";
 
 void run();

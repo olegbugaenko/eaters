@@ -318,6 +318,7 @@ export class BricksModule implements GameModule {
       {
         onInflicted: (amount) => {
           this.options.statistics?.recordDamageDealt(amount);
+          this.options.statistics?.recordAttackHit(1);
           this.statusEffects.handleTargetHit({ type: "brick", id: brickId });
         },
         onKnockback: () => {
