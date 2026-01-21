@@ -402,8 +402,18 @@ export interface BulletSlotHandle extends SlotHandle {
 /**
  * Gets all active bullets for interpolation snapshot sync.
  */
-export const getAllActiveBullets = (): Array<{ handle: BulletSlotHandle; position: SceneVector2 }> => {
-  const result: Array<{ handle: BulletSlotHandle; position: SceneVector2 }> = [];
+export const getAllActiveBullets = (): Array<{
+  handle: BulletSlotHandle;
+  position: SceneVector2;
+  movementRotation: number;
+  visualRotation: number;
+}> => {
+  const result: Array<{
+    handle: BulletSlotHandle;
+    position: SceneVector2;
+    movementRotation: number;
+    visualRotation: number;
+  }> = [];
   bulletGpuRenderer["batches"].forEach((batch, batchKey) => {
     for (let i = 0; i < batch.capacity; i++) {
       const instance = batch.instances[i];
@@ -411,6 +421,8 @@ export const getAllActiveBullets = (): Array<{ handle: BulletSlotHandle; positio
         result.push({
           handle: { batchKey, visualKey: batch.visualKey, slotIndex: i },
           position: { x: instance.position.x, y: instance.position.y },
+          movementRotation: instance.movementRotation,
+          visualRotation: instance.visualRotation,
         });
       }
     }
@@ -421,12 +433,18 @@ export const getAllActiveBullets = (): Array<{ handle: BulletSlotHandle; positio
 /**
  * Applies interpolated positions to bullets before rendering.
  */
-export const applyInterpolatedBulletPositions = (
-  interpolatedPositions: Map<string, SceneVector2>
-): void => {
-  if (interpolatedPositions.size === 0) return;
+export type BulletInterpolatedState = {
+  position: SceneVector2;
+  movementRotation: number;
+  visualRotation: number;
+};
 
-  interpolatedPositions.forEach((position, key) => {
+export const applyInterpolatedBulletPositions = (
+  interpolatedStates: Map<string, BulletInterpolatedState>
+): void => {
+  if (interpolatedStates.size === 0) return;
+
+  interpolatedStates.forEach((state, key) => {
     // Parse key: "batchKey:slotIndex"
     const parts = key.split(":");
     if (parts.length !== 2) return;
@@ -444,12 +462,16 @@ export const applyInterpolatedBulletPositions = (
     if (!instance || !instance.active) return;
 
     // Update position
-    instance.position.x = position.x;
-    instance.position.y = position.y;
+    instance.position.x = state.position.x;
+    instance.position.y = state.position.y;
+    instance.movementRotation = state.movementRotation;
+    instance.visualRotation = state.visualRotation;
 
     const offset = slotIndex * INSTANCE_FLOATS;
-    batch.instanceData[offset + 0] = position.x;
-    batch.instanceData[offset + 1] = position.y;
+    batch.instanceData[offset + 0] = state.position.x;
+    batch.instanceData[offset + 1] = state.position.y;
+    batch.instanceData[offset + 2] = state.movementRotation;
+    batch.instanceData[offset + 3] = state.visualRotation;
     batch.needsUpload = true;
   });
 };
