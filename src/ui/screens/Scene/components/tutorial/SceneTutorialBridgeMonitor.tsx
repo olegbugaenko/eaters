@@ -5,6 +5,8 @@ import {
   DEFAULT_TUTORIAL_MONITOR_STATUS,
   TUTORIAL_MONITOR_INPUT_BRIDGE_KEY,
   TUTORIAL_MONITOR_OUTPUT_BRIDGE_KEY,
+  TUTORIAL_SANITY_MIN_SPELL,
+  TUTORIAL_SANITY_MIN_SUMMON,
 } from "@logic/modules/active-map/tutorial-monitor/tutorial-monitor.const";
 import { NECROMANCER_RESOURCES_BRIDGE_KEY } from "@logic/modules/active-map/necromancer/necromancer.const";
 import type { NecromancerResourcesPayload } from "@logic/modules/active-map/necromancer/necromancer.types";
@@ -73,7 +75,7 @@ export const SceneTutorialBridgeMonitor: React.FC<SceneTutorialBridgeMonitorProp
     if (
       tutorialSummonDone &&
       !canAdvancePlayStep &&
-      necromancerResources.sanity.current <= 2
+      necromancerResources.sanity.current <= TUTORIAL_SANITY_MIN_SUMMON
     ) {
       onAdvanceStepRef.current();
     }
@@ -97,7 +99,7 @@ export const SceneTutorialBridgeMonitor: React.FC<SceneTutorialBridgeMonitorProp
       return;
     }
 
-    if (necromancerResources.sanity.current <= 1) {
+    if (necromancerResources.sanity.current <= TUTORIAL_SANITY_MIN_SPELL) {
       onAdvanceStepRef.current();
     }
   }, [

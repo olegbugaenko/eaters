@@ -297,6 +297,14 @@ export class NecromancerModule implements GameModule {
     }
   }
 
+  public ensureMinSanity(minAmount: number): void {
+    if (this.sanity.current < minAmount) {
+      this.sanity.current = Math.min(minAmount, this.sanity.max);
+      this.markResourcesDirty();
+      this.pushResources();
+    }
+  }
+
   public getSpawnPoints(): SceneVector2[] {
     return this.spawnPoints.map((point) => ({ ...point }));
   }
