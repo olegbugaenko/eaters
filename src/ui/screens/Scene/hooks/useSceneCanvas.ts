@@ -298,7 +298,7 @@ export const useSceneCanvas = ({
       },
       afterApplyChanges: (timestamp, scene, cameraState) => {
         const objectsRenderer = webglRenderer.getObjectsRenderer();
-        const interpolatedBulletPositions = getInterpolatedBulletPositionsRef.current();
+        const interpolatedBulletStates = getInterpolatedBulletPositionsRef.current();
 
         // Apply interpolated unit positions
         const interpolatedUnitPositions = getInterpolatedUnitPositionsRef.current();
@@ -330,7 +330,11 @@ export const useSceneCanvas = ({
           objectsRenderer.applyInterpolatedPositions(interpolatedEnemyPositions);
         }
         // Apply interpolated bullet positions for emitter spawn origins
-        if (interpolatedBulletPositions.size > 0) {
+        if (interpolatedBulletStates.size > 0) {
+          const interpolatedBulletPositions = new Map<string, { x: number; y: number }>();
+          interpolatedBulletStates.forEach((state, key) => {
+            interpolatedBulletPositions.set(key, state.position);
+          });
           objectsRenderer.applyInterpolatedBulletPositions(interpolatedBulletPositions);
         }
       },
@@ -410,9 +414,9 @@ export const useSceneCanvas = ({
           timestamp,
         );
         // GPU instanced bullets with interpolation
-        const interpolatedBulletPositions = getInterpolatedBulletPositionsRef.current();
-        if (interpolatedBulletPositions.size > 0) {
-          applyInterpolatedBulletPositions(interpolatedBulletPositions);
+        const interpolatedBulletStates = getInterpolatedBulletPositionsRef.current();
+        if (interpolatedBulletStates.size > 0) {
+          applyInterpolatedBulletPositions(interpolatedBulletStates);
         }
         bulletGpuRenderer.beforeRender(gl, timestamp);
         bulletGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
