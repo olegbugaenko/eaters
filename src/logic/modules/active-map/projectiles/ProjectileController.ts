@@ -113,7 +113,7 @@ export class UnitProjectileController {
     const damageRadius = Math.max(0, visual.damageRadius ?? 0);
     const rotation = Math.atan2(direction.y, direction.x);
     const movementRotation = rotation;
-    const shape = visual.shape ?? "circle";
+    const shape = visual.shape ?? (visual.spriteName ? "sprite" : "circle");
     
     // Try GPU instanced rendering first (much faster for many projectiles)
     const gpuConfig = this.getGpuBulletConfig(visual, shape);
