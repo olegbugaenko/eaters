@@ -737,12 +737,6 @@ export const SkillTreeView: React.FC = () => {
         return;
       }
 
-      // Don't update hover if cursor is over a button (button's onMouseEnter handles it)
-      const target = event.target as HTMLElement;
-      if (target.closest("button.skill-tree-node")) {
-        return;
-      }
-
       const viewport = viewportRef.current;
       if (!viewport) {
         return;
@@ -752,6 +746,27 @@ export const SkillTreeView: React.FC = () => {
       const worldX = (event.clientX - rect.left - viewTransform.offsetX) / viewTransform.scale;
       const worldY = (event.clientY - rect.top - viewTransform.offsetY) / viewTransform.scale;
       pointerWorldRef.current = { x: worldX, y: worldY };
+      const target = event.target as HTMLElement;
+      const isOverNode = target.closest("button.skill-tree-node");
+
+      if (pointerHoveredId) {
+        const position = layout.positions.get(pointerHoveredId);
+        if (position) {
+          const dx = worldX - position.x;
+          const dy = worldY - position.y;
+          const distanceSquared = dx * dx + dy * dy;
+          if (distanceSquared > HOVER_SNAP_RADIUS_LEAVE * HOVER_SNAP_RADIUS_LEAVE) {
+            setPointerHoveredId(null);
+          }
+        }
+        if (isOverNode) {
+          return;
+        }
+      }
+
+      if (isOverNode) {
+        return;
+      }
 
       let closestId: SkillId | null = null;
       let closestDistanceSquared = HOVER_SNAP_RADIUS_ENTER * HOVER_SNAP_RADIUS_ENTER;
@@ -782,7 +797,14 @@ export const SkillTreeView: React.FC = () => {
 
       setPointerHoveredId(closestId);
     },
-    [layout.positions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
+    [
+      layout.positions,
+      pointerHoveredId,
+      viewTransform.offsetX,
+      viewTransform.offsetY,
+      viewTransform.scale,
+      visibleNodes,
+    ]
   );
 
   const clearPointerHover = useCallback(() => {
@@ -1103,11 +1125,6 @@ export const SkillTreeView: React.FC = () => {
                 onMouseEnter={() => {
                   setPointerHoveredId(node.id);
                 }}
-                onMouseLeave={() =>
-                  setPointerHoveredId((current) =>
-                    current === node.id ? null : current
-                  )
-                }
                 onFocus={() => setFocusHoveredId(node.id)}
                 onBlur={() =>
                   setFocusHoveredId((current) =>
