@@ -61,6 +61,8 @@ interface SceneSummoningPanelProps {
   onToggleAutomation: (designId: UnitDesignId, enabled: boolean) => void;
 }
 
+const SPELL_PULSE_PADDING = 14;
+
 const formatResourceValue = (
   current: number,
   max: number,
@@ -89,6 +91,7 @@ export const SceneSummoningPanel = forwardRef<
     },
     ref,
   ) => {
+    const panelRef = useRef<HTMLDivElement | null>(null);
     const { bridge } = useAppLogic();
     const resources = useBridgeValue(
       bridge,
@@ -112,7 +115,10 @@ export const SceneSummoningPanel = forwardRef<
       PLAYER_UNIT_COUNTS_BY_DESIGN_BRIDGE_KEY,
       {} as Record<string, number>,
     );
-    const [castPulseId, setCastPulseId] = useState<SpellId | null>(null);
+    const [spellPulse, setSpellPulse] = useState<{
+      token: number;
+      rect: { x: number; y: number; width: number; height: number };
+    } | null>(null);
 
     const available = {
       mana: resources.mana.current,
@@ -126,16 +132,29 @@ export const SceneSummoningPanel = forwardRef<
         return;
       }
 
-      setCastPulseId(null);
-      const frame = requestAnimationFrame(() => {
-        setCastPulseId(spellCastPulse.id);
-      });
+      const panel = panelRef.current;
+      const target = document.getElementById(`spell-option-${spellCastPulse.id}`);
+      if (!panel || !target) {
+        return;
+      }
+
+      const panelRect = panel.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const rect = {
+        x: targetRect.left - panelRect.left - SPELL_PULSE_PADDING,
+        y: targetRect.top - panelRect.top - SPELL_PULSE_PADDING,
+        width: targetRect.width + SPELL_PULSE_PADDING * 2,
+        height: targetRect.height + SPELL_PULSE_PADDING * 2,
+      };
+
+      setSpellPulse({ token: spellCastPulse.token, rect });
       const timeout = window.setTimeout(() => {
-        setCastPulseId(null);
-      }, 650);
+        setSpellPulse((current) =>
+          current?.token === spellCastPulse.token ? null : current
+        );
+      }, 750);
 
       return () => {
-        cancelAnimationFrame(frame);
         window.clearTimeout(timeout);
       };
     }, [spellCastPulse]);
@@ -183,12 +202,38 @@ export const SceneSummoningPanel = forwardRef<
       manaConsuming && "scene-summoning-panel__resource--consuming",
     );
 
+    const setRefs = useCallback(
+      (node: HTMLDivElement | null) => {
+        panelRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      },
+      [ref],
+    );
+
     return (
       <div
-        ref={ref}
+        ref={setRefs}
         className="scene-summoning-panel"
         onPointerLeave={hideTooltip}
       >
+        <div className="scene-summoning-panel__spell-pulse-layer" aria-hidden="true">
+          {spellPulse && (
+            <div
+              key={spellPulse.token}
+              className="scene-summoning-panel__spell-pulse"
+              style={{
+                left: `${spellPulse.rect.x}px`,
+                top: `${spellPulse.rect.y}px`,
+                width: `${spellPulse.rect.width}px`,
+                height: `${spellPulse.rect.height}px`,
+              }}
+            />
+          )}
+        </div>
         <div className="scene-summoning-panel__summon">
           <div className="scene-summoning-panel__section scene-summoning-panel__section--left">
             <div id="sanity-resource" className={sanityResourceClassName}>
@@ -321,7 +366,6 @@ export const SceneSummoningPanel = forwardRef<
                   !canAfford && "scene-summoning-panel__spell--disabled",
                   onCooldown && "scene-summoning-panel__spell--cooldown",
                   isSelected && "scene-summoning-panel__spell--selected",
-                  castPulseId === spell.id && "scene-summoning-panel__spell--cast",
                 );
                 const statusLabel = onCooldown
                   ? `Ready in ${formatCooldownRemaining(spell.remainingCooldownMs)}`
