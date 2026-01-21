@@ -8,7 +8,7 @@
   padding: 1rem 1.75rem 1.4rem;
   align-items: flex-end;
   z-index: 20;
-  contain: layout paint;
+  contain: layout;
 }
 
 .scene-summoning-panel__summon {
@@ -285,6 +285,7 @@
 }
 
 .scene-summoning-panel__spell {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -326,6 +327,28 @@
   border-color: var(--color-border-accent);
 }
 
+.scene-summoning-panel__spell-pulse-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: visible;
+}
+
+.scene-summoning-panel__spell-pulse {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(129, 140, 248, 0.6) 0%,
+    rgba(56, 189, 248, 0.45) 45%,
+    rgba(15, 23, 42, 0) 70%
+  );
+  opacity: 0;
+  transform: scale(0.72);
+  animation: spell-cast-pulse 700ms ease-out;
+}
+
 .scene-summoning-panel__spell--cooldown .scene-summoning-panel__spell-status {
   color: #facc15;
 }
@@ -352,6 +375,21 @@
 
 .scene-summoning-panel__spell-cost {
   font-size: 0.8rem;
+}
+
+@keyframes spell-cast-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.48);
+  }
 }
 
 @media (max-width: 1400px) {

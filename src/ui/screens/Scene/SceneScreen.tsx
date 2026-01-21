@@ -111,6 +111,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
   const [tutorialSpellCastDone, setTutorialSpellCastDone] = useState(false);
   const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
+  const spellCastTokenRef = useRef(0);
+  const [spellCastPulse, setSpellCastPulse] = useState<{ id: SpellId; token: number } | null>(
+    null
+  );
   const {
     tutorialSteps,
     tutorialStepIndex,
@@ -150,6 +154,8 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const handleSpellCast = useCallback(
     (spellId: SpellId) => {
       console.log('[handleSpellCast] called:', { spellId, showTutorial, stepId: activeTutorialStepId });
+      spellCastTokenRef.current += 1;
+      setSpellCastPulse({ id: spellId, token: spellCastTokenRef.current });
       const isSpellStep = showTutorial && activeTutorialStepId === "cast-magic-arrow";
       if (isSpellStep && spellId === "magic-arrow") {
         console.log('[handleSpellCast] Setting tutorialSpellCastDone to true');
@@ -420,6 +426,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       <SceneSummoningPanelContainer
         panelRef={summoningPanelRef}
         selectedSpellIdRef={selectedSpellIdRef}
+        spellCastPulse={spellCastPulse}
         onSummon={handleSummonDesign}
         onHoverInfoChange={setSummoningTooltipContent}
         onToggleAutomation={handleToggleAutomation}
