@@ -27,6 +27,7 @@ uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
 uniform float u_tailLengthMul;
 uniform float u_tailWidthMul;
+uniform float u_tailTaperMul;
 uniform float u_tailOffsetMul;
 uniform int u_shapeType; // 0 = circle, 1 = sprite
 uniform int u_renderPass; // 0 = tail, 1 = bullet
@@ -167,7 +168,7 @@ void main() {
 
   if (pos.x < tailStartX && pos.x > tailEndX) {
     float t = (tailStartX - pos.x) / v_tailLength;
-    float tailWidthAtX = v_tailWidth * (1.0 - t * 0.7);
+    float tailWidthAtX = v_tailWidth * (1.0 - t * u_tailTaperMul);
 
     if (abs(pos.y) < tailWidthAtX) {
       float edgeFade = 1.0 - abs(pos.y) / tailWidthAtX;
@@ -188,6 +189,7 @@ export const DEFAULT_BULLET_VISUAL: BulletVisualConfig = {
   tailEndColor: { r: 0.05, g: 0.15, b: 0.6, a: 0.0 },
   tailLengthMultiplier: 4.5,
   tailWidthMultiplier: 2,
+  tailTaperMultiplier: 0.7,
   shape: "circle",
 };
 

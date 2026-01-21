@@ -408,6 +408,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       tail: {
         lengthMultiplier: 3.2,
         widthMultiplier: 1.1,
+        taperMultiplier: 1,
         startColor: { r: 0.4, g: 0.7, b: 1, a: 0.4 },
         endColor: { r: 0.2, g: 0.45, b: 0.95, a: 0 },
       },
