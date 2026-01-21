@@ -112,6 +112,7 @@ in float v_tailOffset;
 uniform vec4 u_bodyColor;
 uniform vec4 u_tailStartColor;
 uniform vec4 u_tailEndColor;
+uniform float u_tailTaperMul;
 uniform int u_shapeType; // 0 = circle, 1 = sprite
 uniform int u_renderPass; // 0 = tail, 1 = bullet
 uniform vec4 u_centerColor;
