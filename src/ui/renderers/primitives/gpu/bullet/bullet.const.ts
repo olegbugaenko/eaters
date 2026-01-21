@@ -33,6 +33,7 @@ uniform int u_renderPass; // 0 = tail, 1 = bullet
 
 // Outputs
 out vec2 v_tailPos;
+out vec2 v_tailLocalPos;
 out vec2 v_bulletPos;
 out vec2 v_bulletLocalPos;
 out vec2 v_uv;
@@ -81,6 +82,7 @@ void main() {
   // To clip space (same formula as PetalAuraGpuRenderer)
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_tailPos = rotatedTailPos;
+  v_tailLocalPos = tailLocalPos;
   v_bulletPos = rotatedBulletPos;
   v_bulletLocalPos = bulletLocalPos;
   // UV for sprite sampling: map [-1,1] to [0,1]
@@ -97,6 +99,7 @@ precision highp float;
 precision highp int;
 
 in vec2 v_tailPos;
+in vec2 v_tailLocalPos;
 in vec2 v_bulletPos;
 in vec2 v_bulletLocalPos;
 in vec2 v_uv;
@@ -158,7 +161,7 @@ void main() {
     discard;
   }
 
-  vec2 pos = v_tailPos;
+  vec2 pos = v_tailLocalPos;
   float tailStartX = v_tailOffset;
   float tailEndX = v_tailOffset - v_tailLength;
 
