@@ -377,9 +377,6 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       if (didPanRef.current) {
         return;
       }
-      if (!map.selectable) {
-        return;
-      }
       onSelectMap(map.id);
     },
     [onSelectMap]
@@ -395,7 +392,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       lastY: clientY,
     };
     didPanRef.current = false;
-    event.currentTarget.setPointerCapture(pointerId);
+    (event.target as HTMLElement).setPointerCapture(pointerId);
   }, []);
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -436,7 +433,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       lastX: 0,
       lastY: 0,
     };
-    event.currentTarget.releasePointerCapture(event.pointerId);
+    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
   }, []);
 
   const handlePointerLeave = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -602,9 +599,6 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 if (didPanRef.current) {
                   return;
                 }
-                if (!map.selectable) {
-                  return;
-                }
                 onSelectMap(map.id);
                 onStartMap(map.id);
                 setPopover(null);
@@ -753,9 +747,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         popoverHoverTimeoutRef.current = null;
                       }, 100);
                     }}
+                    disabled={!map.selectable}
                     onClick={(event) => handleNodeClick(map, event)}
                     onDoubleClick={handleDoubleClick}
-                    aria-disabled={!map.selectable}
                     aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
                   >
                     <NewUnlockWrapper
