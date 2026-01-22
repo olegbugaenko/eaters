@@ -482,7 +482,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Crackle the lattice with unstable sparks, unlocking erratic shards of electricity.",
     nodePosition: { x: 2, y: -6 },
     maxLevel: 1,
-    icon: "electricity_orb",
+    icon: "electric_shards.png",
     effects: {},
     nodesRequired: { black_darts: 1 },
     cost: createResourceCost('copper', 180, 1.6),

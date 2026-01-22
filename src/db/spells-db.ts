@@ -392,13 +392,13 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Electric Shards",
     description:
       "Launch crackling shards that drift unpredictably and arc electricity between targets.",
-    cost: { mana: 7.5, sanity: 0 },
+    cost: { mana: 15, sanity: 0 },
     cooldownSeconds: 1.6,
-    damage: { min: 2, max: 5 },
+    damage: { min: 4, max: 7 },
     projectile: {
       radius: 32,
       speed: 65,
-      lifetimeMs: 9_500,
+      lifetimeMs: 16_500,
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.6, g: 0.85, b: 1, a: 0.65 },
@@ -417,12 +417,12 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       shape: "sprite",
       spriteName: "electricity_orb",
       wander: {
-        intervalMs: 320,
-        angleRangeDeg: 28,
+        intervalMs: 920,
+        angleRangeDeg: 18,
       },
       chain: {
         radius: 150,
-        jumps: 2,
+        jumps: 3,
         damageMultiplier: 0.6,
       },
     },
@@ -434,11 +434,11 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     name: "Ring of Fire",
     description:
       "Conjure an expanding crown of flame that scorches bricks as it races outward.",
-    cost: { mana: 8, sanity: 0 },
+    cost: { mana: 20, sanity: 0 },
     cooldownSeconds: 6,
     persistentAoe: {
       durationMs: 3_000,
-      damagePerSecond: 5,
+      damagePerSecond: 8,
       ring: {
         shape: "ring",
         startRadius: 12,

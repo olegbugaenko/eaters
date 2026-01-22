@@ -161,6 +161,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     pointerId: null as number | null,
     lastX: 0,
     lastY: 0,
+    startX: 0,
+    startY: 0,
   });
   const didPanRef = useRef(false);
   const [popover, setPopover] = useState<
@@ -383,6 +385,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   );
 
   const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
     const { pointerId, clientX, clientY } = event;
     panStateRef.current = {
       isDown: true,
@@ -390,9 +395,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       pointerId,
       lastX: clientX,
       lastY: clientY,
+      startX: clientX,
+      startY: clientY,
     };
     didPanRef.current = false;
-    (event.target as HTMLElement).setPointerCapture(pointerId);
   }, []);
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -402,23 +408,31 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     }
     const deltaX = event.clientX - state.lastX;
     const deltaY = event.clientY - state.lastY;
-    state.lastX = event.clientX;
-    state.lastY = event.clientY;
 
     if (!state.isPanning) {
-      const distance = Math.hypot(deltaX, deltaY);
+      const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
       if (distance < DRAG_THRESHOLD) {
+        state.lastX = event.clientX;
+        state.lastY = event.clientY;
         return;
       }
       state.isPanning = true;
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Ignore pointer capture errors.
+      }
     }
 
     didPanRef.current = true;
+    event.preventDefault();
     setViewTransform((current) => ({
       ...current,
       offsetX: current.offsetX + deltaX,
       offsetY: current.offsetY + deltaY,
     }));
+    state.lastX = event.clientX;
+    state.lastY = event.clientY;
   }, []);
 
   const endPan = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -426,22 +440,27 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     if (state.pointerId !== event.pointerId) {
       return;
     }
+    if (state.isPanning) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Ignore pointer capture errors.
+      }
+    }
     panStateRef.current = {
       isDown: false,
       isPanning: false,
       pointerId: null,
       lastX: 0,
       lastY: 0,
+      startX: 0,
+      startY: 0,
     };
-    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
   }, []);
 
   const handlePointerLeave = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (panStateRef.current.pointerId !== event.pointerId) {
-      return;
-    }
-    panStateRef.current.isDown = false;
-  }, []);
+    endPan(event);
+  }, [endPan]);
 
   const handleWheel = useCallback(
     (event: ReactWheelEvent<HTMLDivElement>) => {

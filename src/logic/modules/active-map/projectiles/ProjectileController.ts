@@ -118,7 +118,7 @@ export class UnitProjectileController {
     // Try GPU instanced rendering first (much faster for many projectiles)
     const gpuConfig = this.getGpuBulletConfig(visual, shape);
     const gpuSlot = gpuConfig ? acquireGpuBulletSlot(gpuConfig) : null;
-    console.log("gpuSlot", gpuSlot, gpuConfig);
+    // console.log("gpuSlot", gpuSlot, gpuConfig);
 
     const bulletGpuKey = gpuSlot ? `${gpuSlot.batchKey}:${gpuSlot.slotIndex}` : undefined;
     const rendererCustomData = {
