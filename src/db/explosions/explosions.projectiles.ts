@@ -39,7 +39,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
   smallCannon: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
-    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion.mp3"),
+    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion_v1.mp3"),
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 10,
@@ -65,7 +65,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
   smallCannonGrey: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
-    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion.mp3"),
+    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion_v1.mp3"),
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 10,
@@ -91,7 +91,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
   bigCannon: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
-    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion.mp3"),
+    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion_v1.mp3"),
     waves: createSimpleWave({
       defaultInitialRadius: 3,
       radiusExtension: 20,
@@ -287,7 +287,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
   smallEnergetic: {
     lifetimeMs: 1_200,
     defaultInitialRadius: 3,
-    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion.mp3"),
+    soundEffectUrl: getAssetUrl("audio/sounds/general_effects/explosion_v1.mp3"),
     waves: createSimpleWave({
       defaultInitialRadius: 2,
       radiusExtension: 5,

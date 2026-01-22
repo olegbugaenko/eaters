@@ -150,7 +150,7 @@ export class SkillTreeModule implements GameModule {
     this.levels[id] = targetLevel;
     this.syncBonusLevel(id);
     this.pushState();
-    this.audio?.playSoundEffect(getAssetUrl("audio/sounds/ui/purchase_v0.mp3"));
+    this.audio?.playSoundEffect(getAssetUrl("audio/sounds/ui/purchase_v1.mp3"));
     if (config.registerEvent) {
       this.eventLog.registerEvent(
         "skill-obtained",
