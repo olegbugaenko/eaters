@@ -235,13 +235,16 @@ export const useSceneCameraInteraction = ({
         y: cameraState.position.y + normalizedY * cameraState.viewportSize.height,
       };
 
-      spellcasting.tryCastSpell(spellId, worldPosition);
+      const castSuccess = spellcasting.tryCastSpell(spellId, worldPosition);
+      if (castSuccess) {
+        onSpellCast?.(spellId);
+      }
     }, 250);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, [isPauseOpen, showTutorial, spellcasting, scene]);
+  }, [isPauseOpen, showTutorial, onSpellCast, spellcasting, scene]);
 
   return {
     canvasRef,
