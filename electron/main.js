@@ -35,7 +35,26 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const gpuStatus = app.getGPUFeatureStatus();
+  console.log('[electron][gpu] Feature status:', gpuStatus);
+  try {
+    const gpuInfo = await app.getGPUInfo('basic');
+    console.log('[electron][gpu] Basic info:', gpuInfo);
+  } catch (error) {
+    console.warn('[electron][gpu] Failed to read basic GPU info.', error);
+  }
+
+  const gpuStatusValues = Object.values(gpuStatus ?? {});
+  const usesSoftwareRendering = gpuStatusValues.some(
+    (value) => typeof value === 'string' && value.includes('software')
+  );
+  if (usesSoftwareRendering) {
+    console.warn(
+      '[electron][gpu] Software rendering detected. Consider запуск із прапорцями ' +
+        'ELECTRON_FORCE_GPU=true або ELECTRON_DISABLE_SW=true.'
+    );
+  }
   protocol.registerFileProtocol('file', (request, callback) => {
     const urlPath = decodeURIComponent(new URL(request.url).pathname);
     const normalizedPath = urlPath.replace(/\\/g, '/');
