@@ -2,9 +2,9 @@ import type { SceneVector2 } from "@core/logic/provided/services/scene-object-ma
 
 import { getAssetUrl } from "@shared/helpers/assets.helper";
 
-export const BRICK_HIT_SOUND_URL = getAssetUrl("audio/sounds/brick_effects/hit-soft.mp3");
+export const BRICK_HIT_SOUND_URL = getAssetUrl("audio/sounds/brick_effects/small_hit.mp3");
 export const BRICK_DESTROY_SOUND_URL = getAssetUrl(
-  "audio/sounds/brick_effects/destroy-soft.mp3"
+  "audio/sounds/brick_effects/medium_hit.mp3"
 );
 
 export const BRICK_COUNT_BRIDGE_KEY = "bricks/count";

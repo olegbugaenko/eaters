@@ -108,7 +108,7 @@ export const BRICK_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> =
     emitter: {
       ...GRAY_BRICK_DAMAGE_EMITTER,
       color: { r: 0.6, g: 1, b: 0.7, a: 1 },
-      fill: createSolidEmitterFill({ r: 0.6, g: 1, b: 0.7, a: 1 }),
+      fill: createSolidEmitterFill({ r: 0.3, g: 0.8, b: 0.2, a: 1 }),
     },
   },
   organicBrickDestroy: {
