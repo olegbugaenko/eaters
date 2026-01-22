@@ -392,7 +392,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       lastY: clientY,
     };
     didPanRef.current = false;
-    (event.target as HTMLElement).setPointerCapture(pointerId);
+    event.currentTarget.setPointerCapture(pointerId);
   }, []);
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -433,7 +433,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       lastX: 0,
       lastY: 0,
     };
-    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+    event.currentTarget.releasePointerCapture(event.pointerId);
   }, []);
 
   const handlePointerLeave = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
