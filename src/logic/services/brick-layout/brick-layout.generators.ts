@@ -432,6 +432,9 @@ export const generateBezierCurveBricks = (
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1];
     const current = points[index];
+    if (!previous || !current) {
+      continue;
+    }
     const segmentLength = Math.hypot(current.x - previous.x, current.y - previous.y);
 
     if (segmentLength === 0) {
