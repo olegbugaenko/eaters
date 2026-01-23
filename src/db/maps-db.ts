@@ -21,6 +21,7 @@ import {
   squareWithBricks,
   templateWithBricks,
 } from "../logic/services/brick-layout/BrickLayoutService";
+import { transformBezierOutline } from "../logic/services/brick-layout/brick-layout.helpers";
 
 export type MapId =
   | "tutorialZone"
@@ -2050,48 +2051,74 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       },
     ] as const;
 
-    const pondCenter = { x: center.x - 160, y: center.y + 100 };
-    const pondOutline = [
+    const basePondOutline = [
       {
-        start: { x: pondCenter.x - 200, y: pondCenter.y },
-        control1: { x: pondCenter.x - 240, y: pondCenter.y - 140 },
-        control2: { x: pondCenter.x - 60, y: pondCenter.y - 220 },
-        end: { x: pondCenter.x + 60, y: pondCenter.y - 170 },
+        start: { x: -200, y: 0 },
+        control1: { x: -240, y: -140 },
+        control2: { x: -60, y: -220 },
+        end: { x: 60, y: -170 },
       },
       {
-        start: { x: pondCenter.x + 60, y: pondCenter.y - 170 },
-        control1: { x: pondCenter.x + 220, y: pondCenter.y - 130 },
-        control2: { x: pondCenter.x + 260, y: pondCenter.y + 60 },
-        end: { x: pondCenter.x + 40, y: pondCenter.y + 190 },
+        start: { x: 60, y: -170 },
+        control1: { x: 220, y: -130 },
+        control2: { x: 260, y: 60 },
+        end: { x: 40, y: 190 },
       },
       {
-        start: { x: pondCenter.x + 40, y: pondCenter.y + 190 },
-        control1: { x: pondCenter.x - 140, y: pondCenter.y + 240 },
-        control2: { x: pondCenter.x - 260, y: pondCenter.y + 120 },
-        end: { x: pondCenter.x - 200, y: pondCenter.y },
+        start: { x: 40, y: 190 },
+        control1: { x: -140, y: 240 },
+        control2: { x: -260, y: 120 },
+        end: { x: -200, y: 0 },
       },
     ] as const;
 
-    const hillOutline = [
+    const baseHillOutline = [
       {
-        start: { x: center.x + 160, y: center.y + 120 },
-        control1: { x: center.x + 40, y: center.y + 60 },
-        control2: { x: center.x + 20, y: center.y - 60 },
-        end: { x: center.x + 140, y: center.y - 120 },
+        start: { x: 160, y: 120 },
+        control1: { x: 40, y: 60 },
+        control2: { x: 20, y: -60 },
+        end: { x: 140, y: -120 },
       },
       {
-        start: { x: center.x + 140, y: center.y - 120 },
-        control1: { x: center.x + 300, y: center.y - 180 },
-        control2: { x: center.x + 360, y: center.y + 80 },
-        end: { x: center.x + 200, y: center.y + 200 },
+        start: { x: 140, y: -120 },
+        control1: { x: 300, y: -180 },
+        control2: { x: 360, y: 80 },
+        end: { x: 200, y: 200 },
       },
       {
-        start: { x: center.x + 200, y: center.y + 200 },
-        control1: { x: center.x + 120, y: center.y + 220 },
-        control2: { x: center.x + 80, y: center.y + 160 },
-        end: { x: center.x + 160, y: center.y + 120 },
+        start: { x: 200, y: 200 },
+        control1: { x: 120, y: 220 },
+        control2: { x: 80, y: 160 },
+        end: { x: 160, y: 120 },
       },
     ] as const;
+
+    const pondCenter = { x: center.x - 160, y: center.y + 100 };
+    const pondOutline = transformBezierOutline(basePondOutline, {
+      position: pondCenter,
+    });
+
+    const hillOutline = transformBezierOutline(baseHillOutline, {
+      position: { x: center.x + 160, y: center.y + 120 },
+    });
+
+    const pondOutlineSmall = transformBezierOutline(basePondOutline, {
+      position: { x: center.x + 220, y: center.y + 260 },
+      scale: 0.6,
+      rotation: Math.PI / 5,
+    });
+
+    const hillOutlineSmall = transformBezierOutline(baseHillOutline, {
+      position: { x: center.x - 260, y: center.y - 200 },
+      scale: 0.55,
+      rotation: -Math.PI / 6,
+    });
+
+    const hillOutlineWide = transformBezierOutline(baseHillOutline, {
+      position: { x: center.x + 360, y: center.y - 220 },
+      scale: { x: 0.8, y: 0.55 },
+      rotation: Math.PI / 8,
+    });
 
     return {
       name: "Bezier Grove",
@@ -2136,6 +2163,17 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           { level: organicLevel },
         );
 
+        const pondSmall = bezierPolygonWithBricks(
+          "smallOrganic",
+          {
+            outline: pondOutlineSmall,
+            spacing: 26,
+            sampleStep: 12,
+            alignToEdge: true,
+          },
+          { level: organicLevel },
+        );
+
         const hill = bezierPolygonWithBricks(
           "smallSquareGray",
           {
@@ -2147,7 +2185,29 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           { level: stoneLevel },
         );
 
-        return [mainVine, sideVine, pond, hill];
+        const hillSmall = bezierPolygonWithBricks(
+          "smallSquareGray",
+          {
+            outline: hillOutlineSmall,
+            spacing: 26,
+            sampleStep: 12,
+            alignToEdge: true,
+          },
+          { level: stoneLevel },
+        );
+
+        const hillWide = bezierPolygonWithBricks(
+          "smallSquareGray",
+          {
+            outline: hillOutlineWide,
+            spacing: 28,
+            sampleStep: 12,
+            alignToEdge: true,
+          },
+          { level: stoneLevel },
+        );
+
+        return [mainVine, sideVine, pond, pondSmall, hill, hillSmall, hillWide];
       },
       playerUnits: [
         {

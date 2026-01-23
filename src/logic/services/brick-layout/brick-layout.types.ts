@@ -73,6 +73,12 @@ export interface BezierCurveWithBricksOptions {
   readonly rotationOffset?: number;
 }
 
+export interface BezierTransformOptions {
+  readonly position?: SceneVector2;
+  readonly scale?: number | SceneVector2;
+  readonly rotation?: number;
+}
+
 export interface BezierPolygonWithBricksOptions
   extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
   readonly outline: readonly BezierCurveSegment[];
