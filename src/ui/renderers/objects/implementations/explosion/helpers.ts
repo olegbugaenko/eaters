@@ -30,6 +30,7 @@ export const sanitizeExplosionEmitterConfig = (
       particleLifetimeMs: config.particleLifetimeMs,
       fadeStartMs: config.fadeStartMs,
       emissionDurationMs: config.emissionDurationMs,
+      emissionDampingInterval: config.emissionDampingInterval,
       sizeRange: config.sizeRange,
       offset: config.offset,
       color: config.color,
