@@ -931,7 +931,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
             <>
               {isDemoBuild() && getMapConfig(activeMap.id).lockedForDemo && (
                 <div className="map-tree__details-locked">
-                  This map is unavailable in the demo build.
+                  This map is unavailable in the demo.
                 </div>
               )}
               <div className="map-tree__details-header">
