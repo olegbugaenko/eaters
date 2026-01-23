@@ -148,12 +148,11 @@ export const SceneSummoningPanel = forwardRef<
       };
 
       setSpellPulse({ token: spellCastPulse.token, rect });
-      console.log("spellPulse", { token: spellCastPulse.token, rect, spellCastPulse });
       const timeout = window.setTimeout(() => {
         setSpellPulse((current) =>
           current?.token === spellCastPulse.token ? null : current
         );
-      }, 750);
+      }, 1750);
 
       return () => {
         window.clearTimeout(timeout);

@@ -165,7 +165,7 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
     unlockedBy: [
       {
         type: "map",
-        id: "uranium_fields",
+        id: "mine",
         level: 1,
       },
     ],
