@@ -43,6 +43,7 @@ import {
   registerParticleEmitterHandle,
   unregisterParticleEmitterHandle,
 } from "./gpu/particle-emitter";
+import { RANDOM_GLSL } from "../shaders/random.glsl";
 
 export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;
@@ -58,6 +59,7 @@ export interface ParticleEmitterBaseConfig {
   alignToVelocity?: boolean; // if true, rotate quad to face particle velocity
   alignToVelocityFlip?: boolean; // if true, rotate 180 degrees when aligned to velocity
   emissionDurationMs?: number;
+  emissionDampingInterval?: number;
   capacity: number;
   sizeGrowthRate?: number; // Multiplier per second: 1.0 = no growth, 2.0 = doubles per second
 }
@@ -563,12 +565,6 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
 
   const activeDelta = computeActiveDelta(previousAge, deltaMs, emissionDuration);
 
-  if (activeDelta > 0 && spawnRate > 0) {
-    state.spawnAccumulator += spawnRate * activeDelta;
-  } else {
-    state.spawnAccumulator = 0;
-  }
-
   const origin = options.getOrigin(instance, config);
 
   if (state.capacity > 0) {
@@ -658,17 +654,26 @@ const advanceParticleEmitterStateGpu = <
   if (useGpuSpawn) {
     // GPU SPAWN PATH: No CPU slot tracking needed!
     // GPU shader handles slot availability via isActive flag
-    const spawnBudget = Math.min(
-      Math.floor(state.spawnAccumulator),
+    const dampingWindow = Math.max(0, config.emissionDampingInterval ?? 0);
+    const effectiveSpawnRate =
+      dampingWindow > 0 && Number.isFinite(emissionDuration)
+        ? spawnRate * clamp01(Math.max(0, emissionDuration - state.ageMs) / dampingWindow)
+        : spawnRate;
+    let desiredSpawnCount = Math.min(
+      effectiveSpawnRate * activeDelta,
       state.capacity // Can't spawn more than capacity
     );
-    
-    if (spawnBudget > 0) {
+
+    if (desiredSpawnCount > 0) {
+      //if(instance.type === "explosion" && config.emissionDampingInterval){
+        // desiredSpawnCount = 0.1;
+        console.log(`emissionDampingInterval[${instance.id}]`, state.ageMs, desiredSpawnCount, state.capacity);
+      //}
       spawnParams = {
         emitterPosition: origin,
         emitterRotation: instance.data.rotation ?? 0,
         spawnStartIndex: state.capacity, // Pass capacity for probability calculation
-        spawnCount: spawnBudget,
+        spawnCount: desiredSpawnCount,
         particleLifetime: config.particleLifetimeMs,
         baseSpeed: gpuSpawnConfig.baseSpeed,
         speedVariation: gpuSpawnConfig.speedVariation,
@@ -681,11 +686,10 @@ const advanceParticleEmitterStateGpu = <
         spread: gpuSpawnConfig.spread,
         radialVelocity: gpuSpawnConfig.radialVelocity,
       };
-      state.spawnAccumulator -= spawnBudget;
     }
-    
-    // Cap accumulator to prevent runaway growth
-    state.spawnAccumulator = Math.min(state.spawnAccumulator, state.capacity);
+
+    // No accumulator in GPU spawn path; probability-based spawn uses fractional counts directly.
+    state.spawnAccumulator = 0;
   } else {
     // CPU SPAWN PATH: Legacy - requires slot tracking
     if (!state.warnedCpuSpawnFallback && options.getGpuSpawnConfig) {
@@ -946,6 +950,7 @@ const writeEmitterBufferCpu = <Config extends ParticleEmitterBaseConfig>(
 
 const SIMULATION_VERTEX_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 a_position;
 in vec2 a_velocity;
@@ -981,19 +986,7 @@ out float v_lifetime;
 out float v_size;
 out float v_isActive;
 
-// Pseudo-random functions
-float hash(float n) {
-  return fract(sin(n * 12.9898) * 43758.5453123);
-}
-
-float rand(int particleId, int paramId) {
-  float seed = float(particleId) * 7.1831 + float(paramId) * 13.7297 + u_currentTime * 0.001;
-  return hash(seed);
-}
-
-float randRange(int particleId, int paramId, float minVal, float maxVal) {
-  return mix(minVal, maxVal, rand(particleId, paramId));
-}
+${RANDOM_GLSL}
 
 void main() {
   int particleId = gl_VertexID;
@@ -1021,7 +1014,7 @@ void main() {
     // u_spawnStartIndex contains capacity for this calculation
     float capacity = max(u_spawnStartIndex, 1.0);
     float spawnProbability = min(u_spawnCount / capacity, 1.0);
-    float randomVal = rand(particleId, 99);
+    float randomVal = randPcg(particleId, 99);
     if (randomVal < spawnProbability) {
       // Generate new particle on GPU!
       isActive = 1.0;
@@ -1029,32 +1022,33 @@ void main() {
       lifetime = u_particleLifetime;
       
       // Random size
-      size = randRange(particleId, 0, u_sizeRange.x, u_sizeRange.y);
+      size = randRangeLegacy(particleId, 0, u_sizeRange.x, u_sizeRange.y);
       
       // Random speed
-      float speedVar = randRange(particleId, 1, -1.0, 1.0) * u_speedRange.y;
+      float speedVar = randRangeLegacy(particleId, 1, -1.0, 1.0) * u_speedRange.y;
       float speed = max(0.0, u_speedRange.x + speedVar);
       
       // Calculate spawn angle
       float spawnAngle;
       if (u_arc >= 6.28318) {
         // Full circle - random angle
-        spawnAngle = rand(particleId, 2) * 6.28318;
+        spawnAngle = randPcg(particleId, 2) * 6.28318;
       } else if (u_spread > 0.0) {
         // Directional with spread (for player units, bullets)
         // u_direction already includes rotation + offset, don't add u_emitterRotation again
         float halfSpread = u_spread * 0.5;
-        float spreadOffset = randRange(particleId, 2, -halfSpread, halfSpread);
+        float spreadOffset = randRangePcg(particleId, 2, -halfSpread, halfSpread);
         spawnAngle = u_direction + spreadOffset;
       } else {
         // Limited arc (for explosions with direction)
         float halfArc = u_arc * 0.5;
-        float arcOffset = randRange(particleId, 2, -halfArc, halfArc);
+        float arcOffset = randRangePcg(particleId, 2, -halfArc, halfArc);
         spawnAngle = u_direction + arcOffset;
       }
       
       // Random spawn radius
-      float spawnRadius = randRange(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
+      float spawnRadius =
+        randRangeLegacy(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
       
       // Calculate spawn position
       position = u_emitterPosition + vec2(cos(spawnAngle), sin(spawnAngle)) * spawnRadius;
@@ -2528,6 +2522,7 @@ export const sanitizeParticleEmitterConfig = (
     particleLifetimeMs?: number;
     fadeStartMs?: number;
     emissionDurationMs?: number;
+    emissionDampingInterval?: number;
     sizeRange?: { min?: number; max?: number };
     offset?: SceneVector2;
     color?: SceneColor;
@@ -2591,6 +2586,11 @@ export const sanitizeParticleEmitterConfig = (
     Number.isFinite(config.emissionDurationMs)
       ? Math.max(0, Number(config.emissionDurationMs))
       : undefined;
+  const emissionDampingInterval =
+    typeof config.emissionDampingInterval === "number" &&
+    Number.isFinite(config.emissionDampingInterval)
+      ? Math.max(0, Number(config.emissionDampingInterval))
+      : undefined;
   const maxParticles =
     typeof config.maxParticles === "number" && config.maxParticles > 0
       ? Math.floor(config.maxParticles)
@@ -2613,6 +2613,7 @@ export const sanitizeParticleEmitterConfig = (
     fill,
     shape,
     emissionDurationMs,
+    emissionDampingInterval,
     capacity,
     aspectRatio: Number.isFinite(config.aspectRatio) ? Math.max(Number(config.aspectRatio), 0.01) : undefined,
     alignToVelocity: config.alignToVelocity === true,

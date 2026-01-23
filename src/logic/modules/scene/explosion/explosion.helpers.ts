@@ -153,6 +153,7 @@ export const createEmitterCustomData = (
     particleLifetimeMs,
     fadeStartMs,
     emissionDurationMs,
+    emissionDampingInterval: config.emitter.emissionDampingInterval,
     sizeRange: { min: sizeMin, max: sizeMax },
     spawnRadius: { min: spawnRadiusMin, max: spawnRadiusMax },
     baseSpeed: Math.max(0, config.emitter.baseSpeed ?? 0),
