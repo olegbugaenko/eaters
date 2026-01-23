@@ -108,9 +108,11 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       particlesPerSecond: 3760,
       sizeRange: { min: 0.3, max: 4.4 },
       emissionDurationMs: 400,
-      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadius: { min: 0, max: 2 },
       spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
       fill: SMALL_CANNON_EMITTER_FILL,
+      maxParticles: 4000,
+      emissionDampingInterval: 100,
       radialVelocity: true, // Частинки рухаються від центру вибуху
     },
   },

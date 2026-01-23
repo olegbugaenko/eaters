@@ -659,12 +659,16 @@ const advanceParticleEmitterStateGpu = <
       dampingWindow > 0 && Number.isFinite(emissionDuration)
         ? spawnRate * clamp01(Math.max(0, emissionDuration - state.ageMs) / dampingWindow)
         : spawnRate;
-    const desiredSpawnCount = Math.min(
+    let desiredSpawnCount = Math.min(
       effectiveSpawnRate * activeDelta,
       state.capacity // Can't spawn more than capacity
     );
 
     if (desiredSpawnCount > 0) {
+      //if(instance.type === "explosion" && config.emissionDampingInterval){
+        // desiredSpawnCount = 0.1;
+        console.log(`emissionDampingInterval[${instance.id}]`, state.ageMs, desiredSpawnCount, state.capacity);
+      //}
       spawnParams = {
         emitterPosition: origin,
         emitterRotation: instance.data.rotation ?? 0,
@@ -1010,7 +1014,7 @@ void main() {
     // u_spawnStartIndex contains capacity for this calculation
     float capacity = max(u_spawnStartIndex, 1.0);
     float spawnProbability = min(u_spawnCount / capacity, 1.0);
-    float randomVal = randLegacy(particleId, 99);
+    float randomVal = randPcg(particleId, 99);
     if (randomVal < spawnProbability) {
       // Generate new particle on GPU!
       isActive = 1.0;
