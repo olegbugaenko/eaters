@@ -176,7 +176,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
     }),
     emitter: {
       emissionDurationMs: 500,
-      particlesPerSecond: 600,
+      particlesPerSecond: 1600,
       baseSpeed: 0.08,
       speedVariation: 0.02,
       particleLifetimeMs: 1100,

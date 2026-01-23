@@ -33,6 +33,7 @@ export const FIREBALL_TRAIL_EMITTER: ParticleEmitterConfig = {
   speedVariation: 0.005,
   sizeRange: { min: 24.2, max: 38.4 },
   spread: Math.PI,
+  sizeGrowthRate: 1.75,
   offset: { x: -1.35, y: 0 },
   color: { r: 1, g: 0.7, b: 0.3, a: 0.45 },
   fill: {
