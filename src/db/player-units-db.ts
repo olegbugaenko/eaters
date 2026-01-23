@@ -310,20 +310,20 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
 
         // Conductor tentacles
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
-          [ { x: 0.8, y: 2.8, width: 1.4 }, { x: 5.8, y: 12.2, width: 1.2 }, { x: 12.4, y: 8.2, width: 1.2 }, { x: 16.8, y: 6.2, width: 1.2 } ], 
+          [ { x: 0.8, y: 2.8, width: 1.4 }, { x: 5.8, y: 12.2, width: 1.2 }, { x: 13.4, y: 8.2, width: 1.2 }, { x: 18.8, y: 7.2, width: 1.2 } ], 
           {
             requiresModule: "conductorTentacles",
             fill: { type: "base", brightness: -0.02 },
-            anim: { type: "sway", periodMs: 1650, amplitude: 4.3, falloff: "tip", axis: "normal", phase: 0.12 },
+            anim: { type: "sway", periodMs: 1650, amplitude: 3.3, falloff: "tip", axis: "normal", phase: 0.12 },
           },
           { epsilon: 0.25, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
-          [ { x: 0.8, y: -2.8, width: 1.4 }, { x: 5.8, y: -12.2, width: 1.2 }, { x: 12.4, y: -8.2, width: 1.2 }, { x: 16.8, y: -6.2, width: 1.2 } ],
+          [ { x: 0.8, y: -2.8, width: 1.4 }, { x: 5.8, y: -12.2, width: 1.2 }, { x: 13.4, y: -8.2, width: 1.2 }, { x: 18.8, y: -7.2, width: 1.2 } ],
           {
             requiresModule: "conductorTentacles",
             fill: { type: "base", brightness: -0.02 },
-            anim: { type: "sway", periodMs: 1650, amplitude: 4.3, falloff: "tip", axis: "normal", phase: 3.26 },
+            anim: { type: "sway", periodMs: 1650, amplitude: 3.3, falloff: "tip", axis: "normal", phase: 3.26 },
           },
           { epsilon: 0.25, winding: "CCW" }
         ),
@@ -331,13 +331,13 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "circle",
           requiresModule: "conductorTentacles",
           radius: 8,
-          offset: { x: 16, y: 0 },
+          offset: { x: 20, y: 0 },
           fill: {
             type: "gradient",
             fill: {
               fillType: FILL_TYPES.RADIAL_GRADIENT,
               stops: [
-                { offset: 0, color: { r: 0.9, g: 0.95, b: 1.0, a: 0.65 } },
+                { offset: 0, color: { r: 0.8, g: 0.95, b: 1.0, a: 0.65 } },
                 { offset: 0.55, color: { r: 0.7, g: 0.9, b: 1, a: 0.35 } },
                 { offset: 1, color: { r: 0.7, g: 0.9, b: 1, a: 0 } },
               ],
