@@ -40,6 +40,11 @@ export interface ParticleEmitterConfig {
 
   // Explosion-specific properties (optional)
   emissionDurationMs?: number; // How long particles are emitted
+  /**
+   * Linearly damp the emission rate during the last N milliseconds of emission.
+   * 0 or undefined disables damping.
+   */
+  emissionDampingInterval?: number;
   spawnRadius?: { min: number; max: number }; // Spawn radius range
   /**
    * Ensures the maximum spawn radius scales with the initial radius of the explosion.

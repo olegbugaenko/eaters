@@ -21,6 +21,9 @@ export const cloneParticleEmitterConfig = (
   if (typeof config.emissionDurationMs === "number") {
     cloned.emissionDurationMs = config.emissionDurationMs;
   }
+  if (typeof config.emissionDampingInterval === "number") {
+    cloned.emissionDampingInterval = config.emissionDampingInterval;
+  }
   if (typeof config.baseSpeed === "number") {
     cloned.baseSpeed = config.baseSpeed;
   }

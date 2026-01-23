@@ -76,6 +76,7 @@ export const serializeExplosionEmitterConfig = (
     config.particleLifetimeMs,
     config.fadeStartMs,
     config.emissionDurationMs ?? 0,
+    config.emissionDampingInterval ?? 0,
     config.sizeRange.min,
     config.sizeRange.max,
     config.offset.x,

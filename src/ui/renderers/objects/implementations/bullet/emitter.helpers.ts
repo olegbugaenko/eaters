@@ -141,6 +141,7 @@ export const serializeTailEmitterConfig = (config: BulletTailEmitterRenderConfig
     config.particlesPerSecond,
     config.particleLifetimeMs,
     config.fadeStartMs,
+    config.emissionDampingInterval ?? 0,
     config.baseSpeed,
     config.speedVariation,
     config.sizeRange.min,

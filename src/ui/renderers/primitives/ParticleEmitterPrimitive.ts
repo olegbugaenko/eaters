@@ -59,6 +59,7 @@ export interface ParticleEmitterBaseConfig {
   alignToVelocity?: boolean; // if true, rotate quad to face particle velocity
   alignToVelocityFlip?: boolean; // if true, rotate 180 degrees when aligned to velocity
   emissionDurationMs?: number;
+  emissionDampingInterval?: number;
   capacity: number;
   sizeGrowthRate?: number; // Multiplier per second: 1.0 = no growth, 2.0 = doubles per second
 }
@@ -653,8 +654,13 @@ const advanceParticleEmitterStateGpu = <
   if (useGpuSpawn) {
     // GPU SPAWN PATH: No CPU slot tracking needed!
     // GPU shader handles slot availability via isActive flag
+    const dampingWindow = Math.max(0, config.emissionDampingInterval ?? 0);
+    const effectiveSpawnRate =
+      dampingWindow > 0 && Number.isFinite(emissionDuration)
+        ? spawnRate * clamp01(Math.max(0, emissionDuration - state.ageMs) / dampingWindow)
+        : spawnRate;
     const desiredSpawnCount = Math.min(
-      spawnRate * activeDelta,
+      effectiveSpawnRate * activeDelta,
       state.capacity // Can't spawn more than capacity
     );
 
@@ -2512,6 +2518,7 @@ export const sanitizeParticleEmitterConfig = (
     particleLifetimeMs?: number;
     fadeStartMs?: number;
     emissionDurationMs?: number;
+    emissionDampingInterval?: number;
     sizeRange?: { min?: number; max?: number };
     offset?: SceneVector2;
     color?: SceneColor;
@@ -2575,6 +2582,11 @@ export const sanitizeParticleEmitterConfig = (
     Number.isFinite(config.emissionDurationMs)
       ? Math.max(0, Number(config.emissionDurationMs))
       : undefined;
+  const emissionDampingInterval =
+    typeof config.emissionDampingInterval === "number" &&
+    Number.isFinite(config.emissionDampingInterval)
+      ? Math.max(0, Number(config.emissionDampingInterval))
+      : undefined;
   const maxParticles =
     typeof config.maxParticles === "number" && config.maxParticles > 0
       ? Math.floor(config.maxParticles)
@@ -2597,6 +2609,7 @@ export const sanitizeParticleEmitterConfig = (
     fill,
     shape,
     emissionDurationMs,
+    emissionDampingInterval,
     capacity,
     aspectRatio: Number.isFinite(config.aspectRatio) ? Math.max(Number(config.aspectRatio), 0.01) : undefined,
     alignToVelocity: config.alignToVelocity === true,
