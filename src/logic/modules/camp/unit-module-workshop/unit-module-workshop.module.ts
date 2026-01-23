@@ -10,6 +10,7 @@ import {
   UnitModuleId,
   getUnitModuleConfig,
 } from "../../../../db/unit-modules-db";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 import {
   ResourceStockpile,
   normalizeResourceAmount,
@@ -137,7 +138,8 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     const unlocked = this.getSkillLevel(MODULE_UNLOCK_SKILL_ID) > 0;
     const visibleIds = unlocked
       ? UNIT_MODULE_IDS.filter((id) =>
-          this.unlocks.areConditionsMet(getUnitModuleConfig(id).unlockedBy)
+          this.unlocks.areConditionsMet(getUnitModuleConfig(id).unlockedBy) &&
+          !(isDemoBuild() && getUnitModuleConfig(id).lockedForDemo)
         )
       : [];
     const visibleSet = new Set<UnitModuleId>(visibleIds);
@@ -171,6 +173,9 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
       const config = getUnitModuleConfig(id);
       this.newUnlocks.registerUnlock(`biolab.organs.${id}`, () => {
         if (this.getSkillLevel(MODULE_UNLOCK_SKILL_ID) <= 0) {
+          return false;
+        }
+        if (isDemoBuild() && config.lockedForDemo) {
           return false;
         }
         return this.unlocks.areConditionsMet(config.unlockedBy);

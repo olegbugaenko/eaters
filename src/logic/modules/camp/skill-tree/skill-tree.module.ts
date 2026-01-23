@@ -35,6 +35,7 @@ import {
   createDefaultLevels,
   clampLevel,
 } from "./skill-tree.helpers";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 
 export class SkillTreeModule implements GameModule {
   public readonly id = "skillTree";
@@ -132,9 +133,12 @@ export class SkillTreeModule implements GameModule {
 
   public tryPurchaseSkill(id: SkillId): boolean {
     const config = getSkillConfig(id);
-    const currentLevel = this.levels[id] ?? 0;
+    const currentLevel = this.getLevel(id);
 
     if (currentLevel >= config.maxLevel) {
+      return false;
+    }
+    if (isDemoBuild() && config.lockedForDemo) {
       return false;
     }
     if (!this.areRequirementsMet(config)) {
@@ -161,13 +165,17 @@ export class SkillTreeModule implements GameModule {
   }
 
   public getLevel(id: SkillId): number {
-    return this.levels[id] ?? 0;
+    const level = this.levels[id] ?? 0;
+    if (level > 0 && isDemoBuild() && getSkillConfig(id).lockedForDemo) {
+      return 0;
+    }
+    return level;
   }
 
   private areRequirementsMet(config: SkillConfig): boolean {
     return Object.entries(config.nodesRequired).every(([requiredId, level]) => {
       const id = requiredId as SkillId;
-      return (this.levels[id] ?? 0) >= (level ?? 0);
+      return this.getLevel(id) >= (level ?? 0);
     });
   }
 
@@ -197,9 +205,9 @@ export class SkillTreeModule implements GameModule {
     totals: ReturnType<ResourcesModule["getTotals"]>
   ): SkillNodeBridgePayload {
     const config = getSkillConfig(id);
-    const level = this.levels[id] ?? 0;
+    const level = this.getLevel(id);
     const maxed = level >= config.maxLevel;
-    const unlocked = this.areRequirementsMet(config);
+    const unlocked = !(isDemoBuild() && config.lockedForDemo) && this.areRequirementsMet(config);
     const nextLevel = level + 1;
     const nextCost =
       unlocked && nextLevel <= config.maxLevel
@@ -383,7 +391,7 @@ export class SkillTreeModule implements GameModule {
 
   private syncBonusLevel(id: SkillId): void {
     const sourceId = this.getBonusSourceId(id);
-    const level = this.levels[id] ?? 0;
+    const level = this.getLevel(id);
     this.bonuses.setBonusCurrentLevel(sourceId, level);
   }
 

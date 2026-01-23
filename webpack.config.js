@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const copyDirectory = async (source, destination) => {
@@ -92,6 +93,9 @@ module.exports = (env, argv) => {
       new HtmlWebpackPlugin({
         template: './public/index.html',
         filename: 'index.html',
+      }),
+      new webpack.DefinePlugin({
+        "process.env.IS_DEMO": JSON.stringify(process.env.IS_DEMO ?? ""),
       }),
       new CopyStaticAssetsPlugin(),
     ],

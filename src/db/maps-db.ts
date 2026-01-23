@@ -98,6 +98,7 @@ export interface MapConfig {
   readonly maxLevel: number;
   readonly resourceMultiplier?: number; // Множник ресурсів для цієї мапи (застосовується до brick_rewards)
   readonly achievementId?: AchievementId;
+  readonly lockedForDemo?: boolean;
 }
 
 export interface MapListEntry {
@@ -2139,6 +2140,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       spawnPoints: [spawnPoint],
       nodePosition: { x: 4, y: 6 },
       icon: "uranium_fields.png",
+      lockedForDemo: true,
       mapEffects: ["radioactivity"],
       bricks: ({ mapLevel }) => {
 
@@ -2855,6 +2857,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       spawnPoints: [spawnPoint],
       nodePosition: { x: 3, y: -1 },
       icon: "frozen_forest.png",
+      lockedForDemo: true,
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const iceLevel = baseLevel;
@@ -2990,6 +2993,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       spawnPoints: [spawnPoint],
       nodePosition: { x: 5, y: 5 },
       icon: "volcano.png",
+      lockedForDemo: true,
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const copperLevel = baseLevel + 2;

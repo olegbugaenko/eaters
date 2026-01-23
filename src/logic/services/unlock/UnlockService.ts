@@ -1,8 +1,9 @@
 import { getMapConfig, MapId } from "../../../db/maps-db";
-import { SkillId } from "../../../db/skills-db";
+import { getSkillConfig, SkillId } from "../../../db/skills-db";
 import type { UnlockServiceOptions, GameUnlockCondition } from "./unlock.types";
 import { CACHE_TTL_MS } from "./unlock.const";
 import { sanitizeLevel } from "./unlock.helpers";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 
 export class UnlockService {
   private readonly getMapStats: () => import("../../modules/active-map/map/map.types").MapStats;
@@ -50,6 +51,10 @@ export class UnlockService {
     }
 
     const config = getMapConfig(mapId);
+    if (isDemoBuild() && config.lockedForDemo) {
+      this.conditionCache.set(cacheKey, false);
+      return false;
+    }
     let result = true;
     if (level > config.maxLevel) {
       result = false;
@@ -79,6 +84,9 @@ export class UnlockService {
     // Iterative form avoids recursion overhead and repeated checks
     const level = Math.max(1, sanitizeLevel(requestedLevel));
     const config = getMapConfig(mapId);
+    if (isDemoBuild() && config.lockedForDemo) {
+      return false;
+    }
     // Check maxLevel limit
     if (level > config.maxLevel) {
       return false;
@@ -113,6 +121,10 @@ export class UnlockService {
     const level = sanitizeLevel(requestedLevel);
     if (level === 0) {
       return true;
+    }
+    const config = getSkillConfig(skillId);
+    if (isDemoBuild() && config.lockedForDemo) {
+      return false;
     }
     const currentLevel = this.getSkillLevel(skillId);
     return currentLevel >= level;

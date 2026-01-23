@@ -7,8 +7,11 @@
   "private": true,
   "scripts": {
     "start": "webpack serve --mode development",
+    "start:demo": "node -e \"process.env.IS_DEMO='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['serve', '--mode', 'development'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
     "build": "webpack --mode production",
+    "build:demo": "node -e \"process.env.IS_DEMO='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['--mode', 'production'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
     "build:electron": "npm run build && electron-builder --config electron-builder.config.js --win",
+    "build:electron:demo": "node -e \"process.env.IS_DEMO='1'; const { spawnSync } = require('child_process'); const result = spawnSync('npm', ['run', 'build:electron'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
     "electron": "node scripts/run-electron-dev.js",
     "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && node scripts/run-electron-dev.js\"",
     "dist": "npm run build:electron",

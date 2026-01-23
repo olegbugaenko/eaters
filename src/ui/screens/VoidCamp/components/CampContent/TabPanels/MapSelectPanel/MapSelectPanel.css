@@ -242,6 +242,16 @@
   align-items: center;
 }
 
+.map-tree__details-locked {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.12);
+  color: rgba(248, 113, 113, 0.95);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 .map-tree__details-level {
   color: var(--color-text-subtle);
   font-weight: 600;
