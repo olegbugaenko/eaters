@@ -667,7 +667,7 @@ const advanceParticleEmitterStateGpu = <
     if (desiredSpawnCount > 0) {
       //if(instance.type === "explosion" && config.emissionDampingInterval){
         // desiredSpawnCount = 0.1;
-        console.log(`emissionDampingInterval[${instance.id}]`, state.ageMs, desiredSpawnCount, state.capacity);
+        // console.log(`emissionDampingInterval[${instance.id}]`, state.ageMs, desiredSpawnCount, state.capacity);
       //}
       spawnParams = {
         emitterPosition: origin,
