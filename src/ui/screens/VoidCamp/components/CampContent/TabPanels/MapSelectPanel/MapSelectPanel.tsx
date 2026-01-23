@@ -23,6 +23,7 @@ import {
 } from "@logic/services/new-unlock-notification/new-unlock-notification.const";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 import "./MapSelectPanel.css";
 import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 
@@ -365,6 +366,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
 
   const setPopoverForMap = useCallback(
     (map: MapListEntry) => {
+      if (!map.selectable) {
+        return;
+      }
       setPopover({
         mapId: map.id,
         canDecrease: map.selectedLevel > 1,
@@ -377,6 +381,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const handleNodeClick = useCallback(
     (map: MapListEntry, event: ReactMouseEvent<HTMLButtonElement>) => {
       if (didPanRef.current) {
+        return;
+      }
+      if (!map.selectable) {
         return;
       }
       onSelectMap(map.id);
@@ -618,6 +625,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 if (didPanRef.current) {
                   return;
                 }
+                if (!map.selectable) {
+                  return;
+                }
                 onSelectMap(map.id);
                 onStartMap(map.id);
                 setPopover(null);
@@ -766,10 +776,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         popoverHoverTimeoutRef.current = null;
                       }, 100);
                     }}
-                    disabled={!map.selectable}
                     onClick={(event) => handleNodeClick(map, event)}
                     onDoubleClick={handleDoubleClick}
                     aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
+                    aria-disabled={!map.selectable}
                   >
                     <NewUnlockWrapper
                       path={unlockPath}
@@ -810,6 +820,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               }
               const popoverMap = mapById.get(popover.mapId);
               if (!popoverMap) {
+                return null;
+              }
+              if (!popoverMap.selectable) {
                 return null;
               }
               const nodeSize = 78;
@@ -863,43 +876,47 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   <div className="map-tree__popover-level">
                     Level {popoverMap.selectedLevel} / {popoverMap.currentLevel}
                   </div>
-                  <div className="map-tree__popover-actions">
-                    <button
-                      type="button"
-                      className={classNames(
-                        "button",
-                        "secondary-button",
-                        "small-button"
-                      )}
-                      disabled={!popover.canDecrease}
-                      onClick={() =>
-                        onSelectLevel(popover.mapId, popoverMap.selectedLevel - 1)
-                      }
-                    >
-                      -
-                    </button>
-                    <button
-                      type="button"
-                      className={classNames(
-                        "button",
-                        "secondary-button",
-                        "small-button"
-                      )}
-                      disabled={!popover.canIncrease}
-                      onClick={() =>
-                        onSelectLevel(popover.mapId, popoverMap.selectedLevel + 1)
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    className="button primary-button"
-                    onClick={() => onStartMap(popover.mapId)}
-                  >
-                    Start
-                  </button>
+                  {popoverMap.selectable && (
+                    <>
+                      <div className="map-tree__popover-actions">
+                        <button
+                          type="button"
+                          className={classNames(
+                            "button",
+                            "secondary-button",
+                            "small-button"
+                          )}
+                          disabled={!popover.canDecrease}
+                          onClick={() =>
+                            onSelectLevel(popover.mapId, popoverMap.selectedLevel - 1)
+                          }
+                        >
+                          -
+                        </button>
+                        <button
+                          type="button"
+                          className={classNames(
+                            "button",
+                            "secondary-button",
+                            "small-button"
+                          )}
+                          disabled={!popover.canIncrease}
+                          onClick={() =>
+                            onSelectLevel(popover.mapId, popoverMap.selectedLevel + 1)
+                          }
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="button primary-button"
+                        onClick={() => onStartMap(popover.mapId)}
+                      >
+                        Start
+                      </button>
+                    </>
+                  )}
                 </div>
               );
             })()}
@@ -908,6 +925,11 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
         <aside className="map-tree__details">
           {activeMap ? (
             <>
+              {isDemoBuild() && getMapConfig(activeMap.id).lockedForDemo && (
+                <div className="map-tree__details-locked">
+                  This map is unavailable in the demo build.
+                </div>
+              )}
               <div className="map-tree__details-header">
                 <h2 className={classNames(
                   getMapConfig(activeMap.id).achievementId && "map-tree__details-title--achievement"
@@ -961,32 +983,34 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   </dd>
                 </div>
               </dl>
-              <div className="map-tree__details-actions">
-                <button
-                  type="button"
-                  className={classNames("button", "secondary-button")}
-                  disabled={activeMap.selectedLevel <= 1}
-                  onClick={() => onSelectLevel(activeMap.id, Math.max(activeMap.selectedLevel - 1, 1))}
-                >
-                  Level -
-                </button>
-                <button
-                  type="button"
-                  className={classNames("button", "secondary-button")}
-                  onClick={() =>
-                    onSelectLevel(activeMap.id, Math.min(activeMap.selectedLevel + 1, activeMap.currentLevel))
-                  }
-                >
-                  Level +
-                </button>
-                <button
-                  type="button"
-                  className={classNames("button", "primary-button")}
-                  onClick={() => onStartMap(activeMap.id)}
-                >
-                  Start Map
-                </button>
-              </div>
+              {activeMap.selectable && (
+                <div className="map-tree__details-actions">
+                  <button
+                    type="button"
+                    className={classNames("button", "secondary-button")}
+                    disabled={activeMap.selectedLevel <= 1}
+                    onClick={() => onSelectLevel(activeMap.id, Math.max(activeMap.selectedLevel - 1, 1))}
+                  >
+                    Level -
+                  </button>
+                  <button
+                    type="button"
+                    className={classNames("button", "secondary-button")}
+                    onClick={() =>
+                      onSelectLevel(activeMap.id, Math.min(activeMap.selectedLevel + 1, activeMap.currentLevel))
+                    }
+                  >
+                    Level +
+                  </button>
+                  <button
+                    type="button"
+                    className={classNames("button", "primary-button")}
+                    onClick={() => onStartMap(activeMap.id)}
+                  >
+                    Start Map
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <div className="map-tree__details-empty">

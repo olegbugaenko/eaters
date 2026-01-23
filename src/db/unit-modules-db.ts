@@ -56,6 +56,7 @@ export interface UnitModuleConfig {
   readonly baseCost: ResourceAmount;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly canAttackDistant?: boolean;
+  readonly lockedForDemo?: boolean;
   readonly meta?: {
     readonly cooldownSeconds?: number;
     readonly frenzyAttacks?: number;
@@ -313,6 +314,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     manaCostMultiplier: 2.6,
     sanityCost: 0,
     baseCost: { magma: 300, organics: 150 },
+    lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
     meta: { areaRadius: 30 },
   },
@@ -328,6 +330,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     manaCostMultiplier: 2.6,
     sanityCost: 0,
     baseCost: { ice: 300, sand: 300 },
+    lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
     meta: { areaRadius: 30 },
   },

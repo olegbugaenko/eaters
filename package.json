@@ -7,8 +7,11 @@
   "private": true,
   "scripts": {
     "start": "webpack serve --mode development",
+    "start:demo": "IS_DEMO=1 webpack serve --mode development",
     "build": "webpack --mode production",
+    "build:demo": "IS_DEMO=1 webpack --mode production",
     "build:electron": "npm run build && electron-builder --config electron-builder.config.js --win",
+    "build:electron:demo": "IS_DEMO=1 npm run build:electron",
     "electron": "node scripts/run-electron-dev.js",
     "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && node scripts/run-electron-dev.js\"",
     "dist": "npm run build:electron",

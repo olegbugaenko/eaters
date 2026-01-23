@@ -60,6 +60,7 @@ import {
   sanitizeCount,
   sanitizeDuration,
 } from "./map.helpers";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -888,6 +889,9 @@ export class MapModule implements GameModule {
 
   private isMapSelectable(mapId: MapId): boolean {
     const config = getMapConfig(mapId);
+    if (isDemoBuild() && config.lockedForDemo) {
+      return false;
+    }
     // Check mapsRequired first
     if (config.mapsRequired) {
       const mapsRequiredMet = Object.entries(config.mapsRequired).every(([requiredMapId, requiredLevel]) => {
@@ -911,6 +915,14 @@ export class MapModule implements GameModule {
     
     const selectableMapIds = new Set(selectableMaps.map((m) => m.id));
     const visibleMapIds = new Set<MapId>(selectableMapIds);
+
+    if (isDemoBuild()) {
+      getMapList().forEach((map) => {
+        if (getMapConfig(map.id).lockedForDemo) {
+          visibleMapIds.add(map.id);
+        }
+      });
+    }
     
     // Find all maps that are required by selectable maps (show prerequisites)
     selectableMaps.forEach((map) => {

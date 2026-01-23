@@ -18,6 +18,7 @@ export interface SkillConfig {
   readonly effects: BonusEffectMap;
   readonly nodesRequired: Partial<Record<SkillId, number>>;
   readonly cost: SkillCostFunction;
+  readonly lockedForDemo?: boolean;
   readonly registerEvent?: {
     readonly text: string;
   };
@@ -358,6 +359,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
     icon: "ice_mastery.png",
+    lockedForDemo: true,
     effects: {},
     cost: createResourceCost("ice", 400, 1),
   },
@@ -370,6 +372,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
     icon: "fire_mastery.png",
+    lockedForDemo: true,
     effects: {
     },
     cost: createResourceCost("magma", 400, 1),
@@ -495,6 +498,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 1, y: -6 },
     maxLevel: 1,
     icon: "ring_of_fire.png",
+    lockedForDemo: true,
     effects: {},
     nodesRequired: { black_darts: 1 },
     cost: createResourceCost('magma', 200, 1),
@@ -913,6 +917,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: -8, y: 3 },
     maxLevel: 15,
     icon: "penetration_3.png",
+    lockedForDemo: true,
     effects: {
       all_units_armor_penetration: {
         income: (level) => 6 * level,
@@ -1042,6 +1047,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 8, y: 3 },
     maxLevel: 15,
     icon: "armor5.png",
+    lockedForDemo: true,
     effects: {
       all_units_armor: {
         income: (level) => 15*level,
