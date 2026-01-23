@@ -43,6 +43,7 @@ import {
   registerParticleEmitterHandle,
   unregisterParticleEmitterHandle,
 } from "./gpu/particle-emitter";
+import { RANDOM_GLSL } from "../shaders/random.glsl";
 
 export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;
@@ -946,6 +947,7 @@ const writeEmitterBufferCpu = <Config extends ParticleEmitterBaseConfig>(
 
 const SIMULATION_VERTEX_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 a_position;
 in vec2 a_velocity;
@@ -981,19 +983,7 @@ out float v_lifetime;
 out float v_size;
 out float v_isActive;
 
-// Pseudo-random functions
-float hash(float n) {
-  return fract(sin(n * 12.9898) * 43758.5453123);
-}
-
-float rand(int particleId, int paramId) {
-  float seed = float(particleId) * 7.1831 + float(paramId) * 13.7297 + u_currentTime * 0.001;
-  return hash(seed);
-}
-
-float randRange(int particleId, int paramId, float minVal, float maxVal) {
-  return mix(minVal, maxVal, rand(particleId, paramId));
-}
+${RANDOM_GLSL}
 
 void main() {
   int particleId = gl_VertexID;
@@ -1021,7 +1011,7 @@ void main() {
     // u_spawnStartIndex contains capacity for this calculation
     float capacity = max(u_spawnStartIndex, 1.0);
     float spawnProbability = min(u_spawnCount / capacity, 1.0);
-    float randomVal = rand(particleId, 99);
+    float randomVal = randLegacy(particleId, 99);
     if (randomVal < spawnProbability) {
       // Generate new particle on GPU!
       isActive = 1.0;
@@ -1029,32 +1019,33 @@ void main() {
       lifetime = u_particleLifetime;
       
       // Random size
-      size = randRange(particleId, 0, u_sizeRange.x, u_sizeRange.y);
+      size = randRangeLegacy(particleId, 0, u_sizeRange.x, u_sizeRange.y);
       
       // Random speed
-      float speedVar = randRange(particleId, 1, -1.0, 1.0) * u_speedRange.y;
+      float speedVar = randRangeLegacy(particleId, 1, -1.0, 1.0) * u_speedRange.y;
       float speed = max(0.0, u_speedRange.x + speedVar);
       
       // Calculate spawn angle
       float spawnAngle;
       if (u_arc >= 6.28318) {
         // Full circle - random angle
-        spawnAngle = rand(particleId, 2) * 6.28318;
+        spawnAngle = randPcg(particleId, 2) * 6.28318;
       } else if (u_spread > 0.0) {
         // Directional with spread (for player units, bullets)
         // u_direction already includes rotation + offset, don't add u_emitterRotation again
         float halfSpread = u_spread * 0.5;
-        float spreadOffset = randRange(particleId, 2, -halfSpread, halfSpread);
+        float spreadOffset = randRangePcg(particleId, 2, -halfSpread, halfSpread);
         spawnAngle = u_direction + spreadOffset;
       } else {
         // Limited arc (for explosions with direction)
         float halfArc = u_arc * 0.5;
-        float arcOffset = randRange(particleId, 2, -halfArc, halfArc);
+        float arcOffset = randRangePcg(particleId, 2, -halfArc, halfArc);
         spawnAngle = u_direction + arcOffset;
       }
       
       // Random spawn radius
-      float spawnRadius = randRange(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
+      float spawnRadius =
+        randRangeLegacy(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
       
       // Calculate spawn position
       position = u_emitterPosition + vec2(cos(spawnAngle), sin(spawnAngle)) * spawnRadius;
