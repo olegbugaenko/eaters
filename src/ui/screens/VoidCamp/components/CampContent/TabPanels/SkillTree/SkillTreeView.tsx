@@ -30,6 +30,7 @@ import {
 } from "@db/resources-db";
 import { SkillId, getSkillConfig } from "@db/skills-db";
 import { getAssetUrl } from "@shared/helpers/assets.helper";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { classNames } from "@ui-shared/classNames";
@@ -115,6 +116,7 @@ const getSkillIconPath = (icon?: string): string | null => {
   const hasExtension = icon.includes(".");
   return getAssetUrl(`images/skills/${hasExtension ? icon : `${icon}.svg`}`);
 };
+const DEMO_LOCK_ICON = getAssetUrl("images/ui/lock.png");
 
 /**
  * Generates a phase offset for the wobble animation based on grid position.
@@ -1103,7 +1105,11 @@ export const SkillTreeView: React.FC = () => {
               hoveredId === node.id && "skill-tree-node--active",
               purchasedSkillId === node.id && "skill-tree-node--purchased"
             );
-            const iconSrc = getSkillIconPath(node.icon);
+            const config = getSkillConfig(node.id);
+            const iconSrc =
+              isDemoBuild() && config.lockedForDemo
+                ? DEMO_LOCK_ICON
+                : getSkillIconPath(node.icon);
             const nodeInitials = getSkillInitials(node.name);
 
             return (

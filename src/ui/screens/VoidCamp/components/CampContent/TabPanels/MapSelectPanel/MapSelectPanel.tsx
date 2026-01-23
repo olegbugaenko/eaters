@@ -132,6 +132,7 @@ const getMapIconPath = (icon?: string): string | null => {
   const hasExtension = icon.includes(".");
   return getAssetUrl(`images/maps/${hasExtension ? icon : `${icon}.svg`}`);
 };
+const DEMO_LOCK_ICON = getAssetUrl("images/ui/lock.png");
 
 export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
@@ -619,7 +620,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   .slice(0, 2);
 
               const initials = getMapInitials(map.name);
-              const iconSrc = getMapIconPath(map.icon);
+              const iconSrc =
+                isDemoBuild() && mapConfig.lockedForDemo
+                  ? DEMO_LOCK_ICON
+                  : getMapIconPath(map.icon);
 
               const handleDoubleClick = () => {
                 if (didPanRef.current) {
