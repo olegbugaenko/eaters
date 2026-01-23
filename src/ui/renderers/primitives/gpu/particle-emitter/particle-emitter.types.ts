@@ -63,7 +63,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   stopColor3Key?: string;
   stopColor4: Float32Array;
   stopColor4Key?: string;
-  uniformSignature?: string;
+  uniformSignature?: number;
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
@@ -107,6 +107,8 @@ export interface ParticleRenderResources {
 export interface ParticleRendererContext {
   resources: ParticleRenderResources;
   emitters: Set<ParticleEmitterGpuDrawHandle>;
+  sortedEmitters?: ParticleEmitterGpuDrawHandle[];
+  sortedEmittersDirty?: boolean;
 }
 
 export interface UniformCache {

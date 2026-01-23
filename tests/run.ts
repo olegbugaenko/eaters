@@ -61,6 +61,7 @@ import "./UnitModuleWorkshopModule.test";
 import "./BonusCalculator.test";
 import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
+import "./ParticleEmitterGpuRenderer.test";
 import "./StatusEffectsModule.test";
 import "./MovementService.test";
 import "./NecromancerModule.test";
