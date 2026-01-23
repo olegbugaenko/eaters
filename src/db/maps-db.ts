@@ -2051,73 +2051,37 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       },
     ] as const;
 
-    const basePondOutline = [
+    const baseLeafOutline = [
       {
-        start: { x: -200, y: 0 },
-        control1: { x: -240, y: -140 },
-        control2: { x: -60, y: -220 },
-        end: { x: 60, y: -170 },
+        start: { x: -120, y: 0 },
+        control1: { x: -80, y: -80 },
+        control2: { x: 20, y: -120 },
+        end: { x: 120, y: 0 },
       },
       {
-        start: { x: 60, y: -170 },
-        control1: { x: 220, y: -130 },
-        control2: { x: 260, y: 60 },
-        end: { x: 40, y: 190 },
-      },
-      {
-        start: { x: 40, y: 190 },
-        control1: { x: -140, y: 240 },
-        control2: { x: -260, y: 120 },
-        end: { x: -200, y: 0 },
+        start: { x: 120, y: 0 },
+        control1: { x: 20, y: 120 },
+        control2: { x: -80, y: 80 },
+        end: { x: -120, y: 0 },
       },
     ] as const;
 
-    const baseHillOutline = [
-      {
-        start: { x: 160, y: 120 },
-        control1: { x: 40, y: 60 },
-        control2: { x: 20, y: -60 },
-        end: { x: 140, y: -120 },
-      },
-      {
-        start: { x: 140, y: -120 },
-        control1: { x: 300, y: -180 },
-        control2: { x: 360, y: 80 },
-        end: { x: 200, y: 200 },
-      },
-      {
-        start: { x: 200, y: 200 },
-        control1: { x: 120, y: 220 },
-        control2: { x: 80, y: 160 },
-        end: { x: 160, y: 120 },
-      },
-    ] as const;
-
-    const pondCenter = { x: center.x - 160, y: center.y + 100 };
-    const pondOutline = transformBezierOutline(basePondOutline, {
-      position: pondCenter,
+    const leafOutlineLeft = transformBezierOutline(baseLeafOutline, {
+      position: { x: center.x - 240, y: center.y + 140 },
+      scale: 0.9,
+      rotation: -Math.PI / 12,
     });
 
-    const hillOutline = transformBezierOutline(baseHillOutline, {
-      position: { x: center.x + 160, y: center.y + 120 },
+    const leafOutlineMid = transformBezierOutline(baseLeafOutline, {
+      position: { x: center.x + 40, y: center.y + 220 },
+      scale: 0.7,
+      rotation: Math.PI / 9,
     });
 
-    const pondOutlineSmall = transformBezierOutline(basePondOutline, {
-      position: { x: center.x + 220, y: center.y + 260 },
-      scale: 0.6,
-      rotation: Math.PI / 5,
-    });
-
-    const hillOutlineSmall = transformBezierOutline(baseHillOutline, {
-      position: { x: center.x - 260, y: center.y - 200 },
-      scale: 0.55,
-      rotation: -Math.PI / 6,
-    });
-
-    const hillOutlineWide = transformBezierOutline(baseHillOutline, {
-      position: { x: center.x + 360, y: center.y - 220 },
-      scale: { x: 0.8, y: 0.55 },
-      rotation: Math.PI / 8,
+    const leafOutlineRight = transformBezierOutline(baseLeafOutline, {
+      position: { x: center.x + 260, y: center.y - 40 },
+      scale: 1.1,
+      rotation: (5 * Math.PI) / 18,
     });
 
     return {
@@ -2130,7 +2094,6 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const woodLevel = baseLevel + 2;
         const organicLevel = baseLevel + 1;
-        const stoneLevel = baseLevel + 3;
 
         const mainVine = bezierCurveWithBricks(
           "smallWood",
@@ -2152,21 +2115,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           { level: woodLevel },
         );
 
-        const pond = bezierPolygonWithBricks(
+        const leafLeft = bezierPolygonWithBricks(
           "smallOrganic",
           {
-            outline: pondOutline,
-            spacing: 28,
-            sampleStep: 14,
-            alignToEdge: true,
-          },
-          { level: organicLevel },
-        );
-
-        const pondSmall = bezierPolygonWithBricks(
-          "smallOrganic",
-          {
-            outline: pondOutlineSmall,
+            outline: leafOutlineLeft,
             spacing: 26,
             sampleStep: 12,
             alignToEdge: true,
@@ -2174,40 +2126,29 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           { level: organicLevel },
         );
 
-        const hill = bezierPolygonWithBricks(
-          "smallSquareGray",
+        const leafMid = bezierPolygonWithBricks(
+          "smallOrganic",
           {
-            outline: hillOutline,
-            spacing: 30,
-            sampleStep: 14,
-            alignToEdge: true,
-          },
-          { level: stoneLevel },
-        );
-
-        const hillSmall = bezierPolygonWithBricks(
-          "smallSquareGray",
-          {
-            outline: hillOutlineSmall,
-            spacing: 26,
+            outline: leafOutlineMid,
+            spacing: 24,
             sampleStep: 12,
             alignToEdge: true,
           },
-          { level: stoneLevel },
+          { level: organicLevel },
         );
 
-        const hillWide = bezierPolygonWithBricks(
-          "smallSquareGray",
+        const leafRight = bezierPolygonWithBricks(
+          "smallOrganic",
           {
-            outline: hillOutlineWide,
+            outline: leafOutlineRight,
             spacing: 28,
             sampleStep: 12,
             alignToEdge: true,
           },
-          { level: stoneLevel },
+          { level: organicLevel },
         );
 
-        return [mainVine, sideVine, pond, pondSmall, hill, hillSmall, hillWide];
+        return [mainVine, sideVine, leafLeft, leafMid, leafRight];
       },
       playerUnits: [
         {
