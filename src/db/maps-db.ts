@@ -13,6 +13,8 @@ import type { MapEffectId } from "./map-effects-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
+  bezierCurveWithBricks,
+  bezierPolygonWithBricks,
   circleWithBricks,
   connectorWithBricks,
   polygonWithBricks,
@@ -32,6 +34,7 @@ export type MapId =
   | "deadOak"
   | "sphinx"
   | "stoneCottage"
+  | "bezierGrove"
   | "wire"
   | "mine"
   | "adit"
@@ -2009,6 +2012,155 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         },
       ],
       mapsRequired: { thicket: 1 },
+      maxLevel: 2,
+    } satisfies MapConfig;
+  })(),
+  bezierGrove: (() => {
+    const size: SceneSize = { width: 1400, height: 1400 };
+    const center: SceneVector2 = { x: size.width / 2, y: (size.height - 120) / 2 };
+    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 260 };
+
+    const vineSegments = [
+      {
+        start: { x: center.x - 360, y: center.y + 320 },
+        control1: { x: center.x - 420, y: center.y + 80 },
+        control2: { x: center.x - 80, y: center.y - 40 },
+        end: { x: center.x + 120, y: center.y - 140 },
+      },
+      {
+        start: { x: center.x + 120, y: center.y - 140 },
+        control1: { x: center.x + 240, y: center.y - 200 },
+        control2: { x: center.x + 300, y: center.y - 340 },
+        end: { x: center.x + 380, y: center.y - 420 },
+      },
+    ] as const;
+
+    const sideVineSegments = [
+      {
+        start: { x: center.x - 120, y: center.y + 40 },
+        control1: { x: center.x - 260, y: center.y - 10 },
+        control2: { x: center.x - 320, y: center.y - 160 },
+        end: { x: center.x - 260, y: center.y - 300 },
+      },
+      {
+        start: { x: center.x - 260, y: center.y - 300 },
+        control1: { x: center.x - 200, y: center.y - 380 },
+        control2: { x: center.x - 40, y: center.y - 360 },
+        end: { x: center.x + 40, y: center.y - 320 },
+      },
+    ] as const;
+
+    const pondCenter = { x: center.x - 160, y: center.y + 100 };
+    const pondOutline = [
+      {
+        start: { x: pondCenter.x - 200, y: pondCenter.y },
+        control1: { x: pondCenter.x - 240, y: pondCenter.y - 140 },
+        control2: { x: pondCenter.x - 60, y: pondCenter.y - 220 },
+        end: { x: pondCenter.x + 60, y: pondCenter.y - 170 },
+      },
+      {
+        start: { x: pondCenter.x + 60, y: pondCenter.y - 170 },
+        control1: { x: pondCenter.x + 220, y: pondCenter.y - 130 },
+        control2: { x: pondCenter.x + 260, y: pondCenter.y + 60 },
+        end: { x: pondCenter.x + 40, y: pondCenter.y + 190 },
+      },
+      {
+        start: { x: pondCenter.x + 40, y: pondCenter.y + 190 },
+        control1: { x: pondCenter.x - 140, y: pondCenter.y + 240 },
+        control2: { x: pondCenter.x - 260, y: pondCenter.y + 120 },
+        end: { x: pondCenter.x - 200, y: pondCenter.y },
+      },
+    ] as const;
+
+    const hillOutline = [
+      {
+        start: { x: center.x + 160, y: center.y + 120 },
+        control1: { x: center.x + 40, y: center.y + 60 },
+        control2: { x: center.x + 20, y: center.y - 60 },
+        end: { x: center.x + 140, y: center.y - 120 },
+      },
+      {
+        start: { x: center.x + 140, y: center.y - 120 },
+        control1: { x: center.x + 300, y: center.y - 180 },
+        control2: { x: center.x + 360, y: center.y + 80 },
+        end: { x: center.x + 200, y: center.y + 200 },
+      },
+      {
+        start: { x: center.x + 200, y: center.y + 200 },
+        control1: { x: center.x + 120, y: center.y + 220 },
+        control2: { x: center.x + 80, y: center.y + 160 },
+        end: { x: center.x + 160, y: center.y + 120 },
+      },
+    ] as const;
+
+    return {
+      name: "Bezier Grove",
+      size,
+      spawnPoints: [spawnPoint],
+      nodePosition: { x: 1, y: 5 },
+      icon: "spruce.png",
+      bricks: ({ mapLevel }) => {
+        const baseLevel = Math.max(0, Math.floor(mapLevel));
+        const woodLevel = baseLevel + 2;
+        const organicLevel = baseLevel + 1;
+        const stoneLevel = baseLevel + 3;
+
+        const mainVine = bezierCurveWithBricks(
+          "smallWood",
+          {
+            segments: vineSegments,
+            spacing: 26,
+            rotationOffset: Math.PI / 2,
+          },
+          { level: woodLevel },
+        );
+
+        const sideVine = bezierCurveWithBricks(
+          "smallWood",
+          {
+            segments: sideVineSegments,
+            spacing: 26,
+            rotationOffset: Math.PI / 2,
+          },
+          { level: woodLevel },
+        );
+
+        const pond = bezierPolygonWithBricks(
+          "smallOrganic",
+          {
+            outline: pondOutline,
+            spacing: 28,
+            sampleStep: 14,
+          },
+          { level: organicLevel },
+        );
+
+        const hill = bezierPolygonWithBricks(
+          "smallSquareGray",
+          {
+            outline: hillOutline,
+            spacing: 30,
+            sampleStep: 14,
+          },
+          { level: stoneLevel },
+        );
+
+        return [mainVine, sideVine, pond, hill];
+      },
+      playerUnits: [
+        {
+          type: "bluePentagon",
+          position: { ...spawnPoint },
+        },
+      ],
+      unlockedBy: [
+        {
+          type: "map",
+          id: "stoneCottage",
+          level: 1,
+        },
+      ],
+      mapsRequired: { stoneCottage: 1 },
       maxLevel: 2,
     } satisfies MapConfig;
   })(),

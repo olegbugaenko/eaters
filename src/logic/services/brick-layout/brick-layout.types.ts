@@ -59,6 +59,27 @@ export interface TemplateWithBricksOptions {
   readonly rotation?: number; // Rotation in radians (default: 0)
 }
 
+export interface BezierCurveSegment {
+  readonly start: SceneVector2;
+  readonly control1: SceneVector2;
+  readonly control2: SceneVector2;
+  readonly end: SceneVector2;
+}
+
+export interface BezierCurveWithBricksOptions {
+  readonly segments: readonly BezierCurveSegment[];
+  readonly spacing?: number;
+  readonly sampleStep?: number;
+  readonly rotationOffset?: number;
+}
+
+export interface BezierPolygonWithBricksOptions
+  extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
+  readonly outline: readonly BezierCurveSegment[];
+  readonly holes?: readonly (readonly BezierCurveSegment[])[];
+  readonly sampleStep?: number;
+}
+
 export type BrickShapeBlueprint =
   | {
       readonly shape: "circle";
@@ -94,6 +115,18 @@ export type BrickShapeBlueprint =
       readonly shape: "template";
       readonly brickType: BrickType;
       readonly options: TemplateWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "bezierCurve";
+      readonly brickType: BrickType;
+      readonly options: BezierCurveWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "bezierPolygon";
+      readonly brickType: BrickType;
+      readonly options: BezierPolygonWithBricksOptions;
       readonly generationOptions?: BrickGenerationOptions;
     };
 

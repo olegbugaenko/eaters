@@ -10,6 +10,9 @@ import type {
   SquareWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
+  BezierCurveSegment,
+  BezierCurveWithBricksOptions,
+  BezierPolygonWithBricksOptions,
 } from "./brick-layout.types";
 import {
   sanitizeBrickLevel,
@@ -19,8 +22,65 @@ import {
   resolveGridSpacing,
   isPointInsidePolygon,
   getPolygonBounds,
+  clampPositive,
 } from "./brick-layout.helpers";
 import { GRID_EPSILON } from "./brick-layout.const";
+
+const DEFAULT_BEZIER_SAMPLE_STEP = 12;
+
+const getBezierPoint = (segment: BezierCurveSegment, t: number): SceneVector2 => {
+  const { start, control1, control2, end } = segment;
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  const a = mt2 * mt;
+  const b = 3 * mt2 * t;
+  const c = 3 * mt * t2;
+  const d = t2 * t;
+  return {
+    x: a * start.x + b * control1.x + c * control2.x + d * end.x,
+    y: a * start.y + b * control1.y + c * control2.y + d * end.y,
+  };
+};
+
+const estimateBezierLength = (segment: BezierCurveSegment, steps = 12): number => {
+  let length = 0;
+  let previous = getBezierPoint(segment, 0);
+  for (let i = 1; i <= steps; i += 1) {
+    const point = getBezierPoint(segment, i / steps);
+    length += Math.hypot(point.x - previous.x, point.y - previous.y);
+    previous = point;
+  }
+  return length;
+};
+
+const sampleBezierSegment = (
+  segment: BezierCurveSegment,
+  maxStep: number,
+): SceneVector2[] => {
+  const length = estimateBezierLength(segment);
+  const step = clampPositive(maxStep, DEFAULT_BEZIER_SAMPLE_STEP);
+  const count = Math.max(2, Math.ceil(length / step));
+  return Array.from({ length: count + 1 }, (_, index) =>
+    getBezierPoint(segment, index / count),
+  );
+};
+
+const sampleBezierPath = (
+  segments: readonly BezierCurveSegment[],
+  maxStep: number,
+): SceneVector2[] => {
+  if (segments.length === 0) {
+    return [];
+  }
+  return segments.flatMap((segment, index) => {
+    const points = sampleBezierSegment(segment, maxStep);
+    if (index === 0) {
+      return points;
+    }
+    return points.slice(1);
+  });
+};
 
 /**
  * Generates bricks in a circle pattern.
@@ -335,4 +395,108 @@ export const generateTemplateBricks = (
   }
 
   return bricks;
+};
+
+/**
+ * Generates bricks along a Bezier curve path.
+ */
+export const generateBezierCurveBricks = (
+  brickType: BrickType,
+  options: BezierCurveWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] => {
+  if (options.segments.length === 0) {
+    return [];
+  }
+
+  const spacing = clampPositive(
+    options.spacing ?? getBrickSpacing(brickType).tangential,
+    getBrickSpacing(brickType).tangential,
+  );
+  const sampleStep = clampPositive(
+    options.sampleStep ?? spacing * 0.5,
+    DEFAULT_BEZIER_SAMPLE_STEP,
+  );
+  const points = sampleBezierPath(options.segments, sampleStep);
+  if (points.length < 2) {
+    return [];
+  }
+
+  const rotationOffset = options.rotationOffset ?? 0;
+  const level = sanitizeBrickLevel(generationOptions?.level);
+  const bricks: BrickData[] = [];
+
+  let distanceTravelled = 0;
+  let nextDistance = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    const segmentLength = Math.hypot(current.x - previous.x, current.y - previous.y);
+
+    if (segmentLength === 0) {
+      continue;
+    }
+
+    while (nextDistance <= distanceTravelled + segmentLength + GRID_EPSILON) {
+      const t = (nextDistance - distanceTravelled) / segmentLength;
+      const x = previous.x + (current.x - previous.x) * t;
+      const y = previous.y + (current.y - previous.y) * t;
+      const angle = Math.atan2(current.y - previous.y, current.x - previous.x) + rotationOffset;
+
+      bricks.push({
+        position: { x, y },
+        rotation: angle,
+        type: brickType,
+        level,
+      });
+
+      nextDistance += spacing;
+    }
+
+    distanceTravelled += segmentLength;
+  }
+
+  return bricks;
+};
+
+/**
+ * Generates bricks inside a polygon defined by Bezier curves.
+ */
+export const generateBezierPolygonBricks = (
+  brickType: BrickType,
+  options: BezierPolygonWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] => {
+  if (options.outline.length === 0) {
+    return [];
+  }
+
+  const sampleStep = clampPositive(
+    options.sampleStep ?? DEFAULT_BEZIER_SAMPLE_STEP,
+    DEFAULT_BEZIER_SAMPLE_STEP,
+  );
+  const outlineVertices = sampleBezierPath(options.outline, sampleStep);
+  if (outlineVertices.length < 3) {
+    return [];
+  }
+
+  const holeVertices = (options.holes ?? []).map((hole) =>
+    sampleBezierPath(hole, sampleStep),
+  );
+
+  return generatePolygonBricks(
+    brickType,
+    {
+      vertices: outlineVertices,
+      holes: holeVertices,
+      spacing: options.spacing,
+      spacingX: options.spacingX,
+      spacingY: options.spacingY,
+      offsetX: options.offsetX,
+      offsetY: options.offsetY,
+      brickRotation: options.brickRotation,
+    },
+    generationOptions
+  );
 };
