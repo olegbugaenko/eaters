@@ -82,6 +82,76 @@ const sampleBezierPath = (
   });
 };
 
+const distancePointToSegmentSquared = (
+  point: SceneVector2,
+  start: SceneVector2,
+  end: SceneVector2,
+): number => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) {
+    const px = point.x - start.x;
+    const py = point.y - start.y;
+    return px * px + py * py;
+  }
+
+  const t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared;
+  const clampedT = Math.min(1, Math.max(0, t));
+  const projectionX = start.x + dx * clampedT;
+  const projectionY = start.y + dy * clampedT;
+  const diffX = point.x - projectionX;
+  const diffY = point.y - projectionY;
+  return diffX * diffX + diffY * diffY;
+};
+
+const fillPolygonBricks = (
+  brickType: BrickType,
+  options: PolygonWithBricksOptions,
+  generationOptions?: BrickGenerationOptions,
+  rotationResolver?: (position: SceneVector2) => number
+): BrickData[] => {
+  if (options.vertices.length < 3) {
+    return [];
+  }
+
+  const { stepX, stepY, offsetX, offsetY } = resolveGridSpacing(brickType, options);
+  const bounds = getPolygonBounds(options.vertices);
+  const level = sanitizeBrickLevel(generationOptions?.level);
+
+  const startX = Math.floor((bounds.minX - offsetX) / stepX) * stepX + offsetX;
+  const endX = Math.ceil((bounds.maxX - offsetX) / stepX) * stepX + offsetX;
+  const startY = Math.floor((bounds.minY - offsetY) / stepY) * stepY + offsetY;
+  const endY = Math.ceil((bounds.maxY - offsetY) / stepY) * stepY + offsetY;
+
+  const holes = (options.holes ?? []).filter((hole) => hole.length >= 3);
+  const baseRotation = options.brickRotation ?? 0;
+
+  const bricks: BrickData[] = [];
+
+  for (let x = startX; x <= endX + GRID_EPSILON; x += stepX) {
+    for (let y = startY; y <= endY + GRID_EPSILON; y += stepY) {
+      const position: SceneVector2 = { x, y };
+      if (!isPointInsidePolygon(position, options.vertices)) {
+        continue;
+      }
+
+      if (holes.some((hole) => isPointInsidePolygon(position, hole))) {
+        continue;
+      }
+
+      bricks.push({
+        position,
+        rotation: rotationResolver ? rotationResolver(position) : baseRotation,
+        type: brickType,
+        level,
+      });
+    }
+  }
+
+  return bricks;
+};
+
 /**
  * Generates bricks in a circle pattern.
  */
@@ -171,47 +241,7 @@ export const generatePolygonBricks = (
   brickType: BrickType,
   options: PolygonWithBricksOptions,
   generationOptions?: BrickGenerationOptions
-): BrickData[] => {
-  if (options.vertices.length < 3) {
-    return [];
-  }
-
-  const { stepX, stepY, offsetX, offsetY } = resolveGridSpacing(brickType, options);
-  const bounds = getPolygonBounds(options.vertices);
-  const level = sanitizeBrickLevel(generationOptions?.level);
-
-  const startX = Math.floor((bounds.minX - offsetX) / stepX) * stepX + offsetX;
-  const endX = Math.ceil((bounds.maxX - offsetX) / stepX) * stepX + offsetX;
-  const startY = Math.floor((bounds.minY - offsetY) / stepY) * stepY + offsetY;
-  const endY = Math.ceil((bounds.maxY - offsetY) / stepY) * stepY + offsetY;
-
-  const holes = (options.holes ?? []).filter((hole) => hole.length >= 3);
-  const rotation = options.brickRotation ?? 0;
-
-  const bricks: BrickData[] = [];
-
-  for (let x = startX; x <= endX + GRID_EPSILON; x += stepX) {
-    for (let y = startY; y <= endY + GRID_EPSILON; y += stepY) {
-      const position: SceneVector2 = { x, y };
-      if (!isPointInsidePolygon(position, options.vertices)) {
-        continue;
-      }
-
-      if (holes.some((hole) => isPointInsidePolygon(position, hole))) {
-        continue;
-      }
-
-      bricks.push({
-        position,
-        rotation,
-        type: brickType,
-        level,
-      });
-    }
-  }
-
-  return bricks;
-};
+): BrickData[] => fillPolygonBricks(brickType, options, generationOptions);
 
 /**
  * Generates bricks in a square pattern.
@@ -488,18 +518,62 @@ export const generateBezierPolygonBricks = (
     sampleBezierPath(hole, sampleStep),
   );
 
-  return generatePolygonBricks(
-    brickType,
-    {
-      vertices: outlineVertices,
-      holes: holeVertices,
-      spacing: options.spacing,
-      spacingX: options.spacingX,
-      spacingY: options.spacingY,
-      offsetX: options.offsetX,
-      offsetY: options.offsetY,
-      brickRotation: options.brickRotation,
-    },
-    generationOptions
-  );
+  const polygonOptions: PolygonWithBricksOptions = {
+    vertices: outlineVertices,
+    holes: holeVertices,
+    spacing: options.spacing,
+    spacingX: options.spacingX,
+    spacingY: options.spacingY,
+    offsetX: options.offsetX,
+    offsetY: options.offsetY,
+    brickRotation: options.brickRotation,
+  };
+
+  if (!options.alignToEdge) {
+    return generatePolygonBricks(brickType, polygonOptions, generationOptions);
+  }
+
+  const rotationOffset = options.rotationOffset ?? 0;
+  const segments: Array<{ start: SceneVector2; end: SceneVector2 }> = [];
+  for (let index = 0; index < outlineVertices.length; index += 1) {
+    const start = outlineVertices[index];
+    const end = outlineVertices[(index + 1) % outlineVertices.length];
+    if (!start || !end) {
+      continue;
+    }
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    if (dx === 0 && dy === 0) {
+      continue;
+    }
+    segments.push({ start, end });
+  }
+
+  const resolveRotation = (position: SceneVector2): number => {
+    if (segments.length === 0) {
+      return options.brickRotation ?? 0;
+    }
+
+    let bestDistance = Number.POSITIVE_INFINITY;
+    let bestAngle: number | null = null;
+
+    segments.forEach((segment) => {
+      const distance = distancePointToSegmentSquared(position, segment.start, segment.end);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestAngle = Math.atan2(
+          segment.end.y - segment.start.y,
+          segment.end.x - segment.start.x,
+        );
+      }
+    });
+
+    if (bestAngle === null) {
+      return options.brickRotation ?? 0;
+    }
+
+    return bestAngle + rotationOffset;
+  };
+
+  return fillPolygonBricks(brickType, polygonOptions, generationOptions, resolveRotation);
 };

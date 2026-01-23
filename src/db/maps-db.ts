@@ -2131,6 +2131,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             outline: pondOutline,
             spacing: 28,
             sampleStep: 14,
+            alignToEdge: true,
           },
           { level: organicLevel },
         );
@@ -2141,6 +2142,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
             outline: hillOutline,
             spacing: 30,
             sampleStep: 14,
+            alignToEdge: true,
           },
           { level: stoneLevel },
         );

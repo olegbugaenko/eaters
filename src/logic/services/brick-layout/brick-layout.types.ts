@@ -78,6 +78,8 @@ export interface BezierPolygonWithBricksOptions
   readonly outline: readonly BezierCurveSegment[];
   readonly holes?: readonly (readonly BezierCurveSegment[])[];
   readonly sampleStep?: number;
+  readonly alignToEdge?: boolean;
+  readonly rotationOffset?: number;
 }
 
 export type BrickShapeBlueprint =
