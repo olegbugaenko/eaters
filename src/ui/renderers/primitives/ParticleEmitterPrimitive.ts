@@ -564,12 +564,6 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
 
   const activeDelta = computeActiveDelta(previousAge, deltaMs, emissionDuration);
 
-  if (activeDelta > 0 && spawnRate > 0) {
-    state.spawnAccumulator += spawnRate * activeDelta;
-  } else {
-    state.spawnAccumulator = 0;
-  }
-
   const origin = options.getOrigin(instance, config);
 
   if (state.capacity > 0) {
@@ -659,17 +653,17 @@ const advanceParticleEmitterStateGpu = <
   if (useGpuSpawn) {
     // GPU SPAWN PATH: No CPU slot tracking needed!
     // GPU shader handles slot availability via isActive flag
-    const spawnBudget = Math.min(
-      Math.floor(state.spawnAccumulator),
+    const desiredSpawnCount = Math.min(
+      spawnRate * activeDelta,
       state.capacity // Can't spawn more than capacity
     );
-    
-    if (spawnBudget > 0) {
+
+    if (desiredSpawnCount > 0) {
       spawnParams = {
         emitterPosition: origin,
         emitterRotation: instance.data.rotation ?? 0,
         spawnStartIndex: state.capacity, // Pass capacity for probability calculation
-        spawnCount: spawnBudget,
+        spawnCount: desiredSpawnCount,
         particleLifetime: config.particleLifetimeMs,
         baseSpeed: gpuSpawnConfig.baseSpeed,
         speedVariation: gpuSpawnConfig.speedVariation,
@@ -682,11 +676,10 @@ const advanceParticleEmitterStateGpu = <
         spread: gpuSpawnConfig.spread,
         radialVelocity: gpuSpawnConfig.radialVelocity,
       };
-      state.spawnAccumulator -= spawnBudget;
     }
-    
-    // Cap accumulator to prevent runaway growth
-    state.spawnAccumulator = Math.min(state.spawnAccumulator, state.capacity);
+
+    // No accumulator in GPU spawn path; probability-based spawn uses fractional counts directly.
+    state.spawnAccumulator = 0;
   } else {
     // CPU SPAWN PATH: Legacy - requires slot tracking
     if (!state.warnedCpuSpawnFallback && options.getGpuSpawnConfig) {
