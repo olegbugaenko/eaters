@@ -1,6 +1,6 @@
 .scene-control-hints {
   position: fixed;
-  top: calc(8rem + 7rem + 10.5rem);
+  bottom: calc(8rem + 9rem);
   left: 0;
   z-index: 23;
   pointer-events: none;
