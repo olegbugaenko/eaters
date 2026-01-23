@@ -68,6 +68,7 @@ export const SKILL_IDS = [
   "clarity3",
   "refinement",
   "refinement2",
+  "wire_crafting",
   "vitality3",
   "vitality4",
   "arcane_research",
@@ -311,6 +312,19 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { refinement: 7 },
     cost: createResourceCost('copper', 50, 1.5),
   },
+  wire_crafting: {
+    id: "wire_crafting",
+    name: "Wire Crafting",
+    description:
+      "Unlock access to wire crafting, allowing you to create more organs and buildings out of your materials.",
+    nodePosition: { x: 1, y: 6 },
+    maxLevel: 1,
+    icon: "wire_crafting.png",
+    effects: {
+    },
+    nodesRequired: { refinement2: 5 },
+    cost: createDualResourceCost('coal', 400, 1.5, 'copper', 1000, 1.5),
+  },
   void_modules: {
     id: "void_modules",
     name: "Chord",
@@ -488,7 +502,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "electric_shards.png",
     effects: {},
     nodesRequired: { black_darts: 1 },
-    cost: createResourceCost('copper', 180, 1.6),
+    cost: createResourceCost('wire', 12, 1.0),
   },
   ring_of_fire: {
     id: "ring_of_fire",
