@@ -13,6 +13,7 @@ export type ResourceId =
   | "coal"
   | "tools"
   | "paper"
+  | "wire"
   | "ice"
   | "magma"
   | "uranium";
@@ -130,6 +131,18 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       {
         type: "skill",
         id: "paper_milling",
+        level: 1,
+      },
+    ],
+  },
+  wire: {
+    id: "wire",
+    name: "Wire",
+    description: "Conductive metal strands for advanced circuitry.",
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "wire_crafting",
         level: 1,
       },
     ],

@@ -6,6 +6,8 @@ import type {
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
   BrickSpacing,
+  BezierCurveSegment,
+  BezierTransformOptions,
 } from "./brick-layout.types";
 import { getBrickConfig } from "../../../db/bricks-db";
 import { TAU } from "../../../shared/helpers/geometry.const";
@@ -167,3 +169,40 @@ export const getPolygonBounds = (vertices: readonly SceneVector2[]) => {
     maxY,
   };
 };
+
+const resolveScale = (scale?: number | SceneVector2): SceneVector2 => {
+  if (typeof scale === "number") {
+    return Number.isFinite(scale) ? { x: scale, y: scale } : { x: 1, y: 1 };
+  }
+  if (scale && Number.isFinite(scale.x) && Number.isFinite(scale.y)) {
+    return { x: scale.x, y: scale.y };
+  }
+  return { x: 1, y: 1 };
+};
+
+const transformPoint = (point: SceneVector2, transform: BezierTransformOptions): SceneVector2 => {
+  const scale = resolveScale(transform.scale);
+  const rotation = transform.rotation ?? 0;
+  const position = transform.position ?? { x: 0, y: 0 };
+  const scaledX = point.x * scale.x;
+  const scaledY = point.y * scale.y;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const rotatedX = scaledX * cos - scaledY * sin;
+  const rotatedY = scaledX * sin + scaledY * cos;
+  return {
+    x: position.x + rotatedX,
+    y: position.y + rotatedY,
+  };
+};
+
+export const transformBezierOutline = (
+  outline: readonly BezierCurveSegment[],
+  transform: BezierTransformOptions
+): BezierCurveSegment[] =>
+  outline.map((segment) => ({
+    start: transformPoint(segment.start, transform),
+    control1: transformPoint(segment.control1, transform),
+    control2: transformPoint(segment.control2, transform),
+    end: transformPoint(segment.end, transform),
+  }));

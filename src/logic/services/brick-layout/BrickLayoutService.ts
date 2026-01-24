@@ -8,6 +8,8 @@ import type {
   SquareWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
+  BezierCurveWithBricksOptions,
+  BezierPolygonWithBricksOptions,
   BrickShapeBlueprint,
 } from "./brick-layout.types";
 import {
@@ -17,6 +19,8 @@ import {
   generateSquareBricks,
   generateConnectorBricks,
   generateTemplateBricks,
+  generateBezierCurveBricks,
+  generateBezierPolygonBricks,
 } from "./brick-layout.generators";
 
 export const circleWithBricks = (
@@ -85,6 +89,28 @@ export const templateWithBricks = (
   generationOptions,
 });
 
+export const bezierCurveWithBricks = (
+  brickType: BrickType,
+  options: BezierCurveWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "bezierCurve",
+  brickType,
+  options,
+  generationOptions,
+});
+
+export const bezierPolygonWithBricks = (
+  brickType: BrickType,
+  options: BezierPolygonWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "bezierPolygon",
+  brickType,
+  options,
+  generationOptions,
+});
+
 export const buildBricksFromBlueprints = (
   blueprints: readonly BrickShapeBlueprint[]
 ): BrickData[] =>
@@ -126,6 +152,18 @@ export const buildBricksFromBlueprints = (
           blueprint.options,
           blueprint.generationOptions
         );
+      case "bezierCurve":
+        return generateBezierCurveBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
+      case "bezierPolygon":
+        return generateBezierPolygonBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       default:
         return [];
     }
@@ -140,5 +178,7 @@ export type {
   SquareWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
+  BezierCurveWithBricksOptions,
+  BezierPolygonWithBricksOptions,
   BrickShapeBlueprint,
 } from "./brick-layout.types";

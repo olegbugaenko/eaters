@@ -346,7 +346,7 @@
   );
   opacity: 0;
   transform: scale(0.72);
-  animation: spell-cast-pulse 1400ms ease-out;
+  animation: spell-cast-pulse 1600ms ease-out;
 }
 
 .scene-summoning-panel__spell--cooldown .scene-summoning-panel__spell-status {

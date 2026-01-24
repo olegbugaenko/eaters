@@ -216,7 +216,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.02,
     manaCostMultiplier: 2.2,
     sanityCost: 0,
-    baseCost: { copper: 200 },
+    baseCost: { wire: 20 },
     unlockedBy: [{ type: "map", id: "oldForge", level: 1 }],
     meta: {
       chainRadius: 170,
