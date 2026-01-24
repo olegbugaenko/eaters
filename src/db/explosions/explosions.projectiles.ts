@@ -312,4 +312,37 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       radialVelocity: true, // Частинки рухаються від центру вибуху
     },
   },
+  chainLightning: {
+    lifetimeMs: 1_500,
+    defaultInitialRadius: 3,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 10,
+      startAlpha: 0.45,
+      endAlpha: 0,
+      gradientStops: [
+        { offset: 0, color: { r: 1, g: 1, b: 1, a: 0.03 } },
+        { offset: 0.5, color: { r: 0.7, g: 0.9, b: 1, a: 0.05 } },
+        { offset: 1, color: { r: 0.7, g: 0.9, b: 1, a: 0.05 } },
+      ],
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.04,
+      speedVariation: 0.025,
+      fadeStartMs: 400,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 2760,
+      sizeRange: { min: 0.5, max: 2.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 1, g: 1, b: 1, a: 1 },
+      },
+      shape: "triangle",
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
 };

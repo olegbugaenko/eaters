@@ -37,7 +37,8 @@ export type ExplosionType =
   | "bigCannon"
   | "smallCannonGrey"
   | "smallLaser"
-  | "smallEnergetic";
+  | "smallEnergetic"
+  | "chainLightning";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
