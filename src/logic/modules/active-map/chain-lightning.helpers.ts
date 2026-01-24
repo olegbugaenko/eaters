@@ -3,6 +3,7 @@ import type { DamageApplicationOptions } from "./targeting/DamageService";
 import type { TargetSnapshot, TargetType } from "./targeting/targeting.types";
 import type { ArcSpawnOptions, ArcTargetRef } from "../scene/arc/arc.types";
 import type { ArcType } from "../../../db/arcs-db";
+import type { ExplosionType } from "../../../db/explosions-db";
 import { subtractVectors, vectorHasLength } from "@/shared/helpers/vector.helper";
 
 export interface ChainLightningTarget {
@@ -33,6 +34,10 @@ export interface ChainLightningDependencies {
     target: ArcTargetRef,
     options?: ArcSpawnOptions,
   ) => void;
+  spawnExplosionByType?: (
+    type: ExplosionType,
+    options: { position: SceneVector2; initialRadius?: number },
+  ) => void;
 }
 
 export interface ChainLightningOptions {
@@ -43,6 +48,7 @@ export interface ChainLightningOptions {
   damageOptions?: DamageApplicationOptions;
   dependencies: ChainLightningDependencies;
   arcType?: ArcType;
+  explosionType?: ExplosionType;
 }
 
 const isChainTarget = (
@@ -58,6 +64,7 @@ export const executeChainLightning = ({
   damageOptions,
   dependencies,
   arcType,
+  explosionType,
 }: ChainLightningOptions): boolean => {
   if (chainRadius <= 0 || chainJumps <= 0 || damage <= 0) {
     return false;
@@ -111,6 +118,12 @@ export const executeChainLightning = ({
           targetPosition: nextTarget.position,
         },
       );
+    }
+
+    if (dependencies.spawnExplosionByType && explosionType) {
+      dependencies.spawnExplosionByType(explosionType, {
+        position: { ...nextTarget.position },
+      });
     }
 
     const key = `${nextTarget.type}:${nextTarget.id}`;
