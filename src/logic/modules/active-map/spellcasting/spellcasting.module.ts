@@ -25,6 +25,7 @@ import type {
   ProjectileSpellOption,
   WhirlSpellOption,
   PersistentAoeSpellOption,
+  ProjectilesRainSpellOption,
   SpellcastingModuleOptions,
 } from "./spellcasting.types";
 import {
@@ -416,6 +417,24 @@ export class SpellcastingModule implements GameModule {
               damageReduction: damageReduction > 0 ? damageReduction : undefined,
               effectDurationSeconds: effectDurationMs > 0 ? effectDurationMs / 1000 : undefined,
             } satisfies PersistentAoeSpellOption;
+          }
+          case "projectiles_rain": {
+            const rainConfig = config as Extract<
+              SpellConfig,
+              { type: "projectiles_rain" }
+            >;
+            const durationSeconds = Math.max(
+              rainConfig.projectilesRain.durationMs / 1000,
+              0,
+            );
+            return {
+              ...base,
+              type: "projectiles_rain",
+              damage: { ...rainConfig.projectilesRain.damage },
+              durationSeconds,
+              spawnIntervalMs: rainConfig.projectilesRain.spawnIntervalMs,
+              radius: rainConfig.projectilesRain.radius,
+            } satisfies ProjectilesRainSpellOption;
           }
           default:
             return base as SpellOption;

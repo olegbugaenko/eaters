@@ -42,6 +42,7 @@ export interface UnitProjectileVisualConfig {
 export interface UnitProjectileSpawn {
   origin: SceneVector2;
   direction: SceneVector2;
+  targetPosition?: SceneVector2;
   damage: number;
   rewardMultiplier: number;
   armorPenetration: number;
@@ -49,6 +50,7 @@ export interface UnitProjectileSpawn {
   knockBackSpeed?: number;
   knockBackDirection?: SceneVector2;
   skipKnockback?: boolean;
+  ignoreTargetsOnPath?: boolean;
   targetTypes?: TargetType[];
   visual: UnitProjectileVisualConfig;
   onHit?: UnitProjectileOnHit;
