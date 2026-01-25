@@ -49,6 +49,7 @@ export interface UnitProjectileSpawn {
   knockBackSpeed?: number;
   knockBackDirection?: SceneVector2;
   skipKnockback?: boolean;
+  ignoreTargetsOnPath?: boolean;
   targetTypes?: TargetType[];
   visual: UnitProjectileVisualConfig;
   onHit?: UnitProjectileOnHit;

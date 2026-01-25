@@ -49,10 +49,19 @@ export interface PersistentAoeSpellOption extends SpellOptionBase {
   effectDurationSeconds?: number; // Duration of the effect on bricks
 }
 
+export interface ProjectilesRainSpellOption extends SpellOptionBase {
+  type: "projectiles_rain";
+  damage: SpellDamageConfig;
+  durationSeconds: number;
+  spawnIntervalMs: number;
+  radius: number;
+}
+
 export type SpellOption =
   | ProjectileSpellOption
   | WhirlSpellOption
-  | PersistentAoeSpellOption;
+  | PersistentAoeSpellOption
+  | ProjectilesRainSpellOption;
 
 export interface SpellcastingModuleOptions {
   bridge: DataBridge;

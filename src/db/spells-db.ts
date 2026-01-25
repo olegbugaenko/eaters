@@ -19,9 +19,10 @@ export type SpellId =
   | "void-darts"
   | "electric-shards"
   | "ring-of-fire"
-  | "weaken-curse";
+  | "weaken-curse"
+  | "magic-storm";
 
-export type SpellType = "projectile" | "whirl" | "persistent-aoe";
+export type SpellType = "projectile" | "whirl" | "persistent-aoe" | "projectiles_rain";
 
 export interface SpellUnlockRequirement {
   skillId: SkillId;
@@ -68,6 +69,7 @@ export interface SpellProjectileConfig {
   explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
   wander?: SpellProjectileWanderConfig;
   chain?: SpellProjectileChainConfig;
+  ignoreTargetsOnPath?: boolean;
 }
 
 export interface SpellWhirlConfig {
@@ -133,6 +135,40 @@ export interface SpellPersistentAoeConfig {
   targetTypes?: TargetType[];
 }
 
+export type ProjectilesRainOrigin =
+  | {
+      type: "portal";
+    }
+  | {
+      type: "absolute";
+      position: SceneVector2;
+    }
+  | {
+      type: "corner";
+      corner: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+    }
+  | {
+      type: "offset-from-target";
+      offset: SceneVector2;
+    }
+  | {
+      type: "corner-with-target-delta";
+      corner: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+    }
+  | {
+      type: "corner-with-target-delta";
+      cornerPosition: SceneVector2;
+    };
+
+export interface SpellProjectilesRainConfig {
+  durationMs: number;
+  spawnIntervalMs: number;
+  radius: number;
+  origin: ProjectilesRainOrigin;
+  damage: SpellDamageConfig;
+  projectile: SpellProjectileConfig;
+}
+
 interface SpellBaseConfig {
   id: SpellId;
   name: string;
@@ -155,6 +191,10 @@ export type SpellConfig =
   | (SpellBaseConfig & {
       type: "persistent-aoe";
       persistentAoe: SpellPersistentAoeConfig;
+    })
+  | (SpellBaseConfig & {
+      type: "projectiles_rain";
+      projectilesRain: SpellProjectilesRainConfig;
     });
 
 export interface SpellProjectileRingTrailConfig {
@@ -250,6 +290,17 @@ const ELECTRIC_SHARDS_TAIL_EMITTER: ParticleEmitterConfig = {
     color: { r: 0.85, g: 0.95, b: 1, a: 1 },
   },
   maxParticles: 300,
+};
+
+const MAGIC_STORM_PROJECTILE_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 14,
+  stops: [
+    { offset: 0, color: { r: 0.55, g: 0.7, b: 1, a: 0.85 } },
+    { offset: 0.45, color: { r: 0.45, g: 0.45, b: 0.95, a: 0.55 } },
+    { offset: 1, color: { r: 0.15, g: 0.2, b: 0.6, a: 0 } },
+  ],
 };
 
 const SPELL_DB: Record<SpellId, SpellConfig> = {
@@ -473,7 +524,40 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
     },
     unlock: { skillId: "ring_of_fire", level: 1 },
-  }
+  },
+  "magic-storm": {
+    id: "magic-storm",
+    type: "projectiles_rain",
+    name: "Magic Storm",
+    description:
+      "Open a rift above the battlefield, raining arcane bolts into a focused zone.",
+    cost: { mana: 50, sanity: 0 },
+    cooldownSeconds: 10,
+    projectilesRain: {
+      durationMs: 8_000,
+      spawnIntervalMs: 400,
+      radius: 150,
+      origin: {
+        type: "corner-with-target-delta",
+        corner: "top-right",
+      },
+      damage: { min: 6, max: 9 },
+      projectile: {
+        radius: 10,
+        speed: 380,
+        lifetimeMs: 2_000,
+        fill: MAGIC_STORM_PROJECTILE_FILL,
+        tail: {
+          lengthMultiplier: 3,
+          widthMultiplier: 1.2,
+          startColor: { r: 0.45, g: 0.6, b: 1, a: 0.25 },
+          endColor: { r: 0.2, g: 0.25, b: 0.65, a: 0 },
+        },
+        aoe: { radius: 55, splash: 1 },
+        ignoreTargetsOnPath: true,
+      },
+    },
+  },
 };
 
 export const SPELL_IDS = Object.keys(SPELL_DB) as SpellId[];

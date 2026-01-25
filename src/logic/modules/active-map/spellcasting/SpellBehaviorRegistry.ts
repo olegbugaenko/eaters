@@ -3,6 +3,7 @@ import { SpellBehavior, SpellBehaviorDependencies } from "./SpellBehavior";
 import { ProjectileSpellBehavior } from "./implementations/ProjectileSpellBehavior";
 import { WhirlSpellBehavior } from "./implementations/WhirlSpellBehavior";
 import { PersistentAoeSpellBehavior } from "./implementations/PersistentAoeSpellBehavior";
+import { ProjectilesRainSpellBehavior } from "./implementations/ProjectilesRainSpellBehavior";
 
 export class SpellBehaviorRegistry {
   private readonly behaviors = new Map<SpellConfig["type"], SpellBehavior>();
@@ -11,6 +12,7 @@ export class SpellBehaviorRegistry {
     this.behaviors.set("projectile", new ProjectileSpellBehavior(dependencies));
     this.behaviors.set("whirl", new WhirlSpellBehavior(dependencies));
     this.behaviors.set("persistent-aoe", new PersistentAoeSpellBehavior(dependencies));
+    this.behaviors.set("projectiles_rain", new ProjectilesRainSpellBehavior(dependencies));
   }
 
   public getBehavior(type: SpellConfig["type"]): SpellBehavior | undefined {
@@ -25,4 +27,3 @@ export class SpellBehaviorRegistry {
     this.behaviors.set(type, behavior);
   }
 }
-

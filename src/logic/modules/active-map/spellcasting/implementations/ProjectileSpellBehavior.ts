@@ -173,6 +173,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
         rewardMultiplier: 1,
         armorPenetration: 0,
         targetTypes,
+        ignoreTargetsOnPath: projectileConfig.ignoreTargetsOnPath ?? false,
         visual,
         onHit: (hitContext) => {
           const data = this.projectileData.get(objectId);

@@ -371,41 +371,47 @@ export class UnitProjectileController {
         projectile.position.x += stepX;
         projectile.position.y += stepY;
 
-        const collided = this.findHitTarget(projectile.position, projectile.hitRadius, projectile);
-        if (collided) {
-          hitTarget = collided;
-          const handled = projectile.onHit?.({
-            targetId: collided.id,
-            targetType: collided.type,
-            brickId: isTargetOfType(collided, "brick") ? collided.id : undefined,
-            position: { ...projectile.position },
-          });
-          if (handled !== true) {
-            if (projectile.damageRadius > 0) {
-              this.damage.applyAreaDamage(
-                projectile.position,
-                projectile.damageRadius,
-                projectile.damage,
-                {
-                  rewardMultiplier: projectile.rewardMultiplier,
-                  armorPenetration: projectile.armorPenetration,
-                  skipKnockback: projectile.skipKnockback === true,
-                  knockBackDistance: projectile.knockBackDistance,
-                  knockBackSpeed: projectile.knockBackSpeed,
-                  knockBackDirection: projectile.knockBackDirection,
-                  direction: projectile.direction,
-                  types: projectile.targetTypes,
-                }
-              );
-            } else {
-              this.applyProjectileDamage(projectile, collided);
+        if (!projectile.ignoreTargetsOnPath) {
+          const collided = this.findHitTarget(
+            projectile.position,
+            projectile.hitRadius,
+            projectile,
+          );
+          if (collided) {
+            hitTarget = collided;
+            const handled = projectile.onHit?.({
+              targetId: collided.id,
+              targetType: collided.type,
+              brickId: isTargetOfType(collided, "brick") ? collided.id : undefined,
+              position: { ...projectile.position },
+            });
+            if (handled !== true) {
+              if (projectile.damageRadius > 0) {
+                this.damage.applyAreaDamage(
+                  projectile.position,
+                  projectile.damageRadius,
+                  projectile.damage,
+                  {
+                    rewardMultiplier: projectile.rewardMultiplier,
+                    armorPenetration: projectile.armorPenetration,
+                    skipKnockback: projectile.skipKnockback === true,
+                    knockBackDistance: projectile.knockBackDistance,
+                    knockBackSpeed: projectile.knockBackSpeed,
+                    knockBackDirection: projectile.knockBackDirection,
+                    direction: projectile.direction,
+                    types: projectile.targetTypes,
+                  }
+                );
+              } else {
+                this.applyProjectileDamage(projectile, collided);
+              }
             }
+            this.removeProjectile(projectile);
+            if (projectile.ringTrail) {
+              this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
+            }
+            break;
           }
-          this.removeProjectile(projectile);
-          if (projectile.ringTrail) {
-            this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
-          }
-          break;
         }
       }
 

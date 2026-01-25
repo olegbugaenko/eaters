@@ -1,6 +1,7 @@
 import type {
   ProjectileSpellOption,
   PersistentAoeSpellOption,
+  ProjectilesRainSpellOption,
   SpellOption,
   WhirlSpellOption,
 } from "@logic/modules/active-map/spellcasting/spellcasting.types";
@@ -198,12 +199,61 @@ const appendPersistentAoeStats = (
   });
 };
 
+const appendProjectilesRainStats = (
+  spell: ProjectilesRainSpellOption,
+  stats: SceneTooltipStat[],
+): void => {
+  const effectiveMin = spell.damage.min * spell.spellPowerMultiplier;
+  const effectiveMax = spell.damage.max * spell.spellPowerMultiplier;
+  const baseDamageLabel = formatDamageRange(spell.damage.min, spell.damage.max);
+  const multiplierLabel = formatNumber(spell.spellPowerMultiplier, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    compact: false,
+  });
+
+  stats.push({
+    label: "Impact Damage",
+    value: formatDamageRange(effectiveMin, effectiveMax),
+    hint: `Base ${baseDamageLabel} · Spell Power ${multiplierLabel}×`,
+  });
+
+  stats.push({
+    label: "Duration",
+    value: `${formatNumber(spell.durationSeconds, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+      compact: false,
+    })} s`,
+  });
+
+  stats.push({
+    label: "Spawn Interval",
+    value: `${formatNumber(spell.spawnIntervalMs, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      compact: false,
+    })} ms`,
+  });
+
+  stats.push({
+    label: "Rain Radius",
+    value: `${formatNumber(spell.radius, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      compact: false,
+    })} u`,
+  });
+};
+
 export const createSpellTooltip = (spell: SpellOption): SceneTooltipContent => {
   const stats: SceneTooltipStat[] = [];
   if (spell.type === "projectile") {
     appendProjectileStats(spell, stats);
   } else if (spell.type === "whirl") {
     appendWhirlStats(spell, stats);
+  } else if (spell.type === "projectiles_rain") {
+    appendProjectilesRainStats(spell, stats);
   } else {
     appendPersistentAoeStats(spell, stats);
   }
