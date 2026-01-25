@@ -89,6 +89,7 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
   radius: number;
   lifetimeMs: number;
   createdAt: number;
+  renderPosition: SceneVector2;
   ringTrail?: UnitProjectileRingTrailState;
   shape: UnitProjectileShape;
   hitRadius: number;
