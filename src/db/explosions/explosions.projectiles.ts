@@ -345,4 +345,43 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       radialVelocity: true, // Частинки рухаються від центру вибуху
     },
   },
+  magicArrow: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 5,
+    waves: createSimpleWave({
+      defaultInitialRadius: 5,
+      radiusExtension: 60,
+      startAlpha: 0.65,
+      endAlpha: 0,
+      gradientStops: [
+        { offset: 0, color: { r: 1, g: 0.5, b: 1, a: 0.3 } },
+        { offset: 0.5, color: { r:1, g: 0.5, b: 1, a: 0.45 } },
+        { offset: 1, color: { r: 1, g: 0.5, b: 1, a: 0.05 } },
+      ],
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.04,
+      speedVariation: 0.025,
+      fadeStartMs: 400,
+      particleLifetimeMs: 1_000,
+      particlesPerSecond: 760,
+      sizeRange: { min: 34.5, max: 39.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      sizeEvolutionMult: 3.5,
+      spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.9, g: 0.6, b: 1, a: 0.13 } },
+          { offset: 0.5, color: { r: 0.7, g: 0.5, b: 1, a: 0.05 } },
+          { offset: 1, color: { r: 0.7, g: 0.4, b: 1, a: 0.0 } },
+        ],
+      },
+      shape: "triangle",
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
 };

@@ -311,9 +311,9 @@ const MAGIC_STORM_HIGHLIGHT_FILL: SceneFill = {
   start: { x: 0, y: 0 },
   end: 150,
   stops: [
-    { offset: 0, color: { r: 0.6, g: 0.35, b: 1, a: 0.25 } },
-    { offset: 0.45, color: { r: 0.45, g: 0.25, b: 0.9, a: 0.18 } },
-    { offset: 1, color: { r: 0.2, g: 0.1, b: 0.5, a: 0 } },
+    { offset: 0, color: { r: 0.8, g: 0.35, b: 1, a: 0.05 } },
+    { offset: 0.85, color: { r: 0.75, g: 0.25, b: 0.9, a: 0.25 } },
+    { offset: 1, color: { r: 0.75, g: 0.25, b: 0.9, a: 0 } },
   ],
 };
 
@@ -558,8 +558,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       damage: { min: 6, max: 9 },
       projectile: {
         radius: 10,
-        speed: 380,
-        lifetimeMs: 2_000,
+        speed: 160,
+        lifetimeMs: 14_000,
         fill: MAGIC_STORM_PROJECTILE_FILL,
         tail: {
           lengthMultiplier: 3,
@@ -567,8 +567,35 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
           startColor: { r: 0.45, g: 0.6, b: 1, a: 0.25 },
           endColor: { r: 0.2, g: 0.25, b: 0.65, a: 0 },
         },
+        tailEmitter: {
+          particlesPerSecond: 760,
+          particleLifetimeMs: 900,
+          fadeStartMs: 240,
+          baseSpeed: 0.05,
+          speedVariation: 0.0015,
+          sizeRange: { min: 15.5, max: 22.4 },
+          sizeEvolutionMult: 3.5,
+          spread: Math.PI,
+          offset: { x: -1, y: 0 },
+          color: { r: 0.9, g: 0.6, b: 1, a: 0.23 },
+          fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            start: { x: 0, y: 0 },
+            stops: [
+              { offset: 0, color: { r: 0.7, g: 0.6, b: 1, a: 0.13 } },
+              { offset: 0.5, color: { r: 0.7, g: 0.6, b: 1, a: 0.05 } },
+              { offset: 1, color: { r: 0.7, g: 0.6, b: 1, a: 0.0 } },
+            ],
+            noise: {
+              colorAmplitude: 0.0,
+              alphaAmplitude: 0.01,
+              scale: 0.35,
+            },
+          },
+        },
         aoe: { radius: 55, splash: 1 },
         ignoreTargetsOnPath: true,
+        explosion: "magicArrow",
       },
       highlightArea: {
         fill: MAGIC_STORM_HIGHLIGHT_FILL,
