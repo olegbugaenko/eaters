@@ -159,12 +159,16 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
   }
 
   private spawnProjectile(instance: ProjectilesRainInstance): void {
-    const target = this.getRandomTargetInRadius(instance.center, instance.radius);
+    const delta = this.getRandomDeltaInRadius(instance.radius);
+    const target = {
+      x: instance.center.x + delta.x,
+      y: instance.center.y + delta.y,
+    };
     const origin = this.resolveOrigin(
       instance.origin,
       instance.portalOrigin,
       instance.center,
-      target,
+      delta,
     );
     const direction = this.normalizeDirection({
       x: target.x - origin.x,
@@ -281,15 +285,15 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
     });
   }
 
-  private getRandomTargetInRadius(center: SceneVector2, radius: number): SceneVector2 {
+  private getRandomDeltaInRadius(radius: number): SceneVector2 {
     if (radius <= 0) {
-      return { ...center };
+      return { x: 0, y: 0 };
     }
     const angle = Math.random() * Math.PI * 2;
     const magnitude = Math.sqrt(Math.random()) * radius;
     return {
-      x: center.x + Math.cos(angle) * magnitude,
-      y: center.y + Math.sin(angle) * magnitude,
+      x: Math.cos(angle) * magnitude,
+      y: Math.sin(angle) * magnitude,
     };
   }
 
@@ -297,7 +301,7 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
     origin: ProjectilesRainOrigin,
     portalOrigin: SceneVector2,
     castTarget: SceneVector2,
-    selectedTarget: SceneVector2,
+    delta: SceneVector2,
   ): SceneVector2 {
     switch (origin.type) {
       case "portal":
@@ -318,8 +322,8 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
             ? origin.cornerPosition
             : this.resolveCorner(this.scene.getMapSize(), origin.corner);
         return {
-          x: base.x + (selectedTarget.x - castTarget.x),
-          y: base.y + (selectedTarget.y - castTarget.y),
+          x: base.x + delta.x,
+          y: base.y + delta.y,
         };
       }
       default:
