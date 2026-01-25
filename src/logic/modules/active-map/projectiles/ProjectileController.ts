@@ -369,14 +369,23 @@ export class UnitProjectileController {
       const stepY = totalMoveY / steps;
 
       for (let j = 0; j < steps; j += 1) {
+        const previousPosition = {
+          x: projectile.position.x,
+          y: projectile.position.y,
+        };
         projectile.position.x += stepX;
         projectile.position.y += stepY;
 
         if (projectile.targetPosition) {
-          const dx = projectile.position.x - projectile.targetPosition.x;
-          const dy = projectile.position.y - projectile.targetPosition.y;
-          const distance = Math.hypot(dx, dy);
-          if (distance <= Math.max(projectile.hitRadius, projectile.radius)) {
+          const hitRadius = Math.max(projectile.hitRadius, projectile.radius);
+          if (
+            this.isTargetReached(
+              previousPosition,
+              projectile.position,
+              projectile.targetPosition,
+              hitRadius,
+            )
+          ) {
             projectile.onExpired?.({ ...projectile.position });
             this.removeProjectile(projectile);
             if (projectile.ringTrail) {
@@ -707,6 +716,31 @@ export class UnitProjectileController {
       position.x - radius > mapSize.width + margin ||
       position.y - radius > mapSize.height + margin
     );
+  }
+
+  private isTargetReached(
+    start: SceneVector2,
+    end: SceneVector2,
+    target: SceneVector2,
+    radius: number,
+  ): boolean {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSq = dx * dx + dy * dy;
+    if (lengthSq <= 0) {
+      const diffX = target.x - end.x;
+      const diffY = target.y - end.y;
+      return diffX * diffX + diffY * diffY <= radius * radius;
+    }
+
+    const t = clamp01(
+      ((target.x - start.x) * dx + (target.y - start.y) * dy) / lengthSq,
+    );
+    const closestX = start.x + dx * t;
+    const closestY = start.y + dy * t;
+    const diffX = target.x - closestX;
+    const diffY = target.y - closestY;
+    return diffX * diffX + diffY * diffY <= radius * radius;
   }
 
   private createRingTrailState(config: SpellProjectileRingTrailConfig): UnitProjectileRingTrailState {
