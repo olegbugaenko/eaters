@@ -209,6 +209,21 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
         const baseDamage = randomIntInclusive(instance.damage);
         const finalDamage = Math.max(baseDamage * damageMultiplier, 0);
         const aoe = instance.projectileConfig.aoe;
+        const explosion = instance.projectileConfig.explosion;
+        if (explosion) {
+          this.damage.applyAreaDamage(position, 0, 0, {
+            explosionType: explosion,
+            payload: {
+              amount: 0,
+              context: {
+                source: { type: "spell", id: instance.spellId },
+                attackType: "spell-projectiles-rain-explosion",
+                tag: instance.spellId,
+              },
+              explosion: { type: explosion },
+            },
+          });
+        }
         if (!aoe || aoe.radius <= 0 || finalDamage <= 0) {
           return;
         }
