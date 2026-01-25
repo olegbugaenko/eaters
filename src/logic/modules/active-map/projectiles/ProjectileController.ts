@@ -339,6 +339,7 @@ export class UnitProjectileController {
     for (let i = 0; i < this.projectiles.length; i += 1) {
       const projectile = this.projectiles[i]!;
       let hitTarget: TargetSnapshot | null = null;
+      let removed = false;
 
       this.updateProjectileWander(projectile, deltaMs);
       this.updateProjectileRotationSpin(projectile, deltaMs);
@@ -370,6 +371,21 @@ export class UnitProjectileController {
       for (let j = 0; j < steps; j += 1) {
         projectile.position.x += stepX;
         projectile.position.y += stepY;
+
+        if (projectile.targetPosition) {
+          const dx = projectile.position.x - projectile.targetPosition.x;
+          const dy = projectile.position.y - projectile.targetPosition.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance <= Math.max(projectile.hitRadius, projectile.radius)) {
+            projectile.onExpired?.({ ...projectile.position });
+            this.removeProjectile(projectile);
+            if (projectile.ringTrail) {
+              this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
+            }
+            removed = true;
+            break;
+          }
+        }
 
         if (!projectile.ignoreTargetsOnPath) {
           const collided = this.findHitTarget(
@@ -416,6 +432,9 @@ export class UnitProjectileController {
       }
 
       if (hitTarget) {
+        continue;
+      }
+      if (removed) {
         continue;
       }
 

@@ -184,6 +184,7 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
     const objectId = this.projectiles.spawn({
       origin,
       direction,
+      targetPosition: target,
       damage: 0,
       rewardMultiplier: 1,
       armorPenetration: 0,
