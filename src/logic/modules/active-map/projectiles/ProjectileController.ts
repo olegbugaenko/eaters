@@ -106,6 +106,7 @@ export class UnitProjectileController {
       y: direction.y * visual.speed,
     };
     const position = { ...origin };
+    const renderPosition = { ...position };
     const createdAt = performance.now();
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
@@ -145,12 +146,19 @@ export class UnitProjectileController {
     if (gpuSlot) {
       // Use GPU instanced rendering for the main body
       objectId = `gpu-bullet-${gpuSlot.visualKey}-${gpuSlot.slotIndex}-${createdAt}`;
-      updateGpuBulletSlot(gpuSlot, position, movementRotation, movementRotation, radius, true);
+      updateGpuBulletSlot(
+        gpuSlot,
+        renderPosition,
+        movementRotation,
+        movementRotation,
+        radius,
+        true
+      );
 
       if (shouldCreateOverlay) {
         // Overlay only renders emitters - body/tail/glow are handled by GPU
         effectsObjectId = this.scene.addObject("unitProjectile", {
-          position,
+          position: renderPosition,
           size: { width: radius * 2, height: radius * 2 },
           rotation,
           fill: visual.fill,
@@ -189,6 +197,7 @@ export class UnitProjectileController {
       id: objectId,
       velocity,
       position,
+      renderPosition,
       elapsedMs: 0,
       lifetimeMs,
       createdAt,
@@ -578,6 +587,13 @@ export class UnitProjectileController {
    * Updates projectile position in GPU slot or scene.
    */
   private updateProjectilePosition(projectile: UnitProjectileState): void {
+    if (projectile.renderPosition) {
+      projectile.renderPosition.x = projectile.position.x;
+      projectile.renderPosition.y = projectile.position.y;
+    } else {
+      projectile.renderPosition = { ...projectile.position };
+    }
+    const visualPosition = projectile.renderPosition ?? projectile.position;
     const movementRotation = Math.atan2(projectile.velocity.y, projectile.velocity.x);
     const visualRotation = movementRotation + (projectile.rotationSpin?.rotationRad ?? 0);
     const rendererCustomData = {
@@ -599,7 +615,7 @@ export class UnitProjectileController {
     if (projectile.gpuSlot) {
       updateGpuBulletSlot(
         projectile.gpuSlot,
-        projectile.position,
+        visualPosition,
         movementRotation,
         visualRotation,
         projectile.radius,
@@ -607,7 +623,7 @@ export class UnitProjectileController {
       );
     } else {
       this.scene.updateObject(projectile.id, {
-        position: { ...projectile.position },
+        position: { ...visualPosition },
         rotation: visualRotation,
         customData: rendererCustomData,
       });
@@ -615,7 +631,7 @@ export class UnitProjectileController {
 
     if (projectile.effectsObjectId) {
       this.scene.updateObject(projectile.effectsObjectId, {
-        position: { ...projectile.position },
+        position: { ...visualPosition },
         rotation: movementRotation,
         customData: effectsRendererCustomData,
       });
