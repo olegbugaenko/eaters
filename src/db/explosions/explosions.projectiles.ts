@@ -321,8 +321,8 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       startAlpha: 0.65,
       endAlpha: 0,
       gradientStops: [
-        { offset: 0, color: { r: 1, g: 1, b: 1, a: 0.4 } },
-        { offset: 0.5, color: { r: 0.7, g: 0.9, b: 1, a: 0.65 } },
+        { offset: 0, color: { r: 1, g: 1, b: 1, a: 0.3 } },
+        { offset: 0.5, color: { r: 0.7, g: 0.9, b: 1, a: 0.45 } },
         { offset: 1, color: { r: 0.7, g: 0.9, b: 1, a: 0.05 } },
       ],
     }),
@@ -339,7 +339,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
       fill: {
         fillType: FILL_TYPES.SOLID,
-        color: { r: 1, g: 1, b: 1, a: 1 },
+        color: { r: 0.9, g: 0.9, b: 1, a: 1 },
       },
       shape: "triangle",
       radialVelocity: true, // Частинки рухаються від центру вибуху
