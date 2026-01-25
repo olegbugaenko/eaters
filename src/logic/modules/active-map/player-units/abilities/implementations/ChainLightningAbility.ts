@@ -118,8 +118,11 @@ const executeChainLightningAbility = (
       applyBrickDamage: dependencies.applyBrickDamage,
       spawnArcBetweenTargets: (_arcType, source, target, options) =>
         services.spawnArcBetweenTargets("chainLightning", source, target, options),
+      spawnExplosionByType: (type, options) =>
+        services.spawnExplosionByType(type, options),
     },
     arcType: "chainLightning",
+    explosionType: "chainLightning",
   });
 
   return { success: chained };

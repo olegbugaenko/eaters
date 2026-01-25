@@ -2020,7 +2020,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   bezierGrove: (() => {
     const size: SceneSize = { width: 1500, height: 1500 };
     const center: SceneVector2 = { x: size.width / 2, y: (size.height - 120) / 2 };
-    const spawnPoint: SceneVector2 = { x: center.x, y: size.height - 260 };
+    const spawnPoint: SceneVector2 = { x: center.x - 380, y: size.height - 460 };
 
     const vineSegmentsRight = [
       {
@@ -2107,7 +2107,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       size,
       spawnPoints: [spawnPoint],
       nodePosition: { x: 1, y: 5 },
-      icon: "spruce.png",
+      icon: "dangerous_bushes.png",
       lockedForDemo: true,
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));

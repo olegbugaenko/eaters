@@ -267,8 +267,12 @@ export class ProjectileSpellBehavior implements SpellBehavior {
                     ? (arcType, source, target, options) =>
                         this.arcs?.spawnArcBetweenTargets(arcType, source, target, options)
                     : undefined,
+                  spawnExplosionByType: this.explosions
+                    ? (type, options) => this.explosions?.spawnExplosionByType(type, options)
+                    : undefined,
                 },
                 arcType: "chainLightning",
+                explosionType: "chainLightning",
               });
             }
           }
