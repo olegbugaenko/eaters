@@ -14,6 +14,7 @@ import { SandStormRenderer } from "./implementations/sand-storm";
 import { PersistentAoeSpellRenderer } from "./implementations/persistent-aoe-spell";
 import { ScreenOverlayRenderer } from "./implementations/screen-overlay";
 import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
+import { SpellAreaHighlightRenderer } from "./implementations/spell-area-highlight/SpellAreaHighlightRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export { TiedObjectsRegistry } from "./TiedObjectsRegistry";
@@ -59,6 +60,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     // unitProjectileRing - now rendered via GPU instancing (RingGpuRenderer)
     ["sandStorm", new SandStormRenderer()],
     ["spellPersistentAoe", new PersistentAoeSpellRenderer()],
+    ["spellAreaHighlight", new SpellAreaHighlightRenderer()],
     ["screenOverlay", new ScreenOverlayRenderer()],
   ]);
   const tiedObjectsRegistry = new TiedObjectsRegistry();

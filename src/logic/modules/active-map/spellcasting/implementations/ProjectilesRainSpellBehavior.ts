@@ -9,7 +9,7 @@ import type {
   SpellDamageConfig,
   SpellProjectilesRainConfig,
 } from "../../../../../db/spells-db";
-import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneFill, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
 import { randomIntInclusive } from "@shared/helpers/numbers.helper";
@@ -22,6 +22,7 @@ interface ProjectilesRainInstance {
   center: SceneVector2;
   origin: ProjectilesRainOrigin;
   portalOrigin: SceneVector2;
+  highlightId?: string;
   durationMs: number;
   elapsedMs: number;
   intervalMs: number;
@@ -29,6 +30,7 @@ interface ProjectilesRainInstance {
   radius: number;
   damage: SpellDamageConfig;
   projectileConfig: SpellProjectilesRainConfig["projectile"];
+  highlightFill?: SceneFill;
   damageMultiplier: number;
 }
 
@@ -64,12 +66,14 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
       return false;
     }
     const config = this.sanitizeConfig(context.config.projectilesRain);
+    const highlightId = this.spawnHighlight(config, context.target);
 
     this.instances.push({
       spellId: context.spellId,
       center: { ...context.target },
       origin: config.origin,
       portalOrigin: { ...context.origin },
+      highlightId,
       durationMs: config.durationMs,
       elapsedMs: 0,
       intervalMs: config.spawnIntervalMs,
@@ -77,6 +81,7 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
       radius: config.radius,
       damage: config.damage,
       projectileConfig: config.projectile,
+      highlightFill: config.highlightArea?.fill,
       damageMultiplier: context.spellPowerMultiplier,
     });
 
@@ -101,7 +106,19 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
       }
 
       if (instance.elapsedMs < instance.durationMs) {
+        if (instance.highlightId) {
+          this.scene.updateObject(instance.highlightId, {
+            position: { ...instance.center },
+            size: {
+              width: instance.radius * 2,
+              height: instance.radius * 2,
+            },
+            fill: instance.highlightFill,
+          });
+        }
         survivors.push(instance);
+      } else if (instance.highlightId) {
+        this.scene.removeObject(instance.highlightId);
       }
     }
 
@@ -109,6 +126,11 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
   }
 
   public clear(): void {
+    for (const instance of this.instances) {
+      if (instance.highlightId) {
+        this.scene.removeObject(instance.highlightId);
+      }
+    }
     this.instances = [];
   }
 
@@ -227,6 +249,20 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
         max: Math.max(config.damage.max, config.damage.min),
       },
     };
+  }
+
+  private spawnHighlight(
+    config: SpellProjectilesRainConfig,
+    center: SceneVector2,
+  ): string | undefined {
+    if (!config.highlightArea?.fill) {
+      return undefined;
+    }
+    return this.scene.addObject("spellAreaHighlight", {
+      position: { ...center },
+      size: { width: config.radius * 2, height: config.radius * 2 },
+      fill: config.highlightArea.fill,
+    });
   }
 
   private getRandomTargetInRadius(center: SceneVector2, radius: number): SceneVector2 {

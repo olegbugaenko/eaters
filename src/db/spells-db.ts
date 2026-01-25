@@ -167,6 +167,9 @@ export interface SpellProjectilesRainConfig {
   origin: ProjectilesRainOrigin;
   damage: SpellDamageConfig;
   projectile: SpellProjectileConfig;
+  highlightArea?: {
+    fill: SceneFill;
+  };
 }
 
 interface SpellBaseConfig {
@@ -300,6 +303,17 @@ const MAGIC_STORM_PROJECTILE_FILL: SceneFill = {
     { offset: 0, color: { r: 0.55, g: 0.7, b: 1, a: 0.85 } },
     { offset: 0.45, color: { r: 0.45, g: 0.45, b: 0.95, a: 0.55 } },
     { offset: 1, color: { r: 0.15, g: 0.2, b: 0.6, a: 0 } },
+  ],
+};
+
+const MAGIC_STORM_HIGHLIGHT_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 150,
+  stops: [
+    { offset: 0, color: { r: 0.6, g: 0.35, b: 1, a: 0.25 } },
+    { offset: 0.45, color: { r: 0.45, g: 0.25, b: 0.9, a: 0.18 } },
+    { offset: 1, color: { r: 0.2, g: 0.1, b: 0.5, a: 0 } },
   ],
 };
 
@@ -555,6 +569,9 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         },
         aoe: { radius: 55, splash: 1 },
         ignoreTargetsOnPath: true,
+      },
+      highlightArea: {
+        fill: MAGIC_STORM_HIGHLIGHT_FILL,
       },
     },
   },
