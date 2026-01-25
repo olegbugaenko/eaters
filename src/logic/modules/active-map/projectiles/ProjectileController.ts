@@ -173,7 +173,7 @@ export class UnitProjectileController {
           },
         });
       }
-      console.log(`spawned gpu bullet: ${objectId}. Position: ${position.x},${position.y}. Origin: ${origin.x},${origin.y}.`);
+      //console.log(`spawned gpu bullet: ${objectId}. Position: ${position.x},${position.y}. Origin: ${origin.x},${origin.y}.`);
     } else {
       // Fallback to scene object rendering
       objectId = this.scene.addObject("unitProjectile", {
@@ -350,7 +350,7 @@ export class UnitProjectileController {
       const projectile = this.projectiles[i]!;
       let hitTarget: TargetSnapshot | null = null;
       let removed = false;
-      console.log(`start tick: ${projectile.id}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}.`);
+      // console.log(`start tick: ${projectile.id}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}.`);
           
       this.updateProjectileWander(projectile, deltaMs);
       this.updateProjectileRotationSpin(projectile, deltaMs);
@@ -405,9 +405,9 @@ export class UnitProjectileController {
             removed = true;
             break;
           }
-          if(projectile.position.y > projectile.targetPosition.y || true) {
-            console.log(`overlooked target: ${projectile.id} - ${projectile.position.y > projectile.targetPosition.y}. Elapsed: ${projectile.elapsedMs}. totalMoveXY: ${totalMoveX},${totalMoveY}. stepXY: ${stepX},${stepY}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}. Target: ${projectile.targetPosition.x},${projectile.targetPosition.y}`, projectile);
-          }
+          //if(projectile.position.y > projectile.targetPosition.y || true) {
+          //  console.log(`overlooked target: ${projectile.id} - ${projectile.position.y > projectile.targetPosition.y}. Elapsed: ${projectile.elapsedMs}. totalMoveXY: ${totalMoveX},${totalMoveY}. stepXY: ${stepX},${stepY}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}. Target: ${projectile.targetPosition.x},${projectile.targetPosition.y}`, projectile);
+          //}
         }
 
         if (!projectile.ignoreTargetsOnPath) {
