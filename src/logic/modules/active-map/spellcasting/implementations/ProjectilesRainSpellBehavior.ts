@@ -317,10 +317,7 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
           "cornerPosition" in origin
             ? origin.cornerPosition
             : this.resolveCorner(this.scene.getMapSize(), origin.corner);
-        return {
-          x: base.x + (selectedTarget.x - castTarget.x),
-          y: base.y + (selectedTarget.y - castTarget.y),
-        };
+        return base;
       }
       default:
         return { ...castTarget };
