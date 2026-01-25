@@ -394,6 +394,9 @@ export class UnitProjectileController {
             removed = true;
             break;
           }
+          if(projectile.position.y > projectile.targetPosition.y) {
+            console.log("overlooked target", previousPosition, projectile.position, projectile.targetPosition);
+          }
         }
 
         if (!projectile.ignoreTargetsOnPath) {

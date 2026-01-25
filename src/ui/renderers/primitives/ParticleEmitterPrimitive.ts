@@ -786,6 +786,10 @@ const advanceParticleEmitterStateGpu = <
     stepParticleSimulation(gpu, state.capacity, deltaMs, spawnParams);
   }
 
+  // if(instance.type === "unitProjectile") {
+  //  console.log(`deltaMs[${instance.id}]`, deltaMs, origin, spawnParams);
+  //}
+
   // For GPU spawn path: always render full capacity, shader handles inactive particles
   // For CPU spawn path: activeCount is already set above
   if (useGpuSpawn && gpu.handle) {
