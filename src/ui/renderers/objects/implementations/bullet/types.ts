@@ -39,6 +39,8 @@ export type BulletTailEmitterRenderConfig = ParticleEmitterBaseConfig & {
   baseSpeed: number;
   speedVariation: number;
   spread: number;
+  spawnRadiusMin: number;
+  spawnRadiusMax: number;
 };
 
 export type BulletEmitterKey = "tailEmitter" | "trailEmitter" | "smokeEmitter";

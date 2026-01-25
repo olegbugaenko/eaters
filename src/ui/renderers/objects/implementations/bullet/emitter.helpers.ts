@@ -108,6 +108,8 @@ export const sanitizeTailEmitterConfig = (
     Number.isFinite(config.speedVariation) ? Number(config.speedVariation) : 0
   );
   const spread = Math.max(0, Number.isFinite(config.spread) ? Number(config.spread) : 0);
+  const spawnRadiusMin = Math.max(0, config.spawnRadius?.min ?? 0);
+  const spawnRadiusMax = Math.max(spawnRadiusMin, config.spawnRadius?.max ?? spawnRadiusMin);
 
   // Convert sizeEvolutionMult (multiplier at end of lifetime) to sizeGrowthRate (multiplier per second)
   // Formula: sizeGrowthRate = sizeEvolutionMult ^ (1 / lifetimeSeconds)
@@ -128,6 +130,8 @@ export const sanitizeTailEmitterConfig = (
     baseSpeed,
     speedVariation,
     spread,
+    spawnRadiusMin,
+    spawnRadiusMax,
     sizeGrowthRate,
   };
 };
@@ -146,6 +150,8 @@ export const serializeTailEmitterConfig = (config: BulletTailEmitterRenderConfig
     config.speedVariation,
     config.sizeRange.min,
     config.sizeRange.max,
+    config.spawnRadiusMin,
+    config.spawnRadiusMax,
     config.spread,
     config.offset.x,
     config.offset.y,
@@ -201,9 +207,17 @@ export const createTailParticle = (
     config.sizeRange.min === config.sizeRange.max
       ? config.sizeRange.min
       : randomBetween(config.sizeRange.min, config.sizeRange.max);
+  const spawnRadius =
+    config.spawnRadiusMin === config.spawnRadiusMax
+      ? config.spawnRadiusMin
+      : randomBetween(config.spawnRadiusMin, config.spawnRadiusMax);
+  const spawnAngle = Math.random() * Math.PI * 2;
 
   return {
-    position: { x: origin.x, y: origin.y },
+    position: {
+      x: origin.x + Math.cos(spawnAngle) * spawnRadius,
+      y: origin.y + Math.sin(spawnAngle) * spawnRadius,
+    },
     velocity: { x: Math.cos(direction) * speed, y: Math.sin(direction) * speed },
     ageMs: 0,
     lifetimeMs: config.particleLifetimeMs,
@@ -223,8 +237,8 @@ export const getGpuSpawnConfig = (
   speedVariation: config.speedVariation,
   sizeMin: config.sizeRange.min,
   sizeMax: config.sizeRange.max,
-  spawnRadiusMin: 0,
-  spawnRadiusMax: 0,
+  spawnRadiusMin: config.spawnRadiusMin,
+  spawnRadiusMax: config.spawnRadiusMax,
   arc: 0,
   direction: getMovementRotation(instance) + Math.PI,
   spread: config.spread,

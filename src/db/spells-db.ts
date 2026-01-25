@@ -577,6 +577,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
           sizeEvolutionMult: 3.5,
           spread: Math.PI,
           offset: { x: -1, y: 0 },
+          spawnRadius: { min: 0, max: 8 },
           color: { r: 0.9, g: 0.6, b: 1, a: 0.23 },
           fill: {
             fillType: FILL_TYPES.RADIAL_GRADIENT,
