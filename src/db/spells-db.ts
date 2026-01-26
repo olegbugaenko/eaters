@@ -209,6 +209,7 @@ export interface SpellProjectileRingTrailConfig {
   endAlpha: number;
   innerStop: number;
   outerStop: number;
+  offset?: SceneVector2;
   color: SceneColor;
 }
 

@@ -69,8 +69,9 @@ export type UnitProjectileOnHit = (
 ) => boolean | void;
 
 export interface UnitProjectileRingTrailState {
-  config: Required<Omit<SpellProjectileRingTrailConfig, "color">> & {
+  config: Required<Omit<SpellProjectileRingTrailConfig, "color" | "offset">> & {
     color: SceneColor;
+    offset: SceneVector2;
   };
   accumulatorMs: number;
 }
