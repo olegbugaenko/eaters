@@ -19,6 +19,7 @@ in float a_instanceStartRadius;
 in float a_instanceEndRadius;
 in float a_instanceStartAlpha;
 in float a_instanceEndAlpha;
+in float a_instanceFadeInMs;
 in float a_instanceInnerStop;
 in float a_instanceOuterStop;
 in vec3 a_instanceColor;
@@ -34,6 +35,7 @@ out vec2 v_localPos;      // Position in local ring space [-1, 1]
 out float v_progress;     // Animation progress [0, 1]
 out float v_startAlpha;
 out float v_endAlpha;
+out float v_fadeIn;
 out float v_innerStop;
 out float v_outerStop;
 out vec3 v_color;
@@ -50,6 +52,9 @@ void main() {
   // Calculate animation progress
   float elapsed = u_time - a_instanceCreatedAt;
   float progress = clamp(elapsed / max(a_instanceLifetime, 1.0), 0.0, 1.0);
+  float fadeIn = a_instanceFadeInMs > 0.0
+    ? clamp(elapsed / max(a_instanceFadeInMs, 1.0), 0.0, 1.0)
+    : 1.0;
   
   // Interpolate radius based on progress
   float radius = mix(a_instanceStartRadius, a_instanceEndRadius, progress);
@@ -65,6 +70,7 @@ void main() {
   v_progress = progress;
   v_startAlpha = a_instanceStartAlpha;
   v_endAlpha = a_instanceEndAlpha;
+  v_fadeIn = fadeIn;
   v_innerStop = a_instanceInnerStop;
   v_outerStop = a_instanceOuterStop;
   v_color = a_instanceColor;
@@ -78,6 +84,7 @@ in vec2 v_localPos;
 in float v_progress;
 in float v_startAlpha;
 in float v_endAlpha;
+in float v_fadeIn;
 in float v_innerStop;
 in float v_outerStop;
 in vec3 v_color;
@@ -95,6 +102,7 @@ void main() {
   
   // Interpolate alpha based on progress
   float baseAlpha = mix(v_startAlpha, v_endAlpha, v_progress);
+  baseAlpha *= v_fadeIn;
   
   // Radial gradient: transparent at center, opaque ring, fade to transparent at edge
   float outerFadeStop = min(1.0, v_outerStop + 0.15);
@@ -115,4 +123,3 @@ void main() {
   fragColor = vec4(v_color, alpha);
 }
 `;
-

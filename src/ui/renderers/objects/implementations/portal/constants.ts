@@ -17,6 +17,7 @@ export const DEFAULT_PORTAL_EMITTER: PortalEmitterConfig = {
   particlesPerSecond: 90,
   particleLifetimeMs: 900,
   fadeStartMs: 450,
+  fadeInMs: 0,
   emissionDurationMs: 900,
   sizeRange: { min: 1, max: 3 },
   offset: { x: 0, y: 0 },

@@ -776,6 +776,7 @@ export class UnitProjectileController {
 
   private createRingTrailState(config: SpellProjectileRingTrailConfig): UnitProjectileRingTrailState {
     const offset = sanitizeVector(config.offset, { x: 0, y: 0 }) ?? { x: 0, y: 0 };
+    const fadeInMs = clampNumber(config.fadeInMs ?? 0, 0, Number.POSITIVE_INFINITY);
     const sanitized = {
       spawnIntervalMs: Math.max(1, Math.floor(config.spawnIntervalMs)),
       lifetimeMs: Math.max(1, Math.floor(config.lifetimeMs)),
@@ -783,6 +784,7 @@ export class UnitProjectileController {
       endRadius: Math.max(Math.max(1, config.startRadius), config.endRadius),
       startAlpha: clamp01(config.startAlpha),
       endAlpha: clamp01(config.endAlpha),
+      fadeInMs,
       innerStop: clamp01(config.innerStop),
       outerStop: clamp01(config.outerStop),
       offset,
@@ -882,6 +884,7 @@ export class UnitProjectileController {
       endRadius: config.endRadius,
       startAlpha: config.startAlpha,
       endAlpha: config.endAlpha,
+      fadeInMs: config.fadeInMs,
       innerStop,
       outerStop,
       color: config.color,

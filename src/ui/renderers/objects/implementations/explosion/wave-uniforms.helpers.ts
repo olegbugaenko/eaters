@@ -152,6 +152,7 @@ export const toWaveUniformsFromFill = (
     hasExplicitRadius,
     explicitRadius,
     fadeStartMs: 0,
+    fadeInMs: 0,
     defaultLifetimeMs: 1000,
     lengthMultiplier: 1,
     alignToVelocity: false,

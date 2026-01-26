@@ -89,6 +89,7 @@ const createUniforms = (overrides: Partial<ParticleEmitterGpuRenderUniforms> = {
   hasExplicitRadius: false,
   explicitRadius: 0,
   fadeStartMs: 100,
+  fadeInMs: 0,
   defaultLifetimeMs: 1000,
   shape: 0,
   minParticleSize: 0,

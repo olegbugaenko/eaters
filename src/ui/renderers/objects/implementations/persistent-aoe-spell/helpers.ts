@@ -73,6 +73,9 @@ export const sanitizeParticleCustomData = (
   const fadeStart = Number.isFinite(data.fadeStartMs)
     ? clampNumber(Number(data.fadeStartMs), 0, lifetime)
     : 0;
+  const fadeIn = Number.isFinite(data.fadeInMs)
+    ? clampNumber(Number(data.fadeInMs), 0, lifetime)
+    : 0;
   const sizeMin = Number.isFinite(data.sizeRange?.min)
     ? Math.max(0, Number(data.sizeRange.min))
     : 0;
@@ -102,6 +105,7 @@ export const sanitizeParticleCustomData = (
     baseParticlesPerSecond: baseRate,
     particleLifetimeMs: lifetime,
     fadeStartMs: fadeStart,
+    fadeInMs: fadeIn,
     sizeRange: { min: sizeMin, max: sizeMax },
     color: sanitizeSceneColor(data.color, DEFAULT_CUSTOM_DATA.glowColor),
     fill: data.fill,
@@ -191,6 +195,7 @@ export const getEmitterConfig = (
       particlesPerSecond: rate,
       particleLifetimeMs: particle.particleLifetimeMs,
       fadeStartMs: particle.fadeStartMs,
+      fadeInMs: particle.fadeInMs,
       sizeRange: particle.sizeRange,
       color: particle.color,
       fill: flameFill,

@@ -32,6 +32,7 @@ in float a_endAlpha;
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
 uniform float u_fadeStartMs;
+uniform float u_fadeInMs;
 uniform float u_defaultLifetimeMs;
 uniform float u_minParticleSize;
 uniform float u_lengthMultiplier;
@@ -122,6 +123,8 @@ void main() {
   float startA = a_startAlpha > 0.0 || a_endAlpha > 0.0 ? a_startAlpha : 1.0;
   float endA = a_startAlpha > 0.0 || a_endAlpha > 0.0 ? a_endAlpha : 0.0;
   float alpha = alive ? computeAlpha(a_age, a_lifetime, startA, endA) : 0.0;
+  float fadeIn = u_fadeInMs > 0.0 ? clamp01(a_age / max(u_fadeInMs, 1.0)) : 1.0;
+  alpha *= fadeIn;
 
   v_worldPosition = world;
   for (int i = 0; i < 5; i++) {

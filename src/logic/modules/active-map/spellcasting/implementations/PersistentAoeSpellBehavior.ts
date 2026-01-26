@@ -311,6 +311,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     }
 
     const fadeStart = clampNumber(emitter.fadeStartMs, 0, lifetime);
+    const fadeIn = clampNumber(emitter.fadeInMs ?? 0, 0, lifetime);
     const sizeMin = Math.max(0, emitter.sizeRange.min);
     const sizeMax = Math.max(sizeMin, emitter.sizeRange.max);
     const color = sanitizeSceneColor(emitter.color ?? DEFAULT_PARTICLE_COLOR, DEFAULT_PARTICLE_COLOR);
@@ -341,6 +342,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
       baseParticlesPerSecond: baseRate,
       particleLifetimeMs: lifetime,
       fadeStartMs: fadeStart,
+      fadeInMs: fadeIn,
       sizeRange: { min: sizeMin, max: sizeMax },
       color,
       fill,
@@ -383,6 +385,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
             baseParticlesPerSecond: visual.particle.baseParticlesPerSecond,
             particleLifetimeMs: visual.particle.particleLifetimeMs,
             fadeStartMs: visual.particle.fadeStartMs,
+            fadeInMs: visual.particle.fadeInMs,
             sizeRange: { ...visual.particle.sizeRange },
             color: cloneSceneColor(visual.particle.color),
             fill: visual.particle.fill ? cloneSceneFill(visual.particle.fill) : undefined,

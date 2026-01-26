@@ -207,6 +207,8 @@ export interface SpellProjectileRingTrailConfig {
   endRadius: number;
   startAlpha: number;
   endAlpha: number;
+  /** Optional fade-in duration in milliseconds (alpha ramps 0 -> full). */
+  fadeInMs?: number;
   innerStop: number;
   outerStop: number;
   offset?: SceneVector2;
