@@ -12,7 +12,7 @@ import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
-import { normalizeVector } from "../../../../shared/helpers/vector.helper";
+import { normalizeVector, sanitizeVector } from "../../../../shared/helpers/vector.helper";
 import {
   MAX_PROJECTILE_STEPS_PER_TICK,
   MIN_MOVEMENT_STEP,
@@ -217,7 +217,7 @@ export class UnitProjectileController {
     this.projectiles.push(state);
     this.projectileIndex.set(objectId, state);
     if (ringTrail) {
-      this.spawnProjectileRing(state.position, ringTrail.config);
+      this.spawnProjectileRing(state.position, state.velocity, state.radius, ringTrail.config);
     }
     return objectId;
   }
@@ -400,7 +400,12 @@ export class UnitProjectileController {
             projectile.onExpired?.({ ...projectile.position });
             this.removeProjectile(projectile);
             if (projectile.ringTrail) {
-              this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
+              this.spawnProjectileRing(
+                projectile.position,
+                projectile.velocity,
+                projectile.radius,
+                projectile.ringTrail.config
+              );
             }
             removed = true;
             break;
@@ -447,7 +452,12 @@ export class UnitProjectileController {
             }
             this.removeProjectile(projectile);
             if (projectile.ringTrail) {
-              this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
+              this.spawnProjectileRing(
+                projectile.position,
+                projectile.velocity,
+                projectile.radius,
+                projectile.ringTrail.config
+              );
             }
             break;
           }
@@ -765,6 +775,8 @@ export class UnitProjectileController {
   }
 
   private createRingTrailState(config: SpellProjectileRingTrailConfig): UnitProjectileRingTrailState {
+    const offset = sanitizeVector(config.offset, { x: 0, y: 0 }) ?? { x: 0, y: 0 };
+    const fadeInMs = clampNumber(config.fadeInMs ?? 0, 0, Number.POSITIVE_INFINITY);
     const sanitized = {
       spawnIntervalMs: Math.max(1, Math.floor(config.spawnIntervalMs)),
       lifetimeMs: Math.max(1, Math.floor(config.lifetimeMs)),
@@ -772,8 +784,10 @@ export class UnitProjectileController {
       endRadius: Math.max(Math.max(1, config.startRadius), config.endRadius),
       startAlpha: clamp01(config.startAlpha),
       endAlpha: clamp01(config.endAlpha),
+      fadeInMs,
       innerStop: clamp01(config.innerStop),
       outerStop: clamp01(config.outerStop),
+      offset,
       color: {
         r: clamp01(config.color.r ?? 0),
         g: clamp01(config.color.g ?? 0),
@@ -816,12 +830,22 @@ export class UnitProjectileController {
       trail.accumulatorMs -= interval;
       // Cap accumulator to prevent burst spawning on next frame
       trail.accumulatorMs = Math.min(trail.accumulatorMs, interval);
-      this.spawnProjectileRing(projectile.position, trail.config);
+      this.spawnProjectileRing(
+        projectile.position,
+        projectile.velocity,
+        projectile.radius,
+        trail.config
+      );
       this.ringsSpawnedThisFrame += 1;
     }
   }
 
-  private spawnProjectileRing(position: SceneVector2, config: UnitProjectileRingTrailState["config"]): void {
+  private spawnProjectileRing(
+    position: SceneVector2,
+    velocity: SceneVector2,
+    radius: number,
+    config: UnitProjectileRingTrailState["config"]
+  ): void {
     // GPU Instanced rendering - acquire slot and write initial data
     const gpuSlot = ringGpuRenderer.acquireSlot(undefined);
     if (!gpuSlot) {
@@ -835,15 +859,32 @@ export class UnitProjectileController {
     }
     const now = performance.now();
 
+    const offset = {
+      x: config.offset.x * radius,
+      y: config.offset.y * radius,
+    };
+    const movementRotation = Math.atan2(velocity.y, velocity.x);
+    const cos = Math.cos(movementRotation);
+    const sin = Math.sin(movementRotation);
+    const rotatedOffset = {
+      x: offset.x * cos - offset.y * sin,
+      y: offset.x * sin + offset.y * cos,
+    };
+    const ringPosition = {
+      x: position.x + rotatedOffset.x,
+      y: position.y + rotatedOffset.y,
+    };
+
     // Write ring data to GPU - animation happens in shader
     ringGpuRenderer.updateSlot(gpuSlot, {
-      position: { x: position.x, y: position.y },
+      position: ringPosition,
       createdAt: now,
       lifetimeMs: config.lifetimeMs,
       startRadius: config.startRadius,
       endRadius: config.endRadius,
       startAlpha: config.startAlpha,
       endAlpha: config.endAlpha,
+      fadeInMs: config.fadeInMs,
       innerStop,
       outerStop,
       color: config.color,

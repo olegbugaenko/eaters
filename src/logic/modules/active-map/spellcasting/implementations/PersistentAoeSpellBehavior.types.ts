@@ -13,6 +13,7 @@ export interface PersistentAoeParticleRuntimeConfig {
   baseParticlesPerSecond: number;
   particleLifetimeMs: number;
   fadeStartMs: number;
+  fadeInMs: number;
   sizeRange: { min: number; max: number };
   color: SceneColor;
   fill?: SceneFill;
@@ -64,6 +65,7 @@ export interface PersistentAoeParticleCustomData {
   baseParticlesPerSecond: number;
   particleLifetimeMs: number;
   fadeStartMs: number;
+  fadeInMs: number;
   sizeRange: { min: number; max: number };
   color: SceneColor;
   fill?: SceneFill;

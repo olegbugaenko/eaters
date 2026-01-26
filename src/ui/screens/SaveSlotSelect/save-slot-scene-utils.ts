@@ -32,6 +32,7 @@ export const cloneEmitterConfig = (
     particlesPerSecond: emitter.particlesPerSecond,
     particleLifetimeMs: emitter.particleLifetimeMs,
     fadeStartMs: emitter.fadeStartMs,
+    fadeInMs: emitter.fadeInMs,
     baseSpeed: emitter.baseSpeed,
     speedVariation: emitter.speedVariation,
     sizeRange: { min: emitter.sizeRange.min, max: emitter.sizeRange.max },

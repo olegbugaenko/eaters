@@ -207,8 +207,11 @@ export interface SpellProjectileRingTrailConfig {
   endRadius: number;
   startAlpha: number;
   endAlpha: number;
+  /** Optional fade-in duration in milliseconds (alpha ramps 0 -> full). */
+  fadeInMs?: number;
   innerStop: number;
   outerStop: number;
+  offset?: SceneVector2;
   color: SceneColor;
 }
 
@@ -572,13 +575,15 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         ringTrail: {
           spawnIntervalMs: 45,
           lifetimeMs: 900,
-          startRadius: 4,
+          startRadius: 18,
           endRadius: 65,
           startAlpha: 0.1,
           endAlpha: 0,
           innerStop: 0.48,
           outerStop: 0.78,
           color: { r: 1, g: 0.7, b: 1, a: 0.5 },
+          offset: { x: -1.5, y: 0 },
+          fadeInMs: 100,
         },
         tailEmitter: {
           particlesPerSecond: 160,
@@ -589,9 +594,10 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
           sizeRange: { min: 35.5, max: 42.4 },
           sizeEvolutionMult: 3.5,
           spread: Math.PI/3,
-          offset: { x: -2, y: 0 },
+          offset: { x: -1.2, y: 0 },
           spawnRadius: { min: 0, max: 18 },
           color: { r: 0.9, g: 0.6, b: 1, a: 0.23 },
+          fadeInMs: 100,
           fill: {
             fillType: FILL_TYPES.RADIAL_GRADIENT,
             start: { x: 0, y: 0 },
