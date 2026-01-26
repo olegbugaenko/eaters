@@ -583,6 +583,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
           outerStop: 0.78,
           color: { r: 1, g: 0.7, b: 1, a: 0.5 },
           offset: { x: -1.5, y: 0 },
+          fadeInMs: 100,
         },
         tailEmitter: {
           particlesPerSecond: 160,
@@ -596,6 +597,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
           offset: { x: -1.2, y: 0 },
           spawnRadius: { min: 0, max: 18 },
           color: { r: 0.9, g: 0.6, b: 1, a: 0.23 },
+          fadeInMs: 100,
           fill: {
             fillType: FILL_TYPES.RADIAL_GRADIENT,
             start: { x: 0, y: 0 },

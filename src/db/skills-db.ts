@@ -254,7 +254,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Account every shard and shipment; precision cuts future building costs.",
     nodePosition: { x: -2, y: 5 },
-    maxLevel: 80,
+    maxLevel: 20,
     icon: "constructions_ledger.png",
     effects: {
       building_cost_multiplier: {
@@ -262,7 +262,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { construction_guild: 1 },
-    cost: createResourceCost("paper", 8, 1.5),
+    cost: createResourceCost("paper", 8, 2.0),
   },
   quarry_overseers: {
     id: "quarry_overseers",
