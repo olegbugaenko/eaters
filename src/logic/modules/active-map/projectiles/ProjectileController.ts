@@ -106,6 +106,7 @@ export class UnitProjectileController {
       y: direction.y * visual.speed,
     };
     const position = { ...origin };
+    const renderPosition = { ...position };
     const createdAt = performance.now();
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
@@ -145,12 +146,19 @@ export class UnitProjectileController {
     if (gpuSlot) {
       // Use GPU instanced rendering for the main body
       objectId = `gpu-bullet-${gpuSlot.visualKey}-${gpuSlot.slotIndex}-${createdAt}`;
-      updateGpuBulletSlot(gpuSlot, position, movementRotation, movementRotation, radius, true);
+      updateGpuBulletSlot(
+        gpuSlot,
+        renderPosition,
+        movementRotation,
+        movementRotation,
+        radius,
+        true
+      );
 
       if (shouldCreateOverlay) {
         // Overlay only renders emitters - body/tail/glow are handled by GPU
         effectsObjectId = this.scene.addObject("unitProjectile", {
-          position,
+          position: renderPosition,
           size: { width: radius * 2, height: radius * 2 },
           rotation,
           fill: visual.fill,
@@ -165,6 +173,7 @@ export class UnitProjectileController {
           },
         });
       }
+      //console.log(`spawned gpu bullet: ${objectId}. Position: ${position.x},${position.y}. Origin: ${origin.x},${origin.y}.`);
     } else {
       // Fallback to scene object rendering
       objectId = this.scene.addObject("unitProjectile", {
@@ -188,6 +197,7 @@ export class UnitProjectileController {
       id: objectId,
       velocity,
       position,
+      renderPosition,
       elapsedMs: 0,
       lifetimeMs,
       createdAt,
@@ -340,7 +350,8 @@ export class UnitProjectileController {
       const projectile = this.projectiles[i]!;
       let hitTarget: TargetSnapshot | null = null;
       let removed = false;
-
+      // console.log(`start tick: ${projectile.id}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}.`);
+          
       this.updateProjectileWander(projectile, deltaMs);
       this.updateProjectileRotationSpin(projectile, deltaMs);
 
@@ -369,14 +380,23 @@ export class UnitProjectileController {
       const stepY = totalMoveY / steps;
 
       for (let j = 0; j < steps; j += 1) {
+        const previousPosition = {
+          x: projectile.position.x,
+          y: projectile.position.y,
+        };
         projectile.position.x += stepX;
         projectile.position.y += stepY;
 
         if (projectile.targetPosition) {
-          const dx = projectile.position.x - projectile.targetPosition.x;
-          const dy = projectile.position.y - projectile.targetPosition.y;
-          const distance = Math.hypot(dx, dy);
-          if (distance <= Math.max(projectile.hitRadius, projectile.radius)) {
+          const hitRadius = Math.max(projectile.hitRadius, projectile.radius);
+          if (
+            this.isTargetReached(
+              previousPosition,
+              projectile.position,
+              projectile.targetPosition,
+              hitRadius,
+            )
+          ) {
             projectile.onExpired?.({ ...projectile.position });
             this.removeProjectile(projectile);
             if (projectile.ringTrail) {
@@ -385,6 +405,9 @@ export class UnitProjectileController {
             removed = true;
             break;
           }
+          //if(projectile.position.y > projectile.targetPosition.y || true) {
+          //  console.log(`overlooked target: ${projectile.id} - ${projectile.position.y > projectile.targetPosition.y}. Elapsed: ${projectile.elapsedMs}. totalMoveXY: ${totalMoveX},${totalMoveY}. stepXY: ${stepX},${stepY}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}. Target: ${projectile.targetPosition.x},${projectile.targetPosition.y}`, projectile);
+          //}
         }
 
         if (!projectile.ignoreTargetsOnPath) {
@@ -564,6 +587,13 @@ export class UnitProjectileController {
    * Updates projectile position in GPU slot or scene.
    */
   private updateProjectilePosition(projectile: UnitProjectileState): void {
+    if (projectile.renderPosition) {
+      projectile.renderPosition.x = projectile.position.x;
+      projectile.renderPosition.y = projectile.position.y;
+    } else {
+      projectile.renderPosition = { ...projectile.position };
+    }
+    const visualPosition = projectile.renderPosition ?? projectile.position;
     const movementRotation = Math.atan2(projectile.velocity.y, projectile.velocity.x);
     const visualRotation = movementRotation + (projectile.rotationSpin?.rotationRad ?? 0);
     const rendererCustomData = {
@@ -585,7 +615,7 @@ export class UnitProjectileController {
     if (projectile.gpuSlot) {
       updateGpuBulletSlot(
         projectile.gpuSlot,
-        projectile.position,
+        visualPosition,
         movementRotation,
         visualRotation,
         projectile.radius,
@@ -593,7 +623,7 @@ export class UnitProjectileController {
       );
     } else {
       this.scene.updateObject(projectile.id, {
-        position: { ...projectile.position },
+        position: { ...visualPosition },
         rotation: visualRotation,
         customData: rendererCustomData,
       });
@@ -601,7 +631,7 @@ export class UnitProjectileController {
 
     if (projectile.effectsObjectId) {
       this.scene.updateObject(projectile.effectsObjectId, {
-        position: { ...projectile.position },
+        position: { ...visualPosition },
         rotation: movementRotation,
         customData: effectsRendererCustomData,
       });
@@ -707,6 +737,31 @@ export class UnitProjectileController {
       position.x - radius > mapSize.width + margin ||
       position.y - radius > mapSize.height + margin
     );
+  }
+
+  private isTargetReached(
+    start: SceneVector2,
+    end: SceneVector2,
+    target: SceneVector2,
+    radius: number,
+  ): boolean {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSq = dx * dx + dy * dy;
+    if (lengthSq <= 0) {
+      const diffX = target.x - end.x;
+      const diffY = target.y - end.y;
+      return diffX * diffX + diffY * diffY <= radius * radius;
+    }
+
+    const t = clamp01(
+      ((target.x - start.x) * dx + (target.y - start.y) * dy) / lengthSq,
+    );
+    const closestX = start.x + dx * t;
+    const closestY = start.y + dy * t;
+    const diffX = target.x - closestX;
+    const diffY = target.y - closestY;
+    return diffX * diffX + diffY * diffY <= radius * radius;
   }
 
   private createRingTrailState(config: SpellProjectileRingTrailConfig): UnitProjectileRingTrailState {

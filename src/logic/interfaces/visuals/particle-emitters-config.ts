@@ -38,7 +38,7 @@ export interface ParticleEmitterConfig {
   spread?: number; // Angular spread in radians
   offset?: SceneVector2; // Offset from emitter origin
 
-  // Explosion-specific properties (optional)
+  // Explosion/bullet spawn properties (optional)
   emissionDurationMs?: number; // How long particles are emitted
   /**
    * Linearly damp the emission rate during the last N milliseconds of emission.

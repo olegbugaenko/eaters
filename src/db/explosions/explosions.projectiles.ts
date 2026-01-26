@@ -347,10 +347,10 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
   },
   magicArrow: {
     lifetimeMs: 1_600,
-    defaultInitialRadius: 5,
+    defaultInitialRadius: 10,
     waves: createSimpleWave({
-      defaultInitialRadius: 5,
-      radiusExtension: 60,
+      defaultInitialRadius: 10,
+      radiusExtension: 160,
       startAlpha: 0.65,
       endAlpha: 0,
       gradientStops: [
@@ -361,12 +361,12 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
     }),
     emitter: {
       ...DEFAULT_EMITTER,
-      baseSpeed: 0.04,
+      baseSpeed: 0.06,
       speedVariation: 0.025,
       fadeStartMs: 400,
       particleLifetimeMs: 1_000,
-      particlesPerSecond: 760,
-      sizeRange: { min: 34.5, max: 39.4 },
+      particlesPerSecond: 1760,
+      sizeRange: { min: 14.5, max: 19.4 },
       emissionDurationMs: 400,
       spawnRadius: { min: 0, max: 0.1 },
       sizeEvolutionMult: 3.5,
@@ -380,7 +380,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
           { offset: 1, color: { r: 0.7, g: 0.4, b: 1, a: 0.0 } },
         ],
       },
-      shape: "triangle",
+      shape: "circle",
       radialVelocity: true, // Частинки рухаються від центру вибуху
     },
   },
