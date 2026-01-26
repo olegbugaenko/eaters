@@ -49,6 +49,7 @@ export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;
   particleLifetimeMs: number;
   fadeStartMs: number;
+  fadeInMs: number;
   sizeRange: { min: number; max: number };
   offset: SceneVector2;
   color: SceneColor;
@@ -1574,6 +1575,7 @@ const createParticleEmitterGpuState = (
     hasExplicitRadius: false,
     explicitRadius: 0,
     fadeStartMs: 0,
+    fadeInMs: 0,
     defaultLifetimeMs: 0,
     shape: 0,
     minParticleSize: MIN_PARTICLE_SIZE,
@@ -1894,6 +1896,7 @@ const createParticleEmitterGpuStateFromPool = (
     hasExplicitRadius: false,
     explicitRadius: 0,
     fadeStartMs: 0,
+    fadeInMs: 0,
     defaultLifetimeMs: 0,
     shape: 0,
     minParticleSize: MIN_PARTICLE_SIZE,
@@ -2070,6 +2073,7 @@ const updateParticleEmitterGpuUniforms = <
 >(gpu: ParticleEmitterGpuState, config: Config): void => {
   const uniforms = gpu.uniforms;
   uniforms.fadeStartMs = config.fadeStartMs;
+  uniforms.fadeInMs = config.fadeInMs;
   uniforms.defaultLifetimeMs = config.particleLifetimeMs;
   uniforms.shape = config.shape === "circle" ? 1 : config.shape === "triangle" ? 2 : 0;
   uniforms.minParticleSize = MIN_PARTICLE_SIZE;
@@ -2278,15 +2282,17 @@ const computeParticleAlpha = (
   particle: ParticleEmitterParticleState,
   config: ParticleEmitterBaseConfig
 ): number => {
+  const fadeIn =
+    config.fadeInMs > 0 ? clamp01(particle.ageMs / Math.max(1, config.fadeInMs)) : 1;
   if (config.fadeStartMs >= particle.lifetimeMs) {
-    return 1;
+    return fadeIn;
   }
   if (particle.ageMs <= config.fadeStartMs) {
-    return 1;
+    return fadeIn;
   }
   const fadeDuration = Math.max(1, particle.lifetimeMs - config.fadeStartMs);
   const fadeProgress = clamp01((particle.ageMs - config.fadeStartMs) / fadeDuration);
-  return 1 - fadeProgress;
+  return fadeIn * (1 - fadeProgress);
 };
 
 const applyParticleAlpha = (components: Float32Array, alpha: number): void => {
@@ -2525,6 +2531,7 @@ export const sanitizeParticleEmitterConfig = (
     particlesPerSecond?: number;
     particleLifetimeMs?: number;
     fadeStartMs?: number;
+    fadeInMs?: number;
     emissionDurationMs?: number;
     emissionDampingInterval?: number;
     sizeRange?: { min?: number; max?: number };
@@ -2560,6 +2567,13 @@ export const sanitizeParticleEmitterConfig = (
     Math.min(
       particleLifetimeMs,
       Number.isFinite(config.fadeStartMs) ? Number(config.fadeStartMs) : 0
+    )
+  );
+  const fadeInMs = Math.max(
+    0,
+    Math.min(
+      particleLifetimeMs,
+      Number.isFinite(config.fadeInMs) ? Number(config.fadeInMs) : 0
     )
   );
   const sizeMinRaw = config.sizeRange?.min;
@@ -2611,6 +2625,7 @@ export const sanitizeParticleEmitterConfig = (
     particlesPerSecond,
     particleLifetimeMs,
     fadeStartMs,
+    fadeInMs,
     sizeRange: { min: sizeMin, max: sizeMax },
     offset,
     color,

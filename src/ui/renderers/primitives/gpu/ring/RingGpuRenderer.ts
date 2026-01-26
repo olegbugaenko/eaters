@@ -98,6 +98,7 @@ class RingGpuRenderer extends GpuBatchRenderer<RingInstance, RingBatch, void> {
       instanceEndRadius: gl.getAttribLocation(programResult.program, "a_instanceEndRadius"),
       instanceStartAlpha: gl.getAttribLocation(programResult.program, "a_instanceStartAlpha"),
       instanceEndAlpha: gl.getAttribLocation(programResult.program, "a_instanceEndAlpha"),
+      instanceFadeInMs: gl.getAttribLocation(programResult.program, "a_instanceFadeInMs"),
       instanceInnerStop: gl.getAttribLocation(programResult.program, "a_instanceInnerStop"),
       instanceOuterStop: gl.getAttribLocation(programResult.program, "a_instanceOuterStop"),
       instanceColor: gl.getAttribLocation(programResult.program, "a_instanceColor"),
@@ -191,6 +192,12 @@ class RingGpuRenderer extends GpuBatchRenderer<RingInstance, RingBatch, void> {
     gl.vertexAttribDivisor(attrs.instanceEndAlpha, 1);
     offset += 4;
 
+    // instanceFadeInMs (float)
+    gl.enableVertexAttribArray(attrs.instanceFadeInMs);
+    gl.vertexAttribPointer(attrs.instanceFadeInMs, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
+    gl.vertexAttribDivisor(attrs.instanceFadeInMs, 1);
+    offset += 4;
+
     // instanceInnerStop (float)
     gl.enableVertexAttribArray(attrs.instanceInnerStop);
     gl.vertexAttribPointer(attrs.instanceInnerStop, 1, gl.FLOAT, false, INSTANCE_STRIDE, offset);
@@ -251,12 +258,13 @@ class RingGpuRenderer extends GpuBatchRenderer<RingInstance, RingBatch, void> {
     data[offset + 5] = instance.endRadius;
     data[offset + 6] = instance.startAlpha;
     data[offset + 7] = instance.endAlpha;
-    data[offset + 8] = instance.innerStop;
-    data[offset + 9] = instance.outerStop;
-    data[offset + 10] = instance.color.r;
-    data[offset + 11] = instance.color.g;
-    data[offset + 12] = instance.color.b;
-    data[offset + 13] = instance.active ? 1 : 0;
+    data[offset + 8] = instance.fadeInMs;
+    data[offset + 9] = instance.innerStop;
+    data[offset + 10] = instance.outerStop;
+    data[offset + 11] = instance.color.r;
+    data[offset + 12] = instance.color.g;
+    data[offset + 13] = instance.color.b;
+    data[offset + 14] = instance.active ? 1 : 0;
   }
 
   protected setupRenderState(

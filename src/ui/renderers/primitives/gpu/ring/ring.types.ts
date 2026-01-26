@@ -9,6 +9,7 @@ export interface RingInstance {
   endRadius: number;
   startAlpha: number;
   endAlpha: number;
+  fadeInMs: number;
   innerStop: number;
   outerStop: number;
   color: SceneColor;
@@ -37,6 +38,7 @@ export interface RingSharedResources {
     instanceEndRadius: number;
     instanceStartAlpha: number;
     instanceEndAlpha: number;
+    instanceFadeInMs: number;
     instanceInnerStop: number;
     instanceOuterStop: number;
     instanceColor: number;

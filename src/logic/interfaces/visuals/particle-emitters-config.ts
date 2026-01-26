@@ -19,6 +19,11 @@ export interface ParticleEmitterConfig {
   particlesPerSecond: number;
   particleLifetimeMs: number;
   fadeStartMs: number;
+  /**
+   * Optional fade-in duration in milliseconds.
+   * When > 0, particle alpha ramps from 0 to full over this duration.
+   */
+  fadeInMs?: number;
   sizeRange: { min: number; max: number };
   color: SceneColor;
 

@@ -17,6 +17,7 @@ export interface ParticleRenderProgram {
     cameraPosition: WebGLUniformLocation | null;
     viewportSize: WebGLUniformLocation | null;
     fadeStartMs: WebGLUniformLocation | null;
+    fadeInMs: WebGLUniformLocation | null;
     defaultLifetimeMs: WebGLUniformLocation | null;
     minParticleSize: WebGLUniformLocation | null;
     lengthMultiplier: WebGLUniformLocation | null;
@@ -82,6 +83,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   hasExplicitRadius: boolean;
   explicitRadius: number;
   fadeStartMs: number;
+  fadeInMs: number;
   defaultLifetimeMs: number;
   shape: number;
   minParticleSize: number;
@@ -113,6 +115,7 @@ export interface ParticleRendererContext {
 
 export interface UniformCache {
   fadeStartMs?: number;
+  fadeInMs?: number;
   defaultLifetimeMs?: number;
   minParticleSize?: number;
   lengthMultiplier?: number;

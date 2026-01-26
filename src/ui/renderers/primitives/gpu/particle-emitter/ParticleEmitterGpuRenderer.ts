@@ -91,6 +91,7 @@ const createRenderProgram = (
     cameraPosition: gl.getUniformLocation(program, "u_cameraPosition"),
     viewportSize: gl.getUniformLocation(program, "u_viewportSize"),
     fadeStartMs: gl.getUniformLocation(program, "u_fadeStartMs"),
+    fadeInMs: gl.getUniformLocation(program, "u_fadeInMs"),
     defaultLifetimeMs: gl.getUniformLocation(program, "u_defaultLifetimeMs"),
     minParticleSize: gl.getUniformLocation(program, "u_minParticleSize"),
     lengthMultiplier: gl.getUniformLocation(program, "u_lengthMultiplier"),
@@ -297,7 +298,7 @@ export const refreshParticleUniformKeys = (
   uniforms.stopColor3Key = serializeArray(uniforms.stopColor3);
   uniforms.stopColor4Key = serializeArray(uniforms.stopColor4);
   uniforms.uniformSignature = hashString(
-    `${uniforms.fillType}|${uniforms.stopCount}|${uniforms.fadeStartMs}|${uniforms.sizeGrowthRate}|${uniforms.stopOffsetsKey}|${uniforms.stopColor0Key}`
+    `${uniforms.fillType}|${uniforms.stopCount}|${uniforms.fadeStartMs}|${uniforms.fadeInMs}|${uniforms.sizeGrowthRate}|${uniforms.stopOffsetsKey}|${uniforms.stopColor0Key}`
   );
 };
 
@@ -309,6 +310,9 @@ const uploadEmitterUniforms = (
 ): void => {
   if (program.uniforms.fadeStartMs && cache.fadeStartMs !== u.fadeStartMs) {
     gl.uniform1f(program.uniforms.fadeStartMs, (cache.fadeStartMs = u.fadeStartMs));
+  }
+  if (program.uniforms.fadeInMs && cache.fadeInMs !== u.fadeInMs) {
+    gl.uniform1f(program.uniforms.fadeInMs, (cache.fadeInMs = u.fadeInMs));
   }
   if (
     program.uniforms.defaultLifetimeMs &&
@@ -554,8 +558,11 @@ const ensureUniformSignature = (u: ParticleEmitterGpuRenderUniforms): number => 
       combineHash(
         combineHash(
           combineHash(
-            combineHash(hashNumber(u.fillType), hashNumber(u.stopCount)),
-            hashNumber(u.fadeStartMs)
+            combineHash(
+              combineHash(hashNumber(u.fillType), hashNumber(u.stopCount)),
+              hashNumber(u.fadeStartMs)
+            ),
+            hashNumber(u.fadeInMs)
           ),
           hashNumber(u.sizeGrowthRate)
         ),
