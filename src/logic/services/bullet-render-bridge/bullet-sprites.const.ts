@@ -8,6 +8,7 @@ export const BULLET_SPRITE_NAMES = [
   "magic_arrow",
   "energetic_strike",
   "electricity_orb",
+  "magic_raindrop",
 ] as const;
 export type BulletSpriteName = (typeof BULLET_SPRITE_NAMES)[number];
 

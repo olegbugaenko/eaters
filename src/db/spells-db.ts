@@ -557,14 +557,16 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
       damage: { min: 6, max: 9 },
       projectile: {
-        radius: 10,
+        radius: 32,
         speed: 160,
         lifetimeMs: 14_000,
+        spriteName: "magic_raindrop",
+        shape: "sprite",
         fill: MAGIC_STORM_PROJECTILE_FILL,
         tail: {
           lengthMultiplier: 3,
-          widthMultiplier: 1.2,
-          startColor: { r: 0.45, g: 0.6, b: 1, a: 0.25 },
+          widthMultiplier: 0.3,
+          startColor: { r: 0.95, g: 0.6, b: 1, a: 0.25 },
           endColor: { r: 0.2, g: 0.25, b: 0.65, a: 0 },
         },
         ringTrail: {
@@ -587,7 +589,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
           sizeRange: { min: 35.5, max: 42.4 },
           sizeEvolutionMult: 3.5,
           spread: Math.PI/3,
-          offset: { x: -5, y: 0 },
+          offset: { x: -2, y: 0 },
           spawnRadius: { min: 0, max: 18 },
           color: { r: 0.9, g: 0.6, b: 1, a: 0.23 },
           fill: {
