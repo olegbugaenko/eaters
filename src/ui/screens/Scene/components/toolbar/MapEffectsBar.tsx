@@ -3,6 +3,7 @@ import { DataBridge } from "@/core/logic/ui/DataBridge";
 import { ProgressBar } from "@ui-shared/ProgressBar";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { MAP_EFFECTS_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
+import { getAssetUrl } from "@/shared/helpers/assets.helper";
 
 interface MapEffectsBarProps {
   bridge: DataBridge;
@@ -19,7 +20,9 @@ export const MapEffectsBar = memo(({ bridge }: MapEffectsBarProps) => {
 
   return (
     <div className="scene-toolbar__map-effects">
-      <span className="scene-toolbar__map-effects-icon" aria-hidden="true" />
+      <span className="scene-toolbar__map-effects-icon" aria-hidden="true" >
+        <img src={getAssetUrl("images/map-effects/radioactivity.png")} alt="Radioactivity" />
+      </span>
       <ProgressBar
         className="scene-toolbar__radioactivity-bar"
         current={radioactivity?.level ?? 0}

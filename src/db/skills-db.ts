@@ -88,6 +88,7 @@ export const SKILL_IDS = [
   "soul_wood",
   "advanced_construction",
   "advanced_crafting",
+  "advanced_crafting2",
   "consiousness",
   "arcane_awareness",
   "weaken_curse",
@@ -247,6 +248,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { advanced_construction: 1 },
     cost: createResourceCost("silver", 100, 1.5),
+  },
+  advanced_crafting2: {
+    id: "advanced_crafting2",
+    name: "Advanced Crafting II",
+    description:
+      "Improve your crafting speed.",
+    nodePosition: { x: -1, y: 7 },
+    maxLevel: 80,
+    icon: "crafting_speed_2.png",
+    effects: {
+      "crafting_speed_mult": {
+        multiplier: (level) => 1 + 0.125 * level,
+      },
+    },
+    nodesRequired: { advanced_crafting: 1 },
+    cost: createResourceCost("wire", 10, 1.5),
   },
   construction_ledgers: {
     id: "construction_ledgers",

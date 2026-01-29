@@ -68,6 +68,13 @@ const CRAFTING_RECIPE_DB: Record<CraftingRecipeId, CraftingRecipeConfig> = {
     productAmount: 1,
     ingredients: WIRE_INGREDIENTS,
     baseDurationMs: 3000,
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "wire_crafting",
+        level: 1,
+      },
+    ],
   },
 };
 
