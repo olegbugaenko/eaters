@@ -18,7 +18,8 @@ export const MapEffectsBar = memo(({ bridge }: MapEffectsBarProps) => {
   }
 
   return (
-    <div className="scene-toolbar__radioactivity">
+    <div className="scene-toolbar__map-effects">
+      <span className="scene-toolbar__map-effects-icon" aria-hidden="true" />
       <ProgressBar
         className="scene-toolbar__radioactivity-bar"
         current={radioactivity?.level ?? 0}
