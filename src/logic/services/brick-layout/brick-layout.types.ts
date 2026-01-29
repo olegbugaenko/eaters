@@ -71,6 +71,7 @@ export interface BezierCurveWithBricksOptions {
   readonly spacing?: number;
   readonly sampleStep?: number;
   readonly rotationOffset?: number;
+  readonly thickness?: number;
 }
 
 export interface BezierTransformOptions {

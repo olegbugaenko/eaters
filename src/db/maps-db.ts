@@ -1649,170 +1649,227 @@ const MAPS_DB: Record<MapId, MapConfig> = {
       bricks: ({ mapLevel }) => {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const woodLevel = baseLevel + 1;
+        const trunkTopY = groundY - 420;
+        const trunkWidthBase = 160;
+        const trunkWidthTop = 90;
 
-        const createRectangle = (
-          x: number,
-          y: number,
-          width: number,
-          height: number,
-        ): SceneVector2[] => [
-          { x, y },
-          { x: x + width, y },
-          { x: x + width, y: y + height },
-          { x, y: y + height },
-        ];
+        const trunkOutline = [
+          {
+            start: { x: centerX - trunkWidthBase / 2, y: groundY },
+            control1: { x: centerX - trunkWidthBase / 2 - 20, y: groundY - 140 },
+            control2: { x: centerX - trunkWidthTop / 2 - 30, y: trunkTopY + 160 },
+            end: { x: centerX - trunkWidthTop / 2, y: trunkTopY },
+          },
+          {
+            start: { x: centerX - trunkWidthTop / 2, y: trunkTopY },
+            control1: { x: centerX - trunkWidthTop / 4, y: trunkTopY - 20 },
+            control2: { x: centerX + trunkWidthTop / 4, y: trunkTopY - 20 },
+            end: { x: centerX + trunkWidthTop / 2, y: trunkTopY },
+          },
+          {
+            start: { x: centerX + trunkWidthTop / 2, y: trunkTopY },
+            control1: { x: centerX + trunkWidthTop / 2 + 30, y: trunkTopY + 160 },
+            control2: { x: centerX + trunkWidthBase / 2 + 20, y: groundY - 140 },
+            end: { x: centerX + trunkWidthBase / 2, y: groundY },
+          },
+          {
+            start: { x: centerX + trunkWidthBase / 2, y: groundY },
+            control1: { x: centerX + trunkWidthBase / 4, y: groundY + 20 },
+            control2: { x: centerX - trunkWidthBase / 4, y: groundY + 20 },
+            end: { x: centerX - trunkWidthBase / 2, y: groundY },
+          },
+        ] as const;
 
-        // Main trunk (thick, slightly tapered)
-        const trunkWidth = 100;
-        const trunkHeight = 400;
-        const trunkX = centerX - trunkWidth / 2;
-        const trunkY = groundY - trunkHeight;
-
-        const trunk = polygonWithBricks(
+        const trunk = bezierPolygonWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: trunkX + 10, y: trunkY },
-              { x: trunkX + trunkWidth - 10, y: trunkY },
-              { x: trunkX + trunkWidth, y: groundY },
-              { x: trunkX, y: groundY },
-            ],
+            outline: trunkOutline,
+            spacing: 28,
+            sampleStep: 14,
+            alignToEdge: true,
           },
           { level: woodLevel },
         );
 
-        // Main branches extending from trunk
-        // Left main branch (going up-left)
-        const leftMainBranch = polygonWithBricks(
+        const leftMainSegments = [
+          {
+            start: { x: centerX - 30, y: trunkTopY + 110 },
+            control1: { x: centerX - 120, y: trunkTopY + 40 },
+            control2: { x: centerX - 240, y: trunkTopY - 60 },
+            end: { x: centerX - 340, y: trunkTopY - 140 },
+          },
+          {
+            start: { x: centerX - 340, y: trunkTopY - 140 },
+            control1: { x: centerX - 380, y: trunkTopY - 200 },
+            control2: { x: centerX - 420, y: trunkTopY - 250 },
+            end: { x: centerX - 460, y: trunkTopY - 300 },
+          },
+        ] as const;
+
+        const rightMainSegments = [
+          {
+            start: { x: centerX + 30, y: trunkTopY + 110 },
+            control1: { x: centerX + 120, y: trunkTopY + 40 },
+            control2: { x: centerX + 240, y: trunkTopY - 60 },
+            end: { x: centerX + 340, y: trunkTopY - 140 },
+          },
+          {
+            start: { x: centerX + 340, y: trunkTopY - 140 },
+            control1: { x: centerX + 380, y: trunkTopY - 200 },
+            control2: { x: centerX + 420, y: trunkTopY - 260 },
+            end: { x: centerX + 460, y: trunkTopY - 310 },
+          },
+        ] as const;
+
+        const topSegments = [
+          {
+            start: { x: centerX - 10, y: trunkTopY + 30 },
+            control1: { x: centerX - 40, y: trunkTopY - 60 },
+            control2: { x: centerX + 20, y: trunkTopY - 180 },
+            end: { x: centerX - 10, y: trunkTopY - 260 },
+          },
+        ] as const;
+
+        const leftTwigSegments = [
+          {
+            start: { x: centerX - 220, y: trunkTopY - 40 },
+            control1: { x: centerX - 260, y: trunkTopY - 110 },
+            control2: { x: centerX - 320, y: trunkTopY - 190 },
+            end: { x: centerX - 380, y: trunkTopY - 220 },
+          },
+        ] as const;
+
+        const rightTwigSegments = [
+          {
+            start: { x: centerX + 220, y: trunkTopY - 40 },
+            control1: { x: centerX + 260, y: trunkTopY - 110 },
+            control2: { x: centerX + 320, y: trunkTopY - 190 },
+            end: { x: centerX + 380, y: trunkTopY - 220 },
+          },
+        ] as const;
+
+        const lowerLeftTwigSegments = [
+          {
+            start: { x: centerX - 90, y: trunkTopY + 170 },
+            control1: { x: centerX - 160, y: trunkTopY + 150 },
+            control2: { x: centerX - 220, y: trunkTopY + 110 },
+            end: { x: centerX - 280, y: trunkTopY + 90 },
+          },
+        ] as const;
+
+        const lowerRightTwigSegments = [
+          {
+            start: { x: centerX + 90, y: trunkTopY + 170 },
+            control1: { x: centerX + 160, y: trunkTopY + 150 },
+            control2: { x: centerX + 220, y: trunkTopY + 110 },
+            end: { x: centerX + 280, y: trunkTopY + 90 },
+          },
+        ] as const;
+
+        const leftMainBranch = bezierCurveWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: centerX - 30, y: trunkY + 80 },
-              { x: centerX - 20, y: trunkY + 50 },
-              { x: centerX - 200, y: trunkY - 120 },
-              { x: centerX - 220, y: trunkY - 100 },
-            ],
+            segments: leftMainSegments,
+            spacing: 26,
+            thickness: 70,
           },
           { level: woodLevel },
         );
 
-        // Right main branch (going up-right)
-        const rightMainBranch = polygonWithBricks(
+        const rightMainBranch = bezierCurveWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: centerX + 20, y: trunkY + 50 },
-              { x: centerX + 30, y: trunkY + 80 },
-              { x: centerX + 220, y: trunkY - 100 },
-              { x: centerX + 200, y: trunkY - 120 },
-            ],
+            segments: rightMainSegments,
+            spacing: 26,
+            thickness: 70,
           },
           { level: woodLevel },
         );
 
-        // Center top branch (going straight up)
-        const topBranch = polygonWithBricks(
+        const topBranch = bezierCurveWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: centerX - 25, y: trunkY },
-              { x: centerX + 25, y: trunkY },
-              { x: centerX + 15, y: trunkY - 180 },
-              { x: centerX - 15, y: trunkY - 180 },
-            ],
+            segments: topSegments,
+            spacing: 24,
+            thickness: 55,
           },
           { level: woodLevel },
         );
 
-        // Smaller sub-branches
-        // Left sub-branch 1
-        const leftSubBranch1 = polygonWithBricks(
+        const leftTwig = bezierCurveWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: centerX - 160, y: trunkY - 80 },
-              { x: centerX - 140, y: trunkY - 90 },
-              { x: centerX - 280, y: trunkY - 200 },
-              { x: centerX - 300, y: trunkY - 180 },
-            ],
+            segments: leftTwigSegments,
+            spacing: 22,
+            thickness: 36,
           },
           { level: woodLevel },
         );
 
-        // Left sub-branch 2 (lower)
-        const leftSubBranch2 = polygonWithBricks(
+        const rightTwig = bezierCurveWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: centerX - 80, y: trunkY + 120 },
-              { x: centerX - 60, y: trunkY + 100 },
-              { x: centerX - 180, y: trunkY + 20 },
-              { x: centerX - 200, y: trunkY + 40 },
-            ],
+            segments: rightTwigSegments,
+            spacing: 22,
+            thickness: 36,
           },
           { level: woodLevel },
         );
 
-        // Right sub-branch 1
-        const rightSubBranch1 = polygonWithBricks(
+        const lowerLeftTwig = bezierCurveWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: centerX + 140, y: trunkY - 90 },
-              { x: centerX + 160, y: trunkY - 80 },
-              { x: centerX + 300, y: trunkY - 180 },
-              { x: centerX + 280, y: trunkY - 200 },
-            ],
+            segments: lowerLeftTwigSegments,
+            spacing: 22,
+            thickness: 32,
           },
           { level: woodLevel },
         );
 
-        // Right sub-branch 2 (lower)
-        const rightSubBranch2 = polygonWithBricks(
+        const lowerRightTwig = bezierCurveWithBricks(
           "smallWood",
           {
-            vertices: [
-              { x: centerX + 60, y: trunkY + 100 },
-              { x: centerX + 80, y: trunkY + 120 },
-              { x: centerX + 200, y: trunkY + 40 },
-              { x: centerX + 180, y: trunkY + 20 },
-            ],
+            segments: lowerRightTwigSegments,
+            spacing: 22,
+            thickness: 32,
           },
           { level: woodLevel },
         );
 
-        // Top sub-branches (smaller twigs)
-        const topLeftTwig = polygonWithBricks(
-          "smallWood",
+        const rootsOutline = [
           {
-            vertices: [
-              { x: centerX - 10, y: trunkY - 140 },
-              { x: centerX, y: trunkY - 150 },
-              { x: centerX - 80, y: trunkY - 250 },
-              { x: centerX - 100, y: trunkY - 240 },
-            ],
+            start: { x: centerX - 180, y: groundY },
+            control1: { x: centerX - 160, y: groundY + 40 },
+            control2: { x: centerX - 60, y: groundY + 60 },
+            end: { x: centerX, y: groundY + 50 },
           },
-          { level: woodLevel },
-        );
-
-        const topRightTwig = polygonWithBricks(
-          "smallWood",
           {
-            vertices: [
-              { x: centerX, y: trunkY - 150 },
-              { x: centerX + 10, y: trunkY - 140 },
-              { x: centerX + 100, y: trunkY - 240 },
-              { x: centerX + 80, y: trunkY - 250 },
-            ],
+            start: { x: centerX, y: groundY + 50 },
+            control1: { x: centerX + 60, y: groundY + 60 },
+            control2: { x: centerX + 160, y: groundY + 40 },
+            end: { x: centerX + 180, y: groundY },
           },
-          { level: woodLevel },
-        );
+          {
+            start: { x: centerX + 180, y: groundY },
+            control1: { x: centerX + 140, y: groundY - 10 },
+            control2: { x: centerX + 80, y: groundY - 10 },
+            end: { x: centerX, y: groundY - 10 },
+          },
+          {
+            start: { x: centerX, y: groundY - 10 },
+            control1: { x: centerX - 80, y: groundY - 10 },
+            control2: { x: centerX - 140, y: groundY - 10 },
+            end: { x: centerX - 180, y: groundY },
+          },
+        ] as const;
 
-        // Ground/roots
-        const roots = polygonWithBricks(
+        const roots = bezierPolygonWithBricks(
           "smallWood",
           {
-            vertices: createRectangle(centerX - 150, groundY, 300, 40),
+            outline: rootsOutline,
+            spacing: 26,
+            sampleStep: 12,
+            alignToEdge: true,
           },
           { level: woodLevel },
         );
@@ -1822,12 +1879,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           leftMainBranch,
           rightMainBranch,
           topBranch,
-          leftSubBranch1,
-          leftSubBranch2,
-          rightSubBranch1,
-          rightSubBranch2,
-          topLeftTwig,
-          topRightTwig,
+          leftTwig,
+          rightTwig,
+          lowerLeftTwig,
+          lowerRightTwig,
           roots,
         ];
       },

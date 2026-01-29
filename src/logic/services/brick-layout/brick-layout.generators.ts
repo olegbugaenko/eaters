@@ -439,14 +439,20 @@ export const generateBezierCurveBricks = (
     return [];
   }
 
+  const spacingConfig = getBrickSpacing(brickType);
   const spacing = clampPositive(
-    options.spacing ?? getBrickSpacing(brickType).tangential,
-    getBrickSpacing(brickType).tangential,
+    options.spacing ?? spacingConfig.tangential,
+    spacingConfig.tangential,
   );
   const sampleStep = clampPositive(
     options.sampleStep ?? spacing * 0.5,
     DEFAULT_BEZIER_SAMPLE_STEP,
   );
+  const thickness = Number.isFinite(options.thickness) ? Math.max(0, options.thickness ?? 0) : 0;
+  const thicknessSpacing = spacingConfig.radial;
+  const bandCount = Math.max(1, Math.floor(thickness / thicknessSpacing) + 1);
+  const startOffset = -((bandCount - 1) / 2) * thicknessSpacing;
+  const offsets = Array.from({ length: bandCount }, (_, index) => startOffset + index * thicknessSpacing);
   const points = sampleBezierPath(options.segments, sampleStep);
   if (points.length < 2) {
     return [];
@@ -476,12 +482,16 @@ export const generateBezierCurveBricks = (
       const x = previous.x + (current.x - previous.x) * t;
       const y = previous.y + (current.y - previous.y) * t;
       const angle = Math.atan2(current.y - previous.y, current.x - previous.x) + rotationOffset;
+      const normalX = -Math.sin(angle);
+      const normalY = Math.cos(angle);
 
-      bricks.push({
-        position: { x, y },
-        rotation: angle,
-        type: brickType,
-        level,
+      offsets.forEach((offset) => {
+        bricks.push({
+          position: { x: x + normalX * offset, y: y + normalY * offset },
+          rotation: angle,
+          type: brickType,
+          level,
+        });
       });
 
       nextDistance += spacing;
