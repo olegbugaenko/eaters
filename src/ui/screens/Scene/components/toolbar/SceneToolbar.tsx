@@ -9,6 +9,7 @@ import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "@logic/modules/active-map/player-units/player-units.const";
+import { MapEffectsBar } from "./MapEffectsBar";
 import "./SceneToolbar.css";
 
 interface SceneToolbarProps {
@@ -145,6 +146,7 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
         <div className="scene-toolbar__units">
           Units: {unitCount} (HP {Math.round(unitTotalHp)})
         </div>
+        <MapEffectsBar bridge={bridge} />
       </div>
       <div className="scene-toolbar__section scene-toolbar__section--right">
         <label className="scene-toolbar__zoom">
