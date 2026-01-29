@@ -506,7 +506,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     cooldownSeconds: 6,
     persistentAoe: {
       durationMs: 3_000,
-      damagePerSecond: 8,
+      damagePerSecond: 7,
       ring: {
         shape: "ring",
         startRadius: 12,
@@ -558,7 +558,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
         type: "corner-with-target-delta",
         corner: "top-right",
       },
-      damage: { min: 6, max: 9 },
+      damage: { min: 4, max: 8 },
       projectile: {
         radius: 32,
         speed: 160,
@@ -582,8 +582,8 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
           innerStop: 0.48,
           outerStop: 0.78,
           color: { r: 1, g: 0.7, b: 1, a: 0.5 },
-          offset: { x: -1.5, y: 0 },
-          fadeInMs: 100,
+          offset: { x: -1.0, y: 0 },
+          fadeInMs: 150,
         },
         tailEmitter: {
           particlesPerSecond: 160,
