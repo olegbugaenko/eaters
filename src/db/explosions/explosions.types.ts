@@ -37,6 +37,7 @@ export type ExplosionType =
   | "bigCannon"
   | "smallCannonGrey"
   | "smallLaser"
+  | "plasmaBeam"
   | "smallEnergetic"
   | "chainLightning"
   | "magicArrow";

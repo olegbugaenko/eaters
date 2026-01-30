@@ -7,6 +7,7 @@ import {
   GREY_WAVE_GRADIENT_STOPS,
   HEAL_WAVE_GRADIENT_STOPS,
   MAGNETIC_WAVE_GRADIENT_STOPS,
+  PLASMA_BEAM_WAVE_GRADIENT_STOPS,
   PLASMOID_WAVE_GRADIENT_STOPS,
   SMALL_ENERGETIC_WAVE_GRADIENT_STOPS,
   WEAKEN_CURSE_WAVE_GRADIENT_STOPS,
@@ -16,6 +17,7 @@ import {
   DEFAULT_EMITTER,
   GRAY_BRICK_EMITTER_FILL,
   MAGNETIC_EMITTER_FILL,
+  PLASMA_BEAM_EMITTER_FILL,
   SMALL_CANNON_EMITTER_FILL,
   SMALL_ENERGETIC_EMITTER_FILL,
   SMALL_GREY_CANNON_EMITTER_FILL,
@@ -284,6 +286,32 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       spawnRadiusMultiplier: undefined, // Override DEFAULT_EMITTER to use explicit spawnRadius
       fill: SMALL_LASER_EMITTER_FILL,
       radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  plasmaBeam: {
+    lifetimeMs: 1_600,
+    defaultInitialRadius: 4,
+    waves: createSimpleWave({
+      defaultInitialRadius: 3,
+      radiusExtension: 18,
+      startAlpha: 0.85,
+      endAlpha: 0,
+      gradientStops: PLASMA_BEAM_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.08,
+      speedVariation: 0.03,
+      fadeStartMs: 450,
+      particleLifetimeMs: 1_100,
+      particlesPerSecond: 2400,
+      sizeRange: { min: 0.4, max: 2.6 },
+      emissionDurationMs: 450,
+      spawnRadius: { min: 0, max: 0.2 },
+      spawnRadiusMultiplier: undefined,
+      fill: PLASMA_BEAM_EMITTER_FILL,
+      radialVelocity: true,
+      maxParticles: 2600,
     },
   },
   smallEnergetic: {
