@@ -1,4 +1,5 @@
 import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { EnemySpawnData } from "../../../logic/modules/active-map/enemies/enemies.types";
 import {
   bezierCurveWithBricks,
   circleWithBricks,
@@ -87,23 +88,16 @@ const mapConfig = (() => {
       }
       return [base, ...wires];
     },
-    /* enemies: ({ mapLevel }) => {
-      const level = Math.max(1, Math.floor(mapLevel));
-      const offsets: SceneVector2[] = [
-        { x: -100, y: -100 },
-        { x: 100, y: -100 },
-        { x: 100, y: 100 },
-        { x: -100, y: 100 },
+    enemies: ({ mapLevel }) => {
+      const baseLevel = Math.max(0, Math.floor(mapLevel));
+      return [
+        {
+          type: "plasmaBeamTurretEnemy",
+          level: baseLevel,
+          position: { x: center.x, y: center.y },
+        } satisfies EnemySpawnData,
       ];
-      return offsets.map((offset) => ({
-        type: "burstTurretEnemy",
-        level,
-        position: {
-          x: center.x + offset.x,
-          y: center.y + offset.y,
-        },
-      }));
-    },*/
+    },
     playerUnits: [
       {
         type: "bluePentagon",

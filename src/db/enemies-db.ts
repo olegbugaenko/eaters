@@ -30,7 +30,8 @@ export type EnemyType =
   | "encagedBeastEnemy"
   | "freezeTurretEnemy"
   | "bigGun"
-  | "laserTurretEnemy";
+  | "laserTurretEnemy"
+  | "plasmaBeamTurretEnemy";
 
 export interface EnemyAuraConfig {
   petalCount: number;
@@ -1384,6 +1385,74 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       explosionType: "smallLaser",
       explosionRadius: 21,
       spawnOffset: { x: 1, y: 0 },
+    },
+  },
+  plasmaBeamTurretEnemy: {
+    knockBackDistance: 180,
+    knockBackSpeed: 180,
+    name: "Plasma Beam Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.1, g: 0.15, b: 0.35, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 16, y: -3 },
+            { x: 0, y: -4 },
+            { x: 0, y: 4 },
+            { x: 16, y: 3 },
+          ],
+          fill: { type: "base", brightness: -0.15 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -6 },
+            { x: -10, y: -9 },
+            { x: -10, y: 9 },
+            { x: 0, y: 6 },
+          ],
+          fill: { type: "base", brightness: 0.85 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -4, y: -7 },
+            { x: -7, y: -18 },
+            { x: -9, y: -18 },
+            { x: -9, y: -7 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -4, y: 7 },
+            { x: -7, y: 18 },
+            { x: -9, y: 18 },
+            { x: -9, y: 7 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+      ],
+    },
+    maxHp: 16500,
+    armor: 165,
+    baseDamage: 480,
+    attackInterval: 2.1,
+    attackRange: 650,
+    moveSpeed: 0,
+    physicalSize: 28,
+    reward: normalizeResourceAmount({
+      iron: 42,
+      coal: 8,
+    }),
+    arcAttack: {
+      arcType: "plasmaBeam",
+      explosionType: "plasmaBeam",
+      explosionRadius: 36,
+      spawnOffset: { x: 2, y: 0 },
     },
   },
 };
