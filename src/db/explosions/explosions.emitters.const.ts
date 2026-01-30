@@ -42,9 +42,9 @@ export const PLASMA_BEAM_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },
   stops: [
-    { offset: 0, color: { r: 0.6, g: 0.9, b: 1.0, a: 1.0 } },
-    { offset: 0.4, color: { r: 0.35, g: 0.7, b: 1.0, a: 0.55 } },
-    { offset: 1, color: { r: 0.15, g: 0.45, b: 0.9, a: 0.2 } },
+    { offset: 0, color: { r: 0.8, g: 0.9, b: 1.0, a: 1.0 } },
+    { offset: 0.4, color: { r: 0.8, g: 0.9, b: 1.0, a: 0.55 } },
+    { offset: 1, color: { r: 0.8, g: 0.9, b: 1, a: 0.2 } },
   ],
 };
 

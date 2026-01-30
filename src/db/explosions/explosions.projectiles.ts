@@ -305,7 +305,7 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       fadeStartMs: 450,
       particleLifetimeMs: 1_100,
       particlesPerSecond: 2400,
-      sizeRange: { min: 0.4, max: 2.6 },
+      sizeRange: { min: 0.9, max: 3.6 },
       emissionDurationMs: 450,
       spawnRadius: { min: 0, max: 0.2 },
       spawnRadiusMultiplier: undefined,
