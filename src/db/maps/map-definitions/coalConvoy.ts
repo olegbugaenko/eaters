@@ -79,7 +79,7 @@ const mapConfig = (() => {
       );
 
       const wagonFrame = polygonWithBricks(
-        "compactIron",
+        "smallIron",
         {
           vertices: createRectangle(
             wagonStartX,
@@ -103,7 +103,7 @@ const mapConfig = (() => {
         const barWidth = 18;
         const barX = wagonStartX + (wagonWidth * index) / 4 - barWidth / 2;
         return polygonWithBricks(
-          "compactIron",
+          "smallIron",
           {
             vertices: createRectangle(
               barX,
@@ -116,11 +116,11 @@ const mapConfig = (() => {
         );
       });
 
-      const wagonWheelY = wagonBottomY + 65;
+      const wagonWheelY = wagonBottomY + 25;
       const wagonWheelRadius = 45;
       const wagonWheels = [
         circleWithBricks(
-          "smallIron",
+          "compactIron",
           {
             center: { x: wagonStartX + 180, y: wagonWheelY },
             outerRadius: wagonWheelRadius,
@@ -128,7 +128,7 @@ const mapConfig = (() => {
           { level: baseLevel },
         ),
         circleWithBricks(
-          "smallIron",
+          "compactIron",
           {
             center: { x: wagonEndX - 180, y: wagonWheelY },
             outerRadius: wagonWheelRadius,
@@ -145,7 +145,7 @@ const mapConfig = (() => {
 
       const tractorWheels = [
         circleWithBricks(
-          "smallIron",
+          "compactIron",
           {
             center: { x: tractorRearWheelX, y: tractorWheelY },
             outerRadius: 52,
@@ -153,7 +153,7 @@ const mapConfig = (() => {
           { level: baseLevel },
         ),
         circleWithBricks(
-          "smallIron",
+          "compactIron",
           {
             center: { x: tractorFrontWheelX, y: tractorWheelY },
             outerRadius: 40,
@@ -169,28 +169,28 @@ const mapConfig = (() => {
       const cabX = tractorRearWheelX - cabWidth / 2;
 
       const tractorCab = polygonWithBricks(
-        "compactIron",
+        "smallIron",
         {
           vertices: createRectangle(cabX, cabTopY, cabWidth, cabHeight),
           holes: [
             createRectangle(
               cabX + 30,
               cabTopY + 30,
-              cabWidth - 40,
+              cabWidth - 60,
               cabHeight - 120,
             ),
           ],
         },
-        { level: ironLevel },
+        { level: ironLevel+1 },
       );
 
       const hoodBackX = cabX + cabWidth;
       const hoodFrontX = tractorEndX - 20;
-      const hoodBottomY = cabBottomY + 8;
-      const hoodTopY = cabBottomY - 75;
+      const hoodBottomY = cabBottomY + 18;
+      const hoodTopY = cabBottomY - 95;
 
       const tractorHood = polygonWithBricks(
-        "compactIron",
+        "smallIron",
         {
           vertices: [
             { x: hoodBackX, y: hoodBottomY },
@@ -199,7 +199,7 @@ const mapConfig = (() => {
             { x: hoodBackX, y: hoodTopY },
           ],
         },
-        { level: ironLevel },
+        { level: ironLevel+1 },
       );
 
       return [
