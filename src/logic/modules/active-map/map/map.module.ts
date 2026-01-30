@@ -11,7 +11,7 @@ import {
   getMapConfig,
   getMapList,
   isMapId,
-} from "../../../../db/maps-db";
+} from "../../../../db/maps/maps-db";
 import type { BonusEffectMap } from "@shared/types/bonuses";
 import { buildBricksFromBlueprints } from "../../../services/brick-layout/BrickLayoutService";
 import { MapSelectionState } from "./map.selection";

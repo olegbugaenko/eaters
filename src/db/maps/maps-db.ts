@@ -1,15 +1,15 @@
-import { BrickType, getBrickConfig } from "./bricks-db";
+import { BrickType, getBrickConfig } from "../bricks-db";
 import {
   SceneSize,
   SceneVector2,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { PlayerUnitType } from "./player-units-db";
-import type { EnemyType } from "./enemies-db";
-import type { EnemySpawnData } from "../logic/modules/active-map/enemies/enemies.types";
+import { PlayerUnitType } from "../player-units-db";
+import type { EnemyType } from "../enemies-db";
+import type { EnemySpawnData } from "../../logic/modules/active-map/enemies/enemies.types";
 import type { UnlockCondition } from "@shared/types/unlocks";
-import type { SkillId } from "./skills-db";
-import type { AchievementId } from "./achievements-db";
-import type { MapEffectId } from "./map-effects-db";
+import type { SkillId } from "../skills-db";
+import type { AchievementId } from "../achievements-db";
+import type { MapEffectId } from "../map-effects-db";
 import {
   BrickShapeBlueprint,
   buildBricksFromBlueprints,
@@ -20,8 +20,9 @@ import {
   polygonWithBricks,
   squareWithBricks,
   templateWithBricks,
-} from "../logic/services/brick-layout/BrickLayoutService";
-import { transformBezierOutline } from "../logic/services/brick-layout/brick-layout.helpers";
+} from "../../logic/services/brick-layout/BrickLayoutService";
+import { transformBezierOutline } from "../../logic/services/brick-layout/brick-layout.helpers";
+import { brickTreeDeterministic } from "./helpers/bush-helper";
 
 export type MapId =
   | "tutorialZone"
@@ -3709,53 +3710,123 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           { level: iceLevel },
         );
 
-        const trees = treeConfigs.flatMap((tree) => {
-          const trunkHeight = 180 * tree.scale;
-          const trunkWidth = 60 * tree.scale;
-          const trunkBottomY = tree.base.y;
-          const trunkTopY = trunkBottomY - trunkHeight;
-
-          const trunk = polygonWithBricks(
-            "smallWood",
-            {
-              vertices: createRectangle(
-                tree.base.x - trunkWidth / 2,
-                trunkTopY,
-                trunkWidth,
-                trunkHeight,
-              ),
-            },
-            { level: treeTrunkLevel },
-          );
-
-          const canopyLayers = [
-            { width: 320, height: 260, offset: 20 },
-            { width: 260, height: 220, offset: 120 },
-            { width: 190, height: 180, offset: 210 },
-          ];
-
-          const canopy = canopyLayers.map((layer) => {
-            const baseCenter: SceneVector2 = {
-              x: tree.base.x,
-              y: trunkTopY + layer.offset * tree.scale,
-            };
-            return polygonWithBricks(
-              "smallWood",
-              {
-                vertices: createTriangle(
-                  baseCenter,
-                  layer.width * tree.scale,
-                  layer.height * tree.scale,
-                ),
-              },
-              { level: treeCanopyLevel },
-            );
-          });
-
-          return [trunk, ...canopy];
+        const bush1 = brickTreeDeterministic({
+          origin: { x: 1180, y: 480 },
+          size: 260,
+          mainBranchThickness: 19,
+          twigThickness: 18,
+          trunkThickness: 38,
+          sideBranchesCount: 4,
+          branchingsPerSide: 2,
+          topBranchesCount: 2,
+          minSideAngleDeg: 60,
+          sideSpreadRad: Math.PI * 0.1,
+          topSpreadRad: Math.PI * 0.22,
+          twigSpreadRad: Math.PI * 0.25,
+          branchStartT: 0.25,
+          bendTrunkPx: 22,
+          bendTopPx: 10,
+          bendSidePx: 18,
+          bendTwigPx: 10,
+          brickType: "smallWood",
+          brickLevel: treeCanopyLevel,
+          spacing: 26,
+          angleJitterRad: 0.72,
+          lenJitter: 0.12,
+          bendJitter: 0.30,
+          verticalBias: 0.22,
+          //heightJitterT: 0.27,
         });
 
-        return [frozenLake, ...trees];
+        const bush2 = brickTreeDeterministic({
+          origin: { x: 1250, y: 980 },
+          size: 260,
+          mainBranchThickness: 19,
+          twigThickness: 18,
+          trunkThickness: 38,
+          sideBranchesCount: 3,
+          branchingsPerSide: 2,
+          topBranchesCount: 3,
+          minSideAngleDeg: 60,
+          sideSpreadRad: Math.PI * 0.4,
+          topSpreadRad: Math.PI * 0.42,
+          twigSpreadRad: Math.PI * 0.15,
+          branchStartT: 0.25,
+          bendTrunkPx: 22,
+          bendTopPx: 10,
+          bendSidePx: 18,
+          bendTwigPx: 10,
+          brickType: "smallWood",
+          brickLevel: treeCanopyLevel,
+          spacing: 26,
+          angleJitterRad: 0.72,
+          lenJitter: 0.12,
+          bendJitter: 0.30,
+          verticalBias: 0.22,
+          //heightJitterT: 0.27,
+        });
+
+        const bush3 = brickTreeDeterministic({
+          origin: { x: 1150, y: 1180 },
+          size: 160,
+          mainBranchThickness: 19,
+          twigThickness: 18,
+          trunkThickness: 38,
+          sideBranchesCount: 2,
+          branchingsPerSide: 3,
+          topBranchesCount: 3,
+          minSideAngleDeg: 60,
+          branchesLenMul: 1.4,
+          sideSpreadRad: Math.PI * 0.4,
+          topSpreadRad: Math.PI * 0.42,
+          twigSpreadRad: Math.PI * 0.15,
+          branchStartT: 0.05,
+          branchEndT: 0.25,
+          bendTrunkPx: 22,
+          bendTopPx: 10,
+          bendSidePx: 18,
+          bendTwigPx: 10,
+          brickType: "smallWood",
+          brickLevel: treeCanopyLevel,
+          spacing: 26,
+          angleJitterRad: 0.72,
+          lenJitter: 0.12,
+          bendJitter: 0.30,
+          verticalBias: 0.22,
+          //heightJitterT: 0.27,
+        });
+
+        const bush4 = brickTreeDeterministic({
+          origin: { x: 250, y: 980 },
+          size: 360,
+          mainBranchThickness: 19,
+          twigThickness: 18,
+          trunkThickness: 38,
+          sideBranchesCount: 6,
+          branchingsPerSide: 2,
+          topBranchesCount: 3,
+          minSideAngleDeg: 60,
+          sideSpreadRad: Math.PI * 0.4,
+          topSpreadRad: Math.PI * 0.42,
+          twigSpreadRad: Math.PI * 0.15,
+          branchStartT: 0.15,
+          bendTrunkPx: 22,
+          bendTopPx: 10,
+          bendSidePx: 18,
+          bendTwigPx: 10,
+          brickType: "smallWood",
+          brickLevel: treeCanopyLevel,
+          spacing: 26,
+          angleJitterRad: 0.72,
+          lenJitter: 0.12,
+          bendJitter: 0.30,
+          verticalBias: 0.22,
+          twigAt: [0.25, 0.45, 0.65],
+          //heightJitterT: 0.27,
+        });
+
+
+        return [frozenLake, ...bush1, ...bush2, ...bush3, ...bush4];
       },
       playerUnits: [
         {

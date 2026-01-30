@@ -1,4 +1,4 @@
-import type { MapId } from "../../../../db/maps-db";
+import type { MapId } from "../../../../db/maps/maps-db";
 import type { SkillId } from "../../../../db/skills-db";
 import type { MapAutoRestartState } from "./map.types";
 

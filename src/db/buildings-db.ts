@@ -1,4 +1,4 @@
-import type { MapId } from "./maps-db";
+import type { MapId } from "./maps/maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "@shared/types/unlocks";
 import { RESOURCE_IDS, ResourceAmount, ResourceId } from "./resources-db";

@@ -1,4 +1,4 @@
-import { MapId } from "../../../../db/maps-db";
+import { MapId } from "../../../../db/maps/maps-db";
 import { MapSaveData } from "./map.types";
 
 export class MapSelectionState {
