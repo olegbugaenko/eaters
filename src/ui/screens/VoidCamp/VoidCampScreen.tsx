@@ -5,7 +5,7 @@ import {
   CampContent,
   CampTabKey,
 } from "@screens/VoidCamp/components/CampContent/CampContent";
-import { MapId } from "@db/maps-db";
+import { MapId } from "@/db/maps/maps-db";
 import { GAME_VERSIONS } from "@db/version-db";
 import {
   MAP_CLEARED_LEVELS_BRIDGE_KEY,

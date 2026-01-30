@@ -15,7 +15,7 @@ import { EventLogModule } from "../../shared/event-log/event-log.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
 import type { EnemyRuntimeState } from "../enemies/enemies.types";
-import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
+import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps/maps-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";

@@ -1,4 +1,4 @@
-import { getMapConfig, MapId } from "../../../db/maps-db";
+import { getMapConfig, MapId } from "../../../db/maps/maps-db";
 import { getSkillConfig, SkillId } from "../../../db/skills-db";
 import type { UnlockServiceOptions, GameUnlockCondition } from "./unlock.types";
 import { CACHE_TTL_MS } from "./unlock.const";

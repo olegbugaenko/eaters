@@ -3,7 +3,7 @@
  * Визначає всі ключі та їх типи для перевірки під час компіляції.
  */
 
-import type { MapId } from "../../../db/maps-db";
+import type { MapId } from "../../../db/maps/maps-db";
 import type { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { PlayerUnitType } from "@db/player-units-db";
 import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";

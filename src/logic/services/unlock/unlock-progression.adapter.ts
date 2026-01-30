@@ -1,5 +1,5 @@
 import type { ProgressionSource } from "@core/logic/provided/services/gameplay-ports";
-import type { MapId } from "@db/maps-db";
+import type { MapId } from "@/db/maps/maps-db";
 import type { SkillId } from "@db/skills-db";
 import type { UnlockConditionList } from "@shared/types/unlocks";
 import { UnlockService } from "./UnlockService";

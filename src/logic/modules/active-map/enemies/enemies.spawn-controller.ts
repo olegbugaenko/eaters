@@ -1,5 +1,5 @@
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import type { MapEnemySpawnPointConfig, MapEnemySpawnTypeConfig } from "../../../../db/maps-db";
+import type { MapEnemySpawnPointConfig, MapEnemySpawnTypeConfig } from "../../../../db/maps/maps-db";
 import type { EnemyType } from "../../../../db/enemies-db";
 import type { EnemiesModule } from "./enemies.module";
 import type { EnemySpawnData } from "./enemies.types";

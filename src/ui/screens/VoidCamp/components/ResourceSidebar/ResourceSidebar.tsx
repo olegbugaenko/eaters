@@ -5,7 +5,7 @@ import { formatNumber } from "@ui-shared/format/number";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui/shared/useBridgeValue";
 import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
-import { getMapConfig, MapId } from "@db/maps-db";
+import { getMapConfig, MapId } from "@/db/maps/maps-db";
 import { useCallback } from "react";
 
 interface ResourceSidebarProps {

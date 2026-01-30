@@ -8,7 +8,7 @@ import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { EnemiesModule } from "../enemies/enemies.module";
 import { EnemySpawnController } from "../enemies/enemies.spawn-controller";
-import type { MapEnemySpawnPointConfig } from "../../../../db/maps-db";
+import type { MapEnemySpawnPointConfig } from "../../../../db/maps/maps-db";
 import type { EnemySpawnData } from "../enemies/enemies.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { ResourceRunController } from "./map.types";

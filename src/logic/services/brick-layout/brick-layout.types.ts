@@ -71,6 +71,7 @@ export interface BezierCurveWithBricksOptions {
   readonly spacing?: number;
   readonly sampleStep?: number;
   readonly rotationOffset?: number;
+  readonly thickness?: number;
 }
 
 export interface BezierTransformOptions {
@@ -142,3 +143,16 @@ export interface BrickSpacing {
   radial: number;
   tangential: number;
 }
+
+export type BezierSegment = {
+  start: SceneVector2;
+  control1: SceneVector2;
+  control2: SceneVector2;
+  end: SceneVector2;
+};
+
+export type CurveParams = {
+  segments: readonly BezierSegment[];
+  spacing: number;
+  thickness: number;
+};

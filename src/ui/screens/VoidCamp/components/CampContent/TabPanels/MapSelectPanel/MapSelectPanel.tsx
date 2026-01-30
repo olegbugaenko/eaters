@@ -4,7 +4,7 @@ import type {
   MouseEvent as ReactMouseEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { MapId, getMapConfig } from "@db/maps-db";
+import { MapId, getMapConfig } from "@/db/maps/maps-db";
 import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { classNames } from "@ui-shared/classNames";

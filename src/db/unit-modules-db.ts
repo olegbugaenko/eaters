@@ -1,5 +1,5 @@
 import { ResourceAmount } from "./resources-db";
-import type { MapId } from "./maps-db";
+import type { MapId } from "./maps/maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "@shared/types/unlocks";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";

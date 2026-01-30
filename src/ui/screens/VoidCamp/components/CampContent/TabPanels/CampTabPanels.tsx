@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapId, getMapConfig } from "@db/maps-db";
+import { MapId, getMapConfig } from "@/db/maps/maps-db";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { SkillTreeView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/ModulesWorkshop/ModulesWorkshopView";
