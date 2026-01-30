@@ -657,11 +657,12 @@ const advanceParticleEmitterStateGpu = <
 
   const origin = options.getOrigin(instance, config);
   
+  let gpuSpawnConfig: GpuSpawnConfig | null = null;
   const hasGpuSpawnProvider = typeof options.getGpuSpawnConfig === "function";
   // Check if GPU spawn is available
-  const gpuSpawnConfig = hasGpuSpawnProvider
-    ? options.getGpuSpawnConfig(instance, config)
-    : null;
+  if (hasGpuSpawnProvider) {
+    gpuSpawnConfig = options.getGpuSpawnConfig!(instance, config);
+  }
   const useGpuSpawn = gpuSpawnConfig !== null && gpuSpawnConfig !== undefined;
   
   let spawnParams: GpuSpawnParams | undefined;
@@ -679,7 +680,7 @@ const advanceParticleEmitterStateGpu = <
     if (gpu.handle) {
       gpu.handle.activeCount = 0;
     }
-  } else if (useGpuSpawn) {
+  } else if (useGpuSpawn && gpuSpawnConfig) {
     // GPU SPAWN PATH: No CPU slot tracking needed!
     // GPU shader handles slot availability via isActive flag
     const dampingWindow = Math.max(0, config.emissionDampingInterval ?? 0);
