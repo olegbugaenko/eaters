@@ -3,6 +3,7 @@ import adit from "./map-definitions/adit";
 import ancientPyramids from "./map-definitions/ancientPyramids";
 import bezierGrove from "./map-definitions/bezierGrove";
 import coil from "./map-definitions/coil";
+import coalConvoy from "./map-definitions/coalConvoy";
 import deadOak from "./map-definitions/deadOak";
 import deadlyTunnels from "./map-definitions/deadlyTunnels";
 import deathfulGuns from "./map-definitions/deathfulGuns";
@@ -64,6 +65,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   deathfulGuns,
   deadlyTunnels,
   encagedBeast,
+  coalConvoy,
   uranium_fields: uraniumFields,
 };
 

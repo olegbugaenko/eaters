@@ -34,6 +34,7 @@ export type MapId =
   | "deathfulGuns"
   | "deadlyTunnels"
   | "encagedBeast"
+  | "coalConvoy"
   | "uranium_fields";
 
 export interface MapBrickGeneratorOptions {
