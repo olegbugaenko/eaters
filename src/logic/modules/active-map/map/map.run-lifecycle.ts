@@ -9,6 +9,7 @@ import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { EnemiesModule } from "../enemies/enemies.module";
 import { EnemySpawnController } from "../enemies/enemies.spawn-controller";
 import type { MapEnemySpawnPointConfig } from "../../../../db/maps/maps-db";
+import type { MapVisualEffectsConfig } from "../../../../db/maps/maps-db.types";
 import type { EnemySpawnData } from "../enemies/enemies.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { ResourceRunController } from "./map.types";
@@ -43,6 +44,7 @@ interface StartRunPayload {
   generateUnits: boolean;
   generateEnemies: boolean;
   mapEffects: readonly MapEffectId[];
+  visualEffects?: MapVisualEffectsConfig;
 }
 
 export class MapRunLifecycle {
@@ -90,6 +92,7 @@ export class MapRunLifecycle {
     this.options.unitsAutomation.onMapStart();
     this.options.scene.setMapSize(payload.sceneSize);
     this.options.visuals.reset();
+    this.options.visuals.setVisualEffects(payload.visualEffects ?? null);
     this.options.visuals.clearPendingFocus();
     this.options.playerUnits.prepareForMap();
     this.options.bricks.setBricks(payload.generateBricks ? payload.bricks : []);

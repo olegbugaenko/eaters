@@ -115,6 +115,11 @@ export interface GpuSpawnConfig {
   direction: number;
   spread: number;
   radialVelocity: boolean;
+  spawnShape?: "circle" | "rect";
+  spawnRectMin?: SceneVector2;
+  spawnRectMax?: SceneVector2;
+  cullRectMin?: SceneVector2;
+  cullRectMax?: SceneVector2;
 }
 
 export interface ParticleEmitterPrimitiveOptions<
@@ -248,6 +253,12 @@ interface ParticleSimulationProgram {
     direction: WebGLUniformLocation | null;
     spread: WebGLUniformLocation | null;
     radialVelocity: WebGLUniformLocation | null;
+    spawnShape: WebGLUniformLocation | null;
+    spawnRectMin: WebGLUniformLocation | null;
+    spawnRectMax: WebGLUniformLocation | null;
+    cullEnabled: WebGLUniformLocation | null;
+    cullMin: WebGLUniformLocation | null;
+    cullMax: WebGLUniformLocation | null;
   };
 }
 
@@ -660,34 +671,46 @@ const advanceParticleEmitterStateGpu = <
       dampingWindow > 0 && Number.isFinite(emissionDuration)
         ? spawnRate * clamp01(Math.max(0, emissionDuration - state.ageMs) / dampingWindow)
         : spawnRate;
-    let desiredSpawnCount = Math.min(
+    const desiredSpawnCount = Math.min(
       effectiveSpawnRate * activeDelta,
       state.capacity // Can't spawn more than capacity
     );
 
-    if (desiredSpawnCount > 0) {
-      //if(instance.type === "explosion" && config.emissionDampingInterval){
-        // desiredSpawnCount = 0.1;
-        // console.log(`emissionDampingInterval[${instance.id}]`, state.ageMs, desiredSpawnCount, state.capacity);
-      //}
-      spawnParams = {
-        emitterPosition: origin,
-        emitterRotation: instance.data.rotation ?? 0,
-        spawnStartIndex: state.capacity, // Pass capacity for probability calculation
-        spawnCount: desiredSpawnCount,
-        particleLifetime: config.particleLifetimeMs,
-        baseSpeed: gpuSpawnConfig.baseSpeed,
-        speedVariation: gpuSpawnConfig.speedVariation,
-        sizeMin: gpuSpawnConfig.sizeMin,
-        sizeMax: gpuSpawnConfig.sizeMax,
-        spawnRadiusMin: gpuSpawnConfig.spawnRadiusMin,
-        spawnRadiusMax: gpuSpawnConfig.spawnRadiusMax,
-        arc: gpuSpawnConfig.arc,
-        direction: gpuSpawnConfig.direction,
-        spread: gpuSpawnConfig.spread,
-        radialVelocity: gpuSpawnConfig.radialVelocity,
-      };
-    }
+    const spawnShape = gpuSpawnConfig.spawnShape === "rect" ? 1 : 0;
+    const spawnRectMin = gpuSpawnConfig.spawnRectMin ?? origin;
+    const spawnRectMax = gpuSpawnConfig.spawnRectMax ?? origin;
+    const cullMin = gpuSpawnConfig.cullRectMin ?? origin;
+    const cullMax = gpuSpawnConfig.cullRectMax ?? origin;
+    const cullEnabled =
+      Boolean(gpuSpawnConfig.cullRectMin) && Boolean(gpuSpawnConfig.cullRectMax);
+
+    //if(instance.type === "explosion" && config.emissionDampingInterval){
+    // desiredSpawnCount = 0.1;
+    // console.log(`emissionDampingInterval[${instance.id}]`, state.ageMs, desiredSpawnCount, state.capacity);
+    //}
+    spawnParams = {
+      emitterPosition: origin,
+      emitterRotation: instance.data.rotation ?? 0,
+      spawnStartIndex: state.capacity, // Pass capacity for probability calculation
+      spawnCount: desiredSpawnCount,
+      particleLifetime: config.particleLifetimeMs,
+      baseSpeed: gpuSpawnConfig.baseSpeed,
+      speedVariation: gpuSpawnConfig.speedVariation,
+      sizeMin: gpuSpawnConfig.sizeMin,
+      sizeMax: gpuSpawnConfig.sizeMax,
+      spawnRadiusMin: gpuSpawnConfig.spawnRadiusMin,
+      spawnRadiusMax: gpuSpawnConfig.spawnRadiusMax,
+      arc: gpuSpawnConfig.arc,
+      direction: gpuSpawnConfig.direction,
+      spread: gpuSpawnConfig.spread,
+      radialVelocity: gpuSpawnConfig.radialVelocity,
+      spawnShape,
+      spawnRectMin,
+      spawnRectMax,
+      cullEnabled,
+      cullMin,
+      cullMax,
+    };
 
     // No accumulator in GPU spawn path; probability-based spawn uses fractional counts directly.
     state.spawnAccumulator = 0;
@@ -983,6 +1006,12 @@ uniform float u_arc;
 uniform float u_direction;
 uniform float u_spread;
 uniform float u_radialVelocity;  // 0.0 or 1.0
+uniform float u_spawnShape;      // 0.0 = circle, 1.0 = rect
+uniform vec2 u_spawnRectMin;
+uniform vec2 u_spawnRectMax;
+uniform float u_cullEnabled;     // 0.0 or 1.0
+uniform vec2 u_cullMin;
+uniform vec2 u_cullMax;
 
 out vec2 v_position;
 out vec2 v_velocity;
@@ -1051,12 +1080,17 @@ void main() {
         spawnAngle = u_direction + arcOffset;
       }
       
-      // Random spawn radius
-      float spawnRadius =
-        randRangeLegacy(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
-      
-      // Calculate spawn position
-      position = u_emitterPosition + vec2(cos(spawnAngle), sin(spawnAngle)) * spawnRadius;
+      if (u_spawnShape > 0.5) {
+        // Rectangle spawn
+        float spawnX = randRangeLegacy(particleId, 3, u_spawnRectMin.x, u_spawnRectMax.x);
+        float spawnY = randRangeLegacy(particleId, 4, u_spawnRectMin.y, u_spawnRectMax.y);
+        position = vec2(spawnX, spawnY);
+      } else {
+        // Radial spawn
+        float spawnRadius =
+          randRangeLegacy(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
+        position = u_emitterPosition + vec2(cos(spawnAngle), sin(spawnAngle)) * spawnRadius;
+      }
       
       // Calculate velocity direction
       float velocityAngle;
@@ -1068,6 +1102,18 @@ void main() {
       }
       
       velocity = vec2(cos(velocityAngle), sin(velocityAngle)) * speed;
+    }
+  }
+
+  if (u_cullEnabled > 0.5 && isActive > 0.5) {
+    if (
+      position.x < u_cullMin.x ||
+      position.y < u_cullMin.y ||
+      position.x > u_cullMax.x ||
+      position.y > u_cullMax.y
+    ) {
+      isActive = 0.0;
+      age = 0.0;
     }
   }
 
@@ -1120,6 +1166,12 @@ interface GpuSpawnParams {
   direction: number;
   spread: number;
   radialVelocity: boolean;
+  spawnShape: number;
+  spawnRectMin: { x: number; y: number };
+  spawnRectMax: { x: number; y: number };
+  cullEnabled: boolean;
+  cullMin: { x: number; y: number };
+  cullMax: { x: number; y: number };
 }
 
 const stepParticleSimulation = (
@@ -1140,7 +1192,7 @@ const stepParticleSimulation = (
   
   // GPU spawn uniforms
   const u = program.uniforms;
-  if (spawnParams && spawnParams.spawnCount > 0) {
+  if (spawnParams) {
     if (u.emitterPosition) {
       gl.uniform2f(u.emitterPosition, spawnParams.emitterPosition.x, spawnParams.emitterPosition.y);
     }
@@ -1180,10 +1232,31 @@ const stepParticleSimulation = (
     if (u.radialVelocity) {
       gl.uniform1f(u.radialVelocity, spawnParams.radialVelocity ? 1.0 : 0.0);
     }
+    if (u.spawnShape) {
+      gl.uniform1f(u.spawnShape, spawnParams.spawnShape);
+    }
+    if (u.spawnRectMin) {
+      gl.uniform2f(u.spawnRectMin, spawnParams.spawnRectMin.x, spawnParams.spawnRectMin.y);
+    }
+    if (u.spawnRectMax) {
+      gl.uniform2f(u.spawnRectMax, spawnParams.spawnRectMax.x, spawnParams.spawnRectMax.y);
+    }
+    if (u.cullEnabled) {
+      gl.uniform1f(u.cullEnabled, spawnParams.cullEnabled ? 1.0 : 0.0);
+    }
+    if (u.cullMin) {
+      gl.uniform2f(u.cullMin, spawnParams.cullMin.x, spawnParams.cullMin.y);
+    }
+    if (u.cullMax) {
+      gl.uniform2f(u.cullMax, spawnParams.cullMax.x, spawnParams.cullMax.y);
+    }
   } else {
     // No spawn this frame
     if (u.spawnCount) {
       gl.uniform1f(u.spawnCount, 0);
+    }
+    if (u.cullEnabled) {
+      gl.uniform1f(u.cullEnabled, 0);
     }
   }
   
@@ -1296,6 +1369,12 @@ const getSimulationProgram = (
     direction: gl.getUniformLocation(program, "u_direction"),
     spread: gl.getUniformLocation(program, "u_spread"),
     radialVelocity: gl.getUniformLocation(program, "u_radialVelocity"),
+    spawnShape: gl.getUniformLocation(program, "u_spawnShape"),
+    spawnRectMin: gl.getUniformLocation(program, "u_spawnRectMin"),
+    spawnRectMax: gl.getUniformLocation(program, "u_spawnRectMax"),
+    cullEnabled: gl.getUniformLocation(program, "u_cullEnabled"),
+    cullMin: gl.getUniformLocation(program, "u_cullMin"),
+    cullMax: gl.getUniformLocation(program, "u_cullMax"),
   };
 
   const programInfo: ParticleSimulationProgram = {
