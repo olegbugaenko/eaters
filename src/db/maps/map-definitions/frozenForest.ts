@@ -2,6 +2,7 @@ import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scen
 import { circleWithBricks } from "../../../logic/services/brick-layout/BrickLayoutService";
 import { brickTreeDeterministic } from "../helpers/bush-helper";
 import type { MapConfig } from "../maps-db.types";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 
 const mapConfig = (() => {
   const size: SceneSize = { width: 1500, height: 1500 };
@@ -50,15 +51,23 @@ const mapConfig = (() => {
     visualEffects: {
       snowfall: {
         emitter: {
-          particlesPerSecond: 180,
-          particleLifetimeMs: 5200,
+          particlesPerSecond: 80,
+          particleLifetimeMs: 15200,
           fadeStartMs: 4200,
           fadeInMs: 200,
-          sizeRange: { min: 0.8, max: 2.4 },
+          sizeRange: { min: 2.8, max: 15.4 },
           color: { r: 0.95, g: 0.98, b: 1, a: 0.9 },
+          fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            start: { x: 0, y: 0 },
+            stops: [
+              { offset: 0, color: { r: 0.95, g: 0.98, b: 1, a: 0.9 } },
+              { offset: 1, color: { r: 0.95, g: 0.98, b: 1, a: 0.1 } },
+            ],
+          },
           shape: "circle",
-          baseSpeed: 0.03,
-          speedVariation: 0.02,
+          baseSpeed: 0.1,
+          speedVariation: 0.025,
           direction: Math.PI / 2,
           spread: Math.PI / 10,
           maxParticles: 700,
