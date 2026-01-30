@@ -32,10 +32,10 @@ const mapConfig = (() => {
     lockedForDemo: true,
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
-      const ironLevel = baseLevel;
+      const ironLevel = baseLevel + 1;
 
       const wagonStartX = 100;
-      const wagonEndX = center.x + 100;
+      const wagonEndX = center.x + 150;
       const wagonWidth = wagonEndX - wagonStartX;
       const wagonTopY = center.y - 70;
       const wagonBottomY = center.y + 70;
@@ -43,7 +43,7 @@ const mapConfig = (() => {
       const frameThickness = 30;
 
       const coalBaseY = wagonBottomY - frameThickness;
-      const coalPeakY = wagonTopY - 90;
+      const coalPeakY = wagonTopY - 190;
       const coalPeakX = wagonStartX + wagonWidth * 0.62;
 
       const coalOutline = [
@@ -75,7 +75,7 @@ const mapConfig = (() => {
           sampleStep: 12,
           alignToEdge: true,
         },
-        { level: baseLevel },
+        { level: baseLevel + 1 },
       );
 
       const wagonFrame = polygonWithBricks(
@@ -163,7 +163,7 @@ const mapConfig = (() => {
       ];
 
       const cabWidth = 170;
-      const cabHeight = 120;
+      const cabHeight = 220;
       const cabBottomY = wagonBottomY - 5;
       const cabTopY = cabBottomY - cabHeight;
       const cabX = tractorRearWheelX - cabWidth / 2;
@@ -172,6 +172,14 @@ const mapConfig = (() => {
         "compactIron",
         {
           vertices: createRectangle(cabX, cabTopY, cabWidth, cabHeight),
+          holes: [
+            createRectangle(
+              cabX + 30,
+              cabTopY + 30,
+              cabWidth - 40,
+              cabHeight - 120,
+            ),
+          ],
         },
         { level: ironLevel },
       );
@@ -179,7 +187,7 @@ const mapConfig = (() => {
       const hoodBackX = cabX + cabWidth;
       const hoodFrontX = tractorEndX - 20;
       const hoodBottomY = cabBottomY + 8;
-      const hoodTopY = cabBottomY - 45;
+      const hoodTopY = cabBottomY - 75;
 
       const tractorHood = polygonWithBricks(
         "compactIron",
