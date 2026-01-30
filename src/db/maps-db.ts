@@ -1638,7 +1638,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
     const size: SceneSize = { width: 1400, height: 1200 };
     const centerX = size.width / 2;
     const groundY = size.height - 180;
-    const spawnPoint: SceneVector2 = { x: 240, y: 240 };
+    const spawnPoint: SceneVector2 = { x: 140, y: 140 };
 
     return {
       name: "Dead Oak",
@@ -1650,8 +1650,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
         const baseLevel = Math.max(0, Math.floor(mapLevel));
         const woodLevel = baseLevel + 1;
         const trunkTopY = groundY - 520;
-        const trunkWidthBase = 190;
-        const trunkWidthTop = 110;
+        const trunkWidthBase = 170;
+        const trunkWidthTop = 90;
 
         const trunkOutline = [
           {
@@ -1693,148 +1693,73 @@ const MAPS_DB: Record<MapId, MapConfig> = {
 
         const leftMainSegments = [
           {
-            start: { x: centerX - 40, y: trunkTopY + 140 },
-            control1: { x: centerX - 160, y: trunkTopY + 60 },
-            control2: { x: centerX - 300, y: trunkTopY - 40 },
-            end: { x: centerX - 420, y: trunkTopY - 150 },
-          },
-          {
-            start: { x: centerX - 420, y: trunkTopY - 150 },
-            control1: { x: centerX - 470, y: trunkTopY - 230 },
-            control2: { x: centerX - 520, y: trunkTopY - 300 },
-            end: { x: centerX - 560, y: trunkTopY - 360 },
+            start: { x: centerX - 40, y: trunkTopY + 240 },
+            control1: { x: centerX - 160, y: trunkTopY + 160 },
+            control2: { x: centerX - 300, y: trunkTopY + 100 },
+            end: { x: centerX - 360, y: trunkTopY + 80 },
           },
         ] as const;
 
         const rightMainSegments = [
           {
-            start: { x: centerX + 40, y: trunkTopY + 140 },
-            control1: { x: centerX + 160, y: trunkTopY + 60 },
-            control2: { x: centerX + 300, y: trunkTopY - 40 },
-            end: { x: centerX + 420, y: trunkTopY - 150 },
-          },
+            start: { x: centerX + 40, y: trunkTopY + 240 },
+            control1: { x: centerX + 160, y: trunkTopY + 160 },
+            control2: { x: centerX + 300, y: trunkTopY + 100 },
+            end: { x: centerX + 360, y: trunkTopY + 80 },
+          }
+        ] as const;
+
+        const leftMainBottomSegments = [
           {
-            start: { x: centerX + 420, y: trunkTopY - 150 },
-            control1: { x: centerX + 470, y: trunkTopY - 230 },
-            control2: { x: centerX + 520, y: trunkTopY - 310 },
-            end: { x: centerX + 560, y: trunkTopY - 370 },
+            start: { x: centerX - 360, y: trunkTopY + 90 },
+            control1: { x: centerX - 410, y: trunkTopY + 90 },
+            control2: { x: centerX - 490, y: trunkTopY + 130 },
+            end: { x: centerX - 610, y: trunkTopY + 150 },
           },
         ] as const;
 
-        const topSegments = [
+        const rightMainBottomSegments = [
           {
-            start: { x: centerX - 20, y: trunkTopY + 60 },
-            control1: { x: centerX - 60, y: trunkTopY - 80 },
-            control2: { x: centerX + 30, y: trunkTopY - 220 },
-            end: { x: centerX - 10, y: trunkTopY - 340 },
+            start: { x: centerX + 360, y: trunkTopY + 90 },
+            control1: { x: centerX + 410, y: trunkTopY + 90 },
+            control2: { x: centerX + 490, y: trunkTopY + 130 },
+            end: { x: centerX + 610, y: trunkTopY + 150 },
           },
         ] as const;
 
-        const leftTwigSegments = [
+        const leftMainTopSegments = [
           {
-            start: { x: centerX - 260, y: trunkTopY - 60 },
-            control1: { x: centerX - 320, y: trunkTopY - 140 },
-            control2: { x: centerX - 400, y: trunkTopY - 230 },
-            end: { x: centerX - 470, y: trunkTopY - 260 },
+            start: { x: centerX - 360, y: trunkTopY + 70 },
+            control1: { x: centerX - 410, y: trunkTopY + 40 },
+            control2: { x: centerX - 490, y: trunkTopY + 40 },
+            end: { x: centerX - 610, y: trunkTopY - 50 },
           },
         ] as const;
 
-        const rightTwigSegments = [
+        const rightMainTopSegments = [
           {
-            start: { x: centerX + 260, y: trunkTopY - 60 },
-            control1: { x: centerX + 320, y: trunkTopY - 140 },
-            control2: { x: centerX + 400, y: trunkTopY - 230 },
-            end: { x: centerX + 470, y: trunkTopY - 260 },
+            start: { x: centerX + 360, y: trunkTopY + 70 },
+            control1: { x: centerX + 410, y: trunkTopY + 40 },
+            control2: { x: centerX + 490, y: trunkTopY + 40 },
+            end: { x: centerX + 610, y: trunkTopY - 50 },
           },
         ] as const;
 
-        const lowerLeftTwigSegments = [
+        const leftUpperBranchSegments =[
           {
-            start: { x: centerX - 110, y: trunkTopY + 210 },
-            control1: { x: centerX - 200, y: trunkTopY + 190 },
-            control2: { x: centerX - 280, y: trunkTopY + 140 },
-            end: { x: centerX - 360, y: trunkTopY + 120 },
+            start: { x: centerX - 10, y: trunkTopY - 10 },
+            control1: { x: centerX - 210, y: trunkTopY - 140 },
+            control2: { x: centerX - 390, y: trunkTopY - 170 },
+            end: { x: centerX - 550, y: trunkTopY - 200 },
           },
         ] as const;
 
-        const lowerRightTwigSegments = [
+        const rightUpperBranchSegments = [
           {
-            start: { x: centerX + 110, y: trunkTopY + 210 },
-            control1: { x: centerX + 200, y: trunkTopY + 190 },
-            control2: { x: centerX + 280, y: trunkTopY + 140 },
-            end: { x: centerX + 360, y: trunkTopY + 120 },
-          },
-        ] as const;
-
-        const upperLeftSegments = [
-          {
-            start: { x: centerX - 120, y: trunkTopY - 80 },
-            control1: { x: centerX - 200, y: trunkTopY - 140 },
-            control2: { x: centerX - 280, y: trunkTopY - 240 },
-            end: { x: centerX - 360, y: trunkTopY - 320 },
-          },
-        ] as const;
-
-        const upperRightSegments = [
-          {
-            start: { x: centerX + 120, y: trunkTopY - 80 },
-            control1: { x: centerX + 200, y: trunkTopY - 140 },
-            control2: { x: centerX + 280, y: trunkTopY - 240 },
-            end: { x: centerX + 360, y: trunkTopY - 320 },
-          },
-        ] as const;
-
-        const leftSideBranchSegments = [
-          {
-            start: { x: centerX - 300, y: trunkTopY - 110 },
-            control1: { x: centerX - 360, y: trunkTopY - 140 },
-            control2: { x: centerX - 420, y: trunkTopY - 180 },
-            end: { x: centerX - 470, y: trunkTopY - 200 },
-          },
-        ] as const;
-
-        const rightSideBranchSegments = [
-          {
-            start: { x: centerX + 300, y: trunkTopY - 110 },
-            control1: { x: centerX + 360, y: trunkTopY - 140 },
-            control2: { x: centerX + 420, y: trunkTopY - 180 },
-            end: { x: centerX + 470, y: trunkTopY - 200 },
-          },
-        ] as const;
-
-        const topLeftTwigSegments = [
-          {
-            start: { x: centerX - 40, y: trunkTopY - 240 },
-            control1: { x: centerX - 100, y: trunkTopY - 280 },
-            control2: { x: centerX - 140, y: trunkTopY - 340 },
-            end: { x: centerX - 180, y: trunkTopY - 400 },
-          },
-        ] as const;
-
-        const topRightTwigSegments = [
-          {
-            start: { x: centerX + 40, y: trunkTopY - 240 },
-            control1: { x: centerX + 100, y: trunkTopY - 280 },
-            control2: { x: centerX + 140, y: trunkTopY - 340 },
-            end: { x: centerX + 180, y: trunkTopY - 400 },
-          },
-        ] as const;
-
-        const farLeftTwigSegments = [
-          {
-            start: { x: centerX - 520, y: trunkTopY - 300 },
-            control1: { x: centerX - 580, y: trunkTopY - 340 },
-            control2: { x: centerX - 620, y: trunkTopY - 380 },
-            end: { x: centerX - 660, y: trunkTopY - 430 },
-          },
-        ] as const;
-
-        const farRightTwigSegments = [
-          {
-            start: { x: centerX + 520, y: trunkTopY - 300 },
-            control1: { x: centerX + 580, y: trunkTopY - 340 },
-            control2: { x: centerX + 620, y: trunkTopY - 380 },
-            end: { x: centerX + 660, y: trunkTopY - 430 },
+            start: { x: centerX + 10, y: trunkTopY - 10 },
+            control1: { x: centerX + 210, y: trunkTopY - 140 },
+            control2: { x: centerX + 390, y: trunkTopY - 170 },
+            end: { x: centerX + 550, y: trunkTopY - 200 },
           },
         ] as const;
 
@@ -1843,7 +1768,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             segments: leftMainSegments,
             spacing: 26,
-            thickness: 80,
+            thickness: 60,
           },
           { level: woodLevel },
         );
@@ -1853,137 +1778,66 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           {
             segments: rightMainSegments,
             spacing: 26,
-            thickness: 80,
-          },
-          { level: woodLevel },
-        );
-
-        const topBranch = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: topSegments,
-            spacing: 24,
             thickness: 60,
           },
           { level: woodLevel },
         );
 
-        const leftTwig = bezierCurveWithBricks(
+        const leftMainBranchBottom = bezierCurveWithBricks(
           "smallWood",
           {
-            segments: leftTwigSegments,
-            spacing: 22,
-            thickness: 34,
+            segments: leftMainBottomSegments,
+            spacing: 26,
+            thickness: 40,
           },
           { level: woodLevel },
         );
 
-        const rightTwig = bezierCurveWithBricks(
+        const rightMainBranchBottom = bezierCurveWithBricks(
           "smallWood",
           {
-            segments: rightTwigSegments,
-            spacing: 22,
-            thickness: 34,
+            segments: rightMainBottomSegments,
+            spacing: 26,
+            thickness: 40,
           },
           { level: woodLevel },
         );
 
-        const lowerLeftTwig = bezierCurveWithBricks(
+        const leftMainBranchTop = bezierCurveWithBricks(
           "smallWood",
           {
-            segments: lowerLeftTwigSegments,
-            spacing: 22,
+            segments: leftMainTopSegments,
+            spacing: 26,
+            thickness: 40,
+          },
+          { level: woodLevel },
+        );
+        const rightMainBranchTop = bezierCurveWithBricks(
+          "smallWood",
+          {
+            segments: rightMainTopSegments,
+            spacing: 26,
+            thickness: 40,
+          },
+          { level: woodLevel },
+        );
+
+        const leftUpperBranch = bezierCurveWithBricks(
+          "smallWood",
+          {
+            segments: leftUpperBranchSegments,
+            spacing: 26,
             thickness: 30,
           },
           { level: woodLevel },
         );
 
-        const lowerRightTwig = bezierCurveWithBricks(
+        const rightUpperBranch = bezierCurveWithBricks(
           "smallWood",
           {
-            segments: lowerRightTwigSegments,
-            spacing: 22,
+            segments: rightUpperBranchSegments,
+            spacing: 26,
             thickness: 30,
-          },
-          { level: woodLevel },
-        );
-
-        const upperLeftBranch = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: upperLeftSegments,
-            spacing: 22,
-            thickness: 42,
-          },
-          { level: woodLevel },
-        );
-
-        const upperRightBranch = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: upperRightSegments,
-            spacing: 22,
-            thickness: 42,
-          },
-          { level: woodLevel },
-        );
-
-        const leftSideBranch = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: leftSideBranchSegments,
-            spacing: 20,
-            thickness: 28,
-          },
-          { level: woodLevel },
-        );
-
-        const rightSideBranch = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: rightSideBranchSegments,
-            spacing: 20,
-            thickness: 28,
-          },
-          { level: woodLevel },
-        );
-
-        const topLeftTwig = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: topLeftTwigSegments,
-            spacing: 20,
-            thickness: 22,
-          },
-          { level: woodLevel },
-        );
-
-        const topRightTwig = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: topRightTwigSegments,
-            spacing: 20,
-            thickness: 22,
-          },
-          { level: woodLevel },
-        );
-
-        const farLeftTwig = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: farLeftTwigSegments,
-            spacing: 18,
-            thickness: 18,
-          },
-          { level: woodLevel },
-        );
-
-        const farRightTwig = bezierCurveWithBricks(
-          "smallWood",
-          {
-            segments: farRightTwigSegments,
-            spacing: 18,
-            thickness: 18,
           },
           { level: woodLevel },
         );
@@ -2030,20 +1884,183 @@ const MAPS_DB: Record<MapId, MapConfig> = {
           trunk,
           leftMainBranch,
           rightMainBranch,
-          topBranch,
-          leftTwig,
-          rightTwig,
-          lowerLeftTwig,
-          lowerRightTwig,
-          upperLeftBranch,
-          upperRightBranch,
-          leftSideBranch,
-          rightSideBranch,
-          topLeftTwig,
-          topRightTwig,
-          farLeftTwig,
-          farRightTwig,
+          leftMainBranchBottom,
+          rightMainBranchBottom,
+          leftMainBranchTop,
+          rightMainBranchTop,
+          leftUpperBranch,
+          rightUpperBranch,
           roots,
+         bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX - 10, y: trunkTopY - 10 },
+                  control1: { x: centerX - 30, y: trunkTopY - 70 },
+                  control2: { x: centerX - 50, y: trunkTopY - 110 },
+                  end: { x: centerX - 50, y: trunkTopY - 140 },
+                },
+                {
+                  start: { x: centerX - 50, y: trunkTopY - 140 },
+                  control1: { x: centerX - 90, y: trunkTopY - 160 },
+                  control2: { x: centerX - 150, y: trunkTopY - 190 },
+                  end: { x: centerX - 210, y: trunkTopY - 230 },
+                },
+                {
+                  start: { x: centerX - 210, y: trunkTopY - 230 },
+                  control1: { x: centerX - 250, y: trunkTopY - 250 },
+                  control2: { x: centerX - 280, y: trunkTopY - 280 },
+                  end: { x: centerX - 310, y: trunkTopY - 360 },
+                },
+                
+              ],
+              spacing: 26,
+              thickness: 28,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX + 10, y: trunkTopY - 10 },
+                  control1: { x: centerX + 30, y: trunkTopY - 70 },
+                  control2: { x: centerX + 50, y: trunkTopY - 110 },
+                  end: { x: centerX + 50, y: trunkTopY - 140 },
+                },
+                {
+                  start: { x: centerX + 50, y: trunkTopY - 140 },
+                  control1: { x: centerX + 90, y: trunkTopY - 160 },
+                  control2: { x: centerX + 150, y: trunkTopY - 190 },
+                  end: { x: centerX + 210, y: trunkTopY - 230 },
+                },
+                {
+                  start: { x: centerX + 210, y: trunkTopY - 230 },
+                  control1: { x: centerX + 250, y: trunkTopY - 250 },
+                  control2: { x: centerX + 280, y: trunkTopY - 280 },
+                  end: { x: centerX + 310, y: trunkTopY - 360 },
+                },
+                
+              ],
+              spacing: 26,
+              thickness: 28,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX - 50, y: trunkTopY - 140 },
+                  control1: { x: centerX - 60, y: trunkTopY - 210 },
+                  control2: { x: centerX - 120, y: trunkTopY - 240 },
+                  end: { x: centerX - 130, y: trunkTopY - 390 },
+                },
+              ],
+              spacing: 26,
+              thickness: 20,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX + 50, y: trunkTopY - 140 },
+                  control1: { x: centerX + 60, y: trunkTopY - 210 },
+                  control2: { x: centerX + 120, y: trunkTopY - 240 },
+                  end: { x: centerX + 130, y: trunkTopY - 390 },
+                },
+              ],
+              spacing: 26,
+              thickness: 20,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX + 50, y: trunkTopY - 140 },
+                  control1: { x: centerX + 10, y: trunkTopY - 210 },
+                  control2: { x: centerX - 30, y: trunkTopY - 240 },
+                  end: { x: centerX - 10, y: trunkTopY - 390 },
+                },
+              ],
+              spacing: 26,
+              thickness: 20,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX + 150, y: trunkTopY + 210 },
+                  control1: { x: centerX + 190, y: trunkTopY + 240 },
+                  control2: { x: centerX + 320, y: trunkTopY + 270 },
+                  end: { x: centerX + 430, y: trunkTopY + 300 },
+                },
+              ],
+              spacing: 26,
+              thickness: 20,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX - 150, y: trunkTopY + 210 },
+                  control1: { x: centerX - 190, y: trunkTopY + 240 },
+                  control2: { x: centerX - 320, y: trunkTopY + 270 },
+                  end: { x: centerX - 430, y: trunkTopY + 300 },
+                },
+              ],
+              spacing: 26,
+              thickness: 20,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX + 150, y: trunkTopY - 70 },
+                  control1: { x: centerX + 250, y: trunkTopY - 90 },
+                  control2: { x: centerX + 320, y: trunkTopY - 60 },
+                  end: { x: centerX + 460, y: trunkTopY - 80 },
+                },
+              ],
+              spacing: 26,
+              thickness: 20,
+            },
+            { level: woodLevel },
+          ),
+          bezierCurveWithBricks(
+            "smallWood",
+            {
+              segments: [
+                {
+                  start: { x: centerX - 150, y: trunkTopY - 70 },
+                  control1: { x: centerX - 250, y: trunkTopY - 90 },
+                  control2: { x: centerX - 320, y: trunkTopY - 60 },
+                  end: { x: centerX - 460, y: trunkTopY - 80 },
+                },
+              ],
+              spacing: 26,
+              thickness: 20,
+            },
+            { level: woodLevel },
+          ),
         ];
       },
       playerUnits: [
