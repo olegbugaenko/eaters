@@ -15,6 +15,7 @@ import { PersistentAoeSpellRenderer } from "./implementations/persistent-aoe-spe
 import { ScreenOverlayRenderer } from "./implementations/screen-overlay";
 import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 import { SpellAreaHighlightRenderer } from "./implementations/spell-area-highlight/SpellAreaHighlightRenderer";
+import { SnowfallObjectRenderer } from "./implementations/snowfall/SnowfallObjectRenderer";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export { TiedObjectsRegistry } from "./TiedObjectsRegistry";
@@ -61,6 +62,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["sandStorm", new SandStormRenderer()],
     ["spellPersistentAoe", new PersistentAoeSpellRenderer()],
     ["spellAreaHighlight", new SpellAreaHighlightRenderer()],
+    ["snowfall", new SnowfallObjectRenderer()],
     ["screenOverlay", new ScreenOverlayRenderer()],
   ]);
   const tiedObjectsRegistry = new TiedObjectsRegistry();

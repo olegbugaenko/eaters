@@ -47,6 +47,30 @@ const mapConfig = (() => {
     nodePosition: { x: 3, y: -1 },
     icon: "frozen_forest.png",
     lockedForDemo: true,
+    visualEffects: {
+      snowfall: {
+        emitter: {
+          particlesPerSecond: 180,
+          particleLifetimeMs: 5200,
+          fadeStartMs: 4200,
+          fadeInMs: 200,
+          sizeRange: { min: 0.8, max: 2.4 },
+          color: { r: 0.95, g: 0.98, b: 1, a: 0.9 },
+          shape: "circle",
+          baseSpeed: 0.03,
+          speedVariation: 0.02,
+          direction: Math.PI / 2,
+          spread: Math.PI / 10,
+          maxParticles: 700,
+        },
+        spawnArea: {
+          height: 160,
+          horizontalPadding: 220,
+          topOffset: 0,
+        },
+        cullPadding: 220,
+      },
+    },
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const iceLevel = baseLevel;

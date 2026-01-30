@@ -7,6 +7,7 @@ import type { SkillId } from "../skills-db";
 import type { AchievementId } from "../achievements-db";
 import type { MapEffectId } from "../map-effects-db";
 import type { BrickShapeBlueprint } from "../../logic/services/brick-layout/BrickLayoutService";
+import type { ParticleEmitterConfig } from "../../logic/interfaces/visuals/particle-emitters-config";
 
 export type MapId =
   | "tutorialZone"
@@ -81,6 +82,7 @@ export interface MapConfig {
   readonly enemySpawnPoints?: readonly MapEnemySpawnPointConfig[];
   readonly enemies?: MapEnemyGenerator;
   readonly mapEffects?: readonly MapEffectId[];
+  readonly visualEffects?: MapVisualEffectsConfig;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly icon?: string;
   readonly nodePosition: MapNodePosition;
@@ -101,4 +103,20 @@ export interface MapListEntry {
 export interface MapPlayerUnitConfig {
   readonly type: PlayerUnitType;
   readonly position: SceneVector2;
+}
+
+export interface MapSnowfallSpawnArea {
+  readonly height: number;
+  readonly horizontalPadding: number;
+  readonly topOffset?: number;
+}
+
+export interface MapSnowfallEffectConfig {
+  readonly emitter: ParticleEmitterConfig;
+  readonly spawnArea?: MapSnowfallSpawnArea;
+  readonly cullPadding?: number;
+}
+
+export interface MapVisualEffectsConfig {
+  readonly snowfall?: MapSnowfallEffectConfig;
 }

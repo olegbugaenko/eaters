@@ -546,6 +546,7 @@ export class MapModule implements GameModule {
       generateUnits,
       generateEnemies,
       mapEffects: config.mapEffects ?? [],
+      visualEffects: config.visualEffects,
     });
 
     this.pushSelectedMap();
