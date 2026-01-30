@@ -657,13 +657,29 @@ const advanceParticleEmitterStateGpu = <
 
   const origin = options.getOrigin(instance, config);
   
+  const hasGpuSpawnProvider = typeof options.getGpuSpawnConfig === "function";
   // Check if GPU spawn is available
-  const gpuSpawnConfig = options.getGpuSpawnConfig?.(instance, config);
+  const gpuSpawnConfig = hasGpuSpawnProvider
+    ? options.getGpuSpawnConfig(instance, config)
+    : null;
   const useGpuSpawn = gpuSpawnConfig !== null && gpuSpawnConfig !== undefined;
   
   let spawnParams: GpuSpawnParams | undefined;
   
-  if (useGpuSpawn) {
+  if (hasGpuSpawnProvider && !useGpuSpawn) {
+    if (!state.warnedCpuSpawnFallback) {
+      console.error(
+        "[ParticleEmitter] GPU spawn config missing in GPU mode. " +
+          "CPU fallback is disabled. " +
+          `shape=${config.shape}, particlesPerSecond=${config.particlesPerSecond}`
+      );
+      state.warnedCpuSpawnFallback = true;
+    }
+    state.spawnAccumulator = 0;
+    if (gpu.handle) {
+      gpu.handle.activeCount = 0;
+    }
+  } else if (useGpuSpawn) {
     // GPU SPAWN PATH: No CPU slot tracking needed!
     // GPU shader handles slot availability via isActive flag
     const dampingWindow = Math.max(0, config.emissionDampingInterval ?? 0);
@@ -716,14 +732,6 @@ const advanceParticleEmitterStateGpu = <
     state.spawnAccumulator = 0;
   } else {
     // CPU SPAWN PATH: Legacy - requires slot tracking
-    if (!state.warnedCpuSpawnFallback && options.getGpuSpawnConfig) {
-      console.warn(
-        "[ParticleEmitter] Falling back to CPU spawn in GPU mode: " +
-          `getGpuSpawnConfig returned null/undefined. ` +
-          `shape=${config.shape}, particlesPerSecond=${config.particlesPerSecond}`
-      );
-      state.warnedCpuSpawnFallback = true;
-    }
     const currentTimeMs = state.ageMs;
     const slots = gpu.slots;
     const freeSlots: number[] = [];
