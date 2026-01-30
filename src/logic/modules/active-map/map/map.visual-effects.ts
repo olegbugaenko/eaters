@@ -296,6 +296,7 @@ export class MapVisualEffects {
         color: { r: 1, g: 1, b: 1, a: 1 },
         customData: {
           id: SNOWFALL_OBJECT_ID,
+          autoAnimate: true,
           emitter: this.snowfallConfig.emitter,
           spawnRect,
           cullRect,
@@ -308,6 +309,7 @@ export class MapVisualEffects {
       position: { x: 0, y: 0 },
       customData: {
         id: SNOWFALL_OBJECT_ID,
+        autoAnimate: true,
         emitter: this.snowfallConfig.emitter,
         spawnRect,
         cullRect,
