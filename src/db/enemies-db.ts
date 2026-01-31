@@ -854,9 +854,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
         start: { x: 0, y: 0 },
         stops: [
-          { offset: 0, color: { r: 1, g: 0.85, b: 0.5, a: 0.1 } },
-          { offset: 0.25, color: { r: 1, g: 0.85, b: 0.5, a: 0.05 } },
-          { offset: 1, color: { r: 1, g: 0.85, b: 0.5, a: 0 } },
+          { offset: 0, color: { r: 1, g: 0.75, b: 0.6, a: 0.1 } },
+          { offset: 0.25, color: { r: 1, g: 0.75, b: 0.6, a: 0.05 } },
+          { offset: 1, color: { r: 1, g: 0.75, b: 0.6, a: 0 } },
         ],
         noise: {
           colorAmplitude: 0.0,
@@ -1788,6 +1788,34 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       iron: 42,
       coal: 8,
     }),
+    emitter: {
+      particlesPerSecond: 90,
+      particleLifetimeMs: 750,
+      fadeStartMs: 200,
+      baseSpeed: 0.08,
+      speedVariation: 0.01,
+      sizeRange: { min: 14.2, max: 28.4 },
+      sizeEvolutionMult: 1.75, // Particles grow from 1x to 1.25x size over lifetime
+      spread: Math.PI / 5.5,
+      offset: { x: -0.75, y: 0 },
+      color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.6, g: 0.75, b: 1, a: 0.1 } },
+          { offset: 0.25, color: { r: 0.6, g: 0.75, b: 1, a: 0.05 } },
+          { offset: 1, color: { r: 0.6, g: 0.75, b: 1, a: 0 } },
+        ],
+        noise: {
+          colorAmplitude: 0.0,
+          alphaAmplitude: 0.02,
+          scale: 0.3,
+        },
+      },
+      shape: "circle",
+      maxParticles: 100,
+    },
     arcAttack: {
       arcType: "plasmaBeam",
       explosionType: "plasmaBeam",
