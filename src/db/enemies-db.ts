@@ -28,6 +28,7 @@ export type EnemyType =
   | "explosionTurretEnemy"
   | "spectreEnemy"
   | "encagedBeastEnemy"
+  | "coalConvoyGuardian"
   | "freezeTurretEnemy"
   | "bigGun"
   | "laserTurretEnemy"
@@ -546,6 +547,325 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       shape: "circle",
       hitRadius: 10,
       explosion: "iceBrickHit",
+    },
+    knockBackDistance: 80,
+    knockBackSpeed: 120,
+  },
+  coalConvoyGuardian: {
+    name: "Coal Convoy Guardian",
+    renderer: {
+      kind: "composite",
+      fill: { r: 1, g: 0.7, b: 0.6, a: 1 },
+      layers: [
+        // Spike
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: 24, y: 0 },
+            { x: 10, y: -3 },
+            { x: 10, y: 3 },
+          ],
+        },
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: 10, y: -3 },
+            { x: 10, y: 3 },
+            { x: -5, y: 1 },
+            { x: -5, y: -1 },
+          ],
+        },
+        {
+          shape: "circle",
+          radius: 32,
+          segments: 48,
+          offset: { x: 0, y: 0 },
+          fill: {
+            type: "gradient",
+
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 32,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.8, b: 0.6, a: 0.45 } },
+                { offset: 0.6, color: { r: 1, g: 0.8, b: 0.6, a: 0.3 } },
+                { offset: 1, color: { r: 1.0, g: 0.8, b: 0.6, a: 0.0 } },
+              ],
+            },
+          },
+        },
+        // Left side
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 5, y: -8, width: 1.0 },
+            { x: 0, y: -22, width: 0.8 },
+            { x: -5, y: -26, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 3, y: -8, width: 1.0 },
+            { x: -4, y: -18, width: 0.8 },
+            { x: -11, y: -21, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 0, y: -8, width: 1.0 },
+            { x: -10, y: -16, width: 0.8 },
+            { x: -20, y: -18, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -5, y: 0, width: 1.2 },
+            { x: -15, y: -8, width: 1.0 },
+            { x: -20, y: -8, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+
+        // Right side
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 5, y: 8, width: 1.0 },
+            { x: 0, y: 22, width: 0.8 },
+            { x: -5, y: 26, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 3, y: 8, width: 1.0 },
+            { x: -4, y: 18, width: 0.8 },
+            { x: -11, y: 21, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 0, y: 8, width: 1.0 },
+            { x: -10, y: 16, width: 0.8 },
+            { x: -20, y: 18, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -5, y: 0, width: 1.2 },
+            { x: -15, y: 8, width: 1.0 },
+            { x: -20, y: 8, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        
+      ],
+    },
+    maxHp: 25000,
+    armor: 100,
+    baseDamage: 1600,
+    attackInterval: 0.8,
+    attackRange: 780,
+    moveSpeed: 40,
+    physicalSize: 30,
+    reward: {
+      stone: 2,
+    },
+    projectile: {
+      radius: 4,
+      speed: 200,
+      lifetimeMs: 5000,
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        stops: [
+          { offset: 0, color: { r: 1, g: 0.9, b: 0.7, a: 1 } },
+          { offset: 0.75, color: { r: 1, g: 0.9, b: 0.7, a: 0.8 } },
+          { offset: 1, color: { r: 1, g: 0.9, b: 0.7, a: 0 } },
+        ],
+      },
+      tailEmitter: {
+        particlesPerSecond: 490,
+        particleLifetimeMs: 550,
+        fadeStartMs: 200,
+        baseSpeed: 0.05,
+        speedVariation: 0.01,
+        sizeRange: { min: 4.2, max: 8.4 },
+        sizeEvolutionMult: 2.75, // Particles grow from 1x to 1.25x size over lifetime
+        spread: Math.PI / 5.5,
+        offset: { x: -0.75, y: 0 },
+        color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },
+        fill: {
+          fillType: FILL_TYPES.RADIAL_GRADIENT,
+          start: { x: 0, y: 0 },
+          stops: [
+            { offset: 0, color: { r: 1, g: 0.85, b: 0.5, a: 0.1 } },
+            { offset: 0.25, color: { r: 1, g: 0.85, b: 0.5, a: 0.05 } },
+            { offset: 1, color: { r: 1, g: 0.85, b: 0.5, a: 0 } },
+          ],
+          noise: {
+            colorAmplitude: 0.0,
+            alphaAmplitude: 0.02,
+            scale: 0.3,
+          },
+        },
+        shape: "circle",
+        maxParticles: 100,
+      },
+      shape: "circle",
+      hitRadius: 10,
+      explosion: "smallPlasmoid",
+    },
+    emitter: {
+      particlesPerSecond: 90,
+      particleLifetimeMs: 750,
+      fadeStartMs: 200,
+      baseSpeed: 0.05,
+      speedVariation: 0.01,
+      sizeRange: { min: 14.2, max: 28.4 },
+      sizeEvolutionMult: 1.75, // Particles grow from 1x to 1.25x size over lifetime
+      spread: Math.PI / 5.5,
+      offset: { x: -0.75, y: 0 },
+      color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 1, g: 0.85, b: 0.5, a: 0.1 } },
+          { offset: 0.25, color: { r: 1, g: 0.85, b: 0.5, a: 0.05 } },
+          { offset: 1, color: { r: 1, g: 0.85, b: 0.5, a: 0 } },
+        ],
+        noise: {
+          colorAmplitude: 0.0,
+          alphaAmplitude: 0.02,
+          scale: 0.3,
+        },
+      },
+      shape: "circle",
+      maxParticles: 100,
     },
     knockBackDistance: 80,
     knockBackSpeed: 120,
@@ -1393,17 +1713,17 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     name: "Plasma Beam Turret",
     renderer: {
       kind: "composite",
-      fill: { r: 0.1, g: 0.15, b: 0.35, a: 1 },
+      fill: { r: 0.1, g: 0.15, b: 0.75, a: 1 },
       layers: [
         {
           shape: "polygon",
           vertices: [
-            { x: 16, y: -3 },
-            { x: 0, y: -4 },
-            { x: 0, y: 4 },
-            { x: 16, y: 3 },
+            { x: 19, y: -5 },
+            { x: 0, y: -5 },
+            { x: 0, y: 5 },
+            { x: 19, y: 5 },
           ],
-          fill: { type: "base", brightness: -0.15 },
+          fill: { type: "base", brightness: -0.35 },
         },
         {
           shape: "polygon",
@@ -1413,14 +1733,14 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             { x: -10, y: 9 },
             { x: 0, y: 6 },
           ],
-          fill: { type: "base", brightness: 0.85 },
+          fill: { type: "base", brightness: 0.55 },
         },
         {
           shape: "polygon",
           vertices: [
-            { x: -4, y: -7 },
-            { x: -7, y: -18 },
-            { x: -9, y: -18 },
+            { x: -2, y: -7 },
+            { x: -3, y: -14 },
+            { x: -9, y: -14 },
             { x: -9, y: -7 },
           ],
           fill: { type: "base", brightness: 0.55 },
@@ -1428,17 +1748,37 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         {
           shape: "polygon",
           vertices: [
-            { x: -4, y: 7 },
-            { x: -7, y: 18 },
-            { x: -9, y: 18 },
+            { x: 9, y: -12 },
+            { x: 0, y: -19 },
+            { x: -9, y: -19 },
+            { x: -14, y: -12 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -2, y: 7 },
+            { x: -3, y: 14 },
+            { x: -9, y: 14 },
             { x: -9, y: 7 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 9, y: 12 },
+            { x: 0, y: 19 },
+            { x: -9, y: 19 },
+            { x: -14, y: 12 },
           ],
           fill: { type: "base", brightness: 0.55 },
         },
       ],
     },
-    maxHp: 16500,
-    armor: 165,
+    maxHp: 56500,
+    armor: 1165,
     baseDamage: 480,
     attackInterval: 2.1,
     attackRange: 650,

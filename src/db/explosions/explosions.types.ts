@@ -7,6 +7,7 @@ import type { ParticleEmitterConfig } from "../../logic/interfaces/visuals/parti
 
 export type ExplosionType =
   | "plasmoid"
+  | "smallPlasmoid"
   | "magnetic"
   | "healWave"
   | "fireball"

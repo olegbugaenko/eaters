@@ -30,6 +30,14 @@ const mapConfig = (() => {
     nodePosition: { x: 5, y: 6 },
     icon: "mine.png",
     lockedForDemo: true,
+    enemySpawnPoints: [
+      {
+        position: { x: center.x + 650, y: center.y },
+        spawnRate: 0.1, // 1 ворог на 5 секунд (1/5 = 0.2)
+        enemyTypes: [{ type: "coalConvoyGuardian", weight: 1.0 }],
+        maxConcurrent: 5,
+      },
+    ],
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const ironLevel = baseLevel + 1;
@@ -43,7 +51,7 @@ const mapConfig = (() => {
       const frameThickness = 30;
 
       const coalBaseY = wagonBottomY - frameThickness;
-      const coalPeakY = wagonTopY - 190;
+      const coalPeakY = wagonTopY - 220;
       const coalPeakX = wagonStartX + wagonWidth * 0.62;
 
       const coalOutline = [
@@ -51,11 +59,11 @@ const mapConfig = (() => {
           start: { x: wagonStartX, y: coalBaseY },
           control1: { x: wagonStartX + wagonWidth * 0.33, y: coalBaseY },
           control2: { x: wagonStartX + wagonWidth * 0.66, y: coalBaseY },
-          end: { x: wagonEndX, y: coalBaseY },
+          end: { x: wagonEndX - 20, y: coalBaseY },
         },
         {
-          start: { x: wagonEndX, y: coalBaseY },
-          control1: { x: wagonEndX + 40, y: coalBaseY - 80 },
+          start: { x: wagonEndX-20, y: coalBaseY },
+          control1: { x: wagonEndX - 40, y: coalBaseY - 80 },
           control2: { x: coalPeakX + 120, y: coalPeakY + 40 },
           end: { x: coalPeakX, y: coalPeakY },
         },

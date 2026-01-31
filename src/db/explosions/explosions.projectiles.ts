@@ -38,6 +38,27 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
     }),
     emitter: DEFAULT_EMITTER,
   },
+  smallPlasmoid: {
+    lifetimeMs: 2_000,
+    defaultInitialRadius: 6,
+    waves: createSimpleWave({
+      defaultInitialRadius: 6,
+      radiusExtension: 30,
+      startAlpha: 0.85,
+      endAlpha: 0,
+      gradientStops: PLASMOID_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.04,
+      particlesPerSecond: 1760,
+      sizeRange: { min: 0.5, max: 2.4 },
+      emissionDurationMs: 400,
+      spawnRadius: { min: 0, max: 0.1 },
+      spawnRadiusMultiplier: undefined, 
+      radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
   smallCannon: {
     lifetimeMs: 2_000,
     defaultInitialRadius: 3,
