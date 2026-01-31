@@ -19,6 +19,7 @@ import {
 import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
 import { cloneResourceStockpile, normalizeResourceAmount } from "../../../../db/resources-db";
 import type { MovementService } from "@core/logic/provided/services/movement/MovementService";
+import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
 
 export interface EnemyStateInput {
   readonly enemyId: string;
@@ -136,6 +137,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
 
   protected override transform(state: InternalEnemyState): void {
     const config = getEnemyConfig(state.type);
+    const emitterConfig = config.emitter ? cloneParticleEmitterConfig(config.emitter) : undefined;
     
     // Pass renderer config in customData for the renderer
     const sceneObjectId = this.scene.addObject(ENEMY_SCENE_OBJECT_TYPE, {
@@ -148,6 +150,8 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
         renderer: config.renderer,
         type: state.type,
         level: state.level,
+        emitter: emitterConfig,
+        physicalSize: state.physicalSize,
       },
     });
     state.sceneObjectId = sceneObjectId;
