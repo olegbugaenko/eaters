@@ -30,6 +30,7 @@ import {
   cloneRendererConfigForScene,
   cloneAuraConfig,
 } from "@shared/helpers/renderer-clone.helper";
+import type { UnitDeathEffects } from "@shared/types/unit-death-effects";
 
 export interface UnitFactoryOptions {
   scene: SceneObjectManager;
@@ -91,6 +92,7 @@ export interface UnitFactoryResult {
   readonly targetingMode: string;
   readonly renderer: PlayerUnitRendererConfig;
   readonly emitter?: ParticleEmitterConfig;
+  readonly deathEffects: UnitDeathEffects;
   readonly baseFillColor: SceneColor;
   readonly baseStrokeColor?: SceneColor;
   readonly visualEffects: VisualEffectState;
@@ -158,6 +160,7 @@ export class UnitFactory {
     });
 
     const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+    const deathEffects = config.deathEffects ?? [];
     const baseFillColor: SceneColor = {
       r: config.renderer.fill.r,
       g: config.renderer.fill.g,
@@ -265,6 +268,7 @@ export class UnitFactory {
       targetingMode: this.getDesignTargetingMode(data.designId ?? null, data.type),
       renderer: config.renderer,
       emitter,
+      deathEffects,
       baseFillColor,
       baseStrokeColor,
       visualEffects,

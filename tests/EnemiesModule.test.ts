@@ -299,6 +299,7 @@ describe("EnemiesModule", () => {
         ownedSkills: [],
         baseStrokeColor: undefined,
         emitter: undefined,
+        deathEffects: [],
       },
     ];
 

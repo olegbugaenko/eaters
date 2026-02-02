@@ -43,6 +43,7 @@ import {
   sanitizeUnitType,
   cloneEmitter,
   cloneRendererConfigForScene,
+  applyUnitDeathEffects,
 } from "./player-units.helpers";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import { BricksModule } from "../bricks/bricks.module";
@@ -857,6 +858,7 @@ export class PlayerUnitsModule implements GameModule {
   private removeUnit(unit: PlayerUnitState): void {
     if (unit.hp <= 0) {
       this.statistics?.recordCreatureDeath();
+      applyUnitDeathEffects(unit.deathEffects, unit.position, this.explosions);
     }
     this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     this.scene.removeObject(unit.objectId);

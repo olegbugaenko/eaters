@@ -151,3 +151,9 @@ export const PLASMA_BEAM_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 0.5, color: { r: 0.35, g: 0.65, b: 1, a: 0.5 } },
   { offset: 1, color: { r: 0.2, g: 0.4, b: 0.85, a: 0 } },
 ] as const;
+
+export const UNIT_DEATH_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.6, g: 0.85, b: 1, a: 0.5 } },
+  { offset: 0.5, color: { r: 0.4, g: 0.7, b: 1, a: 0.35 } },
+  { offset: 1, color: { r: 0.2, g: 0.45, b: 0.9, a: 0 } },
+] as const;

@@ -90,6 +90,7 @@ export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInp
       objectId: factoryResult.objectId,
       renderer: factoryResult.renderer,
       emitter: factoryResult.emitter,
+      deathEffects: factoryResult.deathEffects,
       baseFillColor: factoryResult.baseFillColor,
       baseStrokeColor: factoryResult.baseStrokeColor,
       appliedFillColor: { ...factoryResult.baseFillColor },

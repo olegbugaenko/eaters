@@ -10,6 +10,7 @@ import { ResourceCost } from "@shared/types/resources";
 import type { UnitModuleId } from "./unit-modules-db";
 import { mapLineToPolygonShape } from '@shared/helpers/paths.helper';
 import type { ExtendedRendererLayerFields, BaseRendererLayerConfig } from "@shared/types/renderer.types";
+import type { UnitDeathEffects } from "@shared/types/unit-death-effects";
 
 export type PlayerUnitType = "bluePentagon";
 
@@ -56,6 +57,7 @@ export interface PlayerUnitConfig {
   readonly baseCritChance?: number;
   readonly baseCritMultiplier?: number;
   readonly emitter?: ParticleEmitterConfig;
+  readonly deathEffects?: UnitDeathEffects;
   readonly cost: ResourceCost;
 }
 
@@ -586,6 +588,13 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         },
       ],
     },
+    deathEffects: [
+      {
+        kind: "explosion",
+        type: "unitDeath",
+        initialRadius: 10,
+      },
+    ],
     maxHp: 10,
     armor: 1,
     baseAttackDamage: 1.25,
