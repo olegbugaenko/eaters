@@ -2,6 +2,7 @@ import type { ExplosionConfig, ExplosionType } from "./explosions.types";
 import { createSimpleWave } from "./explosions.helpers";
 import { UNIT_DEATH_WAVE_GRADIENT_STOPS } from "./explosions.colors.const";
 import { DEFAULT_EMITTER } from "./explosions.emitters.const";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 
 export const PLAYER_UNIT_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> = {
   unitDeath: {
@@ -22,10 +23,19 @@ export const PLAYER_UNIT_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConf
       speedVariation: 0.02,
       particleLifetimeMs: 900,
       fadeStartMs: 320,
-      sizeRange: { min: 3, max: 18 },
       spawnRadius: { min: 0, max: 2 },
       spawnRadiusMultiplier: undefined,
       radialVelocity: true,
+      sizeRange: { min: 3, max: 9 },
+      shape: "triangle",
+      sizeEvolutionMult: 1.75,
+      sizeGrowthRate: 2.35,
+      alignToVelocity: true,
+      alignToVelocityFlip: true,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.5, g: 0.9, b: 0.95, a: 0.5 },
+      }
     },
   },
 };
