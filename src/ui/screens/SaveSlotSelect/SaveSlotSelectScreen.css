@@ -50,6 +50,11 @@
   color: var(--color-text-subtle);
 }
 
+.save-slot-screen__wishlist {
+  align-self: flex-end;
+  text-decoration: none;
+}
+
 .save-slot-card {
   padding: var(--spacing-xl);
   display: flex;

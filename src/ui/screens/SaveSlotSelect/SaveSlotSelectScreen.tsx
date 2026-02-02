@@ -4,6 +4,7 @@ import { SaveSlotBackgroundScene } from "./SaveSlotBackgroundScene";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { GAME_VERSIONS } from "@db/version-db";
+import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
 import "./SaveSlotSelectScreen.css";
 
 interface SaveSlotViewModel {
@@ -89,6 +90,14 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
             );
           })}
         </div>
+        <a
+          className="save-slot-screen__wishlist button primary-button"
+          href={STEAM_WISHLIST_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Wishlist on Steam
+        </a>
       </div>
       {currentVersion && (
         <button

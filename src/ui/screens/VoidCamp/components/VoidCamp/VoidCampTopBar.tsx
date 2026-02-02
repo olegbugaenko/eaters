@@ -9,6 +9,7 @@ interface VoidCampTopBarProps {
   readonly onAchievementsClick?: () => void;
   readonly showAchievements?: boolean;
   readonly onExitClick: () => void;
+  readonly wishlistUrl?: string;
 }
 
 export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
@@ -19,6 +20,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
   onAchievementsClick,
   showAchievements,
   onExitClick,
+  wishlistUrl,
 }) => {
   return (
     <div className="void-camp-top-bar">
@@ -57,6 +59,20 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
         </button>
       </div>
       <div className="void-camp-top-bar__right">
+        {wishlistUrl && (
+          <a
+            className={classNames(
+              "void-camp-top-bar__button",
+              "void-camp-top-bar__button--wishlist",
+              "void-camp-top-bar__link"
+            )}
+            href={wishlistUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Wishlist on Steam
+          </a>
+        )}
         <span className="void-camp-top-bar__label">Version</span>
         <button
           type="button"

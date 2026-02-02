@@ -80,6 +80,7 @@ import {
   DEFAULT_ACHIEVEMENTS_STATE,
 } from "@logic/modules/shared/achievements/achievements.const";
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
+import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -352,6 +353,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             showAchievements={hasUnlockedAchievements}
             onSettingsClick={handleOpenSettings}
             onExitClick={handleExit}
+            wishlistUrl={STEAM_WISHLIST_URL}
           />
         }
         content={
