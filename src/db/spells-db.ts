@@ -550,6 +550,7 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       "Open a rift above the battlefield, raining arcane bolts into a focused zone.",
     cost: { mana: 50, sanity: 0 },
     cooldownSeconds: 10,
+    unlock: { skillId: "magic_rain", level: 1 },
     projectilesRain: {
       durationMs: 8_000,
       spawnIntervalMs: 400,

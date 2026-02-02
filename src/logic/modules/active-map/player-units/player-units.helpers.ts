@@ -5,11 +5,14 @@ import {
   isPlayerUnitType,
   PlayerUnitRendererConfig,
 } from "@db/player-units-db";
+import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { PlayerUnitRuntimeModifiers } from "@shared/types/player-units";
 import {
   cloneRendererConfigForScene as cloneRendererConfigForSceneDeep,
   cloneRendererLayer,
 } from "@shared/helpers/renderer-clone.helper";
+import type { UnitDeathEffects } from "@shared/types/unit-death-effects";
+import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 
 /**
  * Sanitizes runtime modifiers for player units.
@@ -50,4 +53,23 @@ export const cloneRendererConfigForScene = (
   renderer: PlayerUnitRendererConfig
 ): PlayerUnitRendererConfig => {
   return cloneRendererConfigForSceneDeep(renderer, { deep: false });
+};
+
+export const applyUnitDeathEffects = (
+  effects: UnitDeathEffects,
+  position: SceneVector2,
+  explosions: ExplosionModule,
+): void => {
+  effects.forEach((effect) => {
+    switch (effect.kind) {
+      case "explosion":
+        explosions.spawnExplosionByType(effect.type, {
+          position: { ...position },
+          initialRadius: effect.initialRadius,
+        });
+        break;
+      default:
+        break;
+    }
+  });
 };

@@ -41,7 +41,8 @@ export type ExplosionType =
   | "plasmaBeam"
   | "smallEnergetic"
   | "chainLightning"
-  | "magicArrow";
+  | "magicArrow"
+  | "unitDeath";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
