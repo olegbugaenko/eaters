@@ -790,7 +790,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     baseDamage: 1600,
     attackInterval: 0.8,
     attackRange: 780,
-    moveSpeed: 40,
+    moveSpeed: 60,
     physicalSize: 30,
     reward: {
       stone: 2,
@@ -806,6 +806,12 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
           { offset: 0.75, color: { r: 1, g: 0.9, b: 0.7, a: 0.8 } },
           { offset: 1, color: { r: 1, g: 0.9, b: 0.7, a: 0 } },
         ],
+      },
+      tail: {
+        lengthMultiplier: 6.0,
+        widthMultiplier: 1.0,
+        startColor: { r: 1, g: 0.9, b: 0.7, a: 0.11 },
+        endColor: { r: 1, g: 0.9, b: 0.7, a: 0 },
       },
       tailEmitter: {
         particlesPerSecond: 490,
@@ -1785,8 +1791,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     moveSpeed: 0,
     physicalSize: 28,
     reward: normalizeResourceAmount({
-      iron: 42,
-      coal: 8,
+      copper: 80,
     }),
     emitter: {
       particlesPerSecond: 90,

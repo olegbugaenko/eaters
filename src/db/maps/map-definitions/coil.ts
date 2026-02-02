@@ -94,7 +94,17 @@ const mapConfig = (() => {
         {
           type: "plasmaBeamTurretEnemy",
           level: baseLevel,
-          position: { x: center.x, y: center.y },
+          position: { x: center.x - 100, y: center.y - 150 },
+        } satisfies EnemySpawnData,
+        {
+          type: "plasmaBeamTurretEnemy",
+          level: baseLevel,
+          position: { x: center.x - 100, y: center.y + 150 },
+        } satisfies EnemySpawnData,
+        {
+          type: "plasmaBeamTurretEnemy",
+          level: baseLevel,
+          position: { x: center.x + 150, y: center.y },
         } satisfies EnemySpawnData,
       ];
     },
