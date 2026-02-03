@@ -465,6 +465,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
   ): UnitDesignerUnitState {
     const moduleDetails = this.createModuleDetails(record.modules);
     const blueprint = this.createBlueprint(record.type, bonusValues, moduleDetails);
+    const displayName = record.name.trim() || getPlayerUnitConfig(record.type).name;
     const cost = this.computeCost(record.type, moduleDetails);
     const runtime = this.computeRuntime(moduleDetails);
     const targetingMode = this.ensureDesignTargeting(record.id);
@@ -475,7 +476,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       modules: [...moduleDetails.map((detail) => detail.id)],
       moduleDetails,
       cost,
-      blueprint,
+      blueprint: { ...blueprint, name: displayName },
       runtime,
       targetingMode,
     };

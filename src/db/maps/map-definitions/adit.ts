@@ -393,7 +393,7 @@ const mapConfig = (() => {
       },
     ],
     mapsRequired: { oldForge: 1 },
-    maxLevel: 2,
+    maxLevel: 1,
   } satisfies MapConfig;
 })();
 

@@ -6,6 +6,19 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.2",
+    releaseDate: "2026-02-03",
+    changes: [
+      "Added new maps",
+      "Added new organs",
+      "Refined particle effects",
+      "Rebalanced some spells",
+      "Performance improvements",
+      "Numerous bugfixes",
+      "Added possibility to RMB on map to inspect target",
+    ],
+  },
+  {
     displayName: "v0.1.1",
     releaseDate: "2026-01-15",
     changes: [

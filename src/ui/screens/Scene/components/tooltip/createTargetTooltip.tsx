@@ -1,6 +1,7 @@
 import { getBrickConfig } from "@db/bricks-db";
 import type { ReactNode } from "react";
 import { EnemyConfig, getEnemyConfig } from "@db/enemies-db";
+import { getPlayerUnitConfig } from "@db/player-units-db";
 import {
   hasAnyResources,
   normalizeResourceAmount,
@@ -11,6 +12,7 @@ import {
 import { getStatusEffectConfig } from "@db/status-effects-db";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
+import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import { formatNumber } from "@ui-shared/format/number";
@@ -118,8 +120,30 @@ const buildEnemyStats = (
   return stats;
 };
 
+const buildPlayerUnitStats = (unit: PlayerUnitState): SceneTooltipStat[] => {
+  const stats: SceneTooltipStat[] = [
+    { label: "HP", value: formatHpValue(unit.hp, unit.maxHp) },
+    { label: "Attack", value: formatStatValue(unit.baseAttackDamage) },
+    { label: "Armor", value: formatStatValue(unit.armor) },
+  ];
+  if (Number.isFinite(unit.baseAttackInterval)) {
+    stats.push({
+      label: "Attack Cooldown",
+      value: formatSeconds(unit.baseAttackInterval),
+    });
+  }
+  if (Number.isFinite(unit.moveSpeed)) {
+    stats.push({
+      label: "Move Speed",
+      value: formatDistance(unit.moveSpeed),
+    });
+  }
+  return stats;
+};
+
 export const createTargetTooltip = (
-  target: TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState>,
+  target: TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState>,
+  playerUnitDisplayName?: string | null,
 ): SceneTooltipContent => {
   if (target.type === "brick") {
     const brick = target.data as BrickRuntimeState;
@@ -133,6 +157,17 @@ export const createTargetTooltip = (
         ...buildCommonStats(target),
         ...(rewardLabel ? [{ label: "Reward", value: rewardLabel }] : []),
       ],
+    };
+  }
+
+  if (target.type === "playerUnit") {
+    const unit = target.data as PlayerUnitState;
+    const unitConfig = getPlayerUnitConfig(unit.type);
+    const title = playerUnitDisplayName ?? unitConfig.name;
+    return {
+      title,
+      subtitle: "Your unit",
+      stats: buildPlayerUnitStats(unit),
     };
   }
 

@@ -28,6 +28,7 @@ import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.ty
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
+import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 
 /**
@@ -57,7 +58,7 @@ export interface BridgeSchema {
   "maps/autoRestart": MapAutoRestartState;
   "maps/selectViewTransform": ViewTransform | null;
   "maps/controlHintsCollapsed": boolean;
-  "maps/inspectedTarget": TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
+  "maps/inspectedTarget": TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState> | null;
   "maps/effects": MapEffectsBridgeState;
 
   // Player Units

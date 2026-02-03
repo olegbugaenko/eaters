@@ -25,6 +25,7 @@ const mapConfig = (() => {
     name: "Encaged Beast",
     size,
     icon: "encaged_beast.png",
+    achievementId: "encaged_beast",
     spawnPoints: [spawnPoint],
     unlockedBy: [
       {

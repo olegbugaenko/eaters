@@ -33,6 +33,7 @@ import { MapRunEvent } from "./MapRunState";
 import { MapSceneCleanup, MapSceneCleanupContract } from "./map.scene-cleanup";
 import type { BrickRuntimeState } from "../bricks/bricks.types";
 import type { EnemyRuntimeState } from "../enemies/enemies.types";
+import type { PlayerUnitState } from "../player-units/units/UnitTypes";
 import type { TargetSnapshot } from "../targeting/targeting.types";
 import {
   MAP_LIST_BRIDGE_KEY,
@@ -65,7 +66,7 @@ import { isDemoBuild } from "@shared/helpers/demo.helper";
 export class MapModule implements GameModule {
   public readonly id = "maps";
 
-  private inspectedTarget: { type: "brick" | "enemy"; id: string } | null = null;
+  private inspectedTarget: { type: "brick" | "enemy" | "playerUnit"; id: string } | null = null;
   private inspectedTargetElapsedMs = 0;
   private inspectedTargetLastPublishMs = 0;
   private readonly selection: MapSelectionState;
@@ -266,12 +267,13 @@ export class MapModule implements GameModule {
   public inspectTargetAtPosition(
     position: SceneVector2,
     radius = 32
-  ): TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null {
+  ): TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState> | null {
     const brick = this.options.bricks.findNearestBrick(position);
     const enemy = this.options.enemies.findNearestEnemy(position);
+    const playerUnit = this.options.playerUnits.findNearestUnit(position);
 
     const candidates: Array<{
-      target: TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState>;
+      target: TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState>;
       distanceSq: number;
     }> = [];
 
@@ -288,6 +290,14 @@ export class MapModule implements GameModule {
       const allowedRadius = Math.max(radius, enemy.physicalSize);
       if (distanceSq <= allowedRadius * allowedRadius) {
         candidates.push({ target: this.toEnemyTarget(enemy), distanceSq });
+      }
+    }
+
+    if (playerUnit) {
+      const distanceSq = this.getDistanceSq(position, playerUnit.position);
+      const allowedRadius = Math.max(radius, playerUnit.physicalSize);
+      if (distanceSq <= allowedRadius * allowedRadius) {
+        candidates.push({ target: this.toPlayerUnitTarget(playerUnit), distanceSq });
       }
     }
 
@@ -350,6 +360,20 @@ export class MapModule implements GameModule {
     };
   }
 
+  private toPlayerUnitTarget(unit: PlayerUnitState): TargetSnapshot<"playerUnit", PlayerUnitState> {
+    return {
+      id: unit.id,
+      type: "playerUnit",
+      position: { ...unit.position },
+      hp: unit.hp,
+      maxHp: unit.maxHp,
+      armor: unit.armor,
+      baseDamage: unit.baseAttackDamage,
+      physicalSize: unit.physicalSize,
+      data: unit,
+    };
+  }
+
   private getRewardMultiplier(): number {
     const multiplierRaw = this.options.bonuses.getBonusValue("brick_rewards");
     const multiplier = Number.isFinite(multiplierRaw) ? multiplierRaw : 1;
@@ -382,7 +406,7 @@ export class MapModule implements GameModule {
   }
 
   private getInspectedTargetSnapshot():
-    | TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState>
+    | TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState>
     | null {
     if (!this.inspectedTarget) {
       return null;
@@ -394,6 +418,14 @@ export class MapModule implements GameModule {
         return null;
       }
       return this.toBrickTarget(brick);
+    }
+    if (this.inspectedTarget.type === "playerUnit") {
+      const unit = this.options.playerUnits.getUnitState(this.inspectedTarget.id);
+      if (!unit) {
+        this.inspectedTarget = null;
+        return null;
+      }
+      return this.toPlayerUnitTarget(unit);
     }
     const enemy = this.options.enemies.getEnemyState(this.inspectedTarget.id);
     if (!enemy) {

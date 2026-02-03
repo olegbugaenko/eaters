@@ -202,9 +202,38 @@ export class BricksModule implements GameModule {
     return { ...state.position };
   }
 
+  /**
+   * Tie-break epsilon (squared): bricks within this distance of the nearest count as "same distance".
+   * Then we pick the one latest in brickOrder (drawn on top).
+   */
+  private static readonly FIND_NEAREST_TIE_EPSILON_SQ = 4;
+
   public findNearestBrick(position: SceneVector2): BrickRuntimeState | null {
     const nearest = this.spatialIndex.queryNearest(position, { maxLayers: 128 });
-    return nearest ? this.cloneState(nearest) : null;
+    if (!nearest) {
+      return null;
+    }
+    const bestDistSq =
+      (nearest.position.x - position.x) ** 2 + (nearest.position.y - position.y) ** 2;
+    const radius = Math.sqrt(bestDistSq) + 2;
+    const candidates = this.spatialIndex.queryCircle(position, radius);
+    const tieThresholdSq = bestDistSq + BricksModule.FIND_NEAREST_TIE_EPSILON_SQ;
+    let topmost: InternalBrickState | null = null;
+    let topmostIndex = -1;
+    for (const brick of candidates) {
+      const dx = brick.position.x - position.x;
+      const dy = brick.position.y - position.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > tieThresholdSq) {
+        continue;
+      }
+      const index = this.brickOrder.findIndex((b) => b.id === brick.id);
+      if (index > topmostIndex) {
+        topmostIndex = index;
+        topmost = brick;
+      }
+    }
+    return topmost ? this.cloneState(topmost) : this.cloneState(nearest);
   }
 
   public findBricksNear(position: SceneVector2, radius: number): BrickRuntimeState[] {

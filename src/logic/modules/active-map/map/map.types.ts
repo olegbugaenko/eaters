@@ -15,6 +15,7 @@ import { EventLogModule } from "../../shared/event-log/event-log.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
 import type { EnemyRuntimeState } from "../enemies/enemies.types";
+import type { PlayerUnitState } from "../player-units/units/UnitTypes";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps/maps-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { TargetSnapshot } from "../targeting/targeting.types";
@@ -126,7 +127,7 @@ export interface MapModuleUiApi {
   inspectTargetAtPosition(
     position: SceneVector2,
     radius?: number
-  ): TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
+  ): TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState> | null;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

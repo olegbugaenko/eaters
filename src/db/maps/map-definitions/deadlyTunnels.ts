@@ -28,6 +28,7 @@ const mapConfig = (() => {
     name: "Deadly Tunnels",
     size,
     icon: "deadly_tunnels.png",
+    achievementId: "deadly_tunnels",
     spawnPoints: [spawnPoint],
     unlockedBy: [
       {
