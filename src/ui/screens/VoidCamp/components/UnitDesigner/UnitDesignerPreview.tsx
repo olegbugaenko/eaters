@@ -27,6 +27,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activeTokenRef = useRef<symbol | null>(null);
 
   const moduleKey = useMemo(() => modules.join("|"), [modules]);
   const skillKey = useMemo(() => skills.join("|"), [skills]);
@@ -35,6 +36,9 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
     if (!isOpen) {
       return;
     }
+
+    const localToken = Symbol("preview");
+    activeTokenRef.current = localToken;
 
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -187,8 +191,10 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       observer.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
       cleanup();
-      // Important: lose WebGL context on unmount to avoid leaking GPU resources.
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      if (activeTokenRef.current === localToken) {
+        // Important: lose WebGL context on unmount to avoid leaking GPU resources.
+        gl.getExtension("WEBGL_lose_context")?.loseContext();
+      }
     };
   }, [isOpen, unitType, unitBlueprint, moduleKey, skillKey]);
 
