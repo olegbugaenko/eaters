@@ -11,7 +11,7 @@ import type { SkillId } from "@db/skills-db";
 import { acquirePreviewWebgl, releasePreviewWebgl } from "./previewWebglManager";
 import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 
-const PREVIEW_VIEWPORT_SCALE = 1.8;
+const PREVIEW_VIEWPORT_SCALE = 2.2;
 
 interface UnitDesignerPreviewProps {
   unitType: PlayerUnitType;
