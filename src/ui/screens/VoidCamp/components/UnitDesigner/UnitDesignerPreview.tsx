@@ -132,10 +132,26 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
 
     resizeCanvas();
 
-    const { gl, webglRenderer, cleanup } = setupWebGLScene(canvas, scene, {
-      initBullets: false,
-      initRings: false,
-    });
+    let gl: WebGL2RenderingContext | null = null;
+    let cleanup = () => {};
+    let webglRenderer: ReturnType<typeof setupWebGLScene>["webglRenderer"] | null = null;
+
+    try {
+      const setup = setupWebGLScene(canvas, scene, {
+        initBullets: false,
+        initRings: false,
+      });
+      gl = setup.gl;
+      webglRenderer = setup.webglRenderer;
+      cleanup = setup.cleanup;
+    } catch (error) {
+      console.error("[UnitDesignerPreview] Failed to initialize WebGL preview", error);
+      return () => {};
+    }
+
+    if (!gl || !webglRenderer) {
+      return () => {};
+    }
 
     gl.viewport(0, 0, canvas.width, canvas.height);
 
