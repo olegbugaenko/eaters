@@ -10,6 +10,8 @@ import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoo
 import type { SkillId } from "@db/skills-db";
 import { acquirePreviewWebgl, releasePreviewWebgl } from "./previewWebglManager";
 
+const PREVIEW_VIEWPORT_SCALE = 1.2;
+
 interface UnitDesignerPreviewProps {
   unitType: PlayerUnitType;
   unitBlueprint: PlayerUnitBlueprintStats;
@@ -27,6 +29,10 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sceneRef = useRef<SceneObjectManager | null>(null);
+  const unitObjectIdRef = useRef<string | null>(null);
+  const unitPositionRef = useRef({ x: 0, y: 0 });
+  const lastUnitTypeRef = useRef<PlayerUnitType | null>(null);
 
   const moduleKey = useMemo(() => modules.join("|"), [modules]);
   const skillKey = useMemo(() => skills.join("|"), [skills]);
@@ -43,33 +49,33 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       return;
     }
 
-    const scene = new SceneObjectManager();
-    const config = getPlayerUnitConfig(unitType);
-    const rendererConfig = cloneRendererConfigForScene(config.renderer, { deep: false });
-    const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+    const scene = sceneRef.current ?? new SceneObjectManager();
+    sceneRef.current = scene;
 
-    const baseFillColor = {
-      r: config.renderer.fill.r,
-      g: config.renderer.fill.g,
-      b: config.renderer.fill.b,
-      a: typeof config.renderer.fill.a === "number" ? config.renderer.fill.a : 1,
-    };
-    const baseStrokeColor = config.renderer.stroke
-      ? {
-          r: config.renderer.stroke.color.r,
-          g: config.renderer.stroke.color.g,
-          b: config.renderer.stroke.color.b,
-          a:
-            typeof config.renderer.stroke.color.a === "number"
-              ? config.renderer.stroke.color.a
-              : 1,
-        }
-      : { ...baseFillColor };
+    const buildUnitObjectData = () => {
+      const config = getPlayerUnitConfig(unitType);
+      const rendererConfig = cloneRendererConfigForScene(config.renderer, { deep: false });
+      const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
 
-    const setupSceneObject = (mapWidth: number, mapHeight: number) => {
-      const unitPosition = { x: mapWidth / 2, y: mapHeight / 2 };
-      const objectId = scene.addObject("playerUnit", {
-        position: unitPosition,
+      const baseFillColor = {
+        r: config.renderer.fill.r,
+        g: config.renderer.fill.g,
+        b: config.renderer.fill.b,
+        a: typeof config.renderer.fill.a === "number" ? config.renderer.fill.a : 1,
+      };
+      const baseStrokeColor = config.renderer.stroke
+        ? {
+            r: config.renderer.stroke.color.r,
+            g: config.renderer.stroke.color.g,
+            b: config.renderer.stroke.color.b,
+            a:
+              typeof config.renderer.stroke.color.a === "number"
+                ? config.renderer.stroke.color.a
+                : 1,
+          }
+        : { ...baseFillColor };
+
+      return {
         fill: {
           fillType: FILL_TYPES.SOLID,
           color: { ...baseFillColor },
@@ -91,12 +97,8 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
           skills: [...skills],
           autoAnimate: true,
         },
-      });
-      return { unitPosition, objectId };
+      };
     };
-
-    let unitObjectId: string | null = null;
-    let unitPosition = { x: 0, y: 0 };
 
     const resizeCanvas = () => {
       const bounds = container.getBoundingClientRect();
@@ -109,24 +111,32 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
-      scene.setViewportScreenSize(width, height);
-      const mapWidth = Math.max(200, width);
-      const mapHeight = Math.max(200, height);
+      const viewportWidth = Math.max(1, Math.floor(width * PREVIEW_VIEWPORT_SCALE));
+      const viewportHeight = Math.max(1, Math.floor(height * PREVIEW_VIEWPORT_SCALE));
+      scene.setViewportScreenSize(viewportWidth, viewportHeight);
+      const mapWidth = Math.max(200, viewportWidth);
+      const mapHeight = Math.max(200, viewportHeight);
       scene.setMapSize({ width: mapWidth, height: mapHeight });
 
-      if (!unitObjectId) {
-        const setup = setupSceneObject(mapWidth, mapHeight);
-        unitObjectId = setup.objectId;
-        unitPosition = setup.unitPosition;
+      if (!unitObjectIdRef.current) {
+        const unitPosition = { x: mapWidth / 2, y: mapHeight / 2 };
+        const objectId = scene.addObject("playerUnit", {
+          position: unitPosition,
+          ...buildUnitObjectData(),
+        });
+        unitObjectIdRef.current = objectId;
+        unitPositionRef.current = unitPosition;
+        lastUnitTypeRef.current = unitType;
       } else {
-        unitPosition = { x: mapWidth / 2, y: mapHeight / 2 };
-        scene.updateObject(unitObjectId, { position: unitPosition });
+        const unitPosition = { x: mapWidth / 2, y: mapHeight / 2 };
+        unitPositionRef.current = unitPosition;
+        scene.updateObject(unitObjectIdRef.current, { position: unitPosition });
       }
 
       const camera = scene.getCamera();
       scene.setCameraPosition(
-        unitPosition.x - camera.viewportSize.width / 2,
-        unitPosition.y - camera.viewportSize.height / 2
+        unitPositionRef.current.x - camera.viewportSize.width / 2,
+        unitPositionRef.current.y - camera.viewportSize.height / 2
       );
     };
 
@@ -187,8 +197,80 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       observer.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
       releasePreviewWebgl(previewId);
+      sceneRef.current = null;
+      unitObjectIdRef.current = null;
+      lastUnitTypeRef.current = null;
     };
-  }, [isOpen, unitType, unitBlueprint, moduleKey, skillKey]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const scene = sceneRef.current;
+    const unitObjectId = unitObjectIdRef.current;
+    if (!scene || !unitObjectId) {
+      return;
+    }
+
+    const config = getPlayerUnitConfig(unitType);
+    const rendererConfig = cloneRendererConfigForScene(config.renderer, { deep: false });
+    const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+    const baseFillColor = {
+      r: config.renderer.fill.r,
+      g: config.renderer.fill.g,
+      b: config.renderer.fill.b,
+      a: typeof config.renderer.fill.a === "number" ? config.renderer.fill.a : 1,
+    };
+    const baseStrokeColor = config.renderer.stroke
+      ? {
+          r: config.renderer.stroke.color.r,
+          g: config.renderer.stroke.color.g,
+          b: config.renderer.stroke.color.b,
+          a:
+            typeof config.renderer.stroke.color.a === "number"
+              ? config.renderer.stroke.color.a
+              : 1,
+        }
+      : { ...baseFillColor };
+
+    const nextData = {
+      position: unitPositionRef.current,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { ...baseFillColor },
+      },
+      stroke: config.renderer.stroke
+        ? {
+            color: { ...config.renderer.stroke.color },
+            width: config.renderer.stroke.width,
+          }
+        : undefined,
+      customData: {
+        renderer: rendererConfig,
+        emitter,
+        physicalSize: config.physicalSize,
+        baseFillColor: { ...baseFillColor },
+        baseStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
+        modules: [...modules],
+        skills: [...skills],
+        autoAnimate: true,
+      },
+    };
+
+    if (lastUnitTypeRef.current !== unitType) {
+      scene.removeObject(unitObjectId);
+      const newId = scene.addObject("playerUnit", {
+        ...nextData,
+      });
+      unitObjectIdRef.current = newId;
+      lastUnitTypeRef.current = unitType;
+      return;
+    }
+
+    scene.updateObject(unitObjectId, nextData);
+  }, [isOpen, unitType, moduleKey, skillKey, unitBlueprint]);
 
   if (!isOpen) {
     return null;
