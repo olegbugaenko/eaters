@@ -6,9 +6,9 @@ import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import type { UnitModuleId } from "@db/unit-modules-db";
 import { cloneRendererConfigForScene } from "@shared/helpers/renderer-clone.helper";
 import { cloneEmitter } from "@logic/modules/active-map/player-units/player-units.helpers";
-import { setupWebGLScene } from "@ui/screens/Scene/hooks/useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoop";
 import type { SkillId } from "@db/skills-db";
+import { acquirePreviewWebgl, releasePreviewWebgl } from "./previewWebglManager";
 
 interface UnitDesignerPreviewProps {
   unitType: PlayerUnitType;
@@ -27,7 +27,6 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const activeTokenRef = useRef<symbol | null>(null);
 
   const moduleKey = useMemo(() => modules.join("|"), [modules]);
   const skillKey = useMemo(() => skills.join("|"), [skills]);
@@ -36,9 +35,6 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
     if (!isOpen) {
       return;
     }
-
-    const localToken = Symbol("preview");
-    activeTokenRef.current = localToken;
 
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -136,18 +132,18 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
 
     resizeCanvas();
 
+    const previewId = "unit-designer-preview";
     let gl: WebGL2RenderingContext | null = null;
-    let cleanup = () => {};
-    let webglRenderer: ReturnType<typeof setupWebGLScene>["webglRenderer"] | null = null;
+    let webglRenderer: ReturnType<typeof acquirePreviewWebgl>["webglRenderer"] | null =
+      null;
 
     try {
-      const setup = setupWebGLScene(canvas, scene, {
+      const setup = acquirePreviewWebgl(previewId, canvas, scene, {
         initBullets: false,
         initRings: false,
       });
       gl = setup.gl;
       webglRenderer = setup.webglRenderer;
-      cleanup = setup.cleanup;
     } catch (error) {
       console.error("[UnitDesignerPreview] Failed to initialize WebGL preview", error);
       return () => {};
@@ -190,11 +186,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       renderLoop.stop();
       observer.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
-      cleanup();
-      if (activeTokenRef.current === localToken) {
-        // Important: lose WebGL context on unmount to avoid leaking GPU resources.
-        gl.getExtension("WEBGL_lose_context")?.loseContext();
-      }
+      releasePreviewWebgl(previewId);
     };
   }, [isOpen, unitType, unitBlueprint, moduleKey, skillKey]);
 
