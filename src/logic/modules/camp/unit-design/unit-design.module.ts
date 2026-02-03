@@ -194,8 +194,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       return;
     }
     if (typeof updates.name === "string") {
-      const trimmed = updates.name.trim();
-      record.name = trimmed.length > 0 ? trimmed : DEFAULT_UNIT_NAME_FALLBACK;
+      record.name = updates.name.trim();
     }
     if (Array.isArray(updates.modules)) {
       record.modules = clampModuleCount(this.sanitizeModules(updates.modules));
