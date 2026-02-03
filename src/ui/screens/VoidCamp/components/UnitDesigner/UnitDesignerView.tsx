@@ -10,6 +10,7 @@ import { getPlayerUnitConfig, PlayerUnitType } from "@db/player-units-db";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
+import { UnitDesignerPreview } from "./UnitDesignerPreview";
 import "./UnitDesignerView.css";
 import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 
@@ -44,6 +45,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
   const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [preview, setPreview] = useState<{
     id: UnitModuleId;
     origin: "available" | "equipped";
@@ -69,6 +71,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
 
   useEffect(() => {
     setPreview(null);
+  }, [selectedUnit?.id]);
+
+  useEffect(() => {
+    setIsPreviewOpen(false);
   }, [selectedUnit?.id]);
 
   const missingCost = useMemo(
@@ -312,9 +318,40 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
         </section>
         </div>
         <aside className="unit-designer__summary surface-sidebar">
-          <div className="unit-designer__summary-title heading-4">
-            {selectedUnit.name || getPlayerUnitConfig(selectedUnit.type).name}
+          <div className="unit-designer__summary-header">
+            <div className="unit-designer__summary-title heading-4">
+              {selectedUnit.name || getPlayerUnitConfig(selectedUnit.type).name}
+            </div>
+            <button
+              type="button"
+              className="unit-designer__summary-toggle"
+              aria-expanded={isPreviewOpen}
+              aria-label={isPreviewOpen ? "Collapse unit preview" : "Expand unit preview"}
+              onClick={() => setIsPreviewOpen((current) => !current)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setIsPreviewOpen((current) => !current);
+                }
+              }}
+            >
+              <span
+                className={classNames(
+                  "unit-designer__summary-toggle-icon",
+                  isPreviewOpen && "unit-designer__summary-toggle-icon--open"
+                )}
+                aria-hidden="true"
+              >
+                ▾
+              </span>
+            </button>
           </div>
+          <UnitDesignerPreview
+            isOpen={isPreviewOpen}
+            unitType={selectedUnit.type}
+            unitBlueprint={selectedUnit.blueprint}
+            modules={selectedUnit.modules}
+          />
           {previewModule ? (
             <ModuleDetailsCard
               className="unit-designer__module-card no-wrapper"
