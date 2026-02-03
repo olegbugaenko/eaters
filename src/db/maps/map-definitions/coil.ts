@@ -20,7 +20,7 @@ const mapConfig = (() => {
     icon: "coil.png",
     spawnPoints: [spawnPoint],
     nodePosition: { x: 5, y: 1 },
-    lockedForDemo: true,
+    lockedForDemo: false,
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const ringLevel = baseLevel + 3;

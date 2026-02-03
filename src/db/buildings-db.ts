@@ -163,7 +163,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       "Invent better ways to store and refine your treasures.",
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.16 * level,
+        multiplier: (level) => 1 + 0.1 * level,
       },
     },
     cost: createScalingCost({ silver: 500, copper: 1600 }, 1.75),

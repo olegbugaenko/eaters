@@ -294,8 +294,9 @@ input[type="number"]:focus-visible {
 }
 
 .button.black-button {
-  /*background: linear-gradient(-35deg, #3c5055, #252627);*/
-  background: linear-gradient(-35deg, #2d838d, #1b4a4f);
+  /*background: linear-gradient(-35deg, #3c5055, #252627);
+  background: linear-gradient(-35deg, #2d8d65, #328256);*/
+  background: linear-gradient(-35deg, #339d71, #42a970);
   color: var(--color-text-primary);
   border: 1px solid rgba(62, 71, 72, 0.7);
   border-radius: var(--radius-sm);
@@ -304,7 +305,7 @@ input[type="number"]:focus-visible {
 }
 
 .button.black-button:not(:disabled):hover {
-  background: linear-gradient(-35deg, #3a5258, #2c2f30);
+  background: linear-gradient(-35deg, #40b182, #52c084);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 18px 36px rgba(0, 0, 0, 0.52);
 }
 

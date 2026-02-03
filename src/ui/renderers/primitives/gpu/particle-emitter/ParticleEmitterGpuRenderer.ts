@@ -30,7 +30,11 @@ const compileShader = (
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error("Failed to compile particle shader", gl.getShaderInfoLog(shader));
+    console.error("Failed to compile particle shader", {
+      info: gl.getShaderInfoLog(shader),
+      type,
+      source,
+    });
     gl.deleteShader(shader);
     return null;
   }
