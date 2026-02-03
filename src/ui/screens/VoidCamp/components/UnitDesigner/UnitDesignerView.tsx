@@ -11,6 +11,11 @@ import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
 import { UnitDesignerPreview } from "./UnitDesignerPreview";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
+import {
+  DEFAULT_SKILL_TREE_STATE,
+  SKILL_TREE_STATE_BRIDGE_KEY,
+} from "@logic/modules/camp/skill-tree/skill-tree.const";
 import "./UnitDesignerView.css";
 import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 
@@ -41,15 +46,20 @@ const getDefaultType = (units: readonly { type: PlayerUnitType }[], fallback: Pl
   units[0]?.type ?? fallback;
 
 export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resources }) => {
-  const { uiApi } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [preview, setPreview] = useState<{
     id: UnitModuleId;
     origin: "available" | "equipped";
   } | null>(null);
+  const skillTreeState = useBridgeValue(
+    bridge,
+    SKILL_TREE_STATE_BRIDGE_KEY,
+    DEFAULT_SKILL_TREE_STATE
+  );
 
   useEffect(() => {
     if (state.units.length === 0) {
@@ -74,7 +84,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
   }, [selectedUnit?.id]);
 
   useEffect(() => {
-    setIsPreviewOpen(false);
+    setIsPreviewOpen(true);
   }, [selectedUnit?.id]);
 
   const missingCost = useMemo(
@@ -140,6 +150,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
   const availableModules = useMemo(
     () => state.availableModules.filter((module) => module.level > 0),
     [state.availableModules]
+  );
+  const ownedSkills = useMemo(
+    () => skillTreeState.nodes.filter((node) => node.level > 0).map((node) => node.id),
+    [skillTreeState.nodes]
   );
   const previewModule = useMemo(() => {
     if (!preview) {
@@ -351,6 +365,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             unitType={selectedUnit.type}
             unitBlueprint={selectedUnit.blueprint}
             modules={selectedUnit.modules}
+            skills={ownedSkills}
           />
           {previewModule ? (
             <ModuleDetailsCard

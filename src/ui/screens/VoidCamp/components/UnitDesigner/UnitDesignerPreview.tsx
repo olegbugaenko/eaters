@@ -8,11 +8,13 @@ import { cloneRendererConfigForScene } from "@shared/helpers/renderer-clone.help
 import { cloneEmitter } from "@logic/modules/active-map/player-units/player-units.helpers";
 import { setupWebGLScene } from "@ui/screens/Scene/hooks/useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoop";
+import type { SkillId } from "@db/skills-db";
 
 interface UnitDesignerPreviewProps {
   unitType: PlayerUnitType;
   unitBlueprint: PlayerUnitBlueprintStats;
   modules: readonly UnitModuleId[];
+  skills: readonly SkillId[];
   isOpen: boolean;
 }
 
@@ -20,12 +22,14 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
   unitType,
   unitBlueprint,
   modules,
+  skills,
   isOpen,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const moduleKey = useMemo(() => modules.join("|"), [modules]);
+  const skillKey = useMemo(() => skills.join("|"), [skills]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -84,7 +88,8 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
           baseFillColor: { ...baseFillColor },
           baseStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
           modules: [...modules],
-          skills: [],
+          skills: [...skills],
+          autoAnimate: true,
         },
       });
       return { unitPosition, objectId };
@@ -169,7 +174,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       // Important: lose WebGL context on unmount to avoid leaking GPU resources.
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
-  }, [isOpen, unitType, unitBlueprint, moduleKey]);
+  }, [isOpen, unitType, unitBlueprint, moduleKey, skillKey]);
 
   if (!isOpen) {
     return null;
