@@ -9,6 +9,7 @@ import { cloneEmitter } from "@logic/modules/active-map/player-units/player-unit
 import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoop";
 import type { SkillId } from "@db/skills-db";
 import { acquirePreviewWebgl, releasePreviewWebgl } from "./previewWebglManager";
+import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 
 const PREVIEW_VIEWPORT_SCALE = 1.8;
 
@@ -178,6 +179,15 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       gl,
       beforeRender: () => {
         gl.viewport(0, 0, canvas.width, canvas.height);
+      },
+      beforeEffects: (timestamp, glContext, cameraState) => {
+        petalAuraGpuRenderer.beforeRender(glContext, timestamp);
+        petalAuraGpuRenderer.render(
+          glContext,
+          cameraState.position,
+          cameraState.viewportSize,
+          timestamp
+        );
       },
     });
 
