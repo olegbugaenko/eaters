@@ -10,7 +10,7 @@ import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoo
 import type { SkillId } from "@db/skills-db";
 import { acquirePreviewWebgl, releasePreviewWebgl } from "./previewWebglManager";
 
-const PREVIEW_VIEWPORT_SCALE = 1.2;
+const PREVIEW_VIEWPORT_SCALE = 1.8;
 
 interface UnitDesignerPreviewProps {
   unitType: PlayerUnitType;
@@ -33,9 +33,14 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
   const unitObjectIdRef = useRef<string | null>(null);
   const unitPositionRef = useRef({ x: 0, y: 0 });
   const lastUnitTypeRef = useRef<PlayerUnitType | null>(null);
+  const lastUnitSignatureRef = useRef<string | null>(null);
 
   const moduleKey = useMemo(() => modules.join("|"), [modules]);
   const skillKey = useMemo(() => skills.join("|"), [skills]);
+  const unitSignature = useMemo(
+    () => `${unitType}|${moduleKey}|${skillKey}|${unitBlueprint.physicalSize}`,
+    [unitType, moduleKey, skillKey, unitBlueprint.physicalSize]
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -56,6 +61,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       const config = getPlayerUnitConfig(unitType);
       const rendererConfig = cloneRendererConfigForScene(config.renderer, { deep: false });
       const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+      const physicalSize = unitBlueprint.physicalSize || config.physicalSize;
 
       const baseFillColor = {
         r: config.renderer.fill.r,
@@ -90,7 +96,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
         customData: {
           renderer: rendererConfig,
           emitter,
-          physicalSize: config.physicalSize,
+          physicalSize,
           baseFillColor: { ...baseFillColor },
           baseStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
           modules: [...modules],
@@ -127,6 +133,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
         unitObjectIdRef.current = objectId;
         unitPositionRef.current = unitPosition;
         lastUnitTypeRef.current = unitType;
+        lastUnitSignatureRef.current = unitSignature;
       } else {
         const unitPosition = { x: mapWidth / 2, y: mapHeight / 2 };
         unitPositionRef.current = unitPosition;
@@ -200,6 +207,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       sceneRef.current = null;
       unitObjectIdRef.current = null;
       lastUnitTypeRef.current = null;
+      lastUnitSignatureRef.current = null;
     };
   }, [isOpen]);
 
@@ -217,6 +225,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
     const config = getPlayerUnitConfig(unitType);
     const rendererConfig = cloneRendererConfigForScene(config.renderer, { deep: false });
     const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+    const physicalSize = unitBlueprint.physicalSize || config.physicalSize;
     const baseFillColor = {
       r: config.renderer.fill.r,
       g: config.renderer.fill.g,
@@ -250,7 +259,7 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       customData: {
         renderer: rendererConfig,
         emitter,
-        physicalSize: config.physicalSize,
+        physicalSize,
         baseFillColor: { ...baseFillColor },
         baseStrokeColor: baseStrokeColor ? { ...baseStrokeColor } : undefined,
         modules: [...modules],
@@ -259,18 +268,19 @@ export const UnitDesignerPreview: React.FC<UnitDesignerPreviewProps> = ({
       },
     };
 
-    if (lastUnitTypeRef.current !== unitType) {
+    if (lastUnitSignatureRef.current !== unitSignature) {
       scene.removeObject(unitObjectId);
       const newId = scene.addObject("playerUnit", {
         ...nextData,
       });
       unitObjectIdRef.current = newId;
       lastUnitTypeRef.current = unitType;
+      lastUnitSignatureRef.current = unitSignature;
       return;
     }
 
     scene.updateObject(unitObjectId, nextData);
-  }, [isOpen, unitType, moduleKey, skillKey, unitBlueprint]);
+  }, [isOpen, unitSignature, unitType, moduleKey, skillKey, unitBlueprint]);
 
   if (!isOpen) {
     return null;
