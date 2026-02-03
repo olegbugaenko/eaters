@@ -6,7 +6,7 @@ import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-de
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
 import { buildUnitStatEntries } from "@ui-shared/unitStats";
-import { PlayerUnitType } from "@db/player-units-db";
+import { getPlayerUnitConfig, PlayerUnitType } from "@db/player-units-db";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
@@ -182,7 +182,9 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                     }}
                   >
                     <div className="unit-designer__list-text">
-                      <span className="unit-designer__list-name">{unit.name}</span>
+                      <span className="unit-designer__list-name">
+                        {unit.name || getPlayerUnitConfig(unit.type).name}
+                      </span>
                       <span className="unit-designer__list-modules">{unit.modules.length} modules</span>
                     </div>
                     <button
@@ -192,7 +194,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                         e.stopPropagation();
                         handleDeleteUnit(unit.id);
                       }}
-                      aria-label={`Delete ${unit.name}`}
+                      aria-label={`Delete ${unit.name || getPlayerUnitConfig(unit.type).name}`}
                     >
                       Delete
                     </button>
@@ -213,6 +215,13 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
               className="input"
               value={selectedUnit.name}
               onChange={(event) => handleRenameUnit(selectedUnit.id, event.target.value)}
+              onBlur={(event) => {
+                const value = event.target.value.trim();
+                if (value === "") {
+                  const defaultName = getPlayerUnitConfig(selectedUnit.type).name;
+                  handleRenameUnit(selectedUnit.id, defaultName);
+                }
+              }}
             />
           </div>
           <div className="unit-designer__selected">

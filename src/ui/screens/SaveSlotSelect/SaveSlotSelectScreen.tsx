@@ -91,7 +91,7 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
           })}
         </div>
         <a
-          className="save-slot-screen__wishlist button primary-button"
+          className="save-slot-screen__wishlist button black-button"
           href={STEAM_WISHLIST_URL}
           target="_blank"
           rel="noreferrer"
