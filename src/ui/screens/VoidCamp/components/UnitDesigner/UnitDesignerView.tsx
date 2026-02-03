@@ -156,55 +156,57 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
       <div className="unit-designer__content">
         <div className="unit-designer__main surface-panel">
           <aside className="unit-designer__list">
-          <div className="unit-designer__list-header">
-            <h3 className="heading-4">Units</h3>
-            <Button onClick={handleCreateUnit}>New Unit</Button>
-          </div>
-          <ul className="unit-designer__list-items">
-            {state.units.map((unit) => {
-              const isActive = unit.id === selectedUnit.id;
-              const listItemClassName = classNames(
-                "unit-designer__list-item",
-                isActive && "unit-designer__list-item--active"
-              );
-              return (
-                <li key={unit.id} className="unit-designer__list-entry">
-                  <div
-                    className={listItemClassName}
-                    onClick={() => handleSelectUnit(unit.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleSelectUnit(unit.id);
-                      }
-                    }}
-                  >
-                    <div className="unit-designer__list-text">
-                      <span className="unit-designer__list-name">
-                        {unit.name || getPlayerUnitConfig(unit.type).name}
-                      </span>
-                      <span className="unit-designer__list-modules">{unit.modules.length} modules</span>
-                    </div>
-                    <button
-                      type="button"
-                      className={classNames("danger-button", "small-button", "button")}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteUnit(unit.id);
+            <div className="unit-designer__list-header">
+              <h3 className="heading-4">Units</h3>
+              <Button onClick={handleCreateUnit}>New Unit</Button>
+            </div>
+            <ul className="unit-designer__list-items">
+              {state.units.map((unit) => {
+                const isActive = unit.id === selectedUnit.id;
+                const listItemClassName = classNames(
+                  "unit-designer__list-item",
+                  isActive && "unit-designer__list-item--active"
+                );
+                return (
+                  <li key={unit.id} className="unit-designer__list-entry">
+                    <div
+                      className={listItemClassName}
+                      onClick={() => handleSelectUnit(unit.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          handleSelectUnit(unit.id);
+                        }
                       }}
-                      aria-label={`Delete ${unit.name || getPlayerUnitConfig(unit.type).name}`}
                     >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </aside>
-        <section className="unit-designer__editor">
+                      <div className="unit-designer__list-text">
+                        <span className="unit-designer__list-name">
+                          {unit.name || getPlayerUnitConfig(unit.type).name}
+                        </span>
+                        <span className="unit-designer__list-modules">
+                          {unit.modules.length} modules
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={classNames("danger-button", "small-button", "button")}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteUnit(unit.id);
+                        }}
+                        aria-label={`Delete ${unit.name || getPlayerUnitConfig(unit.type).name}`}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
+          <section className="unit-designer__editor">
           <div className="unit-designer__field">
             <label htmlFor="unit-designer-name" className="label">
               Unit Name
@@ -310,42 +312,49 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
         </section>
         </div>
         <aside className="unit-designer__summary surface-sidebar">
-          
-              {previewModule ? (
-                <ModuleDetailsCard
-                  className="unit-designer__module-card no-wrapper"
-                  name={previewModule.name}
-                  level={previewModule.level}
-                  description={previewModule.description}
-                  effectLabel={previewModule.bonusLabel}
-                  currentEffect={formatUnitModuleBonusValue(
-                    previewModule.bonusType,
-                    previewModule.bonusValue
-                  )}
-                  manaMultiplier={previewModule.manaCostMultiplier}
-                  sanityCost={previewModule.sanityCost}
-                />
-              ) : (<div className="unit-designer__summary-scroll">
-            <div className="unit-designer__module-preview">
-              <section className="unit-designer__cost">
-                <h5 className="heading-5">Summoning Cost</h5>
-                <ResourceCostDisplay cost={selectedUnit.cost} />
-              </section>
-              <section className="unit-designer__stats">
-                <h5 className="heading-5">Stats</h5>
-                <dl>
-                  {statEntries.map((entry) => (
-                    <div key={entry.label} className="unit-designer__stat">
-                      <dt>{entry.label}</dt>
-                      <dd>
-                        <span>{entry.value}</span>
-                        {entry.hint ? <span className="unit-designer__stat-hint">{entry.hint}</span> : null}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </section></div></div>)}
-            
+          <div className="unit-designer__summary-title heading-4">
+            {selectedUnit.name || getPlayerUnitConfig(selectedUnit.type).name}
+          </div>
+          {previewModule ? (
+            <ModuleDetailsCard
+              className="unit-designer__module-card no-wrapper"
+              name={previewModule.name}
+              level={previewModule.level}
+              description={previewModule.description}
+              effectLabel={previewModule.bonusLabel}
+              currentEffect={formatUnitModuleBonusValue(
+                previewModule.bonusType,
+                previewModule.bonusValue
+              )}
+              manaMultiplier={previewModule.manaCostMultiplier}
+              sanityCost={previewModule.sanityCost}
+            />
+          ) : (
+            <div className="unit-designer__summary-scroll">
+              <div className="unit-designer__module-preview">
+                <section className="unit-designer__cost">
+                  <h5 className="heading-5">Summoning Cost</h5>
+                  <ResourceCostDisplay cost={selectedUnit.cost} />
+                </section>
+                <section className="unit-designer__stats">
+                  <h5 className="heading-5">Stats</h5>
+                  <dl>
+                    {statEntries.map((entry) => (
+                      <div key={entry.label} className="unit-designer__stat">
+                        <dt>{entry.label}</dt>
+                        <dd>
+                          <span>{entry.value}</span>
+                          {entry.hint ? (
+                            <span className="unit-designer__stat-hint">{entry.hint}</span>
+                          ) : null}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              </div>
+            </div>
+          )}
         </aside>
       </div>
     </div>

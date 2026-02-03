@@ -301,9 +301,16 @@
   min-height: 180px;
 }
 
+.unit-designer__summary-title {
+  margin: 0;
+  color: var(--color-text-strong);
+}
+
 .unit-designer__cost {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-sm);
 }
 
