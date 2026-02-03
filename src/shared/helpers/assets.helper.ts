@@ -10,9 +10,8 @@ export const getAssetUrl = (assetPath: string): string => {
   }
 
   const normalizedPath = assetPath.replace(/^\.?\//, "").replace(/^\/+/, "");
-  const isFileProtocol =
-    typeof window !== "undefined" && window.location?.protocol === "file:";
-  const prefix = isFileProtocol ? "./" : "/";
+  // Use relative base so assets work when the game is served from a subpath (e.g. itch.io: /html/PROJECT_ID/)
+  const prefix = "./";
 
   return `${prefix}${normalizedPath}`;
 };
