@@ -38,6 +38,7 @@ export type JoinedPolygonGpuHandle = {
   joinOffset: { x: number; y: number };
   instancePosition: { x: number; y: number };
   instanceRotation: number;
+  drawMode: number;
 };
 
 export type AnchorTextureInfo = {
@@ -178,6 +179,7 @@ class JoinedPolygonGpuRenderer {
     vertexCount: number;
     anchorIndex: number;
     joinOffset: { x: number; y: number };
+    drawMode?: number;
   }): JoinedPolygonGpuHandle | null {
     const gl = this.gl;
     if (!gl || !this.program) {
@@ -218,6 +220,7 @@ class JoinedPolygonGpuRenderer {
       joinOffset: options.joinOffset,
       instancePosition: { x: 0, y: 0 },
       instanceRotation: 0,
+      drawMode: options.drawMode ?? gl.TRIANGLE_FAN,
     };
     this.handles.add(handle);
     return handle;
@@ -381,7 +384,7 @@ class JoinedPolygonGpuRenderer {
         gl.uniform1f(this.instanceRotationLocation, handle.instanceRotation);
       }
       gl.bindVertexArray(handle.vao);
-      gl.drawArrays(gl.TRIANGLE_FAN, 0, handle.vertexCount);
+      gl.drawArrays(handle.drawMode, 0, handle.vertexCount);
       drawCalls += 1;
     });
     gl.bindVertexArray(null);

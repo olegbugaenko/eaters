@@ -20,13 +20,27 @@ export interface RendererLayerAnimationConfig {
   executionMode?: "gpu" | "cpu" | "auto";
 }
 
-export type RendererLayerAnchorMode = "vertex" | "spine";
+export type RendererLayerAnchorMode = "vertex" | "spine" | "circle" | "sprite";
+
+export type RendererSpriteAnchorName =
+  | "center"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+  | "top"
+  | "bottom"
+  | "left"
+  | "right";
 
 export interface RendererLayerAnchorConfig {
   id: string;
   mode: RendererLayerAnchorMode;
   index?: number;
   t?: number;
+  angleRad?: number;
+  spriteAnchor?: RendererSpriteAnchorName;
+  uv?: SceneVector2;
 }
 
 export interface RendererLayerJoinConfig {

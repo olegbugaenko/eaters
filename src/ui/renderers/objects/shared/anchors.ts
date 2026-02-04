@@ -128,20 +128,23 @@ const sampleSpineByT = (spine: SceneVector2[], t: number): SceneVector2 | null =
   return spine[spine.length - 1] ?? null;
 };
 
-export const resolveLayerAnchors = (
-  anchors: RendererLayerAnchorConfig[] | undefined,
-  vertices: SceneVector2[] | undefined,
-  spine: SceneVector2[] | undefined,
-  offset: SceneVector2 | undefined
-): RendererAnchorRecord[] => {
-  if (!anchors || anchors.length === 0) {
+export const resolveLayerAnchors = (options: {
+  anchors: RendererLayerAnchorConfig[] | undefined;
+  vertices?: SceneVector2[];
+  spine?: SceneVector2[];
+  offset?: SceneVector2;
+  circle?: { radius: number; segments?: number };
+  sprite?: { width: number; height: number };
+}): RendererAnchorRecord[] => {
+  if (!options.anchors || options.anchors.length === 0) {
     return [];
   }
   const resolved: RendererAnchorRecord[] = [];
-  const offsetX = offset?.x ?? 0;
-  const offsetY = offset?.y ?? 0;
-  anchors.forEach((anchor) => {
+  const offsetX = options.offset?.x ?? 0;
+  const offsetY = options.offset?.y ?? 0;
+  options.anchors.forEach((anchor) => {
     if (anchor.mode === "vertex") {
+      const vertices = options.vertices;
       if (!vertices || vertices.length === 0 || typeof anchor.index !== "number") {
         return;
       }
@@ -155,22 +158,110 @@ export const resolveLayerAnchors = (
       });
       return;
     }
-    if (!spine || spine.length === 0) {
+    if (anchor.mode === "spine") {
+      const spine = options.spine;
+      if (!spine || spine.length === 0) {
+        return;
+      }
+      let point: SceneVector2 | null = null;
+      if (typeof anchor.index === "number") {
+        point = spine[Math.max(0, Math.min(spine.length - 1, anchor.index))] ?? null;
+      } else if (typeof anchor.t === "number") {
+        point = sampleSpineByT(spine, anchor.t);
+      }
+      if (!point) {
+        return;
+      }
+      resolved.push({
+        id: anchor.id,
+        position: { x: point.x + offsetX, y: point.y + offsetY },
+      });
       return;
     }
-    let point: SceneVector2 | null = null;
-    if (typeof anchor.index === "number") {
-      point = spine[Math.max(0, Math.min(spine.length - 1, anchor.index))] ?? null;
-    } else if (typeof anchor.t === "number") {
-      point = sampleSpineByT(spine, anchor.t);
-    }
-    if (!point) {
+    if (anchor.mode === "circle") {
+      const circle = options.circle;
+      if (!circle || circle.radius <= 0) {
+        return;
+      }
+      const segments = Math.max(3, Math.floor(circle.segments ?? 24));
+      let angle = anchor.angleRad;
+      if (typeof angle !== "number") {
+        if (typeof anchor.t === "number") {
+          angle = anchor.t * Math.PI * 2;
+        } else if (typeof anchor.index === "number") {
+          angle = (anchor.index / segments) * Math.PI * 2;
+        }
+      }
+      if (typeof angle !== "number") {
+        return;
+      }
+      resolved.push({
+        id: anchor.id,
+        position: {
+          x: Math.cos(angle) * circle.radius + offsetX,
+          y: Math.sin(angle) * circle.radius + offsetY,
+        },
+      });
       return;
     }
-    resolved.push({
-      id: anchor.id,
-      position: { x: point.x + offsetX, y: point.y + offsetY },
-    });
+    if (anchor.mode === "sprite") {
+      const sprite = options.sprite;
+      if (!sprite) {
+        return;
+      }
+      const halfWidth = sprite.width * 0.5;
+      const halfHeight = sprite.height * 0.5;
+      let x = 0;
+      let y = 0;
+      if (anchor.uv) {
+        x = (anchor.uv.x - 0.5) * sprite.width;
+        y = (anchor.uv.y - 0.5) * sprite.height;
+      } else {
+        switch (anchor.spriteAnchor ?? "center") {
+          case "top-left":
+            x = -halfWidth;
+            y = -halfHeight;
+            break;
+          case "top-right":
+            x = halfWidth;
+            y = -halfHeight;
+            break;
+          case "bottom-left":
+            x = -halfWidth;
+            y = halfHeight;
+            break;
+          case "bottom-right":
+            x = halfWidth;
+            y = halfHeight;
+            break;
+          case "top":
+            x = 0;
+            y = -halfHeight;
+            break;
+          case "bottom":
+            x = 0;
+            y = halfHeight;
+            break;
+          case "left":
+            x = -halfWidth;
+            y = 0;
+            break;
+          case "right":
+            x = halfWidth;
+            y = 0;
+            break;
+          case "center":
+          default:
+            x = 0;
+            y = 0;
+            break;
+        }
+      }
+      resolved.push({
+        id: anchor.id,
+        position: { x: x + offsetX, y: y + offsetY },
+      });
+    }
   });
   return resolved;
 };

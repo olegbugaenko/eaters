@@ -432,7 +432,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 0.6, b: 0.24, a: 0.75 } } },
             anim: { type: "sway", periodMs: 1650, amplitude: 5.6, falloff: "tip", axis: "normal", phase: 0.42 },
             groupId: "burningTail-glow",
-            connectionSlots: [{ id: "tailEnd", mode: "spine", index: 1 }],
+            connectionSlots: [{ id: "tailEnd", mode: "spine", t: 1 }],
           },
           { epsilon: 0.2, winding: "CCW" }
         ),
@@ -510,7 +510,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.66, g: 0.95, b: 1, a: 0.78 } } },
             anim: { type: "sway", periodMs: 1880, amplitude: 5.4, falloff: "tip", axis: "normal", phase: 0.48 },
             groupId: "freezingTail-glow",
-            connectionSlots: [{ id: "tailEnd", mode: "spine", index: 1 }],
+            connectionSlots: [{ id: "tailEnd", mode: "spine", t: 1 }],
           },
           { epsilon: 0.2, winding: "CCW" }
         ),

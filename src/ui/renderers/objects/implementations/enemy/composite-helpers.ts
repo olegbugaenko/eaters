@@ -6,6 +6,7 @@ import type {
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { EnemyRendererCompositeConfig } from "@db/enemies-db";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
+import type { RendererLayerAnchorConfig } from "@shared/types/renderer.types";
 import {
   type CompositeRendererLayerFill,
   type CompositeRendererLayerStroke,
@@ -58,8 +59,8 @@ export const sanitizeCompositeLayer = (
     segmentIndex?: number;
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
     groupId?: string;
-    anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
-    connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+    anchors?: RendererLayerAnchorConfig[];
+    connectionSlots?: RendererLayerAnchorConfig[];
     join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
   }
 ): {
@@ -78,8 +79,8 @@ export const sanitizeCompositeLayer = (
   segmentIndex?: number;
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
   groupId?: string;
-  anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
-  connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+  anchors?: RendererLayerAnchorConfig[];
+  connectionSlots?: RendererLayerAnchorConfig[];
   join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
 } | null => {
   return sanitizeEnemyCompositeLayer(layer);
@@ -92,8 +93,8 @@ type EnemyLayerExtras = {
   segmentIndex?: number;
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
   groupId?: string;
-  anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
-  connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+  anchors?: RendererLayerAnchorConfig[];
+  connectionSlots?: RendererLayerAnchorConfig[];
   join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
 };
 
@@ -114,8 +115,8 @@ const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
     segmentIndex?: number;
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
     groupId?: string;
-    anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
-    connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+    anchors?: RendererLayerAnchorConfig[];
+    connectionSlots?: RendererLayerAnchorConfig[];
     join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
   },
   EnemyLayerExtras
