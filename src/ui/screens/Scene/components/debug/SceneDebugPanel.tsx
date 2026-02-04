@@ -23,6 +23,9 @@ const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ bridge }) => {
   const vboRef = useRef<HTMLDivElement | null>(null);
   const particlesRef = useRef<HTMLDivElement | null>(null);
   const movableRef = useRef<HTMLDivElement | null>(null);
+  const unitsRef = useRef<HTMLDivElement | null>(null);
+  const jointsRef = useRef<HTMLDivElement | null>(null);
+  const animationsRef = useRef<HTMLDivElement | null>(null);
   const joinedRef = useRef<HTMLDivElement | null>(null);
   const joinedTimingRef = useRef<HTMLDivElement | null>(null);
   const lastDisplayedTime = useRef<string | null>(null);
@@ -30,6 +33,9 @@ const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ bridge }) => {
   const lastDisplayedVbo = useRef<string | null>(null);
   const lastDisplayedParticles = useRef<string | null>(null);
   const lastDisplayedMovable = useRef<string | null>(null);
+  const lastDisplayedUnits = useRef<string | null>(null);
+  const lastDisplayedJoints = useRef<string | null>(null);
+  const lastDisplayedAnimations = useRef<string | null>(null);
   const lastDisplayedJoined = useRef<string | null>(null);
   const lastDisplayedJoinedTiming = useRef<string | null>(null);
 
@@ -78,6 +84,30 @@ const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ bridge }) => {
         }
       }
 
+      if (unitsRef.current) {
+        const next = `Units: ${debugStats.unitCount}`;
+        if (lastDisplayedUnits.current !== next) {
+          lastDisplayedUnits.current = next;
+          unitsRef.current.textContent = next;
+        }
+      }
+
+      if (jointsRef.current) {
+        const next = `Joints: ${debugStats.jointCount} (GPU ${debugStats.jointGpuCount} / CPU ${debugStats.jointCpuCount})`;
+        if (lastDisplayedJoints.current !== next) {
+          lastDisplayedJoints.current = next;
+          jointsRef.current.textContent = next;
+        }
+      }
+
+      if (animationsRef.current) {
+        const next = `Animations: ${debugStats.animationCount} (GPU ${debugStats.animationGpuCount} / CPU ${debugStats.animationCpuCount})`;
+        if (lastDisplayedAnimations.current !== next) {
+          lastDisplayedAnimations.current = next;
+          animationsRef.current.textContent = next;
+        }
+      }
+
       if (joinedRef.current) {
         const next = `Joined GPU: ${debugStats.joinedHandles} handles / ${debugStats.joinedDrawCalls} draws`;
         if (lastDisplayedJoined.current !== next) {
@@ -110,6 +140,9 @@ const SceneDebugPanelInner: React.FC<SceneDebugPanelProps> = ({ bridge }) => {
       <div className="scene-debug-panel__item" ref={vboRef} />
       <div className="scene-debug-panel__item" ref={particlesRef} />
       <div className="scene-debug-panel__item" ref={movableRef} />
+      <div className="scene-debug-panel__item" ref={unitsRef} />
+      <div className="scene-debug-panel__item" ref={jointsRef} />
+      <div className="scene-debug-panel__item" ref={animationsRef} />
       <div className="scene-debug-panel__item" ref={joinedRef} />
       <div className="scene-debug-panel__item" ref={joinedTimingRef} />
     </div>

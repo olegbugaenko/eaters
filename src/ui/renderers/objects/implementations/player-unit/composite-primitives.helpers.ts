@@ -132,7 +132,7 @@ export const createCompositePrimitives = (
   };
   const joinTargets = new Set<string>();
   renderer.layers.forEach((layer) => {
-    if (layer.join && !supportsGpuJoin(layer)) {
+    if (layer.join) {
       joinTargets.add(normalizeGroupId(layer.join.targetGroupId));
     }
   });
