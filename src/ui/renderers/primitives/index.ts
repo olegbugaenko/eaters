@@ -16,6 +16,7 @@ export {
   createStaticPolygonStrokePrimitive,
   createDynamicPolygonStrokePrimitive,
 } from "./basic/PolygonPrimitive";
+export { createPolygonGpuPrimitive } from "./PolygonGpuPrimitive";
 export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
 export { createParticleSystemPrimitive } from "./ParticleSystemPrimitive";
 export { createFireRingPrimitive } from "./FireRingPrimitive";

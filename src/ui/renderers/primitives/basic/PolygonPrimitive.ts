@@ -114,7 +114,10 @@ const resolveFill = (
 };
 
 // OPTIMIZATION: Reusable geometry object to avoid per-frame allocations
-const computeGeometry = (vertices: PolygonVertices, out?: PolygonGeometry): PolygonGeometry => {
+export const computePolygonGeometry = (
+  vertices: PolygonVertices,
+  out?: PolygonGeometry
+): PolygonGeometry => {
   const result = out ?? {
     centerOffset: { x: 0, y: 0 },
     size: { width: MIN_SIZE, height: MIN_SIZE },
@@ -425,7 +428,7 @@ export const createStaticPolygonPrimitive = (
 ): StaticPrimitive => {
   const { center, vertices, fill, rotation, offset } = options;
   const origin = transformObjectPoint(center, rotation, offset);
-  const geometry = computeGeometry(vertices);
+  const geometry = computePolygonGeometry(vertices);
   const fillCenter = transformObjectPoint(
     origin,
     rotation ?? 0,
@@ -456,7 +459,7 @@ export const createDynamicPolygonPrimitive = (
   
   const initialVertices = resolveVertices(options, instance);
   let vertexCount = initialVertices.length;
-  let geometry = computeGeometry(initialVertices);
+  let geometry = computePolygonGeometry(initialVertices);
   const getCenter = (target: SceneObjectInstance): SceneVector2 =>
     transformObjectPoint(
       getInstanceRenderPosition(target),
@@ -517,7 +520,7 @@ export const createDynamicPolygonPrimitive = (
         nextVertices = initialVertices;
       } else {
         nextVertices = resolveVertices(options, target);
-        computeGeometry(nextVertices, geometry);
+        computePolygonGeometry(nextVertices, geometry);
       }
       currentVertices = nextVertices;
       const nextVertexCount = nextVertices.length;
@@ -1012,7 +1015,7 @@ export const createDynamicPolygonStrokePrimitive = (
     );
 
   let inner = resolveVerts(instance);
-  let geometry = computeGeometry(inner);
+  let geometry = computePolygonGeometry(inner);
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
   
@@ -1072,7 +1075,7 @@ export const createDynamicPolygonStrokePrimitive = (
       // Skip expensive geometry/vertices work for static vertices
       if (!isStaticVertices) {
         inner = resolveVerts(target);
-        computeGeometry(inner, geometry);
+      computePolygonGeometry(inner, geometry);
         outer = expandVertices(inner, geometry.centerOffset, cachedStroke.width, outer);
       }
       
@@ -1149,7 +1152,7 @@ export const createStaticPolygonStrokePrimitive = (
   if (!stroke || stroke.width <= 0) {
     return null;
   }
-  const geometry = computeGeometry(vertices);
+  const geometry = computePolygonGeometry(vertices);
   const expanded = expandVertices(vertices, geometry.centerOffset, stroke.width);
   return createStaticPolygonPrimitive({
     center: options.center,

@@ -28,6 +28,8 @@ uniform int u_axisType; // 0 normal, 1 tangent, 2 movement
 uniform int u_useVertexPhase;
 uniform vec2 u_center;
 uniform vec2 u_movementPerp;
+uniform vec2 u_origin;
+uniform float u_rotation;
 
 out vec2 v_position;
 
@@ -71,7 +73,14 @@ void main() {
   }
 
   vec2 offset = axis * (magnitude * s);
-  v_position = basePos + offset;
+  vec2 localPos = basePos + offset;
+  float cosR = cos(u_rotation);
+  float sinR = sin(u_rotation);
+  vec2 rotated = vec2(
+    localPos.x * cosR - localPos.y * sinR,
+    localPos.x * sinR + localPos.y * cosR
+  );
+  v_position = u_origin + rotated;
 }
 `;
 
@@ -103,11 +112,7 @@ type PolygonGpuResources = {
   program: WebGLProgram;
   vertexShader: WebGLShader;
   fragmentShader: WebGLShader;
-  vao: WebGLVertexArrayObject;
-  inputBuffer: WebGLBuffer;
-  outputBuffer: WebGLBuffer;
   transformFeedback: WebGLTransformFeedback;
-  capacity: number;
   uniforms: {
     timeMs: WebGLUniformLocation | null;
     periodMs: WebGLUniformLocation | null;
@@ -120,7 +125,16 @@ type PolygonGpuResources = {
     useVertexPhase: WebGLUniformLocation | null;
     center: WebGLUniformLocation | null;
     movementPerp: WebGLUniformLocation | null;
+    origin: WebGLUniformLocation | null;
+    rotation: WebGLUniformLocation | null;
   };
+};
+
+export type PolygonTransformFeedbackResources = {
+  vao: WebGLVertexArrayObject;
+  inputBuffer: WebGLBuffer;
+  outputBuffer: WebGLBuffer;
+  capacity: number;
 };
 
 type SpineGpuResources = {
@@ -180,26 +194,6 @@ const createTransformFeedbackProgram = (
   return { program, vertexShader, fragmentShader };
 };
 
-const ensurePolygonResources = (
-  gl: WebGL2RenderingContext,
-  vertexCount: number
-): PolygonGpuResources | null => {
-  const resources = ensureResources(gl);
-  if (!resources) {
-    return null;
-  }
-  const polygon = resources.polygon;
-  if (vertexCount > polygon.capacity) {
-    polygon.capacity = Math.max(vertexCount, polygon.capacity * 2, 16);
-    gl.bindBuffer(gl.ARRAY_BUFFER, polygon.inputBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, polygon.capacity * 2 * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, polygon.outputBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, polygon.capacity * 2 * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  }
-  return polygon;
-};
-
 const ensureSpineResources = (
   gl: WebGL2RenderingContext,
   vertexCount: number
@@ -233,24 +227,15 @@ const ensureResources = (gl: WebGL2RenderingContext): GpuAnimResources | null =>
     const polygonProgram = createTransformFeedbackProgram(gl, POLYGON_TF_VERTEX_SHADER, TF_VARYINGS);
     const spineProgram = createTransformFeedbackProgram(gl, SPINE_TF_VERTEX_SHADER, TF_VARYINGS);
 
-    const polygonVao = gl.createVertexArray();
     const spineVao = gl.createVertexArray();
-    const polygonInputBuffer = gl.createBuffer();
-    const polygonOutputBuffer = gl.createBuffer();
     const spineInputBuffer = gl.createBuffer();
     const spineOutputBuffer = gl.createBuffer();
     const polygonTf = gl.createTransformFeedback();
     const spineTf = gl.createTransformFeedback();
 
-    if (!polygonVao || !spineVao || !polygonInputBuffer || !polygonOutputBuffer || !spineInputBuffer || !spineOutputBuffer || !polygonTf || !spineTf) {
+    if (!spineVao || !spineInputBuffer || !spineOutputBuffer || !polygonTf || !spineTf) {
       return null;
     }
-
-    gl.bindVertexArray(polygonVao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, polygonInputBuffer);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0);
-    gl.bindVertexArray(null);
 
     gl.bindVertexArray(spineVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, spineInputBuffer);
@@ -267,11 +252,7 @@ const ensureResources = (gl: WebGL2RenderingContext): GpuAnimResources | null =>
       program: polygonProgram.program,
       vertexShader: polygonProgram.vertexShader,
       fragmentShader: polygonProgram.fragmentShader,
-      vao: polygonVao,
-      inputBuffer: polygonInputBuffer,
-      outputBuffer: polygonOutputBuffer,
       transformFeedback: polygonTf,
-      capacity: 0,
       uniforms: {
         timeMs: gl.getUniformLocation(polygonProgram.program, "u_timeMs"),
         periodMs: gl.getUniformLocation(polygonProgram.program, "u_periodMs"),
@@ -284,6 +265,8 @@ const ensureResources = (gl: WebGL2RenderingContext): GpuAnimResources | null =>
         useVertexPhase: gl.getUniformLocation(polygonProgram.program, "u_useVertexPhase"),
         center: gl.getUniformLocation(polygonProgram.program, "u_center"),
         movementPerp: gl.getUniformLocation(polygonProgram.program, "u_movementPerp"),
+        origin: gl.getUniformLocation(polygonProgram.program, "u_origin"),
+        rotation: gl.getUniformLocation(polygonProgram.program, "u_rotation"),
       },
     };
 
@@ -321,23 +304,82 @@ export const isAnimationGpuAvailable = (): boolean => {
   return Boolean(ensureResources(activeContext));
 };
 
-export const samplePolygonGpu = (options: {
+export const createPolygonTransformFeedbackResources = (options: {
+  vertexCount: number;
+  vertices: Float32Array;
+}): PolygonTransformFeedbackResources | null => {
+  const gl = activeContext;
+  if (!gl) {
+    return null;
+  }
+  const resources = ensureResources(gl);
+  if (!resources) {
+    return null;
+  }
+  const vao = gl.createVertexArray();
+  const inputBuffer = gl.createBuffer();
+  const outputBuffer = gl.createBuffer();
+  if (!vao || !inputBuffer || !outputBuffer) {
+    return null;
+  }
+  const capacity = Math.max(options.vertexCount, 8);
+  gl.bindBuffer(gl.ARRAY_BUFFER, inputBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 2 * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_DRAW);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, options.vertices);
+  gl.bindBuffer(gl.ARRAY_BUFFER, outputBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 2 * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, inputBuffer);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0);
+  gl.bindVertexArray(null);
+
+  return {
+    vao,
+    inputBuffer,
+    outputBuffer,
+    capacity,
+  };
+};
+
+export const updatePolygonTransformFeedback = (options: {
+  resources: PolygonTransformFeedbackResources;
   vertices: Float32Array;
   vertexCount: number;
   anim: RendererLayerAnimationConfig;
   timeMs: number;
   center: SceneVector2;
+  origin: SceneVector2;
+  rotation: number;
   phaseStep: number;
   enableMovementAxis: boolean;
-  output: Float32Array;
 }): boolean => {
   const gl = activeContext;
   if (!gl) {
     return false;
   }
-  const polygon = ensurePolygonResources(gl, options.vertexCount);
+  const polygon = ensureResources(gl)?.polygon;
   if (!polygon) {
     return false;
+  }
+  const resources = options.resources;
+  if (options.vertexCount > resources.capacity) {
+    resources.capacity = Math.max(options.vertexCount, resources.capacity * 2, 16);
+    gl.bindBuffer(gl.ARRAY_BUFFER, resources.inputBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      resources.capacity * 2 * Float32Array.BYTES_PER_ELEMENT,
+      gl.DYNAMIC_DRAW
+    );
+    gl.bindBuffer(gl.ARRAY_BUFFER, resources.outputBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      resources.capacity * 2 * Float32Array.BYTES_PER_ELEMENT,
+      gl.DYNAMIC_DRAW
+    );
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
   const anim = options.anim;
@@ -350,7 +392,7 @@ export const samplePolygonGpu = (options: {
       ? anim.amplitudePercentage
       : -1;
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, polygon.inputBuffer);
+  gl.bindBuffer(gl.ARRAY_BUFFER, resources.inputBuffer);
   gl.bufferSubData(gl.ARRAY_BUFFER, 0, options.vertices);
 
   gl.useProgram(polygon.program);
@@ -366,10 +408,12 @@ export const samplePolygonGpu = (options: {
   gl.uniform1i(polygon.uniforms.useVertexPhase, useVertexPhase);
   gl.uniform2f(polygon.uniforms.center, options.center.x, options.center.y);
   gl.uniform2f(polygon.uniforms.movementPerp, movementPerp.x, movementPerp.y);
+  gl.uniform2f(polygon.uniforms.origin, options.origin.x, options.origin.y);
+  gl.uniform1f(polygon.uniforms.rotation, options.rotation);
 
-  gl.bindVertexArray(polygon.vao);
+  gl.bindVertexArray(resources.vao);
   gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, polygon.transformFeedback);
-  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, polygon.outputBuffer);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, resources.outputBuffer);
   gl.enable(gl.RASTERIZER_DISCARD);
   gl.beginTransformFeedback(gl.POINTS);
   gl.drawArrays(gl.POINTS, 0, options.vertexCount);
@@ -378,9 +422,6 @@ export const samplePolygonGpu = (options: {
   gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
   gl.bindVertexArray(null);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, polygon.outputBuffer);
-  gl.getBufferSubData(gl.ARRAY_BUFFER, 0, options.output);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
   return true;
 };
 
@@ -421,9 +462,6 @@ export const sampleSpineGpu = (options: {
   gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
   gl.bindVertexArray(null);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, spine.outputBuffer);
-  gl.getBufferSubData(gl.ARRAY_BUFFER, 0, options.output);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
   return true;
 };
 
@@ -436,9 +474,6 @@ export const disposeAnimationGpuResources = (gl: WebGL2RenderingContext): void =
   gl.deleteProgram(resources.polygon.program);
   gl.deleteShader(resources.polygon.vertexShader);
   gl.deleteShader(resources.polygon.fragmentShader);
-  gl.deleteVertexArray(resources.polygon.vao);
-  gl.deleteBuffer(resources.polygon.inputBuffer);
-  gl.deleteBuffer(resources.polygon.outputBuffer);
   gl.deleteTransformFeedback(resources.polygon.transformFeedback);
 
   gl.deleteProgram(resources.spine.program);
