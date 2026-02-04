@@ -8,6 +8,7 @@ import {
   createDynamicPolygonPrimitive,
   createDynamicPolygonStrokePrimitive,
   createDynamicSpritePrimitive,
+  createPolygonGpuPrimitive,
 } from "../../../primitives";
 import { getInstanceRenderPosition } from "../../ObjectRenderer";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
@@ -204,17 +205,20 @@ export const createCompositePrimitives = (
           gpuAvailable: isAnimationGpuAvailable(),
           warnKey: `player-unit:${instance.id}:polygon:${layer.groupId ?? layerIndex}`,
         });
-        const sampler = createPolygonAnimSampler({
-          vertices: layer.vertices,
-          anim: animCfg,
-          timeSource: getTentacleTimeMs,
-          enableMovementAxis: true,
-          phaseStep: POLYGON_SWAY_PHASE_STEP,
-          executionMode,
-        });
         const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
+        const needsCpuVertices = executionMode !== "gpu" || Boolean(layer.stroke || hasAnchors);
+        const sampler = needsCpuVertices
+          ? createPolygonAnimSampler({
+              vertices: layer.vertices,
+              anim: animCfg,
+              timeSource: getTentacleTimeMs,
+              enableMovementAxis: true,
+              phaseStep: POLYGON_SWAY_PHASE_STEP,
+              executionMode: "cpu",
+            })
+          : null;
         const getDeformedVertices = () => {
-          const deformed = sampler.getVertices();
+          const deformed = sampler ? sampler.getVertices() : layer.vertices;
           if (hasAnchors) {
             const resolved = resolveLayerAnchors(layer.anchors, deformed, undefined, layer.offset);
             writeAnchorsForLayer(instance.id, layer.groupId, resolved);
@@ -247,14 +251,38 @@ export const createCompositePrimitives = (
         // Always add refreshFill to track visual effect changes
         const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForAnimated = layer.fill;
-        dynamicPrimitives.push(
-          createDynamicPolygonPrimitive(instance, {
-            getVertices: () => getDeformedVertices(),
-            offset: layer.offset,
+        if (executionMode === "gpu") {
+          const gpuPrimitive = createPolygonGpuPrimitive(instance, {
+            vertices: layer.vertices,
+            anim: animCfg,
             fill: animatedLayerFill,
+            offset: layer.offset,
+            phaseStep: POLYGON_SWAY_PHASE_STEP,
+            enableMovementAxis: true,
             refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
-          })
-        );
+          });
+          if (gpuPrimitive) {
+            dynamicPrimitives.push(gpuPrimitive);
+          } else {
+            dynamicPrimitives.push(
+              createDynamicPolygonPrimitive(instance, {
+                getVertices: () => getDeformedVertices(),
+                offset: layer.offset,
+                fill: animatedLayerFill,
+                refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+              })
+            );
+          }
+        } else {
+          dynamicPrimitives.push(
+            createDynamicPolygonPrimitive(instance, {
+              getVertices: () => getDeformedVertices(),
+              offset: layer.offset,
+              fill: animatedLayerFill,
+              refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+            })
+          );
+        }
       } else {
         if (layer.stroke) {
           const layerStrokeForStatic = layer.stroke;

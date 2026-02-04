@@ -1,6 +1,5 @@
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { RendererLayerAnimationConfig } from "@shared/types/renderer.types";
-import { isAnimationGpuAvailable, samplePolygonGpu, sampleSpineGpu } from "./animation-gpu";
 
 const TAU = Math.PI * 2;
 
@@ -181,21 +180,6 @@ export const createSpineSwaySampler = (options: {
     }
   };
 
-  const useGpu = options.executionMode === "gpu" && isAnimationGpuAvailable();
-  const gpuOutput = useGpu ? new Float32Array(baseSpine.length * 2) : null;
-  const gpuInput = useGpu ? new Float32Array(baseSpine.length * 5) : null;
-  if (useGpu && gpuInput) {
-    for (let i = 0; i < baseSpine.length; i += 1) {
-      const base = baseSpine[i]!;
-      const axisIndex = Math.max(i - 1, 0);
-      const writeOffset = i * 5;
-      gpuInput[writeOffset + 0] = base.x;
-      gpuInput[writeOffset + 1] = base.y;
-      gpuInput[writeOffset + 2] = axisX[axisIndex] ?? 0;
-      gpuInput[writeOffset + 3] = axisY[axisIndex] ?? 0;
-      gpuInput[writeOffset + 4] = falloffFactors[i] ?? 0;
-    }
-  }
 
   const sampleVertices = (() => {
     let lastSampleTime = -1;
@@ -206,27 +190,7 @@ export const createSpineSwaySampler = (options: {
         return quadVerts;
       }
       lastSampleTime = now;
-      if (useGpu && gpuInput && gpuOutput) {
-        const ok = sampleSpineGpu({
-          packedInput: gpuInput,
-          vertexCount: baseSpine.length,
-          anim,
-          timeMs: now,
-          output: gpuOutput,
-        });
-        if (ok) {
-          for (let i = 0; i < baseSpine.length; i += 1) {
-            const readOffset = i * 2;
-            deformed[i]!.x = gpuOutput[readOffset] ?? deformed[i]!.x;
-            deformed[i]!.y = gpuOutput[readOffset + 1] ?? deformed[i]!.y;
-            deformed[i]!.width = baseSpine[i]!.width;
-          }
-        } else {
-          deformSpine(now);
-        }
-      } else {
-        deformSpine(now);
-      }
+      deformSpine(now);
       buildQuad(segIndex);
       return quadVerts;
     };
@@ -379,16 +343,6 @@ export const createPolygonAnimSampler = (options: {
     return deformed;
   };
 
-  const useGpu = options.executionMode === "gpu" && isAnimationGpuAvailable();
-  const basePacked = useGpu ? new Float32Array(vertexCount * 2) : null;
-  if (basePacked) {
-    for (let i = 0; i < vertexCount; i += 1) {
-      const offset = i * 2;
-      basePacked[offset] = baseX[i] ?? 0;
-      basePacked[offset + 1] = baseY[i] ?? 0;
-    }
-  }
-  const gpuOutput = useGpu ? new Float32Array(vertexCount * 2) : null;
 
   const getDeformedVertices = (() => {
     const UPDATE_INTERVAL_MS = 32;
@@ -399,26 +353,6 @@ export const createPolygonAnimSampler = (options: {
         return deformed;
       }
       lastUpdateTime = now;
-      if (useGpu && basePacked && gpuOutput) {
-        const ok = samplePolygonGpu({
-          vertices: basePacked,
-          vertexCount,
-          anim: animCfg,
-          timeMs: now,
-          center,
-          phaseStep,
-          enableMovementAxis: Boolean(options.enableMovementAxis),
-          output: gpuOutput,
-        });
-        if (ok) {
-          for (let i = 0; i < vertexCount; i += 1) {
-            const readOffset = i * 2;
-            deformed[i]!.x = gpuOutput[readOffset] ?? deformed[i]!.x;
-            deformed[i]!.y = gpuOutput[readOffset + 1] ?? deformed[i]!.y;
-          }
-          return deformed;
-        }
-      }
       if (animCfg.type === "sway") {
         sampleSway(now);
       } else {

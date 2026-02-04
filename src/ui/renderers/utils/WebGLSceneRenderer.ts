@@ -25,6 +25,7 @@ import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
 import { loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
 import { textureResourceManager } from "../textures/TextureResourceManager";
 import { setAnimationGpuContext, disposeAnimationGpuResources } from "../objects/shared/animation-gpu";
+import { polygonGpuRenderer } from "../primitives/gpu/polygon";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -310,6 +311,8 @@ export class WebGLSceneRenderer {
 
     this.drawBuffer(this.staticBuffer, this.objectsRenderer.getStaticVertexCount());
     this.drawBuffer(this.dynamicBuffer, this.objectsRenderer.getDynamicVertexCount());
+    polygonGpuRenderer.setContext(this.gl);
+    polygonGpuRenderer.render(this.gl, cameraState);
   }
 
   /**
@@ -372,6 +375,7 @@ export class WebGLSceneRenderer {
   public dispose(): void {
     disposeAnimationGpuResources(this.gl);
     setAnimationGpuContext(null);
+    polygonGpuRenderer.setContext(null);
     this.gl.deleteBuffer(this.staticBuffer);
     this.gl.deleteBuffer(this.dynamicBuffer);
     this.gl.deleteProgram(this.program);
