@@ -143,10 +143,10 @@ export const setupWebGLScene = (
 
   clearAllAuraSlots();
   petalAuraGpuRenderer.clearInstances();
-  objectsRenderer.bootstrap(scene.getObjects());
 
   // Initialize WebGL renderer (handles shaders, buffers, attributes, uniforms)
   const webglRenderer = new WebGLSceneRenderer(gl, objectsRenderer);
+  objectsRenderer.bootstrap(scene.getObjects());
 
   const cleanup = () => {
     // Dispose WebGL renderer first (handles buffers, program, shaders)

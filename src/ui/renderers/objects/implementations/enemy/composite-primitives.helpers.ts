@@ -1,6 +1,5 @@
 import type {
   SceneObjectInstance,
-  SceneVector2,
   SceneFill,
   SceneStroke,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
@@ -19,8 +18,14 @@ import {
   sanitizeCompositeLayer,
 } from "./composite-helpers";
 import { getNowMs } from "@shared/helpers/time.helper";
+import { resolveLayerAnchors, writeAnchorsForLayer } from "../../shared/anchors";
+import {
+  createPolygonAnimSampler,
+  createSpineSwaySampler,
+  resolveAnimationExecutionMode,
+} from "../../shared/animation-pipeline";
+import { isAnimationGpuAvailable } from "../../shared/animation-gpu";
 
-const TAU = Math.PI * 2;
 const POLYGON_SWAY_PHASE_STEP = 0.3; // Phase difference between vertices for wave-like animation
 
 /**
@@ -37,7 +42,7 @@ export const createCompositePrimitives = (
   dynamicPrimitives: DynamicPrimitive[]
 ): void => {
   // Process each layer
-  renderer.layers.forEach((layerConfig) => {
+  renderer.layers.forEach((layerConfig, layerIndex) => {
     const layer = sanitizeCompositeLayer(layerConfig);
     if (!layer) {
       return; // Skip invalid layers
@@ -51,151 +56,33 @@ export const createCompositePrimitives = (
 
       // Sway animation for tentacle segments built from a line spine (like player units)
       if (Array.isArray(layer.spine) && layer.anim?.type === "sway") {
-        const rawSpine = layer.spine;
-        const baseSpine = rawSpine.map((p) => ({ x: p.x, y: p.y, width: p.width }));
-        const segIndex = typeof layer.segmentIndex === "number" ? layer.segmentIndex : 0;
-        const build = layer.buildOpts || {};
-        const winding = build.winding === "CW" ? "CW" : "CCW";
-        const epsilon =
-          typeof build.epsilon === "number" && isFinite(build.epsilon) ? build.epsilon : 0.2;
-        const anim = layer.anim;
-        const period = Math.max(anim?.periodMs ?? 1400, 1);
-        const amplitude = anim?.amplitude ?? 1.0;
-        const phase = anim?.phase ?? 0;
-        const falloffKind = anim?.falloff ?? "tip";
-        const axis = anim?.axis ?? "normal";
-
-        const segmentCount = Math.max(baseSpine.length - 1, 0);
-        const deformed = baseSpine.map((p) => ({ x: p.x, y: p.y, width: p.width }));
-        const quadVerts: SceneVector2[] = [
-          { x: 0, y: 0 },
-          { x: 0, y: 0 },
-          { x: 0, y: 0 },
-          { x: 0, y: 0 },
-        ];
-
-        const falloffFactors = new Float32Array(baseSpine.length);
-        if (baseSpine.length > 1) {
-          for (let i = 1; i < baseSpine.length; i += 1) {
-            const ratio = i / (baseSpine.length - 1);
-            falloffFactors[i] =
-              falloffKind === "tip"
-                ? ratio
-                : falloffKind === "root"
-                ? 1 - ratio
-                : 1;
+        const executionMode = resolveAnimationExecutionMode({
+          requested: layer.anim.executionMode,
+          gpuAvailable: isAnimationGpuAvailable(),
+          warnKey: `enemy:${instance.id}:spine:${layer.groupId ?? layerIndex}`,
+        });
+        const sampler = createSpineSwaySampler({
+          spine: layer.spine,
+          segmentIndex: typeof layer.segmentIndex === "number" ? layer.segmentIndex : 0,
+          buildOpts: layer.buildOpts,
+          anim: layer.anim,
+          timeSource: getAnimationTimeMs,
+          executionMode,
+        });
+        const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
+        const sampleVertices = () => {
+          const quadVerts = sampler.getVertices();
+          if (hasAnchors) {
+            const resolved = resolveLayerAnchors(
+              layer.anchors,
+              quadVerts,
+              sampler.getDeformedSpine(),
+              layer.offset
+            );
+            writeAnchorsForLayer(instance.id, layer.groupId, resolved);
           }
-        }
-
-        const axisX = new Float32Array(segmentCount);
-        const axisY = new Float32Array(segmentCount);
-        for (let i = 0; i < segmentCount; i += 1) {
-          const a = baseSpine[i]!;
-          const b = baseSpine[i + 1]!;
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const length = Math.hypot(dx, dy) || 1;
-          const tangentX = dx / length;
-          const tangentY = dy / length;
-          const normalX = -tangentY;
-          const normalY = tangentX;
-          axisX[i] = axis === "tangent" ? tangentX : normalX;
-          axisY[i] = axis === "tangent" ? tangentY : normalY;
-        }
-
-        const omega = (2 * Math.PI) / period;
-
-        const deformSpine = (timeMs: number) => {
-          if (baseSpine.length === 0) {
-            return;
-          }
-          deformed[0]!.x = baseSpine[0]!.x;
-          deformed[0]!.y = baseSpine[0]!.y;
-          if (baseSpine.length === 1 || amplitude === 0 || segmentCount === 0) {
-            for (let i = 1; i < baseSpine.length; i += 1) {
-              deformed[i]!.x = baseSpine[i]!.x;
-              deformed[i]!.y = baseSpine[i]!.y;
-            }
-            return;
-          }
-
-          const baseAngle = omega * timeMs + phase;
-
-          for (let i = 1; i < baseSpine.length; i += 1) {
-            const segmentPhase = i * 0.5;
-            const sinAngle = Math.sin(baseAngle + segmentPhase);
-            const displacement = amplitude * falloffFactors[i]! * sinAngle;
-            const axisXValue = axisX[i - 1] ?? 0;
-            const axisYValue = axisY[i - 1] ?? 0;
-            deformed[i]!.x = baseSpine[i]!.x + axisXValue * displacement;
-            deformed[i]!.y = baseSpine[i]!.y + axisYValue * displacement;
-          }
+          return quadVerts;
         };
-
-        const buildQuad = (k: number) => {
-          const a = deformed[k]!;
-          const b = deformed[k + 1]!;
-          const ax = a?.x ?? 0;
-          const ay = a?.y ?? 0;
-          const bx = b?.x ?? ax;
-          const by = b?.y ?? ay;
-          const tx = bx - ax;
-          const ty = by - ay;
-          const len = Math.hypot(tx, ty) || 1;
-          const ux = tx / len;
-          const uy = ty / len;
-          const nx = -uy;
-          const ny = ux;
-          const aCapX = ax - ux * epsilon;
-          const aCapY = ay - uy * epsilon;
-          const bCapX = bx + ux * epsilon;
-          const bCapY = by + uy * epsilon;
-          const wa = (a?.width ?? 0) * 0.5;
-          const wb = (b?.width ?? 0) * 0.5;
-          const aLx = aCapX + nx * wa;
-          const aLy = aCapY + ny * wa;
-          const aRx = aCapX - nx * wa;
-          const aRy = aCapY - ny * wa;
-          const bLx = bCapX + nx * wb;
-          const bLy = bCapY + ny * wb;
-          const bRx = bCapX - nx * wb;
-          const bRy = bCapY - ny * wb;
-          if (winding === "CW") {
-            quadVerts[0]!.x = aRx;
-            quadVerts[0]!.y = aRy;
-            quadVerts[1]!.x = bRx;
-            quadVerts[1]!.y = bRy;
-            quadVerts[2]!.x = bLx;
-            quadVerts[2]!.y = bLy;
-            quadVerts[3]!.x = aLx;
-            quadVerts[3]!.y = aLy;
-          } else {
-            quadVerts[0]!.x = aLx;
-            quadVerts[0]!.y = aLy;
-            quadVerts[1]!.x = bLx;
-            quadVerts[1]!.y = bLy;
-            quadVerts[2]!.x = bRx;
-            quadVerts[2]!.y = bRy;
-            quadVerts[3]!.x = aRx;
-            quadVerts[3]!.y = aRy;
-          }
-        };
-
-        const sampleVertices = (() => {
-          let lastSampleTime = -1;
-          const UPDATE_INTERVAL_MS = 32;
-
-          return () => {
-            const now = getAnimationTimeMs();
-            if (now - lastSampleTime < UPDATE_INTERVAL_MS) {
-              return quadVerts;
-            }
-            lastSampleTime = now;
-            deformSpine(now);
-            buildQuad(segIndex);
-            return quadVerts;
-          };
-        })();
 
         if (layer.stroke) {
           const strokeColor =
@@ -229,137 +116,27 @@ export const createCompositePrimitives = (
       const animCfg = layer.anim;
       if (animCfg && (animCfg.type === "sway" || animCfg.type === "pulse")) {
         // Animated polygon layer
-        const baseVertices = layer.vertices.map((v) => ({ x: v.x, y: v.y }));
-        const center = baseVertices.reduce(
-          (acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }),
-          { x: 0, y: 0 }
-        );
-        const invCount = baseVertices.length > 0 ? 1 / baseVertices.length : 0;
-        center.x *= invCount;
-        center.y *= invCount;
-
-        const period = Math.max(1, Math.floor(animCfg.periodMs ?? 1500));
-        const amplitude = animCfg.amplitude ?? 6;
-        const phase = animCfg.phase ?? 0;
-        const axis = animCfg.axis ?? "normal";
-        const amplitudePercentage =
-          typeof animCfg.amplitudePercentage === "number" &&
-          Number.isFinite(animCfg.amplitudePercentage)
-            ? animCfg.amplitudePercentage
-            : undefined;
-
-        const vertexMeta = baseVertices.map((v) => {
-          const dx = v.x - center.x;
-          const dy = v.y - center.y;
-          const radius = Math.hypot(dx, dy);
-          const invRadius = radius > 1e-6 ? 1 / radius : 0;
-          const normalX = dx * invRadius;
-          const normalY = dy * invRadius;
-          const tangentX = -normalY;
-          const tangentY = normalX;
-          const normalMagnitude =
-            amplitudePercentage !== undefined ? radius * amplitudePercentage : amplitude;
-          return {
-            baseX: v.x,
-            baseY: v.y,
-            normalX,
-            normalY,
-            tangentX,
-            tangentY,
-            normalMagnitude,
-            tangentMagnitude: amplitude,
-          };
+        const executionMode = resolveAnimationExecutionMode({
+          requested: animCfg.executionMode,
+          gpuAvailable: isAnimationGpuAvailable(),
+          warnKey: `enemy:${instance.id}:polygon:${layer.groupId ?? layerIndex}`,
         });
-
-        // Add phase step for vertex-by-vertex animation (like player units)
-        const POLYGON_SWAY_PHASE_STEP = 0.3; // Phase difference between vertices
-        const sinPhaseStep = Math.sin(POLYGON_SWAY_PHASE_STEP);
-        const cosPhaseStep = Math.cos(POLYGON_SWAY_PHASE_STEP);
-
-        const sampleSway = (timeMs: number): SceneVector2[] => {
-          if (vertexMeta.length === 0) {
-            return [];
-          }
-          const omega = TAU / period;
-          const baseAngle = omega * timeMs + phase;
-          let sinValue = Math.sin(baseAngle);
-          let cosValue = Math.cos(baseAngle);
-          const deformed = new Array<SceneVector2>(vertexMeta.length);
-          for (let i = 0; i < vertexMeta.length; i += 1) {
-            const meta = vertexMeta[i]!;
-            if (!meta) {
-              deformed[i] = { x: 0, y: 0 };
-              continue;
-            }
-            // Use per-vertex phase for wave-like animation
-            const sinForVertex = sinValue;
-            if (axis === "tangent") {
-              const magnitude = meta.tangentMagnitude * sinForVertex;
-              deformed[i] = {
-                x: meta.baseX + meta.tangentX * magnitude,
-                y: meta.baseY + meta.tangentY * magnitude,
-              };
-            } else {
-              const magnitude = meta.normalMagnitude * sinForVertex;
-              deformed[i] = {
-                x: meta.baseX + meta.normalX * magnitude,
-                y: meta.baseY + meta.normalY * magnitude,
-              };
-            }
-            // Rotate phase for next vertex
-            const prevSin = sinValue;
-            const prevCos = cosValue;
-            sinValue = prevSin * cosPhaseStep + prevCos * sinPhaseStep;
-            cosValue = prevCos * cosPhaseStep - prevSin * sinPhaseStep;
+        const sampler = createPolygonAnimSampler({
+          vertices: layer.vertices,
+          anim: animCfg,
+          timeSource: getAnimationTimeMs,
+          phaseStep: POLYGON_SWAY_PHASE_STEP,
+          executionMode,
+        });
+        const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
+        const getDeformedVertices = () => {
+          const deformed = sampler.getVertices();
+          if (hasAnchors) {
+            const resolved = resolveLayerAnchors(layer.anchors, deformed, undefined, layer.offset);
+            writeAnchorsForLayer(instance.id, layer.groupId, resolved);
           }
           return deformed;
         };
-
-        const samplePulse = (timeMs: number): SceneVector2[] => {
-          if (vertexMeta.length === 0) {
-            return [];
-          }
-          const omega = TAU / period;
-          const angle = omega * timeMs + phase;
-          const s = Math.sin(angle);
-          const deformed = new Array<SceneVector2>(vertexMeta.length);
-          for (let i = 0; i < vertexMeta.length; i += 1) {
-            const meta = vertexMeta[i]!;
-            if (!meta) {
-              deformed[i] = { x: 0, y: 0 };
-              continue;
-            }
-            if (axis === "tangent") {
-              const magnitude = amplitude * s;
-              deformed[i] = {
-                x: meta.baseX + meta.tangentX * magnitude,
-                y: meta.baseY + meta.tangentY * magnitude,
-              };
-            } else {
-              const magnitude = amplitude * s;
-              deformed[i] = {
-                x: meta.baseX + meta.normalX * magnitude,
-                y: meta.baseY + meta.normalY * magnitude,
-              };
-            }
-          }
-          return deformed;
-        };
-
-        const getDeformedVertices = (() => {
-          const UPDATE_INTERVAL_MS = 32; // Update animation every 32ms (~30 FPS)
-          let lastUpdateTime = -1;
-          let lastSample = baseVertices.map((v) => ({ x: v.x, y: v.y }));
-          return () => {
-            const now = getAnimationTimeMs();
-            if (now - lastUpdateTime < UPDATE_INTERVAL_MS) {
-              return lastSample; // Return cached vertices
-            }
-            lastUpdateTime = now;
-            lastSample = animCfg.type === "sway" ? sampleSway(now) : samplePulse(now);
-            return lastSample;
-          };
-        })();
 
         if (layer.stroke) {
           const strokeColor =
@@ -403,6 +180,10 @@ export const createCompositePrimitives = (
           );
         }
         const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+        if (Array.isArray(layer.anchors) && layer.anchors.length > 0) {
+          const resolved = resolveLayerAnchors(layer.anchors, layer.vertices, layer.spine, layer.offset);
+          writeAnchorsForLayer(instance.id, layer.groupId, resolved);
+        }
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             vertices: layer.vertices,

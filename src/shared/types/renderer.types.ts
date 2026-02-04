@@ -17,6 +17,16 @@ export interface RendererLayerAnimationConfig {
   phase?: number;
   falloff?: "tip" | "root" | "none";
   axis?: "normal" | "tangent" | "movement-normal" | "movement-tangent";
+  executionMode?: "gpu" | "cpu" | "auto";
+}
+
+export type RendererLayerAnchorMode = "vertex" | "spine";
+
+export interface RendererLayerAnchorConfig {
+  id: string;
+  mode: RendererLayerAnchorMode;
+  index?: number;
+  t?: number;
 }
 
 /**
@@ -31,6 +41,7 @@ export interface BaseRendererLayerFields {
   requiresEffect?: string;
   anim?: RendererLayerAnimationConfig;
   groupId?: string;
+  anchors?: RendererLayerAnchorConfig[];
 }
 
 /**
