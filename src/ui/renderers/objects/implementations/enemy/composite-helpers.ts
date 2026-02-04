@@ -57,6 +57,8 @@ export const sanitizeCompositeLayer = (
     spine?: { x: number; y: number; width: number }[];
     segmentIndex?: number;
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+    groupId?: string;
+    anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
   }
 ): {
   shape: "polygon" | "circle" | "sprite";
@@ -73,6 +75,8 @@ export const sanitizeCompositeLayer = (
   spine?: { x: number; y: number; width: number }[];
   segmentIndex?: number;
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+  groupId?: string;
+  anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
 } | null => {
   return sanitizeEnemyCompositeLayer(layer);
 };
@@ -83,6 +87,8 @@ type EnemyLayerExtras = {
   spine?: { x: number; y: number; width: number }[];
   segmentIndex?: number;
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+  groupId?: string;
+  anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
 };
 
 const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
@@ -101,6 +107,8 @@ const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
     spine?: { x: number; y: number; width: number }[];
     segmentIndex?: number;
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+    groupId?: string;
+    anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
   },
   EnemyLayerExtras
 >({
@@ -134,5 +142,7 @@ const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
     spine: layer.spine,
     segmentIndex: layer.segmentIndex,
     buildOpts: layer.buildOpts,
+    groupId: layer.groupId,
+    anchors: layer.anchors,
   }),
 });

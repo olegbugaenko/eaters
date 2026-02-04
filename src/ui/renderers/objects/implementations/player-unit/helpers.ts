@@ -148,6 +148,7 @@ type PlayerLayerExtraFields = {
   segmentIndex?: RendererLayer["segmentIndex"];
   buildOpts?: RendererLayer["buildOpts"];
   groupId?: RendererLayer["groupId"];
+  anchors?: RendererLayer["anchors"];
 };
 
 const sanitizePlayerCompositeLayer = createCompositeLayerSanitizer<
@@ -185,6 +186,7 @@ const sanitizePlayerCompositeLayer = createCompositeLayerSanitizer<
     segmentIndex: layer.segmentIndex,
     buildOpts: layer.buildOpts,
     groupId: layer.groupId,
+    anchors: layer.anchors,
   }),
 });
 
