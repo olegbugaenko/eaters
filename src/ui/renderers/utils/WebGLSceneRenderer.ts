@@ -24,6 +24,7 @@ import type { SceneCameraState } from "@core/logic/provided/services/scene-objec
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
 import { loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
 import { textureResourceManager } from "../textures/TextureResourceManager";
+import { setAnimationGpuContext, disposeAnimationGpuResources } from "../objects/shared/animation-gpu";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -69,6 +70,7 @@ export class WebGLSceneRenderer {
   ) {
     this.gl = gl;
     this.objectsRenderer = objectsRenderer;
+    setAnimationGpuContext(gl);
 
     // Compile shaders
     this.vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -368,6 +370,8 @@ export class WebGLSceneRenderer {
    * Disposes all WebGL resources
    */
   public dispose(): void {
+    disposeAnimationGpuResources(this.gl);
+    setAnimationGpuContext(null);
     this.gl.deleteBuffer(this.staticBuffer);
     this.gl.deleteBuffer(this.dynamicBuffer);
     this.gl.deleteProgram(this.program);

@@ -24,6 +24,7 @@ import {
   createSpineSwaySampler,
   resolveAnimationExecutionMode,
 } from "../../shared/animation-pipeline";
+import { isAnimationGpuAvailable } from "../../shared/animation-gpu";
 
 const POLYGON_SWAY_PHASE_STEP = 0.3; // Phase difference between vertices for wave-like animation
 
@@ -57,16 +58,16 @@ export const createCompositePrimitives = (
       if (Array.isArray(layer.spine) && layer.anim?.type === "sway") {
         const executionMode = resolveAnimationExecutionMode({
           requested: layer.anim.executionMode,
-          gpuAvailable: false,
+          gpuAvailable: isAnimationGpuAvailable(),
           warnKey: `enemy:${instance.id}:spine:${layer.groupId ?? layerIndex}`,
         });
-        void executionMode;
         const sampler = createSpineSwaySampler({
           spine: layer.spine,
           segmentIndex: typeof layer.segmentIndex === "number" ? layer.segmentIndex : 0,
           buildOpts: layer.buildOpts,
           anim: layer.anim,
           timeSource: getAnimationTimeMs,
+          executionMode,
         });
         const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
         const sampleVertices = () => {
@@ -117,15 +118,15 @@ export const createCompositePrimitives = (
         // Animated polygon layer
         const executionMode = resolveAnimationExecutionMode({
           requested: animCfg.executionMode,
-          gpuAvailable: false,
+          gpuAvailable: isAnimationGpuAvailable(),
           warnKey: `enemy:${instance.id}:polygon:${layer.groupId ?? layerIndex}`,
         });
-        void executionMode;
         const sampler = createPolygonAnimSampler({
           vertices: layer.vertices,
           anim: animCfg,
           timeSource: getAnimationTimeMs,
           phaseStep: POLYGON_SWAY_PHASE_STEP,
+          executionMode,
         });
         const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
         const getDeformedVertices = () => {

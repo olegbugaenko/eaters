@@ -30,6 +30,7 @@ import {
   createSpineSwaySampler,
   resolveAnimationExecutionMode,
 } from "../../shared/animation-pipeline";
+import { isAnimationGpuAvailable } from "../../shared/animation-gpu";
 
 /**
  * Creates composite primitives for player unit renderer
@@ -129,16 +130,16 @@ export const createCompositePrimitives = (
       if (Array.isArray(layer.spine) && layer.anim?.type === "sway") {
         const executionMode = resolveAnimationExecutionMode({
           requested: layer.anim.executionMode,
-          gpuAvailable: false,
+          gpuAvailable: isAnimationGpuAvailable(),
           warnKey: `player-unit:${instance.id}:spine:${layer.groupId ?? layerIndex}`,
         });
-        void executionMode;
         const sampler = createSpineSwaySampler({
           spine: layer.spine,
           segmentIndex: typeof layer.segmentIndex === "number" ? layer.segmentIndex : 0,
           buildOpts: layer.buildOpts,
           anim: layer.anim,
           timeSource: getTentacleTimeMs,
+          executionMode,
         });
         const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
         const sampleVertices = () => {
@@ -200,16 +201,16 @@ export const createCompositePrimitives = (
       if (animCfg && (animCfg.type === "sway" || animCfg.type === "pulse")) {
         const executionMode = resolveAnimationExecutionMode({
           requested: animCfg.executionMode,
-          gpuAvailable: false,
+          gpuAvailable: isAnimationGpuAvailable(),
           warnKey: `player-unit:${instance.id}:polygon:${layer.groupId ?? layerIndex}`,
         });
-        void executionMode;
         const sampler = createPolygonAnimSampler({
           vertices: layer.vertices,
           anim: animCfg,
           timeSource: getTentacleTimeMs,
           enableMovementAxis: true,
           phaseStep: POLYGON_SWAY_PHASE_STEP,
+          executionMode,
         });
         const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
         const getDeformedVertices = () => {
