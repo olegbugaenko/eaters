@@ -46,6 +46,7 @@
   justify-content: space-between;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .unit-designer__list-header .button {
@@ -59,6 +60,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .unit-designer__list-entry {
@@ -426,6 +430,62 @@
 
   .unit-designer__summary {
     grid-area: summary;
+  }
+}
+
+/* Compact list items when viewport height is small */
+@media (max-height: 849px) {
+  .unit-designer__list-items {
+    gap: var(--spacing-xs);
+  }
+
+  .unit-designer__list-entry {
+    gap: 0.1rem;
+  }
+
+  .unit-designer__list-item {
+    padding: 0.4rem var(--spacing-md);
+  }
+
+  .unit-designer__list-name {
+    font-size: 0.9rem;
+  }
+
+  .unit-designer__list-modules {
+    font-size: 0.75rem;
+  }
+
+  .unit-designer__selected-list {
+    gap: var(--spacing-xs);
+  }
+
+  .unit-designer__selected-item {
+    padding: 0.4rem var(--spacing-sm);
+  }
+
+  .unit-designer__selected-name {
+    font-size: 0.9rem;
+  }
+
+  .unit-designer__available-item {
+    padding: 0.35rem var(--spacing-sm);
+  }
+
+  .unit-designer__available-info {
+    padding: 0.3rem var(--spacing-sm);
+  }
+
+  .unit-designer__available-name {
+    font-size: 0.9rem;
+  }
+
+  .unit-designer__available-level {
+    font-size: 0.75rem;
+  }
+
+  .unit-designer__available-action {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.85rem;
   }
 }
 

@@ -60,6 +60,30 @@
   --shadow-card: 0 0.9rem 2.2rem rgba(0, 0, 0, 0.35);
 }
 
+/* Compact layout when viewport is small: scale down spacing and font sizes */
+@media (max-height: 849px), (max-width: 1299px) {
+  :root {
+    --font-size-heading-1: 1.25rem;
+    --font-size-heading-2: 1.15rem;
+    --font-size-heading-3: 0.9rem;
+    --font-size-body: 0.9rem;
+
+    --spacing-xs: 0.16rem;
+    --spacing-sm: 0.28rem;
+    --spacing-md: 0.56rem;
+    --spacing-lg: 0.8rem;
+    --spacing-sxl: 1rem;
+    --spacing-xl: 1.2rem;
+    --spacing-xxl: 1.6rem;
+
+    --radius-sm: 0.08rem;
+    --radius-md: 0.16rem;
+    --radius-lg: 0.28rem;
+    --radius-xl: 0.4rem;
+    --radius-xxl: 0.6rem;
+  }
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -68,6 +92,10 @@ body {
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2 {
+  font-size: var(--font-size-heading-1);
 }
 
 button {

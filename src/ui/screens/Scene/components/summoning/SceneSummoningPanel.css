@@ -458,3 +458,13 @@
     max-height: 260px;
   }
 }
+
+@media (max-height: 849px) {
+  .scene-summoning-panel__summon {
+    height: 180px;
+  }
+
+  .scene-summoning-panel__spells-area {
+    height: 180px;
+  }
+}

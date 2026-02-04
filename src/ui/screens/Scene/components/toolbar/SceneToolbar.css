@@ -145,6 +145,19 @@
   color: #a5b4c3;
 }
 
+/* Compact center panel height when viewport is short */
+@media (max-height: 849px) {
+  .scene-toolbar__section--center {
+    padding: 0.75rem 2.75rem 1.6rem;
+    gap: 0.5rem;
+  }
+
+  .scene-toolbar__center-silhouette {
+    transform: scaleY(0.84);
+    transform-origin: 50% 0;
+  }
+}
+
 @media (max-width: 768px) {
   .scene-toolbar {
     flex-direction: column;

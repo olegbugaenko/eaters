@@ -1,5 +1,5 @@
 .modules-workshop__details {
-  background: var(--color-surface-card);
+  /*background: var(--color-surface-card);*/
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-soft);
   padding: var(--spacing-xl);

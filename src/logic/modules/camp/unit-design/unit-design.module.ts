@@ -212,6 +212,18 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     this.designOrder = this.designOrder.filter((entry) => entry !== id);
     this.cachedComputed.delete(id);
     this.designTargeting.delete(id);
+    // Remove deleted id from roster and re-sanitize; then auto-fill freed slot with next available design
+    this.activeRoster = sanitizeRoster(
+      this.activeRoster.filter((entry) => entry !== id),
+      this.designOrder
+    );
+    while (this.activeRoster.length < MAX_ACTIVE_UNITS) {
+      const nextId = this.designOrder.find((designId) => !this.activeRoster.includes(designId));
+      if (!nextId) {
+        break;
+      }
+      this.activeRoster = sanitizeRoster([...this.activeRoster, nextId], this.designOrder);
+    }
     if (!this.hasDesignForType(type)) {
       this.createDefaultDesign(type);
     }

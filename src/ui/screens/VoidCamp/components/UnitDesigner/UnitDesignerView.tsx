@@ -332,41 +332,45 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
         </section>
         </div>
         <aside className="unit-designer__summary surface-sidebar">
-          <div className="unit-designer__summary-header">
-            <div className="unit-designer__summary-title heading-4">
-              {selectedUnit.name || getPlayerUnitConfig(selectedUnit.type).name}
-            </div>
-            <button
-              type="button"
-              className="unit-designer__summary-toggle"
-              aria-expanded={isPreviewOpen}
-              aria-label={isPreviewOpen ? "Collapse unit preview" : "Expand unit preview"}
-              onClick={() => setIsPreviewOpen((current) => !current)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setIsPreviewOpen((current) => !current);
-                }
-              }}
-            >
-              <span
-                className={classNames(
-                  "unit-designer__summary-toggle-icon",
-                  isPreviewOpen && "unit-designer__summary-toggle-icon--open"
-                )}
-                aria-hidden="true"
-              >
-                ▾
-              </span>
-            </button>
-          </div>
-          <UnitDesignerPreview
-            isOpen={isPreviewOpen}
-            unitType={selectedUnit.type}
-            unitBlueprint={selectedUnit.blueprint}
-            modules={selectedUnit.modules}
-            skills={ownedSkills}
-          />
+          {!previewModule && (
+            <>
+              <div className="unit-designer__summary-header">
+                <div className="unit-designer__summary-title heading-4">
+                  {selectedUnit.name || getPlayerUnitConfig(selectedUnit.type).name}
+                </div>
+                <button
+                  type="button"
+                  className="unit-designer__summary-toggle"
+                  aria-expanded={isPreviewOpen}
+                  aria-label={isPreviewOpen ? "Collapse unit preview" : "Expand unit preview"}
+                  onClick={() => setIsPreviewOpen((current) => !current)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setIsPreviewOpen((current) => !current);
+                    }
+                  }}
+                >
+                  <span
+                    className={classNames(
+                      "unit-designer__summary-toggle-icon",
+                      isPreviewOpen && "unit-designer__summary-toggle-icon--open"
+                    )}
+                    aria-hidden="true"
+                  >
+                    ▾
+                  </span>
+                </button>
+              </div>
+              <UnitDesignerPreview
+                isOpen={isPreviewOpen}
+                unitType={selectedUnit.type}
+                unitBlueprint={selectedUnit.blueprint}
+                modules={selectedUnit.modules}
+                skills={ownedSkills}
+              />
+            </>
+          )}
           {previewModule ? (
             <ModuleDetailsCard
               className="unit-designer__module-card no-wrapper"

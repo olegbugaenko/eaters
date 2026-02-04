@@ -6,6 +6,13 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.2a",
+    releaseDate: "2026-02-04",
+    changes: [
+      "Fixed bug when on small screen size run summary popup was not fully interactable",
+    ],
+  },
+  {
     displayName: "v0.1.2",
     releaseDate: "2026-02-03",
     changes: [
