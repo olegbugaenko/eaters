@@ -360,24 +360,14 @@ export const createDynamicCirclePrimitive = (
       );
       
       // Skip fill computation for solid fills (color doesn't depend on position)
+      // For non-solid fills, use cachedFill (already resolved) instead of calling resolveFill again
       let fillComponents: Float32Array;
       if (isSolidFill && !fillRefChanged) {
         fillComponents = fillScratch; // Reuse cached solid fill
-      } else if (fillRefChanged) {
-        // refreshFill was triggered - use the newly cached fill
+      } else {
+        // Use cachedFill - it's already been resolved (either initially or via refreshFill)
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
-          center: nextCenter,
-          rotation: target.data.rotation ?? 0,
-          size: {
-            width: nextRadius * 2,
-            height: nextRadius * 2,
-          },
-          radius: nextRadius,
-        });
-      } else {
-        fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: resolveFill(options, target),
           center: nextCenter,
           rotation: target.data.rotation ?? 0,
           size: {

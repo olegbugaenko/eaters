@@ -575,8 +575,14 @@ export const createDynamicPolygonPrimitive = (
           rotation,
           size: geometry.size,
         });
+      } else if (cachedFill.fillType === FILL_TYPES.SOLID) {
+        // OPTIMIZATION: For solid fills, just update center position (indices 4,5)
+        // This avoids full writeFillVertexComponents call
+        fillScratch[4] = fillCenter.x;
+        fillScratch[5] = fillCenter.y;
+        fillComponents = fillScratch;
       } else {
-        // Just update center position in fill components
+        // Non-solid static fill (gradient) - need full recalculation for center/rotation
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: fillCenter,
@@ -1142,6 +1148,7 @@ export const createDynamicPolygonStrokePrimitive = (
       // For animated vertices or stroke changes, use fast path (no change detection overhead)
       // For static vertices without stroke changes, use change detection to skip GPU upload when possible
       if (!isStaticVertices || strokeRefChanged) {
+        console.log("updateStrokeBandDataFast", target.id, target);
         updateStrokeBandDataFast(data, origin, rotation, inner, outer, fillComponents);
         return data;
       }

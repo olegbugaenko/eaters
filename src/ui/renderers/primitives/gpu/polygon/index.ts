@@ -1,1 +1,1 @@
-export { polygonGpuRenderer, type PolygonGpuHandle } from "./PolygonGpuRenderer";
+export { polygonGpuRenderer, type PolygonGpuHandle, type PolygonAnimationParams } from "./PolygonGpuRenderer";
