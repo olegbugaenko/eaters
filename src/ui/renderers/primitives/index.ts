@@ -20,6 +20,9 @@ export { createPolygonGpuPrimitive } from "./PolygonGpuPrimitive";
 export {
   createJoinedPolygonGpuPrimitive,
   createJoinedCircleGpuPrimitive,
+  createJoinedPolygonStrokeGpuPrimitive,
+  createJoinedCircleStrokeGpuPrimitive,
+  createJoinedSpriteGpuPrimitive,
 } from "./JoinedPolygonGpuPrimitive";
 export { createParticleEmitterPrimitive } from "./ParticleEmitterPrimitive";
 export { createParticleSystemPrimitive } from "./ParticleSystemPrimitive";

@@ -1,6 +1,7 @@
 import type {
   SceneFill,
   SceneObjectInstance,
+  SceneStroke,
   SceneVector2,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
@@ -12,6 +13,18 @@ import { computePolygonGeometry } from "@ui/renderers/primitives/basic/PolygonPr
 import { joinedPolygonGpuRenderer, type JoinedPolygonGpuHandle } from "@ui/renderers/primitives/gpu/joined/JoinedPolygonGpuRenderer";
 import { getAnimationGpuContext } from "@ui/renderers/objects/shared/animation-gpu";
 import { FILL_COMPONENTS } from "@ui/renderers/objects/ObjectRenderer";
+import { createSpriteFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+
+const createStrokeFill = (stroke: SceneStroke): SceneFill => ({
+  fillType: FILL_TYPES.SOLID,
+  color: {
+    r: stroke.color.r,
+    g: stroke.color.g,
+    b: stroke.color.b,
+    a: typeof stroke.color.a === "number" ? stroke.color.a : 1,
+  },
+});
 
 const buildPackedVertices = (vertices: SceneVector2[]): Float32Array => {
   const packed = new Float32Array(vertices.length * 2);
@@ -47,6 +60,37 @@ const buildCircleFanVertices = (radius: number, segments: number): SceneVector2[
     verts.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
   }
   return verts;
+};
+
+const buildStrokeBandVertices = (
+  inner: SceneVector2[],
+  outer: SceneVector2[]
+): SceneVector2[] => {
+  const n = Math.min(inner.length, outer.length);
+  if (n < 3) {
+    return [];
+  }
+  const verts: SceneVector2[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const outerI = outer[i]!;
+    const outerJ = outer[j]!;
+    const innerI = inner[i]!;
+    const innerJ = inner[j]!;
+    verts.push(outerI, outerJ, innerI, innerI, outerJ, innerJ);
+  }
+  return verts;
+};
+
+const buildSpriteQuadVertices = (width: number, height: number): SceneVector2[] => {
+  const halfWidth = width * 0.5;
+  const halfHeight = height * 0.5;
+  return [
+    { x: -halfWidth, y: halfHeight },
+    { x: halfWidth, y: halfHeight },
+    { x: halfWidth, y: -halfHeight },
+    { x: -halfWidth, y: -halfHeight },
+  ];
 };
 
 export interface JoinedGpuPrimitiveOptions {
@@ -297,6 +341,435 @@ export const createJoinedCircleGpuPrimitive = (
           rotation: 0,
           size,
           radius: options.radius,
+        });
+        fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
+        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      }
+
+      const pos = getInstanceRenderPosition(target);
+      renderHandle.instancePosition.x = pos.x;
+      renderHandle.instancePosition.y = pos.y;
+      renderHandle.instanceRotation = target.data.rotation ?? 0;
+      return null;
+    },
+    dispose() {
+      if (!gl) {
+        return;
+      }
+      if (renderHandle) {
+        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
+        renderHandle = null;
+      }
+      if (fillBuffer) {
+        gl.deleteBuffer(fillBuffer);
+        fillBuffer = null;
+      }
+      if (positionBuffer) {
+        gl.deleteBuffer(positionBuffer);
+        positionBuffer = null;
+      }
+    },
+  };
+
+  return primitive;
+};
+
+export const createJoinedPolygonStrokeGpuPrimitive = (
+  instance: SceneObjectInstance,
+  options: {
+    vertices: SceneVector2[];
+    stroke: SceneStroke;
+    refreshStroke?: (instance: SceneObjectInstance) => SceneStroke;
+  } & JoinedGpuPrimitiveOptions
+): DynamicPrimitive | null => {
+  if (!options.vertices || options.vertices.length < 3) {
+    return null;
+  }
+  const geometry = computePolygonGeometry(options.vertices);
+  const inner = options.vertices;
+  let outer = inner.map((vertex) => {
+    const dirX = vertex.x - geometry.centerOffset.x;
+    const dirY = vertex.y - geometry.centerOffset.y;
+    const length = Math.hypot(dirX, dirY) || 1;
+    const scale = (length + options.stroke.width) / length;
+    return {
+      x: geometry.centerOffset.x + dirX * scale,
+      y: geometry.centerOffset.y + dirY * scale,
+    };
+  });
+  let vertices = buildStrokeBandVertices(inner, outer);
+  if (vertices.length === 0) {
+    return null;
+  }
+  let packedVertices = buildPackedVertices(vertices);
+
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillData: Float32Array | null = null;
+  let cachedStroke: SceneStroke = options.stroke;
+  let prevInstanceStrokeRef: SceneStroke | undefined =
+    typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
+
+  let gl = getAnimationGpuContext();
+  let fillBuffer: WebGLBuffer | null = null;
+  let positionBuffer: WebGLBuffer | null = null;
+  let renderHandle: JoinedPolygonGpuHandle | null = null;
+
+  const writeFill = () => {
+    const fillComponents = writeFillVertexComponents(fillScratch, {
+      fill: createStrokeFill(cachedStroke),
+      center: geometry.centerOffset,
+      rotation: 0,
+      size: geometry.size,
+    });
+    fillData = buildFillBufferData(vertices.length, fillComponents, fillData ?? undefined);
+    gl!.bindBuffer(gl!.ARRAY_BUFFER, fillBuffer);
+    gl!.bufferSubData(gl!.ARRAY_BUFFER, 0, fillData);
+    gl!.bindBuffer(gl!.ARRAY_BUFFER, null);
+  };
+
+  const ensureResources = (): boolean => {
+    if (!gl) {
+      gl = getAnimationGpuContext();
+    }
+    if (!gl) {
+      return false;
+    }
+    if (!positionBuffer) {
+      positionBuffer = gl.createBuffer();
+      if (!positionBuffer) {
+        return false;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.DYNAMIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+    if (!fillBuffer) {
+      fillBuffer = gl.createBuffer();
+      if (!fillBuffer) {
+        return false;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        vertices.length * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
+        gl.DYNAMIC_DRAW
+      );
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+    joinedPolygonGpuRenderer.setContext(gl);
+    if (!renderHandle) {
+      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
+        positionBuffer,
+        fillBuffer,
+        vertexCount: vertices.length,
+        anchorIndex: options.anchorIndex,
+        joinOffset: options.joinOffset ?? { x: 0, y: 0 },
+        drawMode: gl.TRIANGLES,
+      });
+      if (!renderHandle) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const primitive: DynamicPrimitive = {
+    get data() {
+      return new Float32Array(0);
+    },
+    autoAnimate: true,
+    update(target: SceneObjectInstance): Float32Array | null {
+      if (!ensureResources() || !gl || !fillBuffer || !positionBuffer || !renderHandle) {
+        return null;
+      }
+
+      let strokeChanged = false;
+      if (typeof options.refreshStroke === "function") {
+        if (target.data.stroke !== prevInstanceStrokeRef) {
+          prevInstanceStrokeRef = target.data.stroke;
+          const nextStroke = options.refreshStroke(target);
+          if (nextStroke.width !== cachedStroke.width) {
+            cachedStroke = nextStroke;
+            outer = inner.map((vertex) => {
+              const dirX = vertex.x - geometry.centerOffset.x;
+              const dirY = vertex.y - geometry.centerOffset.y;
+              const length = Math.hypot(dirX, dirY) || 1;
+              const scale = (length + cachedStroke.width) / length;
+              return {
+                x: geometry.centerOffset.x + dirX * scale,
+                y: geometry.centerOffset.y + dirY * scale,
+              };
+            });
+            vertices = buildStrokeBandVertices(inner, outer);
+            packedVertices = buildPackedVertices(vertices);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, packedVertices);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+            joinedPolygonGpuRenderer.updateHandle(renderHandle, vertices.length);
+          } else {
+            cachedStroke = nextStroke;
+          }
+          strokeChanged = true;
+        }
+      }
+
+      if (strokeChanged || !fillData) {
+        writeFill();
+      }
+
+      const pos = getInstanceRenderPosition(target);
+      renderHandle.instancePosition.x = pos.x;
+      renderHandle.instancePosition.y = pos.y;
+      renderHandle.instanceRotation = target.data.rotation ?? 0;
+      return null;
+    },
+    dispose() {
+      if (!gl) {
+        return;
+      }
+      if (renderHandle) {
+        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
+        renderHandle = null;
+      }
+      if (fillBuffer) {
+        gl.deleteBuffer(fillBuffer);
+        fillBuffer = null;
+      }
+      if (positionBuffer) {
+        gl.deleteBuffer(positionBuffer);
+        positionBuffer = null;
+      }
+    },
+  };
+
+  return primitive;
+};
+
+export const createJoinedCircleStrokeGpuPrimitive = (
+  instance: SceneObjectInstance,
+  options: {
+    radius: number;
+    segments?: number;
+    stroke: SceneStroke;
+    refreshStroke?: (instance: SceneObjectInstance) => SceneStroke;
+  } & JoinedGpuPrimitiveOptions
+): DynamicPrimitive | null => {
+  const buildVertices = (radius: number) =>
+    buildCircleFanVertices(radius, options.segments ?? 24);
+  let cachedStroke: SceneStroke = options.stroke;
+  let vertices = buildVertices(options.radius + cachedStroke.width);
+  let packedVertices = buildPackedVertices(vertices);
+
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillData: Float32Array | null = null;
+  let prevInstanceStrokeRef: SceneStroke | undefined =
+    typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
+
+  let gl = getAnimationGpuContext();
+  let fillBuffer: WebGLBuffer | null = null;
+  let positionBuffer: WebGLBuffer | null = null;
+  let renderHandle: JoinedPolygonGpuHandle | null = null;
+
+  const ensureResources = (): boolean => {
+    if (!gl) {
+      gl = getAnimationGpuContext();
+    }
+    if (!gl) {
+      return false;
+    }
+    if (!positionBuffer) {
+      positionBuffer = gl.createBuffer();
+      if (!positionBuffer) {
+        return false;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.DYNAMIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+    if (!fillBuffer) {
+      fillBuffer = gl.createBuffer();
+      if (!fillBuffer) {
+        return false;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        vertices.length * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
+        gl.DYNAMIC_DRAW
+      );
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+    joinedPolygonGpuRenderer.setContext(gl);
+    if (!renderHandle) {
+      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
+        positionBuffer,
+        fillBuffer,
+        vertexCount: vertices.length,
+        anchorIndex: options.anchorIndex,
+        joinOffset: options.joinOffset ?? { x: 0, y: 0 },
+      });
+      if (!renderHandle) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const primitive: DynamicPrimitive = {
+    get data() {
+      return new Float32Array(0);
+    },
+    autoAnimate: true,
+    update(target: SceneObjectInstance): Float32Array | null {
+      if (!ensureResources() || !gl || !fillBuffer || !positionBuffer || !renderHandle) {
+        return null;
+      }
+      let strokeChanged = false;
+      if (typeof options.refreshStroke === "function") {
+        if (target.data.stroke !== prevInstanceStrokeRef) {
+          prevInstanceStrokeRef = target.data.stroke;
+          const nextStroke = options.refreshStroke(target);
+          if (nextStroke.width !== cachedStroke.width) {
+            cachedStroke = nextStroke;
+            vertices = buildVertices(options.radius + cachedStroke.width);
+            packedVertices = buildPackedVertices(vertices);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, packedVertices);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+            joinedPolygonGpuRenderer.updateHandle(renderHandle, vertices.length);
+          } else {
+            cachedStroke = nextStroke;
+          }
+          strokeChanged = true;
+        }
+      }
+      if (strokeChanged || !fillData) {
+        const fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: createStrokeFill(cachedStroke),
+          center: { x: 0, y: 0 },
+          rotation: 0,
+          size: { width: options.radius * 2, height: options.radius * 2 },
+        });
+        fillData = buildFillBufferData(vertices.length, fillComponents, fillData ?? undefined);
+        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      }
+      const pos = getInstanceRenderPosition(target);
+      renderHandle.instancePosition.x = pos.x;
+      renderHandle.instancePosition.y = pos.y;
+      renderHandle.instanceRotation = target.data.rotation ?? 0;
+      return null;
+    },
+    dispose() {
+      if (!gl) {
+        return;
+      }
+      if (renderHandle) {
+        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
+        renderHandle = null;
+      }
+      if (fillBuffer) {
+        gl.deleteBuffer(fillBuffer);
+        fillBuffer = null;
+      }
+      if (positionBuffer) {
+        gl.deleteBuffer(positionBuffer);
+        positionBuffer = null;
+      }
+    },
+  };
+
+  return primitive;
+};
+
+export const createJoinedSpriteGpuPrimitive = (
+  instance: SceneObjectInstance,
+  options: {
+    spritePath: string;
+    width: number;
+    height: number;
+  } & JoinedGpuPrimitiveOptions
+): DynamicPrimitive | null => {
+  if (!options.spritePath || options.width <= 0 || options.height <= 0) {
+    return null;
+  }
+  const vertices = buildSpriteQuadVertices(options.width, options.height);
+  const vertexCount = vertices.length;
+  const packedVertices = buildPackedVertices(vertices);
+  const geometry = computePolygonGeometry(vertices);
+
+  const fillScratch = new Float32Array(FILL_COMPONENTS);
+  let fillData: Float32Array | null = null;
+  const spriteFill = createSpriteFill(options.spritePath);
+
+  let gl = getAnimationGpuContext();
+  let fillBuffer: WebGLBuffer | null = null;
+  let positionBuffer: WebGLBuffer | null = null;
+  let renderHandle: JoinedPolygonGpuHandle | null = null;
+
+  const ensureResources = (): boolean => {
+    if (!gl) {
+      gl = getAnimationGpuContext();
+    }
+    if (!gl) {
+      return false;
+    }
+    if (!positionBuffer) {
+      positionBuffer = gl.createBuffer();
+      if (!positionBuffer) {
+        return false;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+    if (!fillBuffer) {
+      fillBuffer = gl.createBuffer();
+      if (!fillBuffer) {
+        return false;
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
+        gl.DYNAMIC_DRAW
+      );
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+    joinedPolygonGpuRenderer.setContext(gl);
+    if (!renderHandle) {
+      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
+        positionBuffer,
+        fillBuffer,
+        vertexCount,
+        anchorIndex: options.anchorIndex,
+        joinOffset: options.joinOffset ?? { x: 0, y: 0 },
+      });
+      if (!renderHandle) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const primitive: DynamicPrimitive = {
+    get data() {
+      return new Float32Array(0);
+    },
+    autoAnimate: true,
+    update(target: SceneObjectInstance): Float32Array | null {
+      if (!ensureResources() || !gl || !fillBuffer || !renderHandle) {
+        return null;
+      }
+      if (!fillData) {
+        const fillComponents = writeFillVertexComponents(fillScratch, {
+          fill: spriteFill,
+          center: geometry.centerOffset,
+          rotation: 0,
+          size: geometry.size,
         });
         fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
         gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
