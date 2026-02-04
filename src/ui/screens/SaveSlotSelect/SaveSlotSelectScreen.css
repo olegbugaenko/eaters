@@ -117,12 +117,6 @@
   gap: var(--spacing-md);
 }
 
-.save-slot-card__details dt {
-  /*font-weight: 400;
-  color: var(--color-text-muted);
-  */
-}
-
 .save-slot-card__details dd {
   margin: 0;
   font-variant-numeric: tabular-nums;

@@ -2,6 +2,7 @@ import { setupWebGLScene } from "@ui/screens/Scene/hooks/useWebGLSceneSetup";
 import type { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 
 type PreviewEntry = {
+  canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
   webglRenderer: ReturnType<typeof setupWebGLScene>["webglRenderer"];
   cleanup: () => void;
@@ -20,16 +21,29 @@ export const acquirePreviewWebgl = (
 ) => {
   const existing = previews.get(previewId);
   if (existing) {
-    existing.refCount += 1;
+    // Same canvas: reuse only if context is still valid (e.g. strict mode remount).
+    // After quick hover across organs the canvas can be reused but the context may be lost.
+    if (existing.canvas === canvas && !existing.gl.isContextLost()) {
+      existing.refCount += 1;
+      if (existing.disposeTimeoutId !== null) {
+        window.clearTimeout(existing.disposeTimeoutId);
+        existing.disposeTimeoutId = null;
+      }
+      return existing;
+    }
+    // Different canvas or lost context - dispose old setup and create new one
     if (existing.disposeTimeoutId !== null) {
       window.clearTimeout(existing.disposeTimeoutId);
       existing.disposeTimeoutId = null;
     }
-    return existing;
+    existing.cleanup();
+    existing.gl.getExtension("WEBGL_lose_context")?.loseContext();
+    previews.delete(previewId);
   }
 
   const setup = setupWebGLScene(canvas, scene, options);
   const entry: PreviewEntry = {
+    canvas,
     gl: setup.gl,
     webglRenderer: setup.webglRenderer,
     cleanup: setup.cleanup,
