@@ -6,6 +6,15 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.2b",
+    releaseDate: "2026-02-04",
+    changes: [
+      "Fixed UI for small screen sizes",
+      "Fixed scroll behaviour in unit designer",
+      "Fixed bug when deleted units were not removed from roster correctly",
+    ],
+  },
+  {
     displayName: "v0.1.2a",
     releaseDate: "2026-02-04",
     changes: [
