@@ -33,8 +33,10 @@ import {
   updateVboStats,
   updateParticleStats,
   updateMovableStats,
+  updateJoinedStats,
   tickFrame,
 } from "../components/debug/debugStats";
+import { joinedPolygonGpuRenderer } from "@ui/renderers/primitives/gpu/joined";
 import { RadiationPostProcess } from "@ui/renderers/utils/RadiationPostProcess";
 
 const EDGE_THRESHOLD = 48;
@@ -119,6 +121,7 @@ export const useSceneCanvas = ({
   const spellcastingRef = useRef(spellcasting);
   const onSpellCastRef = useRef(onSpellCast);
   const onInspectTargetRef = useRef(onInspectTarget);
+  const joinedStatsLastUpdateRef = useRef(0);
   const getInterpolatedUnitPositionsRef = useRef(getInterpolatedUnitPositions);
   const getInterpolatedBulletPositionsRef = useRef(getInterpolatedBulletPositions);
   const getInterpolatedBrickPositionsRef = useRef(getInterpolatedBrickPositions);
@@ -477,6 +480,17 @@ export const useSceneCanvas = ({
           }
         } else {
           particleStatsRef.current = stats;
+        }
+
+        if (now - joinedStatsLastUpdateRef.current >= 500) {
+          joinedStatsLastUpdateRef.current = now;
+          const joinedStats = joinedPolygonGpuRenderer.getStats();
+          updateJoinedStats({
+            handles: joinedStats.handles,
+            drawCalls: joinedStats.drawCalls,
+            renderMs: joinedStats.renderMs,
+            uploadMs: joinedStats.anchorUploadMs,
+          });
         }
 
         // Update camera/scale state

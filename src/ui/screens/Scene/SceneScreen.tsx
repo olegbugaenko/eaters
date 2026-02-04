@@ -39,6 +39,8 @@ import type { SceneUiApi, SceneVector2 } from "@core/logic/provided/services/sce
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 import { SceneTutorialBridgeMonitor } from "./components/tutorial/SceneTutorialBridgeMonitor";
 import { SceneSummoningPanelContainer } from "./components/summoning/SceneSummoningPanelContainer";
+import { createJoinedDebugRendererConfig } from "./components/debug/joinedDebugConfig";
+import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 
 const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 const DEFAULT_MAP_EFFECTS_STATE = { radioactivity: null };
@@ -111,6 +113,14 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
   const [tutorialSpellCastDone, setTutorialSpellCastDone] = useState(false);
   const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
+  const joinedDebugEnabled = useMemo(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const params = new URLSearchParams(window.location.search);
+    return params.get("joinedDebug") === "1";
+  }, []);
+  const joinedDebugSpawnedRef = useRef(false);
   const spellCastTokenRef = useRef(0);
   const [spellCastPulse, setSpellCastPulse] = useState<{ id: SpellId; token: number } | null>(
     null
@@ -371,6 +381,49 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     handleLeaveToMapSelect();
   }, [handleLeaveToMapSelect]);
 
+  useEffect(() => {
+    if (!joinedDebugEnabled || joinedDebugSpawnedRef.current) {
+      return;
+    }
+    joinedDebugSpawnedRef.current = true;
+    const debugRenderer = createJoinedDebugRendererConfig();
+    const gridSize = 32;
+    const spacing = 40;
+    const originX = -((gridSize - 1) * spacing) / 2;
+    const originY = -((gridSize - 1) * spacing) / 2;
+    const ids: string[] = [];
+
+    scene.setMapSize({
+      width: gridSize * spacing + 200,
+      height: gridSize * spacing + 200,
+    });
+    scene.setCameraPosition(0, 0);
+
+    for (let y = 0; y < gridSize; y += 1) {
+      for (let x = 0; x < gridSize; x += 1) {
+        const position = {
+          x: originX + x * spacing,
+          y: originY + y * spacing,
+        };
+        const id = scene.addObject("playerUnit", {
+          position,
+          size: { width: 24, height: 24 },
+          fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.2, g: 0.6, b: 1, a: 1 } },
+          customData: {
+            renderer: debugRenderer,
+            baseFillColor: debugRenderer.fill,
+          },
+        });
+        ids.push(id);
+      }
+    }
+
+    return () => {
+      const api = scene as unknown as { removeObject?: (id: string) => void };
+      ids.forEach((id) => api.removeObject?.(id));
+    };
+  }, [joinedDebugEnabled, scene]);
+
   // Handle page unload (refresh/close) - cleanup logic modules
   // NOTE: We use beforeunload instead of useEffect cleanup because React StrictMode
   // in dev mode double-invokes effects, which would incorrectly call leaveCurrentMap
@@ -413,7 +466,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       />
       <SceneControlHintsPanel />
       <SceneTooltipBridgePanel contentOverride={summoningTooltipContent} />
-      {/*<SceneDebugPanel bridge={bridge} />*/}
+      {joinedDebugEnabled && (
+        <div className="scene-debug-banner">
+          Joined GPU Debug (joinedDebug=1) — showing 1024 joined elements
+        </div>
+      )}
+      {joinedDebugEnabled && <SceneDebugPanel bridge={bridge} />}
       <SceneTutorialBridgeMonitor
         bridge={bridge}
         showTutorial={showTutorial}

@@ -9,6 +9,8 @@ import {
   createDynamicPolygonStrokePrimitive,
   createDynamicSpritePrimitive,
   createPolygonGpuPrimitive,
+  createJoinedPolygonGpuPrimitive,
+  createJoinedCircleGpuPrimitive,
 } from "../../../primitives";
 import { getInstanceRenderPosition } from "../../ObjectRenderer";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
@@ -18,7 +20,17 @@ import {
   resolveLayerStrokeFill,
   resolveStrokeColor,
 } from "./helpers";
-import { resolveLayerAnchors, writeAnchorsForLayer } from "../../shared/anchors";
+import {
+  mergeLayerAnchors,
+  resolveJoinOffset,
+  resolveLayerAnchors,
+  writeAnchorsForLayer,
+} from "../../shared/anchors";
+import {
+  createPolygonAnchorGpuPrimitive,
+  createSpineAnchorGpuPrimitive,
+  getGpuAnchorIndex,
+} from "../../shared/anchors-gpu";
 import {
   getAuraInstanceMap,
   acquireAuraSlotForInstance,
@@ -32,6 +44,7 @@ import {
   resolveAnimationExecutionMode,
 } from "../../shared/animation-pipeline";
 import { isAnimationGpuAvailable } from "../../shared/animation-gpu";
+import type { RendererLayerAnchorConfig } from "@shared/types/renderer.types";
 
 /**
  * Creates composite primitives for player unit renderer
@@ -101,6 +114,37 @@ export const createCompositePrimitives = (
     auraInstanceMap.set(instanceId, newSlots);
   }
 
+  const emptyData = new Float32Array(0);
+  const normalizeGroupId = (groupId: string | undefined): string => groupId ?? "default";
+  const gpuJoinAvailable = isAnimationGpuAvailable();
+  const supportsGpuJoin = (layer: RendererLayer): boolean =>
+    gpuJoinAvailable && (layer.shape === "polygon" || layer.shape === "circle");
+  const warnedJoinFallbacks = new Set<string>();
+  const warnJoinFallback = (key: string, reason: string) => {
+    if (warnedJoinFallbacks.has(key)) {
+      return;
+    }
+    warnedJoinFallbacks.add(key);
+    console.warn(`[CompositeRenderer] GPU join fallback (${reason}) for ${key}.`);
+  };
+  const joinTargets = new Set<string>();
+  renderer.layers.forEach((layer) => {
+    if (layer.join && !supportsGpuJoin(layer)) {
+      joinTargets.add(normalizeGroupId(layer.join.targetGroupId));
+    }
+  });
+  const collectAnchors = (layer: RendererLayer): RendererLayerAnchorConfig[] =>
+    mergeLayerAnchors(layer.anchors, layer.connectionSlots);
+  const resolveJoinOffsetForLayer = (layer: RendererLayer) =>
+    layer.join
+      ? (target: SceneObjectInstance) =>
+          resolveJoinOffset({
+            instanceId: target.id,
+            join: layer.join,
+            baseOffset: layer.offset,
+          })
+      : undefined;
+
   // Group tentacle segments by groupId for potential future use (not required to animate basic sway)
   renderer.layers.forEach((layer, layerIndex) => {
     // If a layer requires a module, render it only when present
@@ -127,6 +171,67 @@ export const createCompositePrimitives = (
       }
     }
     if (layer.shape === "polygon") {
+      const joinOffset = resolveJoinOffsetForLayer(layer);
+      const getOffset = joinOffset ? joinOffset : undefined;
+      const staticOffset = joinOffset ? undefined : layer.offset;
+      const anchorIndex = layer.join && supportsGpuJoin(layer)
+        ? getGpuAnchorIndex(instance.id, layer.join.targetGroupId, layer.join.anchorId)
+        : null;
+      const joinOffsetForGpu = layer.join
+        ? {
+            x: (layer.offset?.x ?? 0) + (layer.join.offset?.x ?? 0),
+            y: (layer.offset?.y ?? 0) + (layer.join.offset?.y ?? 0),
+          }
+        : undefined;
+      const canUseGpuJoin = anchorIndex !== null && !layer.anim;
+      const groupKey = normalizeGroupId(layer.groupId);
+      const needsCpuAnchors = joinTargets.has(groupKey);
+      if (layer.join && !supportsGpuJoin(layer)) {
+        const warnKey = `${instance.id}:${layer.join.targetGroupId ?? "default"}:${layer.join.anchorId}`;
+        warnJoinFallback(warnKey, "gpu-unavailable");
+      }
+      if (layer.join && supportsGpuJoin(layer) && anchorIndex === null) {
+        const warnKey = `${instance.id}:${layer.join.targetGroupId ?? "default"}:${layer.join.anchorId}`;
+        warnJoinFallback(warnKey, "anchor-missing");
+      }
+      if (layer.join && canUseGpuJoin) {
+        const fillPrimitive = createJoinedPolygonGpuPrimitive(instance, {
+          vertices: layer.vertices,
+          fill: resolveLayerFill(instance, layer.fill, renderer),
+          anchorIndex,
+          joinOffset: joinOffsetForGpu,
+          refreshFill: (inst) => resolveLayerFill(inst, layer.fill, renderer),
+        });
+        if (fillPrimitive) {
+          dynamicPrimitives.push(fillPrimitive);
+        } else {
+          // Fallback to CPU path if GPU primitive could not be created
+          // Continue with regular handling below.
+        }
+        if (layer.stroke) {
+          const strokeColor =
+            layer.stroke.kind === "solid"
+              ? layer.stroke.color
+              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
+          const sceneStroke: SceneStroke = {
+            width: layer.stroke.width,
+            color: strokeColor,
+          };
+          const strokePrimitive = createDynamicPolygonStrokePrimitive(instance, {
+            vertices: layer.vertices,
+            stroke: sceneStroke,
+            offset: staticOffset,
+            getOffset,
+          });
+          if (getOffset) {
+            strokePrimitive.autoAnimate = true;
+          }
+          dynamicPrimitives.push(strokePrimitive);
+        }
+        if (fillPrimitive) {
+          return;
+        }
+      }
       // Sway animation for tentacle segments built from a line spine
       if (Array.isArray(layer.spine) && layer.anim?.type === "sway") {
         const executionMode = resolveAnimationExecutionMode({
@@ -142,15 +247,29 @@ export const createCompositePrimitives = (
           timeSource: getTentacleTimeMs,
           executionMode,
         });
-        const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
+        const anchorConfigs = collectAnchors(layer);
+        const hasAnchors = anchorConfigs.length > 0;
+        if (executionMode === "gpu" && hasAnchors) {
+          const gpuAnchorPrimitive = createSpineAnchorGpuPrimitive({
+            instance,
+            groupId: layer.groupId,
+            anchors: anchorConfigs,
+            spine: layer.spine,
+            anim: layer.anim,
+            offset: staticOffset,
+          });
+          if (gpuAnchorPrimitive) {
+            dynamicPrimitives.push(gpuAnchorPrimitive);
+          }
+        }
         const sampleVertices = () => {
           const quadVerts = sampler.getVertices();
-          if (hasAnchors) {
+          if (hasAnchors && needsCpuAnchors) {
             const resolved = resolveLayerAnchors(
-              layer.anchors,
+              anchorConfigs,
               quadVerts,
               sampler.getDeformedSpine(),
-              layer.offset
+              staticOffset
             );
             writeAnchorsForLayer(instance.id, layer.groupId, resolved);
           }
@@ -171,7 +290,8 @@ export const createCompositePrimitives = (
             createDynamicPolygonStrokePrimitive(instance, {
               getVertices: sampleVertices,
               stroke: sceneStroke,
-              offset: layer.offset,
+              offset: staticOffset,
+              getOffset,
               refreshStroke: layerStrokeForTentacle.kind === "base"
                 ? (inst) => ({
                     width: layerStrokeForTentacle.width,
@@ -189,7 +309,8 @@ export const createCompositePrimitives = (
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: sampleVertices,
-            offset: layer.offset,
+            offset: staticOffset,
+            getOffset,
             fill: tentacleFill,
             refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
           })
@@ -205,8 +326,10 @@ export const createCompositePrimitives = (
           gpuAvailable: isAnimationGpuAvailable(),
           warnKey: `player-unit:${instance.id}:polygon:${layer.groupId ?? layerIndex}`,
         });
-        const hasAnchors = Array.isArray(layer.anchors) && layer.anchors.length > 0;
-        const needsCpuVertices = executionMode !== "gpu" || Boolean(layer.stroke || hasAnchors);
+        const anchorConfigs = collectAnchors(layer);
+        const hasAnchors = anchorConfigs.length > 0;
+        const needsCpuVertices =
+          executionMode !== "gpu" || Boolean(layer.stroke) || (hasAnchors && needsCpuAnchors);
         const sampler = needsCpuVertices
           ? createPolygonAnimSampler({
               vertices: layer.vertices,
@@ -219,8 +342,8 @@ export const createCompositePrimitives = (
           : null;
         const getDeformedVertices = () => {
           const deformed = sampler ? sampler.getVertices() : layer.vertices;
-          if (hasAnchors) {
-            const resolved = resolveLayerAnchors(layer.anchors, deformed, undefined, layer.offset);
+          if (hasAnchors && needsCpuAnchors) {
+            const resolved = resolveLayerAnchors(anchorConfigs, deformed, undefined, staticOffset);
             writeAnchorsForLayer(instance.id, layer.groupId, resolved);
           }
           return deformed;
@@ -237,7 +360,8 @@ export const createCompositePrimitives = (
             createDynamicPolygonStrokePrimitive(instance, {
               getVertices: () => getDeformedVertices(),
               stroke: sceneStroke,
-              offset: layer.offset,
+              offset: staticOffset,
+              getOffset,
               refreshStroke: layerStrokeForAnimated.kind === "base"
                 ? (inst) => ({
                     width: layerStrokeForAnimated.width,
@@ -256,32 +380,68 @@ export const createCompositePrimitives = (
             vertices: layer.vertices,
             anim: animCfg,
             fill: animatedLayerFill,
-            offset: layer.offset,
+            offset: staticOffset,
             phaseStep: POLYGON_SWAY_PHASE_STEP,
             enableMovementAxis: true,
             refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
           });
           if (gpuPrimitive) {
             dynamicPrimitives.push(gpuPrimitive);
+            if (hasAnchors) {
+              const anchorGpuPrimitive = createPolygonAnchorGpuPrimitive({
+                instance,
+                groupId: layer.groupId,
+                anchors: anchorConfigs,
+                vertices: layer.vertices,
+                anim: animCfg,
+                offset: staticOffset,
+                phaseStep: POLYGON_SWAY_PHASE_STEP,
+                enableMovementAxis: true,
+              });
+              if (anchorGpuPrimitive) {
+                dynamicPrimitives.push(anchorGpuPrimitive);
+              }
+            }
+            if (hasAnchors && sampler && needsCpuAnchors) {
+              const anchorPrimitive: DynamicPrimitive = {
+                get data() {
+                  return emptyData;
+                },
+                autoAnimate: true,
+                update: () => {
+                  const deformed = sampler.getVertices();
+                  const resolved = resolveLayerAnchors(anchorConfigs, deformed, undefined, staticOffset);
+                  writeAnchorsForLayer(instance.id, layer.groupId, resolved);
+                  return null;
+                },
+              };
+              dynamicPrimitives.push(anchorPrimitive);
+            }
           } else {
-            dynamicPrimitives.push(
-              createDynamicPolygonPrimitive(instance, {
-                getVertices: () => getDeformedVertices(),
-                offset: layer.offset,
-                fill: animatedLayerFill,
-                refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
-              })
-            );
-          }
-        } else {
-          dynamicPrimitives.push(
-            createDynamicPolygonPrimitive(instance, {
+            const primitive = createDynamicPolygonPrimitive(instance, {
               getVertices: () => getDeformedVertices(),
-              offset: layer.offset,
+              offset: staticOffset,
+              getOffset,
               fill: animatedLayerFill,
               refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
-            })
-          );
+            });
+            if (getOffset) {
+              primitive.autoAnimate = true;
+            }
+            dynamicPrimitives.push(primitive);
+          }
+        } else {
+          const primitive = createDynamicPolygonPrimitive(instance, {
+            getVertices: () => getDeformedVertices(),
+            offset: staticOffset,
+            getOffset,
+            fill: animatedLayerFill,
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+          });
+          if (getOffset) {
+            primitive.autoAnimate = true;
+          }
+          dynamicPrimitives.push(primitive);
         }
       } else {
         if (layer.stroke) {
@@ -298,7 +458,8 @@ export const createCompositePrimitives = (
             createDynamicPolygonStrokePrimitive(instance, {
               vertices: layer.vertices,
               stroke: sceneStroke,
-              offset: layer.offset,
+              offset: staticOffset,
+              getOffset,
               refreshStroke: layerStrokeForStatic.kind === "base"
                 ? (inst) => ({
                     width: layerStrokeForStatic.width,
@@ -312,64 +473,106 @@ export const createCompositePrimitives = (
         // Always add refreshFill to track visual effect changes
         const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForStatic = layer.fill;
-        if (Array.isArray(layer.anchors) && layer.anchors.length > 0) {
-          const resolved = resolveLayerAnchors(layer.anchors, layer.vertices, layer.spine, layer.offset);
+        const anchorConfigs = collectAnchors(layer);
+        if (anchorConfigs.length > 0 && needsCpuAnchors) {
+          const resolved = resolveLayerAnchors(anchorConfigs, layer.vertices, layer.spine, staticOffset);
           writeAnchorsForLayer(instance.id, layer.groupId, resolved);
         }
-        dynamicPrimitives.push(
-          createDynamicPolygonPrimitive(instance, {
-            vertices: layer.vertices,
-            offset: layer.offset,
-            fill: cachedFill,
-            refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
-          })
-        );
+        const primitive = createDynamicPolygonPrimitive(instance, {
+          vertices: layer.vertices,
+          offset: staticOffset,
+          getOffset,
+          fill: cachedFill,
+          refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
+        });
+        if (getOffset) {
+          primitive.autoAnimate = true;
+        }
+        dynamicPrimitives.push(primitive);
       }
       return;
     }
 
     if (layer.shape === "circle") {
+      const joinOffset = resolveJoinOffsetForLayer(layer);
+      const getOffset = joinOffset ? joinOffset : undefined;
+      const staticOffset = joinOffset ? undefined : layer.offset;
+      const anchorIndex = layer.join && supportsGpuJoin(layer)
+        ? getGpuAnchorIndex(instance.id, layer.join.targetGroupId, layer.join.anchorId)
+        : null;
+      const joinOffsetForGpu = layer.join
+        ? {
+            x: (layer.offset?.x ?? 0) + (layer.join.offset?.x ?? 0),
+            y: (layer.offset?.y ?? 0) + (layer.join.offset?.y ?? 0),
+          }
+        : undefined;
+      if (layer.join && anchorIndex !== null && !layer.stroke) {
+        const fillPrimitive = createJoinedCircleGpuPrimitive(instance, {
+          radius: layer.radius,
+          segments: layer.segments,
+          fill: resolveLayerFill(instance, layer.fill, renderer),
+          anchorIndex,
+          joinOffset: joinOffsetForGpu,
+          refreshFill: (inst) => resolveLayerFill(inst, layer.fill, renderer),
+        });
+        if (fillPrimitive) {
+          dynamicPrimitives.push(fillPrimitive);
+          return;
+        }
+      }
       // OPTIMIZATION: Cache fills at registration time for static layers
       if (layer.stroke) {
         const layerStrokeForCircle = layer.stroke;
         const cachedStrokeFill = resolveLayerStrokeFill(instance, layer.stroke, renderer);
-        dynamicPrimitives.push(
-          createDynamicCirclePrimitive(instance, {
-            segments: layer.segments,
-            offset: layer.offset,
-            radius: layer.radius + layer.stroke.width,
-            fill: cachedStrokeFill,
-            refreshFill: layerStrokeForCircle.kind === "base"
-              ? (inst) => resolveLayerStrokeFill(inst, layerStrokeForCircle, renderer)
-              : undefined,
-          })
-        );
+        const strokePrimitive = createDynamicCirclePrimitive(instance, {
+          segments: layer.segments,
+          offset: staticOffset,
+          getOffset,
+          radius: layer.radius + layer.stroke.width,
+          fill: cachedStrokeFill,
+          refreshFill: layerStrokeForCircle.kind === "base"
+            ? (inst) => resolveLayerStrokeFill(inst, layerStrokeForCircle, renderer)
+            : undefined,
+        });
+        if (getOffset) {
+          strokePrimitive.autoAnimate = true;
+        }
+        dynamicPrimitives.push(strokePrimitive);
       }
       // Always add refreshFill to track visual effect changes
       const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
       const layerFillForCircle = layer.fill;
-      dynamicPrimitives.push(
-        createDynamicCirclePrimitive(instance, {
-          segments: layer.segments,
-          offset: layer.offset,
-          radius: layer.radius,
-          fill: cachedFill,
-          refreshFill: (inst) => resolveLayerFill(inst, layerFillForCircle, renderer),
-        })
-      );
+      const circlePrimitive = createDynamicCirclePrimitive(instance, {
+        segments: layer.segments,
+        offset: staticOffset,
+        getOffset,
+        radius: layer.radius,
+        fill: cachedFill,
+        refreshFill: (inst) => resolveLayerFill(inst, layerFillForCircle, renderer),
+      });
+      if (getOffset) {
+        circlePrimitive.autoAnimate = true;
+      }
+      dynamicPrimitives.push(circlePrimitive);
       return;
     }
 
     if (layer.shape === "sprite") {
+      const joinOffset = resolveJoinOffsetForLayer(layer);
+      const getOffset = joinOffset ? joinOffset : undefined;
+      const staticOffset = joinOffset ? undefined : layer.offset;
       // Sprite layer - uses RectanglePrimitive as fallback until texture support is added
-      dynamicPrimitives.push(
-        createDynamicSpritePrimitive(instance, {
-          spritePath: layer.spritePath,
-          getWidth: () => layer.width,
-          getHeight: () => layer.height,
-          offset: layer.offset,
-        })
-      );
+      const spritePrimitive = createDynamicSpritePrimitive(instance, {
+        spritePath: layer.spritePath,
+        getWidth: () => layer.width,
+        getHeight: () => layer.height,
+        offset: staticOffset,
+        getOffset,
+      });
+      if (getOffset) {
+        spritePrimitive.autoAnimate = true;
+      }
+      dynamicPrimitives.push(spritePrimitive);
       return;
     }
   });

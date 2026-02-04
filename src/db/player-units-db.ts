@@ -432,6 +432,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 0.6, b: 0.24, a: 0.75 } } },
             anim: { type: "sway", periodMs: 1650, amplitude: 5.6, falloff: "tip", axis: "normal", phase: 0.42 },
             groupId: "burningTail-glow",
+            connectionSlots: [{ id: "tailEnd", mode: "spine", index: 1 }],
           },
           { epsilon: 0.2, winding: "CCW" }
         ),
@@ -439,19 +440,20 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "burningTail",
           vertices: [
-            { x: -34.4, y: -1.3 },
-            { x: -38.2, y: -0.7 },
-            { x: -33.8, y: -0.2 },
-            { x: -31.0, y: -0.7 },
+            { x: 0.6, y: -0.1 },
+            { x: -3.2, y: 0.5 },
+            { x: 1.2, y: 1.0 },
+            { x: 4.0, y: 0.5 },
           ],
           fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 0.58, b: 0.2, a: 0.85 } } },
           stroke: { type: "solid", width: 0.6, color: { r: 0.75, g: 0.22, b: 0.05, a: 1 } },
+          join: { anchorId: "tailEnd", targetGroupId: "burningTail-glow" },
         },
         {
           shape: "circle",
           requiresModule: "burningTail",
           radius: 22,
-          offset: { x: -36.6, y: -1.4 },
+          offset: { x: -1.6, y: -0.2 },
           fill: {
             type: "gradient",
             fill: {
@@ -463,6 +465,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
               ],
             },
           },
+          join: { anchorId: "tailEnd", targetGroupId: "burningTail-glow" },
         },
 
         // Freezing tail (crystal spine + glow)
@@ -507,6 +510,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.66, g: 0.95, b: 1, a: 0.78 } } },
             anim: { type: "sway", periodMs: 1880, amplitude: 5.4, falloff: "tip", axis: "normal", phase: 0.48 },
             groupId: "freezingTail-glow",
+            connectionSlots: [{ id: "tailEnd", mode: "spine", index: 1 }],
           },
           { epsilon: 0.2, winding: "CCW" }
         ),
@@ -514,19 +518,20 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "freezingTail",
           vertices: [
-            { x: -33.0, y: -0.9 },
-            { x: -36.4, y: -0.5 },
-            { x: -32.4, y: -0.1 },
-            { x: -30.0, y: -0.6 },
+            { x: 1.0, y: -0.5 },
+            { x: -2.4, y: -0.1 },
+            { x: 1.6, y: 0.3 },
+            { x: 4.0, y: -0.2 },
           ],
           fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.66, g: 0.95, b: 1, a: 0.85 } } },
           stroke: { type: "solid", width: 0.6, color: { r: 0.24, g: 0.62, b: 0.95, a: 1 } },
+          join: { anchorId: "tailEnd", targetGroupId: "freezingTail-glow" },
         },
         {
           shape: "circle",
           requiresModule: "freezingTail",
           radius: 22.0,
-          offset: { x: -35.2, y: -0.6 },
+          offset: { x: -1.2, y: -0.2 },
           fill: {
             type: "gradient",
             fill: {
@@ -538,6 +543,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
               ],
             },
           },
+          join: { anchorId: "tailEnd", targetGroupId: "freezingTail-glow" },
         },
 
         // Effects

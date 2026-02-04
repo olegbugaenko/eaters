@@ -59,6 +59,8 @@ export const sanitizeCompositeLayer = (
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
     groupId?: string;
     anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+    connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+    join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
   }
 ): {
   shape: "polygon" | "circle" | "sprite";
@@ -77,6 +79,8 @@ export const sanitizeCompositeLayer = (
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
   groupId?: string;
   anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+  connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+  join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
 } | null => {
   return sanitizeEnemyCompositeLayer(layer);
 };
@@ -89,6 +93,8 @@ type EnemyLayerExtras = {
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
   groupId?: string;
   anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+  connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+  join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
 };
 
 const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
@@ -109,6 +115,8 @@ const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
     groupId?: string;
     anchors?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+    connectionSlots?: { id: string; mode: "vertex" | "spine"; index?: number; t?: number }[];
+    join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
   },
   EnemyLayerExtras
 >({
@@ -144,5 +152,7 @@ const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
     buildOpts: layer.buildOpts,
     groupId: layer.groupId,
     anchors: layer.anchors,
+    connectionSlots: layer.connectionSlots,
+    join: layer.join,
   }),
 });

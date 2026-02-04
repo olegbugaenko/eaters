@@ -25,7 +25,9 @@ import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
 import { loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
 import { textureResourceManager } from "../textures/TextureResourceManager";
 import { setAnimationGpuContext, disposeAnimationGpuResources } from "../objects/shared/animation-gpu";
+import { disposeAnchorsGpuResources, updateAnchorsGpuTexture } from "../objects/shared/anchors-gpu";
 import { polygonGpuRenderer } from "../primitives/gpu/polygon";
+import { joinedPolygonGpuRenderer } from "../primitives/gpu/joined";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -313,6 +315,17 @@ export class WebGLSceneRenderer {
     this.drawBuffer(this.dynamicBuffer, this.objectsRenderer.getDynamicVertexCount());
     polygonGpuRenderer.setContext(this.gl);
     polygonGpuRenderer.render(this.gl, cameraState);
+    joinedPolygonGpuRenderer.setContext(this.gl);
+    if (joinedPolygonGpuRenderer.hasHandles()) {
+      const uploadStart = performance.now();
+      const anchorTexture = updateAnchorsGpuTexture(this.gl);
+      joinedPolygonGpuRenderer.setAnchorUploadMs(performance.now() - uploadStart);
+      if (anchorTexture) {
+        joinedPolygonGpuRenderer.render(this.gl, cameraState, anchorTexture);
+      }
+    } else {
+      joinedPolygonGpuRenderer.setAnchorUploadMs(0);
+    }
   }
 
   /**
@@ -374,8 +387,10 @@ export class WebGLSceneRenderer {
    */
   public dispose(): void {
     disposeAnimationGpuResources(this.gl);
+    disposeAnchorsGpuResources(this.gl);
     setAnimationGpuContext(null);
     polygonGpuRenderer.setContext(null);
+    joinedPolygonGpuRenderer.setContext(null);
     this.gl.deleteBuffer(this.staticBuffer);
     this.gl.deleteBuffer(this.dynamicBuffer);
     this.gl.deleteProgram(this.program);

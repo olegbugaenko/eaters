@@ -56,6 +56,7 @@ interface DynamicSpriteOptions {
   getWidth?: (instance: SceneObjectInstance) => number | undefined;
   getHeight?: (instance: SceneObjectInstance) => number | undefined;
   offset?: SceneVector2;
+  getOffset?: (instance: SceneObjectInstance) => SceneVector2 | undefined;
 }
 
 /**
@@ -195,6 +196,16 @@ const updateSpritePositions = (
   return changed;
 };
 
+const resolveOffset = (
+  options: DynamicSpriteOptions,
+  instance: SceneObjectInstance
+): SceneVector2 | undefined => {
+  if (typeof options.getOffset === "function") {
+    return options.getOffset(instance);
+  }
+  return options.offset;
+};
+
 /**
  * Creates a dynamic sprite primitive with texture support
  * Automatically starts loading the texture asynchronously
@@ -225,7 +236,7 @@ export const createDynamicSpritePrimitive = (
   const center = transformObjectPoint(
     getInstanceRenderPosition(instance),
     rotation,
-    options.offset
+    resolveOffset(options, instance)
   );
   const halfWidth = width / 2;
   const halfHeight = height / 2;
@@ -273,15 +284,20 @@ export const createDynamicSpritePrimitive = (
   let prevWidth = width;
   let prevHeight = height;
   let prevRotation = rotation;
+  let prevOffsetX = resolveOffset(options, instance)?.x ?? 0;
+  let prevOffsetY = resolveOffset(options, instance)?.y ?? 0;
 
   return {
     data,
     update(target: SceneObjectInstance) {
       const nextRotation = target.data.rotation ?? 0;
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
       const nextCenter = transformObjectPoint(
         getInstanceRenderPosition(target),
         nextRotation,
-        options.offset
+        resolveOffset(options, target)
       );
       const nextWidth = options.getWidth?.(target) ?? 32;
       const nextHeight = options.getHeight?.(target) ?? 32;
@@ -292,13 +308,17 @@ export const createDynamicSpritePrimitive = (
         nextCenter.y !== prevCenterY ||
         nextWidth !== prevWidth ||
         nextHeight !== prevHeight ||
-        nextRotation !== prevRotation
+        nextRotation !== prevRotation ||
+        nextOffsetX !== prevOffsetX ||
+        nextOffsetY !== prevOffsetY
       ) {
         prevCenterX = nextCenter.x;
         prevCenterY = nextCenter.y;
         prevWidth = nextWidth;
         prevHeight = nextHeight;
         prevRotation = nextRotation;
+        prevOffsetX = nextOffsetX;
+        prevOffsetY = nextOffsetY;
 
         const halfW = nextWidth / 2;
         const halfH = nextHeight / 2;
@@ -332,16 +352,21 @@ export const createDynamicSpritePrimitive = (
     },
     updatePositionOnly(target: SceneObjectInstance) {
       const nextRotation = target.data.rotation ?? 0;
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
       const nextCenter = transformObjectPoint(
         getInstanceRenderPosition(target),
         nextRotation,
-        options.offset
+        resolveOffset(options, target)
       );
 
       if (
         nextCenter.x === prevCenterX &&
         nextCenter.y === prevCenterY &&
-        nextRotation === prevRotation
+        nextRotation === prevRotation &&
+        nextOffsetX === prevOffsetX &&
+        nextOffsetY === prevOffsetY
       ) {
         return null;
       }
@@ -349,6 +374,8 @@ export const createDynamicSpritePrimitive = (
       prevCenterX = nextCenter.x;
       prevCenterY = nextCenter.y;
       prevRotation = nextRotation;
+      prevOffsetX = nextOffsetX;
+      prevOffsetY = nextOffsetY;
 
       const changed = updateSpritePositions(
         data,

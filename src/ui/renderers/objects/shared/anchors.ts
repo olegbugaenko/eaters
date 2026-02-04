@@ -1,5 +1,8 @@
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import type { RendererLayerAnchorConfig } from "@shared/types/renderer.types";
+import type {
+  RendererLayerAnchorConfig,
+  RendererLayerJoinConfig,
+} from "@shared/types/renderer.types";
 
 export type RendererAnchorRecord = {
   id: string;
@@ -47,6 +50,45 @@ export const readAnchorsForLayer = (
     return [];
   }
   return Array.from(record.entries()).map(([id, position]) => ({ id, position }));
+};
+
+export const mergeLayerAnchors = (
+  anchors: RendererLayerAnchorConfig[] | undefined,
+  connectionSlots: RendererLayerAnchorConfig[] | undefined
+): RendererLayerAnchorConfig[] => {
+  if (!anchors || anchors.length === 0) {
+    return connectionSlots ?? [];
+  }
+  if (!connectionSlots || connectionSlots.length === 0) {
+    return anchors;
+  }
+  return [...anchors, ...connectionSlots];
+};
+
+export const resolveJoinOffset = (options: {
+  instanceId: string;
+  join: RendererLayerJoinConfig | undefined;
+  baseOffset: SceneVector2 | undefined;
+}): SceneVector2 | undefined => {
+  const join = options.join;
+  if (!join) {
+    return options.baseOffset;
+  }
+  const baseOffsetX = options.baseOffset?.x ?? 0;
+  const baseOffsetY = options.baseOffset?.y ?? 0;
+  const joinOffsetX = join.offset?.x ?? 0;
+  const joinOffsetY = join.offset?.y ?? 0;
+  const anchor = readAnchor(options.instanceId, join.targetGroupId, join.anchorId);
+  if (!anchor) {
+    return {
+      x: baseOffsetX + joinOffsetX,
+      y: baseOffsetY + joinOffsetY,
+    };
+  }
+  return {
+    x: anchor.x + baseOffsetX + joinOffsetX,
+    y: anchor.y + baseOffsetY + joinOffsetY,
+  };
 };
 
 const sampleSpineByT = (spine: SceneVector2[], t: number): SceneVector2 | null => {

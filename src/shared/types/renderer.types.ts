@@ -29,6 +29,12 @@ export interface RendererLayerAnchorConfig {
   t?: number;
 }
 
+export interface RendererLayerJoinConfig {
+  anchorId: string;
+  targetGroupId?: string;
+  offset?: SceneVector2;
+}
+
 /**
  * Base fields shared by all renderer layer configurations.
  */
@@ -42,6 +48,8 @@ export interface BaseRendererLayerFields {
   anim?: RendererLayerAnimationConfig;
   groupId?: string;
   anchors?: RendererLayerAnchorConfig[];
+  connectionSlots?: RendererLayerAnchorConfig[];
+  join?: RendererLayerJoinConfig;
 }
 
 /**
