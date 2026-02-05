@@ -15,10 +15,11 @@ import {
 import {
   ResourceId,
   ResourceStockpile,
+  ResourceAmount,
   getResourceConfig,
   normalizeResourceAmount,
 } from "../../../../db/resources-db";
-import { clamp01 } from "@shared/helpers/numbers.helper";
+import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 import type {
   CraftingRecipeBridgeState,
   CraftingBridgeState,
@@ -54,6 +55,7 @@ export class CraftingModule implements GameModule {
   private unlocked = false;
   private progressBroadcastTimer = 0;
   private craftingSpeedMultiplier = 1;
+  private maxOverdriveLevel = 0;
   private craftingSpeedDirty = true;
   private hasRegisteredUnlocks = false;
 
@@ -65,6 +67,9 @@ export class CraftingModule implements GameModule {
     this.newUnlocks = options.newUnlocks;
     this.craftingSpeedMultiplier = this.sanitizeCraftingSpeedMultiplier(
       this.bonuses.getBonusValue("crafting_speed_mult")
+    );
+    this.maxOverdriveLevel = this.sanitizeOverdriveMaxLevel(
+      this.bonuses.getBonusValue("crafting_overdrive_max")
     );
     this.bonuses.subscribe((values) => this.handleBonusValuesUpdated(values));
     CRAFTING_RECIPE_IDS.forEach((id) => {
@@ -84,6 +89,7 @@ export class CraftingModule implements GameModule {
       state.queue = 0;
       state.inProgress = false;
       state.progressMs = 0;
+      state.overdriveLevel = 0;
     });
     this.refreshVisibility();
     this.newUnlocks.invalidate("crafting");
@@ -101,13 +107,14 @@ export class CraftingModule implements GameModule {
   public save(): unknown {
     const serialized: Partial<Record<CraftingRecipeId, CraftingRecipeSaveState>> = {};
     this.runtimeStates.forEach((state, id) => {
-      if (state.queue <= 0 && !state.inProgress) {
+      if (state.queue <= 0 && !state.inProgress && state.overdriveLevel <= 0) {
         return;
       }
       serialized[id] = {
         queue: state.queue,
         progressMs: state.progressMs > 0 ? state.progressMs : undefined,
         inProgress: state.inProgress || undefined,
+        overdriveLevel: state.overdriveLevel > 0 ? state.overdriveLevel : undefined,
       };
     });
     if (Object.keys(serialized).length === 0) {
@@ -129,7 +136,7 @@ export class CraftingModule implements GameModule {
       const config = getCraftingRecipeConfig(id);
       const state = this.getRuntimeState(id);
       const available = this.unlocks.areConditionsMet(config.unlockedBy ?? []);
-      const duration = this.getRecipeDuration(config);
+      const duration = this.getRecipeDuration(config, state.overdriveLevel);
 
       if (state.inProgress) {
         if (state.queue <= 0) {
@@ -150,7 +157,7 @@ export class CraftingModule implements GameModule {
           state.progressMs = 0;
           return;
         }
-        if (this.tryStartRecipe(config)) {
+        if (this.tryStartRecipe(config, state)) {
           state.inProgress = true;
           state.progressMs = 0;
           stateChanged = true;
@@ -221,12 +228,31 @@ export class CraftingModule implements GameModule {
     this.setRecipeQueue(id, maxQueue);
   }
 
+  public setRecipeOverdriveLevel(id: CraftingRecipeId, value: number): void {
+    if (!CRAFTING_RECIPE_IDS.includes(id)) {
+      return;
+    }
+    const state = this.getRuntimeState(id);
+    const nextLevel = this.sanitizeOverdriveLevel(value);
+    if (!this.applyOverdriveLevel(id, state, nextLevel)) {
+      return;
+    }
+    this.progressBroadcastTimer = 0;
+    this.refreshVisibility();
+    this.pushState();
+  }
+
   public getRecipeQueue(id: CraftingRecipeId): number {
     return this.getRuntimeState(id).queue;
   }
 
-  private tryStartRecipe(config: CraftingRecipeConfig): boolean {
-    return this.resources.spendResources(config.ingredients);
+  private tryStartRecipe(
+    config: CraftingRecipeConfig,
+    state: CraftingRecipeRuntimeState
+  ): boolean {
+    return this.resources.spendResources(
+      this.getRecipeCost(config, state.overdriveLevel)
+    );
   }
 
   private completeRecipe(
@@ -260,7 +286,9 @@ export class CraftingModule implements GameModule {
     totals: ResourceStockpile
   ): number {
     const config = getCraftingRecipeConfig(id);
-    const normalized = normalizeResourceAmount(config.ingredients);
+    const normalized = normalizeResourceAmount(
+      this.getRecipeCost(config, state.overdriveLevel)
+    );
     let maxAdditional = Infinity;
     (Object.keys(normalized) as ResourceId[]).forEach((resourceId) => {
       const cost = normalized[resourceId];
@@ -284,7 +312,7 @@ export class CraftingModule implements GameModule {
     const visible = CRAFTING_RECIPE_IDS.filter((id) => {
       const config = getCraftingRecipeConfig(id);
       const state = this.getRuntimeState(id);
-      if (state.queue > 0 || state.inProgress) {
+      if (state.queue > 0 || state.inProgress || state.overdriveLevel > 0) {
         return true;
       }
       return this.unlocks.areConditionsMet(config.unlockedBy ?? []);
@@ -333,15 +361,16 @@ export class CraftingModule implements GameModule {
   ): CraftingRecipeBridgeState {
     const config = getCraftingRecipeConfig(id);
     const state = this.getRuntimeState(id);
-    const cost = toCostRecord(config.ingredients);
-    const duration = this.getRecipeDuration(config);
+    const cost = toCostRecord(this.getRecipeCost(config, state.overdriveLevel));
+    const duration = this.getRecipeDuration(config, state.overdriveLevel);
     const progress = state.inProgress ? clamp01(state.progressMs / duration) : 0;
     const maxQueue = this.computeMaxQueue(id, state, totals);
     const available = this.unlocks.areConditionsMet(config.unlockedBy ?? []);
     const waitingForResources =
       state.queue > 0 &&
       !state.inProgress &&
-      (!available || !this.resources.canAfford(config.ingredients));
+      (!available ||
+        !this.resources.canAfford(this.getRecipeCost(config, state.overdriveLevel)));
 
     const productConfig = getResourceConfig(config.productId);
 
@@ -357,6 +386,8 @@ export class CraftingModule implements GameModule {
       progress,
       durationMs: duration,
       maxQueue,
+      overdriveLevel: state.overdriveLevel,
+      maxOverdriveLevel: this.maxOverdriveLevel,
       waitingForResources,
     };
   }
@@ -375,6 +406,7 @@ export class CraftingModule implements GameModule {
       state.queue = 0;
       state.progressMs = 0;
       state.inProgress = false;
+      state.overdriveLevel = 0;
     });
 
     if (!data || typeof data !== "object") {
@@ -395,13 +427,15 @@ export class CraftingModule implements GameModule {
       }
       const state = this.getRuntimeState(id);
       const queue = sanitizeQueueValue(entry.queue);
-      const duration = this.getRecipeDuration(config);
+      const overdriveLevel = this.sanitizeOverdriveLevel(entry.overdriveLevel);
+      const duration = this.getRecipeDuration(config, overdriveLevel);
       const progress = sanitizeProgressValue(entry.progressMs, duration);
       const inProgress = Boolean(entry.inProgress) && queue > 0;
 
       state.queue = inProgress ? Math.max(queue, 1) : queue;
       state.inProgress = inProgress;
       state.progressMs = inProgress ? progress : 0;
+      state.overdriveLevel = overdriveLevel;
     });
   }
 
@@ -409,11 +443,27 @@ export class CraftingModule implements GameModule {
     const multiplier = this.sanitizeCraftingSpeedMultiplier(
       values.crafting_speed_mult ?? this.craftingSpeedMultiplier
     );
+    const maxOverdriveLevel = this.sanitizeOverdriveMaxLevel(
+      values.crafting_overdrive_max ?? this.maxOverdriveLevel
+    );
+    let shouldPush = false;
     if (Math.abs(multiplier - this.craftingSpeedMultiplier) < 1e-9) {
-      return;
+      if (maxOverdriveLevel === this.maxOverdriveLevel) {
+        return;
+      }
+    } else {
+      this.craftingSpeedMultiplier = multiplier;
+      this.onCraftingSpeedMultiplierChanged();
+      shouldPush = true;
     }
-    this.craftingSpeedMultiplier = multiplier;
-    this.onCraftingSpeedMultiplierChanged();
+    if (maxOverdriveLevel !== this.maxOverdriveLevel) {
+      this.maxOverdriveLevel = maxOverdriveLevel;
+      shouldPush = true;
+      this.clampOverdriveLevels();
+    }
+    if (shouldPush) {
+      this.pushState();
+    }
   }
 
   private onCraftingSpeedMultiplierChanged(): void {
@@ -425,15 +475,15 @@ export class CraftingModule implements GameModule {
         return;
       }
       const config = getCraftingRecipeConfig(id);
-      const duration = this.getRecipeDuration(config);
+      const duration = this.getRecipeDuration(config, state.overdriveLevel);
       if (state.progressMs > duration) {
         state.progressMs = duration;
       }
     });
   }
 
-  private getRecipeDuration(config: CraftingRecipeConfig): number {
-    const multiplier = this.craftingSpeedMultiplier;
+  private getRecipeDuration(config: CraftingRecipeConfig, overdriveLevel: number): number {
+    const multiplier = this.craftingSpeedMultiplier * this.getOverdriveMultiplier(overdriveLevel);
     if (!Number.isFinite(multiplier) || multiplier <= 0) {
       return Math.max(1, Math.round(config.baseDurationMs));
     }
@@ -441,10 +491,85 @@ export class CraftingModule implements GameModule {
     return Math.max(1, Math.round(adjusted));
   }
 
+  private getRecipeCost(
+    config: CraftingRecipeConfig,
+    overdriveLevel: number
+  ): ResourceAmount {
+    const multiplier = this.getOverdriveMultiplier(overdriveLevel);
+    if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier === 1) {
+      return config.ingredients;
+    }
+    const normalized = normalizeResourceAmount(config.ingredients);
+    const scaled: ResourceAmount = {};
+    (Object.keys(normalized) as ResourceId[]).forEach((id) => {
+      const value = normalized[id];
+      if (value > 0) {
+        scaled[id] = Math.ceil(value * multiplier);
+      }
+    });
+    return scaled;
+  }
+
   private sanitizeCraftingSpeedMultiplier(value: number | undefined): number {
     if (!Number.isFinite(value) || (value ?? 0) <= 0) {
       return 1;
     }
     return value ?? 1;
+  }
+
+  private sanitizeOverdriveMaxLevel(value: number | undefined): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.floor(value ?? 0));
+  }
+
+  private sanitizeOverdriveLevel(value: unknown): number {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return 0;
+    }
+    return clampNumber(Math.floor(value), 0, this.maxOverdriveLevel);
+  }
+
+  private clampOverdriveLevels(): boolean {
+    let changed = false;
+    CRAFTING_RECIPE_IDS.forEach((id) => {
+      const state = this.getRuntimeState(id);
+      const nextLevel = this.sanitizeOverdriveLevel(state.overdriveLevel);
+      if (this.applyOverdriveLevel(id, state, nextLevel)) {
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  private applyOverdriveLevel(
+    id: CraftingRecipeId,
+    state: CraftingRecipeRuntimeState,
+    nextLevel: number
+  ): boolean {
+    if (state.overdriveLevel === nextLevel) {
+      return false;
+    }
+    if (state.inProgress) {
+      const config = getCraftingRecipeConfig(id);
+      const previousDuration = this.getRecipeDuration(config, state.overdriveLevel);
+      const nextDuration = this.getRecipeDuration(config, nextLevel);
+      const ratio = clamp01(state.progressMs / previousDuration);
+      state.progressMs = Math.round(nextDuration * ratio);
+      if (state.progressMs > nextDuration) {
+        state.progressMs = nextDuration;
+      }
+    }
+    state.overdriveLevel = nextLevel;
+    return true;
+  }
+
+  private getOverdriveMultiplier(level: number): number {
+    if (!Number.isFinite(level) || level <= 0) {
+      return 1;
+    }
+    const multiplier = Math.pow(2, Math.max(0, Math.floor(level)));
+    return Number.isFinite(multiplier) ? multiplier : 1;
   }
 }

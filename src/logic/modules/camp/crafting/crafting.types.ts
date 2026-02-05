@@ -18,6 +18,8 @@ export interface CraftingRecipeBridgeState {
   readonly progress: number;
   readonly durationMs: number;
   readonly maxQueue: number;
+  readonly overdriveLevel: number;
+  readonly maxOverdriveLevel: number;
   readonly waitingForResources: boolean;
 }
 
@@ -38,12 +40,14 @@ export interface CraftingRecipeRuntimeState {
   queue: number;
   progressMs: number;
   inProgress: boolean;
+  overdriveLevel: number;
 }
 
 export interface CraftingRecipeSaveState {
   readonly queue?: number;
   readonly progressMs?: number;
   readonly inProgress?: boolean;
+  readonly overdriveLevel?: number;
 }
 
 export interface CraftingModuleSaveData {
@@ -54,6 +58,7 @@ export interface CraftingModuleUiApi {
   setRecipeQueue(id: CraftingRecipeId, value: number): void;
   adjustRecipeQueue(id: CraftingRecipeId, delta: number): void;
   setRecipeQueueToMax(id: CraftingRecipeId): void;
+  setRecipeOverdriveLevel(id: CraftingRecipeId, value: number): void;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

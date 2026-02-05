@@ -14,8 +14,12 @@ import {
 } from "@logic/services/new-unlock-notification/new-unlock-notification.const";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
+import { HintTooltip } from "@ui-shared/HintTooltip";
 import "./CraftingView.css";
 import type { CraftingModuleUiApi } from "@logic/modules/camp/crafting/crafting.types";
+
+const OVERDRIVE_HINT =
+  "Speeds up crafting at the cost of efficiency: 2× output rate but 2× resource cost per batch.";
 
 interface CraftingViewProps {
   readonly state: CraftingBridgeState;
@@ -95,6 +99,18 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
         return;
       }
       crafting.setRecipeQueue(recipeId, Math.max(0, Math.floor(parsed)));
+    },
+    [crafting]
+  );
+
+  const handleOverdriveChange = useCallback(
+    (recipeId: CraftingRecipeId, value: string) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        crafting.setRecipeOverdriveLevel(recipeId, 0);
+        return;
+      }
+      crafting.setRecipeOverdriveLevel(recipeId, Math.max(0, Math.floor(parsed)));
     },
     [crafting]
   );
@@ -179,17 +195,44 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                   <ResourceCostDisplay cost={recipe.cost} missing={missing} />
                 </div>
                 <div className="crafting-recipe__queue">
-                  <label className="crafting-recipe__queue-label">
-                    <span className="text-muted">Queue</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      className="crafting-recipe__queue-input"
-                      value={recipe.queue}
-                      onChange={(event) => handleInputChange(recipe.id, event.target.value)}
-                    />
-                  </label>
+                  <div className="crafting-recipe__queue-row">
+                    <label className="crafting-recipe__queue-label">
+                      <span className="text-muted">Queue</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        className="crafting-recipe__queue-input"
+                        value={recipe.queue}
+                        onChange={(event) => handleInputChange(recipe.id, event.target.value)}
+                      />
+                    </label>
+                    {recipe.maxOverdriveLevel > 0 ? (
+                      <label className="crafting-recipe__queue-label">
+                        <span className="crafting-recipe__overdrive-heading">
+                          <span className="text-muted">Overdrive</span>
+                          <HintTooltip text={OVERDRIVE_HINT} ariaLabel="Overdrive help" />
+                        </span>
+                        <select
+                          className="crafting-recipe__queue-select"
+                          value={recipe.overdriveLevel}
+                          onChange={(event) =>
+                            handleOverdriveChange(recipe.id, event.target.value)
+                          }
+                          aria-label="Overdrive level"
+                        >
+                          {Array.from(
+                            { length: recipe.maxOverdriveLevel + 1 },
+                            (_, i) => (
+                              <option key={i} value={i}>
+                                {i}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </label>
+                    ) : null}
+                  </div>
                   <div className="crafting-recipe__quick-buttons">
                     {QUICK_BUTTONS.map((button) => (
                       <button
