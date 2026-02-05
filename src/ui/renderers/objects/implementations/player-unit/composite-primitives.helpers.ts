@@ -5,8 +5,6 @@ import type {
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
   createDynamicCirclePrimitive,
-  createDynamicPolygonPrimitive,
-  createDynamicPolygonStrokePrimitive,
   createDynamicSpritePrimitive,
   createPolygonGpuPrimitive,
   createJoinedPolygonGpuPrimitive,
@@ -14,6 +12,7 @@ import {
   createJoinedPolygonStrokeGpuPrimitive,
   createJoinedCircleStrokeGpuPrimitive,
   createJoinedSpriteGpuPrimitive,
+  createSpineGpuPrimitive,
 } from "../../../primitives";
 import { getInstanceRenderPosition } from "../../ObjectRenderer";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
@@ -40,12 +39,6 @@ import {
   writeAuraInstance,
 } from "./aura.helpers";
 import { POLYGON_SWAY_PHASE_STEP } from "./constants";
-import { getTentacleTimeMs } from "./helpers";
-import {
-  createPolygonAnimSampler,
-  createSpineSwaySampler,
-  resolveAnimationExecutionMode,
-} from "../../shared/animation-pipeline";
 import { isAnimationGpuAvailable } from "../../shared/animation-gpu";
 import type { RendererLayerAnchorConfig } from "@shared/types/renderer.types";
 
@@ -227,18 +220,7 @@ export const createCompositePrimitives = (
                 })
               : undefined,
           });
-          if (!strokeGpuPrimitive) {
-            const strokePrimitive = createDynamicPolygonStrokePrimitive(instance, {
-              vertices: layer.vertices,
-              stroke: sceneStroke,
-              offset: staticOffset,
-              getOffset,
-            });
-            if (getOffset) {
-              strokePrimitive.autoAnimate = true;
-            }
-            dynamicPrimitives.push(strokePrimitive);
-          }
+          // GPU-only: no CPU fallback for stroke
         }
         if (fillPrimitive) {
           dynamicPrimitives.push(fillPrimitive);
@@ -250,24 +232,13 @@ export const createCompositePrimitives = (
           return;
         }
       }
-      // Sway animation for tentacle segments built from a line spine
+      // Sway animation for tentacle segments built from a line spine - GPU only
       if (Array.isArray(layer.spine) && layer.anim?.type === "sway") {
-        const executionMode = resolveAnimationExecutionMode({
-          requested: layer.anim.executionMode,
-          gpuAvailable: isAnimationGpuAvailable(),
-          warnKey: `player-unit:${instance.id}:spine:${layer.groupId ?? layerIndex}`,
-        });
-        const sampler = createSpineSwaySampler({
-          spine: layer.spine,
-          segmentIndex: typeof layer.segmentIndex === "number" ? layer.segmentIndex : 0,
-          buildOpts: layer.buildOpts,
-          anim: layer.anim,
-          timeSource: getTentacleTimeMs,
-          executionMode,
-        });
         const anchorConfigs = collectAnchors(layer);
         const hasAnchors = anchorConfigs.length > 0;
-        if (executionMode === "gpu" && hasAnchors) {
+        
+        // GPU anchors if needed
+        if (hasAnchors) {
           const gpuAnchorPrimitive = createSpineAnchorGpuPrimitive({
             instance,
             groupId: layer.groupId,
@@ -280,164 +251,64 @@ export const createCompositePrimitives = (
             dynamicPrimitives.push(gpuAnchorPrimitive);
           }
         }
-        const sampleVertices = () => {
-          const quadVerts = sampler.getVertices();
-          if (hasAnchors && needsCpuAnchors) {
-            const resolved = resolveLayerAnchors({
-              anchors: anchorConfigs,
-              vertices: quadVerts,
-              spine: sampler.getDeformedSpine(),
-              offset: staticOffset,
-            });
-            writeAnchorsForLayer(instance.id, layer.groupId, resolved);
-          }
-          return quadVerts;
-        };
 
-        if (layer.stroke) {
-          const layerStrokeForTentacle = layer.stroke;
-          const strokeColor =
-            layer.stroke.kind === "solid"
-              ? layer.stroke.color
-              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
-          const sceneStroke: SceneStroke = {
-            width: layer.stroke.width,
-            color: strokeColor,
-          };
-          dynamicPrimitives.push(
-            createDynamicPolygonStrokePrimitive(instance, {
-              getVertices: sampleVertices,
-              stroke: sceneStroke,
-              offset: staticOffset,
-              getOffset,
-              refreshStroke: layerStrokeForTentacle.kind === "base"
-                ? (inst) => ({
-                    width: layerStrokeForTentacle.width,
-                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
-                  })
-                : undefined,
-            })
-          );
-        }
-
-        // OPTIMIZATION: Cache fill for tentacle layers - vertices animate but fill is static
-        // Always add refreshFill to track visual effect changes
+        // GPU spine fill (stroke not supported in GPU spine renderer)
         const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForTentacle = layer.fill;
-        dynamicPrimitives.push(
-          createDynamicPolygonPrimitive(instance, {
-            getVertices: sampleVertices,
-            offset: staticOffset,
-            getOffset,
-            fill: tentacleFill,
-            refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
-          })
-        );
+        const spinePrimitive = createSpineGpuPrimitive(instance, {
+          spine: layer.spine,
+          anim: layer.anim,
+          fill: tentacleFill,
+          offset: staticOffset,
+          buildOpts: layer.buildOpts,
+          refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
+        });
+        console.log("[composite] spinePrimitive created:", !!spinePrimitive);
+        if (spinePrimitive) {
+          dynamicPrimitives.push(spinePrimitive);
+        }
         return; // handled animated tentacle layer
       }
       // Generic polygon layer (no spine). If it has anim.sway/pulse, deform vertices per-frame.
       const animCfg = layer.anim;
 
       if (animCfg && (animCfg.type === "sway" || animCfg.type === "pulse")) {
-        const executionMode = resolveAnimationExecutionMode({
-          requested: animCfg.executionMode,
-          gpuAvailable: isAnimationGpuAvailable(),
-          warnKey: `player-unit:${instance.id}:polygon:${layer.groupId ?? layerIndex}`,
-        });
+        // GPU-only path for animated polygons
         const anchorConfigs = collectAnchors(layer);
         const hasAnchors = anchorConfigs.length > 0;
         const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForAnimated = layer.fill;
         
-        // GPU path - skip stroke for performance
-        if (executionMode === "gpu") {
-          const gpuPrimitive = createPolygonGpuPrimitive(instance, {
-            vertices: layer.vertices,
-            anim: animCfg,
-            fill: animatedLayerFill,
-            offset: staticOffset,
-            phaseStep: POLYGON_SWAY_PHASE_STEP,
-            enableMovementAxis: true,
-            refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
-          });
-          if (gpuPrimitive) {
-            dynamicPrimitives.push(gpuPrimitive);
-            if (hasAnchors) {
-              const anchorGpuPrimitive = createPolygonAnchorGpuPrimitive({
-                instance,
-                groupId: layer.groupId,
-                anchors: anchorConfigs,
-                vertices: layer.vertices,
-                anim: animCfg,
-                offset: staticOffset,
-                phaseStep: POLYGON_SWAY_PHASE_STEP,
-                enableMovementAxis: true,
-              });
-              if (anchorGpuPrimitive) {
-                dynamicPrimitives.push(anchorGpuPrimitive);
-              }
-            }
-            return; // GPU path complete - no CPU stroke needed
-          }
-        }
-        
-        // CPU fallback path (with stroke support)
-        const sampler = createPolygonAnimSampler({
+        const gpuPrimitive = createPolygonGpuPrimitive(instance, {
           vertices: layer.vertices,
           anim: animCfg,
-          timeSource: getTentacleTimeMs,
-          enableMovementAxis: true,
-          phaseStep: POLYGON_SWAY_PHASE_STEP,
-          executionMode: "cpu",
-        });
-        const getDeformedVertices = () => {
-          const deformed = sampler.getVertices();
-          if (hasAnchors && needsCpuAnchors) {
-            const resolved = resolveLayerAnchors({
-              anchors: anchorConfigs,
-              vertices: deformed,
-              offset: staticOffset,
-            });
-            writeAnchorsForLayer(instance.id, layer.groupId, resolved);
-          }
-          return deformed;
-        };
-
-        if (layer.stroke) {
-          const layerStrokeForAnimated = layer.stroke;
-          const strokeColor =
-            layer.stroke.kind === "solid"
-              ? layer.stroke.color
-              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
-          const sceneStroke: SceneStroke = { width: layer.stroke.width, color: strokeColor };
-          dynamicPrimitives.push(
-            createDynamicPolygonStrokePrimitive(instance, {
-              getVertices: () => getDeformedVertices(),
-              stroke: sceneStroke,
-              offset: staticOffset,
-              getOffset,
-              refreshStroke: layerStrokeForAnimated.kind === "base"
-                ? (inst) => ({
-                    width: layerStrokeForAnimated.width,
-                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
-                  })
-                : undefined,
-            })
-          );
-        }
-        const primitive = createDynamicPolygonPrimitive(instance, {
-          getVertices: () => getDeformedVertices(),
-          offset: staticOffset,
-          getOffset,
           fill: animatedLayerFill,
+          offset: staticOffset,
+          phaseStep: POLYGON_SWAY_PHASE_STEP,
+          enableMovementAxis: true,
           refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
         });
-        if (getOffset) {
-          primitive.autoAnimate = true;
+        if (gpuPrimitive) {
+          dynamicPrimitives.push(gpuPrimitive);
+          if (hasAnchors) {
+            const anchorGpuPrimitive = createPolygonAnchorGpuPrimitive({
+              instance,
+              groupId: layer.groupId,
+              anchors: anchorConfigs,
+              vertices: layer.vertices,
+              anim: animCfg,
+              offset: staticOffset,
+              phaseStep: POLYGON_SWAY_PHASE_STEP,
+              enableMovementAxis: true,
+            });
+            if (anchorGpuPrimitive) {
+              dynamicPrimitives.push(anchorGpuPrimitive);
+            }
+          }
         }
-        dynamicPrimitives.push(primitive);
+        return; // GPU-only, no CPU fallback
       } else {
-        // OPTIMIZATION: Cache fill at registration time for static layers
+        // GPU-only path for static polygons
         const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
         const layerFillForStatic = layer.fill;
         const anchorConfigs = collectAnchors(layer);
@@ -451,57 +322,16 @@ export const createCompositePrimitives = (
           writeAnchorsForLayer(instance.id, layer.groupId, resolved);
         }
         
-        // GPU path for static polygons without join offset (skip stroke for performance)
-        if (!getOffset && isAnimationGpuAvailable()) {
-          const gpuPrimitive = createPolygonGpuPrimitive(instance, {
-            vertices: layer.vertices,
-            offset: staticOffset,
-            fill: cachedFill,
-            refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
-          });
-          if (gpuPrimitive) {
-            dynamicPrimitives.push(gpuPrimitive);
-            return; // GPU path complete - no CPU stroke needed
-          }
-        }
-        
-        // CPU fallback path (for joined layers or if GPU unavailable)
-        if (layer.stroke) {
-          const layerStrokeForStatic = layer.stroke;
-          const strokeColor =
-            layer.stroke.kind === "solid"
-              ? layer.stroke.color
-              : resolveStrokeColor(instance, renderer.baseStrokeColor, renderer.baseFillColor);
-          const sceneStroke: SceneStroke = {
-            width: layer.stroke.width,
-            color: strokeColor,
-          };
-          dynamicPrimitives.push(
-            createDynamicPolygonStrokePrimitive(instance, {
-              vertices: layer.vertices,
-              stroke: sceneStroke,
-              offset: staticOffset,
-              getOffset,
-              refreshStroke: layerStrokeForStatic.kind === "base"
-                ? (inst) => ({
-                    width: layerStrokeForStatic.width,
-                    color: resolveStrokeColor(inst, renderer.baseStrokeColor, renderer.baseFillColor),
-                  })
-                : undefined,
-            })
-          );
-        }
-        const primitive = createDynamicPolygonPrimitive(instance, {
+        // GPU-only: use regular GPU polygon (joined polygons already handled above)
+        const gpuPrimitive = createPolygonGpuPrimitive(instance, {
           vertices: layer.vertices,
-          offset: staticOffset,
-          getOffset,
+          offset: staticOffset ?? layer.offset,
           fill: cachedFill,
           refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
         });
-        if (getOffset) {
-          primitive.autoAnimate = true;
+        if (gpuPrimitive) {
+          dynamicPrimitives.push(gpuPrimitive);
         }
-        dynamicPrimitives.push(primitive);
       }
       return;
     }

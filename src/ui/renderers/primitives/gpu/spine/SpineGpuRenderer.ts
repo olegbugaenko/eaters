@@ -5,13 +5,16 @@ import { TO_CLIP_GLSL } from "@ui/renderers/shaders/common.glsl";
 // Maximum spine points supported (each point = x, y, width, axisX, axisY, falloff)
 const MAX_SPINE_POINTS = 8;
 // Maximum instances per batch
-const MAX_INSTANCES = 512;
+const MAX_INSTANCES = 2048;
 // Floats per spine point in texture: x, y, width, axisX, axisY, falloff, padding, padding = 8
 const SPINE_POINT_FLOATS = 8;
 // Total floats per spine in texture
 const SPINE_DATA_FLOATS = MAX_SPINE_POINTS * SPINE_POINT_FLOATS;
-// Texture width (each texel = RGBA = 4 floats)
-const SPINE_TEX_WIDTH = (SPINE_DATA_FLOATS / 4) * MAX_INSTANCES;
+// Texels per spine (each texel = RGBA = 4 floats)
+const TEXELS_PER_SPINE = SPINE_DATA_FLOATS / 4; // 16 texels per spine
+// Texture dimensions: 2D texture with each row = one spine
+const SPINE_TEX_WIDTH = TEXELS_PER_SPINE; // 16
+const SPINE_TEX_HEIGHT = MAX_INSTANCES; // 2048
 
 export type SpineAnimationParams = {
   timeMs: number;
@@ -69,9 +72,8 @@ out vec4 v_fillColor;
 ${TO_CLIP_GLSL}
 
 vec4 fetchSpineTexel(int spineSlot, int texelIndex) {
-  int texelsPerSpine = ${MAX_SPINE_POINTS} * 2;
-  int globalTexel = spineSlot * texelsPerSpine + texelIndex;
-  return texelFetch(u_spineDataTex, ivec2(globalTexel, 0), 0);
+  // 2D texture: row = spineSlot, col = texelIndex
+  return texelFetch(u_spineDataTex, ivec2(texelIndex, spineSlot), 0);
 }
 
 void getSpinePoint(int spineSlot, int pointIdx, out vec2 pos, out float width, out vec2 axis, out float falloff) {
@@ -200,7 +202,7 @@ class SpineGpuRenderer {
   
   // Data arrays
   private instanceData = new Float32Array(MAX_INSTANCES * INSTANCE_FLOATS);
-  private spineTextureData = new Float32Array(SPINE_TEX_WIDTH * 4);
+  private spineTextureData = new Float32Array(SPINE_TEX_WIDTH * SPINE_TEX_HEIGHT * 4);
   
   // Slot management
   private handles: SpineGpuHandle[] = [];
@@ -216,9 +218,11 @@ class SpineGpuRenderer {
   private spineDataTexLocation: WebGLUniformLocation | null = null;
 
   public setContext(gl: WebGL2RenderingContext | null): void {
+    // console.log("[SpineGpuRenderer] setContext called, same?", this.gl === gl, "activeCount before:", this.activeCount);
     if (this.gl === gl) {
       return;
     }
+    console.log("[SpineGpuRenderer] DIFFERENT GL - disposing! activeCount was:", this.activeCount);
     this.dispose();
     this.gl = gl;
     if (!gl) {
@@ -276,14 +280,14 @@ class SpineGpuRenderer {
     gl.bindVertexArray(null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     
-    // Create spine data texture
+    // Create spine data texture (2D: width=TEXELS_PER_SPINE, height=MAX_INSTANCES)
     this.spineDataTexture = gl.createTexture();
     if (!this.spineDataTexture) return;
     
     gl.bindTexture(gl.TEXTURE_2D, this.spineDataTexture);
     gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.RGBA32F,
-      SPINE_TEX_WIDTH, 1, 0,
+      SPINE_TEX_WIDTH, SPINE_TEX_HEIGHT, 0,
       gl.RGBA, gl.FLOAT, this.spineTextureData
     );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -306,7 +310,9 @@ class SpineGpuRenderer {
     epsilon: number;
     winding: "CW" | "CCW";
   }): SpineGpuHandle | null {
+    console.log("[SpineGpuRenderer] acquireHandle called, freeSlots:", this.freeSlots.length, "activeCount before:", this.activeCount);
     if (!this.gl || this.freeSlots.length === 0) {
+      console.warn("[SpineGpuRenderer] acquireHandle FAILED - no gl or no free slots");
       return null;
     }
     
@@ -318,10 +324,10 @@ class SpineGpuRenderer {
     const slotIndex = this.freeSlots.pop()!;
     const segmentCount = pointCount - 1;
     
-    // Write spine geometry to texture data
+    // Write spine geometry to texture data (2D layout: row = slotIndex)
     const texelsPerPoint = 2;
-    const texelsPerSpine = MAX_SPINE_POINTS * texelsPerPoint;
-    const baseTexel = slotIndex * texelsPerSpine;
+    // Base offset for this row in the texture data array
+    const rowOffset = slotIndex * SPINE_TEX_WIDTH * 4;
     
     for (let i = 0; i < pointCount; i++) {
       const p = options.spinePoints[i]!;
@@ -344,9 +350,10 @@ class SpineGpuRenderer {
           axisY = tangentX;
         }
       } else if (i > 0) {
-        const prevTexel = baseTexel + (i - 1) * texelsPerPoint;
-        axisX = this.spineTextureData[prevTexel * 4 + 3]!;
-        axisY = this.spineTextureData[(prevTexel + 1) * 4]!;
+        // Read previous point's axis from the same row
+        const prevTexelCol = (i - 1) * texelsPerPoint;
+        axisX = this.spineTextureData[rowOffset + prevTexelCol * 4 + 3]!;
+        axisY = this.spineTextureData[rowOffset + (prevTexelCol + 1) * 4]!;
       }
       
       // Compute falloff
@@ -362,21 +369,25 @@ class SpineGpuRenderer {
         falloff = 0;
       }
       
-      const texelIdx = baseTexel + i * texelsPerPoint;
-      this.spineTextureData[texelIdx * 4 + 0] = p.x;
-      this.spineTextureData[texelIdx * 4 + 1] = p.y;
-      this.spineTextureData[texelIdx * 4 + 2] = p.width;
-      this.spineTextureData[texelIdx * 4 + 3] = axisX;
-      this.spineTextureData[(texelIdx + 1) * 4 + 0] = axisY;
-      this.spineTextureData[(texelIdx + 1) * 4 + 1] = falloff;
-      this.spineTextureData[(texelIdx + 1) * 4 + 2] = 0;
-      this.spineTextureData[(texelIdx + 1) * 4 + 3] = 0;
+      // Column offset within the row
+      const texelCol = i * texelsPerPoint;
+      const baseIdx = rowOffset + texelCol * 4;
+      this.spineTextureData[baseIdx + 0] = p.x;
+      this.spineTextureData[baseIdx + 1] = p.y;
+      this.spineTextureData[baseIdx + 2] = p.width;
+      this.spineTextureData[baseIdx + 3] = axisX;
+      this.spineTextureData[baseIdx + 4] = axisY;
+      this.spineTextureData[baseIdx + 5] = falloff;
+      this.spineTextureData[baseIdx + 6] = 0;
+      this.spineTextureData[baseIdx + 7] = 0;
     }
     
+    // Zero out unused points in the row
     for (let i = pointCount; i < MAX_SPINE_POINTS; i++) {
-      const texelIdx = baseTexel + i * texelsPerPoint;
+      const texelCol = i * texelsPerPoint;
+      const baseIdx = rowOffset + texelCol * 4;
       for (let j = 0; j < 8; j++) {
-        this.spineTextureData[texelIdx * 4 + j] = 0;
+        this.spineTextureData[baseIdx + j] = 0;
       }
     }
     
@@ -401,10 +412,15 @@ class SpineGpuRenderer {
     
     this.handles[slotIndex] = handle;
     this.activeCount++;
+    console.log("[SpineGpuRenderer] acquireHandle SUCCESS - slot:", slotIndex, "activeCount now:", this.activeCount);
     
     return handle;
   }
   
+  public isHandleValid(handle: SpineGpuHandle): boolean {
+    return this.handles[handle.slotIndex] === handle;
+  }
+
   public updateHandleFill(handle: SpineGpuHandle, color: { r: number; g: number; b: number; a: number }): void {
     handle.fillColor.r = color.r;
     handle.fillColor.g = color.g;
@@ -415,6 +431,10 @@ class SpineGpuRenderer {
 
   public releaseHandle(handle: SpineGpuHandle): void {
     if (handle.slotIndex < 0 || handle.slotIndex >= MAX_INSTANCES) {
+      return;
+    }
+    // Only release if this handle is actually registered
+    if (this.handles[handle.slotIndex] !== handle) {
       return;
     }
     
@@ -470,7 +490,7 @@ class SpineGpuRenderer {
       gl.bindTexture(gl.TEXTURE_2D, this.spineDataTexture);
       gl.texSubImage2D(
         gl.TEXTURE_2D, 0, 0, 0,
-        SPINE_TEX_WIDTH, 1,
+        SPINE_TEX_WIDTH, SPINE_TEX_HEIGHT,
         gl.RGBA, gl.FLOAT, this.spineTextureData
       );
       gl.bindTexture(gl.TEXTURE_2D, null);
@@ -480,8 +500,10 @@ class SpineGpuRenderer {
 
   public render(gl: WebGL2RenderingContext, cameraState: SceneCameraState): void {
     if (!this.program || this.activeCount === 0 || !this.vao) {
+      // console.log("[SpineGpuRenderer] render skipped:", { hasProgram: !!this.program, activeCount: this.activeCount, hasVao: !!this.vao });
       return;
     }
+    // console.log("[SpineGpuRenderer] rendering", this.activeCount, "spines");
     
     this.beforeRender();
     
@@ -510,6 +532,7 @@ class SpineGpuRenderer {
   }
 
   private dispose(): void {
+    console.error("[SpineGpuRenderer] DISPOSE CALLED! activeCount was:", this.activeCount, "handles:", this.handles.length);
     const gl = this.gl;
     if (!gl) {
       return;

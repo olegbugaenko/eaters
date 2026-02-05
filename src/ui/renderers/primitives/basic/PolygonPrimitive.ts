@@ -1149,6 +1149,8 @@ export const createDynamicPolygonStrokePrimitive = (
       // For static vertices without stroke changes, use change detection to skip GPU upload when possible
       if (!isStaticVertices || strokeRefChanged) {
         console.log("updateStrokeBandDataFast", target.id, target);
+        throw new Error("Not implemented");
+      
         updateStrokeBandDataFast(data, origin, rotation, inner, outer, fillComponents);
         return data;
       }

@@ -18,7 +18,7 @@ import {
 import { getPlayerUnitConfig, type PlayerUnitRendererConfig } from "@db/player-units-db";
 import type { UnitModuleId } from "@db/unit-modules-db";
 import { resolveAnimationExecutionMode } from "@ui/renderers/objects/shared/animation-pipeline";
-import { isAnimationGpuAvailable } from "@ui/renderers/objects/shared/animation-gpu";
+import { isAnimationGpuAvailable, setAnimationGpuContext } from "@ui/renderers/objects/shared/animation-gpu";
 import { particleEmitterGpuRenderer } from "@ui/renderers/primitives/gpu/particle-emitter";
 import { updateAllWhirlInterpolations } from "@ui/renderers/objects";
 import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/whirl";
@@ -275,6 +275,9 @@ export const StressTestScreen: React.FC = () => {
     unitsRef.current = buildStressUnits(scene);
 
     const { gl, webglRenderer, cleanup: webglCleanup } = setupWebGLScene(canvas, scene);
+    
+    // Set GPU context for animation primitives
+    setAnimationGpuContext(gl);
 
     const handleResize = () => {
       const dpr = window.devicePixelRatio || 1;

@@ -61,7 +61,13 @@ export const createSpineGpuPrimitive = (
   instance: SceneObjectInstance,
   options: SpineGpuPrimitiveOptions
 ): DynamicPrimitive | null => {
+  console.log("[SpineGpuPrimitive] createSpineGpuPrimitive called", {
+    instanceId: instance.id,
+    spineLength: options.spine?.length,
+    hasAnim: !!options.anim,
+  });
   if (!options.spine || options.spine.length < 2) {
+    console.warn("[SpineGpuPrimitive] Invalid spine - too few points");
     return null;
   }
 
@@ -85,11 +91,17 @@ export const createSpineGpuPrimitive = (
       gl = getAnimationGpuContext();
     }
     if (!gl) {
+      console.warn("[SpineGpuPrimitive] No GL context available");
       return false;
     }
 
     spineGpuRenderer.setContext(gl);
-    if (!renderHandle) {
+    // console.log("[SpineGpuPrimitive] ensure resources:", !!renderHandle);
+    // Check if handle exists AND is still registered in renderer
+    const handleValid = renderHandle && spineGpuRenderer.isHandleValid(renderHandle);
+    if (!handleValid) {
+      renderHandle = null; // Clear stale handle
+      console.log("[SpineGpuPrimitive] Acquiring handle for spine with", spine.length, "points");
       renderHandle = spineGpuRenderer.acquireHandle({
         spinePoints: spine,
         axis: anim.axis === "tangent" ? "tangent" : "normal",
@@ -98,12 +110,16 @@ export const createSpineGpuPrimitive = (
         winding,
       });
       if (!renderHandle) {
+        console.error("[SpineGpuPrimitive] Failed to acquire render handle");
         return false;
       }
+      console.log("[SpineGpuPrimitive] Got handle slot", renderHandle.slotIndex);
       // Initialize animation params
       renderHandle.anim.periodMs = Math.max(anim.periodMs ?? 1400, 1);
       renderHandle.anim.phase = anim.phase ?? 0;
       renderHandle.anim.amplitude = anim.amplitude ?? 1;
+    } else {
+      // console.log("[SpineGpuPrimitive] Reusing existing handle slot", renderHandle?.slotIndex);
     }
     return true;
   };
@@ -114,7 +130,8 @@ export const createSpineGpuPrimitive = (
     },
     autoAnimate: true,
     update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !renderHandle) {
+      const resourcesOk = ensureResources();
+      if (!resourcesOk || !gl || !renderHandle) {
         return null;
       }
 
