@@ -304,14 +304,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Refine schematics for controlled overdrive, letting you push crafting limits at a cost.",
     nodePosition: { x: -2, y: 6 },
-    maxLevel: 5,
-    effects: {
-      crafting_overdrive_max: {
-        income: (level) => level,
-      },
-    },
+    maxLevel: 1,
+    effects: {},
     nodesRequired: { construction_ledgers: 1 },
-    cost: createTriResourceCost("stone", 200, "copper", 60, "paper", 10, 5),
+    cost: createResourceCost("paper", 100, 1),
   },
   quarry_overseers: {
     id: "quarry_overseers",

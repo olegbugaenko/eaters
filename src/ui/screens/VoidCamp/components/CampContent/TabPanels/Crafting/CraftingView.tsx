@@ -14,8 +14,12 @@ import {
 } from "@logic/services/new-unlock-notification/new-unlock-notification.const";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
+import { HintTooltip } from "@ui-shared/HintTooltip";
 import "./CraftingView.css";
 import type { CraftingModuleUiApi } from "@logic/modules/camp/crafting/crafting.types";
+
+const OVERDRIVE_HINT =
+  "Speeds up crafting at the cost of efficiency: 2× output rate but 2× resource cost per batch.";
 
 interface CraftingViewProps {
   readonly state: CraftingBridgeState;
@@ -205,18 +209,27 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                     </label>
                     {recipe.maxOverdriveLevel > 0 ? (
                       <label className="crafting-recipe__queue-label">
-                        <span className="text-muted">Overdrive</span>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          max={recipe.maxOverdriveLevel}
-                          className="crafting-recipe__queue-input"
+                        <span className="crafting-recipe__overdrive-heading">
+                          <span className="text-muted">Overdrive</span>
+                          <HintTooltip text={OVERDRIVE_HINT} ariaLabel="Overdrive help" />
+                        </span>
+                        <select
+                          className="crafting-recipe__queue-select"
                           value={recipe.overdriveLevel}
                           onChange={(event) =>
                             handleOverdriveChange(recipe.id, event.target.value)
                           }
-                        />
+                          aria-label="Overdrive level"
+                        >
+                          {Array.from(
+                            { length: recipe.maxOverdriveLevel + 1 },
+                            (_, i) => (
+                              <option key={i} value={i}>
+                                {i}
+                              </option>
+                            )
+                          )}
+                        </select>
                       </label>
                     ) : null}
                   </div>

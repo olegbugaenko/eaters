@@ -186,7 +186,8 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
         income: (level) => level,
       },
     },
-    cost: createScalingCost({ silver: 250, copper: 400, stone: 800 }, 5),
+    maxLevel: 3,
+    cost: createScalingCost({ silver: 2500, copper: 40000, stone: 800000 }, 3),
     unlockedBy: [
       {
         type: "skill",
