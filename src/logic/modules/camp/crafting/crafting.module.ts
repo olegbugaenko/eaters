@@ -145,9 +145,28 @@ export class CraftingModule implements GameModule {
           return;
         }
         state.progressMs += clampedDelta;
-        if (state.progressMs >= duration) {
+        while (state.progressMs >= duration) {
+          const leftover = state.progressMs - duration;
           this.completeRecipe(id, state, config);
           stateChanged = true;
+          if (state.queue <= 0) {
+            state.progressMs = 0;
+            return;
+          }
+          if (!available) {
+            state.inProgress = false;
+            state.progressMs = 0;
+            stateChanged = true;
+            return;
+          }
+          if (!this.tryStartRecipe(config, state)) {
+            state.inProgress = false;
+            state.progressMs = 0;
+            stateChanged = true;
+            return;
+          }
+          state.inProgress = true;
+          state.progressMs = leftover;
         }
         return;
       }

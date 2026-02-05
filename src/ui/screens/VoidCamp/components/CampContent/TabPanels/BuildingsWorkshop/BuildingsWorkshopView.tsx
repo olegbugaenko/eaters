@@ -144,7 +144,10 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
               const missing = computeMissingCost(building.nextCost, totals);
               const hasMissingResources = Object.keys(missing).length > 0;
               const unlockPath = `buildings.${building.id}`;
-              const maxLevelLabel = building.maxLevel !== null ? building.maxLevel : "∞";
+              const levelLabel =
+                building.maxLevel !== null
+                  ? `${building.level}/${building.maxLevel}`
+                  : String(building.level);
               return (
                 <li key={building.id}>
                   <NewUnlockWrapper
@@ -170,10 +173,10 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                       setHoveredId((current) => (current === building.id ? null : current))
                     }
                   >
-                    <span className="modules-workshop__card-title heading-3">{building.name}</span>
-                    <span className="modules-workshop__card-level">
-                      {building.level}/{maxLevelLabel}
-                    </span>
+                    <div className="modules-workshop__card-title-row">
+                      <span className="modules-workshop__card-title heading-3">{building.name}</span>
+                      <span className="modules-workshop__card-level">{levelLabel}</span>
+                    </div>
                     <div className="modules-workshop__card-cost">
                       {building.nextCost ? (
                         <ResourceCostDisplay cost={building.nextCost} missing={missing} />
@@ -194,8 +197,9 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
               <div className="modules-workshop__details-header">
                 <h3 className="heading-3">{activeBuilding.name}</h3>
                 <span className="modules-workshop__details-level">
-                  {activeBuilding.level}/
-                  {activeBuilding.maxLevel !== null ? activeBuilding.maxLevel : "∞"}
+                  {activeBuilding.maxLevel !== null
+                    ? `${activeBuilding.level}/${activeBuilding.maxLevel}`
+                    : String(activeBuilding.level)}
                 </span>
               </div>
               <p className="modules-workshop__details-description">{activeBuilding.description}</p>
@@ -212,8 +216,9 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                   <div className="building-row">
                     <span className="text-subtle">Level</span>
                     <span className="modules-workshop__cost-value">
-                      {activeBuilding.level}/
-                      {activeBuilding.maxLevel !== null ? activeBuilding.maxLevel : "∞"}
+                      {activeBuilding.maxLevel !== null
+                        ? `${activeBuilding.level}/${activeBuilding.maxLevel}`
+                        : String(activeBuilding.level)}
                     </span>
                   </div>
                   <div className="building-row">

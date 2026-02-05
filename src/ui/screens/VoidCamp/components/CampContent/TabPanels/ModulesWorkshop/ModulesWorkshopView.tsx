@@ -111,7 +111,11 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     return state.modules.find((module) => module.id === activeId) ?? null;
   }, [hoveredId, selectedId, state.modules]);
 
-  const formatMaxLevel = useCallback((value: number | null) => (value !== null ? value : "∞"), []);
+  const formatLevelLabel = useCallback(
+    (level: number, maxLevel: number | null) =>
+      maxLevel !== null ? `${level}/${maxLevel}` : String(level),
+    []
+  );
 
   const activeMissing = useMemo(
     () => (activeModule ? computeMissingCost(activeModule.nextCost, totals) : {}),
@@ -160,7 +164,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
             const moduleMissing = computeMissingCost(module.nextCost, totals);
             const hasMissingResources = Object.keys(moduleMissing).length > 0;
             const unlockPath = `biolab.organs.${module.id}`;
-            const maxLevelLabel = formatMaxLevel(module.maxLevel);
+            const levelLabel = formatLevelLabel(module.level, module.maxLevel);
             return (
               <li key={module.id}>
                 <NewUnlockWrapper
@@ -184,10 +188,10 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                     onFocus={() => setHoveredId(module.id)}
                     onBlur={() => setHoveredId((current) => (current === module.id ? null : current))}
                   >
-                    <span className="modules-workshop__card-title heading-3">{module.name}</span>
-                    <span className="modules-workshop__card-level">
-                      {module.level}/{maxLevelLabel}
-                    </span>
+                    <div className="modules-workshop__card-title-row">
+                      <span className="modules-workshop__card-title heading-3">{module.name}</span>
+                      <span className="modules-workshop__card-level">{levelLabel}</span>
+                    </div>
                     <div className="modules-workshop__card-cost">
                       {module.nextCost ? (
                         <ResourceCostDisplay
@@ -213,7 +217,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
               className="modules-workshop__details--scrollable"
               name={activeModule.name}
               level={activeModule.level}
-              levelLabel={`${activeModule.level}/${formatMaxLevel(activeModule.maxLevel)}`}
+              levelLabel={formatLevelLabel(activeModule.level, activeModule.maxLevel)}
               description={activeModule.description}
               effectLabel={activeModule.bonusLabel}
               currentEffect={
