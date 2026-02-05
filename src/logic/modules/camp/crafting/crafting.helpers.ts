@@ -8,6 +8,7 @@ export const createEmptyRuntimeState = (): CraftingRecipeRuntimeState => ({
   queue: 0,
   progressMs: 0,
   inProgress: false,
+  overdriveLevel: 0,
 });
 
 export const sanitizeQueueValue = (value: unknown): number => {

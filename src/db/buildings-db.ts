@@ -10,7 +10,8 @@ export type BuildingId =
   | "iron_forest"
   | "mana_plant"
   | "blacksmith"
-  | "treasure_vault";
+  | "treasure_vault"
+  | "throughput_regulator";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -171,6 +172,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       {
         type: "skill",
         id: "advanced_construction",
+        level: 1,
+      },
+    ],
+  },
+  throughput_regulator: {
+    id: "throughput_regulator",
+    name: "Throughput Regulator",
+    description:
+      "Install precise regulators to safely drive fabrication lines beyond standard tolerances.",
+    effects: {
+      crafting_overdrive_max: {
+        income: (level) => level,
+      },
+    },
+    cost: createScalingCost({ silver: 250, copper: 400, stone: 800 }, 5),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "draftsmanship",
         level: 1,
       },
     ],

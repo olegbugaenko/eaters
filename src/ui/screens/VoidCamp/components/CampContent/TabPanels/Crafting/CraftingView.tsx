@@ -99,6 +99,18 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
     [crafting]
   );
 
+  const handleOverdriveChange = useCallback(
+    (recipeId: CraftingRecipeId, value: string) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        crafting.setRecipeOverdriveLevel(recipeId, 0);
+        return;
+      }
+      crafting.setRecipeOverdriveLevel(recipeId, Math.max(0, Math.floor(parsed)));
+    },
+    [crafting]
+  );
+
   const handleButtonClick = useCallback(
     (recipeId: CraftingRecipeId, type: "set" | "delta" | "max", value?: number) => {
       switch (type) {
@@ -179,17 +191,35 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                   <ResourceCostDisplay cost={recipe.cost} missing={missing} />
                 </div>
                 <div className="crafting-recipe__queue">
-                  <label className="crafting-recipe__queue-label">
-                    <span className="text-muted">Queue</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      className="crafting-recipe__queue-input"
-                      value={recipe.queue}
-                      onChange={(event) => handleInputChange(recipe.id, event.target.value)}
-                    />
-                  </label>
+                  <div className="crafting-recipe__queue-row">
+                    <label className="crafting-recipe__queue-label">
+                      <span className="text-muted">Queue</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        className="crafting-recipe__queue-input"
+                        value={recipe.queue}
+                        onChange={(event) => handleInputChange(recipe.id, event.target.value)}
+                      />
+                    </label>
+                    {recipe.maxOverdriveLevel > 0 ? (
+                      <label className="crafting-recipe__queue-label">
+                        <span className="text-muted">Overdrive</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={recipe.maxOverdriveLevel}
+                          className="crafting-recipe__queue-input"
+                          value={recipe.overdriveLevel}
+                          onChange={(event) =>
+                            handleOverdriveChange(recipe.id, event.target.value)
+                          }
+                        />
+                      </label>
+                    ) : null}
+                  </div>
                   <div className="crafting-recipe__quick-buttons">
                     {QUICK_BUTTONS.map((button) => (
                       <button

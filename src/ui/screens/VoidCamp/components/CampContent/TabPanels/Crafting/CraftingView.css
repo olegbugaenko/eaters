@@ -77,6 +77,13 @@
   color: var(--color-text-strong);
 }
 
+.crafting-recipe__queue-row {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
 .crafting-recipe__queue-input {
   width: 100%;
   max-width: 120px;

@@ -30,6 +30,7 @@ export const SKILL_IDS = [
   "autorestart_rituals",
   "construction_guild",
   "construction_ledgers",
+  "draftsmanship",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -130,6 +131,21 @@ const createDualResourceCost = (
   (level: number): ResourceAmount => ({
     [firstId]: Math.ceil(firstBase * Math.pow(firstGrowth, Math.max(level, 1))),
     [secondId]: Math.ceil(secondBase * Math.pow(secondGrowth, Math.max(level, 1))),
+  });
+
+const createTriResourceCost = (
+  firstId: ResourceId,
+  firstBase: number,
+  secondId: ResourceId,
+  secondBase: number,
+  thirdId: ResourceId,
+  thirdBase: number,
+  growth: number
+) =>
+  (level: number): ResourceAmount => ({
+    [firstId]: Math.ceil(firstBase * Math.pow(growth, Math.max(level, 1))),
+    [secondId]: Math.ceil(secondBase * Math.pow(growth, Math.max(level, 1))),
+    [thirdId]: Math.ceil(thirdBase * Math.pow(growth, Math.max(level, 1))),
   });
 
 const createMixedCost = (
@@ -281,6 +297,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { construction_guild: 1 },
     cost: createResourceCost("paper", 8, 2.0),
+  },
+  draftsmanship: {
+    id: "draftsmanship",
+    name: "Draftsmanship",
+    description:
+      "Refine schematics for controlled overdrive, letting you push crafting limits at a cost.",
+    nodePosition: { x: -2, y: 6 },
+    maxLevel: 5,
+    effects: {
+      crafting_overdrive_max: {
+        income: (level) => level,
+      },
+    },
+    nodesRequired: { construction_ledgers: 1 },
+    cost: createTriResourceCost("stone", 200, "copper", 60, "paper", 10, 5),
   },
   quarry_overseers: {
     id: "quarry_overseers",

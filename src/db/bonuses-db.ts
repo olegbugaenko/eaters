@@ -24,6 +24,7 @@ export const BONUS_IDS = [
   "all_units_knockback_reduction",
   "spell_power",
   "crafting_speed_mult",
+  "crafting_overdrive_max",
   "building_cost_multiplier"
 ] as const;
 
@@ -121,6 +122,11 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "crafting_speed_mult",
     name: "Crafting Speed Multiplier",
     defaultValue: 1,
+  },
+  crafting_overdrive_max: {
+    id: "crafting_overdrive_max",
+    name: "Crafting Overdrive Limit",
+    defaultValue: 0,
   },
   building_cost_multiplier: {
     id: "building_cost_multiplier",
