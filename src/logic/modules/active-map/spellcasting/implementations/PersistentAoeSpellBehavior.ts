@@ -18,8 +18,8 @@ import {
 } from "../../../../../db/spells-db";
 import { clampNumber, clamp01, lerp } from "@shared/helpers/numbers.helper";
 import type { BonusValueMap } from "../../../shared/bonuses/bonuses.types";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
-import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
+import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import type { ExplosionModule } from "../../../scene/explosion/explosion.module";
 import {
   MIN_DURATION_MS,

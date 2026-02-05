@@ -16,7 +16,12 @@ import {
 } from "../../../primitives";
 import { getInstanceRenderPosition } from "../../ObjectRenderer";
 import type { DynamicPrimitive } from "../../ObjectRenderer";
-import type { CompositeRendererData, RendererLayer, PlayerUnitCustomData } from "./types";
+import type {
+  CompositeRendererData,
+  RendererLayer,
+  RendererLayerFill,
+  PlayerUnitCustomData,
+} from "./types";
 import {
   resolveLayerFill,
   resolveLayerStrokeFill,
@@ -41,6 +46,7 @@ import {
 import { POLYGON_SWAY_PHASE_STEP } from "./constants";
 import { isAnimationGpuAvailable } from "../../shared/animation-gpu";
 import type { RendererLayerAnchorConfig } from "@shared/types/renderer.types";
+import { FillResolver } from "../../shared/fill-resolver";
 
 /**
  * Creates composite primitives for player unit renderer
@@ -111,6 +117,9 @@ export const createCompositePrimitives = (
   }
 
   const emptyData = new Float32Array(0);
+  const fillResolver = new FillResolver<RendererLayerFill>((inst, layerFill) =>
+    resolveLayerFill(inst, layerFill, renderer)
+  );
   const normalizeGroupId = (groupId: string | undefined): string => groupId ?? "default";
   const gpuJoinAvailable = isAnimationGpuAvailable();
   const supportsGpuJoin = (layer: RendererLayer): boolean =>
@@ -193,10 +202,10 @@ export const createCompositePrimitives = (
       if (layer.join && canUseGpuJoin) {
         const fillPrimitive = createJoinedPolygonGpuPrimitive(instance, {
           vertices: layer.vertices,
-          fill: resolveLayerFill(instance, layer.fill, renderer),
+          fill: fillResolver.resolve(instance, layer.fill),
           anchorIndex,
           joinOffset: joinOffsetForGpu,
-          refreshFill: (inst) => resolveLayerFill(inst, layer.fill, renderer),
+          refreshFill: (inst) => fillResolver.resolve(inst, layer.fill),
         });
         let strokeGpuPrimitive: DynamicPrimitive | null = null;
         if (layer.stroke) {
@@ -253,7 +262,7 @@ export const createCompositePrimitives = (
         }
 
         // GPU spine fill (stroke not supported in GPU spine renderer)
-        const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
+        const tentacleFill = fillResolver.resolve(instance, layer.fill);
         const layerFillForTentacle = layer.fill;
         const spinePrimitive = createSpineGpuPrimitive(instance, {
           spine: layer.spine,
@@ -261,7 +270,7 @@ export const createCompositePrimitives = (
           fill: tentacleFill,
           offset: staticOffset,
           buildOpts: layer.buildOpts,
-          refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
+          refreshFill: (inst) => fillResolver.resolve(inst, layerFillForTentacle),
         });
         console.log("[composite] spinePrimitive created:", !!spinePrimitive);
         if (spinePrimitive) {
@@ -276,7 +285,7 @@ export const createCompositePrimitives = (
         // GPU-only path for animated polygons
         const anchorConfigs = collectAnchors(layer);
         const hasAnchors = anchorConfigs.length > 0;
-        const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
+        const animatedLayerFill = fillResolver.resolve(instance, layer.fill);
         const layerFillForAnimated = layer.fill;
         
         const gpuPrimitive = createPolygonGpuPrimitive(instance, {
@@ -286,7 +295,7 @@ export const createCompositePrimitives = (
           offset: staticOffset,
           phaseStep: POLYGON_SWAY_PHASE_STEP,
           enableMovementAxis: true,
-          refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+          refreshFill: (inst) => fillResolver.resolve(inst, layerFillForAnimated),
         });
         if (gpuPrimitive) {
           dynamicPrimitives.push(gpuPrimitive);
@@ -309,7 +318,7 @@ export const createCompositePrimitives = (
         return; // GPU-only, no CPU fallback
       } else {
         // GPU-only path for static polygons
-        const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+        const cachedFill = fillResolver.resolve(instance, layer.fill);
         const layerFillForStatic = layer.fill;
         const anchorConfigs = collectAnchors(layer);
         if (anchorConfigs.length > 0 && needsCpuAnchors) {
@@ -327,7 +336,7 @@ export const createCompositePrimitives = (
           vertices: layer.vertices,
           offset: staticOffset ?? layer.offset,
           fill: cachedFill,
-          refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
+          refreshFill: (inst) => fillResolver.resolve(inst, layerFillForStatic),
         });
         if (gpuPrimitive) {
           dynamicPrimitives.push(gpuPrimitive);
@@ -363,10 +372,10 @@ export const createCompositePrimitives = (
         const fillPrimitive = createJoinedCircleGpuPrimitive(instance, {
           radius: layer.radius,
           segments: layer.segments,
-          fill: resolveLayerFill(instance, layer.fill, renderer),
+          fill: fillResolver.resolve(instance, layer.fill),
           anchorIndex,
           joinOffset: joinOffsetForGpu,
-          refreshFill: (inst) => resolveLayerFill(inst, layer.fill, renderer),
+          refreshFill: (inst) => fillResolver.resolve(inst, layer.fill),
         });
         let strokeGpuPrimitive: DynamicPrimitive | null = null;
         if (layer.stroke) {
@@ -440,7 +449,7 @@ export const createCompositePrimitives = (
         dynamicPrimitives.push(strokePrimitive);
       }
       // Always add refreshFill to track visual effect changes
-      const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+      const cachedFill = fillResolver.resolve(instance, layer.fill);
       const layerFillForCircle = layer.fill;
       const circlePrimitive = createDynamicCirclePrimitive(instance, {
         segments: layer.segments,
@@ -448,7 +457,7 @@ export const createCompositePrimitives = (
         getOffset,
         radius: layer.radius,
         fill: cachedFill,
-        refreshFill: (inst) => resolveLayerFill(inst, layerFillForCircle, renderer),
+        refreshFill: (inst) => fillResolver.resolve(inst, layerFillForCircle),
       });
       if (getOffset) {
         circlePrimitive.autoAnimate = true;

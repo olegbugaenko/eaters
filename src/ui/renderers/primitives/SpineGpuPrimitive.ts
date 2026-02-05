@@ -13,6 +13,7 @@ import {
 import { spineGpuRenderer, type SpineGpuHandle } from "@ui/renderers/primitives/gpu/spine";
 import { getSceneTimelineNow } from "@ui/renderers/primitives/utils/sceneTimeline";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { GpuPrimitiveBase } from "@ui/renderers/primitives/GpuPrimitiveBase";
 
 export interface SpinePoint {
   x: number;
@@ -77,62 +78,40 @@ export const createSpineGpuPrimitive = (
   const epsilon = typeof buildOpts.epsilon === "number" ? buildOpts.epsilon : 0.2;
   const winding = buildOpts.winding ?? "CCW";
 
-  let cachedFill: SceneFill = options.fill;
-  let cachedColor = extractFillColor(cachedFill);
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
+  class SpineGpuPrimitive extends GpuPrimitiveBase {
+    private cachedFill: SceneFill = options.fill;
+    private cachedColor = extractFillColor(this.cachedFill);
+    private prevInstanceFillRef: SceneFill | undefined =
+      typeof options.refreshFill === "function" ? instance.data.fill : undefined;
+    private renderHandle: SpineGpuHandle | null = null;
+    private needsColorUpload = true;
 
-  let gl: WebGL2RenderingContext | null = getAnimationGpuContext();
-  let renderHandle: SpineGpuHandle | null = null;
-  let needsColorUpload = true;
-
-  const ensureResources = (): boolean => {
-    if (!gl) {
-      gl = getAnimationGpuContext();
-    }
-    if (!gl) {
-      console.warn("[SpineGpuPrimitive] No GL context available");
-      return false;
+    protected override areResourcesValid(): boolean {
+      return !!(this.renderHandle && spineGpuRenderer.isHandleValid(this.renderHandle));
     }
 
-    spineGpuRenderer.setContext(gl);
-    // console.log("[SpineGpuPrimitive] ensure resources:", !!renderHandle);
-    // Check if handle exists AND is still registered in renderer
-    const handleValid = renderHandle && spineGpuRenderer.isHandleValid(renderHandle);
-    if (!handleValid) {
-      renderHandle = null; // Clear stale handle
-      console.log("[SpineGpuPrimitive] Acquiring handle for spine with", spine.length, "points");
-      renderHandle = spineGpuRenderer.acquireHandle({
+    protected override createResources(gl: WebGL2RenderingContext): boolean {
+      spineGpuRenderer.setContext(gl);
+      this.renderHandle = spineGpuRenderer.acquire({
         spinePoints: spine,
         axis: anim.axis === "tangent" ? "tangent" : "normal",
         falloff: anim.falloff === "root" ? "root" : anim.falloff === "none" ? "none" : "tip",
         epsilon,
         winding,
       });
-      if (!renderHandle) {
-        console.error("[SpineGpuPrimitive] Failed to acquire render handle");
+      if (!this.renderHandle) {
         return false;
       }
-      console.log("[SpineGpuPrimitive] Got handle slot", renderHandle.slotIndex);
-      // Initialize animation params
-      renderHandle.anim.periodMs = Math.max(anim.periodMs ?? 1400, 1);
-      renderHandle.anim.phase = anim.phase ?? 0;
-      renderHandle.anim.amplitude = anim.amplitude ?? 1;
-    } else {
-      // console.log("[SpineGpuPrimitive] Reusing existing handle slot", renderHandle?.slotIndex);
+      this.renderHandle.anim.periodMs = Math.max(anim.periodMs ?? 1400, 1);
+      this.renderHandle.anim.phase = anim.phase ?? 0;
+      this.renderHandle.anim.amplitude = anim.amplitude ?? 1;
+      this.needsColorUpload = true;
+      return true;
     }
-    return true;
-  };
 
-  const primitive: DynamicPrimitive = {
-    get data() {
-      return new Float32Array(0);
-    },
-    autoAnimate: true,
-    update(target: SceneObjectInstance): Float32Array | null {
-      const resourcesOk = ensureResources();
-      if (!resourcesOk || !gl || !renderHandle) {
-        return null;
+    protected override updateBuffers(target: SceneObjectInstance): void {
+      if (!this.gl || !this.renderHandle) {
+        return;
       }
 
       const pos = getInstanceRenderPosition(target);
@@ -141,37 +120,32 @@ export const createSpineGpuPrimitive = (
 
       let fillRefChanged = false;
       if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
-          cachedFill = options.refreshFill(target);
-          cachedColor = extractFillColor(cachedFill);
+        if (target.data.fill !== this.prevInstanceFillRef) {
+          this.prevInstanceFillRef = target.data.fill;
+          this.cachedFill = options.refreshFill(target);
+          this.cachedColor = extractFillColor(this.cachedFill);
           fillRefChanged = true;
         }
       }
 
-      if (needsColorUpload || fillRefChanged) {
-        spineGpuRenderer.updateHandleFill(renderHandle, cachedColor);
-        needsColorUpload = false;
+      if (this.needsColorUpload || fillRefChanged) {
+        spineGpuRenderer.update(this.renderHandle, this.cachedColor);
+        this.needsColorUpload = false;
       }
 
-      // Update animation params (read by renderer in beforeRender)
-      renderHandle.anim.timeMs = getSceneTimelineNow();
-      renderHandle.anim.origin.x = origin.x;
-      renderHandle.anim.origin.y = origin.y;
-      renderHandle.anim.rotation = rotation;
+      this.renderHandle.anim.timeMs = getSceneTimelineNow();
+      this.renderHandle.anim.origin.x = origin.x;
+      this.renderHandle.anim.origin.y = origin.y;
+      this.renderHandle.anim.rotation = rotation;
+    }
 
-      return null;
-    },
-    dispose() {
-      if (!gl) {
-        return;
+    protected override releaseResources(_gl: WebGL2RenderingContext): void {
+      if (this.renderHandle) {
+        spineGpuRenderer.release(this.renderHandle);
+        this.renderHandle = null;
       }
-      if (renderHandle) {
-        spineGpuRenderer.releaseHandle(renderHandle);
-        renderHandle = null;
-      }
-    },
-  };
+    }
+  }
 
-  return primitive;
+  return new SpineGpuPrimitive(getAnimationGpuContext);
 };

@@ -5,7 +5,7 @@ import type { SceneObjectManager } from "@core/logic/provided/services/scene-obj
 import type { SceneFill, SceneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import { ENEMY_SCENE_OBJECT_TYPE } from "./enemies.const";
 import type { EnemySpawnData, InternalEnemyState } from "./enemies.types";
 import { getEnemyConfig } from "../../../../db/enemies-db";
@@ -16,7 +16,7 @@ import {
   scaleEnemyStat,
   getEnemyLevelStatMultiplier,
 } from "./enemies.helpers";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import { cloneResourceStockpile, normalizeResourceAmount } from "../../../../db/resources-db";
 import type { MovementService } from "@core/logic/provided/services/movement/MovementService";
 import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";

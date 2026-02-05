@@ -35,7 +35,7 @@ import {
   vectorLength,
   vectorHasLength,
 } from "../../../../shared/helpers/vector.helper";
-import { cloneSceneColor, sceneColorsEqual } from "@shared/helpers/scene-color.helper";
+import { cloneSceneColor, sceneColorsEqual } from "@shared/helpers/scene-style.helper";
 import { roundStat, sanitizeNumber } from "../../../../shared/helpers/numbers.helper";
 import { UnitStateFactory, UnitStateInput } from "./player-units.state-factory";
 import {

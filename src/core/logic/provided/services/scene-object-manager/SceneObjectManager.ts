@@ -31,7 +31,7 @@ import {
 
 import { normalizeRotation } from "@shared/helpers/angle.helper";
 import { clampNumber } from "@shared/helpers/numbers.helper";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 export class SceneObjectManager {
   private objects = new Map<string, SceneObjectInstance>();
   private ordered: SceneObjectInstance[] = [];

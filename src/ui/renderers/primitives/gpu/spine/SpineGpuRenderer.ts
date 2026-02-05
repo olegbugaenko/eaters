@@ -416,6 +416,19 @@ class SpineGpuRenderer {
     
     return handle;
   }
+
+  /**
+   * Unified acquire API (alias for acquireHandle).
+   */
+  public acquire(options: {
+    spinePoints: Array<{ x: number; y: number; width: number }>;
+    axis: "normal" | "tangent";
+    falloff: "tip" | "root" | "none";
+    epsilon: number;
+    winding: "CW" | "CCW";
+  }): SpineGpuHandle | null {
+    return this.acquireHandle(options);
+  }
   
   public isHandleValid(handle: SpineGpuHandle): boolean {
     return this.handles[handle.slotIndex] === handle;
@@ -427,6 +440,13 @@ class SpineGpuRenderer {
     handle.fillColor.b = color.b;
     handle.fillColor.a = color.a;
     handle.fillDirty = true;
+  }
+
+  /**
+   * Unified update API (alias for updateHandleFill).
+   */
+  public update(handle: SpineGpuHandle, color: { r: number; g: number; b: number; a: number }): void {
+    this.updateHandleFill(handle, color);
   }
 
   public releaseHandle(handle: SpineGpuHandle): void {
@@ -446,6 +466,13 @@ class SpineGpuRenderer {
     this.freeSlots.push(handle.slotIndex);
     delete this.handles[handle.slotIndex];
     this.activeCount--;
+  }
+
+  /**
+   * Unified release API (alias for releaseHandle).
+   */
+  public release(handle: SpineGpuHandle): void {
+    this.releaseHandle(handle);
   }
   
   private beforeRender(): void {

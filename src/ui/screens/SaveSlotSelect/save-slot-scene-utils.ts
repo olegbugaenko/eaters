@@ -1,8 +1,8 @@
 import {
   SceneFill,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
-import { cloneSceneFillDeep } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
+import { cloneSceneFillDeep } from "@shared/helpers/scene-style.helper";
 import { getBrickConfig } from "@db/bricks-db";
 import type { ParticleEmitterConfig } from "@logic/interfaces/visuals/particle-emitters-config";
 
@@ -16,7 +16,7 @@ export const createBrickFill = (config: ReturnType<typeof getBrickConfig>): Scen
 };
 
 
-// cloneSceneFillDeep is now imported from @shared/helpers/scene-fill.helper
+// cloneSceneFillDeep is now imported from @shared/helpers/scene-style.helper
 
 /**
  * Clones a ParticleEmitterConfig

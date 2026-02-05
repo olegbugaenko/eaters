@@ -10,12 +10,12 @@ import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle
 import {
   cloneSceneFill,
   createRadialGradientFill,
-} from "@shared/helpers/scene-fill.helper";
+} from "@shared/helpers/scene-style.helper";
 import {
   cloneSceneColor,
   ensureColorAlpha,
   cloneColorWithAlpha,
-} from "@shared/helpers/scene-color.helper";
+} from "@shared/helpers/scene-style.helper";
 import { sanitizeAngle, sanitizeArc } from "../../../../shared/helpers/angle.helper";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 import type { WaveState } from "./explosion.types";

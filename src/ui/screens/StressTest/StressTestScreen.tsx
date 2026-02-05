@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import { cloneRendererConfigForScene, deriveRendererStroke } from "@shared/helpers/renderer-clone.helper";
 import { setupWebGLScene } from "@ui/screens/Scene/hooks/useWebGLSceneSetup";
 import { createWebGLRenderLoop } from "@ui/screens/Scene/hooks/useWebGLRenderLoop";

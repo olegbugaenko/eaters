@@ -2,7 +2,7 @@ import type { SceneObjectInstance, SceneLinearGradientFill, SceneVector2 } from 
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { BulletTailRenderConfig } from "./types";
 import { getTailScale, getBulletRadius } from "./helpers";
-import { sanitizeSceneColor } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor } from "@shared/helpers/scene-style.helper";
 import { DEFAULT_TAIL_CONFIG } from "./constants";
 import type { BulletRendererCustomData } from "./types";
 

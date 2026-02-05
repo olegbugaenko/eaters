@@ -236,6 +236,11 @@ export const acquireSlot = <TInstance extends object>(
 };
 
 /**
+ * Unified acquire API (alias for acquireSlot).
+ */
+export const acquire = acquireSlot;
+
+/**
  * Release a slot back to a batch.
  */
 export const releaseSlot = <TInstance extends object>(
@@ -256,6 +261,11 @@ export const releaseSlot = <TInstance extends object>(
   batch.instanceData[offset + instanceFloats - 1] = 0;
   batch.needsUpload = true;
 };
+
+/**
+ * Unified release API (alias for releaseSlot).
+ */
+export const release = releaseSlot;
 
 /**
  * Upload dirty batch data to GPU.

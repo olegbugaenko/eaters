@@ -15,6 +15,7 @@ import { getAnimationGpuContext } from "@ui/renderers/objects/shared/animation-g
 import { FILL_COMPONENTS } from "@ui/renderers/objects/ObjectRenderer";
 import { createSpriteFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
+import { GpuPrimitiveBase } from "@ui/renderers/primitives/GpuPrimitiveBase";
 
 const createStrokeFill = (stroke: SceneStroke): SceneFill => ({
   fillType: FILL_TYPES.SOLID,
@@ -93,6 +94,125 @@ const buildSpriteQuadVertices = (width: number, height: number): SceneVector2[] 
   ];
 };
 
+type JoinedPrimitiveBuffers = {
+  packedVertices: Float32Array;
+  vertexCount: number;
+  anchorIndex: number;
+  joinOffset: SceneVector2;
+  drawMode?: "triangles" | "triangle-fan";
+  positionUsage: "static" | "dynamic";
+  fillUsage: "static" | "dynamic";
+};
+
+abstract class JoinedPolygonPrimitiveBase extends GpuPrimitiveBase {
+  protected fillScratch = new Float32Array(FILL_COMPONENTS);
+  protected fillData: Float32Array | null = null;
+  protected positionBuffer: WebGLBuffer | null = null;
+  protected fillBuffer: WebGLBuffer | null = null;
+  protected renderHandle: JoinedPolygonGpuHandle | null = null;
+
+  protected constructor(protected bufferConfig: JoinedPrimitiveBuffers) {
+    super(getAnimationGpuContext);
+  }
+
+  protected override createResources(gl: WebGL2RenderingContext): boolean {
+    if (!this.positionBuffer) {
+      const positionUsage =
+        this.bufferConfig.positionUsage === "dynamic" ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+      const packedVertices = this.bufferConfig.packedVertices as unknown as BufferSource;
+      this.positionBuffer = this.createBuffer(
+        gl,
+        gl.ARRAY_BUFFER,
+        packedVertices,
+        positionUsage
+      );
+      if (!this.positionBuffer) {
+        return false;
+      }
+    }
+    if (!this.fillBuffer) {
+      const fillUsage =
+        this.bufferConfig.fillUsage === "dynamic" ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+      this.fillBuffer = this.createBuffer(
+        gl,
+        gl.ARRAY_BUFFER,
+        this.bufferConfig.vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
+        fillUsage
+      );
+      if (!this.fillBuffer) {
+        return false;
+      }
+    }
+    joinedPolygonGpuRenderer.setContext(gl);
+    if (!this.renderHandle) {
+      const drawMode =
+        this.bufferConfig.drawMode === "triangles"
+          ? gl.TRIANGLES
+          : this.bufferConfig.drawMode === "triangle-fan"
+          ? gl.TRIANGLE_FAN
+          : undefined;
+      this.renderHandle = joinedPolygonGpuRenderer.acquire({
+        positionBuffer: this.positionBuffer,
+        fillBuffer: this.fillBuffer,
+        vertexCount: this.bufferConfig.vertexCount,
+        anchorIndex: this.bufferConfig.anchorIndex,
+        joinOffset: this.bufferConfig.joinOffset,
+        drawMode,
+      });
+      if (!this.renderHandle) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  protected override releaseResources(_gl: WebGL2RenderingContext): void {
+    if (this.renderHandle) {
+      joinedPolygonGpuRenderer.release(this.renderHandle);
+      this.renderHandle = null;
+    }
+    this.positionBuffer = null;
+    this.fillBuffer = null;
+    this.fillData = null;
+  }
+
+  protected uploadFillData(fillComponents: Float32Array, vertexCount: number): void {
+    if (!this.gl || !this.fillBuffer) {
+      return;
+    }
+    this.fillData = buildFillBufferData(vertexCount, fillComponents, this.fillData ?? undefined);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.fillBuffer);
+    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, this.fillData);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+  }
+
+  protected updateTransform(target: SceneObjectInstance): void {
+    if (!this.renderHandle) {
+      return;
+    }
+    const pos = getInstanceRenderPosition(target);
+    this.renderHandle.instancePosition.x = pos.x;
+    this.renderHandle.instancePosition.y = pos.y;
+    this.renderHandle.instanceRotation = target.data.rotation ?? 0;
+  }
+
+  protected updatePositionBuffer(packed: Float32Array): void {
+    if (!this.gl || !this.positionBuffer) {
+      return;
+    }
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, packed);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+  }
+
+  protected updateVertexCount(vertexCount: number): void {
+    this.bufferConfig.vertexCount = vertexCount;
+    if (this.renderHandle) {
+      joinedPolygonGpuRenderer.update(this.renderHandle, vertexCount);
+    }
+  }
+}
+
 export interface JoinedGpuPrimitiveOptions {
   anchorIndex: number;
   joinOffset?: SceneVector2;
@@ -113,135 +233,51 @@ export const createJoinedPolygonGpuPrimitive = (
   const packedVertices = buildPackedVertices(options.vertices);
   const geometry = computePolygonGeometry(options.vertices);
 
-  const fillScratch = new Float32Array(FILL_COMPONENTS);
-  let fillData: Float32Array | null = null;
-  let cachedFill: SceneFill = options.fill;
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
+  class JoinedPolygonPrimitive extends JoinedPolygonPrimitiveBase {
+    private cachedFill: SceneFill = options.fill;
+    private prevInstanceFillRef: SceneFill | undefined =
+      typeof options.refreshFill === "function" ? instance.data.fill : undefined;
 
-  let gl = getAnimationGpuContext();
-  let fillBuffer: WebGLBuffer | null = null;
-  let positionBuffer: WebGLBuffer | null = null;
-  let renderHandle: JoinedPolygonGpuHandle | null = null;
-
-  const ensureResources = (): boolean => {
-    if (!gl) {
-      gl = getAnimationGpuContext();
-    }
-    if (!gl) {
-      return false;
-    }
-    if (!positionBuffer) {
-      positionBuffer = gl.createBuffer();
-      if (!positionBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
+    public constructor() {
+      super({
         packedVertices,
-        gl.STATIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    if (!fillBuffer) {
-      fillBuffer = gl.createBuffer();
-      if (!fillBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    joinedPolygonGpuRenderer.setContext(gl);
-    if (!renderHandle) {
-      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
-        positionBuffer,
-        fillBuffer,
         vertexCount,
         anchorIndex: options.anchorIndex,
         joinOffset: options.joinOffset ?? { x: 0, y: 0 },
+        positionUsage: "static",
+        fillUsage: "dynamic",
       });
-      if (!renderHandle) {
-        return false;
-      }
     }
-    return true;
-  };
 
-  const primitive: DynamicPrimitive = {
-    get data() {
-      return new Float32Array(0);
-    },
-    autoAnimate: true,
-    update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !fillBuffer || !renderHandle) {
-        return null;
+    protected override updateBuffers(target: SceneObjectInstance): void {
+      if (!this.gl) {
+        return;
       }
 
       let fillRefChanged = false;
       if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
-          cachedFill = options.refreshFill(target);
+        if (target.data.fill !== this.prevInstanceFillRef) {
+          this.prevInstanceFillRef = target.data.fill;
+          this.cachedFill = options.refreshFill(target);
           fillRefChanged = true;
         }
       }
 
-      if (fillRefChanged) {
-        const fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: cachedFill,
+      if (fillRefChanged || !this.fillData) {
+        const fillComponents = writeFillVertexComponents(this.fillScratch, {
+          fill: this.cachedFill,
           center: geometry.centerOffset,
           rotation: 0,
           size: geometry.size,
         });
-        fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
-        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-      } else if (!fillData) {
-        const fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: cachedFill,
-          center: geometry.centerOffset,
-          rotation: 0,
-          size: geometry.size,
-        });
-        fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
-        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        this.uploadFillData(fillComponents, vertexCount);
       }
 
-      const pos = getInstanceRenderPosition(target);
-      renderHandle.instancePosition.x = pos.x;
-      renderHandle.instancePosition.y = pos.y;
-      renderHandle.instanceRotation = target.data.rotation ?? 0;
-      return null;
-    },
-    dispose() {
-      if (!gl) {
-        return;
-      }
-      if (renderHandle) {
-        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
-        renderHandle = null;
-      }
-      if (fillBuffer) {
-        gl.deleteBuffer(fillBuffer);
-        fillBuffer = null;
-      }
-      if (positionBuffer) {
-        gl.deleteBuffer(positionBuffer);
-        positionBuffer = null;
-      }
-    },
-  };
+      this.updateTransform(target);
+    }
+  }
 
-  return primitive;
+  return new JoinedPolygonPrimitive();
 };
 
 export const createJoinedCircleGpuPrimitive = (
@@ -259,121 +295,52 @@ export const createJoinedCircleGpuPrimitive = (
   const size = { width: options.radius * 2, height: options.radius * 2 };
   const centerOffset = { x: 0, y: 0 };
 
-  const fillScratch = new Float32Array(FILL_COMPONENTS);
-  let fillData: Float32Array | null = null;
-  let cachedFill: SceneFill = options.fill;
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
+  class JoinedCirclePrimitive extends JoinedPolygonPrimitiveBase {
+    private cachedFill: SceneFill = options.fill;
+    private prevInstanceFillRef: SceneFill | undefined =
+      typeof options.refreshFill === "function" ? instance.data.fill : undefined;
 
-  let gl = getAnimationGpuContext();
-  let fillBuffer: WebGLBuffer | null = null;
-  let positionBuffer: WebGLBuffer | null = null;
-  let renderHandle: JoinedPolygonGpuHandle | null = null;
-
-  const ensureResources = (): boolean => {
-    if (!gl) {
-      gl = getAnimationGpuContext();
-    }
-    if (!gl) {
-      return false;
-    }
-    if (!positionBuffer) {
-      positionBuffer = gl.createBuffer();
-      if (!positionBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.STATIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    if (!fillBuffer) {
-      fillBuffer = gl.createBuffer();
-      if (!fillBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    joinedPolygonGpuRenderer.setContext(gl);
-    if (!renderHandle) {
-      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
-        positionBuffer,
-        fillBuffer,
+    public constructor() {
+      super({
+        packedVertices,
         vertexCount,
         anchorIndex: options.anchorIndex,
         joinOffset: options.joinOffset ?? { x: 0, y: 0 },
+        positionUsage: "static",
+        fillUsage: "dynamic",
       });
-      if (!renderHandle) {
-        return false;
-      }
     }
-    return true;
-  };
 
-  const primitive: DynamicPrimitive = {
-    get data() {
-      return new Float32Array(0);
-    },
-    autoAnimate: true,
-    update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !fillBuffer || !renderHandle) {
-        return null;
+    protected override updateBuffers(target: SceneObjectInstance): void {
+      if (!this.gl) {
+        return;
       }
 
       let fillRefChanged = false;
       if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
-          cachedFill = options.refreshFill(target);
+        if (target.data.fill !== this.prevInstanceFillRef) {
+          this.prevInstanceFillRef = target.data.fill;
+          this.cachedFill = options.refreshFill(target);
           fillRefChanged = true;
         }
       }
 
-      if (fillRefChanged || !fillData) {
-        const fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: cachedFill,
+      if (fillRefChanged || !this.fillData) {
+        const fillComponents = writeFillVertexComponents(this.fillScratch, {
+          fill: this.cachedFill,
           center: centerOffset,
           rotation: 0,
           size,
           radius: options.radius,
         });
-        fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
-        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        this.uploadFillData(fillComponents, vertexCount);
       }
 
-      const pos = getInstanceRenderPosition(target);
-      renderHandle.instancePosition.x = pos.x;
-      renderHandle.instancePosition.y = pos.y;
-      renderHandle.instanceRotation = target.data.rotation ?? 0;
-      return null;
-    },
-    dispose() {
-      if (!gl) {
-        return;
-      }
-      if (renderHandle) {
-        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
-        renderHandle = null;
-      }
-      if (fillBuffer) {
-        gl.deleteBuffer(fillBuffer);
-        fillBuffer = null;
-      }
-      if (positionBuffer) {
-        gl.deleteBuffer(positionBuffer);
-        positionBuffer = null;
-      }
-    },
-  };
+      this.updateTransform(target);
+    }
+  }
 
-  return primitive;
+  return new JoinedCirclePrimitive();
 };
 
 export const createJoinedPolygonStrokeGpuPrimitive = (
@@ -405,92 +372,34 @@ export const createJoinedPolygonStrokeGpuPrimitive = (
   }
   let packedVertices = buildPackedVertices(vertices);
 
-  const fillScratch = new Float32Array(FILL_COMPONENTS);
-  let fillData: Float32Array | null = null;
-  let cachedStroke: SceneStroke = options.stroke;
-  let prevInstanceStrokeRef: SceneStroke | undefined =
-    typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
+  class JoinedPolygonStrokePrimitive extends JoinedPolygonPrimitiveBase {
+    private cachedStroke: SceneStroke = options.stroke;
+    private prevInstanceStrokeRef: SceneStroke | undefined =
+      typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
 
-  let gl = getAnimationGpuContext();
-  let fillBuffer: WebGLBuffer | null = null;
-  let positionBuffer: WebGLBuffer | null = null;
-  let renderHandle: JoinedPolygonGpuHandle | null = null;
-
-  const writeFill = () => {
-    const fillComponents = writeFillVertexComponents(fillScratch, {
-      fill: createStrokeFill(cachedStroke),
-      center: geometry.centerOffset,
-      rotation: 0,
-      size: geometry.size,
-    });
-    fillData = buildFillBufferData(vertices.length, fillComponents, fillData ?? undefined);
-    gl!.bindBuffer(gl!.ARRAY_BUFFER, fillBuffer);
-    gl!.bufferSubData(gl!.ARRAY_BUFFER, 0, fillData);
-    gl!.bindBuffer(gl!.ARRAY_BUFFER, null);
-  };
-
-  const ensureResources = (): boolean => {
-    if (!gl) {
-      gl = getAnimationGpuContext();
-    }
-    if (!gl) {
-      return false;
-    }
-    if (!positionBuffer) {
-      positionBuffer = gl.createBuffer();
-      if (!positionBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.DYNAMIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    if (!fillBuffer) {
-      fillBuffer = gl.createBuffer();
-      if (!fillBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        vertices.length * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    joinedPolygonGpuRenderer.setContext(gl);
-    if (!renderHandle) {
-      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
-        positionBuffer,
-        fillBuffer,
+    public constructor() {
+      super({
+        packedVertices,
         vertexCount: vertices.length,
         anchorIndex: options.anchorIndex,
         joinOffset: options.joinOffset ?? { x: 0, y: 0 },
-        drawMode: gl.TRIANGLES,
+        drawMode: "triangles",
+        positionUsage: "dynamic",
+        fillUsage: "dynamic",
       });
-      if (!renderHandle) {
-        return false;
-      }
     }
-    return true;
-  };
 
-  const primitive: DynamicPrimitive = {
-    get data() {
-      return new Float32Array(0);
-    },
-    autoAnimate: true,
-    update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !fillBuffer || !positionBuffer || !renderHandle) {
-        return null;
+    protected override updateBuffers(target: SceneObjectInstance): void {
+      if (!this.gl) {
+        return;
       }
 
       let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
-        if (target.data.stroke !== prevInstanceStrokeRef) {
-          prevInstanceStrokeRef = target.data.stroke;
+        if (target.data.stroke !== this.prevInstanceStrokeRef) {
+          this.prevInstanceStrokeRef = target.data.stroke;
           const nextStroke = options.refreshStroke(target);
-          if (nextStroke.width !== cachedStroke.width) {
+          if (nextStroke.width !== this.cachedStroke.width) {
             outer = inner.map((vertex) => {
               const dirX = vertex.x - geometry.centerOffset.x;
               const dirY = vertex.y - geometry.centerOffset.y;
@@ -503,52 +412,38 @@ export const createJoinedPolygonStrokeGpuPrimitive = (
             });
             vertices = buildStrokeBandVertices(inner, outer);
             packedVertices = buildPackedVertices(vertices);
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, packedVertices);
-            gl.bindBuffer(gl.ARRAY_BUFFER, null);
-            joinedPolygonGpuRenderer.updateHandle(renderHandle, vertices.length);
+            this.updatePositionBuffer(packedVertices);
+            this.updateVertexCount(vertices.length);
           }
-          // Check if color actually changed
-          const prevColor = cachedStroke.color;
+          const prevColor = this.cachedStroke.color;
           const nextColor = nextStroke.color;
-          if (prevColor.r !== nextColor.r || prevColor.g !== nextColor.g || 
-              prevColor.b !== nextColor.b || prevColor.a !== nextColor.a) {
+          if (
+            prevColor.r !== nextColor.r ||
+            prevColor.g !== nextColor.g ||
+            prevColor.b !== nextColor.b ||
+            prevColor.a !== nextColor.a
+          ) {
             strokeColorChanged = true;
           }
-          cachedStroke = nextStroke;
+          this.cachedStroke = nextStroke;
         }
       }
 
-      if (strokeColorChanged || !fillData) {
-        writeFill();
+      if (strokeColorChanged || !this.fillData) {
+        const fillComponents = writeFillVertexComponents(this.fillScratch, {
+          fill: createStrokeFill(this.cachedStroke),
+          center: geometry.centerOffset,
+          rotation: 0,
+          size: geometry.size,
+        });
+        this.uploadFillData(fillComponents, vertices.length);
       }
 
-      const pos = getInstanceRenderPosition(target);
-      renderHandle.instancePosition.x = pos.x;
-      renderHandle.instancePosition.y = pos.y;
-      renderHandle.instanceRotation = target.data.rotation ?? 0;
-      return null;
-    },
-    dispose() {
-      if (!gl) {
-        return;
-      }
-      if (renderHandle) {
-        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
-        renderHandle = null;
-      }
-      if (fillBuffer) {
-        gl.deleteBuffer(fillBuffer);
-        fillBuffer = null;
-      }
-      if (positionBuffer) {
-        gl.deleteBuffer(positionBuffer);
-        positionBuffer = null;
-      }
-    },
-  };
+      this.updateTransform(target);
+    }
+  }
 
-  return primitive;
+  return new JoinedPolygonStrokePrimitive();
 };
 
 export const createJoinedCircleStrokeGpuPrimitive = (
@@ -566,131 +461,64 @@ export const createJoinedCircleStrokeGpuPrimitive = (
   let vertices = buildVertices(options.radius + cachedStroke.width);
   let packedVertices = buildPackedVertices(vertices);
 
-  const fillScratch = new Float32Array(FILL_COMPONENTS);
-  let fillData: Float32Array | null = null;
-  let prevInstanceStrokeRef: SceneStroke | undefined =
-    typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
+  class JoinedCircleStrokePrimitive extends JoinedPolygonPrimitiveBase {
+    private cachedStroke: SceneStroke = options.stroke;
+    private prevInstanceStrokeRef: SceneStroke | undefined =
+      typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
 
-  let gl = getAnimationGpuContext();
-  let fillBuffer: WebGLBuffer | null = null;
-  let positionBuffer: WebGLBuffer | null = null;
-  let renderHandle: JoinedPolygonGpuHandle | null = null;
-
-  const ensureResources = (): boolean => {
-    if (!gl) {
-      gl = getAnimationGpuContext();
-    }
-    if (!gl) {
-      return false;
-    }
-    if (!positionBuffer) {
-      positionBuffer = gl.createBuffer();
-      if (!positionBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.DYNAMIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    if (!fillBuffer) {
-      fillBuffer = gl.createBuffer();
-      if (!fillBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        vertices.length * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    joinedPolygonGpuRenderer.setContext(gl);
-    if (!renderHandle) {
-      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
-        positionBuffer,
-        fillBuffer,
+    public constructor() {
+      super({
+        packedVertices,
         vertexCount: vertices.length,
         anchorIndex: options.anchorIndex,
         joinOffset: options.joinOffset ?? { x: 0, y: 0 },
+        positionUsage: "dynamic",
+        fillUsage: "dynamic",
       });
-      if (!renderHandle) {
-        return false;
-      }
     }
-    return true;
-  };
 
-  const primitive: DynamicPrimitive = {
-    get data() {
-      return new Float32Array(0);
-    },
-    autoAnimate: true,
-    update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !fillBuffer || !positionBuffer || !renderHandle) {
-        return null;
+    protected override updateBuffers(target: SceneObjectInstance): void {
+      if (!this.gl) {
+        return;
       }
       let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
-        if (target.data.stroke !== prevInstanceStrokeRef) {
-          prevInstanceStrokeRef = target.data.stroke;
+        if (target.data.stroke !== this.prevInstanceStrokeRef) {
+          this.prevInstanceStrokeRef = target.data.stroke;
           const nextStroke = options.refreshStroke(target);
-          if (nextStroke.width !== cachedStroke.width) {
+          if (nextStroke.width !== this.cachedStroke.width) {
             vertices = buildVertices(options.radius + nextStroke.width);
             packedVertices = buildPackedVertices(vertices);
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, packedVertices);
-            gl.bindBuffer(gl.ARRAY_BUFFER, null);
-            joinedPolygonGpuRenderer.updateHandle(renderHandle, vertices.length);
+            this.updatePositionBuffer(packedVertices);
+            this.updateVertexCount(vertices.length);
           }
-          // Check if color actually changed
-          const prevColor = cachedStroke.color;
+          const prevColor = this.cachedStroke.color;
           const nextColor = nextStroke.color;
-          if (prevColor.r !== nextColor.r || prevColor.g !== nextColor.g || 
-              prevColor.b !== nextColor.b || prevColor.a !== nextColor.a) {
+          if (
+            prevColor.r !== nextColor.r ||
+            prevColor.g !== nextColor.g ||
+            prevColor.b !== nextColor.b ||
+            prevColor.a !== nextColor.a
+          ) {
             strokeColorChanged = true;
           }
-          cachedStroke = nextStroke;
+          this.cachedStroke = nextStroke;
         }
       }
-      if (strokeColorChanged || !fillData) {
-        const fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: createStrokeFill(cachedStroke),
+      if (strokeColorChanged || !this.fillData) {
+        const fillComponents = writeFillVertexComponents(this.fillScratch, {
+          fill: createStrokeFill(this.cachedStroke),
           center: { x: 0, y: 0 },
           rotation: 0,
           size: { width: options.radius * 2, height: options.radius * 2 },
         });
-        fillData = buildFillBufferData(vertices.length, fillComponents, fillData ?? undefined);
-        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        this.uploadFillData(fillComponents, vertices.length);
       }
-      const pos = getInstanceRenderPosition(target);
-      renderHandle.instancePosition.x = pos.x;
-      renderHandle.instancePosition.y = pos.y;
-      renderHandle.instanceRotation = target.data.rotation ?? 0;
-      return null;
-    },
-    dispose() {
-      if (!gl) {
-        return;
-      }
-      if (renderHandle) {
-        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
-        renderHandle = null;
-      }
-      if (fillBuffer) {
-        gl.deleteBuffer(fillBuffer);
-        fillBuffer = null;
-      }
-      if (positionBuffer) {
-        gl.deleteBuffer(positionBuffer);
-        positionBuffer = null;
-      }
-    },
-  };
+      this.updateTransform(target);
+    }
+  }
 
-  return primitive;
+  return new JoinedCircleStrokePrimitive();
 };
 
 export const createJoinedSpriteGpuPrimitive = (
@@ -709,106 +537,37 @@ export const createJoinedSpriteGpuPrimitive = (
   const packedVertices = buildPackedVertices(vertices);
   const geometry = computePolygonGeometry(vertices);
 
-  const fillScratch = new Float32Array(FILL_COMPONENTS);
-  let fillData: Float32Array | null = null;
   const spriteFill = createSpriteFill(options.spritePath);
 
-  let gl = getAnimationGpuContext();
-  let fillBuffer: WebGLBuffer | null = null;
-  let positionBuffer: WebGLBuffer | null = null;
-  let renderHandle: JoinedPolygonGpuHandle | null = null;
-
-  const ensureResources = (): boolean => {
-    if (!gl) {
-      gl = getAnimationGpuContext();
-    }
-    if (!gl) {
-      return false;
-    }
-    if (!positionBuffer) {
-      positionBuffer = gl.createBuffer();
-      if (!positionBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.STATIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    if (!fillBuffer) {
-      fillBuffer = gl.createBuffer();
-      if (!fillBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    joinedPolygonGpuRenderer.setContext(gl);
-    if (!renderHandle) {
-      renderHandle = joinedPolygonGpuRenderer.acquireHandle({
-        positionBuffer,
-        fillBuffer,
+  class JoinedSpritePrimitive extends JoinedPolygonPrimitiveBase {
+    public constructor() {
+      super({
+        packedVertices,
         vertexCount,
         anchorIndex: options.anchorIndex,
         joinOffset: options.joinOffset ?? { x: 0, y: 0 },
+        positionUsage: "static",
+        fillUsage: "dynamic",
       });
-      if (!renderHandle) {
-        return false;
-      }
     }
-    return true;
-  };
 
-  const primitive: DynamicPrimitive = {
-    get data() {
-      return new Float32Array(0);
-    },
-    autoAnimate: true,
-    update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !fillBuffer || !renderHandle) {
-        return null;
+    protected override updateBuffers(target: SceneObjectInstance): void {
+      if (!this.gl) {
+        return;
       }
-      if (!fillData) {
-        const fillComponents = writeFillVertexComponents(fillScratch, {
+      if (!this.fillData) {
+        const fillComponents = writeFillVertexComponents(this.fillScratch, {
           fill: spriteFill,
           center: geometry.centerOffset,
           rotation: 0,
           size: geometry.size,
         });
-        fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
-        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        this.uploadFillData(fillComponents, vertexCount);
       }
 
-      const pos = getInstanceRenderPosition(target);
-      renderHandle.instancePosition.x = pos.x;
-      renderHandle.instancePosition.y = pos.y;
-      renderHandle.instanceRotation = target.data.rotation ?? 0;
-      return null;
-    },
-    dispose() {
-      if (!gl) {
-        return;
-      }
-      if (renderHandle) {
-        joinedPolygonGpuRenderer.releaseHandle(renderHandle);
-        renderHandle = null;
-      }
-      if (fillBuffer) {
-        gl.deleteBuffer(fillBuffer);
-        fillBuffer = null;
-      }
-      if (positionBuffer) {
-        gl.deleteBuffer(positionBuffer);
-        positionBuffer = null;
-      }
-    },
-  };
+      this.updateTransform(target);
+    }
+  }
 
-  return primitive;
+  return new JoinedSpritePrimitive();
 };

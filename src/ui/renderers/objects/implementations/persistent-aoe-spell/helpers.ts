@@ -8,7 +8,7 @@ import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/s
 import type { ParticleEmitterParticleState } from "../../../primitives/ParticleEmitterPrimitive";
 import { sanitizeParticleEmitterConfig } from "../../../primitives/ParticleEmitterPrimitive";
 import { clamp01, lerp, clampNumber, randomBetween } from "@shared/helpers/numbers.helper";
-import { sanitizeSceneColor, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneColorWithAlpha } from "@shared/helpers/scene-style.helper";
 import type {
   PersistentAoeObjectCustomData,
   PersistentAoeParticleCustomData,

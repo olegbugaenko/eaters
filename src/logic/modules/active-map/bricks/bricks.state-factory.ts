@@ -15,7 +15,7 @@ import {
   scaleBrickStat,
 } from "./bricks.helpers";
 import { createBrickFill } from "./bricks.fill.helper";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
 import { randomIntInclusive } from "@shared/helpers/numbers.helper";
 import { BRICK_CRACK_VARIANTS_PER_STAGE } from "./bricks.const";

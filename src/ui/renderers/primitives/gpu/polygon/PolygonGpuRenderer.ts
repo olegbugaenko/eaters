@@ -281,8 +281,27 @@ class PolygonGpuRenderer {
     return handle;
   }
 
+  /**
+   * Unified acquire API (alias for acquireHandle).
+   */
+  public acquire(options: {
+    positionBuffer: WebGLBuffer;
+    fillBuffer: WebGLBuffer;
+    vertexCount: number;
+    center: SceneVector2;
+  }): PolygonGpuHandle | null {
+    return this.acquireHandle(options);
+  }
+
   public updateHandle(handle: PolygonGpuHandle, vertexCount: number): void {
     handle.vertexCount = vertexCount;
+  }
+
+  /**
+   * Unified update API (alias for updateHandle).
+   */
+  public update(handle: PolygonGpuHandle, vertexCount: number): void {
+    this.updateHandle(handle, vertexCount);
   }
 
   public releaseHandle(handle: PolygonGpuHandle): void {
@@ -293,6 +312,13 @@ class PolygonGpuRenderer {
       this.handles.delete(handle);
     }
     this.gl.deleteVertexArray(handle.vao);
+  }
+
+  /**
+   * Unified release API (alias for releaseHandle).
+   */
+  public release(handle: PolygonGpuHandle): void {
+    this.releaseHandle(handle);
   }
 
   public render(gl: WebGL2RenderingContext, cameraState: SceneCameraState): void {

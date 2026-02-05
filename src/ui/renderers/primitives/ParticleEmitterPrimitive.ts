@@ -12,9 +12,9 @@ import {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   cloneSceneFill,
-} from "@shared/helpers/scene-fill.helper";
+} from "@shared/helpers/scene-style.helper";
 import { ParticleEmitterShape } from "@/logic/services/particles/ParticleEmitterShared";
-import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-style.helper";
 import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import {
   DynamicPrimitive,

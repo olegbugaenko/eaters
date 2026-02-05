@@ -6,7 +6,7 @@ import type {
 import { createDynamicRectanglePrimitive } from "../../../primitives";
 import { hasStroke, createStrokeFill, expandSize } from "./helpers";
 import { BRICK_CRACK_VARIANTS_PER_STAGE } from "@logic/modules/active-map/bricks/bricks.const";
-import { withCrackMask } from "@shared/helpers/scene-fill.helper";
+import { withCrackMask } from "@shared/helpers/scene-style.helper";
 import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistry";
 
 type BrickCustomData = {

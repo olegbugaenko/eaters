@@ -1,6 +1,6 @@
 import { SceneColor, SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { DynamicPrimitive } from "../objects/ObjectRenderer";
-import { ensureColorAlpha } from "@shared/helpers/scene-color.helper";
+import { ensureColorAlpha } from "@shared/helpers/scene-style.helper";
 import {
   fireRingGpuRenderer,
   type FireRingInstance,
@@ -47,7 +47,7 @@ export const createFireRingPrimitive = (
       
       if (!config) {
         if (slotHandle) {
-          fireRingGpuRenderer.releaseSlot(slotHandle);
+          fireRingGpuRenderer.release(slotHandle);
           slotHandle = null;
           fireInstance = null;
         }
@@ -84,9 +84,9 @@ export const createFireRingPrimitive = (
           },
           active: true,
         };
-        slotHandle = fireRingGpuRenderer.acquireSlot(undefined);
+        slotHandle = fireRingGpuRenderer.acquire(undefined);
         if (slotHandle) {
-          fireRingGpuRenderer.updateSlot(slotHandle, fireInstance);
+          fireRingGpuRenderer.update(slotHandle, fireInstance);
         } else {
           fireInstance = null;
         }
@@ -115,7 +115,7 @@ export const createFireRingPrimitive = (
         }
 
         if (slotHandle) {
-          fireRingGpuRenderer.updateSlot(slotHandle, fireInstance);
+          fireRingGpuRenderer.update(slotHandle, fireInstance);
         }
       }
       
@@ -124,7 +124,7 @@ export const createFireRingPrimitive = (
 
     dispose() {
       if (slotHandle) {
-        fireRingGpuRenderer.releaseSlot(slotHandle);
+        fireRingGpuRenderer.release(slotHandle);
         slotHandle = null;
         fireInstance = null;
       }

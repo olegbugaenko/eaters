@@ -1,5 +1,5 @@
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import type { ParticleEmitterConfig } from "../interfaces/visuals/particle-emitters-config";
 
 /**

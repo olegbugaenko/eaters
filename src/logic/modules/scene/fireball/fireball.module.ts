@@ -1,5 +1,5 @@
 import { GameModule } from "@core/logic/types";
-import { cloneSceneFill, createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill, createRadialGradientFill } from "@shared/helpers/scene-style.helper";
 import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";

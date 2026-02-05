@@ -28,8 +28,8 @@ import {
   DEFAULT_ROTATION,
 } from "./scene-object-manager.const";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
-import { sanitizeColor } from "@shared/helpers/scene-color.helper";
-import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-fill.helper";
+import { sanitizeColor } from "@shared/helpers/scene-style.helper";
+import { cloneSceneFill, cloneSceneFillNoise, cloneSceneFillFilaments } from "@shared/helpers/scene-style.helper";
 import { normalizeRotation } from "@shared/helpers/angle.helper";
 import { sanitizeVector } from "@shared/helpers/vector.helper";
 
@@ -312,7 +312,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 // ============================================================================
 
 // Re-export sanitizeColor for backward compatibility
-export { sanitizeColor } from "@shared/helpers/scene-color.helper";
+export { sanitizeColor } from "@shared/helpers/scene-style.helper";
 
 export function createSpriteFill(spritePath: string, color?: SceneColor): SceneSpriteFill {
   return {
