@@ -15,8 +15,8 @@ const mapConfig = (() => {
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const gearLevel = baseLevel + 2;
-      const innerRadius = 160;
-      const outerRadius = 240;
+      const innerRadius = 260;
+      const outerRadius = 340;
       const toothWidth = 120;
       const toothHeight = 60;
       const toothRadius = outerRadius + toothHeight / 2 + 20;
