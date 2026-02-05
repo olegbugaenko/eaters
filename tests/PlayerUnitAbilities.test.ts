@@ -51,6 +51,7 @@ describe("PlayerUnitAbilities sound effects", () => {
         maxHp: number;
         armor: number;
         baseDamage: number;
+        effectiveDamage: number;
         physicalSize: number;
       }>;
     } = {}
@@ -179,6 +180,7 @@ describe("PlayerUnitAbilities sound effects", () => {
           maxHp: 10,
           armor: 0,
           baseDamage: 1,
+          effectiveDamage: 1,
           physicalSize: 1,
         },
       ],

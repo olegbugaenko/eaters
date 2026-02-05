@@ -316,6 +316,7 @@ describe("EnemiesModule", () => {
               maxHp: unit.maxHp,
               armor: unit.armor,
               baseDamage: unit.baseAttackDamage,
+              effectiveDamage: unit.baseAttackDamage,
               physicalSize: unit.physicalSize,
               data: unit,
             }
@@ -507,6 +508,7 @@ describe("EnemiesModule", () => {
       maxHp: 10,
       armor: 0,
       baseDamage: 0,
+      effectiveDamage: 0,
       physicalSize: 10,
     };
 
@@ -574,6 +576,7 @@ describe("EnemiesModule", () => {
       maxHp: 100,
       armor: 0,
       baseDamage: 0,
+      effectiveDamage: 0,
     };
 
     const createSnapshot = () => ({ ...targetData, position: { ...targetPosition }, data: targetData });

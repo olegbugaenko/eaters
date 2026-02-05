@@ -40,6 +40,7 @@ export class PlayerUnitsTargetingProvider implements TargetingProvider<"unit", P
       maxHp: unit.maxHp,
       armor: unit.armor,
       baseDamage: unit.baseAttackDamage,
+      effectiveDamage: unit.baseAttackDamage,
       physicalSize: unit.physicalSize,
       data: unit,
     };

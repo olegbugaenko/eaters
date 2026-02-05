@@ -52,7 +52,7 @@ const mapConfig = (() => {
     enemies: ({ mapLevel }) => {
       const level = Math.max(1, Math.floor(mapLevel));
       const turretCount = 4;
-      const turretRadius = 360;
+      const turretRadius = 480;
       return Array.from({ length: turretCount }, (_, index) => {
         const angle = (index / turretCount) * Math.PI * 2;
         const position: SceneVector2 = {

@@ -34,7 +34,8 @@ import { MapSceneCleanup, MapSceneCleanupContract } from "./map.scene-cleanup";
 import type { BrickRuntimeState } from "../bricks/bricks.types";
 import type { EnemyRuntimeState } from "../enemies/enemies.types";
 import type { PlayerUnitState } from "../player-units/units/UnitTypes";
-import type { TargetSnapshot } from "../targeting/targeting.types";
+import type { ActiveEffectInfo, TargetSnapshot } from "../targeting/targeting.types";
+import { getStatusEffectConfig } from "../../../../db/status-effects-db";
 import {
   MAP_LIST_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
@@ -330,6 +331,10 @@ export class MapModule implements GameModule {
 
   private toBrickTarget(brick: BrickRuntimeState): TargetSnapshot<"brick", BrickRuntimeState> {
     const rewardMultiplier = this.getRewardMultiplier();
+    const activeEffects = this.getBrickActiveEffects(brick.id);
+    const outgoingMultiplier = this.options.statusEffects?.getBrickOutgoingDamageMultiplier(brick.id) ?? 1;
+    const flatReduction = this.options.statusEffects?.getBrickOutgoingDamageFlatReduction(brick.id) ?? 0;
+    const effectiveDamage = Math.max(0, Math.round(brick.baseDamage * outgoingMultiplier - flatReduction));
     return {
       id: brick.id,
       type: "brick",
@@ -338,14 +343,18 @@ export class MapModule implements GameModule {
       maxHp: brick.maxHp,
       armor: brick.armor,
       baseDamage: brick.baseDamage,
+      effectiveDamage,
       physicalSize: brick.physicalSize,
       rewardMultiplier,
+      activeEffects,
       data: brick,
     };
   }
 
   private toEnemyTarget(enemy: EnemyRuntimeState): TargetSnapshot<"enemy", EnemyRuntimeState> {
     const rewardMultiplier = this.getRewardMultiplier();
+    const activeEffects = this.getEnemyActiveEffects(enemy.id);
+    // Currently enemies don't have outgoing damage modifiers
     return {
       id: enemy.id,
       type: "enemy",
@@ -354,13 +363,19 @@ export class MapModule implements GameModule {
       maxHp: enemy.maxHp,
       armor: enemy.armor,
       baseDamage: enemy.baseDamage,
+      effectiveDamage: enemy.baseDamage,
       physicalSize: enemy.physicalSize,
       rewardMultiplier,
+      activeEffects,
       data: enemy,
     };
   }
 
   private toPlayerUnitTarget(unit: PlayerUnitState): TargetSnapshot<"playerUnit", PlayerUnitState> {
+    const activeEffects = this.getUnitActiveEffects(unit.id);
+    // Calculate effective damage with Internal Furnace and Frenzy bonuses
+    const attackMultiplier = this.options.statusEffects?.getUnitAttackMultiplier(unit.id) ?? 1;
+    const effectiveDamage = Math.round(unit.baseAttackDamage * attackMultiplier);
     return {
       id: unit.id,
       type: "playerUnit",
@@ -369,9 +384,57 @@ export class MapModule implements GameModule {
       maxHp: unit.maxHp,
       armor: unit.armor,
       baseDamage: unit.baseAttackDamage,
+      effectiveDamage,
       physicalSize: unit.physicalSize,
+      activeEffects,
       data: unit,
     };
+  }
+
+  private getUnitActiveEffects(unitId: string): ActiveEffectInfo[] {
+    return this.getTargetActiveEffects({ type: "unit", id: unitId });
+  }
+
+  private getEnemyActiveEffects(enemyId: string): ActiveEffectInfo[] {
+    return this.getTargetActiveEffects({ type: "enemy", id: enemyId });
+  }
+
+  private getBrickActiveEffects(brickId: string): ActiveEffectInfo[] {
+    return this.getTargetActiveEffects({ type: "brick", id: brickId });
+  }
+
+  private getTargetActiveEffects(target: { type: string; id: string }): ActiveEffectInfo[] {
+    const statusEffects = this.options.statusEffects;
+    if (!statusEffects) {
+      return [];
+    }
+    const effects = statusEffects.getActiveEffectsForTarget(target as any);
+    return effects.map((effect) => {
+      return {
+        id: effect.id,
+        name: this.getEffectDisplayName(effect.id),
+        stacks: effect.stacks,
+        maxStacks: effect.maxStacks,
+        remainingMs: effect.remainingMs,
+      };
+    });
+  }
+
+  private getEffectDisplayName(effectId: string): string {
+    const names: Record<string, string> = {
+      frenzy: "Frenzy",
+      internalFurnace: "Internal Furnace",
+      meltingTail: "Melting Tail",
+      freezingTail: "Freezing Tail",
+      weakeningCurse: "Weakening Curse",
+      weakeningCurseFlat: "Weakening Curse",
+      poison: "Poison",
+      burn: "Burn",
+      freeze: "Freeze",
+      cracks: "Cracks",
+      bleeding: "Bleeding",
+    };
+    return names[effectId] ?? effectId;
   }
 
   private getRewardMultiplier(): number {

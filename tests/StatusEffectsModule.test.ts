@@ -41,6 +41,8 @@ describe("StatusEffectsModule visuals cleanup", () => {
       applyOverlay: overlays.applyOverlay,
       applyAura: () => {},
       removeAura: () => {},
+      applyEmitters: () => {},
+      removeEmitters: () => {},
       damageUnit: () => {},
     });
 
@@ -88,6 +90,8 @@ describe("StatusEffectsModule visuals cleanup", () => {
       applyOverlay: overlays.applyOverlay,
       applyAura: () => {},
       removeAura: () => {},
+      applyEmitters: () => {},
+      removeEmitters: () => {},
       damageUnit: () => {},
     });
 

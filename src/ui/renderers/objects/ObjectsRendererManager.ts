@@ -156,6 +156,30 @@ export class ObjectsRendererManager {
     return this.tiedObjects.getChildren(parentId);
   }
 
+  /**
+   * Get the rotation of an object by ID.
+   */
+  public getObjectRotation(objectId: string): number | undefined {
+    const managed = this.objects.get(objectId);
+    return managed?.instance.data.rotation;
+  }
+
+  /**
+   * Update rotation for tied children objects (e.g., status effect emitters).
+   */
+  public updateTiedChildrenRotation(parentId: string, rotation: number): void {
+    const children = this.tiedObjects.getChildren(parentId);
+    if (!children) {
+      return;
+    }
+    children.forEach((childId) => {
+      const managed = this.objects.get(childId);
+      if (managed) {
+        managed.instance.data.rotation = rotation;
+      }
+    });
+  }
+
   public applyChanges(
     changes: ReturnType<SceneUiApi["flushChanges"]>,
     frameDeltaMs?: number

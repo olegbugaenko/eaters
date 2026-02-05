@@ -211,6 +211,60 @@ export class StatusEffectsModule implements GameModule {
     return Boolean(instances && instances.length > 0);
   }
 
+  public getActiveEffectsForTarget(target: StatusEffectTarget): {
+    id: StatusEffectId;
+    stacks: number;
+    maxStacks?: number;
+    remainingMs?: number;
+  }[] {
+    const targetKey = getTargetKey(target);
+    const effectsMap = this.effectsByTarget.get(targetKey);
+    if (!effectsMap) {
+      return [];
+    }
+    const result: { id: StatusEffectId; stacks: number; maxStacks?: number; remainingMs?: number }[] = [];
+    effectsMap.forEach((instances, effectId) => {
+      if (instances.length === 0) {
+        return;
+      }
+      const config = getStatusEffectConfig(effectId);
+      
+      // For stackingAttackBonus (like internalFurnace), show current/cap as percentages
+      if (config.kind === "stackingAttackBonus") {
+        const instance = instances[0];
+        if (instance) {
+          // Values are multipliers (1 = 100%), convert to percentage integers
+          const currentPercent = Math.round((instance.stacks ?? 0) * 100);
+          const capPercent = Math.round((instance.data.cap ?? 0) * 100);
+          result.push({
+            id: effectId,
+            stacks: currentPercent,
+            maxStacks: capPercent > 0 ? capPercent : undefined,
+            remainingMs: instance.remainingMs,
+          });
+        }
+        return;
+      }
+      
+      // For other effects, count instances as stacks
+      const totalStacks = instances.length;
+      const minRemaining = instances.reduce((min, inst) => {
+        const rem = inst.remainingMs;
+        if (rem === undefined) {
+          return min;
+        }
+        return min === undefined ? rem : Math.min(min, rem);
+      }, undefined as number | undefined);
+      result.push({
+        id: effectId,
+        stacks: totalStacks,
+        maxStacks: config.maxStacks,
+        remainingMs: minRemaining,
+      });
+    });
+    return result;
+  }
+
   public consumeAttackBonus(unitId: string): number {
     const targetKey = getTargetKey({ type: "unit", id: unitId });
     const effectsMap = this.effectsByTarget.get(targetKey);

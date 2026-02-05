@@ -311,6 +311,7 @@ export class PlayerUnitsModule implements GameModule {
           );
           const objectId = this.scene.addObject("statusEffectEmitter", {
             position: { ...unit.position },
+            rotation: unit.rotation ?? 0,
             fill: {
               fillType: FILL_TYPES.SOLID,
               color: { r: 0, g: 0, b: 0, a: 0 },

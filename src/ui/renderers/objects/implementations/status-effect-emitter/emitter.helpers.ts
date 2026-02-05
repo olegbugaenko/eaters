@@ -91,20 +91,27 @@ export const getEmitterOrigin = (
   config: StatusEffectEmitterRenderConfig
 ): SceneVector2 => {
   const position = getInstanceRenderPosition(instance);
+  const rotation = instance.data.rotation ?? 0;
+  // Rotate offset by unit rotation
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const rotatedOffsetX = config.offset.x * cos - config.offset.y * sin;
+  const rotatedOffsetY = config.offset.x * sin + config.offset.y * cos;
   return {
-    x: position.x + config.offset.x,
-    y: position.y + config.offset.y,
+    x: position.x + rotatedOffsetX,
+    y: position.y + rotatedOffsetY,
   };
 };
 
 export const createEmitterParticle = (
   origin: SceneVector2,
-  _instance: SceneObjectInstance,
+  instance: SceneObjectInstance,
   config: StatusEffectEmitterRenderConfig
 ): ParticleEmitterParticleState => {
+  const unitRotation = instance.data.rotation ?? 0;
   const halfSpread = config.spread / 2;
   const direction =
-    config.direction + (config.spread > 0 ? randomBetween(-halfSpread, halfSpread) : 0);
+    unitRotation + config.direction + (config.spread > 0 ? randomBetween(-halfSpread, halfSpread) : 0);
   const speed = Math.max(
     0,
     config.baseSpeed +
@@ -135,17 +142,20 @@ export const createEmitterParticle = (
 };
 
 export const getGpuSpawnConfig = (
-  _instance: SceneObjectInstance,
+  instance: SceneObjectInstance,
   config: StatusEffectEmitterRenderConfig
-): GpuSpawnConfig => ({
-  baseSpeed: config.baseSpeed,
-  speedVariation: config.speedVariation,
-  sizeMin: config.sizeRange.min,
-  sizeMax: config.sizeRange.max,
-  spawnRadiusMin: config.spawnRadiusMin,
-  spawnRadiusMax: config.spawnRadiusMax,
-  arc: 0,
-  direction: config.direction,
-  spread: config.spread,
-  radialVelocity: false,
-});
+): GpuSpawnConfig => {
+  const unitRotation = instance.data.rotation ?? 0;
+  return {
+    baseSpeed: config.baseSpeed,
+    speedVariation: config.speedVariation,
+    sizeMin: config.sizeRange.min,
+    sizeMax: config.sizeRange.max,
+    spawnRadiusMin: config.spawnRadiusMin,
+    spawnRadiusMax: config.spawnRadiusMax,
+    arc: 0,
+    direction: unitRotation + config.direction,
+    spread: config.spread,
+    radialVelocity: false,
+  };
+};

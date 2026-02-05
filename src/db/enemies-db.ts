@@ -614,7 +614,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             anim: {
               type: "sway",
               periodMs: 1500,
-              amplitude: 3,
+              amplitude: 6,
               falloff: "tip",
               axis: "normal",
               phase: 1.1,
@@ -637,7 +637,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             anim: {
               type: "sway",
               periodMs: 1500,
-              amplitude: 3,
+              amplitude: 6,
               falloff: "tip",
               axis: "normal",
               phase: 1.1,
@@ -660,7 +660,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             anim: {
               type: "sway",
               periodMs: 1500,
-              amplitude: 3,
+              amplitude: 5,
               falloff: "tip",
               axis: "normal",
               phase: 1.1,
@@ -682,7 +682,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             anim: {
               type: "sway",
               periodMs: 1500,
-              amplitude: 3,
+              amplitude: 5,
               falloff: "tip",
               axis: "normal",
               phase: 1.1,
@@ -707,7 +707,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             anim: {
               type: "sway",
               periodMs: 1500,
-              amplitude: 3,
+              amplitude: 6,
               falloff: "tip",
               axis: "normal",
               phase: 4.24,
@@ -753,7 +753,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             anim: {
               type: "sway",
               periodMs: 1500,
-              amplitude: 3,
+              amplitude: 6,
               falloff: "tip",
               axis: "normal",
               phase: 4.24,
@@ -775,7 +775,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             anim: {
               type: "sway",
               periodMs: 1500,
-              amplitude: 3,
+              amplitude: 5,
               falloff: "tip",
               axis: "normal",
               phase: 4.24,
@@ -1607,8 +1607,8 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         },
       ],
     },
-    maxHp: 150,
-    armor: 10,
+    maxHp: 25000,
+    armor: 1000,
     baseDamage: 0,
     attackInterval: 1.8,
     attackRange: 1600,
@@ -1622,7 +1622,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       arcType: "bleeding",
       statusEffectId: "bleeding",
       statusEffectOptions: {
-        damagePerSecond: 12,
+        damagePerSecond: 124,
         durationMs: 4000,
       },
     },

@@ -33,8 +33,8 @@ const FRENZY_ARC_COLOR: SceneColor = { r: 1.0, g: 0.9, b: 0.2, a: 1.0 };
 const FRENZY_ARC_BLUR: SceneColor = { r: 1.0, g: 0.4, b: 0.4, a: 0.6 };
 const FREEZE_ARC_COLOR: SceneColor = { r: 0.6, g: 0.85, b: 1.0, a: 0.9 };
 const FREEZE_ARC_BLUR: SceneColor = { r: 0.4, g: 0.7, b: 1.0, a: 0.5 };
-const BLEEDING_ARC_COLOR: SceneColor = { r: 1.0, g: 0.25, b: 0.25, a: 0.95 };
-const BLEEDING_ARC_BLUR: SceneColor = { r: 1.0, g: 0.1, b: 0.15, a: 0.6 };
+const BLEEDING_ARC_COLOR: SceneColor = { r: 1.0, g: 0.55, b: 0.45, a: 0.95 };
+const BLEEDING_ARC_BLUR: SceneColor = { r: 1.0, g: 0.6, b: 0.45, a: 0.6 };
 const LASER_ARC_COLOR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.99 };
 const LASER_ARC_BLUR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.25 };
 const PLASMA_BEAM_ARC_COLOR: SceneColor = { r: 0.45, g: 0.7, b: 1.0, a: 0.98 };
@@ -84,14 +84,17 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
   bleeding: {
     coreColor: BLEEDING_ARC_COLOR,
     blurColor: BLEEDING_ARC_BLUR,
-    coreWidth: 2,
-    blurWidth: 30,
-    lifetimeMs: 900,
-    fadeStartMs: 450,
-    bendsPer100Px: 2.5,
-    noiseAmplitude: 5,
-    oscillationPeriodMs: 280,
-    oscillationAmplitude: 0.6,
+    coreWidth: 0.15,
+    blurWidth: 9,
+    lifetimeMs: 700,
+    fadeStartMs: 350,
+    bendsPer100Px: 3,
+    noiseAmplitude: 16,
+    aperiodicStrength: 0.55,
+    kinkAmplitude: 2,
+    kinkFrequency: 1.2,
+    oscillationPeriodMs: 170,
+    oscillationAmplitude: 0.4,
   },
   laser: {
     coreColor: LASER_ARC_COLOR,

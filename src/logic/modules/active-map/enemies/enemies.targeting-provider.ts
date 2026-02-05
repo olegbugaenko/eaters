@@ -48,6 +48,7 @@ export class EnemyTargetingProvider implements TargetingProvider<"enemy", EnemyR
       maxHp: enemy.maxHp,
       armor: enemy.armor,
       baseDamage: enemy.baseDamage,
+      effectiveDamage: enemy.baseDamage,
       physicalSize: enemy.physicalSize,
       data: enemy,
     };

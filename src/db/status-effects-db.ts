@@ -65,17 +65,17 @@ const INTERNAL_FURNACE_COLOR = {
 };
 
 const BLEEDING_EMITTER_BASE: ParticleEmitterConfig = {
-  particlesPerSecond: 18,
-  particleLifetimeMs: 650,
+  particlesPerSecond: 1800,
+  particleLifetimeMs: 950,
   fadeStartMs: 400,
   sizeRange: { min: 2.2, max: 4.2 },
-  color: { r: 0.88, g: 0.12, b: 0.16, a: 0.9 },
-  baseSpeed: 60,
-  speedVariation: 20,
+  color: { r: 0.78, g: 0.32, b: 0.36, a: 0.9 },
+  baseSpeed: 0.1,
+  speedVariation: 0.01,
   spread: Math.PI * 0.65,
   spawnRadius: { min: 0, max: 2.5 },
-  shape: "circle",
-  maxParticles: 120,
+  shape: "triangle",
+  maxParticles: 1200,
 };
 
 const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
@@ -206,18 +206,24 @@ const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
     tickIntervalMs: 1000,
     maxStacks: 4,
     visuals: {
+      overlay: {
+        color: { r: 0.9, g: 0.2, b: 0.2, a: 1 },
+        intensity: 0.45,
+        priority: 12,
+        target: "fill",
+      },
       unitEmitters: {
         offsetScale: "unit",
         emitters: [
           {
             ...BLEEDING_EMITTER_BASE,
-            offset: { x: -0.6, y: 0 },
-            direction: Math.PI,
+            offset: { x: 0, y: -0.5 },
+            direction: -Math.PI / 2, // perpendicular left from movement
           },
           {
             ...BLEEDING_EMITTER_BASE,
-            offset: { x: 0.6, y: 0 },
-            direction: 0,
+            offset: { x: 0, y: 0.5 },
+            direction: Math.PI / 2, // perpendicular right from movement
           },
         ],
       },

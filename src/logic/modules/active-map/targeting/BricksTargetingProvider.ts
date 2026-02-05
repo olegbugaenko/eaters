@@ -64,6 +64,7 @@ export class BricksTargetingProvider implements TargetingProvider<"brick", Brick
       maxHp: brick.maxHp,
       armor: brick.armor,
       baseDamage: brick.baseDamage,
+      effectiveDamage: brick.baseDamage,
       physicalSize: brick.physicalSize,
       data: brick,
     };
