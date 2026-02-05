@@ -116,8 +116,6 @@ export const createJoinedPolygonGpuPrimitive = (
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   let fillData: Float32Array | null = null;
   let cachedFill: SceneFill = options.fill;
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
 
   let gl = getAnimationGpuContext();
   let fillBuffer: WebGLBuffer | null = null;
@@ -183,16 +181,16 @@ export const createJoinedPolygonGpuPrimitive = (
         return null;
       }
 
-      let fillRefChanged = false;
+      // Check dirty flags for fill/color changes
+      let fillDirty = false;
       if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
+        if (target.data.fillDirty || target.data.colorDirty) {
           cachedFill = options.refreshFill(target);
-          fillRefChanged = true;
+          fillDirty = true;
         }
       }
 
-      if (fillRefChanged) {
+      if (fillDirty) {
         const fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: geometry.centerOffset,
@@ -262,8 +260,6 @@ export const createJoinedCircleGpuPrimitive = (
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   let fillData: Float32Array | null = null;
   let cachedFill: SceneFill = options.fill;
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
 
   let gl = getAnimationGpuContext();
   let fillBuffer: WebGLBuffer | null = null;
@@ -325,16 +321,16 @@ export const createJoinedCircleGpuPrimitive = (
         return null;
       }
 
-      let fillRefChanged = false;
+      // Check dirty flags for fill/color changes
+      let fillDirty = false;
       if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
+        if (target.data.fillDirty || target.data.colorDirty) {
           cachedFill = options.refreshFill(target);
-          fillRefChanged = true;
+          fillDirty = true;
         }
       }
 
-      if (fillRefChanged || !fillData) {
+      if (fillDirty || !fillData) {
         const fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: centerOffset,
@@ -408,8 +404,6 @@ export const createJoinedPolygonStrokeGpuPrimitive = (
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   let fillData: Float32Array | null = null;
   let cachedStroke: SceneStroke = options.stroke;
-  let prevInstanceStrokeRef: SceneStroke | undefined =
-    typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
 
   let gl = getAnimationGpuContext();
   let fillBuffer: WebGLBuffer | null = null;
@@ -485,10 +479,10 @@ export const createJoinedPolygonStrokeGpuPrimitive = (
         return null;
       }
 
+      // Check dirty flags for stroke changes
       let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
-        if (target.data.stroke !== prevInstanceStrokeRef) {
-          prevInstanceStrokeRef = target.data.stroke;
+        if (target.data.strokeDirty) {
           const nextStroke = options.refreshStroke(target);
           if (nextStroke.width !== cachedStroke.width) {
             outer = inner.map((vertex) => {
@@ -568,8 +562,6 @@ export const createJoinedCircleStrokeGpuPrimitive = (
 
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   let fillData: Float32Array | null = null;
-  let prevInstanceStrokeRef: SceneStroke | undefined =
-    typeof options.refreshStroke === "function" ? instance.data.stroke : undefined;
 
   let gl = getAnimationGpuContext();
   let fillBuffer: WebGLBuffer | null = null;
@@ -630,10 +622,10 @@ export const createJoinedCircleStrokeGpuPrimitive = (
       if (!ensureResources() || !gl || !fillBuffer || !positionBuffer || !renderHandle) {
         return null;
       }
+      // Check dirty flags for stroke changes
       let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
-        if (target.data.stroke !== prevInstanceStrokeRef) {
-          prevInstanceStrokeRef = target.data.stroke;
+        if (target.data.strokeDirty) {
           const nextStroke = options.refreshStroke(target);
           if (nextStroke.width !== cachedStroke.width) {
             vertices = buildVertices(options.radius + nextStroke.width);

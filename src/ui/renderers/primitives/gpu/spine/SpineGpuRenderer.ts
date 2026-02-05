@@ -222,7 +222,7 @@ class SpineGpuRenderer {
     if (this.gl === gl) {
       return;
     }
-    console.log("[SpineGpuRenderer] DIFFERENT GL - disposing! activeCount was:", this.activeCount);
+    // console.log("[SpineGpuRenderer] DIFFERENT GL - disposing! activeCount was:", this.activeCount);
     this.dispose();
     this.gl = gl;
     if (!gl) {
@@ -310,7 +310,7 @@ class SpineGpuRenderer {
     epsilon: number;
     winding: "CW" | "CCW";
   }): SpineGpuHandle | null {
-    console.log("[SpineGpuRenderer] acquireHandle called, freeSlots:", this.freeSlots.length, "activeCount before:", this.activeCount);
+    // console.log("[SpineGpuRenderer] acquireHandle called, freeSlots:", this.freeSlots.length, "activeCount before:", this.activeCount);
     if (!this.gl || this.freeSlots.length === 0) {
       console.warn("[SpineGpuRenderer] acquireHandle FAILED - no gl or no free slots");
       return null;
@@ -412,7 +412,7 @@ class SpineGpuRenderer {
     
     this.handles[slotIndex] = handle;
     this.activeCount++;
-    console.log("[SpineGpuRenderer] acquireHandle SUCCESS - slot:", slotIndex, "activeCount now:", this.activeCount);
+    // console.log("[SpineGpuRenderer] acquireHandle SUCCESS - slot:", slotIndex, "activeCount now:", this.activeCount);
     
     return handle;
   }

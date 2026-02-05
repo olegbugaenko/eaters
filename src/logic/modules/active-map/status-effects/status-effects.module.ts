@@ -167,7 +167,6 @@ export class StatusEffectsModule implements GameModule {
     effectsMap.set(effectId, instances);
     this.effectsByTarget.set(targetKey, effectsMap);
 
-
     this.refreshVisualsForTarget(targetKey);
   }
 
@@ -698,7 +697,8 @@ export class StatusEffectsModule implements GameModule {
       if (!unitAdapter) {
         return;
       }
-      if (!unitAdapter.hasUnit(id)) {
+      const hasUnit = unitAdapter.hasUnit(id);
+      if (!hasUnit) {
         this.effectsByTarget.delete(targetKey);
         return;
       }

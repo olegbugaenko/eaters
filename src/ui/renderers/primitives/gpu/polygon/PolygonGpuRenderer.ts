@@ -127,10 +127,50 @@ void main() {
 
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_worldPosition = worldPos;
-  v_uv = a_fillParams0.xy;
+  
+  // Transform fill params from local to world coordinates
+  float fillType = a_fillInfo.x;
+  vec4 fillParams0 = a_fillParams0;
+  vec4 fillParams1 = a_fillParams1;
+  
+  if (fillType > 0.5 && fillType < 1.5) {
+    // LINEAR_GRADIENT: transform start/end from local to world
+    vec2 startLocal = a_fillParams0.xy;
+    vec2 endLocal = a_fillParams0.zw;
+    vec2 startWorld = u_origin + vec2(
+      startLocal.x * cosR - startLocal.y * sinR,
+      startLocal.x * sinR + startLocal.y * cosR
+    );
+    vec2 endWorld = u_origin + vec2(
+      endLocal.x * cosR - endLocal.y * sinR,
+      endLocal.x * sinR + endLocal.y * cosR
+    );
+    vec2 dir = endWorld - startWorld;
+    float lenSq = dot(dir, dir);
+    fillParams0 = vec4(startWorld, endWorld);
+    fillParams1 = vec4(dir, lenSq > 0.0 ? 1.0 / lenSq : 0.0, fillParams1.w);
+  } else if (fillType > 1.5 && fillType < 3.5) {
+    // RADIAL_GRADIENT or DIAMOND_GRADIENT: transform center from local to world
+    vec2 centerLocal = a_fillParams0.xy;
+    vec2 centerWorld = u_origin + vec2(
+      centerLocal.x * cosR - centerLocal.y * sinR,
+      centerLocal.x * sinR + centerLocal.y * cosR
+    );
+    fillParams0.xy = centerWorld;
+  } else if (fillType < 0.5) {
+    // SOLID: transform center (used for noise anchor)
+    vec2 centerLocal = a_fillParams0.xy;
+    vec2 centerWorld = u_origin + vec2(
+      centerLocal.x * cosR - centerLocal.y * sinR,
+      centerLocal.x * sinR + centerLocal.y * cosR
+    );
+    fillParams0.xy = centerWorld;
+  }
+  
+  v_uv = fillParams0.xy;
   v_fillInfo = a_fillInfo;
-  v_fillParams0 = a_fillParams0;
-  v_fillParams1 = a_fillParams1;
+  v_fillParams0 = fillParams0;
+  v_fillParams1 = fillParams1;
   v_filaments0 = a_filaments0;
   v_filamentEdgeBlur = a_filamentEdgeBlur;
   v_stopOffsets = a_stopOffsets;

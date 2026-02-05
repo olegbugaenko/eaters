@@ -263,7 +263,7 @@ export const createCompositePrimitives = (
           buildOpts: layer.buildOpts,
           refreshFill: (inst) => resolveLayerFill(inst, layerFillForTentacle, renderer),
         });
-        console.log("[composite] spinePrimitive created:", !!spinePrimitive);
+        
         if (spinePrimitive) {
           dynamicPrimitives.push(spinePrimitive);
         }

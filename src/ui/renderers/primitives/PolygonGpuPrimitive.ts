@@ -73,10 +73,7 @@ export const createPolygonGpuPrimitive = (
   center.y *= invCount;
 
   const fillScratch = new Float32Array(FILL_COMPONENTS);
-  let fillData: Float32Array | null = null;
   let cachedFill: SceneFill = options.fill;
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
 
   let gl: WebGL2RenderingContext | null = getAnimationGpuContext();
   let positionBuffer: WebGLBuffer | null = null;
@@ -85,8 +82,22 @@ export const createPolygonGpuPrimitive = (
 
   let prevPosX = getInstanceRenderPosition(instance).x;
   let prevPosY = getInstanceRenderPosition(instance).y;
-  let prevRotation = instance.data.rotation ?? 0;
-  let needsFillUpload = true;
+  
+  // Local center for fill (includes layer offset) - used for fill calculations
+  // This stays constant; shader transforms to world coords using u_origin/u_rotation
+  const localFillCenter: SceneVector2 = {
+    x: (options.offset?.x ?? 0) + center.x,
+    y: (options.offset?.y ?? 0) + center.y,
+  };
+  
+  // Pre-compute fill data ONCE at creation time (shader handles transformation)
+  const initialFillComponents = writeFillVertexComponents(fillScratch, {
+    fill: cachedFill,
+    center: localFillCenter,
+    rotation: 0,
+    size: geometry.size,
+  });
+  let fillData: Float32Array = buildFillBufferData(vertexCount, initialFillComponents);
 
   // Pre-compute animation params from config (optional - static polygon if undefined)
   const anim = options.anim;
@@ -124,12 +135,9 @@ export const createPolygonGpuPrimitive = (
       if (!fillBuffer) {
         return false;
       }
+      // Upload pre-computed fill data immediately
       gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
+      gl.bufferData(gl.ARRAY_BUFFER, fillData, gl.DYNAMIC_DRAW);
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
     
@@ -171,32 +179,23 @@ export const createPolygonGpuPrimitive = (
       const rotation = target.data.rotation ?? 0;
       const origin = transformObjectPoint(pos, rotation, options.offset);
 
-      let fillRefChanged = false;
+      // Check dirty flags for fill/color changes (visual effects, coal heart color changes)
+      // Fill data was pre-computed at creation; only re-upload if instance state actually changes
       if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
+        if (target.data.fillDirty || target.data.colorDirty) {
           cachedFill = options.refreshFill(target);
-          fillRefChanged = true;
+          // Recompute fill data only when fill/color actually changes
+          const newFillComponents = writeFillVertexComponents(fillScratch, {
+            fill: cachedFill,
+            center: localFillCenter,
+            rotation: 0,
+            size: geometry.size,
+          });
+          fillData = buildFillBufferData(vertexCount, newFillComponents, fillData);
+          gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
+          gl.bindBuffer(gl.ARRAY_BUFFER, null);
         }
-      }
-
-      const fillCenter = transformObjectPoint(pos, rotation, {
-        x: (options.offset?.x ?? 0) + center.x,
-        y: (options.offset?.y ?? 0) + center.y,
-      });
-
-      if (needsFillUpload || fillRefChanged) {
-        const fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: cachedFill,
-          center: fillCenter,
-          rotation,
-          size: geometry.size,
-        });
-        fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
-        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        needsFillUpload = false;
       }
 
       // Update animation params (read by renderer in beforeRender)
@@ -215,7 +214,6 @@ export const createPolygonGpuPrimitive = (
       }
       prevPosX = pos.x;
       prevPosY = pos.y;
-      prevRotation = rotation;
 
       return null;
     },

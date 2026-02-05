@@ -61,11 +61,6 @@ export const createSpineGpuPrimitive = (
   instance: SceneObjectInstance,
   options: SpineGpuPrimitiveOptions
 ): DynamicPrimitive | null => {
-  console.log("[SpineGpuPrimitive] createSpineGpuPrimitive called", {
-    instanceId: instance.id,
-    spineLength: options.spine?.length,
-    hasAnim: !!options.anim,
-  });
   if (!options.spine || options.spine.length < 2) {
     console.warn("[SpineGpuPrimitive] Invalid spine - too few points");
     return null;
@@ -79,8 +74,6 @@ export const createSpineGpuPrimitive = (
 
   let cachedFill: SceneFill = options.fill;
   let cachedColor = extractFillColor(cachedFill);
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
 
   let gl: WebGL2RenderingContext | null = getAnimationGpuContext();
   let renderHandle: SpineGpuHandle | null = null;
@@ -101,7 +94,7 @@ export const createSpineGpuPrimitive = (
     const handleValid = renderHandle && spineGpuRenderer.isHandleValid(renderHandle);
     if (!handleValid) {
       renderHandle = null; // Clear stale handle
-      console.log("[SpineGpuPrimitive] Acquiring handle for spine with", spine.length, "points");
+      // console.log("[SpineGpuPrimitive] Acquiring handle for spine with", spine.length, "points");
       renderHandle = spineGpuRenderer.acquireHandle({
         spinePoints: spine,
         axis: anim.axis === "tangent" ? "tangent" : "normal",
@@ -113,7 +106,7 @@ export const createSpineGpuPrimitive = (
         console.error("[SpineGpuPrimitive] Failed to acquire render handle");
         return false;
       }
-      console.log("[SpineGpuPrimitive] Got handle slot", renderHandle.slotIndex);
+      // console.log("[SpineGpuPrimitive] Got handle slot", renderHandle.slotIndex);
       // Initialize animation params
       renderHandle.anim.periodMs = Math.max(anim.periodMs ?? 1400, 1);
       renderHandle.anim.phase = anim.phase ?? 0;
@@ -139,17 +132,17 @@ export const createSpineGpuPrimitive = (
       const rotation = target.data.rotation ?? 0;
       const origin = transformObjectPoint(pos, rotation, options.offset);
 
-      let fillRefChanged = false;
+      // Check dirty flags for fill/color changes
+      let fillDirty = false;
       if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
+        if (target.data.fillDirty || target.data.colorDirty) {
           cachedFill = options.refreshFill(target);
           cachedColor = extractFillColor(cachedFill);
-          fillRefChanged = true;
+          fillDirty = true;
         }
       }
 
-      if (needsColorUpload || fillRefChanged) {
+      if (needsColorUpload || fillDirty) {
         spineGpuRenderer.updateHandleFill(renderHandle, cachedColor);
         needsColorUpload = false;
       }
