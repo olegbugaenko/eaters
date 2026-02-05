@@ -15,6 +15,7 @@ import { EventLogModule } from "../../shared/event-log/event-log.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
 import type { EnemyRuntimeState } from "../enemies/enemies.types";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { PlayerUnitState } from "../player-units/units/UnitTypes";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps/maps-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
@@ -50,6 +51,7 @@ export interface MapModuleOptions {
   sceneCleanup: MapSceneCleanupContract;
   getSkillLevel: (id: SkillId) => number;
   newUnlocks: NewUnlockNotificationService;
+  statusEffects?: StatusEffectsModule;
 }
 
 export interface MapSaveData {

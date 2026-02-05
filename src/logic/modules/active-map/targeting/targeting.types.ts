@@ -2,6 +2,14 @@ import type { SceneVector2 } from "@core/logic/provided/services/scene-object-ma
 
 export type TargetType = "brick" | string;
 
+export interface ActiveEffectInfo {
+  readonly id: string;
+  readonly name: string;
+  readonly stacks: number;
+  readonly maxStacks?: number;
+  readonly remainingMs?: number;
+}
+
 export interface TargetSnapshot<TType extends TargetType = TargetType, TData = unknown> {
   readonly id: string;
   readonly type: TType;
@@ -10,8 +18,10 @@ export interface TargetSnapshot<TType extends TargetType = TargetType, TData = u
   readonly maxHp: number;
   readonly armor: number;
   readonly baseDamage: number;
+  readonly effectiveDamage: number;
   readonly physicalSize: number;
   readonly rewardMultiplier?: number;
+  readonly activeEffects?: readonly ActiveEffectInfo[];
   readonly data?: TData;
 }
 

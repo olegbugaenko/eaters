@@ -308,14 +308,19 @@ export const useSceneCanvas = ({
         if (interpolatedUnitPositions.size > 0) {
           objectsRenderer.applyInterpolatedPositions(interpolatedUnitPositions);
           
-          // Also update objects tied to interpolated units (e.g., auras)
+          // Also update objects tied to interpolated units (e.g., auras, status effect emitters)
           const tiedPositions = new Map<string, { x: number; y: number }>();
           interpolatedUnitPositions.forEach((pos, unitId) => {
             const tiedChildren = objectsRenderer.getTiedChildren(unitId);
-            if (tiedChildren) {
+            if (tiedChildren && tiedChildren.size > 0) {
               tiedChildren.forEach((childId) => {
                 tiedPositions.set(childId, pos);
               });
+              // Also update rotation for tied children (for status effect emitters)
+              const parentRotation = objectsRenderer.getObjectRotation(unitId);
+              if (parentRotation !== undefined) {
+                objectsRenderer.updateTiedChildrenRotation(unitId, parentRotation);
+              }
             }
           });
           if (tiedPositions.size > 0) {

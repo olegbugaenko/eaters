@@ -37,6 +37,7 @@ export const createMapDefinition = (
       sceneCleanup,
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
       newUnlocks: container.get("newUnlocks"),
+      statusEffects: container.get("statusEffects"),
     });
   },
   registerAsModule: true,

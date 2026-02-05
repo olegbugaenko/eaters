@@ -5,6 +5,7 @@ import {
   StatusEffectVisuals,
   getStatusEffectConfig,
   STATUS_EFFECT_OVERLAY_IDS,
+  STATUS_EFFECT_UNIT_EMITTER_IDS,
 } from "../../../../db/status-effects-db";
 import type {
   StatusEffectApplicationOptions,
@@ -208,6 +209,60 @@ export class StatusEffectsModule implements GameModule {
     }
     const instances = effectsMap.get(effectId);
     return Boolean(instances && instances.length > 0);
+  }
+
+  public getActiveEffectsForTarget(target: StatusEffectTarget): {
+    id: StatusEffectId;
+    stacks: number;
+    maxStacks?: number;
+    remainingMs?: number;
+  }[] {
+    const targetKey = getTargetKey(target);
+    const effectsMap = this.effectsByTarget.get(targetKey);
+    if (!effectsMap) {
+      return [];
+    }
+    const result: { id: StatusEffectId; stacks: number; maxStacks?: number; remainingMs?: number }[] = [];
+    effectsMap.forEach((instances, effectId) => {
+      if (instances.length === 0) {
+        return;
+      }
+      const config = getStatusEffectConfig(effectId);
+      
+      // For stackingAttackBonus (like internalFurnace), show current/cap as percentages
+      if (config.kind === "stackingAttackBonus") {
+        const instance = instances[0];
+        if (instance) {
+          // Values are multipliers (1 = 100%), convert to percentage integers
+          const currentPercent = Math.round((instance.stacks ?? 0) * 100);
+          const capPercent = Math.round((instance.data.cap ?? 0) * 100);
+          result.push({
+            id: effectId,
+            stacks: currentPercent,
+            maxStacks: capPercent > 0 ? capPercent : undefined,
+            remainingMs: instance.remainingMs,
+          });
+        }
+        return;
+      }
+      
+      // For other effects, count instances as stacks
+      const totalStacks = instances.length;
+      const minRemaining = instances.reduce((min, inst) => {
+        const rem = inst.remainingMs;
+        if (rem === undefined) {
+          return min;
+        }
+        return min === undefined ? rem : Math.min(min, rem);
+      }, undefined as number | undefined);
+      result.push({
+        id: effectId,
+        stacks: totalStacks,
+        maxStacks: config.maxStacks,
+        remainingMs: minRemaining,
+      });
+    });
+    return result;
   }
 
   public consumeAttackBonus(unitId: string): number {
@@ -590,6 +645,21 @@ export class StatusEffectsModule implements GameModule {
       if (damagePerTick <= 0) {
         return null;
       }
+      const maxStacks = Math.max(config.maxStacks ?? 0, 0);
+      if (maxStacks > 0 && instances.length >= maxStacks) {
+        let expiring = instances[0]!;
+        instances.forEach((candidate) => {
+          const candidateRemaining = candidate.remainingMs ?? 0;
+          const expiringRemaining = expiring.remainingMs ?? 0;
+          if (candidateRemaining < expiringRemaining) {
+            expiring = candidate;
+          }
+        });
+        expiring.remainingMs = durationMs ?? config.durationMs;
+        expiring.data.damagePerTick = damagePerTick;
+        expiring.nextTickMs = interval;
+        return expiring;
+      }
       const instance: StatusEffectInstance = {
         id: config.id,
         target,
@@ -733,6 +803,9 @@ export class StatusEffectsModule implements GameModule {
           unitAdapter.applyOverlay(id, effectId, "fill", null);
           unitAdapter.applyOverlay(id, effectId, "stroke", null);
         });
+        STATUS_EFFECT_UNIT_EMITTER_IDS.forEach((effectId) => {
+          unitAdapter.removeEmitters(id, effectId);
+        });
         return;
       }
 
@@ -759,6 +832,12 @@ export class StatusEffectsModule implements GameModule {
         const instance = instances[0];
         const visual = instance?.visuals?.overlay ?? null;
         applyOverlay(effectId, visual ?? null);
+        const emitterVisuals = instance?.visuals?.unitEmitters;
+        if (emitterVisuals) {
+          unitAdapter.applyEmitters(id, effectId, emitterVisuals.emitters, {
+            offsetScale: emitterVisuals.offsetScale,
+          });
+        }
       });
 
       overlayIds.forEach((effectId) => {
@@ -766,6 +845,13 @@ export class StatusEffectsModule implements GameModule {
           return;
         }
         applyOverlay(effectId, null);
+      });
+
+      STATUS_EFFECT_UNIT_EMITTER_IDS.forEach((effectId) => {
+        if (effectsMap.has(effectId)) {
+          return;
+        }
+        unitAdapter.removeEmitters(id, effectId);
       });
     } else if (type === "brick") {
       if (!this.brickAdapter) {

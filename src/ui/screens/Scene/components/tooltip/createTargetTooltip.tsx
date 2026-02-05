@@ -68,7 +68,7 @@ const formatRewards = (
 
 const buildCommonStats = (target: TargetSnapshot): SceneTooltipStat[] => [
   { label: "HP", value: formatHpValue(target.hp, target.maxHp) },
-  { label: "Attack", value: formatStatValue(target.baseDamage) },
+  { label: "Attack", value: formatStatValue(target.effectiveDamage) },
   { label: "Armor", value: formatStatValue(target.armor) },
 ];
 
@@ -120,10 +120,10 @@ const buildEnemyStats = (
   return stats;
 };
 
-const buildPlayerUnitStats = (unit: PlayerUnitState): SceneTooltipStat[] => {
+const buildPlayerUnitStats = (unit: PlayerUnitState, effectiveDamage: number): SceneTooltipStat[] => {
   const stats: SceneTooltipStat[] = [
     { label: "HP", value: formatHpValue(unit.hp, unit.maxHp) },
-    { label: "Attack", value: formatStatValue(unit.baseAttackDamage) },
+    { label: "Attack", value: formatStatValue(effectiveDamage) },
     { label: "Armor", value: formatStatValue(unit.armor) },
   ];
   if (Number.isFinite(unit.baseAttackInterval)) {
@@ -141,6 +141,43 @@ const buildPlayerUnitStats = (unit: PlayerUnitState): SceneTooltipStat[] => {
   return stats;
 };
 
+const formatEffectDuration = (remainingMs?: number): string | null => {
+  if (remainingMs === undefined || !Number.isFinite(remainingMs)) {
+    return null;
+  }
+  return formatSeconds(remainingMs / 1000);
+};
+
+const formatActiveEffects = (
+  activeEffects: readonly { id: string; name: string; stacks: number; maxStacks?: number; remainingMs?: number }[] | undefined,
+): string[] | null => {
+  if (!activeEffects || activeEffects.length === 0) {
+    return null;
+  }
+  return activeEffects.map((effect) => {
+    const duration = formatEffectDuration(effect.remainingMs);
+    
+    // Format stacks based on effect type
+    let stacksLabel = "";
+    const isPercentBonus = effect.id === "internalFurnace";
+    
+    if (effect.maxStacks !== undefined && effect.maxStacks > 0) {
+      if (isPercentBonus) {
+        // Show as percentage bonus: "+45%/100%"
+        stacksLabel = ` +${effect.stacks}%/${effect.maxStacks}%`;
+      } else {
+        // Show as stack count: "2/4"
+        stacksLabel = ` ${effect.stacks}/${effect.maxStacks}`;
+      }
+    } else if (effect.stacks > 1) {
+      stacksLabel = ` x${effect.stacks}`;
+    }
+    
+    const durationLabel = duration ? ` (${duration})` : "";
+    return `${effect.name}${stacksLabel}${durationLabel}`;
+  });
+};
+
 export const createTargetTooltip = (
   target: TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState>,
   playerUnitDisplayName?: string | null,
@@ -150,12 +187,14 @@ export const createTargetTooltip = (
     const brickConfig = getBrickConfig(brick.type);
     const title = brickConfig.name ?? `Brick: ${brick.type}`;
     const rewardLabel = formatRewards(brick.rewards, target.rewardMultiplier ?? 1);
+    const effectsList = formatActiveEffects(target.activeEffects);
     return {
       title,
       subtitle: `Level ${brick.level}`,
       stats: [
         ...buildCommonStats(target),
         ...(rewardLabel ? [{ label: "Reward", value: rewardLabel }] : []),
+        ...(effectsList ? [{ label: "Effects", value: effectsList }] : []),
       ],
     };
   }
@@ -164,10 +203,15 @@ export const createTargetTooltip = (
     const unit = target.data as PlayerUnitState;
     const unitConfig = getPlayerUnitConfig(unit.type);
     const title = playerUnitDisplayName ?? unitConfig.name;
+    const stats = buildPlayerUnitStats(unit, target.effectiveDamage);
+    const effectsList = formatActiveEffects(target.activeEffects);
+    if (effectsList) {
+      stats.push({ label: "Effects", value: effectsList });
+    }
     return {
       title,
       subtitle: "Your unit",
-      stats: buildPlayerUnitStats(unit),
+      stats,
     };
   }
 
@@ -177,6 +221,7 @@ export const createTargetTooltip = (
     enemy.reward ?? enemyConfig.reward,
     target.rewardMultiplier ?? 1,
   );
+  const effectsList = formatActiveEffects(target.activeEffects);
   return {
     title: enemyConfig.name,
     subtitle: `Level ${enemy.level}`,
@@ -184,6 +229,7 @@ export const createTargetTooltip = (
       ...buildCommonStats(target),
       ...buildEnemyStats(enemy, enemyConfig),
       ...(rewardLabel ? [{ label: "Reward", value: rewardLabel }] : []),
+      ...(effectsList ? [{ label: "Effects", value: effectsList }] : []),
     ],
   };
 };

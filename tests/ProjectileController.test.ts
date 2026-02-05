@@ -66,6 +66,7 @@ describe("UnitProjectileController", () => {
       maxHp: 10,
       armor: 0,
       baseDamage: 0,
+      effectiveDamage: 0,
       physicalSize: 10,
     };
 
@@ -77,6 +78,7 @@ describe("UnitProjectileController", () => {
       maxHp: 10,
       armor: 0,
       baseDamage: 0,
+      effectiveDamage: 0,
       physicalSize: 8,
     };
 
