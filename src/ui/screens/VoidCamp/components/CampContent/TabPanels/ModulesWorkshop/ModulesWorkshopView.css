@@ -99,13 +99,23 @@
   box-shadow: 0 0 18px rgba(56, 189, 248, 0.25);
 }
 
+.modules-workshop__card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
 .modules-workshop__card-title {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text-strong);
+  min-width: 0;
 }
 
 .modules-workshop__card-level {
+  flex-shrink: 0;
   font-size: 0.85rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
