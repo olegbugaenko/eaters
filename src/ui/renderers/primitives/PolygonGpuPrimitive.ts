@@ -73,6 +73,18 @@ export const createPolygonGpuPrimitive = (
   center.x *= invCount;
   center.y *= invCount;
 
+  // Pre-compute animation params from config (optional - static polygon if undefined)
+  const anim = options.anim;
+  const hasAnim = !!anim;
+  const axis = anim?.axis ?? "normal";
+  const axisType = axis === "tangent" ? 1 : axis === "movement-tangent" ? 2 : axis === "movement-normal" ? 3 : 0;
+  const animType = anim?.type === "pulse" ? 1 : 0;
+  const useVertexPhase = anim?.type === "sway" && axisType !== 2 ? 1 : 0;
+  const amplitudePercent =
+    hasAnim && typeof anim?.amplitudePercentage === "number" && Number.isFinite(anim.amplitudePercentage)
+      ? anim.amplitudePercentage
+      : -1;
+
   class PolygonGpuPrimitive extends GpuPrimitiveBase {
     private fillScratch = new Float32Array(FILL_COMPONENTS);
     private fillData: Float32Array | null = null;
@@ -205,18 +217,6 @@ export const createPolygonGpuPrimitive = (
       this.needsFillUpload = true;
     }
   }
-
-  // Pre-compute animation params from config (optional - static polygon if undefined)
-  const anim = options.anim;
-  const hasAnim = !!anim;
-  const axis = anim?.axis ?? "normal";
-  const axisType = axis === "tangent" ? 1 : axis === "movement-tangent" ? 2 : axis === "movement-normal" ? 3 : 0;
-  const animType = anim?.type === "pulse" ? 1 : 0;
-  const useVertexPhase = anim?.type === "sway" && axisType !== 2 ? 1 : 0;
-  const amplitudePercent =
-    hasAnim && typeof anim?.amplitudePercentage === "number" && Number.isFinite(anim.amplitudePercentage)
-      ? anim.amplitudePercentage
-      : -1;
 
   return new PolygonGpuPrimitive();
 };

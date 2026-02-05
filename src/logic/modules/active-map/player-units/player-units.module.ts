@@ -411,6 +411,11 @@ export class PlayerUnitsModule implements GameModule {
     const state = this.createUnitState(unit);
     this.units.set(state.id, state);
     this.unitOrder.push(state);
+    this.statusEffects.ensureInternalFurnace(
+      state.id,
+      state.attackStackBonusPerHit,
+      state.attackStackBonusCap,
+    );
     this.pushStats();
   }
 
@@ -464,6 +469,11 @@ export class PlayerUnitsModule implements GameModule {
       const state = this.createUnitState(unit);
       this.units.set(state.id, state);
       this.unitOrder.push(state);
+      this.statusEffects.ensureInternalFurnace(
+        state.id,
+        state.attackStackBonusPerHit,
+        state.attackStackBonusCap,
+      );
     });
 
     this.abilities.resetRun();
@@ -529,11 +539,6 @@ export class PlayerUnitsModule implements GameModule {
     };
 
     const state = this.unitStateFactory.createWithTransform(input);
-    this.statusEffects.ensureInternalFurnace(
-      state.id,
-      state.attackStackBonusPerHit,
-      state.attackStackBonusCap,
-    );
     return state;
   }
 

@@ -62,11 +62,6 @@ export const createSpineGpuPrimitive = (
   instance: SceneObjectInstance,
   options: SpineGpuPrimitiveOptions
 ): DynamicPrimitive | null => {
-  console.log("[SpineGpuPrimitive] createSpineGpuPrimitive called", {
-    instanceId: instance.id,
-    spineLength: options.spine?.length,
-    hasAnim: !!options.anim,
-  });
   if (!options.spine || options.spine.length < 2) {
     console.warn("[SpineGpuPrimitive] Invalid spine - too few points");
     return null;
@@ -118,6 +113,7 @@ export const createSpineGpuPrimitive = (
       const rotation = target.data.rotation ?? 0;
       const origin = transformObjectPoint(pos, rotation, options.offset);
 
+      // Check dirty flags for fill/color changes
       let fillRefChanged = false;
       if (typeof options.refreshFill === "function") {
         if (target.data.fill !== this.prevInstanceFillRef) {

@@ -6,6 +6,7 @@ import type {
   SceneCameraState,
   SceneFill,
   SceneStroke,
+  SceneColor,
   CustomDataCacheEntry,
 } from "./scene-object-manager.types";
 import {
@@ -83,6 +84,10 @@ export class SceneObjectManager {
         rotation: normalizeRotation(data.rotation),
         stroke,
         customData,
+        // New objects are dirty by default so primitives process them on first update
+        fillDirty: true,
+        colorDirty: true,
+        strokeDirty: !!stroke,
       },
     };
     this.objects.set(id, instance);
@@ -110,6 +115,8 @@ export class SceneObjectManager {
     }
     const previousData = instance.data;
     const previousFill = previousData.fill;
+    const previousColor = previousData.color;
+    const previousStroke = previousData.stroke;
 
     const fill = data.fill
       ? sanitizeFill(data.fill)
@@ -123,10 +130,12 @@ export class SceneObjectManager {
       ? extractPrimaryColor(fill)
       : previousData.color;
     const color = colorCandidate ?? extractPrimaryColor(fill);
+    const colorChanged = color !== previousColor;
     const stroke =
       typeof data.stroke !== "undefined"
         ? sanitizeStroke(data.stroke)
         : previousData.stroke;
+    const strokeChanged = stroke !== previousStroke;
     const rotation =
       typeof data.rotation === "number"
         ? normalizeRotation(data.rotation)
@@ -148,6 +157,10 @@ export class SceneObjectManager {
       rotation,
       stroke,
       customData,
+      // Set dirty flags when visual properties change
+      fillDirty: fillChanged || previousData.fillDirty,
+      colorDirty: colorChanged || previousData.colorDirty,
+      strokeDirty: strokeChanged || previousData.strokeDirty,
     };
     if (this.added.has(id)) {
       this.added.set(id, instance);
@@ -284,6 +297,19 @@ export class SceneObjectManager {
     const removed = actuallyRemoved.length > 0
       ? actuallyRemoved
       : Array.from(this.removed.values());
+
+    // Reset dirty flags on original instances after cloning
+    // (renderer gets the dirty flags, next frame starts fresh)
+    for (const instance of this.added.values()) {
+      instance.data.fillDirty = false;
+      instance.data.colorDirty = false;
+      instance.data.strokeDirty = false;
+    }
+    for (const instance of this.updated.values()) {
+      instance.data.fillDirty = false;
+      instance.data.colorDirty = false;
+      instance.data.strokeDirty = false;
+    }
 
     this.added.clear();
     this.updated.clear();
@@ -481,25 +507,32 @@ export class SceneObjectManager {
   }
 
   private cloneInstance(instance: SceneObjectInstance): SceneObjectInstance {
+    // Stroke caching retained to avoid deep cloning stroke objects
     const cachedStroke = this.strokeCache.get(instance.id);
     const stroke = strokesEqual(instance.data.stroke, cachedStroke)
       ? cachedStroke
       : cloneStroke(instance.data.stroke);
     this.strokeCache.set(instance.id, stroke);
+    
     return {
       id: instance.id,
       type: instance.type,
       data: {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
-        color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
-        fill: cloneSceneFill(instance.data.fill),
+        // Pass through fill/color references directly - dirty flags handle change detection
+        color: instance.data.color ?? { ...DEFAULT_COLOR },
+        fill: instance.data.fill,
         stroke,
         rotation:
           typeof instance.data.rotation === "number"
             ? normalizeRotation(instance.data.rotation)
             : 0,
         customData: this.getCustomDataSnapshot(instance.id, instance.data.customData),
+        // Pass through dirty flags
+        fillDirty: instance.data.fillDirty,
+        colorDirty: instance.data.colorDirty,
+        strokeDirty: instance.data.strokeDirty,
       },
     };
   }

@@ -97,6 +97,12 @@ export interface SceneObjectData {
   rotation?: number;
   stroke?: SceneStroke;
   customData?: unknown;
+  /** Set to true when fill changed, reset after flushChanges */
+  fillDirty?: boolean;
+  /** Set to true when color changed, reset after flushChanges */
+  colorDirty?: boolean;
+  /** Set to true when stroke changed, reset after flushChanges */
+  strokeDirty?: boolean;
 }
 
 export interface SceneObjectInstance {

@@ -254,6 +254,7 @@ export const createJoinedPolygonGpuPrimitive = (
         return;
       }
 
+      // Check dirty flags for fill/color changes
       let fillRefChanged = false;
       if (typeof options.refreshFill === "function") {
         if (target.data.fill !== this.prevInstanceFillRef) {
@@ -316,6 +317,7 @@ export const createJoinedCircleGpuPrimitive = (
         return;
       }
 
+      // Check dirty flags for fill/color changes
       let fillRefChanged = false;
       if (typeof options.refreshFill === "function") {
         if (target.data.fill !== this.prevInstanceFillRef) {
@@ -394,6 +396,7 @@ export const createJoinedPolygonStrokeGpuPrimitive = (
         return;
       }
 
+      // Check dirty flags for stroke changes
       let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
         if (target.data.stroke !== this.prevInstanceStrokeRef) {
@@ -481,6 +484,7 @@ export const createJoinedCircleStrokeGpuPrimitive = (
       if (!this.gl) {
         return;
       }
+      // Check dirty flags for stroke changes
       let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
         if (target.data.stroke !== this.prevInstanceStrokeRef) {
