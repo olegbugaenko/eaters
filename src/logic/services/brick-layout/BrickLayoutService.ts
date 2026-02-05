@@ -6,6 +6,7 @@ import type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  RectangleWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
   BezierCurveWithBricksOptions,
@@ -17,6 +18,7 @@ import {
   generateArcBricks,
   generatePolygonBricks,
   generateSquareBricks,
+  generateRectangleBricks,
   generateConnectorBricks,
   generateTemplateBricks,
   generateBezierCurveBricks,
@@ -62,6 +64,17 @@ export const squareWithBricks = (
   generationOptions?: BrickGenerationOptions
 ): BrickShapeBlueprint => ({
   shape: "square",
+  brickType,
+  options,
+  generationOptions,
+});
+
+export const rectangleWithBricks = (
+  brickType: BrickType,
+  options: RectangleWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "rectangle",
   brickType,
   options,
   generationOptions,
@@ -140,6 +153,12 @@ export const buildBricksFromBlueprints = (
           blueprint.options,
           blueprint.generationOptions
         );
+      case "rectangle":
+        return generateRectangleBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       case "connector":
         return generateConnectorBricks(
           blueprint.brickType,
@@ -176,6 +195,7 @@ export type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  RectangleWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
   BezierCurveWithBricksOptions,

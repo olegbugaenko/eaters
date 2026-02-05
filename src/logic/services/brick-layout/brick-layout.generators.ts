@@ -8,6 +8,7 @@ import type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  RectangleWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
   BezierCurveSegment,
@@ -301,6 +302,53 @@ export const generateSquareBricks = (
       offsetX: options.offsetX,
       offsetY: options.offsetY,
       brickRotation: options.brickRotation,
+    },
+    generationOptions
+  );
+};
+
+/**
+ * Generates bricks in a rectangle pattern.
+ */
+export const generateRectangleBricks = (
+  brickType: BrickType,
+  options: RectangleWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] => {
+  if (!Number.isFinite(options.width) || !Number.isFinite(options.height)) {
+    return [];
+  }
+
+  if (options.width <= 0 || options.height <= 0) {
+    return [];
+  }
+
+  const halfWidth = options.width / 2;
+  const halfHeight = options.height / 2;
+  const rotation = options.rotation ?? 0;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  const vertices: SceneVector2[] = [
+    { x: -halfWidth, y: -halfHeight },
+    { x: halfWidth, y: -halfHeight },
+    { x: halfWidth, y: halfHeight },
+    { x: -halfWidth, y: halfHeight },
+  ].map((corner) => ({
+    x: options.center.x + corner.x * cos - corner.y * sin,
+    y: options.center.y + corner.x * sin + corner.y * cos,
+  }));
+
+  return generatePolygonBricks(
+    brickType,
+    {
+      vertices,
+      spacing: options.spacing,
+      spacingX: options.spacingX,
+      spacingY: options.spacingY,
+      offsetX: options.offsetX,
+      offsetY: options.offsetY,
+      brickRotation: options.brickRotation ?? rotation,
     },
     generationOptions
   );

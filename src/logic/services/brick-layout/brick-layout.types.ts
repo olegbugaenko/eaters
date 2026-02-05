@@ -44,6 +44,14 @@ export interface SquareWithBricksOptions
   readonly rotation?: number;
 }
 
+export interface RectangleWithBricksOptions
+  extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
+  readonly center: SceneVector2;
+  readonly width: number;
+  readonly height: number;
+  readonly rotation?: number;
+}
+
 export interface ConnectorWithBricksOptions
   extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
   readonly start: SceneVector2;
@@ -112,6 +120,12 @@ export type BrickShapeBlueprint =
       readonly shape: "square";
       readonly brickType: BrickType;
       readonly options: SquareWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "rectangle";
+      readonly brickType: BrickType;
+      readonly options: RectangleWithBricksOptions;
       readonly generationOptions?: BrickGenerationOptions;
     }
   | {
