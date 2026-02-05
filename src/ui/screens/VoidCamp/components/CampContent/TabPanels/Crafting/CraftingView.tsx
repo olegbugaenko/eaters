@@ -77,6 +77,15 @@ const formatCraftTime = (durationMs: number): string => {
   return `${Math.max(1, Math.round(durationMs))}ms`;
 };
 
+const formatCraftMetric = (productAmount: number, durationMs: number): string => {
+  if (durationMs > 200) {
+    return `Craft time ${formatCraftTime(durationMs)}`;
+  }
+  const safeDuration = Math.max(1, durationMs);
+  const rate = productAmount / (safeDuration / 1000);
+  return `Craft rate ${formatNumber(rate, { maximumFractionDigits: 0 })} / sec`;
+};
+
 export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) => {
   const { uiApi, bridge } = useAppLogic();
   const crafting = uiApi.crafting as CraftingModuleUiApi;
@@ -185,9 +194,8 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                     <h3 className="heading-3 crafting-recipe__title">{recipe.productName}</h3>
                     <p className="body-sm text-muted">
                       Produces {formatNumber(recipe.productAmount, { maximumFractionDigits: 0 })}{" "}
-                      {recipe.productName.toLowerCase()} per batch · Craft time {formatCraftTime(
-                        recipe.durationMs
-                      )}
+                      {recipe.productName.toLowerCase()} per batch ·{" "}
+                      {formatCraftMetric(recipe.productAmount, recipe.durationMs)}
                     </p>
                   </div>
                 </div>
