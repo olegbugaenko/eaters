@@ -5,6 +5,7 @@ import {
   StatusEffectVisuals,
   getStatusEffectConfig,
   STATUS_EFFECT_OVERLAY_IDS,
+  STATUS_EFFECT_UNIT_EMITTER_IDS,
 } from "../../../../db/status-effects-db";
 import type {
   StatusEffectApplicationOptions,
@@ -590,6 +591,21 @@ export class StatusEffectsModule implements GameModule {
       if (damagePerTick <= 0) {
         return null;
       }
+      const maxStacks = Math.max(config.maxStacks ?? 0, 0);
+      if (maxStacks > 0 && instances.length >= maxStacks) {
+        let expiring = instances[0]!;
+        instances.forEach((candidate) => {
+          const candidateRemaining = candidate.remainingMs ?? 0;
+          const expiringRemaining = expiring.remainingMs ?? 0;
+          if (candidateRemaining < expiringRemaining) {
+            expiring = candidate;
+          }
+        });
+        expiring.remainingMs = durationMs ?? config.durationMs;
+        expiring.data.damagePerTick = damagePerTick;
+        expiring.nextTickMs = interval;
+        return expiring;
+      }
       const instance: StatusEffectInstance = {
         id: config.id,
         target,
@@ -733,6 +749,9 @@ export class StatusEffectsModule implements GameModule {
           unitAdapter.applyOverlay(id, effectId, "fill", null);
           unitAdapter.applyOverlay(id, effectId, "stroke", null);
         });
+        STATUS_EFFECT_UNIT_EMITTER_IDS.forEach((effectId) => {
+          unitAdapter.removeEmitters(id, effectId);
+        });
         return;
       }
 
@@ -759,6 +778,12 @@ export class StatusEffectsModule implements GameModule {
         const instance = instances[0];
         const visual = instance?.visuals?.overlay ?? null;
         applyOverlay(effectId, visual ?? null);
+        const emitterVisuals = instance?.visuals?.unitEmitters;
+        if (emitterVisuals) {
+          unitAdapter.applyEmitters(id, effectId, emitterVisuals.emitters, {
+            offsetScale: emitterVisuals.offsetScale,
+          });
+        }
       });
 
       overlayIds.forEach((effectId) => {
@@ -766,6 +791,13 @@ export class StatusEffectsModule implements GameModule {
           return;
         }
         applyOverlay(effectId, null);
+      });
+
+      STATUS_EFFECT_UNIT_EMITTER_IDS.forEach((effectId) => {
+        if (effectsMap.has(effectId)) {
+          return;
+        }
+        unitAdapter.removeEmitters(id, effectId);
       });
     } else if (type === "brick") {
       if (!this.brickAdapter) {

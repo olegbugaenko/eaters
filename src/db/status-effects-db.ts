@@ -1,6 +1,7 @@
 import type { VisualEffectId, VisualEffectOverlayConfig } from "./effects-db";
 import type { BrickEffectTint } from "@/logic/modules/active-map/bricks/bricks.types";
 import { EFFECT_TINTS } from "@/logic/modules/active-map/bricks/brick-effects.const";
+import type { ParticleEmitterConfig } from "@/logic/interfaces/visuals/particle-emitters-config";
 
 export type StatusEffectId =
   | "frenzy"
@@ -12,7 +13,8 @@ export type StatusEffectId =
   | "poison"
   | "burn"
   | "freeze"
-  | "cracks";
+  | "cracks"
+  | "bleeding";
 
 export type StatusEffectTargetType = "unit" | "enemy" | "brick";
 
@@ -31,10 +33,16 @@ export interface StatusEffectVisuals {
   readonly auraEffectId?: VisualEffectId;
   readonly brickTint?: BrickEffectTint;
   readonly brickTintPriority?: number;
+  readonly unitEmitters?: StatusEffectUnitEmitterConfig;
   readonly stackIntensity?: {
     readonly mode: "linear" | "sqrt";
     readonly maxIntensity: number;
   };
+}
+
+export interface StatusEffectUnitEmitterConfig {
+  readonly emitters: readonly ParticleEmitterConfig[];
+  readonly offsetScale?: "absolute" | "unit";
 }
 
 export interface StatusEffectConfigBase {
@@ -54,6 +62,20 @@ const INTERNAL_FURNACE_COLOR = {
   g: 0.35,
   b: 0.32,
   a: 1,
+};
+
+const BLEEDING_EMITTER_BASE: ParticleEmitterConfig = {
+  particlesPerSecond: 18,
+  particleLifetimeMs: 650,
+  fadeStartMs: 400,
+  sizeRange: { min: 2.2, max: 4.2 },
+  color: { r: 0.88, g: 0.12, b: 0.16, a: 0.9 },
+  baseSpeed: 60,
+  speedVariation: 20,
+  spread: Math.PI * 0.65,
+  spawnRadius: { min: 0, max: 2.5 },
+  shape: "circle",
+  maxParticles: 120,
 };
 
 const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
@@ -176,12 +198,43 @@ const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
       },
     },
   },
+  bleeding: {
+    id: "bleeding",
+    kind: "damageOverTime",
+    target: "unit",
+    durationMs: 4000,
+    tickIntervalMs: 1000,
+    maxStacks: 4,
+    visuals: {
+      unitEmitters: {
+        offsetScale: "unit",
+        emitters: [
+          {
+            ...BLEEDING_EMITTER_BASE,
+            offset: { x: -0.6, y: 0 },
+            direction: Math.PI,
+          },
+          {
+            ...BLEEDING_EMITTER_BASE,
+            offset: { x: 0.6, y: 0 },
+            direction: 0,
+          },
+        ],
+      },
+    },
+  },
 };
 
 export const STATUS_EFFECT_OVERLAY_IDS: StatusEffectId[] = Object.values(
   STATUS_EFFECTS_DB
 )
   .filter((config) => Boolean(config.visuals?.overlay))
+  .map((config) => config.id);
+
+export const STATUS_EFFECT_UNIT_EMITTER_IDS: StatusEffectId[] = Object.values(
+  STATUS_EFFECTS_DB
+)
+  .filter((config) => Boolean(config.visuals?.unitEmitters))
   .map((config) => config.id);
 
 export const getStatusEffectConfig = (id: StatusEffectId): StatusEffectConfig => {

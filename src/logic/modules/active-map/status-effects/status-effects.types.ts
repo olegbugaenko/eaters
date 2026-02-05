@@ -1,4 +1,5 @@
 import type { BrickEffectTint } from "../bricks/bricks.types";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 
 export type StatusEffectTargetType = "unit" | "enemy" | "brick";
 
@@ -41,6 +42,13 @@ export interface StatusEffectUnitAdapter {
   ) => void;
   readonly applyAura: (unitId: string, effectId: string) => void;
   readonly removeAura: (unitId: string, effectId: string) => void;
+  readonly applyEmitters: (
+    unitId: string,
+    effectId: string,
+    emitters: readonly ParticleEmitterConfig[],
+    options?: { offsetScale?: "absolute" | "unit" },
+  ) => void;
+  readonly removeEmitters: (unitId: string, effectId: string) => void;
   readonly damageUnit: (unitId: string, amount: number) => void;
 }
 

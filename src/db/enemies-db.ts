@@ -26,6 +26,7 @@ export type EnemyType =
   | "burstTurretEnemy"
   | "volleyTurretEnemy"
   | "explosionTurretEnemy"
+  | "bleedingTurretEnemy"
   | "spectreEnemy"
   | "encagedBeastEnemy"
   | "coalConvoyGuardian"
@@ -1553,6 +1554,80 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     targeting: {
       avoidSharedTargets: true,
       skipTargetsWithEffects: ["freeze"],
+      searchPadding: 200,
+    },
+  },
+  bleedingTurretEnemy: {
+    knockBackDistance: 160,
+    knockBackSpeed: 160,
+    name: "Bleeding Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.9, g: 0.25, b: 0.25, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -2 },
+            { x: 0, y: -4 },
+            { x: 0, y: 4 },
+            { x: 14, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.3 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: -3, y: -8 },
+            { x: -3, y: 8 },
+            { x: 0, y: 4 },
+          ],
+          fill: { type: "base", brightness: 0.22 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: -8 },
+            { x: -9, y: -11 },
+            { x: -9, y: -5 },
+            { x: -3, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.18 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: 8 },
+            { x: -9, y: 11 },
+            { x: -9, y: 5 },
+            { x: -3, y: -3 },
+          ],
+          fill: { type: "base", brightness: 0.18 },
+        },
+      ],
+    },
+    maxHp: 150,
+    armor: 10,
+    baseDamage: 0,
+    attackInterval: 1.8,
+    attackRange: 1600,
+    moveSpeed: 0,
+    physicalSize: 26,
+    reward: normalizeResourceAmount({
+      stone: 32,
+      iron: 6,
+    }),
+    arcAttack: {
+      arcType: "bleeding",
+      statusEffectId: "bleeding",
+      statusEffectOptions: {
+        damagePerSecond: 12,
+        durationMs: 4000,
+      },
+    },
+    targeting: {
+      avoidSharedTargets: true,
       searchPadding: 200,
     },
   },

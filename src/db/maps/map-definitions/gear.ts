@@ -49,6 +49,23 @@ const mapConfig = (() => {
 
       return [circle, ...teeth];
     },
+    enemies: ({ mapLevel }) => {
+      const level = Math.max(1, Math.floor(mapLevel));
+      const turretCount = 4;
+      const turretRadius = 360;
+      return Array.from({ length: turretCount }, (_, index) => {
+        const angle = (index / turretCount) * Math.PI * 2;
+        const position: SceneVector2 = {
+          x: center.x + Math.cos(angle) * turretRadius,
+          y: center.y + Math.sin(angle) * turretRadius,
+        };
+        return {
+          type: "bleedingTurretEnemy",
+          level,
+          position,
+        };
+      });
+    },
     playerUnits: [
       {
         type: "bluePentagon",

@@ -19,6 +19,7 @@ import { DamageService } from "../targeting/DamageService";
 import { MovementService } from "@core/logic/provided/services/movement/MovementService";
 import type { MovementBodyState } from "@core/logic/provided/services/movement/movement.types";
 import { EnemyStateFactory, EnemyStateInput } from "./enemies.state-factory";
+import { getStatusEffectConfig } from "../../../../db/status-effects-db";
 import {
   subtractVectors,
   scaleVector,
@@ -764,7 +765,9 @@ export class EnemiesModule implements GameModule {
       );
       if (arcAttack.statusEffectId) {
         const effectTarget = { type: "unit", id: target.id } as const;
-        if (!this.statusEffects.hasEffect(arcAttack.statusEffectId, effectTarget)) {
+        const effectConfig = getStatusEffectConfig(arcAttack.statusEffectId);
+        const canStack = Math.max(effectConfig.maxStacks ?? 0, 0) > 1;
+        if (canStack || !this.statusEffects.hasEffect(arcAttack.statusEffectId, effectTarget)) {
           this.statusEffects.applyEffect(
             arcAttack.statusEffectId,
             effectTarget,

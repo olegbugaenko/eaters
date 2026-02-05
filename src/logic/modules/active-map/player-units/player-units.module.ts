@@ -72,6 +72,7 @@ import { PlayerUnitsTargetingProvider } from "./PlayerUnitsTargetingProvider";
 import type { DamageService } from "../targeting/DamageService";
 import type { EnemiesModule } from "../enemies/enemies.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -135,6 +136,7 @@ export class PlayerUnitsModule implements GameModule {
   private unitBlueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
   private readonly statsReporter: UnitStatisticsReporter;
   private lastTickTimestampMs = performance.now();
+  private readonly statusEffectEmitters = new Map<string, Map<string, string[]>>();
 
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
@@ -289,6 +291,56 @@ export class PlayerUnitsModule implements GameModule {
       },
       removeAura: (unitId, effectId) => {
         this.effects?.removeEffect(unitId, effectId as never);
+      },
+      applyEmitters: (unitId, effectId, emitters, options) => {
+        const unit = this.units.get(unitId);
+        if (!unit || emitters.length === 0) {
+          return;
+        }
+        const effectEmitters = this.statusEffectEmitters.get(unitId) ?? new Map();
+        if (effectEmitters.has(effectId)) {
+          return;
+        }
+        const ids: string[] = [];
+        const scaleMode = options?.offsetScale ?? "absolute";
+        emitters.forEach((emitter) => {
+          const scaledEmitter = this.scaleEmitterConfig(
+            emitter,
+            unit.physicalSize,
+            scaleMode,
+          );
+          const objectId = this.scene.addObject("statusEffectEmitter", {
+            position: { ...unit.position },
+            fill: {
+              fillType: FILL_TYPES.SOLID,
+              color: { r: 0, g: 0, b: 0, a: 0 },
+            },
+            customData: {
+              emitter: scaledEmitter,
+              tiedToObjectId: unit.objectId,
+            },
+          });
+          ids.push(objectId);
+        });
+        if (ids.length > 0) {
+          effectEmitters.set(effectId, ids);
+          this.statusEffectEmitters.set(unitId, effectEmitters);
+        }
+      },
+      removeEmitters: (unitId, effectId) => {
+        const effectEmitters = this.statusEffectEmitters.get(unitId);
+        if (!effectEmitters) {
+          return;
+        }
+        const ids = effectEmitters.get(effectId);
+        if (!ids) {
+          return;
+        }
+        ids.forEach((id) => this.scene.removeObject(id));
+        effectEmitters.delete(effectId);
+        if (effectEmitters.size === 0) {
+          this.statusEffectEmitters.delete(unitId);
+        }
       },
       damageUnit: (unitId, amount) => {
         this.applyDamage(unitId, amount);
@@ -857,6 +909,24 @@ export class PlayerUnitsModule implements GameModule {
       preCollisionVelocity: { ...unit.preCollisionVelocity },
       lastNonZeroVelocity: { ...unit.lastNonZeroVelocity },
       wanderTarget: unit.wanderTarget ? { ...unit.wanderTarget } : null,
+    };
+  }
+
+  private scaleEmitterConfig(
+    emitter: ParticleEmitterConfig,
+    physicalSize: number,
+    scaleMode: "absolute" | "unit",
+  ): ParticleEmitterConfig {
+    if (scaleMode !== "unit") {
+      return emitter;
+    }
+    const offset = emitter.offset ?? { x: 0, y: 0 };
+    return {
+      ...emitter,
+      offset: {
+        x: offset.x * physicalSize,
+        y: offset.y * physicalSize,
+      },
     };
   }
 
