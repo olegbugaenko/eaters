@@ -92,7 +92,7 @@ export const createPolygonGpuPrimitive = (
   const anim = options.anim;
   const hasAnim = !!anim;
   const axis = anim?.axis ?? "normal";
-  const axisType = axis === "tangent" ? 1 : axis === "movement-tangent" || axis === "movement-normal" ? 2 : 0;
+  const axisType = axis === "tangent" ? 1 : axis === "movement-tangent" ? 2 : axis === "movement-normal" ? 3 : 0;
   const animType = anim?.type === "pulse" ? 1 : 0;
   const useVertexPhase = anim?.type === "sway" && axisType !== 2 ? 1 : 0;
   const amplitudePercent =

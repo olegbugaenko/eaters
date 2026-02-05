@@ -92,25 +92,26 @@ void main() {
   float angle = baseAngle + phaseOffset;
   float s = sin(angle);
 
-  vec2 normal = resolveNormal(basePos, u_center);
-  vec2 tangent = vec2(-normal.y, normal.x);
-  vec2 axis;
-  if (u_axisType == 1) {
-    axis = tangent;
-  } else if (u_axisType == 2) {
-    // Movement-based axis - perpendicular to movement direction
-    axis = vec2(-u_movementDir.y, u_movementDir.x);
+  vec2 offset;
+  if (u_axisType == 2 || u_axisType == 3) {
+    // Movement-based axis - vertices on opposite sides move in opposite directions (squeeze/expand)
+    // axisType 2 = movement-tangent: movePerp = {0, 1} (perpendicular to movement in local coords)
+    // axisType 3 = movement-normal: movePerp = {-1, 0} (along movement in local coords)
+    vec2 movePerp = (u_axisType == 2) ? vec2(0.0, 1.0) : vec2(-1.0, 0.0);
+    float signedDist = dot(basePos - u_center, movePerp);
+    float mag = u_amplitudePercent > 0.0 ? abs(signedDist) * u_amplitudePercent : u_amplitude;
+    float moveToward = signedDist > 0.0 ? -1.0 : (signedDist < 0.0 ? 1.0 : 0.0);
+    offset = movePerp * (mag * s * moveToward);
   } else {
-    axis = normal;
+    vec2 normal = resolveNormal(basePos, u_center);
+    vec2 axis = (u_axisType == 1) ? vec2(-normal.y, normal.x) : normal;
+    float magnitude = u_amplitude;
+    if (u_amplitudePercent > 0.0) {
+      float radius = length(basePos - u_center);
+      magnitude = radius * u_amplitudePercent;
+    }
+    offset = axis * (magnitude * s);
   }
-
-  float magnitude = u_amplitude;
-  if (u_amplitudePercent >= 0.0 && u_axisType == 0) {
-    float radius = length(basePos - u_center);
-    magnitude = radius * u_amplitudePercent;
-  }
-
-  vec2 offset = axis * (magnitude * s);
   vec2 localPos = basePos + offset;
   
   // Apply rotation
