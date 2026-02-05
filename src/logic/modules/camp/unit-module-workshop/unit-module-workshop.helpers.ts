@@ -1,4 +1,4 @@
-import { UNIT_MODULE_IDS, UnitModuleId } from "../../../../db/unit-modules-db";
+import { UNIT_MODULE_IDS, UnitModuleConfig, UnitModuleId } from "../../../../db/unit-modules-db";
 import { ResourceStockpile, createEmptyResourceStockpile, RESOURCE_IDS } from "../../../../db/resources-db";
 
 export const createDefaultLevels = (): Map<UnitModuleId, number> => {
@@ -9,11 +9,23 @@ export const createDefaultLevels = (): Map<UnitModuleId, number> => {
   return levels;
 };
 
-export const clampLevel = (value: unknown): number => {
+export const getMaxLevel = (config: UnitModuleConfig): number => {
+  if (config.maxLevel === undefined || config.maxLevel === null) {
+    return Number.POSITIVE_INFINITY;
+  }
+  if (!Number.isFinite(config.maxLevel)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.max(0, Math.floor(config.maxLevel));
+};
+
+export const clampLevel = (value: unknown, config: UnitModuleConfig): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return 0;
   }
-  return Math.max(0, Math.floor(value));
+  const normalized = Math.max(0, Math.floor(value));
+  const maxLevel = getMaxLevel(config);
+  return Math.min(normalized, maxLevel);
 };
 
 export const scaleResourceStockpile = (base: ResourceStockpile, factor: number): ResourceStockpile => {

@@ -132,6 +132,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
               const missing = computeMissingCost(building.nextCost, totals);
               const hasMissingResources = Object.keys(missing).length > 0;
               const unlockPath = `buildings.${building.id}`;
+              const maxLevelLabel = building.maxLevel !== null ? building.maxLevel : "∞";
               return (
                 <li key={building.id}>
                   <NewUnlockWrapper
@@ -153,16 +154,18 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                         setHoveredId((current) => (current === building.id ? null : current))
                       }
                       onFocus={() => setHoveredId(building.id)}
-                      onBlur={() =>
-                        setHoveredId((current) => (current === building.id ? null : current))
-                      }
-                    >
-                      <span className="modules-workshop__card-title heading-3">{building.name}</span>
-                      <span className="modules-workshop__card-level">Level {building.level}</span>
-                      <div className="modules-workshop__card-cost">
-                        {building.nextCost ? (
-                          <ResourceCostDisplay cost={building.nextCost} missing={missing} />
-                        ) : (
+                    onBlur={() =>
+                      setHoveredId((current) => (current === building.id ? null : current))
+                    }
+                  >
+                    <span className="modules-workshop__card-title heading-3">{building.name}</span>
+                    <span className="modules-workshop__card-level">
+                      {building.level}/{maxLevelLabel}
+                    </span>
+                    <div className="modules-workshop__card-cost">
+                      {building.nextCost ? (
+                        <ResourceCostDisplay cost={building.nextCost} missing={missing} />
+                      ) : (
                           <span className="text-muted">Unavailable</span>
                         )}
                       </div>
@@ -178,7 +181,10 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
             <div className="modules-workshop__details modules-workshop__details--scrollable">
               <div className="modules-workshop__details-header">
                 <h3 className="heading-3">{activeBuilding.name}</h3>
-                <span className="modules-workshop__details-level">Level {activeBuilding.level}</span>
+                <span className="modules-workshop__details-level">
+                  {activeBuilding.level}/
+                  {activeBuilding.maxLevel !== null ? activeBuilding.maxLevel : "∞"}
+                </span>
               </div>
               <p className="modules-workshop__details-description">{activeBuilding.description}</p>
               <div className="modules-workshop__details-section">
@@ -192,8 +198,9 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                 <h4>Construction</h4>
                 <div className="modules-workshop__cost-row">
                   <div className="building-row">
-                    <span className="text-subtle">Max Level</span>
+                    <span className="text-subtle">Level</span>
                     <span className="modules-workshop__cost-value">
+                      {activeBuilding.level}/
                       {activeBuilding.maxLevel !== null ? activeBuilding.maxLevel : "∞"}
                     </span>
                   </div>

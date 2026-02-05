@@ -2,7 +2,7 @@ import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
 import { UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
 import { ResourceStockpile } from "../../../../db/resources-db";
 import { UnitModuleWorkshopItemState } from "./unit-module-workshop.types";
-import { computeBonusValue, toRecord } from "./unit-module-workshop.helpers";
+import { computeBonusValue, getMaxLevel, toRecord } from "./unit-module-workshop.helpers";
 
 export interface UnitModuleStateInput {
   readonly id: UnitModuleId;
@@ -16,8 +16,11 @@ export class UnitModuleStateFactory extends StateFactory<
 > {
   create(input: UnitModuleStateInput): UnitModuleWorkshopItemState {
     const config = getUnitModuleConfig(input.id);
-    const costStockpile = input.getUpgradeCost(input.id, input.level);
-    const costRecord = toRecord(costStockpile);
+    const maxLevelLimit = getMaxLevel(config);
+    const maxLevel = config.maxLevel ?? null;
+    const maxed = input.level >= maxLevelLimit;
+    const costStockpile = maxed ? null : input.getUpgradeCost(input.id, input.level);
+    const costRecord = costStockpile ? toRecord(costStockpile) : null;
 
     return {
       id: input.id,
@@ -35,7 +38,9 @@ export class UnitModuleStateFactory extends StateFactory<
       manaCostMultiplier: config.manaCostMultiplier,
       sanityCost: config.sanityCost,
       level: input.level,
-      nextCost: Object.keys(costRecord).length > 0 ? costRecord : null,
+      maxLevel,
+      maxed,
+      nextCost: costRecord && Object.keys(costRecord).length > 0 ? costRecord : null,
     };
   }
 }

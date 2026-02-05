@@ -53,6 +53,7 @@ export interface UnitModuleConfig {
   readonly bonusPerLevel: number;
   readonly manaCostMultiplier: number;
   readonly sanityCost: number;
+  readonly maxLevel?: number | null;
   readonly baseCost: ResourceAmount;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly canAttackDistant?: boolean;
@@ -87,6 +88,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.1,
     manaCostMultiplier: 1.75,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { sand: 200 },
   },
   perforator: {
@@ -100,6 +102,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.01,
     manaCostMultiplier: 1.75,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { sand: 200 },
   },
   vitalHull: {
@@ -113,6 +116,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { organics: 200 },
     unlockedBy: [{ type: "map", id: "initial", level: 1 }],
   },
@@ -127,6 +131,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { iron: 200 },
     unlockedBy: [{ type: "map", id: "initial", level: 1 }],
   },
@@ -141,6 +146,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.025,
     manaCostMultiplier: 2.4,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { iron: 200 },
     unlockedBy: [{ type: "skill", id: "tail_spines", level: 1 }],
     meta: {
@@ -216,6 +222,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.02,
     manaCostMultiplier: 2.2,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { wire: 20 },
     unlockedBy: [{ type: "map", id: "oldForge", level: 1 }],
     meta: {
@@ -234,6 +241,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.05,
     manaCostMultiplier: 2.75,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { silver: 100 },
     unlockedBy: [{ type: "map", id: "wire", level: 1 }],
   },
@@ -248,6 +256,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.005,
     manaCostMultiplier: 2.85,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { coal: 100 },
     unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
   },
@@ -262,6 +271,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.1,
     manaCostMultiplier: 2.25,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { organics: 200, sand: 1000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
     meta: { cooldownSeconds: 4, healCharges: 100 },
@@ -277,6 +287,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.1,
     manaCostMultiplier: 2.25,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { organics: 200, stone: 2000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
     meta: { cooldownSeconds: 5, frenzyAttacks: 8 },
@@ -292,6 +303,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.0375,
     manaCostMultiplier: 3.0,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { coal: 800, wood: 1600 },
     unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
     canAttackDistant: true,
@@ -313,6 +325,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.05,
     manaCostMultiplier: 2.6,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { magma: 300, organics: 150 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
@@ -329,6 +342,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.05,
     manaCostMultiplier: 2.6,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { ice: 300, sand: 300 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
