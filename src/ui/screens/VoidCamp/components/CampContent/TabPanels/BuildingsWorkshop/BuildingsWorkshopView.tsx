@@ -71,17 +71,23 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   );
   const [hoveredId, setHoveredId] = useState<BuildingId | null>(null);
 
+  const hideMaxed = state.hideMaxedWorkshop ?? false;
+  const displayBuildings = useMemo(
+    () => (hideMaxed ? state.buildings.filter((b) => !b.maxed) : state.buildings),
+    [state.buildings, hideMaxed]
+  );
+
   useEffect(() => {
-    const fallback = state.buildings[0]?.id ?? null;
+    const fallback = displayBuildings[0]?.id ?? null;
     if (!selectedId) {
       setSelectedId(fallback);
       return;
     }
-    const exists = state.buildings.some((building) => building.id === selectedId);
+    const exists = displayBuildings.some((building) => building.id === selectedId);
     if (!exists) {
       setSelectedId(fallback);
     }
-  }, [selectedId, state.buildings]);
+  }, [selectedId, displayBuildings]);
 
   const activeBuilding = useMemo(() => {
     const activeId = hoveredId ?? selectedId ?? state.buildings[0]?.id ?? null;
@@ -119,15 +125,21 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
 
   return (
     <div className="modules-workshop stack-lg">
-      <header className="modules-workshop__header">
-        <div>
-          <p className="text-muted">Raise permanent structures that empower your rituals.</p>
-        </div>
+      <header className="modules-workshop__header modules-workshop__header--row">
+        <p className="text-muted">Raise permanent structures that empower your rituals.</p>
+        <label className="modules-workshop__hide-maxed">
+          <input
+            type="checkbox"
+            checked={hideMaxed}
+            onChange={(e) => workshop.setHideMaxedWorkshop(e.target.checked)}
+          />
+          <span>Hide Maxed</span>
+        </label>
       </header>
       <div className="modules-workshop__content">
         <div className="modules-workshop__list-container">
           <ul className="modules-workshop__list">
-            {state.buildings.map((building) => {
+            {displayBuildings.map((building) => {
               const isActive = building.id === (hoveredId ?? selectedId ?? building.id);
               const missing = computeMissingCost(building.nextCost, totals);
               const hasMissingResources = Object.keys(missing).length > 0;

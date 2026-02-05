@@ -120,7 +120,11 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         </div>
         <div className="camp-tab-panels__modules-body">
           {activeModulesTab === "shop" ? (
-            <ModulesWorkshopView state={moduleWorkshopState} resources={resourceTotals} />
+            <ModulesWorkshopView
+            state={moduleWorkshopState}
+            resources={resourceTotals}
+            hideMaxedWorkshop={buildingsState.hideMaxedWorkshop ?? false}
+          />
           ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
           ) : (

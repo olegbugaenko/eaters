@@ -17,10 +17,12 @@ import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unloc
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import "./ModulesWorkshopView.css";
 import type { UnitModuleWorkshopUiApi } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
+import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
 
 interface ModulesWorkshopViewProps {
   state?: UnitModuleWorkshopBridgeState;
   resources: ResourceAmountPayload[];
+  hideMaxedWorkshop?: boolean;
 }
 
 const computeMissingCost = (
@@ -56,9 +58,11 @@ const computeNextBonusValue = (
 export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   state = DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   resources,
+  hideMaxedWorkshop = false,
 }) => {
   const { uiApi, bridge } = useAppLogic();
   const workshop = uiApi.unitModuleWorkshop as UnitModuleWorkshopUiApi;
+  const buildingsApi = uiApi.buildings as BuildingsModuleUiApi;
   const newUnlocksState = useBridgeValue(
     bridge,
     NEW_UNLOCKS_BRIDGE_KEY,
@@ -79,17 +83,25 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   const [selectedId, setSelectedId] = useState<UnitModuleId | null>(state.modules[0]?.id ?? null);
   const [hoveredId, setHoveredId] = useState<UnitModuleId | null>(null);
 
+  const displayModules = useMemo(
+    () =>
+      hideMaxedWorkshop
+        ? state.modules.filter((m) => !m.maxed)
+        : state.modules,
+    [state.modules, hideMaxedWorkshop]
+  );
+
   useEffect(() => {
-    const fallback = state.modules[0]?.id ?? null;
+    const fallback = displayModules[0]?.id ?? null;
     if (!selectedId) {
       setSelectedId(fallback);
       return;
     }
-    const exists = state.modules.some((module) => module.id === selectedId);
+    const exists = displayModules.some((module) => module.id === selectedId);
     if (!exists) {
       setSelectedId(fallback);
     }
-  }, [selectedId, state.modules]);
+  }, [selectedId, displayModules]);
 
   const activeModule = useMemo(() => {
     const activeId = hoveredId ?? selectedId ?? state.modules[0]?.id ?? null;
@@ -129,15 +141,21 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
 
   return (
     <div className="modules-workshop stack-lg">
-      <header className="modules-workshop__header">
-        <div>
-          <p className="text-muted">Cultivate organs and manifested parts, then refine them over time.</p>
-        </div>
+      <header className="modules-workshop__header modules-workshop__header--row">
+        <p className="text-muted">Cultivate organs and manifested parts, then refine them over time.</p>
+        <label className="modules-workshop__hide-maxed">
+          <input
+            type="checkbox"
+            checked={hideMaxedWorkshop}
+            onChange={(e) => buildingsApi.setHideMaxedWorkshop(e.target.checked)}
+          />
+          <span>Hide Maxed</span>
+        </label>
       </header>
       <div className="modules-workshop__content">
         <div className="modules-workshop__list-container">
           <ul className="modules-workshop__list">
-          {state.modules.map((module) => {
+          {displayModules.map((module) => {
             const isActive = module.id === (hoveredId ?? selectedId ?? module.id);
             const moduleMissing = computeMissingCost(module.nextCost, totals);
             const hasMissingResources = Object.keys(moduleMissing).length > 0;

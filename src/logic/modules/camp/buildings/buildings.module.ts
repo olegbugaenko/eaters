@@ -56,6 +56,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   private unlocked = false;
   private visibleBuildingIds: BuildingId[] = [];
   private levels: Map<BuildingId, number> = createDefaultLevels();
+  private hideMaxedWorkshop = false;
   private readonly stateFactory: BuildingStateFactory;
   private hasRegisteredUnlocks = false;
 
@@ -82,6 +83,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
 
   public reset(): void {
     this.levels = createDefaultLevels();
+    this.hideMaxedWorkshop = false;
     this.syncAllBonusLevels();
     this.refreshUnlockState();
     this.newUnlocks.invalidate("buildings");
@@ -91,6 +93,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
 
   public load(data: unknown | undefined): void {
     this.levels = this.parseSaveData(data);
+    this.hideMaxedWorkshop = this.parseHideMaxedWorkshop(data);
     this.syncAllBonusLevels();
     this.refreshUnlockState();
     this.newUnlocks.invalidate("buildings");
@@ -99,7 +102,10 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   }
 
   public save(): unknown {
-    return { levels: serializeLevelsMap(this.levels) } satisfies BuildingsSaveData;
+    return {
+      levels: serializeLevelsMap(this.levels),
+      hideMaxedWorkshop: this.hideMaxedWorkshop,
+    } satisfies BuildingsSaveData;
   }
 
   public tick(_deltaMs: number): void {
@@ -145,6 +151,15 @@ export class BuildingsModule extends BaseGameModule<() => void> {
 
   public getBuildingLevel(id: BuildingId): number {
     return this.levels.get(id) ?? 0;
+  }
+
+  public setHideMaxedWorkshop(value: boolean): void {
+    if (this.hideMaxedWorkshop === value) {
+      return;
+    }
+    this.hideMaxedWorkshop = value;
+    this.pushState();
+    this.notifyListeners();
   }
 
   private registerBonusSources(): void {
@@ -222,6 +237,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     const payload: BuildingsWorkshopBridgeState = {
       unlocked: this.unlocked,
       buildings,
+      hideMaxedWorkshop: this.hideMaxedWorkshop,
     };
     DataBridgeHelpers.pushState(this.bridge, BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY, payload);
   }
@@ -234,6 +250,14 @@ export class BuildingsModule extends BaseGameModule<() => void> {
       createDefaultLevels,
       (id, raw) => sanitizeLevel(raw, getBuildingConfig(id))
     );
+  }
+
+  private parseHideMaxedWorkshop(data: unknown | undefined): boolean {
+    if (data == null || typeof data !== "object" || !("hideMaxedWorkshop" in data)) {
+      return false;
+    }
+    const v = (data as BuildingsSaveData).hideMaxedWorkshop;
+    return v === true;
   }
 
   private cloneCost(source: ResourceStockpile): Record<string, number> {
