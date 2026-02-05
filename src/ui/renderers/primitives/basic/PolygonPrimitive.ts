@@ -1083,6 +1083,7 @@ export const createDynamicPolygonStrokePrimitive = (
       return data;
     },
     update(target: SceneObjectInstance) {
+      return null;
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       const nextOffset = resolveOffset(options, target);

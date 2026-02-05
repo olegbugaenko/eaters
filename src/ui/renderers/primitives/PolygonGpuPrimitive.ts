@@ -18,7 +18,7 @@ import { computePolygonGeometry } from "@ui/renderers/primitives/basic/PolygonPr
 
 export interface PolygonGpuPrimitiveOptions {
   vertices: SceneVector2[];
-  anim: RendererLayerAnimationConfig;
+  anim?: RendererLayerAnimationConfig;
   fill: SceneFill;
   offset?: SceneVector2;
   phaseStep?: number;
@@ -88,14 +88,15 @@ export const createPolygonGpuPrimitive = (
   let prevRotation = instance.data.rotation ?? 0;
   let needsFillUpload = true;
 
-  // Pre-compute animation params from config
+  // Pre-compute animation params from config (optional - static polygon if undefined)
   const anim = options.anim;
-  const axis = anim.axis ?? "normal";
+  const hasAnim = !!anim;
+  const axis = anim?.axis ?? "normal";
   const axisType = axis === "tangent" ? 1 : axis === "movement-tangent" || axis === "movement-normal" ? 2 : 0;
-  const animType = anim.type === "pulse" ? 1 : 0;
-  const useVertexPhase = anim.type === "sway" && axisType !== 2 ? 1 : 0;
+  const animType = anim?.type === "pulse" ? 1 : 0;
+  const useVertexPhase = anim?.type === "sway" && axisType !== 2 ? 1 : 0;
   const amplitudePercent =
-    typeof anim.amplitudePercentage === "number" && Number.isFinite(anim.amplitudePercentage)
+    hasAnim && typeof anim?.amplitudePercentage === "number" && Number.isFinite(anim.amplitudePercentage)
       ? anim.amplitudePercentage
       : -1;
 
@@ -143,11 +144,11 @@ export const createPolygonGpuPrimitive = (
       if (!renderHandle) {
         return false;
       }
-      // Initialize animation params
-      renderHandle.anim.periodMs = Math.max(anim.periodMs ?? 1500, 1);
-      renderHandle.anim.phase = anim.phase ?? 0;
-      renderHandle.anim.amplitude = anim.amplitude ?? 6;
-      renderHandle.anim.amplitudePercent = amplitudePercent;
+      // Initialize animation params (static polygon if no anim: amplitude = 0)
+      renderHandle.anim.periodMs = Math.max(anim?.periodMs ?? 1500, 1);
+      renderHandle.anim.phase = anim?.phase ?? 0;
+      renderHandle.anim.amplitude = hasAnim ? (anim?.amplitude ?? 6) : 0;
+      renderHandle.anim.amplitudePercent = hasAnim ? amplitudePercent : 0;
       renderHandle.anim.phaseStep = options.phaseStep ?? 0.3;
       renderHandle.anim.animType = animType;
       renderHandle.anim.axisType = axisType;

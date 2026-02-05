@@ -26,6 +26,8 @@ import { petalAuraGpuRenderer } from "@ui/renderers/primitives/gpu/petal-aura";
 import { arcGpuRenderer } from "@ui/renderers/primitives/gpu/arc";
 import { renderFireRings } from "@ui/renderers/primitives/gpu/fire-ring";
 import { joinedPolygonGpuRenderer } from "@ui/renderers/primitives/gpu/joined";
+import { spineGpuRenderer } from "@ui/renderers/primitives/gpu/spine";
+import { polygonGpuRenderer } from "@ui/renderers/primitives/gpu/polygon";
 import "./StressTestScreen.css";
 
 const MAP_SIZE = { width: 2400, height: 1600 };
@@ -342,6 +344,9 @@ export const StressTestScreen: React.FC = () => {
           cameraState.viewportSize,
           timestamp
         );
+        spineGpuRenderer.setContext(glContext);
+        spineGpuRenderer.render(glContext, cameraState);
+        polygonGpuRenderer.render(glContext, cameraState);
         renderFireRings(glContext, cameraState.position, cameraState.viewportSize, timestamp);
       },
       afterRender: (timestamp) => {

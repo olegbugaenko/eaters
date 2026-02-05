@@ -346,20 +346,52 @@ export const createCompositePrimitives = (
         });
         const anchorConfigs = collectAnchors(layer);
         const hasAnchors = anchorConfigs.length > 0;
-        const needsCpuVertices =
-          executionMode !== "gpu" || Boolean(layer.stroke) || (hasAnchors && needsCpuAnchors);
-        const sampler = needsCpuVertices
-          ? createPolygonAnimSampler({
-              vertices: layer.vertices,
-              anim: animCfg,
-              timeSource: getTentacleTimeMs,
-              enableMovementAxis: true,
-              phaseStep: POLYGON_SWAY_PHASE_STEP,
-              executionMode: "cpu",
-            })
-          : null;
+        const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForAnimated = layer.fill;
+        
+        // GPU path - skip stroke for performance
+        if (executionMode === "gpu") {
+          const gpuPrimitive = createPolygonGpuPrimitive(instance, {
+            vertices: layer.vertices,
+            anim: animCfg,
+            fill: animatedLayerFill,
+            offset: staticOffset,
+            phaseStep: POLYGON_SWAY_PHASE_STEP,
+            enableMovementAxis: true,
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+          });
+          if (gpuPrimitive) {
+            dynamicPrimitives.push(gpuPrimitive);
+            if (hasAnchors) {
+              const anchorGpuPrimitive = createPolygonAnchorGpuPrimitive({
+                instance,
+                groupId: layer.groupId,
+                anchors: anchorConfigs,
+                vertices: layer.vertices,
+                anim: animCfg,
+                offset: staticOffset,
+                phaseStep: POLYGON_SWAY_PHASE_STEP,
+                enableMovementAxis: true,
+              });
+              if (anchorGpuPrimitive) {
+                dynamicPrimitives.push(anchorGpuPrimitive);
+              }
+            }
+            return; // GPU path complete - no CPU stroke needed
+          }
+        }
+        
+        // CPU fallback path (with stroke support)
+        const sampler = createPolygonAnimSampler({
+          vertices: layer.vertices,
+          anim: animCfg,
+          timeSource: getTentacleTimeMs,
+          enableMovementAxis: true,
+          phaseStep: POLYGON_SWAY_PHASE_STEP,
+          executionMode: "cpu",
+        });
         const getDeformedVertices = () => {
-          const deformed = sampler ? sampler.getVertices() : layer.vertices;
+          const deformed = sampler.getVertices();
           if (hasAnchors && needsCpuAnchors) {
             const resolved = resolveLayerAnchors({
               anchors: anchorConfigs,
@@ -393,83 +425,47 @@ export const createCompositePrimitives = (
             })
           );
         }
-        // OPTIMIZATION: Cache fill for animated layers too - vertices change but fill is usually static
-        // Always add refreshFill to track visual effect changes
-        const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
-        const layerFillForAnimated = layer.fill;
-        if (executionMode === "gpu") {
+        const primitive = createDynamicPolygonPrimitive(instance, {
+          getVertices: () => getDeformedVertices(),
+          offset: staticOffset,
+          getOffset,
+          fill: animatedLayerFill,
+          refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+        });
+        if (getOffset) {
+          primitive.autoAnimate = true;
+        }
+        dynamicPrimitives.push(primitive);
+      } else {
+        // OPTIMIZATION: Cache fill at registration time for static layers
+        const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+        const layerFillForStatic = layer.fill;
+        const anchorConfigs = collectAnchors(layer);
+        if (anchorConfigs.length > 0 && needsCpuAnchors) {
+          const resolved = resolveLayerAnchors({
+            anchors: anchorConfigs,
+            vertices: layer.vertices,
+            spine: layer.spine,
+            offset: staticOffset,
+          });
+          writeAnchorsForLayer(instance.id, layer.groupId, resolved);
+        }
+        
+        // GPU path for static polygons without join offset (skip stroke for performance)
+        if (!getOffset && isAnimationGpuAvailable()) {
           const gpuPrimitive = createPolygonGpuPrimitive(instance, {
             vertices: layer.vertices,
-            anim: animCfg,
-            fill: animatedLayerFill,
             offset: staticOffset,
-            phaseStep: POLYGON_SWAY_PHASE_STEP,
-            enableMovementAxis: true,
-            refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
+            fill: cachedFill,
+            refreshFill: (inst) => resolveLayerFill(inst, layerFillForStatic, renderer),
           });
           if (gpuPrimitive) {
             dynamicPrimitives.push(gpuPrimitive);
-            if (hasAnchors) {
-              const anchorGpuPrimitive = createPolygonAnchorGpuPrimitive({
-                instance,
-                groupId: layer.groupId,
-                anchors: anchorConfigs,
-                vertices: layer.vertices,
-                anim: animCfg,
-                offset: staticOffset,
-                phaseStep: POLYGON_SWAY_PHASE_STEP,
-                enableMovementAxis: true,
-              });
-              if (anchorGpuPrimitive) {
-                dynamicPrimitives.push(anchorGpuPrimitive);
-              }
-            }
-            if (hasAnchors && sampler && needsCpuAnchors) {
-              const anchorPrimitive: DynamicPrimitive = {
-                get data() {
-                  return emptyData;
-                },
-                autoAnimate: true,
-                update: () => {
-                  const deformed = sampler.getVertices();
-                  const resolved = resolveLayerAnchors({
-                    anchors: anchorConfigs,
-                    vertices: deformed,
-                    offset: staticOffset,
-                  });
-                  writeAnchorsForLayer(instance.id, layer.groupId, resolved);
-                  return null;
-                },
-              };
-              dynamicPrimitives.push(anchorPrimitive);
-            }
-          } else {
-            const primitive = createDynamicPolygonPrimitive(instance, {
-              getVertices: () => getDeformedVertices(),
-              offset: staticOffset,
-              getOffset,
-              fill: animatedLayerFill,
-              refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
-            });
-            if (getOffset) {
-              primitive.autoAnimate = true;
-            }
-            dynamicPrimitives.push(primitive);
+            return; // GPU path complete - no CPU stroke needed
           }
-        } else {
-          const primitive = createDynamicPolygonPrimitive(instance, {
-            getVertices: () => getDeformedVertices(),
-            offset: staticOffset,
-            getOffset,
-            fill: animatedLayerFill,
-            refreshFill: (inst) => resolveLayerFill(inst, layerFillForAnimated, renderer),
-          });
-          if (getOffset) {
-            primitive.autoAnimate = true;
-          }
-          dynamicPrimitives.push(primitive);
         }
-      } else {
+        
+        // CPU fallback path (for joined layers or if GPU unavailable)
         if (layer.stroke) {
           const layerStrokeForStatic = layer.stroke;
           const strokeColor =
@@ -494,20 +490,6 @@ export const createCompositePrimitives = (
                 : undefined,
             })
           );
-        }
-        // OPTIMIZATION: Cache fill at registration time for static layers
-        // Always add refreshFill to track visual effect changes
-        const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
-        const layerFillForStatic = layer.fill;
-        const anchorConfigs = collectAnchors(layer);
-        if (anchorConfigs.length > 0 && needsCpuAnchors) {
-          const resolved = resolveLayerAnchors({
-            anchors: anchorConfigs,
-            vertices: layer.vertices,
-            spine: layer.spine,
-            offset: staticOffset,
-          });
-          writeAnchorsForLayer(instance.id, layer.groupId, resolved);
         }
         const primitive = createDynamicPolygonPrimitive(instance, {
           vertices: layer.vertices,
