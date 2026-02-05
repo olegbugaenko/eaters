@@ -58,3 +58,24 @@ export type {
 } from "./GpuBatchRenderer";
 
 export { GpuBatchRenderer } from "./GpuBatchRenderer";
+
+// Animation Types
+export type {
+  BaseAnimationParams,
+  AnimationTransformParams,
+  SpineAnimParams,
+  PolygonAnimParams,
+  AnimationParamsView,
+  MutableAnimationParams,
+  CreateAnimationParams,
+  AnimationConfig,
+} from "./animation.types";
+
+export {
+  createBaseAnimationParams,
+  createSpineAnimParams,
+  createPolygonAnimParams,
+  configToSpineParams,
+  configToPolygonParams,
+  resolveAxisType,
+} from "./animation.types";

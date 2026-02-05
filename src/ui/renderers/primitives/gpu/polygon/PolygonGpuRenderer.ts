@@ -23,6 +23,7 @@ import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistr
 import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 import { loadSpriteTexture } from "@ui/renderers/primitives/basic/SpritePrimitive";
 import type { RendererLayerAnimationConfig } from "@shared/types/renderer.types";
+import type { PolygonAnimParams } from "@ui/renderers/primitives/core/animation.types";
 
 interface AttributeConfig {
   location: number;
@@ -30,21 +31,8 @@ interface AttributeConfig {
   offset: number;
 }
 
-export type PolygonAnimationParams = {
-  timeMs: number;
-  periodMs: number;
-  phase: number;
-  amplitude: number;
-  amplitudePercent: number;
-  phaseStep: number;
-  animType: number; // 0 = sway, 1 = pulse
-  axisType: number; // 0 = normal, 1 = tangent, 2 = movement
-  useVertexPhase: number;
-  center: SceneVector2;
-  origin: SceneVector2;
-  rotation: number;
-  movementDir: SceneVector2; // normalized movement direction
-};
+/** @deprecated Use PolygonAnimParams from animation.types.ts */
+export type PolygonAnimationParams = PolygonAnimParams;
 
 export type PolygonGpuHandle = {
   vao: WebGLVertexArrayObject;

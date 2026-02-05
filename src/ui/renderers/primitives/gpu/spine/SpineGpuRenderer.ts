@@ -1,6 +1,7 @@
 import type { SceneCameraState, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
 import { TO_CLIP_GLSL } from "@ui/renderers/shaders/common.glsl";
+import type { SpineAnimParams } from "@ui/renderers/primitives/core/animation.types";
 
 // Maximum spine points supported (each point = x, y, width, axisX, axisY, falloff)
 const MAX_SPINE_POINTS = 8;
@@ -16,14 +17,8 @@ const TEXELS_PER_SPINE = SPINE_DATA_FLOATS / 4; // 16 texels per spine
 const SPINE_TEX_WIDTH = TEXELS_PER_SPINE; // 16
 const SPINE_TEX_HEIGHT = MAX_INSTANCES; // 2048
 
-export type SpineAnimationParams = {
-  timeMs: number;
-  periodMs: number;
-  phase: number;
-  amplitude: number;
-  origin: SceneVector2;
-  rotation: number;
-};
+/** @deprecated Use SpineAnimParams from animation.types.ts */
+export type SpineAnimationParams = SpineAnimParams;
 
 export type SpineGpuHandle = {
   slotIndex: number;

@@ -58,6 +58,95 @@ const extractFillColor = (fill: SceneFill): { r: number; g: number; b: number; a
   return { r: 1, g: 1, b: 1, a: 1 };
 };
 
+interface SpineGpuPrimitiveConfig {
+  spine: SpinePoint[];
+  anim: RendererLayerAnimationConfig;
+  epsilon: number;
+  winding: "CW" | "CCW";
+  options: SpineGpuPrimitiveOptions;
+  initialFillRef: SceneFill | undefined;
+}
+
+class SpineGpuPrimitive extends GpuPrimitiveBase {
+  private cachedFill: SceneFill;
+  private cachedColor: { r: number; g: number; b: number; a: number };
+  private prevInstanceFillRef: SceneFill | undefined;
+  private renderHandle: SpineGpuHandle | null = null;
+  private needsColorUpload = true;
+
+  public constructor(private readonly config: SpineGpuPrimitiveConfig) {
+    super(getAnimationGpuContext);
+    this.cachedFill = config.options.fill;
+    this.cachedColor = extractFillColor(this.cachedFill);
+    this.prevInstanceFillRef = config.initialFillRef;
+  }
+
+  protected override areResourcesValid(): boolean {
+    return !!(this.renderHandle && spineGpuRenderer.isHandleValid(this.renderHandle));
+  }
+
+  protected override createResources(gl: WebGL2RenderingContext): boolean {
+    const { config } = this;
+    const { spine, anim, epsilon, winding } = config;
+
+    spineGpuRenderer.setContext(gl);
+    this.renderHandle = spineGpuRenderer.acquire({
+      spinePoints: spine,
+      axis: anim.axis === "tangent" ? "tangent" : "normal",
+      falloff: anim.falloff === "root" ? "root" : anim.falloff === "none" ? "none" : "tip",
+      epsilon,
+      winding,
+    });
+    if (!this.renderHandle) {
+      return false;
+    }
+    this.renderHandle.anim.periodMs = Math.max(anim.periodMs ?? 1400, 1);
+    this.renderHandle.anim.phase = anim.phase ?? 0;
+    this.renderHandle.anim.amplitude = anim.amplitude ?? 1;
+    this.needsColorUpload = true;
+    return true;
+  }
+
+  protected override updateBuffers(target: SceneObjectInstance): void {
+    if (!this.gl || !this.renderHandle) {
+      return;
+    }
+
+    const { options } = this.config;
+    const pos = getInstanceRenderPosition(target);
+    const rotation = target.data.rotation ?? 0;
+    const origin = transformObjectPoint(pos, rotation, options.offset);
+
+    // Check for fill/color changes
+    let fillRefChanged = false;
+    if (typeof options.refreshFill === "function") {
+      if (target.data.fill !== this.prevInstanceFillRef) {
+        this.prevInstanceFillRef = target.data.fill;
+        this.cachedFill = options.refreshFill(target);
+        this.cachedColor = extractFillColor(this.cachedFill);
+        fillRefChanged = true;
+      }
+    }
+
+    if (this.needsColorUpload || fillRefChanged) {
+      spineGpuRenderer.update(this.renderHandle, this.cachedColor);
+      this.needsColorUpload = false;
+    }
+
+    this.renderHandle.anim.timeMs = getSceneTimelineNow();
+    this.renderHandle.anim.origin.x = origin.x;
+    this.renderHandle.anim.origin.y = origin.y;
+    this.renderHandle.anim.rotation = rotation;
+  }
+
+  protected override releaseResources(_gl: WebGL2RenderingContext): void {
+    if (this.renderHandle) {
+      spineGpuRenderer.release(this.renderHandle);
+      this.renderHandle = null;
+    }
+  }
+}
+
 export const createSpineGpuPrimitive = (
   instance: SceneObjectInstance,
   options: SpineGpuPrimitiveOptions
@@ -67,81 +156,19 @@ export const createSpineGpuPrimitive = (
     return null;
   }
 
-  const spine = options.spine;
   const anim = options.anim;
   const buildOpts = options.buildOpts ?? {};
   const epsilon = typeof buildOpts.epsilon === "number" ? buildOpts.epsilon : 0.2;
   const winding = buildOpts.winding ?? "CCW";
 
-  class SpineGpuPrimitive extends GpuPrimitiveBase {
-    private cachedFill: SceneFill = options.fill;
-    private cachedColor = extractFillColor(this.cachedFill);
-    private prevInstanceFillRef: SceneFill | undefined =
-      typeof options.refreshFill === "function" ? instance.data.fill : undefined;
-    private renderHandle: SpineGpuHandle | null = null;
-    private needsColorUpload = true;
+  const config: SpineGpuPrimitiveConfig = {
+    spine: options.spine,
+    anim,
+    epsilon,
+    winding,
+    options,
+    initialFillRef: typeof options.refreshFill === "function" ? instance.data.fill : undefined,
+  };
 
-    protected override areResourcesValid(): boolean {
-      return !!(this.renderHandle && spineGpuRenderer.isHandleValid(this.renderHandle));
-    }
-
-    protected override createResources(gl: WebGL2RenderingContext): boolean {
-      spineGpuRenderer.setContext(gl);
-      this.renderHandle = spineGpuRenderer.acquire({
-        spinePoints: spine,
-        axis: anim.axis === "tangent" ? "tangent" : "normal",
-        falloff: anim.falloff === "root" ? "root" : anim.falloff === "none" ? "none" : "tip",
-        epsilon,
-        winding,
-      });
-      if (!this.renderHandle) {
-        return false;
-      }
-      this.renderHandle.anim.periodMs = Math.max(anim.periodMs ?? 1400, 1);
-      this.renderHandle.anim.phase = anim.phase ?? 0;
-      this.renderHandle.anim.amplitude = anim.amplitude ?? 1;
-      this.needsColorUpload = true;
-      return true;
-    }
-
-    protected override updateBuffers(target: SceneObjectInstance): void {
-      if (!this.gl || !this.renderHandle) {
-        return;
-      }
-
-      const pos = getInstanceRenderPosition(target);
-      const rotation = target.data.rotation ?? 0;
-      const origin = transformObjectPoint(pos, rotation, options.offset);
-
-      // Check dirty flags for fill/color changes
-      let fillRefChanged = false;
-      if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== this.prevInstanceFillRef) {
-          this.prevInstanceFillRef = target.data.fill;
-          this.cachedFill = options.refreshFill(target);
-          this.cachedColor = extractFillColor(this.cachedFill);
-          fillRefChanged = true;
-        }
-      }
-
-      if (this.needsColorUpload || fillRefChanged) {
-        spineGpuRenderer.update(this.renderHandle, this.cachedColor);
-        this.needsColorUpload = false;
-      }
-
-      this.renderHandle.anim.timeMs = getSceneTimelineNow();
-      this.renderHandle.anim.origin.x = origin.x;
-      this.renderHandle.anim.origin.y = origin.y;
-      this.renderHandle.anim.rotation = rotation;
-    }
-
-    protected override releaseResources(_gl: WebGL2RenderingContext): void {
-      if (this.renderHandle) {
-        spineGpuRenderer.release(this.renderHandle);
-        this.renderHandle = null;
-      }
-    }
-  }
-
-  return new SpineGpuPrimitive(getAnimationGpuContext);
+  return new SpineGpuPrimitive(config);
 };

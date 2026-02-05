@@ -520,9 +520,10 @@ export class SceneObjectManager {
       data: {
         position: { ...instance.data.position },
         size: instance.data.size ? { ...instance.data.size } : { ...DEFAULT_SIZE },
-        // Pass through fill/color references directly - dirty flags handle change detection
-        color: instance.data.color ?? { ...DEFAULT_COLOR },
-        fill: instance.data.fill,
+        // Clone fill/color to ensure data isolation (external mutations don't affect stored data)
+        // Dirty flags track changes from the source, cloning protects the internal state
+        color: instance.data.color ? { ...instance.data.color } : { ...DEFAULT_COLOR },
+        fill: cloneSceneFill(instance.data.fill),
         stroke,
         rotation:
           typeof instance.data.rotation === "number"

@@ -25,6 +25,24 @@ import {
   STOP_OFFSETS_COMPONENTS,
 } from "../../objects/ObjectRenderer";
 
+// ============================================================================
+// Geometry Utilities
+// ============================================================================
+
+/**
+ * Pack vertices into a Float32Array for GPU upload.
+ */
+export const buildPackedVertices = (vertices: SceneVector2[]): Float32Array => {
+  const packed = new Float32Array(vertices.length * 2);
+  for (let i = 0; i < vertices.length; i += 1) {
+    const offset = i * 2;
+    const vertex = vertices[i]!;
+    packed[offset] = vertex.x;
+    packed[offset + 1] = vertex.y;
+  }
+  return packed;
+};
+
 interface FillVertexOptions {
   fill: SceneFill;
   center: SceneVector2;
@@ -323,4 +341,24 @@ export const copyFillComponents = (
   components: Float32Array
 ): void => {
   target.set(components, offset + POSITION_COMPONENTS);
+};
+
+/**
+ * Build fill buffer data by repeating fill components for each vertex.
+ * Reuses target array if size matches.
+ */
+export const buildFillBufferData = (
+  vertexCount: number,
+  fillComponents: Float32Array,
+  target?: Float32Array
+): Float32Array => {
+  const requiredLength = vertexCount * FILL_COMPONENTS;
+  const data =
+    target && target.length === requiredLength
+      ? target
+      : new Float32Array(requiredLength);
+  for (let i = 0; i < vertexCount; i += 1) {
+    data.set(fillComponents, i * FILL_COMPONENTS);
+  }
+  return data;
 };

@@ -7,12 +7,12 @@ import type {
 import {
   DynamicPrimitive,
   getInstanceRenderPosition,
+  FILL_COMPONENTS,
 } from "@ui/renderers/objects/ObjectRenderer";
-import { writeFillVertexComponents } from "@ui/renderers/primitives/utils/fill";
+import { writeFillVertexComponents, buildFillBufferData, buildPackedVertices } from "@ui/renderers/primitives/utils/fill";
 import { computePolygonGeometry } from "@ui/renderers/primitives/basic/PolygonPrimitive";
 import { joinedPolygonGpuRenderer, type JoinedPolygonGpuHandle } from "@ui/renderers/primitives/gpu/joined/JoinedPolygonGpuRenderer";
 import { getAnimationGpuContext } from "@ui/renderers/objects/shared/animation-gpu";
-import { FILL_COMPONENTS } from "@ui/renderers/objects/ObjectRenderer";
 import { createSpriteFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { GpuPrimitiveBase } from "@ui/renderers/primitives/GpuPrimitiveBase";
@@ -26,32 +26,6 @@ const createStrokeFill = (stroke: SceneStroke): SceneFill => ({
     a: typeof stroke.color.a === "number" ? stroke.color.a : 1,
   },
 });
-
-const buildPackedVertices = (vertices: SceneVector2[]): Float32Array => {
-  const packed = new Float32Array(vertices.length * 2);
-  for (let i = 0; i < vertices.length; i += 1) {
-    const offset = i * 2;
-    const vertex = vertices[i]!;
-    packed[offset] = vertex.x;
-    packed[offset + 1] = vertex.y;
-  }
-  return packed;
-};
-
-const buildFillBufferData = (
-  vertexCount: number,
-  fillComponents: Float32Array,
-  target?: Float32Array
-): Float32Array => {
-  const data =
-    target && target.length === vertexCount * FILL_COMPONENTS
-      ? target
-      : new Float32Array(vertexCount * FILL_COMPONENTS);
-  for (let i = 0; i < vertexCount; i += 1) {
-    data.set(fillComponents, i * FILL_COMPONENTS);
-  }
-  return data;
-};
 
 const buildCircleFanVertices = (radius: number, segments: number): SceneVector2[] => {
   const normalized = Math.max(3, Math.floor(segments));
