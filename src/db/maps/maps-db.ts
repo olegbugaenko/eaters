@@ -10,6 +10,7 @@ import deathfulGuns from "./map-definitions/deathfulGuns";
 import encagedBeast from "./map-definitions/encagedBeast";
 import foundations from "./map-definitions/foundations";
 import frozenForest from "./map-definitions/frozenForest";
+import gear from "./map-definitions/gear";
 import initial from "./map-definitions/initial";
 import megaBrick from "./map-definitions/megaBrick";
 import mine from "./map-definitions/mine";
@@ -60,6 +61,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   silverRing,
   frozenForest,
   volcano,
+  gear,
   megaBrick,
   ancientPyramids,
   deathfulGuns,
