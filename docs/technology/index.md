@@ -6,4 +6,5 @@
 - [objects-renderer-manager.md](objects-renderer-manager.md) — детальний опис `ObjectsRendererManager` — центрального менеджера рендерингу об'єктів.
 - [particle-emitter-optimization.md](particle-emitter-optimization.md) — як оптимізовано роботу частинок для вибухів та порталів.
 - [gpu-instanced-effects.md](gpu-instanced-effects.md) — архітектура GPU-рендерерів, життєвий цикл, різні типи примітивів та робота з Transform Feedback.
+- [scene-colors.md](scene-colors.md) — як працюють `SceneColor`/`SceneFill`, санітизація кольорів та версіонування payloads.
 - [joined-gpu-debug.md](joined-gpu-debug.md) — debug‑режим для профайлування GPU‑join примітивів.

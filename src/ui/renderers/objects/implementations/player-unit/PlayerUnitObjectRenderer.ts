@@ -27,7 +27,6 @@ import { createCompositePrimitives } from "./composite-primitives.helpers";
 import { createParticleEmitterPrimitive } from "../../../primitives/ParticleEmitterPrimitive";
 import type { PlayerUnitEmitterRenderConfig } from "./types";
 
-console.error("!!! PlayerUnitObjectRenderer MODULE LOADED !!!");
 
 /**
  * Updates aura instances positions
@@ -97,12 +96,6 @@ const createEmitterPrimitive = (
 export class PlayerUnitObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const rendererData = extractRendererData(instance);
-    console.error("[PlayerUnitObjectRenderer] register", {
-      instanceId: instance.id,
-      rendererKind: rendererData.kind,
-      hasLayers: "layers" in rendererData ? rendererData.layers?.length : "N/A",
-    });
-
     const dynamicPrimitives: DynamicPrimitive[] = [];
 
     const emitterPrimitive = createEmitterPrimitive(instance);
@@ -111,7 +104,6 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     }
 
     if (rendererData.kind === "composite") {
-      console.log("[PlayerUnitObjectRenderer] calling createCompositePrimitives");
       createCompositePrimitives(instance, rendererData, dynamicPrimitives);
     } else {
       if (hasStroke(instance.data.stroke)) {

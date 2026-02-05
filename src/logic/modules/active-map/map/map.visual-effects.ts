@@ -1,6 +1,6 @@
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
+import { createRadialGradientFill } from "@shared/helpers/scene-style.helper";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { getMapEffectConfig } from "../../../../db/map-effects-db";
 import type { MapEffectsModule } from "../map-effects/map-effects.module";

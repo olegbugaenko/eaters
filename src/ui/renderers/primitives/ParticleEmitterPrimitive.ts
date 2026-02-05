@@ -12,9 +12,9 @@ import {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   cloneSceneFill,
-} from "@shared/helpers/scene-fill.helper";
+} from "@shared/helpers/scene-style.helper";
 import { ParticleEmitterShape } from "@/logic/services/particles/ParticleEmitterShared";
-import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-style.helper";
 import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import {
   DynamicPrimitive,
@@ -89,6 +89,14 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   lastConfigRef: Config | null; // Cache config reference to avoid JSON.stringify on every frame
   warnedCpuSpawnFallback: boolean;
   warnedCpuMode: boolean;
+  // GPU update cache to avoid per-frame allocations
+  gpuUpdateCache: ParticleEmitterGpuUpdateCache | null;
+}
+
+interface ParticleEmitterGpuUpdateCache {
+  lastOrigin: SceneVector2;
+  lastRotation: number;
+  cachedSpawnParams: GpuSpawnParams | null;
 }
 
 interface ParticleEmitterCpuCache {
@@ -475,6 +483,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
       lastConfigRef: config,
       warnedCpuSpawnFallback: false,
       warnedCpuMode: false,
+      gpuUpdateCache: null,
     };
   }
 
@@ -496,6 +505,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     lastConfigRef: config,
     warnedCpuSpawnFallback: false,
     warnedCpuMode: false,
+    gpuUpdateCache: gpu ? { lastOrigin: { x: 0, y: 0 }, lastRotation: 0, cachedSpawnParams: null } : null,
   };
 
   if (gpu) {
@@ -526,6 +536,7 @@ const createEmptyParticleEmitterState = <
   lastConfigRef: null,
   warnedCpuSpawnFallback: false,
   warnedCpuMode: false,
+  gpuUpdateCache: null,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -657,13 +668,20 @@ const advanceParticleEmitterStateGpu = <
 
   const origin = options.getOrigin(instance, config);
   
-  let gpuSpawnConfig: GpuSpawnConfig | null = null;
   const hasGpuSpawnProvider = typeof options.getGpuSpawnConfig === "function";
-  // Check if GPU spawn is available
+  // Check if GPU spawn config needs refresh (rotation changed or first frame)
+  const currentRotation = instance.data.rotation ?? 0;
+  const cache = state.gpuUpdateCache;
+  const rotationChanged = !cache || cache.lastRotation !== currentRotation;
+  
+  // Get or update GPU spawn config only when needed
+  let gpuSpawnConfig: GpuSpawnConfig | null = null;
   if (hasGpuSpawnProvider) {
-    gpuSpawnConfig = options.getGpuSpawnConfig!(instance, config);
+    if (rotationChanged || !cache?.cachedSpawnParams) {
+      gpuSpawnConfig = options.getGpuSpawnConfig!(instance, config);
+    }
   }
-  const useGpuSpawn = gpuSpawnConfig !== null && gpuSpawnConfig !== undefined;
+  const useGpuSpawn = hasGpuSpawnProvider && (gpuSpawnConfig !== null || cache?.cachedSpawnParams !== null);
   
   let spawnParams: GpuSpawnParams | undefined;
   
@@ -680,7 +698,7 @@ const advanceParticleEmitterStateGpu = <
     if (gpu.handle) {
       gpu.handle.activeCount = 0;
     }
-  } else if (useGpuSpawn && gpuSpawnConfig) {
+  } else if (useGpuSpawn) {
     // GPU SPAWN PATH: No CPU slot tracking needed!
     // GPU shader handles slot availability via isActive flag
     const dampingWindow = Math.max(0, config.emissionDampingInterval ?? 0);
@@ -693,41 +711,54 @@ const advanceParticleEmitterStateGpu = <
       state.capacity // Can't spawn more than capacity
     );
 
-    const spawnShape = gpuSpawnConfig.spawnShape === "rect" ? 1 : 0;
-    const spawnRectMin = gpuSpawnConfig.spawnRectMin ?? origin;
-    const spawnRectMax = gpuSpawnConfig.spawnRectMax ?? origin;
-    const cullMin = gpuSpawnConfig.cullRectMin ?? origin;
-    const cullMax = gpuSpawnConfig.cullRectMax ?? origin;
-    const cullEnabled =
-      Boolean(gpuSpawnConfig.cullRectMin) && Boolean(gpuSpawnConfig.cullRectMax);
+    // Reuse cached spawnParams or create new one
+    if (cache && cache.cachedSpawnParams && !gpuSpawnConfig) {
+      // Fast path: reuse cached params, only update dynamic values
+      spawnParams = cache.cachedSpawnParams;
+      spawnParams.emitterPosition = origin;
+      spawnParams.spawnCount = desiredSpawnCount;
+    } else if (gpuSpawnConfig) {
+      // Need to rebuild spawnParams (first frame or rotation changed)
+      const spawnShape = gpuSpawnConfig.spawnShape === "rect" ? 1 : 0;
+      const spawnRectMin = gpuSpawnConfig.spawnRectMin ?? origin;
+      const spawnRectMax = gpuSpawnConfig.spawnRectMax ?? origin;
+      const cullMin = gpuSpawnConfig.cullRectMin ?? origin;
+      const cullMax = gpuSpawnConfig.cullRectMax ?? origin;
+      const cullEnabled =
+        Boolean(gpuSpawnConfig.cullRectMin) && Boolean(gpuSpawnConfig.cullRectMax);
 
-    //if(instance.type === "explosion" && config.emissionDampingInterval){
-    // desiredSpawnCount = 0.1;
-    // console.log(`emissionDampingInterval[${instance.id}]`, state.ageMs, desiredSpawnCount, state.capacity);
-    //}
-    spawnParams = {
-      emitterPosition: origin,
-      emitterRotation: instance.data.rotation ?? 0,
-      spawnStartIndex: state.capacity, // Pass capacity for probability calculation
-      spawnCount: desiredSpawnCount,
-      particleLifetime: config.particleLifetimeMs,
-      baseSpeed: gpuSpawnConfig.baseSpeed,
-      speedVariation: gpuSpawnConfig.speedVariation,
-      sizeMin: gpuSpawnConfig.sizeMin,
-      sizeMax: gpuSpawnConfig.sizeMax,
-      spawnRadiusMin: gpuSpawnConfig.spawnRadiusMin,
-      spawnRadiusMax: gpuSpawnConfig.spawnRadiusMax,
-      arc: gpuSpawnConfig.arc,
-      direction: gpuSpawnConfig.direction,
-      spread: gpuSpawnConfig.spread,
-      radialVelocity: gpuSpawnConfig.radialVelocity,
-      spawnShape,
-      spawnRectMin,
-      spawnRectMax,
-      cullEnabled,
-      cullMin,
-      cullMax,
-    };
+      spawnParams = {
+        emitterPosition: origin,
+        emitterRotation: currentRotation,
+        spawnStartIndex: state.capacity, // Pass capacity for probability calculation
+        spawnCount: desiredSpawnCount,
+        particleLifetime: config.particleLifetimeMs,
+        baseSpeed: gpuSpawnConfig.baseSpeed,
+        speedVariation: gpuSpawnConfig.speedVariation,
+        sizeMin: gpuSpawnConfig.sizeMin,
+        sizeMax: gpuSpawnConfig.sizeMax,
+        spawnRadiusMin: gpuSpawnConfig.spawnRadiusMin,
+        spawnRadiusMax: gpuSpawnConfig.spawnRadiusMax,
+        arc: gpuSpawnConfig.arc,
+        direction: gpuSpawnConfig.direction,
+        spread: gpuSpawnConfig.spread,
+        radialVelocity: gpuSpawnConfig.radialVelocity,
+        spawnShape,
+        spawnRectMin,
+        spawnRectMax,
+        cullEnabled,
+        cullMin,
+        cullMax,
+      };
+
+      // Cache for next frame
+      if (cache) {
+        cache.cachedSpawnParams = spawnParams;
+        cache.lastRotation = currentRotation;
+        cache.lastOrigin.x = origin.x;
+        cache.lastOrigin.y = origin.y;
+      }
+    }
 
     // No accumulator in GPU spawn path; probability-based spawn uses fractional counts directly.
     state.spawnAccumulator = 0;

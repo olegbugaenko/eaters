@@ -226,8 +226,29 @@ class JoinedPolygonGpuRenderer {
     return handle;
   }
 
+  /**
+   * Unified acquire API (alias for acquireHandle).
+   */
+  public acquire(options: {
+    positionBuffer: WebGLBuffer;
+    fillBuffer: WebGLBuffer;
+    vertexCount: number;
+    anchorIndex: number;
+    joinOffset: { x: number; y: number };
+    drawMode?: number;
+  }): JoinedPolygonGpuHandle | null {
+    return this.acquireHandle(options);
+  }
+
   public updateHandle(handle: JoinedPolygonGpuHandle, vertexCount: number): void {
     handle.vertexCount = vertexCount;
+  }
+
+  /**
+   * Unified update API (alias for updateHandle).
+   */
+  public update(handle: JoinedPolygonGpuHandle, vertexCount: number): void {
+    this.updateHandle(handle, vertexCount);
   }
 
   public releaseHandle(handle: JoinedPolygonGpuHandle): void {
@@ -238,6 +259,13 @@ class JoinedPolygonGpuRenderer {
       this.handles.delete(handle);
     }
     this.gl.deleteVertexArray(handle.vao);
+  }
+
+  /**
+   * Unified release API (alias for releaseHandle).
+   */
+  public release(handle: JoinedPolygonGpuHandle): void {
+    this.releaseHandle(handle);
   }
 
   public hasHandles(): boolean {

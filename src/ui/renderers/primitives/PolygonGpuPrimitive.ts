@@ -11,10 +11,12 @@ import {
   getInstanceRenderPosition,
   transformObjectPoint,
 } from "@ui/renderers/objects/ObjectRenderer";
-import { writeFillVertexComponents } from "@ui/renderers/primitives/utils/fill";
+import { writeFillVertexComponents, buildFillBufferData, buildPackedVertices } from "@ui/renderers/primitives/utils/fill";
+import { resolveAxisType } from "@ui/renderers/primitives/core/animation.types";
 import { polygonGpuRenderer, type PolygonGpuHandle } from "@ui/renderers/primitives/gpu/polygon";
 import { getSceneTimelineNow } from "@ui/renderers/primitives/utils/sceneTimeline";
 import { computePolygonGeometry } from "@ui/renderers/primitives/basic/PolygonPrimitive";
+import { GpuPrimitiveBase } from "@ui/renderers/primitives/GpuPrimitiveBase";
 
 export interface PolygonGpuPrimitiveOptions {
   vertices: SceneVector2[];
@@ -26,31 +28,158 @@ export interface PolygonGpuPrimitiveOptions {
   refreshFill?: (instance: SceneObjectInstance) => SceneFill;
 }
 
-const buildPackedVertices = (vertices: SceneVector2[]): Float32Array => {
-  const packed = new Float32Array(vertices.length * 2);
-  for (let i = 0; i < vertices.length; i += 1) {
-    const offset = i * 2;
-    const vertex = vertices[i]!;
-    packed[offset] = vertex.x;
-    packed[offset + 1] = vertex.y;
-  }
-  return packed;
-};
+interface PolygonGpuPrimitiveConfig {
+  vertexCount: number;
+  packedVertices: Float32Array;
+  geometry: { size: { width: number; height: number } };
+  center: SceneVector2;
+  anim: RendererLayerAnimationConfig | undefined;
+  hasAnim: boolean;
+  axisType: number;
+  animType: number;
+  useVertexPhase: number;
+  amplitudePercent: number;
+  options: PolygonGpuPrimitiveOptions;
+  initialFillRef: SceneFill | undefined;
+  initialPos: SceneVector2;
+}
 
-const buildFillBufferData = (
-  vertexCount: number,
-  fillComponents: Float32Array,
-  target?: Float32Array
-): Float32Array => {
-  const data =
-    target && target.length === vertexCount * FILL_COMPONENTS
-      ? target
-      : new Float32Array(vertexCount * FILL_COMPONENTS);
-  for (let i = 0; i < vertexCount; i += 1) {
-    data.set(fillComponents, i * FILL_COMPONENTS);
+class PolygonGpuPrimitive extends GpuPrimitiveBase {
+  private fillScratch = new Float32Array(FILL_COMPONENTS);
+  private fillData: Float32Array | null = null;
+  private cachedFill: SceneFill;
+  private prevInstanceFillRef: SceneFill | undefined;
+
+  private positionBuffer: WebGLBuffer | null = null;
+  private fillBuffer: WebGLBuffer | null = null;
+  private renderHandle: PolygonGpuHandle | null = null;
+
+  private prevPosX: number;
+  private prevPosY: number;
+  private needsFillUpload = true;
+
+  public constructor(private readonly config: PolygonGpuPrimitiveConfig) {
+    super(getAnimationGpuContext);
+    this.cachedFill = config.options.fill;
+    this.prevInstanceFillRef = config.initialFillRef;
+    this.prevPosX = config.initialPos.x;
+    this.prevPosY = config.initialPos.y;
   }
-  return data;
-};
+
+  protected override createResources(gl: WebGL2RenderingContext): boolean {
+    const { config } = this;
+    
+    if (!this.positionBuffer) {
+      const packed = config.packedVertices as unknown as BufferSource;
+      this.positionBuffer = this.createBuffer(gl, gl.ARRAY_BUFFER, packed, gl.STATIC_DRAW);
+      if (!this.positionBuffer) {
+        return false;
+      }
+    }
+
+    if (!this.fillBuffer) {
+      this.fillBuffer = this.createBuffer(
+        gl,
+        gl.ARRAY_BUFFER,
+        config.vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
+        gl.DYNAMIC_DRAW
+      );
+      if (!this.fillBuffer) {
+        return false;
+      }
+    }
+
+    polygonGpuRenderer.setContext(gl);
+    if (!this.renderHandle) {
+      this.renderHandle = polygonGpuRenderer.acquire({
+        positionBuffer: this.positionBuffer,
+        fillBuffer: this.fillBuffer,
+        vertexCount: config.vertexCount,
+        center: config.center,
+      });
+      if (!this.renderHandle) {
+        return false;
+      }
+      const { anim, hasAnim, axisType, animType, useVertexPhase, amplitudePercent, options } = config;
+      this.renderHandle.anim.periodMs = Math.max(anim?.periodMs ?? 1500, 1);
+      this.renderHandle.anim.phase = anim?.phase ?? 0;
+      this.renderHandle.anim.amplitude = hasAnim ? (anim?.amplitude ?? 6) : 0;
+      this.renderHandle.anim.amplitudePercent = hasAnim ? amplitudePercent : 0;
+      this.renderHandle.anim.phaseStep = options.phaseStep ?? 0.3;
+      this.renderHandle.anim.animType = animType;
+      this.renderHandle.anim.axisType = axisType;
+      this.renderHandle.anim.useVertexPhase = useVertexPhase;
+    }
+    return true;
+  }
+
+  protected override updateBuffers(target: SceneObjectInstance): void {
+    if (!this.gl || !this.fillBuffer || !this.renderHandle) {
+      return;
+    }
+
+    const { config } = this;
+    const { options, center, geometry, vertexCount } = config;
+
+    const pos = getInstanceRenderPosition(target);
+    const rotation = target.data.rotation ?? 0;
+    const origin = transformObjectPoint(pos, rotation, options.offset);
+
+    let fillRefChanged = false;
+    if (typeof options.refreshFill === "function") {
+      if (target.data.fill !== this.prevInstanceFillRef) {
+        this.prevInstanceFillRef = target.data.fill;
+        this.cachedFill = options.refreshFill(target);
+        fillRefChanged = true;
+      }
+    }
+
+    const fillCenter = transformObjectPoint(pos, rotation, {
+      x: (options.offset?.x ?? 0) + center.x,
+      y: (options.offset?.y ?? 0) + center.y,
+    });
+
+    if (this.needsFillUpload || fillRefChanged) {
+      const fillComponents = writeFillVertexComponents(this.fillScratch, {
+        fill: this.cachedFill,
+        center: fillCenter,
+        rotation,
+        size: geometry.size,
+      });
+      this.fillData = buildFillBufferData(vertexCount, fillComponents, this.fillData ?? undefined);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.fillBuffer);
+      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, this.fillData);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+      this.needsFillUpload = false;
+    }
+
+    this.renderHandle.anim.timeMs = getSceneTimelineNow();
+    this.renderHandle.anim.origin.x = origin.x;
+    this.renderHandle.anim.origin.y = origin.y;
+    this.renderHandle.anim.rotation = rotation;
+
+    const dx = pos.x - this.prevPosX;
+    const dy = pos.y - this.prevPosY;
+    const moveLen = Math.sqrt(dx * dx + dy * dy);
+    if (moveLen > 0.01) {
+      this.renderHandle.anim.movementDir.x = dx / moveLen;
+      this.renderHandle.anim.movementDir.y = dy / moveLen;
+    }
+    this.prevPosX = pos.x;
+    this.prevPosY = pos.y;
+  }
+
+  protected override releaseResources(_gl: WebGL2RenderingContext): void {
+    if (this.renderHandle) {
+      polygonGpuRenderer.release(this.renderHandle);
+      this.renderHandle = null;
+    }
+    this.positionBuffer = null;
+    this.fillBuffer = null;
+    this.fillData = null;
+    this.needsFillUpload = true;
+  }
+}
 
 export const createPolygonGpuPrimitive = (
   instance: SceneObjectInstance,
@@ -59,6 +188,7 @@ export const createPolygonGpuPrimitive = (
   if (!options.vertices || options.vertices.length < 3) {
     return null;
   }
+
   const vertexCount = options.vertices.length;
   const packedVertices = buildPackedVertices(options.vertices);
   const geometry = computePolygonGeometry(options.vertices);
@@ -72,171 +202,33 @@ export const createPolygonGpuPrimitive = (
   center.x *= invCount;
   center.y *= invCount;
 
-  const fillScratch = new Float32Array(FILL_COMPONENTS);
-  let fillData: Float32Array | null = null;
-  let cachedFill: SceneFill = options.fill;
-  let prevInstanceFillRef: SceneFill | undefined =
-    typeof options.refreshFill === "function" ? instance.data.fill : undefined;
-
-  let gl: WebGL2RenderingContext | null = getAnimationGpuContext();
-  let positionBuffer: WebGLBuffer | null = null;
-  let fillBuffer: WebGLBuffer | null = null;
-  let renderHandle: PolygonGpuHandle | null = null;
-
-  let prevPosX = getInstanceRenderPosition(instance).x;
-  let prevPosY = getInstanceRenderPosition(instance).y;
-  let prevRotation = instance.data.rotation ?? 0;
-  let needsFillUpload = true;
-
-  // Pre-compute animation params from config (optional - static polygon if undefined)
+  // Pre-compute animation params from config
   const anim = options.anim;
   const hasAnim = !!anim;
-  const axis = anim?.axis ?? "normal";
-  const axisType = axis === "tangent" ? 1 : axis === "movement-tangent" ? 2 : axis === "movement-normal" ? 3 : 0;
+  const axisType = resolveAxisType(anim?.axis);
+  const isMovementAxis = axisType === 2 || axisType === 3;
   const animType = anim?.type === "pulse" ? 1 : 0;
-  const useVertexPhase = anim?.type === "sway" && axisType !== 2 ? 1 : 0;
+  const useVertexPhase = anim?.type === "sway" && !isMovementAxis ? 1 : 0;
   const amplitudePercent =
     hasAnim && typeof anim?.amplitudePercentage === "number" && Number.isFinite(anim.amplitudePercentage)
       ? anim.amplitudePercentage
       : -1;
 
-  const ensureResources = (): boolean => {
-    if (!gl) {
-      gl = getAnimationGpuContext();
-    }
-    if (!gl) {
-      return false;
-    }
-    
-    // Create position buffer with LOCAL vertices (animation done in vertex shader)
-    if (!positionBuffer) {
-      positionBuffer = gl.createBuffer();
-      if (!positionBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.STATIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    
-    if (!fillBuffer) {
-      fillBuffer = gl.createBuffer();
-      if (!fillBuffer) {
-        return false;
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    }
-    
-    polygonGpuRenderer.setContext(gl);
-    if (!renderHandle) {
-      renderHandle = polygonGpuRenderer.acquireHandle({
-        positionBuffer,
-        fillBuffer,
-        vertexCount,
-        center,
-      });
-      if (!renderHandle) {
-        return false;
-      }
-      // Initialize animation params (static polygon if no anim: amplitude = 0)
-      renderHandle.anim.periodMs = Math.max(anim?.periodMs ?? 1500, 1);
-      renderHandle.anim.phase = anim?.phase ?? 0;
-      renderHandle.anim.amplitude = hasAnim ? (anim?.amplitude ?? 6) : 0;
-      renderHandle.anim.amplitudePercent = hasAnim ? amplitudePercent : 0;
-      renderHandle.anim.phaseStep = options.phaseStep ?? 0.3;
-      renderHandle.anim.animType = animType;
-      renderHandle.anim.axisType = axisType;
-      renderHandle.anim.useVertexPhase = useVertexPhase;
-    }
-    return true;
+  const config: PolygonGpuPrimitiveConfig = {
+    vertexCount,
+    packedVertices,
+    geometry,
+    center,
+    anim,
+    hasAnim,
+    axisType,
+    animType,
+    useVertexPhase,
+    amplitudePercent,
+    options,
+    initialFillRef: typeof options.refreshFill === "function" ? instance.data.fill : undefined,
+    initialPos: getInstanceRenderPosition(instance),
   };
 
-  const primitive: DynamicPrimitive = {
-    get data() {
-      return new Float32Array(0);
-    },
-    autoAnimate: true,
-    update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !positionBuffer || !fillBuffer || !renderHandle) {
-        return null;
-      }
-
-      const pos = getInstanceRenderPosition(target);
-      const rotation = target.data.rotation ?? 0;
-      const origin = transformObjectPoint(pos, rotation, options.offset);
-
-      let fillRefChanged = false;
-      if (typeof options.refreshFill === "function") {
-        if (target.data.fill !== prevInstanceFillRef) {
-          prevInstanceFillRef = target.data.fill;
-          cachedFill = options.refreshFill(target);
-          fillRefChanged = true;
-        }
-      }
-
-      const fillCenter = transformObjectPoint(pos, rotation, {
-        x: (options.offset?.x ?? 0) + center.x,
-        y: (options.offset?.y ?? 0) + center.y,
-      });
-
-      if (needsFillUpload || fillRefChanged) {
-        const fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: cachedFill,
-          center: fillCenter,
-          rotation,
-          size: geometry.size,
-        });
-        fillData = buildFillBufferData(vertexCount, fillComponents, fillData ?? undefined);
-        gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, fillData);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        needsFillUpload = false;
-      }
-
-      // Update animation params (read by renderer in beforeRender)
-      renderHandle.anim.timeMs = getSceneTimelineNow();
-      renderHandle.anim.origin.x = origin.x;
-      renderHandle.anim.origin.y = origin.y;
-      renderHandle.anim.rotation = rotation;
-
-      // Track movement for movement-axis modes
-      const dx = pos.x - prevPosX;
-      const dy = pos.y - prevPosY;
-      const moveLen = Math.sqrt(dx * dx + dy * dy);
-      if (moveLen > 0.01) {
-        renderHandle.anim.movementDir.x = dx / moveLen;
-        renderHandle.anim.movementDir.y = dy / moveLen;
-      }
-      prevPosX = pos.x;
-      prevPosY = pos.y;
-      prevRotation = rotation;
-
-      return null;
-    },
-    dispose() {
-      if (!gl) {
-        return;
-      }
-      if (renderHandle) {
-        polygonGpuRenderer.releaseHandle(renderHandle);
-        renderHandle = null;
-      }
-      if (positionBuffer) {
-        gl.deleteBuffer(positionBuffer);
-        positionBuffer = null;
-      }
-      if (fillBuffer) {
-        gl.deleteBuffer(fillBuffer);
-        fillBuffer = null;
-      }
-    },
-  };
-
-  return primitive;
+  return new PolygonGpuPrimitive(config);
 };

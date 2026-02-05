@@ -305,9 +305,9 @@ export const addFireRingInstance = (
   }
 
   // Acquire slot and update
-  const handle = fireRingGpuRenderer.acquireSlot(undefined);
+  const handle = fireRingGpuRenderer.acquire(undefined);
   if (handle) {
-    fireRingGpuRenderer.updateSlot(handle, instance);
+    fireRingGpuRenderer.update(handle, instance);
   }
 };
 

@@ -292,9 +292,8 @@ export const createDynamicCirclePrimitive = (
     0
   );
   
-  // For refreshFill: cache the resolved fill and track instance.data.fill reference
+  // For refreshFill: cache the resolved fill
   let cachedFill: SceneFill = resolveFill(options, instance);
-  let prevInstanceFillRef: SceneFill | undefined = hasRefreshFill ? instance.data.fill : undefined;
   
   const initialFillComponents = createFillVertexComponents({
     fill: cachedFill,
@@ -335,12 +334,11 @@ export const createDynamicCirclePrimitive = (
       const nextOffsetX = nextOffset?.x ?? 0;
       const nextOffsetY = nextOffset?.y ?? 0;
       
-      // Check if instance.data.fill reference changed (visual effect applied)
-      let fillRefChanged = false;
-      if (hasRefreshFill && target.data.fill !== prevInstanceFillRef) {
-        prevInstanceFillRef = target.data.fill;
+      // Check dirty flags for fill/color changes (visual effects)
+      let fillDirty = false;
+      if (hasRefreshFill && (target.data.fillDirty || target.data.colorDirty)) {
         cachedFill = options.refreshFill!(target);
-        fillRefChanged = true;
+        fillDirty = true;
       }
       
       // Fast path: skip expensive computations if nothing changed
@@ -362,10 +360,10 @@ export const createDynamicCirclePrimitive = (
       // Skip fill computation for solid fills (color doesn't depend on position)
       // For non-solid fills, use cachedFill (already resolved) instead of calling resolveFill again
       let fillComponents: Float32Array;
-      if (isSolidFill && !fillRefChanged) {
+      if (isSolidFill && !fillDirty) {
         fillComponents = fillScratch; // Reuse cached solid fill
       } else {
-        // Use cachedFill - it's already been resolved (either initially or via refreshFill)
+        // Use cachedFill - it's already been resolved (either initially or via dirty flag)
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: nextCenter,

@@ -23,6 +23,7 @@ import {
   resolveStrokeColor,
   sanitizeCompositeLayer,
 } from "./composite-helpers";
+import type { EnemyRendererLayerFill } from "./composite-helpers";
 import { getNowMs } from "@shared/helpers/time.helper";
 import {
   mergeLayerAnchors,
@@ -35,6 +36,7 @@ import {
   createSpineAnchorGpuPrimitive,
   getGpuAnchorIndex,
 } from "../../shared/anchors-gpu";
+import { FillResolver } from "../../shared/fill-resolver";
 import {
   createPolygonAnimSampler,
   createSpineSwaySampler,
@@ -59,6 +61,9 @@ export const createCompositePrimitives = (
   dynamicPrimitives: DynamicPrimitive[]
 ): void => {
   const emptyData = new Float32Array(0);
+  const fillResolver = new FillResolver<EnemyRendererLayerFill>((inst, layerFill) =>
+    resolveLayerFill(inst, layerFill, renderer)
+  );
   const normalizeGroupId = (groupId: string | undefined): string => groupId ?? "default";
   const gpuJoinAvailable = isAnimationGpuAvailable();
   const supportsGpuJoin = (layer: { shape?: string }): boolean =>
@@ -132,10 +137,10 @@ export const createCompositePrimitives = (
       if (layer.join && canUseGpuJoin) {
         const fillPrimitive = createJoinedPolygonGpuPrimitive(instance, {
           vertices: layer.vertices,
-          fill: resolveLayerFill(instance, layer.fill, renderer),
+          fill: fillResolver.resolve(instance, layer.fill),
           anchorIndex,
           joinOffset: joinOffsetForGpu,
-          refreshFill: (inst) => resolveLayerFill(inst, layer.fill, renderer),
+          refreshFill: (inst) => fillResolver.resolve(inst, layer.fill),
         });
         let strokeGpuPrimitive: DynamicPrimitive | null = null;
         if (layer.stroke) {
@@ -245,7 +250,7 @@ export const createCompositePrimitives = (
             })
           );
         }
-        const tentacleFill = resolveLayerFill(instance, layer.fill, renderer);
+        const tentacleFill = fillResolver.resolve(instance, layer.fill);
         dynamicPrimitives.push(
           createDynamicPolygonPrimitive(instance, {
             getVertices: sampleVertices,
@@ -308,7 +313,7 @@ export const createCompositePrimitives = (
             })
           );
         }
-        const animatedLayerFill = resolveLayerFill(instance, layer.fill, renderer);
+        const animatedLayerFill = fillResolver.resolve(instance, layer.fill);
         if (executionMode === "gpu") {
           const gpuPrimitive = createPolygonGpuPrimitive(instance, {
             vertices: baseVertices,
@@ -396,7 +401,7 @@ export const createCompositePrimitives = (
             })
           );
         }
-        const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+        const cachedFill = fillResolver.resolve(instance, layer.fill);
         const anchorConfigs = collectAnchors(layer);
         if (anchorConfigs.length > 0 && needsCpuAnchors) {
           const resolved = resolveLayerAnchors({
@@ -448,10 +453,10 @@ export const createCompositePrimitives = (
         const fillPrimitive = createJoinedCircleGpuPrimitive(instance, {
           radius: layer.radius!,
           segments: layer.segments,
-          fill: resolveLayerFill(instance, layer.fill, renderer),
+          fill: fillResolver.resolve(instance, layer.fill),
           anchorIndex,
           joinOffset: joinOffsetForGpu,
-          refreshFill: (inst) => resolveLayerFill(inst, layer.fill, renderer),
+          refreshFill: (inst) => fillResolver.resolve(inst, layer.fill),
         });
         let strokeGpuPrimitive: DynamicPrimitive | null = null;
         if (layer.stroke) {
@@ -516,7 +521,7 @@ export const createCompositePrimitives = (
         }
         dynamicPrimitives.push(strokePrimitive);
       }
-      const cachedFill = resolveLayerFill(instance, layer.fill, renderer);
+      const cachedFill = fillResolver.resolve(instance, layer.fill);
       const circlePrimitive = createDynamicCirclePrimitive(instance, {
         segments: layer.segments,
         offset: staticOffset,

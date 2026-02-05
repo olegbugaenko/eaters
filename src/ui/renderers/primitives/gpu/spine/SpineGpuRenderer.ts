@@ -1,6 +1,7 @@
 import type { SceneCameraState, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
 import { TO_CLIP_GLSL } from "@ui/renderers/shaders/common.glsl";
+import type { SpineAnimParams } from "@ui/renderers/primitives/core/animation.types";
 
 // Maximum spine points supported (each point = x, y, width, axisX, axisY, falloff)
 const MAX_SPINE_POINTS = 8;
@@ -16,14 +17,8 @@ const TEXELS_PER_SPINE = SPINE_DATA_FLOATS / 4; // 16 texels per spine
 const SPINE_TEX_WIDTH = TEXELS_PER_SPINE; // 16
 const SPINE_TEX_HEIGHT = MAX_INSTANCES; // 2048
 
-export type SpineAnimationParams = {
-  timeMs: number;
-  periodMs: number;
-  phase: number;
-  amplitude: number;
-  origin: SceneVector2;
-  rotation: number;
-};
+/** @deprecated Use SpineAnimParams from animation.types.ts */
+export type SpineAnimationParams = SpineAnimParams;
 
 export type SpineGpuHandle = {
   slotIndex: number;
@@ -222,7 +217,7 @@ class SpineGpuRenderer {
     if (this.gl === gl) {
       return;
     }
-    console.log("[SpineGpuRenderer] DIFFERENT GL - disposing! activeCount was:", this.activeCount);
+    // console.log("[SpineGpuRenderer] DIFFERENT GL - disposing! activeCount was:", this.activeCount);
     this.dispose();
     this.gl = gl;
     if (!gl) {
@@ -310,7 +305,7 @@ class SpineGpuRenderer {
     epsilon: number;
     winding: "CW" | "CCW";
   }): SpineGpuHandle | null {
-    console.log("[SpineGpuRenderer] acquireHandle called, freeSlots:", this.freeSlots.length, "activeCount before:", this.activeCount);
+    // console.log("[SpineGpuRenderer] acquireHandle called, freeSlots:", this.freeSlots.length, "activeCount before:", this.activeCount);
     if (!this.gl || this.freeSlots.length === 0) {
       console.warn("[SpineGpuRenderer] acquireHandle FAILED - no gl or no free slots");
       return null;
@@ -412,9 +407,22 @@ class SpineGpuRenderer {
     
     this.handles[slotIndex] = handle;
     this.activeCount++;
-    console.log("[SpineGpuRenderer] acquireHandle SUCCESS - slot:", slotIndex, "activeCount now:", this.activeCount);
+    // console.log("[SpineGpuRenderer] acquireHandle SUCCESS - slot:", slotIndex, "activeCount now:", this.activeCount);
     
     return handle;
+  }
+
+  /**
+   * Unified acquire API (alias for acquireHandle).
+   */
+  public acquire(options: {
+    spinePoints: Array<{ x: number; y: number; width: number }>;
+    axis: "normal" | "tangent";
+    falloff: "tip" | "root" | "none";
+    epsilon: number;
+    winding: "CW" | "CCW";
+  }): SpineGpuHandle | null {
+    return this.acquireHandle(options);
   }
   
   public isHandleValid(handle: SpineGpuHandle): boolean {
@@ -427,6 +435,13 @@ class SpineGpuRenderer {
     handle.fillColor.b = color.b;
     handle.fillColor.a = color.a;
     handle.fillDirty = true;
+  }
+
+  /**
+   * Unified update API (alias for updateHandleFill).
+   */
+  public update(handle: SpineGpuHandle, color: { r: number; g: number; b: number; a: number }): void {
+    this.updateHandleFill(handle, color);
   }
 
   public releaseHandle(handle: SpineGpuHandle): void {
@@ -446,6 +461,13 @@ class SpineGpuRenderer {
     this.freeSlots.push(handle.slotIndex);
     delete this.handles[handle.slotIndex];
     this.activeCount--;
+  }
+
+  /**
+   * Unified release API (alias for releaseHandle).
+   */
+  public release(handle: SpineGpuHandle): void {
+    this.releaseHandle(handle);
   }
   
   private beforeRender(): void {

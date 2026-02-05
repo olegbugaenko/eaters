@@ -15,7 +15,7 @@ import {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { cloneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 
 interface ManagedObject {

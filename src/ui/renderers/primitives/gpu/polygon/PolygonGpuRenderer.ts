@@ -23,6 +23,7 @@ import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistr
 import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 import { loadSpriteTexture } from "@ui/renderers/primitives/basic/SpritePrimitive";
 import type { RendererLayerAnimationConfig } from "@shared/types/renderer.types";
+import type { PolygonAnimParams } from "@ui/renderers/primitives/core/animation.types";
 
 interface AttributeConfig {
   location: number;
@@ -30,21 +31,8 @@ interface AttributeConfig {
   offset: number;
 }
 
-export type PolygonAnimationParams = {
-  timeMs: number;
-  periodMs: number;
-  phase: number;
-  amplitude: number;
-  amplitudePercent: number;
-  phaseStep: number;
-  animType: number; // 0 = sway, 1 = pulse
-  axisType: number; // 0 = normal, 1 = tangent, 2 = movement
-  useVertexPhase: number;
-  center: SceneVector2;
-  origin: SceneVector2;
-  rotation: number;
-  movementDir: SceneVector2; // normalized movement direction
-};
+/** @deprecated Use PolygonAnimParams from animation.types.ts */
+export type PolygonAnimationParams = PolygonAnimParams;
 
 export type PolygonGpuHandle = {
   vao: WebGLVertexArrayObject;
@@ -127,10 +115,50 @@ void main() {
 
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_worldPosition = worldPos;
-  v_uv = a_fillParams0.xy;
+  
+  // Transform fill params from local to world coordinates
+  float fillType = a_fillInfo.x;
+  vec4 fillParams0 = a_fillParams0;
+  vec4 fillParams1 = a_fillParams1;
+  
+  if (fillType > 0.5 && fillType < 1.5) {
+    // LINEAR_GRADIENT: transform start/end from local to world
+    vec2 startLocal = a_fillParams0.xy;
+    vec2 endLocal = a_fillParams0.zw;
+    vec2 startWorld = u_origin + vec2(
+      startLocal.x * cosR - startLocal.y * sinR,
+      startLocal.x * sinR + startLocal.y * cosR
+    );
+    vec2 endWorld = u_origin + vec2(
+      endLocal.x * cosR - endLocal.y * sinR,
+      endLocal.x * sinR + endLocal.y * cosR
+    );
+    vec2 dir = endWorld - startWorld;
+    float lenSq = dot(dir, dir);
+    fillParams0 = vec4(startWorld, endWorld);
+    fillParams1 = vec4(dir, lenSq > 0.0 ? 1.0 / lenSq : 0.0, fillParams1.w);
+  } else if (fillType > 1.5 && fillType < 3.5) {
+    // RADIAL_GRADIENT or DIAMOND_GRADIENT: transform center from local to world
+    vec2 centerLocal = a_fillParams0.xy;
+    vec2 centerWorld = u_origin + vec2(
+      centerLocal.x * cosR - centerLocal.y * sinR,
+      centerLocal.x * sinR + centerLocal.y * cosR
+    );
+    fillParams0.xy = centerWorld;
+  } else if (fillType < 0.5) {
+    // SOLID: transform center (used for noise anchor)
+    vec2 centerLocal = a_fillParams0.xy;
+    vec2 centerWorld = u_origin + vec2(
+      centerLocal.x * cosR - centerLocal.y * sinR,
+      centerLocal.x * sinR + centerLocal.y * cosR
+    );
+    fillParams0.xy = centerWorld;
+  }
+  
+  v_uv = fillParams0.xy;
   v_fillInfo = a_fillInfo;
-  v_fillParams0 = a_fillParams0;
-  v_fillParams1 = a_fillParams1;
+  v_fillParams0 = fillParams0;
+  v_fillParams1 = fillParams1;
   v_filaments0 = a_filaments0;
   v_filamentEdgeBlur = a_filamentEdgeBlur;
   v_stopOffsets = a_stopOffsets;
@@ -281,8 +309,27 @@ class PolygonGpuRenderer {
     return handle;
   }
 
+  /**
+   * Unified acquire API (alias for acquireHandle).
+   */
+  public acquire(options: {
+    positionBuffer: WebGLBuffer;
+    fillBuffer: WebGLBuffer;
+    vertexCount: number;
+    center: SceneVector2;
+  }): PolygonGpuHandle | null {
+    return this.acquireHandle(options);
+  }
+
   public updateHandle(handle: PolygonGpuHandle, vertexCount: number): void {
     handle.vertexCount = vertexCount;
+  }
+
+  /**
+   * Unified update API (alias for updateHandle).
+   */
+  public update(handle: PolygonGpuHandle, vertexCount: number): void {
+    this.updateHandle(handle, vertexCount);
   }
 
   public releaseHandle(handle: PolygonGpuHandle): void {
@@ -293,6 +340,13 @@ class PolygonGpuRenderer {
       this.handles.delete(handle);
     }
     this.gl.deleteVertexArray(handle.vao);
+  }
+
+  /**
+   * Unified release API (alias for releaseHandle).
+   */
+  public release(handle: PolygonGpuHandle): void {
+    this.releaseHandle(handle);
   }
 
   public render(gl: WebGL2RenderingContext, cameraState: SceneCameraState): void {

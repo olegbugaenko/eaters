@@ -484,9 +484,8 @@ export const createDynamicPolygonPrimitive = (
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   
-  // Cache the resolved fill and track instance.data.fill reference for refreshFill
+  // Cache the resolved fill for refreshFill
   let cachedFill: SceneFill = resolveFill(options, instance);
-  let prevInstanceFillRef: SceneFill | undefined = hasRefreshFill ? instance.data.fill : undefined;
   
   let fillComponents = writeFillVertexComponents(fillScratch, {
     fill: cachedFill,
@@ -548,18 +547,16 @@ export const createDynamicPolygonPrimitive = (
       
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
       // Reuse a single scratch buffer to avoid per-frame allocations
-      // Check if fill reference changed (visual effect applied)
-      let fillRefChanged = false;
+      // Check dirty flags for fill/color changes (visual effects)
+      let fillDirty = false;
       if (hasRefreshFill) {
-        const fillChanged = target.data.fill !== prevInstanceFillRef;
-        if (fillChanged) {
-          prevInstanceFillRef = target.data.fill;
+        if (target.data.fillDirty || target.data.colorDirty) {
           cachedFill = options.refreshFill!(target);
-          fillRefChanged = true;
+          fillDirty = true;
         }
       }
       
-      // Skip resolveFill for static fill (unless refreshFill triggered)
+      // Skip resolveFill for static fill (unless dirty flag triggered)
       if (!isStaticFill) {
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: resolveFill(options, target),
@@ -567,8 +564,8 @@ export const createDynamicPolygonPrimitive = (
           rotation,
           size: geometry.size,
         });
-      } else if (fillRefChanged) {
-        // refreshFill was triggered - use the newly cached fill
+      } else if (fillDirty) {
+        // dirty flag triggered - use the newly cached fill
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: fillCenter,

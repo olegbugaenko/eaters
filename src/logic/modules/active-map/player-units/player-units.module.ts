@@ -35,7 +35,7 @@ import {
   vectorLength,
   vectorHasLength,
 } from "../../../../shared/helpers/vector.helper";
-import { cloneSceneColor, sceneColorsEqual } from "@shared/helpers/scene-color.helper";
+import { cloneSceneColor, sceneColorsEqual } from "@shared/helpers/scene-style.helper";
 import { roundStat, sanitizeNumber } from "../../../../shared/helpers/numbers.helper";
 import { UnitStateFactory, UnitStateInput } from "./player-units.state-factory";
 import {
@@ -411,6 +411,11 @@ export class PlayerUnitsModule implements GameModule {
     const state = this.createUnitState(unit);
     this.units.set(state.id, state);
     this.unitOrder.push(state);
+    this.statusEffects.ensureInternalFurnace(
+      state.id,
+      state.attackStackBonusPerHit,
+      state.attackStackBonusCap,
+    );
     this.pushStats();
   }
 
@@ -464,6 +469,11 @@ export class PlayerUnitsModule implements GameModule {
       const state = this.createUnitState(unit);
       this.units.set(state.id, state);
       this.unitOrder.push(state);
+      this.statusEffects.ensureInternalFurnace(
+        state.id,
+        state.attackStackBonusPerHit,
+        state.attackStackBonusCap,
+      );
     });
 
     this.abilities.resetRun();
@@ -529,11 +539,6 @@ export class PlayerUnitsModule implements GameModule {
     };
 
     const state = this.unitStateFactory.createWithTransform(input);
-    this.statusEffects.ensureInternalFurnace(
-      state.id,
-      state.attackStackBonusPerHit,
-      state.attackStackBonusCap,
-    );
     return state;
   }
 

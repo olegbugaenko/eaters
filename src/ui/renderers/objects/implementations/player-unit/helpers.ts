@@ -7,8 +7,8 @@ import type {
   SceneSolidFill,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
-import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
+import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import type {
