@@ -17,6 +17,7 @@ export {
   createDynamicPolygonStrokePrimitive,
 } from "./basic/PolygonPrimitive";
 export { createPolygonGpuPrimitive } from "./PolygonGpuPrimitive";
+export { createSpineGpuPrimitive } from "./SpineGpuPrimitive";
 export {
   createJoinedPolygonGpuPrimitive,
   createJoinedCircleGpuPrimitive,

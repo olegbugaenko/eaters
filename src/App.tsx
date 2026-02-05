@@ -6,9 +6,11 @@ import { SaveSlotSelectScreen } from "./ui/screens/SaveSlotSelect/SaveSlotSelect
 import { VoidCampScreen } from "@screens/VoidCamp/VoidCampScreen";
 import { CampTabKey } from "@screens/VoidCamp/components/CampContent/CampContent";
 import { SceneScreen } from "./ui/screens/Scene/SceneScreen";
+import { StressTestScreen } from "./ui/screens/StressTest/StressTestScreen";
 import { SceneTutorialConfig } from "./ui/screens/Scene/components/overlay/SceneTutorialOverlay";
 import { SaveSlotSummary } from "@core/logic/provided/services/save-manager/SaveManager";
 import { readStoredAudioSettings } from "@logic/utils/audioSettings";
+import { isStressTestBuild } from "@shared/helpers/stresstest.helper";
 
 type Screen = "save-select" | "void-camp" | "scene";
 
@@ -19,13 +21,16 @@ function App(): JSX.Element {
   const [voidCampTab, setVoidCampTab] = useState<CampTabKey>("maps");
   const [slotSummaries, setSlotSummaries] = useState<Record<string, SaveSlotSummary>>({});
   const [sceneTutorial, setSceneTutorial] = useState<SceneTutorialConfig | null>(null);
+  const isStressTest = useMemo(() => isStressTestBuild(), []);
 
   const app = useMemo(() => new Application(), []);
   const uiApi = app.uiApi;
 
   useEffect(() => {
-    app.initialize();
-  }, [app]);
+    if (!isStressTest) {
+      app.initialize();
+    }
+  }, [app, isStressTest]);
 
   const refreshSlotSummaries = useCallback(() => {
     const entries: Record<string, SaveSlotSummary> = {};
@@ -36,8 +41,10 @@ function App(): JSX.Element {
   }, [uiApi]);
 
   useEffect(() => {
-    refreshSlotSummaries();
-  }, [refreshSlotSummaries]);
+    if (!isStressTest) {
+      refreshSlotSummaries();
+    }
+  }, [isStressTest, refreshSlotSummaries]);
 
   const handleSlotDelete = useCallback(
     (slot: string) => {
@@ -84,7 +91,8 @@ function App(): JSX.Element {
   return (
     <AppLogicContext.Provider value={appLogicValue}>
       <div className="app-root">
-        {screen === "save-select" && (
+        {isStressTest && <StressTestScreen />}
+        {!isStressTest && screen === "save-select" && (
           <SaveSlotSelectScreen
             slots={SAVE_SLOTS.map((slot) => ({
               id: slot,
@@ -96,7 +104,7 @@ function App(): JSX.Element {
             onSlotDelete={handleSlotDelete}
           />
         )}
-        {screen === "void-camp" && (
+        {!isStressTest && screen === "void-camp" && (
           <VoidCampScreen
             onStart={() => {
               uiApi.audio.playPlaylist("map");
@@ -111,7 +119,7 @@ function App(): JSX.Element {
             onTabChange={setVoidCampTab}
           />
         )}
-        {screen === "scene" && (
+        {!isStressTest && screen === "scene" && (
           <SceneScreen
             tutorial={sceneTutorial}
             onTutorialComplete={() => {

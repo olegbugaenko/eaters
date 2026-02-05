@@ -1,9 +1,10 @@
-import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { SceneCameraState, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
 import {
-  SCENE_VERTEX_SHADER,
+  SCENE_VERTEX_SHADER_HEADER,
   createSceneFragmentShader,
 } from "@ui/renderers/shaders/fillEffects.glsl";
+import { TO_CLIP_GLSL } from "@ui/renderers/shaders/common.glsl";
 import {
   POSITION_COMPONENTS,
   FILL_COMPONENTS,
@@ -21,6 +22,7 @@ import {
 import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistry";
 import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 import { loadSpriteTexture } from "@ui/renderers/primitives/basic/SpritePrimitive";
+import type { RendererLayerAnimationConfig } from "@shared/types/renderer.types";
 
 interface AttributeConfig {
   location: number;
@@ -28,12 +30,118 @@ interface AttributeConfig {
   offset: number;
 }
 
+export type PolygonAnimationParams = {
+  timeMs: number;
+  periodMs: number;
+  phase: number;
+  amplitude: number;
+  amplitudePercent: number;
+  phaseStep: number;
+  animType: number; // 0 = sway, 1 = pulse
+  axisType: number; // 0 = normal, 1 = tangent, 2 = movement
+  useVertexPhase: number;
+  center: SceneVector2;
+  origin: SceneVector2;
+  rotation: number;
+  movementDir: SceneVector2; // normalized movement direction
+};
+
 export type PolygonGpuHandle = {
   vao: WebGLVertexArrayObject;
-  outputBuffer: WebGLBuffer;
+  positionBuffer: WebGLBuffer; // Now stores LOCAL vertices (not TF output)
   fillBuffer: WebGLBuffer;
   vertexCount: number;
+  // Animation parameters (updated each frame)
+  anim: PolygonAnimationParams;
 };
+
+// Vertex shader with animation built-in (no Transform Feedback needed)
+const ANIMATED_VERTEX_SHADER = `${SCENE_VERTEX_SHADER_HEADER}
+// Animation uniforms
+uniform float u_timeMs;
+uniform float u_periodMs;
+uniform float u_phase;
+uniform float u_amplitude;
+uniform float u_amplitudePercent;
+uniform float u_phaseStep;
+uniform int u_animType; // 0 sway, 1 pulse
+uniform int u_axisType; // 0 normal, 1 tangent, 2 movement
+uniform int u_useVertexPhase;
+uniform vec2 u_center;
+uniform vec2 u_origin;
+uniform float u_rotation;
+uniform vec2 u_movementDir;
+
+vec2 resolveNormal(vec2 pos, vec2 center) {
+  vec2 d = pos - center;
+  float len = length(d);
+  if (len < 1e-6) {
+    return vec2(0.0, 0.0);
+  }
+  return d / len;
+}
+
+${TO_CLIP_GLSL}
+
+void main() {
+  // Animation calculation (moved from Transform Feedback)
+  vec2 basePos = a_position;
+  float omega = 6.28318530718 / max(u_periodMs, 1.0);
+  float baseAngle = omega * u_timeMs + u_phase;
+  float phaseOffset = (u_useVertexPhase == 1) ? (u_phaseStep * float(gl_VertexID)) : 0.0;
+  float angle = baseAngle + phaseOffset;
+  float s = sin(angle);
+
+  vec2 offset;
+  if (u_axisType == 2 || u_axisType == 3) {
+    // Movement-based axis - vertices on opposite sides move in opposite directions (squeeze/expand)
+    // axisType 2 = movement-tangent: movePerp = {0, 1} (perpendicular to movement in local coords)
+    // axisType 3 = movement-normal: movePerp = {-1, 0} (along movement in local coords)
+    vec2 movePerp = (u_axisType == 2) ? vec2(0.0, 1.0) : vec2(-1.0, 0.0);
+    float signedDist = dot(basePos - u_center, movePerp);
+    float mag = u_amplitudePercent > 0.0 ? abs(signedDist) * u_amplitudePercent : u_amplitude;
+    float moveToward = signedDist > 0.0 ? -1.0 : (signedDist < 0.0 ? 1.0 : 0.0);
+    offset = movePerp * (mag * s * moveToward);
+  } else {
+    vec2 normal = resolveNormal(basePos, u_center);
+    vec2 axis = (u_axisType == 1) ? vec2(-normal.y, normal.x) : normal;
+    float magnitude = u_amplitude;
+    if (u_amplitudePercent > 0.0) {
+      float radius = length(basePos - u_center);
+      magnitude = radius * u_amplitudePercent;
+    }
+    offset = axis * (magnitude * s);
+  }
+  vec2 localPos = basePos + offset;
+  
+  // Apply rotation
+  float cosR = cos(u_rotation);
+  float sinR = sin(u_rotation);
+  vec2 rotated = vec2(
+    localPos.x * cosR - localPos.y * sinR,
+    localPos.x * sinR + localPos.y * cosR
+  );
+  
+  // Transform to world space
+  vec2 worldPos = u_origin + rotated;
+
+  gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
+  v_worldPosition = worldPos;
+  v_uv = a_fillParams0.xy;
+  v_fillInfo = a_fillInfo;
+  v_fillParams0 = a_fillParams0;
+  v_fillParams1 = a_fillParams1;
+  v_filaments0 = a_filaments0;
+  v_filamentEdgeBlur = a_filamentEdgeBlur;
+  v_stopOffsets = a_stopOffsets;
+  v_stopColor0 = a_stopColor0;
+  v_stopColor1 = a_stopColor1;
+  v_stopColor2 = a_stopColor2;
+  v_crackUv = a_crackUv;
+  v_crackMask = a_crackMask;
+  v_crackEffects = a_crackEffects;
+}
+`;
 
 const FRAGMENT_SHADER = createSceneFragmentShader();
 
@@ -52,6 +160,20 @@ class PolygonGpuRenderer {
   private crackAtlasIndexLocation: WebGLUniformLocation | null = null;
   private crackAtlasGridLocation: WebGLUniformLocation | null = null;
   private crackAtlasSamplerLocation: WebGLUniformLocation | null = null;
+  // Animation uniform locations
+  private timeMsLocation: WebGLUniformLocation | null = null;
+  private periodMsLocation: WebGLUniformLocation | null = null;
+  private phaseLocation: WebGLUniformLocation | null = null;
+  private amplitudeLocation: WebGLUniformLocation | null = null;
+  private amplitudePercentLocation: WebGLUniformLocation | null = null;
+  private phaseStepLocation: WebGLUniformLocation | null = null;
+  private animTypeLocation: WebGLUniformLocation | null = null;
+  private axisTypeLocation: WebGLUniformLocation | null = null;
+  private useVertexPhaseLocation: WebGLUniformLocation | null = null;
+  private centerLocation: WebGLUniformLocation | null = null;
+  private originLocation: WebGLUniformLocation | null = null;
+  private rotationLocation: WebGLUniformLocation | null = null;
+  private movementDirLocation: WebGLUniformLocation | null = null;
 
   public setContext(gl: WebGL2RenderingContext | null): void {
     if (this.gl === gl) {
@@ -63,7 +185,7 @@ class PolygonGpuRenderer {
       return;
     }
 
-    this.vertexShader = compileShader(gl, gl.VERTEX_SHADER, SCENE_VERTEX_SHADER);
+    this.vertexShader = compileShader(gl, gl.VERTEX_SHADER, ANIMATED_VERTEX_SHADER);
     this.fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
     this.program = linkProgram(gl, this.vertexShader, this.fragmentShader);
 
@@ -81,12 +203,28 @@ class PolygonGpuRenderer {
     this.crackAtlasIndexLocation = gl.getUniformLocation(this.program, "u_crackAtlasIndex");
     this.crackAtlasGridLocation = gl.getUniformLocation(this.program, "u_crackAtlasGrid");
     this.crackAtlasSamplerLocation = gl.getUniformLocation(this.program, "u_cracksAtlas");
+    
+    // Animation uniforms
+    this.timeMsLocation = gl.getUniformLocation(this.program, "u_timeMs");
+    this.periodMsLocation = gl.getUniformLocation(this.program, "u_periodMs");
+    this.phaseLocation = gl.getUniformLocation(this.program, "u_phase");
+    this.amplitudeLocation = gl.getUniformLocation(this.program, "u_amplitude");
+    this.amplitudePercentLocation = gl.getUniformLocation(this.program, "u_amplitudePercent");
+    this.phaseStepLocation = gl.getUniformLocation(this.program, "u_phaseStep");
+    this.animTypeLocation = gl.getUniformLocation(this.program, "u_animType");
+    this.axisTypeLocation = gl.getUniformLocation(this.program, "u_axisType");
+    this.useVertexPhaseLocation = gl.getUniformLocation(this.program, "u_useVertexPhase");
+    this.centerLocation = gl.getUniformLocation(this.program, "u_center");
+    this.originLocation = gl.getUniformLocation(this.program, "u_origin");
+    this.rotationLocation = gl.getUniformLocation(this.program, "u_rotation");
+    this.movementDirLocation = gl.getUniformLocation(this.program, "u_movementDir");
   }
 
   public acquireHandle(options: {
-    outputBuffer: WebGLBuffer;
+    positionBuffer: WebGLBuffer;
     fillBuffer: WebGLBuffer;
     vertexCount: number;
+    center: SceneVector2;
   }): PolygonGpuHandle | null {
     const gl = this.gl;
     if (!gl || !this.program) {
@@ -98,7 +236,7 @@ class PolygonGpuRenderer {
     }
     gl.bindVertexArray(vao);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, options.outputBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, options.positionBuffer);
     gl.enableVertexAttribArray(this.positionLocation);
     gl.vertexAttribPointer(
       this.positionLocation,
@@ -120,9 +258,24 @@ class PolygonGpuRenderer {
 
     const handle: PolygonGpuHandle = {
       vao,
-      outputBuffer: options.outputBuffer,
+      positionBuffer: options.positionBuffer,
       fillBuffer: options.fillBuffer,
       vertexCount: options.vertexCount,
+      anim: {
+        timeMs: 0,
+        periodMs: 1500,
+        phase: 0,
+        amplitude: 6,
+        amplitudePercent: -1,
+        phaseStep: 0.3,
+        animType: 0,
+        axisType: 0,
+        useVertexPhase: 1,
+        center: { x: options.center.x, y: options.center.y },
+        origin: { x: 0, y: 0 },
+        rotation: 0,
+        movementDir: { x: 0, y: 1 },
+      },
     };
     this.handles.add(handle);
     return handle;
@@ -232,6 +385,49 @@ class PolygonGpuRenderer {
       if (handle.vertexCount < 3) {
         return;
       }
+      
+      // Set animation uniforms for this handle
+      const anim = handle.anim;
+      if (this.timeMsLocation !== null) {
+        gl.uniform1f(this.timeMsLocation, anim.timeMs);
+      }
+      if (this.periodMsLocation !== null) {
+        gl.uniform1f(this.periodMsLocation, anim.periodMs);
+      }
+      if (this.phaseLocation !== null) {
+        gl.uniform1f(this.phaseLocation, anim.phase);
+      }
+      if (this.amplitudeLocation !== null) {
+        gl.uniform1f(this.amplitudeLocation, anim.amplitude);
+      }
+      if (this.amplitudePercentLocation !== null) {
+        gl.uniform1f(this.amplitudePercentLocation, anim.amplitudePercent);
+      }
+      if (this.phaseStepLocation !== null) {
+        gl.uniform1f(this.phaseStepLocation, anim.phaseStep);
+      }
+      if (this.animTypeLocation !== null) {
+        gl.uniform1i(this.animTypeLocation, anim.animType);
+      }
+      if (this.axisTypeLocation !== null) {
+        gl.uniform1i(this.axisTypeLocation, anim.axisType);
+      }
+      if (this.useVertexPhaseLocation !== null) {
+        gl.uniform1i(this.useVertexPhaseLocation, anim.useVertexPhase);
+      }
+      if (this.centerLocation !== null) {
+        gl.uniform2f(this.centerLocation, anim.center.x, anim.center.y);
+      }
+      if (this.originLocation !== null) {
+        gl.uniform2f(this.originLocation, anim.origin.x, anim.origin.y);
+      }
+      if (this.rotationLocation !== null) {
+        gl.uniform1f(this.rotationLocation, anim.rotation);
+      }
+      if (this.movementDirLocation !== null) {
+        gl.uniform2f(this.movementDirLocation, anim.movementDir.x, anim.movementDir.y);
+      }
+      
       gl.bindVertexArray(handle.vao);
       gl.drawArrays(gl.TRIANGLE_FAN, 0, handle.vertexCount);
     });

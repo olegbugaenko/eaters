@@ -17,6 +17,13 @@ export interface DebugStats {
   joinedDrawCalls: number;
   joinedRenderMs: number;
   joinedUploadMs: number;
+  unitCount: number;
+  jointCount: number;
+  jointGpuCount: number;
+  jointCpuCount: number;
+  animationCount: number;
+  animationGpuCount: number;
+  animationCpuCount: number;
   // FPS tracking - updated by render loop
   frameCount: number;
   lastFpsUpdate: number;
@@ -35,6 +42,13 @@ export const debugStats: DebugStats = {
   joinedDrawCalls: 0,
   joinedRenderMs: 0,
   joinedUploadMs: 0,
+  unitCount: 0,
+  jointCount: 0,
+  jointGpuCount: 0,
+  jointCpuCount: 0,
+  animationCount: 0,
+  animationGpuCount: 0,
+  animationCpuCount: 0,
   frameCount: 0,
   lastFpsUpdate: 0,
   currentFps: 0,
@@ -72,6 +86,30 @@ export const updateJoinedStats = (stats: {
   debugStats.joinedDrawCalls = stats.drawCalls;
   debugStats.joinedRenderMs = stats.renderMs;
   debugStats.joinedUploadMs = stats.uploadMs;
+};
+
+export const updateUnitStats = (count: number): void => {
+  debugStats.unitCount = count;
+};
+
+export const updateJointStats = (stats: {
+  total: number;
+  gpu: number;
+  cpu: number;
+}): void => {
+  debugStats.jointCount = stats.total;
+  debugStats.jointGpuCount = stats.gpu;
+  debugStats.jointCpuCount = stats.cpu;
+};
+
+export const updateAnimationStats = (stats: {
+  total: number;
+  gpu: number;
+  cpu: number;
+}): void => {
+  debugStats.animationCount = stats.total;
+  debugStats.animationGpuCount = stats.gpu;
+  debugStats.animationCpuCount = stats.cpu;
 };
 
 /** 

@@ -485,18 +485,17 @@ export const createJoinedPolygonStrokeGpuPrimitive = (
         return null;
       }
 
-      let strokeChanged = false;
+      let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
         if (target.data.stroke !== prevInstanceStrokeRef) {
           prevInstanceStrokeRef = target.data.stroke;
           const nextStroke = options.refreshStroke(target);
           if (nextStroke.width !== cachedStroke.width) {
-            cachedStroke = nextStroke;
             outer = inner.map((vertex) => {
               const dirX = vertex.x - geometry.centerOffset.x;
               const dirY = vertex.y - geometry.centerOffset.y;
               const length = Math.hypot(dirX, dirY) || 1;
-              const scale = (length + cachedStroke.width) / length;
+              const scale = (length + nextStroke.width) / length;
               return {
                 x: geometry.centerOffset.x + dirX * scale,
                 y: geometry.centerOffset.y + dirY * scale,
@@ -508,14 +507,19 @@ export const createJoinedPolygonStrokeGpuPrimitive = (
             gl.bufferSubData(gl.ARRAY_BUFFER, 0, packedVertices);
             gl.bindBuffer(gl.ARRAY_BUFFER, null);
             joinedPolygonGpuRenderer.updateHandle(renderHandle, vertices.length);
-          } else {
-            cachedStroke = nextStroke;
           }
-          strokeChanged = true;
+          // Check if color actually changed
+          const prevColor = cachedStroke.color;
+          const nextColor = nextStroke.color;
+          if (prevColor.r !== nextColor.r || prevColor.g !== nextColor.g || 
+              prevColor.b !== nextColor.b || prevColor.a !== nextColor.a) {
+            strokeColorChanged = true;
+          }
+          cachedStroke = nextStroke;
         }
       }
 
-      if (strokeChanged || !fillData) {
+      if (strokeColorChanged || !fillData) {
         writeFill();
       }
 
@@ -626,26 +630,30 @@ export const createJoinedCircleStrokeGpuPrimitive = (
       if (!ensureResources() || !gl || !fillBuffer || !positionBuffer || !renderHandle) {
         return null;
       }
-      let strokeChanged = false;
+      let strokeColorChanged = false;
       if (typeof options.refreshStroke === "function") {
         if (target.data.stroke !== prevInstanceStrokeRef) {
           prevInstanceStrokeRef = target.data.stroke;
           const nextStroke = options.refreshStroke(target);
           if (nextStroke.width !== cachedStroke.width) {
-            cachedStroke = nextStroke;
-            vertices = buildVertices(options.radius + cachedStroke.width);
+            vertices = buildVertices(options.radius + nextStroke.width);
             packedVertices = buildPackedVertices(vertices);
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.bufferSubData(gl.ARRAY_BUFFER, 0, packedVertices);
             gl.bindBuffer(gl.ARRAY_BUFFER, null);
             joinedPolygonGpuRenderer.updateHandle(renderHandle, vertices.length);
-          } else {
-            cachedStroke = nextStroke;
           }
-          strokeChanged = true;
+          // Check if color actually changed
+          const prevColor = cachedStroke.color;
+          const nextColor = nextStroke.color;
+          if (prevColor.r !== nextColor.r || prevColor.g !== nextColor.g || 
+              prevColor.b !== nextColor.b || prevColor.a !== nextColor.a) {
+            strokeColorChanged = true;
+          }
+          cachedStroke = nextStroke;
         }
       }
-      if (strokeChanged || !fillData) {
+      if (strokeColorChanged || !fillData) {
         const fillComponents = writeFillVertexComponents(fillScratch, {
           fill: createStrokeFill(cachedStroke),
           center: { x: 0, y: 0 },

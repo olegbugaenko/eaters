@@ -267,21 +267,28 @@ export const applyBrightness = (component: number, brightness: number): number =
   return component;
 };
 
+// Reusable scratch color to avoid allocations in hot path
+const tintScratch: SceneColor = { r: 0, g: 0, b: 0, a: 1 };
+
 /**
- * Tints a color with brightness and alpha multiplier
+ * Tints a color with brightness and alpha multiplier.
+ * Returns a reusable scratch object - caller should NOT store the reference!
  */
 export const tintColor = (
   color: SceneColor,
   brightness: number,
   alphaMultiplier: number
 ): SceneColor => {
-  const r = clamp01(applyBrightness(color.r, brightness ?? 0));
-  const g = clamp01(applyBrightness(color.g, brightness ?? 0));
-  const b = clamp01(applyBrightness(color.b, brightness ?? 0));
+  tintScratch.r = clamp01(applyBrightness(color.r, brightness ?? 0));
+  tintScratch.g = clamp01(applyBrightness(color.g, brightness ?? 0));
+  tintScratch.b = clamp01(applyBrightness(color.b, brightness ?? 0));
   const baseAlpha = typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1;
-  const a = clamp01(baseAlpha * (alphaMultiplier ?? 1));
-  return { r, g, b, a };
+  tintScratch.a = clamp01(baseAlpha * (alphaMultiplier ?? 1));
+  return tintScratch;
 };
+
+// Cache for resolved fill colors to avoid repeated object creation
+const fillColorCache = new WeakMap<SceneFill, SceneColor>();
 
 /**
  * Resolves fill color from instance
@@ -292,14 +299,21 @@ export const resolveCompositeFillColor = (
 ): SceneColor => {
   const fill = instance.data.fill;
   if (fill?.fillType === FILL_TYPES.SOLID) {
+    // Check cache first
+    let cached = fillColorCache.get(fill);
+    if (cached) {
+      return cached;
+    }
     const solidFill = fill as SceneSolidFill;
     const color = solidFill.color;
-    return {
+    cached = {
       r: color.r,
       g: color.g,
       b: color.b,
       a: typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1,
     };
+    fillColorCache.set(fill, cached);
+    return cached;
   }
   return fallback;
 };

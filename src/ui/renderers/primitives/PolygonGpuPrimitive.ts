@@ -4,12 +4,7 @@ import type {
   SceneVector2,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { RendererLayerAnimationConfig } from "@shared/types/renderer.types";
-import {
-  createPolygonTransformFeedbackResources,
-  getAnimationGpuContext,
-  updatePolygonTransformFeedback,
-  type PolygonTransformFeedbackResources,
-} from "@ui/renderers/objects/shared/animation-gpu";
+import { getAnimationGpuContext } from "@ui/renderers/objects/shared/animation-gpu";
 import {
   FILL_COMPONENTS,
   DynamicPrimitive,
@@ -23,7 +18,7 @@ import { computePolygonGeometry } from "@ui/renderers/primitives/basic/PolygonPr
 
 export interface PolygonGpuPrimitiveOptions {
   vertices: SceneVector2[];
-  anim: RendererLayerAnimationConfig;
+  anim?: RendererLayerAnimationConfig;
   fill: SceneFill;
   offset?: SceneVector2;
   phaseStep?: number;
@@ -68,6 +63,7 @@ export const createPolygonGpuPrimitive = (
   const packedVertices = buildPackedVertices(options.vertices);
   const geometry = computePolygonGeometry(options.vertices);
 
+  // Compute center of polygon (in local coords)
   const center = options.vertices.reduce(
     (acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }),
     { x: 0, y: 0 }
@@ -82,8 +78,8 @@ export const createPolygonGpuPrimitive = (
   let prevInstanceFillRef: SceneFill | undefined =
     typeof options.refreshFill === "function" ? instance.data.fill : undefined;
 
-  let gl = getAnimationGpuContext();
-  let tfResources: PolygonTransformFeedbackResources | null = null;
+  let gl: WebGL2RenderingContext | null = getAnimationGpuContext();
+  let positionBuffer: WebGLBuffer | null = null;
   let fillBuffer: WebGLBuffer | null = null;
   let renderHandle: PolygonGpuHandle | null = null;
 
@@ -92,6 +88,18 @@ export const createPolygonGpuPrimitive = (
   let prevRotation = instance.data.rotation ?? 0;
   let needsFillUpload = true;
 
+  // Pre-compute animation params from config (optional - static polygon if undefined)
+  const anim = options.anim;
+  const hasAnim = !!anim;
+  const axis = anim?.axis ?? "normal";
+  const axisType = axis === "tangent" ? 1 : axis === "movement-tangent" ? 2 : axis === "movement-normal" ? 3 : 0;
+  const animType = anim?.type === "pulse" ? 1 : 0;
+  const useVertexPhase = anim?.type === "sway" && axisType !== 2 ? 1 : 0;
+  const amplitudePercent =
+    hasAnim && typeof anim?.amplitudePercentage === "number" && Number.isFinite(anim.amplitudePercentage)
+      ? anim.amplitudePercentage
+      : -1;
+
   const ensureResources = (): boolean => {
     if (!gl) {
       gl = getAnimationGpuContext();
@@ -99,15 +107,18 @@ export const createPolygonGpuPrimitive = (
     if (!gl) {
       return false;
     }
-    if (!tfResources) {
-      tfResources = createPolygonTransformFeedbackResources({
-        vertexCount,
-        vertices: packedVertices,
-      });
-      if (!tfResources) {
+    
+    // Create position buffer with LOCAL vertices (animation done in vertex shader)
+    if (!positionBuffer) {
+      positionBuffer = gl.createBuffer();
+      if (!positionBuffer) {
         return false;
       }
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, packedVertices, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
+    
     if (!fillBuffer) {
       fillBuffer = gl.createBuffer();
       if (!fillBuffer) {
@@ -121,16 +132,27 @@ export const createPolygonGpuPrimitive = (
       );
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
+    
     polygonGpuRenderer.setContext(gl);
     if (!renderHandle) {
       renderHandle = polygonGpuRenderer.acquireHandle({
-        outputBuffer: tfResources.outputBuffer,
+        positionBuffer,
         fillBuffer,
         vertexCount,
+        center,
       });
       if (!renderHandle) {
         return false;
       }
+      // Initialize animation params (static polygon if no anim: amplitude = 0)
+      renderHandle.anim.periodMs = Math.max(anim?.periodMs ?? 1500, 1);
+      renderHandle.anim.phase = anim?.phase ?? 0;
+      renderHandle.anim.amplitude = hasAnim ? (anim?.amplitude ?? 6) : 0;
+      renderHandle.anim.amplitudePercent = hasAnim ? amplitudePercent : 0;
+      renderHandle.anim.phaseStep = options.phaseStep ?? 0.3;
+      renderHandle.anim.animType = animType;
+      renderHandle.anim.axisType = axisType;
+      renderHandle.anim.useVertexPhase = useVertexPhase;
     }
     return true;
   };
@@ -141,7 +163,7 @@ export const createPolygonGpuPrimitive = (
     },
     autoAnimate: true,
     update(target: SceneObjectInstance): Float32Array | null {
-      if (!ensureResources() || !gl || !tfResources || !fillBuffer) {
+      if (!ensureResources() || !gl || !positionBuffer || !fillBuffer || !renderHandle) {
         return null;
       }
 
@@ -158,14 +180,12 @@ export const createPolygonGpuPrimitive = (
         }
       }
 
-      if (
-        needsFillUpload ||
-        fillRefChanged ||
-        pos.x !== prevPosX ||
-        pos.y !== prevPosY ||
-        rotation !== prevRotation
-      ) {
-        const fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
+      const fillCenter = transformObjectPoint(pos, rotation, {
+        x: (options.offset?.x ?? 0) + center.x,
+        y: (options.offset?.y ?? 0) + center.y,
+      });
+
+      if (needsFillUpload || fillRefChanged) {
         const fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: fillCenter,
@@ -179,22 +199,23 @@ export const createPolygonGpuPrimitive = (
         needsFillUpload = false;
       }
 
+      // Update animation params (read by renderer in beforeRender)
+      renderHandle.anim.timeMs = getSceneTimelineNow();
+      renderHandle.anim.origin.x = origin.x;
+      renderHandle.anim.origin.y = origin.y;
+      renderHandle.anim.rotation = rotation;
+
+      // Track movement for movement-axis modes
+      const dx = pos.x - prevPosX;
+      const dy = pos.y - prevPosY;
+      const moveLen = Math.sqrt(dx * dx + dy * dy);
+      if (moveLen > 0.01) {
+        renderHandle.anim.movementDir.x = dx / moveLen;
+        renderHandle.anim.movementDir.y = dy / moveLen;
+      }
       prevPosX = pos.x;
       prevPosY = pos.y;
       prevRotation = rotation;
-
-      updatePolygonTransformFeedback({
-        resources: tfResources,
-        vertices: packedVertices,
-        vertexCount,
-        anim: options.anim,
-        timeMs: getSceneTimelineNow(),
-        center,
-        origin,
-        rotation,
-        phaseStep: options.phaseStep ?? 0.3,
-        enableMovementAxis: Boolean(options.enableMovementAxis),
-      });
 
       return null;
     },
@@ -206,15 +227,13 @@ export const createPolygonGpuPrimitive = (
         polygonGpuRenderer.releaseHandle(renderHandle);
         renderHandle = null;
       }
+      if (positionBuffer) {
+        gl.deleteBuffer(positionBuffer);
+        positionBuffer = null;
+      }
       if (fillBuffer) {
         gl.deleteBuffer(fillBuffer);
         fillBuffer = null;
-      }
-      if (tfResources) {
-        gl.deleteBuffer(tfResources.inputBuffer);
-        gl.deleteBuffer(tfResources.outputBuffer);
-        gl.deleteVertexArray(tfResources.vao);
-        tfResources = null;
       }
     },
   };

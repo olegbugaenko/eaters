@@ -96,6 +96,7 @@ module.exports = (env, argv) => {
       }),
       new webpack.DefinePlugin({
         "process.env.IS_DEMO": JSON.stringify(process.env.IS_DEMO ?? ""),
+        "process.env.IS_STRESSTEST": JSON.stringify(process.env.IS_STRESSTEST ?? ""),
       }),
       new CopyStaticAssetsPlugin(),
     ],

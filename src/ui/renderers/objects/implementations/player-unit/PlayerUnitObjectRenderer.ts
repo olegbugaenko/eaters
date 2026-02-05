@@ -6,8 +6,7 @@ import {
 } from "../../ObjectRenderer";
 import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import {
-  createDynamicPolygonPrimitive,
-  createDynamicPolygonStrokePrimitive,
+  createPolygonGpuPrimitive,
 } from "../../../primitives";
 import { extractRendererData } from "./helpers";
 import { hasStroke, expandVerticesForStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
@@ -27,6 +26,8 @@ import {
 import { createCompositePrimitives } from "./composite-primitives.helpers";
 import { createParticleEmitterPrimitive } from "../../../primitives/ParticleEmitterPrimitive";
 import type { PlayerUnitEmitterRenderConfig } from "./types";
+
+console.error("!!! PlayerUnitObjectRenderer MODULE LOADED !!!");
 
 /**
  * Updates aura instances positions
@@ -96,6 +97,11 @@ const createEmitterPrimitive = (
 export class PlayerUnitObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const rendererData = extractRendererData(instance);
+    console.error("[PlayerUnitObjectRenderer] register", {
+      instanceId: instance.id,
+      rendererKind: rendererData.kind,
+      hasLayers: "layers" in rendererData ? rendererData.layers?.length : "N/A",
+    });
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
 
@@ -105,6 +111,7 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
     }
 
     if (rendererData.kind === "composite") {
+      console.log("[PlayerUnitObjectRenderer] calling createCompositePrimitives");
       createCompositePrimitives(instance, rendererData, dynamicPrimitives);
     } else {
       if (hasStroke(instance.data.stroke)) {
@@ -112,22 +119,26 @@ export class PlayerUnitObjectRenderer extends ObjectRenderer {
           rendererData.vertices,
           instance.data.stroke.width
         );
-        const strokePrimitive = createDynamicPolygonPrimitive(instance, {
+        const strokePrimitive = createPolygonGpuPrimitive(instance, {
           vertices: strokeVertices,
           fill: createStrokeFill(instance.data.stroke),
           offset: rendererData.offset,
         });
-        dynamicPrimitives.push(strokePrimitive);
+        if (strokePrimitive) {
+          dynamicPrimitives.push(strokePrimitive);
+        }
       }
 
-      dynamicPrimitives.push(
-        createDynamicPolygonPrimitive(instance, {
-          vertices: rendererData.vertices,
-          offset: rendererData.offset,
-          // Відстежуємо зміни fill для візуальних ефектів (freeze, burn тощо)
-          refreshFill: (target) => target.data.fill,
-        })
-      );
+      const fillPrimitive = createPolygonGpuPrimitive(instance, {
+        vertices: rendererData.vertices,
+        offset: rendererData.offset,
+        fill: instance.data.fill,
+        // Відстежуємо зміни fill для візуальних ефектів (freeze, burn тощо)
+        refreshFill: (target) => target.data.fill,
+      });
+      if (fillPrimitive) {
+        dynamicPrimitives.push(fillPrimitive);
+      }
     }
 
     return {
