@@ -37,6 +37,7 @@ export type { UnitModuleWorkshopBridgeState } from "./unit-module-workshop.types
 import {
   createDefaultLevels,
   clampLevel,
+  getMaxLevel,
   scaleResourceStockpile,
   areModuleListsEqual,
 } from "./unit-module-workshop.helpers";
@@ -119,6 +120,10 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
       return false;
     }
     const currentLevel = this.levels.get(id) ?? 0;
+    const maxLevel = getMaxLevel(getUnitModuleConfig(id));
+    if (currentLevel >= maxLevel) {
+      return false;
+    }
     const cost = this.getUpgradeCost(id, currentLevel);
     if (!this.resources.spendResources(cost)) {
       return false;
@@ -217,7 +222,7 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
       data,
       UNIT_MODULE_IDS,
       createDefaultLevels,
-      (_id, raw) => clampLevel(raw)
+      (id, raw) => clampLevel(raw, getUnitModuleConfig(id))
     );
   }
 }

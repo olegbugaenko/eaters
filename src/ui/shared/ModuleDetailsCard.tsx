@@ -6,6 +6,7 @@ import "./ModuleDetailsCard.css";
 interface ModuleDetailsCardProps {
   name: string;
   level: number;
+  levelLabel?: string;
   description: string;
   effectLabel: string;
   currentEffect: string;
@@ -20,6 +21,7 @@ interface ModuleDetailsCardProps {
 export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
   name,
   level,
+  levelLabel,
   description,
   effectLabel,
   currentEffect,
@@ -32,6 +34,7 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
 }) => {
   const effectTitle = nextEffect ? "Effect Preview" : "Effect";
   const containerClassName = classNames("modules-workshop__details", className);
+  const resolvedLevelLabel = levelLabel ?? `Level ${level}`;
   const sanityImpactLabel =
     sanityCost > 0
       ? `+${formatNumber(sanityCost, {
@@ -44,7 +47,7 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
     <div className={containerClassName}>
       <div className="modules-workshop__details-header">
         <h3 className="heading-3">{name}</h3>
-        <span className="modules-workshop__details-level">Level {level}</span>
+        <span className="modules-workshop__details-level">{resolvedLevelLabel}</span>
       </div>
       <p className="modules-workshop__details-description">{description}</p>
       <div className="modules-workshop__details-section">

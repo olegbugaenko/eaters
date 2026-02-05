@@ -446,7 +446,7 @@ const mapConfig = (() => {
       },
     ],
     mapsRequired: { spruce: 1 },
-    maxLevel: 2,
+    maxLevel: 1,
   } satisfies MapConfig;
 })();
 

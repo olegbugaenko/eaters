@@ -17,6 +17,8 @@ export interface UnitModuleWorkshopItemState {
   readonly manaCostMultiplier: number;
   readonly sanityCost: number;
   readonly level: number;
+  readonly maxLevel: number | null;
+  readonly maxed: boolean;
   readonly nextCost: Record<string, number> | null;
 }
 

@@ -99,6 +99,8 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     return state.modules.find((module) => module.id === activeId) ?? null;
   }, [hoveredId, selectedId, state.modules]);
 
+  const formatMaxLevel = useCallback((value: number | null) => (value !== null ? value : "∞"), []);
+
   const activeMissing = useMemo(
     () => (activeModule ? computeMissingCost(activeModule.nextCost, totals) : {}),
     [activeModule, totals]
@@ -140,6 +142,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
             const moduleMissing = computeMissingCost(module.nextCost, totals);
             const hasMissingResources = Object.keys(moduleMissing).length > 0;
             const unlockPath = `biolab.organs.${module.id}`;
+            const maxLevelLabel = formatMaxLevel(module.maxLevel);
             return (
               <li key={module.id}>
                 <NewUnlockWrapper
@@ -164,7 +167,9 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                     onBlur={() => setHoveredId((current) => (current === module.id ? null : current))}
                   >
                     <span className="modules-workshop__card-title heading-3">{module.name}</span>
-                    <span className="modules-workshop__card-level">Level {module.level}</span>
+                    <span className="modules-workshop__card-level">
+                      {module.level}/{maxLevelLabel}
+                    </span>
                     <div className="modules-workshop__card-cost">
                       {module.nextCost ? (
                         <ResourceCostDisplay
@@ -172,7 +177,9 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                           missing={moduleMissing}
                         />
                       ) : (
-                        <span className="text-muted">Unavailable</span>
+                        <span className="text-muted">
+                          {module.maxed ? "Maxed" : "Unavailable"}
+                        </span>
                       )}
                     </div>
                   </button>
@@ -188,6 +195,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
               className="modules-workshop__details--scrollable"
               name={activeModule.name}
               level={activeModule.level}
+              levelLabel={`${activeModule.level}/${formatMaxLevel(activeModule.maxLevel)}`}
               description={activeModule.description}
               effectLabel={activeModule.bonusLabel}
               currentEffect={
@@ -198,14 +206,18 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                     )
                   : "Locked"
               }
-              nextEffect={formatUnitModuleBonusValue(
-                activeModule.bonusType,
-                computeNextBonusValue(
-                  activeModule.baseBonusValue,
-                  activeModule.bonusPerLevel,
-                  activeModule.level
-                )
-              )}
+              nextEffect={
+                activeModule.maxed
+                  ? null
+                  : formatUnitModuleBonusValue(
+                      activeModule.bonusType,
+                      computeNextBonusValue(
+                        activeModule.baseBonusValue,
+                        activeModule.bonusPerLevel,
+                        activeModule.level
+                      )
+                    )
+              }
               manaMultiplier={activeModule.manaCostMultiplier}
               sanityCost={activeModule.sanityCost}
               costSummary={
@@ -217,7 +229,9 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                   />
                 ) : (
                   <p className="text-muted body-sm">
-                    Organ unavailable. Fulfil its unlock requirements to cultivate.
+                    {activeModule.maxed
+                      ? "This organ has reached its maximum level."
+                      : "Organ unavailable. Fulfil its unlock requirements to cultivate."}
                   </p>
                 )
               }
