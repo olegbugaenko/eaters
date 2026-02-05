@@ -554,7 +554,6 @@ class SpineGpuRenderer {
   }
 
   private dispose(): void {
-    console.error("[SpineGpuRenderer] DISPOSE CALLED! activeCount was:", this.activeCount, "handles:", this.handles.length);
     const gl = this.gl;
     if (!gl) {
       return;
@@ -587,6 +586,11 @@ class SpineGpuRenderer {
     this.handles = [];
     this.freeSlots = [];
     this.activeCount = 0;
+    
+    // Clear data arrays to prevent stale data from being uploaded on re-init
+    this.instanceData.fill(0);
+    this.spineTextureData.fill(0);
+    this.needsSpineTexUpload = false;
   }
 }
 

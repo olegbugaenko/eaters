@@ -28,8 +28,8 @@ const mapConfig = (() => {
     size,
     spawnPoints: [spawnPoint],
     nodePosition: { x: 5, y: 6 },
-    icon: "mine.png",
-    lockedForDemo: true,
+    icon: "coal_convoy.png",
+    lockedForDemo: false,
     enemySpawnPoints: [
       {
         position: { x: center.x + 650, y: center.y },
