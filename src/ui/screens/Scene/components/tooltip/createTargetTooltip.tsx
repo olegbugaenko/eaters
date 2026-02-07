@@ -9,7 +9,9 @@ import {
   ResourceAmount,
   ResourceStockpile,
 } from "@db/resources-db";
-import { getStatusEffectConfig } from "@db/status-effects-db";
+import { getStatusEffectConfig, type StatusEffectId } from "@db/status-effects-db";
+import { formatEffectApplicationStats } from "@db/status-effects-db.helpers";
+import { getUnitModuleConfig, UNIT_MODULE_IDS, type UnitModuleId, type ModuleAbilityType } from "@db/unit-modules-db";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
 import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
@@ -97,23 +99,21 @@ const buildEnemyStats = (
     });
   }
 
-  if (enemyConfig.arcAttack?.statusEffectId === "freeze") {
-    const options = enemyConfig.arcAttack.statusEffectOptions;
-    const speedMultiplier = options?.speedMultiplier ?? 1;
-    if (speedMultiplier < 1) {
+  // Show effect stats for any status effect the enemy can apply
+  if (enemyConfig.arcAttack?.statusEffectId) {
+    const effectConfig = getStatusEffectConfig(enemyConfig.arcAttack.statusEffectId);
+    const effectStats = formatEffectApplicationStats(
+      enemyConfig.arcAttack.statusEffectId,
+      enemyConfig.arcAttack.statusEffectOptions ?? {},
+    );
+    if (effectStats.length > 0) {
+      // Add effect name as a header with nested stats underneath
       stats.push({
-        label: "Freeze Slowdown",
-        value: `${formatNumber((1 - speedMultiplier) * 100, {
-          maximumFractionDigits: 0,
-        })}%`,
+        label: `${effectConfig.displayName} Effect`,
+        value: "",
       });
-    }
-    const durationMs =
-      options?.durationMs ?? getStatusEffectConfig("freeze").durationMs ?? 0;
-    if (durationMs > 0) {
-      stats.push({
-        label: "Freeze Duration",
-        value: formatSeconds(durationMs / 1000),
+      effectStats.forEach((stat) => {
+        stats.push({ label: stat.label, value: stat.value, nested: true });
       });
     }
   }
@@ -141,6 +141,114 @@ const buildPlayerUnitStats = (unit: PlayerUnitState, effectiveDamage: number): S
   return stats;
 };
 
+/**
+ * Formats ability stats based on ability type.
+ */
+const formatAbilityStats = (
+  abilityType: ModuleAbilityType,
+  moduleConfig: ReturnType<typeof getUnitModuleConfig>,
+  level: number,
+): { label: string; value: string }[] => {
+  const stats: { label: string; value: string }[] = [];
+  const ability = moduleConfig.providesAbility;
+  if (!ability) return stats;
+  
+  const base = moduleConfig.baseBonusValue;
+  const perLevel = moduleConfig.bonusPerLevel;
+  const multiplier = base + perLevel * Math.max(level - 1, 0);
+  
+  switch (abilityType) {
+    case "heal":
+      stats.push({ label: "Heal Amount", value: `Attack × ${multiplier.toFixed(2)}` });
+      if (ability.cooldownSeconds) {
+        stats.push({ label: "Cooldown", value: `${ability.cooldownSeconds}s` });
+      }
+      if (ability.maxCharges) {
+        stats.push({ label: "Charges", value: `${ability.maxCharges}/run` });
+      }
+      break;
+    case "frenzyBuff":
+      stats.push({ label: "Bonus Damage", value: `Attack × ${multiplier.toFixed(2)}` });
+      if (ability.cooldownSeconds) {
+        stats.push({ label: "Cooldown", value: `${ability.cooldownSeconds}s` });
+      }
+      break;
+  }
+  
+  return stats;
+};
+
+/**
+ * Builds stats for unit module effects and abilities.
+ * Shows potential effects and abilities based on equipped modules.
+ */
+const buildUnitModuleEffectStats = (unit: PlayerUnitState): SceneTooltipStat[] => {
+  const stats: SceneTooltipStat[] = [];
+  
+  if (!unit.moduleLevels) {
+    return stats;
+  }
+  
+  for (const moduleId of UNIT_MODULE_IDS) {
+    const level = unit.moduleLevels[moduleId as UnitModuleId];
+    if (!level || level <= 0) {
+      continue;
+    }
+    
+    const moduleConfig = getUnitModuleConfig(moduleId);
+    
+    // Handle status effects the module can apply
+    if (moduleConfig.appliesEffect) {
+      const { effectId, durationMs } = moduleConfig.appliesEffect;
+      const effectConfig = getStatusEffectConfig(effectId);
+      
+      // Calculate the effect bonus based on module level
+      const base = moduleConfig.baseBonusValue;
+      const perLevel = moduleConfig.bonusPerLevel;
+      const effectValue = base + perLevel * Math.max(level - 1, 0);
+      
+      // Build application options for formatting based on effect type
+      const effectStats = formatEffectApplicationStats(effectId, {
+        durationMs,
+        // For meltingTail: multiplier increases incoming damage
+        multiplier: effectId === "meltingTail" ? effectValue : undefined,
+        // For freezingTail: divisor reduces outgoing damage
+        divisor: effectId === "freezingTail" ? effectValue : undefined,
+      });
+      
+      if (effectStats.length > 0) {
+        // Add effect name as a header
+        stats.push({
+          label: `${effectConfig.displayName} Effect`,
+          value: "",
+        });
+        // Add nested stats
+        effectStats.forEach((stat) => {
+          stats.push({ label: stat.label, value: stat.value, nested: true });
+        });
+      }
+    }
+    
+    // Handle abilities the module provides (like healing)
+    if (moduleConfig.providesAbility) {
+      const ability = moduleConfig.providesAbility;
+      const abilityStats = formatAbilityStats(ability.type, moduleConfig, level);
+      
+      if (abilityStats.length > 0) {
+        stats.push({
+          label: ability.label,
+          value: "",
+        });
+        abilityStats.forEach((stat) => {
+          stats.push({ label: stat.label, value: stat.value, nested: true });
+        });
+      }
+    }
+  }
+  
+  return stats;
+};
+
 const formatEffectDuration = (remainingMs?: number): string | null => {
   if (remainingMs === undefined || !Number.isFinite(remainingMs)) {
     return null;
@@ -148,34 +256,86 @@ const formatEffectDuration = (remainingMs?: number): string | null => {
   return formatSeconds(remainingMs / 1000);
 };
 
-const formatActiveEffects = (
-  activeEffects: readonly { id: string; name: string; stacks: number; maxStacks?: number; remainingMs?: number }[] | undefined,
-): string[] | null => {
-  if (!activeEffects || activeEffects.length === 0) {
-    return null;
+/**
+ * Formats damage value for display
+ */
+const formatDamageValue = (dps: number): string => {
+  if (dps >= 1000) {
+    return `${(dps / 1000).toFixed(1)}K/s`;
   }
-  return activeEffects.map((effect) => {
+  return `${dps.toFixed(0)}/s`;
+};
+
+/**
+ * Builds stats for active effects on a target (like Internal Furnace, Bleeding, etc).
+ * Uses unified nested format for consistency with potential effects.
+ */
+const buildActiveEffectStats = (
+  activeEffects: readonly { id: string; name: string; stacks: number; maxStacks?: number; remainingMs?: number; damagePerSecond?: number }[] | undefined,
+): SceneTooltipStat[] => {
+  const stats: SceneTooltipStat[] = [];
+  
+  if (!activeEffects || activeEffects.length === 0) {
+    return stats;
+  }
+  
+  for (const effect of activeEffects) {
+    const effectConfig = getStatusEffectConfig(effect.id as StatusEffectId);
     const duration = formatEffectDuration(effect.remainingMs);
     
-    // Format stacks based on effect type
-    let stacksLabel = "";
+    // Add effect header
+    stats.push({
+      label: `${effect.name} (Active)`,
+      value: "",
+    });
+    
+    // Format based on effect type
     const isPercentBonus = effect.id === "internalFurnace";
     
-    if (effect.maxStacks !== undefined && effect.maxStacks > 0) {
-      if (isPercentBonus) {
-        // Show as percentage bonus: "+45%/100%"
-        stacksLabel = ` +${effect.stacks}%/${effect.maxStacks}%`;
-      } else {
-        // Show as stack count: "2/4"
-        stacksLabel = ` ${effect.stacks}/${effect.maxStacks}`;
-      }
+    if (isPercentBonus) {
+      // Internal Furnace: show as attack bonus
+      const current = effect.stacks;
+      const max = effect.maxStacks ?? 0;
+      stats.push({
+        label: "Attack Bonus",
+        value: `+${current}%/${max}%`,
+        nested: true,
+      });
+    } else if (effect.maxStacks !== undefined && effect.maxStacks > 0) {
+      // Stack-based effects (like Bleeding)
+      stats.push({
+        label: "Stacks",
+        value: `${effect.stacks}/${effect.maxStacks}`,
+        nested: true,
+      });
     } else if (effect.stacks > 1) {
-      stacksLabel = ` x${effect.stacks}`;
+      stats.push({
+        label: "Stacks",
+        value: `×${effect.stacks}`,
+        nested: true,
+      });
     }
     
-    const durationLabel = duration ? ` (${duration})` : "";
-    return `${effect.name}${stacksLabel}${durationLabel}`;
-  });
+    // Add damage for DoT effects
+    if (effect.damagePerSecond !== undefined && effect.damagePerSecond > 0) {
+      stats.push({
+        label: "Damage",
+        value: formatDamageValue(effect.damagePerSecond),
+        nested: true,
+      });
+    }
+    
+    // Add duration if present
+    if (duration) {
+      stats.push({
+        label: "Remaining",
+        value: duration,
+        nested: true,
+      });
+    }
+  }
+  
+  return stats;
 };
 
 export const createTargetTooltip = (
@@ -187,14 +347,14 @@ export const createTargetTooltip = (
     const brickConfig = getBrickConfig(brick.type);
     const title = brickConfig.name ?? `Brick: ${brick.type}`;
     const rewardLabel = formatRewards(brick.rewards, target.rewardMultiplier ?? 1);
-    const effectsList = formatActiveEffects(target.activeEffects);
+    const activeEffectStats = buildActiveEffectStats(target.activeEffects);
     return {
       title,
       subtitle: `Level ${brick.level}`,
       stats: [
         ...buildCommonStats(target),
         ...(rewardLabel ? [{ label: "Reward", value: rewardLabel }] : []),
-        ...(effectsList ? [{ label: "Effects", value: effectsList }] : []),
+        ...activeEffectStats,
       ],
     };
   }
@@ -204,10 +364,15 @@ export const createTargetTooltip = (
     const unitConfig = getPlayerUnitConfig(unit.type);
     const title = playerUnitDisplayName ?? unitConfig.name;
     const stats = buildPlayerUnitStats(unit, target.effectiveDamage);
-    const effectsList = formatActiveEffects(target.activeEffects);
-    if (effectsList) {
-      stats.push({ label: "Effects", value: effectsList });
-    }
+    
+    // Add module effect stats (potential effects the unit can apply)
+    const moduleEffectStats = buildUnitModuleEffectStats(unit);
+    stats.push(...moduleEffectStats);
+    
+    // Add active effects currently on this unit (in unified nested format)
+    const activeEffectStats = buildActiveEffectStats(target.activeEffects);
+    stats.push(...activeEffectStats);
+    
     return {
       title,
       subtitle: "Your unit",
@@ -221,7 +386,7 @@ export const createTargetTooltip = (
     enemy.reward ?? enemyConfig.reward,
     target.rewardMultiplier ?? 1,
   );
-  const effectsList = formatActiveEffects(target.activeEffects);
+  const activeEffectStats = buildActiveEffectStats(target.activeEffects);
   return {
     title: enemyConfig.name,
     subtitle: `Level ${enemy.level}`,
@@ -229,7 +394,7 @@ export const createTargetTooltip = (
       ...buildCommonStats(target),
       ...buildEnemyStats(enemy, enemyConfig),
       ...(rewardLabel ? [{ label: "Reward", value: rewardLabel }] : []),
-      ...(effectsList ? [{ label: "Effects", value: effectsList }] : []),
+      ...activeEffectStats,
     ],
   };
 };

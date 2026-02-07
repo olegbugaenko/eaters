@@ -216,13 +216,14 @@ export class StatusEffectsModule implements GameModule {
     stacks: number;
     maxStacks?: number;
     remainingMs?: number;
+    damagePerSecond?: number;
   }[] {
     const targetKey = getTargetKey(target);
     const effectsMap = this.effectsByTarget.get(targetKey);
     if (!effectsMap) {
       return [];
     }
-    const result: { id: StatusEffectId; stacks: number; maxStacks?: number; remainingMs?: number }[] = [];
+    const result: { id: StatusEffectId; stacks: number; maxStacks?: number; remainingMs?: number; damagePerSecond?: number }[] = [];
     effectsMap.forEach((instances, effectId) => {
       if (instances.length === 0) {
         return;
@@ -255,11 +256,25 @@ export class StatusEffectsModule implements GameModule {
         }
         return min === undefined ? rem : Math.min(min, rem);
       }, undefined as number | undefined);
+      
+      // For DoT effects, calculate total DPS from all stacks
+      let damagePerSecond: number | undefined;
+      if (config.kind === "damageOverTime") {
+        const tickInterval = config.tickIntervalMs ?? 1000;
+        const totalDamagePerTick = instances.reduce((sum, inst) => {
+          return sum + (inst.data.damagePerTick ?? 0);
+        }, 0);
+        if (totalDamagePerTick > 0 && tickInterval > 0) {
+          damagePerSecond = (totalDamagePerTick / tickInterval) * 1000;
+        }
+      }
+      
       result.push({
         id: effectId,
         stacks: totalStacks,
         maxStacks: config.maxStacks,
         remainingMs: minRemaining,
+        damagePerSecond,
       });
     });
     return result;

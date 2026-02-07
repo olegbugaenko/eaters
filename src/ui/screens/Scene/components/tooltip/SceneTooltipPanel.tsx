@@ -7,6 +7,7 @@ export interface SceneTooltipStat {
   readonly label: string;
   readonly value: SceneTooltipValue;
   readonly hint?: string;
+  readonly nested?: boolean;
 }
 
 export interface SceneTooltipContent {
@@ -45,7 +46,7 @@ export const SceneTooltipPanel: React.FC<SceneTooltipPanelProps> = ({ content })
           </div>
           <dl className="scene-tooltip-panel__stats">
             {content.stats.map((stat) => (
-              <div key={stat.label} className="scene-tooltip-panel__stat">
+              <div key={stat.label} className={`scene-tooltip-panel__stat${stat.nested ? " scene-tooltip-panel__stat--nested" : ""}`}>
                 <dt className="scene-tooltip-panel__stat-label">{stat.label}</dt>
                 <dd className="scene-tooltip-panel__stat-value">
                   {Array.isArray(stat.value) ? (

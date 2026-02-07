@@ -43,3 +43,39 @@ uiApi.map.restartSelectedMap();
 
 ### Правило інтеграції
 UI не повинен імпортувати класи з `src/logic/**` напряму. Використовуйте `uiApi` для викликів та `DataBridge` для стану. Допустимі винятки — декларації типів (`ui-api`/`bridge`) та сервісні типи для рендерингу, узгоджені в ревʼю.
+
+## Система тултіпів
+
+Тултіпи на сцені (для юнітів, бріків, ворогів) генеруються через `createTargetTooltip()`. Система підтримує:
+
+### Уніфікований формат
+- **Заголовок** — назва ефекту/здібності
+- **Nested stats** — вкладені параметри з меншим шрифтом та відступом
+
+### Типи контенту
+1. **Базові стати** — HP, Attack, Armor, Cooldown, Move Speed
+2. **Потенційні ефекти** — що юніт/ворог може накладати (через `appliesEffect` модулів або `arcAttack` ворогів)
+3. **Здібності** — healing, frenzy buff тощо (через `providesAbility` модулів)
+4. **Активні ефекти** — поточні бафи/дебафи на цілі
+
+### Приклад тултіпу юніта з модулем healing:
+```
+Healer
+YOUR UNIT
+HP                    6.01K / 6.01K
+ATTACK                595
+ARMOR                 22
+ATTACK COOLDOWN       0.6s
+MOVE SPEED            100 units
+HEALING PULSE
+  Heal Amount         Attack × 1.40
+  Cooldown            4s
+  Charges             100/run
+INTERNAL FURNACE (Active)
+  Attack Bonus        +75%/100%
+```
+
+### Ключові файли
+- `createTargetTooltip.tsx` — генерація контенту тултіпа
+- `SceneTooltipPanel.tsx` — React-компонент з підтримкою `nested` статів
+- `status-effects-db.helpers.ts` — форматування параметрів ефектів

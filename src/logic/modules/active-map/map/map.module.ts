@@ -411,31 +411,16 @@ export class MapModule implements GameModule {
     }
     const effects = statusEffects.getActiveEffectsForTarget(target as any);
     return effects.map((effect) => {
+      const config = getStatusEffectConfig(effect.id);
       return {
         id: effect.id,
-        name: this.getEffectDisplayName(effect.id),
+        name: config.displayName,
         stacks: effect.stacks,
         maxStacks: effect.maxStacks,
         remainingMs: effect.remainingMs,
+        damagePerSecond: effect.damagePerSecond,
       };
     });
-  }
-
-  private getEffectDisplayName(effectId: string): string {
-    const names: Record<string, string> = {
-      frenzy: "Frenzy",
-      internalFurnace: "Internal Furnace",
-      meltingTail: "Melting Tail",
-      freezingTail: "Freezing Tail",
-      weakeningCurse: "Weakening Curse",
-      weakeningCurseFlat: "Weakening Curse",
-      poison: "Poison",
-      burn: "Burn",
-      freeze: "Freeze",
-      cracks: "Cracks",
-      bleeding: "Bleeding",
-    };
-    return names[effectId] ?? effectId;
   }
 
   private getRewardMultiplier(): number {

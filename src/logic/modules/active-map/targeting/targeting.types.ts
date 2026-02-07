@@ -8,6 +8,7 @@ export interface ActiveEffectInfo {
   readonly stacks: number;
   readonly maxStacks?: number;
   readonly remainingMs?: number;
+  readonly damagePerSecond?: number;
 }
 
 export interface TargetSnapshot<TType extends TargetType = TargetType, TData = unknown> {
