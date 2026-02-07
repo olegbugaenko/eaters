@@ -79,6 +79,7 @@ export const SKILL_IDS = [
   "engineered_plating",
   "armor_lore2",
   "armor_lore3",
+  "reinforced_silver_armor",
   "armor_lore4",
   "heavy_drill",
   "tool_fabrication",
@@ -86,6 +87,7 @@ export const SKILL_IDS = [
   "silver_drill",
   "penetration",
   "penetration2",
+  "wire_penetration",
   "penetration3",
   "soul_wood",
   "advanced_construction",
@@ -979,6 +981,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { penetration: 5 },
     cost: createResourceCost('copper', 60, 1.5),
   },
+  wire_penetration: {
+    id: "wire_penetration",
+    name: "Wire Penetration",
+    description:
+      "Wired impact channels sharpen the bite of your strikes against armor.",
+    nodePosition: { x: -7, y: 3 },
+    maxLevel: 15,
+    icon: "wire_penetration",
+    effects: {
+      all_units_armor_penetration: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    nodesRequired: { penetration2: 5 },
+    cost: createResourceCost("wire", 100, 1.5),
+  },
   penetration3: {
     id: "penetration3",
     name: "Penetration III",
@@ -1108,6 +1126,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { armor_lore2: 5 },
     cost: createResourceCost('silver', 60, 1.5),
+  },
+  reinforced_silver_armor: {
+    id: "reinforced_silver_armor",
+    name: "Reinforced Silver Armor",
+    description:
+      "Layer silvered plating with resilient supports, amplifying protection.",
+    nodePosition: { x: 7, y: 3 },
+    maxLevel: 15,
+    icon: "reinforced_silver_armor",
+    effects: {
+      all_units_armor_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    nodesRequired: { armor_lore3: 5 },
+    cost: createResourceCost("tools", 100, 1.5),
   },
   armor_lore4: {
     id: "armor_lore4",

@@ -23,6 +23,7 @@ export interface ResourceConfig {
   readonly name: string;
   readonly description?: string;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
+  readonly lockedForDemo?: boolean;
 }
 
 export type ResourceAmount = Partial<Record<ResourceId, number>>;
@@ -151,6 +152,7 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
     id: "ice",
     name: "Ice",
     description: "Frozen crystalline fragments from the eternal winter.",
+    lockedForDemo: true,
     unlockedBy: [
       {
         type: "map",
@@ -163,6 +165,7 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
     id: "magma",
     name: "Magma",
     description: "Molten stone and fire coalesced into a searing substance.",
+    lockedForDemo: true,
     unlockedBy: [
       {
         type: "map",
@@ -175,6 +178,7 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
     id: "uranium",
     name: "Uranium Fields",
     description: "",
+    lockedForDemo: true,
     unlockedBy: [
       {
         type: "map",

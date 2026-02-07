@@ -33,6 +33,7 @@ import {
 } from "./resources.const";
 import { sanitizeBrickCount, areResourceListsEqual } from "./resources.helpers";
 import { ResourceCalculator } from "./resources.calculator";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 
 // Re-export types and constants for backward compatibility
 export type {
@@ -388,6 +389,9 @@ export class ResourcesModule implements GameModule {
 
   private isResourceUnlocked(id: ResourceId): boolean {
     const config = getResourceConfig(id);
+    if (isDemoBuild() && config.lockedForDemo) {
+      return false;
+    }
     return this.progression.areConditionsMet(config.unlockedBy);
   }
 
