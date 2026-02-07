@@ -341,7 +341,7 @@
 
 .map-tree__details-resources-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-sm);
   margin: 0;
 }
@@ -350,11 +350,23 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  justify-content: space-between;
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-sm);
   background: rgba(15, 23, 42, 0.35);
   color: var(--color-text-subtle);
   font-size: 0.9rem;
+}
+
+.map-tree__details-resources-item span:first-of-type {
+  flex: 1;
+}
+
+.map-tree__details-resources-level {
+  color: var(--color-text-strong);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .map-tree__details-resources-icon {
