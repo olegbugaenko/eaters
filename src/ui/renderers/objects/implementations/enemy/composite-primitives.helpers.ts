@@ -78,7 +78,9 @@ export const createCompositePrimitives = (
   };
   const joinTargets = new Set<string>();
   renderer.layers.forEach((layer) => {
-    if (layer.join && !supportsGpuJoin(layer)) {
+    if (layer.join && (!supportsGpuJoin(layer) || layer.anim)) {
+      // Animated layers can't use GPU join (canUseGpuJoin requires !layer.anim),
+      // so their parent group must write CPU anchors.
       joinTargets.add(normalizeGroupId(layer.join.targetGroupId));
     }
   });

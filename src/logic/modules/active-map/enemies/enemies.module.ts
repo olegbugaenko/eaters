@@ -65,6 +65,7 @@ import type { StatusEffectsModule } from "../status-effects/status-effects.modul
 import type { ArcModule } from "../../scene/arc/arc.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { EnemySpawnSourceController } from "./enemy-spawn-source-controller";
+import { executeChainLightning } from "../chain-lightning.helpers";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -271,22 +272,25 @@ export class EnemiesModule implements GameModule {
         anyChanged = true;
       }
 
-      // Update rotation based on movement direction or target direction
       const target = activeTargets.get(enemy.id);
-      const desiredRotation = this.computeEnemyRotation(
-        enemy,
-        target ?? null,
-        resolvedMovementState,
-      );
-      const newRotation = this.applyRotationSpeedLimit(
-        enemy.rotation,
-        desiredRotation,
-        deltaSeconds,
-        resolvedMovementState.velocity,
-      );
-      if (newRotation !== enemy.rotation) {
-        enemy.rotation = newRotation;
-        anyChanged = true;
+
+      // Update rotation based on movement direction or target direction (skip if locked)
+      if (!enemy.lockRotation) {
+        const desiredRotation = this.computeEnemyRotation(
+          enemy,
+          target ?? null,
+          resolvedMovementState,
+        );
+        const newRotation = this.applyRotationSpeedLimit(
+          enemy.rotation,
+          desiredRotation,
+          deltaSeconds,
+          resolvedMovementState.velocity,
+        );
+        if (newRotation !== enemy.rotation) {
+          enemy.rotation = newRotation;
+          anyChanged = true;
+        }
       }
 
       const knockbackOffset = this.updateEnemyKnockback(enemy, deltaMs);
@@ -777,12 +781,29 @@ export class EnemiesModule implements GameModule {
 
     if (config.arcAttack) {
       const arcAttack = config.arcAttack;
+      const isChain =
+        (arcAttack.chainRadius ?? 0) > 0 &&
+        (arcAttack.chainJumps ?? 0) > 0;
+      const chainDamage = arcAttack.damage ?? enemy.baseDamage;
+
+      // Rotate spawnOffset by the enemy's current rotation so it stays
+      // relative to the enemy's facing direction instead of world-space.
+      let rotatedOffset = arcAttack.spawnOffset;
+      if (rotatedOffset && (rotatedOffset.x !== 0 || rotatedOffset.y !== 0)) {
+        const cos = Math.cos(enemy.rotation);
+        const sin = Math.sin(enemy.rotation);
+        rotatedOffset = {
+          x: rotatedOffset.x * cos - rotatedOffset.y * sin,
+          y: rotatedOffset.x * sin + rotatedOffset.y * cos,
+        };
+      }
+
       this.arcs?.spawnArcBetweenTargets(
         arcAttack.arcType,
         { type: "enemy", id: enemy.id },
         { type: "unit", id: target.id },
-        { 
-          sourceOffset: arcAttack.spawnOffset,
+        {
+          sourceOffset: rotatedOffset,
           persistOnDeath: true,
         },
       );
@@ -798,17 +819,40 @@ export class EnemiesModule implements GameModule {
           );
         }
       }
-      if (this.damage && enemy.baseDamage > 0) {
-        const knockBackDirection = toTarget;
-        this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
-          armorPenetration: 0,
-          knockBackDistance: config.knockBackDistance,
-          knockBackSpeed: config.knockBackSpeed,
-          knockBackDirection:
-            vectorLength(knockBackDirection) > 0
-              ? knockBackDirection
-              : normalizeVector(toTarget) || { x: 1, y: 0 },
-        });
+      if (this.damage && chainDamage > 0) {
+        const knockBackDirection =
+          vectorLength(toTarget) > 0
+            ? toTarget
+            : normalizeVector(toTarget) || { x: 1, y: 0 };
+        if (isChain) {
+          this.damage.applyTargetDamage(target.id, chainDamage, {
+            ...arcAttack.damageOptions,
+            knockBackDirection,
+          });
+          executeChainLightning({
+            startTarget: { id: target.id, type: "unit", position: target.position },
+            chainRadius: arcAttack.chainRadius!,
+            chainJumps: arcAttack.chainJumps!,
+            damage: chainDamage,
+            damageOptions: arcAttack.damageOptions,
+            dependencies: {
+              getTargetsInRadius: (position, radius, types) =>
+                this.targeting?.findTargetsNear(position, radius, types?.length ? { types: [...types] } : undefined) ?? [],
+              applyTargetDamage: (targetId, damageValue, options) =>
+                this.damage!.applyTargetDamage(targetId, damageValue, options ?? {}),
+              spawnArcBetweenTargets: this.arcs?.spawnArcBetweenTargets?.bind(this.arcs),
+            },
+            arcType: arcAttack.arcType,
+            chainTargetTypes: ["unit"],
+          });
+        } else {
+          this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
+            armorPenetration: 0,
+            knockBackDistance: config.knockBackDistance,
+            knockBackSpeed: config.knockBackSpeed,
+            knockBackDirection,
+          });
+        }
       }
       // Spawn explosion at target position if configured
       if (arcAttack.explosionType && this.explosions) {
@@ -1202,16 +1246,22 @@ export class EnemiesModule implements GameModule {
       return ZERO_VECTOR;
     }
 
-    // Desired speed - slow down as we approach
+    // Desired speed - slow down as we approach.
+    // desiredSpeed drops linearly from moveSpeed down to 0 as we reach the
+    // attack range boundary.  With the proportional steering controller the
+    // effective stopping distance from speed v ≈ v * mass, so we scale the
+    // ramp by 1/mass so the enemy starts decelerating early enough.
     const approachDistance = Math.min(
       distanceOutsideRange,
       distanceToDestination,
     );
     const moveSpeed = this.getEffectiveMoveSpeed(enemy);
-    const desiredSpeed = Math.max(
-      Math.min(moveSpeed, approachDistance),
-      moveSpeed * 0.25,
-    );
+    const mass = this.getEnemyMass(enemy);
+    const rampDistance = moveSpeed * mass; // distance needed to stop from full speed
+    const speedRatio = rampDistance > 0
+      ? Math.min(approachDistance / rampDistance, 1)
+      : 1;
+    const desiredSpeed = moveSpeed * speedRatio;
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
     const avoidance = this.computeObstacleAvoidance(enemy, desiredVelocity);
@@ -1642,6 +1692,7 @@ export class EnemiesModule implements GameModule {
       attackRange: enemy.attackRange,
       moveSpeed: enemy.moveSpeed,
       physicalSize: enemy.physicalSize,
+      lockRotation: enemy.lockRotation,
       selfKnockBackDistance: enemy.selfKnockBackDistance,
       selfKnockBackSpeed: enemy.selfKnockBackSpeed,
       reward: enemy.reward

@@ -52,6 +52,7 @@ export interface EnemyRuntimeState {
   attackSeriesState?: AttackSeriesState;
   moveSpeed: number;
   physicalSize: number;
+  lockRotation: boolean;
   selfKnockBackDistance: number;
   selfKnockBackSpeed: number;
   reward?: ResourceStockpile;

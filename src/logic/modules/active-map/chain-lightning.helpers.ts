@@ -6,9 +6,11 @@ import type { ArcType } from "../../../db/arcs-db";
 import type { ExplosionType } from "../../../db/explosions-db";
 import { subtractVectors, vectorHasLength } from "@/shared/helpers/vector.helper";
 
+export type ChainLightningTargetType = "brick" | "enemy" | "unit";
+
 export interface ChainLightningTarget {
   id: string;
-  type: "brick" | "enemy";
+  type: ChainLightningTargetType;
   position: SceneVector2;
 }
 
@@ -49,12 +51,14 @@ export interface ChainLightningOptions {
   dependencies: ChainLightningDependencies;
   arcType?: ArcType;
   explosionType?: ExplosionType;
+  /** Target types to chain to (default ["brick", "enemy"]; use ["unit"] for enemy→unit chain). */
+  chainTargetTypes?: readonly ChainLightningTargetType[];
 }
 
-const isChainTarget = (
-  candidate: TargetSnapshot,
-): candidate is TargetSnapshot<"brick" | "enemy"> =>
-  candidate.type === "brick" || candidate.type === "enemy";
+const DEFAULT_CHAIN_TARGET_TYPES: readonly ChainLightningTargetType[] = [
+  "brick",
+  "enemy",
+];
 
 export const executeChainLightning = ({
   startTarget,
@@ -65,6 +69,7 @@ export const executeChainLightning = ({
   dependencies,
   arcType,
   explosionType,
+  chainTargetTypes = DEFAULT_CHAIN_TARGET_TYPES,
 }: ChainLightningOptions): boolean => {
   if (chainRadius <= 0 || chainJumps <= 0 || damage <= 0) {
     return false;
@@ -73,16 +78,17 @@ export const executeChainLightning = ({
     return false;
   }
 
+  const allowedTypes: readonly string[] = chainTargetTypes;
   let currentTarget = startTarget;
   const visited = new Set<string>([`${startTarget.type}:${startTarget.id}`]);
   let chained = false;
 
   for (let i = 0; i < chainJumps; i += 1) {
     const candidates = dependencies
-      .getTargetsInRadius(currentTarget.position, chainRadius, ["brick", "enemy"])
-      .filter((candidate): candidate is TargetSnapshot<"brick" | "enemy"> => {
+      .getTargetsInRadius(currentTarget.position, chainRadius, [...chainTargetTypes])
+      .filter((candidate): candidate is TargetSnapshot<ChainLightningTargetType> => {
         const key = `${candidate.type}:${candidate.id}`;
-        return !visited.has(key) && isChainTarget(candidate);
+        return !visited.has(key) && allowedTypes.includes(candidate.type);
       });
 
     if (candidates.length === 0) {
@@ -107,11 +113,13 @@ export const executeChainLightning = ({
       dependencies.applyBrickDamage?.(nextTarget.id, damage, resolvedOptions);
     }
 
+    const sourceRef = { type: currentTarget.type, id: currentTarget.id };
+    const targetRef = { type: nextTarget.type, id: nextTarget.id };
     if (dependencies.spawnArcBetweenTargets && arcType) {
       dependencies.spawnArcBetweenTargets(
         arcType,
-        { type: currentTarget.type, id: currentTarget.id },
-        { type: nextTarget.type, id: nextTarget.id },
+        sourceRef,
+        targetRef,
         {
           persistOnDeath: true,
           sourcePosition: currentTarget.position,

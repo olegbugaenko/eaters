@@ -7,11 +7,11 @@ const mapConfig = (() => {
   const spawnPoint: SceneVector2 = { x: center.x - 650, y: center.y };
   const levelOffset = 0;
   const portalOffsets: SceneVector2[] = [
-    { x: -180, y: -120 },
-    { x: 180, y: -120 },
-    { x: -180, y: 120 },
-    { x: 180, y: 120 },
-    { x: 0, y: 0 },
+    { x: 0, y: -400 },        // top
+    { x: 380.4, y: -123.6 },  // top-right
+    { x: 235.1, y: 323.6 },   // bottom-right
+    { x: -235.1, y: 323.6 },  // bottom-left
+    { x: -380.4, y: -123.6 }, // top-left
   ];
 
   return {
