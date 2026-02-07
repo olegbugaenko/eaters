@@ -983,19 +983,19 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   },
   wire_penetration: {
     id: "wire_penetration",
-    name: "Wire Penetration",
+    name: "Piercing Fangs",
     description:
       "Wired impact channels sharpen the bite of your strikes against armor.",
     nodePosition: { x: -7, y: 3 },
     maxLevel: 15,
-    icon: "wire_penetration",
+    icon: "piercing_fangs.png",
     effects: {
       all_units_armor_penetration: {
         multiplier: (level) => 1 + 0.1 * level,
       },
     },
     nodesRequired: { penetration2: 5 },
-    cost: createResourceCost("wire", 100, 1.5),
+    cost: createResourceCost("wire", 50, 1.5),
   },
   penetration3: {
     id: "penetration3",
@@ -1134,7 +1134,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Layer silvered plating with resilient supports, amplifying protection.",
     nodePosition: { x: 7, y: 3 },
     maxLevel: 15,
-    icon: "reinforced_silver_armor",
+    icon: "reinforced_armor.png",
     effects: {
       all_units_armor_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
