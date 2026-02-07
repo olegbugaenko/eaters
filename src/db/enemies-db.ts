@@ -1954,6 +1954,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackRange: 0,
     moveSpeed: 0,
     physicalSize: 32,
+    requireDestruction: true,
     spawner: {
       spawnRate: 0.2,
       enemyTypes: [
