@@ -12,6 +12,7 @@ const mapConfig = (() => {
     size,
     spawnPoints: [spawnPoint],
     nodePosition: { x: 5, y: 3 },
+    icon: "gear.png",
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const gearLevel = baseLevel + 2;
@@ -52,7 +53,7 @@ const mapConfig = (() => {
     enemies: ({ mapLevel }) => {
       const level = Math.max(1, Math.floor(mapLevel));
       const turretCount = 4;
-      const turretRadius = 480;
+      const turretRadius = 520;
       return Array.from({ length: turretCount }, (_, index) => {
         const angle = (index / turretCount) * Math.PI * 2;
         const position: SceneVector2 = {

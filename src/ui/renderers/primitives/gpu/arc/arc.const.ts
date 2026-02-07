@@ -142,10 +142,7 @@ void main(){
   float blur = u_blurWidth * max(0.0, endTaper) * shortScale;
   float safeBlur = max(blur, 0.0001);
 
-  float blend = clamp01((dist - core) / safeBlur);
-  float inside = 1.0 - step(core, dist);
-  float coreBlend = mix(1.0 - blend, 1.0, inside);
-
+  // Time-based fade
   float fade = 1.0;
   if (u_fadeStartMs < v_lifetime) {
     if (v_age > u_fadeStartMs) {
@@ -158,9 +155,17 @@ void main(){
   // Discard inactive/cleared instances
   if (v_lifetime <= 0.0) discard;
 
-  vec3 rgb = mix(u_blurColor.rgb, u_coreColor.rgb, coreBlend);
-  float a = mix(u_blurColor.a, u_coreColor.a, coreBlend);
-  float finalAlpha = a * coreBlend * fade;
+  // Glow: fades from blurColor at core edge to transparent at blur edge
+  float glowFalloff = 1.0 - smoothstep(core, core + blur, dist);
+  
+  // Core: sharp center with slight softness at edge
+  float coreFalloff = 1.0 - smoothstep(core * 0.8, core, dist);
+  
+  // Blend: core over glow
+  vec3 rgb = mix(u_blurColor.rgb, u_coreColor.rgb, coreFalloff);
+  float alpha = mix(u_blurColor.a * glowFalloff, u_coreColor.a, coreFalloff);
+  
+  float finalAlpha = alpha * fade;
 
   fragColor = vec4(rgb, finalAlpha);
   if (fragColor.a <= 0.001) discard;

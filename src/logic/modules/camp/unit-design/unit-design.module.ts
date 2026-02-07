@@ -72,6 +72,7 @@ import {
   extractCounter,
   computeModuleValue,
 } from "./unit-design.helpers";
+import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
 
 export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
   public readonly id = "unitDesign";
@@ -182,6 +183,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       this.rosterInitialized = true;
     }
     this.refreshComputedState();
+    trackAnalyticsEvent("unit_designer_create", { unitType: sanitizedType, name: config.name });
     return id;
   }
 

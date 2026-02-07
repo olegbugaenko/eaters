@@ -63,6 +63,7 @@ import {
   sanitizeDuration,
 } from "./map.helpers";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
+import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -410,31 +411,16 @@ export class MapModule implements GameModule {
     }
     const effects = statusEffects.getActiveEffectsForTarget(target as any);
     return effects.map((effect) => {
+      const config = getStatusEffectConfig(effect.id);
       return {
         id: effect.id,
-        name: this.getEffectDisplayName(effect.id),
+        name: config.displayName,
         stacks: effect.stacks,
         maxStacks: effect.maxStacks,
         remainingMs: effect.remainingMs,
+        damagePerSecond: effect.damagePerSecond,
       };
     });
-  }
-
-  private getEffectDisplayName(effectId: string): string {
-    const names: Record<string, string> = {
-      frenzy: "Frenzy",
-      internalFurnace: "Internal Furnace",
-      meltingTail: "Melting Tail",
-      freezingTail: "Freezing Tail",
-      weakeningCurse: "Weakening Curse",
-      weakeningCurseFlat: "Weakening Curse",
-      poison: "Poison",
-      burn: "Burn",
-      freeze: "Freeze",
-      cracks: "Cracks",
-      bleeding: "Bleeding",
-    };
-    return names[effectId] ?? effectId;
   }
 
   private getRewardMultiplier(): number {
@@ -550,6 +536,7 @@ export class MapModule implements GameModule {
     this.pushLastPlayedMap();
     const stats = this.ensureLevelStats(mapId, level);
     if (result.success) {
+      trackAnalyticsEvent("map_completed", { mapId, level, durationMs: result.durationMs });
       const isFirstSuccess = stats.success === 0;
       stats.success += 1;
       const duration = sanitizeDuration(result.durationMs);
@@ -619,6 +606,10 @@ export class MapModule implements GameModule {
     this.selection.updateSelection(mapId, level);
     this.selection.recordLastPlayed(mapId, level);
     this.pushLastPlayedMap();
+
+    if (this.isFirstMapEntry(mapId, level)) {
+      trackAnalyticsEvent("map_first_enter", { mapId, level });
+    }
     
     // Register map resource multiplier bonus if configured
     this.registerMapResourceBonus(mapId, config);
@@ -1273,6 +1264,14 @@ export class MapModule implements GameModule {
       entry.bestTimeMs = null;
     }
     return entry;
+  }
+
+  private isFirstMapEntry(mapId: MapId, level: number): boolean {
+    const entry = this.mapStats[mapId]?.[sanitizeLevel(level)];
+    if (!entry) {
+      return true;
+    }
+    return entry.success + entry.failure === 0;
   }
 
   private cloneSelectedLevels(): Partial<Record<MapId, number>> {

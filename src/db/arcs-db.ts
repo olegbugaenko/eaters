@@ -27,18 +27,18 @@ export interface ArcConfig {
   readonly oscillationAmplitude: number;
 }
 
-const HEAL_ARC_COLOR: SceneColor = { r: 0.6, g: 1.0, b: 0.5, a: 0.65 };
+const HEAL_ARC_COLOR: SceneColor = { r: 0.6, g: 1.0, b: 0.5, a: 0.55 };
 const HEAL_ARC_BLUR: SceneColor = { r: 0.6, g: 0.9, b: 0.3, a: 0.55 };
 const FRENZY_ARC_COLOR: SceneColor = { r: 1.0, g: 0.9, b: 0.2, a: 1.0 };
 const FRENZY_ARC_BLUR: SceneColor = { r: 1.0, g: 0.4, b: 0.4, a: 0.6 };
 const FREEZE_ARC_COLOR: SceneColor = { r: 0.6, g: 0.85, b: 1.0, a: 0.9 };
 const FREEZE_ARC_BLUR: SceneColor = { r: 0.4, g: 0.7, b: 1.0, a: 0.5 };
-const BLEEDING_ARC_COLOR: SceneColor = { r: 1.0, g: 0.55, b: 0.45, a: 0.95 };
-const BLEEDING_ARC_BLUR: SceneColor = { r: 1.0, g: 0.6, b: 0.45, a: 0.6 };
+const BLEEDING_ARC_COLOR: SceneColor = { r: 1.0, g: 0.55, b: 0.55, a: 0.95 };
+const BLEEDING_ARC_BLUR: SceneColor = { r: 1.0, g: 0.25, b: 0.25, a: 0.46 };
 const LASER_ARC_COLOR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.99 };
 const LASER_ARC_BLUR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.25 };
 const PLASMA_BEAM_ARC_COLOR: SceneColor = { r: 0.45, g: 0.7, b: 1.0, a: 0.98 };
-const PLASMA_BEAM_ARC_BLUR: SceneColor = { r: 0.3, g: 0.6, b: 1.0, a: 0.4 };
+const PLASMA_BEAM_ARC_BLUR: SceneColor = { r: 0.4, g: 0.65, b: 1.0, a: 0.7 };
 const CHAIN_ARC_COLOR: SceneColor = { r: 0.85, g: 0.95, b: 1.0, a: 0.95 };
 const CHAIN_ARC_BLUR: SceneColor = { r: 0.3, g: 0.7, b: 1.0, a: 0.35 };
 
@@ -46,7 +46,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
   heal: {
     coreColor: HEAL_ARC_COLOR,
     blurColor: HEAL_ARC_BLUR,
-    coreWidth: 2,
+    coreWidth: 5,
     blurWidth: 30,
     soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/heal_v2.mp3"),
     lifetimeMs: 1000,
@@ -84,8 +84,8 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
   bleeding: {
     coreColor: BLEEDING_ARC_COLOR,
     blurColor: BLEEDING_ARC_BLUR,
-    coreWidth: 0.15,
-    blurWidth: 9,
+    coreWidth: 1.75,
+    blurWidth: 16,
     lifetimeMs: 700,
     fadeStartMs: 350,
     bendsPer100Px: 3,
@@ -99,7 +99,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
   laser: {
     coreColor: LASER_ARC_COLOR,
     blurColor: LASER_ARC_BLUR,
-    coreWidth: 1,
+    coreWidth: 2,
     blurWidth: 3,
     soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
     lifetimeMs: 1000,
@@ -112,7 +112,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
   plasmaBeam: {
     coreColor: PLASMA_BEAM_ARC_COLOR,
     blurColor: PLASMA_BEAM_ARC_BLUR,
-    coreWidth: 3,
+    coreWidth: 5,
     blurWidth: 12,
     soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
     lifetimeMs: 950,
@@ -125,7 +125,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
   chainLightning: {
     coreColor: CHAIN_ARC_COLOR,
     blurColor: CHAIN_ARC_BLUR,
-    coreWidth: 0.15,
+    coreWidth: 1.5,
     blurWidth: 5,
     lifetimeMs: 700,
     fadeStartMs: 350,

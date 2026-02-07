@@ -36,3 +36,55 @@
 - Вартість кожного наступного рівня зростає вдвічі (через `Math.pow(2, level)`).
 - Видимість модулів визначається як об'єднання відкритих умов і прокачаних модулів, щоб гравець не втрачав доступ до вже покращених.
 - Використовує `StateFactory` для уніфікованого створення станів (див. [state-factory.md](../overview/state-factory.md)).
+
+## Декларативні ефекти та здібності модулів
+
+Модулі можуть декларувати ефекти та здібності, які вони надають юнітам. Ці метадані використовуються для:
+- Автоматичного відображення в тултіпах юнітів
+- Майбутньої декларативної логіки накладання ефектів
+
+### appliesEffect
+Описує статус-ефект, який модуль накладає при активації:
+
+```typescript
+interface ModuleEffectApplication {
+  readonly effectId: StatusEffectId;  // ID ефекту з status-effects-db
+  readonly target: "brick" | "unit" | "enemy";
+  readonly durationMs?: number;       // тривалість ефекту
+}
+```
+
+**Приклади:**
+- `burningTail` → накладає `meltingTail` на бріки (збільшує вхідний дамаг)
+- `freezingTail` → накладає `freezingTail` на бріки (зменшує вихідний дамаг)
+- `frenzyGland` → накладає `frenzy` на союзних юнітів
+
+### providesAbility
+Описує здібність (instant action), яку модуль надає юніту:
+
+```typescript
+type ModuleAbilityType = "heal" | "frenzyBuff" | "fireball" | "chainLightning";
+
+interface ModuleAbilityInfo {
+  readonly type: ModuleAbilityType;
+  readonly label: string;           // назва для UI
+  readonly cooldownSeconds?: number;
+  readonly maxCharges?: number;     // обмеження за ран
+}
+```
+
+**Приклад (mendingGland):**
+```typescript
+providesAbility: {
+  type: "heal",
+  label: "Healing Pulse",
+  cooldownSeconds: 4,
+  maxCharges: 100,
+}
+```
+
+### Відображення в тултіпі юніта
+Тултіп автоматично показує:
+1. **Потенційні ефекти** — що юніт може накладати (з параметрами на основі рівня модуля)
+2. **Здібності** — heal amount, cooldown, charges
+3. **Активні ефекти** — поточні бафи/дебафи на юніті (в уніфікованому nested форматі)

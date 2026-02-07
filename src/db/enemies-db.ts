@@ -1563,24 +1563,41 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     name: "Bleeding Turret",
     renderer: {
       kind: "composite",
-      fill: { r: 0.9, g: 0.25, b: 0.25, a: 1 },
+      fill: { r: 0.7, g: 0.35, b: 0.15, a: 1 },
       layers: [
+        {
+          shape: "circle",
+          radius: 50,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.9, g: 0.55, b: 0.35, a: 0.2 } },
+                { offset: 0.6, color: { r: 0.9, g: 0.55, b: 0.35, a: 0.4 } },
+                { offset: 1, color: { r: 0.9, g: 0.55, b: 0.35, a: 0 } },
+              ],
+            }
+          }
+        },
         {
           shape: "polygon",
           vertices: [
-            { x: 14, y: -2 },
+            { x: 18, y: -3 },
             { x: 0, y: -4 },
             { x: 0, y: 4 },
-            { x: 14, y: 2 },
+            { x: 18, y: 3 },
           ],
-          fill: { type: "base", brightness: 0.3 },
+          fill: { type: "base", brightness: -0.7 },
         },
         {
           shape: "polygon",
           vertices: [
             { x: 0, y: -4 },
-            { x: -3, y: -8 },
-            { x: -3, y: 8 },
+            { x: -6, y: -14 },
+            { x: -13, y: -14 },
+            { x: -13, y: 14 },
+            { x: -6, y: 14 },
             { x: 0, y: 4 },
           ],
           fill: { type: "base", brightness: 0.22 },
@@ -1588,20 +1605,20 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         {
           shape: "polygon",
           vertices: [
-            { x: -3, y: -8 },
-            { x: -9, y: -11 },
-            { x: -9, y: -5 },
-            { x: -3, y: 3 },
+            { x: 8, y: -14 },
+            { x: -4, y: -22 },
+            { x: -15, y: -22 },
+            { x: -21, y: -14 },
           ],
           fill: { type: "base", brightness: 0.18 },
         },
         {
           shape: "polygon",
           vertices: [
-            { x: -3, y: 8 },
-            { x: -9, y: 11 },
-            { x: -9, y: 5 },
-            { x: -3, y: -3 },
+            { x: 8, y: 14 },
+            { x: -4, y: 22 },
+            { x: -15, y: 22 },
+            { x: -21, y: 14 },
           ],
           fill: { type: "base", brightness: 0.18 },
         },
@@ -1615,8 +1632,8 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     moveSpeed: 0,
     physicalSize: 26,
     reward: normalizeResourceAmount({
-      stone: 32,
-      iron: 6,
+      iron: 32,
+      coal: 6,
     }),
     arcAttack: {
       arcType: "bleeding",

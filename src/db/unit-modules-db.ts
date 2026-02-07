@@ -8,6 +8,7 @@ import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle
 import type { BulletTailConfig } from "./bullets-db";
 import type { SpellProjectileRingTrailConfig } from "./spells-db";
 import type { BulletSpriteName } from "../logic/services/bullet-render-bridge/bullet-sprites.const";
+import type { StatusEffectId } from "./status-effects-db";
 
 export const UNIT_MODULE_IDS = [
   "magnet",
@@ -43,6 +44,32 @@ export interface UnitModuleProjectileVisualConfig {
   readonly hitRadius?: number;
 }
 
+/**
+ * Describes a status effect that a unit module can apply.
+ * Used for UI display and future declarative effect application.
+ */
+export interface ModuleEffectApplication {
+  readonly effectId: StatusEffectId;
+  readonly target: "brick" | "unit" | "enemy";
+  /** Duration in milliseconds for time-limited effects */
+  readonly durationMs?: number;
+}
+
+/**
+ * Describes an ability that a unit module provides.
+ * Used for UI display of instant abilities like healing.
+ */
+export type ModuleAbilityType = "heal" | "frenzyBuff" | "fireball" | "chainLightning";
+
+export interface ModuleAbilityInfo {
+  readonly type: ModuleAbilityType;
+  readonly label: string;
+  /** Cooldown in seconds */
+  readonly cooldownSeconds?: number;
+  /** Maximum charges per run */
+  readonly maxCharges?: number;
+}
+
 export interface UnitModuleConfig {
   readonly id: UnitModuleId;
   readonly name: string;
@@ -58,6 +85,10 @@ export interface UnitModuleConfig {
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly canAttackDistant?: boolean;
   readonly lockedForDemo?: boolean;
+  /** Status effect that this module applies when active */
+  readonly appliesEffect?: ModuleEffectApplication;
+  /** Ability that this module provides (for instant actions like healing) */
+  readonly providesAbility?: ModuleAbilityInfo;
   readonly meta?: {
     readonly cooldownSeconds?: number;
     readonly frenzyAttacks?: number;
@@ -274,6 +305,12 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     maxLevel: 10,
     baseCost: { organics: 200, sand: 1000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
+    providesAbility: {
+      type: "heal",
+      label: "Healing Pulse",
+      cooldownSeconds: 4,
+      maxCharges: 100,
+    },
     meta: { cooldownSeconds: 4, healCharges: 100 },
   },
   frenzyGland: {
@@ -290,6 +327,10 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     maxLevel: 10,
     baseCost: { organics: 200, stone: 2000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
+    appliesEffect: {
+      effectId: "frenzy",
+      target: "unit",
+    },
     meta: { cooldownSeconds: 5, frenzyAttacks: 8 },
   },
   fireballOrgan: {
@@ -329,6 +370,11 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseCost: { magma: 300, organics: 150 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
+    appliesEffect: {
+      effectId: "meltingTail",
+      target: "brick",
+      durationMs: 4000,
+    },
     meta: { areaRadius: 30 },
   },
   freezingTail: {
@@ -346,6 +392,11 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     baseCost: { ice: 300, sand: 300 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
+    appliesEffect: {
+      effectId: "freezingTail",
+      target: "brick",
+      durationMs: 4000,
+    },
     meta: { areaRadius: 30 },
   },
 };

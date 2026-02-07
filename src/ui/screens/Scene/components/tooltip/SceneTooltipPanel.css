@@ -55,6 +55,19 @@
   gap: 0.75rem;
 }
 
+.scene-tooltip-panel__stat--nested {
+  padding-left: 0.75rem;
+}
+
+.scene-tooltip-panel__stat--nested .scene-tooltip-panel__stat-label {
+  font-size: 0.68rem;
+  color: #cbd5e1;
+}
+
+.scene-tooltip-panel__stat--nested .scene-tooltip-panel__stat-value {
+  font-size: 0.85rem;
+}
+
 .scene-tooltip-panel__stat-label {
   font-size: 0.75rem;
   text-transform: uppercase;
