@@ -45,7 +45,7 @@ const evaluateChainLightning = (
   if (context.event !== "hit") {
     return null;
   }
-  if (context.targetType !== "brick" || !context.targetId || !context.targetPosition) {
+  if ((context.targetType !== "brick" && context.targetType !== "enemy") || !context.targetId || !context.targetPosition) {
     return null;
   }
 
@@ -76,7 +76,7 @@ const evaluateChainLightning = (
     priority: 1,
     target: {
       id: context.targetId,
-      type: "brick",
+      type: context.targetType as "brick" | "enemy",
       position: context.targetPosition,
     },
   };
@@ -86,9 +86,6 @@ const executeChainLightningAbility = (
   context: AbilityExecutionContext<ChainLightningState, ChainLightningTarget>,
 ): AbilityExecutionResult => {
   const { unit, state, dependencies, services, target } = context;
-  if (target.type !== "brick") {
-    return { success: false };
-  }
 
   const chainDamage = Math.max(unit.baseAttackDamage, 0) * Math.max(state.damagePercent, 0);
   if (chainDamage <= 0 || state.chainRadius <= 0 || state.chainJumps <= 0) {

@@ -8,7 +8,8 @@ export type ArcType =
   | "bleeding"
   | "laser"
   | "plasmaBeam"
-  | "chainLightning";
+  | "chainLightning"
+  | "silverKeeper";
 
 export interface ArcConfig {
   readonly coreColor: SceneColor;
@@ -41,6 +42,8 @@ const PLASMA_BEAM_ARC_COLOR: SceneColor = { r: 0.45, g: 0.7, b: 1.0, a: 0.98 };
 const PLASMA_BEAM_ARC_BLUR: SceneColor = { r: 0.4, g: 0.65, b: 1.0, a: 0.7 };
 const CHAIN_ARC_COLOR: SceneColor = { r: 0.85, g: 0.95, b: 1.0, a: 0.95 };
 const CHAIN_ARC_BLUR: SceneColor = { r: 0.3, g: 0.7, b: 1.0, a: 0.35 };
+const SILVER_KEEPER_ARC_COLOR: SceneColor = { r: 1, g: 0.9, b: 1.0, a: 1 };
+const SILVER_KEEPER_ARC_BLUR: SceneColor = { r: 0.7, g: 0.5, b: 0.9, a: 0.85 };
 
 const ARC_DB: Record<ArcType, ArcConfig> = {
   heal: {
@@ -127,6 +130,21 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     blurColor: CHAIN_ARC_BLUR,
     coreWidth: 1.5,
     blurWidth: 5,
+    lifetimeMs: 700,
+    fadeStartMs: 350,
+    bendsPer100Px: 3,
+    noiseAmplitude: 16,
+    aperiodicStrength: 0.55,
+    kinkAmplitude: 2,
+    kinkFrequency: 1.2,
+    oscillationPeriodMs: 170,
+    oscillationAmplitude: 0.4,
+  },
+  silverKeeper: {
+    coreColor: SILVER_KEEPER_ARC_COLOR,
+    blurColor: SILVER_KEEPER_ARC_BLUR,
+    coreWidth: 3,
+    blurWidth: 8,
     lifetimeMs: 700,
     fadeStartMs: 350,
     bendsPer100Px: 3,

@@ -4,7 +4,7 @@ import { Button } from "@ui-shared/Button";
 import { ProgressBar } from "@ui-shared/ProgressBar";
 import { formatNumber } from "@ui-shared/format/number";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
-import { BRICK_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bricks.const";
+import { OBJECTIVE_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/objective-integrity/objective-integrity.const";
 import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
@@ -31,7 +31,7 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
   onScaleChange,
   cameraPosition,
 }) => {
-  const brickTotalHp = useBridgeValue(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
+  const brickTotalHp = useBridgeValue(bridge, OBJECTIVE_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
   const unitTotalHp = useBridgeValue(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
   const [brickInitialHp, setBrickInitialHp] = useState(0);
