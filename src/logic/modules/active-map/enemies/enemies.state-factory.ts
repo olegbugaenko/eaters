@@ -51,6 +51,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     
     const position = clampToMap(enemy.position);
     const rotation = sanitizeRotation(enemy.rotation ?? 0);
+    const spawnSourceId = enemy.spawnSourceId;
 
     const maxHp = stats.maxHp;
     const hp = clampNumber(enemy.hp ?? maxHp, 0, maxHp);
@@ -127,6 +128,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       selfKnockBackDistance,
       selfKnockBackSpeed,
       reward: stats.rewards,
+      spawnSourceId,
       fill,
       stroke,
       movementId,

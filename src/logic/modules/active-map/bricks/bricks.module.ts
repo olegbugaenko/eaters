@@ -194,6 +194,13 @@ export class BricksModule implements GameModule {
     return this.cloneState(state);
   }
 
+  public getBrickTotals(): { count: number; totalHp: number } {
+    return {
+      count: this.bricks.size,
+      totalHp: Math.max(0, this.totalHpCached),
+    };
+  }
+
   public getBrickPositionIfAlive(brickId: string): SceneVector2 | null {
     const state = this.bricks.get(brickId);
     if (!state) {
@@ -491,9 +498,6 @@ export class BricksModule implements GameModule {
     this.bricksWithKnockback.delete(brick.id);
     this.totalHpCached -= brick.hp;
     this.pushStats();
-    if (this.bricks.size === 0) {
-      this.runState.complete(true);
-    }
   }
 
   private applyEffectDamage(

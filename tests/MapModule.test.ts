@@ -181,6 +181,7 @@ const createEnemiesStub = (): EnemiesModule =>
     setEnemies: () => {},
     spawnEnemy: () => {},
     getEnemies: () => [],
+    getObjectiveTotals: () => ({ count: 0, totalHp: 0 }),
     findNearestEnemy: () => null,
     getEnemyState: () => null,
   } as unknown as EnemiesModule);
@@ -572,6 +573,7 @@ describe("Map run control", () => {
       setBricks: () => {
         setBricksCalls += 1;
       },
+      getBrickTotals: () => ({ count: 0, totalHp: 0 }),
     } as unknown as BricksModule;
     let prepareForMapCalls = 0;
     let setUnitsCalls = 0;
@@ -705,6 +707,7 @@ describe("Map run control", () => {
       setBricks: (input: unknown) => {
         lastBricks = input;
       },
+      getBrickTotals: () => ({ count: 0, totalHp: 0 }),
     } as unknown as BricksModule;
     let lastUnits: unknown = null;
     const playerUnits = {
@@ -1186,7 +1189,10 @@ describe("Last played map tracking", () => {
     const bridge = new DataBridge();
     const runState = new MapRunState();
     const bonuses = createBonuses();
-    const bricks = { setBricks: () => {} } as unknown as BricksModule;
+    const bricks = {
+      setBricks: () => {},
+      getBrickTotals: () => ({ count: 0, totalHp: 0 }),
+    } as unknown as BricksModule;
     const playerUnits = {
       prepareForMap: () => {},
       setUnits: () => {},

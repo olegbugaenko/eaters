@@ -42,7 +42,7 @@ import type {
   EnemySpawnData,
   InternalEnemyState,
 } from "./enemies.types";
-import { scaleEnemyResourceStockpile } from "./enemies.helpers";
+import { sanitizeEnemyLevel, scaleEnemyResourceStockpile } from "./enemies.helpers";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { getEnemyConfig, type EnemyConfig } from "../../../../db/enemies-db";
@@ -64,6 +64,7 @@ import { BrickObstacleProvider } from "./brick-obstacle-provider";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { EnemySpawnSourceController } from "./enemy-spawn-source-controller";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -110,6 +111,7 @@ export class EnemiesModule implements GameModule {
     ENEMY_SPATIAL_GRID_CELL_SIZE,
   );
   private readonly statusEffects: StatusEffectsModule;
+  private readonly spawnSourceController = new EnemySpawnSourceController();
 
   private enemies = new Map<string, InternalEnemyState>();
   private enemyOrder: InternalEnemyState[] = [];
@@ -117,6 +119,7 @@ export class EnemiesModule implements GameModule {
   private totalHpCached = 0;
   private lastPushedCount = -1;
   private lastPushedTotalHp = -1;
+  private spawnerTimers = new Map<string, number>();
 
   constructor(options: EnemiesModuleOptions) {
     this.scene = options.scene;
@@ -327,6 +330,10 @@ export class EnemiesModule implements GameModule {
       this.trackNavigationProgress(enemy, deltaSeconds);
     });
 
+    const spawns: EnemySpawnData[] = [];
+    this.collectSpawnerSpawns(deltaMs, spawns);
+    spawns.forEach((spawn) => this.spawnEnemy(spawn));
+
     if (anyChanged) {
       this.pushStats();
     }
@@ -369,6 +376,20 @@ export class EnemiesModule implements GameModule {
     }
     return { ...enemy.position };
   };
+
+  public getObjectiveTotals(): { count: number; totalHp: number } {
+    let count = 0;
+    let totalHp = 0;
+    this.enemyOrder.forEach((enemy) => {
+      const config = getEnemyConfig(enemy.type);
+      if (!config.requireDestruction || enemy.hp <= 0) {
+        return;
+      }
+      count += 1;
+      totalHp += Math.max(enemy.hp, 0);
+    });
+    return { count, totalHp };
+  }
 
   public findNearestEnemy(position: SceneVector2): EnemyRuntimeState | null {
     const nearest = this.spatialIndex.queryNearest(position, {
@@ -474,6 +495,7 @@ export class EnemiesModule implements GameModule {
     this.totalHpCached = 0;
     this.lastPushedCount = -1;
     this.lastPushedTotalHp = -1;
+    this.spawnerTimers.clear();
 
     enemies.forEach((enemy) => {
       const input: EnemyStateInput = {
@@ -506,6 +528,7 @@ export class EnemiesModule implements GameModule {
   }
 
   private destroyEnemy(enemy: InternalEnemyState, rewardMultiplier = 1): void {
+    this.spawnerTimers.delete(enemy.id);
     if (enemy.reward && hasAnyResources(enemy.reward)) {
       let rewards = this.applyEnemyRewardBonuses(enemy.reward);
       const multiplier = Math.max(rewardMultiplier, 0);
@@ -1546,6 +1569,63 @@ export class EnemiesModule implements GameModule {
     }
   }
 
+  private collectSpawnerSpawns(deltaMs: number, queue: EnemySpawnData[]): void {
+    if (deltaMs <= 0) {
+      return;
+    }
+    const currentEnemies = [...this.enemyOrder];
+    currentEnemies.forEach((enemy) => {
+      if (enemy.hp <= 0) {
+        return;
+      }
+      const config = getEnemyConfig(enemy.type);
+      const spawner = config.spawner;
+      if (!spawner || spawner.spawnRate <= 0) {
+        return;
+      }
+      const timer = this.spawnerTimers.get(enemy.id) ?? 0;
+      const nextTimer = timer - deltaMs;
+      if (nextTimer > 0) {
+        this.spawnerTimers.set(enemy.id, nextTimer);
+        return;
+      }
+      if (!this.canSpawnFromSpawner(enemy.id, spawner.maxConcurrent)) {
+        const intervalMs = this.spawnSourceController.getSpawnIntervalMs(spawner.spawnRate);
+        this.spawnerTimers.set(enemy.id, intervalMs);
+        return;
+      }
+      const selectedType = this.spawnSourceController.selectEnemyType(
+        spawner.enemyTypes,
+        enemy.level,
+      );
+      if (selectedType) {
+        const levelOffset = spawner.levelOffset ?? 0;
+        const spawnLevel = sanitizeEnemyLevel(enemy.level + levelOffset);
+        queue.push({
+          type: selectedType,
+          level: spawnLevel,
+          position: { ...enemy.position },
+          spawnSourceId: enemy.id,
+        });
+      }
+      const intervalMs = this.spawnSourceController.getSpawnIntervalMs(spawner.spawnRate);
+      this.spawnerTimers.set(enemy.id, intervalMs);
+    });
+  }
+
+  private canSpawnFromSpawner(sourceId: string, maxConcurrent?: number): boolean {
+    if (maxConcurrent === undefined) {
+      return true;
+    }
+    let count = 0;
+    this.enemyOrder.forEach((enemy) => {
+      if (enemy.spawnSourceId === sourceId && enemy.hp > 0) {
+        count += 1;
+      }
+    });
+    return count < maxConcurrent;
+  }
+
   private cloneState(enemy: InternalEnemyState): EnemyRuntimeState {
     return {
       id: enemy.id,
@@ -1567,6 +1647,7 @@ export class EnemiesModule implements GameModule {
       reward: enemy.reward
         ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward))
         : undefined,
+      spawnSourceId: enemy.spawnSourceId,
     };
   }
 }

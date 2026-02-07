@@ -73,6 +73,9 @@ export interface BridgeSchema {
   "bricks/count": number;
   "bricks/totalHp": number;
 
+  // Objectives
+  "objectives/totalHp": number;
+
   // Enemies
   "enemies/count": number;
   "enemies/totalHp": number;

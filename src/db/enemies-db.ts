@@ -17,6 +17,7 @@ import type { StatusEffectId } from "./status-effects-db";
 import type { StatusEffectApplicationOptions } from "@/logic/modules/active-map/status-effects/status-effects.types";
 import type { ExplosionType } from "./explosions-db";
 import type { AttackSeriesConfig } from "@shared/types/attack-series.types";
+import type { MapEnemySpawnTypeConfig } from "./maps/maps-db";
 
 export type EnemyType =
   | "basicEnemy"
@@ -33,7 +34,8 @@ export type EnemyType =
   | "freezeTurretEnemy"
   | "bigGun"
   | "laserTurretEnemy"
-  | "plasmaBeamTurretEnemy";
+  | "plasmaBeamTurretEnemy"
+  | "portalSpawnerEnemy";
 
 export interface EnemyAuraConfig {
   petalCount: number;
@@ -125,6 +127,13 @@ export interface EnemyConfig {
   readonly knockBackSpeed?: number; // Швидкість knockback при атаці юнітів
   readonly selfKnockBackDistance?: number; // Відстань knockback для ворога при отриманні урону
   readonly selfKnockBackSpeed?: number; // Швидкість knockback для ворога при отриманні урону
+  readonly requireDestruction?: boolean;
+  readonly spawner?: {
+    readonly spawnRate: number;
+    readonly enemyTypes: readonly MapEnemySpawnTypeConfig[];
+    readonly levelOffset?: number;
+    readonly maxConcurrent?: number;
+  };
 }
 
 const BASIC_ENEMY_VERTICES: readonly SceneVector2[] = [
@@ -180,6 +189,13 @@ const TURRET_ENEMY_VERTICES: readonly SceneVector2[] = [
   { x: -14, y: -10 },
   { x: -14, y: 10 },
   { x: 14, y: 2 },
+];
+
+const PORTAL_SPAWNER_VERTICES: readonly SceneVector2[] = [
+  { x: -16, y: -16 },
+  { x: 16, y: -16 },
+  { x: 16, y: 16 },
+  { x: -16, y: 16 },
 ];
 
 const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
@@ -1918,6 +1934,35 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       explosionType: "plasmaBeam",
       explosionRadius: 36,
       spawnOffset: { x: 2, y: 0 },
+    },
+  },
+  portalSpawnerEnemy: {
+    name: "Portal Spawner",
+    renderer: {
+      kind: "polygon",
+      fill: { r: 0.4, g: 0.6, b: 0.95, a: 0.9 },
+      stroke: {
+        color: { r: 0.6, g: 0.8, b: 1, a: 1 },
+        width: 2,
+      },
+      vertices: PORTAL_SPAWNER_VERTICES,
+    },
+    maxHp: 500,
+    armor: 5,
+    baseDamage: 0,
+    attackInterval: 9999,
+    attackRange: 0,
+    moveSpeed: 0,
+    physicalSize: 32,
+    spawner: {
+      spawnRate: 0.2,
+      enemyTypes: [
+        {
+          type: "basicEnemy",
+          weight: 1,
+        },
+      ],
+      maxConcurrent: 6,
     },
   },
 };

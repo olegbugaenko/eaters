@@ -76,6 +76,7 @@ import { isDemoBuild } from "@shared/helpers/demo.helper";
 import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
 import { calculateBrickStatsForLevel } from "../bricks/bricks.helpers";
 import { calculateEnemyStatsForLevel, sanitizeEnemyLevel } from "../enemies/enemies.helpers";
+import { ObjectiveIntegrityService } from "../objective-integrity/objective-integrity.service";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -105,6 +106,7 @@ export class MapModule implements GameModule {
   private mapEffectsLastPublishMs = 0;
   private lastMapEffectsSnapshot: MapEffectsBridgeState | null = null;
   private mapResourcePreviewCache: MapResourcePreviewCache | null = null;
+  private readonly objectiveIntegrity: ObjectiveIntegrityService;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
@@ -113,6 +115,11 @@ export class MapModule implements GameModule {
     this.getSkillLevel = options.getSkillLevel;
     this.newUnlocks = options.newUnlocks;
     this.selection = new MapSelectionState(DEFAULT_MAP_ID);
+    this.objectiveIntegrity = new ObjectiveIntegrityService(
+      options.bridge,
+      options.bricks,
+      options.enemies
+    );
     const mapEffects = new MapEffectsModule({
       playerUnits: options.playerUnits,
       enemies: options.enemies,
@@ -145,6 +152,7 @@ export class MapModule implements GameModule {
     this.pushMapResourcePreviewCache();
     this.pushMapSelectViewTransform();
     this.pushControlHintsState();
+    this.objectiveIntegrity.reset();
     this.resetInspectedTargetState();
     this.resetMapEffectsState();
     this.ensureSelection();
@@ -156,6 +164,7 @@ export class MapModule implements GameModule {
     this.autoRestartEnabled = false;
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
+    this.objectiveIntegrity.reset();
     this.resetInspectedTargetState();
     this.resetMapEffectsState();
     this.ensureSelection();
@@ -214,6 +223,14 @@ export class MapModule implements GameModule {
     this.inspectedTargetElapsedMs += Math.max(deltaMs, 0);
     this.mapEffectsElapsedMs += Math.max(deltaMs, 0);
     this.runLifecycle.tick(deltaMs);
+    const objectiveSnapshot = this.objectiveIntegrity.refresh();
+    if (
+      this.runLifecycle.isRunActive() &&
+      !objectiveSnapshot.bricksRemaining &&
+      !objectiveSnapshot.requiredEnemiesRemaining
+    ) {
+      this.options.runState.complete(true);
+    }
     this.publishInspectedTarget();
     this.publishMapEffects();
     const changed = this.refreshAutoRestartState();
@@ -649,6 +666,7 @@ export class MapModule implements GameModule {
       mapEffects: config.mapEffects ?? [],
       visualEffects: config.visualEffects,
     });
+    this.objectiveIntegrity.refresh();
 
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
@@ -670,6 +688,7 @@ export class MapModule implements GameModule {
     if (event.type === "reset") {
       this.resetInspectedTargetState();
       this.resetMapEffectsState();
+      this.objectiveIntegrity.reset();
       this.sceneCleanup.resetAfterRun();
       return;
     }

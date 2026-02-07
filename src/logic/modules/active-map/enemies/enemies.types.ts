@@ -33,6 +33,7 @@ export interface EnemySpawnData {
   readonly rotation?: number;
   readonly hp?: number;
   readonly attackCooldown?: number;
+  readonly spawnSourceId?: string;
 }
 
 export interface EnemyRuntimeState {
@@ -54,6 +55,7 @@ export interface EnemyRuntimeState {
   selfKnockBackDistance: number;
   selfKnockBackSpeed: number;
   reward?: ResourceStockpile;
+  spawnSourceId?: string;
 }
 
 export interface EnemyResourceCollector {
