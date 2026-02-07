@@ -907,7 +907,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     name: "Silver Keeper",
     renderer: {
       kind: "composite",
-      fill: { r: 0.95, g: 0.8, b: 1, a: 1 },
+      fill: { r: 0.7, g: 0.75, b: 0.8, a: 1 },
       layers: [
         // Head
         {
@@ -959,9 +959,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
               fillType: FILL_TYPES.RADIAL_GRADIENT,
               start: { x: 0, y: 0 },
               stops: [
-                { offset: 0, color: { r: 1, g: 0.8, b: 1.0, a: 0.45 } },
-                { offset: 0.6, color: { r: 1, g: 0.8, b: 1, a: 0.3 } },
-                { offset: 1, color: { r: 1.0, g: 0.8, b: 1, a: 0.0 } },
+                { offset: 0, color: { r: 0.9, g: 0.8, b: 1.0, a: 0.75 } },
+                { offset: 0.6, color: { r: 0.9, g: 0.8, b: 1, a: 0.2 } },
+                { offset: 1, color: { r: 0.9, g: 0.8, b: 1, a: 0.0 } },
               ],
             },
           },
@@ -1005,9 +1005,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
               fillType: FILL_TYPES.RADIAL_GRADIENT,
               start: { x: 0, y: 0 },
               stops: [
-                { offset: 0, color: { r: 1, g: 0.8, b: 1.0, a: 0.45 } },
-                { offset: 0.6, color: { r: 1, g: 0.8, b: 1, a: 0.3 } },
-                { offset: 1, color: { r: 1.0, g: 0.8, b: 1, a: 0.0 } },
+                { offset: 0, color: { r: 0.9, g: 0.8, b: 1.0, a: 0.75 } },
+                { offset: 0.6, color: { r: 0.9, g: 0.8, b: 1, a: 0.2 } },
+                { offset: 1, color: { r: 0.9, g: 0.8, b: 1, a: 0.0 } },
               ],
             },
           },
@@ -1204,7 +1204,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       spawnOffset: { x: 20, y: 0 },
       chainRadius: 150,
       chainJumps: 3,
-      damage: 750,
+      damage: 650,
       damageOptions: {
         rewardMultiplier: 1.0,
         armorPenetration: 0,
@@ -1226,9 +1226,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
         start: { x: 0, y: 0 },
         stops: [
-          { offset: 0, color: { r: 1, g: 0.75, b: 1, a: 0.1 } },
-          { offset: 0.25, color: { r: 1, g: 0.75, b: 1, a: 0.05 } },
-          { offset: 1, color: { r: 1, g: 0.75, b: 1, a: 0 } },
+          { offset: 0, color: { r: 0.9, g: 0.8, b: 1, a: 0.1 } },
+          { offset: 0.25, color: { r: 0.9, g: 0.8, b: 1, a: 0.05 } },
+          { offset: 1, color: { r: 0.9, g: 0.8, b: 1, a: 0 } },
         ],
         noise: {
           colorAmplitude: 0.0,
@@ -1928,7 +1928,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     name: "Bleeding Turret",
     renderer: {
       kind: "composite",
-      fill: { r: 0.7, g: 0.35, b: 0.15, a: 1 },
+      fill: { r: 0.7, g: 0.45, b: 0.50, a: 1 },
       layers: [
         {
           shape: "circle",
@@ -1965,27 +1965,27 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             { x: -6, y: 14 },
             { x: 0, y: 4 },
           ],
-          fill: { type: "base", brightness: 0.22 },
+          fill: { type: "base", brightness: 0.12 },
         },
         {
           shape: "polygon",
           vertices: [
-            { x: 8, y: -14 },
+            { x: 12, y: -14 },
             { x: -4, y: -22 },
-            { x: -15, y: -22 },
+            { x: -25, y: -22 },
             { x: -21, y: -14 },
           ],
-          fill: { type: "base", brightness: 0.18 },
+          fill: { type: "base", brightness: -0.42 },
         },
         {
           shape: "polygon",
           vertices: [
-            { x: 8, y: 14 },
+            { x: 12, y: 14 },
             { x: -4, y: 22 },
-            { x: -15, y: 22 },
+            { x: -25, y: 22 },
             { x: -21, y: 14 },
           ],
-          fill: { type: "base", brightness: 0.18 },
+          fill: { type: "base", brightness: -0.42 },
         },
       ],
     },
@@ -2007,6 +2007,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         damagePerSecond: 124,
         durationMs: 4000,
       },
+      spawnOffset: { x: 18, y: 0 },
     },
     targeting: {
       avoidSharedTargets: true,
@@ -2299,9 +2300,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
             fill: {
               fillType: FILL_TYPES.RADIAL_GRADIENT,
               stops: [
-                { offset: 0, color: { r: 0.84, g: 0.76, b: 0.95, a: 0.1 } },
-                { offset: 0.75, color: { r: 0.84, g: 0.76, b: 0.95, a: 0.9 } },
-                { offset: 1, color: { r: 0.84, g: 0.76, b: 0.95, a: 0 } },
+                { offset: 0, color: { r: 0.84, g: 0.81, b: 0.95, a: 0.1 } },
+                { offset: 0.75, color: { r: 0.84, g: 0.81, b: 0.95, a: 0.9 } },
+                { offset: 1, color: { r: 0.84, g: 0.81, b: 0.95, a: 0 } },
               ],
             }
           }
@@ -2350,22 +2351,26 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     emitter: {
       color: { r: 0.9, g: 0.6, b: 0.9, a: 0.9 },
       particlesPerSecond: 190,
-      particleLifetimeMs: 450,
-      fadeStartMs: 200,
-      baseSpeed: 0.12,
+      particleLifetimeMs: 650,
+      fadeStartMs: 500,
+      baseSpeed: 0.09,
       speedVariation: 0.01,
-      sizeRange: { min: 5, max: 15 },
-      sizeEvolutionMult: 1.0, // Particles grow from 1x to 1.25x size over lifetime
-      shape: "circle",
+      sizeRange: { min: 3, max: 5 },
+      sizeEvolutionMult: 1.0,
+      shape: "triangle",
       maxParticles: 1000,
       spread: Math.PI * 2,
-      fill: {
+      /*fill: {
         fillType: FILL_TYPES.RADIAL_GRADIENT,
         stops: [
           { offset: 0, color: { r: 0.9, g: 0.8, b: 0.9, a: 0.4 } },
           { offset: 0.25, color: { r: 0.9, g: 0.8, b: 0.9, a: 0.15 } },
           { offset: 1, color: { r: 0.9, g: 0.8, b: 0.9, a: 0 } },
         ],
+      },*/
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.97, g: 0.94, b: 1, a: 0.9 },
       },
     },
   },

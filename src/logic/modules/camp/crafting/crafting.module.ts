@@ -446,7 +446,11 @@ export class CraftingModule implements GameModule {
       }
       const state = this.getRuntimeState(id);
       const queue = sanitizeQueueValue(entry.queue);
-      const overdriveLevel = this.sanitizeOverdriveLevel(entry.overdriveLevel);
+      const rawOverdriveLevel = this.sanitizeOverdriveLevelRaw(entry.overdriveLevel);
+      const overdriveLevel =
+        this.maxOverdriveLevel > 0
+          ? clampNumber(rawOverdriveLevel, 0, this.maxOverdriveLevel)
+          : rawOverdriveLevel;
       const duration = this.getRecipeDuration(config, overdriveLevel);
       const progress = sanitizeProgressValue(entry.progressMs, duration);
       const inProgress = Boolean(entry.inProgress) && queue > 0;
@@ -548,6 +552,13 @@ export class CraftingModule implements GameModule {
       return 0;
     }
     return clampNumber(Math.floor(value), 0, this.maxOverdriveLevel);
+  }
+
+  private sanitizeOverdriveLevelRaw(value: unknown): number {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.floor(value));
   }
 
   private clampOverdriveLevels(): boolean {
