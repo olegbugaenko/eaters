@@ -26,6 +26,7 @@ import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unloc
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
 import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
+import type { ResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
 import { getResourceAbundanceLabel, getResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
 import "./MapSelectPanel.css";
 import type { MapModuleUiApi, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
@@ -1005,26 +1006,31 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 <div className="map-tree__details-resources">
                   <div className="map-tree__details-resources-title">Potential resources</div>
                   <ul className="map-tree__details-resources-list list-reset">
-                    {activeResourcePreview.resourceIds.map((resourceId) => (
-                      <li key={resourceId} className="map-tree__details-resources-item">
-                        <ResourceIcon resourceId={resourceId} className="map-tree__details-resources-icon" />
-                        <span>{getResourceConfig(resourceId).name}</span>
-                        <span className="map-tree__details-resources-level">
-                          {(() => {
-                            if (!activeResourceTotals) {
-                              return getResourceAbundanceLabel(1);
-                            }
-                            const amount = activeResourceTotals.amounts[resourceId] ?? 0;
-                            const level = getResourceAbundanceLevel(
-                              amount,
-                              activeResourceTotals.total,
-                              activeResourceTotals.count
-                            );
-                            return getResourceAbundanceLabel(level);
-                          })()}
-                        </span>
-                      </li>
-                    ))}
+                    {activeResourcePreview.resourceIds.map((resourceId) => {
+                      const abundanceLevel: ResourceAbundanceLevel = !activeResourceTotals
+                        ? 1
+                        : getResourceAbundanceLevel(
+                            activeResourceTotals.amounts[resourceId] ?? 0,
+                            activeResourceTotals.total,
+                            activeResourceTotals.count
+                          );
+                      return (
+                        <li key={resourceId} className="map-tree__details-resources-item">
+                          <span className="map-tree__details-resources-label">
+                            <ResourceIcon resourceId={resourceId} className="map-tree__details-resources-icon" />
+                            <span>{getResourceConfig(resourceId).name}</span>
+                          </span>
+                          <span
+                            className={classNames(
+                              "map-tree__details-resources-level",
+                              `map-tree__details-resources-level--${abundanceLevel}`
+                            )}
+                          >
+                            {getResourceAbundanceLabel(abundanceLevel)}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ) : null}

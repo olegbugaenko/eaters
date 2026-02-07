@@ -20,6 +20,8 @@ export const getResourceAbundanceLevel = (
     return 1;
   }
 
+  if (safeCount === 1) return 5;
+
   const k = 3;
   const p = 1.8;
   const denominator = Math.log(safeTotal + k);

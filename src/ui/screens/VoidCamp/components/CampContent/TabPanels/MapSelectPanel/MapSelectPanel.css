@@ -349,8 +349,8 @@
 .map-tree__details-resources-item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
   justify-content: space-between;
+  gap: var(--spacing-md);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-sm);
   background: rgba(15, 23, 42, 0.35);
@@ -358,20 +358,46 @@
   font-size: 0.9rem;
 }
 
-.map-tree__details-resources-item span:first-of-type {
-  flex: 1;
+.map-tree__details-resources-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
 }
 
 .map-tree__details-resources-level {
-  color: var(--color-text-strong);
+  flex-shrink: 0;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+/* Rarity colors: rarest → most abundant */
+.map-tree__details-resources-level--1 {
+  color: #f97316;
+}
+
+.map-tree__details-resources-level--2 {
+  color: #eab308;
+}
+
+.map-tree__details-resources-level--3 {
+  color: #f8fafc;
+}
+
+.map-tree__details-resources-level--4 {
+  color: #86efac;
+}
+
+.map-tree__details-resources-level--5 {
+  color: #22c55e;
 }
 
 .map-tree__details-resources-icon {
   width: 22px;
   height: 22px;
+  flex-shrink: 0;
 }
 
 .map-tree__popover {
