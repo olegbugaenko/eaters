@@ -5,6 +5,7 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { MapId, getMapConfig } from "@/db/maps/maps-db";
+import { RESOURCE_IDS, type ResourceId, getResourceConfig } from "@/db/resources-db";
 import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { classNames } from "@ui-shared/classNames";
@@ -24,8 +25,11 @@ import {
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
+import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
+import type { ResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
+import { getResourceAbundanceLabel, getResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
 import "./MapSelectPanel.css";
-import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
+import type { MapModuleUiApi, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 
 const CELL_SIZE_X = 200;
 const CELL_SIZE_Y = 180;
@@ -49,6 +53,7 @@ interface MapSelectPanelProps {
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
+  mapResourcePreviewCache: MapResourcePreviewCache;
   achievements: AchievementsBridgePayload;
   onSelectMap: (mapId: MapId) => void;
   onSelectLevel: (mapId: MapId, level: number) => void;
@@ -138,6 +143,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
   clearedLevelsTotal,
   selectedMap,
+  mapResourcePreviewCache,
   achievements,
   onSelectMap,
   onSelectLevel,
@@ -364,6 +370,41 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     }
     return achievements.achievements.find((entry) => entry.id === achievementId) ?? null;
   }, [achievements.achievements, activeMap]);
+  const activeResourcePreview = useMemo(() => {
+    if (!activeMap) {
+      return null;
+    }
+    return mapResourcePreviewCache[activeMap.id] ?? null;
+  }, [activeMap, mapResourcePreviewCache]);
+  const activeResourceTotals = useMemo(() => {
+    if (!activeResourcePreview) {
+      return null;
+    }
+    const amounts: Partial<Record<ResourceId, number>> = {};
+    const addStockpile = (stockpile?: Record<ResourceId, number> | null): void => {
+      if (!stockpile) {
+        return;
+      }
+      RESOURCE_IDS.forEach((id) => {
+        const value = stockpile[id] ?? 0;
+        if (value <= 0) {
+          return;
+        }
+        amounts[id] = (amounts[id] ?? 0) + value;
+      });
+    };
+    addStockpile(activeResourcePreview.brickTotalsLevel1);
+    Object.values(activeResourcePreview.enemyRewardsLevel1).forEach((reward) => addStockpile(reward));
+    const total = activeResourcePreview.resourceIds.reduce(
+      (sum, id) => sum + (amounts[id] ?? 0),
+      0
+    );
+    return {
+      amounts,
+      total,
+      count: activeResourcePreview.resourceIds.length,
+    };
+  }, [activeResourcePreview]);
 
   const setPopoverForMap = useCallback(
     (map: MapListEntry) => {
@@ -959,6 +1000,38 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     effects={activeAchievement.bonusEffects}
                     emptyLabel="No bonuses yet."
                   />
+                </div>
+              ) : null}
+              {activeResourcePreview && activeResourcePreview.resourceIds.length > 0 ? (
+                <div className="map-tree__details-resources">
+                  <div className="map-tree__details-resources-title">Potential resources</div>
+                  <ul className="map-tree__details-resources-list list-reset">
+                    {activeResourcePreview.resourceIds.map((resourceId) => {
+                      const abundanceLevel: ResourceAbundanceLevel = !activeResourceTotals
+                        ? 1
+                        : getResourceAbundanceLevel(
+                            activeResourceTotals.amounts[resourceId] ?? 0,
+                            activeResourceTotals.total,
+                            activeResourceTotals.count
+                          );
+                      return (
+                        <li key={resourceId} className="map-tree__details-resources-item">
+                          <span className="map-tree__details-resources-label">
+                            <ResourceIcon resourceId={resourceId} className="map-tree__details-resources-icon" />
+                            <span>{getResourceConfig(resourceId).name}</span>
+                          </span>
+                          <span
+                            className={classNames(
+                              "map-tree__details-resources-level",
+                              `map-tree__details-resources-level--${abundanceLevel}`
+                            )}
+                          >
+                            {getResourceAbundanceLabel(abundanceLevel)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               ) : null}
               <div className="map-tree__details-list">

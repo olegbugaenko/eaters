@@ -18,6 +18,8 @@ import type { EnemyRuntimeState } from "../enemies/enemies.types";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { PlayerUnitState } from "../player-units/units/UnitTypes";
 import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps/maps-db";
+import type { EnemyType } from "../../../../db/enemies-db";
+import type { ResourceId, ResourceStockpile } from "../../../../db/resources-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
@@ -102,6 +104,14 @@ export interface MapEffectsBridgeState {
     postProcess?: MapEffectPostProcessConfig;
   } | null;
 }
+
+export interface MapResourcePreview {
+  readonly resourceIds: ResourceId[];
+  readonly brickTotalsLevel1: ResourceStockpile;
+  readonly enemyRewardsLevel1: Partial<Record<EnemyType, ResourceStockpile>>;
+}
+
+export type MapResourcePreviewCache = Partial<Record<MapId, MapResourcePreview>>;
 
 export type MapModuleInstance = GameModule & { id: string };
 

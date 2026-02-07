@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapId } from "@/db/maps/maps-db";
-import { MapListEntry } from "@logic/modules/active-map/map/map.types";
+import { MapListEntry, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
 import { CampTabPanels } from "./TabPanels/CampTabPanels";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
@@ -19,6 +19,7 @@ interface CampContentProps {
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
+  mapResourcePreviewCache: MapResourcePreviewCache;
   onSelectMap: (mapId: MapId) => void;
   onSelectMapLevel: (mapId: MapId, level: number) => void;
   onStartMap: (mapId: MapId) => void;
@@ -38,6 +39,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   maps,
   clearedLevelsTotal,
   selectedMap,
+  mapResourcePreviewCache,
   onSelectMap,
   onSelectMapLevel,
   onStartMap,
@@ -116,6 +118,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         maps={maps}
         clearedLevelsTotal={clearedLevelsTotal}
         selectedMap={selectedMap}
+        mapResourcePreviewCache={mapResourcePreviewCache}
         onSelectMap={onSelectMap}
         onSelectMapLevel={onSelectMapLevel}
         onStartMap={onStartMap}

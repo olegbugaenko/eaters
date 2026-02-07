@@ -12,6 +12,13 @@ import {
   getMapList,
   isMapId,
 } from "../../../../db/maps/maps-db";
+import { getBrickConfig } from "../../../../db/bricks-db";
+import { getEnemyConfig, type EnemyType } from "../../../../db/enemies-db";
+import {
+  createEmptyResourceStockpile,
+  RESOURCE_IDS,
+  type ResourceStockpile,
+} from "../../../../db/resources-db";
 import type { BonusEffectMap } from "@shared/types/bonuses";
 import { buildBricksFromBlueprints } from "../../../services/brick-layout/BrickLayoutService";
 import { MapSelectionState } from "./map.selection";
@@ -24,6 +31,8 @@ import {
   MapLevelStats,
   MapListEntry,
   MapModuleOptions,
+  MapResourcePreview,
+  MapResourcePreviewCache,
   MapRunResult,
   MapSaveData,
   MapStats,
@@ -53,6 +62,7 @@ import {
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
   AUTO_RESTART_SKILL_ID,
   BONUS_CONTEXT_CLEARED_LEVELS,
+  MAP_RESOURCE_PREVIEW_BRIDGE_KEY,
   INSPECT_TARGET_TOOLTIP_THROTTLE_MS,
 } from "./map.const";
 import {
@@ -64,6 +74,8 @@ import {
 } from "./map.helpers";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
 import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
+import { calculateBrickStatsForLevel } from "../bricks/bricks.helpers";
+import { calculateEnemyStatsForLevel, sanitizeEnemyLevel } from "../enemies/enemies.helpers";
 
 export class MapModule implements GameModule {
   public readonly id = "maps";
@@ -92,6 +104,7 @@ export class MapModule implements GameModule {
   private mapEffectsElapsedMs = 0;
   private mapEffectsLastPublishMs = 0;
   private lastMapEffectsSnapshot: MapEffectsBridgeState | null = null;
+  private mapResourcePreviewCache: MapResourcePreviewCache | null = null;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
@@ -129,6 +142,7 @@ export class MapModule implements GameModule {
     this.refreshAutoRestartState();
     this.pushAutoRestartState();
     this.pushMapList();
+    this.pushMapResourcePreviewCache();
     this.pushMapSelectViewTransform();
     this.pushControlHintsState();
     this.resetInspectedTargetState();
@@ -162,6 +176,7 @@ export class MapModule implements GameModule {
     this.pushAutoRestartState();
     this.pushMapList();
     this.pushLastPlayedMap();
+    this.pushMapResourcePreviewCache();
     this.pushMapSelectViewTransform();
     this.pushControlHintsState();
 
@@ -879,6 +894,145 @@ export class MapModule implements GameModule {
     this.pushClearedLevelsTotal();
     DataBridgeHelpers.pushState(this.options.bridge, MAP_LIST_BRIDGE_KEY, list);
     this.newUnlocks.invalidate("maps");
+  }
+
+  private pushMapResourcePreviewCache(): void {
+    const cache = this.ensureMapResourcePreviewCache();
+    DataBridgeHelpers.pushState(this.options.bridge, MAP_RESOURCE_PREVIEW_BRIDGE_KEY, cache);
+  }
+
+  private ensureMapResourcePreviewCache(): MapResourcePreviewCache {
+    if (this.mapResourcePreviewCache) {
+      return this.mapResourcePreviewCache;
+    }
+    const cache: MapResourcePreviewCache = {};
+    getMapList().forEach((map) => {
+      const config = getMapConfig(map.id);
+      cache[map.id] = this.buildMapResourcePreview(config);
+    });
+    this.mapResourcePreviewCache = cache;
+    return cache;
+  }
+
+  private buildMapResourcePreview(config: MapConfig): MapResourcePreview {
+    const mapLevel = 1;
+    const brickTotalsLevel1 = this.computeBrickTotalsForLevel(config, mapLevel);
+    const enemyRewardsLevel1 = this.computeEnemyRewardsForLevel(config, mapLevel);
+    const multiplier =
+      config.resourceMultiplier !== undefined && config.resourceMultiplier > 0
+        ? Math.max(config.resourceMultiplier, 0)
+        : 1;
+    const scaledBrickTotals =
+      multiplier !== 1
+        ? this.scaleResourceStockpilePreview(brickTotalsLevel1, multiplier)
+        : brickTotalsLevel1;
+    const scaledEnemyRewards: Partial<Record<EnemyType, ResourceStockpile>> = {};
+    Object.entries(enemyRewardsLevel1).forEach(([type, rewards]) => {
+      scaledEnemyRewards[type as EnemyType] =
+        multiplier !== 1
+          ? this.scaleResourceStockpilePreview(rewards ?? createEmptyResourceStockpile(), multiplier)
+          : rewards ?? createEmptyResourceStockpile();
+    });
+
+    const resourceIds = RESOURCE_IDS.filter((id) => {
+      if ((scaledBrickTotals[id] ?? 0) > 0) {
+        return true;
+      }
+      return Object.values(scaledEnemyRewards).some((reward) => (reward?.[id] ?? 0) > 0);
+    });
+
+    return {
+      resourceIds,
+      brickTotalsLevel1: scaledBrickTotals,
+      enemyRewardsLevel1: scaledEnemyRewards,
+    };
+  }
+
+  private computeBrickTotalsForLevel(config: MapConfig, mapLevel: number): ResourceStockpile {
+    const totals = createEmptyResourceStockpile();
+    const bricks = buildBricksFromBlueprints(config.bricks({ mapLevel }));
+    bricks.forEach((brick) => {
+      const brickConfig = getBrickConfig(brick.type);
+      const stats = calculateBrickStatsForLevel(brickConfig, brick.level);
+      this.addResourceStockpile(totals, stats.rewards);
+    });
+    return totals;
+  }
+
+  private computeEnemyRewardsForLevel(
+    config: MapConfig,
+    mapLevel: number
+  ): Partial<Record<EnemyType, ResourceStockpile>> {
+    const levelsByType = new Map<EnemyType, number>();
+    if (config.enemies) {
+      config.enemies({ mapLevel }).forEach((spawn) => {
+        const level = sanitizeEnemyLevel(spawn.level ?? mapLevel);
+        this.setEnemyLevelPreview(levelsByType, spawn.type, level);
+      });
+    }
+    config.enemySpawnPoints?.forEach((spawnPoint) => {
+      if (spawnPoint.enabled === false) {
+        return;
+      }
+      const levelOffset = spawnPoint.levelOffset ?? 0;
+      const enemyLevel = sanitizeEnemyLevel(mapLevel + levelOffset);
+      const validTypes = spawnPoint.enemyTypes.filter((enemyType) => {
+        if (enemyType.minLevel !== undefined && mapLevel < enemyType.minLevel) {
+          return false;
+        }
+        if (enemyType.maxLevel !== undefined && mapLevel > enemyType.maxLevel) {
+          return false;
+        }
+        return true;
+      });
+      if (validTypes.length === 0) {
+        return;
+      }
+      const weightedTypes = validTypes.filter((enemyType) => Math.max(enemyType.weight, 0) > 0);
+      const previewTypes = weightedTypes.length > 0 ? weightedTypes : [validTypes[0]!];
+      previewTypes.forEach((enemyType) => {
+        this.setEnemyLevelPreview(levelsByType, enemyType.type, enemyLevel);
+      });
+    });
+
+    const rewards: Partial<Record<EnemyType, ResourceStockpile>> = {};
+    levelsByType.forEach((level, type) => {
+      const stats = calculateEnemyStatsForLevel(getEnemyConfig(type), level);
+      rewards[type] = stats.rewards;
+    });
+    return rewards;
+  }
+
+  private setEnemyLevelPreview(
+    levelsByType: Map<EnemyType, number>,
+    type: EnemyType,
+    level: number
+  ): void {
+    const stored = levelsByType.get(type);
+    if (!stored || level > stored) {
+      levelsByType.set(type, level);
+    }
+  }
+
+  private addResourceStockpile(target: ResourceStockpile, source: ResourceStockpile): void {
+    RESOURCE_IDS.forEach((id) => {
+      const base = target[id] ?? 0;
+      const add = source[id] ?? 0;
+      target[id] = base + add;
+    });
+  }
+
+  private scaleResourceStockpilePreview(
+    source: ResourceStockpile,
+    multiplier: number
+  ): ResourceStockpile {
+    const scaled = createEmptyResourceStockpile();
+    RESOURCE_IDS.forEach((id) => {
+      const base = source[id] ?? 0;
+      const value = Math.round(base * multiplier * 100) / 100;
+      scaled[id] = value > 0 ? value : 0;
+    });
+    return scaled;
   }
 
   private registerUnlockNotifications(): void {
