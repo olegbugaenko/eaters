@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { MapId, getMapConfig } from "@/db/maps/maps-db";
-import { MapListEntry } from "@logic/modules/active-map/map/map.types";
+import { MapListEntry, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 import { SkillTreeView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/ModulesWorkshop/ModulesWorkshopView";
 import { UnitDesignerView } from "@screens/VoidCamp/components/UnitDesigner/UnitDesignerView";
@@ -23,6 +23,7 @@ type CampTabPanelsProps = {
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
+  mapResourcePreviewCache: MapResourcePreviewCache;
   onSelectMap: (mapId: MapId) => void;
   onSelectMapLevel: (mapId: MapId, level: number) => void;
   onStartMap: (mapId: MapId) => void;
@@ -40,6 +41,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   maps,
   clearedLevelsTotal,
   selectedMap,
+  mapResourcePreviewCache,
   onSelectMap,
   onSelectMapLevel,
   onStartMap,
@@ -79,6 +81,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         maps={maps}
         clearedLevelsTotal={clearedLevelsTotal}
         selectedMap={selectedMap}
+        mapResourcePreviewCache={mapResourcePreviewCache}
         achievements={achievementsState}
         onSelectMap={onSelectMap}
         onSelectLevel={onSelectMapLevel}

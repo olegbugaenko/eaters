@@ -12,6 +12,7 @@ import type {
   MapListEntry,
   MapAutoRestartState,
   MapEffectsBridgeState,
+  MapResourcePreviewCache,
 } from "@logic/modules/active-map/map/map.types";
 import type { BuildingsWorkshopBridgeState } from "@logic/modules/camp/buildings/buildings.types";
 import type { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
@@ -55,6 +56,7 @@ export interface BridgeSchema {
   "maps/selectedLevel": number;
   "maps/clearedLevelsTotal": number;
   "maps/lastPlayed": { mapId: MapId; level: number } | null;
+  "maps/resourcePreview": MapResourcePreviewCache;
   "maps/autoRestart": MapAutoRestartState;
   "maps/selectViewTransform": ViewTransform | null;
   "maps/controlHintsCollapsed": boolean;

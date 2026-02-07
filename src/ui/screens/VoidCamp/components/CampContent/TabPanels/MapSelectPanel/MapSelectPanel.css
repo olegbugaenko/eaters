@@ -328,6 +328,40 @@
   font-size: 0.9rem;
 }
 
+.map-tree__details-resources {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.map-tree__details-resources-title {
+  font-weight: 600;
+  color: var(--color-text-strong);
+  font-size: 0.9rem;
+}
+
+.map-tree__details-resources-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-sm);
+  margin: 0;
+}
+
+.map-tree__details-resources-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.35);
+  color: var(--color-text-subtle);
+  font-size: 0.9rem;
+}
+
+.map-tree__details-resources-icon {
+  width: 22px;
+  height: 22px;
+}
+
 .map-tree__popover {
   position: absolute;
   transform: translate(-50%, -50%);

@@ -10,9 +10,10 @@ import { GAME_VERSIONS } from "@db/version-db";
 import {
   MAP_CLEARED_LEVELS_BRIDGE_KEY,
   MAP_LIST_BRIDGE_KEY,
+  MAP_RESOURCE_PREVIEW_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
 } from "@logic/modules/active-map/map/map.const";
-import { MapListEntry } from "@logic/modules/active-map/map/map.types";
+import { MapListEntry, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/time/time.module";
 import { RESOURCE_TOTALS_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
 import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
@@ -108,6 +109,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const timePlayed = useBridgeValue(bridge, TIME_BRIDGE_KEY, 0);
   const maps = useBridgeValue(bridge, MAP_LIST_BRIDGE_KEY, [] as MapListEntry[]);
   const selectedMap = useBridgeValue(bridge, MAP_SELECTED_BRIDGE_KEY, null as MapId | null);
+  const mapResourcePreviewCache = useBridgeValue(
+    bridge,
+    MAP_RESOURCE_PREVIEW_BRIDGE_KEY,
+    {} as MapResourcePreviewCache
+  );
   const clearedLevelsTotal = useBridgeValue(
     bridge,
     MAP_CLEARED_LEVELS_BRIDGE_KEY,
@@ -361,6 +367,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             maps={maps}
             clearedLevelsTotal={clearedLevelsTotal}
             selectedMap={selectedMap}
+            mapResourcePreviewCache={mapResourcePreviewCache}
             onSelectMap={(mapId) => uiApi.map.selectMap(mapId)}
             onSelectMapLevel={(mapId, level) => uiApi.map.selectMapLevel(mapId, level)}
             onStartMap={handleStartMap}

@@ -5,6 +5,7 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { MapId, getMapConfig } from "@/db/maps/maps-db";
+import { getResourceConfig } from "@/db/resources-db";
 import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { classNames } from "@ui-shared/classNames";
@@ -24,8 +25,9 @@ import {
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
+import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import "./MapSelectPanel.css";
-import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
+import type { MapModuleUiApi, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 
 const CELL_SIZE_X = 200;
 const CELL_SIZE_Y = 180;
@@ -49,6 +51,7 @@ interface MapSelectPanelProps {
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
+  mapResourcePreviewCache: MapResourcePreviewCache;
   achievements: AchievementsBridgePayload;
   onSelectMap: (mapId: MapId) => void;
   onSelectLevel: (mapId: MapId, level: number) => void;
@@ -138,6 +141,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   maps,
   clearedLevelsTotal,
   selectedMap,
+  mapResourcePreviewCache,
   achievements,
   onSelectMap,
   onSelectLevel,
@@ -364,6 +368,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     }
     return achievements.achievements.find((entry) => entry.id === achievementId) ?? null;
   }, [achievements.achievements, activeMap]);
+  const activeResourcePreview = useMemo(() => {
+    if (!activeMap) {
+      return null;
+    }
+    return mapResourcePreviewCache[activeMap.id] ?? null;
+  }, [activeMap, mapResourcePreviewCache]);
 
   const setPopoverForMap = useCallback(
     (map: MapListEntry) => {
@@ -959,6 +969,19 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     effects={activeAchievement.bonusEffects}
                     emptyLabel="No bonuses yet."
                   />
+                </div>
+              ) : null}
+              {activeResourcePreview && activeResourcePreview.resourceIds.length > 0 ? (
+                <div className="map-tree__details-resources">
+                  <div className="map-tree__details-resources-title">Potential resources</div>
+                  <ul className="map-tree__details-resources-list list-reset">
+                    {activeResourcePreview.resourceIds.map((resourceId) => (
+                      <li key={resourceId} className="map-tree__details-resources-item">
+                        <ResourceIcon resourceId={resourceId} className="map-tree__details-resources-icon" />
+                        <span>{getResourceConfig(resourceId).name}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
               <div className="map-tree__details-list">
