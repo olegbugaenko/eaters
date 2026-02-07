@@ -45,6 +45,7 @@ import {
   UnitModuleStateFactory,
   UnitModuleStateInput,
 } from "./unit-module-workshop.state-factory";
+import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
 
 export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   public readonly id = "unitModuleWorkshop";
@@ -132,6 +133,7 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     this.levels.set(id, nextLevel);
     this.pushState();
     this.notifyListeners();
+    trackAnalyticsEvent("unit_module_purchased", { moduleId: id, level: nextLevel });
     return true;
   }
 

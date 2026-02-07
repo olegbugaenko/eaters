@@ -42,6 +42,7 @@ import {
   BuildingStateFactory,
   BuildingStateInput,
 } from "./buildings.state-factory";
+import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
 
 export class BuildingsModule extends BaseGameModule<() => void> {
   public readonly id = "buildings";
@@ -146,6 +147,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     this.syncBonusLevel(id);
     this.pushState();
     this.notifyListeners();
+    trackAnalyticsEvent("building_level_up", { buildingId: id, level: nextLevel });
     return true;
   }
 

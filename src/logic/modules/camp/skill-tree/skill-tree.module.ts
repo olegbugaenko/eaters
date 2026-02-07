@@ -36,6 +36,15 @@ import {
   clampLevel,
 } from "./skill-tree.helpers";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
+import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
+
+const KEY_SKILL_IDS: SkillId[] = [
+  "stone_automatons",
+  "autorestart_rituals",
+  "void_modules",
+  "construction_guild",
+  "pheromones",
+];
 
 export class SkillTreeModule implements GameModule {
   public readonly id = "skillTree";
@@ -160,6 +169,9 @@ export class SkillTreeModule implements GameModule {
         "skill-obtained",
         `Skill ${config.name} obtained: ${config.registerEvent.text}`
       );
+    }
+    if (KEY_SKILL_IDS.includes(id)) {
+      trackAnalyticsEvent("key_skill_purchased", { skillId: id, level: targetLevel });
     }
     return true;
   }
