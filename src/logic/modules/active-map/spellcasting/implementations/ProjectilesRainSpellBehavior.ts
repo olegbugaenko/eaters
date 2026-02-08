@@ -183,7 +183,7 @@ export class ProjectilesRainSpellBehavior implements SpellBehavior {
       instance.projectileConfig.targetTypes &&
       instance.projectileConfig.targetTypes.length > 0
         ? instance.projectileConfig.targetTypes
-        : (["brick"] as TargetType[]);
+        : (["brick", "enemy"] as TargetType[]);
 
     const objectId = this.projectiles.spawn({
       origin,

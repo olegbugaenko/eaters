@@ -145,7 +145,7 @@ export class ProjectileSpellBehavior implements SpellBehavior {
     const targetTypes =
       projectileConfig.targetTypes && projectileConfig.targetTypes.length > 0
         ? projectileConfig.targetTypes
-        : (["brick"] as TargetType[]);
+        : (["brick", "enemy"] as TargetType[]);
 
     for (const direction of directions) {
       const origin = { ...context.origin };
