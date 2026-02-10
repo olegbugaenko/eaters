@@ -6,6 +6,17 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.3",
+    releaseDate:  "2026-02-10",
+    changes: [
+      "Added new maps",
+      "Added new mechanics for crafting speedup",
+      "Potential loot on maps now visible in sidebar",
+      "Fixed hover tooltips on objects - now they display effects and abilities properly",
+      "Significantly improved performance of animations",
+    ]
+  },
+  {
     displayName: "v0.1.2b",
     releaseDate: "2026-02-04",
     changes: [

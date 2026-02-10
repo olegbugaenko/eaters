@@ -5,6 +5,7 @@ import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { GAME_VERSIONS } from "@db/version-db";
 import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
+import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
 import "./SaveSlotSelectScreen.css";
 
 interface SaveSlotViewModel {
@@ -90,14 +91,24 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
             );
           })}
         </div>
-        <a
-          className="save-slot-screen__wishlist button black-button"
-          href={STEAM_WISHLIST_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Wishlist on Steam
-        </a>
+        <div className="save-slot-screen__links">
+          <a
+            className="save-slot-screen__wishlist button black-button"
+            href={STEAM_WISHLIST_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Wishlist on Steam
+          </a>
+          <a
+            className="save-slot-screen__feedback-link"
+            href={PLAYER_FEEDBACK_FORM_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Share feedback
+          </a>
+        </div>
       </div>
       {currentVersion && (
         <button

@@ -190,7 +190,7 @@
 
 .skill-tree-node--affordable:not(:disabled) {
   border-color: rgba(34, 197, 94, 0.75);
-  box-shadow: 0 0 22px rgba(34, 197, 94, 0.25);
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.45);
 }
 
 .skill-tree-node--affordable:not(:disabled):hover {
@@ -224,6 +224,7 @@
 .skill-tree-node--maxed {
   border-color: rgba(147, 147, 147, 0.85);
   background: radial-gradient(circle at 40% 30%, rgb(53, 60, 70), rgb(21, 28, 41));
+  border-width: 3px;
 }
 
 .skill-tree-node--active {

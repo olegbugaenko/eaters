@@ -57,6 +57,29 @@
   font-size: 1.20em;
 }
 
+.save-slot-screen__links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.save-slot-screen__feedback-link {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+  text-underline-offset: 2px;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+.save-slot-screen__feedback-link:hover,
+.save-slot-screen__feedback-link:focus-visible {
+  color: var(--color-text-primary);
+  text-decoration-color: rgba(255, 255, 255, 0.8);
+}
+
 .save-slot-card {
   padding: var(--spacing-xl);
   display: flex;

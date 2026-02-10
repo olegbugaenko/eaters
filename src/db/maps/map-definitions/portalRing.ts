@@ -19,6 +19,7 @@ const mapConfig = (() => {
     size,
     spawnPoints: [spawnPoint],
     nodePosition: { x: 5, y: 0 },
+    icon: 'portals.png',
     bricks: () => [],
     enemies: ({ mapLevel }) => {
       const level = Math.max(1, Math.floor(mapLevel + levelOffset));

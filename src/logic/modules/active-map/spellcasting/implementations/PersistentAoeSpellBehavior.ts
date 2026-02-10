@@ -217,7 +217,7 @@ export class PersistentAoeSpellBehavior implements SpellBehavior {
     const targetTypes =
       config.targetTypes && config.targetTypes.length > 0
         ? config.targetTypes
-        : (["brick"] as TargetType[]);
+        : (["brick", "enemy"] as TargetType[]);
     return { durationMs, damagePerSecond, ring, visual, effects, targetTypes };
   }
 
