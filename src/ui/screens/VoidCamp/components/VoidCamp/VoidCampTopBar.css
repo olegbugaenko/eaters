@@ -35,6 +35,22 @@
   text-decoration: none;
 }
 
+.void-camp-top-bar__feedback-link {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+  text-underline-offset: 2px;
+  transition: color 0.18s ease, text-decoration-color 0.18s ease;
+}
+
+.void-camp-top-bar__feedback-link:hover,
+.void-camp-top-bar__feedback-link:focus-visible {
+  color: var(--color-text-primary);
+  text-decoration-color: rgba(255, 255, 255, 0.7);
+}
+
 .void-camp-top-bar__button:hover,
 .void-camp-top-bar__button:focus-visible {
   color: var(--color-accent);

@@ -82,6 +82,7 @@ import {
 } from "@logic/modules/shared/achievements/achievements.const";
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
+import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -360,6 +361,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             onSettingsClick={handleOpenSettings}
             onExitClick={handleExit}
             wishlistUrl={STEAM_WISHLIST_URL}
+            feedbackUrl={PLAYER_FEEDBACK_FORM_URL}
           />
         }
         content={
