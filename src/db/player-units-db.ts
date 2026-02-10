@@ -272,6 +272,30 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           fill: { type: "base", brightness: -0.05 },
           stroke: { type: "base", width: 3.2, brightness: -0.05 },
         },
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          // тіло: довше й товстіше біля основи, помітніший силует
+          [ 
+            {x: 2, y: -3, width: 3.3}, 
+            {x: 1, y: -8, width: 2.4}, 
+            {x: -1, y: -11, width: 2.0},
+            {x: -3.5, y: -13, width: 1.5},
+            {x: -7, y: -14, width: 1.0}, 
+          ],
+          { requiresModule: "silverArmor", fill: { type: "base", brightness: -0.10 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          // тіло: довше й товстіше біля основи, помітніший силует
+          [ 
+            {x: 2, y: 3, width: 3.3}, 
+            {x: 1, y: 8, width: 2.4}, 
+            {x: -1, y: 11, width: 2.0},
+            {x: -3.5, y: 13, width: 1.5},
+            {x: -7, y: 14, width: 1.0}, 
+          ],
+          { requiresModule: "silverArmor", fill: { type: "base", brightness: -0.10 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
 
         // Верхній вусик (корінь + тіло + гачок)
         { shape: "polygon", requiresModule: "magnet",
