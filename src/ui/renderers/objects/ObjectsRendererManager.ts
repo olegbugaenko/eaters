@@ -586,6 +586,9 @@ export class ObjectsRendererManager {
     }
     this.objects.delete(id);
     this.autoAnimatingIds.delete(id);
+    
+    // Clean up interpolated positions for this object
+    this.interpolatedPositions.delete(id);
 
     // Unregister from tied objects (handles both parent and child cases)
     this.tiedObjects.unregisterChild(id);

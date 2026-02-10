@@ -19,7 +19,7 @@ import {
 } from "@ui/renderers/primitives/gpu/particle-emitter";
 import { explosionWaveGpuRenderer } from "@ui/renderers/primitives/gpu/explosion-wave";
 import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/whirl";
-import { renderFireRings } from "@ui/renderers/primitives/gpu/fire-ring";
+import { renderFireRings, fireRingGpuRenderer } from "@ui/renderers/primitives/gpu/fire-ring";
 import {
   bulletGpuRenderer,
   applyInterpolatedBulletPositions,
@@ -271,6 +271,16 @@ export const useSceneCanvas = ({
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
+        // Clear all GPU primitives that might have accumulated while tab was hidden
+        particleEmitterGpuRenderer.clearInstances(gl);
+        explosionWaveGpuRenderer.clearInstances();
+        whirlGpuRenderer.clearInstances();
+        petalAuraGpuRenderer.clearInstances();
+        arcGpuRenderer.clearInstances();
+        bulletGpuRenderer.clearInstances();
+        ringGpuRenderer.clearInstances();
+        fireRingGpuRenderer.clearInstances();
+        
         applyPendingVisibilityCleanup();
       }
     };
