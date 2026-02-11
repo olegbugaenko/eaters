@@ -322,5 +322,16 @@
   "bonuses.spell_power.name": "Сила заклять",
   "bonuses.crafting_speed_mult.name": "Множник швидкості крафту",
   "bonuses.crafting_overdrive_max.name": "Ліміт овердрайву крафту",
-  "bonuses.building_cost_multiplier.name": "Множник вартості будівель"
+  "bonuses.building_cost_multiplier.name": "Множник вартості будівель",
+  "scene.debug.joinedGpuBanner": "Налагодження Joined GPU (joinedDebug=1) — показано 1024 об'єднані елементи",
+  "scene.common.secondsShort": "с",
+  "scene.common.timesShort": "×",
+  "scene.toolbar.axisX": "x",
+  "scene.toolbar.axisY": "y",
+  "scene.tutorial.progress": "Крок {{current}} з {{total}}",
+  "tutorialOverlay.back": "Назад",
+  "tutorialOverlay.skip": "Пропустити",
+  "tutorialOverlay.finish": "Завершити",
+  "tutorialOverlay.next": "Далі",
+  "tutorialOverlay.spotlightClickable": "• можна натискати крізь підсвітку"
 }

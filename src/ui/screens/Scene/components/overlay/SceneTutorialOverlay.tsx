@@ -4,6 +4,7 @@ import {
   TutorialOverlayPlacement,
   TutorialStep,
 } from "../../../../shared/libs/TutorialOverlay";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./SceneTutorialOverlay.css";
 
 export interface SceneTutorialConfig {
@@ -45,17 +46,21 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
   onAdvance,
   onClose,
 }) => {
+  const { t } = useLocalization();
   const tutorialSteps = useMemo<TutorialStep[]>(() => {
     if (steps.length === 0) return [];
 
     return steps.map((step, index) => {
       const targetResolver = step.getTarget ?? (() => document.body);
       const hasTarget = Boolean(step.getTarget?.());
-      const prevStepRequiresAction = index > 0 ? Boolean(steps[index - 1]?.requiredAction) : false;
+      const prevStepRequiresAction =
+        index > 0 ? Boolean(steps[index - 1]?.requiredAction) : false;
 
       const content = (
         <div className="scene-tutorial-overlay__content">
-          <p className="scene-tutorial-overlay__description">{step.description}</p>
+          <p className="scene-tutorial-overlay__description">
+            {step.description}
+          </p>
           {step.actionLabel && (
             <button
               type="button"
@@ -85,16 +90,21 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
         backDisabled: step.backDisabled ?? prevStepRequiresAction,
         footer: (
           <div className="scene-tutorial-overlay__progress">
-            Step {index + 1} of {steps.length}
+            {t("scene.tutorial.progress", "Step {{current}} of {{total}}")
+              .replace("{{current}}", String(index + 1))
+              .replace("{{total}}", String(steps.length))}
           </div>
         ),
       } satisfies TutorialStep;
     });
-  }, [steps]);
+  }, [steps, t]);
 
   const handleStepIndexChange = useCallback(
     (nextIndex: number) => {
-      const clamped = Math.max(0, Math.min(nextIndex, tutorialSteps.length - 1));
+      const clamped = Math.max(
+        0,
+        Math.min(nextIndex, tutorialSteps.length - 1),
+      );
       onAdvance(clamped);
     },
     [onAdvance, tutorialSteps.length],
@@ -123,7 +133,7 @@ const SceneTutorialOverlayInner: React.FC<SceneTutorialOverlayProps> = ({
 
 const propsAreEqual = (
   prev: SceneTutorialOverlayProps,
-  next: SceneTutorialOverlayProps
+  next: SceneTutorialOverlayProps,
 ): boolean => {
   return (
     prev.steps === next.steps &&
@@ -133,4 +143,7 @@ const propsAreEqual = (
   );
 };
 
-export const SceneTutorialOverlay = memo(SceneTutorialOverlayInner, propsAreEqual);
+export const SceneTutorialOverlay = memo(
+  SceneTutorialOverlayInner,
+  propsAreEqual,
+);

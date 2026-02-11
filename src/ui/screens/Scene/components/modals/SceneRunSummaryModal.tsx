@@ -64,19 +64,27 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   subtitle = "Resources recovered from the ruins:",
 }) => {
   const { t } = useLocalization();
-  const collectedResources = resources.filter((resource) => resource.gained > 0);
+  const collectedResources = resources.filter(
+    (resource) => resource.gained > 0,
+  );
   const hasResources = collectedResources.length > 0;
   return (
     <div className="scene-run-summary">
       <div className="scene-run-summary__backdrop" />
       <div className="scene-run-summary__dialog">
-        <h2 className="scene-run-summary__title">{t("scene.runSummary.title", title)}</h2>
-        <p className="scene-run-summary__subtitle">{t("scene.runSummary.subtitle", subtitle)}</p>
+        <h2 className="scene-run-summary__title">
+          {t("scene.runSummary.title", title)}
+        </h2>
+        <p className="scene-run-summary__subtitle">
+          {t("scene.runSummary.subtitle", subtitle)}
+        </p>
         {hasResources ? (
           <ul className="scene-run-summary__list">
             {collectedResources.map((resource) => (
               <li key={resource.id} className="scene-run-summary__list-item">
-                <span className="scene-run-summary__resource-name">{resource.name}</span>
+                <span className="scene-run-summary__resource-name">
+                  {resource.name}
+                </span>
                 <span className="scene-run-summary__resource-amount">
                   {formatNumber(resource.amount)}
                   <span className="scene-run-summary__resource-delta">
@@ -90,14 +98,21 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
             ))}
           </ul>
         ) : (
-          <p className="scene-run-summary__empty">{t("scene.runSummary.empty", "No resources gathered this time.")}</p>
+          <p className="scene-run-summary__empty">
+            {t("scene.runSummary.empty", "No resources gathered this time.")}
+          </p>
         )}
         <div className="scene-run-summary__stats">
           <div className="scene-run-summary__stat">
-            <span className="scene-run-summary__stat-label">{t("scene.runSummary.bricksDestroyed", "Bricks Destroyed")}</span>
-            <span className="scene-run-summary__stat-value">{formatCount(bricksDestroyed)}</span>
+            <span className="scene-run-summary__stat-label">
+              {t("scene.runSummary.bricksDestroyed", "Bricks Destroyed")}
+            </span>
+            <span className="scene-run-summary__stat-value">
+              {formatCount(bricksDestroyed)}
+            </span>
             <span className="scene-run-summary__stat-note">
-              {t("scene.runSummary.lifetimeTotal", "Lifetime total")}: {formatCount(totalBricksDestroyed)}
+              {t("scene.runSummary.lifetimeTotal", "Lifetime total")}:{" "}
+              {formatCount(totalBricksDestroyed)}
             </span>
           </div>
         </div>
@@ -112,14 +127,17 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
               <span>{t("scene.runSummary.autoRestart", "Autorestart")}</span>
             </label>
             <span className="scene-run-summary__auto-restart-timer">
-              {Math.max(0, Math.ceil(autoRestart.countdown))}s
+              {Math.max(0, Math.ceil(autoRestart.countdown))}
+              {t("scene.common.secondsShort", "s")}
             </span>
           </div>
         ) : null}
         <div className="scene-run-summary__actions">
           <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
           {secondaryAction ? (
-            <Button onClick={secondaryAction.onClick}>{secondaryAction.label}</Button>
+            <Button onClick={secondaryAction.onClick}>
+              {secondaryAction.label}
+            </Button>
           ) : null}
         </div>
       </div>

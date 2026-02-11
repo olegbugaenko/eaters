@@ -322,5 +322,16 @@
   "bonuses.spell_power.name": "Spell Power",
   "bonuses.crafting_speed_mult.name": "Crafting Speed Multiplier",
   "bonuses.crafting_overdrive_max.name": "Crafting Overdrive Limit",
-  "bonuses.building_cost_multiplier.name": "Building Cost Multiplier"
+  "bonuses.building_cost_multiplier.name": "Building Cost Multiplier",
+  "scene.debug.joinedGpuBanner": "Joined GPU Debug (joinedDebug=1) — showing 1024 joined elements",
+  "scene.common.secondsShort": "s",
+  "scene.common.timesShort": "×",
+  "scene.toolbar.axisX": "x",
+  "scene.toolbar.axisY": "y",
+  "scene.tutorial.progress": "Step {{current}} of {{total}}",
+  "tutorialOverlay.back": "Back",
+  "tutorialOverlay.skip": "Skip",
+  "tutorialOverlay.finish": "Finish",
+  "tutorialOverlay.next": "Next",
+  "tutorialOverlay.spotlightClickable": "• spotlight clickable"
 }
