@@ -7,6 +7,7 @@ import {
 } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 import { Button } from "@ui-shared/Button";
+import { StableInput } from "@ui-shared/StableInput";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import "./UnitRosterView.css";
@@ -363,12 +364,12 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                             </label>
                             <label className="unit-roster__automation-weight">
                               <span>Weight</span>
-                              <input
+                              <StableInput
                                 type="number"
                                 min={1}
                                 value={automationLookup.get(unit.id)?.weight ?? 1}
-                                onChange={(event) => {
-                                  const nextValue = Number.parseInt(event.target.value, 10);
+                                onCommit={(value) => {
+                                  const nextValue = Number.parseInt(value, 10);
                                   handleAutomationWeightChange(
                                     unit.id,
                                     Number.isNaN(nextValue) ? 1 : nextValue

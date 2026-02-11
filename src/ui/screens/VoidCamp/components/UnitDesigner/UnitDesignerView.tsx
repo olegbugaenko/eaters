@@ -10,6 +10,7 @@ import { getPlayerUnitConfig, PlayerUnitType } from "@db/player-units-db";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
+import { StableInput } from "@ui-shared/StableInput";
 import { UnitDesignerPreview } from "./UnitDesignerPreview";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import {
@@ -231,18 +232,19 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             <label htmlFor="unit-designer-name" className="label">
               Unit Name
             </label>
-            <input
+            <StableInput
               id="unit-designer-name"
               type="text"
               className="input"
               value={selectedUnit.name}
-              onChange={(event) => handleRenameUnit(selectedUnit.id, event.target.value)}
-              onBlur={(event) => {
-                const value = event.target.value.trim();
-                if (value === "") {
+              onCommit={(value) => {
+                const trimmed = value.trim();
+                if (trimmed === "") {
                   const defaultName = getPlayerUnitConfig(selectedUnit.type).name;
                   handleRenameUnit(selectedUnit.id, defaultName);
+                  return;
                 }
+                handleRenameUnit(selectedUnit.id, value);
               }}
             />
           </div>
