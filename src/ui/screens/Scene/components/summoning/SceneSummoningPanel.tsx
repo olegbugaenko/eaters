@@ -93,7 +93,7 @@ export const SceneSummoningPanel = forwardRef<
     ref,
   ) => {
     const panelRef = useRef<HTMLDivElement | null>(null);
-    const { bridge } = useAppLogic();
+    const { bridge, uiApi } = useAppLogic();
     const { t } = useLocalization();
     const resources = useBridgeValue(
       bridge,
@@ -105,7 +105,26 @@ export const SceneSummoningPanel = forwardRef<
       NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
       EMPTY_SPAWN_OPTIONS,
     );
-    const spells = useBridgeValue(bridge, SPELL_OPTIONS_BRIDGE_KEY, DEFAULT_SPELL_OPTIONS);
+    const spells = useBridgeValue(
+      bridge,
+      SPELL_OPTIONS_BRIDGE_KEY,
+      DEFAULT_SPELL_OPTIONS,
+    );
+    const localizedSpells = useMemo(
+      () =>
+        spells.map((spell) => {
+          const localized = uiApi.localization.getSpellText(spell.id, {
+            name: spell.name,
+            description: spell.description,
+          });
+          return {
+            ...spell,
+            name: localized.name,
+            description: localized.description,
+          };
+        }),
+      [spells, uiApi.localization],
+    );
     const automationState = useBridgeValue(
       bridge,
       UNIT_AUTOMATION_STATE_BRIDGE_KEY,
@@ -135,7 +154,9 @@ export const SceneSummoningPanel = forwardRef<
       }
 
       const panel = panelRef.current;
-      const target = document.getElementById(`spell-option-${spellCastPulse.id}`);
+      const target = document.getElementById(
+        `spell-option-${spellCastPulse.id}`,
+      );
       if (!panel || !target) {
         return;
       }
@@ -152,7 +173,7 @@ export const SceneSummoningPanel = forwardRef<
       setSpellPulse({ token: spellCastPulse.token, rect });
       const timeout = window.setTimeout(() => {
         setSpellPulse((current) =>
-          current?.token === spellCastPulse.token ? null : current
+          current?.token === spellCastPulse.token ? null : current,
         );
       }, 1750);
 
@@ -180,16 +201,18 @@ export const SceneSummoningPanel = forwardRef<
 
     const showUnitTooltip = useCallback(
       (blueprint: NecromancerSpawnOption["blueprint"]) => {
-        onHoverInfoChange(createUnitTooltip(blueprint, spawnOptions.length > 1, t));
+        onHoverInfoChange(
+          createUnitTooltip(blueprint, spawnOptions.length > 1, t),
+        );
       },
       [onHoverInfoChange, spawnOptions, t],
     );
 
     const showSpellTooltip = useCallback(
       (spell: SpellOption) => {
-        onHoverInfoChange(createSpellTooltip(spell));
+        onHoverInfoChange(createSpellTooltip(spell, t));
       },
-      [onHoverInfoChange],
+      [onHoverInfoChange, t],
     );
 
     const sanityResourceClassName = classNames(
@@ -222,7 +245,10 @@ export const SceneSummoningPanel = forwardRef<
         className="scene-summoning-panel"
         onPointerLeave={hideTooltip}
       >
-        <div className="scene-summoning-panel__spell-pulse-layer" aria-hidden="true">
+        <div
+          className="scene-summoning-panel__spell-pulse-layer"
+          aria-hidden="true"
+        >
           {spellPulse && (
             <div
               key={spellPulse.token}
@@ -257,20 +283,32 @@ export const SceneSummoningPanel = forwardRef<
             </div>
           </div>
           <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
-          <div className="scene-summoning-panel__spells-header">{t("scene.summoning.header", "Summoning")}</div>
+            <div className="scene-summoning-panel__spells-header">
+              {t("scene.summoning.header", "Summoning")}
+            </div>
             <div className="scene-summoning-panel__unit-cap-indicator">
-              {t("scene.summoning.units", "Units")}: {unitCount}/{MAX_UNITS_ON_MAP} ·{" "}
-              {atUnitCap ? t("scene.summoning.capReached", "Cap reached") : `${remainingUnitSlots} ${t("scene.summoning.slotsLeft", "slots left")}`}
+              {t("scene.summoning.units", "Units")}: {unitCount}/
+              {MAX_UNITS_ON_MAP} ·{" "}
+              {atUnitCap
+                ? t("scene.summoning.capReached", "Cap reached")
+                : `${remainingUnitSlots} ${t("scene.summoning.slotsLeft", "slots left")}`}
             </div>
             {atUnitCap && (
               <div className="scene-summoning-panel__unit-cap-warning">
-                {t("scene.summoning.capWarning", "Unit cap reached. Let creatures fall before summoning more.")}
+                {t(
+                  "scene.summoning.capWarning",
+                  "Unit cap reached. Let creatures fall before summoning more.",
+                )}
               </div>
             )}
-            <div id="summoning-unit-list" className="scene-summoning-panel__unit-list">
+            <div
+              id="summoning-unit-list"
+              className="scene-summoning-panel__unit-list"
+            >
               {spawnOptions.map((option) => {
                 const missing = computeMissing(option.cost, available);
-                const canAfford = !atUnitCap && missing.mana <= 0 && missing.sanity <= 0;
+                const canAfford =
+                  !atUnitCap && missing.mana <= 0 && missing.sanity <= 0;
                 const actionClassName = classNames(
                   "scene-summoning-panel__unit-action",
                   !canAfford && "scene-summoning-panel__unit-action--disabled",
@@ -292,7 +330,12 @@ export const SceneSummoningPanel = forwardRef<
                       onMouseEnter={() => showUnitTooltip(option.blueprint)}
                       onMouseLeave={hideTooltip}
                       onClick={(e) => {
-                        if (canAfford && !(e.target as HTMLElement).closest('.scene-summoning-panel__automation-toggle')) {
+                        if (
+                          canAfford &&
+                          !(e.target as HTMLElement).closest(
+                            ".scene-summoning-panel__automation-toggle",
+                          )
+                        ) {
                           onSummon(option.designId);
                         }
                       }}
@@ -303,7 +346,11 @@ export const SceneSummoningPanel = forwardRef<
                       onKeyDown={(e) => {
                         if ((e.key === "Enter" || e.key === " ") && canAfford) {
                           e.preventDefault();
-                          if (!(e.target as HTMLElement).closest('.scene-summoning-panel__automation-toggle')) {
+                          if (
+                            !(e.target as HTMLElement).closest(
+                              ".scene-summoning-panel__automation-toggle",
+                            )
+                          ) {
                             onSummon(option.designId);
                           }
                         }
@@ -322,7 +369,10 @@ export const SceneSummoningPanel = forwardRef<
                           )}
                         </div>
                         {automationState.unlocked && (
-                          <label className="scene-summoning-panel__automation-toggle" onClick={(e) => e.stopPropagation()}>
+                          <label
+                            className="scene-summoning-panel__automation-toggle"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <input
                               type="checkbox"
                               checked={automationEnabled}
@@ -333,7 +383,9 @@ export const SceneSummoningPanel = forwardRef<
                                 )
                               }
                             />
-                            <span>{t("scene.summoning.automate", "Automate")}</span>
+                            <span>
+                              {t("scene.summoning.automate", "Automate")}
+                            </span>
                           </label>
                         )}
                       </div>
@@ -351,14 +403,19 @@ export const SceneSummoningPanel = forwardRef<
           </div>
         </div>
         <div id="spellbook-area" className="scene-summoning-panel__spells-area">
-          <div className="scene-summoning-panel__spells-header">{t("scene.summoning.spellbook", "Spellbook")}</div>
-          {spells.length === 0 ? (
+          <div className="scene-summoning-panel__spells-header">
+            {t("scene.summoning.spellbook", "Spellbook")}
+          </div>
+          {localizedSpells.length === 0 ? (
             <div className="scene-summoning-panel__spells-placeholder">
-              {t("scene.summoning.noSpells", "Spellcasting rituals will appear here soon.")}
+              {t(
+                "scene.summoning.noSpells",
+                "Spellcasting rituals will appear here soon.",
+              )}
             </div>
           ) : (
             <div className="scene-summoning-panel__spell-list">
-              {spells.map((spell) => {
+              {localizedSpells.map((spell) => {
                 const missing = computeMissing(spell.cost, available);
                 const canAfford = missing.mana <= 0 && missing.sanity <= 0;
                 const onCooldown = spell.remainingCooldownMs > 0;
@@ -370,10 +427,16 @@ export const SceneSummoningPanel = forwardRef<
                   isSelected && "scene-summoning-panel__spell--selected",
                 );
                 const statusLabel = onCooldown
-                  ? `Ready in ${formatCooldownRemaining(spell.remainingCooldownMs)}`
+                  ? t(
+                      "scene.summoning.spellStatus.readyIn",
+                      "Ready in {{time}}",
+                    ).replace(
+                      "{{time}}",
+                      formatCooldownRemaining(spell.remainingCooldownMs),
+                    )
                   : isSelected
-                  ? "Selected"
-                  : "Ready";
+                    ? t("scene.summoning.spellStatus.selected", "Selected")
+                    : t("scene.summoning.spellStatus.ready", "Ready");
                 const spellElementId = `spell-option-${spell.id}`;
                 return (
                   <div
@@ -397,11 +460,18 @@ export const SceneSummoningPanel = forwardRef<
                     onBlur={hideTooltip}
                   >
                     <div className="scene-summoning-panel__spell-header">
-                      <span className="scene-summoning-panel__spell-name">{spell.name}</span>
-                      <span className="scene-summoning-panel__spell-status">{statusLabel}</span>
+                      <span className="scene-summoning-panel__spell-name">
+                        {spell.name}
+                      </span>
+                      <span className="scene-summoning-panel__spell-status">
+                        {statusLabel}
+                      </span>
                     </div>
                     <div className="scene-summoning-panel__spell-cost">
-                      <ResourceCostDisplay cost={spell.cost} missing={missing} />
+                      <ResourceCostDisplay
+                        cost={spell.cost}
+                        missing={missing}
+                      />
                     </div>
                   </div>
                 );

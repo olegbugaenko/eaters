@@ -8,6 +8,7 @@ import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemie
 import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { useLocalization } from "@ui/shared/useLocalization";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { createTargetTooltip } from "./createTargetTooltip";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
@@ -30,11 +31,16 @@ interface SceneTooltipBridgePanelProps {
   contentOverride?: SceneTooltipContent | null;
 }
 
-export const SceneTooltipBridgePanel: React.FC<SceneTooltipBridgePanelProps> = ({
-  contentOverride,
-}) => {
+export const SceneTooltipBridgePanel: React.FC<
+  SceneTooltipBridgePanelProps
+> = ({ contentOverride }) => {
   const { bridge } = useAppLogic();
-  const target = useBridgeValue(bridge, MAP_INSPECTED_TARGET_BRIDGE_KEY, EMPTY_TARGET);
+  const { t } = useLocalization();
+  const target = useBridgeValue(
+    bridge,
+    MAP_INSPECTED_TARGET_BRIDGE_KEY,
+    EMPTY_TARGET,
+  );
   const unitDesignerState = useBridgeValue(
     bridge,
     UNIT_DESIGNER_STATE_BRIDGE_KEY,
@@ -52,8 +58,8 @@ export const SceneTooltipBridgePanel: React.FC<SceneTooltipBridgePanelProps> = (
         ? design.name
         : getPlayerUnitConfig(unit.type).name;
     }
-    return createTargetTooltip(target, playerUnitDisplayName);
-  }, [target, unitDesignerState.units]);
+    return createTargetTooltip(target, t, playerUnitDisplayName);
+  }, [target, t, unitDesignerState.units]);
   const content = contentOverride ?? bridgeContent;
 
   return <SceneTooltipPanel content={content} />;
