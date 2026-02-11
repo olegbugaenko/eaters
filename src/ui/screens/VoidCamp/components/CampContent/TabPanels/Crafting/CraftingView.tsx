@@ -15,6 +15,7 @@ import {
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { HintTooltip } from "@ui-shared/HintTooltip";
+import { StableInput } from "@ui-shared/StableInput";
 import "./CraftingView.css";
 import type { CraftingModuleUiApi } from "@logic/modules/camp/crafting/crafting.types";
 
@@ -206,13 +207,13 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                   <div className="crafting-recipe__queue-row">
                     <label className="crafting-recipe__queue-label">
                       <span className="text-muted">Queue</span>
-                      <input
+                      <StableInput
                         type="number"
                         inputMode="numeric"
                         min={0}
                         className="crafting-recipe__queue-input"
                         value={recipe.queue}
-                        onChange={(event) => handleInputChange(recipe.id, event.target.value)}
+                        onCommit={(value) => handleInputChange(recipe.id, value)}
                       />
                     </label>
                     {recipe.maxOverdriveLevel > 0 ? (
