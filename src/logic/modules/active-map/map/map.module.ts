@@ -1244,6 +1244,7 @@ export class MapModule implements GameModule {
     );
     return {
       ...map,
+      name: this.options.localization?.getMapName(map.id, map.name) ?? map.name,
       currentLevel,
       selectedLevel,
       attempts,

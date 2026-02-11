@@ -30,6 +30,7 @@ import { createUnitModuleWorkshopDefinition } from "../../modules/camp/unit-modu
 import { createUnitProjectilesDefinition } from "../../modules/active-map/projectiles/projectiles.factory";
 import { createUnlocksDefinition } from "../../definitions/modules/unlocks/factory";
 import { createNewUnlockNotificationDefinition } from "../../definitions/modules/new-unlock-notification/factory";
+import { createLocalizationDefinition } from "../../definitions/modules/localization/factory";
 import { ModuleDefinitionContext } from "@/core/logic/engine/module-definitions/context";
 
 export const registerModuleDefinitions = (
@@ -37,6 +38,7 @@ export const registerModuleDefinitions = (
   context: ModuleDefinitionContext,
 ): void => {
   registry.registerModules([
+    createLocalizationDefinition(),
     createNewUnlockNotificationDefinition(),
     createUnlocksDefinition(),
     createBonusesDefinition(),

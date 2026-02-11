@@ -15,7 +15,8 @@ export const createUnitModuleWorkshopDefinition = (): ServiceDefinition<
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
       unlocks: container.get("unlocks"),
       newUnlocks: container.get("newUnlocks"),
+      localization: container.get("localization"),
     }),
   registerAsModule: true,
-  dependsOn: ["resources", "skillTree", "unlocks", "newUnlocks"],
+  dependsOn: ["resources", "skillTree", "unlocks", "newUnlocks", "localization"],
 });

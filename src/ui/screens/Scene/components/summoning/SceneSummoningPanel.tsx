@@ -45,6 +45,7 @@ import "./SceneSummoningPanel.css";
 import { SceneTooltipContent } from "../tooltip/SceneTooltipPanel";
 import { createUnitTooltip } from "./tooltip-factory/createUnitTooltip";
 import { createSpellTooltip } from "./tooltip-factory/createSpellTooltip";
+import { useLocalization } from "@ui/shared/useLocalization";
 
 const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = {
   mana: { current: 0, max: 0 },
@@ -93,6 +94,7 @@ export const SceneSummoningPanel = forwardRef<
   ) => {
     const panelRef = useRef<HTMLDivElement | null>(null);
     const { bridge } = useAppLogic();
+    const { t } = useLocalization();
     const resources = useBridgeValue(
       bridge,
       NECROMANCER_RESOURCES_BRIDGE_KEY,
@@ -250,19 +252,19 @@ export const SceneSummoningPanel = forwardRef<
                 outlineColor="rgba(236, 72, 153, 0.5)"
                 glowColor="rgba(168, 85, 247, 0.35)"
                 formatValue={formatResourceValue}
-                title="Sanity"
+                title={t("scene.summoning.sanity", "Sanity")}
               />
             </div>
           </div>
           <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
-          <div className="scene-summoning-panel__spells-header">Summoning</div>
+          <div className="scene-summoning-panel__spells-header">{t("scene.summoning.header", "Summoning")}</div>
             <div className="scene-summoning-panel__unit-cap-indicator">
-              Units: {unitCount}/{MAX_UNITS_ON_MAP} ·{" "}
-              {atUnitCap ? "Cap reached" : `${remainingUnitSlots} slots left`}
+              {t("scene.summoning.units", "Units")}: {unitCount}/{MAX_UNITS_ON_MAP} ·{" "}
+              {atUnitCap ? t("scene.summoning.capReached", "Cap reached") : `${remainingUnitSlots} ${t("scene.summoning.slotsLeft", "slots left")}`}
             </div>
             {atUnitCap && (
               <div className="scene-summoning-panel__unit-cap-warning">
-                Unit cap reached. Let creatures fall before summoning more.
+                {t("scene.summoning.capWarning", "Unit cap reached. Let creatures fall before summoning more.")}
               </div>
             )}
             <div id="summoning-unit-list" className="scene-summoning-panel__unit-list">
@@ -331,7 +333,7 @@ export const SceneSummoningPanel = forwardRef<
                                 )
                               }
                             />
-                            <span>Automate</span>
+                            <span>{t("scene.summoning.automate", "Automate")}</span>
                           </label>
                         )}
                       </div>
@@ -349,10 +351,10 @@ export const SceneSummoningPanel = forwardRef<
           </div>
         </div>
         <div id="spellbook-area" className="scene-summoning-panel__spells-area">
-          <div className="scene-summoning-panel__spells-header">Spellbook</div>
+          <div className="scene-summoning-panel__spells-header">{t("scene.summoning.spellbook", "Spellbook")}</div>
           {spells.length === 0 ? (
             <div className="scene-summoning-panel__spells-placeholder">
-              Spellcasting rituals will appear here soon.
+              {t("scene.summoning.noSpells", "Spellcasting rituals will appear here soon.")}
             </div>
           ) : (
             <div className="scene-summoning-panel__spell-list">
@@ -422,7 +424,7 @@ export const SceneSummoningPanel = forwardRef<
               outlineColor="rgba(59, 130, 246, 0.6)"
               glowColor="rgba(56, 189, 248, 0.35)"
               formatValue={formatResourceValue}
-              title="Mana"
+              title={t("scene.summoning.mana", "Mana")}
             />
           </div>
         </div>

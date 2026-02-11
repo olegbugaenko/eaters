@@ -54,6 +54,7 @@ export class SkillTreeModule implements GameModule {
   private readonly bonuses: BonusesModule;
   private readonly eventLog: EventLogModule;
   private readonly audio?: SkillTreeModuleOptions["audio"];
+  private readonly localization: SkillTreeModuleOptions["localization"];
   private levels: SkillLevelMap = createDefaultLevels();
   private viewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private unsubscribeBonuses: (() => void) | null = null;
@@ -65,6 +66,7 @@ export class SkillTreeModule implements GameModule {
     this.bonuses = options.bonuses;
     this.eventLog = options.eventLog;
     this.audio = options.audio;
+    this.localization = options.localization;
     DataBridgeHelpers.registerComparator(
       this.bridge,
       SKILL_TREE_STATE_BRIDGE_KEY,
@@ -165,9 +167,13 @@ export class SkillTreeModule implements GameModule {
     this.pushState();
     this.audio?.playSoundEffect(getAssetUrl("audio/sounds/ui/purchase_v1.mp3"));
     if (config.registerEvent) {
+      const skillText = this.localization?.getSkillText(id, {
+        name: config.name,
+        description: config.description,
+      }) ?? { name: config.name, description: config.description };
       this.eventLog.registerEvent(
         "skill-obtained",
-        `Skill ${config.name} obtained: ${config.registerEvent.text}`
+        `Skill ${skillText.name} obtained: ${config.registerEvent.text}`
       );
     }
     if (KEY_SKILL_IDS.includes(id)) {
@@ -236,10 +242,18 @@ export class SkillTreeModule implements GameModule {
       });
     }
 
-    return {
-      id,
+    const localized = this.localization?.getSkillText(id, {
       name: config.name,
       description: config.description,
+    }) ?? {
+      name: config.name,
+      description: config.description,
+    };
+
+    return {
+      id,
+      name: localized.name,
+      description: localized.description,
       icon: config.icon,
       level,
       maxLevel: config.maxLevel,

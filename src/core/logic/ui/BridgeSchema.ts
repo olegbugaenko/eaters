@@ -31,6 +31,7 @@ import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
 import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
+import type { SupportedLanguage } from "@logic/services/localization/localization.types";
 
 /**
  * View transform для навігації по картах/скілах.
@@ -114,6 +115,9 @@ export interface BridgeSchema {
 
   // New unlock notifications
   "newUnlocks/state": NewUnlockNotificationBridgeState;
+
+  // Localization
+  "localization/language": SupportedLanguage;
 }
 
 /**
