@@ -82,10 +82,7 @@ interface SkillTreeLayout {
   edges: SkillTreeEdge[];
 }
 
-const SKILL_TREE_RESOURCES = RESOURCE_IDS.map((id) => {
-  const config = getResourceConfig(id);
-  return { id: config.id, label: config.name };
-});
+const SKILL_TREE_RESOURCES = RESOURCE_IDS.map((id) => ({ id }));
 
 const listResources = (names: string[], andLabel: string): string => {
   if (names.length === 0) {
@@ -232,15 +229,15 @@ const computeLayout = (
   };
 };
 
-const getMissingResourceNames = (
-  missing: Record<ResourceId, number>
-): string[] =>
-  RESOURCE_IDS.filter((id) => (missing[id] ?? 0) > 0).map((id) =>
-    getResourceConfig(id).name.toLowerCase()
-  );
-
 export const SkillTreeView: React.FC = () => {
   const { t } = useLocalization();
+  const getMissingResourceNames = useCallback(
+    (missing: Record<ResourceId, number>): string[] =>
+      RESOURCE_IDS.filter((id) => (missing[id] ?? 0) > 0).map((id) =>
+        t(`resources.${id}.name`, getResourceConfig(id).name).toLowerCase()
+      ),
+    [t]
+  );
   const { uiApi, bridge } = useAppLogic();
   const skillTree = useBridgeValue(
     bridge,

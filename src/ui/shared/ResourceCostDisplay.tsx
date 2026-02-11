@@ -1,13 +1,14 @@
 import React from "react";
-import { RESOURCE_IDS, ResourceId } from "@db/resources-db";
+import { RESOURCE_IDS, ResourceId, getResourceConfig } from "@db/resources-db";
 import { classNames } from "@ui-shared/classNames";
 import { ResourceIcon } from "./icons/ResourceIcon";
 import { formatNumber } from "./format/number";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./ResourceCostDisplay.css";
 
 export interface ResourceCostDisplayResource {
   id: string;
-  label: string;
+  label?: string;
 }
 
 export interface ResourceCostDisplayProps {
@@ -31,8 +32,8 @@ const formatAmount = (value: number): string => {
 };
 
 const DEFAULT_RESOURCES: readonly ResourceCostDisplayResource[] = [
-  { id: "mana", label: "Mana" },
-  { id: "sanity", label: "Sanity" },
+  { id: "mana" },
+  { id: "sanity" },
 ];
 
 const toTitleCase = (value: string): string => {
@@ -101,14 +102,32 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
   missing,
   resources,
 }) => {
+  const { t } = useLocalization();
   const classes = classNames("resource-cost", className);
+
+  const getResourceLabel = (id: string, explicitLabel?: string): string => {
+    if (id === "mana") {
+      return t("voidCamp.common.mana", explicitLabel ?? "Mana");
+    }
+    if (id === "sanity") {
+      return t("voidCamp.common.sanity", explicitLabel ?? "Sanity");
+    }
+    if (isResourceId(id)) {
+      return t(`resources.${id}.name`, explicitLabel ?? getResourceConfig(id).name);
+    }
+    if (explicitLabel) {
+      return explicitLabel;
+    }
+    return toTitleCase(id);
+  };
+
   const descriptors = (() => {
     const provided = resources ? [...resources] : [...DEFAULT_RESOURCES];
     const known = new Set(provided.map((item) => item.id));
     Object.keys(cost).forEach((key) => {
       const amount = cost[key] ?? 0;
       if (!known.has(key) && amount > 0) {
-        provided.push({ id: key, label: toTitleCase(key) });
+        provided.push({ id: key });
         known.add(key);
       }
     });
@@ -122,6 +141,7 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
         if (amount <= 0) {
           return null;
         }
+        const label = getResourceLabel(resource.id, resource.label);
         const missingAmount = missing
           ? Math.max(missing[resource.id] ?? 0, 0)
           : 0;
@@ -133,14 +153,14 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
 
         return (
           <span key={resource.id} className={itemClasses}>
-            {renderCostIcon(resource.id, resource.label)}
+            {renderCostIcon(resource.id, label)}
             <span className="resource-cost__value">
               <span className="resource-cost__amount">{formatAmount(amount)}</span>
-              <span className="resource-cost__label">{resource.label}</span>
+              <span className="resource-cost__label">{label}</span>
             </span>
             {missingAmount > 0 ? (
               <span className="resource-cost__missing">
-                (+{formatAmount(missingAmount)} needed)
+                (+{formatAmount(missingAmount)} {t("voidCamp.common.needed", "needed")})
               </span>
             ) : null}
           </span>
