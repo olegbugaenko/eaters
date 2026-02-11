@@ -5,6 +5,7 @@ import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface CraftingRecipeBridgeState {
   readonly id: CraftingRecipeId;
@@ -34,6 +35,7 @@ export interface CraftingModuleOptions {
   readonly unlocks: UnlockService;
   readonly bonuses: BonusesModule;
   readonly newUnlocks: NewUnlockNotificationService;
+  readonly localization?: LocalizationService;
 }
 
 export interface CraftingRecipeRuntimeState {

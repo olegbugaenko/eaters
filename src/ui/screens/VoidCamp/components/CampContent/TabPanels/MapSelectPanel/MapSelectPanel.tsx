@@ -1022,7 +1022,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         <li key={resourceId} className="map-tree__details-resources-item">
                           <span className="map-tree__details-resources-label">
                             <ResourceIcon resourceId={resourceId} className="map-tree__details-resources-icon" />
-                            <span>{getResourceConfig(resourceId).name}</span>
+                            <span>{t(`resources.${resourceId}.name`, getResourceConfig(resourceId).name)}</span>
                           </span>
                           <span
                             className={classNames(

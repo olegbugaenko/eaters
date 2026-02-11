@@ -11,12 +11,284 @@
     "name": "Autorestart Sigils",
     "description": "Allows the map to automatically restart after completion or defeat."
   },
+  "construction_guild": {
+    "name": "Construction Guild",
+    "description": "Found a guild to coordinate permanent worksites, unlocking dedicated building plans."
+  },
+  "construction_ledgers": {
+    "name": "Construction Ledgers",
+    "description": "Account every shard and shipment; precision cuts future building costs."
+  },
+  "draftsmanship": {
+    "name": "Draftsmanship",
+    "description": "Refine schematics for controlled overdrive, letting you push crafting limits at a cost."
+  },
+  "quarry_overseers": {
+    "name": "Quarry Overseers",
+    "description": "Assign tireless haulers so rubble never settles—more stone per shattered brick."
+  },
+  "granite_bonding": {
+    "name": "Granite Bonding",
+    "description": "Fuse matter into denser cores your summons can wield—every strike lands heavier."
+  },
+  "bastion_foundations": {
+    "name": "Bastion Foundations",
+    "description": "Build mental fortifications—deeper foundations of consciousness allow you to maintain presence on the map longer."
+  },
+  "sand_scribing": {
+    "name": "Sand Scribing",
+    "description": "Etch careful scribing to strain the stream of sand, expanding mana reserves."
+  },
+  "glass_latticework": {
+    "name": "Glass Latticework",
+    "description": "Weave emberglass filaments that steady your focus, modestly improving mana flow."
+  },
+  "arcane_amplifier": {
+    "name": "Arcane Amplifier",
+    "description": "Tune the lattice into a resonant chamber, amplifying the force carried by your spells."
+  },
+  "sandstorm_ritual": {
+    "name": "Sandstorm Ritual",
+    "description": "Bind the lattice to desert winds, unlocking the rite to conjure devastating sand storms."
+  },
+  "black_darts": {
+    "name": "Darts of the Void",
+    "description": "Unleash darts of metal and void energy that damage targets."
+  },
+  "electric_shards": {
+    "name": "Electric Shards",
+    "description": "Crackle the lattice with unstable sparks, unlocking erratic shards of electricity."
+  },
+  "ring_of_fire": {
+    "name": "Ring of Fire",
+    "description": "Weave a barrier of flame that erupts outward, searing everything it brushes."
+  },
+  "sharp_mind": {
+    "name": "Sharp Mind",
+    "description": "Increase spell power by 12% per level."
+  },
+  "sharp_mind2": {
+    "name": "Sharp Mind II",
+    "description": "Increase spell power by 12% per level."
+  },
+  "magic_rain": {
+    "name": "Magic Rain",
+    "description": "Unleash powerful bolts of arcane energy that rain down on your enemies."
+  },
+  "void_modules": {
+    "name": "Chord",
+    "description": "Imprint a structural chord into your entities, enabling attachment of organs and parts."
+  },
+  "tail_spines": {
+    "name": "Tail Spines",
+    "description": "Graft barbed spines along the chord, enabling sideways volleys from attached quills."
+  },
+  "pheromones": {
+    "name": "Pheromones",
+    "description": "Seed your chord lattice with signal glands so your beasts can coordinate through scent and surge."
+  },
+  "ice_mastery": {
+    "name": "Ice Mastery",
+    "description": "Master the art of ice magic, allowing you to freeze enemies."
+  },
+  "fire_mastery": {
+    "name": "Fire Mastery",
+    "description": "Master the art of fire magic."
+  },
+  "emberglass_reactors": {
+    "name": "Emberglass Reactors",
+    "description": "Channel heat through mirrored chambers; surging sand becomes lasting mana stores."
+  },
+  "spiritual_powers": {
+    "name": "Spiritual Powers",
+    "description": "Increase your spiritual power."
+  },
+  "improved_membranes": {
+    "name": "Improved Membranes",
+    "description": "Stiffen ephemeral skins into resilient membranes—your entities endure more."
+  },
+  "hunger": {
+    "name": "Hunger",
+    "description": "A gnawing void urges you on. Feed it with matter so your summons strike harder."
+  },
+  "stone_drill": {
+    "name": "Stone Teeth",
+    "description": "Affix crude teeth to the forming shells of your entities, boosting their assault."
+  },
+  "stone_armor": {
+    "name": "Stone Armor",
+    "description": "Bind stone plates over pulsing forms—basic armor that turns glancing blows."
+  },
+  "vitality": {
+    "name": "Vitality",
+    "description": "Grow thicker layers of living matter around your cores, raising total vitality."
+  },
+  "clarity": {
+    "name": "Clarity",
+    "description": "Quiet the inner static. Clearer thought and mental clarity extend your ability to remain conscious on the map."
+  },
+  "clarity2": {
+    "name": "Clarity II",
+    "description": "Deeper stillness and mental discipline further expand your consciousness, allowing extended presence on the map."
+  },
+  "mana_source": {
+    "name": "Mana Source",
+    "description": "Tap a steadier vein of power—both reserves and recovery improve."
+  },
+  "mana_reservior": {
+    "name": "Mana Reservoir",
+    "description": "Shape capacitors of fused glass to store greater tides of mana."
+  },
+  "critical_chance": {
+    "name": "Critical Chance",
+    "description": "Sharpen instincts and edges alike—your units find weak points more often."
+  },
+  "critical_chance2": {
+    "name": "Critical Chance II",
+    "description": "Deeper instincts and edges—your units find weak points more often."
+  },
+  "damage_lore": {
+    "name": "Damage Lore",
+    "description": "Codices of rending—teach your creations how to tear matter more efficiently."
+  },
+  "armor_lore": {
+    "name": "Armor Lore",
+    "description": "Treatises on layering and bracing—improve how well armor spreads force."
+  },
+  "impact_dampening": {
+    "name": "Impact Dampening",
+    "description": "Elastic tissues absorb impacts, reducing knockback."
+  },
+  "vitality2": {
+    "name": "Vitality II",
+    "description": "Cultivate richer biomass; the flesh‑cores swell with fresh reserves."
+  },
+  "clarity3": {
+    "name": "Clarity III",
+    "description": "Mastery of mental focus—your consciousness remains unshaken, enabling you to persist on the map even when the void whispers."
+  },
+  "refinement": {
+    "name": "Refinement",
+    "description": "Refine sorting rites; your gatherers pull richer fragments from the wreckage."
+  },
+  "refinement2": {
+    "name": "Refinement II",
+    "description": "Further hone refinement patterns to squeeze even more yield from debris."
+  },
+  "wire_crafting": {
+    "name": "Wire Crafting",
+    "description": "Unlock access to wire crafting, allowing you to create more organs and buildings out of your materials."
+  },
+  "vitality3": {
+    "name": "Vitality III",
+    "description": "Engineered organs and redundant latticework markedly raise hit capacity."
+  },
+  "vitality4": {
+    "name": "Vitality IV",
+    "description": "Use coal to boost creatures body temperature, increase metabolism and increase vitality."
+  },
+  "arcane_research": {
+    "name": "Arcane Research",
+    "description": "Document repeatable mana experiments; each insight slightly accelerates regen."
+  },
+  "paper_milling": {
+    "name": "Paper Milling",
+    "description": "Pulp organics into disciplined sheets fit for resilient schematics."
+  },
+  "restoration": {
+    "name": "Restoration",
+    "description": "Teach your creations to knit themselves mid‑battle—steady percentage regen."
+  },
+  "engineered_plating": {
+    "name": "Engineered Plating",
+    "description": "Outfit constructs with calculated bracing and plates—substantial increase to health."
+  },
+  "armor_lore2": {
+    "name": "Armor Lore II",
+    "description": "Advanced schemata: ribbing, overlaps, anchor points—denser protection."
+  },
+  "armor_lore3": {
+    "name": "Armor Lore III",
+    "description": "Master forging of living plate—your hosts shrug off punishing blows."
+  },
+  "reinforced_silver_armor": {
+    "name": "Reinforced Silver Armor",
+    "description": "Layer silvered plating with resilient supports, amplifying protection."
+  },
+  "armor_lore4": {
+    "name": "Armor Lore IV",
+    "description": "Master forging of living plate—your hosts shrug off punishing blows."
+  },
+  "heavy_drill": {
+    "name": "Heavy Drill",
+    "description": "Replace crude bits with heavy augers. Mass and torque translate into damage."
+  },
+  "tool_fabrication": {
+    "name": "Tool Fabrication",
+    "description": "Commission specialized implements, unlocking advanced crafting techniques."
+  },
+  "forged_strikes": {
+    "name": "Forged Strikes",
+    "description": "Temper and quench—meticulous armaments push your vanguard's damage higher."
+  },
+  "silver_drill": {
+    "name": "Silver Drill",
+    "description": "Silvered bits bite deeper into stubborn matter, further amplifying attacks."
+  },
+  "penetration": {
+    "name": "Penetration",
+    "description": "Hardened tips and angled force let your strikes pierce tougher shells."
+  },
+  "penetration2": {
+    "name": "Penetration II",
+    "description": "Refine the geometry of impact; even plated foes yield to your bite."
+  },
+  "wire_penetration": {
+    "name": "Piercing Fangs",
+    "description": "Wired impact channels sharpen the bite of your strikes against armor."
+  },
+  "penetration3": {
+    "name": "Penetration III",
+    "description": "Use hot magma to melt through armor."
+  },
+  "soul_wood": {
+    "name": "Soul Wood",
+    "description": "Coax living grain to host stored power, expanding your mana capacity."
+  },
+  "advanced_construction": {
+    "name": "Advanced Construction",
+    "description": "Codify advanced methods for large works—foundation for superior structures."
+  },
+  "advanced_crafting": {
+    "name": "Advanced Crafting",
+    "description": "Improve your crafting speed."
+  },
+  "advanced_crafting2": {
+    "name": "Advanced Crafting II",
+    "description": "Improve your crafting speed."
+  },
   "consiousness": {
     "name": "Consciousness",
     "description": "Strengthen your mental fortitude, expanding the limits of your consciousness to endure longer on the map."
   },
-  "magic_rain": {
-    "name": "Magic Rain",
-    "description": "Call a rain of arcane drops that strikes enemies around your target area."
+  "arcane_awareness": {
+    "name": "Arcane Awareness",
+    "description": "Increase your spell power."
+  },
+  "weaken_curse": {
+    "name": "Weaken Curse",
+    "description": "Unlock the Weaken Curse spell to sap bricks' strength and dampen their blows."
+  },
+  "perseverance": {
+    "name": "Perseverance",
+    "description": "Increase the health of your units by 1% per maximum map level cleared per level."
+  },
+  "inspiration": {
+    "name": "Inspiration",
+    "description": "Increase the damage of your units by 1% per map levels cleared per level."
+  },
+  "spell_power": {
+    "name": "Spell Power",
+    "description": "Increase your spell power."
   }
 }

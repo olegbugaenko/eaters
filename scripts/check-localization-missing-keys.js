@@ -7,7 +7,15 @@ const ROOT_DIR = process.cwd();
 const LANG_DB_PATH = path.join(ROOT_DIR, "src", "db", "languages-db.ts");
 const LOCALES_DIR = path.join(ROOT_DIR, "src", "localization");
 const BASE_LOCALE = "en";
-const BASE_FILE = path.join(LOCALES_DIR, BASE_LOCALE, "ui.json");
+const DOMAIN_FILES = [
+  "ui.json",
+  "maps.json",
+  "skills.json",
+  "unit-modules.json",
+  "buildings.json",
+  "resources.json",
+  "spells.json",
+];
 const LOGS_DIR = path.join(ROOT_DIR, "logs");
 
 const args = process.argv.slice(2);
@@ -48,19 +56,12 @@ const formatTimestamp = (date) => {
 
 const collectMissingKeysReport = () => {
   const languageCodes = parseLanguageCodesFromDb();
-  const base = readJson(BASE_FILE);
-  if (!base) {
-    throw new Error(`Base localization file not found: ${BASE_FILE}`);
-  }
-
-  const baseKeys = Object.keys(base);
   const otherLocales = languageCodes.filter((code) => code !== BASE_LOCALE);
 
   const report = {
     generatedAt: new Date().toISOString(),
     baseLocale: BASE_LOCALE,
-    baseFile: path.relative(ROOT_DIR, BASE_FILE),
-    baseKeyCount: baseKeys.length,
+    checkedDomains: DOMAIN_FILES,
     checkedLocales: otherLocales,
     missingByLocale: {},
   };
@@ -68,27 +69,44 @@ const collectMissingKeysReport = () => {
   let totalMissing = 0;
 
   for (const locale of otherLocales) {
-    const localePath = path.join(LOCALES_DIR, locale, "ui.json");
-    const localeJson = readJson(localePath);
+    const domainReport = {};
+    let localeMissing = 0;
 
-    if (!localeJson) {
-      report.missingByLocale[locale] = {
+    for (const domainFile of DOMAIN_FILES) {
+      const basePath = path.join(LOCALES_DIR, BASE_LOCALE, domainFile);
+      const localePath = path.join(LOCALES_DIR, locale, domainFile);
+      const baseJson = readJson(basePath);
+      if (!baseJson) {
+        throw new Error(`Base localization file not found: ${basePath}`);
+      }
+      const baseKeys = Object.keys(baseJson);
+      const localeJson = readJson(localePath);
+
+      if (!localeJson) {
+        domainReport[domainFile] = {
+          file: path.relative(ROOT_DIR, localePath),
+          missingCount: baseKeys.length,
+          missingKeys: [...baseKeys],
+          note: "locale file is missing",
+        };
+        localeMissing += baseKeys.length;
+        continue;
+      }
+
+      const missingKeys = baseKeys.filter((key) => !(key in localeJson));
+      domainReport[domainFile] = {
         file: path.relative(ROOT_DIR, localePath),
-        missingCount: baseKeys.length,
-        missingKeys: [...baseKeys],
-        note: "locale file is missing",
+        missingCount: missingKeys.length,
+        missingKeys,
       };
-      totalMissing += baseKeys.length;
-      continue;
+      localeMissing += missingKeys.length;
     }
 
-    const missingKeys = baseKeys.filter((key) => !(key in localeJson));
     report.missingByLocale[locale] = {
-      file: path.relative(ROOT_DIR, localePath),
-      missingCount: missingKeys.length,
-      missingKeys,
+      missingCount: localeMissing,
+      domains: domainReport,
     };
-    totalMissing += missingKeys.length;
+    totalMissing += localeMissing;
   }
 
   return { report, totalMissing };
@@ -108,21 +126,24 @@ const writeLogs = (report) => {
   lines.push("Localization missing keys report");
   lines.push(`Generated at: ${report.generatedAt}`);
   lines.push(`Base locale: ${report.baseLocale}`);
-  lines.push(`Base file: ${report.baseFile}`);
-  lines.push(`Base key count: ${report.baseKeyCount}`);
+  lines.push(`Domains: ${report.checkedDomains.join(", ")}`);
   lines.push("");
 
   for (const locale of report.checkedLocales) {
     const entry = report.missingByLocale[locale];
-    lines.push(`[${locale}] ${entry.file}`);
+    lines.push(`[${locale}]`);
     lines.push(`Missing keys: ${entry.missingCount}`);
-    if (entry.note) {
-      lines.push(`Note: ${entry.note}`);
-    }
-    if (entry.missingKeys.length > 0) {
-      lines.push("Keys:");
-      for (const key of entry.missingKeys) {
-        lines.push(`  - ${key}`);
+    for (const domainFile of report.checkedDomains) {
+      const domain = entry.domains[domainFile];
+      lines.push(`  [${domainFile}] Missing: ${domain.missingCount}`);
+      if (domain.note) {
+        lines.push(`    Note: ${domain.note}`);
+      }
+      if (domain.missingKeys.length > 0) {
+        lines.push("    Keys:");
+        for (const key of domain.missingKeys) {
+          lines.push(`      - ${key}`);
+        }
       }
     }
     lines.push("");

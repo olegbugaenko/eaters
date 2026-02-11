@@ -56,6 +56,7 @@ export class ResourcesModule implements GameModule {
   private readonly bonusValues: BonusValueSource;
   private readonly runtimeContext: RuntimeContextSource;
   private readonly statistics?: StatisticsTracker;
+  private readonly localization = null as import("@logic/services/localization/LocalizationService").LocalizationService | null;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
@@ -75,6 +76,7 @@ export class ResourcesModule implements GameModule {
     this.bonusValues = options.bonusValues;
     this.runtimeContext = options.runtimeContext;
     this.statistics = options.statistics;
+    this.localization = options.localization ?? null;
     DataBridgeHelpers.registerComparator(
       this.bridge,
       RESOURCE_TOTALS_BRIDGE_KEY,
