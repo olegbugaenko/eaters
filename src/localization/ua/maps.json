@@ -1,1 +1,31 @@
-{}
+{
+    "tutorialZone": { "name": "Навчальна зона" },
+    "trainingGrounds": { "name": "Тренувальні поля" },
+    "foundations": { "name": "Основи" },
+    "initial": { "name": "Початкова" },
+    "turretRings": { "name": "Кільця турелей" },
+    "thicket": { "name": "Гущавина" },
+    "oldForge": { "name": "Стара кузня" },
+    "spruce": { "name": "Ялина" },
+    "deadOak": { "name": "Мертвий дуб" },
+    "sphinx": { "name": "Сфінкс" },
+    "stoneCottage": { "name": "Кам'яна хатина" },
+    "bezierGrove": { "name": "Небезпечні кущі" },
+    "wire": { "name": "Дріт" },
+    "coil": { "name": "Котушка" },
+    "mine": { "name": "Шахта" },
+    "adit": { "name": "Штольня" },
+    "silverRing": { "name": "Срібне кільце" },
+    "portalRing": { "name": "Кільце порталу" },
+    "frozenForest": { "name": "Крижаний ліс" },
+    "volcano": { "name": "Вулкан" },
+    "megaBrick": { "name": "Мега-цеглина" },
+    "ancientPyramids": { "name": "Стародавні піраміди" },
+    "deathfulGuns": { "name": "Смертоносні гармати" },
+    "deadlyTunnels": { "name": "Смертельні тунелі" },
+    "encagedBeast": { "name": "Поневолена тварюка" },
+    "coalConvoy": { "name": "Вугільний конвой" },
+    "gear": { "name": "Шестерня" },
+    "uranium_fields": { "name": "Уранові родовища" }
+  }
+  
