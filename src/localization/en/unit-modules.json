@@ -1,0 +1,27 @@
+{
+  "magnet": {
+    "name": "Shard-Lure Tendrils",
+    "description": "Filamented feelers thrum with occult magnetism, drawing extra shards from every shattered brick your creature claims.",
+    "bonusLabel": "Brick reward multiplier"
+  },
+  "perforator": {
+    "name": "Rending Tentacles",
+    "description": "Whip-like limbs tear through targets so the force bleeds into adjacent masonry, weakening the formation around the strike.",
+    "bonusLabel": "Damage spillover"
+  },
+  "vitalHull": {
+    "name": "Vital Flesh",
+    "description": "Bio-reactive tissues graft and swell, thickening the creature’s living bulk and knitting wounds as it grows.",
+    "bonusLabel": "Max HP multiplier"
+  },
+  "ironForge": {
+    "name": "Iron Fangs",
+    "description": "Hardened iron fangs and knuckle-spikes bite deeper, turning each swing into a brutal, mauling strike.",
+    "bonusLabel": "Damage multiplier"
+  },
+  "tailNeedles": {
+    "name": "Chord Needles",
+    "description": "Socket barbed quills into the chord’s tip so every strike unleashes sideways volleys of piercing shards.",
+    "bonusLabel": "Side projectile damage"
+  }
+}

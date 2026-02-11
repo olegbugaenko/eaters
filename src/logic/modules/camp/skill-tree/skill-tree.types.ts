@@ -6,6 +6,7 @@ import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { EventLogModule } from "../../shared/event-log/event-log.module";
 import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface SkillNodeRequirementPayload {
   id: SkillId;
@@ -41,6 +42,7 @@ export interface SkillTreeModuleOptions {
   bonuses: BonusesModule;
   eventLog: EventLogModule;
   audio?: SoundEffectPlayer;
+  localization?: LocalizationService;
 }
 
 export interface SkillTreeSaveData {

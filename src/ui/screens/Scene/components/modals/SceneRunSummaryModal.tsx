@@ -1,6 +1,7 @@
 import type { ResourceRunSummaryItem } from "@logic/modules/shared/resources/resources.types";
 import { Button } from "@ui-shared/Button";
 import { formatNumber } from "@ui-shared/format/number";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./SceneRunSummaryModal.css";
 
 interface SceneRunSummaryModalAction {
@@ -62,14 +63,15 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   title = "Run Complete",
   subtitle = "Resources recovered from the ruins:",
 }) => {
+  const { t } = useLocalization();
   const collectedResources = resources.filter((resource) => resource.gained > 0);
   const hasResources = collectedResources.length > 0;
   return (
     <div className="scene-run-summary">
       <div className="scene-run-summary__backdrop" />
       <div className="scene-run-summary__dialog">
-        <h2 className="scene-run-summary__title">{title}</h2>
-        <p className="scene-run-summary__subtitle">{subtitle}</p>
+        <h2 className="scene-run-summary__title">{t("scene.runSummary.title", title)}</h2>
+        <p className="scene-run-summary__subtitle">{t("scene.runSummary.subtitle", subtitle)}</p>
         {hasResources ? (
           <ul className="scene-run-summary__list">
             {collectedResources.map((resource) => (
@@ -88,14 +90,14 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
             ))}
           </ul>
         ) : (
-          <p className="scene-run-summary__empty">No resources gathered this time.</p>
+          <p className="scene-run-summary__empty">{t("scene.runSummary.empty", "No resources gathered this time.")}</p>
         )}
         <div className="scene-run-summary__stats">
           <div className="scene-run-summary__stat">
-            <span className="scene-run-summary__stat-label">Bricks Destroyed</span>
+            <span className="scene-run-summary__stat-label">{t("scene.runSummary.bricksDestroyed", "Bricks Destroyed")}</span>
             <span className="scene-run-summary__stat-value">{formatCount(bricksDestroyed)}</span>
             <span className="scene-run-summary__stat-note">
-              Lifetime total: {formatCount(totalBricksDestroyed)}
+              {t("scene.runSummary.lifetimeTotal", "Lifetime total")}: {formatCount(totalBricksDestroyed)}
             </span>
           </div>
         </div>
@@ -107,7 +109,7 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
                 checked={autoRestart.enabled}
                 onChange={(event) => autoRestart.onToggle(event.target.checked)}
               />
-              <span>Autorestart</span>
+              <span>{t("scene.runSummary.autoRestart", "Autorestart")}</span>
             </label>
             <span className="scene-run-summary__auto-restart-timer">
               {Math.max(0, Math.ceil(autoRestart.countdown))}s

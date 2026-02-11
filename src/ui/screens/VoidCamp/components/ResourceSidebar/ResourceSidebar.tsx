@@ -7,6 +7,7 @@ import { useBridgeValue } from "@ui/shared/useBridgeValue";
 import { MAP_LAST_PLAYED_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
 import { getMapConfig, MapId } from "@/db/maps/maps-db";
 import { useCallback } from "react";
+import { useLocalization } from "@ui/shared/useLocalization";
 
 interface ResourceSidebarProps {
   resources: ResourceAmountPayload[];
@@ -15,6 +16,7 @@ interface ResourceSidebarProps {
 
 export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onStart }) => {
   const { uiApi, bridge } = useAppLogic();
+  const { t } = useLocalization();
   const lastPlayedMap = useBridgeValue(
     bridge,
     MAP_LAST_PLAYED_BRIDGE_KEY,
@@ -45,7 +47,7 @@ export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onS
           ))}
         </ul>
       ) : (
-        <p className="text-muted">No resources collected yet.</p>
+        <p className="text-muted">{t("voidCamp.resources.empty", "No resources collected yet.")}</p>
       )}
       {lastPlayedMap && mapName && (
         <button

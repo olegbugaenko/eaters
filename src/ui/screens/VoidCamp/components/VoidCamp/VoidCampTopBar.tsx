@@ -1,4 +1,5 @@
 import { classNames } from "@ui/shared/classNames";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./VoidCampTopBar.css";
 
 interface VoidCampTopBarProps {
@@ -24,6 +25,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
   wishlistUrl,
   feedbackUrl,
 }) => {
+  const { t } = useLocalization();
   return (
     <div className="void-camp-top-bar">
       <div className="void-camp-top-bar__left">
@@ -35,7 +37,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           )}
           onClick={onStatisticsClick}
         >
-          Statistics
+          {t("voidCamp.topBar.statistics", "Statistics")}
         </button>
         {showAchievements && onAchievementsClick && (
           <button
@@ -46,7 +48,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
             )}
             onClick={onAchievementsClick}
           >
-            Achievements
+            {t("voidCamp.topBar.achievements", "Achievements")}
           </button>
         )}
         <button
@@ -57,7 +59,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           )}
           onClick={onSettingsClick}
         >
-          Settings
+          {t("voidCamp.topBar.settings", "Settings")}
         </button>
       </div>
       <div className="void-camp-top-bar__right">
@@ -72,7 +74,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
             target="_blank"
             rel="noreferrer"
           >
-            Wishlist on Steam
+            {t("voidCamp.topBar.wishlist", "Wishlist on Steam")}
           </a>
         )}
         {feedbackUrl && (
@@ -82,10 +84,10 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
             target="_blank"
             rel="noreferrer"
           >
-            Feedback form
+            {t("voidCamp.topBar.feedback", "Feedback form")}
           </a>
         )}
-        <span className="void-camp-top-bar__label">Version</span>
+        <span className="void-camp-top-bar__label">{t("voidCamp.topBar.version", "Version")}</span>
         <button
           type="button"
           className={classNames(
@@ -95,7 +97,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           onClick={onVersionClick}
           disabled={!onVersionClick}
         >
-          {versionLabel ?? "Unknown"}
+          {versionLabel ?? t("voidCamp.topBar.unknownVersion", "Unknown")}
         </button>
         <button
           type="button"
@@ -105,7 +107,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           )}
           onClick={onExitClick}
         >
-          Exit
+          {t("voidCamp.topBar.exit", "Exit")}
         </button>
       </div>
     </div>

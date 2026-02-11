@@ -26,6 +26,7 @@ import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
 import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 import type { MapEffectPostProcessConfig } from "../../../../db/map-effects-db";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface ResourceRunController {
   startRun(): void;
@@ -54,6 +55,7 @@ export interface MapModuleOptions {
   getSkillLevel: (id: SkillId) => number;
   newUnlocks: NewUnlockNotificationService;
   statusEffects?: StatusEffectsModule;
+  localization?: LocalizationService;
 }
 
 export interface MapSaveData {

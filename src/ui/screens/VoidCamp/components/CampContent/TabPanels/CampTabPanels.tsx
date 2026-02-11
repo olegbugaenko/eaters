@@ -16,6 +16,7 @@ import { CraftingView } from "@/ui/screens/VoidCamp/components/CampContent/TabPa
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -53,6 +54,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   craftingState,
   achievementsState,
 }) => {
+  const { t } = useLocalization();
   const hasEnemyStrategies = maps.some((map) => {
     if (!map.selectable) {
       return false;
@@ -61,9 +63,9 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     return Boolean(config.enemySpawnPoints?.length || config.enemies);
   });
   const moduleTabs: { key: "shop" | "designer" | "roster"; label: string }[] = [
-    { key: "shop", label: "Organ Workshop" },
-    { key: "designer", label: "Unit Designer" },
-    { key: "roster", label: "Battle Roster" },
+    { key: "shop", label: t("voidCamp.modules.title", "Organ Workshop") },
+    { key: "designer", label: t("voidCamp.unitDesigner.title", "Unit Designer") },
+    { key: "roster", label: t("voidCamp.tabs.battleRoster", "Battle Roster") },
   ];
   const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer" | "roster">(
     "shop"
@@ -94,9 +96,9 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     if (!moduleWorkshopState.unlocked) {
       return (
         <div className="camp-tab-panels__modules-locked surface-panel">
-          <h2 className="heading-2">Organs Unavailable</h2>
+          <h2 className="heading-2">{t("voidCamp.tabs.organsUnavailable", "Organs Unavailable")}</h2>
           <p className="body-md text-muted">
-            Unlock the Chord skill to access organ fabrication and upgrades.
+            {t("voidCamp.tabs.organsUnavailableDesc", "Unlock the Chord skill to access organ fabrication and upgrades.")}
           </p>
         </div>
       );
@@ -146,9 +148,9 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     if (!buildingsState.unlocked) {
       return (
         <div className="camp-tab-panels__modules-locked surface-panel">
-          <h2 className="heading-2">Buildings Unavailable</h2>
+          <h2 className="heading-2">{t("voidCamp.tabs.buildingsUnavailable", "Buildings Unavailable")}</h2>
           <p className="body-md text-muted">
-            Unlock the Construction Guild skill to coordinate permanent structures.
+            {t("voidCamp.tabs.buildingsUnavailableDesc", "Unlock the Construction Guild skill to coordinate permanent structures.")}
           </p>
         </div>
       );
@@ -161,9 +163,9 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     if (!craftingState.unlocked) {
       return (
         <div className="camp-tab-panels__modules-locked surface-panel">
-          <h2 className="heading-2">Crafting Unavailable</h2>
+          <h2 className="heading-2">{t("voidCamp.tabs.craftingUnavailable", "Crafting Unavailable")}</h2>
           <p className="body-md text-muted">
-            Unlock a crafting recipe to begin processing resources into advanced goods.
+            {t("voidCamp.tabs.craftingUnavailableDesc", "Unlock a crafting recipe to begin processing resources into advanced goods.")}
           </p>
         </div>
       );

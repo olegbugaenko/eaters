@@ -6,6 +6,7 @@ import {
   DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
   MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
 } from "@logic/modules/active-map/map/map.const";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./SceneControlHintsPanel.css";
 
 export const SceneControlHintsPanel: React.FC = React.memo(() => {
@@ -16,6 +17,7 @@ export const SceneControlHintsPanel: React.FC = React.memo(() => {
     MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
     DEFAULT_MAP_CONTROL_HINTS_COLLAPSED
   );
+  const { t } = useLocalization();
   const handleToggle = useCallback(() => {
     map.setControlHintsCollapsed(!collapsed);
   }, [collapsed, map]);
@@ -29,16 +31,16 @@ export const SceneControlHintsPanel: React.FC = React.memo(() => {
           aria-expanded={!collapsed}
           onClick={handleToggle}
         >
-          <span className="scene-control-hints__toggle-text">Controls</span>
+          <span className="scene-control-hints__toggle-text">{t("scene.controls.title", "Controls")}</span>
           <span className="scene-control-hints__toggle-icon" aria-hidden="true">
             {collapsed ? "▸" : "▾"}
           </span>
         </button>
         {!collapsed && (
           <ul className="scene-control-hints__list">
-            <li>RMB + drag — pan</li>
-            <li>Wheel — zoom</li>
-            <li>RMB on object — details</li>
+            <li>{t("scene.controls.pan", "RMB + drag — pan")}</li>
+            <li>{t("scene.controls.zoom", "Wheel — zoom")}</li>
+            <li>{t("scene.controls.details", "RMB on object — details")}</li>
           </ul>
         )}
       </div>

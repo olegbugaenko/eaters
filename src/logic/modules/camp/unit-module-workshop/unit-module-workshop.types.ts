@@ -4,6 +4,7 @@ import type { ResourcesModule } from "../../shared/resources/resources.module";
 import type { SkillId } from "../../../../db/skills-db";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface UnitModuleWorkshopItemState {
   readonly id: UnitModuleId;
@@ -33,6 +34,7 @@ export interface UnitModuleWorkshopModuleOptions {
   getSkillLevel: (id: SkillId) => number;
   unlocks: UnlockService;
   newUnlocks: NewUnlockNotificationService;
+  localization?: LocalizationService;
 }
 
 export interface UnitModuleWorkshopSaveData {

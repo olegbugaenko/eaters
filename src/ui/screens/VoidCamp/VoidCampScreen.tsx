@@ -83,6 +83,7 @@ import {
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
 import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
+import { useLocalization } from "@ui/shared/useLocalization";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -98,6 +99,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   onTabChange,
 }) => {
   const { uiApi, bridge } = useAppLogic();
+  const { language, setLanguage, t } = useLocalization();
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState(false);
@@ -234,7 +236,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     if (!uiApi.save.getActiveSlotId()) {
       setStatusMessage({
         tone: "error",
-        text: "Select a save slot before exporting progress.",
+        text: t("voidCamp.save.export.noSlot", "Select a save slot before exporting progress."),
       });
       return;
     }
@@ -243,7 +245,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     if (!data) {
       setStatusMessage({
         tone: "error",
-        text: "Unable to access save data for export.",
+        text: t("voidCamp.save.export.noData", "Unable to access save data for export."),
       });
       return;
     }
@@ -265,13 +267,13 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       anchor.click();
       setStatusMessage({
         tone: "success",
-        text: "Save exported successfully.",
+        text: t("voidCamp.save.export.success", "Save exported successfully."),
       });
     } catch (error) {
       console.error("Failed to export save", error);
       setStatusMessage({
         tone: "error",
-        text: "Failed to export save file.",
+        text: t("voidCamp.save.export.fail", "Failed to export save file."),
       });
     } finally {
       if (objectUrl) {
@@ -286,7 +288,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       if (!uiApi.save.getActiveSlotId()) {
         setStatusMessage({
           tone: "error",
-          text: "Select a save slot before importing progress.",
+          text: t("voidCamp.save.import.noSlot", "Select a save slot before importing progress."),
         });
         return;
       }
@@ -306,7 +308,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         console.error("Failed to import save", error);
         setStatusMessage({
           tone: "error",
-          text: "Import failed. Ensure the file is a valid save export.",
+          text: t("voidCamp.save.import.fail", "Import failed. Ensure the file is a valid save export."),
         });
       }
     },
@@ -391,7 +393,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
           isOpen={isVersionHistoryOpen}
           onClose={() => setVersionHistoryOpen(false)}
           versions={GAME_VERSIONS}
-          title="Release notes"
+          title={t("voidCamp.releaseNotes.title", "Release notes")}
         />
       )}
       <SettingsModal
@@ -406,6 +408,9 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         onAudioSettingChange={handleAudioSettingChange}
         graphicsSettings={graphicsSettings}
         onGraphicsSettingChange={handleGraphicsSettingChange}
+        language={language}
+        onLanguageChange={setLanguage}
+        t={t}
       />
       <StatisticsModal
         isOpen={isStatisticsOpen}

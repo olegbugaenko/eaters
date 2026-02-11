@@ -1,0 +1,22 @@
+{
+  "stone_lore": {
+    "name": "Stone Lore",
+    "description": "Teach your swarms to sift shattered bricks with purpose, increasing stone drawn from debris."
+  },
+  "stone_automatons": {
+    "name": "Stone Automatons",
+    "description": "Bind mindless servitors to repeat simple rites for you, enabling basic ritual automation."
+  },
+  "autorestart_rituals": {
+    "name": "Autorestart Sigils",
+    "description": "Allows the map to automatically restart after completion or defeat."
+  },
+  "consiousness": {
+    "name": "Consciousness",
+    "description": "Strengthen your mental fortitude, expanding the limits of your consciousness to endure longer on the map."
+  },
+  "magic_rain": {
+    "name": "Magic Rain",
+    "description": "Call a rain of arcane drops that strikes enemies around your target area."
+  }
+}

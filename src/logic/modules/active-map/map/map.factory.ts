@@ -38,6 +38,7 @@ export const createMapDefinition = (
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
       newUnlocks: container.get("newUnlocks"),
       statusEffects: container.get("statusEffects"),
+      localization: container.get("localization"),
     });
   },
   registerAsModule: true,
@@ -59,6 +60,7 @@ export const createMapDefinition = (
     "unitAutomation",
     "skillTree",
     "newUnlocks",
+    "localization",
   ],
   onReady: (instance: MapModule) => {
     context.setMapModule(instance);

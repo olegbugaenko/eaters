@@ -69,7 +69,14 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     this.getSkillLevel = options.getSkillLevel;
     this.unlocks = options.unlocks;
     this.newUnlocks = options.newUnlocks;
-    this.stateFactory = new UnitModuleStateFactory();
+    this.stateFactory = new UnitModuleStateFactory({
+      getText: ({ id, name, description, bonusLabel }) =>
+        options.localization?.getUnitModuleText(id, { name, description, bonusLabel }) ?? {
+          name,
+          description,
+          bonusLabel,
+        },
+    });
   }
 
   public initialize(): void {

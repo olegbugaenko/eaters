@@ -4,6 +4,14 @@ import { ResourceStockpile } from "../../../../db/resources-db";
 import { UnitModuleWorkshopItemState } from "./unit-module-workshop.types";
 import { computeBonusValue, getMaxLevel, toRecord } from "./unit-module-workshop.helpers";
 
+export interface UnitModuleTextResolver {
+  readonly getText: (input: { id: UnitModuleId; name: string; description: string; bonusLabel: string }) => {
+    name: string;
+    description: string;
+    bonusLabel: string;
+  };
+}
+
 export interface UnitModuleStateInput {
   readonly id: UnitModuleId;
   readonly level: number;
@@ -14,6 +22,10 @@ export class UnitModuleStateFactory extends StateFactory<
   UnitModuleWorkshopItemState,
   UnitModuleStateInput
 > {
+  constructor(private readonly textResolver?: UnitModuleTextResolver) {
+    super();
+  }
+
   create(input: UnitModuleStateInput): UnitModuleWorkshopItemState {
     const config = getUnitModuleConfig(input.id);
     const maxLevelLimit = getMaxLevel(config);
@@ -22,11 +34,22 @@ export class UnitModuleStateFactory extends StateFactory<
     const costStockpile = maxed ? null : input.getUpgradeCost(input.id, input.level);
     const costRecord = costStockpile ? toRecord(costStockpile) : null;
 
-    return {
+    const localized = this.textResolver?.getText({
       id: input.id,
       name: config.name,
       description: config.description,
       bonusLabel: config.bonusLabel,
+    }) ?? {
+      name: config.name,
+      description: config.description,
+      bonusLabel: config.bonusLabel,
+    };
+
+    return {
+      id: input.id,
+      name: localized.name,
+      description: localized.description,
+      bonusLabel: localized.bonusLabel,
       bonusType: config.bonusType,
       baseBonusValue: config.baseBonusValue,
       bonusPerLevel: config.bonusPerLevel,

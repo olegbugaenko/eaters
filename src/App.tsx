@@ -48,7 +48,7 @@ function App(): JSX.Element {
 
   const handleSlotDelete = useCallback(
     (slot: string) => {
-      const confirmed = window.confirm("Clear this save slot? This cannot be undone.");
+      const confirmed = window.confirm(uiApi.localization.tUi("app.clearSaveConfirm", "Clear this save slot? This cannot be undone."));
       if (!confirmed) {
         return;
       }
