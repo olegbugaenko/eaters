@@ -7,6 +7,13 @@ import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { getMaxLevel } from "./buildings.helpers";
 
+export interface BuildingTextResolver {
+  readonly getText: (input: { id: BuildingId; name: string; description: string }) => {
+    name: string;
+    description: string;
+  };
+}
+
 export interface BuildingStateInput {
   readonly id: BuildingId;
   readonly level: number;
@@ -21,6 +28,10 @@ export class BuildingStateFactory extends StateFactory<
   BuildingWorkshopItemState,
   BuildingStateInput
 > {
+  constructor(private readonly textResolver?: BuildingTextResolver) {
+    super();
+  }
+
   create(input: BuildingStateInput): BuildingWorkshopItemState {
     const config = getBuildingConfig(input.id);
     const maxLevelLimit = getMaxLevel(config);
@@ -41,10 +52,19 @@ export class BuildingStateFactory extends StateFactory<
       }));
       bonusEffects = mapped as readonly BonusEffectPreview[];
     }
-    return {
+    const localized = this.textResolver?.getText({
       id: input.id,
       name: config.name,
       description: config.description,
+    }) ?? {
+      name: config.name,
+      description: config.description,
+    };
+
+    return {
+      id: input.id,
+      name: localized.name,
+      description: localized.description,
       level: input.level,
       maxLevel,
       maxed,

@@ -69,7 +69,10 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     this.unlocks = options.unlocks;
     this.newUnlocks = options.newUnlocks;
     this.getSkillLevel = options.getSkillLevel;
-    this.stateFactory = new BuildingStateFactory();
+    this.stateFactory = new BuildingStateFactory({
+      getText: ({ id, name, description }) =>
+        options.localization?.getBuildingText(id, { name, description }) ?? { name, description },
+    });
     this.registerBonusSources();
   }
 
