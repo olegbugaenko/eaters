@@ -17,6 +17,7 @@ import {
   DEFAULT_SKILL_TREE_STATE,
   SKILL_TREE_STATE_BRIDGE_KEY,
 } from "@logic/modules/camp/skill-tree/skill-tree.const";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./UnitDesignerView.css";
 import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 
@@ -48,6 +49,7 @@ const getDefaultType = (units: readonly { type: PlayerUnitType }[], fallback: Pl
 
 export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resources }) => {
   const { uiApi, bridge } = useAppLogic();
+  const { t } = useLocalization();
   const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
@@ -136,12 +138,12 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
       <div className="unit-designer stack-lg">
         <header className="unit-designer__header">
           <div>
-            <h2 className="heading-2">Unit Designer</h2>
-            <p className="body-md text-muted">Create units once organs are available.</p>
+            <h2 className="heading-2">{t("voidCamp.unitDesigner.title", "Unit Designer")}</h2>
+            <p className="body-md text-muted">{t("voidCamp.unitDesigner.emptyHeader", "Create units once organs are available.")}</p>
           </div>
-          <Button onClick={handleCreateUnit}>New Unit</Button>
+          <Button onClick={handleCreateUnit}>{t("voidCamp.unitDesigner.newUnit", "New Unit")}</Button>
         </header>
-        <p className="body-md text-muted">No units available yet.</p>
+        <p className="body-md text-muted">{t("voidCamp.unitDesigner.noUnits", "No units available yet.")}</p>
       </div>
     );
   }
@@ -178,8 +180,8 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
         <div className="unit-designer__main surface-panel">
           <aside className="unit-designer__list">
             <div className="unit-designer__list-header">
-              <h3 className="heading-4">Units</h3>
-              <Button onClick={handleCreateUnit}>New Unit</Button>
+              <h3 className="heading-4">{t("voidCamp.unitDesigner.units", "Units")}</h3>
+              <Button onClick={handleCreateUnit}>{t("voidCamp.unitDesigner.newUnit", "New Unit")}</Button>
             </div>
             <ul className="unit-designer__list-items">
               {state.units.map((unit) => {
@@ -207,7 +209,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                           {unit.name || getPlayerUnitConfig(unit.type).name}
                         </span>
                         <span className="unit-designer__list-modules">
-                          {unit.modules.length} modules
+                          {unit.modules.length} {t("voidCamp.unitRoster.modules", "modules")}
                         </span>
                       </div>
                       <button
@@ -217,9 +219,9 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                           event.stopPropagation();
                           handleDeleteUnit(unit.id);
                         }}
-                        aria-label={`Delete ${unit.name || getPlayerUnitConfig(unit.type).name}`}
+                        aria-label={`${t("voidCamp.unitDesigner.delete", "Delete")} ${unit.name || getPlayerUnitConfig(unit.type).name}`}
                       >
-                        Delete
+                        {t("voidCamp.unitDesigner.delete", "Delete")}
                       </button>
                     </div>
                   </li>
@@ -230,7 +232,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
           <section className="unit-designer__editor">
           <div className="unit-designer__field">
             <label htmlFor="unit-designer-name" className="label">
-              Unit Name
+              {t("voidCamp.unitDesigner.unitName", "Unit Name")}
             </label>
             <StableInput
               id="unit-designer-name"
@@ -249,9 +251,9 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             />
           </div>
           <div className="unit-designer__selected">
-            <h4 className="heading-4">Equipped Organs</h4>
+            <h4 className="heading-4">{t("voidCamp.unitDesigner.equipped", "Equipped Organs")}</h4>
             {selectedDetails.length === 0 ? (
-              <p className="body-sm text-muted">No organs equipped yet.</p>
+              <p className="body-sm text-muted">{t("voidCamp.unitDesigner.noEquipped", "No organs equipped yet.")}</p>
             ) : (
               <ul className="unit-designer__selected-list">
                 {selectedDetails.map((module) => (
@@ -276,7 +278,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                       className={classNames("danger-button", "small-button", "button")}
                       onClick={() => handleRemoveModule(selectedUnit.id, module.id, selectedModuleIds)}
                     >
-                      Remove
+                      {t("voidCamp.unitRoster.remove", "Remove")}
                     </button>
                   </li>
                 ))}
@@ -284,16 +286,20 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             )}
           </div>
           <div className="unit-designer__available">
-            <h4 className="heading-4">Available Organs</h4>
+            <h4 className="heading-4">{t("voidCamp.unitDesigner.available", "Available Organs")}</h4>
             <div className="unit-designer__available-scroll">
               {availableModules.length === 0 ? (
-                <p className="body-sm text-muted">Cultivate organs to equip them here.</p>
+                <p className="body-sm text-muted">{t("voidCamp.unitDesigner.cultivate", "Cultivate organs to equip them here.")}</p>
               ) : (
                 <ul className="unit-designer__available-list">
                   {availableModules.map((module) => {
                     const isSelected = selectedModuleIds.includes(module.id);
                     const disabled = isSelected || isAtModuleCap;
-                    const label = isSelected ? "Equipped" : isAtModuleCap ? "Max slots" : "Add";
+                    const label = isSelected
+                      ? t("voidCamp.unitDesigner.equippedOne", "Equipped")
+                      : isAtModuleCap
+                      ? t("voidCamp.unitDesigner.maxSlots", "Max slots")
+                      : t("voidCamp.unitDesigner.add", "Add");
                     return (
                       <li
                         key={module.id}
@@ -310,7 +316,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                       >
                         <button type="button" className="unit-designer__available-info">
                           <span className="unit-designer__available-name">{module.name}</span>
-                          <span className="unit-designer__available-level">Lv {module.level}</span>
+                          <span className="unit-designer__available-level">{t("voidCamp.common.level", "Level")} {module.level}</span>
                         </button>
                         <button
                           type="button"
@@ -344,7 +350,11 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   type="button"
                   className="unit-designer__summary-toggle"
                   aria-expanded={isPreviewOpen}
-                  aria-label={isPreviewOpen ? "Collapse unit preview" : "Expand unit preview"}
+                  aria-label={
+                    isPreviewOpen
+                      ? t("voidCamp.unitDesigner.collapsePreview", "Collapse unit preview")
+                      : t("voidCamp.unitDesigner.expandPreview", "Expand unit preview")
+                  }
                   onClick={() => setIsPreviewOpen((current) => !current)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -391,11 +401,11 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
             <div className="unit-designer__summary-scroll">
               <div className="unit-designer__module-preview">
                 <section className="unit-designer__cost">
-                  <h5 className="heading-5">Summoning Cost</h5>
+                  <h5 className="heading-5">{t("voidCamp.unitDesigner.summoningCost", "Summoning Cost")}</h5>
                   <ResourceCostDisplay cost={selectedUnit.cost} />
                 </section>
                 <section className="unit-designer__stats">
-                  <h5 className="heading-5">Stats</h5>
+                  <h5 className="heading-5">{t("voidCamp.unitDesigner.stats", "Stats")}</h5>
                   <dl>
                     {statEntries.map((entry) => (
                       <div key={entry.label} className="unit-designer__stat">
