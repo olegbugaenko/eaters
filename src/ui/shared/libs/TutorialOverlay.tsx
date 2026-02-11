@@ -1,7 +1,19 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { clamp } from "@shared/helpers/numbers.helper";
+import { useLocalization } from "@ui/shared/useLocalization";
 
-export type TutorialOverlayPlacement = "top" | "bottom" | "left" | "right" | "center";
+export type TutorialOverlayPlacement =
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "center";
 
 export type TutorialStep = {
   id: string;
@@ -10,8 +22,8 @@ export type TutorialStep = {
   content: React.ReactNode;
 
   placement?: TutorialOverlayPlacement;
-  padding?: number;     // px around target
-  radius?: number;      // for visual only (outline)
+  padding?: number; // px around target
+  radius?: number; // for visual only (outline)
   allowSpotlightClicks?: boolean;
   nextLabel?: string;
   nextDisabled?: boolean;
@@ -31,12 +43,12 @@ type Props = {
   onClose?: () => void;
 
   // behavior
-  blockOutsideClicks?: boolean;   // clicks on dark area do nothing (default true)
-  closeOnOutsideClick?: boolean;  // clicks on dark area close tutorial (default false)
-  scrollIntoView?: boolean;       // auto-scroll target into view (default true)
+  blockOutsideClicks?: boolean; // clicks on dark area do nothing (default true)
+  closeOnOutsideClick?: boolean; // clicks on dark area close tutorial (default false)
+  scrollIntoView?: boolean; // auto-scroll target into view (default true)
 
   zIndex?: number;
-  dimColor?: string;              // rgba(...)
+  dimColor?: string; // rgba(...)
 
   tooltipClassName?: string;
 };
@@ -45,7 +57,8 @@ type Rect = { x: number; y: number; w: number; h: number };
 
 function resolveTarget(t: TutorialStep["target"]): HTMLElement | null {
   if (!t) return null;
-  if (typeof t === "string") return document.querySelector(t) as HTMLElement | null;
+  if (typeof t === "string")
+    return document.querySelector(t) as HTMLElement | null;
   if (typeof t === "function") return t();
   return t;
 }
@@ -91,6 +104,7 @@ export function TutorialOverlay({
   dimColor = "rgba(0,0,0,0.6)",
   tooltipClassName,
 }: Props) {
+  const { t } = useLocalization();
   const step = steps[stepIndex];
   const [targetEl, setTargetEl] = useState<HTMLElement | null>(null);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -109,7 +123,11 @@ export function TutorialOverlay({
 
     if (el && scrollIntoView) {
       // smooth-ish centering
-      el.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+      el.scrollIntoView({
+        block: "center",
+        inline: "center",
+        behavior: "smooth",
+      });
     }
   }, [run, step, scrollIntoView]);
 
@@ -206,7 +224,12 @@ export function TutorialOverlay({
     };
 
     if (!rect || step?.placement === "center") {
-      return { ...base, left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
+      return {
+        ...base,
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+      };
     }
 
     const gap = 12;
@@ -235,10 +258,7 @@ export function TutorialOverlay({
 
     // If top placement, we anchor above but need transform to move up by tooltip height.
     // For MVP we do a simple trick: use translateY(-100%) when top.
-    const transform =
-      place === "top"
-        ? "translateY(-100%)"
-        : "none";
+    const transform = place === "top" ? "translateY(-100%)" : "none";
 
     return { ...base, left, top, transform };
   }, [rect, step?.placement, zIndex]);
@@ -255,10 +275,34 @@ export function TutorialOverlay({
     pointerEvents: blockOutsideClicks ? "auto" : "none",
   };
 
-  const topMask: React.CSSProperties = { ...maskCommon, left: 0, top: 0, right: 0, height: r.y };
-  const leftMask: React.CSSProperties = { ...maskCommon, left: 0, top: r.y, width: r.x, height: r.h };
-  const rightMask: React.CSSProperties = { ...maskCommon, left: r.x + r.w, top: r.y, right: 0, height: r.h };
-  const bottomMask: React.CSSProperties = { ...maskCommon, left: 0, top: r.y + r.h, right: 0, bottom: 0 };
+  const topMask: React.CSSProperties = {
+    ...maskCommon,
+    left: 0,
+    top: 0,
+    right: 0,
+    height: r.y,
+  };
+  const leftMask: React.CSSProperties = {
+    ...maskCommon,
+    left: 0,
+    top: r.y,
+    width: r.x,
+    height: r.h,
+  };
+  const rightMask: React.CSSProperties = {
+    ...maskCommon,
+    left: r.x + r.w,
+    top: r.y,
+    right: 0,
+    height: r.h,
+  };
+  const bottomMask: React.CSSProperties = {
+    ...maskCommon,
+    left: 0,
+    top: r.y + r.h,
+    right: 0,
+    bottom: 0,
+  };
 
   const onOutsideClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -280,7 +324,8 @@ export function TutorialOverlay({
     width: r.w,
     height: r.h,
     borderRadius: radius,
-    boxShadow: "0 0 0 2px rgba(255,255,255,0.25), 0 0 30px rgba(255,255,255,0.12)",
+    boxShadow:
+      "0 0 0 2px rgba(255,255,255,0.25), 0 0 30px rgba(255,255,255,0.12)",
     pointerEvents: "none",
   };
 
@@ -301,10 +346,26 @@ export function TutorialOverlay({
       {/* Masks around the spotlight hole - only render when blockOutsideClicks is true */}
       {blockOutsideClicks && (
         <>
-          <div style={topMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
-          <div style={leftMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
-          <div style={rightMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
-          <div style={bottomMask} onMouseDown={onOutsideClick} onClick={onOutsideClick} />
+          <div
+            style={topMask}
+            onMouseDown={onOutsideClick}
+            onClick={onOutsideClick}
+          />
+          <div
+            style={leftMask}
+            onMouseDown={onOutsideClick}
+            onClick={onOutsideClick}
+          />
+          <div
+            style={rightMask}
+            onMouseDown={onOutsideClick}
+            onClick={onOutsideClick}
+          />
+          <div
+            style={bottomMask}
+            onMouseDown={onOutsideClick}
+            onClick={onOutsideClick}
+          />
         </>
       )}
 
@@ -313,7 +374,11 @@ export function TutorialOverlay({
 
       {/* Optional blocker ON TOP of spotlight hole */}
       {rect && !allowSpotlightClicks && (
-        <div style={spotlightBlocker} onMouseDown={onBlockerClick} onClick={onBlockerClick} />
+        <div
+          style={spotlightBlocker}
+          onMouseDown={onBlockerClick}
+          onClick={onBlockerClick}
+        />
       )}
 
       {/* Tooltip */}
@@ -326,14 +391,21 @@ export function TutorialOverlay({
 
         <div style={{ opacity: busy ? 0.7 : 1 }}>{step.content}</div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginTop: 12,
+            alignItems: "center",
+          }}
+        >
           <button
             type="button"
             onClick={goBack}
             disabled={!canBack || busy}
             className="button small-button"
           >
-            Back
+            {t("tutorialOverlay.back", "Back")}
           </button>
 
           <div style={{ flex: 1 }} />
@@ -344,7 +416,7 @@ export function TutorialOverlay({
             disabled={busy}
             className="button danger-button small-button"
           >
-            Skip
+            {t("tutorialOverlay.skip", "Skip")}
           </button>
 
           <button
@@ -353,7 +425,10 @@ export function TutorialOverlay({
             disabled={busy || nextDisabled}
             className="button primary-button small-button"
           >
-            {step.nextLabel ?? (isLast ? "Finish" : "Next")}
+            {step.nextLabel ??
+              (isLast
+                ? t("tutorialOverlay.finish", "Finish")
+                : t("tutorialOverlay.next", "Next"))}
           </button>
         </div>
 
@@ -361,7 +436,9 @@ export function TutorialOverlay({
           {step.footer ?? (
             <>
               {stepIndex + 1} / {steps.length}
-              {rect && allowSpotlightClicks && " • spotlight clickable"}
+              {rect &&
+                allowSpotlightClicks &&
+                ` ${t("tutorialOverlay.spotlightClickable", "• spotlight clickable")}`}
             </>
           )}
         </div>

@@ -12,6 +12,7 @@ import {
   SceneTutorialOverlay,
 } from "./components/overlay/SceneTutorialOverlay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { useLocalization } from "@ui/shared/useLocalization";
 import { useBridgeRef } from "@ui-shared/useBridgeRef";
 import "./SceneScreen.css";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
@@ -35,7 +36,10 @@ import type {
 import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import type { SpellcastingModuleUiApi } from "@logic/modules/active-map/spellcasting/spellcasting.types";
 import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
-import type { SceneUiApi, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type {
+  SceneUiApi,
+  SceneVector2,
+} from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 import { SceneTutorialBridgeMonitor } from "./components/tutorial/SceneTutorialBridgeMonitor";
 import { SceneSummoningPanelContainer } from "./components/summoning/SceneSummoningPanelContainer";
@@ -59,13 +63,20 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   onTutorialComplete,
 }) => {
   const { uiApi, bridge } = useAppLogic();
+  const { t } = useLocalization();
   const scene = uiApi.scene as SceneUiApi;
   const spellcasting = uiApi.spellcasting as SpellcastingModuleUiApi;
-  const gameLoop = useMemo(() => uiApi.gameLoop as GameLoopUiApi, [uiApi.gameLoop]);
-  const necromancer = useMemo(() => uiApi.necromancer as NecromancerModuleUiApi, [uiApi.necromancer]);
+  const gameLoop = useMemo(
+    () => uiApi.gameLoop as GameLoopUiApi,
+    [uiApi.gameLoop],
+  );
+  const necromancer = useMemo(
+    () => uiApi.necromancer as NecromancerModuleUiApi,
+    [uiApi.necromancer],
+  );
   const unitAutomation = useMemo(
     () => uiApi.unitAutomation as UnitAutomationModuleUiApi,
-    [uiApi.unitAutomation]
+    [uiApi.unitAutomation],
   );
   const map = uiApi.map as MapModuleUiApi;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -79,12 +90,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const spellOptionsRef = useBridgeRef(
     bridge,
     SPELL_OPTIONS_BRIDGE_KEY,
-    DEFAULT_SPELL_OPTIONS
+    DEFAULT_SPELL_OPTIONS,
   );
   const mapEffectsRef = useBridgeRef(
     bridge,
     MAP_EFFECTS_BRIDGE_KEY,
-    DEFAULT_MAP_EFFECTS_STATE
+    DEFAULT_MAP_EFFECTS_STATE,
   );
   const [summoningTooltipContent, setSummoningTooltipContent] =
     useState<SceneTooltipContent | null>(null);
@@ -105,11 +116,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   const spawnOptionsRef = useBridgeRef(
     bridge,
     NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
-    EMPTY_SPAWN_OPTIONS
+    EMPTY_SPAWN_OPTIONS,
   );
   const selectedSpellIdRef = useRef<SpellId | null>(null);
   const cleanupCalledRef = useRef(false);
-  const [tutorialActions, setTutorialActions] = useState<SceneTutorialActions>();
+  const [tutorialActions, setTutorialActions] =
+    useState<SceneTutorialActions>();
   const [tutorialSummonDone, setTutorialSummonDone] = useState(false);
   const [tutorialSpellCastDone, setTutorialSpellCastDone] = useState(false);
   const [canAdvancePlayStep, setCanAdvancePlayStep] = useState(false);
@@ -122,9 +134,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   }, []);
   const joinedDebugSpawnedRef = useRef(false);
   const spellCastTokenRef = useRef(0);
-  const [spellCastPulse, setSpellCastPulse] = useState<{ id: SpellId; token: number } | null>(
-    null
-  );
+  const [spellCastPulse, setSpellCastPulse] = useState<{
+    id: SpellId;
+    token: number;
+  } | null>(null);
   const {
     tutorialSteps,
     tutorialStepIndex,
@@ -140,11 +153,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     locks: { playStepLocked: !canAdvancePlayStep },
   });
 
-  const activeTutorialStep = showTutorial ? tutorialSteps[tutorialStepIndex] : null;
+  const activeTutorialStep = showTutorial
+    ? tutorialSteps[tutorialStepIndex]
+    : null;
   const activeTutorialStepId = activeTutorialStep?.id;
   // For cast-magic-arrow step: allow gameplay after spell is cast
-  const isSpellStepAfterCast = activeTutorialStepId === "cast-magic-arrow" && tutorialSpellCastDone;
-  const allowTutorialGameplay = isSpellStepAfterCast || Boolean(activeTutorialStep?.allowGameplay);
+  const isSpellStepAfterCast =
+    activeTutorialStepId === "cast-magic-arrow" && tutorialSpellCastDone;
+  const allowTutorialGameplay =
+    isSpellStepAfterCast || Boolean(activeTutorialStep?.allowGameplay);
 
   const handlePlayStepAdvance = useCallback(() => {
     setCanAdvancePlayStep(true);
@@ -153,7 +170,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       registerTutorialAction("cast-magic-arrow");
     }
     handleTutorialAdvance(tutorialStepIndex + 1);
-  }, [activeTutorialStepId, handleTutorialAdvance, registerTutorialAction, tutorialStepIndex, tutorialSpellCastDone]);
+  }, [
+    activeTutorialStepId,
+    handleTutorialAdvance,
+    registerTutorialAction,
+    tutorialStepIndex,
+    tutorialSpellCastDone,
+  ]);
 
   // Ref to avoid timer reset when callback reference changes
   const handlePlayStepAdvanceRef = useRef(handlePlayStepAdvance);
@@ -163,18 +186,23 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
 
   const handleSpellCast = useCallback(
     (spellId: SpellId) => {
-      console.log('[handleSpellCast] called:', { spellId, showTutorial, stepId: activeTutorialStepId });
+      console.log("[handleSpellCast] called:", {
+        spellId,
+        showTutorial,
+        stepId: activeTutorialStepId,
+      });
       spellCastTokenRef.current += 1;
       setSpellCastPulse({ id: spellId, token: spellCastTokenRef.current });
-      const isSpellStep = showTutorial && activeTutorialStepId === "cast-magic-arrow";
+      const isSpellStep =
+        showTutorial && activeTutorialStepId === "cast-magic-arrow";
       if (isSpellStep && spellId === "magic-arrow") {
-        console.log('[handleSpellCast] Setting tutorialSpellCastDone to true');
+        console.log("[handleSpellCast] Setting tutorialSpellCastDone to true");
         // Don't register action immediately to prevent auto-advance
         // We'll register it when handlePlayStepAdvance is called
         setTutorialSpellCastDone(true);
       }
     },
-    [activeTutorialStepId, showTutorial]
+    [activeTutorialStepId, showTutorial],
   );
 
   const handleInspectTarget = useCallback(
@@ -185,24 +213,24 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   );
 
   const { cameraUiStore, handleScaleChange } = useSceneCameraInteraction({
-      scene,
-      spellcasting,
-      gameLoop,
-      mapEffectsRef,
-      selectedSpellIdRef,
-      spellOptionsRef,
-      isPauseOpen,
-      showTutorial,
-      canvasRef,
-      wrapperRef,
-      summoningPanelRef,
-      cameraInfoRef,
-      scaleRef,
-      pointerPressedRef,
-      lastPointerPositionRef,
-      onSpellCast: handleSpellCast,
-      onInspectTarget: handleInspectTarget,
-    });
+    scene,
+    spellcasting,
+    gameLoop,
+    mapEffectsRef,
+    selectedSpellIdRef,
+    spellOptionsRef,
+    isPauseOpen,
+    showTutorial,
+    canvasRef,
+    wrapperRef,
+    summoningPanelRef,
+    cameraInfoRef,
+    scaleRef,
+    pointerPressedRef,
+    lastPointerPositionRef,
+    onSpellCast: handleSpellCast,
+    onInspectTarget: handleInspectTarget,
+  });
 
   // Clear UI overlays when modals/overlays become visible
   useEffect(() => {
@@ -269,12 +297,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     const shouldPauseForTutorial = showTutorial && !allowTutorialGameplay;
     const shouldPause = isPauseOpen || shouldPauseForTutorial || runCompleted;
     // For cast-magic-arrow step before cast, don't pause the map (to allow spell casting)
-    const isSpellStepWaitingForCast = 
-      showTutorial && 
-      activeTutorialStepId === "cast-magic-arrow" && 
+    const isSpellStepWaitingForCast =
+      showTutorial &&
+      activeTutorialStepId === "cast-magic-arrow" &&
       !tutorialSpellCastDone;
-    
-    console.log('[PauseEffect]', {
+
+    console.log("[PauseEffect]", {
       shouldPause,
       shouldPauseForTutorial,
       allowTutorialGameplay,
@@ -285,26 +313,26 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       showRunSummary: runCompleted,
       showTutorial,
     });
-    
+
     if (shouldPause) {
       // Stop gameLoop
       gameLoop.stop();
       // Only pause map if NOT waiting for spell cast
       if (!isSpellStepWaitingForCast) {
-        console.log('[PauseEffect] Pausing map');
+        console.log("[PauseEffect] Pausing map");
         map.pauseActiveMap();
       } else {
         // Map was likely paused by previous step - RESUME it for spell casting!
-        console.log('[PauseEffect] RESUMING map for spell cast');
+        console.log("[PauseEffect] RESUMING map for spell cast");
         map.resumeActiveMap();
       }
     } else {
       // Resume everything
-      console.log('[PauseEffect] Resuming map and gameLoop');
+      console.log("[PauseEffect] Resuming map and gameLoop");
       map.resumeActiveMap();
       gameLoop.start();
     }
-    
+
     return undefined;
   }, [
     activeTutorialStepId,
@@ -321,14 +349,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     (designId: UnitDesignId) => {
       const wasSummoned = necromancer.trySpawnDesign(designId);
       if (wasSummoned) {
-        const option = spawnOptionsRef.current.find((entry) => entry.designId === designId);
+        const option = spawnOptionsRef.current.find(
+          (entry) => entry.designId === designId,
+        );
         if (option?.type === "bluePentagon") {
           registerTutorialAction("summon-blue-vanguard");
           setTutorialSummonDone(true);
         }
       }
     },
-    [necromancer, registerTutorialAction, spawnOptionsRef]
+    [necromancer, registerTutorialAction, spawnOptionsRef],
   );
 
   useEffect(() => {
@@ -341,11 +371,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     setRunCompleted(completed);
   }, []);
 
-
   // Tutorial spell step: advance after 3 seconds (primary condition)
   useEffect(() => {
-    const isSpellStep = showTutorial && activeTutorialStepId === "cast-magic-arrow";
-    
+    const isSpellStep =
+      showTutorial && activeTutorialStepId === "cast-magic-arrow";
+
     if (!isSpellStep || !tutorialSpellCastDone || canAdvancePlayStep) {
       return;
     }
@@ -408,7 +438,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         const id = scene.addObject("playerUnit", {
           position,
           size: { width: 24, height: 24 },
-          fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.2, g: 0.6, b: 1, a: 1 } },
+          fill: {
+            fillType: FILL_TYPES.SOLID,
+            color: { r: 0.2, g: 0.6, b: 1, a: 1 },
+          },
           customData: {
             renderer: debugRenderer,
             baseFillColor: debugRenderer.fill,
@@ -468,7 +501,10 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       <SceneTooltipBridgePanel contentOverride={summoningTooltipContent} />
       {joinedDebugEnabled && (
         <div className="scene-debug-banner">
-          Joined GPU Debug (joinedDebug=1) — showing 1024 joined elements
+          {t(
+            "scene.debug.joinedGpuBanner",
+            "Joined GPU Debug (joinedDebug=1) — showing 1024 joined elements",
+          )}
         </div>
       )}
       {joinedDebugEnabled && <SceneDebugPanel bridge={bridge} />}
@@ -490,7 +526,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         onToggleAutomation={handleToggleAutomation}
       />
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
-        <canvas ref={canvasRef} width={512} height={512} className="scene-canvas" />
+        <canvas
+          ref={canvasRef}
+          width={512}
+          height={512}
+          className="scene-canvas"
+        />
       </div>
       {showTutorial && (
         <SceneTutorialOverlay

@@ -5,7 +5,11 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { MapId, getMapConfig } from "@/db/maps/maps-db";
-import { RESOURCE_IDS, type ResourceId, getResourceConfig } from "@/db/resources-db";
+import {
+  RESOURCE_IDS,
+  type ResourceId,
+  getResourceConfig,
+} from "@/db/resources-db";
 import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { MapListEntry } from "@logic/modules/active-map/map/map.types";
 import { classNames } from "@ui-shared/classNames";
@@ -30,7 +34,10 @@ import type { ResourceAbundanceLevel } from "@shared/helpers/resource-abundance.
 import { getResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./MapSelectPanel.css";
-import type { MapModuleUiApi, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
+import type {
+  MapModuleUiApi,
+  MapResourcePreviewCache,
+} from "@logic/modules/active-map/map/map.types";
 
 const CELL_SIZE_X = 200;
 const CELL_SIZE_Y = 180;
@@ -47,7 +54,14 @@ interface MapTreeLayout {
   width: number;
   height: number;
   positions: Map<MapId, { x: number; y: number }>;
-  edges: { id: string; from: MapId; to: MapId; currentLevel: number; requiredLevel: number; fulfilled: boolean }[];
+  edges: {
+    id: string;
+    from: MapId;
+    to: MapId;
+    currentLevel: number;
+    requiredLevel: number;
+    fulfilled: boolean;
+  }[];
 }
 
 interface MapSelectPanelProps {
@@ -68,7 +82,14 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
 
   const mapSet = new Set(maps.map((map) => map.id));
   const mapById = new Map(maps.map((map) => [map.id, map]));
-  const edges: { id: string; from: MapId; to: MapId; currentLevel: number; requiredLevel: number; fulfilled: boolean }[] = [];
+  const edges: {
+    id: string;
+    from: MapId;
+    to: MapId;
+    currentLevel: number;
+    requiredLevel: number;
+    fulfilled: boolean;
+  }[] = [];
 
   let minX = Infinity;
   let maxX = -Infinity;
@@ -92,7 +113,7 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
   // Calculate base dimensions from node positions
   const baseWidth = (maxX - minX) * CELL_SIZE_X + TREE_MARGIN * 2;
   const baseHeight = (maxY - minY) * CELL_SIZE_Y + TREE_MARGIN * 2;
-  
+
   // Ensure dimensions meet minimum canvas size requirements
   const width = Math.max(baseWidth, MIN_CANVAS_WIDTH);
   const height = Math.max(baseHeight, MIN_CANVAS_HEIGHT);
@@ -109,22 +130,24 @@ const computeLayout = (maps: MapListEntry[]): MapTreeLayout => {
 
     // Build edges from mapsRequired
     if (config.mapsRequired) {
-      Object.entries(config.mapsRequired).forEach(([requiredMapId, requiredLevel]) => {
-        const requiredId = requiredMapId as MapId;
-        if (mapSet.has(requiredId) && requiredLevel && requiredLevel > 0) {
-          const requiredMap = mapById.get(requiredId);
-          const clearedLevels = requiredMap?.clearedLevels ?? 0;
-          const fulfilled = clearedLevels >= requiredLevel;
-          edges.push({
-            id: `${requiredId}->${map.id}`,
-            from: requiredId,
-            to: map.id,
-            currentLevel: clearedLevels, // clearedLevels is the number of completed levels
-            requiredLevel,
-            fulfilled,
-          });
-        }
-      });
+      Object.entries(config.mapsRequired).forEach(
+        ([requiredMapId, requiredLevel]) => {
+          const requiredId = requiredMapId as MapId;
+          if (mapSet.has(requiredId) && requiredLevel && requiredLevel > 0) {
+            const requiredMap = mapById.get(requiredId);
+            const clearedLevels = requiredMap?.clearedLevels ?? 0;
+            const fulfilled = clearedLevels >= requiredLevel;
+            edges.push({
+              id: `${requiredId}->${map.id}`,
+              from: requiredId,
+              to: map.id,
+              currentLevel: clearedLevels, // clearedLevels is the number of completed levels
+              requiredLevel,
+              fulfilled,
+            });
+          }
+        },
+      );
     }
   });
 
@@ -155,12 +178,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   const savedViewTransform = useBridgeValue(
     bridge,
     MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
-    null as { scale: number; worldX: number; worldY: number } | null
+    null as { scale: number; worldX: number; worldY: number } | null,
   );
   const newUnlocksState = useBridgeValue(
     bridge,
     NEW_UNLOCKS_BRIDGE_KEY,
-    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState,
   );
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
@@ -175,15 +198,26 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     startY: 0,
   });
   const didPanRef = useRef(false);
-  const [popover, setPopover] = useState<
-    | { mapId: MapId; canDecrease: boolean; canIncrease: boolean }
-    | null
-  >(null);
+  const [popover, setPopover] = useState<{
+    mapId: MapId;
+    canDecrease: boolean;
+    canIncrease: boolean;
+  } | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
   const getLocalizedMapName = useCallback(
-    (mapId: MapId, fallback: string) => uiApi.localization.getMapName(mapId, fallback),
-    [uiApi.localization]
+    (mapId: MapId, fallback: string) =>
+      uiApi.localization.getMapName(mapId, fallback),
+    [uiApi.localization],
+  );
+
+  const getLocalizedResourceName = useCallback(
+    (resourceId: ResourceId) =>
+      uiApi.localization.getResourceName(
+        resourceId,
+        getResourceConfig(resourceId).name,
+      ),
+    [uiApi.localization],
   );
 
   const getLocalizedResourceAbundanceLabel = useCallback(
@@ -204,14 +238,17 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
           return t(key, "Sparse");
       }
     },
-    [t]
+    [t],
   );
 
   const layout = useMemo(() => computeLayout(maps), [maps]);
-  const mapById = useMemo(() => new Map(maps.map((map) => [map.id, map])), [maps]);
+  const mapById = useMemo(
+    () => new Map(maps.map((map) => [map.id, map])),
+    [maps],
+  );
   const unseenPaths = useMemo(
     () => new Set(newUnlocksState.unseenPaths),
-    [newUnlocksState.unseenPaths]
+    [newUnlocksState.unseenPaths],
   );
   const hasInitializedViewRef = useRef(false);
   const previousViewportSizeRef = useRef({ width: 0, height: 0 });
@@ -255,10 +292,17 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   // Save viewTransform when it changes (but not during initialization)
   const saveViewTransformRef = useRef(false);
   useEffect(() => {
-    if (hasInitializedViewRef.current && saveViewTransformRef.current && viewportSize.width && viewportSize.height) {
+    if (
+      hasInitializedViewRef.current &&
+      saveViewTransformRef.current &&
+      viewportSize.width &&
+      viewportSize.height
+    ) {
       // Convert viewport offset to world coordinates for saving
-      const worldX = (viewportSize.width / 2 - viewTransform.offsetX) / viewTransform.scale;
-      const worldY = (viewportSize.height / 2 - viewTransform.offsetY) / viewTransform.scale;
+      const worldX =
+        (viewportSize.width / 2 - viewTransform.offsetX) / viewTransform.scale;
+      const worldY =
+        (viewportSize.height / 2 - viewTransform.offsetY) / viewTransform.scale;
       (uiApi.map as MapModuleUiApi).setMapSelectViewTransform({
         scale: viewTransform.scale,
         worldX,
@@ -277,7 +321,11 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       return;
     }
 
-    if (!viewportSize.width || !viewportSize.height || layout.positions.size === 0) {
+    if (
+      !viewportSize.width ||
+      !viewportSize.height ||
+      layout.positions.size === 0
+    ) {
       return;
     }
 
@@ -347,8 +395,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     const { x, y } = targetPosition ?? fallbackPosition;
 
     setViewTransform((current) => {
-      const focusWorldX = (previousSize.width / 2 - current.offsetX) / current.scale;
-      const focusWorldY = (previousSize.height / 2 - current.offsetY) / current.scale;
+      const focusWorldX =
+        (previousSize.width / 2 - current.offsetX) / current.scale;
+      const focusWorldY =
+        (previousSize.height / 2 - current.offsetY) / current.scale;
 
       // If the focus point was the origin node, keep it centered
       const originPosition = targetPosition ?? fallbackPosition;
@@ -379,7 +429,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   useEffect(() => {
     if (popover) {
       previousPopoverMapIdRef.current = popover.mapId;
-    } else if (previousPopoverMapIdRef.current && hoveredId === previousPopoverMapIdRef.current) {
+    } else if (
+      previousPopoverMapIdRef.current &&
+      hoveredId === previousPopoverMapIdRef.current
+    ) {
       // Only clear if hoveredId matches the closed popover's mapId
       setHoveredId(null);
       previousPopoverMapIdRef.current = null;
@@ -396,7 +449,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     if (!achievementId) {
       return null;
     }
-    return achievements.achievements.find((entry) => entry.id === achievementId) ?? null;
+    return (
+      achievements.achievements.find((entry) => entry.id === achievementId) ??
+      null
+    );
   }, [achievements.achievements, activeMap]);
   const activeResourcePreview = useMemo(() => {
     if (!activeMap) {
@@ -409,7 +465,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       return null;
     }
     const amounts: Partial<Record<ResourceId, number>> = {};
-    const addStockpile = (stockpile?: Record<ResourceId, number> | null): void => {
+    const addStockpile = (
+      stockpile?: Record<ResourceId, number> | null,
+    ): void => {
       if (!stockpile) {
         return;
       }
@@ -422,10 +480,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       });
     };
     addStockpile(activeResourcePreview.brickTotalsLevel1);
-    Object.values(activeResourcePreview.enemyRewardsLevel1).forEach((reward) => addStockpile(reward));
+    Object.values(activeResourcePreview.enemyRewardsLevel1).forEach((reward) =>
+      addStockpile(reward),
+    );
     const total = activeResourcePreview.resourceIds.reduce(
       (sum, id) => sum + (amounts[id] ?? 0),
-      0
+      0,
     );
     return {
       amounts,
@@ -434,19 +494,16 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     };
   }, [activeResourcePreview]);
 
-  const setPopoverForMap = useCallback(
-    (map: MapListEntry) => {
-      if (!map.selectable) {
-        return;
-      }
-      setPopover({
-        mapId: map.id,
-        canDecrease: map.selectedLevel > 1,
-        canIncrease: map.selectedLevel < map.currentLevel,
-      });
-    },
-    []
-  );
+  const setPopoverForMap = useCallback((map: MapListEntry) => {
+    if (!map.selectable) {
+      return;
+    }
+    setPopover({
+      mapId: map.id,
+      canDecrease: map.selectedLevel > 1,
+      canIncrease: map.selectedLevel < map.currentLevel,
+    });
+  }, []);
 
   const handleNodeClick = useCallback(
     (map: MapListEntry, event: ReactMouseEvent<HTMLButtonElement>) => {
@@ -458,59 +515,68 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       }
       onSelectMap(map.id);
     },
-    [onSelectMap]
+    [onSelectMap],
   );
 
-  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) {
-      return;
-    }
-    const { pointerId, clientX, clientY } = event;
-    panStateRef.current = {
-      isDown: true,
-      isPanning: false,
-      pointerId,
-      lastX: clientX,
-      lastY: clientY,
-      startX: clientX,
-      startY: clientY,
-    };
-    didPanRef.current = false;
-  }, []);
-
-  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const state = panStateRef.current;
-    if (!state.isDown || state.pointerId !== event.pointerId) {
-      return;
-    }
-    const deltaX = event.clientX - state.lastX;
-    const deltaY = event.clientY - state.lastY;
-
-    if (!state.isPanning) {
-      const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
-      if (distance < DRAG_THRESHOLD) {
-        state.lastX = event.clientX;
-        state.lastY = event.clientY;
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) {
         return;
       }
-      state.isPanning = true;
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } catch {
-        // Ignore pointer capture errors.
-      }
-    }
+      const { pointerId, clientX, clientY } = event;
+      panStateRef.current = {
+        isDown: true,
+        isPanning: false,
+        pointerId,
+        lastX: clientX,
+        lastY: clientY,
+        startX: clientX,
+        startY: clientY,
+      };
+      didPanRef.current = false;
+    },
+    [],
+  );
 
-    didPanRef.current = true;
-    event.preventDefault();
-    setViewTransform((current) => ({
-      ...current,
-      offsetX: current.offsetX + deltaX,
-      offsetY: current.offsetY + deltaY,
-    }));
-    state.lastX = event.clientX;
-    state.lastY = event.clientY;
-  }, []);
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const state = panStateRef.current;
+      if (!state.isDown || state.pointerId !== event.pointerId) {
+        return;
+      }
+      const deltaX = event.clientX - state.lastX;
+      const deltaY = event.clientY - state.lastY;
+
+      if (!state.isPanning) {
+        const distance = Math.hypot(
+          event.clientX - state.startX,
+          event.clientY - state.startY,
+        );
+        if (distance < DRAG_THRESHOLD) {
+          state.lastX = event.clientX;
+          state.lastY = event.clientY;
+          return;
+        }
+        state.isPanning = true;
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignore pointer capture errors.
+        }
+      }
+
+      didPanRef.current = true;
+      event.preventDefault();
+      setViewTransform((current) => ({
+        ...current,
+        offsetX: current.offsetX + deltaX,
+        offsetY: current.offsetY + deltaY,
+      }));
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
+    },
+    [],
+  );
 
   const endPan = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const state = panStateRef.current;
@@ -535,9 +601,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     };
   }, []);
 
-  const handlePointerLeave = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    endPan(event);
-  }, [endPan]);
+  const handlePointerLeave = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      endPan(event);
+    },
+    [endPan],
+  );
 
   const handleWheel = useCallback(
     (event: ReactWheelEvent<HTMLDivElement>) => {
@@ -548,12 +617,17 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       const zoomFactor = Math.exp(-event.deltaY * ZOOM_SENSITIVITY);
       setViewTransform((current) => {
         const proposedScale = current.scale * zoomFactor;
-        const nextScale = Math.min(Math.max(proposedScale, MIN_SCALE), MAX_SCALE);
+        const nextScale = Math.min(
+          Math.max(proposedScale, MIN_SCALE),
+          MAX_SCALE,
+        );
         if (Math.abs(nextScale - current.scale) < 0.0001) {
           return current;
         }
-        const focusWorldX = (viewportSize.width / 2 - current.offsetX) / current.scale;
-        const focusWorldY = (viewportSize.height / 2 - current.offsetY) / current.scale;
+        const focusWorldX =
+          (viewportSize.width / 2 - current.offsetX) / current.scale;
+        const focusWorldY =
+          (viewportSize.height / 2 - current.offsetY) / current.scale;
 
         const offsetX = viewportSize.width / 2 - focusWorldX * nextScale;
         const offsetY = viewportSize.height / 2 - focusWorldY * nextScale;
@@ -565,7 +639,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
         };
       });
     },
-    [viewportSize.height, viewportSize.width]
+    [viewportSize.height, viewportSize.width],
   );
 
   useEffect(() => {
@@ -589,7 +663,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     if (selectedMap && hoveredId === selectedMap) {
       return;
     }
-    setHoveredId((current) => (current && current === selectedMap ? null : current));
+    setHoveredId((current) =>
+      current && current === selectedMap ? null : current,
+    );
   }, [hoveredId, selectedMap]);
 
   const canvasStyle = useMemo(
@@ -599,16 +675,28 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
       transform: `translate(${viewTransform.offsetX}px, ${viewTransform.offsetY}px) scale(${viewTransform.scale})`,
       transformOrigin: "0 0",
     }),
-    [layout.height, layout.width, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale]
+    [
+      layout.height,
+      layout.width,
+      viewTransform.offsetX,
+      viewTransform.offsetY,
+      viewTransform.scale,
+    ],
   );
 
   return (
     <div className="map-tree">
       <header className="map-tree__header">
         <div className="map-tree__cleared">
-          {t("voidCamp.maps.clearedLevels", "Map Levels Cleared")}: {formatNumber(clearedLevelsTotal)}
+          {t("voidCamp.maps.clearedLevels", "Map Levels Cleared")}:{" "}
+          {formatNumber(clearedLevelsTotal)}
         </div>
-        <div className="map-tree__hint">{t("voidCamp.maps.hint", "Click to pick a level, double click to start.")}</div>
+        <div className="map-tree__hint">
+          {t(
+            "voidCamp.maps.hint",
+            "Click to pick a level, double click to start.",
+          )}
+        </div>
       </header>
       <div className="map-tree__body">
         <div
@@ -636,7 +724,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 // Calculate midpoint for counter label
                 const midX = (from.x + to.x) / 2;
                 const midY = (from.y + to.y) / 2;
-                
+
                 return (
                   <g key={edge.id}>
                     <line
@@ -644,14 +732,22 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       y1={from.y}
                       x2={to.x}
                       y2={to.y}
-                      className={edge.fulfilled ? "map-tree__link map-tree__link--fulfilled" : "map-tree__link map-tree__link--locked"}
+                      className={
+                        edge.fulfilled
+                          ? "map-tree__link map-tree__link--fulfilled"
+                          : "map-tree__link map-tree__link--locked"
+                      }
                     />
                     <g className="map-tree__link-counter">
                       <circle
                         cx={midX}
                         cy={midY}
                         r="20"
-                        className={edge.fulfilled ? "map-tree__link-counter-bg map-tree__link-counter-bg--fulfilled" : "map-tree__link-counter-bg map-tree__link-counter-bg--locked"}
+                        className={
+                          edge.fulfilled
+                            ? "map-tree__link-counter-bg map-tree__link-counter-bg--fulfilled"
+                            : "map-tree__link-counter-bg map-tree__link-counter-bg--locked"
+                        }
                       />
                       <text
                         x={midX}
@@ -675,12 +771,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               const isSelected = map.id === selectedMap;
               const mapConfig = getMapConfig(map.id);
               const hasAchievement = !!mapConfig.achievementId;
-              
+
               const nodeClasses = classNames(
                 "map-tree-node",
                 isSelected && "map-tree-node--active",
                 !map.selectable && "map-tree-node--locked",
-                hasAchievement && "map-tree-node--achievement"
+                hasAchievement && "map-tree-node--achievement",
               );
 
               const getMapInitials = (name: string): string =>
@@ -719,7 +815,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               // Outer radius = progressRadius + progressStrokeWidth
               const svgSize = (progressRadius + progressStrokeWidth) * 2;
               const svgCenter = svgSize / 2;
-              
+
               // Calculate angles
               const completedLevels = map.clearedLevels; // Number of fully completed levels
               const totalLevels = map.maxLevel;
@@ -746,7 +842,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 currentEndAngle = completedEndAngle;
               } else {
                 // Completed levels arc (opacity 1.0)
-                const clampedCompletedLevels = Math.min(completedLevels, totalLevels);
+                const clampedCompletedLevels = Math.min(
+                  completedLevels,
+                  totalLevels,
+                );
                 completedAngle = clampedCompletedLevels * levelAngle;
                 completedEndAngle = startAngle + completedAngle;
 
@@ -755,9 +854,14 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 currentLevelAngle = hasCurrentLevel ? levelAngle : 0;
                 currentEndAngle = completedEndAngle + currentLevelAngle;
               }
-              
-              const createArc = (start: number, end: number, radius: number, center: number) => {
-                if(end - start >= 359.999) {
+
+              const createArc = (
+                start: number,
+                end: number,
+                radius: number,
+                center: number,
+              ) => {
+                if (end - start >= 359.999) {
                   end = 359.999 + start;
                 }
                 const startRad = (start * Math.PI) / 180;
@@ -774,8 +878,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 <div
                   key={map.id}
                   className="map-tree-node-wrapper"
-                  style={{ 
-                    left: `${position.x}px`, 
+                  style={{
+                    left: `${position.x}px`,
                     top: `${position.y}px`,
                     width: `${svgSize}px`,
                     height: `${svgSize}px`,
@@ -790,7 +894,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     {/* Background arc (remaining) - only show if not maxed */}
                     {!isMaxed && (
                       <path
-                        d={createArc(currentEndAngle, startAngle + 360, progressRadius + 0.5*progressStrokeWidth, svgCenter)}
+                        d={createArc(
+                          currentEndAngle,
+                          startAngle + 360,
+                          progressRadius + 0.5 * progressStrokeWidth,
+                          svgCenter,
+                        )}
                         fill="none"
                         stroke="#477A85"
                         strokeWidth={progressStrokeWidth}
@@ -801,7 +910,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     {/* Completed levels arc - always show if there are completed levels or if maxed */}
                     {(completedAngle > 0 || isMaxed) && (
                       <path
-                        d={createArc(startAngle, completedEndAngle, progressRadius + 0.5*progressStrokeWidth, svgCenter)}
+                        d={createArc(
+                          startAngle,
+                          completedEndAngle,
+                          progressRadius + 0.5 * progressStrokeWidth,
+                          svgCenter,
+                        )}
                         fill="none"
                         stroke="#87BAC5"
                         strokeWidth={progressStrokeWidth}
@@ -811,7 +925,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     )}
                     {!isMaxed && currentLevelAngle > 0 && (
                       <path
-                        d={createArc(completedEndAngle, currentEndAngle, progressRadius + 0.5*progressStrokeWidth, svgCenter)}
+                        d={createArc(
+                          completedEndAngle,
+                          currentEndAngle,
+                          progressRadius + 0.5 * progressStrokeWidth,
+                          svgCenter,
+                        )}
                         fill="none"
                         stroke="#477A85"
                         strokeWidth={progressStrokeWidth}
@@ -825,10 +944,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     className={nodeClasses}
                     data-map-id={map.id}
                     style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
                     }}
                     onMouseEnter={() => {
                       setHoveredId(map.id);
@@ -840,10 +959,16 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       }
                     }}
                     onMouseLeave={(event) => {
-                      setHoveredId((current) => (current === map.id ? null : current));
+                      setHoveredId((current) =>
+                        current === map.id ? null : current,
+                      );
                       // Check if mouse is moving to popover
                       const relatedTarget = event.relatedTarget;
-                      if (relatedTarget && relatedTarget instanceof Node && popoverRef.current?.contains(relatedTarget)) {
+                      if (
+                        relatedTarget &&
+                        relatedTarget instanceof Node &&
+                        popoverRef.current?.contains(relatedTarget)
+                      ) {
                         return; // Mouse is moving to popover, don't close
                       }
                       // Close popover after a small delay to allow moving to popover
@@ -884,7 +1009,9 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               );
             })}
             {maps.length === 0 && (
-              <div className="map-tree__empty">{t("voidCamp.maps.empty", "No maps available yet.")}</div>
+              <div className="map-tree__empty">
+                {t("voidCamp.maps.empty", "No maps available yet.")}
+              </div>
             )}
             {(() => {
               if (!popover) {
@@ -909,7 +1036,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               const popoverStyle = {
                 left: `${mapPosition.x}px`,
                 bottom: `${layout.height - nodeTop + popoverOffset}px`,
-                transform: 'translateX(-50%)',
+                transform: "translateX(-50%)",
               };
               return (
                 <div
@@ -930,11 +1057,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     const relatedTarget = event.relatedTarget;
                     if (relatedTarget && relatedTarget instanceof Node) {
                       const mapNode = document.querySelector(
-                        `[data-map-id="${popover.mapId}"]`
+                        `[data-map-id="${popover.mapId}"]`,
                       );
                       if (
                         mapNode &&
-                        (mapNode.contains(relatedTarget) || mapNode === relatedTarget)
+                        (mapNode.contains(relatedTarget) ||
+                          mapNode === relatedTarget)
                       ) {
                         return; // Mouse is moving to map node, don't close
                       }
@@ -943,14 +1071,18 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     setPopover(null);
                   }}
                 >
-                  <div className={classNames(
-                    "map-tree__popover-name",
-                    getMapConfig(popoverMap.id).achievementId && "map-tree__popover-name--achievement"
-                  )}>
+                  <div
+                    className={classNames(
+                      "map-tree__popover-name",
+                      getMapConfig(popoverMap.id).achievementId &&
+                        "map-tree__popover-name--achievement",
+                    )}
+                  >
                     {getLocalizedMapName(popoverMap.id, popoverMap.name)}
                   </div>
                   <div className="map-tree__popover-level">
-                    {t("voidCamp.common.level", "Level")} {popoverMap.selectedLevel} / {popoverMap.currentLevel}
+                    {t("voidCamp.common.level", "Level")}{" "}
+                    {popoverMap.selectedLevel} / {popoverMap.currentLevel}
                   </div>
                   {popoverMap.selectable && (
                     <>
@@ -960,11 +1092,14 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                           className={classNames(
                             "button",
                             "secondary-button",
-                            "small-button"
+                            "small-button",
                           )}
                           disabled={!popover.canDecrease}
                           onClick={() =>
-                            onSelectLevel(popover.mapId, popoverMap.selectedLevel - 1)
+                            onSelectLevel(
+                              popover.mapId,
+                              popoverMap.selectedLevel - 1,
+                            )
                           }
                         >
                           -
@@ -974,11 +1109,14 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                           className={classNames(
                             "button",
                             "secondary-button",
-                            "small-button"
+                            "small-button",
                           )}
                           disabled={!popover.canIncrease}
                           onClick={() =>
-                            onSelectLevel(popover.mapId, popoverMap.selectedLevel + 1)
+                            onSelectLevel(
+                              popover.mapId,
+                              popoverMap.selectedLevel + 1,
+                            )
                           }
                         >
                           +
@@ -1003,23 +1141,37 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
             <>
               {isDemoBuild() && getMapConfig(activeMap.id).lockedForDemo && (
                 <div className="map-tree__details-locked">
-                  {t("voidCamp.maps.demoLocked", "This map is unavailable in the demo.")}
+                  {t(
+                    "voidCamp.maps.demoLocked",
+                    "This map is unavailable in the demo.",
+                  )}
                 </div>
               )}
               <div className="map-tree__details-header">
-                <h2 className={classNames(
-                  getMapConfig(activeMap.id).achievementId && "map-tree__details-title--achievement"
-                )}>
+                <h2
+                  className={classNames(
+                    getMapConfig(activeMap.id).achievementId &&
+                      "map-tree__details-title--achievement",
+                  )}
+                >
                   {getLocalizedMapName(activeMap.id, activeMap.name)}
                 </h2>
                 <span className="map-tree__details-level">
-                  {t("voidCamp.common.level", "Level")} {activeMap.selectedLevel} / {activeMap.currentLevel}
+                  {t("voidCamp.common.level", "Level")}{" "}
+                  {activeMap.selectedLevel} / {activeMap.currentLevel}
                 </span>
               </div>
               {getMapConfig(activeMap.id).achievementId && (
                 <div className="map-tree__details-achievement-notice">
-                  <strong>{t("voidCamp.maps.challenge", "🏆 Challenge Map")}</strong>
-                  <p>{t("voidCamp.maps.challengeDesc", "Completing levels on this map grants permanent bonuses through achievements!")}</p>
+                  <strong>
+                    {t("voidCamp.maps.challenge", "🏆 Challenge Map")}
+                  </strong>
+                  <p>
+                    {t(
+                      "voidCamp.maps.challengeDesc",
+                      "Completing levels on this map grants permanent bonuses through achievements!",
+                    )}
+                  </p>
                 </div>
               )}
               {activeAchievement ? (
@@ -1033,28 +1185,41 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   />
                 </div>
               ) : null}
-              {activeResourcePreview && activeResourcePreview.resourceIds.length > 0 ? (
+              {activeResourcePreview &&
+              activeResourcePreview.resourceIds.length > 0 ? (
                 <div className="map-tree__details-resources">
-                  <div className="map-tree__details-resources-title">{t("voidCamp.maps.potentialResources", "Potential resources")}</div>
+                  <div className="map-tree__details-resources-title">
+                    {t(
+                      "voidCamp.maps.potentialResources",
+                      "Potential resources",
+                    )}
+                  </div>
                   <ul className="map-tree__details-resources-list list-reset">
                     {activeResourcePreview.resourceIds.map((resourceId) => {
-                      const abundanceLevel: ResourceAbundanceLevel = !activeResourceTotals
-                        ? 1
-                        : getResourceAbundanceLevel(
-                            activeResourceTotals.amounts[resourceId] ?? 0,
-                            activeResourceTotals.total,
-                            activeResourceTotals.count
-                          );
+                      const abundanceLevel: ResourceAbundanceLevel =
+                        !activeResourceTotals
+                          ? 1
+                          : getResourceAbundanceLevel(
+                              activeResourceTotals.amounts[resourceId] ?? 0,
+                              activeResourceTotals.total,
+                              activeResourceTotals.count,
+                            );
                       return (
-                        <li key={resourceId} className="map-tree__details-resources-item">
+                        <li
+                          key={resourceId}
+                          className="map-tree__details-resources-item"
+                        >
                           <span className="map-tree__details-resources-label">
-                            <ResourceIcon resourceId={resourceId} className="map-tree__details-resources-icon" />
-                            <span>{t(`resources.${resourceId}.name`, getResourceConfig(resourceId).name)}</span>
+                            <ResourceIcon
+                              resourceId={resourceId}
+                              className="map-tree__details-resources-icon"
+                            />
+                            <span>{getLocalizedResourceName(resourceId)}</span>
                           </span>
                           <span
                             className={classNames(
                               "map-tree__details-resources-level",
-                              `map-tree__details-resources-level--${abundanceLevel}`
+                              `map-tree__details-resources-level--${abundanceLevel}`,
                             )}
                           >
                             {getLocalizedResourceAbundanceLabel(abundanceLevel)}
@@ -1067,9 +1232,15 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               ) : null}
               <div className="map-tree__details-list">
                 <span className="map-tree__details-level">
-                  {t("voidCamp.maps.maxLevel", "Max. Level Available")}: {activeMap.maxLevel}
+                  {t("voidCamp.maps.maxLevel", "Max. Level Available")}:{" "}
+                  {activeMap.maxLevel}
                 </span>
-                <p>{t("voidCamp.maps.levelInfo", "Everytime you complete a level, you unlock the next level up to max level.")}</p>
+                <p>
+                  {t(
+                    "voidCamp.maps.levelInfo",
+                    "Everytime you complete a level, you unlock the next level up to max level.",
+                  )}
+                </p>
               </div>
               <dl className="map-tree__details-list">
                 <div>
@@ -1097,7 +1268,12 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     type="button"
                     className={classNames("button", "secondary-button")}
                     disabled={activeMap.selectedLevel <= 1}
-                    onClick={() => onSelectLevel(activeMap.id, Math.max(activeMap.selectedLevel - 1, 1))}
+                    onClick={() =>
+                      onSelectLevel(
+                        activeMap.id,
+                        Math.max(activeMap.selectedLevel - 1, 1),
+                      )
+                    }
                   >
                     {t("voidCamp.maps.levelMinus", "Level -")}
                   </button>
@@ -1105,7 +1281,13 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     type="button"
                     className={classNames("button", "secondary-button")}
                     onClick={() =>
-                      onSelectLevel(activeMap.id, Math.min(activeMap.selectedLevel + 1, activeMap.currentLevel))
+                      onSelectLevel(
+                        activeMap.id,
+                        Math.min(
+                          activeMap.selectedLevel + 1,
+                          activeMap.currentLevel,
+                        ),
+                      )
                     }
                   >
                     {t("voidCamp.maps.levelPlus", "Level +")}
@@ -1122,7 +1304,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
             </>
           ) : (
             <div className="map-tree__details-empty">
-              {t("voidCamp.maps.hoverHint", "Hover over a map node to inspect its details.")}
+              {t(
+                "voidCamp.maps.hoverHint",
+                "Hover over a map node to inspect its details.",
+              )}
             </div>
           )}
         </aside>
