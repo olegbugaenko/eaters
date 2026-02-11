@@ -43,6 +43,16 @@ const readJson = (filePath) => {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 };
 
+const collectMissingTranslations = (baseJson, localeJson) => {
+  const missingTranslations = {};
+  for (const [key, englishValue] of Object.entries(baseJson)) {
+    if (!(key in localeJson)) {
+      missingTranslations[key] = englishValue;
+    }
+  }
+  return missingTranslations;
+};
+
 const ensureLogsDir = () => {
   if (!fs.existsSync(LOGS_DIR)) {
     fs.mkdirSync(LOGS_DIR, { recursive: true });
@@ -79,27 +89,27 @@ const collectMissingKeysReport = () => {
       if (!baseJson) {
         throw new Error(`Base localization file not found: ${basePath}`);
       }
-      const baseKeys = Object.keys(baseJson);
       const localeJson = readJson(localePath);
 
       if (!localeJson) {
+        const missingTranslations = Object.fromEntries(Object.entries(baseJson));
         domainReport[domainFile] = {
           file: path.relative(ROOT_DIR, localePath),
-          missingCount: baseKeys.length,
-          missingKeys: [...baseKeys],
+          missingCount: Object.keys(missingTranslations).length,
+          missingTranslations,
           note: "locale file is missing",
         };
-        localeMissing += baseKeys.length;
+        localeMissing += Object.keys(missingTranslations).length;
         continue;
       }
 
-      const missingKeys = baseKeys.filter((key) => !(key in localeJson));
+      const missingTranslations = collectMissingTranslations(baseJson, localeJson);
       domainReport[domainFile] = {
         file: path.relative(ROOT_DIR, localePath),
-        missingCount: missingKeys.length,
-        missingKeys,
+        missingCount: Object.keys(missingTranslations).length,
+        missingTranslations,
       };
-      localeMissing += missingKeys.length;
+      localeMissing += Object.keys(missingTranslations).length;
     }
 
     report.missingByLocale[locale] = {
@@ -139,10 +149,11 @@ const writeLogs = (report) => {
       if (domain.note) {
         lines.push(`    Note: ${domain.note}`);
       }
-      if (domain.missingKeys.length > 0) {
-        lines.push("    Keys:");
-        for (const key of domain.missingKeys) {
-          lines.push(`      - ${key}`);
+      const missingEntries = Object.entries(domain.missingTranslations);
+      if (missingEntries.length > 0) {
+        lines.push("    Keys (EN values):");
+        for (const [key, englishValue] of missingEntries) {
+          lines.push(`      - ${key}: ${JSON.stringify(englishValue)}`);
         }
       }
     }
