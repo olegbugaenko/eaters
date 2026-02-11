@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface StableInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "defaultValue" | "onChange"> {
@@ -19,6 +19,7 @@ export const StableInput: React.FC<StableInputProps> = ({
 }) => {
   const [draftValue, setDraftValue] = useState(String(value));
   const [isFocused, setIsFocused] = useState(false);
+  const focusStartValueRef = useRef(String(value));
 
   useEffect(() => {
     if (!isFocused) {
@@ -26,7 +27,10 @@ export const StableInput: React.FC<StableInputProps> = ({
     }
   }, [isFocused, value]);
 
-  const commitDraft = useCallback(() => {
+  const commitDraftIfChanged = useCallback(() => {
+    if (draftValue === focusStartValueRef.current) {
+      return;
+    }
     onCommit(draftValue);
   }, [draftValue, onCommit]);
 
@@ -35,17 +39,17 @@ export const StableInput: React.FC<StableInputProps> = ({
       {...inputProps}
       value={draftValue}
       onFocus={(event) => {
+        focusStartValueRef.current = String(value);
         setIsFocused(true);
         onFocus?.(event);
       }}
       onBlur={(event) => {
         setIsFocused(false);
-        commitDraft();
+        commitDraftIfChanged();
         onBlur?.(event);
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter") {
-          commitDraft();
           event.currentTarget.blur();
         }
         onKeyDown?.(event);
