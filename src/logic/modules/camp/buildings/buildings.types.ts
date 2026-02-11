@@ -6,6 +6,7 @@ import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { SkillId } from "../../../../db/skills-db";
 import type { BonusEffectPreview } from "@shared/types/bonuses";
 import type { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface BuildingWorkshopItemState {
   readonly id: BuildingId;
@@ -32,6 +33,7 @@ export interface BuildingsModuleOptions {
   readonly unlocks: UnlockService;
   readonly newUnlocks: NewUnlockNotificationService;
   readonly getSkillLevel: (id: SkillId) => number;
+  readonly localization?: LocalizationService;
 }
 
 export interface BuildingsSaveData {

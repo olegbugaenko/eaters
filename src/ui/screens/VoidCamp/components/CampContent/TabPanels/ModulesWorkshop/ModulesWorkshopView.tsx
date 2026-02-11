@@ -15,6 +15,7 @@ import {
 } from "@logic/services/new-unlock-notification/new-unlock-notification.const";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./ModulesWorkshopView.css";
 import type { UnitModuleWorkshopUiApi } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
@@ -61,6 +62,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   hideMaxedWorkshop = false,
 }) => {
   const { uiApi, bridge } = useAppLogic();
+  const { t } = useLocalization();
   const workshop = uiApi.unitModuleWorkshop as UnitModuleWorkshopUiApi;
   const buildingsApi = uiApi.buildings as BuildingsModuleUiApi;
   const newUnlocksState = useBridgeValue(
@@ -134,11 +136,11 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
       <div className="modules-workshop surface-panel stack-lg">
         <header className="modules-workshop__header">
           <div>
-            <h2 className="heading-2">Organ Workshop</h2>
-            <p className="text-muted">Grow and craft organs once they become available.</p>
+            <h2 className="heading-2">{t("voidCamp.modules.title", "Organ Workshop")}</h2>
+            <p className="text-muted">{t("voidCamp.modules.emptyTitle", "Grow and craft organs once they become available.")}</p>
           </div>
         </header>
-        <div className="modules-workshop__empty">No organs are available yet.</div>
+        <div className="modules-workshop__empty">{t("voidCamp.modules.emptyDesc", "No organs are available yet.")}</div>
       </div>
     );
   }
@@ -146,14 +148,14 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   return (
     <div className="modules-workshop stack-lg">
       <header className="modules-workshop__header modules-workshop__header--row">
-        <p className="text-muted">Cultivate organs and manifested parts, then refine them over time.</p>
+        <p className="text-muted">{t("voidCamp.modules.subtitle", "Cultivate organs and manifested parts, then refine them over time.")}</p>
         <label className="modules-workshop__hide-maxed">
           <input
             type="checkbox"
             checked={hideMaxedWorkshop}
             onChange={(e) => buildingsApi.setHideMaxedWorkshop(e.target.checked)}
           />
-          <span>Hide Maxed</span>
+          <span>{t("voidCamp.common.hideMaxed", "Hide Maxed")}</span>
         </label>
       </header>
       <div className="modules-workshop__content">
@@ -200,7 +202,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                         />
                       ) : (
                         <span className="text-muted">
-                          {module.maxed ? "Maxed" : "Unavailable"}
+                          {module.maxed ? t("voidCamp.common.maxed", "Maxed") : t("voidCamp.common.unavailable", "Unavailable")}
                         </span>
                       )}
                     </div>
@@ -226,7 +228,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                       activeModule.bonusType,
                       activeModule.currentBonusValue
                     )
-                  : "Locked"
+                  : t("voidCamp.common.locked", "Locked")
               }
               nextEffect={
                 activeModule.maxed
@@ -252,8 +254,8 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                 ) : (
                   <p className="text-muted body-sm">
                     {activeModule.maxed
-                      ? "This organ has reached its maximum level."
-                      : "Organ unavailable. Fulfil its unlock requirements to cultivate."}
+                      ? t("voidCamp.modules.maxedDesc", "This organ has reached its maximum level.")
+                      : t("voidCamp.modules.unavailableDesc", "Organ unavailable. Fulfil its unlock requirements to cultivate.")}
                   </p>
                 )
               }
@@ -262,14 +264,14 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                   onClick={() => handleUpgrade(activeModule.id)}
                   disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
                 >
-                  {activeModule.level > 0 ? "Upgrade" : "Unlock"}
+                  {activeModule.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.common.unlock", "Unlock")}
                 </Button>
               }
             />
           ) : (
             <div className="modules-workshop__details modules-workshop__details--scrollable">
               <div className="modules-workshop__details-empty">
-                Hover over an organ to inspect its details.
+                {t("voidCamp.modules.hoverHint", "Hover over an organ to inspect its details.")}
               </div>
             </div>
           )}

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { classNames } from "@ui-shared/classNames";
 import { formatNumber } from "@ui-shared/format/number";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./ModuleDetailsCard.css";
 
 interface ModuleDetailsCardProps {
@@ -32,7 +33,10 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
   actions,
   className,
 }) => {
-  const effectTitle = nextEffect ? "Effect Preview" : "Effect";
+  const { t } = useLocalization();
+  const effectTitle = nextEffect
+    ? t("voidCamp.moduleDetails.effectPreview", "Effect Preview")
+    : t("voidCamp.moduleDetails.effect", "Effect");
   const containerClassName = classNames("modules-workshop__details", className);
   const resolvedLevelLabel = levelLabel ?? `Level ${level}`;
   const sanityImpactLabel =
@@ -41,7 +45,7 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
           minimumFractionDigits: 0,
           maximumFractionDigits: 0,
         })}`
-      : "None";
+      : t("voidCamp.common.none", "None");
 
   return (
     <div className={containerClassName}>
@@ -51,7 +55,7 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
       </div>
       <p className="modules-workshop__details-description">{description}</p>
       <div className="modules-workshop__details-section">
-        <h4>{nextEffect ? "Bonuses" : "Effect"}</h4>
+        <h4>{nextEffect ? t("voidCamp.common.bonuses", "Bonuses") : effectTitle}</h4>
         <div className="modules-workshop__effect-preview">
           <span className="modules-workshop__effect-label">{effectLabel}</span>
           <span className="modules-workshop__effect-values">
@@ -68,10 +72,10 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
         </div>
       </div>
       <div className="modules-workshop__details-section">
-        <h4>Unit Costs</h4>
+        <h4>{t("voidCamp.moduleDetails.unitCosts", "Unit Costs")}</h4>
         <div className="modules-workshop__cost-list">
           <div className="modules-workshop__cost-item">
-            <span className="modules-workshop__cost-label">Mana Multiplier</span>
+            <span className="modules-workshop__cost-label">{t("voidCamp.moduleDetails.manaMultiplier", "Mana Multiplier")}</span>
             <span className="modules-workshop__cost-value">
               ×
               {formatNumber(manaMultiplier, {
@@ -81,7 +85,7 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
             </span>
           </div>
           <div className="modules-workshop__cost-item">
-            <span className="modules-workshop__cost-label">Sanity Impact</span>
+            <span className="modules-workshop__cost-label">{t("voidCamp.moduleDetails.sanityImpact", "Sanity Impact")}</span>
             <span className="modules-workshop__cost-value">{sanityImpactLabel}</span>
           </div>
         </div>

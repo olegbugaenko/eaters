@@ -1,0 +1,30 @@
+{
+  "magic-arrow": {
+    "name": "Magic Arrow",
+    "description": "Launch a razor of focused mana that slices through the air toward your target."
+  },
+  "weaken-curse": {
+    "name": "Weaken Curse",
+    "description": "Unfurl a rippling curse that saps the strength of bricks caught in its wave."
+  },
+  "sand-storm": {
+    "name": "Sand Storm",
+    "description": "Summon a whirling storm of scouring grit that grinds forward, shredding bricks until the vortex collapses."
+  },
+  "void-darts": {
+    "name": "Darts of the Void",
+    "description": "Unleash darts of metal and void energy that damage targets."
+  },
+  "electric-shards": {
+    "name": "Electric Shards",
+    "description": "Launch crackling shards that drift unpredictably and arc electricity between targets."
+  },
+  "ring-of-fire": {
+    "name": "Ring of Fire",
+    "description": "Conjure an expanding crown of flame that scorches bricks as it races outward."
+  },
+  "magic-storm": {
+    "name": "Magic Storm",
+    "description": "Open a rift above the battlefield, raining arcane bolts into a focused zone."
+  }
+}

@@ -19,6 +19,7 @@ export const createSpellcastingDefinition = (): ServiceDefinition<SpellcastingMo
       targeting: container.get("targeting"),
       runState: container.get("mapRunState"),
       getSkillLevel: (id: SkillId) => container.get<SkillTreeModule>("skillTree").getLevel(id),
+      localization: container.get("localization"),
     }),
   registerAsModule: true,
   dependsOn: [
@@ -31,5 +32,6 @@ export const createSpellcastingDefinition = (): ServiceDefinition<SpellcastingMo
     "unitProjectiles",
     "skillTree",
     "arc",
+    "localization",
   ],
 });

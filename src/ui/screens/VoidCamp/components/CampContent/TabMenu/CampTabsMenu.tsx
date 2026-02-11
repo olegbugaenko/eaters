@@ -1,5 +1,6 @@
 import { classNames } from "@ui-shared/classNames";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
+import { useLocalization } from "@ui/shared/useLocalization";
 import { CampTabKey } from "../CampContent";
 import "./CampTabsMenu.css";
 
@@ -20,6 +21,7 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
   craftingUnlocked,
   tabHasNew,
 }) => {
+  const { t } = useLocalization();
   const tabPathByKey: Record<CampTabKey, string> = {
     maps: "maps",
     skills: "skills",
@@ -28,20 +30,20 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
     buildings: "buildings",
   };
   const tabs: { key: CampTabKey; label: string }[] = [
-    { key: "maps", label: "Map Selector" },
-    { key: "skills", label: "Skill Tree" },
+    { key: "maps", label: t("voidCamp.tabs.maps", "Map Selector") },
+    { key: "skills", label: t("voidCamp.tabs.skills", "Skill Tree") },
   ];
 
   if (modulesUnlocked) {
-    tabs.push({ key: "modules", label: "Biolab" });
+    tabs.push({ key: "modules", label: t("voidCamp.tabs.modules", "Biolab") });
   }
 
   if (craftingUnlocked) {
-    tabs.push({ key: "crafting", label: "Crafting" });
+    tabs.push({ key: "crafting", label: t("voidCamp.tabs.crafting", "Crafting") });
   }
 
   if (buildingsUnlocked) {
-    tabs.push({ key: "buildings", label: "Buildings" });
+    tabs.push({ key: "buildings", label: t("voidCamp.tabs.buildings", "Buildings") });
   }
 
   return (

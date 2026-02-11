@@ -16,6 +16,7 @@ import {
 } from "@logic/services/new-unlock-notification/new-unlock-notification.const";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
+import { useLocalization } from "@ui/shared/useLocalization";
 
 type BuildingsWorkshopViewProps = {
   state?: BuildingsWorkshopBridgeState;
@@ -48,6 +49,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   resources,
 }) => {
   const { uiApi, bridge } = useAppLogic();
+  const { t } = useLocalization();
   const workshop = uiApi.buildings as BuildingsModuleUiApi;
   const newUnlocksState = useBridgeValue(
     bridge,
@@ -114,11 +116,11 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
       <div className="modules-workshop surface-panel stack-lg">
         <header className="modules-workshop__header">
           <div>
-            <h2 className="heading-2">Construction Yard</h2>
-            <p className="text-muted">No building plans are available yet.</p>
+            <h2 className="heading-2">{t("voidCamp.buildings.title", "Construction Yard")}</h2>
+            <p className="text-muted">{t("voidCamp.buildings.emptyTitle", "No building plans are available yet.")}</p>
           </div>
         </header>
-        <div className="modules-workshop__empty">Gain access to building blueprints to begin construction.</div>
+        <div className="modules-workshop__empty">{t("voidCamp.buildings.emptyDesc", "Gain access to building blueprints to begin construction.")}</div>
       </div>
     );
   }
@@ -126,14 +128,14 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   return (
     <div className="modules-workshop stack-lg">
       <header className="modules-workshop__header modules-workshop__header--row">
-        <p className="text-muted">Raise permanent structures that empower your rituals.</p>
+        <p className="text-muted">{t("voidCamp.buildings.subtitle", "Raise permanent structures that empower your rituals.")}</p>
         <label className="modules-workshop__hide-maxed">
           <input
             type="checkbox"
             checked={hideMaxed}
             onChange={(e) => workshop.setHideMaxedWorkshop(e.target.checked)}
           />
-          <span>Hide Maxed</span>
+          <span>{t("voidCamp.common.hideMaxed", "Hide Maxed")}</span>
         </label>
       </header>
       <div className="modules-workshop__content">
@@ -181,7 +183,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                       {building.nextCost ? (
                         <ResourceCostDisplay cost={building.nextCost} missing={missing} />
                       ) : (
-                          <span className="text-muted">Unavailable</span>
+                          <span className="text-muted">{t("voidCamp.common.unavailable", "Unavailable")}</span>
                         )}
                       </div>
                     </button>
@@ -204,17 +206,17 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
               </div>
               <p className="modules-workshop__details-description">{activeBuilding.description}</p>
               <div className="modules-workshop__details-section">
-                <h4>Bonuses</h4>
+                <h4>{t("voidCamp.common.bonuses", "Bonuses")}</h4>
                 <BonusEffectsPreviewList
                   effects={activeBuilding.bonusEffects}
-                  emptyLabel="No bonuses yet."
+                  emptyLabel={t("voidCamp.maps.noBonuses", "No bonuses yet.")}
                 />
               </div>
               <div className="modules-workshop__details-section">
-                <h4>Construction</h4>
+                <h4>{t("voidCamp.buildings.construction", "Construction")}</h4>
                 <div className="modules-workshop__cost-row">
                   <div className="building-row">
-                    <span className="text-subtle">Level</span>
+                    <span className="text-subtle">{t("voidCamp.common.level", "Level")}</span>
                     <span className="modules-workshop__cost-value">
                       {activeBuilding.maxLevel !== null
                         ? `${activeBuilding.level}/${activeBuilding.maxLevel}`
@@ -222,13 +224,13 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                     </span>
                   </div>
                   <div className="building-row">
-                    <span className="text-subtle">Status</span>
+                    <span className="text-subtle">{t("voidCamp.common.status", "Status")}</span>
                     <span className="modules-workshop__cost-value">
                       {activeBuilding.maxed
-                        ? "Maxed"
+                        ? t("voidCamp.common.maxed", "Maxed")
                         : activeBuilding.available
-                        ? "Available"
-                        : "Locked"}
+                        ? t("voidCamp.common.available", "Available")
+                        : t("voidCamp.common.locked", "Locked")}
                     </span>
                   </div>
                 </div>
@@ -241,8 +243,8 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                 ) : (
                   <p className="text-muted body-sm">
                     {activeBuilding.maxed
-                      ? "This building has reached its maximum level."
-                      : "Building unavailable. Fulfil its unlock requirements to construct."}
+                      ? t("voidCamp.buildings.maxedDesc", "This building has reached its maximum level.")
+                      : t("voidCamp.buildings.unavailableDesc", "Building unavailable. Fulfil its unlock requirements to construct.")}
                   </p>
                 )}
               </div>
@@ -253,14 +255,14 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                     !activeBuilding.nextCost || Object.keys(activeMissing).length > 0
                   }
                 >
-                  {activeBuilding.level > 0 ? "Upgrade" : "Construct"}
+                  {activeBuilding.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.buildings.construct", "Construct")}
                 </Button>
               </div>
             </div>
           ) : (
             <div className="modules-workshop__details modules-workshop__details--scrollable">
               <div className="modules-workshop__details-empty">
-                Hover over a building to inspect its details.
+                {t("voidCamp.buildings.hoverHint", "Hover over a building to inspect its details.")}
               </div>
             </div>
           )}

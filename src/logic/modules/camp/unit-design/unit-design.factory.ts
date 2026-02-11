@@ -8,7 +8,8 @@ export const createUnitDesignDefinition = (): ServiceDefinition<UnitDesignModule
       bridge: container.get("bridge"),
       bonuses: container.get("bonuses"),
       workshop: container.get("unitModuleWorkshop"),
+      localization: container.get("localization"),
     }),
   registerAsModule: true,
-  dependsOn: ["bonuses", "unitModuleWorkshop"],
+  dependsOn: ["bonuses", "unitModuleWorkshop", "localization"],
 });

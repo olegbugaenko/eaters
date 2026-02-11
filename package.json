@@ -20,7 +20,9 @@
     "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && node scripts/run-electron-dev.js\"",
     "dist": "npm run build:electron",
     "pack": "electron-builder --config electron-builder.config.js --dir",
-    "test": "tsc -p tsconfig.tests.json && node build/tests/tests/run.js"
+    "test": "npm run check:localization-missing:strict && tsc -p tsconfig.tests.json && node build/tests/tests/run.js",
+    "check:localization-missing": "node scripts/check-localization-missing-keys.js",
+    "check:localization-missing:strict": "node scripts/check-localization-missing-keys.js --fail-on-missing"
   },
   "dependencies": {
     "react": "^18.2.0",

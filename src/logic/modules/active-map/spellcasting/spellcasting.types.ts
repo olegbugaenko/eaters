@@ -13,6 +13,7 @@ import type { SkillId } from "../../../../db/skills-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { DamageService } from "../targeting/DamageService";
 import type { TargetingService } from "../targeting/TargetingService";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface SpellOptionBase {
   id: SpellId;
@@ -76,6 +77,7 @@ export interface SpellcastingModuleOptions {
   targeting: TargetingService;
   getSkillLevel: (id: SkillId) => number;
   runState: MapRunState;
+  localization?: LocalizationService;
 }
 
 export interface SpellcastingModuleUiApi {

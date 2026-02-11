@@ -48,6 +48,7 @@ export class CraftingModule implements GameModule {
   private readonly resources: ResourcesModule;
   private readonly unlocks: UnlockService;
   private readonly bonuses: BonusesModule;
+  private readonly localization = null as import("@logic/services/localization/LocalizationService").LocalizationService | null;
   private readonly newUnlocks: NewUnlockNotificationService;
 
   private runtimeStates = new Map<CraftingRecipeId, CraftingRecipeRuntimeState>();
@@ -64,6 +65,7 @@ export class CraftingModule implements GameModule {
     this.resources = options.resources;
     this.unlocks = options.unlocks;
     this.bonuses = options.bonuses;
+    this.localization = options.localization ?? null;
     this.newUnlocks = options.newUnlocks;
     this.craftingSpeedMultiplier = this.sanitizeCraftingSpeedMultiplier(
       this.bonuses.getBonusValue("crafting_speed_mult")
@@ -397,7 +399,7 @@ export class CraftingModule implements GameModule {
       id,
       name: config.name,
       productId: config.productId,
-      productName: productConfig.name,
+      productName: this.localization?.getResourceName(config.productId, productConfig.name) ?? productConfig.name,
       productAmount: config.productAmount,
       cost,
       queue: state.queue,

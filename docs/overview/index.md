@@ -17,3 +17,4 @@
 - [interfaces.md](interfaces.md) — ключові інтерфейси для модулів, юнітів, ресурсів та умов відкриття.
 - [file-structure.md](file-structure.md) — стислий огляд директорій і точок входу в код.
 - [ui-integration.md](ui-integration.md) — як React підписується на логіку та взаємодіє зі сценою.
+- [localization.md](localization.md) — принципи локалізації UI і перевірки missing keys.

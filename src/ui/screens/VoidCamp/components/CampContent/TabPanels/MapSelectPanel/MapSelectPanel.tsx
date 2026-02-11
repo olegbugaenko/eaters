@@ -27,7 +27,8 @@ import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
 import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import type { ResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
-import { getResourceAbundanceLabel, getResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
+import { getResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./MapSelectPanel.css";
 import type { MapModuleUiApi, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 
@@ -149,6 +150,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   onSelectLevel,
   onStartMap,
 }) => {
+  const { t } = useLocalization();
   const { uiApi, bridge } = useAppLogic();
   const savedViewTransform = useBridgeValue(
     bridge,
@@ -178,6 +180,32 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     | null
   >(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  const getLocalizedMapName = useCallback(
+    (mapId: MapId, fallback: string) => uiApi.localization.getMapName(mapId, fallback),
+    [uiApi.localization]
+  );
+
+  const getLocalizedResourceAbundanceLabel = useCallback(
+    (level: ResourceAbundanceLevel) => {
+      const key = `voidCamp.maps.resourceAbundance.${level}`;
+      switch (level) {
+        case 1:
+          return t(key, "Sparse");
+        case 2:
+          return t(key, "Limited");
+        case 3:
+          return t(key, "Moderate");
+        case 4:
+          return t(key, "Rich");
+        case 5:
+          return t(key, "Abundant");
+        default:
+          return t(key, "Sparse");
+      }
+    },
+    [t]
+  );
 
   const layout = useMemo(() => computeLayout(maps), [maps]);
   const mapById = useMemo(() => new Map(maps.map((map) => [map.id, map])), [maps]);
@@ -577,8 +605,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
   return (
     <div className="map-tree">
       <header className="map-tree__header">
-        <div className="map-tree__cleared">Map Levels Cleared: {formatNumber(clearedLevelsTotal)}</div>
-        <div className="map-tree__hint">Click to pick a level, double click to start.</div>
+        <div className="map-tree__cleared">
+          {t("voidCamp.maps.clearedLevels", "Map Levels Cleared")}: {formatNumber(clearedLevelsTotal)}
+        </div>
+        <div className="map-tree__hint">{t("voidCamp.maps.hint", "Click to pick a level, double click to start.")}</div>
       </header>
       <div className="map-tree__body">
         <div
@@ -660,7 +690,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   .join("")
                   .slice(0, 2);
 
-              const initials = getMapInitials(map.name);
+              const localizedMapName = getLocalizedMapName(map.id, map.name);
+              const initials = getMapInitials(localizedMapName);
               const iconSrc =
                 isDemoBuild() && mapConfig.lockedForDemo
                   ? DEMO_LOCK_ICON
@@ -823,7 +854,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     }}
                     onClick={(event) => handleNodeClick(map, event)}
                     onDoubleClick={handleDoubleClick}
-                    aria-label={`${map.name} level ${map.selectedLevel} of ${map.currentLevel}`}
+                    aria-label={`${getLocalizedMapName(map.id, map.name)} ${t("voidCamp.common.level", "Level")} ${map.selectedLevel} ${t("voidCamp.common.of", "of")} ${map.currentLevel}`}
                     aria-disabled={!map.selectable}
                   >
                     <NewUnlockWrapper
@@ -853,7 +884,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               );
             })}
             {maps.length === 0 && (
-              <div className="map-tree__empty">No maps available yet.</div>
+              <div className="map-tree__empty">{t("voidCamp.maps.empty", "No maps available yet.")}</div>
             )}
             {(() => {
               if (!popover) {
@@ -916,10 +947,10 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     "map-tree__popover-name",
                     getMapConfig(popoverMap.id).achievementId && "map-tree__popover-name--achievement"
                   )}>
-                    {popoverMap.name}
+                    {getLocalizedMapName(popoverMap.id, popoverMap.name)}
                   </div>
                   <div className="map-tree__popover-level">
-                    Level {popoverMap.selectedLevel} / {popoverMap.currentLevel}
+                    {t("voidCamp.common.level", "Level")} {popoverMap.selectedLevel} / {popoverMap.currentLevel}
                   </div>
                   {popoverMap.selectable && (
                     <>
@@ -958,7 +989,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         className="button primary-button"
                         onClick={() => onStartMap(popover.mapId)}
                       >
-                        Start
+                        {t("voidCamp.maps.start", "Start")}
                       </button>
                     </>
                   )}
@@ -972,39 +1003,39 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
             <>
               {isDemoBuild() && getMapConfig(activeMap.id).lockedForDemo && (
                 <div className="map-tree__details-locked">
-                  This map is unavailable in the demo.
+                  {t("voidCamp.maps.demoLocked", "This map is unavailable in the demo.")}
                 </div>
               )}
               <div className="map-tree__details-header">
                 <h2 className={classNames(
                   getMapConfig(activeMap.id).achievementId && "map-tree__details-title--achievement"
                 )}>
-                  {activeMap.name}
+                  {getLocalizedMapName(activeMap.id, activeMap.name)}
                 </h2>
                 <span className="map-tree__details-level">
-                  Level {activeMap.selectedLevel} / {activeMap.currentLevel}
+                  {t("voidCamp.common.level", "Level")} {activeMap.selectedLevel} / {activeMap.currentLevel}
                 </span>
               </div>
               {getMapConfig(activeMap.id).achievementId && (
                 <div className="map-tree__details-achievement-notice">
-                  <strong>🏆 Challenge Map</strong>
-                  <p>Completing levels on this map grants permanent bonuses through achievements!</p>
+                  <strong>{t("voidCamp.maps.challenge", "🏆 Challenge Map")}</strong>
+                  <p>{t("voidCamp.maps.challengeDesc", "Completing levels on this map grants permanent bonuses through achievements!")}</p>
                 </div>
               )}
               {activeAchievement ? (
                 <div className="map-tree__details-achievement-bonuses">
                   <div className="map-tree__details-achievement-bonuses-title">
-                    Bonus now → next level
+                    {t("voidCamp.maps.bonusNowNext", "Bonus now → next level")}
                   </div>
                   <BonusEffectsPreviewList
                     effects={activeAchievement.bonusEffects}
-                    emptyLabel="No bonuses yet."
+                    emptyLabel={t("voidCamp.maps.noBonuses", "No bonuses yet.")}
                   />
                 </div>
               ) : null}
               {activeResourcePreview && activeResourcePreview.resourceIds.length > 0 ? (
                 <div className="map-tree__details-resources">
-                  <div className="map-tree__details-resources-title">Potential resources</div>
+                  <div className="map-tree__details-resources-title">{t("voidCamp.maps.potentialResources", "Potential resources")}</div>
                   <ul className="map-tree__details-resources-list list-reset">
                     {activeResourcePreview.resourceIds.map((resourceId) => {
                       const abundanceLevel: ResourceAbundanceLevel = !activeResourceTotals
@@ -1018,7 +1049,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                         <li key={resourceId} className="map-tree__details-resources-item">
                           <span className="map-tree__details-resources-label">
                             <ResourceIcon resourceId={resourceId} className="map-tree__details-resources-icon" />
-                            <span>{getResourceConfig(resourceId).name}</span>
+                            <span>{t(`resources.${resourceId}.name`, getResourceConfig(resourceId).name)}</span>
                           </span>
                           <span
                             className={classNames(
@@ -1026,7 +1057,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                               `map-tree__details-resources-level--${abundanceLevel}`
                             )}
                           >
-                            {getResourceAbundanceLabel(abundanceLevel)}
+                            {getLocalizedResourceAbundanceLabel(abundanceLevel)}
                           </span>
                         </li>
                       );
@@ -1036,27 +1067,27 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
               ) : null}
               <div className="map-tree__details-list">
                 <span className="map-tree__details-level">
-                  Max. Level Available: {activeMap.maxLevel}
+                  {t("voidCamp.maps.maxLevel", "Max. Level Available")}: {activeMap.maxLevel}
                 </span>
-                <p>Everytime you complete a level, you unlock the next level up to max level.</p>
+                <p>{t("voidCamp.maps.levelInfo", "Everytime you complete a level, you unlock the next level up to max level.")}</p>
               </div>
               <dl className="map-tree__details-list">
                 <div>
-                  <dt>Size</dt>
+                  <dt>{t("voidCamp.maps.size", "Size")}</dt>
                   <dd>
                     {activeMap.size.width} × {activeMap.size.height}
                   </dd>
                 </div>
                 <div>
-                  <dt>Attempts</dt>
+                  <dt>{t("voidCamp.maps.attempts", "Attempts")}</dt>
                   <dd>{activeMap.attempts}</dd>
                 </div>
                 <div>
-                  <dt>Best Time</dt>
+                  <dt>{t("voidCamp.maps.bestTime", "Best Time")}</dt>
                   <dd>
                     {activeMap.bestTimeMs != null
                       ? formatDuration(activeMap.bestTimeMs)
-                      : "—"}
+                      : t("voidCamp.maps.none", "—")}
                   </dd>
                 </div>
               </dl>
@@ -1068,7 +1099,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     disabled={activeMap.selectedLevel <= 1}
                     onClick={() => onSelectLevel(activeMap.id, Math.max(activeMap.selectedLevel - 1, 1))}
                   >
-                    Level -
+                    {t("voidCamp.maps.levelMinus", "Level -")}
                   </button>
                   <button
                     type="button"
@@ -1077,21 +1108,21 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       onSelectLevel(activeMap.id, Math.min(activeMap.selectedLevel + 1, activeMap.currentLevel))
                     }
                   >
-                    Level +
+                    {t("voidCamp.maps.levelPlus", "Level +")}
                   </button>
                   <button
                     type="button"
                     className={classNames("button", "primary-button")}
                     onClick={() => onStartMap(activeMap.id)}
                   >
-                    Start Map
+                    {t("voidCamp.maps.startMap", "Start Map")}
                   </button>
                 </div>
               )}
             </>
           ) : (
             <div className="map-tree__details-empty">
-              Hover over a map node to inspect its details.
+              {t("voidCamp.maps.hoverHint", "Hover over a map node to inspect its details.")}
             </div>
           )}
         </aside>

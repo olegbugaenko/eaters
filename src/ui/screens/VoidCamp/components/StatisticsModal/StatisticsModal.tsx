@@ -3,6 +3,7 @@ import type { CampStatisticsSnapshot } from "@logic/modules/shared/statistics/st
 import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.types";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { formatNumber } from "@ui/shared/format/number";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./StatisticsModal.css";
 
 interface FavoriteMapInfo {
@@ -42,6 +43,7 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
   statistics,
   eventLog,
 }) => {
+  const { t } = useLocalization();
   const titleId = useId();
   const [activeTab, setActiveTab] = useState<"general" | "history">("general");
   const historyEntries = useMemo(() => {
@@ -70,37 +72,37 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
     ? `${formatNumber(Math.max(0, favoriteMap.attempts), {
         maximumFractionDigits: 0,
         compact: false,
-      })} attempts`
-    : "No runs recorded yet.";
+      })} ${t("voidCamp.statistics.attempts", "attempts")}`
+    : t("voidCamp.statistics.noRuns", "No runs recorded yet.");
 
   const stats = [
     {
-      label: "Time Played",
+      label: t("saveSelect.slot.timePlayed", "Time Played"),
       value: formatDuration(timePlayedMs),
       note: undefined,
     },
     {
-      label: "Favorite Map",
-      value: favoriteMap ? favoriteMap.name : "—",
-      note: favoriteMap ? favoriteMapNote : "No map runs completed yet.",
+      label: t("voidCamp.statistics.favoriteMap", "Favorite Map"),
+      value: favoriteMap ? favoriteMap.name : t("voidCamp.maps.none", "—"),
+      note: favoriteMap ? favoriteMapNote : t("voidCamp.statistics.noMapRuns", "No map runs completed yet."),
     },
     {
-      label: "Bricks Destroyed",
+      label: t("scene.runSummary.bricksDestroyed", "Bricks Destroyed"),
       value: formatCount(statistics.bricksDestroyed),
       note: undefined,
     },
     {
-      label: "Creatures Died",
+      label: t("voidCamp.statistics.creaturesDied", "Creatures Died"),
       value: formatCount(statistics.creaturesDied),
       note: undefined,
     },
     {
-      label: "Damage Dealt",
+      label: t("voidCamp.statistics.damageDealt", "Damage Dealt"),
       value: formatDamage(statistics.damageDealt),
       note: undefined,
     },
     {
-      label: "Damage Taken",
+      label: t("voidCamp.statistics.damageTaken", "Damage Taken"),
       value: formatDamage(statistics.damageTaken),
       note: undefined,
     },
@@ -118,7 +120,7 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
         <header className="statistics-modal__header">
           <div className="statistics-modal__title-group">
             <h2 id={titleId} className="statistics-modal__title">
-              Statistics
+              {t("voidCamp.topBar.statistics", "Statistics")}
             </h2>
             <div className="inline-tabs statistics-modal__tabs">
               <button
@@ -129,7 +131,7 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
                 }
                 onClick={() => setActiveTab("general")}
               >
-                General Stats
+                {t("voidCamp.statistics.general", "General Stats")}
               </button>
               <button
                 type="button"
@@ -139,12 +141,12 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
                 }
                 onClick={() => setActiveTab("history")}
               >
-                History
+                {t("voidCamp.statistics.history", "History")}
               </button>
             </div>
           </div>
           <button type="button" className="statistics-modal__close" onClick={onClose}>
-            Close
+            {t("settings.close", "Close")}
           </button>
         </header>
         <div className="statistics-modal__content">
@@ -164,7 +166,7 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
             <div className="statistics-modal__history">
               {historyEntries.length === 0 ? (
                 <div className="statistics-modal__history-empty">
-                  No events recorded yet.
+                  {t("voidCamp.statistics.noEvents", "No events recorded yet.")}
                 </div>
               ) : (
                 <ul className="statistics-modal__history-list">

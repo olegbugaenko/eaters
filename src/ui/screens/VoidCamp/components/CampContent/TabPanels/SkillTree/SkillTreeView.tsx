@@ -35,6 +35,7 @@ import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { classNames } from "@ui-shared/classNames";
 import { useResizeObserver } from "@ui-shared/useResizeObserver";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;
@@ -81,12 +82,9 @@ interface SkillTreeLayout {
   edges: SkillTreeEdge[];
 }
 
-const SKILL_TREE_RESOURCES = RESOURCE_IDS.map((id) => {
-  const config = getResourceConfig(id);
-  return { id: config.id, label: config.name };
-});
+const SKILL_TREE_RESOURCES = RESOURCE_IDS.map((id) => ({ id }));
 
-const listResources = (names: string[]): string => {
+const listResources = (names: string[], andLabel: string): string => {
   if (names.length === 0) {
     return "";
   }
@@ -95,11 +93,11 @@ const listResources = (names: string[]): string => {
   }
   if (names.length === 2) {
     const [first, second] = names;
-    return `${first!} and ${second!}`;
+    return `${first!} ${andLabel} ${second!}`;
   }
   const last = names[names.length - 1]!;
   const others = names.slice(0, -1).map((name) => name!);
-  return `${others.join(", ")}, and ${last}`;
+  return `${others.join(", ")}, ${andLabel} ${last}`;
 };
 
 const getSkillInitials = (name: string): string =>
@@ -231,14 +229,15 @@ const computeLayout = (
   };
 };
 
-const getMissingResourceNames = (
-  missing: Record<ResourceId, number>
-): string[] =>
-  RESOURCE_IDS.filter((id) => (missing[id] ?? 0) > 0).map((id) =>
-    getResourceConfig(id).name.toLowerCase()
-  );
-
 export const SkillTreeView: React.FC = () => {
+  const { t } = useLocalization();
+  const getMissingResourceNames = useCallback(
+    (missing: Record<ResourceId, number>): string[] =>
+      RESOURCE_IDS.filter((id) => (missing[id] ?? 0) > 0).map((id) =>
+        t(`resources.${id}.name`, getResourceConfig(id).name).toLowerCase()
+      ),
+    [t]
+  );
   const { uiApi, bridge } = useAppLogic();
   const skillTree = useBridgeValue(
     bridge,
@@ -711,10 +710,13 @@ export const SkillTreeView: React.FC = () => {
   );
   const gatherMoreHint = useMemo(() => {
     if (missingResourceNames.length === 0) {
-      return "Gather more resources to upgrade.";
+      return t("voidCamp.skills.gatherMoreGeneric", "Gather more resources to upgrade.");
     }
-    return `Gather more ${listResources(missingResourceNames)} to upgrade.`;
-  }, [missingResourceNames]);
+    return t("voidCamp.skills.gatherMore", "Gather more {{resources}} to upgrade.").replace(
+      "{{resources}}",
+      listResources(missingResourceNames, t("voidCamp.common.and", "and"))
+    );
+  }, [missingResourceNames, t]);
 
   const handleNodeClick = useCallback(
     (id: SkillId) => {
@@ -1140,7 +1142,7 @@ export const SkillTreeView: React.FC = () => {
                   }
                 }}
                 aria-disabled={inactive}
-                aria-label={`${node.name} level ${node.level} of ${node.maxLevel}`}
+                aria-label={`${node.name} ${t("voidCamp.common.level", "Level")} ${node.level} ${t("voidCamp.common.of", "of")} ${node.maxLevel}`}
               >
                 <div className="skill-tree-node__content">
                   <div className="skill-tree-node__level">
@@ -1163,7 +1165,7 @@ export const SkillTreeView: React.FC = () => {
             );
           })}
           {visibleNodes.length === 0 && (
-            <div className="skill-tree__empty">No skills available yet.</div>
+            <div className="skill-tree__empty">{t("voidCamp.skills.empty", "No skills available yet.")}</div>
           )}
         </div>
       </div>
@@ -1173,20 +1175,20 @@ export const SkillTreeView: React.FC = () => {
             <div className="skill-tree__details-header">
               <h2>{activeNode.name}</h2>
               <span className="skill-tree__details-level">
-                Level {activeNode.level} / {activeNode.maxLevel}
+                {t("voidCamp.common.level", "Level")} {activeNode.level} / {activeNode.maxLevel}
               </span>
             </div>
             <p className="skill-tree__details-description">{activeNode.description}</p>
             <div className="skill-tree__details-section">
-              <h3>Bonuses</h3>
+              <h3>{t("voidCamp.common.bonuses", "Bonuses")}</h3>
               <BonusEffectsPreviewList
                 className="skill-tree__bonus-effects"
                 effects={activeNode.bonusEffects}
-                emptyLabel="No bonuses from this skill."
+                emptyLabel={t("voidCamp.skills.noBonuses", "No bonuses from this skill.")}
               />
             </div>
             <div className="skill-tree__details-section">
-              <h3>Requirements</h3>
+              <h3>{t("voidCamp.skills.requirements", "Requirements")}</h3>
               {activeNode.requirements.length > 0 ? (
                 <ul className="skill-tree__requirements">
                   {activeNode.requirements.map((requirement) => {
@@ -1206,13 +1208,13 @@ export const SkillTreeView: React.FC = () => {
                   })}
                 </ul>
               ) : (
-                <div className="skill-tree__requirements-empty">No prerequisites.</div>
+                <div className="skill-tree__requirements-empty">{t("voidCamp.skills.noRequirements", "No prerequisites.")}</div>
               )}
             </div>
             <div className="skill-tree__details-section">
-              <h3>Next Level Cost</h3>
+              <h3>{t("voidCamp.skills.nextCost", "Next Level Cost")}</h3>
               {activeNode.maxed ? (
-                <div className="skill-tree__maxed">Max level reached.</div>
+                <div className="skill-tree__maxed">{t("voidCamp.skills.maxLevel", "Max level reached.")}</div>
               ) : activeNode.nextCost ? (
                 <ResourceCostDisplay
                   className="skill-tree__details-cost"
@@ -1221,22 +1223,22 @@ export const SkillTreeView: React.FC = () => {
                   resources={SKILL_TREE_RESOURCES}
                 />
               ) : (
-                <div className="skill-tree__requirements-empty">Meet prerequisites to reveal cost.</div>
+                <div className="skill-tree__requirements-empty">{t("voidCamp.skills.revealCost", "Meet prerequisites to reveal cost.")}</div>
               )}
             </div>
             {!activeNode.maxed && (
               <div className="skill-tree__hint">
                 {activeNode.unlocked
                   ? activeAffordable
-                    ? "Click a highlighted node to upgrade it."
+                    ? t("voidCamp.skills.hintUpgrade", "Click a highlighted node to upgrade it.")
                     : gatherMoreHint
-                  : "Unlock prerequisites to make this upgrade available."}
+                  : t("voidCamp.skills.hintUnlock", "Unlock prerequisites to make this upgrade available.")}
               </div>
             )}
           </>
         ) : (
           <div className="skill-tree__details-empty">
-            Hover over a skill node to inspect its details.
+            {t("voidCamp.skills.hoverHint", "Hover over a skill node to inspect its details.")}
           </div>
         )}
       </aside>

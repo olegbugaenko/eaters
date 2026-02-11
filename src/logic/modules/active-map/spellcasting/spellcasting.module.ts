@@ -51,6 +51,7 @@ export class SpellcastingModule implements GameModule {
   private readonly behaviorRegistry: SpellBehaviorRegistry;
   private optionsDirty = true;
   private spellPowerMultiplier = 1;
+  private readonly localization = null as import("@logic/services/localization/LocalizationService").LocalizationService | null;
   private readonly getSkillLevel: (id: SkillId) => number;
   private readonly unlockedSpells = new Map<SpellId, boolean>();
   private readonly runState: MapRunState;
