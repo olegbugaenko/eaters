@@ -11,6 +11,18 @@ import uiUa from "@/localization/ua/ui.json";
 import mapsUa from "@/localization/ua/maps.json";
 import skillsUa from "@/localization/ua/skills.json";
 import unitModulesUa from "@/localization/ua/unit-modules.json";
+import uiDe from "@/localization/de/ui.json";
+import mapsDe from "@/localization/de/maps.json";
+import skillsDe from "@/localization/de/skills.json";
+import unitModulesDe from "@/localization/de/unit-modules.json";
+import uiPl from "@/localization/pl/ui.json";
+import mapsPl from "@/localization/pl/maps.json";
+import skillsPl from "@/localization/pl/skills.json";
+import unitModulesPl from "@/localization/pl/unit-modules.json";
+import uiRu from "@/localization/ru/ui.json";
+import mapsRu from "@/localization/ru/maps.json";
+import skillsRu from "@/localization/ru/skills.json";
+import unitModulesRu from "@/localization/ru/unit-modules.json";
 import {
   DEFAULT_LANGUAGE,
   LOCALIZATION_LANGUAGE_BRIDGE_KEY,
@@ -44,6 +56,24 @@ const bundles: Readonly<Record<SupportedLanguage, LocalizationBundle>> = {
     maps: mapsUa,
     skills: skillsUa,
     unitModules: unitModulesUa,
+  },
+  de: {
+    ui: uiDe,
+    maps: mapsDe,
+    skills: skillsDe,
+    unitModules: unitModulesDe,
+  },
+  pl: {
+    ui: uiPl,
+    maps: mapsPl,
+    skills: skillsPl,
+    unitModules: unitModulesPl,
+  },
+  ru: {
+    ui: uiRu,
+    maps: mapsRu,
+    skills: skillsRu,
+    unitModules: unitModulesRu,
   },
 };
 

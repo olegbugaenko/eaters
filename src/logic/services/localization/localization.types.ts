@@ -3,7 +3,7 @@ import type { SkillId } from "@db/skills-db";
 import type { UnitModuleId } from "@db/unit-modules-db";
 import type { LanguageEntry } from "@db/languages-db";
 
-export type SupportedLanguage = "en" | "ua";
+export type SupportedLanguage = "en" | "ua" | "de" | "pl" | "ru";
 
 export interface LocalizedSkillText {
   readonly name: string;
