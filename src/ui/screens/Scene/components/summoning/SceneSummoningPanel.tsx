@@ -180,9 +180,9 @@ export const SceneSummoningPanel = forwardRef<
 
     const showUnitTooltip = useCallback(
       (blueprint: NecromancerSpawnOption["blueprint"]) => {
-        onHoverInfoChange(createUnitTooltip(blueprint, spawnOptions.length > 1));
+        onHoverInfoChange(createUnitTooltip(blueprint, spawnOptions.length > 1, t));
       },
-      [onHoverInfoChange, spawnOptions],
+      [onHoverInfoChange, spawnOptions, t],
     );
 
     const showSpellTooltip = useCallback(

@@ -27,7 +27,7 @@ import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { isDemoBuild } from "@shared/helpers/demo.helper";
 import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import type { ResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
-import { getResourceAbundanceLabel, getResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
+import { getResourceAbundanceLevel } from "@shared/helpers/resource-abundance.helper";
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./MapSelectPanel.css";
 import type { MapModuleUiApi, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
@@ -180,6 +180,32 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
     | null
   >(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  const getLocalizedMapName = useCallback(
+    (mapId: MapId, fallback: string) => uiApi.localization.getMapName(mapId, fallback),
+    [uiApi.localization]
+  );
+
+  const getLocalizedResourceAbundanceLabel = useCallback(
+    (level: ResourceAbundanceLevel) => {
+      const key = `voidCamp.maps.resourceAbundance.${level}`;
+      switch (level) {
+        case 1:
+          return t(key, "Sparse");
+        case 2:
+          return t(key, "Limited");
+        case 3:
+          return t(key, "Moderate");
+        case 4:
+          return t(key, "Rich");
+        case 5:
+          return t(key, "Abundant");
+        default:
+          return t(key, "Sparse");
+      }
+    },
+    [t]
+  );
 
   const layout = useMemo(() => computeLayout(maps), [maps]);
   const mapById = useMemo(() => new Map(maps.map((map) => [map.id, map])), [maps]);
@@ -664,7 +690,8 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                   .join("")
                   .slice(0, 2);
 
-              const initials = getMapInitials(map.name);
+              const localizedMapName = getLocalizedMapName(map.id, map.name);
+              const initials = getMapInitials(localizedMapName);
               const iconSrc =
                 isDemoBuild() && mapConfig.lockedForDemo
                   ? DEMO_LOCK_ICON
@@ -827,7 +854,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     }}
                     onClick={(event) => handleNodeClick(map, event)}
                     onDoubleClick={handleDoubleClick}
-                    aria-label={`${map.name} ${t("voidCamp.common.level", "Level")} ${map.selectedLevel} ${t("voidCamp.common.of", "of")} ${map.currentLevel}`}
+                    aria-label={`${getLocalizedMapName(map.id, map.name)} ${t("voidCamp.common.level", "Level")} ${map.selectedLevel} ${t("voidCamp.common.of", "of")} ${map.currentLevel}`}
                     aria-disabled={!map.selectable}
                   >
                     <NewUnlockWrapper
@@ -920,7 +947,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                     "map-tree__popover-name",
                     getMapConfig(popoverMap.id).achievementId && "map-tree__popover-name--achievement"
                   )}>
-                    {popoverMap.name}
+                    {getLocalizedMapName(popoverMap.id, popoverMap.name)}
                   </div>
                   <div className="map-tree__popover-level">
                     {t("voidCamp.common.level", "Level")} {popoverMap.selectedLevel} / {popoverMap.currentLevel}
@@ -983,7 +1010,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 <h2 className={classNames(
                   getMapConfig(activeMap.id).achievementId && "map-tree__details-title--achievement"
                 )}>
-                  {activeMap.name}
+                  {getLocalizedMapName(activeMap.id, activeMap.name)}
                 </h2>
                 <span className="map-tree__details-level">
                   {t("voidCamp.common.level", "Level")} {activeMap.selectedLevel} / {activeMap.currentLevel}
@@ -1030,7 +1057,7 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                               `map-tree__details-resources-level--${abundanceLevel}`
                             )}
                           >
-                            {getResourceAbundanceLabel(abundanceLevel)}
+                            {getLocalizedResourceAbundanceLabel(abundanceLevel)}
                           </span>
                         </li>
                       );

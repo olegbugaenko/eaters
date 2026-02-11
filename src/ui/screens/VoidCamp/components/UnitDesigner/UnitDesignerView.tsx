@@ -171,7 +171,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
       setPreview(null);
     }
   }, [preview, previewModule]);
-  const statEntries = buildUnitStatEntries(selectedUnit.blueprint);
+  const statEntries = buildUnitStatEntries(selectedUnit.blueprint, t);
   const isAtModuleCap = selectedModuleIds.length >= state.maxModules;
 
   return (

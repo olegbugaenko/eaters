@@ -33,7 +33,9 @@ export const ResourceSidebar: React.FC<ResourceSidebarProps> = ({ resources, onS
     onStart?.();
   }, [lastPlayedMap, onStart, uiApi]);
 
-  const mapName = lastPlayedMap ? getMapConfig(lastPlayedMap.mapId).name : null;
+  const mapName = lastPlayedMap
+    ? uiApi.localization.getMapName(lastPlayedMap.mapId, getMapConfig(lastPlayedMap.mapId).name)
+    : null;
 
   return (
     <div className="resource-sidebar stack-lg">
