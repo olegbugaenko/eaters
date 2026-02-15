@@ -11,6 +11,6 @@ export const LANGUAGES_DB: readonly LanguageEntry[] = [
   { code: "en", label: "English" },
   { code: "ua", label: "Українська" },
   { code: "de", label: "Deutch" },
-  { code: "pl", label: "Polska" },
-  { code: "ru", label: "Русский" },
+  // { code: "pl", label: "Polska" },
+  // { code: "ru", label: "Русский" },
 ] as const;
