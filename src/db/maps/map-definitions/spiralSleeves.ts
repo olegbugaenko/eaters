@@ -1,10 +1,12 @@
 import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { spiralSleeveWithBricks } from "../../../logic/services/brick-layout/BrickLayoutService";
 import type { MapConfig } from "../maps-db.types";
+import type { EnemySpawnData } from "../../../logic/modules/active-map/enemies/enemies.types";
+
 
 const mapConfig = (() => {
-  const size: SceneSize = { width: 1600, height: 1000 };
-  const spawnPoint: SceneVector2 = { x: size.width - 160, y: 140 };
+  const size: SceneSize = { width: 1600, height: 1600 };
+  const spawnPoint: SceneVector2 = { x: 800, y: 800 };
 
   return {
     name: "Spiral Sleeves",
@@ -13,22 +15,49 @@ const mapConfig = (() => {
     nodePosition: { x: 2, y: 0 },
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
-      const sandLevel = baseLevel + 2;
+      const sandLevel = baseLevel + 4;
 
       return [
         spiralSleeveWithBricks(
           "smallSquareYellow",
           {
-            center: { x: 300, y: 320 },
-            innerRadius: 24,
-            radiusStep: 65,
-            turns: 2.8,
+            center: { x: 800, y: 800 },
+            innerRadius: 125,
+            radiusStep: 1100,
+            turns: 0.5,
             width: 56,
-            startAngle: -Math.PI / 2,
+            startAngle: 0,
             spacing: 18,
           },
           { level: sandLevel },
         ),
+        spiralSleeveWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: 800, y: 800 },
+            innerRadius: 125,
+            radiusStep: 1100,
+            turns: 0.5,
+            width: 56,
+            startAngle: 4*Math.PI / 3,
+            spacing: 18,
+          },
+          { level: sandLevel },
+        ),
+        spiralSleeveWithBricks(
+          "smallSquareYellow",
+          {
+            center: { x: 800, y: 800 },
+            innerRadius: 125,
+            radiusStep: 1100,
+            turns: 0.5,
+            width: 56,
+            startAngle: 2*Math.PI/3,
+            spacing: 18,
+          },
+          { level: sandLevel },
+        ),
+        /*
         spiralSleeveWithBricks(
           "smallSquareYellow",
           {
@@ -83,6 +112,43 @@ const mapConfig = (() => {
           },
           { level: sandLevel },
         ),
+        */
+      ];
+    },
+    enemies: ({ mapLevel }) => {
+      const baseLevel = Math.max(0, Math.floor(mapLevel));
+      return [
+        {
+          type: "laserTurretEnemy",
+          level: baseLevel+2,
+          position: { x: 200, y: 800 },
+        } satisfies EnemySpawnData,
+        {
+          type: "laserTurretEnemy",
+          level: baseLevel+2,
+          position: { x: 1100, y: 300 },
+        } satisfies EnemySpawnData,
+        {
+          type: "laserTurretEnemy",
+          level: baseLevel+2,
+          position: { x: 1100, y: 1300 },
+        } satisfies EnemySpawnData,
+
+        {
+          type: "plasmaBeamTurretEnemy",
+          level: baseLevel + 1,
+          position: { x: 250, y: 850 },
+        } satisfies EnemySpawnData,
+        {
+          type: "plasmaBeamTurretEnemy",
+          level: baseLevel+1,
+          position: { x: 1025, y: 300 },
+        } satisfies EnemySpawnData,
+        {
+          type: "plasmaBeamTurretEnemy",
+          level: baseLevel+1,
+          position: { x: 1150, y: 1250 },
+        } satisfies EnemySpawnData,
       ];
     },
     playerUnits: [
