@@ -76,23 +76,35 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     { key: "roster", label: t("voidCamp.tabs.battleRoster", "Battle Roster") },
   ];
   const strongholdTabs: { key: "buildings" | "darkResearch"; label: string; path: string; hasNew: boolean }[] =
-    useMemo(
-      () => [
-        {
+    useMemo(() => {
+      const tabs: { key: "buildings" | "darkResearch"; label: string; path: string; hasNew: boolean }[] = [];
+
+      if (buildingsState.unlocked) {
+        tabs.push({
           key: "buildings",
           label: t("voidCamp.tabs.buildings", "Buildings"),
           path: "buildings",
           hasNew: (newUnlocksState.unseenByPrefix.buildings ?? []).length > 0,
-        },
-        {
+        });
+      }
+
+      if (darkResearchState.unlocked) {
+        tabs.push({
           key: "darkResearch",
           label: t("voidCamp.tabs.darkResearch", "Dark Research"),
           path: "darkResearch",
           hasNew: (newUnlocksState.unseenByPrefix.darkResearch ?? []).length > 0,
-        },
-      ],
-      [newUnlocksState.unseenByPrefix.buildings, newUnlocksState.unseenByPrefix.darkResearch, t]
-    );
+        });
+      }
+
+      return tabs;
+    }, [
+      buildingsState.unlocked,
+      darkResearchState.unlocked,
+      newUnlocksState.unseenByPrefix.buildings,
+      newUnlocksState.unseenByPrefix.darkResearch,
+      t,
+    ]);
   const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer" | "roster">(
     "shop"
   );
@@ -105,6 +117,14 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   }, [moduleWorkshopState.unlocked]);
 
   useEffect(() => {
+    if (activeStrongholdTab === "darkResearch" && !darkResearchState.unlocked) {
+      setActiveStrongholdTab("buildings");
+      return;
+    }
+    if (activeStrongholdTab === "buildings" && !buildingsState.unlocked && darkResearchState.unlocked) {
+      setActiveStrongholdTab("darkResearch");
+      return;
+    }
     if (buildingsState.unlocked) {
       return;
     }
@@ -115,7 +135,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     if (!buildingsState.unlocked) {
       setActiveStrongholdTab("buildings");
     }
-  }, [buildingsState.unlocked, darkResearchState.unlocked]);
+  }, [activeStrongholdTab, buildingsState.unlocked, darkResearchState.unlocked]);
 
   if (activeTab === "maps") {
     return (
