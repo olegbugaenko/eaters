@@ -20,6 +20,7 @@ export type MapId =
   | "spruce"
   | "deadOak"
   | "sphinx"
+  | "spiralSleeves"
   | "stoneCottage"
   | "bezierGrove"
   | "wire"

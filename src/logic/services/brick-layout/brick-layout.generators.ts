@@ -13,6 +13,7 @@ import type {
   TemplateWithBricksOptions,
   BezierCurveSegment,
   BezierCurveWithBricksOptions,
+  SpiralSleeveWithBricksOptions,
   BezierPolygonWithBricksOptions,
 } from "./brick-layout.types";
 import {
@@ -510,6 +511,102 @@ export const generateBezierCurveBricks = (
   const level = sanitizeBrickLevel(generationOptions?.level);
   const bricks: BrickData[] = [];
 
+  let distanceTravelled = 0;
+  let nextDistance = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    if (!previous || !current) {
+      continue;
+    }
+    const segmentLength = Math.hypot(current.x - previous.x, current.y - previous.y);
+
+    if (segmentLength === 0) {
+      continue;
+    }
+
+    while (nextDistance <= distanceTravelled + segmentLength + GRID_EPSILON) {
+      const t = (nextDistance - distanceTravelled) / segmentLength;
+      const x = previous.x + (current.x - previous.x) * t;
+      const y = previous.y + (current.y - previous.y) * t;
+      const angle = Math.atan2(current.y - previous.y, current.x - previous.x) + rotationOffset;
+      const normalX = -Math.sin(angle);
+      const normalY = Math.cos(angle);
+
+      offsets.forEach((offset) => {
+        bricks.push({
+          position: { x: x + normalX * offset, y: y + normalY * offset },
+          rotation: angle,
+          type: brickType,
+          level,
+        });
+      });
+
+      nextDistance += spacing;
+    }
+
+    distanceTravelled += segmentLength;
+  }
+
+  return bricks;
+};
+
+/**
+ * Generates bricks in an Archimedean spiral sleeve pattern.
+ */
+export const generateSpiralSleeveBricks = (
+  brickType: BrickType,
+  options: SpiralSleeveWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickData[] => {
+  const turns = clampPositive(options.turns, 0);
+  if (turns <= 0) {
+    return [];
+  }
+
+  const spacingConfig = getBrickSpacing(brickType);
+  const spacing = clampPositive(
+    options.spacing ?? spacingConfig.tangential,
+    spacingConfig.tangential,
+  );
+  const sampleStep = clampPositive(options.sampleStep ?? spacing * 0.5, spacing * 0.5);
+  const innerRadius = clampRadius(options.innerRadius);
+  const radiusStep = Number.isFinite(options.radiusStep) ? options.radiusStep : 0;
+  const totalAngle = turns * Math.PI * 2;
+  const direction = options.clockwise ? -1 : 1;
+  const width = Number.isFinite(options.width) ? Math.max(0, options.width) : 0;
+  const bandCount = Math.max(1, Math.floor(width / spacingConfig.radial) + 1);
+  const startOffset = -((bandCount - 1) / 2) * spacingConfig.radial;
+  const offsets = Array.from(
+    { length: bandCount },
+    (_, index) => startOffset + index * spacingConfig.radial,
+  );
+  const level = sanitizeBrickLevel(generationOptions?.level);
+  const rotationOffset = options.rotationOffset ?? 0;
+  const startAngle = options.startAngle ?? 0;
+  const drPerTheta = radiusStep / (Math.PI * 2);
+  const maxRadius = Math.max(innerRadius, innerRadius + turns * radiusStep);
+  const segmentCount = Math.max(
+    32,
+    Math.ceil((totalAngle * Math.max(maxRadius, spacing)) / Math.max(sampleStep, 1)),
+  );
+
+  const points = Array.from({ length: segmentCount + 1 }, (_, index) => {
+    const theta = (totalAngle * index) / segmentCount;
+    const radius = Math.max(0, innerRadius + drPerTheta * theta);
+    const phi = startAngle + direction * theta;
+    return {
+      x: options.center.x + Math.cos(phi) * radius,
+      y: options.center.y + Math.sin(phi) * radius,
+    };
+  });
+
+  if (points.length < 2) {
+    return [];
+  }
+
+  const bricks: BrickData[] = [];
   let distanceTravelled = 0;
   let nextDistance = 0;
 

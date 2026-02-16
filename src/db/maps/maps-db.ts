@@ -18,6 +18,7 @@ import oldForge from "./map-definitions/oldForge";
 import portalRing from "./map-definitions/portalRing";
 import silverRing from "./map-definitions/silverRing";
 import sphinx from "./map-definitions/sphinx";
+import spiralSleeves from "./map-definitions/spiralSleeves";
 import spruce from "./map-definitions/spruce";
 import stoneCottage from "./map-definitions/stoneCottage";
 import thicket from "./map-definitions/thicket";
@@ -53,6 +54,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   spruce,
   deadOak,
   sphinx,
+  spiralSleeves,
   stoneCottage,
   bezierGrove,
   wire,

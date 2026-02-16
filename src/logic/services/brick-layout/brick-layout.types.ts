@@ -82,6 +82,19 @@ export interface BezierCurveWithBricksOptions {
   readonly thickness?: number;
 }
 
+export interface SpiralSleeveWithBricksOptions {
+  readonly center: SceneVector2;
+  readonly innerRadius: number;
+  readonly radiusStep: number;
+  readonly turns: number;
+  readonly width: number;
+  readonly startAngle?: number;
+  readonly clockwise?: boolean;
+  readonly spacing?: number;
+  readonly sampleStep?: number;
+  readonly rotationOffset?: number;
+}
+
 export interface BezierTransformOptions {
   readonly position?: SceneVector2;
   readonly scale?: number | SceneVector2;
@@ -144,6 +157,12 @@ export type BrickShapeBlueprint =
       readonly shape: "bezierCurve";
       readonly brickType: BrickType;
       readonly options: BezierCurveWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "spiralSleeve";
+      readonly brickType: BrickType;
+      readonly options: SpiralSleeveWithBricksOptions;
       readonly generationOptions?: BrickGenerationOptions;
     }
   | {
