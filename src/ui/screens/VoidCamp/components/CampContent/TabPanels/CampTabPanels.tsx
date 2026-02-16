@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapId, getMapConfig } from "@/db/maps/maps-db";
 import { MapListEntry, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 import { SkillTreeView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/SkillTree/SkillTreeView";
 import { ModulesWorkshopView } from "@/ui/screens/VoidCamp/components/CampContent/TabPanels/ModulesWorkshop/ModulesWorkshopView";
 import { UnitDesignerView } from "@screens/VoidCamp/components/UnitDesigner/UnitDesignerView";
-import { CampTabKey } from "../CampContent";
+import { CampTabKey } from "../CampContent.helpers";
 import { MapSelectPanel } from "./MapSelectPanel/MapSelectPanel";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
@@ -16,11 +16,13 @@ import { CraftingView } from "@/ui/screens/VoidCamp/components/CampContent/TabPa
 import { UnitRosterView } from "@screens/VoidCamp/components/UnitRoster/UnitRosterView";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
+import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { useLocalization } from "@ui/shared/useLocalization";
+import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
-  activeTab: CampTabKey;
+  activeTab: Exclude<CampTabKey, "buildings">;
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
@@ -35,6 +37,7 @@ type CampTabPanelsProps = {
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
   achievementsState: AchievementsBridgePayload;
+  newUnlocksState: NewUnlockNotificationBridgeState;
 };
 
 export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
@@ -53,6 +56,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   buildingsState,
   craftingState,
   achievementsState,
+  newUnlocksState,
 }) => {
   const { t } = useLocalization();
   const hasEnemyStrategies = maps.some((map) => {
@@ -67,15 +71,34 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     { key: "designer", label: t("voidCamp.unitDesigner.title", "Unit Designer") },
     { key: "roster", label: t("voidCamp.tabs.battleRoster", "Battle Roster") },
   ];
+  const strongholdTabs: { key: "buildings"; label: string; path: string; hasNew: boolean }[] =
+    useMemo(
+      () => [
+        {
+          key: "buildings",
+          label: t("voidCamp.tabs.buildings", "Buildings"),
+          path: "buildings",
+          hasNew: (newUnlocksState.unseenByPrefix.buildings ?? []).length > 0,
+        },
+      ],
+      [newUnlocksState.unseenByPrefix.buildings, t]
+    );
   const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer" | "roster">(
     "shop"
   );
+  const [activeStrongholdTab, setActiveStrongholdTab] = useState<"buildings">("buildings");
 
   useEffect(() => {
     if (!moduleWorkshopState.unlocked) {
       setActiveModulesTab("shop");
     }
   }, [moduleWorkshopState.unlocked]);
+
+  useEffect(() => {
+    if (!buildingsState.unlocked) {
+      setActiveStrongholdTab("buildings");
+    }
+  }, [buildingsState.unlocked]);
 
   if (activeTab === "maps") {
     return (
@@ -126,10 +149,10 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         <div className="camp-tab-panels__modules-body">
           {activeModulesTab === "shop" ? (
             <ModulesWorkshopView
-            state={moduleWorkshopState}
-            resources={resourceTotals}
-            hideMaxedWorkshop={buildingsState.hideMaxedWorkshop ?? false}
-          />
+              state={moduleWorkshopState}
+              resources={resourceTotals}
+              hideMaxedWorkshop={buildingsState.hideMaxedWorkshop ?? false}
+            />
           ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />
           ) : (
@@ -144,7 +167,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     );
   }
 
-  if (activeTab === "buildings") {
+  if (activeTab === "stronghold") {
     if (!buildingsState.unlocked) {
       return (
         <div className="camp-tab-panels__modules-locked surface-panel">
@@ -156,7 +179,34 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
       );
     }
 
-    return <BuildingsWorkshopView state={buildingsState} resources={resourceTotals} />;
+    return (
+      <div className="camp-tab-panels__modules">
+        <div className="inline-tabs camp-tab-panels__modules-tabs">
+          {strongholdTabs.map((tab) => {
+            const isActive = activeStrongholdTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={
+                  "inline-tabs__button" + (isActive ? " inline-tabs__button--active" : "")
+                }
+                onClick={() => setActiveStrongholdTab(tab.key)}
+              >
+                <NewUnlockWrapper path={tab.path} hasNew={tab.hasNew}>
+                  {tab.label}
+                </NewUnlockWrapper>
+              </button>
+            );
+          })}
+        </div>
+        <div className="camp-tab-panels__modules-body">
+          {activeStrongholdTab === "buildings" && (
+            <BuildingsWorkshopView state={buildingsState} resources={resourceTotals} />
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (activeTab === "crafting") {
