@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { classNames } from "@ui-shared/classNames";
 import { formatNumber } from "@ui-shared/format/number";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
-import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
 import { StableInput } from "@ui-shared/StableInput";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
@@ -89,7 +88,6 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
                 className="new-unlock-wrapper--block"
               >
                 <div className="dark-research-card__header">
-                  <ResourceIcon resourceId="silver" className="dark-research-card__icon" label={localizedName} />
                   <div className="dark-research-card__header-copy">
                     <div className="dark-research-card__title-row">
                       <h3 className="heading-3 dark-research-card__title">{localizedName}</h3>
@@ -121,7 +119,7 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
                 <div className="dark-research-card__effects">
                   {research.bonusEffects.map((effect) => (
                     <div key={`${effect.bonusId}-${effect.effectType}`} className="dark-research-card__effect-row">
-                      <span>{effect.bonusName}</span>
+                      <span>{t(`bonuses.${effect.bonusId}.name`, effect.bonusName)}</span>
                       <span>
                         {formatNumber(effect.currentValue, { maximumFractionDigits: 3 })}
                         {" → "}

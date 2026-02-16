@@ -56,12 +56,6 @@
   gap: var(--spacing-sm);
 }
 
-.dark-research-card__icon {
-  width: 3rem;
-  height: 3rem;
-  flex-shrink: 0;
-}
-
 .dark-research-card__title {
   margin: 0;
 }
