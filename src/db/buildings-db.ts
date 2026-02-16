@@ -11,7 +11,8 @@ export type BuildingId =
   | "mana_plant"
   | "blacksmith"
   | "treasure_vault"
-  | "throughput_regulator";
+  | "throughput_regulator"
+  | "hunger_monument";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -188,6 +189,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
     },
     maxLevel: 3,
     cost: createScalingCost({ silver: 2500, copper: 40000, stone: 800000 }, 3),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "draftsmanship",
+        level: 1,
+      },
+    ],
+  },
+  hunger_monument: {
+    id: "hunger_monument",
+    name: "Monument of Hunger",
+    description:
+      "Raise a monument that amplifies the colony's predatory instinct, increasing all unit attack.",
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    cost: createScalingCost({ sand: 50000 }, 2),
     unlockedBy: [
       {
         type: "skill",
