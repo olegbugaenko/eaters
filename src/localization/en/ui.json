@@ -358,5 +358,8 @@
   "voidCamp.darkResearch.souls": "Souls (free/total)",
   "voidCamp.darkResearch.assignedSouls": "Assigned souls",
   "bonuses.soul_drop_chance_add.name": "Soul Drop Chance",
-  "bonuses.dark_research_xp_multiplier.name": "Dark Research XP Multiplier"
+  "bonuses.dark_research_xp_multiplier.name": "Dark Research XP Multiplier",
+  "scene.targetTooltip.soulReward": "Soul Reward",
+  "scene.targetTooltip.soulDropBaseChance": "Base Soul Drop Chance",
+  "scene.targetTooltip.soulDropBonus": "Soul Drop Chance Bonus"
 }

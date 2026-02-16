@@ -552,6 +552,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     modules: readonly UnitDesignModuleDetail[]
   ): PlayerUnitRuntimeModifiers {
     let rewardMultiplier = 1;
+    let soulDropChanceBonus = 0;
     let damageTransferPercent = 0;
     let damageTransferRadius = PERFORATOR_RADIUS;
     let attackStackBonusPerHit = 0;
@@ -562,6 +563,9 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       switch (detail.id) {
         case "magnet":
           rewardMultiplier = Math.max(detail.bonusValue, 1);
+          break;
+        case "soulMagnet":
+          soulDropChanceBonus = Math.max(detail.bonusValue, 0);
           break;
         case "perforator":
           damageTransferPercent = Math.max(detail.bonusValue, 0);
@@ -579,6 +583,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
 
     return {
       rewardMultiplier,
+      soulDropChanceBonus,
       damageTransferPercent,
       damageTransferRadius,
       attackStackBonusPerHit,
@@ -651,6 +656,12 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "multiplier",
+        };
+      case "soulMagnet":
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "percent",
         };
       case "perforator":
         return {

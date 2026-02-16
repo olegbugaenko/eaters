@@ -41,7 +41,7 @@ describe("UnitModuleWorkshopModule", () => {
     assert(initialState.unlocked, "workshop should be unlocked");
     assert.deepStrictEqual(
       initialState.modules.map((item: { id: string }) => item.id),
-      ["magnet", "perforator"]
+      ["magnet", "soulMagnet", "perforator"]
     );
 
     mapStats = {
@@ -67,7 +67,7 @@ describe("UnitModuleWorkshopModule", () => {
     assert(unlockedState, "state should be pushed after unlocking");
     assert.deepStrictEqual(
       unlockedState.modules.map((item: { id: string }) => item.id),
-      ["magnet", "perforator", "vitalHull", "ironForge"]
+      ["magnet", "soulMagnet", "perforator", "vitalHull", "ironForge"]
     );
   });
 });

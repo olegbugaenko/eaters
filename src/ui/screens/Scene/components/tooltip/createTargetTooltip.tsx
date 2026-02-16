@@ -45,6 +45,11 @@ const formatSeconds = (value: number): string =>
 const formatDistance = (value: number): string =>
   `${formatNumber(value, { maximumFractionDigits: 0 })} units`;
 
+const BASE_SOUL_DROP_CHANCE = 0.1;
+
+const formatPercent = (value: number): string =>
+  `${formatNumber(value * 100, { maximumFractionDigits: 2 })}%`;
+
 const applyRewardMultiplier = (
   rewards: ResourceStockpile,
   multiplier: number,
@@ -103,6 +108,7 @@ const buildEnemyStats = (
   enemy: EnemyRuntimeState,
   enemyConfig: EnemyConfig,
   t: Translate,
+  darkResearchUnlocked: boolean,
 ): SceneTooltipStat[] => {
   const stats: SceneTooltipStat[] = [];
   if (Number.isFinite(enemy.attackInterval)) {
@@ -115,6 +121,22 @@ const buildEnemyStats = (
     stats.push({
       label: t("scene.targetTooltip.attackRange", "Attack Range"),
       value: formatDistance(enemy.attackRange),
+    });
+  }
+
+  const soulReward = Math.max(enemy.soulReward ?? 0, 0);
+  const baseSoulDropChance = darkResearchUnlocked && enemy.moveSpeed > 0 && soulReward > 0
+    ? BASE_SOUL_DROP_CHANCE
+    : 0;
+
+  if (soulReward > 0) {
+    stats.push({
+      label: t("scene.targetTooltip.soulReward", "Soul Reward"),
+      value: formatNumber(soulReward, { maximumFractionDigits: 2 }),
+    });
+    stats.push({
+      label: t("scene.targetTooltip.soulDropBaseChance", "Base Soul Drop Chance"),
+      value: formatPercent(baseSoulDropChance),
     });
   }
 
@@ -180,6 +202,12 @@ const buildPlayerUnitStats = (
     stats.push({
       label: t("scene.targetTooltip.moveSpeed", "Move Speed"),
       value: formatDistance(unit.moveSpeed),
+    });
+  }
+  if ((unit.soulDropChanceBonus ?? 0) > 0) {
+    stats.push({
+      label: t("scene.targetTooltip.soulDropBonus", "Soul Drop Chance Bonus"),
+      value: `+${formatPercent(unit.soulDropChanceBonus)}`,
     });
   }
   return stats;
@@ -428,6 +456,7 @@ export const createTargetTooltip = (
   >,
   t: Translate,
   playerUnitDisplayName?: string | null,
+  options?: { darkResearchUnlocked?: boolean },
 ): SceneTooltipContent => {
   if (target.type === "brick") {
     const brick = target.data as BrickRuntimeState;
@@ -489,7 +518,7 @@ export const createTargetTooltip = (
     subtitle: `${t("voidCamp.common.level", "Level")} ${enemy.level}`,
     stats: [
       ...buildCommonStats(target, t),
-      ...buildEnemyStats(enemy, enemyConfig, t),
+      ...buildEnemyStats(enemy, enemyConfig, t, Boolean(options?.darkResearchUnlocked)),
       ...(rewardLabel
         ? [
             {

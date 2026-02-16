@@ -244,7 +244,7 @@ describe("EnemiesModule", () => {
     assert.strictEqual(soulDrops.length, 1);
     const firstDrop = soulDrops[0];
     assert(firstDrop);
-    assert.strictEqual(firstDrop.base, 1);
+    assert.strictEqual(firstDrop.base, 1.5);
     assert.strictEqual(firstDrop.level, 1);
   });
 
@@ -325,6 +325,7 @@ describe("EnemiesModule", () => {
         critChance: 0,
         critMultiplier: 1,
         rewardMultiplier: 1,
+        soulDropChanceBonus: 0,
         damageTransferPercent: 0,
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,

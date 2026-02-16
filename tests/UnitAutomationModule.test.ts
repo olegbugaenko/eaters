@@ -71,6 +71,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -163,6 +164,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -247,6 +249,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -284,6 +287,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -386,6 +390,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     });
@@ -488,6 +493,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -525,6 +531,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -646,6 +653,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -683,6 +691,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -811,6 +820,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };
@@ -848,6 +858,7 @@ describe("UnitAutomationModule", () => {
         attackStackBonusPerHit: 0,
         attackStackBonusCap: 0,
         knockBackReduction: 1,
+        soulDropChanceBonus: 0,
       },
       targetingMode: "nearest",
     };

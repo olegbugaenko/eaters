@@ -33,6 +33,7 @@ export interface PlayerUnitState {
   critChance: number;
   critMultiplier: number;
   rewardMultiplier: number;
+  soulDropChanceBonus: number;
   damageTransferPercent: number;
   damageTransferRadius: number;
   attackStackBonusPerHit: number;

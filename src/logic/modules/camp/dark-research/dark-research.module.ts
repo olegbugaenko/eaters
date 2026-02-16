@@ -157,7 +157,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     this.pushState();
   }
 
-  public addSoulsFromEnemyKill(baseSouls: number, enemyLevel: number): void {
+  public addSoulsFromEnemyKill(baseSouls: number, _enemyLevel: number): void {
     if (!this.unlocked) {
       return;
     }
@@ -165,8 +165,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     if (base <= 0) {
       return;
     }
-    const level = Math.max(1, Math.floor(sanitizeNonNegativeNumber(enemyLevel, 1)));
-    const amount = base * Math.pow(1.5, level);
+    const amount = base;
     if (amount <= 0) {
       return;
     }
@@ -176,9 +175,13 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
   }
 
   public getSoulDropChance(): number {
+    if (!this.unlocked) {
+      return 0;
+    }
     const bonusRaw = this.bonuses.getBonusValue("soul_drop_chance_add");
     const bonus = Number.isFinite(bonusRaw) ? bonusRaw : 0;
-    return Math.max(0, Math.min(1, BASE_SOUL_DROP_CHANCE + bonus));
+    const baseChance = BASE_SOUL_DROP_CHANCE;
+    return Math.max(0, Math.min(1, baseChance * (1 + Math.max(bonus, -1))));
   }
 
   public setAssignedSouls(id: DarkResearchId, souls: number): void {

@@ -93,7 +93,7 @@ describe("DarkResearchModule", () => {
     const { module, bridge } = createModule(() => 1);
 
     module.initialize();
-    module.addSoulsFromEnemyKill(2, 1); // 3 souls
+    module.addSoulsFromEnemyKill(2, 1); // 2 souls
     module.setAssignedSouls("dark_armor", 10);
     module.setAssignedSouls("bite_of_void", 10);
 
@@ -101,10 +101,34 @@ describe("DarkResearchModule", () => {
     const darkArmor = state.researches.find((entry) => entry.id === "dark_armor");
     const biteOfVoid = state.researches.find((entry) => entry.id === "bite_of_void");
     assert.ok(darkArmor && biteOfVoid);
-    assert.strictEqual(darkArmor!.assignedSouls, 3);
+    assert.strictEqual(darkArmor!.assignedSouls, 2);
     assert.strictEqual(biteOfVoid!.assignedSouls, 0);
     assert.strictEqual(state.freeSouls, 0);
-    assert.strictEqual(state.totalSouls, 3);
+    assert.strictEqual(state.totalSouls, 2);
+  });
+
+  test("returns zero soul drop chance while dark research is locked", () => {
+    let soulsHarvestLevel = 0;
+    const { module } = createModule(() => soulsHarvestLevel);
+
+    module.initialize();
+    assert.strictEqual(module.getSoulDropChance(), 0);
+
+    soulsHarvestLevel = 1;
+    module.tick(0);
+    assert.strictEqual(module.getSoulDropChance(), 0.1);
+  });
+
+  test("applies soul drop chance bonus as multiplier", () => {
+    const { module, bonuses } = createModule(() => 1);
+    bonuses.registerSource("test_soul_bonus", {
+      soul_drop_chance_add: { income: () => 0.1 },
+    });
+    bonuses.setBonusCurrentLevel("test_soul_bonus", 1);
+
+    module.initialize();
+
+    assert.ok(Math.abs(module.getSoulDropChance() - 0.11) < 1e-9);
   });
 
   test("updates bonus values from research levels", () => {

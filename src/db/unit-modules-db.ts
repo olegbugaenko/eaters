@@ -12,6 +12,7 @@ import type { StatusEffectId } from "./status-effects-db";
 
 export const UNIT_MODULE_IDS = [
   "magnet",
+  "soulMagnet",
   "perforator",
   "vitalHull",
   "ironForge",
@@ -121,6 +122,21 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 0,
     maxLevel: 10,
     baseCost: { sand: 200 },
+  },
+
+  soulMagnet: {
+    id: "soulMagnet",
+    name: "Soul Magnet",
+    description:
+      "A soul-attuned gland tugs loose remnants from fallen foes, increasing the chance to extract souls after a kill.",
+    bonusLabel: "Soul drop chance bonus",
+    bonusType: "percent",
+    baseBonusValue: 0.1,
+    bonusPerLevel: 0.1,
+    manaCostMultiplier: 1.8,
+    sanityCost: 0,
+    maxLevel: 10,
+    baseCost: { paper: 100, wire: 100 },
   },
   perforator: {
     id: "perforator",

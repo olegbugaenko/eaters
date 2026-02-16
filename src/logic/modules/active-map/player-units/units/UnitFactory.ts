@@ -84,6 +84,7 @@ export interface UnitFactoryResult {
   readonly critChance: number;
   readonly critMultiplier: number;
   readonly rewardMultiplier: number;
+  readonly soulDropChanceBonus: number;
   readonly damageTransferPercent: number;
   readonly damageTransferRadius: number;
   readonly attackStackBonusPerHit: number;
@@ -260,6 +261,7 @@ export class UnitFactory {
       critChance,
       critMultiplier,
       rewardMultiplier: runtime.rewardMultiplier,
+      soulDropChanceBonus: runtime.soulDropChanceBonus,
       damageTransferPercent: runtime.damageTransferPercent,
       damageTransferRadius: runtime.damageTransferRadius,
       attackStackBonusPerHit: runtime.attackStackBonusPerHit,

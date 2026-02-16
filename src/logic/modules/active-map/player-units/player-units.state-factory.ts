@@ -81,6 +81,7 @@ export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInp
       critChance: factoryResult.critChance,
       critMultiplier: factoryResult.critMultiplier,
       rewardMultiplier: factoryResult.rewardMultiplier,
+      soulDropChanceBonus: factoryResult.soulDropChanceBonus,
       damageTransferPercent: factoryResult.damageTransferPercent,
       damageTransferRadius: factoryResult.damageTransferRadius,
       attackStackBonusPerHit: factoryResult.attackStackBonusPerHit,

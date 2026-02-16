@@ -358,5 +358,8 @@
   "voidCamp.darkResearch.souls": "Душі (вільні/загальні)",
   "voidCamp.darkResearch.assignedSouls": "Призначені душі",
   "bonuses.soul_drop_chance_add.name": "Шанс випадіння душ",
-  "bonuses.dark_research_xp_multiplier.name": "Множник досвіду темних досліджень"
+  "bonuses.dark_research_xp_multiplier.name": "Множник досвіду темних досліджень",
+  "scene.targetTooltip.soulReward": "Нагорода душами",
+  "scene.targetTooltip.soulDropBaseChance": "Базовий шанс випадіння душ",
+  "scene.targetTooltip.soulDropBonus": "Бонус до шансу випадіння душ"
 }
