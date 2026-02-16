@@ -71,6 +71,11 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
       <ul className="dark-research-view__list">
         {state.researches.map((research) => {
           const unlockPath = `darkResearch.${research.id}`;
+          const localizedName = t(`voidCamp.darkResearch.researches.${research.id}.name`, research.name);
+          const localizedDescription = t(
+            `voidCamp.darkResearch.researches.${research.id}.description`,
+            research.description
+          );
           const progress = research.maxXp > 0 ? research.xp / research.maxXp : 0;
           const progressPercent = Math.max(0, Math.min(100, Math.round(progress * 100)));
           const plannedQueue = queueById[research.id] ?? 0;
@@ -84,26 +89,27 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
                 className="new-unlock-wrapper--block"
               >
                 <div className="dark-research-card__header">
-                  <ResourceIcon resourceId="silver" className="dark-research-card__icon" label={research.name} />
-                  <div>
-                    <h3 className="heading-3 dark-research-card__title">{research.name}</h3>
-                    <p className="body-sm text-muted">{research.description}</p>
+                  <ResourceIcon resourceId="silver" className="dark-research-card__icon" label={localizedName} />
+                  <div className="dark-research-card__header-copy">
+                    <div className="dark-research-card__title-row">
+                      <h3 className="heading-3 dark-research-card__title">{localizedName}</h3>
+                      <span className="dark-research-card__level">
+                        {t("voidCamp.common.level", "Level")}: {formatNumber(research.level, { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <p className="body-sm text-muted">{localizedDescription}</p>
                   </div>
                 </div>
 
-                <div className="dark-research-card__meta">
-                  <span>
-                    {t("voidCamp.common.level", "Level")}: {formatNumber(research.level, { maximumFractionDigits: 0 })}
-                  </span>
-                  <span>
-                    {t("voidCamp.darkResearch.xp", "XP")}: {formatNumber(research.xp, { maximumFractionDigits: 1 })}/{formatNumber(research.maxXp, { maximumFractionDigits: 1 })}
-                  </span>
-                  <span>
-                    {t("voidCamp.darkResearch.gainRate", "Gain rate")}: {formatNumber(research.xpPerSecond, { maximumFractionDigits: 2 })}{t("voidCamp.darkResearch.perSecondSuffix", "/s")}
-                  </span>
-                </div>
-
                 <div className="dark-research-card__status">
+                  <div className="dark-research-card__metrics">
+                    <span>
+                      {t("voidCamp.darkResearch.xp", "XP")}: {formatNumber(research.xp, { maximumFractionDigits: 1 })}/{formatNumber(research.maxXp, { maximumFractionDigits: 1 })}
+                    </span>
+                    <span>
+                      {t("voidCamp.darkResearch.gainRate", "Gain rate")}: {formatNumber(research.xpPerSecond, { maximumFractionDigits: 2 })}{t("voidCamp.darkResearch.perSecondSuffix", "/s")}
+                    </span>
+                  </div>
                   <span className="dark-research-card__status-label">
                     {t("voidCamp.darkResearch.progress", "Research Progress")} · {progressPercent}%
                   </span>

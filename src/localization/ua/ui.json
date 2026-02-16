@@ -346,5 +346,13 @@
   "voidCamp.tabs.strongholdUnavailable": "Цитадель недоступна",
   "voidCamp.tabs.strongholdUnavailableDesc": "Розблокуйте Construction Guild або Souls Harvest, щоб отримати доступ до систем Цитаделі.",
   "voidCamp.darkResearch.xp": "Досвід",
-  "voidCamp.darkResearch.perSecondSuffix": "/с"
+  "voidCamp.darkResearch.perSecondSuffix": "/с",
+  "voidCamp.darkResearch.researches.dark_armor.name": "Темна броня",
+  "voidCamp.darkResearch.researches.dark_armor.description": "Насичує виводок безодньою бронепластиною. Дає +1% до броні за рівень.",
+  "voidCamp.darkResearch.researches.darkest_endurance.name": "Найтемніша витривалість",
+  "voidCamp.darkResearch.researches.darkest_endurance.description": "Зміцнює життєву силу створінь проти тиску порожнечі. Дає +1% HP за рівень.",
+  "voidCamp.darkResearch.researches.greediness.name": "Жадібність",
+  "voidCamp.darkResearch.researches.greediness.description": "Навчає збирачів добувати цінніші уламки. Дає +1% нагород за цеглу за рівень.",
+  "voidCamp.darkResearch.researches.bite_of_void.name": "Укус порожнечі",
+  "voidCamp.darkResearch.researches.bite_of_void.description": "Загострює кожен удар краєм нуль-простору. Дає +1% шкоди за рівень."
 }

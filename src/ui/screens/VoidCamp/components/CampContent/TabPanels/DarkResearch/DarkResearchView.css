@@ -40,8 +40,20 @@
 
 .dark-research-card__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--spacing-md);
+}
+
+.dark-research-card__header-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.dark-research-card__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
 }
 
 .dark-research-card__icon {
@@ -54,7 +66,6 @@
   margin: 0;
 }
 
-.dark-research-card__meta,
 .dark-research-card__effects,
 .dark-research-card__queue {
   padding: var(--spacing-sm) var(--spacing-md);
@@ -62,15 +73,23 @@
   background: rgba(148, 163, 184, 0.08);
 }
 
-.dark-research-card__meta {
-  display: grid;
-  gap: var(--spacing-xs);
+.dark-research-card__level {
+  color: var(--color-text-soft);
+  white-space: nowrap;
 }
 
 .dark-research-card__status {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2xs);
+}
+
+.dark-research-card__metrics {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  color: var(--color-text-soft);
 }
 
 .dark-research-card__status-label {

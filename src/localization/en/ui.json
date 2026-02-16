@@ -346,5 +346,13 @@
   "voidCamp.tabs.strongholdUnavailable": "Stronghold Unavailable",
   "voidCamp.tabs.strongholdUnavailableDesc": "Unlock Construction Guild or Souls Harvest to access Stronghold systems.",
   "voidCamp.darkResearch.xp": "XP",
-  "voidCamp.darkResearch.perSecondSuffix": "/s"
+  "voidCamp.darkResearch.perSecondSuffix": "/s",
+  "voidCamp.darkResearch.researches.dark_armor.name": "Dark Armor",
+  "voidCamp.darkResearch.researches.dark_armor.description": "Infuse your brood with abyssal shell plating. Grants +1% armor per level.",
+  "voidCamp.darkResearch.researches.darkest_endurance.name": "Darkest Endurance",
+  "voidCamp.darkResearch.researches.darkest_endurance.description": "Harden creature vitality against void pressure. Grants +1% HP per level.",
+  "voidCamp.darkResearch.researches.greediness.name": "Greediness",
+  "voidCamp.darkResearch.researches.greediness.description": "Train scavengers to recover richer shards. Grants +1% brick rewards per level.",
+  "voidCamp.darkResearch.researches.bite_of_void.name": "Bite of Void",
+  "voidCamp.darkResearch.researches.bite_of_void.description": "Sharpen every strike with a null-space edge. Grants +1% damage per level."
 }
