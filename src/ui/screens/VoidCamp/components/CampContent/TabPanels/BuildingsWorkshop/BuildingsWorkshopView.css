@@ -1,0 +1,137 @@
+.buildings-workshop .master-detail__card {
+  height: 140px;
+}
+
+.buildings-workshop__hide-maxed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.buildings-workshop__hide-maxed input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.buildings-workshop__card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.buildings-workshop__card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-strong);
+  min-width: 0;
+}
+
+.buildings-workshop__card-level {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.buildings-workshop__card-cost {
+  margin-top: auto;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.buildings-workshop__card--missing-resources {
+  opacity: 0.7;
+  border-color: var(--color-border-subtle);
+}
+
+.buildings-workshop__card--missing-resources:hover {
+  opacity: 0.85;
+}
+
+.buildings-workshop__detail {
+  background: var(--color-surface-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.buildings-workshop__detail-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.buildings-workshop__detail-header .heading-3 {
+  margin: 0;
+  min-width: 0;
+}
+
+.buildings-workshop__detail-level {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.buildings-workshop__detail-description {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.92);
+  line-height: 1.6;
+}
+
+.buildings-workshop__detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.buildings-workshop__detail-section h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.buildings-workshop__cost-row .building-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.buildings-workshop__cost-value {
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.buildings-workshop__resource-cost {
+  margin-top: var(--spacing-sm);
+}
+
+.buildings-workshop__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-height: 849px) {
+  .buildings-workshop .master-detail__card {
+    height: 120px;
+  }
+}

@@ -107,6 +107,49 @@ describe("DarkResearchModule", () => {
     assert.strictEqual(state.totalSouls, 2);
   });
 
+  test("auto-assign percent allocates new free souls on tick", () => {
+    const { module, bridge } = createModule(() => 1);
+
+    module.initialize();
+    module.setAutoAssignPercent("dark_armor", 10);
+
+    module.addSoulsFromEnemyKill(90, 1);
+    module.tick(1000);
+
+    let state = getState(bridge);
+    let darkArmor = state.researches.find((entry) => entry.id === "dark_armor");
+    assert.ok(darkArmor);
+    assert.strictEqual(darkArmor!.assignedSouls, 9);
+
+    module.addSoulsFromEnemyKill(20, 1);
+    module.tick(1000);
+
+    state = getState(bridge);
+    darkArmor = state.researches.find((entry) => entry.id === "dark_armor");
+    assert.ok(darkArmor);
+    assert.strictEqual(darkArmor!.assignedSouls, 11);
+    assert.strictEqual(darkArmor!.autoAssignPercent, 10);
+  });
+
+  test("auto-assign total percent cannot exceed 100", () => {
+    const { module, bridge } = createModule(() => 1);
+
+    module.initialize();
+    module.setAutoAssignPercent("dark_armor", 70);
+    module.setAutoAssignPercent("darkest_endurance", 50);
+
+    const state = getState(bridge);
+    const darkArmor = state.researches.find((entry) => entry.id === "dark_armor");
+    const darkest = state.researches.find((entry) => entry.id === "darkest_endurance");
+    assert.ok(darkArmor && darkest);
+    assert.strictEqual(darkArmor!.autoAssignPercent, 70);
+    assert.strictEqual(darkest!.autoAssignPercent, 30);
+    assert.ok(
+      state.researches.reduce((sum, entry) => sum + entry.autoAssignPercent, 0) <= 100,
+      "sum of auto-assign percents should never exceed 100"
+    );
+  });
+
   test("returns zero soul drop chance while dark research is locked", () => {
     let soulsHarvestLevel = 0;
     const { module } = createModule(() => soulsHarvestLevel);

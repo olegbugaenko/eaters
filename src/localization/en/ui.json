@@ -361,5 +361,6 @@
   "bonuses.dark_research_xp_multiplier.name": "Dark Research XP Multiplier",
   "scene.targetTooltip.soulReward": "Soul Reward",
   "scene.targetTooltip.soulDropBaseChance": "Base Soul Drop Chance",
-  "scene.targetTooltip.soulDropBonus": "Soul Drop Chance Bonus"
+  "scene.targetTooltip.soulDropBonus": "Soul Drop Chance Bonus",
+  "voidCamp.darkResearch.autoAssignPercent": "Auto assign %"
 }

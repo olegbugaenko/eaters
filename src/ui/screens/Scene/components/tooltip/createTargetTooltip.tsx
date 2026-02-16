@@ -138,6 +138,12 @@ const buildEnemyStats = (
       label: t("scene.targetTooltip.soulDropBaseChance", "Base Soul Drop Chance"),
       value: formatPercent(baseSoulDropChance),
     });
+    if (!darkResearchUnlocked && enemy.moveSpeed > 0) {
+      stats.push({
+        label: t("scene.targetTooltip.soulDropRequirement", "Soul drops"),
+        value: t("scene.targetTooltip.soulDropRequirementValue", "Unlock Dark Research (Souls Harvest skill) to earn souls from kills."),
+      });
+    }
   }
 
   if (enemyConfig.explosionAttack?.radius) {
