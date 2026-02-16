@@ -77,7 +77,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
 
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
-    this.totalSouls = sanitizeNonNegativeNumber(parsed.totalSouls, 0);
+    this.totalSouls = Math.floor(sanitizeNonNegativeNumber(parsed.totalSouls, 0));
     DARK_RESEARCH_IDS.forEach((id) => {
       const state = this.getRuntimeState(id);
       const saved = parsed.researches?.[id];
@@ -177,7 +177,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     if (base <= 0) {
       return;
     }
-    const amount = base;
+    const amount = Math.floor(base);
     if (amount <= 0) {
       return;
     }
@@ -203,7 +203,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     const target = this.getRuntimeState(id);
     const sanitizedTarget = Math.max(0, Math.floor(sanitizeNonNegativeNumber(souls, 0)));
     const freeWithoutCurrent = this.getFreeSouls() + target.assignedSouls;
-    target.assignedSouls = Math.min(sanitizedTarget, freeWithoutCurrent);
+    target.assignedSouls = Math.floor(Math.min(sanitizedTarget, freeWithoutCurrent));
     this.pushState();
   }
 
@@ -221,6 +221,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     const sanitized = this.sanitizeAutoAssignPercent(percent);
     const maxForResearch = this.getMaxAutoAssignPercentFor(id);
     target.autoAssignPercent = Math.min(sanitized, maxForResearch);
+    this.applyAutoAssignTargets();
     this.pushState();
   }
 
@@ -287,14 +288,14 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
   }
 
   private getFreeSouls(): number {
-    return Math.max(0, this.totalSouls - this.getAssignedSoulsTotal());
+    return Math.max(0, Math.floor(this.totalSouls - this.getAssignedSoulsTotal()));
   }
 
   private rebalanceAssignedSouls(): void {
-    let remaining = this.totalSouls;
+    let remaining = Math.floor(this.totalSouls);
     DARK_RESEARCH_IDS.forEach((id) => {
       const state = this.getRuntimeState(id);
-      const assigned = Math.max(0, Math.min(state.assignedSouls, remaining));
+      const assigned = Math.max(0, Math.floor(Math.min(state.assignedSouls, remaining)));
       state.assignedSouls = assigned;
       remaining -= assigned;
     });
@@ -347,13 +348,15 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
         return;
       }
 
-      const targetAssigned = Math.floor((this.totalSouls * state.autoAssignPercent) / 100);
+      // Use round so e.g. 3 souls × 30% = 0.9 → 1 soul; floor would give 0 and assign nothing
+      const targetAssigned = Math.round((this.totalSouls * state.autoAssignPercent) / 100);
       const deficit = targetAssigned - state.assignedSouls;
       if (deficit <= 0) {
         return;
       }
 
-      const assignedDelta = Math.min(deficit, freeSouls);
+      // Cap by freeSouls so total assigned never exceeds totalSouls (e.g. 5 souls, 3×30% → 2+2+1=5)
+      const assignedDelta = Math.floor(Math.min(deficit, freeSouls));
       state.assignedSouls += assignedDelta;
       freeSouls -= assignedDelta;
       changed = changed || assignedDelta > 0;

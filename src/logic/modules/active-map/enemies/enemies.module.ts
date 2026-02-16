@@ -1707,6 +1707,7 @@ export class EnemiesModule implements GameModule {
       reward: enemy.reward
         ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward))
         : undefined,
+      soulReward: enemy.soulReward,
       spawnSourceId: enemy.spawnSourceId,
     };
   }

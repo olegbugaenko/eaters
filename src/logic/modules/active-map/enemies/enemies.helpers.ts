@@ -131,7 +131,7 @@ export const calculateEnemyStatsForLevel = (
   const baseRewards = normalizeResourceAmount(config.reward);
   const rewards = scaleEnemyResourceStockpile(baseRewards, rewardMultiplier);
   const baseSoulReward = Math.max(config.soulRewardBase ?? 0, 0);
-  const soulReward = Math.max(0, baseSoulReward * Math.pow(1.5, sanitizedLevel));
+  const soulReward = Math.floor(Math.max(0, baseSoulReward * Math.pow(1.5, sanitizedLevel)));
 
   return { maxHp, baseDamage, armor, rewards, soulReward };
 };

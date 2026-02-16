@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import { DEFAULT_UNIT_MODULE_WORKSHOP_STATE } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
@@ -8,13 +8,14 @@ import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
 import { ModuleDetailsCard } from "@ui-shared/ModuleDetailsCard";
+import { MasterDetailLayout } from "@ui-shared/MasterDetailLayout/MasterDetailLayout";
+import { computeMissingCost } from "@ui-shared/helpers/computeMissingCost";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import {
   DEFAULT_NEW_UNLOCKS_STATE,
   NEW_UNLOCKS_BRIDGE_KEY,
 } from "@logic/services/new-unlock-notification/new-unlock-notification.const";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
-import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./ModulesWorkshopView.css";
 import type { UnitModuleWorkshopUiApi } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
@@ -26,23 +27,7 @@ interface ModulesWorkshopViewProps {
   hideMaxedWorkshop?: boolean;
 }
 
-const computeMissingCost = (
-  cost: Record<string, number> | null,
-  totals: Record<string, number>
-): Record<string, number> => {
-  if (!cost) {
-    return {};
-  }
-  const missing: Record<string, number> = {};
-  Object.entries(cost).forEach(([key, amount]) => {
-    const current = totals[key] ?? 0;
-    const delta = amount - current;
-    if (delta > 0) {
-      missing[key] = delta;
-    }
-  });
-  return missing;
-};
+type ModuleItem = UnitModuleWorkshopBridgeState["modules"][number];
 
 const computeNextBonusValue = (
   base: number,
@@ -82,9 +67,6 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     return map;
   }, [resources]);
 
-  const [selectedId, setSelectedId] = useState<UnitModuleId | null>(state.modules[0]?.id ?? null);
-  const [hoveredId, setHoveredId] = useState<UnitModuleId | null>(null);
-
   const displayModules = useMemo(
     () =>
       hideMaxedWorkshop
@@ -93,35 +75,10 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     [state.modules, hideMaxedWorkshop]
   );
 
-  useEffect(() => {
-    const fallback = displayModules[0]?.id ?? null;
-    if (!selectedId) {
-      setSelectedId(fallback);
-      return;
-    }
-    const exists = displayModules.some((module) => module.id === selectedId);
-    if (!exists) {
-      setSelectedId(fallback);
-    }
-  }, [selectedId, displayModules]);
-
-  const activeModule = useMemo(() => {
-    const activeId = hoveredId ?? selectedId ?? state.modules[0]?.id ?? null;
-    if (!activeId) {
-      return null;
-    }
-    return state.modules.find((module) => module.id === activeId) ?? null;
-  }, [hoveredId, selectedId, state.modules]);
-
   const formatLevelLabel = useCallback(
     (level: number, maxLevel: number | null) =>
       maxLevel !== null ? `${level}/${maxLevel}` : String(level),
     []
-  );
-
-  const activeMissing = useMemo(
-    () => (activeModule ? computeMissingCost(activeModule.nextCost, totals) : {}),
-    [activeModule, totals]
   );
 
   const handleUpgrade = useCallback(
@@ -131,152 +88,156 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     [workshop]
   );
 
+  const getUnlockPath = useCallback(
+    (item: ModuleItem) => `biolab.organs.${item.id}`,
+    []
+  );
+
+  const getCardClassName = useCallback(
+    (item: ModuleItem) => {
+      const missing = computeMissingCost(item.nextCost, totals);
+      return Object.keys(missing).length > 0
+        ? "modules-workshop__card--missing-resources"
+        : "";
+    },
+    [totals]
+  );
+
+  const renderCard = useCallback(
+    (module: ModuleItem) => {
+      const moduleMissing = computeMissingCost(module.nextCost, totals);
+      const levelLabel = formatLevelLabel(module.level, module.maxLevel);
+      return (
+        <>
+          <div className="modules-workshop__card-title-row">
+            <span className="modules-workshop__card-title heading-3">{module.name}</span>
+            <span className="modules-workshop__card-level">{levelLabel}</span>
+          </div>
+          <div className="modules-workshop__card-cost">
+            {module.nextCost ? (
+              <ResourceCostDisplay
+                cost={module.nextCost}
+                missing={moduleMissing}
+              />
+            ) : (
+              <span className="text-muted">
+                {module.maxed ? t("voidCamp.common.maxed", "Maxed") : t("voidCamp.common.unavailable", "Unavailable")}
+              </span>
+            )}
+          </div>
+        </>
+      );
+    },
+    [totals, formatLevelLabel, t]
+  );
+
+  const renderDetail = useCallback(
+    (activeModule: ModuleItem) => {
+      const activeMissing = computeMissingCost(activeModule.nextCost, totals);
+      return (
+        <ModuleDetailsCard
+          name={activeModule.name}
+          level={activeModule.level}
+          levelLabel={formatLevelLabel(activeModule.level, activeModule.maxLevel)}
+          description={activeModule.description}
+          effectLabel={activeModule.bonusLabel}
+          currentEffect={
+            activeModule.level > 0
+              ? formatUnitModuleBonusValue(
+                  activeModule.bonusType,
+                  activeModule.currentBonusValue
+                )
+              : t("voidCamp.common.locked", "Locked")
+          }
+          nextEffect={
+            activeModule.maxed
+              ? null
+              : formatUnitModuleBonusValue(
+                  activeModule.bonusType,
+                  computeNextBonusValue(
+                    activeModule.baseBonusValue,
+                    activeModule.bonusPerLevel,
+                    activeModule.level
+                  )
+                )
+          }
+          manaMultiplier={activeModule.manaCostMultiplier}
+          sanityCost={activeModule.sanityCost}
+          costSummary={
+            activeModule.nextCost ? (
+              <ResourceCostDisplay
+                className="modules-workshop__resource-cost"
+                cost={activeModule.nextCost}
+                missing={activeMissing}
+              />
+            ) : (
+              <p className="text-muted body-sm">
+                {activeModule.maxed
+                  ? t("voidCamp.modules.maxedDesc", "This organ has reached its maximum level.")
+                  : t("voidCamp.modules.unavailableDesc", "Organ unavailable. Fulfil its unlock requirements to cultivate.")}
+              </p>
+            )
+          }
+          actions={
+            <Button
+              onClick={() => handleUpgrade(activeModule.id)}
+              disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
+            >
+              {activeModule.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.common.unlock", "Unlock")}
+            </Button>
+          }
+        />
+      );
+    },
+    [totals, formatLevelLabel, handleUpgrade, t]
+  );
+
+  const headerContent = (
+    <>
+      <p className="text-muted">{t("voidCamp.modules.subtitle", "Cultivate organs and manifested parts, then refine them over time.")}</p>
+      <label className="modules-workshop__hide-maxed">
+        <input
+          type="checkbox"
+          checked={hideMaxedWorkshop}
+          onChange={(e) => buildingsApi.setHideMaxedWorkshop(e.target.checked)}
+        />
+        <span>{t("voidCamp.common.hideMaxed", "Hide Maxed")}</span>
+      </label>
+    </>
+  );
+
+  const emptyHeader = (
+    <div>
+      <h2 className="heading-2">{t("voidCamp.modules.title", "Organ Workshop")}</h2>
+      <p className="text-muted">{t("voidCamp.modules.emptyTitle", "Grow and craft organs once they become available.")}</p>
+    </div>
+  );
+
   if (!state.modules || state.modules.length === 0) {
     return (
-      <div className="modules-workshop surface-panel stack-lg">
-        <header className="modules-workshop__header">
-          <div>
-            <h2 className="heading-2">{t("voidCamp.modules.title", "Organ Workshop")}</h2>
-            <p className="text-muted">{t("voidCamp.modules.emptyTitle", "Grow and craft organs once they become available.")}</p>
-          </div>
-        </header>
-        <div className="modules-workshop__empty">{t("voidCamp.modules.emptyDesc", "No organs are available yet.")}</div>
-      </div>
+      <MasterDetailLayout
+        items={[]}
+        header={emptyHeader}
+        renderCard={() => null}
+        renderDetail={() => null}
+        emptyState={t("voidCamp.modules.emptyDesc", "No organs are available yet.")}
+        emptyDetail={t("voidCamp.modules.hoverHint", "Hover over an organ to inspect its details.")}
+        className="modules-workshop"
+      />
     );
   }
 
   return (
-    <div className="modules-workshop stack-lg">
-      <header className="modules-workshop__header modules-workshop__header--row">
-        <p className="text-muted">{t("voidCamp.modules.subtitle", "Cultivate organs and manifested parts, then refine them over time.")}</p>
-        <label className="modules-workshop__hide-maxed">
-          <input
-            type="checkbox"
-            checked={hideMaxedWorkshop}
-            onChange={(e) => buildingsApi.setHideMaxedWorkshop(e.target.checked)}
-          />
-          <span>{t("voidCamp.common.hideMaxed", "Hide Maxed")}</span>
-        </label>
-      </header>
-      <div className="modules-workshop__content">
-        <div className="modules-workshop__list-container">
-          <ul className="modules-workshop__list">
-          {displayModules.map((module) => {
-            const isActive = module.id === (hoveredId ?? selectedId ?? module.id);
-            const moduleMissing = computeMissingCost(module.nextCost, totals);
-            const hasMissingResources = Object.keys(moduleMissing).length > 0;
-            const unlockPath = `biolab.organs.${module.id}`;
-            const levelLabel = formatLevelLabel(module.level, module.maxLevel);
-            return (
-              <li key={module.id}>
-                <NewUnlockWrapper
-                  path={unlockPath}
-                  hasNew={unseenPaths.has(unlockPath)}
-                  markOnHover
-                  className="new-unlock-wrapper--block"
-                >
-                  <button
-                    type="button"
-                    className={
-                      "modules-workshop__card" + 
-                      (isActive ? " modules-workshop__card--active" : "") +
-                      (hasMissingResources ? " modules-workshop__card--missing-resources" : "")
-                    }
-                    onClick={() => setSelectedId(module.id)}
-                    onMouseEnter={() => setHoveredId(module.id)}
-                    onMouseLeave={() =>
-                      setHoveredId((current) => (current === module.id ? null : current))
-                    }
-                    onFocus={() => setHoveredId(module.id)}
-                    onBlur={() => setHoveredId((current) => (current === module.id ? null : current))}
-                  >
-                    <div className="modules-workshop__card-title-row">
-                      <span className="modules-workshop__card-title heading-3">{module.name}</span>
-                      <span className="modules-workshop__card-level">{levelLabel}</span>
-                    </div>
-                    <div className="modules-workshop__card-cost">
-                      {module.nextCost ? (
-                        <ResourceCostDisplay
-                          cost={module.nextCost}
-                          missing={moduleMissing}
-                        />
-                      ) : (
-                        <span className="text-muted">
-                          {module.maxed ? t("voidCamp.common.maxed", "Maxed") : t("voidCamp.common.unavailable", "Unavailable")}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                </NewUnlockWrapper>
-              </li>
-            );
-          })}
-          </ul>
-        </div>
-        <aside>
-          {activeModule ? (
-            <ModuleDetailsCard
-              className="modules-workshop__details--scrollable"
-              name={activeModule.name}
-              level={activeModule.level}
-              levelLabel={formatLevelLabel(activeModule.level, activeModule.maxLevel)}
-              description={activeModule.description}
-              effectLabel={activeModule.bonusLabel}
-              currentEffect={
-                activeModule.level > 0
-                  ? formatUnitModuleBonusValue(
-                      activeModule.bonusType,
-                      activeModule.currentBonusValue
-                    )
-                  : t("voidCamp.common.locked", "Locked")
-              }
-              nextEffect={
-                activeModule.maxed
-                  ? null
-                  : formatUnitModuleBonusValue(
-                      activeModule.bonusType,
-                      computeNextBonusValue(
-                        activeModule.baseBonusValue,
-                        activeModule.bonusPerLevel,
-                        activeModule.level
-                      )
-                    )
-              }
-              manaMultiplier={activeModule.manaCostMultiplier}
-              sanityCost={activeModule.sanityCost}
-              costSummary={
-                activeModule.nextCost ? (
-                  <ResourceCostDisplay
-                    className="modules-workshop__resource-cost"
-                    cost={activeModule.nextCost}
-                    missing={activeMissing}
-                  />
-                ) : (
-                  <p className="text-muted body-sm">
-                    {activeModule.maxed
-                      ? t("voidCamp.modules.maxedDesc", "This organ has reached its maximum level.")
-                      : t("voidCamp.modules.unavailableDesc", "Organ unavailable. Fulfil its unlock requirements to cultivate.")}
-                  </p>
-                )
-              }
-              actions={
-                <Button
-                  onClick={() => handleUpgrade(activeModule.id)}
-                  disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
-                >
-                  {activeModule.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.common.unlock", "Unlock")}
-                </Button>
-              }
-            />
-          ) : (
-            <div className="modules-workshop__details modules-workshop__details--scrollable">
-              <div className="modules-workshop__details-empty">
-                {t("voidCamp.modules.hoverHint", "Hover over an organ to inspect its details.")}
-              </div>
-            </div>
-          )}
-        </aside>
-      </div>
-    </div>
+    <MasterDetailLayout
+      items={displayModules}
+      header={headerContent}
+      renderCard={renderCard}
+      renderDetail={renderDetail}
+      emptyDetail={t("voidCamp.modules.hoverHint", "Hover over an organ to inspect its details.")}
+      getUnlockPath={getUnlockPath}
+      unseenPaths={unseenPaths}
+      getCardClassName={getCardClassName}
+      className="modules-workshop"
+    />
   );
 };
