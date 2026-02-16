@@ -67,5 +67,7 @@ import "./MovementService.test";
 import "./NecromancerModule.test";
 import "./TutorialMonitorModule.test";
 import "./DemoLock.test";
+import "./CampContentTabs.test";
+import "./DarkResearchModule.test";
 
 void run();

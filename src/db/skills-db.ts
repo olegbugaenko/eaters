@@ -70,6 +70,7 @@ export const SKILL_IDS = [
   "clarity3",
   "refinement",
   "refinement2",
+  "souls_harvest",
   "wire_crafting",
   "vitality3",
   "vitality4",
@@ -358,6 +359,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { refinement: 7 },
     cost: createResourceCost('copper', 50, 1.5),
+  },
+
+  souls_harvest: {
+    id: "souls_harvest",
+    name: "Souls Harvest",
+    description:
+      "Unlock Dark Research and let forbidden studies grow over time through harvested echoes.",
+    nodePosition: { x: 0, y: 6 },
+    maxLevel: 1,
+    icon: "resource_gain_4.png",
+    effects: {},
+    nodesRequired: { refinement2: 5 },
+    cost: createResourceCost('silver', 5000, 1),
+    registerEvent: {
+      text: "Whispers of Dark Research answer your harvest.",
+    },
   },
   wire_crafting: {
     id: "wire_crafting",

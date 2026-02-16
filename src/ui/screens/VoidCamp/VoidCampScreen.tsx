@@ -61,6 +61,11 @@ import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
 } from "@logic/modules/active-map/unit-automation/unit-automation.const";
+import { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
+import {
+  DARK_RESEARCH_STATE_BRIDGE_KEY,
+  DEFAULT_DARK_RESEARCH_STATE,
+} from "@logic/modules/camp/dark-research/dark-research.const";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { VoidCampTopBar } from "@screens/VoidCamp/components/VoidCamp/VoidCampTopBar";
@@ -168,6 +173,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     CRAFTING_STATE_BRIDGE_KEY,
     DEFAULT_CRAFTING_STATE
+  );
+  const darkResearchState = useBridgeValue(
+    bridge,
+    DARK_RESEARCH_STATE_BRIDGE_KEY,
+    DEFAULT_DARK_RESEARCH_STATE as DarkResearchBridgeState
   );
 
   useEffect(() => {
@@ -383,6 +393,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitDesignerState={unitDesignerState}
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
+            darkResearchState={darkResearchState}
             achievementsState={achievementsPayload}
             newUnlocksState={newUnlocksState}
           />

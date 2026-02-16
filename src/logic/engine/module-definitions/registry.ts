@@ -10,6 +10,7 @@ import { createEnemiesDefinition } from "../../modules/active-map/enemies/enemie
 import { createBuildingsDefinition } from "../../modules/camp/buildings/buildings.factory";
 import { createBulletDefinition } from "../../modules/active-map/bullet/bullet.factory";
 import { createCraftingDefinition } from "../../modules/camp/crafting/crafting.factory";
+import { createDarkResearchDefinition } from "../../modules/camp/dark-research/dark-research.factory";
 import { createEffectsDefinition } from "../../modules/scene/effects/effects.factory";
 import { createExplosionDefinition } from "../../modules/scene/explosion/explosion.factory";
 import { createFireballDefinition } from "../../modules/scene/fireball/fireball.factory";
@@ -49,6 +50,7 @@ export const registerModuleDefinitions = (
     createEventLogDefinition(),
     createSkillTreeDefinition(),
     createCraftingDefinition(),
+    createDarkResearchDefinition(),
     createBuildingsDefinition(),
     createUnitModuleWorkshopDefinition(),
     createUnitDesignDefinition(),

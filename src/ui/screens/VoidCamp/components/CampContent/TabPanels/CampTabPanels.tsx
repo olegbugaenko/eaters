@@ -19,6 +19,8 @@ import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/ac
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import { useLocalization } from "@ui/shared/useLocalization";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
+import { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
+import { DarkResearchView } from "./DarkResearch/DarkResearchView";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -36,6 +38,7 @@ type CampTabPanelsProps = {
   unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
+  darkResearchState: DarkResearchBridgeState;
   achievementsState: AchievementsBridgePayload;
   newUnlocksState: NewUnlockNotificationBridgeState;
 };
@@ -55,6 +58,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   unitAutomationState,
   buildingsState,
   craftingState,
+  darkResearchState,
   achievementsState,
   newUnlocksState,
 }) => {
@@ -71,7 +75,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     { key: "designer", label: t("voidCamp.unitDesigner.title", "Unit Designer") },
     { key: "roster", label: t("voidCamp.tabs.battleRoster", "Battle Roster") },
   ];
-  const strongholdTabs: { key: "buildings"; label: string; path: string; hasNew: boolean }[] =
+  const strongholdTabs: { key: "buildings" | "darkResearch"; label: string; path: string; hasNew: boolean }[] =
     useMemo(
       () => [
         {
@@ -80,13 +84,19 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
           path: "buildings",
           hasNew: (newUnlocksState.unseenByPrefix.buildings ?? []).length > 0,
         },
+        {
+          key: "darkResearch",
+          label: t("voidCamp.tabs.darkResearch", "Dark Research"),
+          path: "darkResearch",
+          hasNew: (newUnlocksState.unseenByPrefix.darkResearch ?? []).length > 0,
+        },
       ],
-      [newUnlocksState.unseenByPrefix.buildings, t]
+      [newUnlocksState.unseenByPrefix.buildings, newUnlocksState.unseenByPrefix.darkResearch, t]
     );
   const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer" | "roster">(
     "shop"
   );
-  const [activeStrongholdTab, setActiveStrongholdTab] = useState<"buildings">("buildings");
+  const [activeStrongholdTab, setActiveStrongholdTab] = useState<"buildings" | "darkResearch">("buildings");
 
   useEffect(() => {
     if (!moduleWorkshopState.unlocked) {
@@ -95,10 +105,17 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   }, [moduleWorkshopState.unlocked]);
 
   useEffect(() => {
+    if (buildingsState.unlocked) {
+      return;
+    }
+    if (darkResearchState.unlocked) {
+      setActiveStrongholdTab("darkResearch");
+      return;
+    }
     if (!buildingsState.unlocked) {
       setActiveStrongholdTab("buildings");
     }
-  }, [buildingsState.unlocked]);
+  }, [buildingsState.unlocked, darkResearchState.unlocked]);
 
   if (activeTab === "maps") {
     return (
@@ -168,12 +185,12 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   }
 
   if (activeTab === "stronghold") {
-    if (!buildingsState.unlocked) {
+    if (!buildingsState.unlocked && !darkResearchState.unlocked) {
       return (
         <div className="camp-tab-panels__modules-locked surface-panel">
-          <h2 className="heading-2">{t("voidCamp.tabs.buildingsUnavailable", "Buildings Unavailable")}</h2>
+          <h2 className="heading-2">{t("voidCamp.tabs.strongholdUnavailable", "Stronghold Unavailable")}</h2>
           <p className="body-md text-muted">
-            {t("voidCamp.tabs.buildingsUnavailableDesc", "Unlock the Construction Guild skill to coordinate permanent structures.")}
+            {t("voidCamp.tabs.strongholdUnavailableDesc", "Unlock Construction Guild or Souls Harvest to access Stronghold systems.")}
           </p>
         </div>
       );
@@ -201,8 +218,19 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
           })}
         </div>
         <div className="camp-tab-panels__modules-body">
-          {activeStrongholdTab === "buildings" && (
-            <BuildingsWorkshopView state={buildingsState} resources={resourceTotals} />
+          {activeStrongholdTab === "buildings" ? (
+            buildingsState.unlocked ? (
+              <BuildingsWorkshopView state={buildingsState} resources={resourceTotals} />
+            ) : (
+              <div className="camp-tab-panels__modules-locked surface-panel">
+                <h2 className="heading-2">{t("voidCamp.tabs.buildingsUnavailable", "Buildings Unavailable")}</h2>
+                <p className="body-md text-muted">
+                  {t("voidCamp.tabs.buildingsUnavailableDesc", "Unlock the Construction Guild skill to coordinate permanent structures.")}
+                </p>
+              </div>
+            )
+          ) : (
+            <DarkResearchView state={darkResearchState} />
           )}
         </div>
       </div>

@@ -21,6 +21,7 @@ import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit
 import type { UnitModuleWorkshopUiApi } from "@logic//modules/camp/unit-module-workshop/unit-module-workshop.types";
 import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
 import type { CraftingModuleUiApi } from "@logic/modules/camp/crafting/crafting.types";
+import type { DarkResearchModuleUiApi } from "@logic/modules/camp/dark-research/dark-research.types";
 import type { SkillTreeModuleUiApi } from "@logic/modules/camp/skill-tree/skill-tree.types";
 import type { NewUnlockNotificationUiApi } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import type { LocalizationServiceUiApi } from "@logic/services/localization/localization.types";
@@ -149,6 +150,7 @@ export class Application {
       unitModuleWorkshop: this.services.unitModuleWorkshop as UnitModuleWorkshopUiApi,
       buildings: this.services.buildings as BuildingsModuleUiApi,
       crafting: this.services.crafting as CraftingModuleUiApi,
+      darkResearch: this.services.darkResearch as DarkResearchModuleUiApi,
       skillTree: this.services.skillTree as SkillTreeModuleUiApi,
       newUnlocks: this.services.newUnlocks as NewUnlockNotificationUiApi,
       localization: this.services.localization as LocalizationServiceUiApi,

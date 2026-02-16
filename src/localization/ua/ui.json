@@ -334,5 +334,17 @@
   "tutorialOverlay.skip": "Пропустити",
   "tutorialOverlay.finish": "Завершити",
   "tutorialOverlay.next": "Далі",
-  "tutorialOverlay.spotlightClickable": "• можна натискати крізь підсвітку"
+  "tutorialOverlay.spotlightClickable": "• можна натискати крізь підсвітку",
+  "voidCamp.tabs.darkResearch": "Темні дослідження",
+  "voidCamp.darkResearch.title": "Темні дослідження",
+  "voidCamp.darkResearch.locked": "Розблокуйте Souls Harvest, щоб почати заборонені дослідження.",
+  "voidCamp.darkResearch.subtitle": "Темні дослідження отримують досвід з часом. Поточний тимчасовий темп: 1 XP/с на кожне доступне дослідження.",
+  "voidCamp.darkResearch.gainRate": "Темп приросту",
+  "voidCamp.darkResearch.progress": "Прогрес дослідження",
+  "voidCamp.darkResearch.queue": "Черга (тимчасово)",
+  "voidCamp.darkResearch.placeholderNote": "Контроли черги та +/- поки що лише UI-заглушка для майбутнього функціоналу.",
+  "voidCamp.tabs.strongholdUnavailable": "Цитадель недоступна",
+  "voidCamp.tabs.strongholdUnavailableDesc": "Розблокуйте Construction Guild або Souls Harvest, щоб отримати доступ до систем Цитаделі.",
+  "voidCamp.darkResearch.xp": "Досвід",
+  "voidCamp.darkResearch.perSecondSuffix": "/с"
 }

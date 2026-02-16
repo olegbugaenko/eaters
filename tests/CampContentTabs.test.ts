@@ -43,5 +43,10 @@ describe("Camp content tabs", () => {
     assert.strictEqual(withBuildings.stronghold, true);
     assert.strictEqual(withBuildings.modules, true);
     assert.strictEqual(withBuildings.maps, true);
+
+    const withDarkResearch = buildCampTabHasNew({
+      darkResearch: ["darkResearch.dark_armor"],
+    });
+    assert.strictEqual(withDarkResearch.stronghold, true);
   });
 });

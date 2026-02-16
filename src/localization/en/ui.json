@@ -334,5 +334,17 @@
   "tutorialOverlay.skip": "Skip",
   "tutorialOverlay.finish": "Finish",
   "tutorialOverlay.next": "Next",
-  "tutorialOverlay.spotlightClickable": "• spotlight clickable"
+  "tutorialOverlay.spotlightClickable": "• spotlight clickable",
+  "voidCamp.tabs.darkResearch": "Dark Research",
+  "voidCamp.darkResearch.title": "Dark Research",
+  "voidCamp.darkResearch.locked": "Unlock Souls Harvest to begin forbidden studies.",
+  "voidCamp.darkResearch.subtitle": "Dark studies gain experience over time. Current temporary rate: 1 XP/sec per unlocked research.",
+  "voidCamp.darkResearch.gainRate": "Gain rate",
+  "voidCamp.darkResearch.progress": "Research Progress",
+  "voidCamp.darkResearch.queue": "Queue (placeholder)",
+  "voidCamp.darkResearch.placeholderNote": "Queue and +/- controls are UI placeholders for upcoming functionality.",
+  "voidCamp.tabs.strongholdUnavailable": "Stronghold Unavailable",
+  "voidCamp.tabs.strongholdUnavailableDesc": "Unlock Construction Guild or Souls Harvest to access Stronghold systems.",
+  "voidCamp.darkResearch.xp": "XP",
+  "voidCamp.darkResearch.perSecondSuffix": "/s"
 }
