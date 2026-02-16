@@ -5,5 +5,7 @@ export const DARK_RESEARCH_UNLOCK_SKILL_ID = "souls_harvest" as const;
 
 export const DEFAULT_DARK_RESEARCH_STATE: DarkResearchBridgeState = Object.freeze({
   unlocked: false,
+  totalSouls: 0,
+  freeSouls: 0,
   researches: [],
 });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { classNames } from "@ui-shared/classNames";
 import { formatNumber } from "@ui-shared/format/number";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
@@ -10,17 +10,22 @@ import {
   NEW_UNLOCKS_BRIDGE_KEY,
 } from "@logic/services/new-unlock-notification/new-unlock-notification.const";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
-import type { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
+import type {
+  DarkResearchBridgeState,
+  DarkResearchModuleUiApi,
+} from "@logic/modules/camp/dark-research/dark-research.types";
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./DarkResearchView.css";
 
-const QUICK_BUTTONS: readonly { label: string; delta: number }[] = [
-  { label: "-100", delta: -100 },
-  { label: "-10", delta: -10 },
-  { label: "-1", delta: -1 },
-  { label: "+1", delta: 1 },
-  { label: "+10", delta: 10 },
-  { label: "+100", delta: 100 },
+const QUICK_BUTTONS: readonly { label: string; type: "set" | "delta" | "max"; value?: number }[] = [
+  { label: "0", type: "set", value: 0 },
+  { label: "-100", type: "delta", value: -100 },
+  { label: "-10", type: "delta", value: -10 },
+  { label: "-1", type: "delta", value: -1 },
+  { label: "+1", type: "delta", value: 1 },
+  { label: "+10", type: "delta", value: 10 },
+  { label: "+100", type: "delta", value: 100 },
+  { label: "Max", type: "max" },
 ];
 
 interface DarkResearchViewProps {
@@ -29,7 +34,8 @@ interface DarkResearchViewProps {
 
 export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => {
   const { t } = useLocalization();
-  const { bridge } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
+  const darkResearch = uiApi.darkResearch as DarkResearchModuleUiApi;
   const newUnlocksState = useBridgeValue(
     bridge,
     NEW_UNLOCKS_BRIDGE_KEY,
@@ -39,7 +45,6 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
     () => new Set(newUnlocksState.unseenPaths),
     [newUnlocksState.unseenPaths]
   );
-  const [queueById, setQueueById] = useState<Record<string, number>>({});
 
   if (!state.unlocked) {
     return (
@@ -60,11 +65,10 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
   return (
     <div className="dark-research-view stack-lg">
       <header className="dark-research-view__header">
-        <p className="text-muted">
-          {t(
-            "voidCamp.darkResearch.subtitle",
-            "Dark studies gain experience over time. Current temporary rate: 1 XP/sec per unlocked research."
-          )}
+        <p className="text-muted">{t("voidCamp.darkResearch.subtitle", "Assign souls to researches to generate XP over time.")}</p>
+        <p className="text-muted dark-research-view__souls-line">
+          {t("voidCamp.darkResearch.souls", "Souls")}: {formatNumber(state.freeSouls, { maximumFractionDigits: 0 })}/
+          {formatNumber(state.totalSouls, { maximumFractionDigits: 0 })}
         </p>
       </header>
       <ul className="dark-research-view__list">
@@ -77,7 +81,6 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
           );
           const progress = research.maxXp > 0 ? research.xp / research.maxXp : 0;
           const progressPercent = Math.max(0, Math.min(100, Math.round(progress * 100)));
-          const plannedQueue = queueById[research.id] ?? 0;
 
           return (
             <li key={research.id} className="dark-research-card">
@@ -102,10 +105,12 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
                 <div className="dark-research-card__status">
                   <div className="dark-research-card__metrics">
                     <span>
-                      {t("voidCamp.darkResearch.xp", "XP")}: {formatNumber(research.xp, { maximumFractionDigits: 1 })}/{formatNumber(research.maxXp, { maximumFractionDigits: 1 })}
+                      {t("voidCamp.darkResearch.xp", "XP")}: {formatNumber(research.xp, { maximumFractionDigits: 1 })}/
+                      {formatNumber(research.maxXp, { maximumFractionDigits: 1 })}
                     </span>
                     <span>
-                      {t("voidCamp.darkResearch.gainRate", "Gain rate")}: {formatNumber(research.xpPerSecond, { maximumFractionDigits: 2 })}{t("voidCamp.darkResearch.perSecondSuffix", "/s")}
+                      {t("voidCamp.darkResearch.gainRate", "Gain rate")}: {formatNumber(research.xpPerSecond, { maximumFractionDigits: 2 })}
+                      {t("voidCamp.darkResearch.perSecondSuffix", "/s")}
                     </span>
                   </div>
                   <span className="dark-research-card__status-label">
@@ -132,50 +137,53 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
                 <div className="dark-research-card__queue">
                   <div className="dark-research-card__queue-row">
                     <label className="dark-research-card__queue-label">
-                      <span className="text-muted">{t("voidCamp.darkResearch.queue", "Queue (placeholder)")}</span>
+                      <span className="text-muted">{t("voidCamp.darkResearch.assignedSouls", "Assigned souls")}</span>
                       <StableInput
                         type="number"
                         inputMode="numeric"
                         min={0}
                         className="dark-research-card__queue-input"
-                        value={plannedQueue}
+                        value={research.assignedSouls}
                         onCommit={(value) => {
                           const parsed = Number(value);
-                          setQueueById((current) => ({
-                            ...current,
-                            [research.id]: Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0,
-                          }));
+                          darkResearch.setAssignedSouls(
+                            research.id,
+                            Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+                          );
                         }}
                       />
                     </label>
                   </div>
 
                   <div className="dark-research-card__quick-buttons">
-                    <button type="button" className={classNames("secondary-button", "small-button", "button")}>
-                      0
-                    </button>
                     {QUICK_BUTTONS.map((button) => (
                       <button
                         key={button.label}
                         type="button"
                         className={classNames("secondary-button", "small-button", "button")}
                         onClick={() => {
-                          setQueueById((current) => ({
-                            ...current,
-                            [research.id]: Math.max(0, (current[research.id] ?? 0) + button.delta),
-                          }));
+                          switch (button.type) {
+                            case "set":
+                              darkResearch.setAssignedSouls(research.id, button.value ?? 0);
+                              return;
+                            case "delta":
+                              darkResearch.adjustAssignedSouls(research.id, button.value ?? 0);
+                              return;
+                            case "max":
+                              darkResearch.setAssignedSouls(
+                                research.id,
+                                research.assignedSouls + state.freeSouls
+                              );
+                              return;
+                            default:
+                              return;
+                          }
                         }}
                       >
-                        {button.label}
+                        {button.label === "Max" ? t("voidCamp.common.max", "Max") : button.label}
                       </button>
                     ))}
-                    <button type="button" className={classNames("secondary-button", "small-button", "button")}>
-                      {t("voidCamp.common.max", "Max")}
-                    </button>
                   </div>
-                  <span className="dark-research-card__queue-note text-muted">
-                    {t("voidCamp.darkResearch.placeholderNote", "Queue and +/- controls are UI placeholders for upcoming functionality.")}
-                  </span>
                 </div>
               </NewUnlockWrapper>
             </li>

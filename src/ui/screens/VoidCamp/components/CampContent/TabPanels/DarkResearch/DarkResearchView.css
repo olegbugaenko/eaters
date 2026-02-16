@@ -12,6 +12,10 @@
   gap: var(--spacing-xs);
 }
 
+.dark-research-view__souls-line {
+  font-weight: 600;
+}
+
 .dark-research-view__list {
   list-style: none;
   margin: 0;

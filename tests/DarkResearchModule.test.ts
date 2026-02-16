@@ -11,8 +11,27 @@ import { getSkillConfig } from "../src/db/skills-db";
 const getState = (bridge: DataBridge): DarkResearchBridgeState =>
   (bridge.getValue(DARK_RESEARCH_STATE_BRIDGE_KEY) as DarkResearchBridgeState) ?? {
     unlocked: false,
+    totalSouls: 0,
+    freeSouls: 0,
     researches: [],
   };
+
+const createModule = (getSkillLevel: () => number) => {
+  const bridge = new DataBridge();
+  const bonuses = new BonusesModule();
+  bonuses.initialize();
+  const newUnlocks = new NewUnlockNotificationService({ bridge });
+  newUnlocks.initialize();
+
+  const module = new DarkResearchModule({
+    bridge,
+    bonuses,
+    newUnlocks,
+    getSkillLevel,
+  });
+
+  return { module, bridge, bonuses };
+};
 
 describe("DarkResearchModule", () => {
   test("Souls Harvest skill is configured as Dark Research unlock", () => {
@@ -23,19 +42,8 @@ describe("DarkResearchModule", () => {
   });
 
   test("stays locked until Souls Harvest is purchased", () => {
-    const bridge = new DataBridge();
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
-    const newUnlocks = new NewUnlockNotificationService({ bridge });
-    newUnlocks.initialize();
-
     let soulsHarvestLevel = 0;
-    const module = new DarkResearchModule({
-      bridge,
-      bonuses,
-      newUnlocks,
-      getSkillLevel: () => soulsHarvestLevel,
-    });
+    const { module, bridge } = createModule(() => soulsHarvestLevel);
 
     module.initialize();
     assert.strictEqual(getState(bridge).unlocked, false);
@@ -48,46 +56,66 @@ describe("DarkResearchModule", () => {
     assert.strictEqual(unlocked.researches.length, 4);
   });
 
-  test("grants 1 XP/sec and levels up by formula", () => {
-    const bridge = new DataBridge();
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
-    const newUnlocks = new NewUnlockNotificationService({ bridge });
-    newUnlocks.initialize();
-
-    const module = new DarkResearchModule({
-      bridge,
-      bonuses,
-      newUnlocks,
-      getSkillLevel: () => 1,
-    });
+  test("does not gain XP without assigned souls", () => {
+    const { module, bridge } = createModule(() => 1);
 
     module.initialize();
+    const before = getState(bridge).researches.map((entry) => ({ id: entry.id, xp: entry.xp }));
+
     module.tick(120_000);
+
+    const after = getState(bridge).researches;
+    after.forEach((entry) => {
+      const prev = before.find((item) => item.id === entry.id);
+      assert.ok(prev);
+      assert.strictEqual(entry.xp, prev.xp);
+      assert.strictEqual(entry.xpPerSecond, 0);
+    });
+  });
+
+  test("assigned souls provide XP gain and level ups", () => {
+    const { module, bridge } = createModule(() => 1);
+
+    module.initialize();
+    module.addSoulsFromEnemyKill(10, 1);
+    module.setAssignedSouls("darkest_endurance", 5);
+    module.tick(25_000);
 
     const state = getState(bridge);
     const darkest = state.researches.find((entry) => entry.id === "darkest_endurance");
     assert.ok(darkest);
-    assert.ok(darkest.level >= 1, "research should level up after enough XP");
+    assert.strictEqual(darkest!.xpPerSecond, 5);
+    assert.ok(darkest!.xp > 0, "research should gain xp from assigned souls");
+    assert.ok(darkest!.level >= 1, "research should level up after enough XP");
+  });
+
+  test("assigned souls are clamped by free souls", () => {
+    const { module, bridge } = createModule(() => 1);
+
+    module.initialize();
+    module.addSoulsFromEnemyKill(2, 1); // 3 souls
+    module.setAssignedSouls("dark_armor", 10);
+    module.setAssignedSouls("bite_of_void", 10);
+
+    const state = getState(bridge);
+    const darkArmor = state.researches.find((entry) => entry.id === "dark_armor");
+    const biteOfVoid = state.researches.find((entry) => entry.id === "bite_of_void");
+    assert.ok(darkArmor && biteOfVoid);
+    assert.strictEqual(darkArmor!.assignedSouls, 3);
+    assert.strictEqual(biteOfVoid!.assignedSouls, 0);
+    assert.strictEqual(state.freeSouls, 0);
+    assert.strictEqual(state.totalSouls, 3);
   });
 
   test("updates bonus values from research levels", () => {
-    const bridge = new DataBridge();
-    const bonuses = new BonusesModule();
-    bonuses.initialize();
-    const newUnlocks = new NewUnlockNotificationService({ bridge });
-    newUnlocks.initialize();
-
-    const module = new DarkResearchModule({
-      bridge,
-      bonuses,
-      newUnlocks,
-      getSkillLevel: () => 1,
-    });
+    const { module, bonuses } = createModule(() => 1);
 
     module.initialize();
+    module.addSoulsFromEnemyKill(100, 1);
+    module.setAssignedSouls("bite_of_void", 100);
+
     const before = bonuses.getBonusValue("all_units_attack_multiplier");
-    module.tick(600_000);
+    module.tick(5_000);
     const after = bonuses.getBonusValue("all_units_attack_multiplier");
 
     assert.ok(after > before, "Bite of Void should increase attack multiplier as it levels");

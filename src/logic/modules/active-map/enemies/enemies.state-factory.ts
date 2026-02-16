@@ -130,6 +130,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       selfKnockBackDistance,
       selfKnockBackSpeed,
       reward: stats.rewards,
+      soulReward: stats.soulReward,
       spawnSourceId,
       fill,
       stroke,

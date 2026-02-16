@@ -14,7 +14,6 @@ import {
   calculateMaxXpForLevel,
   sanitizeLevel,
   sanitizeNonNegativeNumber,
-  XP_PER_SECOND_DEFAULT,
 } from "./dark-research.helpers";
 import type {
   DarkResearchBridgeState,
@@ -22,9 +21,13 @@ import type {
   DarkResearchModuleOptions,
   DarkResearchRuntimeState,
   DarkResearchSaveData,
+  DarkResearchModuleUiApi,
 } from "./dark-research.types";
 
-export class DarkResearchModule implements GameModule {
+const BASE_SOUL_DROP_CHANCE = 0.1;
+const SOUL_XP_PER_SECOND = 1;
+
+export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
   public readonly id = "darkResearch";
 
   private readonly bridge: DarkResearchModuleOptions["bridge"];
@@ -35,6 +38,7 @@ export class DarkResearchModule implements GameModule {
   private readonly states = new Map<DarkResearchId, DarkResearchRuntimeState>();
   private unlocked = false;
   private hasRegisteredUnlocks = false;
+  private totalSouls = 0;
 
   constructor(options: DarkResearchModuleOptions) {
     this.bridge = options.bridge;
@@ -43,7 +47,7 @@ export class DarkResearchModule implements GameModule {
     this.getSkillLevel = options.getSkillLevel;
 
     DARK_RESEARCH_IDS.forEach((id) => {
-      this.states.set(id, { level: 0, xp: 0 });
+      this.states.set(id, { level: 0, xp: 0, assignedSouls: 0 });
       this.bonuses.registerSource(this.getBonusSourceId(id), getDarkResearchConfig(id).effects);
     });
   }
@@ -57,10 +61,12 @@ export class DarkResearchModule implements GameModule {
   }
 
   public reset(): void {
+    this.totalSouls = 0;
     DARK_RESEARCH_IDS.forEach((id) => {
       const state = this.getRuntimeState(id);
       state.level = 0;
       state.xp = 0;
+      state.assignedSouls = 0;
     });
     this.syncAllBonusLevels();
     this.refreshUnlocked();
@@ -70,12 +76,15 @@ export class DarkResearchModule implements GameModule {
 
   public load(data: unknown | undefined): void {
     const parsed = this.parseSaveData(data);
+    this.totalSouls = sanitizeNonNegativeNumber(parsed.totalSouls, 0);
     DARK_RESEARCH_IDS.forEach((id) => {
       const state = this.getRuntimeState(id);
       const saved = parsed.researches?.[id];
       state.level = sanitizeLevel(saved?.level);
       state.xp = sanitizeNonNegativeNumber(saved?.xp, 0);
+      state.assignedSouls = sanitizeLevel(saved?.assignedSouls);
     });
+    this.rebalanceAssignedSouls();
     this.syncAllBonusLevels();
     this.refreshUnlocked();
     this.newUnlocks.invalidate("darkResearch");
@@ -86,20 +95,24 @@ export class DarkResearchModule implements GameModule {
     const researches: Partial<DarkResearchSaveData["researches"]> = {};
     DARK_RESEARCH_IDS.forEach((id) => {
       const state = this.getRuntimeState(id);
-      if (state.level <= 0 && state.xp <= 0) {
+      if (state.level <= 0 && state.xp <= 0 && state.assignedSouls <= 0) {
         return;
       }
       researches[id] = {
         level: state.level > 0 ? state.level : undefined,
         xp: state.xp > 0 ? state.xp : undefined,
+        assignedSouls: state.assignedSouls > 0 ? state.assignedSouls : undefined,
       };
     });
 
-    if (Object.keys(researches).length === 0) {
+    if (Object.keys(researches).length === 0 && this.totalSouls <= 0) {
       return {} satisfies DarkResearchSaveData;
     }
 
-    return { researches } satisfies DarkResearchSaveData;
+    return {
+      totalSouls: this.totalSouls > 0 ? this.totalSouls : undefined,
+      researches,
+    } satisfies DarkResearchSaveData;
   }
 
   public tick(deltaMs: number): void {
@@ -113,26 +126,28 @@ export class DarkResearchModule implements GameModule {
     }
 
     const clampedDeltaMs = Math.max(0, deltaMs);
-    const xpGain = (clampedDeltaMs / 1000) * XP_PER_SECOND_DEFAULT;
+    const xpMultiplier = this.getSoulXpMultiplier();
+    const seconds = clampedDeltaMs / 1000;
     let changed = unlockedChanged;
 
-    if (xpGain > 0) {
-      DARK_RESEARCH_IDS.forEach((id) => {
-        const state = this.getRuntimeState(id);
-        state.xp += xpGain;
+    DARK_RESEARCH_IDS.forEach((id) => {
+      const state = this.getRuntimeState(id);
+      const xpGain = state.assignedSouls * SOUL_XP_PER_SECOND * xpMultiplier * seconds;
+      if (xpGain <= 0) {
+        return;
+      }
+      state.xp += xpGain;
 
-        const config = getDarkResearchConfig(id);
-        let maxXp = calculateMaxXpForLevel(config, state.level);
-        while (state.xp >= maxXp) {
-          state.xp -= maxXp;
-          state.level += 1;
-          this.syncBonusLevel(id);
-          maxXp = calculateMaxXpForLevel(config, state.level);
-          changed = true;
-        }
-        changed = true;
-      });
-    }
+      const config = getDarkResearchConfig(id);
+      let maxXp = calculateMaxXpForLevel(config, state.level);
+      while (state.xp >= maxXp) {
+        state.xp -= maxXp;
+        state.level += 1;
+        this.syncBonusLevel(id);
+        maxXp = calculateMaxXpForLevel(config, state.level);
+      }
+      changed = true;
+    });
 
     if (!changed) {
       return;
@@ -140,6 +155,55 @@ export class DarkResearchModule implements GameModule {
 
     this.newUnlocks.invalidate("darkResearch");
     this.pushState();
+  }
+
+  public addSoulsFromEnemyKill(baseSouls: number, enemyLevel: number): void {
+    if (!this.unlocked) {
+      return;
+    }
+    const base = sanitizeNonNegativeNumber(baseSouls, 0);
+    if (base <= 0) {
+      return;
+    }
+    const level = Math.max(1, Math.floor(sanitizeNonNegativeNumber(enemyLevel, 1)));
+    const amount = base * Math.pow(1.5, level);
+    if (amount <= 0) {
+      return;
+    }
+
+    this.totalSouls += amount;
+    this.pushState();
+  }
+
+  public getSoulDropChance(): number {
+    const bonusRaw = this.bonuses.getBonusValue("soul_drop_chance_add");
+    const bonus = Number.isFinite(bonusRaw) ? bonusRaw : 0;
+    return Math.max(0, Math.min(1, BASE_SOUL_DROP_CHANCE + bonus));
+  }
+
+  public setAssignedSouls(id: DarkResearchId, souls: number): void {
+    if (!this.unlocked) {
+      return;
+    }
+    const target = this.getRuntimeState(id);
+    const sanitizedTarget = Math.max(0, Math.floor(sanitizeNonNegativeNumber(souls, 0)));
+    const freeWithoutCurrent = this.getFreeSouls() + target.assignedSouls;
+    target.assignedSouls = Math.min(sanitizedTarget, freeWithoutCurrent);
+    this.pushState();
+  }
+
+  public adjustAssignedSouls(id: DarkResearchId, delta: number): void {
+    const target = this.getRuntimeState(id);
+    const next = target.assignedSouls + Math.floor(delta);
+    this.setAssignedSouls(id, next);
+  }
+
+  private getSoulXpMultiplier(): number {
+    const raw = this.bonuses.getBonusValue("dark_research_xp_multiplier");
+    if (!Number.isFinite(raw)) {
+      return 1;
+    }
+    return Math.max(0, raw);
   }
 
   private registerUnlockNotifications(): void {
@@ -188,6 +252,28 @@ export class DarkResearchModule implements GameModule {
     return true;
   }
 
+  private getAssignedSoulsTotal(): number {
+    let total = 0;
+    DARK_RESEARCH_IDS.forEach((id) => {
+      total += this.getRuntimeState(id).assignedSouls;
+    });
+    return total;
+  }
+
+  private getFreeSouls(): number {
+    return Math.max(0, this.totalSouls - this.getAssignedSoulsTotal());
+  }
+
+  private rebalanceAssignedSouls(): void {
+    let remaining = this.totalSouls;
+    DARK_RESEARCH_IDS.forEach((id) => {
+      const state = this.getRuntimeState(id);
+      const assigned = Math.max(0, Math.min(state.assignedSouls, remaining));
+      state.assignedSouls = assigned;
+      remaining -= assigned;
+    });
+  }
+
   private parseSaveData(data: unknown): DarkResearchSaveData {
     if (!data || typeof data !== "object") {
       return {};
@@ -198,6 +284,8 @@ export class DarkResearchModule implements GameModule {
   private buildResearchState(id: DarkResearchId): DarkResearchItemBridgeState {
     const config = getDarkResearchConfig(id);
     const runtime = this.getRuntimeState(id);
+    const xpPerSecond = runtime.assignedSouls * SOUL_XP_PER_SECOND * this.getSoulXpMultiplier();
+
     return {
       id,
       name: config.name,
@@ -206,7 +294,8 @@ export class DarkResearchModule implements GameModule {
       level: runtime.level,
       xp: runtime.xp,
       maxXp: calculateMaxXpForLevel(config, runtime.level),
-      xpPerSecond: XP_PER_SECOND_DEFAULT,
+      xpPerSecond,
+      assignedSouls: runtime.assignedSouls,
       bonusEffects: this.bonuses.getBonusEffects(this.getBonusSourceId(id)),
     };
   }
@@ -219,6 +308,8 @@ export class DarkResearchModule implements GameModule {
 
     const payload: DarkResearchBridgeState = {
       unlocked: true,
+      totalSouls: this.totalSouls,
+      freeSouls: this.getFreeSouls(),
       researches: DARK_RESEARCH_IDS.map((id) => this.buildResearchState(id)),
     };
     DataBridgeHelpers.pushState(this.bridge, DARK_RESEARCH_STATE_BRIDGE_KEY, payload);

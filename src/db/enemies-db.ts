@@ -117,6 +117,7 @@ export interface EnemyConfig {
   /** When true, enemy never rotates (e.g. static structures). */
   readonly lockRotation?: boolean;
   readonly reward?: ResourceAmount;
+  readonly soulRewardBase?: number;
   readonly emitter?: ParticleEmitterConfig;
   readonly projectile?: EnemyProjectileConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
   readonly projectileVolley?: {
@@ -227,6 +228,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackRange: 240,
     moveSpeed: 30,
     physicalSize: 14,
+    soulRewardBase: 1,
     reward: normalizeResourceAmount({
       stone: 1,
     }),
@@ -249,6 +251,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackRange: 200,
     moveSpeed: 50,
     physicalSize: 12,
+    soulRewardBase: 1,
     reward: normalizeResourceAmount({
       stone: 1,
     }),
@@ -325,6 +328,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackRange: 280,
     moveSpeed: 20,
     physicalSize: 18,
+    soulRewardBase: 2,
     reward: {
       stone: 2,
     },

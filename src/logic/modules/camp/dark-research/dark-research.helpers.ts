@@ -1,6 +1,6 @@
 import type { DarkResearchConfig } from "@/db/dark-research-db";
 
-export const XP_PER_SECOND_DEFAULT = 1;
+export const XP_PER_SECOND_DEFAULT = 0;
 
 export const sanitizeNonNegativeNumber = (value: unknown, fallback = 0): number => {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {

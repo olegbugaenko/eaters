@@ -338,7 +338,7 @@
   "voidCamp.tabs.darkResearch": "Dark Research",
   "voidCamp.darkResearch.title": "Dark Research",
   "voidCamp.darkResearch.locked": "Unlock Souls Harvest to begin forbidden studies.",
-  "voidCamp.darkResearch.subtitle": "Dark studies gain experience over time. Current temporary rate: 1 XP/sec per unlocked research.",
+  "voidCamp.darkResearch.subtitle": "Assign souls to researches to generate XP over time.",
   "voidCamp.darkResearch.gainRate": "Gain rate",
   "voidCamp.darkResearch.progress": "Research Progress",
   "voidCamp.darkResearch.queue": "Queue (placeholder)",
@@ -354,5 +354,9 @@
   "voidCamp.darkResearch.researches.greediness.name": "Greediness",
   "voidCamp.darkResearch.researches.greediness.description": "Train scavengers to recover richer shards. Grants +1% brick rewards per level.",
   "voidCamp.darkResearch.researches.bite_of_void.name": "Bite of Void",
-  "voidCamp.darkResearch.researches.bite_of_void.description": "Sharpen every strike with a null-space edge. Grants +1% damage per level."
+  "voidCamp.darkResearch.researches.bite_of_void.description": "Sharpen every strike with a null-space edge. Grants +1% damage per level.",
+  "voidCamp.darkResearch.souls": "Souls (free/total)",
+  "voidCamp.darkResearch.assignedSouls": "Assigned souls",
+  "bonuses.soul_drop_chance_add.name": "Soul Drop Chance",
+  "bonuses.dark_research_xp_multiplier.name": "Dark Research XP Multiplier"
 }

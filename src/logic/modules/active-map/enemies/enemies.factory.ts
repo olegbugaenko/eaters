@@ -22,6 +22,7 @@ export const createEnemiesDefinition = (): ServiceDefinition<
       arcs: container.getOptional<ArcModule>("arc") ?? undefined,
       bricks: container.get("bricks"),
       statusEffects: container.get("statusEffects"),
+      darkResearch: container.get("darkResearch"),
     }),
   registerAsModule: true,
 
@@ -34,5 +35,6 @@ export const createEnemiesDefinition = (): ServiceDefinition<
     "statusEffects",
     "resources",
     "bonuses",
+    "darkResearch",
   ],
 });
