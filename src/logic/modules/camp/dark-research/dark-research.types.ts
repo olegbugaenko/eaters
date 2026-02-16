@@ -15,6 +15,7 @@ export interface DarkResearchItemBridgeState {
   readonly maxXp: number;
   readonly xpPerSecond: number;
   readonly assignedSouls: number;
+  readonly autoAssignPercent: number;
   readonly bonusEffects: BonusEffectPreview[];
 }
 
@@ -29,6 +30,7 @@ export interface DarkResearchSaveState {
   readonly level?: number;
   readonly xp?: number;
   readonly assignedSouls?: number;
+  readonly autoAssignPercent?: number;
 }
 
 export interface DarkResearchSaveData {
@@ -40,6 +42,7 @@ export interface DarkResearchRuntimeState {
   level: number;
   xp: number;
   assignedSouls: number;
+  autoAssignPercent: number;
 }
 
 export interface DarkResearchModuleOptions {
@@ -52,6 +55,7 @@ export interface DarkResearchModuleOptions {
 export interface DarkResearchModuleUiApi {
   setAssignedSouls(id: DarkResearchId, souls: number): void;
   adjustAssignedSouls(id: DarkResearchId, delta: number): void;
+  setAutoAssignPercent(id: DarkResearchId, percent: number): void;
 }
 
 declare module "@/core/logic/ui/ui-api.registry" {

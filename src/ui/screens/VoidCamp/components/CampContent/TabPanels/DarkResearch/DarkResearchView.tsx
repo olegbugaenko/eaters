@@ -153,6 +153,24 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({ state }) => 
                         }}
                       />
                     </label>
+                    <label className="dark-research-card__queue-label">
+                      <span className="text-muted">{t("voidCamp.darkResearch.autoAssignPercent", "Auto assign %")}</span>
+                      <StableInput
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={100}
+                        className="dark-research-card__queue-input"
+                        value={research.autoAssignPercent}
+                        onCommit={(value) => {
+                          const parsed = Number(value);
+                          darkResearch.setAutoAssignPercent(
+                            research.id,
+                            Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+                          );
+                        }}
+                      />
+                    </label>
                   </div>
 
                   <div className="dark-research-card__quick-buttons">

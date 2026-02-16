@@ -47,7 +47,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     this.getSkillLevel = options.getSkillLevel;
 
     DARK_RESEARCH_IDS.forEach((id) => {
-      this.states.set(id, { level: 0, xp: 0, assignedSouls: 0 });
+      this.states.set(id, { level: 0, xp: 0, assignedSouls: 0, autoAssignPercent: 0 });
       this.bonuses.registerSource(this.getBonusSourceId(id), getDarkResearchConfig(id).effects);
     });
   }
@@ -67,6 +67,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
       state.level = 0;
       state.xp = 0;
       state.assignedSouls = 0;
+      state.autoAssignPercent = 0;
     });
     this.syncAllBonusLevels();
     this.refreshUnlocked();
@@ -83,7 +84,9 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
       state.level = sanitizeLevel(saved?.level);
       state.xp = sanitizeNonNegativeNumber(saved?.xp, 0);
       state.assignedSouls = sanitizeLevel(saved?.assignedSouls);
+      state.autoAssignPercent = this.sanitizeAutoAssignPercent(saved?.autoAssignPercent);
     });
+    this.rebalanceAutoAssignPercents();
     this.rebalanceAssignedSouls();
     this.syncAllBonusLevels();
     this.refreshUnlocked();
@@ -95,13 +98,19 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     const researches: Partial<DarkResearchSaveData["researches"]> = {};
     DARK_RESEARCH_IDS.forEach((id) => {
       const state = this.getRuntimeState(id);
-      if (state.level <= 0 && state.xp <= 0 && state.assignedSouls <= 0) {
+      if (
+        state.level <= 0 &&
+        state.xp <= 0 &&
+        state.assignedSouls <= 0 &&
+        state.autoAssignPercent <= 0
+      ) {
         return;
       }
       researches[id] = {
         level: state.level > 0 ? state.level : undefined,
         xp: state.xp > 0 ? state.xp : undefined,
         assignedSouls: state.assignedSouls > 0 ? state.assignedSouls : undefined,
+        autoAssignPercent: state.autoAssignPercent > 0 ? state.autoAssignPercent : undefined,
       };
     });
 
@@ -129,6 +138,9 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     const xpMultiplier = this.getSoulXpMultiplier();
     const seconds = clampedDeltaMs / 1000;
     let changed = unlockedChanged;
+
+    const autoAssigned = this.applyAutoAssignTargets();
+    changed = changed || autoAssigned;
 
     DARK_RESEARCH_IDS.forEach((id) => {
       const state = this.getRuntimeState(id);
@@ -199,6 +211,17 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     const target = this.getRuntimeState(id);
     const next = target.assignedSouls + Math.floor(delta);
     this.setAssignedSouls(id, next);
+  }
+
+  public setAutoAssignPercent(id: DarkResearchId, percent: number): void {
+    if (!this.unlocked) {
+      return;
+    }
+    const target = this.getRuntimeState(id);
+    const sanitized = this.sanitizeAutoAssignPercent(percent);
+    const maxForResearch = this.getMaxAutoAssignPercentFor(id);
+    target.autoAssignPercent = Math.min(sanitized, maxForResearch);
+    this.pushState();
   }
 
   private getSoulXpMultiplier(): number {
@@ -277,6 +300,68 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     });
   }
 
+  private sanitizeAutoAssignPercent(value: unknown): number {
+    const sanitized = Math.floor(sanitizeNonNegativeNumber(value, 0));
+    return Math.max(0, Math.min(100, sanitized));
+  }
+
+  private getAutoAssignPercentTotal(exceptId?: DarkResearchId): number {
+    let total = 0;
+    DARK_RESEARCH_IDS.forEach((id) => {
+      if (exceptId && id === exceptId) {
+        return;
+      }
+      total += this.getRuntimeState(id).autoAssignPercent;
+    });
+    return total;
+  }
+
+  private getMaxAutoAssignPercentFor(id: DarkResearchId): number {
+    return Math.max(0, 100 - this.getAutoAssignPercentTotal(id));
+  }
+
+  private rebalanceAutoAssignPercents(): void {
+    let remaining = 100;
+    DARK_RESEARCH_IDS.forEach((id) => {
+      const state = this.getRuntimeState(id);
+      const autoAssignPercent = Math.max(0, Math.min(state.autoAssignPercent, remaining));
+      state.autoAssignPercent = autoAssignPercent;
+      remaining -= autoAssignPercent;
+    });
+  }
+
+  private applyAutoAssignTargets(): boolean {
+    let freeSouls = this.getFreeSouls();
+    if (freeSouls <= 0 || this.totalSouls <= 0) {
+      return false;
+    }
+
+    let changed = false;
+    DARK_RESEARCH_IDS.forEach((id) => {
+      if (freeSouls <= 0) {
+        return;
+      }
+
+      const state = this.getRuntimeState(id);
+      if (state.autoAssignPercent <= 0) {
+        return;
+      }
+
+      const targetAssigned = Math.floor((this.totalSouls * state.autoAssignPercent) / 100);
+      const deficit = targetAssigned - state.assignedSouls;
+      if (deficit <= 0) {
+        return;
+      }
+
+      const assignedDelta = Math.min(deficit, freeSouls);
+      state.assignedSouls += assignedDelta;
+      freeSouls -= assignedDelta;
+      changed = changed || assignedDelta > 0;
+    });
+
+    return changed;
+  }
+
   private parseSaveData(data: unknown): DarkResearchSaveData {
     if (!data || typeof data !== "object") {
       return {};
@@ -299,6 +384,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
       maxXp: calculateMaxXpForLevel(config, runtime.level),
       xpPerSecond,
       assignedSouls: runtime.assignedSouls,
+      autoAssignPercent: runtime.autoAssignPercent,
       bonusEffects: this.bonuses.getBonusEffects(this.getBonusSourceId(id)),
     };
   }
