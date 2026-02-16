@@ -26,6 +26,7 @@ export const sanitizeRuntimeModifiers = (
   attackStackBonusPerHit: Math.max(modifiers?.attackStackBonusPerHit ?? 0, 0),
   attackStackBonusCap: Math.max(modifiers?.attackStackBonusCap ?? 0, 0),
   knockBackReduction: Math.max(modifiers?.knockBackReduction ?? 1, 1),
+  soulDropChanceBonus: Math.max(modifiers?.soulDropChanceBonus ?? 0, 0),
 });
 
 /**

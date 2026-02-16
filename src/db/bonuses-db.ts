@@ -25,7 +25,9 @@ export const BONUS_IDS = [
   "spell_power",
   "crafting_speed_mult",
   "crafting_overdrive_max",
-  "building_cost_multiplier"
+  "building_cost_multiplier",
+  "soul_drop_chance_add",
+  "dark_research_xp_multiplier"
 ] as const;
 
 export type BonusId = (typeof BONUS_IDS)[number];
@@ -131,6 +133,16 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
   building_cost_multiplier: {
     id: "building_cost_multiplier",
     name: "Building Cost Multiplier",
+    defaultValue: 1,
+  },
+  soul_drop_chance_add: {
+    id: "soul_drop_chance_add",
+    name: "Soul Drop Chance Bonus",
+    defaultValue: 0,
+  },
+  dark_research_xp_multiplier: {
+    id: "dark_research_xp_multiplier",
+    name: "Dark Research XP Multiplier",
     defaultValue: 1,
   }
 };

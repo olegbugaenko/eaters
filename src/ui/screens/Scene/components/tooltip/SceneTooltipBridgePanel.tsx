@@ -11,6 +11,11 @@ import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useLocalization } from "@ui/shared/useLocalization";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { createTargetTooltip } from "./createTargetTooltip";
+import {
+  DARK_RESEARCH_STATE_BRIDGE_KEY,
+  DEFAULT_DARK_RESEARCH_STATE,
+} from "@logic/modules/camp/dark-research/dark-research.const";
+import type { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
 
 const EMPTY_TARGET: TargetSnapshot<
@@ -46,6 +51,11 @@ export const SceneTooltipBridgePanel: React.FC<
     UNIT_DESIGNER_STATE_BRIDGE_KEY,
     EMPTY_UNIT_DESIGNER_STATE,
   );
+  const darkResearchState = useBridgeValue(
+    bridge,
+    DARK_RESEARCH_STATE_BRIDGE_KEY,
+    DEFAULT_DARK_RESEARCH_STATE as DarkResearchBridgeState,
+  );
   const bridgeContent = useMemo(() => {
     if (!target) return null;
     let playerUnitDisplayName: string | null = null;
@@ -58,8 +68,10 @@ export const SceneTooltipBridgePanel: React.FC<
         ? design.name
         : getPlayerUnitConfig(unit.type).name;
     }
-    return createTargetTooltip(target, t, playerUnitDisplayName);
-  }, [target, t, unitDesignerState.units]);
+    return createTargetTooltip(target, t, playerUnitDisplayName, {
+      darkResearchUnlocked: darkResearchState.unlocked,
+    });
+  }, [target, t, unitDesignerState.units, darkResearchState.unlocked]);
   const content = contentOverride ?? bridgeContent;
 
   return <SceneTooltipPanel content={content} />;

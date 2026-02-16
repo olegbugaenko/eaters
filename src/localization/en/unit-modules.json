@@ -4,6 +4,11 @@
     "description": "Filamented feelers thrum with occult magnetism, drawing extra shards from every shattered brick your creature claims.",
     "bonusLabel": "Brick reward multiplier"
   },
+  "soulMagnet": {
+    "name": "Soul Magnet",
+    "description": "A soul-attuned gland tugs loose remnants from fallen foes, increasing the chance to extract souls after a kill.",
+    "bonusLabel": "Soul drop chance bonus"
+  },
   "perforator": {
     "name": "Rending Tentacles",
     "description": "Whip-like limbs tear through targets so the force bleeds into adjacent masonry, weakening the formation around the strike.",

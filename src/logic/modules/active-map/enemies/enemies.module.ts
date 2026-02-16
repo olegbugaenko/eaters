@@ -98,6 +98,7 @@ export class EnemiesModule implements GameModule {
   private readonly movement: MovementService;
   private readonly resources: EnemiesModuleOptions["resources"];
   private readonly bonuses: BonusesModule;
+  private readonly darkResearch?: EnemiesModuleOptions["darkResearch"];
   private readonly targeting?: TargetingService;
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
@@ -129,6 +130,7 @@ export class EnemiesModule implements GameModule {
     this.movement = options.movement;
     this.resources = options.resources;
     this.bonuses = options.bonuses;
+    this.darkResearch = options.darkResearch;
     this.targeting = options.targeting;
     this.damage = options.damage;
     this.explosions = options.explosions;
@@ -543,6 +545,13 @@ export class EnemiesModule implements GameModule {
         this.resources.grantResources(rewards);
       }
     }
+
+    const soulDropChance = this.darkResearch?.getSoulDropChance() ?? 0;
+    const canDropSouls = enemy.moveSpeed > 0 && (enemy.soulReward ?? 0) > 0;
+    if (canDropSouls && soulDropChance > 0 && Math.random() <= soulDropChance) {
+      this.darkResearch?.addSoulsFromEnemyKill(enemy.soulReward ?? 0, enemy.level);
+    }
+
     this.scene.removeObject(enemy.sceneObjectId);
     this.movement.removeBody(enemy.movementId);
     this.enemies.delete(enemy.id);

@@ -98,6 +98,8 @@ import type {
   PlayerUnitSaveData,
 } from "./player-units.types";
 
+const SOUL_MAGNET_BONUS_SOURCE_ID = "runtime_player_units_soul_magnet";
+
 
 export class PlayerUnitsModule implements GameModule {
   public readonly id = "playerUnits";
@@ -144,6 +146,11 @@ export class PlayerUnitsModule implements GameModule {
     this.bridge = options.bridge;
     this.movement = options.movement;
     this.bonuses = options.bonuses;
+    this.bonuses.registerSource(SOUL_MAGNET_BONUS_SOURCE_ID, {
+      soul_drop_chance_add: {
+        income: (level) => this.getSoulMagnetBonusByLevel(level),
+      },
+    });
     this.explosions = options.explosions;
     this.statusEffects = options.statusEffects;
     const targeting = options.targeting ?? new TargetingService();
@@ -469,6 +476,7 @@ export class PlayerUnitsModule implements GameModule {
       state.attackStackBonusPerHit,
       state.attackStackBonusCap,
     );
+    this.syncSoulMagnetBonusSource();
     this.pushStats();
   }
 
@@ -530,6 +538,7 @@ export class PlayerUnitsModule implements GameModule {
     });
 
     this.abilities.resetRun();
+    this.syncSoulMagnetBonusSource();
     this.pushStats();
   }
 
@@ -942,6 +951,7 @@ export class PlayerUnitsModule implements GameModule {
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.arcs?.clearArcsForUnit(unit.id);
+    this.syncSoulMagnetBonusSource();
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
@@ -959,6 +969,27 @@ export class PlayerUnitsModule implements GameModule {
     this.unitOrder = [];
     this.units.clear();
     this.abilities.resetRun();
+    this.syncSoulMagnetBonusSource();
+  }
+
+
+  private getSoulMagnetBonusByLevel(level: number): number {
+    if (level <= 0) {
+      return 0;
+    }
+    const config = getUnitModuleConfig("soulMagnet");
+    return Math.max(0, config.baseBonusValue + config.bonusPerLevel * Math.max(level - 1, 0));
+  }
+
+  private syncSoulMagnetBonusSource(): void {
+    let maxLevel = 0;
+    this.unitOrder.forEach((unit) => {
+      const level = unit.moduleLevels?.soulMagnet ?? 0;
+      if (level > maxLevel) {
+        maxLevel = level;
+      }
+    });
+    this.bonuses.setBonusCurrentLevel(SOUL_MAGNET_BONUS_SOURCE_ID, maxLevel);
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {

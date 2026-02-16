@@ -111,6 +111,7 @@ const createEnemiesModuleWithDeps = (
       damage: options.damage,
       explosions: options.explosions,
       projectiles: options.projectiles,
+      darkResearch: options.darkResearch,
       obstacles,
       pathfinder,
     }),
@@ -213,6 +214,70 @@ describe("EnemiesModule", () => {
     assert.strictEqual(rewards.length, 1, "expected resources to be granted");
     assert(hasAnyResources(rewards[0]), "expected granted resources to be non-empty");
   });
+  test("awards souls for moving enemies when drop chance succeeds", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    const soulDrops: Array<{ base: number; level: number }> = [];
+    const darkResearch = {
+      getSoulDropChance: () => 1,
+      addSoulsFromEnemyKill: (base: number, level: number) => {
+        soulDrops.push({ base, level });
+      },
+    } as unknown as EnemiesModuleOptions["darkResearch"];
+
+    const { module } = createEnemiesModuleWithDeps({ runState, darkResearch });
+
+    module.setEnemies([
+      {
+        ...createEnemySpawnData(),
+        type: "basicEnemy",
+        position: { x: 0, y: 0 },
+        hp: 1,
+      },
+    ]);
+
+    const [enemy] = module.getEnemies();
+    assert(enemy);
+    module.applyDamage(enemy.id, 999, { armorPenetration: 999 });
+
+    assert.strictEqual(soulDrops.length, 1);
+    const firstDrop = soulDrops[0];
+    assert(firstDrop);
+    assert.strictEqual(firstDrop.base, 1.5);
+    assert.strictEqual(firstDrop.level, 1);
+  });
+
+  test("does not award souls for static enemies", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    let soulDropCalls = 0;
+    const darkResearch = {
+      getSoulDropChance: () => 1,
+      addSoulsFromEnemyKill: () => {
+        soulDropCalls += 1;
+      },
+    } as unknown as EnemiesModuleOptions["darkResearch"];
+
+    const { module } = createEnemiesModuleWithDeps({ runState, darkResearch });
+
+    module.setEnemies([
+      {
+        ...createEnemySpawnData(),
+        type: "turretEnemy",
+        position: { x: 0, y: 0 },
+        hp: 1,
+      },
+    ]);
+
+    const [enemy] = module.getEnemies();
+    assert(enemy);
+    module.applyDamage(enemy.id, 999, { armorPenetration: 999 });
+
+    assert.strictEqual(soulDropCalls, 0);
+  });
+
 
   test("attacks nearby units via damage service and spawns explosions", () => {
     const scene = new SceneObjectManager();
@@ -260,6 +325,7 @@ describe("EnemiesModule", () => {
         critChance: 0,
         critMultiplier: 1,
         rewardMultiplier: 1,
+        soulDropChanceBonus: 0,
         damageTransferPercent: 0,
         damageTransferRadius: 0,
         attackStackBonusPerHit: 0,
