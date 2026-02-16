@@ -24,14 +24,14 @@ const quiet = args.includes("--quiet");
 
 const parseLanguageCodesFromDb = () => {
   const source = fs.readFileSync(LANG_DB_PATH, "utf8");
-  const match = source.match(/LANGUAGE_CODES\s*=\s*\[([^\]]+)\]/m);
+  const match = source.match(/LANGUAGES_DB(?:\s*:[^=]+)?\s*=\s*\[([\s\S]*?)\]\s*as const/m);
   if (!match) {
-    throw new Error(`Unable to find LANGUAGE_CODES in ${LANG_DB_PATH}`);
+    throw new Error(`Unable to find LANGUAGES_DB in ${LANG_DB_PATH}`);
   }
-  const body = match[1];
-  const codes = [...body.matchAll(/"([a-z]{2})"/g)].map((m) => m[1]);
+  const body = match[1].replace(/\/\*([\s\S]*?)\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const codes = [...body.matchAll(/code:\s*"([a-z]{2})"/g)].map((m) => m[1]);
   if (codes.length === 0) {
-    throw new Error(`No language codes found in LANGUAGE_CODES at ${LANG_DB_PATH}`);
+    throw new Error(`No language codes found in LANGUAGES_DB at ${LANG_DB_PATH}`);
   }
   return codes;
 };

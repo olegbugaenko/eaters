@@ -26,5 +26,9 @@
   "throughput_regulator": {
     "name": "Throughput Regulator",
     "description": "Install precise regulators to safely drive fabrication lines beyond standard tolerances."
+  },
+  "hunger_monument": {
+    "name": "Monument of Hunger",
+    "description": "Raise a monument that amplifies the colony's predatory instinct, increasing all unit attack."
   }
 }
