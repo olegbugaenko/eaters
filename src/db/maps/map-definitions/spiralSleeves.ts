@@ -133,7 +133,7 @@ const mapConfig = (() => {
           level: baseLevel+2,
           position: { x: 1100, y: 1300 },
         } satisfies EnemySpawnData,
-
+        /*
         {
           type: "plasmaBeamTurretEnemy",
           level: baseLevel + 1,
@@ -149,6 +149,7 @@ const mapConfig = (() => {
           level: baseLevel+1,
           position: { x: 1150, y: 1250 },
         } satisfies EnemySpawnData,
+        */
       ];
     },
     playerUnits: [

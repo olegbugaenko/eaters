@@ -25,7 +25,7 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     name: "Dark Armor",
     description: "Infuse your brood with abyssal shell plating. Grants +1% armor per level.",
     icon: "armor4.png",
-    maxXpPerLevelBase: 120,
+    maxXpPerLevelBase: 100,
     xpPowerBase: 0.2,
     effects: {
       all_units_armor_multiplier: {
@@ -39,7 +39,7 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     description: "Harden creature vitality against void pressure. Grants +1% HP per level.",
     icon: "health_4.png",
     maxXpPerLevelBase: 100,
-    xpPowerBase: 0.22,
+    xpPowerBase: 0.2,
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.01 * level,
@@ -51,8 +51,8 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     name: "Greediness",
     description: "Train scavengers to recover richer shards. Grants +1% brick rewards per level.",
     icon: "resource_gain_4.png",
-    maxXpPerLevelBase: 140,
-    xpPowerBase: 0.18,
+    maxXpPerLevelBase: 100,
+    xpPowerBase: 0.2,
     effects: {
       brick_rewards: {
         multiplier: (level) => 1 + 0.01 * level,
@@ -64,8 +64,8 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     name: "Bite of Void",
     description: "Sharpen every strike with a null-space edge. Grants +1% damage per level.",
     icon: "attack_5.png",
-    maxXpPerLevelBase: 130,
-    xpPowerBase: 0.21,
+    maxXpPerLevelBase: 100,
+    xpPowerBase: 0.2,
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.01 * level,
