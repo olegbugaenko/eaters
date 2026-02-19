@@ -1,6 +1,7 @@
 export interface GraphicsSettings {
   brickHitParticles: boolean;
   brickDestroyParticles: boolean;
+  explosionStarburst: boolean;
 }
 
 export type GraphicsSettingKey = keyof GraphicsSettings;
@@ -10,6 +11,7 @@ export const GRAPHICS_SETTINGS_STORAGE_KEY = "voidcamp-graphics-settings";
 export const DEFAULT_GRAPHICS_SETTINGS: GraphicsSettings = Object.freeze({
   brickHitParticles: true,
   brickDestroyParticles: true,
+  explosionStarburst: true,
 });
 
 export const parseStoredGraphicsSettings = (value: unknown): GraphicsSettings => {
@@ -26,6 +28,10 @@ export const parseStoredGraphicsSettings = (value: unknown): GraphicsSettings =>
       typeof record.brickDestroyParticles === "boolean"
         ? record.brickDestroyParticles
         : DEFAULT_GRAPHICS_SETTINGS.brickDestroyParticles,
+    explosionStarburst:
+      typeof record.explosionStarburst === "boolean"
+        ? record.explosionStarburst
+        : DEFAULT_GRAPHICS_SETTINGS.explosionStarburst,
   };
 };
 
@@ -58,6 +64,7 @@ export const persistGraphicsSettings = (settings: GraphicsSettings): void => {
       JSON.stringify({
         brickHitParticles: Boolean(settings.brickHitParticles),
         brickDestroyParticles: Boolean(settings.brickDestroyParticles),
+        explosionStarburst: Boolean(settings.explosionStarburst),
       })
     );
   } catch (error) {
@@ -71,4 +78,5 @@ export const mergeGraphicsSettings = (
 ): GraphicsSettings => ({
   brickHitParticles: patch.brickHitParticles ?? base.brickHitParticles,
   brickDestroyParticles: patch.brickDestroyParticles ?? base.brickDestroyParticles,
+  explosionStarburst: patch.explosionStarburst ?? base.explosionStarburst,
 });

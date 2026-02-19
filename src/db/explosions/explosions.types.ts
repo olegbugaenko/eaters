@@ -1,4 +1,5 @@
 import type {
+  SceneColor,
   SceneFillFilaments,
   SceneFillNoise,
   SceneGradientStop,
@@ -56,10 +57,26 @@ export interface ExplosionWaveConfig {
   filaments?: SceneFillFilaments;
 }
 
+
+export interface ExplosionStarburstConfig {
+  enabled?: boolean;
+  color: SceneColor;
+  spikeCount: number;
+  spikeLength: { min: number; max: number };
+  spikeWidth: { min: number; max: number };
+  angleJitterDeg?: number;
+  lengthJitter?: number;
+  widthJitter?: number;
+  lifetimeMs: number;
+  fadeStartMs?: number;
+  growSizeMult?: number;
+}
+
 export interface ExplosionConfig {
   lifetimeMs: number;
   defaultInitialRadius: number;
   waves: readonly ExplosionWaveConfig[];
   emitter: ParticleEmitterConfig;
+  starburst?: ExplosionStarburstConfig;
   soundEffectUrl?: string;
 }

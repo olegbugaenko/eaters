@@ -57,6 +57,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const musicVolumeId = useId();
   const brickHitParticlesId = useId();
   const brickDestroyParticlesId = useId();
+  const explosionStarburstId = useId();
 
   const handleBackdropClick = useCallback(() => {
     onClose();
@@ -247,7 +248,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <section className="settings-modal__section">
               <h3 className="settings-modal__section-title">{t("settings.sections.graphics.title", "Graphical Effects")}</h3>
               <p className="settings-modal__description">
-                {t("settings.sections.graphics.description", "Control the particle effects for brick impacts and destruction.")}
+                {t("settings.sections.graphics.description", "Control the particle effects for brick impacts, destruction, and explosion starbursts.")}
               </p>
               <div className="settings-modal__toggles">
                 <label className="settings-modal__toggle" htmlFor={brickHitParticlesId}>
@@ -271,6 +272,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     }
                   />
                   {t("settings.graphics.showBrickDestroyParticles", "Show brick destruction particles")}
+                </label>
+                <label className="settings-modal__toggle" htmlFor={explosionStarburstId}>
+                  <input
+                    id={explosionStarburstId}
+                    type="checkbox"
+                    checked={graphicsSettings.explosionStarburst}
+                    onChange={(event) =>
+                      onGraphicsSettingChange("explosionStarburst", event.target.checked)
+                    }
+                  />
+                  {t("settings.graphics.showExplosionStarburst", "Show explosion starburst")}
                 </label>
               </div>
             </section>

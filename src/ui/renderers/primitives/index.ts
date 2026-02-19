@@ -41,3 +41,8 @@ export {
   type BulletVisualConfig,
   type BulletSlotHandle,
 } from "./gpu/bullet";
+
+export {
+  starburstGpuRenderer,
+  type StarburstSlotHandle,
+} from "./gpu/starburst";

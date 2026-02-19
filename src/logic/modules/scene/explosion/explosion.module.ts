@@ -18,6 +18,7 @@ import {
   updateWaveFill,
   createEmitterCustomData,
   computeEffectLifetime,
+  createStarburstCustomData,
 } from "./explosion.helpers";
 import { clamp01, clampNumber, lerp } from "@shared/helpers/numbers.helper";
 import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
@@ -161,12 +162,16 @@ export class ExplosionModule implements GameModule {
           config,
           Math.max(baseInitialRadius, maxInitialOuterRadius)
         );
-    const effectLifetimeMs = computeEffectLifetime(config, emitter);
+    const starburst = graphicsSettings.explosionStarburst
+      ? createStarburstCustomData(config.starburst)
+      : undefined;
+    const effectLifetimeMs = computeEffectLifetime(config, emitter, starburst);
     const waveLifetimeMs = Math.max(1, config.lifetimeMs);
 
     const customData: ExplosionRendererCustomData = {
       waveLifetimeMs,
       emitter,
+      starburst,
     };
 
     const waves: WaveState[] = waveTemplates.map((wave: WaveTemplate, index: number) => {

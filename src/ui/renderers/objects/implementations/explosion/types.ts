@@ -1,12 +1,13 @@
 import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
-import type { SceneObjectInstance } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { ParticleEmitterBaseConfig } from "../../../primitives/ParticleEmitterPrimitive";
+import type { ExplosionStarburstRendererConfig } from "../../../../../logic/modules/scene/explosion/explosion.types";
 
 export interface ExplosionRendererCustomData {
   waveLifetimeMs?: number;
   emitter?: ParticleEmitterConfig;
   startAlpha?: number;
   endAlpha?: number;
+  starburst?: ExplosionStarburstRendererConfig;
 }
 
 export type ExplosionEmitterRenderConfig = ParticleEmitterBaseConfig & {

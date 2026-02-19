@@ -5,7 +5,7 @@ import type {
   SceneGradientStop,
   SceneRadialGradientFill,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { ExplosionConfig } from "../../../../db/explosions-db";
+import { ExplosionConfig, type ExplosionStarburstConfig } from "../../../../db/explosions-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import {
   cloneSceneFill,
@@ -18,7 +18,7 @@ import {
 } from "@shared/helpers/scene-style.helper";
 import { sanitizeAngle, sanitizeArc } from "../../../../shared/helpers/angle.helper";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
-import type { WaveState } from "./explosion.types";
+import type { ExplosionStarburstRendererConfig, WaveState } from "./explosion.types";
 
 export const createReusableWaveFill = (
   gradientStops: readonly SceneGradientStop[],
@@ -172,16 +172,47 @@ export const createEmitterCustomData = (
   };
 };
 
+export const createStarburstCustomData = (
+  starburst: ExplosionStarburstConfig | undefined
+): ExplosionStarburstRendererConfig | undefined => {
+  if (!starburst || starburst.enabled === false) {
+    return undefined;
+  }
+
+  const spikeLengthMin = Math.max(0, starburst.spikeLength.min);
+  const spikeLengthMax = Math.max(spikeLengthMin, starburst.spikeLength.max);
+  const spikeWidthMin = Math.max(0, starburst.spikeWidth.min);
+  const spikeWidthMax = Math.max(spikeWidthMin, starburst.spikeWidth.max);
+  const spikeCount = Math.max(1, Math.round(starburst.spikeCount));
+  const lifetimeMs = Math.max(1, starburst.lifetimeMs);
+
+  return {
+    enabled: true,
+    color: cloneSceneColor(starburst.color),
+    spikeCount,
+    spikeLength: { min: spikeLengthMin, max: spikeLengthMax },
+    spikeWidth: { min: spikeWidthMin, max: spikeWidthMax },
+    angleJitterRad: clampNumber(starburst.angleJitterDeg ?? 0, 0, 360) * (Math.PI / 180),
+    lengthJitter: clampNumber(starburst.lengthJitter ?? 0, 0, 1),
+    widthJitter: clampNumber(starburst.widthJitter ?? 0, 0, 1),
+    lifetimeMs,
+    fadeStartMs: clampNumber(starburst.fadeStartMs ?? lifetimeMs * 0.6, 0, lifetimeMs),
+    growSizeMult: clampNumber(starburst.growSizeMult ?? 1, 0.0001, 10),
+    seed: Math.random() * 100_000,
+  };
+};
+
 export const computeEffectLifetime = (
   config: ExplosionConfig,
-  emitter: ParticleEmitterConfig | undefined
+  emitter: ParticleEmitterConfig | undefined,
+  starburst: ExplosionStarburstRendererConfig | undefined
 ): number => {
   const waveLifetime = Math.max(1, config.lifetimeMs);
-  if (!emitter) {
-    return waveLifetime;
-  }
-  const emitterLifetime = (emitter.emissionDurationMs ?? 0) + emitter.particleLifetimeMs;
-  return Math.max(waveLifetime, emitterLifetime);
+  const emitterLifetime = emitter
+    ? (emitter.emissionDurationMs ?? 0) + emitter.particleLifetimeMs
+    : 0;
+  const starburstLifetime = starburst?.lifetimeMs ?? 0;
+  return Math.max(waveLifetime, emitterLifetime, starburstLifetime);
 };
 
 export const computeEmitterMaxParticles = (
