@@ -70,6 +70,10 @@ export interface ExplosionStarburstConfig {
   lifetimeMs: number;
   fadeStartMs?: number;
   growSizeMult?: number;
+  /** 0 = hard edges, 1 = very soft gaussian blur. Default 0.35. */
+  edgeSoftness?: number;
+  /** Rotation speed in degrees per second. Default 0. */
+  rotationDegPerSec?: number;
 }
 
 export interface ExplosionConfig {

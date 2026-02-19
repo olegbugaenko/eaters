@@ -199,6 +199,8 @@ export const createStarburstCustomData = (
     fadeStartMs: clampNumber(starburst.fadeStartMs ?? lifetimeMs * 0.6, 0, lifetimeMs),
     growSizeMult: clampNumber(starburst.growSizeMult ?? 1, 0.0001, 10),
     seed: Math.random() * 100_000,
+    edgeSoftness: clampNumber(starburst.edgeSoftness ?? 0.35, 0, 1),
+    rotationRadPerSec: (starburst.rotationDegPerSec ?? 0) * (Math.PI / 180),
   };
 };
 

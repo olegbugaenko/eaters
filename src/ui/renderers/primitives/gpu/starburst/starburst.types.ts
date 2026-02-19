@@ -15,6 +15,8 @@ export interface StarburstInstance {
   growSizeMult: number;
   fadeStartMs: number;
   seed: number;
+  edgeSoftness: number;
+  rotationRadPerSec: number;
   color: SceneColor;
 }
 
@@ -28,18 +30,10 @@ export interface StarburstSharedResources {
   attributes: {
     unitPosition: number;
     position: number;
-    age: number;
-    lifetime: number;
-    isActive: number;
-    spikeCount: number;
-    spikeLength: number;
-    spikeWidth: number;
-    angleJitterRad: number;
-    lengthJitter: number;
-    widthJitter: number;
-    growSizeMult: number;
-    fadeStartMs: number;
-    seed: number;
+    timeActive: number;
+    spikeGeom: number;
+    jitterGrow: number;
+    softRot: number;
     color: number;
   };
   uniforms: {

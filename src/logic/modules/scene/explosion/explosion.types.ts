@@ -66,6 +66,8 @@ export interface ExplosionStarburstRendererConfig {
   fadeStartMs: number;
   growSizeMult: number;
   seed: number;
+  edgeSoftness: number;
+  rotationRadPerSec: number;
 }
 
 export interface ExplosionRendererCustomData {

@@ -63,18 +63,10 @@ class StarburstGpuRenderer extends GpuBatchRenderer<StarburstInstance, Starburst
       attributes: {
         unitPosition: gl.getAttribLocation(program, "a_unitPosition"),
         position: gl.getAttribLocation(program, "a_position"),
-        age: gl.getAttribLocation(program, "a_age"),
-        lifetime: gl.getAttribLocation(program, "a_lifetime"),
-        isActive: gl.getAttribLocation(program, "a_isActive"),
-        spikeCount: gl.getAttribLocation(program, "a_spikeCount"),
-        spikeLength: gl.getAttribLocation(program, "a_spikeLength"),
-        spikeWidth: gl.getAttribLocation(program, "a_spikeWidth"),
-        angleJitterRad: gl.getAttribLocation(program, "a_angleJitterRad"),
-        lengthJitter: gl.getAttribLocation(program, "a_lengthJitter"),
-        widthJitter: gl.getAttribLocation(program, "a_widthJitter"),
-        growSizeMult: gl.getAttribLocation(program, "a_growSizeMult"),
-        fadeStartMs: gl.getAttribLocation(program, "a_fadeStartMs"),
-        seed: gl.getAttribLocation(program, "a_seed"),
+        timeActive: gl.getAttribLocation(program, "a_timeActive"),
+        spikeGeom: gl.getAttribLocation(program, "a_spikeGeom"),
+        jitterGrow: gl.getAttribLocation(program, "a_jitterGrow"),
+        softRot: gl.getAttribLocation(program, "a_softRot"),
         color: gl.getAttribLocation(program, "a_color"),
       },
       uniforms: {
@@ -136,19 +128,11 @@ class StarburstGpuRenderer extends GpuBatchRenderer<StarburstInstance, Starburst
 
     const attrs = this.sharedResourcesExtended.attributes;
     bindAttribute(attrs.position, 2, 0);
-    bindAttribute(attrs.age, 1, 2);
-    bindAttribute(attrs.lifetime, 1, 3);
-    bindAttribute(attrs.isActive, 1, 4);
-    bindAttribute(attrs.spikeCount, 1, 5);
-    bindAttribute(attrs.spikeLength, 1, 6);
-    bindAttribute(attrs.spikeWidth, 1, 7);
-    bindAttribute(attrs.angleJitterRad, 1, 8);
-    bindAttribute(attrs.lengthJitter, 1, 9);
-    bindAttribute(attrs.widthJitter, 1, 10);
-    bindAttribute(attrs.growSizeMult, 1, 11);
-    bindAttribute(attrs.fadeStartMs, 1, 12);
-    bindAttribute(attrs.seed, 1, 13);
-    bindAttribute(attrs.color, 4, 14);
+    bindAttribute(attrs.timeActive, 4, 2);
+    bindAttribute(attrs.spikeGeom, 4, 6);
+    bindAttribute(attrs.jitterGrow, 4, 10);
+    bindAttribute(attrs.softRot, 2, 14);
+    bindAttribute(attrs.color, 4, 16);
 
     gl.bindVertexArray(null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -191,6 +175,9 @@ class StarburstGpuRenderer extends GpuBatchRenderer<StarburstInstance, Starburst
       return;
     }
 
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE);
+
     if (this.sharedResourcesExtended.uniforms.cameraPosition) {
       gl.uniform2f(
         this.sharedResourcesExtended.uniforms.cameraPosition,
@@ -205,6 +192,21 @@ class StarburstGpuRenderer extends GpuBatchRenderer<StarburstInstance, Starburst
         viewportSize.height
       );
     }
+  }
+
+  public override render(
+    gl: WebGL2RenderingContext,
+    cameraPosition: SceneVector2,
+    viewportSize: SceneSize,
+    timestampMs: number
+  ): void {
+    super.render(gl, cameraPosition, viewportSize, timestampMs);
+    gl.blendFuncSeparate(
+      gl.SRC_ALPHA,
+      gl.ONE_MINUS_SRC_ALPHA,
+      gl.ONE,
+      gl.ONE_MINUS_SRC_ALPHA
+    );
   }
 
   protected getInstanceFloats(): number {

@@ -143,6 +143,8 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
       const lengthJitter = Math.max(0, starburstConfig?.lengthJitter ?? 0);
       const widthJitter = Math.max(0, starburstConfig?.widthJitter ?? 0);
       const seed = starburstConfig?.seed ?? Math.random() * 100_000;
+      const edgeSoftness = Math.max(0, starburstConfig?.edgeSoftness ?? 0.35);
+      const rotationRadPerSec = starburstConfig?.rotationRadPerSec ?? 0;
       const color = starburstConfig?.color ?? { r: 1, g: 1, b: 1, a: 0.65 };
 
       let lastTs =
@@ -197,6 +199,8 @@ export class ExplosionObjectRenderer extends ObjectRenderer {
             growSizeMult,
             fadeStartMs,
             seed,
+            edgeSoftness,
+            rotationRadPerSec,
             color,
           };
 
