@@ -7,6 +7,7 @@ export type {
   ExplosionConfig,
   ExplosionType,
   ExplosionWaveConfig,
+  ExplosionStarburstConfig,
 } from "./explosions.types";
 export { createSimpleWave } from "./explosions.helpers";
 export { BRICK_EXPLOSIONS } from "./explosions.bricks";

@@ -52,9 +52,28 @@ export interface SpawnExplosionByTypeOptions {
   initialRadius?: number;
 }
 
+
+export interface ExplosionStarburstRendererConfig {
+  enabled: boolean;
+  color: SceneColor;
+  spikeCount: number;
+  spikeLength: { min: number; max: number };
+  spikeWidth: { min: number; max: number };
+  angleJitterRad: number;
+  lengthJitter: number;
+  widthJitter: number;
+  lifetimeMs: number;
+  fadeStartMs: number;
+  growSizeMult: number;
+  seed: number;
+  edgeSoftness: number;
+  rotationRadPerSec: number;
+}
+
 export interface ExplosionRendererCustomData {
   waveLifetimeMs?: number;
   emitter?: ParticleEmitterConfig;
   startAlpha?: number;
   endAlpha?: number;
+  starburst?: ExplosionStarburstRendererConfig;
 }

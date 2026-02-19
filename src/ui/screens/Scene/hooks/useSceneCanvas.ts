@@ -18,6 +18,7 @@ import {
   particleEmitterGpuRenderer,
 } from "@ui/renderers/primitives/gpu/particle-emitter";
 import { explosionWaveGpuRenderer } from "@ui/renderers/primitives/gpu/explosion-wave";
+import { starburstGpuRenderer } from "@ui/renderers/primitives/gpu/starburst";
 import { whirlGpuRenderer } from "@ui/renderers/primitives/gpu/whirl";
 import { renderFireRings, fireRingGpuRenderer } from "@ui/renderers/primitives/gpu/fire-ring";
 import {
@@ -405,6 +406,9 @@ export const useSceneCanvas = ({
         // Explosion waves - rendered separately (not via ParticleEmitter system)
         explosionWaveGpuRenderer.beforeRender(gl, timestamp);
         explosionWaveGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
+        // Starburst spikes for explosion cosmetics
+        starburstGpuRenderer.beforeRender(gl, timestamp);
+        starburstGpuRenderer.render(gl, cameraState.position, cameraState.viewportSize, timestamp);
         // Particle emitters (particles, not waves)
         particleEmitterGpuRenderer.beforeRender(gl, timestamp);
         particleEmitterGpuRenderer.render(
