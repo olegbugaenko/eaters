@@ -10,9 +10,11 @@ import {
   PLASMA_BEAM_WAVE_GRADIENT_STOPS,
   PLASMOID_WAVE_GRADIENT_STOPS,
   SMALL_ENERGETIC_WAVE_GRADIENT_STOPS,
+  TENTACLE_HIT_WAVE_GRADIENT_STOPS,
   WEAKEN_CURSE_WAVE_GRADIENT_STOPS,
 } from "./explosions.colors.const";
 import {
+  createSolidEmitterFill,
   CRITICAL_HIT_EMITTER,
   DEFAULT_EMITTER,
   GRAY_BRICK_EMITTER_FILL,
@@ -461,6 +463,35 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       },
       shape: "circle",
       radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  tentacleHit: {
+    lifetimeMs: 1_000,
+    defaultInitialRadius: 8,
+    waves: createSimpleWave({
+      defaultInitialRadius: 8,
+      radiusExtension: 22,
+      startAlpha: 0.7,
+      endAlpha: 0,
+      gradientStops: TENTACLE_HIT_WAVE_GRADIENT_STOPS,
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.12,
+      speedVariation: 0.06,
+      particlesPerSecond: 480,
+      particleLifetimeMs: 500,
+      fadeStartMs: 180,
+      sizeRange: { min: 0.8, max: 2.4 },
+      emissionDurationMs: 150,
+      spawnRadius: { min: 0, max: 5 },
+      spawnRadiusMultiplier: undefined,
+      color: { r: 0.35, g: 0.7, b: 1, a: 1 },
+      fill: createSolidEmitterFill({ r: 0.35, g: 0.7, b: 1, a: 1 }),
+      shape: "triangle",
+      radialVelocity: true,
+      alignToVelocity: true,
+      alignToVelocityFlip: true,
     },
   },
 };

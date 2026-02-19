@@ -21,6 +21,7 @@
 ### Активна карта та бойова логіка
 - [map.md](map.md)
 - [bricks.md](bricks.md)
+- [enemies.md](enemies.md)
 - [player-units.md](player-units.md)
 - [unit-automation.md](unit-automation.md)
 - [necromancer.md](necromancer.md)

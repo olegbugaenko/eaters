@@ -54,6 +54,7 @@ export const SKILL_IDS = [
   // "damage_lore",
   "improved_membranes",
   "hunger",
+  "muscles",
   "stone_drill",
   "stone_armor",
   "vitality",
@@ -810,6 +811,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { consiousness: 1 },
     cost: createStoneCost(2, 1.5),
+  },
+  muscles: {
+    id: "muscles",
+    name: "Muscles",
+    description:
+      "Strengthen the fibres that drive motion—your summons gain faster acceleration.",
+    nodePosition: { x: -2, y: -1 },
+    maxLevel: 5,
+    icon: "attack2.png",
+    effects: {
+      all_units_acceleration_multiplier: {
+        multiplier: (level) => 1 + 0.05 * level,
+      },
+    },
+    nodesRequired: { hunger: 2 },
+    cost: createStoneCost(16, 1.5),
   },
   granite_bonding: {
     id: "granite_bonding",

@@ -404,6 +404,42 @@ export class EnemiesModule implements GameModule {
     return nearest ? this.cloneState(nearest) : null;
   }
 
+  /**
+   * Like findNearestEnemy, but when the nearest enemy is a body with tentacles,
+   * prefers returning the closest segment — unless the click is closer to the
+   * body center than to any segment (so the body tooltip is still reachable).
+   */
+  public findNearestEnemyForInspection(position: SceneVector2): EnemyRuntimeState | null {
+    const nearest = this.spatialIndex.queryNearest(position, { maxLayers: 128 });
+    if (!nearest) return null;
+
+    const config = getEnemyConfig(nearest.type);
+    if (config.tentacles) {
+      const bodyDx = nearest.position.x - position.x;
+      const bodyDy = nearest.position.y - position.y;
+      const bodyDistSq = bodyDx * bodyDx + bodyDy * bodyDy;
+
+      let bestSegment: InternalEnemyState | null = null;
+      let bestDistSq = Infinity;
+      for (const [, seg] of this.enemies) {
+        if (seg.bodyEnemyId !== nearest.id) continue;
+        const dx = seg.position.x - position.x;
+        const dy = seg.position.y - position.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+          bestDistSq = distSq;
+          bestSegment = seg;
+        }
+      }
+
+      if (bestSegment && bestDistSq < bodyDistSq) {
+        return this.cloneState(bestSegment);
+      }
+    }
+
+    return this.cloneState(nearest);
+  }
+
   public findEnemiesNear(
     position: SceneVector2,
     radius: number,
@@ -427,6 +463,24 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.forEachInCircle(position, radius, (enemy) =>
       visitor(this.cloneState(enemy)),
     );
+  }
+
+  /**
+   * Lightweight collision query -- only yields position + physicalSize for
+   * enemies that have `blocksUnits: true` in their config. No state cloning.
+   */
+  public forEachBlockingCollider(
+    position: SceneVector2,
+    radius: number,
+    visitor: (collider: { position: SceneVector2; physicalSize: number }) => void,
+  ): void {
+    if (radius < 0) return;
+    this.spatialIndex.forEachInCircle(position, radius, (enemy) => {
+      const config = getEnemyConfig(enemy.type);
+      if (config.blocksUnits && enemy.physicalSize > 0) {
+        visitor({ position: enemy.position, physicalSize: enemy.physicalSize });
+      }
+    });
   }
 
   public applyDamage(
@@ -552,6 +606,10 @@ export class EnemiesModule implements GameModule {
       this.darkResearch?.addSoulsFromEnemyKill(enemy.soulReward ?? 0, enemy.level);
     }
 
+    const linkedIds = enemy.linkedEnemyIds;
+    const bodyEnemyId = enemy.bodyEnemyId;
+    const tentacleIndex = enemy.tentacleIndex;
+
     this.scene.removeObject(enemy.sceneObjectId);
     this.movement.removeBody(enemy.movementId);
     this.enemies.delete(enemy.id);
@@ -559,6 +617,53 @@ export class EnemiesModule implements GameModule {
     this.spatialIndex.delete(enemy.id);
     this.navigationState.delete(enemy.id);
     this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
+
+    if (linkedIds) {
+      for (const linkedId of linkedIds) {
+        const linked = this.enemies.get(linkedId);
+        if (linked) {
+          this.destroyEnemy(linked, rewardMultiplier);
+        }
+      }
+    }
+
+    if (bodyEnemyId !== undefined && tentacleIndex !== undefined) {
+      this.updateTentacleVisual(bodyEnemyId, tentacleIndex);
+    }
+  }
+
+  private updateTentacleVisual(bodyEnemyId: string, tentacleIndex: number): void {
+    const body = this.enemies.get(bodyEnemyId);
+    if (!body) return;
+
+    const config = getEnemyConfig(body.type);
+    if (!config.tentacles) return;
+
+    const tentacleCount = config.tentacles.spines.length;
+    const aliveSegments = new Array<number>(tentacleCount).fill(0);
+
+    for (const [, seg] of this.enemies) {
+      if (seg.bodyEnemyId !== bodyEnemyId || seg.tentacleIndex === undefined || seg.segmentIndex === undefined) {
+        continue;
+      }
+      const ti = seg.tentacleIndex;
+      if (ti >= 0 && ti < tentacleCount) {
+        aliveSegments[ti] = Math.max(aliveSegments[ti]!, seg.segmentIndex + 1);
+      }
+    }
+
+    this.scene.updateObject(body.sceneObjectId, {
+      position: body.position,
+      customData: {
+        renderer: config.renderer,
+        type: body.type,
+        level: body.level,
+        physicalSize: body.physicalSize,
+        tentacles: config.tentacles,
+        aliveSegments,
+        autoAnimate: true,
+      },
+    });
   }
 
   private applyEnemyRewardBonuses(rewards: ResourceStockpile): ResourceStockpile {
@@ -607,7 +712,10 @@ export class EnemiesModule implements GameModule {
       axis = { x: 0, y: -1 };
     }
 
-    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    const knockBackSpeed =
+      knockBackSpeedRaw > 0
+        ? knockBackSpeedRaw
+        : Math.max(0, knockBackDistance * 2);
     if (knockBackSpeed <= 0) {
       return;
     }
@@ -787,6 +895,7 @@ export class EnemiesModule implements GameModule {
     config: EnemyConfig,
   ): boolean {
     const toTarget = subtractVectors(target.position, enemy.position);
+    const fromTarget = subtractVectors(enemy.position, target.position);
 
     if (config.arcAttack) {
       const arcAttack = config.arcAttack;
@@ -830,9 +939,9 @@ export class EnemiesModule implements GameModule {
       }
       if (this.damage && chainDamage > 0) {
         const knockBackDirection =
-          vectorLength(toTarget) > 0
-            ? toTarget
-            : normalizeVector(toTarget) || { x: 1, y: 0 };
+          vectorLength(fromTarget) > 0
+            ? fromTarget
+            : normalizeVector(fromTarget) || { x: 1, y: 0 };
         if (isChain) {
           this.damage.applyTargetDamage(target.id, chainDamage, {
             ...arcAttack.damageOptions,
@@ -882,9 +991,9 @@ export class EnemiesModule implements GameModule {
       if (radius > 0) {
         const damageMultiplier = Math.max(explosionAttack.damageMultiplier ?? 1, 0);
         const knockBackDirection =
-          vectorLength(toTarget) > 0
-            ? toTarget
-            : normalizeVector(toTarget) || { x: 1, y: 0 };
+          vectorLength(fromTarget) > 0
+            ? fromTarget
+            : normalizeVector(fromTarget) || { x: 1, y: 0 };
         this.damage.applyAreaDamage(
           enemy.position,
           radius,
@@ -951,14 +1060,16 @@ export class EnemiesModule implements GameModule {
 
       directions.forEach((projectileDirection) => {
         const knockBackDirection = subtractVectors(effectiveOrigin, target.position);
+        const projKnockDist = config.projectileKnockBackDistance ?? config.knockBackDistance;
+        const projKnockSpeed = config.projectileKnockBackSpeed ?? config.knockBackSpeed;
         projectiles.spawn({
           origin,
           direction: projectileDirection,
           damage: enemy.baseDamage,
           rewardMultiplier: 1, // Вороги не дають нагороди за атаку
           armorPenetration: 0,
-          knockBackDistance: config.knockBackDistance,
-          knockBackSpeed: config.knockBackSpeed,
+          knockBackDistance: projKnockDist,
+          knockBackSpeed: projKnockSpeed,
           knockBackDirection:
             vectorLength(knockBackDirection) > 0
               ? knockBackDirection
@@ -985,25 +1096,24 @@ export class EnemiesModule implements GameModule {
 
     // Якщо немає конфігу снаряда - instant damage
     if (this.damage) {
-      // Calculate knockback direction from enemy to target
-      const knockBackDirection = toTarget;
-
       this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
         armorPenetration: 0,
         knockBackDistance: config.knockBackDistance,
         knockBackSpeed: config.knockBackSpeed,
         knockBackDirection:
-          vectorLength(knockBackDirection) > 0
-            ? knockBackDirection
-            : normalizeVector(toTarget) || { x: 1, y: 0 },
+          vectorLength(fromTarget) > 0
+            ? fromTarget
+            : normalizeVector(fromTarget) || { x: 1, y: 0 },
       });
 
-      // For instant damage, use default explosion type (plasmoid) if explosions module is available
-      if (this.explosions) {
-        this.explosions.spawnExplosionByType("plasmoid", {
-          position: { ...target.position },
-          initialRadius: Math.max(8, enemy.physicalSize),
-        });
+      if (this.explosions && config.meleeHitExplosion) {
+        this.explosions.spawnExplosionByType(
+          config.meleeHitExplosion.type,
+          {
+            position: { ...target.position },
+            initialRadius: config.meleeHitExplosion.radius ?? Math.max(8, enemy.physicalSize),
+          },
+        );
       }
       return true;
     }

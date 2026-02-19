@@ -845,7 +845,10 @@ export class PlayerUnitsModule implements GameModule {
       axis = { x: 0, y: -1 };
     }
 
-    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    const knockBackSpeed =
+      knockBackSpeedRaw > 0
+        ? knockBackSpeedRaw
+        : Math.max(0, knockBackDistance * 2);
     if (knockBackSpeed <= 0) {
       return;
     }
@@ -889,7 +892,10 @@ export class PlayerUnitsModule implements GameModule {
       axis = { x: 0, y: -1 };
     }
 
-    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    const knockBackSpeed =
+      knockBackSpeedRaw > 0
+        ? knockBackSpeedRaw
+        : Math.max(0, knockBackDistance * 2);
     if (knockBackSpeed <= 0) {
       return;
     }

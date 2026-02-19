@@ -1,5 +1,5 @@
 import type { ParticleEmitterBaseConfig } from "../../../primitives/ParticleEmitterPrimitive";
-import type { EnemyRendererConfig } from "@db/enemies-db";
+import type { EnemyRendererConfig, OctopusTentacleConfig } from "@db/enemies-db";
 import type { ParticleEmitterConfig } from "@logic/interfaces/visuals/particle-emitters-config";
 
 export interface EnemyCustomData {
@@ -8,6 +8,8 @@ export interface EnemyCustomData {
   physicalSize?: number;
   type: string;
   level: number;
+  tentacles?: OctopusTentacleConfig;
+  aliveSegments?: number[];
 }
 
 export interface EnemyEmitterRenderConfig extends ParticleEmitterBaseConfig {

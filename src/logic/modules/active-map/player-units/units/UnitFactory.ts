@@ -154,10 +154,13 @@ export class UnitFactory {
     const mass = Math.max(blueprint.mass, 0.001);
     const moveAcceleration = Math.max(blueprint.moveAcceleration, 0);
     const physicalSize = Math.max(blueprint.physicalSize, 0);
+    const moveSpeed = Math.max(blueprint.moveSpeed, 0);
+    const drag = moveSpeed > 0 ? moveAcceleration / (moveSpeed * moveSpeed) : 0;
     const movementId = this.movement.createBody({
       position,
       mass,
-      maxSpeed: Math.max(blueprint.moveSpeed, 0),
+      maxSpeed: moveSpeed,
+      drag,
     });
 
     const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;

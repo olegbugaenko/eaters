@@ -22,6 +22,7 @@ export const BONUS_IDS = [
   "all_units_hp_regen_percentage",
   "all_units_armor_penetration",
   "all_units_knockback_reduction",
+  "all_units_acceleration_multiplier",
   "spell_power",
   "crafting_speed_mult",
   "crafting_overdrive_max",
@@ -112,6 +113,12 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "all_units_knockback_reduction",
     name: "Knockback Reduction",
     description: "Divides incoming knockback effects.",
+    defaultValue: 1,
+  },
+  all_units_acceleration_multiplier: {
+    id: "all_units_acceleration_multiplier",
+    name: "Move Acceleration",
+    description: "Multiplies unit move acceleration.",
     defaultValue: 1,
   },
   spell_power: {

@@ -4,6 +4,8 @@ export interface MovementBodyOptions {
   readonly position: SceneVector2;
   readonly mass: number;
   readonly maxSpeed: number;
+  /** Quadratic drag coefficient. When > 0, replaces hard maxSpeed clamp with drag deceleration = drag * v^2. */
+  readonly drag?: number;
 }
 
 export interface MovementBodyState {
@@ -18,6 +20,7 @@ export interface InternalMovementBodyState {
   velocity: SceneVector2;
   mass: number;
   maxSpeed: number;
+  drag: number;
   force: SceneVector2;
   dampings: MovementDamping[];
   idleTicks: number;

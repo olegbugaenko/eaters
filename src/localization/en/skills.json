@@ -111,6 +111,10 @@
     "name": "Hunger",
     "description": "A gnawing void urges you on. Feed it with matter so your summons strike harder."
   },
+  "muscles": {
+    "name": "Muscles",
+    "description": "Strengthen the fibres that drive motion—your summons gain faster acceleration (+5% per level)."
+  },
   "stone_drill": {
     "name": "Stone Teeth",
     "description": "Affix crude teeth to the forming shells of your entities, boosting their assault."
