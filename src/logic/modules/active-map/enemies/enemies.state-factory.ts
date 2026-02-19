@@ -137,6 +137,10 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       movementId,
       sceneObjectId: "",
       knockback: null,
+      linkedEnemyIds: enemy.linkedEnemyIds ? [...enemy.linkedEnemyIds] : undefined,
+      bodyEnemyId: enemy.bodyEnemyId,
+      tentacleIndex: enemy.tentacleIndex,
+      segmentIndex: enemy.segmentIndex,
     };
   }
 
@@ -144,20 +148,29 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     const config = getEnemyConfig(state.type);
     const emitterConfig = config.emitter ? cloneParticleEmitterConfig(config.emitter) : undefined;
     
-    // Pass renderer config in customData for the renderer
+    const customData: Record<string, unknown> = {
+      renderer: config.renderer,
+      type: state.type,
+      level: state.level,
+      emitter: emitterConfig,
+      physicalSize: state.physicalSize,
+    };
+
+    if (config.tentacles) {
+      customData.tentacles = config.tentacles;
+      customData.aliveSegments = new Array(config.tentacles.spines.length).fill(
+        config.tentacles.segmentsPerTentacle
+      );
+      customData.autoAnimate = true;
+    }
+
     const sceneObjectId = this.scene.addObject(ENEMY_SCENE_OBJECT_TYPE, {
       position: state.position,
       rotation: state.rotation,
       size: { width: Math.max(state.physicalSize, 1), height: Math.max(state.physicalSize, 1) },
       fill: state.fill,
       stroke: state.stroke,
-      customData: {
-        renderer: config.renderer,
-        type: state.type,
-        level: state.level,
-        emitter: emitterConfig,
-        physicalSize: state.physicalSize,
-      },
+      customData,
     });
     state.sceneObjectId = sceneObjectId;
     this.movement.registerSceneObject(state.movementId, sceneObjectId);

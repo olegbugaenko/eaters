@@ -8,6 +8,7 @@ import { isTargetOfType, type TargetSnapshot } from "../../targeting/targeting.t
 import type { DamageService } from "../../targeting/DamageService";
 import type { EnemiesModule } from "../../enemies/enemies.module";
 import type { EnemyRuntimeState } from "../../enemies/enemies.types";
+import { getEnemyConfig } from "../../../../../db/enemies-db";
 import type { StatusEffectsModule } from "../../status-effects/status-effects.module";
 import {
   BURNING_TAIL_DURATION_MS,
@@ -889,6 +890,34 @@ export class UnitRuntimeController {
         collidedBrickIds.add(brick.id);
       });
 
+      this.enemies?.forEachBlockingCollider(
+        resolvedPosition,
+        unit.physicalSize,
+        (collider) => {
+          const combinedRadius = unit.physicalSize + collider.physicalSize;
+          if (combinedRadius <= 0) return;
+
+          const offset = subtractVectors(resolvedPosition, collider.position);
+          const distance = vectorLength(offset);
+          if (!Number.isFinite(distance) || distance >= combinedRadius) return;
+
+          const normal = distance > 0 ? scaleVector(offset, 1 / distance) : { x: 1, y: 0 };
+          const correction = combinedRadius - distance;
+          resolvedPosition = addVectors(resolvedPosition, scaleVector(normal, correction));
+
+          const velocityAlongNormal = resolvedVelocity.x * normal.x + resolvedVelocity.y * normal.y;
+          if (velocityAlongNormal < 0) {
+            resolvedVelocity = subtractVectors(
+              resolvedVelocity,
+              scaleVector(normal, velocityAlongNormal)
+            );
+          }
+
+          collided = true;
+          adjusted = true;
+        },
+      );
+
       if (!collided) {
         break;
       }
@@ -1123,7 +1152,7 @@ export class UnitRuntimeController {
       knockBackSpeed
     );
     
-    // Counter damage тільки для бріків
+    // Counter damage for bricks
     if (targetType === "brick") {
       const counterSource = surviving ?? target;
       const outgoingMultiplier = this.bricks.getOutgoingDamageMultiplier(counterSource.id);
@@ -1152,6 +1181,47 @@ export class UnitRuntimeController {
         if (inflictedDamage > 0) {
           unit.hp = nextHp;
           hpChanged = true;
+        }
+      }
+    }
+
+    // Counter damage for enemies with contactDamage (same principle as bricks)
+    if (targetType === "enemy") {
+      const counterSource = (surviving ?? target) as EnemyRuntimeState;
+      const enemyConfig = getEnemyConfig(counterSource.type);
+
+      if (enemyConfig.contactDamage && counterSource.baseDamage > 0) {
+        const armorDelta = this.statusEffects.getTargetArmorDelta({ type: "unit", id: unit.id });
+        const { inflictedDamage: counterInflicted, nextHp } = applyDamagePipeline(
+          {
+            rawDamage: counterSource.baseDamage,
+            armor: unit.armor,
+            armorDelta,
+            armorPenetration: 0,
+            currentHp: unit.hp,
+            maxHp: unit.maxHp,
+          },
+          { skipKnockback: true },
+          {
+            onInflicted: (amount) => {
+              this.statistics?.recordDamageTaken(amount);
+              this.statusEffects.handleTargetHit({ type: "unit", id: unit.id });
+            },
+          },
+        );
+        if (counterInflicted > 0) {
+          unit.hp = nextHp;
+          hpChanged = true;
+        }
+
+        if (enemyConfig.meleeHitExplosion) {
+          this.explosions.spawnExplosionByType(
+            enemyConfig.meleeHitExplosion.type,
+            {
+              position: { ...unit.position },
+              initialRadius: enemyConfig.meleeHitExplosion.radius ?? Math.max(8, counterSource.physicalSize),
+            },
+          );
         }
       }
     }
@@ -1197,7 +1267,11 @@ export class UnitRuntimeController {
       axis = { x: 0, y: -1 };
     }
 
-    const knockBackSpeed = Math.max(knockBackSpeedRaw, knockBackDistance * 2);
+    // Явно задана швидкість використовується як є; інакше — мінімум із distance*2 для розумної тривалості
+    const knockBackSpeed =
+      knockBackSpeedRaw > 0
+        ? knockBackSpeedRaw
+        : Math.max(0, knockBackDistance * 2);
     if (knockBackSpeed <= 0) {
       return;
     }

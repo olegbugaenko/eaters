@@ -35,6 +35,10 @@ export interface EnemySpawnData {
   readonly hp?: number;
   readonly attackCooldown?: number;
   readonly spawnSourceId?: string;
+  readonly linkedEnemyIds?: readonly string[];
+  readonly bodyEnemyId?: string;
+  readonly tentacleIndex?: number;
+  readonly segmentIndex?: number;
 }
 
 export interface EnemyRuntimeState {
@@ -71,6 +75,10 @@ export interface InternalEnemyState extends EnemyRuntimeState {
   fill?: SceneFill;
   stroke?: SceneStroke;
   knockback: EnemyKnockbackState | null;
+  linkedEnemyIds?: string[];
+  bodyEnemyId?: string;
+  tentacleIndex?: number;
+  segmentIndex?: number;
 }
 
 export interface EnemyKnockbackState {

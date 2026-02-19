@@ -32,12 +32,15 @@ export class MovementService {
     const mass = clampPositive(options.mass, 1);
     const maxSpeed = Math.max(options.maxSpeed, 0);
 
+    const drag = Math.max(options.drag ?? 0, 0);
+
     const body: InternalMovementBodyState = {
       id,
       position,
       velocity: { ...ZERO_VECTOR },
       mass,
       maxSpeed,
+      drag,
       force: { ...ZERO_VECTOR },
       dampings: [],
       idleTicks: 0,
@@ -117,21 +120,23 @@ export class MovementService {
       return;
     }
 
-    const safeDuration = clampPositive(duration, 0.001);
     const impulseVelocity = cloneVector(velocity);
-
     body.velocity = addVectors(body.velocity, impulseVelocity);
-    body.dampings.push({
-      initialVelocity: impulseVelocity,
-      elapsed: 0,
-      duration: safeDuration,
-    });
+
+    if (body.drag <= 0) {
+      const safeDuration = clampPositive(duration, 0.001);
+      body.dampings.push({
+        initialVelocity: impulseVelocity,
+        elapsed: 0,
+        duration: safeDuration,
+      });
+    }
   }
 
   /**
    * Apply knockback by replacing current velocity (not adding).
-   * More consistent knockback effect regardless of unit's current movement.
-   * Still respects maxSpeed and fades out over duration.
+   * When drag > 0, the velocity is unclamped and drag handles deceleration.
+   * When drag === 0 (legacy), velocity is clamped to maxSpeed and fades via damping.
    */
   public applyKnockback(bodyId: string, velocity: SceneVector2, duration = 1): void {
     const body = this.bodies.get(bodyId);
@@ -139,17 +144,21 @@ export class MovementService {
       return;
     }
 
+    if (body.drag > 0) {
+      body.velocity = cloneVector(velocity);
+      body.dampings = [];
+      return;
+    }
+
     const safeDuration = clampPositive(duration, 0.001);
     let knockbackVelocity = cloneVector(velocity);
 
-    // Clamp to maxSpeed if needed
     const speed = Math.hypot(knockbackVelocity.x, knockbackVelocity.y);
     if (body.maxSpeed > 0 && speed > body.maxSpeed) {
       const factor = body.maxSpeed / speed;
       knockbackVelocity = scaleVector(knockbackVelocity, factor);
     }
 
-    // Replace velocity and clear existing dampings
     body.velocity = knockbackVelocity;
     body.dampings = [{
       initialVelocity: knockbackVelocity,
@@ -188,7 +197,11 @@ export class MovementService {
       });
 
       const speed = Math.hypot(body.velocity.x, body.velocity.y);
-      if (body.maxSpeed > 0 && speed > body.maxSpeed) {
+      if (body.drag > 0 && speed > 0) {
+        const dragDecel = body.drag * speed * speed;
+        const dragReduction = Math.min(dragDecel * deltaSeconds, speed);
+        body.velocity = scaleVector(body.velocity, 1 - dragReduction / speed);
+      } else if (body.maxSpeed > 0 && speed > body.maxSpeed) {
         const factor = body.maxSpeed / speed;
         body.velocity = scaleVector(body.velocity, factor);
       }

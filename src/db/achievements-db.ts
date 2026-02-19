@@ -8,7 +8,7 @@ export interface AchievementConfig {
   readonly effects: BonusEffectMap;
 }
 
-export const ACHIEVEMENT_IDS = ["megaBrick", "ancientPyramids", "deathfulGuns", "deadly_tunnels", "encaged_beast"] as const;
+export const ACHIEVEMENT_IDS = ["megaBrick", "ancientPyramids", "deathfulGuns", "deadly_tunnels", "encaged_beast", "great_octopus"] as const;
 
 export type AchievementId = (typeof ACHIEVEMENT_IDS)[number];
 
@@ -61,6 +61,17 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     id: "encaged_beast",
     name: "Encaged Beast Mastery",
     description: "Complete Encaged Beast levels to boost unit damage.",
+    maxLevel: 10,
+    effects: {
+      sanity_cap: {
+        income: (level) => 2 * level,
+      },
+    },
+  },
+  great_octopus: {
+    id: "great_octopus",
+    name: "Great Octopus Mastery",
+    description: "Complete Great Octopus levels to boost unit attack speed.",
     maxLevel: 10,
     effects: {
       sanity_cap: {

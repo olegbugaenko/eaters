@@ -56,6 +56,10 @@ export const computePlayerUnitBlueprint = (
     sanitizeMultiplier(values["all_units_knockback_reduction"], 1),
     1,
   );
+  const globalAccelerationMultiplier = sanitizeMultiplier(
+    values["all_units_acceleration_multiplier"],
+    1
+  );
   const globalHpRegenPercentage = Math.max(
     sanitizeAdditive(values["all_units_hp_regen_percentage"], 0),
     0
@@ -136,7 +140,9 @@ export const computePlayerUnitBlueprint = (
     baseAttackInterval: baseInterval,
     baseAttackDistance: baseDistance,
     moveSpeed: baseMoveSpeed,
-    moveAcceleration: baseMoveAcceleration,
+    moveAcceleration: roundStat(
+      baseMoveAcceleration * Math.max(globalAccelerationMultiplier, 0)
+    ),
     mass: baseMass,
     physicalSize: baseSize,
     knockbackReduction: globalKnockbackReduction,

@@ -258,7 +258,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 0,
       baseDamage: 2,
       knockBackDistance: 60,
-      knockBackSpeed: 120,
+      knockBackSpeed: 110,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -276,7 +276,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       darken: 0.4,
     },
     rewards: {
-      stone: 0.5,
+      stone: 0.75,
     },
   },
   smallSquareGray: {
@@ -298,7 +298,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 0,
       baseDamage: 3,
       knockBackDistance: 60,
-      knockBackSpeed: 120,
+      knockBackSpeed: 110,
       brickKnockBackAmplitude: 6,
       physicalSize: 16,
       damageExplosion: {
@@ -312,7 +312,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       },
     },
     rewards: {
-      stone: 1,
+      stone: 1.25,
     },
     crackMask: {
       desat: 1.0,
@@ -338,7 +338,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 0,
       baseDamage: 6,
       knockBackDistance: 90,
-      knockBackSpeed: 160,
+      knockBackSpeed: 110,
       brickKnockBackAmplitude: 6,
       physicalSize: 64,
       damageExplosion: {
@@ -375,7 +375,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 1,
       baseDamage: 5,
       knockBackDistance: 70,
-      knockBackSpeed: 120,
+      knockBackSpeed: 110,
       brickKnockBackAmplitude: 10.5,
       physicalSize: 16,
       damageExplosion: {
@@ -415,7 +415,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 12,
       baseDamage: 24,
       knockBackDistance: 90,
-      knockBackSpeed: 140,
+      knockBackSpeed: 110,
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
@@ -449,7 +449,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 32,
       baseDamage: 19,
       knockBackDistance: 90,
-      knockBackSpeed: 140,
+      knockBackSpeed: 110,
       brickKnockBackAmplitude: 4,
       physicalSize: 20,
       damageExplosion: {
@@ -488,7 +488,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 70,
       baseDamage: 45,
       knockBackDistance: 90,
-      knockBackSpeed: 160,
+      knockBackSpeed: 120,
       brickKnockBackAmplitude: 4,
       physicalSize: 16,
       damageExplosion: {
@@ -527,7 +527,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 24,
       baseDamage: 96,
       knockBackDistance: 70,
-      knockBackSpeed: 160,
+      knockBackSpeed: 120,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -562,7 +562,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 92,
       baseDamage: 37,
       knockBackDistance: 70,
-      knockBackSpeed: 160,
+      knockBackSpeed: 120,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -592,7 +592,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 124,
       baseDamage: 142,
       knockBackDistance: 75,
-      knockBackSpeed: 160,
+      knockBackSpeed: 140,
       brickKnockBackAmplitude: 7,
       physicalSize: 18,
       damageExplosion: {
@@ -627,7 +627,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
       armor: 70,
       baseDamage: 245,
       knockBackDistance: 90,
-      knockBackSpeed: 190,
+      knockBackSpeed: 150,
       brickKnockBackAmplitude: 6,
       physicalSize: 18,
       damageExplosion: {

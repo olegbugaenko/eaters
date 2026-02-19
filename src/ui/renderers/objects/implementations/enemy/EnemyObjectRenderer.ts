@@ -11,6 +11,8 @@ import {
 import { hasStroke, expandVerticesForStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
 import { extractEnemyRendererData } from "./helpers";
 import { createCompositePrimitives } from "./composite-primitives.helpers";
+import { createOctopusTentaclePrimitives } from "./octopus-tentacle-primitives";
+import type { EnemyCustomData } from "./types";
 import {
   getEmitterConfig,
   getEmitterOrigin,
@@ -41,6 +43,16 @@ export class EnemyObjectRenderer extends ObjectRenderer {
 
     if (rendererData.kind === "composite" && rendererData.composite) {
       createCompositePrimitives(instance, rendererData.composite, dynamicPrimitives);
+
+      const customData = instance.data.customData as EnemyCustomData | undefined;
+      if (customData?.tentacles) {
+        createOctopusTentaclePrimitives(
+          instance,
+          customData.tentacles,
+          rendererData.composite,
+          dynamicPrimitives
+        );
+      }
     } else if (rendererData.vertices && rendererData.vertices.length >= 3) {
       // Render polygon (either from polygon config or fallback)
       const vertices = [...rendererData.vertices]; // Create mutable copy

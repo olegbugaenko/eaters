@@ -8,6 +8,7 @@ import deadOak from "./map-definitions/deadOak";
 import deadlyTunnels from "./map-definitions/deadlyTunnels";
 import deathfulGuns from "./map-definitions/deathfulGuns";
 import encagedBeast from "./map-definitions/encagedBeast";
+import greatOctopus from "./map-definitions/greatOctopus";
 import foundations from "./map-definitions/foundations";
 import frozenForest from "./map-definitions/frozenForest";
 import gear from "./map-definitions/gear";
@@ -71,6 +72,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   deathfulGuns,
   deadlyTunnels,
   encagedBeast,
+  greatOctopus,
   coalConvoy,
   uranium_fields: uraniumFields,
 };

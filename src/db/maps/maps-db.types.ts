@@ -36,6 +36,7 @@ export type MapId =
   | "deathfulGuns"
   | "deadlyTunnels"
   | "encagedBeast"
+  | "greatOctopus"
   | "coalConvoy"
   | "gear"
   | "uranium_fields";

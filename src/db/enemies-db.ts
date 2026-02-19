@@ -9,7 +9,9 @@ import { ResourceAmount, normalizeResourceAmount } from "./resources-db";
 import type {
   ExtendedRendererLayerFields,
   BaseRendererLayerConfig,
+  RendererLayerAnimationConfig,
 } from "@shared/types/renderer.types";
+import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
 import type { UnitProjectileVisualConfig } from "../logic/modules/active-map/projectiles/projectiles.types";
 import { mapLineToPolygonShape } from "@/shared/helpers/paths.helper";
 import type { ArcType } from "./arcs-db";
@@ -37,7 +39,9 @@ export type EnemyType =
   | "bigGun"
   | "laserTurretEnemy"
   | "plasmaBeamTurretEnemy"
-  | "portalSpawnerEnemy";
+  | "portalSpawnerEnemy"
+  | "greatOctopusBody"
+  | "greatOctopusSegment";
 
 export interface EnemyAuraConfig {
   petalCount: number;
@@ -104,9 +108,19 @@ export interface EnemyTargetingOptions {
   readonly searchPadding?: number;
 }
 
+export interface OctopusTentacleConfig {
+  readonly spines: readonly (readonly { x: number; y: number; width: number }[])[];
+  readonly segmentsPerTentacle: number;
+  readonly anim: RendererLayerAnimationConfig;
+  readonly fill: RendererFillConfig;
+  readonly stroke?: RendererStrokeConfig;
+  readonly buildOpts?: { epsilon?: number; winding?: "CW" | "CCW" };
+}
+
 export interface EnemyConfig {
   readonly name: string;
   readonly renderer: EnemyRendererConfig;
+  readonly tentacles?: OctopusTentacleConfig;
   readonly maxHp: number;
   readonly armor: number;
   readonly baseDamage: number;
@@ -134,11 +148,23 @@ export interface EnemyConfig {
   };
   readonly arcAttack?: EnemyArcAttackConfig;
   readonly targeting?: EnemyTargetingOptions;
-  readonly knockBackDistance?: number; // Відстань knockback при атаці юнітів
-  readonly knockBackSpeed?: number; // Швидкість knockback при атаці юнітів
+  /** Нокбек при контактній/млійній атаці та arc/explosion атаках */
+  readonly knockBackDistance?: number;
+  readonly knockBackSpeed?: number;
+  /** Нокбек саме від попадання снаряда; якщо не задано — використовуються knockBackDistance / knockBackSpeed */
+  readonly projectileKnockBackDistance?: number;
+  readonly projectileKnockBackSpeed?: number;
   readonly selfKnockBackDistance?: number; // Відстань knockback для ворога при отриманні урону
   readonly selfKnockBackSpeed?: number; // Швидкість knockback для ворога при отриманні урону
   readonly requireDestruction?: boolean;
+  /** When true, player units cannot pass through this enemy. */
+  readonly blocksUnits?: boolean;
+  /** When true, this enemy deals counter damage to attacking units (like bricks). */
+  readonly contactDamage?: boolean;
+  readonly meleeHitExplosion?: {
+    readonly type: ExplosionType;
+    readonly radius?: number;
+  };
   readonly spawner?: {
     readonly spawnRate: number;
     readonly enemyTypes: readonly MapEnemySpawnTypeConfig[];
@@ -1781,7 +1807,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       spreadAngleDeg: 12,
     },
     knockBackDistance: 110,
-    knockBackSpeed: 150,
+    knockBackSpeed: 130,
+    projectileKnockBackDistance: 40,
+    projectileKnockBackSpeed: 10,
   },
   explosionTurretEnemy: {
     name: "Blast Turret",
@@ -1852,7 +1880,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       explosionRadius: 60,
     },
     knockBackDistance: 140,
-    knockBackSpeed: 180,
+    knockBackSpeed: 140,
   },
   freezeTurretEnemy: {
     knockBackDistance: 160,
@@ -2108,7 +2136,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       },
     },
     knockBackDistance: 120,
-    knockBackSpeed: 160,
+    knockBackSpeed: 130,
   },
   laserTurretEnemy: {
     knockBackDistance: 160,
@@ -2380,6 +2408,127 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         color: { r: 0.97, g: 0.94, b: 1, a: 0.9 },
       },
     },
+  },
+
+  greatOctopusBody: {
+    name: "The Great Octopus",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.15, g: 0.55, b: 0.8, a: 1 },
+      layers: [
+        {
+          shape: "circle",
+          radius: 76,
+          segments: 48,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.75, g: 0.85, b: 1, a: 1 } },
+                { offset: 0.5, color: { r: 0.75, g: 0.85, b: 1, a: 0.8 } },
+                { offset: 1, color: { r: 0.15, g: 0.55, b: 0.8, a: 0 } },
+              ],
+            }
+          }
+          
+        },
+        {
+          shape: "circle",
+          radius: 38,
+          segments: 32,
+          fill: { type: "base", brightness: 0.1, alphaMultiplier: 0.7 },
+        },
+      ],
+    },
+    tentacles: {
+      spines: (() => {
+        const TENTACLE_COUNT = 8;
+        const POINTS_PER_TENTACLE = 6;
+        const BASE_RADIUS = 38;
+        const TIP_RADIUS = 180;
+        return Array.from({ length: TENTACLE_COUNT }, (_, t) => {
+          const angle = (t / TENTACLE_COUNT) * Math.PI * 2;
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          return Array.from({ length: POINTS_PER_TENTACLE }, (_, i) => {
+            const frac = i / (POINTS_PER_TENTACLE - 1);
+            const r = BASE_RADIUS + frac * (TIP_RADIUS - BASE_RADIUS);
+            const width = 10 * (1 - frac * 0.75);
+            const wobble = Math.sin(frac * Math.PI * 2 + t) * 12 * frac;
+            const perpCos = -sin;
+            const perpSin = cos;
+            return {
+              x: cos * r + perpCos * wobble,
+              y: sin * r + perpSin * wobble,
+              width,
+            };
+          });
+        });
+      })(),
+      segmentsPerTentacle: 5,
+      anim: {
+        type: "sway" as const,
+        periodMs: 2200,
+        amplitude: 6,
+        falloff: "tip" as const,
+        axis: "normal" as const,
+        phase: 0,
+      },
+      fill: { type: "base" as const, brightness: 0.3 },
+      stroke: { type: "base" as const, width: 1.2, brightness: -0.1 },
+      buildOpts: { epsilon: 0.3, winding: "CCW" as const },
+    },
+    maxHp: 500000,
+    armor: 15000,
+    baseDamage: 4000,
+    attackInterval: 2.5,
+    attackRange: 350,
+    moveSpeed: 0,
+    physicalSize: 50,
+    lockRotation: true,
+    requireDestruction: true,
+    blocksUnits: true,
+    knockBackDistance: 220,
+    knockBackSpeed: 360,
+    reward: normalizeResourceAmount({ stone: 5000, iron: 500 }),
+    soulRewardBase: 50,
+    arcAttack: {
+      arcType: "plasmaBeam",
+      explosionType: "plasmaBeam",
+      explosionRadius: 48,
+    },
+  },
+
+  greatOctopusSegment: {
+    name: "Tentacle Segment",
+    renderer: {
+      kind: "polygon",
+      fill: { r: 0, g: 0, b: 0, a: 0 },
+      vertices: [
+        { x: -2, y: -2 },
+        { x: 2, y: -2 },
+        { x: 2, y: 2 },
+        { x: -2, y: 2 },
+      ],
+    },
+    maxHp: 30000,
+    armor: 2000,
+    baseDamage: 1500,
+    attackInterval: 1.5,
+    attackRange: 18,
+    moveSpeed: 0,
+    physicalSize: 14,
+    lockRotation: true,
+    blocksUnits: true,
+    contactDamage: true,
+    knockBackDistance: 220,
+    knockBackSpeed: 260,
+    reward: normalizeResourceAmount({ stone: 200, iron: 20 }),
+    soulRewardBase: 3,
+    selfKnockBackDistance: 120,
+    selfKnockBackSpeed: 200,
+    meleeHitExplosion: { type: "tentacleHit", radius: 14 },
   },
 };
 

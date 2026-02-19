@@ -303,7 +303,7 @@ export class MapModule implements GameModule {
     radius = 32
   ): TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState> | null {
     const brick = this.options.bricks.findNearestBrick(position);
-    const enemy = this.options.enemies.findNearestEnemy(position);
+    const enemy = this.options.enemies.findNearestEnemyForInspection(position);
     const playerUnit = this.options.playerUnits.findNearestUnit(position);
 
     const candidates: Array<{

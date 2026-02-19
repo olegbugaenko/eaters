@@ -7,7 +7,7 @@ import type { MapConfig } from "../maps-db.types";
 const mapConfig = (() => {
   const center: SceneVector2 = { x: 500, y: 600 };
   const size: SceneSize = { width: 1000, height: 1000 };
-  const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 500 };
+  const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 300 };
 
   // Простий шаблон цифри "1"
   const numberOneTemplate: readonly string[] = [
