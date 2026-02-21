@@ -13,6 +13,7 @@ import type {
   SceneVector2,
   MutableCloneResult,
   SceneColorTransform,
+  SceneCompiledColorAnimation,
 } from "./scene-object-manager.types";
 import {
   FILL_TYPES,
@@ -329,6 +330,7 @@ export function createSolidFill(
     noise?: SceneFillNoise;
     filaments?: SceneFillFilaments;
     colorTransform?: SceneColorTransform;
+    colorAnimation?: SceneCompiledColorAnimation;
   }
 ): SceneSolidFill {
   const fill: SceneSolidFill = {
@@ -346,6 +348,14 @@ export function createSolidFill(
 
   if (options?.colorTransform) {
     fill.colorTransform = { ...options.colorTransform };
+  }
+
+  if (options?.colorAnimation) {
+    fill.colorAnimation = {
+      interval: options.colorAnimation.interval,
+      keyframeCount: options.colorAnimation.keyframeCount,
+      keyframes: options.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+    };
   }
   
   return fill;

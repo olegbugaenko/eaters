@@ -59,6 +59,12 @@ export const cloneRendererFillConfig = (
     hueShift: fill.hueShift,
     saturationShift: fill.saturationShift,
     alphaMultiplier: fill.alphaMultiplier,
+    colorAnimation: fill.colorAnimation
+      ? {
+          interval: fill.colorAnimation.interval,
+          keyframes: fill.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        }
+      : undefined,
   };
 };
 
@@ -105,6 +111,12 @@ export const cloneRendererStrokeConfig = (
     hueShift: stroke.hueShift,
     saturationShift: stroke.saturationShift,
     alphaMultiplier: stroke.alphaMultiplier,
+    colorAnimation: stroke.colorAnimation
+      ? {
+          interval: stroke.colorAnimation.interval,
+          keyframes: stroke.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        }
+      : undefined,
   };
 };
 

@@ -50,11 +50,27 @@ export interface SceneColorTransform {
   alphaMultiplier: number;
 }
 
+export type SceneCompiledColorAnimationKeyframe = {
+  time: number;
+  mode: 0 | 1; // 0 = delta HSB, 1 = absolute RGBA
+  v0: number;
+  v1: number;
+  v2: number;
+  v3: number;
+};
+
+export interface SceneCompiledColorAnimation {
+  interval: number;
+  keyframeCount: number;
+  keyframes: SceneCompiledColorAnimationKeyframe[];
+}
+
 interface SceneFillCommon {
   noise?: SceneFillNoise;
   filaments?: SceneFillFilaments;
   crackMask?: { atlasId: number; tileIndex: number; strength: number; desat: number; darken: number };
   colorTransform?: SceneColorTransform;
+  colorAnimation?: SceneCompiledColorAnimation;
 }
 
 export interface SceneSolidFill extends SceneFillCommon {

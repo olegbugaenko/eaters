@@ -14,6 +14,7 @@ import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
+import type { RendererColorAnimationConfig } from "@shared/types/renderer-config";
 import { resolveRendererFillConfig } from "@shared/helpers/renderer-clone.helper";
 
 /**
@@ -27,6 +28,7 @@ export type CompositeRendererLayerFill =
       hueShift?: number;
       saturationShift?: number;
       alphaMultiplier?: number;
+      colorAnimation?: CompiledColorAnimationPayload;
     }
   | { kind: "solid"; color: SceneColor; noise?: SceneFillNoise }
   | { kind: "gradient"; fill: SceneFill };
@@ -43,8 +45,26 @@ export type CompositeRendererLayerStroke =
       hueShift?: number;
       saturationShift?: number;
       alphaMultiplier?: number;
+      colorAnimation?: CompiledColorAnimationPayload;
     }
   | { kind: "solid"; width: number; color: SceneColor };
+
+type CompiledColorAnimationKeyframe = {
+  time: number;
+  mode: 0 | 1; // 0 = delta HSB, 1 = absolute RGBA
+  v0: number;
+  v1: number;
+  v2: number;
+  v3: number;
+};
+
+type CompiledColorAnimationPayload = {
+  interval: number;
+  keyframeCount: number;
+  keyframes: CompiledColorAnimationKeyframe[];
+};
+
+const MAX_COLOR_ANIMATION_KEYFRAMES = 4;
 
 /**
  * Base interface for composite renderer configs
@@ -243,6 +263,78 @@ const resolveBrightnessShift = (
   return clampBrightness(brightness);
 };
 
+const compileColorAnimation = (
+  animation: RendererColorAnimationConfig | undefined
+): CompiledColorAnimationPayload | undefined => {
+  if (!animation) {
+    return undefined;
+  }
+  const interval =
+    typeof animation.interval === "number" && Number.isFinite(animation.interval)
+      ? animation.interval
+      : 0;
+  if (interval <= 0 || !Array.isArray(animation.keyframes) || animation.keyframes.length === 0) {
+    return undefined;
+  }
+
+  const compiled: CompiledColorAnimationKeyframe[] = [];
+  animation.keyframes.forEach((keyframe) => {
+    if (!keyframe || typeof keyframe !== "object") {
+      return;
+    }
+    const timeRaw = (keyframe as { time?: unknown }).time;
+    if (typeof timeRaw !== "number" || !Number.isFinite(timeRaw)) {
+      return;
+    }
+    const time = clamp01(timeRaw);
+    const hasRgba = "rgba" in keyframe && Array.isArray((keyframe as { rgba?: unknown }).rgba);
+    const hasDelta =
+      "deltaHue" in keyframe || "deltaSaturation" in keyframe || "deltaBrightness" in keyframe;
+
+    // Rule: one keyframe can be either delta-mode or absolute RGBA, not both.
+    if (hasRgba && hasDelta) {
+      return;
+    }
+
+    if (hasRgba) {
+      const rgba = (keyframe as { rgba: number[] }).rgba;
+      if (rgba.length < 3) {
+        return;
+      }
+      compiled.push({
+        time,
+        mode: 1,
+        v0: clamp01(rgba[0] ?? 0),
+        v1: clamp01(rgba[1] ?? 0),
+        v2: clamp01(rgba[2] ?? 0),
+        v3: clamp01(rgba[3] ?? 1),
+      });
+      return;
+    }
+
+    compiled.push({
+      time,
+      mode: 0,
+      v0: clampHueShift((keyframe as { deltaHue?: number }).deltaHue),
+      v1: clampSaturationShift((keyframe as { deltaSaturation?: number }).deltaSaturation),
+      v2: clampBrightness((keyframe as { deltaBrightness?: number }).deltaBrightness),
+      v3: 0,
+    });
+  });
+
+  if (compiled.length === 0) {
+    return undefined;
+  }
+
+  compiled.sort((a, b) => a.time - b.time);
+  const limited = compiled.slice(0, MAX_COLOR_ANIMATION_KEYFRAMES);
+  return {
+    interval,
+    keyframeCount: limited.length,
+    keyframes: limited,
+  };
+};
+
 /**
  * Sanitizes fill config for composite layers
  */
@@ -257,6 +349,7 @@ export const sanitizeCompositeFillConfig = (
       hueShift: clampHueShift(fill?.hueShift),
       saturationShift: clampSaturationShift(fill?.saturationShift),
       alphaMultiplier: clampAlphaMultiplier(fill?.alphaMultiplier),
+      colorAnimation: compileColorAnimation(fill?.colorAnimation),
     };
   }
   // solid and gradient: incoming is SceneFill-compatible
@@ -304,6 +397,7 @@ export const sanitizeCompositeStrokeConfig = (
     hueShift: clampHueShift(stroke.hueShift),
     saturationShift: clampSaturationShift(stroke.saturationShift),
     alphaMultiplier: clampAlphaMultiplier(stroke.alphaMultiplier),
+    colorAnimation: compileColorAnimation(stroke.colorAnimation),
   };
 };
 
@@ -497,6 +591,7 @@ export const resolveCompositeLayerFill = <T extends BaseCompositeRendererConfig>
       return createSolidFill(tinted, {
         noise: instance.data.fill.noise,
         colorTransform,
+        colorAnimation: fill.colorAnimation,
       });
     }
   }
@@ -534,5 +629,6 @@ export const resolveCompositeLayerStrokeFill = <T extends BaseCompositeRendererC
   return createSolidFill(tinted, {
     noise: instance.data.fill.noise,
     colorTransform,
+    colorAnimation: stroke.colorAnimation,
   });
 };

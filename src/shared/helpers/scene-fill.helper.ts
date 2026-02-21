@@ -68,7 +68,13 @@ export const createRadialGradientFill = (
 };
 
 const withNoiseAndFilaments = <
-  T extends { noise?: SceneFillNoise; filaments?: SceneFillFilaments; crackMask?: SceneFill["crackMask"]; colorTransform?: SceneFill["colorTransform"] }
+  T extends {
+    noise?: SceneFillNoise;
+    filaments?: SceneFillFilaments;
+    crackMask?: SceneFill["crackMask"];
+    colorTransform?: SceneFill["colorTransform"];
+    colorAnimation?: SceneFill["colorAnimation"];
+  }
 >(
   fill: T,
   source: SceneFill,
@@ -77,6 +83,13 @@ const withNoiseAndFilaments = <
   const filaments = cloneSceneFillFilaments(source.filaments);
   const crackMask = cloneSceneFillCrackMask(source.crackMask);
   const colorTransform = source.colorTransform ? { ...source.colorTransform } : undefined;
+  const colorAnimation = source.colorAnimation
+    ? {
+        interval: source.colorAnimation.interval,
+        keyframeCount: source.colorAnimation.keyframeCount,
+        keyframes: source.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+      }
+    : undefined;
 
   if (noise) {
     fill.noise = noise;
@@ -92,6 +105,10 @@ const withNoiseAndFilaments = <
 
   if (colorTransform) {
     fill.colorTransform = colorTransform;
+  }
+
+  if (colorAnimation) {
+    fill.colorAnimation = colorAnimation;
   }
 
   return fill;
@@ -289,6 +306,13 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       if (solidFill.colorTransform) {
         solid.colorTransform = { ...solidFill.colorTransform };
       }
+      if (solidFill.colorAnimation) {
+        solid.colorAnimation = {
+          interval: solidFill.colorAnimation.interval,
+          keyframeCount: solidFill.colorAnimation.keyframeCount,
+          keyframes: solidFill.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        };
+      }
       return solid;
     }
     case FILL_TYPES.LINEAR_GRADIENT: {
@@ -310,6 +334,13 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       }
       if (linearFill.colorTransform) {
         linear.colorTransform = { ...linearFill.colorTransform };
+      }
+      if (linearFill.colorAnimation) {
+        linear.colorAnimation = {
+          interval: linearFill.colorAnimation.interval,
+          keyframeCount: linearFill.colorAnimation.keyframeCount,
+          keyframes: linearFill.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        };
       }
       return linear;
     }
@@ -333,6 +364,13 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       if (radialFill.colorTransform) {
         radial.colorTransform = { ...radialFill.colorTransform };
       }
+      if (radialFill.colorAnimation) {
+        radial.colorAnimation = {
+          interval: radialFill.colorAnimation.interval,
+          keyframeCount: radialFill.colorAnimation.keyframeCount,
+          keyframes: radialFill.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        };
+      }
       return radial;
     }
     case FILL_TYPES.DIAMOND_GRADIENT: {
@@ -354,6 +392,13 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       }
       if (diamondFill.colorTransform) {
         diamond.colorTransform = { ...diamondFill.colorTransform };
+      }
+      if (diamondFill.colorAnimation) {
+        diamond.colorAnimation = {
+          interval: diamondFill.colorAnimation.interval,
+          keyframeCount: diamondFill.colorAnimation.keyframeCount,
+          keyframes: diamondFill.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        };
       }
       return diamond;
     }

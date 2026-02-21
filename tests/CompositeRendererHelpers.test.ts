@@ -90,4 +90,58 @@ describe("CompositeRenderer color transform", () => {
     assert.strictEqual(clampHueShift(undefined), 0);
     assert.strictEqual(clampSaturationShift(undefined), 0);
   });
+
+  test("sanitizes and compiles color animation keyframes", () => {
+    const fill = sanitizeCompositeFillConfig({
+      type: "base",
+      colorAnimation: {
+        interval: 1000,
+        keyframes: [
+          { time: 1.2, deltaHue: -2, deltaSaturation: 2, deltaBrightness: -2 },
+          { time: 0.4, rgba: [2, -1, 0.5] },
+          { time: 0.2, deltaHue: 0.1, rgba: [1, 1, 1, 1] }, // invalid mixed mode
+          { time: -0.2, deltaHue: 0.2 },
+          { time: 0.7, deltaBrightness: 0.4 },
+          { time: 0.9, deltaHue: 0.15 }, // should be trimmed by max keyframes
+        ],
+      },
+    });
+
+    assert.strictEqual(fill.kind, "base");
+    if (fill.kind !== "base") {
+      return;
+    }
+    const animation = fill.colorAnimation;
+    assert(animation);
+    assert.strictEqual(animation?.interval, 1000);
+    assert.strictEqual(animation?.keyframeCount, 4);
+    const times = animation?.keyframes.map((keyframe) => keyframe.time) ?? [];
+    assert.deepStrictEqual(times, [0, 0.4, 0.7, 0.9]);
+    const first = animation?.keyframes[0];
+    assert(first);
+    assert.strictEqual(first?.mode, 0);
+    assert(Math.abs((first?.v0 ?? 0) - 0.2) < 1e-9);
+    const second = animation?.keyframes[1];
+    assert(second);
+    assert.strictEqual(second?.mode, 1);
+    assert.strictEqual(second?.v0, 1);
+    assert.strictEqual(second?.v1, 0);
+    assert.strictEqual(second?.v2, 0.5);
+    assert.strictEqual(second?.v3, 1);
+  });
+
+  test("invalid color animation falls back to no animation", () => {
+    const fill = sanitizeCompositeFillConfig({
+      type: "base",
+      colorAnimation: {
+        interval: 0,
+        keyframes: [{ time: 0.3, deltaHue: 0.1 }],
+      },
+    });
+    assert.strictEqual(fill.kind, "base");
+    if (fill.kind !== "base") {
+      return;
+    }
+    assert.strictEqual(fill.colorAnimation, undefined);
+  });
 });

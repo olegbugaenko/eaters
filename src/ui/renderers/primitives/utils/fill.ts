@@ -334,8 +334,15 @@ const populateFillVertexComponents = (
   }
 
   // Reserved for future GPU-side color animation payload.
+  const colorAnimation = fill.colorAnimation;
+  const animationValues = [
+    colorAnimation?.interval ?? 0,
+    colorAnimation?.keyframeCount ?? 0,
+    colorAnimation?.keyframes[0]?.time ?? 0,
+    colorAnimation?.keyframes[0]?.mode ?? 0,
+  ];
   for (let i = 0; i < FILL_COLOR_ANIM_COMPONENTS; i += 1) {
-    components[write++] = 0;
+    components[write++] = animationValues[i] ?? 0;
   }
 
   return components;
