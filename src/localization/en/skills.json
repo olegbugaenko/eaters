@@ -294,5 +294,9 @@
   "spell_power": {
     "name": "Spell Power",
     "description": "Increase your spell power."
+  },
+  "souls_harvest": {
+    "name": "Souls Harvest",
+    "description": "Harvest souls from shattered bricks and defeated foes to power forbidden research."
   }
 }

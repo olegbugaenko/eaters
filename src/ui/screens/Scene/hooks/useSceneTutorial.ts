@@ -5,6 +5,7 @@ import {
   SceneTutorialStep,
 } from "../components/overlay/SceneTutorialOverlay";
 import { buildTutorialSteps, SceneTutorialActions, SceneTutorialLocks } from "./tutorialSteps";
+import { useLocalization } from "@ui/shared/useLocalization";
 
 interface UseSceneTutorialParams {
   tutorial: SceneTutorialConfig | null;
@@ -21,9 +22,11 @@ export const useSceneTutorial = ({
   actions,
   locks,
 }: UseSceneTutorialParams) => {
+  const { t } = useLocalization();
+
   const tutorialSteps = useMemo<SceneTutorialStep[]>(
-    () => buildTutorialSteps(tutorial, () => wrapperRef.current, actions, locks),
-    [actions, locks, tutorial, wrapperRef],
+    () => buildTutorialSteps(tutorial, () => wrapperRef.current, t, actions, locks),
+    [actions, locks, t, tutorial, wrapperRef],
   );
 
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
