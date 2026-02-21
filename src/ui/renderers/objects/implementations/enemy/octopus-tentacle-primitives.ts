@@ -13,9 +13,16 @@ import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/ren
 /**
  * Converts RendererFillConfig (DB format, uses "type") to CompositeRendererLayerFill (runtime, uses "kind")
  */
-const toLayerFill = (fill: RendererFillConfig): EnemyRendererLayerFill => {
+export const toLayerFill = (fill: RendererFillConfig): EnemyRendererLayerFill => {
   if (fill.type === "base") {
-    return { kind: "base", brightness: fill.brightness, alphaMultiplier: fill.alphaMultiplier };
+    return {
+      kind: "base",
+      brightness: fill.brightness,
+      brightnessShift: fill.brightnessShift,
+      hueShift: fill.hueShift,
+      saturationShift: fill.saturationShift,
+      alphaMultiplier: fill.alphaMultiplier,
+    };
   }
   if (fill.type === "solid") {
     return { kind: "solid", color: fill.fill.color };
@@ -23,9 +30,17 @@ const toLayerFill = (fill: RendererFillConfig): EnemyRendererLayerFill => {
   return { kind: "gradient", fill: fill.fill };
 };
 
-const toLayerStroke = (stroke: RendererStrokeConfig): EnemyRendererLayerStroke => {
+export const toLayerStroke = (stroke: RendererStrokeConfig): EnemyRendererLayerStroke => {
   if (stroke.type === "base") {
-    return { kind: "base", width: stroke.width, brightness: stroke.brightness };
+    return {
+      kind: "base",
+      width: stroke.width,
+      brightness: stroke.brightness,
+      brightnessShift: stroke.brightnessShift,
+      hueShift: stroke.hueShift,
+      saturationShift: stroke.saturationShift,
+      alphaMultiplier: stroke.alphaMultiplier,
+    };
   }
   return { kind: "solid", width: stroke.width, color: stroke.color };
 };

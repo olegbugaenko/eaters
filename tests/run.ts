@@ -48,6 +48,7 @@ if (originalResolve) {
 import "./SceneObjectManager.test";
 import "./fill.test";
 import "./CompositeRendererHelpers.test";
+import "./OctopusTentaclePrimitives.test";
 import "./BulletModule.test";
 import "./FireballModule.test";
 import "./ExplosionModule.test";
