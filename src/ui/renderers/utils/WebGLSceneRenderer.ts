@@ -106,11 +106,6 @@ export class WebGLSceneRenderer {
     const colorXformLocation = gl.getAttribLocation(this.program, "a_colorXform");
     const colorAnim0Location = gl.getAttribLocation(this.program, "a_colorAnim0");
     const colorAnim1Location = gl.getAttribLocation(this.program, "a_colorAnim1");
-    const colorAnim2Location = gl.getAttribLocation(this.program, "a_colorAnim2");
-    const colorAnim3Location = gl.getAttribLocation(this.program, "a_colorAnim3");
-    const colorAnim4Location = gl.getAttribLocation(this.program, "a_colorAnim4");
-    const colorAnim5Location = gl.getAttribLocation(this.program, "a_colorAnim5");
-    const colorAnim6Location = gl.getAttribLocation(this.program, "a_colorAnim6");
 
     const attributeLocations = [
       positionLocation,
@@ -129,11 +124,6 @@ export class WebGLSceneRenderer {
       colorXformLocation,
       colorAnim0Location,
       colorAnim1Location,
-      colorAnim2Location,
-      colorAnim3Location,
-      colorAnim4Location,
-      colorAnim5Location,
-      colorAnim6Location,
     ];
 
     if (attributeLocations.some((location) => location < 0)) {
@@ -159,11 +149,6 @@ export class WebGLSceneRenderer {
       { location: colorXformLocation, size: FILL_COLOR_XFORM_COMPONENTS },
       { location: colorAnim0Location, size: 4 },
       { location: colorAnim1Location, size: 4 },
-      { location: colorAnim2Location, size: 4 },
-      { location: colorAnim3Location, size: 4 },
-      { location: colorAnim4Location, size: 4 },
-      { location: colorAnim5Location, size: 4 },
-      { location: colorAnim6Location, size: 4 },
     ]);
 
     // Create buffers

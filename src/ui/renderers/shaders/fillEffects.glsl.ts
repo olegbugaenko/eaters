@@ -83,11 +83,6 @@ in vec2 a_crackEffects;
 in vec4 a_colorXform;
 in vec4 a_colorAnim0;
 in vec4 a_colorAnim1;
-in vec4 a_colorAnim2;
-in vec4 a_colorAnim3;
-in vec4 a_colorAnim4;
-in vec4 a_colorAnim5;
-in vec4 a_colorAnim6;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
@@ -112,11 +107,6 @@ out vec2 v_crackEffects;
 out vec4 v_colorXform;
 out vec4 v_colorAnim0;
 out vec4 v_colorAnim1;
-out vec4 v_colorAnim2;
-out vec4 v_colorAnim3;
-out vec4 v_colorAnim4;
-out vec4 v_colorAnim5;
-out vec4 v_colorAnim6;
 `;
 
 export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
@@ -140,11 +130,6 @@ void main() {
   v_colorXform = a_colorXform;
   v_colorAnim0 = a_colorAnim0;
   v_colorAnim1 = a_colorAnim1;
-  v_colorAnim2 = a_colorAnim2;
-  v_colorAnim3 = a_colorAnim3;
-  v_colorAnim4 = a_colorAnim4;
-  v_colorAnim5 = a_colorAnim5;
-  v_colorAnim6 = a_colorAnim6;
 }
 `;
 
@@ -175,11 +160,6 @@ in vec2 v_crackEffects;
 in vec4 v_colorXform;
 in vec4 v_colorAnim0;
 in vec4 v_colorAnim1;
-in vec4 v_colorAnim2;
-in vec4 v_colorAnim3;
-in vec4 v_colorAnim4;
-in vec4 v_colorAnim5;
-in vec4 v_colorAnim6;
 
 uniform sampler2D u_spriteTexture;
 uniform sampler2D u_cracksAtlas;
@@ -385,26 +365,11 @@ vec4 applyTransform(vec4 color, float hueShift, float satShift, float brightShif
   return vec4(rgb, clamp(color.a * alphaMul, 0.0, 1.0));
 }
 
-vec4 keyframePart(int index) {
-  if (index == 0) return v_colorAnim1;
-  if (index == 1) return v_colorAnim2;
-  if (index == 2) return v_colorAnim3;
-  return v_colorAnim4;
-}
-
-vec2 keyframeTail(int index) {
-  if (index == 0) return vec2(v_colorAnim5.x, v_colorAnim5.y);
-  if (index == 1) return vec2(v_colorAnim5.z, v_colorAnim5.w);
-  if (index == 2) return vec2(v_colorAnim6.x, v_colorAnim6.y);
-  return vec2(v_colorAnim6.z, v_colorAnim6.w);
-}
-
-vec4 evalKeyframe(vec4 baseColor, vec4 part, vec2 tail) {
-  float mode = part.y;
-  if (mode < 0.5) {
-    return applyTransform(baseColor, part.z, part.w, tail.x, 1.0);
+vec4 evalKeyframe(vec4 baseColor) {
+  if (v_colorAnim0.w < 0.5) {
+    return applyTransform(baseColor, v_colorAnim1.x, v_colorAnim1.y, v_colorAnim1.z, 1.0);
   }
-  return vec4(part.z, part.w, tail.x, tail.y);
+  return vec4(v_colorAnim1.x, v_colorAnim1.y, v_colorAnim1.z, v_colorAnim1.w);
 }
 
 vec4 applyColorAnimation(vec4 baseColor) {
@@ -416,44 +381,10 @@ vec4 applyColorAnimation(vec4 baseColor) {
   }
 
   float phase = fract(u_timeMs / max(interval, 1.0));
-  if (keyframeCount == 1) {
-    return evalKeyframe(baseColor, keyframePart(0), keyframeTail(0));
+  if (phase < v_colorAnim0.z) {
+    return baseColor;
   }
-
-  int left = 0;
-  int right = 0;
-  float leftTime = keyframePart(0).x;
-  float rightTime = keyframePart(0).x;
-  bool found = false;
-  for (int i = 0; i < 4; i += 1) {
-    if (i >= keyframeCount - 1) break;
-    float a = keyframePart(i).x;
-    float b = keyframePart(i + 1).x;
-    if (phase >= a && phase <= b) {
-      left = i;
-      right = i + 1;
-      leftTime = a;
-      rightTime = b;
-      found = true;
-      break;
-    }
-  }
-
-  if (!found) {
-    left = keyframeCount - 1;
-    right = 0;
-    leftTime = keyframePart(left).x;
-    rightTime = keyframePart(0).x + 1.0;
-    if (phase < keyframePart(0).x) {
-      phase += 1.0;
-    }
-  }
-
-  float span = max(rightTime - leftTime, 1e-6);
-  float t = clamp((phase - leftTime) / span, 0.0, 1.0);
-  vec4 c0 = evalKeyframe(baseColor, keyframePart(left), keyframeTail(left));
-  vec4 c1 = evalKeyframe(baseColor, keyframePart(right), keyframeTail(right));
-  return mix(c0, c1, t);
+  return evalKeyframe(baseColor);
 }
 
 vec4 applyColorPipeline(vec4 color) {

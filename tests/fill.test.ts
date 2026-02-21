@@ -238,14 +238,14 @@ describe("createFillVertexComponents", () => {
     );
     assertArrayClose(
       Array.from(components.slice(colorAnimOffset, colorAnimOffset + 4)),
-      [1200, 2, 0, 0],
+      [1200, 1, 0.1, 0],
       0.0001
     );
     assertArrayClose(
       Array.from(components.slice(colorAnimOffset + 4, colorAnimOffset + 8)),
-      [0.1, 0, -0.1, 0.2],
+      [-0.1, 0.2, 0.3, 0],
       0.0001
     );
-    assert.strictEqual(FILL_COLOR_ANIM_COMPONENTS, 28);
+    assert.strictEqual(FILL_COLOR_ANIM_COMPONENTS, 8);
   });
 });

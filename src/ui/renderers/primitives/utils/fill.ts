@@ -338,21 +338,15 @@ const populateFillVertexComponents = (
   const animationValues = new Float32Array(FILL_COLOR_ANIM_COMPONENTS);
   if (colorAnimation) {
     animationValues[0] = colorAnimation.interval;
-    animationValues[1] = colorAnimation.keyframeCount;
-    const maxFrames = Math.min(colorAnimation.keyframes.length, 4);
-    for (let i = 0; i < maxFrames; i += 1) {
-      const keyframe = colorAnimation.keyframes[i]!;
-      const base = 4 + i * 4;
-      animationValues[base + 0] = keyframe.time;
-      animationValues[base + 1] = keyframe.mode;
-      animationValues[base + 2] = keyframe.v0;
-      animationValues[base + 3] = keyframe.v1;
-    }
-    for (let i = 0; i < maxFrames; i += 1) {
-      const keyframe = colorAnimation.keyframes[i]!;
-      const base = 20 + i * 2;
-      animationValues[base + 0] = keyframe.v2;
-      animationValues[base + 1] = keyframe.v3;
+    animationValues[1] = Math.min(colorAnimation.keyframeCount, 1);
+    const keyframe = colorAnimation.keyframes[0];
+    if (keyframe) {
+      animationValues[2] = keyframe.time;
+      animationValues[3] = keyframe.mode;
+      animationValues[4] = keyframe.v0;
+      animationValues[5] = keyframe.v1;
+      animationValues[6] = keyframe.v2;
+      animationValues[7] = keyframe.v3;
     }
   }
   for (let i = 0; i < FILL_COLOR_ANIM_COMPONENTS; i += 1) {
