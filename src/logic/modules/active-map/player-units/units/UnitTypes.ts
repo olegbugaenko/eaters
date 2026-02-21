@@ -67,6 +67,8 @@ export interface PlayerUnitState {
 }
 
 export const ATTACK_DISTANCE_EPSILON = 0.001;
+/** Відстань до цілі, на якій юніт починає знижувати швидкість перед зупинкою (щоб не гальмувати заздалегідь) */
+export const APPROACH_RAMP_DISTANCE = 28;
 export const COLLISION_RESOLUTION_ITERATIONS = 4;
 // Re-export for backward compatibility
 export { ZERO_VECTOR } from "../../../../../shared/helpers/geometry.const";
