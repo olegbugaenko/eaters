@@ -55,7 +55,16 @@ export const cloneRendererFillConfig = (
   return {
     type: "base",
     brightness: fill.brightness,
+    brightnessShift: fill.brightnessShift,
+    hueShift: fill.hueShift,
+    saturationShift: fill.saturationShift,
     alphaMultiplier: fill.alphaMultiplier,
+    colorAnimation: fill.colorAnimation
+      ? {
+          interval: fill.colorAnimation.interval,
+          keyframes: fill.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        }
+      : undefined,
   };
 };
 
@@ -98,7 +107,16 @@ export const cloneRendererStrokeConfig = (
     type: "base",
     width: stroke.width,
     brightness: stroke.brightness,
+    brightnessShift: stroke.brightnessShift,
+    hueShift: stroke.hueShift,
+    saturationShift: stroke.saturationShift,
     alphaMultiplier: stroke.alphaMultiplier,
+    colorAnimation: stroke.colorAnimation
+      ? {
+          interval: stroke.colorAnimation.interval,
+          keyframes: stroke.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        }
+      : undefined,
   };
 };
 

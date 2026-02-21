@@ -1,50 +1,35 @@
 import type { SceneCameraState, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
-import {
-  SCENE_VERTEX_SHADER_HEADER,
-  createSceneFragmentShader,
-} from "@ui/renderers/shaders/fillEffects.glsl";
+import { createSceneFragmentShader } from "@ui/renderers/shaders/fillEffects.glsl";
 import { TO_CLIP_GLSL } from "@ui/renderers/shaders/common.glsl";
+import { FILL_COMPONENTS, POSITION_COMPONENTS } from "@ui/renderers/objects";
 import {
-  POSITION_COMPONENTS,
-  FILL_COMPONENTS,
-  FILL_INFO_COMPONENTS,
-  FILL_PARAMS0_COMPONENTS,
-  FILL_PARAMS1_COMPONENTS,
-  FILL_FILAMENTS0_COMPONENTS,
-  FILL_FILAMENTS1_COMPONENTS,
-  STOP_OFFSETS_COMPONENTS,
-  STOP_COLOR_COMPONENTS,
-  CRACK_UV_COMPONENTS,
-  CRACK_MASK_COMPONENTS,
-  CRACK_EFFECTS_COMPONENTS,
-} from "@ui/renderers/objects";
+  FILL_UNIFORM_VERTEX_HEADER,
+  POPULATE_FILL_VARYINGS_GLSL,
+  FILL_VEC4_COUNT,
+} from "@ui/renderers/shaders/fillUniforms.glsl";
+import { EXPANDED_COLOR_ANIM_FLOATS } from "@ui/renderers/primitives/utils/fill";
 import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistry";
 import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 import { loadSpriteTexture } from "@ui/renderers/primitives/basic/SpritePrimitive";
 import type { RendererLayerAnimationConfig } from "@shared/types/renderer.types";
 import type { PolygonAnimParams } from "@ui/renderers/primitives/core/animation.types";
 
-interface AttributeConfig {
-  location: number;
-  size: number;
-  offset: number;
-}
-
 /** @deprecated Use PolygonAnimParams from animation.types.ts */
 export type PolygonAnimationParams = PolygonAnimParams;
 
 export type PolygonGpuHandle = {
   vao: WebGLVertexArrayObject;
-  positionBuffer: WebGLBuffer; // Now stores LOCAL vertices (not TF output)
-  fillBuffer: WebGLBuffer;
+  positionBuffer: WebGLBuffer;
   vertexCount: number;
-  // Animation parameters (updated each frame)
   anim: PolygonAnimationParams;
+  /** Packed fill data (FILL_COMPONENTS floats). Uploaded as uniform per draw. */
+  fillData: Float32Array;
+  /** Expanded 4-keyframe animation data (7 vec4s = 28 floats). */
+  expandedAnimData: Float32Array;
 };
 
-// Vertex shader with animation built-in (no Transform Feedback needed)
-const ANIMATED_VERTEX_SHADER = `${SCENE_VERTEX_SHADER_HEADER}
+const ANIMATED_VERTEX_SHADER = `${FILL_UNIFORM_VERTEX_HEADER}
 // Animation uniforms
 uniform float u_timeMs;
 uniform float u_periodMs;
@@ -69,10 +54,13 @@ vec2 resolveNormal(vec2 pos, vec2 center) {
   return d / len;
 }
 
+${POPULATE_FILL_VARYINGS_GLSL}
+
 ${TO_CLIP_GLSL}
 
 void main() {
-  // Animation calculation (moved from Transform Feedback)
+  populateFillVaryings();
+
   vec2 basePos = a_position;
   float omega = 6.28318530718 / max(u_periodMs, 1.0);
   float baseAngle = omega * u_timeMs + u_phase;
@@ -82,9 +70,6 @@ void main() {
 
   vec2 offset;
   if (u_axisType == 2 || u_axisType == 3) {
-    // Movement-based axis - vertices on opposite sides move in opposite directions (squeeze/expand)
-    // axisType 2 = movement-tangent: movePerp = {0, 1} (perpendicular to movement in local coords)
-    // axisType 3 = movement-normal: movePerp = {-1, 0} (along movement in local coords)
     vec2 movePerp = (u_axisType == 2) ? vec2(0.0, 1.0) : vec2(-1.0, 0.0);
     float signedDist = dot(basePos - u_center, movePerp);
     float mag = u_amplitudePercent > 0.0 ? abs(signedDist) * u_amplitudePercent : u_amplitude;
@@ -101,30 +86,26 @@ void main() {
     offset = axis * (magnitude * s);
   }
   vec2 localPos = basePos + offset;
-  
-  // Apply rotation
+
   float cosR = cos(u_rotation);
   float sinR = sin(u_rotation);
   vec2 rotated = vec2(
     localPos.x * cosR - localPos.y * sinR,
     localPos.x * sinR + localPos.y * cosR
   );
-  
-  // Transform to world space
-  vec2 worldPos = u_origin + rotated;
 
+  vec2 worldPos = u_origin + rotated;
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_worldPosition = worldPos;
-  
-  // Transform fill params from local to world coordinates
-  float fillType = a_fillInfo.x;
-  vec4 fillParams0 = a_fillParams0;
-  vec4 fillParams1 = a_fillParams1;
-  
+
+  // Transform fill params from local to world (read from uniform source)
+  float fillType = u_fillData[0].x;
+  vec4 fillParams0 = u_fillData[1];
+  vec4 fillParams1 = u_fillData[2];
+
   if (fillType > 0.5 && fillType < 1.5) {
-    // LINEAR_GRADIENT: transform start/end from local to world
-    vec2 startLocal = a_fillParams0.xy;
-    vec2 endLocal = a_fillParams0.zw;
+    vec2 startLocal = fillParams0.xy;
+    vec2 endLocal = fillParams0.zw;
     vec2 startWorld = u_origin + vec2(
       startLocal.x * cosR - startLocal.y * sinR,
       startLocal.x * sinR + startLocal.y * cosR
@@ -138,36 +119,24 @@ void main() {
     fillParams0 = vec4(startWorld, endWorld);
     fillParams1 = vec4(dir, lenSq > 0.0 ? 1.0 / lenSq : 0.0, fillParams1.w);
   } else if (fillType > 1.5 && fillType < 3.5) {
-    // RADIAL_GRADIENT or DIAMOND_GRADIENT: transform center from local to world
-    vec2 centerLocal = a_fillParams0.xy;
+    vec2 centerLocal = fillParams0.xy;
     vec2 centerWorld = u_origin + vec2(
       centerLocal.x * cosR - centerLocal.y * sinR,
       centerLocal.x * sinR + centerLocal.y * cosR
     );
     fillParams0.xy = centerWorld;
   } else if (fillType < 0.5) {
-    // SOLID: transform center (used for noise anchor)
-    vec2 centerLocal = a_fillParams0.xy;
+    vec2 centerLocal = fillParams0.xy;
     vec2 centerWorld = u_origin + vec2(
       centerLocal.x * cosR - centerLocal.y * sinR,
       centerLocal.x * sinR + centerLocal.y * cosR
     );
     fillParams0.xy = centerWorld;
   }
-  
+
   v_uv = fillParams0.xy;
-  v_fillInfo = a_fillInfo;
   v_fillParams0 = fillParams0;
   v_fillParams1 = fillParams1;
-  v_filaments0 = a_filaments0;
-  v_filamentEdgeBlur = a_filamentEdgeBlur;
-  v_stopOffsets = a_stopOffsets;
-  v_stopColor0 = a_stopColor0;
-  v_stopColor1 = a_stopColor1;
-  v_stopColor2 = a_stopColor2;
-  v_crackUv = a_crackUv;
-  v_crackMask = a_crackMask;
-  v_crackEffects = a_crackEffects;
 }
 `;
 
@@ -180,15 +149,13 @@ class PolygonGpuRenderer {
   private fragmentShader: WebGLShader | null = null;
   private handles = new Set<PolygonGpuHandle>();
   private positionLocation = -1;
-  private fillAttributeConfigs: AttributeConfig[] = [];
-  private fillStride = 0;
+  private fillDataLocation: WebGLUniformLocation | null = null;
   private cameraPositionLocation: WebGLUniformLocation | null = null;
   private viewportSizeLocation: WebGLUniformLocation | null = null;
   private spriteTextureLocation: WebGLUniformLocation | null = null;
   private crackAtlasIndexLocation: WebGLUniformLocation | null = null;
   private crackAtlasGridLocation: WebGLUniformLocation | null = null;
   private crackAtlasSamplerLocation: WebGLUniformLocation | null = null;
-  // Animation uniform locations
   private timeMsLocation: WebGLUniformLocation | null = null;
   private periodMsLocation: WebGLUniformLocation | null = null;
   private phaseLocation: WebGLUniformLocation | null = null;
@@ -202,6 +169,7 @@ class PolygonGpuRenderer {
   private originLocation: WebGLUniformLocation | null = null;
   private rotationLocation: WebGLUniformLocation | null = null;
   private movementDirLocation: WebGLUniformLocation | null = null;
+  private colorAnimDataLocation: WebGLUniformLocation | null = null;
 
   public setContext(gl: WebGL2RenderingContext | null): void {
     if (this.gl === gl) {
@@ -222,8 +190,7 @@ class PolygonGpuRenderer {
       throw new Error("[PolygonGpuRenderer] Unable to resolve position attribute");
     }
 
-    this.fillAttributeConfigs = this.createFillAttributeConfigs(gl, this.program);
-    this.fillStride = FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+    this.fillDataLocation = gl.getUniformLocation(this.program, "u_fillData[0]");
 
     this.cameraPositionLocation = gl.getUniformLocation(this.program, "u_cameraPosition");
     this.viewportSizeLocation = gl.getUniformLocation(this.program, "u_viewportSize");
@@ -231,8 +198,7 @@ class PolygonGpuRenderer {
     this.crackAtlasIndexLocation = gl.getUniformLocation(this.program, "u_crackAtlasIndex");
     this.crackAtlasGridLocation = gl.getUniformLocation(this.program, "u_crackAtlasGrid");
     this.crackAtlasSamplerLocation = gl.getUniformLocation(this.program, "u_cracksAtlas");
-    
-    // Animation uniforms
+
     this.timeMsLocation = gl.getUniformLocation(this.program, "u_timeMs");
     this.periodMsLocation = gl.getUniformLocation(this.program, "u_periodMs");
     this.phaseLocation = gl.getUniformLocation(this.program, "u_phase");
@@ -246,11 +212,11 @@ class PolygonGpuRenderer {
     this.originLocation = gl.getUniformLocation(this.program, "u_origin");
     this.rotationLocation = gl.getUniformLocation(this.program, "u_rotation");
     this.movementDirLocation = gl.getUniformLocation(this.program, "u_movementDir");
+    this.colorAnimDataLocation = gl.getUniformLocation(this.program, "u_colorAnimData[0]");
   }
 
   public acquireHandle(options: {
     positionBuffer: WebGLBuffer;
-    fillBuffer: WebGLBuffer;
     vertexCount: number;
     center: SceneVector2;
   }): PolygonGpuHandle | null {
@@ -275,19 +241,12 @@ class PolygonGpuRenderer {
       0
     );
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, options.fillBuffer);
-    this.fillAttributeConfigs.forEach(({ location, size, offset }) => {
-      gl.enableVertexAttribArray(location);
-      gl.vertexAttribPointer(location, size, gl.FLOAT, false, this.fillStride, offset);
-    });
-
     gl.bindVertexArray(null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
     const handle: PolygonGpuHandle = {
       vao,
       positionBuffer: options.positionBuffer,
-      fillBuffer: options.fillBuffer,
       vertexCount: options.vertexCount,
       anim: {
         timeMs: 0,
@@ -304,17 +263,15 @@ class PolygonGpuRenderer {
         rotation: 0,
         movementDir: { x: 0, y: 1 },
       },
+      fillData: new Float32Array(FILL_COMPONENTS),
+      expandedAnimData: new Float32Array(EXPANDED_COLOR_ANIM_FLOATS),
     };
     this.handles.add(handle);
     return handle;
   }
 
-  /**
-   * Unified acquire API (alias for acquireHandle).
-   */
   public acquire(options: {
     positionBuffer: WebGLBuffer;
-    fillBuffer: WebGLBuffer;
     vertexCount: number;
     center: SceneVector2;
   }): PolygonGpuHandle | null {
@@ -325,9 +282,6 @@ class PolygonGpuRenderer {
     handle.vertexCount = vertexCount;
   }
 
-  /**
-   * Unified update API (alias for updateHandle).
-   */
   public update(handle: PolygonGpuHandle, vertexCount: number): void {
     this.updateHandle(handle, vertexCount);
   }
@@ -342,9 +296,6 @@ class PolygonGpuRenderer {
     this.gl.deleteVertexArray(handle.vao);
   }
 
-  /**
-   * Unified release API (alias for releaseHandle).
-   */
   public release(handle: PolygonGpuHandle): void {
     this.releaseHandle(handle);
   }
@@ -439,8 +390,14 @@ class PolygonGpuRenderer {
       if (handle.vertexCount < 3) {
         return;
       }
-      
-      // Set animation uniforms for this handle
+
+      if (this.fillDataLocation !== null) {
+        gl.uniform4fv(this.fillDataLocation, handle.fillData);
+      }
+      if (this.colorAnimDataLocation !== null) {
+        gl.uniform4fv(this.colorAnimDataLocation, handle.expandedAnimData);
+      }
+
       const anim = handle.anim;
       if (this.timeMsLocation !== null) {
         gl.uniform1f(this.timeMsLocation, anim.timeMs);
@@ -481,76 +438,11 @@ class PolygonGpuRenderer {
       if (this.movementDirLocation !== null) {
         gl.uniform2f(this.movementDirLocation, anim.movementDir.x, anim.movementDir.y);
       }
-      
+
       gl.bindVertexArray(handle.vao);
       gl.drawArrays(gl.TRIANGLE_FAN, 0, handle.vertexCount);
     });
     gl.bindVertexArray(null);
-  }
-
-  private createFillAttributeConfigs(
-    gl: WebGL2RenderingContext,
-    program: WebGLProgram
-  ): AttributeConfig[] {
-    const fillInfoLocation = gl.getAttribLocation(program, "a_fillInfo");
-    const fillParams0Location = gl.getAttribLocation(program, "a_fillParams0");
-    const fillParams1Location = gl.getAttribLocation(program, "a_fillParams1");
-    const filaments0Location = gl.getAttribLocation(program, "a_filaments0");
-    const filamentEdgeBlurLocation = gl.getAttribLocation(program, "a_filamentEdgeBlur");
-    const stopOffsetsLocation = gl.getAttribLocation(program, "a_stopOffsets");
-    const stopColor0Location = gl.getAttribLocation(program, "a_stopColor0");
-    const stopColor1Location = gl.getAttribLocation(program, "a_stopColor1");
-    const stopColor2Location = gl.getAttribLocation(program, "a_stopColor2");
-    const crackUvLocation = gl.getAttribLocation(program, "a_crackUv");
-    const crackMaskLocation = gl.getAttribLocation(program, "a_crackMask");
-    const crackEffectsLocation = gl.getAttribLocation(program, "a_crackEffects");
-
-    const attributeLocations = [
-      fillInfoLocation,
-      fillParams0Location,
-      fillParams1Location,
-      filaments0Location,
-      filamentEdgeBlurLocation,
-      stopOffsetsLocation,
-      stopColor0Location,
-      stopColor1Location,
-      stopColor2Location,
-      crackUvLocation,
-      crackMaskLocation,
-      crackEffectsLocation,
-    ];
-
-    if (attributeLocations.some((location) => location < 0)) {
-      throw new Error("[PolygonGpuRenderer] Unable to resolve fill attribute locations");
-    }
-
-    let offset = 0;
-    const configs: AttributeConfig[] = [];
-    configs.push({ location: fillInfoLocation, size: FILL_INFO_COMPONENTS, offset });
-    offset += FILL_INFO_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: fillParams0Location, size: FILL_PARAMS0_COMPONENTS, offset });
-    offset += FILL_PARAMS0_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: fillParams1Location, size: FILL_PARAMS1_COMPONENTS, offset });
-    offset += FILL_PARAMS1_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: filaments0Location, size: FILL_FILAMENTS0_COMPONENTS, offset });
-    offset += FILL_FILAMENTS0_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: filamentEdgeBlurLocation, size: FILL_FILAMENTS1_COMPONENTS, offset });
-    offset += FILL_FILAMENTS1_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: stopOffsetsLocation, size: STOP_OFFSETS_COMPONENTS, offset });
-    offset += STOP_OFFSETS_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: stopColor0Location, size: STOP_COLOR_COMPONENTS, offset });
-    offset += STOP_COLOR_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: stopColor1Location, size: STOP_COLOR_COMPONENTS, offset });
-    offset += STOP_COLOR_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: stopColor2Location, size: STOP_COLOR_COMPONENTS, offset });
-    offset += STOP_COLOR_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: crackUvLocation, size: CRACK_UV_COMPONENTS, offset });
-    offset += CRACK_UV_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: crackMaskLocation, size: CRACK_MASK_COMPONENTS, offset });
-    offset += CRACK_MASK_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
-    configs.push({ location: crackEffectsLocation, size: CRACK_EFFECTS_COMPONENTS, offset });
-
-    return configs;
   }
 
   private dispose(): void {

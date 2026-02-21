@@ -80,6 +80,9 @@ in vec4 a_stopColor2;
 in vec2 a_crackUv;
 in vec4 a_crackMask;
 in vec2 a_crackEffects;
+in vec4 a_colorXform;
+in vec4 a_colorAnim0;
+in vec4 a_colorAnim1;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
@@ -101,6 +104,9 @@ out vec4 v_stopColor2;
 out vec2 v_crackUv;
 out vec4 v_crackMask;
 out vec2 v_crackEffects;
+out vec4 v_colorXform;
+out vec4 v_colorAnim0;
+out vec4 v_colorAnim1;
 `;
 
 export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
@@ -121,6 +127,9 @@ void main() {
   v_crackUv = a_crackUv;
   v_crackMask = a_crackMask;
   v_crackEffects = a_crackEffects;
+  v_colorXform = a_colorXform;
+  v_colorAnim0 = a_colorAnim0;
+  v_colorAnim1 = a_colorAnim1;
 }
 `;
 
@@ -148,11 +157,20 @@ in vec4 v_stopColor2;
 in vec2 v_crackUv;
 in vec4 v_crackMask;
 in vec2 v_crackEffects;
+in vec4 v_colorXform;
+in vec4 v_colorAnim0;
+in vec4 v_colorAnim1;
 
 uniform sampler2D u_spriteTexture;
 uniform sampler2D u_cracksAtlas;
 uniform int u_crackAtlasIndex;
 uniform vec2 u_crackAtlasGrid;
+uniform float u_timeMs;
+
+// Expanded 4-keyframe animation via uniform (set by PolygonGpuRenderer).
+// Layout: [0]=(interval,count,0,0), [1..4]=keyframePart(time,mode,v0,v1),
+//         [5]=(kf0.v2,kf0.v3,kf1.v2,kf1.v3), [6]=(kf2.v2,kf2.v3,kf3.v2,kf3.v3)
+uniform vec4 u_colorAnimData[7];
 
 out vec4 fragColor;
 
@@ -283,18 +301,218 @@ vec4 sampleGradient(float t) {
 `;
 
 export const SCENE_FRAGMENT_SHADER_MAIN = `
+vec3 rgbToHsl(vec3 color) {
+  float r = color.r;
+  float g = color.g;
+  float b = color.b;
+  float maxC = max(max(r, g), b);
+  float minC = min(min(r, g), b);
+  float l = (maxC + minC) * 0.5;
+  if (abs(maxC - minC) < 1e-6) {
+    return vec3(0.0, 0.0, l);
+  }
+  float d = maxC - minC;
+  float s = l > 0.5 ? d / (2.0 - maxC - minC) : d / (maxC + minC);
+  float h;
+  if (maxC == r) {
+    h = (g - b) / d + (g < b ? 6.0 : 0.0);
+  } else if (maxC == g) {
+    h = (b - r) / d + 2.0;
+  } else {
+    h = (r - g) / d + 4.0;
+  }
+  h /= 6.0;
+  return vec3(h, s, l);
+}
+
+float hueToRgb(float p, float q, float t) {
+  float x = t;
+  if (x < 0.0) x += 1.0;
+  if (x > 1.0) x -= 1.0;
+  if (x < 1.0 / 6.0) return p + (q - p) * 6.0 * x;
+  if (x < 1.0 / 2.0) return q;
+  if (x < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - x) * 6.0;
+  return p;
+}
+
+vec3 hslToRgb(vec3 hsl) {
+  float h = hsl.x;
+  float s = hsl.y;
+  float l = hsl.z;
+  if (s <= 0.0) {
+    return vec3(l, l, l);
+  }
+  float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+  float p = 2.0 * l - q;
+  return vec3(
+    hueToRgb(p, q, h + 1.0 / 3.0),
+    hueToRgb(p, q, h),
+    hueToRgb(p, q, h - 1.0 / 3.0)
+  );
+}
+
+float applyBrightness(float c, float b) {
+  if (b > 0.0) return c + (1.0 - c) * b;
+  if (b < 0.0) return c * (1.0 + b);
+  return c;
+}
+
+vec4 applyTransform(vec4 color, float hueShift, float satShift, float brightShift, float alphaMul) {
+  vec3 hsl = rgbToHsl(color.rgb);
+  float h = fract(hsl.x + hueShift);
+  float s = clamp(hsl.y + satShift, 0.0, 1.0);
+  vec3 rgb = hslToRgb(vec3(h, s, hsl.z));
+  rgb = vec3(
+    clamp(applyBrightness(rgb.r, brightShift), 0.0, 1.0),
+    clamp(applyBrightness(rgb.g, brightShift), 0.0, 1.0),
+    clamp(applyBrightness(rgb.b, brightShift), 0.0, 1.0)
+  );
+  return vec4(rgb, clamp(color.a * alphaMul, 0.0, 1.0));
+}
+
+vec4 evalSingleKeyframe(vec4 baseColor, float mode, float v0, float v1, float v2, float v3) {
+  if (mode < 0.5) {
+    return applyTransform(baseColor, v0, v1, v2, 1.0);
+  }
+  return vec4(v0, v1, v2, v3);
+}
+
+vec4 applyExpandedColorAnimation(vec4 baseColor) {
+  float interval = u_colorAnimData[0].x;
+  int keyframeCount = int(floor(u_colorAnimData[0].y + 0.5));
+  if (interval <= 0.0 || keyframeCount <= 0) {
+    return baseColor;
+  }
+  float phase = fract(u_timeMs / max(interval, 1.0));
+
+  if (keyframeCount == 1) {
+    vec4 kp = u_colorAnimData[1];
+    vec2 kt = u_colorAnimData[5].xy;
+    return evalSingleKeyframe(baseColor, kp.y, kp.z, kp.w, kt.x, kt.y);
+  }
+
+  int left = 0;
+  int right = 0;
+  float leftTime = u_colorAnimData[1].x;
+  float rightTime = leftTime;
+  bool found = false;
+  for (int i = 0; i < 4; i += 1) {
+    if (i >= keyframeCount - 1) break;
+    float a = u_colorAnimData[1 + i].x;
+    float b = u_colorAnimData[2 + i].x;
+    if (phase >= a && phase <= b) {
+      left = i;
+      right = i + 1;
+      leftTime = a;
+      rightTime = b;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    left = keyframeCount - 1;
+    right = 0;
+    leftTime = u_colorAnimData[1 + left].x;
+    rightTime = u_colorAnimData[1].x + 1.0;
+    if (phase < u_colorAnimData[1].x) {
+      phase += 1.0;
+    }
+  }
+
+  float span = max(rightTime - leftTime, 1e-6);
+  float t = clamp((phase - leftTime) / span, 0.0, 1.0);
+
+  vec4 lpk = u_colorAnimData[1 + left];
+  int lTailIdx = 5 + left / 2;
+  vec2 lTail = (left - (left / 2) * 2 == 0)
+    ? u_colorAnimData[lTailIdx].xy : u_colorAnimData[lTailIdx].zw;
+  vec4 c0 = evalSingleKeyframe(baseColor, lpk.y, lpk.z, lpk.w, lTail.x, lTail.y);
+
+  vec4 rpk = u_colorAnimData[1 + right];
+  int rTailIdx = 5 + right / 2;
+  vec2 rTail = (right - (right / 2) * 2 == 0)
+    ? u_colorAnimData[rTailIdx].xy : u_colorAnimData[rTailIdx].zw;
+  vec4 c1 = evalSingleKeyframe(baseColor, rpk.y, rpk.z, rpk.w, rTail.x, rTail.y);
+
+  return mix(c0, c1, t);
+}
+
+vec4 applyCompactColorAnimation(vec4 baseColor) {
+  float interval = v_colorAnim0.x;
+  int keyframeCount = int(floor(v_colorAnim0.y + 0.5));
+  if (interval <= 0.0 || keyframeCount <= 0) {
+    return baseColor;
+  }
+
+  float mode = v_colorAnim1.w;
+  vec3 kf = v_colorAnim1.xyz;
+
+  if (keyframeCount == 1) {
+    if (mode < 0.5) {
+      return applyTransform(baseColor, kf.x, kf.y, kf.z, 1.0);
+    }
+    return vec4(kf, 1.0);
+  }
+
+  float phase = fract(u_timeMs / max(interval, 1.0));
+
+  if (keyframeCount >= 3) {
+    float peakTime = v_colorAnim0.z;
+    float endTime = v_colorAnim0.w;
+    float strength;
+    if (phase <= peakTime) {
+      strength = peakTime > 0.001 ? phase / peakTime : 1.0;
+    } else if (phase <= endTime) {
+      float fadeSpan = max(endTime - peakTime, 0.001);
+      strength = 1.0 - (phase - peakTime) / fadeSpan;
+    } else {
+      strength = 0.0;
+    }
+    strength = clamp(strength, 0.0, 1.0);
+    if (mode < 0.5) {
+      return applyTransform(baseColor, kf.x * strength, kf.y * strength, kf.z * strength, 1.0);
+    }
+    return mix(baseColor, vec4(kf, 1.0), strength);
+  }
+
+  float kf0Time = v_colorAnim0.z;
+  float kf1Time = v_colorAnim0.w;
+  float span = max(kf1Time - kf0Time, 0.001);
+  float t = clamp((phase - kf0Time) / span, 0.0, 1.0);
+  float strength = 1.0 - t;
+
+  if (mode < 0.5) {
+    return applyTransform(baseColor, kf.x * strength, kf.y * strength, kf.z * strength, 1.0);
+  }
+  return mix(vec4(kf, 1.0), baseColor, t);
+}
+
+vec4 applyColorAnimation(vec4 baseColor) {
+  if (u_colorAnimData[0].x > 0.0) {
+    return applyExpandedColorAnimation(baseColor);
+  }
+  return applyCompactColorAnimation(baseColor);
+}
+
+vec4 applyColorPipeline(vec4 color) {
+  // Order (all fill branches, including sprite):
+  // base fill sampling (solid/gradient/sprite) -> color transform (H/S/B + keyframe animation)
+  // -> filaments/noise -> crack.
+  // Policy: sprite fill participates in the same transform/animation stage.
+  vec4 transformed = applyTransform(color, v_colorXform.y, v_colorXform.z, v_colorXform.x, v_colorXform.w);
+  return applyColorAnimation(transformed);
+}
+
 void main() {
   float fillType = v_fillInfo.x;
   vec4 color = v_stopColor0;
 
   // Sprite texture fill (fillType == 4.0)
   if (fillType >= 3.5 && fillType < 4.5) {
-    vec4 spriteColor = texture(u_spriteTexture, v_uv);
-    fragColor = spriteColor;
-    return;
+    color = texture(u_spriteTexture, v_uv);
   }
 
-  if (fillType >= 0.5) {
+  if (fillType >= 0.5 && fillType < 3.5) {
     float t = 0.0;
     if (fillType < 1.5) {
       vec2 start = v_fillParams0.xy;
@@ -319,7 +537,8 @@ void main() {
     color = sampleGradient(t);
   }
 
-  vec4 baseColor = applyFillNoise(applyFillFilaments(color));
+  vec4 transformedColor = applyColorPipeline(color);
+  vec4 baseColor = applyFillNoise(applyFillFilaments(transformedColor));
   float crackStrength = v_crackMask.z;
   float crackAtlasId = v_crackMask.y;
 

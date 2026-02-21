@@ -20,6 +20,26 @@ const SPINE_TEX_HEIGHT = MAX_INSTANCES; // 2048
 /** @deprecated Use SpineAnimParams from animation.types.ts */
 export type SpineAnimationParams = SpineAnimParams;
 
+export type SpineGpuColorTransform = {
+  brightnessShift: number;
+  hueShift: number;
+  saturationShift: number;
+  alphaMultiplier: number;
+};
+
+export type SpineGpuColorAnimation = {
+  interval: number;
+  keyframeCount: number;
+  keyframes: Array<{
+    time: number;
+    mode: 0 | 1;
+    v0: number;
+    v1: number;
+    v2: number;
+    v3: number;
+  }>;
+};
+
 export type SpineGpuHandle = {
   slotIndex: number;
   segmentCount: number;
@@ -27,8 +47,9 @@ export type SpineGpuHandle = {
   winding: "CW" | "CCW";
   // Animation parameters (updated each frame by primitive)
   anim: SpineAnimationParams;
-  // Fill color (RGBA) - simplified for performance
   fillColor: { r: number; g: number; b: number; a: number };
+  colorTransform: SpineGpuColorTransform;
+  colorAnimation?: SpineGpuColorAnimation;
   fillDirty: boolean;
 };
 
@@ -37,11 +58,158 @@ const SPINE_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 
 in vec4 v_fillColor;
+in vec4 v_colorXform;
+in vec4 v_colorAnim0;
+in vec4 v_colorAnim1;
+in vec4 v_colorAnim2;
+in vec4 v_colorAnim3;
+in vec4 v_colorAnim4;
+in vec4 v_colorAnim5;
+in vec4 v_colorAnim6;
+in float v_timeMs;
 
 out vec4 fragColor;
 
+vec3 rgbToHsl(vec3 color) {
+  float r = color.r;
+  float g = color.g;
+  float b = color.b;
+  float maxC = max(max(r, g), b);
+  float minC = min(min(r, g), b);
+  float l = (maxC + minC) * 0.5;
+  if (abs(maxC - minC) < 1e-6) {
+    return vec3(0.0, 0.0, l);
+  }
+  float d = maxC - minC;
+  float s = l > 0.5 ? d / (2.0 - maxC - minC) : d / (maxC + minC);
+  float h;
+  if (maxC == r) {
+    h = (g - b) / d + (g < b ? 6.0 : 0.0);
+  } else if (maxC == g) {
+    h = (b - r) / d + 2.0;
+  } else {
+    h = (r - g) / d + 4.0;
+  }
+  h /= 6.0;
+  return vec3(h, s, l);
+}
+
+float hueToRgb(float p, float q, float t) {
+  float x = t;
+  if (x < 0.0) x += 1.0;
+  if (x > 1.0) x -= 1.0;
+  if (x < 1.0 / 6.0) return p + (q - p) * 6.0 * x;
+  if (x < 1.0 / 2.0) return q;
+  if (x < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - x) * 6.0;
+  return p;
+}
+
+vec3 hslToRgb(vec3 hsl) {
+  float h = hsl.x;
+  float s = hsl.y;
+  float l = hsl.z;
+  if (s <= 0.0) {
+    return vec3(l, l, l);
+  }
+  float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+  float p = 2.0 * l - q;
+  return vec3(
+    hueToRgb(p, q, h + 1.0 / 3.0),
+    hueToRgb(p, q, h),
+    hueToRgb(p, q, h - 1.0 / 3.0)
+  );
+}
+
+float applyBrightness(float c, float b) {
+  if (b > 0.0) return c + (1.0 - c) * b;
+  if (b < 0.0) return c * (1.0 + b);
+  return c;
+}
+
+vec4 applyTransform(vec4 color, float hueShift, float satShift, float brightShift, float alphaMul) {
+  vec3 hsl = rgbToHsl(color.rgb);
+  float h = fract(hsl.x + hueShift);
+  float s = clamp(hsl.y + satShift, 0.0, 1.0);
+  vec3 rgb = hslToRgb(vec3(h, s, hsl.z));
+  rgb = vec3(
+    clamp(applyBrightness(rgb.r, brightShift), 0.0, 1.0),
+    clamp(applyBrightness(rgb.g, brightShift), 0.0, 1.0),
+    clamp(applyBrightness(rgb.b, brightShift), 0.0, 1.0)
+  );
+  return vec4(rgb, clamp(color.a * alphaMul, 0.0, 1.0));
+}
+
+vec4 keyframePart(int index) {
+  if (index == 0) return v_colorAnim1;
+  if (index == 1) return v_colorAnim2;
+  if (index == 2) return v_colorAnim3;
+  return v_colorAnim4;
+}
+
+vec2 keyframeTail(int index) {
+  if (index == 0) return vec2(v_colorAnim5.x, v_colorAnim5.y);
+  if (index == 1) return vec2(v_colorAnim5.z, v_colorAnim5.w);
+  if (index == 2) return vec2(v_colorAnim6.x, v_colorAnim6.y);
+  return vec2(v_colorAnim6.z, v_colorAnim6.w);
+}
+
+vec4 evalKeyframe(vec4 baseColor, vec4 part, vec2 tail) {
+  if (part.y < 0.5) {
+    return applyTransform(baseColor, part.z, part.w, tail.x, 1.0);
+  }
+  return vec4(part.z, part.w, tail.x, tail.y);
+}
+
+vec4 applyColorAnimation(vec4 baseColor) {
+  float interval = v_colorAnim0.x;
+  int keyframeCount = int(floor(v_colorAnim0.y + 0.5));
+  if (interval <= 0.0 || keyframeCount <= 0) {
+    return baseColor;
+  }
+  float phase = fract(v_timeMs / max(interval, 1.0));
+  if (keyframeCount == 1) {
+    return evalKeyframe(baseColor, keyframePart(0), keyframeTail(0));
+  }
+
+  int left = 0;
+  int right = 0;
+  float leftTime = keyframePart(0).x;
+  float rightTime = keyframePart(0).x;
+  bool found = false;
+  for (int i = 0; i < 4; i += 1) {
+    if (i >= keyframeCount - 1) break;
+    float a = keyframePart(i).x;
+    float b = keyframePart(i + 1).x;
+    if (phase >= a && phase <= b) {
+      left = i;
+      right = i + 1;
+      leftTime = a;
+      rightTime = b;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    left = keyframeCount - 1;
+    right = 0;
+    leftTime = keyframePart(left).x;
+    rightTime = keyframePart(0).x + 1.0;
+    if (phase < keyframePart(0).x) {
+      phase += 1.0;
+    }
+  }
+
+  float span = max(rightTime - leftTime, 1e-6);
+  float t = clamp((phase - leftTime) / span, 0.0, 1.0);
+  vec4 c0 = evalKeyframe(baseColor, keyframePart(left), keyframeTail(left));
+  vec4 c1 = evalKeyframe(baseColor, keyframePart(right), keyframeTail(right));
+  return mix(c0, c1, t);
+}
+
 void main() {
-  fragColor = v_fillColor;
+  vec4 transformed = applyTransform(v_fillColor, v_colorXform.y, v_colorXform.z, v_colorXform.x, v_colorXform.w);
+  fragColor = applyColorAnimation(transformed);
 }
 `;
 
@@ -58,11 +226,28 @@ layout(location = 0) in vec4 a_instanceAnim0;  // originX, originY, rotation, ti
 layout(location = 1) in vec4 a_instanceAnim1;  // periodMs, phase, amplitude, epsilon
 layout(location = 2) in vec4 a_instanceMeta;   // segmentCount, winding, unused, unused
 layout(location = 3) in vec4 a_instanceColor;  // r, g, b, a
+layout(location = 4) in vec4 a_instanceColorXform;
+layout(location = 5) in vec4 a_instanceColorAnim0;
+layout(location = 6) in vec4 a_instanceColorAnim1;
+layout(location = 7) in vec4 a_instanceColorAnim2;
+layout(location = 8) in vec4 a_instanceColorAnim3;
+layout(location = 9) in vec4 a_instanceColorAnim4;
+layout(location = 10) in vec4 a_instanceColorAnim5;
+layout(location = 11) in vec4 a_instanceColorAnim6;
 
 // Spine geometry texture
 uniform sampler2D u_spineDataTex;
 
 out vec4 v_fillColor;
+out vec4 v_colorXform;
+out vec4 v_colorAnim0;
+out vec4 v_colorAnim1;
+out vec4 v_colorAnim2;
+out vec4 v_colorAnim3;
+out vec4 v_colorAnim4;
+out vec4 v_colorAnim5;
+out vec4 v_colorAnim6;
+out float v_timeMs;
 
 ${TO_CLIP_GLSL}
 
@@ -117,6 +302,15 @@ void main() {
   if (segmentIdx >= segmentCount) {
     gl_Position = vec4(0.0);
     v_fillColor = vec4(0.0);
+    v_colorXform = vec4(0.0, 0.0, 0.0, 1.0);
+    v_colorAnim0 = vec4(0.0);
+    v_colorAnim1 = vec4(0.0);
+    v_colorAnim2 = vec4(0.0);
+    v_colorAnim3 = vec4(0.0);
+    v_colorAnim4 = vec4(0.0);
+    v_colorAnim5 = vec4(0.0);
+    v_colorAnim6 = vec4(0.0);
+    v_timeMs = 0.0;
     return;
   }
   
@@ -174,6 +368,15 @@ void main() {
 
   gl_Position = vec4(toClip(worldPos), 0.0, 1.0);
   v_fillColor = a_instanceColor;
+  v_colorXform = a_instanceColorXform;
+  v_colorAnim0 = a_instanceColorAnim0;
+  v_colorAnim1 = a_instanceColorAnim1;
+  v_colorAnim2 = a_instanceColorAnim2;
+  v_colorAnim3 = a_instanceColorAnim3;
+  v_colorAnim4 = a_instanceColorAnim4;
+  v_colorAnim5 = a_instanceColorAnim5;
+  v_colorAnim6 = a_instanceColorAnim6;
+  v_timeMs = timeMs;
 }
 `;
 
@@ -182,7 +385,7 @@ void main() {
 // [4-7]: periodMs, phase, amplitude, epsilon
 // [8-11]: segmentCount, winding, unused, unused
 // [12-15]: r, g, b, a
-const INSTANCE_FLOATS = 16;
+const INSTANCE_FLOATS = 48;
 
 class SpineGpuRenderer {
   private gl: WebGL2RenderingContext | null = null;
@@ -271,6 +474,20 @@ class SpineGpuRenderer {
     gl.enableVertexAttribArray(3);
     gl.vertexAttribPointer(3, 4, gl.FLOAT, false, instanceStride, 12 * Float32Array.BYTES_PER_ELEMENT);
     gl.vertexAttribDivisor(3, 1);
+
+    // a_instanceColorXform at location 4: vec4 (brightnessShift, hueShift, saturationShift, alphaMultiplier)
+    gl.enableVertexAttribArray(4);
+    gl.vertexAttribPointer(4, 4, gl.FLOAT, false, instanceStride, 16 * Float32Array.BYTES_PER_ELEMENT);
+    gl.vertexAttribDivisor(4, 1);
+
+    // a_instanceColorAnim0..6 at locations 5..11
+    for (let i = 0; i < 7; i += 1) {
+      const location = 5 + i;
+      const floatOffset = 20 + i * 4;
+      gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(location, 4, gl.FLOAT, false, instanceStride, floatOffset * Float32Array.BYTES_PER_ELEMENT);
+      gl.vertexAttribDivisor(location, 1);
+    }
     
     gl.bindVertexArray(null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -402,6 +619,8 @@ class SpineGpuRenderer {
         rotation: 0,
       },
       fillColor: { r: 1, g: 1, b: 1, a: 1 },
+      colorTransform: { brightnessShift: 0, hueShift: 0, saturationShift: 0, alphaMultiplier: 1 },
+      colorAnimation: undefined,
       fillDirty: true,
     };
     
@@ -429,19 +648,44 @@ class SpineGpuRenderer {
     return this.handles[handle.slotIndex] === handle;
   }
 
-  public updateHandleFill(handle: SpineGpuHandle, color: { r: number; g: number; b: number; a: number }): void {
+  public updateHandleFill(
+    handle: SpineGpuHandle,
+    color: { r: number; g: number; b: number; a: number },
+    colorTransform?: SpineGpuColorTransform,
+    colorAnimation?: SpineGpuColorAnimation
+  ): void {
     handle.fillColor.r = color.r;
     handle.fillColor.g = color.g;
     handle.fillColor.b = color.b;
     handle.fillColor.a = color.a;
+    handle.colorTransform = colorTransform
+      ? {
+          brightnessShift: colorTransform.brightnessShift,
+          hueShift: colorTransform.hueShift,
+          saturationShift: colorTransform.saturationShift,
+          alphaMultiplier: colorTransform.alphaMultiplier,
+        }
+      : { brightnessShift: 0, hueShift: 0, saturationShift: 0, alphaMultiplier: 1 };
+    handle.colorAnimation = colorAnimation
+      ? {
+          interval: colorAnimation.interval,
+          keyframeCount: colorAnimation.keyframeCount,
+          keyframes: colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+        }
+      : undefined;
     handle.fillDirty = true;
   }
 
   /**
    * Unified update API (alias for updateHandleFill).
    */
-  public update(handle: SpineGpuHandle, color: { r: number; g: number; b: number; a: number }): void {
-    this.updateHandleFill(handle, color);
+  public update(
+    handle: SpineGpuHandle,
+    color: { r: number; g: number; b: number; a: number },
+    colorTransform?: SpineGpuColorTransform,
+    colorAnimation?: SpineGpuColorAnimation
+  ): void {
+    this.updateHandleFill(handle, color, colorTransform, colorAnimation);
   }
 
   public releaseHandle(handle: SpineGpuHandle): void {
@@ -498,6 +742,34 @@ class SpineGpuRenderer {
       this.instanceData[offset + 13] = handle.fillColor.g;
       this.instanceData[offset + 14] = handle.fillColor.b;
       this.instanceData[offset + 15] = handle.fillColor.a;
+      this.instanceData[offset + 16] = handle.colorTransform.brightnessShift;
+      this.instanceData[offset + 17] = handle.colorTransform.hueShift;
+      this.instanceData[offset + 18] = handle.colorTransform.saturationShift;
+      this.instanceData[offset + 19] = handle.colorTransform.alphaMultiplier;
+
+      for (let j = 0; j < 28; j += 1) {
+        this.instanceData[offset + 20 + j] = 0;
+      }
+      const animation = handle.colorAnimation;
+      if (animation && animation.interval > 0 && animation.keyframeCount > 0) {
+        this.instanceData[offset + 20] = animation.interval;
+        this.instanceData[offset + 21] = Math.min(animation.keyframeCount, 4);
+        const maxFrames = Math.min(animation.keyframes.length, 4);
+        for (let k = 0; k < maxFrames; k += 1) {
+          const keyframe = animation.keyframes[k]!;
+          const base = offset + 24 + k * 4;
+          this.instanceData[base + 0] = keyframe.time;
+          this.instanceData[base + 1] = keyframe.mode;
+          this.instanceData[base + 2] = keyframe.v0;
+          this.instanceData[base + 3] = keyframe.v1;
+        }
+        for (let k = 0; k < maxFrames; k += 1) {
+          const keyframe = animation.keyframes[k]!;
+          const base = offset + 40 + k * 2;
+          this.instanceData[base + 0] = keyframe.v2;
+          this.instanceData[base + 1] = keyframe.v3;
+        }
+      }
     }
     
     // Upload instance buffer

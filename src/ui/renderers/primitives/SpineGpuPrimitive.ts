@@ -10,7 +10,12 @@ import {
   getInstanceRenderPosition,
   transformObjectPoint,
 } from "@ui/renderers/objects/ObjectRenderer";
-import { spineGpuRenderer, type SpineGpuHandle } from "@ui/renderers/primitives/gpu/spine";
+import {
+  spineGpuRenderer,
+  type SpineGpuHandle,
+  type SpineGpuColorAnimation,
+  type SpineGpuColorTransform,
+} from "@ui/renderers/primitives/gpu/spine";
 import { getSceneTimelineNow } from "@ui/renderers/primitives/utils/sceneTimeline";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { GpuPrimitiveBase } from "@ui/renderers/primitives/GpuPrimitiveBase";
@@ -58,6 +63,24 @@ const extractFillColor = (fill: SceneFill): { r: number; g: number; b: number; a
   return { r: 1, g: 1, b: 1, a: 1 };
 };
 
+const extractColorTransform = (fill: SceneFill): SpineGpuColorTransform => ({
+  brightnessShift: fill.colorTransform?.brightnessShift ?? 0,
+  hueShift: fill.colorTransform?.hueShift ?? 0,
+  saturationShift: fill.colorTransform?.saturationShift ?? 0,
+  alphaMultiplier: fill.colorTransform?.alphaMultiplier ?? 1,
+});
+
+const extractColorAnimation = (fill: SceneFill): SpineGpuColorAnimation | undefined => {
+  if (!fill.colorAnimation || fill.colorAnimation.interval <= 0 || fill.colorAnimation.keyframeCount <= 0) {
+    return undefined;
+  }
+  return {
+    interval: fill.colorAnimation.interval,
+    keyframeCount: fill.colorAnimation.keyframeCount,
+    keyframes: fill.colorAnimation.keyframes.map((keyframe) => ({ ...keyframe })),
+  };
+};
+
 interface SpineGpuPrimitiveConfig {
   spine: SpinePoint[];
   anim: RendererLayerAnimationConfig;
@@ -70,6 +93,8 @@ interface SpineGpuPrimitiveConfig {
 class SpineGpuPrimitive extends GpuPrimitiveBase {
   private cachedFill: SceneFill;
   private cachedColor: { r: number; g: number; b: number; a: number };
+  private cachedColorTransform: SpineGpuColorTransform;
+  private cachedColorAnimation: SpineGpuColorAnimation | undefined;
   private prevInstanceFillRef: SceneFill | undefined;
   private renderHandle: SpineGpuHandle | null = null;
   private needsColorUpload = true;
@@ -78,6 +103,8 @@ class SpineGpuPrimitive extends GpuPrimitiveBase {
     super(getAnimationGpuContext);
     this.cachedFill = config.options.fill;
     this.cachedColor = extractFillColor(this.cachedFill);
+    this.cachedColorTransform = extractColorTransform(this.cachedFill);
+    this.cachedColorAnimation = extractColorAnimation(this.cachedFill);
     this.prevInstanceFillRef = config.initialFillRef;
   }
 
@@ -124,12 +151,19 @@ class SpineGpuPrimitive extends GpuPrimitiveBase {
         this.prevInstanceFillRef = target.data.fill;
         this.cachedFill = options.refreshFill(target);
         this.cachedColor = extractFillColor(this.cachedFill);
+        this.cachedColorTransform = extractColorTransform(this.cachedFill);
+        this.cachedColorAnimation = extractColorAnimation(this.cachedFill);
         fillRefChanged = true;
       }
     }
 
     if (this.needsColorUpload || fillRefChanged) {
-      spineGpuRenderer.update(this.renderHandle, this.cachedColor);
+      spineGpuRenderer.update(
+        this.renderHandle,
+        this.cachedColor,
+        this.cachedColorTransform,
+        this.cachedColorAnimation
+      );
       this.needsColorUpload = false;
     }
 

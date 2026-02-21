@@ -183,6 +183,7 @@ const createEnemiesStub = (): EnemiesModule =>
     getEnemies: () => [],
     getObjectiveTotals: () => ({ count: 0, totalHp: 0 }),
     findNearestEnemy: () => null,
+    findNearestEnemyForInspection: () => null,
     getEnemyState: () => null,
   } as unknown as EnemiesModule);
 
