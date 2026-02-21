@@ -43,10 +43,18 @@ export interface SceneFillFilaments {
   edgeBlur: number;
 }
 
+export interface SceneColorTransform {
+  brightnessShift: number;
+  hueShift: number;
+  saturationShift: number;
+  alphaMultiplier: number;
+}
+
 interface SceneFillCommon {
   noise?: SceneFillNoise;
   filaments?: SceneFillFilaments;
   crackMask?: { atlasId: number; tileIndex: number; strength: number; desat: number; darken: number };
+  colorTransform?: SceneColorTransform;
 }
 
 export interface SceneSolidFill extends SceneFillCommon {

@@ -55,6 +55,9 @@ export const cloneRendererFillConfig = (
   return {
     type: "base",
     brightness: fill.brightness,
+    brightnessShift: fill.brightnessShift,
+    hueShift: fill.hueShift,
+    saturationShift: fill.saturationShift,
     alphaMultiplier: fill.alphaMultiplier,
   };
 };
@@ -98,6 +101,9 @@ export const cloneRendererStrokeConfig = (
     type: "base",
     width: stroke.width,
     brightness: stroke.brightness,
+    brightnessShift: stroke.brightnessShift,
+    hueShift: stroke.hueShift,
+    saturationShift: stroke.saturationShift,
     alphaMultiplier: stroke.alphaMultiplier,
   };
 };

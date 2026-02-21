@@ -12,6 +12,7 @@ import type {
   SceneStroke,
   SceneVector2,
   MutableCloneResult,
+  SceneColorTransform,
 } from "./scene-object-manager.types";
 import {
   FILL_TYPES,
@@ -327,6 +328,7 @@ export function createSolidFill(
   options?: {
     noise?: SceneFillNoise;
     filaments?: SceneFillFilaments;
+    colorTransform?: SceneColorTransform;
   }
 ): SceneSolidFill {
   const fill: SceneSolidFill = {
@@ -340,6 +342,10 @@ export function createSolidFill(
   
   if (options?.filaments) {
     fill.filaments = cloneSceneFillFilaments(options.filaments);
+  }
+
+  if (options?.colorTransform) {
+    fill.colorTransform = { ...options.colorTransform };
   }
   
   return fill;

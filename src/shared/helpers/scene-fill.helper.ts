@@ -68,7 +68,7 @@ export const createRadialGradientFill = (
 };
 
 const withNoiseAndFilaments = <
-  T extends { noise?: SceneFillNoise; filaments?: SceneFillFilaments; crackMask?: SceneFill["crackMask"] }
+  T extends { noise?: SceneFillNoise; filaments?: SceneFillFilaments; crackMask?: SceneFill["crackMask"]; colorTransform?: SceneFill["colorTransform"] }
 >(
   fill: T,
   source: SceneFill,
@@ -76,6 +76,7 @@ const withNoiseAndFilaments = <
   const noise = cloneSceneFillNoise(source.noise);
   const filaments = cloneSceneFillFilaments(source.filaments);
   const crackMask = cloneSceneFillCrackMask(source.crackMask);
+  const colorTransform = source.colorTransform ? { ...source.colorTransform } : undefined;
 
   if (noise) {
     fill.noise = noise;
@@ -87,6 +88,10 @@ const withNoiseAndFilaments = <
 
   if (crackMask) {
     fill.crackMask = crackMask;
+  }
+
+  if (colorTransform) {
+    fill.colorTransform = colorTransform;
   }
 
   return fill;
@@ -281,6 +286,9 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       if (solidFill.filaments) {
         solid.filaments = cloneSceneFillFilaments(solidFill.filaments);
       }
+      if (solidFill.colorTransform) {
+        solid.colorTransform = { ...solidFill.colorTransform };
+      }
       return solid;
     }
     case FILL_TYPES.LINEAR_GRADIENT: {
@@ -299,6 +307,9 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       }
       if (linearFill.filaments) {
         linear.filaments = cloneSceneFillFilaments(linearFill.filaments);
+      }
+      if (linearFill.colorTransform) {
+        linear.colorTransform = { ...linearFill.colorTransform };
       }
       return linear;
     }
@@ -319,6 +330,9 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       if (radialFill.filaments) {
         radial.filaments = cloneSceneFillFilaments(radialFill.filaments);
       }
+      if (radialFill.colorTransform) {
+        radial.colorTransform = { ...radialFill.colorTransform };
+      }
       return radial;
     }
     case FILL_TYPES.DIAMOND_GRADIENT: {
@@ -337,6 +351,9 @@ export const cloneSceneFillDeep = (fill: SceneFill): SceneFill => {
       }
       if (diamondFill.filaments) {
         diamond.filaments = cloneSceneFillFilaments(diamondFill.filaments);
+      }
+      if (diamondFill.colorTransform) {
+        diamond.colorTransform = { ...diamondFill.colorTransform };
       }
       return diamond;
     }

@@ -8,6 +8,9 @@ export type RendererFillConfig =
   | {
       type: "base";
       brightness?: number;
+      brightnessShift?: number;
+      hueShift?: number;
+      saturationShift?: number;
       alphaMultiplier?: number;
     }
   | {
@@ -24,6 +27,9 @@ export type RendererStrokeConfig =
       type: "base";
       width: number;
       brightness?: number;
+      brightnessShift?: number;
+      hueShift?: number;
+      saturationShift?: number;
       alphaMultiplier?: number;
     }
   | {

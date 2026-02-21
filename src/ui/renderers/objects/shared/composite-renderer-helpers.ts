@@ -6,6 +6,7 @@ import type {
   SceneStroke,
   SceneSolidFill,
   SceneVector2,
+  SceneColorTransform,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
@@ -19,7 +20,14 @@ import { resolveRendererFillConfig } from "@shared/helpers/renderer-clone.helper
  * Runtime layer fill types (shared between player units and enemies)
  */
 export type CompositeRendererLayerFill =
-  | { kind: "base"; brightness?: number; alphaMultiplier?: number }
+  | {
+      kind: "base";
+      brightness?: number;
+      brightnessShift?: number;
+      hueShift?: number;
+      saturationShift?: number;
+      alphaMultiplier?: number;
+    }
   | { kind: "solid"; color: SceneColor; noise?: SceneFillNoise }
   | { kind: "gradient"; fill: SceneFill };
 
@@ -27,7 +35,15 @@ export type CompositeRendererLayerFill =
  * Runtime layer stroke types (shared between player units and enemies)
  */
 export type CompositeRendererLayerStroke =
-  | { kind: "base"; width: number; brightness?: number; alphaMultiplier?: number }
+  | {
+      kind: "base";
+      width: number;
+      brightness?: number;
+      brightnessShift?: number;
+      hueShift?: number;
+      saturationShift?: number;
+      alphaMultiplier?: number;
+    }
   | { kind: "solid"; width: number; color: SceneColor };
 
 /**
@@ -197,6 +213,37 @@ export const clampAlphaMultiplier = (value: number | undefined): number => {
 };
 
 /**
+ * Normalizes hue shift to [-0.5, 0.5].
+ */
+export const clampHueShift = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  const wrapped = ((value + 0.5) % 1 + 1) % 1 - 0.5;
+  return wrapped;
+};
+
+/**
+ * Clamps saturation shift to [-1, 1].
+ */
+export const clampSaturationShift = (value: number | undefined): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(-1, Math.min(1, value));
+};
+
+const resolveBrightnessShift = (
+  brightness: number | undefined,
+  brightnessShift: number | undefined
+): number => {
+  if (typeof brightnessShift === "number" && Number.isFinite(brightnessShift)) {
+    return clampBrightness(brightnessShift);
+  }
+  return clampBrightness(brightness);
+};
+
+/**
  * Sanitizes fill config for composite layers
  */
 export const sanitizeCompositeFillConfig = (
@@ -205,7 +252,10 @@ export const sanitizeCompositeFillConfig = (
   if (!fill || fill.type === "base") {
     return {
       kind: "base",
-      brightness: clampBrightness(fill?.brightness),
+      brightness: resolveBrightnessShift(fill?.brightness, fill?.brightnessShift),
+      brightnessShift: resolveBrightnessShift(fill?.brightness, fill?.brightnessShift),
+      hueShift: clampHueShift(fill?.hueShift),
+      saturationShift: clampSaturationShift(fill?.saturationShift),
       alphaMultiplier: clampAlphaMultiplier(fill?.alphaMultiplier),
     };
   }
@@ -249,7 +299,10 @@ export const sanitizeCompositeStrokeConfig = (
   return {
     kind: "base",
     width,
-    brightness: clampBrightness(stroke.brightness),
+    brightness: resolveBrightnessShift(stroke.brightness, stroke.brightnessShift),
+    brightnessShift: resolveBrightnessShift(stroke.brightness, stroke.brightnessShift),
+    hueShift: clampHueShift(stroke.hueShift),
+    saturationShift: clampSaturationShift(stroke.saturationShift),
     alphaMultiplier: clampAlphaMultiplier(stroke.alphaMultiplier),
   };
 };
@@ -270,6 +323,66 @@ export const applyBrightness = (component: number, brightness: number): number =
 // Reusable scratch color to avoid allocations in hot path
 const tintScratch: SceneColor = { r: 0, g: 0, b: 0, a: 1 };
 
+const rgbToHsl = (color: SceneColor): { h: number; s: number; l: number } => {
+  const r = clamp01(color.r);
+  const g = clamp01(color.g);
+  const b = clamp01(color.b);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) * 0.5;
+  if (max === min) {
+    return { h: 0, s: 0, l };
+  }
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) {
+    h = (g - b) / d + (g < b ? 6 : 0);
+  } else if (max === g) {
+    h = (b - r) / d + 2;
+  } else {
+    h = (r - g) / d + 4;
+  }
+  h /= 6;
+  return { h, s, l };
+};
+
+const hueToRgb = (p: number, q: number, t: number): number => {
+  let x = t;
+  if (x < 0) x += 1;
+  if (x > 1) x -= 1;
+  if (x < 1 / 6) return p + (q - p) * 6 * x;
+  if (x < 1 / 2) return q;
+  if (x < 2 / 3) return p + (q - p) * (2 / 3 - x) * 6;
+  return p;
+};
+
+const hslToRgb = (h: number, s: number, l: number, out: SceneColor): void => {
+  if (s <= 0) {
+    out.r = l;
+    out.g = l;
+    out.b = l;
+    return;
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  out.r = hueToRgb(p, q, h + 1 / 3);
+  out.g = hueToRgb(p, q, h);
+  out.b = hueToRgb(p, q, h - 1 / 3);
+};
+
+export const buildColorTransformPayload = (options: {
+  brightnessShift?: number;
+  hueShift?: number;
+  saturationShift?: number;
+  alphaMultiplier?: number;
+}): SceneColorTransform => ({
+  brightnessShift: clampBrightness(options.brightnessShift),
+  hueShift: clampHueShift(options.hueShift),
+  saturationShift: clampSaturationShift(options.saturationShift),
+  alphaMultiplier: clampAlphaMultiplier(options.alphaMultiplier),
+});
+
 /**
  * Tints a color with brightness and alpha multiplier.
  * Returns a reusable scratch object - caller should NOT store the reference!
@@ -277,11 +390,17 @@ const tintScratch: SceneColor = { r: 0, g: 0, b: 0, a: 1 };
 export const tintColor = (
   color: SceneColor,
   brightness: number,
-  alphaMultiplier: number
+  alphaMultiplier: number,
+  hueShift: number = 0,
+  saturationShift: number = 0
 ): SceneColor => {
-  tintScratch.r = clamp01(applyBrightness(color.r, brightness ?? 0));
-  tintScratch.g = clamp01(applyBrightness(color.g, brightness ?? 0));
-  tintScratch.b = clamp01(applyBrightness(color.b, brightness ?? 0));
+  const hsl = rgbToHsl(color);
+  const adjustedHue = ((hsl.h + (hueShift ?? 0)) % 1 + 1) % 1;
+  const adjustedSaturation = clamp01(hsl.s + (saturationShift ?? 0));
+  hslToRgb(adjustedHue, adjustedSaturation, hsl.l, tintScratch);
+  tintScratch.r = clamp01(applyBrightness(tintScratch.r, brightness ?? 0));
+  tintScratch.g = clamp01(applyBrightness(tintScratch.g, brightness ?? 0));
+  tintScratch.b = clamp01(applyBrightness(tintScratch.b, brightness ?? 0));
   const baseAlpha = typeof color.a === "number" && Number.isFinite(color.a) ? color.a : 1;
   tintScratch.a = clamp01(baseAlpha * (alphaMultiplier ?? 1));
   return tintScratch;
@@ -358,12 +477,27 @@ export const resolveCompositeLayerFill = <T extends BaseCompositeRendererConfig>
     case "gradient":
       return cloneSceneFill(fill.fill);
     default: {
+      const colorTransform = buildColorTransformPayload({
+        brightnessShift: fill.brightnessShift ?? fill.brightness,
+        hueShift: fill.hueShift,
+        saturationShift: fill.saturationShift,
+        alphaMultiplier: fill.alphaMultiplier,
+      });
       const baseColor = resolveCompositeFillColor(
         instance,
         renderer.fill ?? renderer.baseFillColor ?? { r: 0.5, g: 0.5, b: 0.5, a: 1 }
       );
-      const tinted = tintColor(baseColor, fill.brightness ?? 0, fill.alphaMultiplier ?? 1);
-      return createSolidFill(tinted, { noise: instance.data.fill.noise });
+      const tinted = tintColor(
+        baseColor,
+        colorTransform.brightnessShift,
+        colorTransform.alphaMultiplier,
+        colorTransform.hueShift,
+        colorTransform.saturationShift
+      );
+      return createSolidFill(tinted, {
+        noise: instance.data.fill.noise,
+        colorTransform,
+      });
     }
   }
 };
@@ -384,6 +518,21 @@ export const resolveCompositeLayerStrokeFill = <T extends BaseCompositeRendererC
     renderer.stroke?.color ?? renderer.baseStrokeColor,
     renderer.fill ?? renderer.baseFillColor ?? { r: 0.5, g: 0.5, b: 0.5, a: 1 }
   );
-  const tinted = tintColor(baseColor, stroke.brightness ?? 0, stroke.alphaMultiplier ?? 1);
-  return createSolidFill(tinted, { noise: instance.data.fill.noise });
+  const colorTransform = buildColorTransformPayload({
+    brightnessShift: stroke.brightnessShift ?? stroke.brightness,
+    hueShift: stroke.hueShift,
+    saturationShift: stroke.saturationShift,
+    alphaMultiplier: stroke.alphaMultiplier,
+  });
+  const tinted = tintColor(
+    baseColor,
+    colorTransform.brightnessShift,
+    colorTransform.alphaMultiplier,
+    colorTransform.hueShift,
+    colorTransform.saturationShift
+  );
+  return createSolidFill(tinted, {
+    noise: instance.data.fill.noise,
+    colorTransform,
+  });
 };
