@@ -25,6 +25,7 @@ import type { PlayerUnitState } from "./UnitTypes";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import {
   ATTACK_DISTANCE_EPSILON,
+  APPROACH_RAMP_DISTANCE,
   COLLISION_RESOLUTION_ITERATIONS,
   CRITICAL_HIT_EXPLOSION_RADIUS,
   PHEROMONE_TIMER_CAP_SECONDS,
@@ -706,10 +707,12 @@ export class UnitRuntimeController {
     }
 
     const moveSpeed = this.getEffectiveMoveSpeed(unit);
-    const desiredSpeed = Math.max(
-      Math.min(moveSpeed, distanceOutsideRange),
-      moveSpeed * 0.25
-    );
+    // Гальмуємо тільки в останніх APPROACH_RAMP_DISTANCE одиницях, щоб не створювати відчуття "приторможує заздалегідь"
+    const desiredSpeed =
+      distanceOutsideRange >= APPROACH_RAMP_DISTANCE
+        ? moveSpeed
+        : moveSpeed *
+          (0.25 + 0.75 * (distanceOutsideRange / APPROACH_RAMP_DISTANCE));
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
     // Додаємо obstacle avoidance щоб не налазити на цеглу
