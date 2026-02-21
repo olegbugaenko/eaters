@@ -19,6 +19,8 @@ import {
   CRACK_UV_COMPONENTS,
   CRACK_MASK_COMPONENTS,
   CRACK_EFFECTS_COMPONENTS,
+  FILL_COLOR_XFORM_COMPONENTS,
+  FILL_COLOR_ANIM_COMPONENTS,
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
@@ -101,6 +103,8 @@ export class WebGLSceneRenderer {
       this.program,
       "a_crackEffects"
     );
+    const colorXformLocation = gl.getAttribLocation(this.program, "a_colorXform");
+    const colorAnimLocation = gl.getAttribLocation(this.program, "a_colorAnim");
 
     const attributeLocations = [
       positionLocation,
@@ -116,6 +120,8 @@ export class WebGLSceneRenderer {
       crackUvLocation,
       crackMaskLocation,
       crackEffectsLocation,
+      colorXformLocation,
+      colorAnimLocation,
     ];
 
     if (attributeLocations.some((location) => location < 0)) {
@@ -138,6 +144,8 @@ export class WebGLSceneRenderer {
       { location: crackUvLocation, size: CRACK_UV_COMPONENTS },
       { location: crackMaskLocation, size: CRACK_MASK_COMPONENTS },
       { location: crackEffectsLocation, size: CRACK_EFFECTS_COMPONENTS },
+      { location: colorXformLocation, size: FILL_COLOR_XFORM_COMPONENTS },
+      { location: colorAnimLocation, size: FILL_COLOR_ANIM_COMPONENTS },
     ]);
 
     // Create buffers

@@ -80,6 +80,8 @@ in vec4 a_stopColor2;
 in vec2 a_crackUv;
 in vec4 a_crackMask;
 in vec2 a_crackEffects;
+in vec4 a_colorXform;
+in vec4 a_colorAnim;
 
 uniform vec2 u_cameraPosition;
 uniform vec2 u_viewportSize;
@@ -101,6 +103,8 @@ out vec4 v_stopColor2;
 out vec2 v_crackUv;
 out vec4 v_crackMask;
 out vec2 v_crackEffects;
+out vec4 v_colorXform;
+out vec4 v_colorAnim;
 `;
 
 export const SCENE_VERTEX_SHADER_MAIN = TO_CLIP_GLSL + `
@@ -121,6 +125,8 @@ void main() {
   v_crackUv = a_crackUv;
   v_crackMask = a_crackMask;
   v_crackEffects = a_crackEffects;
+  v_colorXform = a_colorXform;
+  v_colorAnim = a_colorAnim;
 }
 `;
 
@@ -148,6 +154,8 @@ in vec4 v_stopColor2;
 in vec2 v_crackUv;
 in vec4 v_crackMask;
 in vec2 v_crackEffects;
+in vec4 v_colorXform;
+in vec4 v_colorAnim;
 
 uniform sampler2D u_spriteTexture;
 uniform sampler2D u_cracksAtlas;
@@ -360,6 +368,12 @@ void main() {
   vec3 darkened = saturated * darken;
 
   vec3 finalRgb = mix(base, darkened, k);
+
+  // Keep color transform/animation varyings active in the shader interface.
+  // GPU-side application will be wired in a follow-up step.
+  if (v_colorAnim.x > 1e20) {
+    finalRgb = clamp(finalRgb + v_colorXform.xyz, 0.0, 1.0);
+  }
 
   fragColor = vec4(finalRgb, baseColor.a);
 }

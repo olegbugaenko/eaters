@@ -19,6 +19,8 @@ import {
   FILL_PARAMS1_COMPONENTS,
   CRACK_MASK_COMPONENTS,
   CRACK_EFFECTS_COMPONENTS,
+  FILL_COLOR_XFORM_COMPONENTS,
+  FILL_COLOR_ANIM_COMPONENTS,
   CRACK_UV_COMPONENTS,
   MAX_GRADIENT_STOPS,
   POSITION_COMPONENTS,
@@ -318,6 +320,22 @@ const populateFillVertexComponents = (
   ];
   for (let i = 0; i < CRACK_EFFECTS_COMPONENTS; i += 1) {
     components[write++] = crackEffectValues[i] ?? 0;
+  }
+
+  const colorTransform = fill.colorTransform;
+  const colorTransformValues = [
+    colorTransform?.brightnessShift ?? 0,
+    colorTransform?.hueShift ?? 0,
+    colorTransform?.saturationShift ?? 0,
+    colorTransform?.alphaMultiplier ?? 1,
+  ];
+  for (let i = 0; i < FILL_COLOR_XFORM_COMPONENTS; i += 1) {
+    components[write++] = colorTransformValues[i] ?? 0;
+  }
+
+  // Reserved for future GPU-side color animation payload.
+  for (let i = 0; i < FILL_COLOR_ANIM_COMPONENTS; i += 1) {
+    components[write++] = 0;
   }
 
   return components;
