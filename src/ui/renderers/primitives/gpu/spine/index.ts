@@ -1,1 +1,1 @@
-export { spineGpuRenderer, type SpineGpuHandle, type SpineAnimationParams } from "./SpineGpuRenderer";
+export { spineGpuRenderer, type SpineGpuHandle, type SpineAnimationParams, type SpineGpuColorAnimation, type SpineGpuColorTransform } from "./SpineGpuRenderer";

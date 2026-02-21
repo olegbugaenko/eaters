@@ -13,6 +13,11 @@ import {
   MAX_GRADIENT_STOPS,
   STOP_COLOR_COMPONENTS,
   STOP_OFFSETS_COMPONENTS,
+  CRACK_UV_COMPONENTS,
+  CRACK_MASK_COMPONENTS,
+  CRACK_EFFECTS_COMPONENTS,
+  FILL_COLOR_XFORM_COMPONENTS,
+  FILL_COLOR_ANIM_COMPONENTS,
 } from "../src/ui/renderers/objects/ObjectRenderer";
 import { createFillVertexComponents } from "../src/ui/renderers/primitives/utils/fill";
 import { describe, test } from "./testRunner";
@@ -187,5 +192,60 @@ describe("createFillVertexComponents", () => {
         stop!.color.a ?? 1,
       ]);
     });
+  });
+
+  test("packs color transform and compact animation payload", () => {
+    const components = createFillVertexComponents({
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 1, g: 0.5, b: 0.2, a: 1 },
+        colorTransform: {
+          brightnessShift: 0.2,
+          hueShift: -0.1,
+          saturationShift: 0.3,
+          alphaMultiplier: 0.8,
+        },
+        colorAnimation: {
+          interval: 1200,
+          keyframeCount: 2,
+          keyframes: [
+            { time: 0.1, mode: 0, v0: -0.1, v1: 0.2, v2: 0.3, v3: 0 },
+            { time: 0.8, mode: 1, v0: 0.9, v1: 0.7, v2: 0.5, v3: 1 },
+          ],
+        },
+      },
+      center: { x: 0, y: 0 },
+      rotation: 0,
+      size: { width: 10, height: 10 },
+    });
+
+    const colorXformOffset =
+      FILL_INFO_COMPONENTS +
+      FILL_PARAMS0_COMPONENTS +
+      FILL_PARAMS1_COMPONENTS +
+      FILL_FILAMENTS_COMPONENTS +
+      STOP_OFFSETS_COMPONENTS +
+      STOP_COLOR_COMPONENTS * MAX_GRADIENT_STOPS +
+      CRACK_UV_COMPONENTS +
+      CRACK_MASK_COMPONENTS +
+      CRACK_EFFECTS_COMPONENTS;
+    const colorAnimOffset = colorXformOffset + FILL_COLOR_XFORM_COMPONENTS;
+
+    assertArrayClose(
+      Array.from(components.slice(colorXformOffset, colorXformOffset + 4)),
+      [0.2, -0.1, 0.3, 0.8],
+      0.0001
+    );
+    assertArrayClose(
+      Array.from(components.slice(colorAnimOffset, colorAnimOffset + 4)),
+      [1200, 1, 0.1, 0],
+      0.0001
+    );
+    assertArrayClose(
+      Array.from(components.slice(colorAnimOffset + 4, colorAnimOffset + 8)),
+      [-0.1, 0.2, 0.3, 0],
+      0.0001
+    );
+    assert.strictEqual(FILL_COLOR_ANIM_COMPONENTS, 8);
   });
 });

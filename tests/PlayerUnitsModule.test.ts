@@ -328,8 +328,8 @@ describe("PlayerUnitsModule", () => {
     let lastAliveTotalHp: number | undefined;
     let finalTotalHp: number | undefined;
 
-    for (let i = 0; i < 5; i += 1) {
-      tickSeconds(units, 1);
+    for (let i = 0; i < 50; i += 1) {
+      tickSeconds(units, 0.1);
       const totalHp = bridge.getValue(
         PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY
       ) as number | undefined;

@@ -9,25 +9,20 @@ import type { EnemyRendererLayerFill, EnemyRendererLayerStroke } from "./composi
 import { createSpineSwaySampler } from "../../shared/animation-pipeline";
 import { getNowMs } from "@shared/helpers/time.helper";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
+import { sanitizeCompositeFillConfig, sanitizeCompositeStrokeConfig } from "../../shared/composite-renderer-helpers";
 
 /**
  * Converts RendererFillConfig (DB format, uses "type") to CompositeRendererLayerFill (runtime, uses "kind")
  */
-const toLayerFill = (fill: RendererFillConfig): EnemyRendererLayerFill => {
-  if (fill.type === "base") {
-    return { kind: "base", brightness: fill.brightness, alphaMultiplier: fill.alphaMultiplier };
-  }
-  if (fill.type === "solid") {
-    return { kind: "solid", color: fill.fill.color };
-  }
-  return { kind: "gradient", fill: fill.fill };
-};
+export const toLayerFill = (fill: RendererFillConfig): EnemyRendererLayerFill =>
+  sanitizeCompositeFillConfig(fill);
 
-const toLayerStroke = (stroke: RendererStrokeConfig): EnemyRendererLayerStroke => {
-  if (stroke.type === "base") {
-    return { kind: "base", width: stroke.width, brightness: stroke.brightness };
+export const toLayerStroke = (stroke: RendererStrokeConfig): EnemyRendererLayerStroke => {
+  const sanitized = sanitizeCompositeStrokeConfig(stroke);
+  if (!sanitized) {
+    return { kind: "solid", width: stroke.width, color: { r: 1, g: 1, b: 1, a: 1 } };
   }
-  return { kind: "solid", width: stroke.width, color: stroke.color };
+  return sanitized;
 };
 
 const COLLAPSED_VERTS: SceneVector2[] = [
