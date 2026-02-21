@@ -36,6 +36,13 @@ const smokeEmitterConfigCache = new WeakMap<
     config: BulletTailEmitterRenderConfig | null;
   }
 >();
+const particleClusterConfigCache = new WeakMap<
+  SceneObjectInstance,
+  {
+    source: BulletRendererCustomData["particleCluster"] | undefined;
+    configs: BulletTailEmitterRenderConfig[];
+  }
+>();
 
 /**
  * Gets emitter config for a specific emitter key (with caching)
@@ -61,6 +68,29 @@ const getEmitterConfig = (
   return config;
 };
 
+const getParticleClusterConfigs = (
+  instance: SceneObjectInstance
+): BulletTailEmitterRenderConfig[] => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  const source = data?.particleCluster;
+  const cached = particleClusterConfigCache.get(instance);
+  if (cached && cached.source === source) {
+    return cached.configs;
+  }
+
+  const clusterEntries = source
+    ? (Array.isArray(source) ? source : [source]).filter((entry): entry is ParticleEmitterConfig =>
+        Boolean(entry)
+      )
+    : [];
+  const configs = clusterEntries
+    .map((entry) => sanitizeTailEmitterConfig(entry))
+    .filter((entry): entry is BulletTailEmitterRenderConfig => Boolean(entry));
+
+  particleClusterConfigCache.set(instance, { source, configs });
+  return configs;
+};
+
 /**
  * Gets tail emitter config
  */
@@ -84,6 +114,20 @@ export const getSmokeEmitterConfig = (
   instance: SceneObjectInstance
 ): BulletTailEmitterRenderConfig | null =>
   getEmitterConfig(instance, "smokeEmitter", smokeEmitterConfigCache);
+
+export const hasParticleClusterEmitters = (instance: SceneObjectInstance): boolean =>
+  getParticleClusterConfigs(instance).length > 0;
+
+export const getParticleClusterEmitterConfigAt = (
+  instance: SceneObjectInstance,
+  index: number
+): BulletTailEmitterRenderConfig | null => {
+  if (!Number.isFinite(index) || index < 0) {
+    return null;
+  }
+  const configs = getParticleClusterConfigs(instance);
+  return configs[index] ?? null;
+};
 
 /**
  * Sanitizes tail emitter config
@@ -111,8 +155,6 @@ export const sanitizeTailEmitterConfig = (
   const spawnRadiusMin = Math.max(0, config.spawnRadius?.min ?? 0);
   const spawnRadiusMax = Math.max(spawnRadiusMin, config.spawnRadius?.max ?? spawnRadiusMin);
 
-  // Convert sizeEvolutionMult (multiplier at end of lifetime) to sizeGrowthRate (multiplier per second)
-  // Formula: sizeGrowthRate = sizeEvolutionMult ^ (1 / lifetimeSeconds)
   let sizeGrowthRate = base.sizeGrowthRate ?? 1.0;
   if (
     typeof config.sizeEvolutionMult === "number" &&

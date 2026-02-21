@@ -130,6 +130,7 @@ export class UnitProjectileController {
       visualRotation: movementRotation,
       tail: visual.tail,
       tailEmitter: visual.tailEmitter,
+      particleCluster: visual.particleCluster,
       shape,
       bulletGpuKey,
       ...(visual.rendererCustomData ?? {}),
@@ -212,6 +213,12 @@ export class UnitProjectileController {
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
       justSpawned: true, // Не рухати снаряд в перший тік
+      destroyOnHit: projectile.destroyOnHit ?? true,
+      targetHitCooldownMs: projectile.targetHitCooldownMs,
+      hitTargetCooldowns:
+        (projectile.destroyOnHit ?? true) || !projectile.targetHitCooldownMs
+          ? undefined
+          : new Map<string, number>(),
     };
 
     this.projectiles.push(state);
@@ -323,7 +330,10 @@ export class UnitProjectileController {
     // Only create overlay for particle emitters - they need scene objects
     // Gradients and glow are now handled by GPU renderer
     const hasEmitters = Boolean(
-      visual.tailEmitter || rendererData?.trailEmitter || rendererData?.smokeEmitter,
+      visual.tailEmitter ||
+        visual.particleCluster ||
+        rendererData?.trailEmitter ||
+        rendererData?.smokeEmitter,
     );
     return hasEmitters;
   }
@@ -422,6 +432,9 @@ export class UnitProjectileController {
             projectile,
           );
           if (collided) {
+            if (!this.canApplyHit(projectile, collided.id)) {
+              continue;
+            }
             hitTarget = collided;
             const handled = projectile.onHit?.({
               targetId: collided.id,
@@ -450,16 +463,18 @@ export class UnitProjectileController {
                 this.applyProjectileDamage(projectile, collided);
               }
             }
-            this.removeProjectile(projectile);
-            if (projectile.ringTrail) {
-              this.spawnProjectileRing(
-                projectile.position,
-                projectile.velocity,
-                projectile.radius,
-                projectile.ringTrail.config
-              );
+            if (projectile.destroyOnHit !== false) {
+              this.removeProjectile(projectile);
+              if (projectile.ringTrail) {
+                this.spawnProjectileRing(
+                  projectile.position,
+                  projectile.velocity,
+                  projectile.radius,
+                  projectile.ringTrail.config
+                );
+              }
+              break;
             }
-            break;
           }
         }
       }
@@ -703,6 +718,23 @@ export class UnitProjectileController {
       knockBackDirection: projectile.knockBackDirection,
       direction: projectile.direction,
     });
+  }
+
+  private canApplyHit(projectile: UnitProjectileState, targetId: string): boolean {
+    const cooldownMs = Math.max(0, projectile.targetHitCooldownMs ?? 0);
+    if (cooldownMs <= 0) {
+      return true;
+    }
+    if (!projectile.hitTargetCooldowns) {
+      projectile.hitTargetCooldowns = new Map<string, number>();
+    }
+    const now = performance.now();
+    const lastHitAt = projectile.hitTargetCooldowns.get(targetId);
+    if (typeof lastHitAt === "number" && now - lastHitAt < cooldownMs) {
+      return false;
+    }
+    projectile.hitTargetCooldowns.set(targetId, now);
+    return true;
   }
 
   private findHitTarget(

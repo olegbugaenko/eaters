@@ -1075,6 +1075,8 @@ export class EnemiesModule implements GameModule {
               ? knockBackDirection
               : scaleVector(projectileDirection, -1),
           targetTypes: ["unit"], // Вороги атакують тільки юнітів
+          destroyOnHit: projectileConfig.destroyOnHit,
+          targetHitCooldownMs: projectileConfig.targetHitCooldownMs,
           visual: projectileConfig,
           onHit: (hitContext: UnitProjectileHitContext) => {
             if (this.explosions && config.projectile?.explosion) {

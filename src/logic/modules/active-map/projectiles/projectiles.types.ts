@@ -24,6 +24,7 @@ export interface UnitProjectileVisualConfig {
   soundEffectUrl?: string;
   tail?: BulletTailConfig;
   tailEmitter?: ParticleEmitterConfig;
+  particleCluster?: ParticleEmitterConfig | readonly ParticleEmitterConfig[];
   ringTrail?: SpellProjectileRingTrailConfig;
   rotationSpinningDegPerSec?: number;
   shape?: UnitProjectileShape;
@@ -51,6 +52,8 @@ export interface UnitProjectileSpawn {
   knockBackDirection?: SceneVector2;
   skipKnockback?: boolean;
   ignoreTargetsOnPath?: boolean;
+  destroyOnHit?: boolean;
+  targetHitCooldownMs?: number;
   targetTypes?: TargetType[];
   visual: UnitProjectileVisualConfig;
   onHit?: UnitProjectileOnHit;
@@ -107,6 +110,7 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
     rotationRad: number;
   };
   rendererCustomData: Record<string, unknown>;
+  hitTargetCooldowns?: Map<string, number>;
   // GPU rendering slot (if using GPU instanced rendering)
   gpuSlot?: BulletSlotHandle;
   // Прапорець для пропуску руху в перший тік

@@ -100,6 +100,8 @@ export interface EnemyArcAttackConfig {
 
 export interface EnemyProjectileConfig extends UnitProjectileVisualConfig {
   readonly attackSeries?: AttackSeriesConfig;
+  readonly destroyOnHit?: boolean;
+  readonly targetHitCooldownMs?: number;
 }
 
 export interface EnemyTargetingOptions {
@@ -2522,8 +2524,8 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     maxHp: 30000,
     armor: 2000,
     baseDamage: 1500,
-    attackInterval: 1.5,
-    attackRange: 18,
+    attackInterval: 0.2,
+    attackRange: 160,
     moveSpeed: 0,
     physicalSize: 14,
     lockRotation: true,
@@ -2536,6 +2538,48 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     selfKnockBackDistance: 120,
     selfKnockBackSpeed: 200,
     meleeHitExplosion: { type: "tentacleHit", radius: 14 },
+    projectile: {
+      radius: 6,
+      speed: 280,
+      lifetimeMs: 900,
+      destroyOnHit: false,
+      targetHitCooldownMs: 120,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.95, g: 0.82, b: 0.36, a: 0.35 },
+      },
+      hitRadius: 34,
+      damageRadius: 34,
+      particleCluster: {
+        particlesPerSecond: 2800,
+        particleLifetimeMs: 260,
+        fadeStartMs: 120,
+        baseSpeed: 0.04,
+        speedVariation: 0.06,
+        spread: Math.PI / 1.8,
+        offset: { x: -0.25, y: 0 },
+        sizeRange: { min: 5, max: 12 },
+        sizeEvolutionMult: 1.35,
+        color: { r: 1, g: 0.72, b: 0.2, a: 0.75 },
+        fill: {
+          fillType: FILL_TYPES.RADIAL_GRADIENT,
+          stops: [
+            { offset: 0, color: { r: 1, g: 0.95, b: 0.7, a: 0.82 } },
+            { offset: 0.5, color: { r: 1, g: 0.72, b: 0.2, a: 0.58 } },
+            { offset: 1, color: { r: 0.85, g: 0.24, b: 0.02, a: 0 } },
+          ],
+        },
+        maxParticles: 240,
+      },
+      rendererCustomData: {
+        renderComponents: {
+          body: false,
+          tail: false,
+          glow: false,
+          emitters: true,
+        },
+      },
+    },
   },
 };
 
