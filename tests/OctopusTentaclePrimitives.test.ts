@@ -18,9 +18,9 @@ describe("Octopus tentacle fill/stroke mapping", () => {
       return;
     }
 
-    assert.strictEqual(mapped.brightness, 0.1);
+    assert.strictEqual(mapped.brightness, -0.25);
     assert.strictEqual(mapped.brightnessShift, -0.25);
-    assert.strictEqual(mapped.hueShift, -0.4);
+    assert(Math.abs((mapped.hueShift ?? 0) - (-0.4)) < 1e-9);
     assert.strictEqual(mapped.saturationShift, 0.35);
     assert.strictEqual(mapped.alphaMultiplier, 0.8);
   });
@@ -42,10 +42,45 @@ describe("Octopus tentacle fill/stroke mapping", () => {
     }
 
     assert.strictEqual(mapped.width, 1.2);
-    assert.strictEqual(mapped.brightness, -0.1);
+    assert.strictEqual(mapped.brightness, 0.22);
     assert.strictEqual(mapped.brightnessShift, 0.22);
-    assert.strictEqual(mapped.hueShift, 0.2);
+    assert(Math.abs((mapped.hueShift ?? 0) - 0.2) < 1e-9);
     assert.strictEqual(mapped.saturationShift, -0.5);
     assert.strictEqual(mapped.alphaMultiplier, 0.65);
   });
+
+  test("maps base fill/stroke colorAnimation payload", () => {
+    const fillMapped = toLayerFill({
+      type: "base",
+      colorAnimation: {
+        interval: 1000,
+        keyframes: [
+          { time: 0, deltaHue: 0.1, deltaSaturation: -0.2, deltaBrightness: 0.3 },
+          { time: 0.5, rgba: [0.8, 0.7, 0.6, 0.5] },
+        ],
+      },
+    });
+
+    assert.strictEqual(fillMapped.kind, "base");
+    if (fillMapped.kind === "base") {
+      assert.strictEqual(fillMapped.colorAnimation?.interval, 1000);
+      assert.strictEqual(fillMapped.colorAnimation?.keyframes.length, 2);
+    }
+
+    const strokeMapped = toLayerStroke({
+      type: "base",
+      width: 1,
+      colorAnimation: {
+        interval: 750,
+        keyframes: [{ time: 0.25, deltaBrightness: -0.1 }],
+      },
+    });
+
+    assert.strictEqual(strokeMapped.kind, "base");
+    if (strokeMapped.kind === "base") {
+      assert.strictEqual(strokeMapped.colorAnimation?.interval, 750);
+      assert.strictEqual(strokeMapped.colorAnimation?.keyframes.length, 1);
+    }
+  });
+
 });
