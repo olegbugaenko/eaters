@@ -457,7 +457,10 @@ vec4 applyColorAnimation(vec4 baseColor) {
 }
 
 vec4 applyColorPipeline(vec4 color) {
-  // Order: gradient/solid sampling -> base transform -> color animation -> noise/filaments -> crack effects.
+  // Order (all fill branches, including sprite):
+  // base fill sampling (solid/gradient/sprite) -> color transform (H/S/B + keyframe animation)
+  // -> filaments/noise -> crack.
+  // Policy: sprite fill participates in the same transform/animation stage.
   vec4 transformed = applyTransform(color, v_colorXform.y, v_colorXform.z, v_colorXform.x, v_colorXform.w);
   return applyColorAnimation(transformed);
 }
@@ -468,12 +471,10 @@ void main() {
 
   // Sprite texture fill (fillType == 4.0)
   if (fillType >= 3.5 && fillType < 4.5) {
-    vec4 spriteColor = texture(u_spriteTexture, v_uv);
-    fragColor = spriteColor;
-    return;
+    color = texture(u_spriteTexture, v_uv);
   }
 
-  if (fillType >= 0.5) {
+  if (fillType >= 0.5 && fillType < 3.5) {
     float t = 0.0;
     if (fillType < 1.5) {
       vec2 start = v_fillParams0.xy;
