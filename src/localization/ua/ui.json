@@ -362,5 +362,19 @@
   "scene.targetTooltip.soulReward": "Нагорода душами",
   "scene.targetTooltip.soulDropBaseChance": "Базовий шанс випадіння душ",
   "scene.targetTooltip.soulDropBonus": "Бонус до шансу випадіння душ",
-  "voidCamp.darkResearch.autoAssignPercent": "Авто-розподіл %"
+  "voidCamp.darkResearch.autoAssignPercent": "Авто-розподіл %",
+  "scene.tutorial.step.intro.title": "Ласкаво просимо",
+  "scene.tutorial.step.intro.description": "Твоя мета проста: розбий якомога більше цеглин, поки не скінчилася ментальна стійкість. Стійкість поступово зменшується, тож починай ламати одразу.",
+  "scene.tutorial.step.summonBlueVanguard.title": "Перший призов",
+  "scene.tutorial.step.summonBlueVanguard.description": "Призивай якомога більше істот, спамлячи Блакитного Авангарда. Коли закінчиться мана або стійкість впаде після кількох зламаних цеглин, ми зупинимось і продовжимо.",
+  "scene.tutorial.step.summonBlueVanguard.nextLabel": "Призвати Блакитного Авангарда",
+  "scene.tutorial.step.summonBlueVanguard.lockMessage": "Витрать ману на призови й зламай кілька цеглин, щоб продовжити",
+  "scene.tutorial.step.mana.title": "Мана для ритуалів",
+  "scene.tutorial.step.mana.description": "Мана живить і призови, і закляття. Вона відновлюється сама, тож витрачай її сміливо, щоб ламати більше цеглин до того, як згасне стійкість.",
+  "scene.tutorial.step.castMagicArrow.title": "Чаклування",
+  "scene.tutorial.step.castMagicArrow.description": "Закляття — ще один спосіб нищити цеглини. Обери одне з доступних заклять у списку, а потім клікни по мапі, щоб застосувати його в потрібному місці.",
+  "scene.tutorial.step.castMagicArrow.nextLabel": "Кинути Магічну стрілу",
+  "scene.tutorial.step.castMagicArrow.lockMessage": "Обери Магічну стрілу і клікни по мапі, щоб її застосувати",
+  "scene.tutorial.step.progress.title": "Не бійся поразки",
+  "scene.tutorial.step.progress.description": "Якщо не вдасться розбити всі цеглини — нічого страшного. Кожна знищена цеглина дає ресурси, які зроблять тебе сильнішим у наступному забігу."
 }

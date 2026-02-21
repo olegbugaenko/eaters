@@ -16,6 +16,65 @@ const DOMAIN_FILES = [
   "resources.json",
   "spells.json",
 ];
+const SOURCE_TO_LOCALE_EXPECTATIONS = [
+  {
+    domainFile: "maps.json",
+    sourcePath: path.join(ROOT_DIR, "src", "db", "maps", "maps-db.ts"),
+    extractor: (source) => extractObjectKeys(source, "MAPS_DB"),
+    formatKey: (id) => id,
+  },
+  {
+    domainFile: "skills.json",
+    sourcePath: path.join(ROOT_DIR, "src", "db", "skills-db.ts"),
+    extractor: (source) => extractArrayValues(source, "SKILL_IDS"),
+    formatKey: (id) => id,
+  },
+  {
+    domainFile: "unit-modules.json",
+    sourcePath: path.join(ROOT_DIR, "src", "db", "unit-modules-db.ts"),
+    extractor: (source) => extractArrayValues(source, "UNIT_MODULE_IDS"),
+    formatKey: (id) => id,
+  },
+  {
+    domainFile: "buildings.json",
+    sourcePath: path.join(ROOT_DIR, "src", "db", "buildings-db.ts"),
+    extractor: (source) => extractObjectKeys(source, "BUILDING_DB"),
+    formatKey: (id) => id,
+  },
+  {
+    domainFile: "resources.json",
+    sourcePath: path.join(ROOT_DIR, "src", "db", "resources-db.ts"),
+    extractor: (source) => extractObjectKeys(source, "RESOURCE_DB"),
+    formatKey: (id) => id,
+  },
+  {
+    domainFile: "spells.json",
+    sourcePath: path.join(ROOT_DIR, "src", "db", "spells-db.ts"),
+    extractor: (source) => extractObjectKeys(source, "SPELL_DB"),
+    formatKey: (id) => id,
+  },
+  {
+    domainFile: "ui.json",
+    sourcePath: path.join(ROOT_DIR, "src", "ui", "screens", "Scene", "hooks", "tutorialSteps.ts"),
+    extractor: () => [
+      "scene.tutorial.step.intro.title",
+      "scene.tutorial.step.intro.description",
+      "scene.tutorial.step.summonBlueVanguard.title",
+      "scene.tutorial.step.summonBlueVanguard.description",
+      "scene.tutorial.step.summonBlueVanguard.nextLabel",
+      "scene.tutorial.step.summonBlueVanguard.lockMessage",
+      "scene.tutorial.step.mana.title",
+      "scene.tutorial.step.mana.description",
+      "scene.tutorial.step.castMagicArrow.title",
+      "scene.tutorial.step.castMagicArrow.description",
+      "scene.tutorial.step.castMagicArrow.nextLabel",
+      "scene.tutorial.step.castMagicArrow.lockMessage",
+      "scene.tutorial.step.progress.title",
+      "scene.tutorial.step.progress.description",
+    ],
+    formatKey: (id) => id,
+  },
+];
 const LOGS_DIR = path.join(ROOT_DIR, "logs");
 
 const args = process.argv.slice(2);
@@ -53,6 +112,62 @@ const collectMissingTranslations = (baseJson, localeJson) => {
   return missingTranslations;
 };
 
+const extractArrayValues = (source, constName) => {
+  const escapedName = constName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`${escapedName}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*as const`, "m");
+  const match = source.match(regex);
+  if (!match) {
+    throw new Error(`Unable to find ${constName} array in source file`);
+  }
+
+  const body = match[1].replace(/\/\*([\s\S]*?)\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  return [...body.matchAll(/"([^"]+)"/g)].map((entry) => entry[1]);
+};
+
+const extractObjectKeys = (source, constName) => {
+  const escapedName = constName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`const\\s+${escapedName}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`, "m");
+  const match = source.match(regex);
+  if (!match) {
+    throw new Error(`Unable to find ${constName} object in source file`);
+  }
+
+  const body = match[1];
+  return [...body.matchAll(/^\s{2}([a-zA-Z0-9_-]+):\s*\{/gm)].map((entry) => entry[1]);
+};
+
+const collectMissingBaseKeysFromSources = () => {
+  const missingByDomain = {};
+  let totalMissing = 0;
+
+  for (const expectation of SOURCE_TO_LOCALE_EXPECTATIONS) {
+    const sourceCode = fs.readFileSync(expectation.sourcePath, "utf8");
+    const expectedIds = expectation.extractor(sourceCode);
+    const uniqueIds = Array.from(new Set(expectedIds));
+    const basePath = path.join(LOCALES_DIR, BASE_LOCALE, expectation.domainFile);
+    const baseJson = readJson(basePath);
+
+    if (!baseJson) {
+      throw new Error(`Base localization file not found: ${basePath}`);
+    }
+
+    const missingKeys = uniqueIds
+      .map(expectation.formatKey)
+      .filter((key) => !(key in baseJson));
+
+    if (missingKeys.length > 0) {
+      missingByDomain[expectation.domainFile] = {
+        source: path.relative(ROOT_DIR, expectation.sourcePath),
+        missingCount: missingKeys.length,
+        missingKeys,
+      };
+      totalMissing += missingKeys.length;
+    }
+  }
+
+  return { missingByDomain, totalMissing };
+};
+
 const ensureLogsDir = () => {
   if (!fs.existsSync(LOGS_DIR)) {
     fs.mkdirSync(LOGS_DIR, { recursive: true });
@@ -74,6 +189,9 @@ const collectMissingKeysReport = () => {
     checkedDomains: DOMAIN_FILES,
     checkedLocales: otherLocales,
     missingByLocale: {},
+    sourceCoverage: {
+      missingInBaseLocale: {},
+    },
   };
 
   let totalMissing = 0;
@@ -119,6 +237,10 @@ const collectMissingKeysReport = () => {
     totalMissing += localeMissing;
   }
 
+  const { missingByDomain, totalMissing: sourceMissingTotal } = collectMissingBaseKeysFromSources();
+  report.sourceCoverage.missingInBaseLocale = missingByDomain;
+  totalMissing += sourceMissingTotal;
+
   return { report, totalMissing };
 };
 
@@ -159,6 +281,21 @@ const writeLogs = (report) => {
     }
     lines.push("");
   }
+
+  lines.push("[base locale source coverage]");
+  const sourceCoverageEntries = Object.entries(report.sourceCoverage?.missingInBaseLocale ?? {});
+  if (sourceCoverageEntries.length === 0) {
+    lines.push("No missing base-locale keys detected for source-linked domains.");
+  } else {
+    for (const [domainFile, data] of sourceCoverageEntries) {
+      lines.push(`  [${domainFile}] Missing: ${data.missingCount}`);
+      lines.push(`    Source: ${data.source}`);
+      for (const key of data.missingKeys) {
+        lines.push(`      - ${key}`);
+      }
+    }
+  }
+  lines.push("");
 
   fs.writeFileSync(txtLogPath, lines.join("\n"), "utf8");
 
