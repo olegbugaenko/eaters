@@ -1,7 +1,6 @@
 import type { SceneCameraState, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { compileShader, linkProgram } from "@ui/renderers/utils/webglProgram";
 import {
-  SCENE_VERTEX_SHADER_HEADER,
   createSceneFragmentShader,
 } from "@ui/renderers/shaders/fillEffects.glsl";
 import { TO_CLIP_GLSL } from "@ui/renderers/shaders/common.glsl";
@@ -43,8 +42,49 @@ export type PolygonGpuHandle = {
   anim: PolygonAnimationParams;
 };
 
+
+const POLYGON_VERTEX_SHADER_HEADER = `#version 300 es
+precision highp float;
+precision highp int;
+
+in vec2 a_position;
+in vec4 a_fillInfo;
+in vec4 a_fillParams0;
+in vec4 a_fillParams1;
+in vec4 a_filaments0;
+in float a_filamentEdgeBlur;
+in vec3 a_stopOffsets;
+in vec4 a_stopColor0;
+in vec4 a_stopColor1;
+in vec4 a_stopColor2;
+in vec2 a_crackUv;
+in vec4 a_crackMask;
+in vec2 a_crackEffects;
+
+uniform vec2 u_cameraPosition;
+uniform vec2 u_viewportSize;
+
+out vec2 v_worldPosition;
+out vec2 v_uv;
+out vec4 v_fillInfo;
+out vec4 v_fillParams0;
+out vec4 v_fillParams1;
+out vec4 v_filaments0;
+out float v_filamentEdgeBlur;
+out vec3 v_stopOffsets;
+out vec4 v_stopColor0;
+out vec4 v_stopColor1;
+out vec4 v_stopColor2;
+out vec2 v_crackUv;
+out vec4 v_crackMask;
+out vec2 v_crackEffects;
+out vec4 v_colorXform;
+out vec4 v_colorAnim0;
+out vec4 v_colorAnim1;
+`;
+
 // Vertex shader with animation built-in (no Transform Feedback needed)
-const ANIMATED_VERTEX_SHADER = `${SCENE_VERTEX_SHADER_HEADER}
+const ANIMATED_VERTEX_SHADER = `${POLYGON_VERTEX_SHADER_HEADER}
 // Animation uniforms
 uniform float u_timeMs;
 uniform float u_periodMs;
@@ -168,6 +208,11 @@ void main() {
   v_crackUv = a_crackUv;
   v_crackMask = a_crackMask;
   v_crackEffects = a_crackEffects;
+  // Polygon GPU path keeps compact attribute footprint: use identity color transform
+  // and no keyframe animation payload in this shader variant.
+  v_colorXform = vec4(0.0, 0.0, 0.0, 1.0);
+  v_colorAnim0 = vec4(0.0);
+  v_colorAnim1 = vec4(0.0);
 }
 `;
 
