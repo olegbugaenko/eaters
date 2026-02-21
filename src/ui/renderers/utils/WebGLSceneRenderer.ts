@@ -20,7 +20,6 @@ import {
   CRACK_MASK_COMPONENTS,
   CRACK_EFFECTS_COMPONENTS,
   FILL_COLOR_XFORM_COMPONENTS,
-  FILL_COLOR_ANIM_COMPONENTS,
 } from "../objects";
 import type { SceneCameraState } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
@@ -67,6 +66,7 @@ export class WebGLSceneRenderer {
   private crackAtlasIndexLocation: WebGLUniformLocation | null;
   private crackAtlasGridLocation: WebGLUniformLocation | null;
   private crackAtlasSamplerLocation: WebGLUniformLocation | null;
+  private timeMsLocation: WebGLUniformLocation | null;
   private objectsRenderer: ObjectsRendererManager;
   private bufferState = { staticBytes: 0, dynamicBytes: 0 };
 
@@ -104,7 +104,13 @@ export class WebGLSceneRenderer {
       "a_crackEffects"
     );
     const colorXformLocation = gl.getAttribLocation(this.program, "a_colorXform");
-    const colorAnimLocation = gl.getAttribLocation(this.program, "a_colorAnim");
+    const colorAnim0Location = gl.getAttribLocation(this.program, "a_colorAnim0");
+    const colorAnim1Location = gl.getAttribLocation(this.program, "a_colorAnim1");
+    const colorAnim2Location = gl.getAttribLocation(this.program, "a_colorAnim2");
+    const colorAnim3Location = gl.getAttribLocation(this.program, "a_colorAnim3");
+    const colorAnim4Location = gl.getAttribLocation(this.program, "a_colorAnim4");
+    const colorAnim5Location = gl.getAttribLocation(this.program, "a_colorAnim5");
+    const colorAnim6Location = gl.getAttribLocation(this.program, "a_colorAnim6");
 
     const attributeLocations = [
       positionLocation,
@@ -121,7 +127,13 @@ export class WebGLSceneRenderer {
       crackMaskLocation,
       crackEffectsLocation,
       colorXformLocation,
-      colorAnimLocation,
+      colorAnim0Location,
+      colorAnim1Location,
+      colorAnim2Location,
+      colorAnim3Location,
+      colorAnim4Location,
+      colorAnim5Location,
+      colorAnim6Location,
     ];
 
     if (attributeLocations.some((location) => location < 0)) {
@@ -145,7 +157,13 @@ export class WebGLSceneRenderer {
       { location: crackMaskLocation, size: CRACK_MASK_COMPONENTS },
       { location: crackEffectsLocation, size: CRACK_EFFECTS_COMPONENTS },
       { location: colorXformLocation, size: FILL_COLOR_XFORM_COMPONENTS },
-      { location: colorAnimLocation, size: FILL_COLOR_ANIM_COMPONENTS },
+      { location: colorAnim0Location, size: 4 },
+      { location: colorAnim1Location, size: 4 },
+      { location: colorAnim2Location, size: 4 },
+      { location: colorAnim3Location, size: 4 },
+      { location: colorAnim4Location, size: 4 },
+      { location: colorAnim5Location, size: 4 },
+      { location: colorAnim6Location, size: 4 },
     ]);
 
     // Create buffers
@@ -184,6 +202,7 @@ export class WebGLSceneRenderer {
       this.program,
       "u_cracksAtlas"
     );
+    const timeMsLocation = gl.getUniformLocation(this.program, "u_timeMs");
 
     if (!cameraPositionLocation || !viewportSizeLocation) {
       throw new Error("Unable to resolve camera uniforms");
@@ -195,6 +214,7 @@ export class WebGLSceneRenderer {
     this.crackAtlasIndexLocation = crackAtlasIndexLocation;
     this.crackAtlasGridLocation = crackAtlasGridLocation;
     this.crackAtlasSamplerLocation = crackAtlasSamplerLocation;
+    this.timeMsLocation = timeMsLocation;
 
     // Setup WebGL state
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -249,6 +269,9 @@ export class WebGLSceneRenderer {
       cameraState.viewportSize.width,
       cameraState.viewportSize.height
     );
+    if (this.timeMsLocation !== null) {
+      this.gl.uniform1f(this.timeMsLocation, performance.now());
+    }
 
     if (this.crackAtlasIndexLocation !== null || this.crackAtlasGridLocation !== null) {
       const crackAtlasIndex = textureAtlasRegistry.getAtlasIndex("cracks");

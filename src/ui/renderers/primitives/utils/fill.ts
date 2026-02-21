@@ -335,12 +335,26 @@ const populateFillVertexComponents = (
 
   // Reserved for future GPU-side color animation payload.
   const colorAnimation = fill.colorAnimation;
-  const animationValues = [
-    colorAnimation?.interval ?? 0,
-    colorAnimation?.keyframeCount ?? 0,
-    colorAnimation?.keyframes[0]?.time ?? 0,
-    colorAnimation?.keyframes[0]?.mode ?? 0,
-  ];
+  const animationValues = new Float32Array(FILL_COLOR_ANIM_COMPONENTS);
+  if (colorAnimation) {
+    animationValues[0] = colorAnimation.interval;
+    animationValues[1] = colorAnimation.keyframeCount;
+    const maxFrames = Math.min(colorAnimation.keyframes.length, 4);
+    for (let i = 0; i < maxFrames; i += 1) {
+      const keyframe = colorAnimation.keyframes[i]!;
+      const base = 4 + i * 4;
+      animationValues[base + 0] = keyframe.time;
+      animationValues[base + 1] = keyframe.mode;
+      animationValues[base + 2] = keyframe.v0;
+      animationValues[base + 3] = keyframe.v1;
+    }
+    for (let i = 0; i < maxFrames; i += 1) {
+      const keyframe = colorAnimation.keyframes[i]!;
+      const base = 20 + i * 2;
+      animationValues[base + 0] = keyframe.v2;
+      animationValues[base + 1] = keyframe.v3;
+    }
+  }
   for (let i = 0; i < FILL_COLOR_ANIM_COMPONENTS; i += 1) {
     components[write++] = animationValues[i] ?? 0;
   }
