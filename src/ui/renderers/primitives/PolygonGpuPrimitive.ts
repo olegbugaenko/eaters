@@ -6,12 +6,11 @@ import type {
 import type { RendererLayerAnimationConfig } from "@shared/types/renderer.types";
 import { getAnimationGpuContext } from "@ui/renderers/objects/shared/animation-gpu";
 import {
-  FILL_COMPONENTS,
   DynamicPrimitive,
   getInstanceRenderPosition,
   transformObjectPoint,
 } from "@ui/renderers/objects/ObjectRenderer";
-import { writeFillVertexComponents, buildFillBufferData, buildPackedVertices } from "@ui/renderers/primitives/utils/fill";
+import { writeFillVertexComponents, buildPackedVertices, writeExpandedColorAnimData } from "@ui/renderers/primitives/utils/fill";
 import { resolveAxisType } from "@ui/renderers/primitives/core/animation.types";
 import { polygonGpuRenderer, type PolygonGpuHandle } from "@ui/renderers/primitives/gpu/polygon";
 import { getSceneTimelineNow } from "@ui/renderers/primitives/utils/sceneTimeline";
@@ -45,13 +44,10 @@ interface PolygonGpuPrimitiveConfig {
 }
 
 class PolygonGpuPrimitive extends GpuPrimitiveBase {
-  private fillScratch = new Float32Array(FILL_COMPONENTS);
-  private fillData: Float32Array | null = null;
   private cachedFill: SceneFill;
   private prevInstanceFillRef: SceneFill | undefined;
 
   private positionBuffer: WebGLBuffer | null = null;
-  private fillBuffer: WebGLBuffer | null = null;
   private renderHandle: PolygonGpuHandle | null = null;
 
   private prevPosX: number;
@@ -68,7 +64,7 @@ class PolygonGpuPrimitive extends GpuPrimitiveBase {
 
   protected override createResources(gl: WebGL2RenderingContext): boolean {
     const { config } = this;
-    
+
     if (!this.positionBuffer) {
       const packed = config.packedVertices as unknown as BufferSource;
       this.positionBuffer = this.createBuffer(gl, gl.ARRAY_BUFFER, packed, gl.STATIC_DRAW);
@@ -77,23 +73,10 @@ class PolygonGpuPrimitive extends GpuPrimitiveBase {
       }
     }
 
-    if (!this.fillBuffer) {
-      this.fillBuffer = this.createBuffer(
-        gl,
-        gl.ARRAY_BUFFER,
-        config.vertexCount * FILL_COMPONENTS * Float32Array.BYTES_PER_ELEMENT,
-        gl.DYNAMIC_DRAW
-      );
-      if (!this.fillBuffer) {
-        return false;
-      }
-    }
-
     polygonGpuRenderer.setContext(gl);
     if (!this.renderHandle) {
       this.renderHandle = polygonGpuRenderer.acquire({
         positionBuffer: this.positionBuffer,
-        fillBuffer: this.fillBuffer,
         vertexCount: config.vertexCount,
         center: config.center,
       });
@@ -114,12 +97,12 @@ class PolygonGpuPrimitive extends GpuPrimitiveBase {
   }
 
   protected override updateBuffers(target: SceneObjectInstance): void {
-    if (!this.gl || !this.fillBuffer || !this.renderHandle) {
+    if (!this.renderHandle) {
       return;
     }
 
     const { config } = this;
-    const { options, center, geometry, vertexCount } = config;
+    const { options, center, geometry } = config;
 
     const pos = getInstanceRenderPosition(target);
     const rotation = target.data.rotation ?? 0;
@@ -140,16 +123,16 @@ class PolygonGpuPrimitive extends GpuPrimitiveBase {
     });
 
     if (this.needsFillUpload || fillRefChanged) {
-      const fillComponents = writeFillVertexComponents(this.fillScratch, {
+      writeFillVertexComponents(this.renderHandle.fillData, {
         fill: this.cachedFill,
         center: fillCenter,
         rotation,
         size: geometry.size,
       });
-      this.fillData = buildFillBufferData(vertexCount, fillComponents, this.fillData ?? undefined);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.fillBuffer);
-      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, this.fillData);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+      writeExpandedColorAnimData(
+        this.renderHandle.expandedAnimData,
+        this.cachedFill.colorAnimation
+      );
       this.needsFillUpload = false;
     }
 
@@ -175,8 +158,6 @@ class PolygonGpuPrimitive extends GpuPrimitiveBase {
       this.renderHandle = null;
     }
     this.positionBuffer = null;
-    this.fillBuffer = null;
-    this.fillData = null;
     this.needsFillUpload = true;
   }
 }
@@ -193,7 +174,6 @@ export const createPolygonGpuPrimitive = (
   const packedVertices = buildPackedVertices(options.vertices);
   const geometry = computePolygonGeometry(options.vertices);
 
-  // Compute center of polygon (in local coords)
   const center = options.vertices.reduce(
     (acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }),
     { x: 0, y: 0 }
@@ -202,7 +182,6 @@ export const createPolygonGpuPrimitive = (
   center.x *= invCount;
   center.y *= invCount;
 
-  // Pre-compute animation params from config
   const anim = options.anim;
   const hasAnim = !!anim;
   const axisType = resolveAxisType(anim?.axis);

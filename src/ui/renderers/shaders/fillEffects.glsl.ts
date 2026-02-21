@@ -167,6 +167,11 @@ uniform int u_crackAtlasIndex;
 uniform vec2 u_crackAtlasGrid;
 uniform float u_timeMs;
 
+// Expanded 4-keyframe animation via uniform (set by PolygonGpuRenderer).
+// Layout: [0]=(interval,count,0,0), [1..4]=keyframePart(time,mode,v0,v1),
+//         [5]=(kf0.v2,kf0.v3,kf1.v2,kf1.v3), [6]=(kf2.v2,kf2.v3,kf3.v2,kf3.v3)
+uniform vec4 u_colorAnimData[7];
+
 out vec4 fragColor;
 
 ` + CLAMP01_GLSL;
@@ -365,26 +370,128 @@ vec4 applyTransform(vec4 color, float hueShift, float satShift, float brightShif
   return vec4(rgb, clamp(color.a * alphaMul, 0.0, 1.0));
 }
 
-vec4 evalKeyframe(vec4 baseColor) {
-  if (v_colorAnim0.w < 0.5) {
-    return applyTransform(baseColor, v_colorAnim1.x, v_colorAnim1.y, v_colorAnim1.z, 1.0);
+vec4 evalSingleKeyframe(vec4 baseColor, float mode, float v0, float v1, float v2, float v3) {
+  if (mode < 0.5) {
+    return applyTransform(baseColor, v0, v1, v2, 1.0);
   }
-  return vec4(v_colorAnim1.x, v_colorAnim1.y, v_colorAnim1.z, v_colorAnim1.w);
+  return vec4(v0, v1, v2, v3);
 }
 
-vec4 applyColorAnimation(vec4 baseColor) {
+vec4 applyExpandedColorAnimation(vec4 baseColor) {
+  float interval = u_colorAnimData[0].x;
+  int keyframeCount = int(floor(u_colorAnimData[0].y + 0.5));
+  if (interval <= 0.0 || keyframeCount <= 0) {
+    return baseColor;
+  }
+  float phase = fract(u_timeMs / max(interval, 1.0));
+
+  if (keyframeCount == 1) {
+    vec4 kp = u_colorAnimData[1];
+    vec2 kt = u_colorAnimData[5].xy;
+    return evalSingleKeyframe(baseColor, kp.y, kp.z, kp.w, kt.x, kt.y);
+  }
+
+  int left = 0;
+  int right = 0;
+  float leftTime = u_colorAnimData[1].x;
+  float rightTime = leftTime;
+  bool found = false;
+  for (int i = 0; i < 4; i += 1) {
+    if (i >= keyframeCount - 1) break;
+    float a = u_colorAnimData[1 + i].x;
+    float b = u_colorAnimData[2 + i].x;
+    if (phase >= a && phase <= b) {
+      left = i;
+      right = i + 1;
+      leftTime = a;
+      rightTime = b;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    left = keyframeCount - 1;
+    right = 0;
+    leftTime = u_colorAnimData[1 + left].x;
+    rightTime = u_colorAnimData[1].x + 1.0;
+    if (phase < u_colorAnimData[1].x) {
+      phase += 1.0;
+    }
+  }
+
+  float span = max(rightTime - leftTime, 1e-6);
+  float t = clamp((phase - leftTime) / span, 0.0, 1.0);
+
+  vec4 lpk = u_colorAnimData[1 + left];
+  int lTailIdx = 5 + left / 2;
+  vec2 lTail = (left - (left / 2) * 2 == 0)
+    ? u_colorAnimData[lTailIdx].xy : u_colorAnimData[lTailIdx].zw;
+  vec4 c0 = evalSingleKeyframe(baseColor, lpk.y, lpk.z, lpk.w, lTail.x, lTail.y);
+
+  vec4 rpk = u_colorAnimData[1 + right];
+  int rTailIdx = 5 + right / 2;
+  vec2 rTail = (right - (right / 2) * 2 == 0)
+    ? u_colorAnimData[rTailIdx].xy : u_colorAnimData[rTailIdx].zw;
+  vec4 c1 = evalSingleKeyframe(baseColor, rpk.y, rpk.z, rpk.w, rTail.x, rTail.y);
+
+  return mix(c0, c1, t);
+}
+
+vec4 applyCompactColorAnimation(vec4 baseColor) {
   float interval = v_colorAnim0.x;
-  float keyframeCountF = v_colorAnim0.y;
-  int keyframeCount = int(floor(keyframeCountF + 0.5));
+  int keyframeCount = int(floor(v_colorAnim0.y + 0.5));
   if (interval <= 0.0 || keyframeCount <= 0) {
     return baseColor;
   }
 
-  float phase = fract(u_timeMs / max(interval, 1.0));
-  if (phase < v_colorAnim0.z) {
-    return baseColor;
+  float mode = v_colorAnim1.w;
+  vec3 kf = v_colorAnim1.xyz;
+
+  if (keyframeCount == 1) {
+    if (mode < 0.5) {
+      return applyTransform(baseColor, kf.x, kf.y, kf.z, 1.0);
+    }
+    return vec4(kf, 1.0);
   }
-  return evalKeyframe(baseColor);
+
+  float phase = fract(u_timeMs / max(interval, 1.0));
+
+  if (keyframeCount >= 3) {
+    float peakTime = v_colorAnim0.z;
+    float endTime = v_colorAnim0.w;
+    float strength;
+    if (phase <= peakTime) {
+      strength = peakTime > 0.001 ? phase / peakTime : 1.0;
+    } else if (phase <= endTime) {
+      float fadeSpan = max(endTime - peakTime, 0.001);
+      strength = 1.0 - (phase - peakTime) / fadeSpan;
+    } else {
+      strength = 0.0;
+    }
+    strength = clamp(strength, 0.0, 1.0);
+    if (mode < 0.5) {
+      return applyTransform(baseColor, kf.x * strength, kf.y * strength, kf.z * strength, 1.0);
+    }
+    return mix(baseColor, vec4(kf, 1.0), strength);
+  }
+
+  float kf0Time = v_colorAnim0.z;
+  float kf1Time = v_colorAnim0.w;
+  float span = max(kf1Time - kf0Time, 0.001);
+  float t = clamp((phase - kf0Time) / span, 0.0, 1.0);
+  float strength = 1.0 - t;
+
+  if (mode < 0.5) {
+    return applyTransform(baseColor, kf.x * strength, kf.y * strength, kf.z * strength, 1.0);
+  }
+  return mix(vec4(kf, 1.0), baseColor, t);
+}
+
+vec4 applyColorAnimation(vec4 baseColor) {
+  if (u_colorAnimData[0].x > 0.0) {
+    return applyExpandedColorAnimation(baseColor);
+  }
+  return applyCompactColorAnimation(baseColor);
 }
 
 vec4 applyColorPipeline(vec4 color) {

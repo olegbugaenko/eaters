@@ -9,6 +9,7 @@ import {
   SceneRadialGradientFill,
   SceneDiamondGradientFill,
   SceneSpriteFill,
+  SceneCompiledColorAnimation,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
@@ -333,20 +334,44 @@ const populateFillVertexComponents = (
     components[write++] = colorTransformValues[i] ?? 0;
   }
 
-  // Reserved for future GPU-side color animation payload.
   const colorAnimation = fill.colorAnimation;
   const animationValues = new Float32Array(FILL_COLOR_ANIM_COMPONENTS);
-  if (colorAnimation) {
+  if (colorAnimation && colorAnimation.keyframeCount > 0) {
+    const kfs = colorAnimation.keyframes;
     animationValues[0] = colorAnimation.interval;
-    animationValues[1] = Math.min(colorAnimation.keyframeCount, 1);
-    const keyframe = colorAnimation.keyframes[0];
-    if (keyframe) {
-      animationValues[2] = keyframe.time;
-      animationValues[3] = keyframe.mode;
-      animationValues[4] = keyframe.v0;
-      animationValues[5] = keyframe.v1;
-      animationValues[6] = keyframe.v2;
-      animationValues[7] = keyframe.v3;
+
+    if (kfs.length <= 2) {
+      const kf0 = kfs[0];
+      const kf1 = kfs.length > 1 ? kfs[1] : undefined;
+      animationValues[1] = Math.min(colorAnimation.keyframeCount, 2);
+      if (kf0) {
+        animationValues[2] = kf0.time;
+        animationValues[3] = kf1 ? kf1.time : 1.0;
+        animationValues[4] = kf0.v0;
+        animationValues[5] = kf0.v1;
+        animationValues[6] = kf0.v2;
+        animationValues[7] = kf0.mode;
+      }
+    } else {
+      let peakIdx = 0;
+      let peakMag = 0;
+      for (let i = 0; i < kfs.length; i += 1) {
+        const kf = kfs[i]!;
+        const mag = Math.abs(kf.v0) + Math.abs(kf.v1) + Math.abs(kf.v2);
+        if (mag > peakMag) {
+          peakMag = mag;
+          peakIdx = i;
+        }
+      }
+      const peak = kfs[peakIdx]!;
+      const lastKf = kfs[kfs.length - 1]!;
+      animationValues[1] = 3;
+      animationValues[2] = peak.time;
+      animationValues[3] = lastKf.time;
+      animationValues[4] = peak.v0;
+      animationValues[5] = peak.v1;
+      animationValues[6] = peak.v2;
+      animationValues[7] = peak.mode;
     }
   }
   for (let i = 0; i < FILL_COLOR_ANIM_COMPONENTS; i += 1) {
@@ -380,6 +405,46 @@ export const copyFillComponents = (
  * Build fill buffer data by repeating fill components for each vertex.
  * Reuses target array if size matches.
  */
+/**
+ * Number of vec4 slots for the expanded (uniform-based) 4-keyframe animation.
+ * Layout: [0]=(interval,count,0,0), [1..4]=keyframePart(time,mode,v0,v1),
+ *         [5]=(kf0.v2,kf0.v3,kf1.v2,kf1.v3), [6]=(kf2.v2,kf2.v3,kf3.v2,kf3.v3)
+ */
+export const EXPANDED_COLOR_ANIM_VEC4_COUNT = 7;
+export const EXPANDED_COLOR_ANIM_FLOATS = EXPANDED_COLOR_ANIM_VEC4_COUNT * 4;
+
+export const writeExpandedColorAnimData = (
+  target: Float32Array,
+  anim: SceneCompiledColorAnimation | undefined
+): void => {
+  target.fill(0);
+  if (!anim || anim.interval <= 0 || anim.keyframeCount <= 0) {
+    return;
+  }
+  const kfs = anim.keyframes;
+  const count = Math.min(kfs.length, 4);
+
+  target[0] = anim.interval;
+  target[1] = count;
+
+  for (let i = 0; i < count; i += 1) {
+    const kf = kfs[i]!;
+    const base = (1 + i) * 4;
+    target[base] = kf.time;
+    target[base + 1] = kf.mode;
+    target[base + 2] = kf.v0;
+    target[base + 3] = kf.v1;
+  }
+
+  for (let i = 0; i < count; i += 1) {
+    const kf = kfs[i]!;
+    const vec4Idx = 5 + Math.floor(i / 2);
+    const pairOffset = (i % 2) * 2;
+    target[vec4Idx * 4 + pairOffset] = kf.v2;
+    target[vec4Idx * 4 + pairOffset + 1] = kf.v3;
+  }
+};
+
 export const buildFillBufferData = (
   vertexCount: number,
   fillComponents: Float32Array,

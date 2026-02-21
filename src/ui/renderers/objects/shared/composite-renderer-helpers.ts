@@ -591,7 +591,7 @@ export const resolveCompositeLayerFill = <T extends BaseCompositeRendererConfig>
       return createSolidFill(tinted, {
         noise: instance.data.fill.noise,
         colorTransform,
-        colorAnimation: compileColorAnimation(fill.colorAnimation),
+        colorAnimation: fill.colorAnimation,
       });
     }
   }
@@ -629,6 +629,6 @@ export const resolveCompositeLayerStrokeFill = <T extends BaseCompositeRendererC
   return createSolidFill(tinted, {
     noise: instance.data.fill.noise,
     colorTransform,
-    colorAnimation: compileColorAnimation(stroke.colorAnimation),
+    colorAnimation: stroke.colorAnimation,
   });
 };

@@ -238,7 +238,7 @@ describe("createFillVertexComponents", () => {
     );
     assertArrayClose(
       Array.from(components.slice(colorAnimOffset, colorAnimOffset + 4)),
-      [1200, 1, 0.1, 0],
+      [1200, 2, 0.1, 0.8],
       0.0001
     );
     assertArrayClose(

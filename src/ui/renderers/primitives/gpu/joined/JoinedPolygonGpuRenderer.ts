@@ -18,10 +18,14 @@ import {
   CRACK_UV_COMPONENTS,
   CRACK_MASK_COMPONENTS,
   CRACK_EFFECTS_COMPONENTS,
+  FILL_COLOR_XFORM_COMPONENTS,
+  FILL_COLOR_ANIM_COMPONENTS,
 } from "@ui/renderers/objects";
 import { textureAtlasRegistry } from "@ui/renderers/textures/TextureAtlasRegistry";
 import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
 import { loadSpriteTexture } from "@ui/renderers/primitives/basic/SpritePrimitive";
+import { getSceneTimelineNow } from "@ui/renderers/primitives/utils/sceneTimeline";
+import { EXPANDED_COLOR_ANIM_FLOATS } from "@ui/renderers/primitives/utils/fill";
 
 interface AttributeConfig {
   location: number;
@@ -39,6 +43,8 @@ export type JoinedPolygonGpuHandle = {
   instancePosition: { x: number; y: number };
   instanceRotation: number;
   drawMode: number;
+  /** Expanded 4-keyframe animation data (7 vec4s = 28 floats). */
+  expandedAnimData: Float32Array;
 };
 
 export type AnchorTextureInfo = {
@@ -109,6 +115,9 @@ void main() {
   v_crackUv = a_crackUv;
   v_crackMask = a_crackMask;
   v_crackEffects = a_crackEffects;
+  v_colorXform = a_colorXform;
+  v_colorAnim0 = a_colorAnim0;
+  v_colorAnim1 = a_colorAnim1;
 }
 `;
 
@@ -133,6 +142,8 @@ class JoinedPolygonGpuRenderer {
   private joinOffsetLocation: WebGLUniformLocation | null = null;
   private instancePositionLocation: WebGLUniformLocation | null = null;
   private instanceRotationLocation: WebGLUniformLocation | null = null;
+  private timeMsLocation: WebGLUniformLocation | null = null;
+  private colorAnimDataLocation: WebGLUniformLocation | null = null;
   private lastDrawCalls = 0;
   private lastRenderMs = 0;
   private lastAnchorUploadMs = 0;
@@ -171,6 +182,8 @@ class JoinedPolygonGpuRenderer {
     this.joinOffsetLocation = gl.getUniformLocation(this.program, "u_joinOffset");
     this.instancePositionLocation = gl.getUniformLocation(this.program, "u_instancePosition");
     this.instanceRotationLocation = gl.getUniformLocation(this.program, "u_instanceRotation");
+    this.timeMsLocation = gl.getUniformLocation(this.program, "u_timeMs");
+    this.colorAnimDataLocation = gl.getUniformLocation(this.program, "u_colorAnimData[0]");
   }
 
   public acquireHandle(options: {
@@ -221,6 +234,7 @@ class JoinedPolygonGpuRenderer {
       instancePosition: { x: 0, y: 0 },
       instanceRotation: 0,
       drawMode: options.drawMode ?? gl.TRIANGLE_FAN,
+      expandedAnimData: new Float32Array(EXPANDED_COLOR_ANIM_FLOATS),
     };
     this.handles.add(handle);
     return handle;
@@ -390,6 +404,9 @@ class JoinedPolygonGpuRenderer {
     if (this.anchorTexWidthLocation) {
       gl.uniform1f(this.anchorTexWidthLocation, anchorTexture.width);
     }
+    if (this.timeMsLocation !== null) {
+      gl.uniform1f(this.timeMsLocation, getSceneTimelineNow());
+    }
 
     this.handles.forEach((handle) => {
       if (handle.vertexCount < 3) {
@@ -410,6 +427,9 @@ class JoinedPolygonGpuRenderer {
       }
       if (this.instanceRotationLocation) {
         gl.uniform1f(this.instanceRotationLocation, handle.instanceRotation);
+      }
+      if (this.colorAnimDataLocation !== null) {
+        gl.uniform4fv(this.colorAnimDataLocation, handle.expandedAnimData);
       }
       gl.bindVertexArray(handle.vao);
       gl.drawArrays(handle.drawMode, 0, handle.vertexCount);
@@ -436,6 +456,9 @@ class JoinedPolygonGpuRenderer {
     const crackUvLocation = gl.getAttribLocation(program, "a_crackUv");
     const crackMaskLocation = gl.getAttribLocation(program, "a_crackMask");
     const crackEffectsLocation = gl.getAttribLocation(program, "a_crackEffects");
+    const colorXformLocation = gl.getAttribLocation(program, "a_colorXform");
+    const colorAnim0Location = gl.getAttribLocation(program, "a_colorAnim0");
+    const colorAnim1Location = gl.getAttribLocation(program, "a_colorAnim1");
 
     const attributeLocations = [
       fillInfoLocation,
@@ -450,6 +473,9 @@ class JoinedPolygonGpuRenderer {
       crackUvLocation,
       crackMaskLocation,
       crackEffectsLocation,
+      colorXformLocation,
+      colorAnim0Location,
+      colorAnim1Location,
     ];
 
     if (attributeLocations.some((location) => location < 0)) {
@@ -481,6 +507,12 @@ class JoinedPolygonGpuRenderer {
     configs.push({ location: crackMaskLocation, size: CRACK_MASK_COMPONENTS, offset });
     offset += CRACK_MASK_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
     configs.push({ location: crackEffectsLocation, size: CRACK_EFFECTS_COMPONENTS, offset });
+    offset += CRACK_EFFECTS_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+    configs.push({ location: colorXformLocation, size: FILL_COLOR_XFORM_COMPONENTS, offset });
+    offset += FILL_COLOR_XFORM_COMPONENTS * Float32Array.BYTES_PER_ELEMENT;
+    configs.push({ location: colorAnim0Location, size: 4, offset });
+    offset += 4 * Float32Array.BYTES_PER_ELEMENT;
+    configs.push({ location: colorAnim1Location, size: 4, offset });
 
     return configs;
   }

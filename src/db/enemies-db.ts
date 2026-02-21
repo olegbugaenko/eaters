@@ -2475,8 +2475,15 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
         axis: "normal" as const,
         phase: 0,
       },
-      fill: { type: "base" as const, brightness: 0.3 },
-      stroke: { type: "base" as const, width: 1.2, brightness: -0.1 },
+      fill: { type: "base" as const, brightness: 0.3, saturationShift: 0.1, colorAnimation: { 
+        interval: 2000, 
+        keyframes: [
+          { time: 0, deltaHue: 0 },
+          { time: 0.5, deltaHue: 0.14 }, 
+          { time: 1, deltaHue: 0 }
+        ] 
+      } },
+      stroke: { type: "base" as const, width: 1.2, brightness: -0.1, hueShift: 0.3 },
       buildOpts: { epsilon: 0.3, winding: "CCW" as const },
     },
     maxHp: 500000,

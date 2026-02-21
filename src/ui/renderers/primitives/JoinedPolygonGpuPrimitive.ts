@@ -1,4 +1,5 @@
 import type {
+  SceneCompiledColorAnimation,
   SceneFill,
   SceneObjectInstance,
   SceneStroke,
@@ -9,7 +10,7 @@ import {
   getInstanceRenderPosition,
   FILL_COMPONENTS,
 } from "@ui/renderers/objects/ObjectRenderer";
-import { writeFillVertexComponents, buildFillBufferData, buildPackedVertices } from "@ui/renderers/primitives/utils/fill";
+import { writeFillVertexComponents, buildFillBufferData, buildPackedVertices, writeExpandedColorAnimData } from "@ui/renderers/primitives/utils/fill";
 import { computePolygonGeometry } from "@ui/renderers/primitives/basic/PolygonPrimitive";
 import { joinedPolygonGpuRenderer, type JoinedPolygonGpuHandle } from "@ui/renderers/primitives/gpu/joined/JoinedPolygonGpuRenderer";
 import { getAnimationGpuContext } from "@ui/renderers/objects/shared/animation-gpu";
@@ -160,6 +161,12 @@ abstract class JoinedPolygonPrimitiveBase extends GpuPrimitiveBase {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
   }
 
+  protected updateExpandedColorAnim(anim: SceneCompiledColorAnimation | undefined): void {
+    if (this.renderHandle) {
+      writeExpandedColorAnimData(this.renderHandle.expandedAnimData, anim);
+    }
+  }
+
   protected updateTransform(target: SceneObjectInstance): void {
     if (!this.renderHandle) {
       return;
@@ -246,6 +253,7 @@ export const createJoinedPolygonGpuPrimitive = (
           size: geometry.size,
         });
         this.uploadFillData(fillComponents, vertexCount);
+        this.updateExpandedColorAnim(this.cachedFill.colorAnimation);
       }
 
       this.updateTransform(target);
@@ -310,6 +318,7 @@ export const createJoinedCircleGpuPrimitive = (
           radius: options.radius,
         });
         this.uploadFillData(fillComponents, vertexCount);
+        this.updateExpandedColorAnim(this.cachedFill.colorAnimation);
       }
 
       this.updateTransform(target);
