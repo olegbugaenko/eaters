@@ -435,7 +435,9 @@ export class UnitProjectileController {
             if (!this.canApplyHit(projectile, collided.id)) {
               continue;
             }
-            hitTarget = collided;
+            if (projectile.destroyOnHit !== false) {
+              hitTarget = collided;
+            }
             const handled = projectile.onHit?.({
               targetId: collided.id,
               targetType: collided.type,

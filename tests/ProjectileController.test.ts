@@ -176,10 +176,17 @@ describe("UnitProjectileController", () => {
     });
 
     projectiles.tick(16);
+    const afterHit = scene.getObject(projectileId);
+    const xAfterHit = afterHit?.data.position.x ?? 0;
     projectiles.tick(32);
 
     assert.strictEqual(brickDamage, 4, "piercing projectile should still apply damage on hit");
-    assert.ok(scene.getObject(projectileId), "piercing projectile should remain active after hit");
+    const activeProjectile = scene.getObject(projectileId);
+    assert.ok(activeProjectile, "piercing projectile should remain active after hit");
+    assert.ok(
+      (activeProjectile?.data.position.x ?? 0) > xAfterHit,
+      "piercing projectile should keep moving after hitting a target"
+    );
   });
 
   test("respects per-target hit cooldown for piercing projectiles", () => {
