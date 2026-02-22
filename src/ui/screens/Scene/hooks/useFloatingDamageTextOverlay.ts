@@ -19,6 +19,8 @@ interface UseFloatingDamageTextOverlayOptions {
   overlayCanvasRef: RefObject<HTMLCanvasElement>;
 }
 
+const GRAPHICS_SETTINGS_REFRESH_MS = 150;
+
 export const useFloatingDamageTextOverlay = ({
   bridge,
   scene,
@@ -27,25 +29,30 @@ export const useFloatingDamageTextOverlay = ({
 }: UseFloatingDamageTextOverlayOptions): void => {
   const floatingTextRef = useRef<FloatingTextState[]>([]);
   const graphicsEnabledRef = useRef(readStoredGraphicsSettings().floatingDamageText);
+  const lastSettingsReadAtRef = useRef(0);
 
-  useEffect(() => {
-    const handleStorage = () => {
-      graphicsEnabledRef.current = readStoredGraphicsSettings().floatingDamageText;
-      if (!graphicsEnabledRef.current) {
-        floatingTextRef.current = [];
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  const syncGraphicsFlag = (): boolean => {
+    const now = performance.now();
+    if (now - lastSettingsReadAtRef.current < GRAPHICS_SETTINGS_REFRESH_MS) {
+      return graphicsEnabledRef.current;
+    }
+    lastSettingsReadAtRef.current = now;
+    const enabled = readStoredGraphicsSettings().floatingDamageText;
+    graphicsEnabledRef.current = enabled;
+    if (!enabled && floatingTextRef.current.length > 0) {
+      floatingTextRef.current = [];
+    }
+    return enabled;
+  };
 
   useEffect(() => {
     const unsubscribe = bridge.subscribe(
       DAMAGE_TEXT_BRIDGE_KEY,
       (payload: FloatingDamageTextBridgePayload) => {
-        if (!graphicsEnabledRef.current || payload.events.length === 0) {
+        if (!syncGraphicsFlag() || payload.events.length === 0) {
           return;
         }
+
         const now = performance.now();
         const next = floatingTextRef.current;
         payload.events.forEach((event) => {
@@ -56,6 +63,7 @@ export const useFloatingDamageTextOverlay = ({
             createdAt: now,
           });
         });
+
         if (next.length > DAMAGE_TEXT_TUNING.maxConcurrentTexts) {
           next.splice(0, next.length - DAMAGE_TEXT_TUNING.maxConcurrentTexts);
         }
@@ -76,10 +84,7 @@ export const useFloatingDamageTextOverlay = ({
         return;
       }
 
-      if (
-        overlayCanvas.width !== baseCanvas.width ||
-        overlayCanvas.height !== baseCanvas.height
-      ) {
+      if (overlayCanvas.width !== baseCanvas.width || overlayCanvas.height !== baseCanvas.height) {
         overlayCanvas.width = baseCanvas.width;
         overlayCanvas.height = baseCanvas.height;
       }
@@ -91,7 +96,7 @@ export const useFloatingDamageTextOverlay = ({
       }
       context.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-      if (!graphicsEnabledRef.current || floatingTextRef.current.length === 0) {
+      if (!syncGraphicsFlag() || floatingTextRef.current.length === 0) {
         rafId = requestAnimationFrame(render);
         return;
       }
@@ -111,22 +116,25 @@ export const useFloatingDamageTextOverlay = ({
         if (ageMs >= lifetimeMs) {
           return;
         }
+
         const worldY = entry.y - ageMs * risePerMs;
         const normalizedX = (entry.x - camera.position.x) / camera.viewportSize.width;
         const normalizedY = (worldY - camera.position.y) / camera.viewportSize.height;
         if (normalizedX < -0.1 || normalizedX > 1.1 || normalizedY < -0.1 || normalizedY > 1.1) {
+          survivors.push(entry);
           return;
         }
 
         const x = normalizedX * overlayCanvas.width;
         const y = normalizedY * overlayCanvas.height;
         const alpha = Math.max(0, 1 - ageMs / lifetimeMs);
+        const amountText = `${Math.round(entry.amount)}`;
 
         context.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.85})`;
         context.lineWidth = 3;
-        context.strokeText(`${Math.round(entry.amount)}`, x, y);
+        context.strokeText(amountText, x, y);
         context.fillStyle = `rgba(255, 236, 179, ${alpha})`;
-        context.fillText(`${Math.round(entry.amount)}`, x, y);
+        context.fillText(amountText, x, y);
         survivors.push(entry);
       });
 
@@ -135,7 +143,6 @@ export const useFloatingDamageTextOverlay = ({
     };
 
     rafId = requestAnimationFrame(render);
-
     return () => cancelAnimationFrame(rafId);
   }, [scene, canvasRef, overlayCanvasRef]);
 };
