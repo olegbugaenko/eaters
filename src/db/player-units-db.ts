@@ -633,7 +633,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     baseAttackInterval: 0.6,
     baseAttackDistance: 5,
     moveSpeed: 400,
-    moveAcceleration: 70,
+    moveAcceleration: 75,
     mass: 0.6,
     physicalSize: 12,
     baseCritChance: 0,

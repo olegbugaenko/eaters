@@ -826,7 +826,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "attack2.png",
     effects: {
       all_units_acceleration_multiplier: {
-        multiplier: (level) => 1 + 0.05 * level,
+        multiplier: (level) => 1 + 0.06 * level,
       },
     },
     nodesRequired: { hunger: 2 },
