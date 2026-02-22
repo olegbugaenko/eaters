@@ -379,5 +379,6 @@
   "scene.tutorial.step.castMagicArrow.nextLabel": "Cast Magic Arrow",
   "scene.tutorial.step.castMagicArrow.lockMessage": "Select Magic Arrow and click on the map to cast it",
   "scene.tutorial.step.progress.title": "Don't Fear Failure",
-  "scene.tutorial.step.progress.description": "If you can't shatter every brick, that's fine. Every brick you destroy drops resources—use them to return stronger next time."
+  "scene.tutorial.step.progress.description": "If you can't shatter every brick, that's fine. Every brick you destroy drops resources—use them to return stronger next time.",
+  "voidCamp.tabs.battleRoster": "Battle Roster"
 }
