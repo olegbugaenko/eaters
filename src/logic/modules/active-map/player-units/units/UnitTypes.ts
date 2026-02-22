@@ -26,6 +26,7 @@ export interface PlayerUnitState {
   baseAttackInterval: number;
   baseAttackDistance: number;
   moveSpeed: number;
+  effectiveMaxMoveSpeed?: number;
   moveAcceleration: number;
   mass: number;
   physicalSize: number;

@@ -74,6 +74,7 @@ export class UnitStateFactory extends StateFactory<PlayerUnitState, UnitStateInp
       baseAttackInterval: factoryResult.baseAttackInterval,
       baseAttackDistance: factoryResult.baseAttackDistance,
       moveSpeed: factoryResult.moveSpeed,
+      effectiveMaxMoveSpeed: factoryResult.effectiveMaxMoveSpeed,
       moveAcceleration: factoryResult.moveAcceleration,
       mass: factoryResult.mass,
       physicalSize: factoryResult.physicalSize,

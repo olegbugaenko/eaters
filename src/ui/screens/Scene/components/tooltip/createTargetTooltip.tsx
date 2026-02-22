@@ -204,10 +204,14 @@ const buildPlayerUnitStats = (
       value: formatSeconds(unit.baseAttackInterval),
     });
   }
-  if (Number.isFinite(unit.moveSpeed)) {
+  const displayedMoveSpeed =
+    typeof unit.effectiveMaxMoveSpeed === "number" && Number.isFinite(unit.effectiveMaxMoveSpeed)
+      ? unit.effectiveMaxMoveSpeed
+      : unit.moveSpeed;
+  if (Number.isFinite(displayedMoveSpeed)) {
     stats.push({
       label: t("scene.targetTooltip.moveSpeed", "Move Speed"),
-      value: formatDistance(unit.moveSpeed),
+      value: formatDistance(displayedMoveSpeed),
     });
   }
   if ((unit.soulDropChanceBonus ?? 0) > 0) {
