@@ -838,7 +838,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Push your swarm into relentless bursts, further boosting acceleration.",
     nodePosition: { x: -3, y: -2 },
-    maxLevel: 4,
+    maxLevel: 5,
     icon: "attack3.png",
     effects: {
       all_units_acceleration_multiplier: {
@@ -862,7 +862,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { intensive_motion: 1 },
-    cost: createResourceCost("sand", 250, 1.5),
+    cost: createResourceCost("coal", 2500, 1.5),
   },
   granite_bonding: {
     id: "granite_bonding",

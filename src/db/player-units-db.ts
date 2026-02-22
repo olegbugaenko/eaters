@@ -54,6 +54,8 @@ export interface PlayerUnitConfig {
   readonly moveAcceleration: number; // force units per second^2 before mass
   readonly mass: number;
   readonly physicalSize: number;
+  /** Multiplier for the global drag coefficient (default 1). Higher = more air resistance. */
+  readonly dragMultiplier?: number;
   readonly baseCritChance?: number;
   readonly baseCritMultiplier?: number;
   readonly emitter?: ParticleEmitterConfig;
@@ -630,8 +632,8 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
     baseAttackDamage: 1.25,
     baseAttackInterval: 0.6,
     baseAttackDistance: 5,
-    moveSpeed: 100,
-    moveAcceleration: 140,
+    moveSpeed: 400,
+    moveAcceleration: 70,
     mass: 0.6,
     physicalSize: 12,
     baseCritChance: 0,

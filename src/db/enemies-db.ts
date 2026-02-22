@@ -139,6 +139,8 @@ export interface EnemyConfig {
   readonly attackRange?: number;
   readonly moveSpeed: number;
   readonly physicalSize: number;
+  /** Multiplier for the global drag coefficient (default 1). Higher = more air resistance. */
+  readonly dragMultiplier?: number;
   /** When true, enemy never rotates (e.g. static structures). */
   readonly lockRotation?: boolean;
   readonly reward?: ResourceAmount;

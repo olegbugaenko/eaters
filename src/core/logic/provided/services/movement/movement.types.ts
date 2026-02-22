@@ -1,5 +1,8 @@
 import type { SceneVector2 } from "../scene-object-manager/scene-object-manager.types";
 
+/** Global quadratic air-resistance coefficient: deceleration = DRAG_COEFFICIENT * v^2 */
+export const DRAG_COEFFICIENT = 0.01;
+
 export interface MovementBodyOptions {
   readonly position: SceneVector2;
   readonly mass: number;

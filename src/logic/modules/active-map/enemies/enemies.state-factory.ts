@@ -9,6 +9,7 @@ import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import { ENEMY_SCENE_OBJECT_TYPE } from "./enemies.const";
 import type { EnemySpawnData, InternalEnemyState } from "./enemies.types";
 import { getEnemyConfig } from "../../../../db/enemies-db";
+import { DRAG_COEFFICIENT } from "@core/logic/provided/services/movement/movement.types";
 import {
   sanitizeEnemyType,
   sanitizeEnemyLevel,
@@ -80,12 +81,14 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       Number.POSITIVE_INFINITY
     );
     
-    // Create movement body
-    const mass = Math.max(physicalSize * 0.1, 0.001); // Mass based on size
+    const mass = Math.max(physicalSize * 0.1, 0.001);
+    const dragMultiplier = config.dragMultiplier ?? 1;
+    const drag = DRAG_COEFFICIENT * dragMultiplier;
     const movementId = this.movement.createBody({
       position,
       mass,
       maxSpeed: moveSpeed,
+      drag,
     });
     
     // Extract fill and stroke from renderer config
