@@ -5,6 +5,7 @@ import { FILL_TYPES } from "../src/core/logic/provided/services/scene-object-man
 import { TargetingService } from "../src/logic/modules/active-map/targeting/TargetingService";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
+import { setBulletRenderBridge } from "../src/logic/services/bullet-render-bridge/BulletRenderBridge";
 import type { TargetingProvider } from "../src/logic/modules/active-map/targeting/targeting.types";
 import type { BricksModule } from "../src/logic/modules/active-map/bricks/bricks.module";
 import type { SceneVector2 } from "../src/core/logic/provided/services/scene-object-manager/scene-object-manager.types";
@@ -239,6 +240,64 @@ describe("UnitProjectileController", () => {
       3,
       "projectile should not repeatedly damage the same target during cooldown"
     );
+  });
+
+
+  test("does not render a default tail when tail config is absent", () => {
+    const scene = new SceneObjectManager();
+    scene.setMapSize({ width: 200, height: 200 });
+
+    const targeting = new TargetingService();
+    const bricksStub = {
+      applyDamage: () => ({ destroyed: false, brick: null, inflictedDamage: 0 }),
+    } as unknown as BricksModule;
+    const damage = new DamageService({ bricks: () => bricksStub, targeting });
+
+    const captured: Array<Record<string, unknown>> = [];
+    setBulletRenderBridge({
+      acquireSlot: (config) => {
+        captured.push(config as unknown as Record<string, unknown>);
+        return { batchKey: config.visualKey, visualKey: config.visualKey, slotIndex: captured.length - 1 };
+      },
+      updateSlot: () => {},
+      releaseSlot: () => {},
+      createConfig: (visualKey, overrides) => ({
+        visualKey,
+        bodyColor: { r: 1, g: 1, b: 1, a: 1 },
+        tailStartColor: { r: 1, g: 1, b: 1, a: 1 },
+        tailEndColor: { r: 1, g: 1, b: 1, a: 1 },
+        tailLengthMultiplier: 4.5,
+        tailWidthMultiplier: 2,
+        shape: "circle",
+        ...overrides,
+      }),
+    });
+
+    try {
+      const projectiles = new UnitProjectileController({ scene, targeting, damage });
+      projectiles.spawn({
+        origin: { x: 0, y: 0 },
+        direction: { x: 1, y: 0 },
+        damage: 1,
+        rewardMultiplier: 1,
+        armorPenetration: 0,
+        visual: {
+          radius: 3,
+          speed: 60,
+          lifetimeMs: 1000,
+          fill: SOLID_FILL,
+        },
+      });
+    } finally {
+      setBulletRenderBridge(null);
+    }
+
+    assert.strictEqual(captured.length, 1, "projectile should request one GPU slot");
+    const config = captured[0] ?? {};
+    assert.strictEqual(config.tailLengthMultiplier, 0);
+    assert.strictEqual(config.tailWidthMultiplier, 0);
+    assert.strictEqual(config.tailTaperMultiplier, 0);
+    assert.strictEqual(config.visualKey, "unit-projectile-circle-notail");
   });
 
 });

@@ -27,6 +27,7 @@
     "encagedBeast": { "name": "Поневолена тварюка" },
     "coalConvoy": { "name": "Вугільний конвой" },
     "gear": { "name": "Шестерня" },
-    "uranium_fields": { "name": "Уранові родовища" }
+    "uranium_fields": { "name": "Уранові родовища" },
+    "greatOctopus": { "name": "Величний Восьминіг" }
   }
   
