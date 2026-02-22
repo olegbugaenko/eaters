@@ -380,5 +380,6 @@
   "scene.tutorial.step.castMagicArrow.lockMessage": "Обери Магічну стрілу і клікни по мапі, щоб її застосувати",
   "scene.tutorial.step.progress.title": "Не бійся поразки",
   "scene.tutorial.step.progress.description": "Якщо не вдасться розбити всі цеглини — нічого страшного. Кожна знищена цеглина дає ресурси, які зроблять тебе сильнішим у наступному забігу.",
-  "voidCamp.tabs.battleRoster": "Бойовий ростер"
+  "voidCamp.tabs.battleRoster": "Бойовий ростер",
+  "settings.graphics.showFloatingDamageText": "Показувати плаваючий текст урону"
 }

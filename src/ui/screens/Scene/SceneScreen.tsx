@@ -29,6 +29,7 @@ import { MAP_EFFECTS_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const"
 import { NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY } from "@logic/modules/active-map/necromancer/necromancer.const";
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
+import { useFloatingDamageTextOverlay } from "./hooks/useFloatingDamageTextOverlay";
 import type {
   NecromancerModuleUiApi,
   NecromancerSpawnOption,
@@ -80,6 +81,7 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
   );
   const map = uiApi.map as MapModuleUiApi;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const summoningPanelRef = useRef<HTMLDivElement | null>(null);
   const pointerPressedRef = useRef(false);
@@ -230,6 +232,13 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     lastPointerPositionRef,
     onSpellCast: handleSpellCast,
     onInspectTarget: handleInspectTarget,
+  });
+
+  useFloatingDamageTextOverlay({
+    bridge,
+    scene,
+    canvasRef,
+    overlayCanvasRef,
   });
 
   // Clear UI overlays when modals/overlays become visible
@@ -531,6 +540,12 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
           width={512}
           height={512}
           className="scene-canvas"
+        />
+        <canvas
+          ref={overlayCanvasRef}
+          width={512}
+          height={512}
+          className="scene-overlay-canvas"
         />
       </div>
       {showTutorial && (

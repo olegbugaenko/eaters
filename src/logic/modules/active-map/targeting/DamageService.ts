@@ -1,8 +1,13 @@
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import type { DataBridge } from "@core/logic/ui/DataBridge";
+import { DataBridgeHelpers } from "@core/logic/ui/DataBridgeHelpers";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
+import { readStoredGraphicsSettings } from "@logic/utils/graphicsSettings";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { EnemiesModule } from "../enemies/enemies.module";
 import type { PlayerUnitsModule } from "../player-units/player-units.module";
+import { DAMAGE_TEXT_BRIDGE_KEY, DAMAGE_TEXT_TUNING } from "./damage-text.const";
+import type { FloatingDamageTextBridgePayload } from "./damage-text.types";
 import type { TargetSnapshot, TargetType } from "./targeting.types";
 import { TargetingService } from "./TargetingService";
 
@@ -61,6 +66,7 @@ export interface DamagePayload {
 }
 
 interface DamageServiceOptions {
+  readonly bridge?: DataBridge;
   readonly bricks: () => BricksModule;
   readonly enemies?: () => EnemiesModule;
   readonly units?: () => Pick<PlayerUnitsModule, "applyDamage" | "findNearestUnit">;
@@ -69,13 +75,21 @@ interface DamageServiceOptions {
 }
 
 export class DamageService {
+  private readonly bridge?: DataBridge;
   private readonly bricks: DamageServiceOptions["bricks"];
   private readonly enemies?: DamageServiceOptions["enemies"];
   private readonly units?: DamageServiceOptions["units"];
   private readonly explosions?: DamageServiceOptions["explosions"];
   private readonly targeting: DamageServiceOptions["targeting"];
+  private readonly damageTextPending = new Map<string, TargetSnapshot & { amount: number }>();
+  private damageTextRevision = 0;
+  private lastDamageTextFlushMs = 0;
+  private damageTextFlushTimer: ReturnType<typeof setTimeout> | null = null;
+  private cachedFloatingTextEnabled = true;
+  private lastFloatingTextReadMs = -Infinity;
 
   constructor(options: DamageServiceOptions) {
+    this.bridge = options.bridge;
     this.bricks = options.bricks;
     this.enemies = options.enemies;
     this.units = options.units;
@@ -153,12 +167,13 @@ export class DamageService {
         skipKnockback: options.skipKnockback,
         overTime: options.overTime,
       });
+      this.queueDamageText(target, result.inflictedDamage);
       return result.inflictedDamage;
     }
 
     const enemies = this.enemies?.();
     if (target.type === "enemy" && enemies) {
-      return enemies.applyDamage(target.id, damage, {
+      const inflictedDamage = enemies.applyDamage(target.id, damage, {
         armorPenetration: options.armorPenetration,
         knockBackDirection: options.knockBackDirection,
         knockBackDistance: options.knockBackDistance,
@@ -167,18 +182,83 @@ export class DamageService {
         direction,
         rewardMultiplier: options.rewardMultiplier,
       });
+      this.queueDamageText(target, inflictedDamage);
+      return inflictedDamage;
     }
 
     const units = this.units?.();
     if (target.type === "unit" && units) {
-      return units.applyDamage(target.id, damage, {
+      const inflictedDamage = units.applyDamage(target.id, damage, {
         armorPenetration: options.armorPenetration,
         knockBackDistance: options.knockBackDistance,
         knockBackSpeed: options.knockBackSpeed,
         knockBackDirection: options.knockBackDirection,
       });
+      this.queueDamageText(target, inflictedDamage);
+      return inflictedDamage;
     }
 
     return 0;
+  }
+
+  private queueDamageText(target: TargetSnapshot, inflictedDamage: number): void {
+    if (!this.bridge || inflictedDamage <= 0 || !this.isFloatingDamageTextEnabled()) {
+      return;
+    }
+
+    const key = `${target.type}:${target.id}`;
+    const existing = this.damageTextPending.get(key);
+    if (existing) {
+      existing.amount += inflictedDamage;
+    } else {
+      if (this.damageTextPending.size >= DAMAGE_TEXT_TUNING.maxConcurrentTexts) {
+        return;
+      }
+      this.damageTextPending.set(key, { ...target, amount: inflictedDamage });
+    }
+
+    const now = performance.now();
+    if (now - this.lastDamageTextFlushMs >= DAMAGE_TEXT_TUNING.aggregationWindowMs) {
+      this.flushDamageTextQueue(now);
+      return;
+    }
+    if (!this.damageTextFlushTimer) {
+      this.damageTextFlushTimer = setTimeout(() => {
+        this.damageTextFlushTimer = null;
+        this.flushDamageTextQueue(performance.now());
+      }, DAMAGE_TEXT_TUNING.aggregationWindowMs);
+    }
+  }
+
+  private flushDamageTextQueue(now: number): void {
+    if (!this.bridge || this.damageTextPending.size === 0) {
+      return;
+    }
+
+    const events = [...this.damageTextPending.entries()].map(([key, entry]) => ({
+      id: `${key}:${this.damageTextRevision}`,
+      x: entry.position.x,
+      y: entry.position.y,
+      amount: entry.amount,
+      targetType: entry.type,
+    }));
+    const payload: FloatingDamageTextBridgePayload = {
+      revision: this.damageTextRevision + 1,
+      events,
+    };
+    this.damageTextRevision += 1;
+    this.lastDamageTextFlushMs = now;
+    this.damageTextPending.clear();
+    DataBridgeHelpers.pushState(this.bridge, DAMAGE_TEXT_BRIDGE_KEY, payload);
+  }
+
+  private isFloatingDamageTextEnabled(): boolean {
+    const now = performance.now();
+    if (now - this.lastFloatingTextReadMs < 300) {
+      return this.cachedFloatingTextEnabled;
+    }
+    this.lastFloatingTextReadMs = now;
+    this.cachedFloatingTextEnabled = readStoredGraphicsSettings().floatingDamageText;
+    return this.cachedFloatingTextEnabled;
   }
 }
