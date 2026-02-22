@@ -60,6 +60,7 @@ import {
   DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
   DEFAULT_MAP_ID,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
+  PLAYER_UNIT_SPAWN_JITTER_RADIUS,
   AUTO_RESTART_SKILL_ID,
   BONUS_CONTEXT_CLEARED_LEVELS,
   MAP_RESOURCE_PREVIEW_BRIDGE_KEY,
@@ -867,11 +868,28 @@ export class MapModule implements GameModule {
         spawnPoints.length > 0
           ? spawnPoints[index % spawnPoints.length]
           : undefined;
+      const basePosition = spawnPoint ?? fallback;
       return {
         type: unit.type,
-        position: spawnPoint ?? fallback,
+        position: this.applySpawnJitter(basePosition, config.size),
       };
     });
+  }
+
+  private applySpawnJitter(position: SceneVector2, size: SceneSize): SceneVector2 {
+    const radius = Math.max(0, PLAYER_UNIT_SPAWN_JITTER_RADIUS);
+    if (radius <= 0) {
+      return { ...position };
+    }
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.sqrt(Math.random()) * radius;
+    return this.clampToMap(
+      {
+        x: position.x + Math.cos(angle) * distance,
+        y: position.y + Math.sin(angle) * distance,
+      },
+      size
+    );
   }
 
   private getSpawnPoints(
