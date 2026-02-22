@@ -9,6 +9,7 @@ const UI_DIR = path.join(ROOT_DIR, "src", "ui");
 
 const LETTER_REGEX = /\p{L}/u;
 const SYMBOLS_ONLY_REGEX = /^[\s\d\p{P}\p{S}—–…]*$/u;
+const FORBIDDEN_CRAFTING_PHRASES = [/\bCraft\s+rate\b/i, /\bCraft\s+time\b/i];
 
 const isTestLikeFile = (filePath) => {
   const normalized = filePath.replace(/\\/g, "/");
@@ -61,7 +62,8 @@ const trimSnippet = (value) => {
 };
 
 const reportViolation = (violations, sourceFile, startPos, kind, text) => {
-  const { line, character } = sourceFile.getLineAndCharacterOfPosition(startPos);
+  const { line, character } =
+    sourceFile.getLineAndCharacterOfPosition(startPos);
   violations.push({
     file: path.relative(ROOT_DIR, sourceFile.fileName),
     line: line + 1,
@@ -76,18 +78,33 @@ const isVisualJsxExpression = (node) => {
   if (!parent) {
     return false;
   }
-  return parent.kind === ts.SyntaxKind.JsxElement || parent.kind === ts.SyntaxKind.JsxFragment;
+  return (
+    parent.kind === ts.SyntaxKind.JsxElement ||
+    parent.kind === ts.SyntaxKind.JsxFragment
+  );
 };
 
 const checkFile = (filePath, violations) => {
   const sourceText = fs.readFileSync(filePath, "utf8");
-  const sourceFile = ts.createSourceFile(filePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
 
   const visit = (node) => {
     if (ts.isJsxText(node)) {
       const text = node.getText(sourceFile);
       if (!isAllowedVisualString(text) && LETTER_REGEX.test(text)) {
-        reportViolation(violations, sourceFile, node.getStart(sourceFile), "JSXText", text);
+        reportViolation(
+          violations,
+          sourceFile,
+          node.getStart(sourceFile),
+          "JSXText",
+          text,
+        );
       }
     }
 
@@ -95,11 +112,36 @@ const checkFile = (filePath, violations) => {
       const expr = node.expression;
       if (!expr) {
         // {} placeholder, ignore
-      } else if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
+      } else if (
+        ts.isStringLiteral(expr) ||
+        ts.isNoSubstitutionTemplateLiteral(expr)
+      ) {
         const value = expr.text;
         if (!isAllowedVisualString(value) && LETTER_REGEX.test(value)) {
-          reportViolation(violations, sourceFile, expr.getStart(sourceFile), "JSXExpressionContainer(string)", value);
+          reportViolation(
+            violations,
+            sourceFile,
+            expr.getStart(sourceFile),
+            "JSXExpressionContainer(string)",
+            value,
+          );
         }
+      }
+    }
+
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      const value = node.text;
+      const hasForbiddenCraftingPhrase = FORBIDDEN_CRAFTING_PHRASES.some(
+        (pattern) => pattern.test(value),
+      );
+      if (hasForbiddenCraftingPhrase) {
+        reportViolation(
+          violations,
+          sourceFile,
+          node.getStart(sourceFile),
+          "ForbiddenHardcodedPhrase",
+          value,
+        );
       }
     }
 
@@ -111,7 +153,9 @@ const checkFile = (filePath, violations) => {
 
 const main = () => {
   if (!fs.existsSync(UI_DIR)) {
-    console.error(`[check-hardcoded-ui-strings] UI directory not found: ${path.relative(ROOT_DIR, UI_DIR)}`);
+    console.error(
+      `[check-hardcoded-ui-strings] UI directory not found: ${path.relative(ROOT_DIR, UI_DIR)}`,
+    );
     process.exit(1);
   }
 
@@ -123,13 +167,19 @@ const main = () => {
   }
 
   if (violations.length === 0) {
-    console.log(`[check-hardcoded-ui-strings] OK: no hardcoded UI strings found in ${tsxFiles.length} TSX file(s).`);
+    console.log(
+      `[check-hardcoded-ui-strings] OK: no hardcoded UI strings found in ${tsxFiles.length} TSX file(s).`,
+    );
     return;
   }
 
-  console.error(`[check-hardcoded-ui-strings] Found ${violations.length} violation(s):`);
+  console.error(
+    `[check-hardcoded-ui-strings] Found ${violations.length} violation(s):`,
+  );
   for (const violation of violations) {
-    console.error(`- ${violation.file}:${violation.line}:${violation.column} [${violation.kind}] \"${violation.snippet}\"`);
+    console.error(
+      `- ${violation.file}:${violation.line}:${violation.column} [${violation.kind}] \"${violation.snippet}\"`,
+    );
   }
 
   process.exit(1);
@@ -139,6 +189,8 @@ try {
   main();
 } catch (error) {
   console.error("[check-hardcoded-ui-strings] Failed:");
-  console.error(error instanceof Error ? error.stack ?? error.message : error);
+  console.error(
+    error instanceof Error ? (error.stack ?? error.message) : error,
+  );
   process.exit(1);
 }

@@ -28,7 +28,11 @@ interface CraftingViewProps {
   readonly resources: ResourceAmountPayload[];
 }
 
-const QUICK_BUTTONS: readonly { label: string; type: "set" | "delta" | "max"; value?: number }[] = [
+const QUICK_BUTTONS: readonly {
+  label: string;
+  type: "set" | "delta" | "max";
+  value?: number;
+}[] = [
   { label: "0", type: "set", value: 0 },
   { label: "-100", type: "delta", value: -100 },
   { label: "-10", type: "delta", value: -10 },
@@ -39,7 +43,9 @@ const QUICK_BUTTONS: readonly { label: string; type: "set" | "delta" | "max"; va
   { label: "Max", type: "max" },
 ];
 
-const buildResourceMap = (resources: ResourceAmountPayload[]): Record<string, number> => {
+const buildResourceMap = (
+  resources: ResourceAmountPayload[],
+): Record<string, number> => {
   const map: Record<string, number> = {};
   resources.forEach((entry) => {
     map[entry.id] = entry.amount;
@@ -49,7 +55,7 @@ const buildResourceMap = (resources: ResourceAmountPayload[]): Record<string, nu
 
 const computeMissingCost = (
   cost: Record<string, number>,
-  totals: Record<string, number>
+  totals: Record<string, number>,
 ): Record<string, number> => {
   const missing: Record<string, number> = {};
   Object.entries(cost).forEach(([id, amount]) => {
@@ -65,9 +71,9 @@ const computeMissingCost = (
   return missing;
 };
 
-const formatCraftTime = (durationMs: number): string => {
+const formatCraftTime = (durationMs: number, instantLabel: string): string => {
   if (!Number.isFinite(durationMs) || durationMs <= 0) {
-    return "Instant";
+    return instantLabel;
   }
   const seconds = durationMs / 1000;
   if (seconds >= 1) {
@@ -79,28 +85,33 @@ const formatCraftTime = (durationMs: number): string => {
   return `${Math.max(1, Math.round(durationMs))}ms`;
 };
 
-const formatCraftMetric = (productAmount: number, durationMs: number): string => {
-  if (durationMs > 200) {
-    return `Craft time ${formatCraftTime(durationMs)}`;
-  }
-  const safeDuration = Math.max(1, durationMs);
-  const rate = productAmount / (safeDuration / 1000);
-  return `Craft rate ${formatNumber(rate, { maximumFractionDigits: 0 })} / sec`;
-};
-
-export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) => {
+export const CraftingView: React.FC<CraftingViewProps> = ({
+  state,
+  resources,
+}) => {
   const { uiApi, bridge } = useAppLogic();
   const { t } = useLocalization();
   const crafting = uiApi.crafting as CraftingModuleUiApi;
+  const formatCraftMetric = useCallback(
+    (productAmount: number, durationMs: number): string => {
+      if (durationMs > 200) {
+        return `${t("voidCamp.crafting.metric.craftTime")} ${formatCraftTime(durationMs, t("voidCamp.crafting.metric.instant", "Instant"))}`;
+      }
+      const safeDuration = Math.max(1, durationMs);
+      const rate = productAmount / (safeDuration / 1000);
+      return `${t("voidCamp.crafting.metric.craftRate")} ${formatNumber(rate, { maximumFractionDigits: 0 })} / ${t("scene.common.secondsShort", "s")}`;
+    },
+    [t],
+  );
   const totals = useMemo(() => buildResourceMap(resources), [resources]);
   const newUnlocksState = useBridgeValue(
     bridge,
     NEW_UNLOCKS_BRIDGE_KEY,
-    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState
+    DEFAULT_NEW_UNLOCKS_STATE as NewUnlockNotificationBridgeState,
   );
   const unseenPaths = useMemo(
     () => new Set(newUnlocksState.unseenPaths),
-    [newUnlocksState.unseenPaths]
+    [newUnlocksState.unseenPaths],
   );
 
   const handleInputChange = useCallback(
@@ -112,7 +123,7 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
       }
       crafting.setRecipeQueue(recipeId, Math.max(0, Math.floor(parsed)));
     },
-    [crafting]
+    [crafting],
   );
 
   const handleOverdriveChange = useCallback(
@@ -122,13 +133,20 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
         crafting.setRecipeOverdriveLevel(recipeId, 0);
         return;
       }
-      crafting.setRecipeOverdriveLevel(recipeId, Math.max(0, Math.floor(parsed)));
+      crafting.setRecipeOverdriveLevel(
+        recipeId,
+        Math.max(0, Math.floor(parsed)),
+      );
     },
-    [crafting]
+    [crafting],
   );
 
   const handleButtonClick = useCallback(
-    (recipeId: CraftingRecipeId, type: "set" | "delta" | "max", value?: number) => {
+    (
+      recipeId: CraftingRecipeId,
+      type: "set" | "delta" | "max",
+      value?: number,
+    ) => {
       switch (type) {
         case "set":
           crafting.setRecipeQueue(recipeId, value ?? 0);
@@ -143,16 +161,21 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
           return;
       }
     },
-    [crafting]
+    [crafting],
   );
 
   if (!state.recipes || state.recipes.length === 0) {
     return (
       <div className="crafting-view surface-panel stack-lg">
         <header className="crafting-view__header">
-          <h2 className="heading-2">{t("voidCamp.crafting.queueTitle", "Workshop Queue")}</h2>
+          <h2 className="heading-2">
+            {t("voidCamp.crafting.queueTitle", "Workshop Queue")}
+          </h2>
           <p className="text-muted">
-            {t("voidCamp.crafting.empty", "No crafting recipes are available yet. Unlock new skills to begin fabricating goods.")}
+            {t(
+              "voidCamp.crafting.empty",
+              "No crafting recipes are available yet. Unlock new skills to begin fabricating goods.",
+            )}
           </p>
         </header>
       </div>
@@ -162,7 +185,12 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
   return (
     <div className="crafting-view stack-lg">
       <header className="crafting-view__header">
-        <p className="text-muted">{t("voidCamp.crafting.subtitle", "Convert stockpiled resources into advanced materials.")}</p>
+        <p className="text-muted">
+          {t(
+            "voidCamp.crafting.subtitle",
+            "Convert stockpiled resources into advanced materials.",
+          )}
+        </p>
       </header>
       <ul className="crafting-view__list">
         {state.recipes.map((recipe) => {
@@ -196,11 +224,20 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                     label={recipe.productName}
                   />
                   <div>
-                    <h3 className="heading-3 crafting-recipe__title">{recipe.productName}</h3>
+                    <h3 className="heading-3 crafting-recipe__title">
+                      {recipe.productName}
+                    </h3>
                     <p className="body-sm text-muted">
-                      {t("voidCamp.crafting.produces", "Produces")} {formatNumber(recipe.productAmount, { maximumFractionDigits: 0 })}{" "}
-                      {recipe.productName.toLowerCase()} {t("voidCamp.crafting.perBatch", "per batch")} ·{" "}
-                      {formatCraftMetric(recipe.productAmount, recipe.durationMs)}
+                      {t("voidCamp.crafting.produces", "Produces")}{" "}
+                      {formatNumber(recipe.productAmount, {
+                        maximumFractionDigits: 0,
+                      })}{" "}
+                      {recipe.productName.toLowerCase()}{" "}
+                      {t("voidCamp.crafting.perBatch", "per batch")} ·{" "}
+                      {formatCraftMetric(
+                        recipe.productAmount,
+                        recipe.durationMs,
+                      )}
                     </p>
                   </div>
                 </div>
@@ -210,21 +247,36 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                 <div className="crafting-recipe__queue">
                   <div className="crafting-recipe__queue-row">
                     <label className="crafting-recipe__queue-label">
-                      <span className="text-muted">{t("voidCamp.crafting.queue", "Queue")}</span>
+                      <span className="text-muted">
+                        {t("voidCamp.crafting.queue", "Queue")}
+                      </span>
                       <StableInput
                         type="number"
                         inputMode="numeric"
                         min={0}
                         className="crafting-recipe__queue-input"
                         value={recipe.queue}
-                        onCommit={(value) => handleInputChange(recipe.id, value)}
+                        onCommit={(value) =>
+                          handleInputChange(recipe.id, value)
+                        }
                       />
                     </label>
                     {recipe.maxOverdriveLevel > 0 ? (
                       <label className="crafting-recipe__queue-label">
                         <span className="crafting-recipe__overdrive-heading">
-                          <span className="text-muted">{t("voidCamp.crafting.overdrive", "Overdrive")}</span>
-                          <HintTooltip text={t("voidCamp.crafting.overdriveHint", OVERDRIVE_HINT)} ariaLabel={t("voidCamp.crafting.overdriveHelp", "Overdrive help")} />
+                          <span className="text-muted">
+                            {t("voidCamp.crafting.overdrive", "Overdrive")}
+                          </span>
+                          <HintTooltip
+                            text={t(
+                              "voidCamp.crafting.overdriveHint",
+                              OVERDRIVE_HINT,
+                            )}
+                            ariaLabel={t(
+                              "voidCamp.crafting.overdriveHelp",
+                              "Overdrive help",
+                            )}
+                          />
                         </span>
                         <select
                           className="crafting-recipe__queue-select"
@@ -232,7 +284,10 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                           onChange={(event) =>
                             handleOverdriveChange(recipe.id, event.target.value)
                           }
-                          aria-label={t("voidCamp.crafting.overdriveLevel", "Overdrive level")}
+                          aria-label={t(
+                            "voidCamp.crafting.overdriveLevel",
+                            "Overdrive level",
+                          )}
                         >
                           {Array.from(
                             { length: recipe.maxOverdriveLevel + 1 },
@@ -240,7 +295,7 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                               <option key={i} value={i}>
                                 {i}
                               </option>
-                            )
+                            ),
                           )}
                         </select>
                       </label>
@@ -251,23 +306,43 @@ export const CraftingView: React.FC<CraftingViewProps> = ({ state, resources }) 
                       <button
                         key={button.label}
                         type="button"
-                        className={classNames("secondary-button", "small-button", "button")}
-                        onClick={() => handleButtonClick(recipe.id, button.type, button.value)}
+                        className={classNames(
+                          "secondary-button",
+                          "small-button",
+                          "button",
+                        )}
+                        onClick={() =>
+                          handleButtonClick(
+                            recipe.id,
+                            button.type,
+                            button.value,
+                          )
+                        }
                       >
                         {button.label}
                       </button>
                     ))}
                   </div>
                   <span className="crafting-recipe__queue-max text-muted">
-                    {t("voidCamp.crafting.maxNow", "Max craftable now")}: {formatNumber(recipe.maxQueue, { maximumFractionDigits: 0 })}
+                    {t("voidCamp.crafting.maxNow", "Max craftable now")}:{" "}
+                    {formatNumber(recipe.maxQueue, {
+                      maximumFractionDigits: 0,
+                    })}
                   </span>
                 </div>
                 <div className="crafting-recipe__status">
-                  <span className="crafting-recipe__status-label">{statusLabel}</span>
-                  <div className="crafting-recipe__progress" aria-hidden={!recipe.inProgress}>
+                  <span className="crafting-recipe__status-label">
+                    {statusLabel}
+                  </span>
+                  <div
+                    className="crafting-recipe__progress"
+                    aria-hidden={!recipe.inProgress}
+                  >
                     <div
                       className="crafting-recipe__progress-bar"
-                      style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, progressPercent))}%`,
+                      }}
                     />
                   </div>
                 </div>
