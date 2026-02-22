@@ -8,6 +8,18 @@
   font-weight: 600;
 }
 
+.dark-research-view__souls-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dark-research-view__souls-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  object-fit: contain;
+}
+
 /* Card (compact) --------------------------------------------------------- */
 
 .dark-research-card__title-row {
@@ -41,7 +53,11 @@
   left: 0;
   bottom: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
+  background: linear-gradient(
+    90deg,
+    rgba(139, 92, 246, 0.9),
+    rgba(59, 130, 246, 0.9)
+  );
   transition: width 0.2s ease;
 }
 

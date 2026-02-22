@@ -17,6 +17,12 @@ interface SceneRunSummaryAutoRestartControls {
 
 interface SceneRunSummaryModalProps {
   resources: ResourceRunSummaryItem[];
+  souls?: {
+    name: string;
+    amount: number;
+    gained: number;
+    ratePerSecond: number;
+  };
   bricksDestroyed: number;
   totalBricksDestroyed: number;
   primaryAction: SceneRunSummaryModalAction;
@@ -55,6 +61,7 @@ const formatCount = (value: number): string => {
 
 export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   resources,
+  souls,
   bricksDestroyed,
   totalBricksDestroyed,
   primaryAction,
@@ -67,7 +74,8 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   const collectedResources = resources.filter(
     (resource) => resource.gained > 0,
   );
-  const hasResources = collectedResources.length > 0;
+  const hasSouls = (souls?.gained ?? 0) > 0;
+  const hasResources = collectedResources.length > 0 || hasSouls;
   return (
     <div className="scene-run-summary">
       <div className="scene-run-summary__backdrop" />
@@ -96,6 +104,22 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
                 </span>
               </li>
             ))}
+            {hasSouls && souls ? (
+              <li key="souls" className="scene-run-summary__list-item">
+                <span className="scene-run-summary__resource-name">
+                  {souls.name}
+                </span>
+                <span className="scene-run-summary__resource-amount">
+                  {formatNumber(souls.amount)}
+                  <span className="scene-run-summary__resource-delta">
+                    {formatDelta(souls.gained)}
+                  </span>
+                  <span className="scene-run-summary__resource-rate">
+                    {formatRate(souls.ratePerSecond)}
+                  </span>
+                </span>
+              </li>
+            ) : null}
           </ul>
         ) : (
           <p className="scene-run-summary__empty">
