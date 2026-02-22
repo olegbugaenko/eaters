@@ -1,3 +1,5 @@
+import { getPlayerUnitConfig } from "@db/player-units-db";
+import { DRAG_COEFFICIENT } from "@core/logic/provided/services/movement/movement.types";
 import { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import { formatNumber } from "./format/number";
 
@@ -86,6 +88,13 @@ export const buildUnitStatEntries = (
   t?: UnitStatsTranslator
 ): UnitStatEntry[] => {
   const translate: UnitStatsTranslator = t ?? ((_, fallback) => fallback);
+  const unitConfig = getPlayerUnitConfig(blueprint.type);
+  const dragConst = DRAG_COEFFICIENT * (unitConfig.dragMultiplier ?? 1);
+  const realMaxMoveSpeed =
+    dragConst > 0
+      ? Math.min(Math.sqrt(Math.max(blueprint.moveAcceleration, 0) / dragConst), Math.max(blueprint.moveSpeed, 0))
+      : Math.max(blueprint.moveSpeed, 0);
+
   const entries: UnitStatEntry[] = [
     {
       label: translate("voidCamp.unitStats.hp", "HP"),
@@ -173,7 +182,7 @@ export const buildUnitStatEntries = (
     },
     {
       label: translate("voidCamp.unitStats.moveSpeed", "Move Speed"),
-      value: `${formatNumber(blueprint.moveSpeed, {
+      value: `${formatNumber(realMaxMoveSpeed, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })} ${translate("voidCamp.unitStats.unitsPerSecond", "u/s")}`,
