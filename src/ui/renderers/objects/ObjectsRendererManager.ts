@@ -145,6 +145,8 @@ export class ObjectsRendererManager {
     this.lastDynamicRebuildMs = 0;
     this.dynamicBytesAllocated = 0;
     this.dynamicReallocations = 0;
+    this.interpolatedPositions.clear();
+    this.renderers.clear();
     this.resetDebugStats();
   }
 

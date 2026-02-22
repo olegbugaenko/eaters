@@ -3,7 +3,7 @@ import { polygonWithBricks } from "../../../logic/services/brick-layout/BrickLay
 import type { MapConfig } from "../maps-db.types";
 
 const mapConfig = (() => {
-  const size: SceneSize = { width: 1500, height: 1600 };
+  const size: SceneSize = { width: 1500, height: 1700 };
   const createRectangle = (
     x: number,
     y: number,

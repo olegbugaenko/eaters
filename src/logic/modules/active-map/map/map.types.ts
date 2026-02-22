@@ -27,6 +27,7 @@ import { MapSceneCleanupContract } from "./map.scene-cleanup";
 import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 import type { MapEffectPostProcessConfig } from "../../../../db/map-effects-db";
 import type { LocalizationService } from "@logic/services/localization/LocalizationService";
+import type { DamageService } from "../targeting/DamageService";
 
 export interface ResourceRunController {
   startRun(): void;
@@ -56,6 +57,7 @@ export interface MapModuleOptions {
   newUnlocks: NewUnlockNotificationService;
   statusEffects?: StatusEffectsModule;
   localization?: LocalizationService;
+  damage?: DamageService;
 }
 
 export interface MapSaveData {

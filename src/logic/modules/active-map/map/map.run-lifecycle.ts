@@ -17,6 +17,7 @@ import { UnitAutomationModule } from "../unit-automation/unit-automation.module"
 import { ArcModule } from "../../scene/arc/arc.module";
 import { MapEffectsModule } from "../map-effects/map-effects.module";
 import type { MapEffectId } from "../../../../db/map-effects-db";
+import type { DamageService } from "../targeting/DamageService";
 
 interface MapRunLifecycleOptions {
   runState: MapRunState;
@@ -30,6 +31,7 @@ interface MapRunLifecycleOptions {
   visuals: MapVisualEffects;
   scene: SceneObjectManager;
   mapEffects: MapEffectsModule;
+  damage?: DamageService;
 }
 
 interface StartRunPayload {
@@ -128,6 +130,7 @@ export class MapRunLifecycle {
     this.options.unitsAutomation.onMapEnd();
     this.options.arcs.clearArcs();
     this.options.necromancer.endCurrentMap();
+    this.options.damage?.clearFloatingTexts();
     this.activeMapLevel = 0;
   }
 
@@ -136,6 +139,7 @@ export class MapRunLifecycle {
     this.options.unitsAutomation.onMapEnd();
     this.options.visuals.clearPendingFocus();
     this.options.necromancer.pauseMap();
+    this.options.damage?.clearFloatingTexts();
   }
 
   public tick(deltaMs: number): void {

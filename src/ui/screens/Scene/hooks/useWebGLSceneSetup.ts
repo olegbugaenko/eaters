@@ -149,9 +149,8 @@ export const setupWebGLScene = (
   objectsRenderer.bootstrap(scene.getObjects());
 
   const cleanup = () => {
-    // Dispose WebGL renderer first (handles buffers, program, shaders)
+    objectsRenderer.dispose();
     webglRenderer.dispose();
-    webglRenderer.getObjectsRenderer().dispose();
     
     // Clear all GPU contexts
     setParticleEmitterGlContext(null);

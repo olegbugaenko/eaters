@@ -1011,23 +1011,25 @@ export class UnitRuntimeController {
     let surviving: BrickRuntimeState | EnemyRuntimeState | null = null;
     let targetDestroyed = false;
     
-    if (targetType === "brick") {
-      const result = this.bricks.applyDamage(target.id, totalDamage, direction, {
+    if (targetType === "brick" && this.damage) {
+      inflictedDamage = this.damage.applyTargetDamage(target.id, totalDamage, {
+        direction,
         rewardMultiplier: unit.rewardMultiplier,
         armorPenetration: unit.armorPenetration,
+        isCritical,
       });
-      inflictedDamage = result.inflictedDamage;
-      surviving = result.brick ?? target;
-      targetDestroyed = result.destroyed;
+      const updatedBrick = this.bricks.getBrickState(target.id);
+      surviving = updatedBrick ?? null;
+      targetDestroyed = !updatedBrick;
       hpChanged = inflictedDamage > 0;
     } else if (targetType === "enemy" && this.damage && this.enemies) {
-      // Використовуємо DamageService для атаки ворогів
       const targetSnapshot = this.targeting.getTargetById(target.id, { types: ["enemy"] });
       if (targetSnapshot && isTargetOfType<"enemy", EnemyRuntimeState>(targetSnapshot, "enemy")) {
         inflictedDamage = this.damage.applyTargetDamage(target.id, totalDamage, {
           armorPenetration: unit.armorPenetration,
           direction,
           rewardMultiplier: unit.rewardMultiplier,
+          isCritical,
         });
         hpChanged = inflictedDamage > 0;
         
@@ -1124,14 +1126,15 @@ export class UnitRuntimeController {
       effectOrigin,
     );
 
-    if (totalDamage > 0 && unit.damageTransferPercent > 0) {
+    if (totalDamage > 0 && unit.damageTransferPercent > 0 && this.damage) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
         this.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
           if (brick.id === target.id) {
             return;
           }
-          this.bricks.applyDamage(brick.id, splashDamage, direction, {
+          this.damage!.applyTargetDamage(brick.id, splashDamage, {
+            direction,
             rewardMultiplier: unit.rewardMultiplier,
             armorPenetration: unit.armorPenetration,
           });
@@ -1184,6 +1187,7 @@ export class UnitRuntimeController {
         if (inflictedDamage > 0) {
           unit.hp = nextHp;
           hpChanged = true;
+          this.damage?.queueUnitDamageText(unit.position, inflictedDamage);
         }
       }
     }
@@ -1215,6 +1219,7 @@ export class UnitRuntimeController {
         if (counterInflicted > 0) {
           unit.hp = nextHp;
           hpChanged = true;
+          this.damage?.queueUnitDamageText(unit.position, counterInflicted);
         }
 
         if (enemyConfig.meleeHitExplosion) {

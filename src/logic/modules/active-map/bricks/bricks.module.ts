@@ -88,9 +88,6 @@ export class BricksModule implements GameModule {
     this.statusEffects = options.statusEffects;
     this.statusEffects.registerBrickAdapter({
       hasBrick: (brickId) => this.bricks.has(brickId),
-      damageBrick: (brickId, damage, opts) => {
-        this.applyEffectDamage(brickId, damage, opts);
-      },
       setTint: (brickId, tint) => {
         const brick = this.bricks.get(brickId);
         if (!brick) {
@@ -498,22 +495,6 @@ export class BricksModule implements GameModule {
     this.bricksWithKnockback.delete(brick.id);
     this.totalHpCached -= brick.hp;
     this.pushStats();
-  }
-
-  private applyEffectDamage(
-    brickId: string,
-    damage: number,
-    options: { rewardMultiplier: number; armorPenetration: number; overTime: number }
-  ): void {
-    if (damage <= 0) {
-      return;
-    }
-    this.applyDamage(brickId, damage, undefined, {
-      rewardMultiplier: options.rewardMultiplier,
-      armorPenetration: options.armorPenetration,
-      skipKnockback: true,
-      overTime: Math.max(options.overTime ?? 0, 0),
-    });
   }
 
   private applyEffectTint(brick: InternalBrickState, tint: BrickEffectTint | null): void {

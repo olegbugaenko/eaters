@@ -16,7 +16,9 @@ import { MapRunState } from "../src/logic/modules/active-map/map/MapRunState";
 import { UnitProjectileController } from "../src/logic/modules/active-map/projectiles/ProjectileController";
 import { normalizeVector } from "../src/shared/helpers/vector.helper";
 import { StatusEffectsModule } from "../src/logic/modules/active-map/status-effects/status-effects.module";
-import type { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
+import { DamageService } from "../src/logic/modules/active-map/targeting/DamageService";
+import { TargetingService } from "../src/logic/modules/active-map/targeting/TargetingService";
+import { BricksTargetingProvider } from "../src/logic/modules/active-map/targeting/BricksTargetingProvider";
 
 const createResourceControllerStub = () => ({
   startRun: () => {},
@@ -35,6 +37,7 @@ const createBricksModule = (
   explosions: ExplosionModule,
   runState: MapRunState,
   statusEffects: StatusEffectsModule,
+  targeting?: TargetingService,
 ) => {
   const resources = createResourceControllerStub();
   return new BricksModule({
@@ -45,7 +48,18 @@ const createBricksModule = (
     bonuses,
     runState,
     statusEffects,
+    targeting,
   });
+};
+
+const createDamageServices = (bricks: BricksModule) => {
+  const targeting = new TargetingService();
+  targeting.registerProvider(new BricksTargetingProvider(bricks));
+  const damage = new DamageService({
+    bricks: () => bricks,
+    targeting,
+  });
+  return { targeting, damage };
 };
 
 const createProjectilesStub = (scene: SceneObjectManager, bricks: BricksModule): UnitProjectileController => {
@@ -186,10 +200,12 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
+    const targeting = new TargetingService();
     const statusEffects = new StatusEffectsModule({
       damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
     });
-    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects, targeting);
+    const { damage } = createDamageServices(bricks);
     const units = new PlayerUnitsModule({
       scene,
       bricks,
@@ -199,6 +215,7 @@ describe("PlayerUnitsModule", () => {
       explosions,
       statusEffects,
       runState,
+      damage,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
@@ -280,10 +297,12 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
+    const targeting = new TargetingService();
     const statusEffects = new StatusEffectsModule({
       damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
     });
-    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects, targeting);
+    const { damage } = createDamageServices(bricks);
     const units = new PlayerUnitsModule({
       scene,
       bricks,
@@ -293,6 +312,7 @@ describe("PlayerUnitsModule", () => {
       explosions,
       statusEffects,
       runState,
+      damage,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: () => 0,
       hasSkill: () => false,
@@ -455,10 +475,11 @@ describe("PlayerUnitsModule", () => {
     const explosions = new ExplosionModule({ scene });
     const runState = new MapRunState();
     runState.start();
+    const targeting = new TargetingService();
     const statusEffects = new StatusEffectsModule({
       damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
     });
-    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects);
+    const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects, targeting);
 
     bricks.setBricks([
       {
@@ -487,6 +508,7 @@ describe("PlayerUnitsModule", () => {
     const distantId = bricksBefore[2]?.id;
     assert(forwardId && sideTargetId && distantId, "expected all bricks to be created");
 
+    const { damage } = createDamageServices(bricks);
     const units = new PlayerUnitsModule({
       scene,
       bricks,
@@ -496,6 +518,7 @@ describe("PlayerUnitsModule", () => {
       explosions,
       statusEffects,
       runState,
+      damage,
       projectiles: createProjectilesStub(scene, bricks),
       getModuleLevel: (id) => (id === "tailNeedles" ? 1 : 0),
       hasSkill: () => false,

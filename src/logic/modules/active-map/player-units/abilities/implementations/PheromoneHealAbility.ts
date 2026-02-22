@@ -105,6 +105,8 @@ const executeHeal = (
   target.hp = nextHp;
   const healedAmount = nextHp - previousHp;
 
+  dependencies.showHealText?.(target.position, healedAmount);
+
   services.spawnExplosionByType("healWave", {
     position: { ...target.position },
     initialRadius: PHEROMONE_HEAL_EXPLOSION_RADIUS,
