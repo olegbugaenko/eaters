@@ -78,6 +78,7 @@ export interface UnitFactoryResult {
   readonly baseAttackInterval: number;
   readonly baseAttackDistance: number;
   readonly moveSpeed: number;
+  readonly effectiveMaxMoveSpeed: number;
   readonly moveAcceleration: number;
   readonly mass: number;
   readonly physicalSize: number;
@@ -158,6 +159,8 @@ export class UnitFactory {
     const moveSpeed = Math.max(blueprint.moveSpeed, 0);
     const dragMultiplier = config.dragMultiplier ?? 1;
     const drag = DRAG_COEFFICIENT * dragMultiplier;
+    const unclampedMaxSpeed = drag > 0 ? Math.sqrt(moveAcceleration / drag) : moveSpeed;
+    const effectiveMaxMoveSpeed = Math.min(unclampedMaxSpeed, moveSpeed);
     const movementId = this.movement.createBody({
       position,
       mass,
@@ -259,6 +262,7 @@ export class UnitFactory {
       baseAttackInterval: Math.max(blueprint.baseAttackInterval, 0.01),
       baseAttackDistance: Math.max(blueprint.baseAttackDistance, 0),
       moveSpeed: Math.max(blueprint.moveSpeed, 0),
+      effectiveMaxMoveSpeed,
       moveAcceleration,
       mass,
       physicalSize,
