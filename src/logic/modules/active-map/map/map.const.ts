@@ -47,3 +47,8 @@ export const AUTO_RESTART_SKILL_ID: SkillId = "autorestart_rituals";
  * Bonus context key for cleared map levels total.
  */
 export const BONUS_CONTEXT_CLEARED_LEVELS = "clearedMapLevelsTotal";
+
+/**
+ * Random spawn jitter radius (in px) around spawn points to reduce unit overlap.
+ */
+export const PLAYER_UNIT_SPAWN_JITTER_RADIUS = 15;

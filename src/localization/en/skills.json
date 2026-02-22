@@ -298,5 +298,13 @@
   "souls_harvest": {
     "name": "Souls Harvest",
     "description": "Harvest souls from shattered bricks and defeated foes to power forbidden research."
+  },
+  "intensive_motion": {
+    "name": "Intensive Motion",
+    "description": "Drive your summons into intensive movement drills (+5% acceleration per level)."
+  },
+  "intensive_motion2": {
+    "name": "Intensive Motion II",
+    "description": "Layer advanced motion patterns for even faster acceleration (+5% per level)."
   }
 }

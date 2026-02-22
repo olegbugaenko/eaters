@@ -3,6 +3,7 @@ import { SceneVector2, SceneColor } from "@core/logic/provided/services/scene-ob
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import { MovementService } from "@core/logic/provided/services/movement/MovementService";
+import { DRAG_COEFFICIENT } from "@core/logic/provided/services/movement/movement.types";
 import {
   PlayerUnitType,
   getPlayerUnitConfig,
@@ -155,7 +156,8 @@ export class UnitFactory {
     const moveAcceleration = Math.max(blueprint.moveAcceleration, 0);
     const physicalSize = Math.max(blueprint.physicalSize, 0);
     const moveSpeed = Math.max(blueprint.moveSpeed, 0);
-    const drag = moveSpeed > 0 ? moveAcceleration / (moveSpeed * moveSpeed) : 0;
+    const dragMultiplier = config.dragMultiplier ?? 1;
+    const drag = DRAG_COEFFICIENT * dragMultiplier;
     const movementId = this.movement.createBody({
       position,
       mass,
