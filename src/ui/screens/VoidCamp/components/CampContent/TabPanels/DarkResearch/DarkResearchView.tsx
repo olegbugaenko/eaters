@@ -17,6 +17,7 @@ import type {
 } from "@logic/modules/camp/dark-research/dark-research.types";
 import { useLocalization } from "@ui/shared/useLocalization";
 import { getAssetUrl } from "@shared/helpers/assets.helper";
+import { formatDuration } from "@ui/utils/formatDuration";
 import "./DarkResearchView.css";
 
 const QUICK_BUTTONS: readonly {
@@ -37,6 +38,22 @@ const QUICK_BUTTONS: readonly {
 interface DarkResearchViewProps {
   readonly state: DarkResearchBridgeState;
 }
+
+const formatEtaToNextLevel = (
+  xp: number,
+  maxXp: number,
+  xpPerSecond: number,
+): string => {
+  if (!Number.isFinite(xpPerSecond) || xpPerSecond <= 0) {
+    return "—";
+  }
+  const remainingXp = Math.max(0, maxXp - xp);
+  if (remainingXp <= 0) {
+    return "00:00";
+  }
+  const etaMs = (remainingXp / xpPerSecond) * 1000;
+  return formatDuration(etaMs);
+};
 
 export const DarkResearchView: React.FC<DarkResearchViewProps> = ({
   state,
@@ -70,6 +87,11 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({
         0,
         Math.min(100, Math.round(progress * 100)),
       );
+      const etaToNextLevel = formatEtaToNextLevel(
+        research.xp,
+        research.maxXp,
+        research.xpPerSecond,
+      );
 
       return (
         <>
@@ -81,6 +103,12 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({
               {t("voidCamp.common.level", "Level")}:{" "}
               {formatNumber(research.level, { maximumFractionDigits: 0 })}
             </span>
+          </div>
+          <div className="dark-research-card__eta">
+            <span className="text-muted">
+              {t("scene.targetTooltip.remaining", "Remaining")}:
+            </span>
+            <span>{etaToNextLevel}</span>
           </div>
           <div className="dark-research-card__progress">
             <div

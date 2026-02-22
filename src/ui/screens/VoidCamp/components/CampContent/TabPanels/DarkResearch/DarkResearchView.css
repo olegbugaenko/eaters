@@ -39,6 +39,15 @@
   font-size: 0.85rem;
 }
 
+.dark-research-card__eta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--color-text-soft);
+}
+
 .dark-research-card__progress {
   position: relative;
   height: 6px;
