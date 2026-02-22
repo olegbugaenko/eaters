@@ -59,6 +59,7 @@ interface PlayerUnitAbilitiesOptions {
   ) => TargetSnapshot[];
   damageUnit: (unitId: string, damage: number) => void;
   findNearestBrick: (position: SceneVector2) => string | null;
+  showHealText?: (position: SceneVector2, amount: number) => void;
   audio?: AbilitySoundPlayer;
   projectiles?: UnitProjectileController;
 }
@@ -152,6 +153,7 @@ export class PlayerUnitAbilities {
       getTargetsInRadius: this.getTargetsInRadius,
       damageUnit: this.damageUnit,
       findNearestBrick: this.findNearestBrick,
+      showHealText: options.showHealText,
       projectiles: options.projectiles,
       statusEffects: this.statusEffects,
     };

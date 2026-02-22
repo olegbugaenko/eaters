@@ -25,6 +25,7 @@ export interface ChainLightningDependencies {
     damage: number,
     options?: DamageApplicationOptions,
   ) => number;
+  /** @deprecated Use applyTargetDamage instead — kept for backward compat */
   applyBrickDamage?: (
     brickId: string,
     damage: number,
@@ -109,8 +110,6 @@ export const executeChainLightning = ({
 
     if (dependencies.applyTargetDamage) {
       dependencies.applyTargetDamage(nextTarget.id, damage, resolvedOptions);
-    } else if (nextTarget.type === "brick") {
-      dependencies.applyBrickDamage?.(nextTarget.id, damage, resolvedOptions);
     }
 
     const sourceRef = { type: currentTarget.type, id: currentTarget.id };

@@ -5,6 +5,7 @@ export const createDamageDefinition = (): ServiceDefinition<DamageService, "dama
   token: "damage",
   factory: (container) =>
     new DamageService({
+      bridge: container.get("bridge"),
       bricks: () => container.get("bricks"),
       enemies: () => container.get("enemies"),
       units: () => container.get("playerUnits"),

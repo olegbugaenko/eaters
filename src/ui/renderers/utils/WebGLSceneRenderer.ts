@@ -416,5 +416,6 @@ export class WebGLSceneRenderer {
     this.gl.deleteProgram(this.program);
     this.gl.deleteShader(this.vertexShader);
     this.gl.deleteShader(this.fragmentShader);
+    this.objectsRenderer = null!;
   }
 }

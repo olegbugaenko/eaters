@@ -39,6 +39,7 @@ export const createMapDefinition = (
       newUnlocks: container.get("newUnlocks"),
       statusEffects: container.get("statusEffects"),
       localization: container.get("localization"),
+      damage: container.get("damage"),
     });
   },
   registerAsModule: true,
@@ -61,6 +62,7 @@ export const createMapDefinition = (
     "skillTree",
     "newUnlocks",
     "localization",
+    "damage",
   ],
   onReady: (instance: MapModule) => {
     context.setMapModule(instance);

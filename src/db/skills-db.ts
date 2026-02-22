@@ -383,7 +383,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "resource_gain_4.png",
     effects: {},
     nodesRequired: { refinement2: 5 },
-    cost: createResourceCost("silver", 5000, 1),
+    cost: createResourceCost("silver", 50000, 1),
     registerEvent: {
       text: "Whispers of Dark Research answer your harvest.",
     },

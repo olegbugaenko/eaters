@@ -139,6 +139,7 @@ export class MapModule implements GameModule {
       visuals,
       scene: options.scene,
       mapEffects,
+      damage: options.damage,
     });
 
     options.runState.subscribe((event) => this.handleRunStateEvent(event));

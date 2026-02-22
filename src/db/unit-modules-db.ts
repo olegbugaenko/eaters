@@ -137,6 +137,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     sanityCost: 0,
     maxLevel: 10,
     baseCost: { paper: 100, wire: 100 },
+    unlockedBy: [{ type: "skill", id: "souls_harvest", level: 1 }],
   },
   perforator: {
     id: "perforator",

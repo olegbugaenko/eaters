@@ -2,6 +2,7 @@ export interface GraphicsSettings {
   brickHitParticles: boolean;
   brickDestroyParticles: boolean;
   explosionStarburst: boolean;
+  floatingDamageText: boolean;
 }
 
 export type GraphicsSettingKey = keyof GraphicsSettings;
@@ -12,6 +13,7 @@ export const DEFAULT_GRAPHICS_SETTINGS: GraphicsSettings = Object.freeze({
   brickHitParticles: true,
   brickDestroyParticles: true,
   explosionStarburst: true,
+  floatingDamageText: true,
 });
 
 export const parseStoredGraphicsSettings = (value: unknown): GraphicsSettings => {
@@ -32,6 +34,10 @@ export const parseStoredGraphicsSettings = (value: unknown): GraphicsSettings =>
       typeof record.explosionStarburst === "boolean"
         ? record.explosionStarburst
         : DEFAULT_GRAPHICS_SETTINGS.explosionStarburst,
+    floatingDamageText:
+      typeof record.floatingDamageText === "boolean"
+        ? record.floatingDamageText
+        : DEFAULT_GRAPHICS_SETTINGS.floatingDamageText,
   };
 };
 
@@ -65,6 +71,7 @@ export const persistGraphicsSettings = (settings: GraphicsSettings): void => {
         brickHitParticles: Boolean(settings.brickHitParticles),
         brickDestroyParticles: Boolean(settings.brickDestroyParticles),
         explosionStarburst: Boolean(settings.explosionStarburst),
+        floatingDamageText: Boolean(settings.floatingDamageText),
       })
     );
   } catch (error) {
@@ -79,4 +86,5 @@ export const mergeGraphicsSettings = (
   brickHitParticles: patch.brickHitParticles ?? base.brickHitParticles,
   brickDestroyParticles: patch.brickDestroyParticles ?? base.brickDestroyParticles,
   explosionStarburst: patch.explosionStarburst ?? base.explosionStarburst,
+  floatingDamageText: patch.floatingDamageText ?? base.floatingDamageText,
 });

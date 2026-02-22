@@ -59,6 +59,7 @@ export interface AbilityRuntimeDependencies {
   ) => TargetSnapshot[];
   readonly damageUnit: (unitId: string, damage: number) => void;
   readonly findNearestBrick: (position: SceneVector2) => string | null;
+  readonly showHealText?: (position: SceneVector2, amount: number) => void;
   readonly projectiles?: UnitProjectileController;
   readonly statusEffects: StatusEffectsModule;
 }

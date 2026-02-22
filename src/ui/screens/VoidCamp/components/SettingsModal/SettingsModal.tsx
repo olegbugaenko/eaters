@@ -58,6 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const brickHitParticlesId = useId();
   const brickDestroyParticlesId = useId();
   const explosionStarburstId = useId();
+  const floatingDamageTextId = useId();
 
   const handleBackdropClick = useCallback(() => {
     onClose();
@@ -283,6 +284,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     }
                   />
                   {t("settings.graphics.showExplosionStarburst", "Show explosion starburst")}
+                </label>
+                <label className="settings-modal__toggle" htmlFor={floatingDamageTextId}>
+                  <input
+                    id={floatingDamageTextId}
+                    type="checkbox"
+                    checked={graphicsSettings.floatingDamageText}
+                    onChange={(event) =>
+                      onGraphicsSettingChange("floatingDamageText", event.target.checked)
+                    }
+                  />
+                  {t("settings.graphics.showFloatingDamageText", "Show floating damage text")}
                 </label>
               </div>
             </section>

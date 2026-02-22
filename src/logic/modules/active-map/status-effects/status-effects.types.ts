@@ -55,11 +55,6 @@ export interface StatusEffectUnitAdapter {
 export interface StatusEffectBrickAdapter {
   readonly hasBrick: (brickId: string) => boolean;
   readonly setTint: (brickId: string, tint: BrickEffectTint | null) => void;
-  readonly damageBrick: (
-    brickId: string,
-    amount: number,
-    options: { rewardMultiplier: number; armorPenetration: number; overTime: number },
-  ) => void;
 }
 
 export interface StatusEffectEnemyAdapter {

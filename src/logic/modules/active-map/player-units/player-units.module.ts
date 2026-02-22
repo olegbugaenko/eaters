@@ -195,23 +195,21 @@ export class PlayerUnitsModule implements GameModule {
         return brick?.position || null;
       },
       damageBrick: (brickId: string, damage: number) => {
-        const brick = this.bricks.getBrickState(brickId);
-        if (brick) {
-          this.bricks.applyDamage(brickId, damage, { x: 0, y: 0 }, {
-            rewardMultiplier: 1,
-            armorPenetration: 0,
-          });
+        if (this.damage) {
+          this.damage.applyTargetDamage(brickId, damage, {});
         }
       },
       applyBrickDamage: (brickId: string, damage: number, options) => {
-        const direction = options?.direction ?? { x: 0, y: 0 };
-        const result = this.bricks.applyDamage(brickId, damage, direction, {
+        if (!this.damage) {
+          return 0;
+        }
+        return this.damage.applyTargetDamage(brickId, damage, {
+          direction: options?.direction,
           rewardMultiplier: options?.rewardMultiplier,
           armorPenetration: options?.armorPenetration,
           skipKnockback: options?.skipKnockback,
           overTime: options?.overTime,
         });
-        return result.inflictedDamage;
       },
       applyTargetDamage: (targetId: string, damage: number, options) => {
         if (!this.damage) {
@@ -232,6 +230,9 @@ export class PlayerUnitsModule implements GameModule {
       findNearestBrick: (position: SceneVector2) => {
         const brick = this.findNearestBrickTarget(position);
         return brick?.id || null;
+      },
+      showHealText: (position: SceneVector2, amount: number) => {
+        this.damage?.queueHealText(position, amount);
       },
       audio: options.audio,
       projectiles: this.projectiles,
