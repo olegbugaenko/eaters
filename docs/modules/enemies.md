@@ -40,6 +40,11 @@
 3. `projectile` — стрільба снарядами
 4. **Instant melee** — якщо нічого з вищевказаного не задано, наносить пряму шкоду цілі
 
+#### Додаткові параметри projectile
+- `projectile.destroyOnHit` — якщо `false`, снаряд не видаляється після першого попадання (piercing/stream-поведінка).
+- `projectile.targetHitCooldownMs` — мінімальний інтервал між повторними попаданнями по тій самій цілі для одного снаряда.
+- `projectile.particleCluster` — візуальний кластер частинок (`ParticleEmitterConfig` або масив), що рендериться як emitter-оверлей у `unitProjectile`.
+
 #### Knockback при атаці юнітів
 - `knockBackDistance` — відстань, на яку юніт відкидається від ворога після атаки.
 - `knockBackSpeed` — швидкість відкидання.

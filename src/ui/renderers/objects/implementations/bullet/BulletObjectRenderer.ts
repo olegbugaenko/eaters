@@ -19,6 +19,8 @@ import {
   createTailParticle,
   serializeTailEmitterConfig,
   getGpuSpawnConfig,
+  hasParticleClusterEmitters,
+  getParticleClusterEmitterConfigAt,
 } from "./emitter.helpers";
 import { getGlowConfig, getGlowRadius, createGlowFill } from "./glow.helpers";
 import { createTriangleVertices } from "./triangle.helpers";
@@ -60,6 +62,17 @@ export class BulletObjectRenderer extends ObjectRenderer {
     }
     if (smokeEmitter) {
       dynamicPrimitives.push(smokeEmitter);
+    }
+    if (components.emitters && hasParticleClusterEmitters(instance)) {
+      for (let index = 0; index < 8; index += 1) {
+        const clusterEmitter = createEmitterPrimitive(instance, (entry) =>
+          getParticleClusterEmitterConfigAt(entry, index)
+        );
+        if (!clusterEmitter) {
+          break;
+        }
+        dynamicPrimitives.push(clusterEmitter);
+      }
     }
 
     // OPTIMIZATION: Pre-compute vertices and fill at registration time

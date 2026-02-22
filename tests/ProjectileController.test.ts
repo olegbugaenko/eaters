@@ -134,7 +134,141 @@ describe("UnitProjectileController", () => {
 
     assert.strictEqual(brickDamage, 5, "projectile should hit the brick instead of the nearby unit");
   });
+
+  test("supports piercing projectiles without removing them on first hit", () => {
+    const scene = new SceneObjectManager();
+    scene.setMapSize({ width: 200, height: 200 });
+
+    const targeting = new TargetingService();
+    const brickTarget = {
+      id: "brick-2",
+      type: "brick" as const,
+      position: { x: 16, y: 0 },
+      hp: 100,
+      maxHp: 100,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 10,
+    };
+    registerSingleTargetProvider(targeting, brickTarget);
+
+    let brickDamage = 0;
+    const bricksStub = {
+      applyDamage: (_id: string, damage: number) => {
+        brickDamage += damage;
+        return { destroyed: false, brick: null, inflictedDamage: damage };
+      },
+    } as unknown as BricksModule;
+
+    const damage = new DamageService({ bricks: () => bricksStub, targeting });
+    const projectiles = new UnitProjectileController({ scene, targeting, damage });
+
+    const projectileId = projectiles.spawn({
+      origin: { x: 0, y: 0 },
+      direction: { x: 1, y: 0 },
+      damage: 4,
+      rewardMultiplier: 1,
+      armorPenetration: 0,
+      destroyOnHit: false,
+      visual: { radius: 8, speed: 220, lifetimeMs: 500, fill: SOLID_FILL, hitRadius: 16 },
+      targetTypes: ["brick"],
+    });
+
+    projectiles.tick(16);
+    const afterHit = scene.getObject(projectileId);
+    const xAfterHit = afterHit?.data.position.x ?? 0;
+    projectiles.tick(32);
+
+    assert.strictEqual(brickDamage, 4, "piercing projectile should still apply damage on hit");
+    const activeProjectile = scene.getObject(projectileId);
+    assert.ok(activeProjectile, "piercing projectile should remain active after hit");
+    assert.ok(
+      (activeProjectile?.data.position.x ?? 0) > xAfterHit,
+      "piercing projectile should keep moving after hitting a target"
+    );
+  });
+
+  test("respects per-target hit cooldown for piercing projectiles", () => {
+    const scene = new SceneObjectManager();
+    scene.setMapSize({ width: 200, height: 200 });
+
+    const targeting = new TargetingService();
+    const brickTarget = {
+      id: "brick-3",
+      type: "brick" as const,
+      position: { x: 0, y: 0 },
+      hp: 100,
+      maxHp: 100,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 10,
+    };
+    registerSingleTargetProvider(targeting, brickTarget);
+
+    let brickDamage = 0;
+    const bricksStub = {
+      applyDamage: (_id: string, damage: number) => {
+        brickDamage += damage;
+        return { destroyed: false, brick: null, inflictedDamage: damage };
+      },
+    } as unknown as BricksModule;
+
+    const damage = new DamageService({ bricks: () => bricksStub, targeting });
+    const projectiles = new UnitProjectileController({ scene, targeting, damage });
+
+    projectiles.spawn({
+      origin: { x: 0, y: 0 },
+      direction: { x: 1, y: 0 },
+      damage: 3,
+      rewardMultiplier: 1,
+      armorPenetration: 0,
+      destroyOnHit: false,
+      targetHitCooldownMs: 1000,
+      visual: { radius: 6, speed: 0, lifetimeMs: 1200, fill: SOLID_FILL, hitRadius: 20 },
+      targetTypes: ["brick"],
+    });
+
+    projectiles.tick(16);
+    projectiles.tick(16);
+    projectiles.tick(16);
+
+    assert.strictEqual(
+      brickDamage,
+      3,
+      "projectile should not repeatedly damage the same target during cooldown"
+    );
+  });
+
 });
+
+
+function registerSingleTargetProvider(targeting: TargetingService, target: {
+  id: string;
+  type: "brick" | "unit";
+  position: SceneVector2;
+  hp: number;
+  maxHp: number;
+  armor: number;
+  baseDamage: number;
+  effectiveDamage: number;
+  physicalSize: number;
+}): void {
+  const provider: TargetingProvider = {
+    types: [target.type],
+    getById: (id) => (id === target.id ? target : null),
+    findNearest: () => target,
+    findInRadius: (position, radius) =>
+      distanceTo(position, target.position) <= radius ? [target] : [],
+    forEachInRadius: (position, radius, visitor) => {
+      if (distanceTo(position, target.position) <= radius) {
+        visitor(target);
+      }
+    },
+  };
+  targeting.registerProvider(provider);
+}
 
 function distanceTo(a: SceneVector2, b: SceneVector2): number {
   const dx = a.x - b.x;

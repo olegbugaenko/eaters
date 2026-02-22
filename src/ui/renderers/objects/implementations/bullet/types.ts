@@ -19,6 +19,7 @@ export interface BulletRendererCustomData {
   tailEmitter?: ParticleEmitterConfig;
   trailEmitter?: ParticleEmitterConfig;
   smokeEmitter?: ParticleEmitterConfig;
+  particleCluster?: ParticleEmitterConfig | readonly ParticleEmitterConfig[];
   glow?: BulletGlowConfig;
   speed?: number;
   maxSpeed?: number;
