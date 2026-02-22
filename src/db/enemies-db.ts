@@ -110,6 +110,12 @@ export interface EnemyTargetingOptions {
   readonly searchPadding?: number;
 }
 
+export interface OctopusTentacleTipGlowConfig {
+  readonly radius: number;
+  readonly segments?: number;
+  readonly fill: RendererFillConfig;
+}
+
 export interface OctopusTentacleConfig {
   readonly spines: readonly (readonly { x: number; y: number; width: number }[])[];
   readonly segmentsPerTentacle: number;
@@ -117,6 +123,7 @@ export interface OctopusTentacleConfig {
   readonly fill: RendererFillConfig;
   readonly stroke?: RendererStrokeConfig;
   readonly buildOpts?: { epsilon?: number; winding?: "CW" | "CCW" };
+  readonly tipGlow?: OctopusTentacleTipGlowConfig;
 }
 
 export interface EnemyConfig {
@@ -136,6 +143,8 @@ export interface EnemyConfig {
   readonly soulRewardBase?: number;
   readonly emitter?: ParticleEmitterConfig;
   readonly projectile?: EnemyProjectileConfig; // Якщо вказано - ворог стріляє снарядами, якщо ні - instant damage
+  /** Мінімальний segmentIndex для стрілянини снарядами (тільки кінчики тентаклів) */
+  readonly projectileMinSegmentIndex?: number;
   readonly projectileVolley?: {
     readonly count: number;
     readonly spreadAngleDeg: number;
@@ -2487,6 +2496,22 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       } },
       stroke: { type: "base" as const, width: 1.2, brightness: -0.1, hueShift: 0.3 },
       buildOpts: { epsilon: 0.3, winding: "CCW" as const },
+      tipGlow: {
+        radius: 12,
+        segments: 16,
+        fill: {
+          type: "gradient" as const,
+          fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            start: { x: 0, y: 0 },
+            stops: [
+              { offset: 0, color: { r: 0.6, g: 0.85, b: 1, a: 0.7 } },
+              { offset: 0.5, color: { r: 0.4, g: 0.7, b: 1, a: 0.3 } },
+              { offset: 1, color: { r: 0.3, g: 0.6, b: 1, a: 0 } },
+            ],
+          },
+        },
+      },
     },
     maxHp: 500000,
     armor: 15000,
@@ -2524,8 +2549,9 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     maxHp: 30000,
     armor: 2000,
     baseDamage: 1500,
-    attackInterval: 0.2,
-    attackRange: 160,
+    attackInterval: 3,
+    attackRange: 1260,
+    projectileMinSegmentIndex: 4,
     moveSpeed: 0,
     physicalSize: 14,
     lockRotation: true,
@@ -2542,35 +2568,44 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     meleeHitExplosion: { type: "tentacleHit", radius: 14 },
     projectile: {
       radius: 6,
-      speed: 280,
-      lifetimeMs: 900,
+      speed: 80,
+      lifetimeMs: 4900,
       destroyOnHit: false,
       targetHitCooldownMs: 120,
       fill: {
         fillType: FILL_TYPES.SOLID,
-        color: { r: 0.95, g: 0.82, b: 0.36, a: 0 },
+        color: { r: 0.75, g: 0.82, b: 0.96, a: 0 },
+      },
+      attackSeries: {
+        shots: 4,
+        intervalMs: 200,
       },
       hitRadius: 34,
       damageRadius: 34,
       particleCluster: {
-        particlesPerSecond: 2800,
-        particleLifetimeMs: 260,
+        particlesPerSecond: 1800,
+        particleLifetimeMs: 460,
         fadeStartMs: 120,
-        baseSpeed: 0.18,
-        speedVariation: 0.14,
+        baseSpeed: 0.08,
+        speedVariation: 0.04,
         spread: Math.PI * 2,
         offset: { x: 0, y: 0 },
         spawnRadius: { min: 0, max: 8 },
-        sizeRange: { min: 5, max: 12 },
-        sizeEvolutionMult: 1.35,
+        sizeRange: { min: 5, max: 22 },
+        sizeEvolutionMult: 3.35,
         color: { r: 1, g: 0.72, b: 0.2, a: 0.75 },
         fill: {
           fillType: FILL_TYPES.RADIAL_GRADIENT,
           stops: [
-            { offset: 0, color: { r: 1, g: 0.95, b: 0.7, a: 0.82 } },
-            { offset: 0.5, color: { r: 1, g: 0.72, b: 0.2, a: 0.58 } },
-            { offset: 1, color: { r: 0.85, g: 0.24, b: 0.02, a: 0 } },
+            { offset: 0, color: { r: 0.95, g: 0.95, b: 1, a: 0.22 } },
+            { offset: 0.5, color: { r: 0.8, g: 0.87, b: 1, a: 0.18 } },
+            { offset: 1, color: { r: 0.02, g: 0.24, b: 1, a: 0 } },
           ],
+          noise: {
+            colorAmplitude: 0.0,
+            alphaAmplitude: 0.02,
+            scale: 0.3,
+          },
         },
         maxParticles: 240,
       },

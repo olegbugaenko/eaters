@@ -1034,8 +1034,12 @@ export class EnemiesModule implements GameModule {
       return true;
     }
 
-    // Якщо є конфіг снаряда - створюємо снаряд
+    // Якщо є конфіг снаряда — перевіряємо чи сегмент має право стріляти
     if (config.projectile && this.projectiles) {
+      if (config.projectileMinSegmentIndex !== undefined &&
+          (enemy.segmentIndex === undefined || enemy.segmentIndex < config.projectileMinSegmentIndex)) {
+        return false;
+      }
       const projectiles = this.projectiles;
       const projectileConfig = config.projectile;
       const direction = normalizeVector(toTarget) || { x: 1, y: 0 };
