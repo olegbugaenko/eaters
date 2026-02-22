@@ -39,8 +39,10 @@ const createEmptyBricks = (): BricksModule =>
 
 class ProjectileSpy {
   public spawned = 0;
-  public spawn(): string {
+  public readonly calls: any[] = [];
+  public spawn(projectile?: any): string {
     this.spawned += 1;
+    this.calls.push(projectile);
     return `projectile-${this.spawned}`;
   }
   public tick(): void {}
@@ -122,6 +124,60 @@ const createEnemiesModuleWithDeps = (
 };
 
 describe("EnemiesModule", () => {
+
+  test("uses projectile damage override instead of enemy baseDamage", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    const targeting = new TargetingService();
+    const projectiles = new ProjectileSpy();
+
+    const unitTarget: TargetSnapshot = {
+      id: "unit-target",
+      type: "unit",
+      position: { x: 60, y: 0 },
+      hp: 100000,
+      maxHp: 100000,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 12,
+    };
+
+    const provider: TargetingProvider = {
+      types: ["unit"],
+      getById: (id) => (id === unitTarget.id ? unitTarget : null),
+      findNearest: () => unitTarget,
+      findInRadius: () => [unitTarget],
+      forEachInRadius: (_position, _radius, visitor) => {
+        visitor(unitTarget);
+      },
+    };
+    targeting.registerProvider(provider);
+
+    const { module } = createEnemiesModuleWithDeps({
+      runState,
+      targeting,
+      projectiles: projectiles as unknown as UnitProjectileController,
+    });
+
+    module.setEnemies([
+      {
+        type: "greatOctopusSegment",
+        level: 1,
+        position: { x: 0, y: 0 },
+        segmentIndex: 4,
+      },
+    ]);
+
+    module.tick(3100);
+
+    assert.strictEqual(projectiles.spawned > 0, true, "enemy should spawn projectiles");
+    const firstCall = projectiles.calls[0];
+    assert(firstCall, "expected projectile spawn payload");
+    assert.strictEqual(firstCall.damage, 480);
+  });
+
   test("spawns enemies via state factory and pushes bridge stats", () => {
     const runState = new MapRunState();
     runState.start();

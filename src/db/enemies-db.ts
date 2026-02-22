@@ -99,6 +99,8 @@ export interface EnemyArcAttackConfig {
 }
 
 export interface EnemyProjectileConfig extends UnitProjectileVisualConfig {
+  /** Overrides enemy baseDamage for projectile hits only. */
+  readonly damage?: number;
   readonly attackSeries?: AttackSeriesConfig;
   readonly destroyOnHit?: boolean;
   readonly targetHitCooldownMs?: number;
@@ -2567,6 +2569,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     selfKnockBackSpeed: 200,
     meleeHitExplosion: { type: "tentacleHit", radius: 14 },
     projectile: {
+      damage: 480,
       radius: 6,
       speed: 80,
       lifetimeMs: 4900,

@@ -239,6 +239,7 @@ export class UnitProjectileController {
     
     // Extract colors from fill for GPU rendering
     const bodyColor = this.extractBodyColor(visual.fill);
+    const hasTail = Boolean(visual.tail);
     const tailColors = this.extractTailColors(visual.tail);
     const radialColors = this.extractRadialGradient(visual.fill);
     
@@ -250,15 +251,18 @@ export class UnitProjectileController {
     if (shape === "sprite" && visual.spriteIndex !== undefined) {
       visualKey += `-sprite${visual.spriteIndex}`;
     }
+    if (!hasTail) {
+      visualKey += "-notail";
+    }
     
     return {
       visualKey,
       bodyColor,
       tailStartColor: tailColors.start,
       tailEndColor: tailColors.end,
-      tailLengthMultiplier: visual.tail?.lengthMultiplier ?? 4.5,
-      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 2,
-      tailTaperMultiplier: visual.tail?.taperMultiplier ?? 0.7,
+      tailLengthMultiplier: hasTail ? (visual.tail?.lengthMultiplier ?? 4.5) : 0,
+      tailWidthMultiplier: hasTail ? (visual.tail?.widthMultiplier ?? 2) : 0,
+      tailTaperMultiplier: hasTail ? (visual.tail?.taperMultiplier ?? 0.7) : 0,
       tailOffsetMultiplier: visual.tail?.offsetMultiplier,
       shape,
       centerColor: radialColors?.center,
@@ -310,8 +314,8 @@ export class UnitProjectileController {
   private extractTailColors(tail?: BulletTailConfig): { start: SceneColor; end: SceneColor } {
     if (!tail) {
       return {
-        start: { r: 0.25, g: 0.45, b: 1.0, a: 0.65 },
-        end: { r: 0.05, g: 0.15, b: 0.6, a: 0.0 },
+        start: { r: 0, g: 0, b: 0, a: 0 },
+        end: { r: 0, g: 0, b: 0, a: 0 },
       };
     }
     return {

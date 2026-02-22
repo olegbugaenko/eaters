@@ -1069,7 +1069,7 @@ export class EnemiesModule implements GameModule {
         projectiles.spawn({
           origin,
           direction: projectileDirection,
-          damage: enemy.baseDamage,
+          damage: projectileConfig.damage ?? enemy.baseDamage,
           rewardMultiplier: 1, // Вороги не дають нагороди за атаку
           armorPenetration: 0,
           knockBackDistance: projKnockDist,
