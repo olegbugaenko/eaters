@@ -55,6 +55,8 @@ export const SKILL_IDS = [
   "improved_membranes",
   "hunger",
   "muscles",
+  "intensive_motion",
+  "intensive_motion2",
   "stone_drill",
   "stone_armor",
   "vitality",
@@ -100,64 +102,75 @@ export const SKILL_IDS = [
   "weaken_curse",
   "perseverance",
   "inspiration",
-  "spell_power"
+  "spell_power",
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
 
-const getClearedLevelsTotal = (context?: BonusEffectContext, level?: number): number => {
+const getClearedLevelsTotal = (
+  context?: BonusEffectContext,
+  level?: number,
+): number => {
   return Math.max(0, context?.clearedMapLevelsTotal ?? 0);
-}
+};
 
-const createStoneCost = (base: number, growth: number) =>
+const createStoneCost =
+  (base: number, growth: number) =>
   (level: number): ResourceAmount => ({
     stone: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
   });
 
-const createSandCost = (base: number, growth: number) =>
+const createSandCost =
+  (base: number, growth: number) =>
   (level: number): ResourceAmount => ({
     sand: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
   });
 
-const createResourceCost = (id: ResourceId, base: number, growth: number) =>
+const createResourceCost =
+  (id: ResourceId, base: number, growth: number) =>
   (level: number): ResourceAmount => ({
     [id]: Math.ceil(base * Math.pow(growth, Math.max(level, 1))),
   });
 
-const createDualResourceCost = (
-  firstId: ResourceId,
-  firstBase: number,
-  firstGrowth: number,
-  secondId: ResourceId,
-  secondBase: number,
-  secondGrowth: number
-) =>
+const createDualResourceCost =
+  (
+    firstId: ResourceId,
+    firstBase: number,
+    firstGrowth: number,
+    secondId: ResourceId,
+    secondBase: number,
+    secondGrowth: number,
+  ) =>
   (level: number): ResourceAmount => ({
     [firstId]: Math.ceil(firstBase * Math.pow(firstGrowth, Math.max(level, 1))),
-    [secondId]: Math.ceil(secondBase * Math.pow(secondGrowth, Math.max(level, 1))),
+    [secondId]: Math.ceil(
+      secondBase * Math.pow(secondGrowth, Math.max(level, 1)),
+    ),
   });
 
-const createTriResourceCost = (
-  firstId: ResourceId,
-  firstBase: number,
-  secondId: ResourceId,
-  secondBase: number,
-  thirdId: ResourceId,
-  thirdBase: number,
-  growth: number
-) =>
+const createTriResourceCost =
+  (
+    firstId: ResourceId,
+    firstBase: number,
+    secondId: ResourceId,
+    secondBase: number,
+    thirdId: ResourceId,
+    thirdBase: number,
+    growth: number,
+  ) =>
   (level: number): ResourceAmount => ({
     [firstId]: Math.ceil(firstBase * Math.pow(growth, Math.max(level, 1))),
     [secondId]: Math.ceil(secondBase * Math.pow(growth, Math.max(level, 1))),
     [thirdId]: Math.ceil(thirdBase * Math.pow(growth, Math.max(level, 1))),
   });
 
-const createMixedCost = (
-  stoneBase: number,
-  stoneGrowth: number,
-  sandBase: number,
-  sandGrowth: number
-) =>
+const createMixedCost =
+  (
+    stoneBase: number,
+    stoneGrowth: number,
+    sandBase: number,
+    sandGrowth: number,
+  ) =>
   (level: number): ResourceAmount => ({
     stone: Math.ceil(stoneBase * Math.pow(stoneGrowth, Math.max(level, 1))),
     sand: Math.ceil(sandBase * Math.pow(sandGrowth, Math.max(level, 1))),
@@ -177,7 +190,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         income: (level) => 0.5 * level,
       },
     },
-    nodesRequired: { },
+    nodesRequired: {},
     cost: createStoneCost(2, 1.35),
   },
   // Bottom branch
@@ -257,13 +270,12 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   advanced_crafting: {
     id: "advanced_crafting",
     name: "Advanced Crafting",
-    description:
-      "Improve your crafting speed.",
+    description: "Improve your crafting speed.",
     nodePosition: { x: -1, y: 6 },
     maxLevel: 20,
     icon: "crafting_speed.png",
     effects: {
-      "crafting_speed_mult": {
+      crafting_speed_mult: {
         multiplier: (level) => 1 + 0.125 * level,
       },
     },
@@ -273,13 +285,12 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   advanced_crafting2: {
     id: "advanced_crafting2",
     name: "Advanced Crafting II",
-    description:
-      "Improve your crafting speed.",
+    description: "Improve your crafting speed.",
     nodePosition: { x: -1, y: 7 },
     maxLevel: 80,
     icon: "crafting_speed_2.png",
     effects: {
-      "crafting_speed_mult": {
+      crafting_speed_mult: {
         multiplier: (level) => 1 + 0.125 * level,
       },
     },
@@ -359,7 +370,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { refinement: 7 },
-    cost: createResourceCost('copper', 50, 1.5),
+    cost: createResourceCost("copper", 50, 1.5),
   },
 
   souls_harvest: {
@@ -372,7 +383,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "resource_gain_4.png",
     effects: {},
     nodesRequired: { refinement2: 5 },
-    cost: createResourceCost('silver', 5000, 1),
+    cost: createResourceCost("silver", 5000, 1),
     registerEvent: {
       text: "Whispers of Dark Research answer your harvest.",
     },
@@ -385,10 +396,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 1, y: 6 },
     maxLevel: 1,
     icon: "wire_crafting.png",
-    effects: {
-    },
+    effects: {},
     nodesRequired: { refinement2: 5 },
-    cost: createDualResourceCost('coal', 400, 1.5, 'copper', 1000, 1.5),
+    cost: createDualResourceCost("coal", 400, 1.5, "copper", 1000, 1.5),
   },
   void_modules: {
     id: "void_modules",
@@ -432,8 +442,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   ice_mastery: {
     id: "ice_mastery",
     name: "Ice Mastery",
-    description:
-      "Master the art of ice magic, allowing you to freeze enemies.",
+    description: "Master the art of ice magic, allowing you to freeze enemies.",
     nodePosition: { x: 2, y: 4 },
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
@@ -445,15 +454,13 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   fire_mastery: {
     id: "fire_mastery",
     name: "Fire Mastery",
-    description:
-      "Master the art of fire magic.",
+    description: "Master the art of fire magic.",
     nodePosition: { x: 3, y: 3 },
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
     icon: "fire_mastery.png",
     lockedForDemo: true,
-    effects: {
-    },
+    effects: {},
     cost: createResourceCost("magma", 400, 1),
   },
   // top
@@ -462,7 +469,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Glass Latticework",
     description:
       "Weave emberglass filaments that steady your focus, modestly improving mana flow.",
-    nodePosition: { x: 0, y: -1},
+    nodePosition: { x: 0, y: -1 },
     maxLevel: 5,
     icon: "mana_regen_1.png",
     effects: {
@@ -476,8 +483,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   arcane_awareness: {
     id: "arcane_awareness",
     name: "Arcane Awareness",
-    description:
-      "Increase your spell power.",
+    description: "Increase your spell power.",
     nodePosition: { x: 0, y: -2 },
     maxLevel: 5,
     icon: "spell_power_1.png",
@@ -492,8 +498,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   spell_power: {
     id: "spell_power",
     name: "Spell Power",
-    description:
-      "Increase your spell power.",
+    description: "Increase your spell power.",
     nodePosition: { x: -1, y: -3 },
     maxLevel: 5,
     icon: "spell_power_1_5.png",
@@ -548,14 +553,13 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   black_darts: {
     id: "black_darts",
     name: "Darts of the Void",
-    description:
-      "Unleash darts of metal and void energy that damage targets.",
+    description: "Unleash darts of metal and void energy that damage targets.",
     nodePosition: { x: 1, y: -5 },
     maxLevel: 1,
     icon: "darts.png",
     effects: {},
     nodesRequired: { sandstorm_ritual: 1 },
-    cost: createResourceCost('iron', 140, 1.65),
+    cost: createResourceCost("iron", 140, 1.65),
   },
   electric_shards: {
     id: "electric_shards",
@@ -567,7 +571,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "electric_shards.png",
     effects: {},
     nodesRequired: { black_darts: 1 },
-    cost: createResourceCost('wire', 12, 1.0),
+    cost: createResourceCost("wire", 12, 1.0),
   },
   ring_of_fire: {
     id: "ring_of_fire",
@@ -580,7 +584,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     lockedForDemo: true,
     effects: {},
     nodesRequired: { black_darts: 1 },
-    cost: createResourceCost('magma', 200, 1),
+    cost: createResourceCost("magma", 200, 1),
   },
   sharp_mind: {
     id: "sharp_mind",
@@ -595,7 +599,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { sandstorm_ritual: 1 },
-    cost: createResourceCost('organics', 30, 1.5),
+    cost: createResourceCost("organics", 30, 1.5),
   },
   sharp_mind2: {
     id: "sharp_mind2",
@@ -610,25 +614,26 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { sharp_mind: 5 },
-    cost: createResourceCost('paper', 8, 1.5),
+    cost: createResourceCost("paper", 8, 1.5),
   },
   magic_rain: {
     id: "magic_rain",
     name: "Magic Rain",
-    description: "Unleash powerful bolts of arcane energy that rain down on your enemies.",
+    description:
+      "Unleash powerful bolts of arcane energy that rain down on your enemies.",
     nodePosition: { x: -2, y: -6 },
     maxLevel: 1,
     icon: "magic_rain.png",
     effects: {},
     nodesRequired: { sharp_mind: 5 },
-    cost: createResourceCost('paper', 200, 1.5),
+    cost: createResourceCost("paper", 200, 1.5),
   },
   mana_reservior: {
     id: "mana_reservior",
     name: "Mana Reservoir",
     description:
       "Shape capacitors of fused glass to store greater tides of mana.",
-    nodePosition: { x: -1, y: -2},
+    nodePosition: { x: -1, y: -2 },
     maxLevel: 5,
     icon: "mana_cap_1.png",
     effects: {
@@ -661,8 +666,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   spiritual_powers: {
     id: "spiritual_powers",
     name: "Spiritual Powers",
-    description:
-      "Increase your spiritual power.",
+    description: "Increase your spiritual power.",
     nodePosition: { x: -3, y: -3 },
     maxLevel: 5,
     icon: "mana_regen_2_5.png",
@@ -706,11 +710,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         income: (level) => 1 * level,
       },
       mana_regen: {
-        income: (level) => 0.15*level
-      }
+        income: (level) => 0.15 * level,
+      },
     },
     nodesRequired: { sand_scribing: 3 },
-    cost: createResourceCost('wood', 20, 1.5),
+    cost: createResourceCost("wood", 20, 1.5),
   },
   soul_wood: {
     id: "soul_wood",
@@ -726,10 +730,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
       spell_power: {
         multiplier: (level) => 1 + 0.1 * level,
-      }
+      },
     },
     nodesRequired: { sand_scribing: 5 },
-    cost: createResourceCost('wood', 60, 1.5),
+    cost: createResourceCost("wood", 60, 1.5),
   },
   bastion_foundations: {
     id: "bastion_foundations",
@@ -793,7 +797,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { clarity2: 3 },
-    cost: createResourceCost('wood', 50, 1.5),
+    cost: createResourceCost("wood", 50, 1.5),
   },
   // left
   hunger: {
@@ -807,7 +811,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.2 * level,
-      }
+      },
     },
     nodesRequired: { consiousness: 1 },
     cost: createStoneCost(2, 1.5),
@@ -827,6 +831,38 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { hunger: 2 },
     cost: createStoneCost(16, 1.5),
+  },
+  intensive_motion: {
+    id: "intensive_motion",
+    name: "Intensive Motion",
+    description:
+      "Push your swarm into relentless bursts, further boosting acceleration.",
+    nodePosition: { x: -3, y: -2 },
+    maxLevel: 4,
+    icon: "attack3.png",
+    effects: {
+      all_units_acceleration_multiplier: {
+        multiplier: (level) => 1 + 0.05 * level,
+      },
+    },
+    nodesRequired: { muscles: 5 },
+    cost: createResourceCost("stone", 100, 1.5),
+  },
+  intensive_motion2: {
+    id: "intensive_motion2",
+    name: "Intensive Motion II",
+    description:
+      "Refine intensive movement patterns to keep acceleration climbing.",
+    nodePosition: { x: -4, y: -2 },
+    maxLevel: 4,
+    icon: "attack4.png",
+    effects: {
+      all_units_acceleration_multiplier: {
+        multiplier: (level) => 1 + 0.05 * level,
+      },
+    },
+    nodesRequired: { intensive_motion: 1 },
+    cost: createResourceCost("sand", 250, 1.5),
   },
   granite_bonding: {
     id: "granite_bonding",
@@ -886,7 +922,8 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "inspiration.png",
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context, level),
+        multiplier: (level, context) =>
+          1 + 0.01 * level * getClearedLevelsTotal(context, level),
       },
     },
     nodesRequired: { damage_lore: 2 },
@@ -906,18 +943,19 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { damage_lore: 5 },
-    cost: createResourceCost('iron', 30, 1.5),
+    cost: createResourceCost("iron", 30, 1.5),
   },
   tool_fabrication: {
     id: "tool_fabrication",
     name: "Tool Fabrication",
-    description: "Commission specialized implements, unlocking advanced crafting techniques.",
+    description:
+      "Commission specialized implements, unlocking advanced crafting techniques.",
     nodePosition: { x: -7, y: -2 },
     maxLevel: 1,
     icon: "tools.png",
     effects: {},
     nodesRequired: { heavy_drill: 5 },
-    cost: createDualResourceCost('iron', 120, 1, 'wood', 80, 1),
+    cost: createDualResourceCost("iron", 120, 1, "wood", 80, 1),
   },
   forged_strikes: {
     id: "forged_strikes",
@@ -933,7 +971,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { tool_fabrication: 1 },
-    cost: createResourceCost('tools', 8, 1.5),
+    cost: createResourceCost("tools", 8, 1.5),
   },
   silver_drill: {
     id: "silver_drill",
@@ -949,7 +987,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { heavy_drill: 5 },
-    cost: createResourceCost('silver', 150, 1.5),
+    cost: createResourceCost("silver", 150, 1.5),
   },
   critical_chance: {
     id: "critical_chance",
@@ -981,7 +1019,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { critical_chance: 5 },
-    cost: createResourceCost('coal', 200, 2.0),
+    cost: createResourceCost("coal", 200, 2.0),
   },
   penetration: {
     id: "penetration",
@@ -997,7 +1035,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { critical_chance: 5 },
-    cost: createResourceCost('organics', 50, 1.5),
+    cost: createResourceCost("organics", 50, 1.5),
   },
   penetration2: {
     id: "penetration2",
@@ -1013,7 +1051,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { penetration: 5 },
-    cost: createResourceCost('copper', 60, 1.5),
+    cost: createResourceCost("copper", 60, 1.5),
   },
   wire_penetration: {
     id: "wire_penetration",
@@ -1034,8 +1072,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   penetration3: {
     id: "penetration3",
     name: "Penetration III",
-    description:
-      "Use hot magma to melt through armor.",
+    description: "Use hot magma to melt through armor.",
     nodePosition: { x: -8, y: 3 },
     maxLevel: 15,
     icon: "penetration_3.png",
@@ -1046,7 +1083,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { penetration2: 5 },
-    cost: createResourceCost('magma', 250, 1.5),
+    cost: createResourceCost("magma", 250, 1.5),
   },
   // right
   improved_membranes: {
@@ -1116,8 +1153,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   impact_dampening: {
     id: "impact_dampening",
     name: "Impact Dampening",
-    description:
-      "Elastic tissues absorb impacts, reducing knockback.",
+    description: "Elastic tissues absorb impacts, reducing knockback.",
     nodePosition: { x: 5, y: 2 },
     maxLevel: 5,
     icon: "knockback_reduction.png",
@@ -1127,7 +1163,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { armor_lore: 5 },
-    cost: createResourceCost('organics', 45, 1.5),
+    cost: createResourceCost("organics", 45, 1.5),
   },
   armor_lore2: {
     id: "armor_lore2",
@@ -1143,7 +1179,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { armor_lore: 5 },
-    cost: createResourceCost('iron', 30, 1.5),
+    cost: createResourceCost("iron", 30, 1.5),
   },
   armor_lore3: {
     id: "armor_lore3",
@@ -1155,11 +1191,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 15,
     effects: {
       all_units_armor: {
-        income: (level) => 5*level,
+        income: (level) => 5 * level,
       },
     },
     nodesRequired: { armor_lore2: 5 },
-    cost: createResourceCost('silver', 60, 1.5),
+    cost: createResourceCost("silver", 60, 1.5),
   },
   reinforced_silver_armor: {
     id: "reinforced_silver_armor",
@@ -1188,11 +1224,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     lockedForDemo: true,
     effects: {
       all_units_armor: {
-        income: (level) => 15*level,
+        income: (level) => 15 * level,
       },
     },
     nodesRequired: { armor_lore3: 5 },
-    cost: createResourceCost('ice', 200, 1.5),
+    cost: createResourceCost("ice", 200, 1.5),
   },
   vitality2: {
     id: "vitality2",
@@ -1220,11 +1256,12 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "perseverance.png",
     effects: {
       all_units_hp_multiplier: {
-        multiplier: (level, context) => 1 + 0.01 * level * getClearedLevelsTotal(context),
+        multiplier: (level, context) =>
+          1 + 0.01 * level * getClearedLevelsTotal(context),
       },
     },
     nodesRequired: { vitality2: 5 },
-    cost: createResourceCost('sand', 200, 2),
+    cost: createResourceCost("sand", 200, 2),
   },
   vitality3: {
     id: "vitality3",
@@ -1240,7 +1277,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality2: 5 },
-    cost: createResourceCost('organics', 30, 1.5),
+    cost: createResourceCost("organics", 30, 1.5),
   },
   vitality4: {
     id: "vitality4",
@@ -1256,18 +1293,19 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { vitality3: 5 },
-    cost: createResourceCost('coal', 150, 1.5),
+    cost: createResourceCost("coal", 150, 1.5),
   },
   paper_milling: {
     id: "paper_milling",
     name: "Paper Milling",
-    description: "Pulp organics into disciplined sheets fit for resilient schematics.",
+    description:
+      "Pulp organics into disciplined sheets fit for resilient schematics.",
     nodePosition: { x: 7, y: 0 },
     maxLevel: 1,
     icon: "paper_craft.png",
     effects: {},
     nodesRequired: { vitality3: 5 },
-    cost: createDualResourceCost('organics', 120, 1, 'wood', 80, 1),
+    cost: createDualResourceCost("organics", 120, 1, "wood", 80, 1),
   },
   arcane_research: {
     id: "arcane_research",
@@ -1279,11 +1317,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "mana_regen_4.png",
     effects: {
       mana_regen: {
-        multiplier: (level) => 1 + 0.08*level,
+        multiplier: (level) => 1 + 0.08 * level,
       },
     },
     nodesRequired: { mana_source: 5 },
-    cost: createResourceCost('paper', 8, 1.5),
+    cost: createResourceCost("paper", 8, 1.5),
   },
   restoration: {
     id: "restoration",
@@ -1295,11 +1333,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "health_regen_1.png",
     effects: {
       all_units_hp_regen_percentage: {
-        income: (level) => 0.5*level,
+        income: (level) => 0.5 * level,
       },
     },
     nodesRequired: { vitality3: 5 },
-    cost: createResourceCost('organics', 150, 2),
+    cost: createResourceCost("organics", 150, 2),
   },
   engineered_plating: {
     id: "engineered_plating",
@@ -1315,7 +1353,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { restoration: 3 },
-    cost: createResourceCost('tools', 8, 1.5),
+    cost: createResourceCost("tools", 8, 1.5),
   },
 };
 
