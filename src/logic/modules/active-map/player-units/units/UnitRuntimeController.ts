@@ -789,6 +789,14 @@ export class UnitRuntimeController {
     return Math.max(unit.moveSpeed * Math.max(multiplier, 0), 0);
   }
 
+  private getEffectiveMoveAcceleration(unit: PlayerUnitState): number {
+    const multiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    return Math.max(unit.moveAcceleration * Math.max(multiplier, 0), 0);
+  }
+
   private computeBrakingForce(
     unit: PlayerUnitState,
     movementState: MovementBodyState
@@ -945,7 +953,7 @@ export class UnitRuntimeController {
   ): SceneVector2 {
     const steering = subtractVectors(desiredVelocity, currentVelocity);
     const magnitude = vectorLength(steering);
-    const maxForce = Math.max(unit.moveAcceleration * unit.mass, 0);
+    const maxForce = Math.max(this.getEffectiveMoveAcceleration(unit) * unit.mass, 0);
     if (magnitude <= 0 || maxForce <= 0) {
       return ZERO_VECTOR;
     }
