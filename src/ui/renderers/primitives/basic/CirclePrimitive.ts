@@ -305,29 +305,34 @@ export const createDynamicCirclePrimitive = (
     },
     radius,
   });
-  const data = buildCircleData(
+  let data: Float32Array | null = buildCircleData(
     initialCenter,
     radius,
     initialFillComponents,
     segments,
     trig
   );
-  const fillScratch = new Float32Array(initialFillComponents.length);
+  let fillScratch: Float32Array | null = new Float32Array(initialFillComponents.length);
   fillScratch.set(initialFillComponents);
-  const previousFill = new Float32Array(initialFillComponents.length);
+  let previousFill: Float32Array | null = new Float32Array(initialFillComponents.length);
   previousFill.set(initialFillComponents);
   let previousCenterX = initialCenter.x;
   let previousCenterY = initialCenter.y;
   let previousOffsetX = resolveOffset(options, instance)?.x ?? 0;
   let previousOffsetY = resolveOffset(options, instance)?.y ?? 0;
-  // Cache raw position for fast-path
   let prevPosX = getInstanceRenderPosition(instance).x;
   let prevPosY = getInstanceRenderPosition(instance).y;
   let prevRotation = instance.data.rotation ?? 0;
 
   return {
-    data,
+    data: data!,
+    dispose() {
+      data = null;
+      fillScratch = null;
+      previousFill = null;
+    },
     update(target: SceneObjectInstance) {
+      if (!data || !fillScratch || !previousFill) return null;
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       const nextOffset = resolveOffset(options, target);
@@ -414,6 +419,7 @@ export const createDynamicCirclePrimitive = (
       return data;
     },
     updatePositionOnly(target: SceneObjectInstance) {
+      if (!data || !fillScratch || !previousFill) return null;
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
       const nextOffset = resolveOffset(options, target);
