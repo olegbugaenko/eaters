@@ -12,18 +12,18 @@ const mapConfig = (() => {
   const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
   const spawnPoint: SceneVector2 = {
     x: center.x,
-    y: center.y + 180,
+    y: center.y,
   };
 
   const wheelRadius = 700;
   const brickSize = 24;
   const rimThickness = brickSize * 3;
-  const hubRadius = 150;
+  const hubRadius = 200;
   const hubThickness = brickSize * 2;
   const innerRadius = wheelRadius - rimThickness;
   const hubInnerRadius = hubRadius - hubThickness;
   const spokesCount = 8;
-  const turretRadius = 430;
+  const turretRadius = 450;
 
   const spokeOutline = [
     {

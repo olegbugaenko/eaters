@@ -318,56 +318,74 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     projectileKnockBackSpeed: 10,
   },
   wheelVolleyTurretEnemy: {
-    name: "Wheel Turret",
+    name: "Doomed Ballista",
     renderer: {
       kind: "composite",
-      fill: { r: 0.55, g: 0.7, b: 0.5, a: 1 },
+      fill: { r: 0.3, g: 0.15, b: 0.0, a: 1 },
       layers: [
         {
-          shape: "polygon",
-          vertices: [
-            { x: 14, y: -2 },
-            { x: 0, y: -4 },
-            { x: 0, y: 4 },
-            { x: 14, y: 2 },
-          ],
-          fill: { type: "base", brightness: 0.25 },
+          shape: "circle",
+          radius: 50,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              stops: [
+                { offset: 0, color: { r: 0.8, g: 0.55, b: 0.9, a: 0.4 } },
+                { offset: 1, color: { r: 0.8, g: 0.55, b: 0.9, a: 0 } },  
+              ],
+            }
+          }
         },
         {
           shape: "polygon",
           vertices: [
-            { x: 0, y: -4 },
-            { x: -3, y: -8 },
-            { x: -3, y: 8 },
-            { x: 0, y: 4 },
-          ],
-          fill: { type: "base", brightness: 0.2 },
-        },
-        {
-          shape: "polygon",
-          vertices: [
-            { x: -3, y: -8 },
-            { x: -9, y: -11 },
-            { x: -9, y: -5 },
-            { x: -3, y: 3 },
+            { x: 14, y: -3 },
+            { x: -15, y: -4 },
+            { x: -15, y: 4 },
+            { x: 14, y: 3 },
           ],
           fill: { type: "base", brightness: 0.15 },
         },
-        {
-          shape: "polygon",
-          vertices: [
-            { x: -3, y: 8 },
-            { x: -9, y: 11 },
-            { x: -9, y: 5 },
-            { x: -3, y: -3 },
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 5, y: -20, width: 2 },
+            { x: 8, y: -18, width: 3 },
+            { x: 12, y: -12, width: 4 },
+            { x: 14, y: -6, width: 5 },
+            { x: 14, y: 6, width: 5 },
+            { x: 12, y: 12, width: 4 },
+            { x: 8, y: 18, width: 3 },
+            { x: 5, y: 20, width: 2 },
           ],
-          fill: { type: "base", brightness: 0.15 },
-        },
+          {
+            fill: { type: "base", brightness: 0.1 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 5, y: -20, width: 1 },
+            { x: -6, y: -3, width: 1 },
+            { x: -7, y: 0, width: 1 },
+            { x: -6, y: 3, width: 1 },
+            { x: 5, y: 20, width: 1 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.2, saturationShift: -0.4, hueShift: 0.2 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
       ],
     },
-    maxHp: 3135,
-    armor: 9,
-    baseDamage: 240,
+    maxHp: 31350,
+    armor: 390,
+    baseDamage: 1940,
     attackInterval: 1.4,
     attackRange: 380,
     moveSpeed: 0,
@@ -380,6 +398,10 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       radius: 9,
       speed: 170,
       lifetimeMs: 2200,
+      statusEffectId: "bleeding",
+      statusEffectOptions: {
+        damagePerSecond: 700,
+      },
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.5, g: 0.8, b: 0.75, a: 0.2 },
@@ -405,6 +427,34 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
         startColor: { r: 0.5, g: 0.6, b: 0.6, a: 0.11 },
         endColor: { r: 0.5, g: 0.6, b: 0.6, a: 0 },
       },
+    },
+    emitter: {
+      particlesPerSecond: 90,
+      particleLifetimeMs: 750,
+      fadeStartMs: 200,
+      baseSpeed: 0.08,
+      speedVariation: 0.01,
+      sizeRange: { min: 14.2, max: 28.4 },
+      sizeEvolutionMult: 2.75,
+      spread: Math.PI / 5.5,
+      offset: { x: -0.75, y: 0 },
+      color: { r: 0.35, g: 0.08, b: 0.55, a: 0.4 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.5, g: 0.25, b: 0.6, a: 0.03 } },
+          { offset: 0.65, color: { r: 0.5, g: 0.25, b: 0.6, a: 0.15 } },
+          { offset: 1, color: { r: 0.5, g: 0.15, b: 0.7, a: 0 } },
+        ],
+        noise: {
+          colorAmplitude: 0.0,
+          alphaAmplitude: 0.02,
+          scale: 0.3,
+        },
+      },
+      shape: "circle",
+      maxParticles: 100,
     },
     projectileVolley: {
       count: 5,

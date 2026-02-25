@@ -96,20 +96,21 @@ const BLEEDING_EMITTER_BASE: ParticleEmitterConfig = {
 
 const POISON_EMITTER_BASE: ParticleEmitterConfig = {
   particlesPerSecond: 200,
-  particleLifetimeMs: 900,
-  fadeStartMs: 250,
+  particleLifetimeMs: 500,
+  fadeStartMs: 150,
   sizeRange: { min: 2.4, max: 19.1 },
   color: { r: 0.3, g: 0.9, b: 0.35, a: 0.3 },
   fill: {
     fillType: FILL_TYPES.RADIAL_GRADIENT,
     start: { x: 0, y: 0 },
     stops: [
-      { offset: 0, color: { r: 0.5, g: 0.9, b: 0.35, a: 0.1 } },
-      { offset: 1, color: { r: 0.5, g: 0.9, b: 0.35, a: 0.0 } },
+      { offset: 0, color: { r: 0.65, g: 0.9, b: 0.35, a: 0.1 } },
+      { offset: 1, color: { r: 0.65, g: 0.9, b: 0.35, a: 0.0 } },
     ],
   },
-  baseSpeed: 0.02,
+  baseSpeed: 0.05,
   speedVariation: 0.01,
+  sizeEvolutionMult: 6.5,
   spread: Math.PI,
   spawnRadius: { min: 0, max: 3.5 },
   shape: "circle",
