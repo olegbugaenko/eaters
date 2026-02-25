@@ -47,6 +47,20 @@ export const sanitizeStatusEffectEmitterConfig = (
   const spawnRadiusMax = Math.max(spawnRadiusMin, config.spawnRadius?.max ?? spawnRadiusMin);
   const direction = Number.isFinite(config.direction) ? Number(config.direction) : 0;
 
+  // Convert sizeEvolutionMult (multiplier at end of lifetime) to sizeGrowthRate (multiplier per second)
+  let sizeGrowthRate = base.sizeGrowthRate ?? 1.0;
+  const sizeEvolutionMult = config.sizeEvolutionMult;
+  if (
+    typeof sizeEvolutionMult === "number" &&
+    Number.isFinite(sizeEvolutionMult) &&
+    sizeEvolutionMult > 0
+  ) {
+    const lifetimeSeconds = base.particleLifetimeMs / 1000;
+    if (lifetimeSeconds > 0 && sizeEvolutionMult !== 1) {
+      sizeGrowthRate = Math.pow(sizeEvolutionMult, 1 / lifetimeSeconds);
+    }
+  }
+
   return {
     ...base,
     baseSpeed,
@@ -55,6 +69,7 @@ export const sanitizeStatusEffectEmitterConfig = (
     spawnRadiusMin,
     spawnRadiusMax,
     direction,
+    sizeGrowthRate,
   };
 };
 
@@ -83,6 +98,7 @@ export const serializeEmitterConfig = (config: StatusEffectEmitterRenderConfig):
     serializedFill,
     config.shape,
     config.direction,
+    config.sizeGrowthRate ?? 1,
   ].join(":");
 };
 

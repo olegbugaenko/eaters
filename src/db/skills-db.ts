@@ -326,7 +326,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     maxLevel: 1,
     effects: {},
     nodesRequired: { construction_ledgers: 1 },
-    cost: createResourceCost("paper", 100, 1),
+    cost: createResourceCost("paper", 500, 1),
   },
   quarry_overseers: {
     id: "quarry_overseers",

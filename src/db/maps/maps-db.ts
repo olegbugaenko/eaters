@@ -24,6 +24,7 @@ import spiralSleeves from "./map-definitions/spiralSleeves";
 import spruce from "./map-definitions/spruce";
 import stoneCottage from "./map-definitions/stoneCottage";
 import thicket from "./map-definitions/thicket";
+import theWheel from "./map-definitions/theWheel";
 import trainingGrounds from "./map-definitions/trainingGrounds";
 import turretRings from "./map-definitions/turretRings";
 import tutorialZone from "./map-definitions/tutorialZone";
@@ -55,6 +56,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   oldForge,
   spruce,
   deadOak,
+  theWheel,
   sphinx,
   spiralSleeves,
   stoneCottage,
