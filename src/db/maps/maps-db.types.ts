@@ -19,6 +19,7 @@ export type MapId =
   | "oldForge"
   | "spruce"
   | "deadOak"
+  | "theWheel"
   | "sphinx"
   | "spiralSleeves"
   | "stoneCottage"

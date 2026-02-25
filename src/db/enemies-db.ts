@@ -29,6 +29,7 @@ export type EnemyType =
   | "turretEnemy"
   | "burstTurretEnemy"
   | "volleyTurretEnemy"
+  | "wheelVolleyTurretEnemy"
   | "explosionTurretEnemy"
   | "bleedingTurretEnemy"
   | "spectreEnemy"
@@ -1739,6 +1740,104 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
   },
   volleyTurretEnemy: {
     name: "Volley Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.55, g: 0.7, b: 0.5, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -2 },
+            { x: 0, y: -4 },
+            { x: 0, y: 4 },
+            { x: 14, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.25 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -4 },
+            { x: -3, y: -8 },
+            { x: -3, y: 8 },
+            { x: 0, y: 4 },
+          ],
+          fill: { type: "base", brightness: 0.2 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: -8 },
+            { x: -9, y: -11 },
+            { x: -9, y: -5 },
+            { x: -3, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.15 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -3, y: 8 },
+            { x: -9, y: 11 },
+            { x: -9, y: 5 },
+            { x: -3, y: -3 },
+          ],
+          fill: { type: "base", brightness: 0.15 },
+        },
+      ],
+    },
+    maxHp: 3135,
+    armor: 9,
+    baseDamage: 240,
+    attackInterval: 1.4,
+    attackRange: 380,
+    moveSpeed: 0,
+    physicalSize: 30,
+    reward: normalizeResourceAmount({
+      stone: 550,
+      copper: 120,
+    }),
+    projectile: {
+      radius: 9,
+      speed: 170,
+      lifetimeMs: 2200,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.5, g: 0.8, b: 0.75, a: 0.2 },
+      },
+      shape: "sprite",
+      spriteName: "needle",
+      hitRadius: 7,
+      explosion: "smallCannonGrey",
+      ringTrail: {
+        spawnIntervalMs: 60,
+        lifetimeMs: 820,
+        startRadius: 5,
+        endRadius: 21,
+        startAlpha: 0.065,
+        endAlpha: 0,
+        innerStop: 0.46,
+        outerStop: 0.76,
+        color: { r: 0.5, g: 0.7, b: 0.75, a: 0.08 },
+      },
+      tail: {
+        lengthMultiplier: 4.0,
+        widthMultiplier: 1.0,
+        startColor: { r: 0.5, g: 0.6, b: 0.6, a: 0.11 },
+        endColor: { r: 0.5, g: 0.6, b: 0.6, a: 0 },
+      },
+    },
+    projectileVolley: {
+      count: 5,
+      spreadAngleDeg: 12,
+    },
+    knockBackDistance: 110,
+    knockBackSpeed: 130,
+    projectileKnockBackDistance: 40,
+    projectileKnockBackSpeed: 10,
+  },
+  wheelVolleyTurretEnemy: {
+    name: "Wheel Turret",
     renderer: {
       kind: "composite",
       fill: { r: 0.55, g: 0.7, b: 0.5, a: 1 },
