@@ -1,5 +1,5 @@
 import { ENEMIES_DB } from "./enemies";
-import type { EnemyConfig, EnemyType } from "./enemies/source";
+import type { EnemyConfig, EnemyType } from "./enemies/enemies.types";
 
 export type {
   EnemyArcAttackConfig,
@@ -11,10 +11,10 @@ export type {
   EnemyRendererLayerConfig,
   EnemyRendererPolygonConfig,
   EnemyTargetingOptions,
+  EnemyType,
   OctopusTentacleConfig,
   OctopusTentacleTipGlowConfig,
-  EnemyType,
-} from "./enemies/source";
+} from "./enemies/enemies.types";
 
 export const ENEMY_TYPES = Object.keys(ENEMIES_DB) as EnemyType[];
 
