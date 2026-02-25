@@ -254,7 +254,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "constructions_1.png",
     effects: {},
     nodesRequired: { autorestart_rituals: 1 },
-    cost: createResourceCost("copper", 500, 1),
+    cost: createResourceCost("copper", 1000, 1),
     registerEvent: {
       text: "A permanent guild answers your call.",
     },

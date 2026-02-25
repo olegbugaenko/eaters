@@ -43,6 +43,7 @@ const extractBrickParams = (
   instance: SceneObjectInstance
 ): BrickFillCacheKey => {
   const customData = instance.data.customData as BrickCustomData | undefined;
+
   return {
     damageStage: customData?.damageStage ?? 0,
     crackVariant: customData?.crackVariant ?? 0,

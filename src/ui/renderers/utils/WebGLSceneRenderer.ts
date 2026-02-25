@@ -275,7 +275,7 @@ export class WebGLSceneRenderer {
 
       const crackPath = "images/sprites/cracks/cracks_atlas.png";
       const crackTexture = textureResourceManager.getTexture(crackPath);
-      
+
       if (crackTexture?.texture && crackTexture.gl === this.gl) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, crackTexture.texture);
       } else {
@@ -299,12 +299,10 @@ export class WebGLSceneRenderer {
         }
       }
     }
-    
-    // Bind sprite texture if available (texture unit 0)
+
     if (this.spriteTextureLocation !== null) {
       this.gl.activeTexture(this.gl.TEXTURE0);
       this.gl.uniform1i(this.spriteTextureLocation, 0);
-      
       const firstTexture = textureResourceManager.getAnyTexture();
       if (firstTexture?.texture) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, firstTexture.texture);
