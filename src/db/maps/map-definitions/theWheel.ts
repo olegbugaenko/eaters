@@ -18,14 +18,17 @@ const mapConfig = (() => {
   const wheelRadius = 700;
   const brickSize = 24;
   const rimThickness = brickSize * 3;
+  const hubRadius = 150;
+  const hubThickness = brickSize * 2;
   const innerRadius = wheelRadius - rimThickness;
+  const hubInnerRadius = hubRadius - hubThickness;
   const spokesCount = 8;
   const turretRadius = 430;
 
   const spokeOutline = [
     {
-      start: { x: 120, y: -30 },
-      control1: { x: 200, y: -80 },
+      start: { x: 150, y: -26 },
+      control1: { x: 230, y: -80 },
       control2: { x: 420, y: -95 },
       end: { x: 650, y: -45 },
     },
@@ -39,13 +42,13 @@ const mapConfig = (() => {
       start: { x: 650, y: 45 },
       control1: { x: 420, y: 95 },
       control2: { x: 200, y: 80 },
-      end: { x: 120, y: 30 },
+      end: { x: 150, y: 26 },
     },
     {
-      start: { x: 120, y: 30 },
-      control1: { x: 70, y: 14 },
-      control2: { x: 70, y: -14 },
-      end: { x: 120, y: -30 },
+      start: { x: 150, y: 26 },
+      control1: { x: 130, y: 12 },
+      control2: { x: 130, y: -12 },
+      end: { x: 150, y: -26 },
     },
   ] as const;
 
@@ -77,6 +80,16 @@ const mapConfig = (() => {
         { level: woodLevel },
       );
 
+      const hub = circleWithBricks(
+        "smallWood",
+        {
+          center,
+          innerRadius: hubInnerRadius,
+          outerRadius: hubRadius,
+        },
+        { level: woodLevel },
+      );
+
       const spokes = Array.from({ length: spokesCount }, (_, index) => {
         const angle = (index / spokesCount) * Math.PI * 2;
 
@@ -95,7 +108,7 @@ const mapConfig = (() => {
         );
       });
 
-      return [rim, ...spokes];
+      return [rim, hub, ...spokes];
     },
     enemies: ({ mapLevel }) => {
       const level = Math.max(1, Math.floor(mapLevel));
