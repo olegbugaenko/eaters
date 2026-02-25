@@ -178,6 +178,81 @@ describe("EnemiesModule", () => {
     assert.strictEqual(firstCall.damage, 480);
   });
 
+  test("applies projectile status effect with options from enemy config", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    const targeting = new TargetingService();
+    const projectiles = new ProjectileSpy();
+    const statusEffects = new StatusEffectsModule({
+      damage: { applyTargetDamage: () => 0 } as unknown as DamageServiceType,
+    });
+
+    const unitTarget: TargetSnapshot = {
+      id: "unit-poison-target",
+      type: "unit",
+      position: { x: 120, y: 0 },
+      hp: 100000,
+      maxHp: 100000,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 12,
+    };
+
+    const provider: TargetingProvider = {
+      types: ["unit"],
+      getById: (id) => (id === unitTarget.id ? unitTarget : null),
+      findNearest: () => unitTarget,
+      findInRadius: () => [unitTarget],
+      forEachInRadius: (_position, _radius, visitor) => {
+        visitor(unitTarget);
+      },
+    };
+    targeting.registerProvider(provider);
+
+    const { module } = createEnemiesModuleWithDeps({
+      runState,
+      targeting,
+      projectiles: projectiles as unknown as UnitProjectileController,
+      statusEffects,
+    });
+
+    module.setEnemies([
+      {
+        type: "turretEnemy",
+        level: 1,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    module.tick(2000);
+
+    assert.strictEqual(projectiles.spawned > 0, true, "enemy should spawn projectile");
+    const firstCall = projectiles.calls[0];
+    assert(firstCall, "expected projectile spawn payload");
+    assert.strictEqual(typeof firstCall.onHit, "function", "projectile should have onHit callback");
+
+    firstCall.onHit({
+      targetId: unitTarget.id,
+      targetType: "unit",
+      position: { ...unitTarget.position },
+    });
+
+    assert.strictEqual(
+      statusEffects.hasEffect("poison", { type: "unit", id: unitTarget.id }),
+      true,
+      "projectile hit should apply poison",
+    );
+
+    const poison = statusEffects
+      .getActiveEffectsForTarget({ type: "unit", id: unitTarget.id })
+      .find((effect) => effect.id === "poison");
+    assert(poison, "expected active poison effect");
+    assert.strictEqual(poison?.damagePerSecond, 6);
+    assert.strictEqual(poison?.remainingMs, 5000);
+  });
+
   test("spawns enemies via state factory and pushes bridge stats", () => {
     const runState = new MapRunState();
     runState.start();

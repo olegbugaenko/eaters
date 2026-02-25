@@ -154,6 +154,28 @@ const buildEnemyStats = (
   }
 
   // Show effect stats for any status effect the enemy can apply
+  if (enemyConfig.projectile?.statusEffectId) {
+    const effectConfig = getStatusEffectConfig(
+      enemyConfig.projectile.statusEffectId,
+    );
+    const effectStats = formatEffectApplicationStats(
+      enemyConfig.projectile.statusEffectId,
+      enemyConfig.projectile.statusEffectOptions ?? {},
+    );
+    if (effectStats.length > 0) {
+      stats.push({
+        label: t("scene.targetTooltip.effect", "{{name}} Effect").replace(
+          "{{name}}",
+          effectConfig.displayName,
+        ),
+        value: "",
+      });
+      effectStats.forEach((stat) => {
+        stats.push({ label: stat.label, value: stat.value, nested: true });
+      });
+    }
+  }
+
   if (enemyConfig.arcAttack?.statusEffectId) {
     const effectConfig = getStatusEffectConfig(
       enemyConfig.arcAttack.statusEffectId,

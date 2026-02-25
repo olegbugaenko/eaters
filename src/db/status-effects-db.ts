@@ -2,6 +2,7 @@ import type { VisualEffectId, VisualEffectOverlayConfig } from "./effects-db";
 import type { BrickEffectTint } from "@/logic/modules/active-map/bricks/bricks.types";
 import { EFFECT_TINTS } from "@/logic/modules/active-map/bricks/brick-effects.const";
 import type { ParticleEmitterConfig } from "@/logic/interfaces/visuals/particle-emitters-config";
+import { FILL_TYPES } from "@/core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 
 export type StatusEffectId =
   | "frenzy"
@@ -91,6 +92,28 @@ const BLEEDING_EMITTER_BASE: ParticleEmitterConfig = {
   spawnRadius: { min: 0, max: 2.5 },
   shape: "triangle",
   maxParticles: 1200,
+};
+
+const POISON_EMITTER_BASE: ParticleEmitterConfig = {
+  particlesPerSecond: 200,
+  particleLifetimeMs: 900,
+  fadeStartMs: 250,
+  sizeRange: { min: 2.4, max: 19.1 },
+  color: { r: 0.3, g: 0.9, b: 0.35, a: 0.3 },
+  fill: {
+    fillType: FILL_TYPES.RADIAL_GRADIENT,
+    start: { x: 0, y: 0 },
+    stops: [
+      { offset: 0, color: { r: 0.5, g: 0.9, b: 0.35, a: 0.1 } },
+      { offset: 1, color: { r: 0.5, g: 0.9, b: 0.35, a: 0.0 } },
+    ],
+  },
+  baseSpeed: 0.02,
+  speedVariation: 0.01,
+  spread: Math.PI,
+  spawnRadius: { min: 0, max: 3.5 },
+  shape: "circle",
+  maxParticles: 1000,
 };
 
 const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
@@ -186,6 +209,26 @@ const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
         intensity: 0.4,
         priority: 12,
         target: "fill",
+      },
+      unitEmitters: {
+        offsetScale: "unit",
+        emitters: [
+          {
+            ...POISON_EMITTER_BASE,
+            offset: { x: 0, y: -0.65 },
+            direction: -Math.PI / 2,
+          },
+          {
+            ...POISON_EMITTER_BASE,
+            offset: { x: 0.35, y: 0.5 },
+            direction: Math.PI / 3,
+          },
+          {
+            ...POISON_EMITTER_BASE,
+            offset: { x: -0.35, y: 0.5 },
+            direction: (Math.PI * 2) / 3,
+          },
+        ],
       },
     },
   },

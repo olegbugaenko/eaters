@@ -18,6 +18,7 @@ import mine from "./map-definitions/mine";
 import oldForge from "./map-definitions/oldForge";
 import portalRing from "./map-definitions/portalRing";
 import silverRing from "./map-definitions/silverRing";
+import snakeNest from "./map-definitions/snakeNest";
 import sphinx from "./map-definitions/sphinx";
 import spiralSleeves from "./map-definitions/spiralSleeves";
 import spruce from "./map-definitions/spruce";
@@ -58,6 +59,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   spiralSleeves,
   stoneCottage,
   bezierGrove,
+  snakeNest,
   wire,
   coil,
   mine,

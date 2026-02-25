@@ -1092,6 +1092,20 @@ export class EnemiesModule implements GameModule {
                 },
               );
             }
+            const projectileStatusEffectId = config.projectile?.statusEffectId;
+            if (projectileStatusEffectId) {
+              const effectTarget =
+                hitContext.targetType === "enemy"
+                  ? ({ type: "enemy", id: hitContext.targetId } as const)
+                  : ({ type: "unit", id: hitContext.targetId } as const);
+              if (!this.statusEffects.hasEffect(projectileStatusEffectId, effectTarget)) {
+                this.statusEffects.applyEffect(
+                  projectileStatusEffectId,
+                  effectTarget,
+                  config.projectile?.statusEffectOptions,
+                );
+              }
+            }
             return false; // Дозволяємо стандартне нанесення шкоди
           },
         });

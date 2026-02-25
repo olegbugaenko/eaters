@@ -36,6 +36,7 @@ export type EnemyType =
   | "coalConvoyGuardian"
   | "silverKeeperEnemy"
   | "freezeTurretEnemy"
+  | "snakeEnemy"
   | "bigGun"
   | "laserTurretEnemy"
   | "plasmaBeamTurretEnemy"
@@ -101,6 +102,8 @@ export interface EnemyArcAttackConfig {
 export interface EnemyProjectileConfig extends UnitProjectileVisualConfig {
   /** Overrides enemy baseDamage for projectile hits only. */
   readonly damage?: number;
+  readonly statusEffectId?: StatusEffectId;
+  readonly statusEffectOptions?: StatusEffectApplicationOptions;
   readonly attackSeries?: AttackSeriesConfig;
   readonly destroyOnHit?: boolean;
   readonly targetHitCooldownMs?: number;
@@ -1590,6 +1593,11 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       radius: 5,
       speed: 150,
       lifetimeMs: 2500,
+      statusEffectId: "poison",
+      statusEffectOptions: {
+        durationMs: 5000,
+        damagePerSecond: 6,
+      },
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.6, g: 0.6, b: 0.4, a: 1 },
@@ -2065,6 +2073,139 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       searchPadding: 200,
     },
   },
+
+  snakeEnemy: {
+    name: "Snake",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.38, g: 0.62, b: 0.22, a: 1 },
+      layers: [
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            /*{ x: 18, y: 0, width: 7 },
+            { x: 12, y: 0, width: 7 },*/
+            { x: 18, y: 0, width: 7 },
+            { x: 16, y: 0, width: 7 },
+            { x: 14, y: -0.5, width: 7 },
+            { x: 12, y: -1.5, width: 7 },
+            { x: 10, y: -2.9, width: 7 },
+            { x: 8, y: -4, width: 7 },
+            { x: 6, y: -4, width: 7 },
+            { x: 4, y: -2.9, width: 7 },
+            { x: 2, y: -1, width: 6 },
+            { x: 0, y: 1, width: 6 },
+            { x: -2, y: 2.7, width: 6 },
+            { x: -4, y: 3.5, width: 6 },
+            { x: -6, y: 3.5, width: 6 },
+            { x: -8, y: 2.7, width: 5 },
+            { x: -10, y: 1, width: 5 },
+            { x: -12, y: -1, width: 5 },
+            { x: -14, y: -2.3, width: 5 },
+            { x: -16, y: -3, width: 4 },
+            { x: -18, y: -3, width: 4 },
+            { x: -20, y: -2.3, width: 4 },
+            { x: -22, y: -1, width: 4 },
+            { x: -24, y: 1, width: 3 },
+            { x: -26, y: 2.2, width: 3 },
+            { x: -28, y: 3.0, width: 3 },
+            { x: -30, y: 3.0, width: 3 },
+            { x: -32, y: 2.2, width: 3 },
+            { x: -34, y: 1, width: 3 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.1 },
+            anim: {
+              type: "sway",
+              periodMs: 1200,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 0.4,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        {
+          shape: "circle",
+          radius: 25,
+          offset: { x: 20, y: -2 },
+          fill: { type: "gradient", fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            start: { x: 0, y: 0 },
+            stops: [
+              { offset: 0, color: { r: 0.38, g: 0.62, b: 0.22, a: 0.25 } },
+              { offset: 0.5, color: { r: 0.68, g: 0.92, b: 0.62, a: 0.35 } },
+              { offset: 1, color: { r: 0.88, g: 1, b: 0.88, a: 0.0 } },
+            ],
+          } },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 28, y: 0 },
+            { x: 19, y: 3 },
+            { x: 17, y: 3 },
+            { x: 17, y: -3 },
+            { x: 19, y: -3 },
+          ],
+          fill: { type: "base", brightness: 0.1 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 35, y: -11 },
+            { x: 21, y: 0 },
+            { x: 17, y: -2 },
+          ],
+          fill: { type: "base", brightness: 0.1 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 35, y: 11 },
+            { x: 21, y: 0 },
+            { x: 17, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.1 },
+        },
+      ],
+    },
+    maxHp: 150000,
+    armor: 3200,
+    baseDamage: 1800,
+    attackInterval: 2,
+    attackRange: 140,
+    moveSpeed: 35,
+    physicalSize: 20,
+    reward: normalizeResourceAmount({
+      organics: 500,
+    }),
+    soulRewardBase: 4,
+    requireDestruction: true,
+    projectile: {
+      damage: 1800,
+      radius: 24,
+      speed: 110,
+      lifetimeMs: 2000,
+      statusEffectId: "poison",
+      statusEffectOptions: {
+        durationMs: 4000,
+        damagePerSecond: 1400,
+      },
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.3, g: 0.8, b: 0.2, a: 1 },
+      },
+      shape: "sprite",
+      spriteName: "poison",
+      hitRadius: 28,
+    },
+    knockBackDistance: 100,
+    knockBackSpeed: 150,
+  },
+
   bigGun: {
     name: "Big Gun",
     renderer: {
