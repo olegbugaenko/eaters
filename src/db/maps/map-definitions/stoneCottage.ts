@@ -23,6 +23,7 @@ const mapConfig = (() => {
   ];
 
   const enemySpawnPosition: SceneVector2 = { x: size.width - 200, y: 200 };
+  const enemySpawnPosition2: SceneVector2 = { x: 200, y: 300 };
 
   return {
     name: "Stone Cottage",
@@ -31,6 +32,12 @@ const mapConfig = (() => {
     enemySpawnPoints: [
       {
         position: enemySpawnPosition,
+        spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
+        enemyTypes: [{ type: "spectreEnemy", weight: 1.0 }],
+        maxConcurrent: 5,
+      },
+      {
+        position: enemySpawnPosition2,
         spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
         enemyTypes: [{ type: "spectreEnemy", weight: 1.0 }],
         maxConcurrent: 5,

@@ -597,11 +597,11 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     },
     maxHp: 2500,
     armor: 100,
-    baseDamage: 600,
+    baseDamage: 400,
     soulRewardBase: 1,
     attackInterval: 1.8,
     attackRange: 280,
-    moveSpeed: 50,
+    moveSpeed: 75,
     physicalSize: 30,
     reward: {
       stone: 2,
@@ -863,7 +863,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     armor: 100,
     baseDamage: 1600,
     attackInterval: 0.8,
-    attackRange: 780,
+    attackRange: 520,
     moveSpeed: 60,
     physicalSize: 30,
     reward: {
