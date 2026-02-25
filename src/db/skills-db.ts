@@ -109,9 +109,13 @@ export type SkillId = (typeof SKILL_IDS)[number];
 
 const getClearedLevelsTotal = (
   context?: BonusEffectContext,
-  level?: number,
 ): number => {
-  return Math.max(0, context?.clearedMapLevelsTotal ?? 0);
+  const clearedLevels = Math.max(0, context?.clearedMapLevelsTotal ?? 0);
+  const softCapStart = 10;
+  if (clearedLevels <= softCapStart) {
+    return clearedLevels;
+  }
+  return softCapStart + Math.pow(clearedLevels - softCapStart, 0.4);
 };
 
 const createStoneCost =
@@ -250,7 +254,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "constructions_1.png",
     effects: {},
     nodesRequired: { autorestart_rituals: 1 },
-    cost: createResourceCost("copper", 500, 1),
+    cost: createResourceCost("copper", 1000, 1),
     registerEvent: {
       text: "A permanent guild answers your call.",
     },
@@ -923,7 +927,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level, context) =>
-          1 + 0.01 * level * getClearedLevelsTotal(context, level),
+          1 + 0.01 * level * getClearedLevelsTotal(context),
       },
     },
     nodesRequired: { damage_lore: 2 },

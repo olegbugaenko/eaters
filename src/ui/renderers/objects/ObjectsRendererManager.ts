@@ -552,6 +552,7 @@ export class ObjectsRendererManager {
     if (typeof bulletGpuKey === "string" && bulletGpuKey.length > 0) {
       this.bulletKeyToObjectId.set(bulletGpuKey, instance.id);
     }
+
     const updates = isTransformOnly
       ? managed.renderer.updatePositionOnly(instance, managed.registration)
       : managed.renderer.update(instance, managed.registration, frameDeltaMs);

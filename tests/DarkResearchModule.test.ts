@@ -37,7 +37,7 @@ describe("DarkResearchModule", () => {
   test("Souls Harvest skill is configured as Dark Research unlock", () => {
     const config = getSkillConfig("souls_harvest");
     assert.deepStrictEqual(config.nodesRequired, { refinement2: 5 });
-    assert.strictEqual(config.cost(1).silver, 5000);
+    assert.strictEqual(config.cost(1).silver, 25000);
     assert.deepStrictEqual(config.nodePosition, { x: 0, y: 6 });
   });
 

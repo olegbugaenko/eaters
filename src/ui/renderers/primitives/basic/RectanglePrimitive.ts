@@ -7,6 +7,8 @@ import {
 import {
   DynamicPrimitive,
   FILL_COMPONENTS,
+  FILL_COLOR_ANIM_COMPONENTS,
+  FILL_COLOR_XFORM_COMPONENTS,
   POSITION_COMPONENTS,
   CRACK_MASK_COMPONENTS,
   CRACK_EFFECTS_COMPONENTS,
@@ -41,6 +43,8 @@ const VERTEX_COUNT = 6;
 const CRACK_UV_OFFSET =
   POSITION_COMPONENTS +
   FILL_COMPONENTS -
+  FILL_COLOR_XFORM_COMPONENTS -
+  FILL_COLOR_ANIM_COMPONENTS -
   CRACK_EFFECTS_COMPONENTS -
   CRACK_MASK_COMPONENTS -
   CRACK_UV_COMPONENTS;
@@ -227,8 +231,8 @@ export const createDynamicRectanglePrimitive = (
         // Still check fill - but skip geometry recalc
         centerScratch.x = nextCenterX;
         centerScratch.y = nextCenterY;
-        const nextFill = resolveFill(target, options);
-        const fill = writeFillVertexComponents(fillScratch, {
+      const nextFill = resolveFill(target, options);
+      const fill = writeFillVertexComponents(fillScratch, {
           fill: nextFill,
           center: centerScratch,
           rotation: nextRotation,

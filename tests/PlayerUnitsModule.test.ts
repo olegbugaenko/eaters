@@ -402,6 +402,154 @@ describe("PlayerUnitsModule", () => {
     );
   });
 
+
+  test("freeze slowdown reduces unit acceleration", () => {
+    const runScenario = (speedMultiplier: number | null): number => {
+      const scene = new SceneObjectManager();
+      scene.setMapSize({ width: 1000, height: 1000 });
+      const bridge = new DataBridge();
+      const movement = new MovementService();
+      const bonuses = new BonusesModule();
+      bonuses.initialize();
+      const explosions = new ExplosionModule({ scene });
+      const runState = new MapRunState();
+      runState.start();
+      const targeting = new TargetingService();
+      const statusEffects = new StatusEffectsModule({
+        damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
+      });
+      const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects, targeting);
+      const { damage } = createDamageServices(bricks);
+      const units = new PlayerUnitsModule({
+        scene,
+        bricks,
+        bridge,
+        movement,
+        bonuses,
+        explosions,
+        statusEffects,
+        runState,
+        damage,
+        projectiles: createProjectilesStub(scene, bricks),
+        getModuleLevel: () => 0,
+        hasSkill: () => false,
+        getDesignTargetingMode: () => "nearest",
+      });
+      units.initialize();
+      units.prepareForMap();
+
+      bricks.setBricks([
+        {
+          position: { x: 300, y: 0 },
+          rotation: 0,
+          level: 0,
+          type: "smallTrainingBrick",
+        },
+      ]);
+
+      units.setUnits([
+        {
+          type: "bluePentagon",
+          position: { x: 0, y: 0 },
+        },
+      ]);
+
+      const unitState = units.getUnitState("player-unit-1");
+      assert(unitState, "expected spawned unit state");
+
+      if (speedMultiplier !== null) {
+        statusEffects.applyEffect("freeze", { type: "unit", id: unitState.id }, {
+          speedMultiplier,
+          durationMs: 5000,
+        });
+      }
+
+      tickSeconds(units, 0.1);
+      const body = movement.getBodyState(unitState.movementId);
+      assert(body, "expected movement body state");
+      return Math.hypot(body.velocity.x, body.velocity.y);
+    };
+
+    const normalSpeed = runScenario(null);
+    const slowedSpeed = runScenario(0.2);
+
+    assert(normalSpeed > 0, "unit should gain speed without slowdown");
+    assert(
+      slowedSpeed < normalSpeed * 0.6,
+      "freeze slowdown should noticeably reduce initial acceleration"
+    );
+  });
+
+  test("destroyed brick does not counter-hit additional units from stale target snapshots", () => {
+    const runScenario = (unitCount: number): { hpLoss: number; bricksLeft: number } => {
+      const scene = new SceneObjectManager();
+      scene.setMapSize({ width: 1000, height: 1000 });
+      const bridge = new DataBridge();
+      const movement = new MovementService();
+      const bonuses = new BonusesModule();
+      bonuses.initialize();
+      const explosions = new ExplosionModule({ scene });
+      const runState = new MapRunState();
+      runState.start();
+      const targeting = new TargetingService();
+      const statusEffects = new StatusEffectsModule({
+        damage: { applyTargetDamage: () => 0 } as unknown as DamageService,
+      });
+      const bricks = createBricksModule(scene, bridge, bonuses, explosions, runState, statusEffects, targeting);
+      const { damage } = createDamageServices(bricks);
+      const units = new PlayerUnitsModule({
+        scene,
+        bricks,
+        bridge,
+        movement,
+        bonuses,
+        explosions,
+        statusEffects,
+        runState,
+        damage,
+        projectiles: createProjectilesStub(scene, bricks),
+        getModuleLevel: () => 0,
+        hasSkill: () => false,
+        getDesignTargetingMode: () => "nearest",
+      });
+      units.initialize();
+      units.prepareForMap();
+
+      bricks.setBricks([
+        {
+          position: { x: 8, y: 0 },
+          rotation: 0,
+          level: 0,
+          type: "smallTrainingBrick",
+          hp: 1,
+        } as unknown as BrickData,
+      ]);
+
+      units.setUnits(
+        Array.from({ length: unitCount }, (_, index) => ({
+          type: "bluePentagon" as const,
+          position: { x: 0, y: index * 2 },
+        }))
+      );
+
+      const before = Number(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY) ?? 0);
+      tickSeconds(units, 0.1);
+      const after = Number(bridge.getValue(PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY) ?? 0);
+      return { hpLoss: Math.max(0, before - after), bricksLeft: bricks.getBrickStates().length };
+    };
+
+    const oneUnit = runScenario(1);
+    const twoUnits = runScenario(2);
+
+    assert.strictEqual(oneUnit.bricksLeft, 0, "single attacker should destroy the 1 HP brick");
+    assert.strictEqual(twoUnits.bricksLeft, 0, "two attackers should also destroy the 1 HP brick");
+    assert(oneUnit.hpLoss > 0, "single attacker should receive contact counter-damage");
+    assert(
+      Math.abs(twoUnits.hpLoss - oneUnit.hpLoss) < 1e-9,
+      "extra attackers should not receive counter-damage after the brick is already destroyed"
+    );
+  });
+
   test("clearing units removes lingering status effects", () => {
     const scene = new SceneObjectManager();
     scene.setMapSize({ width: 1000, height: 1000 });

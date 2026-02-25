@@ -601,7 +601,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     soulRewardBase: 1,
     attackInterval: 1.8,
     attackRange: 280,
-    moveSpeed: 20,
+    moveSpeed: 50,
     physicalSize: 30,
     reward: {
       stone: 2,
@@ -1503,6 +1503,7 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
     attackRange: 40,
     moveSpeed: 20,
     physicalSize: 35,
+    soulRewardBase: 3,
     reward: {
       stone: 2000,
       iron: 200,

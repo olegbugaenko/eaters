@@ -789,6 +789,14 @@ export class UnitRuntimeController {
     return Math.max(unit.moveSpeed * Math.max(multiplier, 0), 0);
   }
 
+  private getEffectiveMoveAcceleration(unit: PlayerUnitState): number {
+    const multiplier = this.statusEffects.getTargetSpeedMultiplier({
+      type: "unit",
+      id: unit.id,
+    });
+    return Math.max(unit.moveAcceleration * Math.max(multiplier, 0), 0);
+  }
+
   private computeBrakingForce(
     unit: PlayerUnitState,
     movementState: MovementBodyState
@@ -945,7 +953,7 @@ export class UnitRuntimeController {
   ): SceneVector2 {
     const steering = subtractVectors(desiredVelocity, currentVelocity);
     const magnitude = vectorLength(steering);
-    const maxForce = Math.max(unit.moveAcceleration * unit.mass, 0);
+    const maxForce = Math.max(this.getEffectiveMoveAcceleration(unit) * unit.mass, 0);
     if (magnitude <= 0 || maxForce <= 0) {
       return ZERO_VECTOR;
     }
@@ -1000,6 +1008,20 @@ export class UnitRuntimeController {
     direction: SceneVector2,
     distance: number
   ): boolean {
+    let attackTarget: BrickRuntimeState | EnemyRuntimeState = target;
+    let attackDirection = direction;
+    let attackDistance = distance;
+    if (targetType === "brick") {
+      const liveBrick = this.bricks.getBrickState(target.id);
+      if (!liveBrick || liveBrick.hp <= 0) {
+        unit.targetBrickId = null;
+        return false;
+      }
+      attackTarget = liveBrick;
+      attackDirection = subtractVectors(liveBrick.position, unit.position);
+      attackDistance = Math.hypot(attackDirection.x, attackDirection.y);
+    }
+
     let hpChanged = false;
     unit.attackCooldown = unit.baseAttackInterval;
     unit.timeSinceLastAttack = 0;
@@ -1012,13 +1034,13 @@ export class UnitRuntimeController {
     let targetDestroyed = false;
     
     if (targetType === "brick" && this.damage) {
-      inflictedDamage = this.damage.applyTargetDamage(target.id, totalDamage, {
-        direction,
+      inflictedDamage = this.damage.applyTargetDamage(attackTarget.id, totalDamage, {
+        direction: attackDirection,
         rewardMultiplier: unit.rewardMultiplier,
         armorPenetration: unit.armorPenetration,
         isCritical,
       });
-      const updatedBrick = this.bricks.getBrickState(target.id);
+      const updatedBrick = this.bricks.getBrickState(attackTarget.id);
       surviving = updatedBrick ?? null;
       targetDestroyed = !updatedBrick;
       hpChanged = inflictedDamage > 0;
@@ -1045,11 +1067,11 @@ export class UnitRuntimeController {
     }
 
     if (isCritical && totalDamage > 0) {
-      const effectPosition = surviving?.position ?? target.position;
+      const effectPosition = surviving?.position ?? attackTarget.position;
       this.spawnCriticalHitEffect(effectPosition);
     }
 
-    const effectOrigin = surviving?.position ?? target.position;
+    const effectOrigin = surviving?.position ?? attackTarget.position;
     const skipBrickId = targetType === "brick" && !targetDestroyed && surviving ? surviving.id : null;
 
     // Ефекти застосовуються тільки до бріків
@@ -1122,19 +1144,19 @@ export class UnitRuntimeController {
       inflictedDamage,
       totalDamage,
       targetType,
-      target.id,
+      attackTarget.id,
       effectOrigin,
     );
 
     if (totalDamage > 0 && unit.damageTransferPercent > 0 && this.damage) {
       const splashDamage = totalDamage * unit.damageTransferPercent;
       if (splashDamage > 0) {
-        this.forEachBrickNear(target.position, unit.damageTransferRadius, (brick) => {
-          if (brick.id === target.id) {
+        this.forEachBrickNear(attackTarget.position, unit.damageTransferRadius, (brick) => {
+          if (brick.id === attackTarget.id) {
             return;
           }
           this.damage!.applyTargetDamage(brick.id, splashDamage, {
-            direction,
+            direction: attackDirection,
             rewardMultiplier: unit.rewardMultiplier,
             armorPenetration: unit.armorPenetration,
           });
@@ -1152,8 +1174,8 @@ export class UnitRuntimeController {
       : (knockBackTarget as BrickRuntimeState).knockBackSpeed;
     this.applyKnockBack(
       unit,
-      direction,
-      distance,
+      attackDirection,
+      attackDistance,
       knockBackDistance,
       knockBackSpeed
     );

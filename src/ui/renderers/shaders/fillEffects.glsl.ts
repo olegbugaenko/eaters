@@ -555,8 +555,7 @@ void main() {
   vec2 tileScale = vec2(1.0 / cols, 1.0 / rows);
   vec2 tileOffset = vec2(mod(idx, cols), floor(idx / cols)) * tileScale;
   vec2 atlasUV = tileOffset + baseUV * tileScale;
-  
-  // Sample alpha channel as crack mask (black cracks on transparent background)
+  // Sample alpha channel as crack mask (cracks = alpha 1, no cracks = alpha 0)
   float crackMask = texture(u_cracksAtlas, atlasUV).a;
   float desat = v_crackEffects.x;
   float darken = v_crackEffects.y;
