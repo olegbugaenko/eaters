@@ -93,6 +93,20 @@ const BLEEDING_EMITTER_BASE: ParticleEmitterConfig = {
   maxParticles: 1200,
 };
 
+const POISON_EMITTER_BASE: ParticleEmitterConfig = {
+  particlesPerSecond: 1200,
+  particleLifetimeMs: 900,
+  fadeStartMs: 250,
+  sizeRange: { min: 2.4, max: 5.1 },
+  color: { r: 0.3, g: 0.9, b: 0.35, a: 0.5 },
+  baseSpeed: 0.15,
+  speedVariation: 0.08,
+  spread: Math.PI,
+  spawnRadius: { min: 0, max: 3.5 },
+  shape: "circle",
+  maxParticles: 1000,
+};
+
 const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
   frenzy: {
     id: "frenzy",
@@ -186,6 +200,26 @@ const STATUS_EFFECTS_DB: Record<StatusEffectId, StatusEffectConfig> = {
         intensity: 0.4,
         priority: 12,
         target: "fill",
+      },
+      unitEmitters: {
+        offsetScale: "unit",
+        emitters: [
+          {
+            ...POISON_EMITTER_BASE,
+            offset: { x: 0, y: -0.65 },
+            direction: -Math.PI / 2,
+          },
+          {
+            ...POISON_EMITTER_BASE,
+            offset: { x: 0.35, y: 0.5 },
+            direction: Math.PI / 3,
+          },
+          {
+            ...POISON_EMITTER_BASE,
+            offset: { x: -0.35, y: 0.5 },
+            direction: (Math.PI * 2) / 3,
+          },
+        ],
       },
     },
   },

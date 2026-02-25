@@ -36,6 +36,7 @@ export type EnemyType =
   | "coalConvoyGuardian"
   | "silverKeeperEnemy"
   | "freezeTurretEnemy"
+  | "snakeEnemy"
   | "bigGun"
   | "laserTurretEnemy"
   | "plasmaBeamTurretEnemy"
@@ -101,6 +102,8 @@ export interface EnemyArcAttackConfig {
 export interface EnemyProjectileConfig extends UnitProjectileVisualConfig {
   /** Overrides enemy baseDamage for projectile hits only. */
   readonly damage?: number;
+  readonly statusEffectId?: StatusEffectId;
+  readonly statusEffectOptions?: StatusEffectApplicationOptions;
   readonly attackSeries?: AttackSeriesConfig;
   readonly destroyOnHit?: boolean;
   readonly targetHitCooldownMs?: number;
@@ -1590,6 +1593,11 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       radius: 5,
       speed: 150,
       lifetimeMs: 2500,
+      statusEffectId: "poison",
+      statusEffectOptions: {
+        durationMs: 5000,
+        damagePerSecond: 6,
+      },
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.6, g: 0.6, b: 0.4, a: 1 },
@@ -2065,6 +2073,78 @@ const ENEMIES_DB: Record<EnemyType, EnemyConfig> = {
       searchPadding: 200,
     },
   },
+
+  snakeEnemy: {
+    name: "Snake",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.28, g: 0.62, b: 0.22, a: 1 },
+      layers: [
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 18, y: 0, width: 8 },
+            { x: 8, y: -4, width: 10 },
+            { x: -4, y: 3, width: 9 },
+            { x: -14, y: -2, width: 7 },
+            { x: -22, y: 2, width: 5.5 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.1 },
+            stroke: { type: "base", width: 1.2, brightness: -0.2 },
+            anim: {
+              type: "sway",
+              periodMs: 1200,
+              amplitude: 2,
+              falloff: "tip",
+              axis: "normal",
+              phase: 0.4,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        {
+          shape: "circle",
+          radius: 5,
+          offset: { x: 16, y: -2 },
+          fill: { type: "base", brightness: 0.2 },
+        },
+      ],
+    },
+    maxHp: 5000,
+    armor: 80,
+    baseDamage: 800,
+    attackInterval: 2,
+    attackRange: 180,
+    moveSpeed: 55,
+    physicalSize: 20,
+    reward: normalizeResourceAmount({
+      organics: 500,
+    }),
+    soulRewardBase: 4,
+    requireDestruction: true,
+    projectile: {
+      damage: 800,
+      radius: 5,
+      speed: 190,
+      lifetimeMs: 2000,
+      statusEffectId: "poison",
+      statusEffectOptions: {
+        durationMs: 4000,
+        damagePerSecond: 500,
+      },
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.3, g: 0.8, b: 0.2, a: 1 },
+      },
+      shape: "circle",
+      hitRadius: 8,
+    },
+    knockBackDistance: 100,
+    knockBackSpeed: 150,
+  },
+
   bigGun: {
     name: "Big Gun",
     renderer: {

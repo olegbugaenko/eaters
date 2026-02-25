@@ -23,6 +23,7 @@ export type MapId =
   | "spiralSleeves"
   | "stoneCottage"
   | "bezierGrove"
+  | "snakeNest"
   | "wire"
   | "coil"
   | "mine"
