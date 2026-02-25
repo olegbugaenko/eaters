@@ -253,6 +253,89 @@ describe("EnemiesModule", () => {
     assert.strictEqual(poison?.remainingMs, 5000);
   });
 
+
+
+  test("spinning axe turret keeps fixed projectile direction", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    const targeting = new TargetingService();
+    const projectiles = new ProjectileSpy();
+
+    const unitTarget: TargetSnapshot = {
+      id: "unit-axe-target",
+      type: "unit",
+      position: { x: -400, y: 400 },
+      hp: 100000,
+      maxHp: 100000,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 12,
+    };
+
+    const provider: TargetingProvider = {
+      types: ["unit"],
+      getById: (id) => (id === unitTarget.id ? unitTarget : null),
+      findNearest: () => unitTarget,
+      findInRadius: () => [unitTarget],
+      forEachInRadius: (_position, _radius, visitor) => {
+        visitor(unitTarget);
+      },
+    };
+    targeting.registerProvider(provider);
+
+    const { module } = createEnemiesModuleWithDeps({
+      runState,
+      targeting,
+      projectiles: projectiles as unknown as UnitProjectileController,
+    });
+
+    module.setEnemies([
+      {
+        type: "spinningAxeTurretEnemy",
+        level: 1,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    module.tick(1000);
+
+    assert.strictEqual(projectiles.spawned > 0, true, "enemy should spawn projectile");
+    const firstCall = projectiles.calls[0];
+    assert(firstCall, "expected projectile spawn payload");
+    assert(Math.abs(firstCall.direction.x - Math.SQRT1_2) < 0.001, "x direction should follow fixed axis");
+    assert(Math.abs(firstCall.direction.y + Math.SQRT1_2) < 0.001, "y direction should follow fixed axis");
+  });
+
+  test("spinning axe turret rotates visually while keeping locked aiming rotation", () => {
+    const runState = new MapRunState();
+    runState.start();
+    const { module, scene } = createEnemiesModuleWithDeps({ runState });
+
+    module.setEnemies([
+      {
+        type: "spinningAxeTurretEnemy",
+        level: 1,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    const before = scene.getObjects()[0];
+    assert(before, "expected spawned enemy scene object");
+    const beforeRotation = before.data.rotation ?? 0;
+
+    module.tick(1000);
+
+    const after = scene.getObjects()[0];
+    assert(after, "expected enemy scene object after tick");
+    assert.notStrictEqual(after.data.rotation ?? 0, beforeRotation, "visual rotation should continuously spin");
+
+    const [enemy] = module.getEnemies();
+    assert(enemy, "expected runtime enemy state");
+    assert.strictEqual(enemy.rotation, 0, "gameplay rotation should remain locked");
+  });
+
   test("spawns enemies via state factory and pushes bridge stats", () => {
     const runState = new MapRunState();
     runState.start();

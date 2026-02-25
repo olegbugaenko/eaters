@@ -703,6 +703,96 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       searchPadding: 200,
     },
   },
+  spinningAxeTurretEnemy: {
+    name: "Spinning Axe Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.45, g: 0.5, b: 0.58, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -15, y: -2 },
+            { x: 15, y: -2 },
+            { x: 15, y: 2 },
+            { x: -15, y: 2 },
+          ],
+          fill: { type: "base", brightness: 0.28 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -4, y: -15 },
+            { x: 4, y: -15 },
+            { x: 4, y: 15 },
+            { x: -4, y: 15 },
+          ],
+          fill: { type: "base", brightness: 0.28 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 12, y: -10 },
+            { x: -2, y: -19 },
+            { x: -14, y: -19 },
+            { x: -10, y: -10 },
+          ],
+          fill: { type: "base", brightness: -0.35 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 12, y: 10 },
+            { x: -2, y: 19 },
+            { x: -14, y: 19 },
+            { x: -10, y: 10 },
+          ],
+          fill: { type: "base", brightness: -0.35 },
+        },
+      ],
+    },
+    maxHp: 9000,
+    armor: 360,
+    baseDamage: 220,
+    attackInterval: 0.9,
+    attackRange: 2200,
+    moveSpeed: 0,
+    lockRotation: true,
+    visualRotationSpinningDegPerSec: 360,
+    projectileDirection: { x: 1, y: -1 },
+    physicalSize: 28,
+    reward: normalizeResourceAmount({
+      iron: 18,
+      coal: 4,
+    }),
+    projectile: {
+      radius: 12,
+      speed: 210,
+      lifetimeMs: 6000,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.75, g: 0.78, b: 0.82, a: 1 },
+      },
+      shape: "sprite",
+      spriteName: "energetic_strike",
+      rotationSpinningDegPerSec: 900,
+      hitRadius: 22,
+      damageRadius: 32,
+      explosion: "smallCannon",
+      tail: {
+        lengthMultiplier: 3.8,
+        widthMultiplier: 1.05,
+        startColor: { r: 0.82, g: 0.84, b: 0.9, a: 0.25 },
+        endColor: { r: 0.45, g: 0.5, b: 0.62, a: 0 },
+      },
+    },
+    targeting: {
+      avoidSharedTargets: true,
+      searchPadding: 320,
+    },
+    knockBackDistance: 160,
+    knockBackSpeed: 170,
+  },
   bigGun: {
     name: "Big Gun",
     renderer: {

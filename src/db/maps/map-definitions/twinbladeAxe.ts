@@ -105,7 +105,7 @@ const mapConfig = (() => {
       const turretCount = 4;
       const turretRadius = 620;
 
-      return Array.from({ length: turretCount }, (_, index) => {
+      const ringTurrets = Array.from({ length: turretCount }, (_, index) => {
         const angle = (index / turretCount) * Math.PI * 2;
         const position: SceneVector2 = {
           x: center.x + Math.cos(angle) * turretRadius,
@@ -113,11 +113,20 @@ const mapConfig = (() => {
         };
 
         return {
-          type: "bleedingTurretEnemy",
+          type: "bleedingTurretEnemy" as const,
           level,
           position,
         };
       });
+
+      return [
+        ...ringTurrets,
+        {
+          type: "spinningAxeTurretEnemy" as const,
+          level,
+          position: { ...center },
+        },
+      ];
     },
     playerUnits: [
       {
