@@ -41,6 +41,7 @@ export type MapId =
   | "greatOctopus"
   | "coalConvoy"
   | "gear"
+  | "twinbladeAxe"
   | "uranium_fields";
 
 export interface MapBrickGeneratorOptions {
