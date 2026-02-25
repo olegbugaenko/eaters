@@ -113,7 +113,7 @@ const mapConfig = (() => {
         };
 
         return {
-          type: "bleedingTurretEnemy" as const,
+          type: "spinningAxeTurretEnemy" as const,
           level,
           position,
         };
