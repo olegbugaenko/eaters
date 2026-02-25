@@ -11,7 +11,7 @@ const mapConfig = (() => {
 
   // Shaft goes from lower-left to upper-right.
   const shaftRotation = -Math.PI / 4;
-  const shaftLength = 1700;
+  const shaftLength = 1200;
   const shaftWidth = 52;
 
   // Blade shape in local axe space:
@@ -85,7 +85,6 @@ const mapConfig = (() => {
             spacing: 26,
             sampleStep: 0.05,
             alignToEdge: true,
-            rotationOffset: shaftRotation,
           },
           { level: axeLevel },
         ),
@@ -96,7 +95,6 @@ const mapConfig = (() => {
             spacing: 26,
             sampleStep: 0.05,
             alignToEdge: true,
-            rotationOffset: shaftRotation,
           },
           { level: axeLevel },
         ),
