@@ -7,6 +7,7 @@ import type { MapConfig } from "../maps-db.types";
 const mapConfig = (() => {
   const size: SceneSize = { width: 1500, height: 1500 };
   const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
+  const bladePosition: SceneVector2 = { x: center.x + 100, y: center.y - 100 };
   const spawnPoint: SceneVector2 = { x: 100, y: 100 };
 
   // Shaft goes from lower-left to upper-right.
@@ -22,37 +23,31 @@ const mapConfig = (() => {
       start: { x: -130, y: 34 },
       control1: { x: -210, y: 70 },
       control2: { x: -250, y: 220 },
-      end: { x: -30, y: 320 },
+      end: { x: -350, y: 300 },
     },
     {
-      start: { x: -30, y: 320 },
-      control1: { x: 60, y: 360 },
-      control2: { x: 220, y: 280 },
-      end: { x: 230, y: 150 },
+      start: { x: -350, y: 300 },
+      control1: { x: -160, y: 420 },
+      control2: { x: 160, y: 420 },
+      end: { x: 390, y: 320 },
     },
     {
-      start: { x: 230, y: 150 },
-      control1: { x: 232, y: 90 },
-      control2: { x: 140, y: 52 },
-      end: { x: 80, y: 34 },
-    },
-    {
-      start: { x: 80, y: 34 },
-      control1: { x: 20, y: 26 },
-      control2: { x: -70, y: 24 },
-      end: { x: -130, y: 34 },
+      start: { x: 390, y: 300 },
+      control1: { x: 250, y: 220 },
+      control2: { x: 210, y: 70 },
+      end: { x: 130, y: 34 },
     },
   ];
 
   const topBlade = transformBezierOutline(baseBladeOutline, {
     rotation: shaftRotation,
-    position: center,
+    position: bladePosition,
   });
 
   const bottomBlade = transformBezierOutline(baseBladeOutline, {
     scale: { x: 1, y: -1 },
     rotation: shaftRotation,
-    position: center,
+    position: bladePosition,
   });
 
   return {
@@ -83,7 +78,7 @@ const mapConfig = (() => {
           {
             outline: topBlade,
             spacing: 26,
-            sampleStep: 0.05,
+            sampleStep: 1,
             alignToEdge: true,
           },
           { level: axeLevel },
@@ -93,7 +88,7 @@ const mapConfig = (() => {
           {
             outline: bottomBlade,
             spacing: 26,
-            sampleStep: 0.05,
+            sampleStep: 1,
             alignToEdge: true,
           },
           { level: axeLevel },

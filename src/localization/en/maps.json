@@ -83,6 +83,9 @@
   "coalConvoy": {
     "name": "Coal Convoy"
   },
+  "geologicalExcavations": {
+    "name": "Geological Excavations"
+  },
   "gear": {
     "name": "Gear"
   },

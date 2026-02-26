@@ -10,6 +10,7 @@ export const BULLET_SPRITE_NAMES = [
   "electricity_orb",
   "magic_raindrop",
   "poison",
+  "axe_bullet",
 ] as const;
 export type BulletSpriteName = (typeof BULLET_SPRITE_NAMES)[number];
 
