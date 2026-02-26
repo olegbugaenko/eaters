@@ -4,6 +4,7 @@ import ancientPyramids from "./map-definitions/ancientPyramids";
 import bezierGrove from "./map-definitions/bezierGrove";
 import coil from "./map-definitions/coil";
 import coalConvoy from "./map-definitions/coalConvoy";
+import geologicalExcavations from "./map-definitions/geologicalExcavations";
 import deadOak from "./map-definitions/deadOak";
 import deadlyTunnels from "./map-definitions/deadlyTunnels";
 import deathfulGuns from "./map-definitions/deathfulGuns";
@@ -26,6 +27,7 @@ import stoneCottage from "./map-definitions/stoneCottage";
 import thicket from "./map-definitions/thicket";
 import theWheel from "./map-definitions/theWheel";
 import trainingGrounds from "./map-definitions/trainingGrounds";
+import twinbladeAxe from "./map-definitions/twinbladeAxe";
 import turretRings from "./map-definitions/turretRings";
 import tutorialZone from "./map-definitions/tutorialZone";
 import uraniumFields from "./map-definitions/uranium_fields";
@@ -71,6 +73,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   frozenForest,
   volcano,
   gear,
+  twinbladeAxe,
   megaBrick,
   ancientPyramids,
   deathfulGuns,
@@ -78,6 +81,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   encagedBeast,
   greatOctopus,
   coalConvoy,
+  geologicalExcavations,
   uranium_fields: uraniumFields,
 };
 

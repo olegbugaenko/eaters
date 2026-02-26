@@ -40,7 +40,9 @@ export type MapId =
   | "encagedBeast"
   | "greatOctopus"
   | "coalConvoy"
+  | "geologicalExcavations"
   | "gear"
+  | "twinbladeAxe"
   | "uranium_fields";
 
 export interface MapBrickGeneratorOptions {

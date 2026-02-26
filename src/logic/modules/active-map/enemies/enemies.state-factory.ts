@@ -64,6 +64,13 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     const moveSpeed = clampNumber(config.moveSpeed, 0, Number.POSITIVE_INFINITY);
     const physicalSize = clampNumber(config.physicalSize, 0, Number.POSITIVE_INFINITY);
     const lockRotation = Boolean(config.lockRotation);
+    const visualRotationSpinningDegPerSec = Number(config.visualRotationSpinningDegPerSec ?? 0);
+    const visualRotationSpin = Number.isFinite(visualRotationSpinningDegPerSec) && visualRotationSpinningDegPerSec !== 0
+      ? {
+          radiansPerSec: (visualRotationSpinningDegPerSec * Math.PI) / 180,
+          rotationRad: 0,
+        }
+      : undefined;
     const DEFAULT_SELF_KNOCKBACK_DISTANCE = 6;
     const DEFAULT_SELF_KNOCKBACK_SPEED = 30;
     const selfKnockBackDistance = clampNumber(
@@ -144,6 +151,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       bodyEnemyId: enemy.bodyEnemyId,
       tentacleIndex: enemy.tentacleIndex,
       segmentIndex: enemy.segmentIndex,
+      visualRotationSpin,
     };
   }
 

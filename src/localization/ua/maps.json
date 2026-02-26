@@ -83,6 +83,9 @@
   "coalConvoy": {
     "name": "Вугільний конвой"
   },
+  "geologicalExcavations": {
+    "name": "Геологічні розкопки"
+  },
   "gear": {
     "name": "Шестерня"
   },
@@ -91,5 +94,8 @@
   },
   "greatOctopus": {
     "name": "Величний Восьминіг"
+  },
+  "twinbladeAxe": {
+    "name": "Twinblade Axe"
   }
 }

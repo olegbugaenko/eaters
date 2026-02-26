@@ -298,10 +298,15 @@ export class EnemiesModule implements GameModule {
       const knockbackOffset = this.updateEnemyKnockback(enemy, deltaMs);
       const renderPosition = addVectors(enemy.position, knockbackOffset);
 
+      if (enemy.visualRotationSpin) {
+        enemy.visualRotationSpin.rotationRad += enemy.visualRotationSpin.radiansPerSec * deltaSeconds;
+      }
+      const visualRotation = enemy.rotation + (enemy.visualRotationSpin?.rotationRad ?? 0);
+
       // Update scene object position and rotation
       this.scene.updateObject(enemy.sceneObjectId, {
         position: { ...renderPosition },
-        rotation: enemy.rotation,
+        rotation: visualRotation,
       });
 
       // Handle attack cooldown
@@ -1042,7 +1047,10 @@ export class EnemiesModule implements GameModule {
       }
       const projectiles = this.projectiles;
       const projectileConfig = config.projectile;
-      const direction = normalizeVector(toTarget) || { x: 1, y: 0 };
+      const configuredDirection = config.projectileDirection
+        ? normalizeVector(config.projectileDirection)
+        : null;
+      const direction = configuredDirection || normalizeVector(toTarget) || { x: 1, y: 0 };
       const volley = config.projectileVolley;
       const directions = buildProjectileSpreadDirections({
         count: volley?.count ?? 1,

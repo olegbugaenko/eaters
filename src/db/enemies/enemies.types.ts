@@ -38,6 +38,7 @@ export type EnemyType =
   | "bigGun"
   | "laserTurretEnemy"
   | "plasmaBeamTurretEnemy"
+  | "spinningAxeTurretEnemy"
   | "portalSpawnerEnemy"
   | "greatOctopusBody"
   | "greatOctopusSegment";
@@ -139,6 +140,8 @@ export interface EnemyConfig {
   readonly physicalSize: number;
   readonly dragMultiplier?: number;
   readonly lockRotation?: boolean;
+  readonly visualRotationSpinningDegPerSec?: number;
+  readonly projectileDirection?: SceneVector2;
   readonly reward?: ResourceAmount;
   readonly soulRewardBase?: number;
   readonly emitter?: ParticleEmitterConfig;

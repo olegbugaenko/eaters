@@ -79,6 +79,10 @@ export interface InternalEnemyState extends EnemyRuntimeState {
   bodyEnemyId?: string;
   tentacleIndex?: number;
   segmentIndex?: number;
+  visualRotationSpin?: {
+    radiansPerSec: number;
+    rotationRad: number;
+  };
 }
 
 export interface EnemyKnockbackState {
