@@ -17,6 +17,7 @@ import type {
 import type { BuildingsWorkshopBridgeState } from "@logic/modules/camp/buildings/buildings.types";
 import type { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
 import type { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
+import type { ArtifactsBridgeState } from "@logic/modules/camp/artifacts/artifacts.types";
 import type { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import type { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
@@ -90,6 +91,7 @@ export interface BridgeSchema {
   "buildings/workshop": BuildingsWorkshopBridgeState;
   "crafting/state": CraftingBridgeState;
   "darkResearch/state": DarkResearchBridgeState;
+  "artifacts/state": ArtifactsBridgeState;
   "unitDesigner/state": UnitDesignerBridgeState;
   "unitModules/workshop": UnitModuleWorkshopBridgeState;
   "automation/state": UnitAutomationBridgeState;

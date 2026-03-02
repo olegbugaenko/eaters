@@ -71,5 +71,6 @@ import "./TutorialMonitorModule.test";
 import "./DemoLock.test";
 import "./CampContentTabs.test";
 import "./DarkResearchModule.test";
+import "./ArtifactsModule.test";
 
 void run();

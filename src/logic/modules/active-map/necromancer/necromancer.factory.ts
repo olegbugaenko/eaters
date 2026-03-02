@@ -11,7 +11,8 @@ export const createNecromancerDefinition = (): ServiceDefinition<NecromancerModu
       bonuses: container.get("bonuses"),
       unitDesigns: container.get("unitDesign"),
       runState: container.get("mapRunState"),
+      artifacts: container.get("artifacts"),
     }),
   registerAsModule: true,
-  dependsOn: ["playerUnits", "bonuses", "unitDesign"],
+  dependsOn: ["playerUnits", "bonuses", "unitDesign", "artifacts"],
 });

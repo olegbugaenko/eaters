@@ -8,6 +8,7 @@ import { createTargetingDefinition } from "../../modules/active-map/targeting/ta
 import { createDamageDefinition } from "../../modules/active-map/targeting/damage.factory";
 import { createEnemiesDefinition } from "../../modules/active-map/enemies/enemies.factory";
 import { createBuildingsDefinition } from "../../modules/camp/buildings/buildings.factory";
+import { createArtifactsDefinition } from "../../modules/camp/artifacts/artifacts.factory";
 import { createBulletDefinition } from "../../modules/active-map/bullet/bullet.factory";
 import { createCraftingDefinition } from "../../modules/camp/crafting/crafting.factory";
 import { createDarkResearchDefinition } from "../../modules/camp/dark-research/dark-research.factory";
@@ -52,6 +53,7 @@ export const registerModuleDefinitions = (
     createCraftingDefinition(),
     createDarkResearchDefinition(),
     createBuildingsDefinition(),
+    createArtifactsDefinition(),
     createUnitModuleWorkshopDefinition(),
     createUnitDesignDefinition(),
     createAudioDefinition(),

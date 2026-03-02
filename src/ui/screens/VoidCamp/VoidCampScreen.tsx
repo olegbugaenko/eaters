@@ -89,6 +89,8 @@ import type { AchievementsBridgePayload } from "@logic/modules/shared/achievemen
 import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
 import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
 import { useLocalization } from "@ui/shared/useLocalization";
+import { ARTIFACTS_STATE_BRIDGE_KEY, DEFAULT_ARTIFACTS_STATE } from "@logic/modules/camp/artifacts/artifacts.const";
+import type { ArtifactsBridgeState } from "@logic/modules/camp/artifacts/artifacts.types";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -178,6 +180,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     DARK_RESEARCH_STATE_BRIDGE_KEY,
     DEFAULT_DARK_RESEARCH_STATE as DarkResearchBridgeState
+  );
+  const artifactsState = useBridgeValue(
+    bridge,
+    ARTIFACTS_STATE_BRIDGE_KEY,
+    DEFAULT_ARTIFACTS_STATE as ArtifactsBridgeState
   );
 
   useEffect(() => {
@@ -394,6 +401,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
             darkResearchState={darkResearchState}
+            artifactsState={artifactsState}
             achievementsState={achievementsPayload}
             newUnlocksState={newUnlocksState}
           />

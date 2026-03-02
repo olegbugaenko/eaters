@@ -585,6 +585,14 @@ export class MapModule implements GameModule {
           "map-cleared",
           `Map ${config.name} cleared (Level ${level})`
         );
+
+        if (mapId === "greatOctopus" && level >= 1) {
+          this.options.artifacts?.grantArtifact("great_octopus_tentacle");
+          this.options.eventLog.registerEvent(
+            "artifact-unlocked",
+            "Artifact unlocked: Octopus Tentacle"
+          );
+        }
       }
     } else {
       stats.failure += 1;

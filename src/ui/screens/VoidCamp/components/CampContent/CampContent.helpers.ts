@@ -39,12 +39,13 @@ export const buildCampTabHasNew = (
 ): CampTabHasNew => {
   const hasBuildingsUnlocks = (unseenByPrefix.buildings ?? []).length > 0;
   const hasDarkResearchUnlocks = (unseenByPrefix.darkResearch ?? []).length > 0;
+  const hasArtifactsUnlocks = (unseenByPrefix.artifacts ?? []).length > 0;
 
   return {
     maps: (unseenByPrefix.maps ?? []).length > 0,
     skills: false,
     modules: (unseenByPrefix.biolab ?? []).length > 0,
-    stronghold: hasBuildingsUnlocks || hasDarkResearchUnlocks,
+    stronghold: hasBuildingsUnlocks || hasDarkResearchUnlocks || hasArtifactsUnlocks,
     crafting: (unseenByPrefix.crafting ?? []).length > 0,
   };
 };

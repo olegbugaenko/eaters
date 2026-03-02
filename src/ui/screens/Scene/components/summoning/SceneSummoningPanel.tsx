@@ -7,7 +7,6 @@ import {
   useState,
 } from "react";
 import {
-  MAX_UNITS_ON_MAP,
   NECROMANCER_RESOURCES_BRIDGE_KEY,
   NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY,
 } from "@logic/modules/active-map/necromancer/necromancer.const";
@@ -50,6 +49,7 @@ import { useLocalization } from "@ui/shared/useLocalization";
 const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = {
   mana: { current: 0, max: 0 },
   sanity: { current: 0, max: 0 },
+  maxUnits: 25,
 };
 const EMPTY_SPAWN_OPTIONS: NecromancerSpawnOption[] = [];
 
@@ -145,7 +145,7 @@ export const SceneSummoningPanel = forwardRef<
       mana: resources.mana.current,
       sanity: resources.sanity.current,
     };
-    const remainingUnitSlots = Math.max(MAX_UNITS_ON_MAP - unitCount, 0);
+    const remainingUnitSlots = Math.max(resources.maxUnits - unitCount, 0);
     const atUnitCap = remainingUnitSlots <= 0;
 
     useEffect(() => {
@@ -288,7 +288,7 @@ export const SceneSummoningPanel = forwardRef<
             </div>
             <div className="scene-summoning-panel__unit-cap-indicator">
               {t("scene.summoning.units", "Units")}: {unitCount}/
-              {MAX_UNITS_ON_MAP} ·{" "}
+              {resources.maxUnits} ·{" "}
               {atUnitCap
                 ? t("scene.summoning.capReached", "Cap reached")
                 : `${remainingUnitSlots} ${t("scene.summoning.slotsLeft", "slots left")}`}

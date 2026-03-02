@@ -48,5 +48,10 @@ describe("Camp content tabs", () => {
       darkResearch: ["darkResearch.dark_armor"],
     });
     assert.strictEqual(withDarkResearch.stronghold, true);
+
+    const withArtifacts = buildCampTabHasNew({
+      artifacts: ["artifacts.great_octopus_tentacle"],
+    });
+    assert.strictEqual(withArtifacts.stronghold, true);
   });
 });

@@ -381,5 +381,18 @@
   "scene.tutorial.step.progress.title": "Не бійся поразки",
   "scene.tutorial.step.progress.description": "Якщо не вдасться розбити всі цеглини — нічого страшного. Кожна знищена цеглина дає ресурси, які зроблять тебе сильнішим у наступному забігу.",
   "voidCamp.tabs.battleRoster": "Бойовий ростер",
-  "settings.graphics.showFloatingDamageText": "Показувати плаваючий текст урону"
+  "settings.graphics.showFloatingDamageText": "Показувати плаваючий текст урону",
+  "voidCamp.tabs.artifacts": "Artifacts",
+  "voidCamp.artifacts.title": "Artifacts",
+  "voidCamp.artifacts.description": "Collect artifacts and place them into active slots to enable their effects.",
+  "voidCamp.artifacts.activeSlots": "Active slots",
+  "voidCamp.artifacts.slotLabel": "Slot {{index}}",
+  "voidCamp.artifacts.emptySlot": "Empty",
+  "voidCamp.artifacts.unequip": "Unequip",
+  "voidCamp.artifacts.inventory": "Inventory",
+  "voidCamp.artifacts.empty": "No artifacts discovered yet.",
+  "voidCamp.artifacts.equippedIn": "Equipped in slot {{index}}",
+  "voidCamp.artifacts.equipToSlot": "Equip to slot {{index}}",
+  "voidCamp.artifacts.items.great_octopus_tentacle.name": "Octopus Tentacle",
+  "voidCamp.artifacts.items.great_octopus_tentacle.description": "Doubles sanity decay, but grants +5 to the maximum number of monsters."
 }

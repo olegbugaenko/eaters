@@ -20,7 +20,9 @@ import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unloc
 import { useLocalization } from "@ui/shared/useLocalization";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
 import { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
+import { ArtifactsBridgeState } from "@logic/modules/camp/artifacts/artifacts.types";
 import { DarkResearchView } from "./DarkResearch/DarkResearchView";
+import { ArtifactsView } from "./Artifacts/ArtifactsView";
 import "./CampTabPanels.css";
 
 type CampTabPanelsProps = {
@@ -39,6 +41,7 @@ type CampTabPanelsProps = {
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
   darkResearchState: DarkResearchBridgeState;
+  artifactsState: ArtifactsBridgeState;
   achievementsState: AchievementsBridgePayload;
   newUnlocksState: NewUnlockNotificationBridgeState;
 };
@@ -59,6 +62,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   buildingsState,
   craftingState,
   darkResearchState,
+  artifactsState,
   achievementsState,
   newUnlocksState,
 }) => {
@@ -75,9 +79,9 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     { key: "designer", label: t("voidCamp.unitDesigner.title", "Unit Designer") },
     { key: "roster", label: t("voidCamp.tabs.battleRoster", "Battle Roster") },
   ];
-  const strongholdTabs: { key: "buildings" | "darkResearch"; label: string; path: string; hasNew: boolean }[] =
+  const strongholdTabs: { key: "buildings" | "darkResearch" | "artifacts"; label: string; path: string; hasNew: boolean }[] =
     useMemo(() => {
-      const tabs: { key: "buildings" | "darkResearch"; label: string; path: string; hasNew: boolean }[] = [];
+      const tabs: { key: "buildings" | "darkResearch" | "artifacts"; label: string; path: string; hasNew: boolean }[] = [];
 
       if (buildingsState.unlocked) {
         tabs.push({
@@ -97,18 +101,29 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
         });
       }
 
+      if (artifactsState.unlocked) {
+        tabs.push({
+          key: "artifacts",
+          label: t("voidCamp.tabs.artifacts", "Artifacts"),
+          path: "artifacts",
+          hasNew: (newUnlocksState.unseenByPrefix.artifacts ?? []).length > 0,
+        });
+      }
+
       return tabs;
     }, [
       buildingsState.unlocked,
       darkResearchState.unlocked,
       newUnlocksState.unseenByPrefix.buildings,
       newUnlocksState.unseenByPrefix.darkResearch,
+      artifactsState.unlocked,
+      newUnlocksState.unseenByPrefix.artifacts,
       t,
     ]);
   const [activeModulesTab, setActiveModulesTab] = useState<"shop" | "designer" | "roster">(
     "shop"
   );
-  const [activeStrongholdTab, setActiveStrongholdTab] = useState<"buildings" | "darkResearch">("buildings");
+  const [activeStrongholdTab, setActiveStrongholdTab] = useState<"buildings" | "darkResearch" | "artifacts">("buildings");
 
   useEffect(() => {
     if (!moduleWorkshopState.unlocked) {
@@ -117,25 +132,26 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   }, [moduleWorkshopState.unlocked]);
 
   useEffect(() => {
-    if (activeStrongholdTab === "darkResearch" && !darkResearchState.unlocked) {
-      setActiveStrongholdTab("buildings");
-      return;
-    }
-    if (activeStrongholdTab === "buildings" && !buildingsState.unlocked && darkResearchState.unlocked) {
-      setActiveStrongholdTab("darkResearch");
-      return;
-    }
+    const available: Array<"buildings" | "darkResearch" | "artifacts"> = [];
     if (buildingsState.unlocked) {
-      return;
+      available.push("buildings");
     }
     if (darkResearchState.unlocked) {
-      setActiveStrongholdTab("darkResearch");
+      available.push("darkResearch");
+    }
+    if (artifactsState.unlocked) {
+      available.push("artifacts");
+    }
+
+    if (available.length === 0) {
+      setActiveStrongholdTab("buildings");
       return;
     }
-    if (!buildingsState.unlocked) {
-      setActiveStrongholdTab("buildings");
+
+    if (!available.includes(activeStrongholdTab)) {
+      setActiveStrongholdTab(available[0]);
     }
-  }, [activeStrongholdTab, buildingsState.unlocked, darkResearchState.unlocked]);
+  }, [activeStrongholdTab, buildingsState.unlocked, darkResearchState.unlocked, artifactsState.unlocked]);
 
   if (activeTab === "maps") {
     return (
@@ -205,7 +221,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   }
 
   if (activeTab === "stronghold") {
-    if (!buildingsState.unlocked && !darkResearchState.unlocked) {
+    if (!buildingsState.unlocked && !darkResearchState.unlocked && !artifactsState.unlocked) {
       return (
         <div className="camp-tab-panels__modules-locked surface-panel">
           <h2 className="heading-2">{t("voidCamp.tabs.strongholdUnavailable", "Stronghold Unavailable")}</h2>
@@ -249,8 +265,10 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
                 </p>
               </div>
             )
-          ) : (
+          ) : activeStrongholdTab === "darkResearch" ? (
             <DarkResearchView state={darkResearchState} />
+          ) : (
+            <ArtifactsView state={artifactsState} />
           )}
         </div>
       </div>

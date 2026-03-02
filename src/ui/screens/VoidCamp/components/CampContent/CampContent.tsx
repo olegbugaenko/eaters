@@ -18,6 +18,7 @@ import {
   sanitizeCampTab,
 } from "./CampContent.helpers";
 import { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
+import { ArtifactsBridgeState } from "@logic/modules/camp/artifacts/artifacts.types";
 import "./CampContent.css";
 
 export type { CampTabKey } from "./CampContent.helpers";
@@ -39,6 +40,7 @@ interface CampContentProps {
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
   darkResearchState: DarkResearchBridgeState;
+  artifactsState: ArtifactsBridgeState;
   achievementsState: AchievementsBridgePayload;
   newUnlocksState: NewUnlockNotificationBridgeState;
 }
@@ -60,12 +62,13 @@ export const CampContent: React.FC<CampContentProps> = ({
   buildingsState,
   craftingState,
   darkResearchState,
+  artifactsState,
   achievementsState,
   newUnlocksState,
 }) => {
   const [activeTab, setActiveTab] = useState<CampTopLevelTabKey>(() => sanitizeCampTab(initialTab, {
     moduleWorkshopUnlocked: moduleWorkshopState.unlocked,
-    buildingsUnlocked: buildingsState.unlocked || darkResearchState.unlocked,
+    buildingsUnlocked: buildingsState.unlocked || darkResearchState.unlocked || artifactsState.unlocked,
     craftingUnlocked: craftingState.unlocked,
   }, initialTab === "maps" || initialTab === "skills" ? initialTab : "maps"));
   const fallbackTab = useMemo<CampTopLevelTabKey>(() => {
@@ -80,7 +83,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         tab,
         {
           moduleWorkshopUnlocked: moduleWorkshopState.unlocked,
-          buildingsUnlocked: buildingsState.unlocked || darkResearchState.unlocked,
+          buildingsUnlocked: buildingsState.unlocked || darkResearchState.unlocked || artifactsState.unlocked,
           craftingUnlocked: craftingState.unlocked,
         },
         fallbackTab
@@ -89,6 +92,7 @@ export const CampContent: React.FC<CampContentProps> = ({
       moduleWorkshopState.unlocked,
       buildingsState.unlocked,
       darkResearchState.unlocked,
+      artifactsState.unlocked,
       craftingState.unlocked,
       fallbackTab,
     ]
@@ -119,7 +123,7 @@ export const CampContent: React.FC<CampContentProps> = ({
           activeTab={activeTab}
           onChange={handleTabChange}
           modulesUnlocked={moduleWorkshopState.unlocked}
-          buildingsUnlocked={buildingsState.unlocked || darkResearchState.unlocked}
+          buildingsUnlocked={buildingsState.unlocked || darkResearchState.unlocked || artifactsState.unlocked}
           craftingUnlocked={craftingState.unlocked}
           tabHasNew={tabHasNew}
         />
@@ -140,6 +144,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         buildingsState={buildingsState}
         craftingState={craftingState}
         darkResearchState={darkResearchState}
+        artifactsState={artifactsState}
         achievementsState={achievementsState}
         newUnlocksState={newUnlocksState}
       />

@@ -25,6 +25,7 @@ import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
 import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
+import type { ArtifactsModule } from "@logic/modules/camp/artifacts/artifacts.module";
 import type { MapEffectPostProcessConfig } from "../../../../db/map-effects-db";
 import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 import type { DamageService } from "../targeting/DamageService";
@@ -55,6 +56,7 @@ export interface MapModuleOptions {
   sceneCleanup: MapSceneCleanupContract;
   getSkillLevel: (id: SkillId) => number;
   newUnlocks: NewUnlockNotificationService;
+  artifacts?: ArtifactsModule;
   statusEffects?: StatusEffectsModule;
   localization?: LocalizationService;
   damage?: DamageService;
