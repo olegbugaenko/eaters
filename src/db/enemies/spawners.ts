@@ -100,4 +100,86 @@ export const SPAWNERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       },
     },
   },
+  bronzeArcherPortalSpawnerEnemy: {
+    name: "Bronze Archer Portal",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.55, g: 0.42, b: 0.25, a: 1 },
+      layers: [
+        {
+          shape: "circle",
+          radius: 47,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.9, g: 0.7, b: 0.5, a: 0.1 } },
+                { offset: 0.75, color: { r: 0.9, g: 0.7, b: 0.5, a: 0.9 } },
+                { offset: 1, color: { r: 0.9, g: 0.7, b: 0.5, a: 0 } },
+              ],
+            },
+          },
+        },
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 0, y: -44.8, width: 10 },
+            { x: 38.8, y: -22.4, width: 10 },
+            { x: 38.8, y: 22.4, width: 10 },
+            { x: 0, y: 44.8, width: 10 },
+            { x: -38.8, y: 22.4, width: 10 },
+            { x: -38.8, y: -22.4, width: 10 },
+            { x: 0, y: -44.8, width: 10 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.1 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+      ],
+    },
+    maxHp: 45000,
+    armor: 4000,
+    baseDamage: 0,
+    attackInterval: 9999,
+    attackRange: 0,
+    moveSpeed: 0,
+    physicalSize: 32,
+    lockRotation: true,
+    requireDestruction: true,
+    spawner: {
+      spawnRate: 0.18,
+      enemyTypes: [
+        {
+          type: "bronzeArcherEnemy",
+          weight: 1,
+        },
+      ],
+      maxConcurrent: 3,
+    },
+    reward: normalizeResourceAmount({
+      copper: 1000,
+      silver: 200,
+    }),
+    soulRewardBase: 5,
+    emitter: {
+      color: { r: 0.9, g: 0.7, b: 0.5, a: 0.9 },
+      particlesPerSecond: 170,
+      particleLifetimeMs: 600,
+      fadeStartMs: 450,
+      baseSpeed: 0.085,
+      speedVariation: 0.01,
+      sizeRange: { min: 3, max: 5 },
+      sizeEvolutionMult: 1.0,
+      shape: "triangle",
+      maxParticles: 900,
+      spread: Math.PI * 2,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.95, g: 0.8, b: 0.6, a: 0.9 },
+      },
+    },
+  },
 };

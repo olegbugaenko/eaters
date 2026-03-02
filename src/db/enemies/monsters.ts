@@ -1323,4 +1323,237 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     knockBackDistance: 100,
     knockBackSpeed: 150,
   },
+  bronzeArcherEnemy: {
+    name: "Bronze Archer",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.5, g: 0.35, b: 0.15, a: 0.6 },
+      layers: [
+        {
+          shape: "circle",
+          radius: 50,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              stops: [
+                { offset: 0, color: { r: 0.85, g: 0.6, b: 0.35, a: 0.4 } },
+                { offset: 1, color: { r: 0.85, g: 0.6, b: 0.35, a: 0 } },
+              ],
+            },
+          },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 14, y: -3 },
+            { x: -10, y: -4 },
+            { x: -10, y: 4 },
+            { x: 14, y: 3 },
+          ],
+          fill: { type: "base", brightness: 0.15 },
+        },
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 5, y: -20, width: 2 },
+            { x: 8, y: -18, width: 3 },
+            { x: 12, y: -12, width: 4 },
+            { x: 14, y: -6, width: 5 },
+            { x: 14, y: 6, width: 5 },
+            { x: 12, y: 12, width: 4 },
+            { x: 8, y: 18, width: 3 },
+            { x: 5, y: 20, width: 2 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.1 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 5, y: -20, width: 1 },
+            { x: -6, y: -3, width: 1 },
+            { x: -7, y: 0, width: 1 },
+            { x: -6, y: 3, width: 1 },
+            { x: 5, y: 20, width: 1 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.2, saturationShift: -0.3, hueShift: 0.08 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -10, y: 0, width: 4 },
+            { x: -14, y: -6, width: 3.0 },
+            { x: -19, y: -12, width: 2.2 },
+            { x: -28, y: -16, width: 1.4 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.15 },
+            anim: {
+              type: "sway",
+              periodMs: 1100,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 0.4,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -10, y: 0, width: 4 },
+            { x: -18, y: -4, width: 3.0 },
+            { x: -24, y: -8, width: 2.2 },
+            { x: -38, y: -12, width: 1.4 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.15 },
+            anim: {
+              type: "sway",
+              periodMs: 1100,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 0.4,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -10, y: 0, width: 4 },
+            { x: -14, y: 6, width: 3.0 },
+            { x: -19, y: 12, width: 2.2 },
+            { x: -28, y: 16, width: 1.4 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.15 },
+            anim: {
+              type: "sway",
+              periodMs: 1100,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 3.14-0.4,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -10, y: 0, width: 4 },
+            { x: -18, y: 4, width: 3.0 },
+            { x: -24, y: 8, width: 2.2 },
+            { x: -38, y: 12, width: 1.4 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.15 },
+            anim: {
+              type: "sway",
+              periodMs: 1100,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 3.14-0.4,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+      ],
+    },
+    maxHp: 75000,
+    armor: 2280,
+    baseDamage: 5200,
+    attackInterval: 0.55,
+    attackRange: 440,
+    moveSpeed: 108,
+    physicalSize: 30,
+    soulRewardBase: 5,
+    reward: normalizeResourceAmount({
+      copper: 80,
+      stone: 200,
+    }),
+    projectile: {
+      radius: 22,
+      speed: 380,
+      lifetimeMs: 2800,
+      statusEffectId: "bleeding",
+      statusEffectOptions: {
+        damagePerSecond: 450,
+      },
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.65, g: 0.55, b: 0.4, a: 0.25 },
+      },
+      shape: "sprite",
+      spriteName: "needle",
+      hitRadius: 6,
+      explosion: "smallCannonGrey",
+      ringTrail: {
+        spawnIntervalMs: 25,
+        lifetimeMs: 750,
+        startRadius: 10,
+        endRadius: 36,
+        startAlpha: 0.12,
+        endAlpha: 0,
+        innerStop: 0.42,
+        outerStop: 0.78,
+        color: { r: 0.6, g: 0.4, b: 0.22, a: 0.15 },
+      },
+      tail: {
+        lengthMultiplier: 3.5,
+        widthMultiplier: 1.0,
+        startColor: { r: 0.55, g: 0.45, b: 0.35, a: 0.1 },
+        endColor: { r: 0.55, g: 0.45, b: 0.35, a: 0 },
+      },
+    },
+    emitter: {
+      particlesPerSecond: 70,
+      particleLifetimeMs: 600,
+      fadeStartMs: 180,
+      baseSpeed: 0.07,
+      speedVariation: 0.01,
+      sizeRange: { min: 12, max: 24 },
+      sizeEvolutionMult: 2.5,
+      spread: Math.PI / 5.5,
+      offset: { x: -0.75, y: 0 },
+      color: { r: 0.55, g: 0.35, b: 0.15, a: 0.35 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.6, g: 0.4, b: 0.2, a: 0.03 } },
+          { offset: 0.65, color: { r: 0.6, g: 0.4, b: 0.2, a: 0.12 } },
+          { offset: 1, color: { r: 0.55, g: 0.35, b: 0.15, a: 0 } },
+        ],
+        noise: {
+          colorAmplitude: 0.0,
+          alphaAmplitude: 0.02,
+          scale: 0.3,
+        },
+      },
+      shape: "circle",
+      maxParticles: 80,
+    },
+    knockBackDistance: 90,
+    knockBackSpeed: 120,
+    projectileKnockBackDistance: 35,
+    projectileKnockBackSpeed: 10,
+  },
 };

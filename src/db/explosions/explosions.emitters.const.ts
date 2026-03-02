@@ -244,6 +244,16 @@ export const MAGMA_BRICK_EMITTER_FILL2: SceneFill & {
   },
 };
 
+export const BLEED_SPLASH_EMITTER_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  stops: [
+    { offset: 0, color: { r: 0.95, g: 0.15, b: 0.12, a: 0.9 } },
+    { offset: 0.4, color: { r: 0.85, g: 0.08, b: 0.06, a: 0.6 } },
+    { offset: 1, color: { r: 0.6, g: 0.02, b: 0.02, a: 0 } },
+  ],
+};
+
 export const CRITICAL_HIT_EMITTER_FILL: SceneFill = {
   fillType: FILL_TYPES.RADIAL_GRADIENT,
   start: { x: 0, y: 0 },

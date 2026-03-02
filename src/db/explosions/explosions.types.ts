@@ -44,7 +44,8 @@ export type ExplosionType =
   | "chainLightning"
   | "magicArrow"
   | "unitDeath"
-  | "tentacleHit";
+  | "tentacleHit"
+  | "bleedSplash";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;

@@ -775,7 +775,7 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       rotationSpinningDegPerSec: 900,
       hitRadius: 22,
       damageRadius: 32,
-      explosion: "smallCannon",
+      explosion: "bleedSplash",
       ringTrail: {
         spawnIntervalMs: 50,
         lifetimeMs: 900,

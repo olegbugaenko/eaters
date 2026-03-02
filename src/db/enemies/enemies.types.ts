@@ -36,11 +36,13 @@ export type EnemyType =
   | "freezeTurretEnemy"
   | "snakeEnemy"
   | "jungleSnakeEnemy"
+  | "bronzeArcherEnemy"
   | "bigGun"
   | "laserTurretEnemy"
   | "plasmaBeamTurretEnemy"
   | "spinningAxeTurretEnemy"
   | "portalSpawnerEnemy"
+  | "bronzeArcherPortalSpawnerEnemy"
   | "greatOctopusBody"
   | "greatOctopusSegment";
 

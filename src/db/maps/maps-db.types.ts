@@ -33,6 +33,7 @@ export type MapId =
   | "adit"
   | "silverRing"
   | "portalRing"
+  | "silverChalice"
   | "frozenForest"
   | "volcano"
   | "megaBrick"

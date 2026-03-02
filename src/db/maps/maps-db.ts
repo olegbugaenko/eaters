@@ -19,6 +19,7 @@ import megaBrick from "./map-definitions/megaBrick";
 import mine from "./map-definitions/mine";
 import oldForge from "./map-definitions/oldForge";
 import portalRing from "./map-definitions/portalRing";
+import silverChalice from "./map-definitions/silverChalice";
 import silverRing from "./map-definitions/silverRing";
 import snakeNest from "./map-definitions/snakeNest";
 import impenetrableJungle from "./map-definitions/impenetrableJungle";
@@ -74,6 +75,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   adit,
   silverRing,
   portalRing,
+  silverChalice,
   frozenForest,
   volcano,
   gear,

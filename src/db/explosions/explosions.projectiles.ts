@@ -25,6 +25,7 @@ import {
   SMALL_GREY_CANNON_EMITTER_FILL,
   SMALL_LASER_EMITTER_FILL,
   WEAKEN_CURSE_FILAMENTS,
+  BLEED_SPLASH_EMITTER_FILL,
 } from "./explosions.emitters.const";
 
 export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfig>> = {
@@ -463,6 +464,37 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
       },
       shape: "circle",
       radialVelocity: true, // Частинки рухаються від центру вибуху
+    },
+  },
+  bleedSplash: {
+    lifetimeMs: 1_400,
+    defaultInitialRadius: 4,
+    waves: createSimpleWave({
+      defaultInitialRadius: 4,
+      radiusExtension: 18,
+      startAlpha: 0.5,
+      endAlpha: 0,
+      gradientStops: [
+        { offset: 0, color: { r: 0.9, g: 0.12, b: 0.1, a: 0.5 } },
+        { offset: 0.5, color: { r: 0.7, g: 0.05, b: 0.03, a: 0.2 } },
+        { offset: 1, color: { r: 0.5, g: 0.02, b: 0.01, a: 0 } },
+      ],
+    }),
+    emitter: {
+      ...DEFAULT_EMITTER,
+      baseSpeed: 0.06,
+      speedVariation: 0.03,
+      fadeStartMs: 350,
+      particleLifetimeMs: 900,
+      particlesPerSecond: 2200,
+      sizeRange: { min: 1.2, max: 4.2 },
+      emissionDurationMs: 350,
+      spawnRadius: { min: 0, max: 2 },
+      spawnRadiusMultiplier: undefined,
+      fill: BLEED_SPLASH_EMITTER_FILL,
+      color: { r: 0.9, g: 0.15, b: 0.1, a: 1 },
+      shape: "circle",
+      radialVelocity: true,
     },
   },
   tentacleHit: {

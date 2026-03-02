@@ -11,6 +11,15 @@ const mapConfig = (() => {
   const size: SceneSize = { width: 2000, height: 2000 };
   const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
   const spawnPoint: SceneVector2 = { x: center.x - 650, y: center.y };
+  const halfSize = size.width / 2;
+  const cornerOffset = 150;
+  const cornerInset = halfSize - cornerOffset;
+  const portalPositions: SceneVector2[] = [
+    { x: cornerOffset, y: cornerOffset },
+    { x: size.width - cornerOffset, y: cornerOffset },
+    { x: size.width - cornerOffset, y: size.height-cornerOffset },
+    { x: cornerOffset, y: size.height-cornerOffset },
+  ];
 
   // Helmet: dome
   const helmetOutline = [
@@ -55,6 +64,18 @@ const mapConfig = (() => {
         },
         opts,
       );
+
+      const sableLeftOutline = generateTrapezoidOutline({
+        bottomWidth: 40,
+        topWidth: 30,
+        height: 900,
+        convexity: {
+          left: { control1: -95, control2: -160 },
+          right: { control1: 165, control2: 290 },
+          top: { control1: 45, control2: 45 },
+        },
+      });
+
 
       const chestOutline = generateTrapezoidOutline({
         bottomWidth: 160,
@@ -138,6 +159,21 @@ const mapConfig = (() => {
         opts,
       );
 
+      const shoulderRight = bezierPolygonWithBricks(
+        "smallCopper",
+        {
+          outline: transformBezierOutline(shoulderOutline, {
+            position: { x: center.x + 300, y: center.y },
+            scale: { x: -1.4, y: 1.4 },
+            rotation: 1.57 - 0.2,
+          }),
+          spacing,
+          sampleStep,
+          alignToEdge: true,
+        },
+        opts,
+      );
+
       const topLeftArm = bezierPolygonWithBricks(
         "smallCopper",
         {
@@ -152,11 +188,27 @@ const mapConfig = (() => {
         opts,
       );
 
+      const topRightArm = bezierPolygonWithBricks(
+        "smallCopper",
+        {
+          outline: transformBezierOutline(topArmOutline, {
+            position: { x: center.x + 520, y: center.y + 200 },
+            scale: { x: -1, y: 1 },
+            rotation: -0.4,
+          }),
+          spacing,
+          sampleStep,
+          alignToEdge: true,
+        },
+        opts,
+      );
+
+
       const bottomLeftArm = bezierPolygonWithBricks(
         "smallCopper",
         {
           outline: transformBezierOutline(bottomArmOutline, {
-            position: { x: center.x-420, y: center.y + 380 },
+            position: { x: center.x - 420, y: center.y + 380 },
             rotation: -1.2,
           }),
           spacing: spacing * 0.9,
@@ -166,6 +218,49 @@ const mapConfig = (() => {
         opts,
       );
 
+      const bottomRightArm = bezierPolygonWithBricks(
+        "smallCopper",
+        {
+          outline: transformBezierOutline(bottomArmOutline, {
+            position: { x: center.x + 420, y: center.y + 380 },
+            scale: { x: -1, y: 1 },
+            rotation: 1.2,
+          }),
+          spacing: spacing * 0.9,
+          sampleStep,
+          alignToEdge: true,
+        },
+        opts,
+      );
+
+      const sableLeft = bezierPolygonWithBricks(
+        "smallSilver",
+        {
+          outline: transformBezierOutline(sableLeftOutline, {
+            position: { x: center.x - 20, y: center.y },
+            rotation: 0.6,
+          }),
+          spacing: spacing * 0.9,
+          sampleStep: sampleStep * 0.8,
+          alignToEdge: true,
+        },
+        opts,
+      );
+
+      const sableRight = bezierPolygonWithBricks(
+        "smallSilver",
+        {
+          outline: transformBezierOutline(sableLeftOutline, {
+            position: { x: center.x + 20, y: center.y },
+            scale: { x: -1, y: 1 },
+            rotation: -0.6,
+          }),
+          spacing: spacing * 0.9,
+          sampleStep: sampleStep * 0.8,
+          alignToEdge: true,
+        },
+        opts,
+      );
       const head = bezierPolygonWithBricks(
         "smallCopper",
         {
@@ -194,7 +289,28 @@ const mapConfig = (() => {
         opts,
       );
 
-      return [pedestal, chest, shoulderLeft, topLeftArm, bottomLeftArm, head, helmet];
+      return [
+        pedestal,
+        chest,
+        shoulderLeft,
+        shoulderRight,
+        topLeftArm,
+        topRightArm,
+        bottomLeftArm,
+        bottomRightArm,
+        head,
+        helmet,
+        sableLeft,
+        sableRight,
+      ];
+    },
+    enemies: ({ mapLevel }) => {
+      const level = Math.max(1, Math.floor(mapLevel));
+      return portalPositions.map((position) => ({
+        type: "bronzeArcherPortalSpawnerEnemy",
+        level,
+        position: { ...position },
+      }));
     },
     playerUnits: [
       {

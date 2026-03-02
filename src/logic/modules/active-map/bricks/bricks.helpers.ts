@@ -110,7 +110,7 @@ export const resolveBrickExplosion = (
   return { type, initialRadius };
 };
 
-export const getBrickLevelStatMultiplier = (level: number): number => Math.pow(3, Math.max(level - 1, 0));
+export const getBrickLevelStatMultiplier = (level: number): number => Math.pow(3, Math.max(level - 1, 0)*Math.max(1, Math.log(Math.max(1.1*level - 1, 1))));
 
 export const getBrickLevelRewardMultiplier = (level: number): number => Math.pow(2, Math.max(level - 1, 0));
 
