@@ -35,6 +35,7 @@ export type EnemyType =
   | "silverKeeperEnemy"
   | "freezeTurretEnemy"
   | "snakeEnemy"
+  | "jungleSnakeEnemy"
   | "bigGun"
   | "laserTurretEnemy"
   | "plasmaBeamTurretEnemy"

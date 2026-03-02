@@ -25,6 +25,7 @@ const mapConfig = (() => {
     size,
     spawnPoints: [spawnPoint],
     nodePosition: { x: 1, y: 6 },
+    icon: "snake_nest.png",
     bricks: ({ mapLevel }) => {
       const stoneLevel = Math.max(1, Math.floor(mapLevel + 5));
       return [...ringCenters.map((ringCenter) =>

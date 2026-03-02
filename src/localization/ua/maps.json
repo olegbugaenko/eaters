@@ -47,6 +47,9 @@
   "coil": {
     "name": "Котушка"
   },
+  "unknownKnightMonument": {
+    "name": "Пам'ятник невідомому лицарю"
+  },
   "mine": {
     "name": "Шахта"
   },
@@ -85,6 +88,9 @@
   },
   "geologicalExcavations": {
     "name": "Геологічні розкопки"
+  },
+  "impenetrableJungle": {
+    "name": "Непроглядні Джунглі"
   },
   "gear": {
     "name": "Шестерня"

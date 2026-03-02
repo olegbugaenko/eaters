@@ -57,6 +57,7 @@ const mapConfig = (() => {
     size,
     spawnPoints: [spawnPoint],
     nodePosition: { x: 3, y: 6 },
+    icon: "wheel.png",
     unlockedBy: [
       {
         type: "map",

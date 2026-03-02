@@ -3,6 +3,7 @@ import adit from "./map-definitions/adit";
 import ancientPyramids from "./map-definitions/ancientPyramids";
 import bezierGrove from "./map-definitions/bezierGrove";
 import coil from "./map-definitions/coil";
+import unknownKnightMonument from "./map-definitions/unknownKnightMonument";
 import coalConvoy from "./map-definitions/coalConvoy";
 import geologicalExcavations from "./map-definitions/geologicalExcavations";
 import deadOak from "./map-definitions/deadOak";
@@ -20,6 +21,7 @@ import oldForge from "./map-definitions/oldForge";
 import portalRing from "./map-definitions/portalRing";
 import silverRing from "./map-definitions/silverRing";
 import snakeNest from "./map-definitions/snakeNest";
+import impenetrableJungle from "./map-definitions/impenetrableJungle";
 import sphinx from "./map-definitions/sphinx";
 import spiralSleeves from "./map-definitions/spiralSleeves";
 import spruce from "./map-definitions/spruce";
@@ -64,8 +66,10 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   stoneCottage,
   bezierGrove,
   snakeNest,
+  impenetrableJungle,
   wire,
   coil,
+  unknownKnightMonument,
   mine,
   adit,
   silverRing,

@@ -47,6 +47,9 @@
   "coil": {
     "name": "Coil"
   },
+  "unknownKnightMonument": {
+    "name": "Monument to the Unknown Knight"
+  },
   "mine": {
     "name": "Mine"
   },
@@ -85,6 +88,9 @@
   },
   "geologicalExcavations": {
     "name": "Geological Excavations"
+  },
+  "impenetrableJungle": {
+    "name": "Impenetrable Jungle"
   },
   "gear": {
     "name": "Gear"

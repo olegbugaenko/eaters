@@ -23,6 +23,8 @@ export type BrickType =
   | "compactIron"
   | "smallOrganic"
   | "smallWood"
+  | "smallJungleLeaf"
+  | "smallJungleVine"
   | "smallCopper"
   | "smallSilver"
   | "smallCoal"
@@ -173,6 +175,20 @@ const DARK_MATTER_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.55, g: 0.85, b: 0.80, a: 1 } },
   { offset: 0.4, color: { r: 0.40, g: 0.70, b: 0.65, a: 1 } },
   { offset: 1, color: { r: 0.15, g: 0.40, b: 0.35, a: 1 } },
+] as const;
+
+/** Темніший зелений — густі джунглі, папороті */
+const JUNGLE_LEAF_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.2, g: 0.45, b: 0.15, a: 1 } },
+  { offset: 0.4, color: { r: 0.12, g: 0.38, b: 0.08, a: 1 } },
+  { offset: 1, color: { r: 0.06, g: 0.28, b: 0.04, a: 1 } },
+] as const;
+
+/** Зелено-коричневий — ліани джунглів */
+const JUNGLE_VINE_LINEAR_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.32, g: 0.38, b: 0.18, a: 1 } },
+  { offset: 0.5, color: { r: 0.26, g: 0.32, b: 0.12, a: 1 } },
+  { offset: 1, color: { r: 0.2, g: 0.26, b: 0.1, a: 1 } },
 ] as const;
 
 const BRICK_DB: Record<BrickType, BrickConfig> = {
@@ -541,6 +557,81 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       wood: 1,
+    },
+  },
+  smallJungleLeaf: {
+    size: { width: 24, height: 24 },
+    fill: {
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 40,
+      stops: JUNGLE_LEAF_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.015,
+        alphaAmplitude: 0.0,
+        scale: 0.15,
+      },
+    },
+    stroke: { color: { r: 0.06, g: 0.25, b: 0.02, a: 1 }, width: 2.4 },
+    destructubleData: {
+      maxHp: 495,
+      armor: 120,
+      baseDamage: 124,
+      knockBackDistance: 90,
+      knockBackSpeed: 110,
+      brickKnockBackAmplitude: 4,
+      physicalSize: 20,
+      damageExplosion: {
+        type: "organicBrickHit",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "organicBrickDestroy",
+        radiusMultiplier: 1.25,
+      },
+    },
+    rewards: {
+      organics: 1,
+    },
+    crackMask: {
+      desat: 4.0,
+      darken: 0.6,
+    },
+  },
+  smallJungleVine: {
+    size: { width: 24, height: 24 },
+    fill: {
+      fillType: FILL_TYPES.LINEAR_GRADIENT,
+      start: { x: 0, y: -12 },
+      end: { x: 0, y: 12 },
+      stops: JUNGLE_VINE_LINEAR_GRADIENT,
+      noise: {
+        colorAmplitude: 0.06,
+        alphaAmplitude: 0.0,
+        scale: 0.4,
+      },
+    },
+    stroke: { color: { r: 0.18, g: 0.22, b: 0.1, a: 1 }, width: 1.5 },
+    destructubleData: {
+      maxHp: 265,
+      armor: 24,
+      baseDamage: 96,
+      knockBackDistance: 70,
+      knockBackSpeed: 120,
+      brickKnockBackAmplitude: 7,
+      physicalSize: 18,
+      damageExplosion: {
+        type: "woodBrickHit",
+        radiusMultiplier: 0.75,
+      },
+      destructionExplosion: {
+        type: "woodBrickDestroy",
+        radiusMultiplier: 1.1,
+      },
+    },
+    rewards: {
+      wood: 1,
+      organics: 1,
     },
   },
   smallCopper: {

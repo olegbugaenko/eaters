@@ -55,6 +55,7 @@ const mapConfig = (() => {
     size,
     spawnPoints: [spawnPoint],
     nodePosition: { x: 6, y: 3 },
+    icon: "twinblade_axe.png",
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const axeLevel = baseLevel + 3;
