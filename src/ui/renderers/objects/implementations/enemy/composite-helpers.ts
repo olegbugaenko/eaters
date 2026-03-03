@@ -6,6 +6,7 @@ import type {
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { EnemyRendererCompositeConfig } from "@db/enemies-db";
 import type { RendererFillConfig, RendererStrokeConfig } from "@shared/types/renderer-config";
+import type { RendererLayerAnchorConfig } from "@shared/types/renderer.types";
 import {
   type CompositeRendererLayerFill,
   type CompositeRendererLayerStroke,
@@ -57,6 +58,10 @@ export const sanitizeCompositeLayer = (
     spine?: { x: number; y: number; width: number }[];
     segmentIndex?: number;
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+    groupId?: string;
+    anchors?: RendererLayerAnchorConfig[];
+    connectionSlots?: RendererLayerAnchorConfig[];
+    join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
   }
 ): {
   shape: "polygon" | "circle" | "sprite";
@@ -73,6 +78,10 @@ export const sanitizeCompositeLayer = (
   spine?: { x: number; y: number; width: number }[];
   segmentIndex?: number;
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+  groupId?: string;
+  anchors?: RendererLayerAnchorConfig[];
+  connectionSlots?: RendererLayerAnchorConfig[];
+  join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
 } | null => {
   return sanitizeEnemyCompositeLayer(layer);
 };
@@ -83,6 +92,10 @@ type EnemyLayerExtras = {
   spine?: { x: number; y: number; width: number }[];
   segmentIndex?: number;
   buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+  groupId?: string;
+  anchors?: RendererLayerAnchorConfig[];
+  connectionSlots?: RendererLayerAnchorConfig[];
+  join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
 };
 
 const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
@@ -101,6 +114,10 @@ const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
     spine?: { x: number; y: number; width: number }[];
     segmentIndex?: number;
     buildOpts?: { epsilon?: number; minSegmentLength?: number; winding?: "CW" | "CCW" };
+    groupId?: string;
+    anchors?: RendererLayerAnchorConfig[];
+    connectionSlots?: RendererLayerAnchorConfig[];
+    join?: { anchorId: string; targetGroupId?: string; offset?: { x: number; y: number } };
   },
   EnemyLayerExtras
 >({
@@ -134,5 +151,9 @@ const sanitizeEnemyCompositeLayer = createCompositeLayerSanitizer<
     spine: layer.spine,
     segmentIndex: layer.segmentIndex,
     buildOpts: layer.buildOpts,
+    groupId: layer.groupId,
+    anchors: layer.anchors,
+    connectionSlots: layer.connectionSlots,
+    join: layer.join,
   }),
 });

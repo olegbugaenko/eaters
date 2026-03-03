@@ -1,13 +1,14 @@
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import type { MapEnemySpawnPointConfig, MapEnemySpawnTypeConfig } from "../../../../db/maps-db";
-import type { EnemyType } from "../../../../db/enemies-db";
+import type { MapEnemySpawnPointConfig } from "../../../../db/maps/maps-db";
 import type { EnemiesModule } from "./enemies.module";
 import type { EnemySpawnData } from "./enemies.types";
 import { sanitizeEnemyLevel } from "./enemies.helpers";
 import { clampNumber } from "@shared/helpers/numbers.helper";
+import { EnemySpawnSourceController } from "./enemy-spawn-source-controller";
 
 export class EnemySpawnController {
   private spawnTimers = new Map<string, number>(); // spawnPoint index -> time until next spawn
+  private spawnSource = new EnemySpawnSourceController();
 
   /**
    * Updates spawn timers and spawns enemies if needed
@@ -36,7 +37,7 @@ export class EnemySpawnController {
 
       if (newTimer <= 0) {
         this.trySpawnEnemy(spawnPoint, enemiesModule, mapLevel, index.toString());
-        const spawnIntervalMs = (1 / spawnPoint.spawnRate) * 1000;
+        const spawnIntervalMs = this.spawnSource.getSpawnIntervalMs(spawnPoint.spawnRate);
         this.spawnTimers.set(index.toString(), spawnIntervalMs);
       } else {
         this.spawnTimers.set(index.toString(), newTimer);
@@ -75,7 +76,7 @@ export class EnemySpawnController {
     }
 
     // Select enemy type based on weights and level constraints
-    const selectedType = this.selectEnemyType(spawnPoint.enemyTypes, mapLevel);
+    const selectedType = this.spawnSource.selectEnemyType(spawnPoint.enemyTypes, mapLevel);
     if (!selectedType) {
       return; // No valid enemy type for current level
     }
@@ -93,46 +94,5 @@ export class EnemySpawnController {
 
     // Spawn the enemy
     enemiesModule.spawnEnemy(spawnData);
-  }
-
-  /**
-   * Selects an enemy type based on weights and level constraints
-   */
-  private selectEnemyType(
-    enemyTypes: readonly MapEnemySpawnTypeConfig[],
-    mapLevel: number
-  ): EnemyType | null {
-    // Filter by level constraints
-    const validTypes = enemyTypes.filter((config) => {
-      if (config.minLevel !== undefined && mapLevel < config.minLevel) {
-        return false;
-      }
-      if (config.maxLevel !== undefined && mapLevel > config.maxLevel) {
-        return false;
-      }
-      return true;
-    });
-
-    if (validTypes.length === 0) {
-      return null;
-    }
-
-    // Calculate total weight
-    const totalWeight = validTypes.reduce((sum, config) => sum + Math.max(config.weight, 0), 0);
-    if (totalWeight <= 0) {
-      return validTypes[0]?.type ?? null;
-    }
-
-    // Select based on weighted random
-    let random = Math.random() * totalWeight;
-    for (const config of validTypes) {
-      random -= Math.max(config.weight, 0);
-      if (random <= 0) {
-        return config.type;
-      }
-    }
-
-    // Fallback to last type
-    return validTypes[validTypes.length - 1]?.type ?? null;
   }
 }

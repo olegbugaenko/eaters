@@ -10,3 +10,6 @@ export const DEFAULT_TUTORIAL_MONITOR_STATUS: TutorialMonitorStatus = Object.fre
 });
 
 export const DEFAULT_BRICKS_REQUIRED = 3;
+
+export const TUTORIAL_SANITY_MIN_SUMMON = 2;
+export const TUTORIAL_SANITY_MIN_SPELL = 1;

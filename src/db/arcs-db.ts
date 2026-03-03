@@ -1,6 +1,15 @@
 import type { SceneColor } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 
-export type ArcType = "heal" | "frenzy" | "freeze" | "laser";
+export type ArcType =
+  | "heal"
+  | "frenzy"
+  | "freeze"
+  | "bleeding"
+  | "laser"
+  | "plasmaBeam"
+  | "chainLightning"
+  | "silverKeeper";
 
 export interface ArcConfig {
   readonly coreColor: SceneColor;
@@ -12,26 +21,37 @@ export interface ArcConfig {
   readonly fadeStartMs: number;
   readonly bendsPer100Px: number;
   readonly noiseAmplitude: number;
+  readonly aperiodicStrength?: number;
+  readonly kinkAmplitude?: number;
+  readonly kinkFrequency?: number;
   readonly oscillationPeriodMs: number;
   readonly oscillationAmplitude: number;
 }
 
-const HEAL_ARC_COLOR: SceneColor = { r: 0.6, g: 1.0, b: 0.5, a: 0.65 };
+const HEAL_ARC_COLOR: SceneColor = { r: 0.6, g: 1.0, b: 0.5, a: 0.55 };
 const HEAL_ARC_BLUR: SceneColor = { r: 0.6, g: 0.9, b: 0.3, a: 0.55 };
-const FRENZY_ARC_COLOR: SceneColor = { r: 1.0, g: 0.9, b: 0.2, a: 1.0 };
-const FRENZY_ARC_BLUR: SceneColor = { r: 1.0, g: 0.4, b: 0.4, a: 0.6 };
+const FRENZY_ARC_COLOR: SceneColor = { r: 1.0, g: 0.9, b: 0.2, a: 0.9 };
+const FRENZY_ARC_BLUR: SceneColor = { r: 1.0, g: 0.6, b: 0.4, a: 0.6 };
 const FREEZE_ARC_COLOR: SceneColor = { r: 0.6, g: 0.85, b: 1.0, a: 0.9 };
-const FREEZE_ARC_BLUR: SceneColor = { r: 0.4, g: 0.7, b: 1.0, a: 0.5 };
+const FREEZE_ARC_BLUR: SceneColor = { r: 0.6, g: 0.85, b: 1.0, a: 0.8 };
+const BLEEDING_ARC_COLOR: SceneColor = { r: 1.0, g: 0.55, b: 0.55, a: 0.95 };
+const BLEEDING_ARC_BLUR: SceneColor = { r: 1.0, g: 0.25, b: 0.25, a: 0.46 };
 const LASER_ARC_COLOR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.99 };
 const LASER_ARC_BLUR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.25 };
+const PLASMA_BEAM_ARC_COLOR: SceneColor = { r: 0.45, g: 0.7, b: 1.0, a: 0.98 };
+const PLASMA_BEAM_ARC_BLUR: SceneColor = { r: 0.4, g: 0.65, b: 1.0, a: 0.7 };
+const CHAIN_ARC_COLOR: SceneColor = { r: 0.85, g: 0.95, b: 1.0, a: 0.95 };
+const CHAIN_ARC_BLUR: SceneColor = { r: 0.3, g: 0.7, b: 1.0, a: 0.35 };
+const SILVER_KEEPER_ARC_COLOR: SceneColor = { r: 1, g: 0.9, b: 1.0, a: 1 };
+const SILVER_KEEPER_ARC_BLUR: SceneColor = { r: 0.7, g: 0.5, b: 0.9, a: 0.85 };
 
 const ARC_DB: Record<ArcType, ArcConfig> = {
   heal: {
     coreColor: HEAL_ARC_COLOR,
     blurColor: HEAL_ARC_BLUR,
-    coreWidth: 2,
+    coreWidth: 5,
     blurWidth: 30,
-    soundEffectUrl: "/audio/sounds/unit_effects/heal.mp3",
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/heal_v2.mp3"),
     lifetimeMs: 1000,
     fadeStartMs: 500,
     bendsPer100Px: 2,
@@ -42,9 +62,9 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
   frenzy: {
     coreColor: FRENZY_ARC_COLOR,
     blurColor: FRENZY_ARC_BLUR,
-    coreWidth: 2,
+    coreWidth: 4,
     blurWidth: 25,
-    soundEffectUrl: "/audio/sounds/unit_effects/buff.mp3",
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/buff_v2.mp3"),
     lifetimeMs: 1000,
     fadeStartMs: 500,
     bendsPer100Px: 2,
@@ -56,7 +76,7 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     coreColor: FREEZE_ARC_COLOR,
     blurColor: FREEZE_ARC_BLUR,
     coreWidth: 2,
-    blurWidth: 30,
+    blurWidth: 18,
     lifetimeMs: 900,
     fadeStartMs: 450,
     bendsPer100Px: 2.5,
@@ -64,18 +84,76 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     oscillationPeriodMs: 280,
     oscillationAmplitude: 0.6,
   },
+  bleeding: {
+    coreColor: BLEEDING_ARC_COLOR,
+    blurColor: BLEEDING_ARC_BLUR,
+    coreWidth: 1.75,
+    blurWidth: 16,
+    lifetimeMs: 700,
+    fadeStartMs: 350,
+    bendsPer100Px: 3,
+    noiseAmplitude: 16,
+    aperiodicStrength: 0.55,
+    kinkAmplitude: 2,
+    kinkFrequency: 1.2,
+    oscillationPeriodMs: 170,
+    oscillationAmplitude: 0.4,
+  },
   laser: {
     coreColor: LASER_ARC_COLOR,
     blurColor: LASER_ARC_BLUR,
-    coreWidth: 1,
+    coreWidth: 2,
     blurWidth: 3,
-    soundEffectUrl: "/audio/sounds/unit_effects/laser_02.mp3",
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
     lifetimeMs: 1000,
     fadeStartMs: 450,
     bendsPer100Px: 0,
     noiseAmplitude: 0,
     oscillationPeriodMs: 0,
     oscillationAmplitude: 0.0,
+  },
+  plasmaBeam: {
+    coreColor: PLASMA_BEAM_ARC_COLOR,
+    blurColor: PLASMA_BEAM_ARC_BLUR,
+    coreWidth: 5,
+    blurWidth: 12,
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
+    lifetimeMs: 950,
+    fadeStartMs: 350,
+    bendsPer100Px: 0,
+    noiseAmplitude: 0,
+    oscillationPeriodMs: 0,
+    oscillationAmplitude: 0.0,
+  },
+  chainLightning: {
+    coreColor: CHAIN_ARC_COLOR,
+    blurColor: CHAIN_ARC_BLUR,
+    coreWidth: 1.5,
+    blurWidth: 5,
+    lifetimeMs: 700,
+    fadeStartMs: 350,
+    bendsPer100Px: 3,
+    noiseAmplitude: 16,
+    aperiodicStrength: 0.55,
+    kinkAmplitude: 2,
+    kinkFrequency: 1.2,
+    oscillationPeriodMs: 170,
+    oscillationAmplitude: 0.4,
+  },
+  silverKeeper: {
+    coreColor: SILVER_KEEPER_ARC_COLOR,
+    blurColor: SILVER_KEEPER_ARC_BLUR,
+    coreWidth: 3,
+    blurWidth: 8,
+    lifetimeMs: 700,
+    fadeStartMs: 350,
+    bendsPer100Px: 3,
+    noiseAmplitude: 16,
+    aperiodicStrength: 0.55,
+    kinkAmplitude: 2,
+    kinkFrequency: 1.2,
+    oscillationPeriodMs: 170,
+    oscillationAmplitude: 0.4,
   },
 };
 

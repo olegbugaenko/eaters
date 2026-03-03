@@ -33,6 +33,7 @@ import {
 } from "./resources.const";
 import { sanitizeBrickCount, areResourceListsEqual } from "./resources.helpers";
 import { ResourceCalculator } from "./resources.calculator";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 
 // Re-export types and constants for backward compatibility
 export type {
@@ -55,6 +56,7 @@ export class ResourcesModule implements GameModule {
   private readonly bonusValues: BonusValueSource;
   private readonly runtimeContext: RuntimeContextSource;
   private readonly statistics?: StatisticsTracker;
+  private readonly localization = null as import("@logic/services/localization/LocalizationService").LocalizationService | null;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
@@ -74,6 +76,7 @@ export class ResourcesModule implements GameModule {
     this.bonusValues = options.bonusValues;
     this.runtimeContext = options.runtimeContext;
     this.statistics = options.statistics;
+    this.localization = options.localization ?? null;
     DataBridgeHelpers.registerComparator(
       this.bridge,
       RESOURCE_TOTALS_BRIDGE_KEY,
@@ -388,6 +391,9 @@ export class ResourcesModule implements GameModule {
 
   private isResourceUnlocked(id: ResourceId): boolean {
     const config = getResourceConfig(id);
+    if (isDemoBuild() && config.lockedForDemo) {
+      return false;
+    }
     return this.progression.areConditionsMet(config.unlockedBy);
   }
 

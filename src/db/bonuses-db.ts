@@ -24,7 +24,10 @@ export const BONUS_IDS = [
   "all_units_knockback_reduction",
   "spell_power",
   "crafting_speed_mult",
-  "building_cost_multiplier"
+  "crafting_overdrive_max",
+  "building_cost_multiplier",
+  "soul_drop_chance_add",
+  "dark_research_xp_multiplier"
 ] as const;
 
 export type BonusId = (typeof BONUS_IDS)[number];
@@ -43,7 +46,7 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
   mana_regen: {
     id: "mana_regen",
     name: "Mana Regeneration",
-    defaultValue: 0.6,
+    defaultValue: 0.8,
   },
   brick_rewards: {
     id: "brick_rewards",
@@ -122,9 +125,24 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     name: "Crafting Speed Multiplier",
     defaultValue: 1,
   },
+  crafting_overdrive_max: {
+    id: "crafting_overdrive_max",
+    name: "Crafting Overdrive Limit",
+    defaultValue: 0,
+  },
   building_cost_multiplier: {
     id: "building_cost_multiplier",
     name: "Building Cost Multiplier",
+    defaultValue: 1,
+  },
+  soul_drop_chance_add: {
+    id: "soul_drop_chance_add",
+    name: "Soul Drop Chance Bonus",
+    defaultValue: 0,
+  },
+  dark_research_xp_multiplier: {
+    id: "dark_research_xp_multiplier",
+    name: "Dark Research XP Multiplier",
     defaultValue: 1,
   }
 };

@@ -6,8 +6,12 @@ import type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  RectangleWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
+  BezierCurveWithBricksOptions,
+  SpiralSleeveWithBricksOptions,
+  BezierPolygonWithBricksOptions,
   BrickShapeBlueprint,
 } from "./brick-layout.types";
 import {
@@ -15,8 +19,12 @@ import {
   generateArcBricks,
   generatePolygonBricks,
   generateSquareBricks,
+  generateRectangleBricks,
   generateConnectorBricks,
   generateTemplateBricks,
+  generateBezierCurveBricks,
+  generateSpiralSleeveBricks,
+  generateBezierPolygonBricks,
 } from "./brick-layout.generators";
 
 export const circleWithBricks = (
@@ -63,6 +71,17 @@ export const squareWithBricks = (
   generationOptions,
 });
 
+export const rectangleWithBricks = (
+  brickType: BrickType,
+  options: RectangleWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "rectangle",
+  brickType,
+  options,
+  generationOptions,
+});
+
 export const connectorWithBricks = (
   brickType: BrickType,
   options: ConnectorWithBricksOptions,
@@ -80,6 +99,40 @@ export const templateWithBricks = (
   generationOptions?: BrickGenerationOptions
 ): BrickShapeBlueprint => ({
   shape: "template",
+  brickType,
+  options,
+  generationOptions,
+});
+
+export const bezierCurveWithBricks = (
+  brickType: BrickType,
+  options: BezierCurveWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "bezierCurve",
+  brickType,
+  options,
+  generationOptions,
+});
+
+
+export const spiralSleeveWithBricks = (
+  brickType: BrickType,
+  options: SpiralSleeveWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "spiralSleeve",
+  brickType,
+  options,
+  generationOptions,
+});
+
+export const bezierPolygonWithBricks = (
+  brickType: BrickType,
+  options: BezierPolygonWithBricksOptions,
+  generationOptions?: BrickGenerationOptions
+): BrickShapeBlueprint => ({
+  shape: "bezierPolygon",
   brickType,
   options,
   generationOptions,
@@ -114,6 +167,12 @@ export const buildBricksFromBlueprints = (
           blueprint.options,
           blueprint.generationOptions
         );
+      case "rectangle":
+        return generateRectangleBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
       case "connector":
         return generateConnectorBricks(
           blueprint.brickType,
@@ -122,6 +181,24 @@ export const buildBricksFromBlueprints = (
         );
       case "template":
         return generateTemplateBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
+      case "bezierCurve":
+        return generateBezierCurveBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
+      case "spiralSleeve":
+        return generateSpiralSleeveBricks(
+          blueprint.brickType,
+          blueprint.options,
+          blueprint.generationOptions
+        );
+      case "bezierPolygon":
+        return generateBezierPolygonBricks(
           blueprint.brickType,
           blueprint.options,
           blueprint.generationOptions
@@ -138,7 +215,11 @@ export type {
   ArcWithBricksOptions,
   PolygonWithBricksOptions,
   SquareWithBricksOptions,
+  RectangleWithBricksOptions,
   ConnectorWithBricksOptions,
   TemplateWithBricksOptions,
+  BezierCurveWithBricksOptions,
+  SpiralSleeveWithBricksOptions,
+  BezierPolygonWithBricksOptions,
   BrickShapeBlueprint,
 } from "./brick-layout.types";

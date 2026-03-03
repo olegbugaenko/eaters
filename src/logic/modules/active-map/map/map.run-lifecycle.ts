@@ -8,12 +8,15 @@ import { PlayerUnitsModule } from "../player-units/player-units.module";
 import type { PlayerUnitSpawnData } from "../player-units/player-units.types";
 import { EnemiesModule } from "../enemies/enemies.module";
 import { EnemySpawnController } from "../enemies/enemies.spawn-controller";
-import type { MapEnemySpawnPointConfig } from "../../../../db/maps-db";
+import type { MapEnemySpawnPointConfig } from "../../../../db/maps/maps-db";
+import type { MapVisualEffectsConfig } from "../../../../db/maps/maps-db.types";
 import type { EnemySpawnData } from "../enemies/enemies.types";
 import { NecromancerModule } from "../necromancer/necromancer.module";
 import { ResourceRunController } from "./map.types";
 import { UnitAutomationModule } from "../unit-automation/unit-automation.module";
 import { ArcModule } from "../../scene/arc/arc.module";
+import { MapEffectsModule } from "../map-effects/map-effects.module";
+import type { MapEffectId } from "../../../../db/map-effects-db";
 
 interface MapRunLifecycleOptions {
   runState: MapRunState;
@@ -26,6 +29,7 @@ interface MapRunLifecycleOptions {
   necromancer: NecromancerModule;
   visuals: MapVisualEffects;
   scene: SceneObjectManager;
+  mapEffects: MapEffectsModule;
 }
 
 interface StartRunPayload {
@@ -39,6 +43,8 @@ interface StartRunPayload {
   generateBricks: boolean;
   generateUnits: boolean;
   generateEnemies: boolean;
+  mapEffects: readonly MapEffectId[];
+  visualEffects?: MapVisualEffectsConfig;
 }
 
 export class MapRunLifecycle {
@@ -56,6 +62,7 @@ export class MapRunLifecycle {
     this.runActive = false;
     this.activeMapLevel = 0;
     this.options.visuals.reset();
+    this.options.mapEffects.reset();
     this.enemySpawnController.reset();
     this.enemySpawnPoints = [];
   }
@@ -85,6 +92,7 @@ export class MapRunLifecycle {
     this.options.unitsAutomation.onMapStart();
     this.options.scene.setMapSize(payload.sceneSize);
     this.options.visuals.reset();
+    this.options.visuals.setVisualEffects(payload.visualEffects ?? null);
     this.options.visuals.clearPendingFocus();
     this.options.playerUnits.prepareForMap();
     this.options.bricks.setBricks(payload.generateBricks ? payload.bricks : []);
@@ -100,6 +108,7 @@ export class MapRunLifecycle {
     }
     this.options.visuals.spawnPortals(payload.spawnPoints);
     this.options.resources.startRun();
+    this.options.mapEffects.startRun(payload.mapEffects);
   }
 
   public cleanupActiveMap(): void {
@@ -110,6 +119,7 @@ export class MapRunLifecycle {
     }
     this.runActive = false;
     this.options.visuals.reset();
+    this.options.mapEffects.reset();
     this.options.playerUnits.setUnits([]);
     this.options.bricks.setBricks([]);
     this.options.enemies.setEnemies([]);
@@ -129,7 +139,8 @@ export class MapRunLifecycle {
   }
 
   public tick(deltaMs: number): void {
-    this.options.visuals.tick();
+    this.options.visuals.tick(deltaMs);
+    this.options.mapEffects.tick(deltaMs);
     if (this.runActive && this.enemySpawnPoints.length > 0) {
       this.enemySpawnController.tick(
         deltaMs,
@@ -140,4 +151,3 @@ export class MapRunLifecycle {
     }
   }
 }
-

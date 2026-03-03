@@ -27,6 +27,7 @@ import {
   loadSpriteTexture,
 } from "@ui/renderers/primitives/basic/SpritePrimitive";
 import { textureResourceManager } from "@ui/renderers/textures/TextureResourceManager";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 
 interface WebGLSceneSetupOptions {
   /** Initialize bullet GPU renderer (default: true) */
@@ -64,12 +65,16 @@ export const setupWebGLScene = (
     throw new Error("WebGL 2 is required but not available");
   }
 
-  textureAtlasRegistry.registerAtlas("cracks", "/images/sprites/cracks/cracks_atlas.png", {
+  textureAtlasRegistry.registerAtlas(
+    "cracks",
+    getAssetUrl("images/sprites/cracks/cracks_atlas.png"),
+    {
     cols: 3,
     rows: 3,
-  });
+    }
+  );
   textureResourceManager.setContext(gl);
-  loadSpriteTexture(gl, "/images/sprites/cracks/cracks_atlas.png").catch((error) => {
+  loadSpriteTexture(gl, "images/sprites/cracks/cracks_atlas.png").catch((error) => {
     console.warn("[WebGLScene] Failed to load cracks atlas texture", error);
   });
 
@@ -113,10 +118,11 @@ export const setupWebGLScene = (
           config,
         });
       },
-      updateSlot: (handle, position, rotation, radius, active) => {
+      updateSlot: (handle, position, movementRotation, visualRotation, radius, active) => {
         bulletGpuRenderer.updateSlot(handle, {
           position,
-          rotation,
+          movementRotation,
+          visualRotation,
           radius,
           active,
         });
@@ -137,10 +143,10 @@ export const setupWebGLScene = (
 
   clearAllAuraSlots();
   petalAuraGpuRenderer.clearInstances();
-  objectsRenderer.bootstrap(scene.getObjects());
 
   // Initialize WebGL renderer (handles shaders, buffers, attributes, uniforms)
   const webglRenderer = new WebGLSceneRenderer(gl, objectsRenderer);
+  objectsRenderer.bootstrap(scene.getObjects());
 
   const cleanup = () => {
     // Dispose WebGL renderer first (handles buffers, program, shaders)

@@ -38,6 +38,7 @@ export interface PlayerUnitRuntimeModifiers {
   readonly attackStackBonusPerHit: number;
   readonly attackStackBonusCap: number;
   readonly knockBackReduction: number;
+  readonly soulDropChanceBonus: number;
 }
 
 export interface PlayerUnitBlueprintStats {

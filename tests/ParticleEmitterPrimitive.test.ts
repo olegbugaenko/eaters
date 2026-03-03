@@ -23,6 +23,7 @@ describe("ParticleEmitterPrimitive GPU enforcement", () => {
         particlesPerSecond: 10,
         particleLifetimeMs: 120,
         fadeStartMs: 60,
+        fadeInMs: 0,
         sizeRange: { min: 1, max: 1 },
         offset: { x: 0, y: 0 },
         color: { r: 1, g: 1, b: 1, a: 1 },

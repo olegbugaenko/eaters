@@ -1,6 +1,7 @@
 import type { ObjectsRendererManager } from "../objects";
 import { compileShader, linkProgram } from "./webglProgram";
 import { applySyncInstructions } from "./webglSync";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import {
   SCENE_VERTEX_SHADER,
   createSceneFragmentShader,
@@ -23,6 +24,11 @@ import type { SceneCameraState } from "@core/logic/provided/services/scene-objec
 import { textureAtlasRegistry } from "../textures/TextureAtlasRegistry";
 import { loadSpriteTexture } from "../primitives/basic/SpritePrimitive";
 import { textureResourceManager } from "../textures/TextureResourceManager";
+import { setAnimationGpuContext, disposeAnimationGpuResources } from "../objects/shared/animation-gpu";
+import { disposeAnchorsGpuResources, updateAnchorsGpuTexture } from "../objects/shared/anchors-gpu";
+import { polygonGpuRenderer } from "../primitives/gpu/polygon";
+import { spineGpuRenderer } from "../primitives/gpu/spine";
+import { joinedPolygonGpuRenderer } from "../primitives/gpu/joined";
 
 const VERTEX_SHADER = SCENE_VERTEX_SHADER;
 const FRAGMENT_SHADER = createSceneFragmentShader();
@@ -68,6 +74,7 @@ export class WebGLSceneRenderer {
   ) {
     this.gl = gl;
     this.objectsRenderer = objectsRenderer;
+    setAnimationGpuContext(gl);
 
     // Compile shaders
     this.vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -250,7 +257,7 @@ export class WebGLSceneRenderer {
       this.gl.activeTexture(this.gl.TEXTURE1);
       this.gl.uniform1i(this.crackAtlasSamplerLocation, 1);
 
-      const crackPath = "/images/sprites/cracks/cracks_atlas.png";
+      const crackPath = "images/sprites/cracks/cracks_atlas.png";
       const crackTexture = textureResourceManager.getTexture(crackPath);
       
       if (crackTexture?.texture && crackTexture.gl === this.gl) {
@@ -307,6 +314,21 @@ export class WebGLSceneRenderer {
 
     this.drawBuffer(this.staticBuffer, this.objectsRenderer.getStaticVertexCount());
     this.drawBuffer(this.dynamicBuffer, this.objectsRenderer.getDynamicVertexCount());
+    polygonGpuRenderer.setContext(this.gl);
+    polygonGpuRenderer.render(this.gl, cameraState);
+    spineGpuRenderer.setContext(this.gl);
+    spineGpuRenderer.render(this.gl, cameraState);
+    joinedPolygonGpuRenderer.setContext(this.gl);
+    if (joinedPolygonGpuRenderer.hasHandles()) {
+      const uploadStart = performance.now();
+      const anchorTexture = updateAnchorsGpuTexture(this.gl);
+      joinedPolygonGpuRenderer.setAnchorUploadMs(performance.now() - uploadStart);
+      if (anchorTexture) {
+        joinedPolygonGpuRenderer.render(this.gl, cameraState, anchorTexture);
+      }
+    } else {
+      joinedPolygonGpuRenderer.setAnchorUploadMs(0);
+    }
   }
 
   /**
@@ -367,6 +389,12 @@ export class WebGLSceneRenderer {
    * Disposes all WebGL resources
    */
   public dispose(): void {
+    disposeAnimationGpuResources(this.gl);
+    disposeAnchorsGpuResources(this.gl);
+    setAnimationGpuContext(null);
+    polygonGpuRenderer.setContext(null);
+    spineGpuRenderer.setContext(null);
+    joinedPolygonGpuRenderer.setContext(null);
     this.gl.deleteBuffer(this.staticBuffer);
     this.gl.deleteBuffer(this.dynamicBuffer);
     this.gl.deleteProgram(this.program);

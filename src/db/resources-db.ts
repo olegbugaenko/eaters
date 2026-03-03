@@ -1,4 +1,4 @@
-import type { MapId } from "./maps-db";
+import type { MapId } from "./maps/maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "@shared/types/unlocks";
 
@@ -13,14 +13,17 @@ export type ResourceId =
   | "coal"
   | "tools"
   | "paper"
+  | "wire"
   | "ice"
-  | "magma";
+  | "magma"
+  | "uranium";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
   readonly name: string;
   readonly description?: string;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
+  readonly lockedForDemo?: boolean;
 }
 
 export type ResourceAmount = Partial<Record<ResourceId, number>>;
@@ -133,10 +136,23 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       },
     ],
   },
+  wire: {
+    id: "wire",
+    name: "Wire",
+    description: "Conductive metal strands for advanced circuitry.",
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "wire_crafting",
+        level: 1,
+      },
+    ],
+  },
   ice: {
     id: "ice",
     name: "Ice",
     description: "Frozen crystalline fragments from the eternal winter.",
+    lockedForDemo: true,
     unlockedBy: [
       {
         type: "map",
@@ -149,6 +165,20 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
     id: "magma",
     name: "Magma",
     description: "Molten stone and fire coalesced into a searing substance.",
+    lockedForDemo: true,
+    unlockedBy: [
+      {
+        type: "map",
+        id: "mine",
+        level: 1,
+      },
+    ],
+  },
+  uranium: {
+    id: "uranium",
+    name: "Uranium Fields",
+    description: "",
+    lockedForDemo: true,
     unlockedBy: [
       {
         type: "map",

@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../shared/Button";
 import { SaveSlotBackgroundScene } from "./SaveSlotBackgroundScene";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { GAME_VERSIONS } from "@db/version-db";
+import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
+import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
+import { useLocalization } from "@ui/shared/useLocalization";
+import type { SupportedLanguage } from "@logic/services/localization/localization.types";
 import "./SaveSlotSelectScreen.css";
 
 interface SaveSlotViewModel {
@@ -19,9 +23,9 @@ interface SaveSlotSelectScreenProps {
   onSlotDelete: (slot: string) => void;
 }
 
-const formatLastPlayed = (timestamp: number | null): string => {
+const formatLastPlayed = (timestamp: number | null, neverLabel: string): string => {
   if (!timestamp) {
-    return "Never";
+    return neverLabel;
   }
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -40,27 +44,107 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
   onSlotDelete,
 }) => {
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [isLanguagePopupOpen, setLanguagePopupOpen] = useState(false);
+  const [languageQuery, setLanguageQuery] = useState("");
+  const {
+    language,
+    setLanguage,
+    availableLanguages,
+    hasStoredLanguagePreference,
+    t,
+  } = useLocalization();
   const currentVersion = GAME_VERSIONS[0] ?? null;
+
+  useEffect(() => {
+    setLanguagePopupOpen(!hasStoredLanguagePreference());
+  }, [hasStoredLanguagePreference]);
+
+  useEffect(() => {
+    const active = availableLanguages.find((entry) => entry.code === language);
+    if (active) {
+      setLanguageQuery(active.label);
+    }
+  }, [availableLanguages, language]);
+
+  const filteredLanguages = useMemo(() => {
+    const query = languageQuery.trim().toLowerCase();
+    if (!query) {
+      return availableLanguages;
+    }
+    return availableLanguages.filter((entry) => {
+      return (
+        entry.label.toLowerCase().includes(query) ||
+        entry.code.toLowerCase().includes(query)
+      );
+    });
+  }, [availableLanguages, languageQuery]);
+
+  const handleLanguageSelect = (nextLanguage: SupportedLanguage): void => {
+    setLanguage(nextLanguage);
+    const selected = availableLanguages.find((entry) => entry.code === nextLanguage);
+    setLanguageQuery(selected?.label ?? "");
+    setLanguagePopupOpen(false);
+  };
+
+  const handleLanguageSearchSubmit = (): void => {
+    const normalized = languageQuery.trim().toLowerCase();
+    if (!normalized) {
+      return;
+    }
+    const exact = availableLanguages.find(
+      (entry) =>
+        entry.label.toLowerCase() === normalized ||
+        entry.code.toLowerCase() === normalized,
+    );
+    if (exact) {
+      handleLanguageSelect(exact.code);
+      return;
+    }
+    const first = filteredLanguages[0];
+    if (first) {
+      handleLanguageSelect(first.code);
+    }
+  };
 
   return (
     <div className="save-slot-screen">
+      <div className="save-slot-screen__language-menu surface-card">
+        <label className="save-slot-screen__language-label" htmlFor="save-slot-language-select">
+          {t("saveSelect.language.label", "Language")}
+        </label>
+        <select
+          id="save-slot-language-select"
+          className="save-slot-screen__language-select"
+          value={language}
+          onChange={(event) => handleLanguageSelect(event.target.value as SupportedLanguage)}
+        >
+          {availableLanguages.map((entry) => (
+            <option key={entry.code} value={entry.code}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="save-slot-background">
         <SaveSlotBackgroundScene />
       </div>
       <div className="save-slot-screen__content">
         <div className="save-slot-list">
           {slots.map((slot) => {
-            const label = slot.hasSave ? "Continue" : "Start New Game";
+            const label = slot.hasSave
+              ? t("saveSelect.slot.continue", "Continue")
+              : t("saveSelect.slot.start", "Start New Game");
             const timePlayed = slot.timePlayedMs ?? 0;
             const formattedTime = slot.hasSave ? formatDuration(timePlayed) : "00:00";
-            const statusText = slot.hasSave ? "Corruption in progress" : "Empty vessel";
-            const lastPlayed = slot.hasSave ? formatLastPlayed(slot.updatedAt) : null;
+            const lastPlayed = slot.hasSave
+              ? formatLastPlayed(slot.updatedAt, t("saveSelect.slot.never", "Never"))
+              : null;
 
             return (
               <article key={slot.id} className="save-slot-card surface-card">
                 <header className="save-slot-card__header">
                   <div>
-                    <div className="save-slot-card__title">Slot {slot.id}</div>
+                    <div className="save-slot-card__title">{t("saveSelect.slot.title", "Slot")} {slot.id}</div>
                   </div>
                   {slot.hasSave && (
                     <button
@@ -68,18 +152,18 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
                       className="save-slot-card__delete"
                       onClick={() => onSlotDelete(slot.id)}
                     >
-                      Clear Slot
+                      {t("saveSelect.slot.clear", "Clear Slot")}
                     </button>
                   )}
                 </header>
                 <dl className="save-slot-card__details">
                   <div>
-                    <dt>Time Played</dt>
+                    <dt>{t("saveSelect.slot.timePlayed", "Time Played")}</dt>
                     <dd>{formattedTime}</dd>
                   </div>
                   <div>
-                    <dt>Last Played</dt>
-                    <dd>{lastPlayed ?? "—"}</dd>
+                    <dt>{t("saveSelect.slot.lastPlayed", "Last Played")}</dt>
+                    <dd>{lastPlayed ?? t("saveSelect.slot.notAvailable", "—")}</dd>
                   </div>
                 </dl>
                 <div className="save-slot-card__actions">
@@ -89,7 +173,70 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
             );
           })}
         </div>
+        <div className="save-slot-screen__links">
+          <a
+            className="save-slot-screen__wishlist button black-button"
+            href={STEAM_WISHLIST_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("saveSelect.links.wishlist", "Wishlist on Steam")}
+          </a>
+          <a
+            className="save-slot-screen__feedback-link"
+            href={PLAYER_FEEDBACK_FORM_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("saveSelect.links.feedback", "Share feedback")}
+          </a>
+        </div>
       </div>
+      {isLanguagePopupOpen && (
+        <div className="save-slot-screen__language-popup-overlay">
+          <div className="save-slot-screen__language-popup surface-card" role="dialog" aria-modal="true">
+            <h2 className="save-slot-screen__language-popup-title">
+              {t("saveSelect.language.popupTitle", "Choose your language")}
+            </h2>
+            <p className="save-slot-screen__language-popup-text">
+              {t("saveSelect.language.popupText", "Select a language to continue.")}
+            </p>
+            <div className="save-slot-screen__language-popup-search">
+              <input
+                type="text"
+                className="save-slot-screen__language-popup-input"
+                value={languageQuery}
+                onChange={(event) => setLanguageQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleLanguageSearchSubmit();
+                  }
+                }}
+                placeholder={t("saveSelect.language.searchPlaceholder", "Type to search language")}
+                autoFocus
+              />
+            </div>
+            <div className="save-slot-screen__language-popup-actions">
+              {filteredLanguages.map((entry) => (
+                <button
+                  key={entry.code}
+                  type="button"
+                  className="button secondary-button"
+                  onClick={() => handleLanguageSelect(entry.code)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+              {filteredLanguages.length === 0 && (
+                <div className="save-slot-screen__language-popup-no-results">
+                  {t("saveSelect.language.noResults", "No languages found")}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {currentVersion && (
         <button
           type="button"

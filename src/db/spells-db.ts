@@ -17,10 +17,12 @@ export type SpellId =
   | "magic-arrow"
   | "sand-storm"
   | "void-darts"
+  | "electric-shards"
   | "ring-of-fire"
-  | "weaken-curse";
+  | "weaken-curse"
+  | "magic-storm";
 
-export type SpellType = "projectile" | "whirl" | "persistent-aoe";
+export type SpellType = "projectile" | "whirl" | "persistent-aoe" | "projectiles_rain";
 
 export interface SpellUnlockRequirement {
   skillId: SkillId;
@@ -34,6 +36,19 @@ export interface SpellDamageConfig {
 
 export type ProjectileShape = "circle" | "sprite";
 
+export interface SpellProjectileWanderConfig {
+  /** Time between direction adjustments in milliseconds. */
+  intervalMs: number;
+  /** Maximum deviation angle from the current direction in degrees. */
+  angleRangeDeg: number;
+}
+
+export interface SpellProjectileChainConfig {
+  radius: number;
+  jumps: number;
+  damageMultiplier: number;
+}
+
 export interface SpellProjectileConfig {
   radius: number;
   speed: number;
@@ -43,6 +58,7 @@ export interface SpellProjectileConfig {
   tailEmitter?: ParticleEmitterConfig;
   spawnOffset?: SceneVector2;
   ringTrail?: SpellProjectileRingTrailConfig;
+  rotationSpinningDegPerSec?: number;
   count?: number; // Кількість проджектайлів (за замовчуванням 1)
   spreadAngle?: number; // Розльот в градусах (за замовчуванням 0)
   attackSeries?: AttackSeriesConfig;
@@ -51,6 +67,9 @@ export interface SpellProjectileConfig {
   targetTypes?: TargetType[];
   aoe?: { radius: number; splash: number };
   explosion?: ExplosionType; // Тип вибуху при влучанні (опціонально)
+  wander?: SpellProjectileWanderConfig;
+  chain?: SpellProjectileChainConfig;
+  ignoreTargetsOnPath?: boolean;
 }
 
 export interface SpellWhirlConfig {
@@ -116,6 +135,43 @@ export interface SpellPersistentAoeConfig {
   targetTypes?: TargetType[];
 }
 
+export type ProjectilesRainOrigin =
+  | {
+      type: "portal";
+    }
+  | {
+      type: "absolute";
+      position: SceneVector2;
+    }
+  | {
+      type: "corner";
+      corner: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+    }
+  | {
+      type: "offset-from-target";
+      offset: SceneVector2;
+    }
+  | {
+      type: "corner-with-target-delta";
+      corner: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+    }
+  | {
+      type: "corner-with-target-delta";
+      cornerPosition: SceneVector2;
+    };
+
+export interface SpellProjectilesRainConfig {
+  durationMs: number;
+  spawnIntervalMs: number;
+  radius: number;
+  origin: ProjectilesRainOrigin;
+  damage: SpellDamageConfig;
+  projectile: SpellProjectileConfig;
+  highlightArea?: {
+    fill: SceneFill;
+  };
+}
+
 interface SpellBaseConfig {
   id: SpellId;
   name: string;
@@ -138,6 +194,10 @@ export type SpellConfig =
   | (SpellBaseConfig & {
       type: "persistent-aoe";
       persistentAoe: SpellPersistentAoeConfig;
+    })
+  | (SpellBaseConfig & {
+      type: "projectiles_rain";
+      projectilesRain: SpellProjectilesRainConfig;
     });
 
 export interface SpellProjectileRingTrailConfig {
@@ -147,8 +207,11 @@ export interface SpellProjectileRingTrailConfig {
   endRadius: number;
   startAlpha: number;
   endAlpha: number;
+  /** Optional fade-in duration in milliseconds (alpha ramps 0 -> full). */
+  fadeInMs?: number;
   innerStop: number;
   outerStop: number;
+  offset?: SceneVector2;
   color: SceneColor;
 }
 
@@ -215,6 +278,46 @@ const VOID_DARTS_TAIL_EMITTER: ParticleEmitterConfig = {
     ],
   },
   maxParticles: 290,
+};
+
+const ELECTRIC_SHARDS_TAIL_EMITTER: ParticleEmitterConfig = {
+  particlesPerSecond: 260,
+  particleLifetimeMs: 700,
+  fadeStartMs: 220,
+  baseSpeed: 0.18,
+  speedVariation: 0.2,
+  sizeRange: { min: 1.5, max: 3.2 },
+  spread: 2*Math.PI,
+  offset: { x: -1, y: 0 },
+  color: { r: 0.35, g: 0.75, b: 1, a: 0.2 },
+  shape: "triangle",
+  fill: {
+    fillType: FILL_TYPES.SOLID,
+    color: { r: 0.85, g: 0.95, b: 1, a: 1 },
+  },
+  maxParticles: 300,
+};
+
+const MAGIC_STORM_PROJECTILE_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 14,
+  stops: [
+    { offset: 0, color: { r: 0.55, g: 0.7, b: 1, a: 0.85 } },
+    { offset: 0.45, color: { r: 0.45, g: 0.45, b: 0.95, a: 0.55 } },
+    { offset: 1, color: { r: 0.15, g: 0.2, b: 0.6, a: 0 } },
+  ],
+};
+
+const MAGIC_STORM_HIGHLIGHT_FILL: SceneFill = {
+  fillType: FILL_TYPES.RADIAL_GRADIENT,
+  start: { x: 0, y: 0 },
+  end: 150,
+  stops: [
+    { offset: 0, color: { r: 0.8, g: 0.35, b: 1, a: 0.05 } },
+    { offset: 0.85, color: { r: 0.75, g: 0.25, b: 0.9, a: 0.25 } },
+    { offset: 1, color: { r: 0.75, g: 0.25, b: 0.9, a: 0 } },
+  ],
 };
 
 const SPELL_DB: Record<SpellId, SpellConfig> = {
@@ -351,17 +454,59 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
     },
     unlock: { skillId: "black_darts", level: 1 },
   },
+  "electric-shards": {
+    id: "electric-shards",
+    type: "projectile",
+    name: "Electric Shards",
+    description:
+      "Launch crackling shards that drift unpredictably and arc electricity between targets.",
+    cost: { mana: 15, sanity: 0 },
+    cooldownSeconds: 1.6,
+    damage: { min: 4, max: 7 },
+    projectile: {
+      radius: 32,
+      speed: 65,
+      lifetimeMs: 16_500,
+      fill: {
+        fillType: FILL_TYPES.SOLID,
+        color: { r: 0.6, g: 0.85, b: 1, a: 0.65 },
+      },
+      tail: {
+        lengthMultiplier: 2.2,
+        widthMultiplier: 1.0,
+        taperMultiplier: 1,
+        startColor: { r: 0.4, g: 0.7, b: 1, a: 0.1 },
+        endColor: { r: 0.2, g: 0.45, b: 0.95, a: 0 },
+      },
+      tailEmitter: ELECTRIC_SHARDS_TAIL_EMITTER,
+      rotationSpinningDegPerSec: 180,
+      count: 4,
+      spreadAngle: 18,
+      shape: "sprite",
+      spriteName: "electricity_orb",
+      wander: {
+        intervalMs: 920,
+        angleRangeDeg: 18,
+      },
+      chain: {
+        radius: 150,
+        jumps: 3,
+        damageMultiplier: 0.6,
+      },
+    },
+    unlock: { skillId: "electric_shards", level: 1 },
+  },
   "ring-of-fire": {
     id: "ring-of-fire",
     type: "persistent-aoe",
     name: "Ring of Fire",
     description:
       "Conjure an expanding crown of flame that scorches bricks as it races outward.",
-    cost: { mana: 8, sanity: 0 },
+    cost: { mana: 20, sanity: 0 },
     cooldownSeconds: 6,
     persistentAoe: {
       durationMs: 3_000,
-      damagePerSecond: 5,
+      damagePerSecond: 7,
       ring: {
         shape: "ring",
         startRadius: 12,
@@ -396,7 +541,88 @@ const SPELL_DB: Record<SpellId, SpellConfig> = {
       },
     },
     unlock: { skillId: "ring_of_fire", level: 1 },
-  }
+  },
+  "magic-storm": {
+    id: "magic-storm",
+    type: "projectiles_rain",
+    name: "Magic Storm",
+    description:
+      "Open a rift above the battlefield, raining arcane bolts into a focused zone.",
+    cost: { mana: 50, sanity: 0 },
+    cooldownSeconds: 10,
+    unlock: { skillId: "magic_rain", level: 1 },
+    projectilesRain: {
+      durationMs: 8_000,
+      spawnIntervalMs: 400,
+      radius: 150,
+      origin: {
+        type: "corner-with-target-delta",
+        corner: "top-right",
+      },
+      damage: { min: 4, max: 8 },
+      projectile: {
+        radius: 32,
+        speed: 160,
+        lifetimeMs: 14_000,
+        spriteName: "magic_raindrop",
+        shape: "sprite",
+        fill: MAGIC_STORM_PROJECTILE_FILL,
+        tail: {
+          lengthMultiplier: 3,
+          widthMultiplier: 0.3,
+          startColor: { r: 0.95, g: 0.6, b: 1, a: 0.25 },
+          endColor: { r: 0.2, g: 0.25, b: 0.65, a: 0 },
+        },
+        ringTrail: {
+          spawnIntervalMs: 45,
+          lifetimeMs: 900,
+          startRadius: 18,
+          endRadius: 65,
+          startAlpha: 0.1,
+          endAlpha: 0,
+          innerStop: 0.48,
+          outerStop: 0.78,
+          color: { r: 1, g: 0.7, b: 1, a: 0.5 },
+          offset: { x: -1.0, y: 0 },
+          fadeInMs: 150,
+        },
+        tailEmitter: {
+          particlesPerSecond: 160,
+          particleLifetimeMs: 900,
+          fadeStartMs: 240,
+          baseSpeed: 0.05,
+          speedVariation: 0.0015,
+          sizeRange: { min: 35.5, max: 42.4 },
+          sizeEvolutionMult: 3.5,
+          spread: Math.PI/3,
+          offset: { x: -1.2, y: 0 },
+          spawnRadius: { min: 0, max: 18 },
+          color: { r: 0.9, g: 0.6, b: 1, a: 0.23 },
+          fadeInMs: 100,
+          fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            start: { x: 0, y: 0 },
+            stops: [
+              { offset: 0, color: { r: 0.7, g: 0.6, b: 1, a: 0.13 } },
+              { offset: 0.5, color: { r: 0.7, g: 0.6, b: 1, a: 0.05 } },
+              { offset: 1, color: { r: 0.7, g: 0.6, b: 1, a: 0.0 } },
+            ],
+            noise: {
+              colorAmplitude: 0.0,
+              alphaAmplitude: 0.01,
+              scale: 0.35,
+            },
+          },
+        },
+        aoe: { radius: 55, splash: 1 },
+        ignoreTargetsOnPath: true,
+        explosion: "magicArrow",
+      },
+      highlightArea: {
+        fill: MAGIC_STORM_HIGHLIGHT_FILL,
+      },
+    },
+  },
 };
 
 export const SPELL_IDS = Object.keys(SPELL_DB) as SpellId[];

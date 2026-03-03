@@ -261,7 +261,7 @@ describe("BricksModule", () => {
     });
   });
 
-  test("notifies when the final brick is destroyed", () => {
+  test("does not complete run when the final brick is destroyed", () => {
     const scene = new SceneObjectManager();
     const bridge = new DataBridge();
     const runState = new MapRunState();
@@ -287,7 +287,7 @@ describe("BricksModule", () => {
 
     module.applyDamage(brick.id, 999);
 
-    assert.strictEqual(callbackCount, 1, "should notify once when all bricks are gone");
+    assert.strictEqual(callbackCount, 0, "run completion is handled by map objectives");
   });
 
   test("brick knockback registers scene object as movable", () => {

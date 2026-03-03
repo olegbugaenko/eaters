@@ -61,7 +61,13 @@ import "./UnitModuleWorkshopModule.test";
 import "./BonusCalculator.test";
 import "./formatNumber.test";
 import "./ParticleEmitterPrimitive.test";
+import "./ParticleEmitterGpuRenderer.test";
 import "./StatusEffectsModule.test";
 import "./MovementService.test";
+import "./NecromancerModule.test";
+import "./TutorialMonitorModule.test";
+import "./DemoLock.test";
+import "./CampContentTabs.test";
+import "./DarkResearchModule.test";
 
 void run();

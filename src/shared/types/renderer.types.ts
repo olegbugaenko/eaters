@@ -17,6 +17,36 @@ export interface RendererLayerAnimationConfig {
   phase?: number;
   falloff?: "tip" | "root" | "none";
   axis?: "normal" | "tangent" | "movement-normal" | "movement-tangent";
+  executionMode?: "gpu" | "cpu" | "auto";
+}
+
+export type RendererLayerAnchorMode = "vertex" | "spine" | "circle" | "sprite";
+
+export type RendererSpriteAnchorName =
+  | "center"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+  | "top"
+  | "bottom"
+  | "left"
+  | "right";
+
+export interface RendererLayerAnchorConfig {
+  id: string;
+  mode: RendererLayerAnchorMode;
+  index?: number;
+  t?: number;
+  angleRad?: number;
+  spriteAnchor?: RendererSpriteAnchorName;
+  uv?: SceneVector2;
+}
+
+export interface RendererLayerJoinConfig {
+  anchorId: string;
+  targetGroupId?: string;
+  offset?: SceneVector2;
 }
 
 /**
@@ -31,6 +61,9 @@ export interface BaseRendererLayerFields {
   requiresEffect?: string;
   anim?: RendererLayerAnimationConfig;
   groupId?: string;
+  anchors?: RendererLayerAnchorConfig[];
+  connectionSlots?: RendererLayerAnchorConfig[];
+  join?: RendererLayerJoinConfig;
 }
 
 /**

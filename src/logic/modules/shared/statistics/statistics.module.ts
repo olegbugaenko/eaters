@@ -10,6 +10,7 @@ export interface CampStatisticsSnapshot {
   creaturesDied: number;
   damageDealt: number;
   damageTaken: number;
+  attacksDealt: number;
 }
 
 export const DEFAULT_CAMP_STATISTICS: CampStatisticsSnapshot = Object.freeze({
@@ -17,11 +18,13 @@ export const DEFAULT_CAMP_STATISTICS: CampStatisticsSnapshot = Object.freeze({
   creaturesDied: 0,
   damageDealt: 0,
   damageTaken: 0,
+  attacksDealt: 0,
 });
 
 export interface StatisticsTracker {
   recordBrickDestroyed(count?: number): void;
   recordCreatureDeath(count?: number): void;
+  recordAttackHit(count?: number): void;
   recordDamageDealt(amount: number): void;
   recordDamageTaken(amount: number): void;
   syncBrickDestroyed(total: number): void;
@@ -45,6 +48,7 @@ const sanitizeSnapshot = (value: unknown): CampStatisticsSnapshot => {
     creaturesDied: sanitizeNonNegativeNumber(stats.creaturesDied),
     damageDealt: sanitizeNonNegativeNumber(stats.damageDealt),
     damageTaken: sanitizeNonNegativeNumber(stats.damageTaken),
+    attacksDealt: sanitizeNonNegativeNumber(stats.attacksDealt),
   };
 };
 
@@ -103,6 +107,15 @@ export class StatisticsModule
       return;
     }
     this.stats.creaturesDied += increment;
+    this.push();
+  }
+
+  public recordAttackHit(count = 1): void {
+    const increment = sanitizeNonNegativeNumber(count);
+    if (increment <= 0) {
+      return;
+    }
+    this.stats.attacksDealt += increment;
     this.push();
   }
 

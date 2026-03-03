@@ -17,10 +17,12 @@ export interface ParticleRenderProgram {
     cameraPosition: WebGLUniformLocation | null;
     viewportSize: WebGLUniformLocation | null;
     fadeStartMs: WebGLUniformLocation | null;
+    fadeInMs: WebGLUniformLocation | null;
     defaultLifetimeMs: WebGLUniformLocation | null;
     minParticleSize: WebGLUniformLocation | null;
     lengthMultiplier: WebGLUniformLocation | null;
     alignToVelocity: WebGLUniformLocation | null;
+    alignToVelocityFlip: WebGLUniformLocation | null;
     sizeGrowthRate: WebGLUniformLocation | null;
     fillType: WebGLUniformLocation | null;
     stopCount: WebGLUniformLocation | null;
@@ -62,7 +64,7 @@ export interface ParticleEmitterGpuRenderUniforms {
   stopColor3Key?: string;
   stopColor4: Float32Array;
   stopColor4Key?: string;
-  uniformSignature?: string;
+  uniformSignature?: number;
   noiseColorAmplitude: number;
   noiseAlphaAmplitude: number;
   noiseScale: number;
@@ -81,11 +83,13 @@ export interface ParticleEmitterGpuRenderUniforms {
   hasExplicitRadius: boolean;
   explicitRadius: number;
   fadeStartMs: number;
+  fadeInMs: number;
   defaultLifetimeMs: number;
   shape: number;
   minParticleSize: number;
   lengthMultiplier: number;
   alignToVelocity: boolean;
+  alignToVelocityFlip: boolean;
   sizeGrowthRate: number;
 }
 
@@ -105,14 +109,18 @@ export interface ParticleRenderResources {
 export interface ParticleRendererContext {
   resources: ParticleRenderResources;
   emitters: Set<ParticleEmitterGpuDrawHandle>;
+  sortedEmitters?: ParticleEmitterGpuDrawHandle[];
+  sortedEmittersDirty?: boolean;
 }
 
 export interface UniformCache {
   fadeStartMs?: number;
+  fadeInMs?: number;
   defaultLifetimeMs?: number;
   minParticleSize?: number;
   lengthMultiplier?: number;
   alignToVelocity?: number;
+  alignToVelocityFlip?: number;
   sizeGrowthRate?: number;
   fillType?: number;
   stopCount?: number;

@@ -9,12 +9,9 @@ import type {
   EnemyRendererPolygonConfig,
 } from "@db/enemies-db";
 import { DEFAULT_VERTICES } from "../player-unit/constants";
+import type { EnemyCustomData } from "./types";
 
-export interface EnemyCustomData {
-  renderer: EnemyRendererConfig;
-  type: string;
-  level: number;
-}
+export type { EnemyCustomData } from "./types";
 
 export interface EnemyRendererData {
   kind: "polygon" | "composite";

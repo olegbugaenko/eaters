@@ -5,8 +5,10 @@ import type { PlayerUnitAbilityState } from "./AbilityUnitState";
 import type { AbilityVisualService } from "./AbilityVisualService";
 import type { UnitProjectileController } from "../../projectiles/ProjectileController"; 
 import type { StatusEffectsModule } from "../../status-effects/status-effects.module";
+import type { TargetSnapshot, TargetType } from "../../targeting/targeting.types";
+import type { DamageApplicationOptions } from "../../targeting/DamageService";
 
-export type AbilitySoundId = "heal" | "frenzy" | "fireball" | "tailNeedle";
+export type AbilitySoundId = "heal" | "frenzy" | "fireball" | "tailNeedle" | "chainLightning";
 
 export interface AbilityStateBase {
   chargesRemaining?: number;
@@ -39,7 +41,22 @@ export interface AbilityRuntimeDependencies {
   readonly getUnitById: (id: string) => PlayerUnitAbilityState | undefined;
   readonly getBrickPosition: (brickId: string) => SceneVector2 | null;
   readonly damageBrick: (brickId: string, damage: number) => void;
+  readonly applyBrickDamage: (
+    brickId: string,
+    damage: number,
+    options?: DamageApplicationOptions,
+  ) => number;
+  readonly applyTargetDamage?: (
+    targetId: string,
+    damage: number,
+    options?: DamageApplicationOptions,
+  ) => number;
   readonly getBricksInRadius: (position: SceneVector2, radius: number) => string[];
+  readonly getTargetsInRadius: (
+    position: SceneVector2,
+    radius: number,
+    types?: readonly TargetType[],
+  ) => TargetSnapshot[];
   readonly damageUnit: (unitId: string, damage: number) => void;
   readonly findNearestBrick: (position: SceneVector2) => string | null;
   readonly projectiles?: UnitProjectileController;
@@ -61,6 +78,9 @@ export interface AbilityEvaluationContext<State extends AbilityStateBase> {
   attackDirection?: SceneVector2;
   inflictedDamage?: number;
   totalDamage?: number;
+  targetType?: TargetType;
+  targetId?: string;
+  targetPosition?: SceneVector2;
 }
 
 export interface AbilityCandidate<TTarget> {

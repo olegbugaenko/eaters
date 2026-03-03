@@ -52,9 +52,12 @@ npm run pack
 
 ```
 eaters/
+├── electron/         # Electron main процес
+│   └── main.js
 ├── public/           # Статичні файли
-│   ├── index.html    # HTML шаблон
-│   └── electron.js   # Electron main процес
+│   └── index.html    # HTML шаблон
+├── scripts/          # Допоміжні скрипти
+│   └── run-electron-dev.js
 ├── src/              # React додаток
 │   ├── App.tsx       # Головний компонент
 │   ├── App.css       # Стилі додатку
@@ -64,6 +67,7 @@ eaters/
 ├── src/              # Конфігурація
 │   ├── tsconfig.json # TypeScript налаштування
 │   └── webpack.config.js # Webpack конфігурація
+├── electron-builder.config.js # Конфігурація Electron Builder
 └── package.json      # Залежності та скрипти
 ```
 

@@ -5,7 +5,7 @@ import type {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { computeCenter } from "./vector.helper";
-import { ensureColorAlpha } from "./scene-color.helper";
+import { ensureColorAlpha } from "./scene-style.helper";
 
 /**
  * Type guard to check if a stroke is valid (has width > 0)

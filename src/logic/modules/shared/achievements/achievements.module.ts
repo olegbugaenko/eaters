@@ -5,7 +5,7 @@ import {
   AchievementId,
   getAchievementConfig,
 } from "../../../../db/achievements-db";
-import { getMapConfig, getMapList, MapId } from "../../../../db/maps-db";
+import { getMapConfig, getMapList, MapId } from "../../../../db/maps/maps-db";
 import type { MapLevelStats, MapStats } from "../../active-map/map/map.types";
 import type { BonusEffectPreview } from "@shared/types/bonuses";
 import type {

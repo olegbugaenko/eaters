@@ -81,6 +81,13 @@ export class NewUnlockNotificationService implements GameModule {
     this.entries.set(normalized, entry);
     this.registeredPaths.push(normalized);
     this.registerPrefixes(normalized);
+    // If already unlocked at registration, treat as seen so we don't show "new" for things that were available from the start
+    const alreadyUnlocked = entry.check();
+    if (alreadyUnlocked) {
+      entry.isUnlocked = true;
+      entry.isViewed = true;
+      this.viewedPaths.add(normalized);
+    }
     this.invalidate(normalized);
   }
 

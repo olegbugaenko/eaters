@@ -30,7 +30,11 @@ const compileShader = (
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error("Failed to compile particle shader", gl.getShaderInfoLog(shader));
+    console.error("Failed to compile particle shader", {
+      info: gl.getShaderInfoLog(shader),
+      type,
+      source,
+    });
     gl.deleteShader(shader);
     return null;
   }
@@ -91,10 +95,12 @@ const createRenderProgram = (
     cameraPosition: gl.getUniformLocation(program, "u_cameraPosition"),
     viewportSize: gl.getUniformLocation(program, "u_viewportSize"),
     fadeStartMs: gl.getUniformLocation(program, "u_fadeStartMs"),
+    fadeInMs: gl.getUniformLocation(program, "u_fadeInMs"),
     defaultLifetimeMs: gl.getUniformLocation(program, "u_defaultLifetimeMs"),
     minParticleSize: gl.getUniformLocation(program, "u_minParticleSize"),
     lengthMultiplier: gl.getUniformLocation(program, "u_lengthMultiplier"),
     alignToVelocity: gl.getUniformLocation(program, "u_alignToVelocity"),
+    alignToVelocityFlip: gl.getUniformLocation(program, "u_alignToVelocityFlip"),
     sizeGrowthRate: gl.getUniformLocation(program, "u_sizeGrowthRate"),
     fillType: gl.getUniformLocation(program, "u_fillType"),
     stopCount: gl.getUniformLocation(program, "u_stopCount"),
@@ -155,6 +161,8 @@ export const getParticleRenderResources = (
   context = {
     resources,
     emitters: new Set(),
+    sortedEmitters: [],
+    sortedEmittersDirty: true,
   };
   rendererContexts.set(gl, context);
   return resources;
@@ -197,6 +205,7 @@ export const clearAllParticleEmitters = (gl?: WebGL2RenderingContext): void => {
     return;
   }
   context.emitters.clear();
+  context.sortedEmittersDirty = true;
 };
 
 export const getParticleStats = (
@@ -229,6 +238,8 @@ const getRendererContext = (
     context = {
       resources,
       emitters: new Set(),
+      sortedEmitters: [],
+      sortedEmittersDirty: true,
     };
     rendererContexts.set(gl, context);
   }
@@ -243,6 +254,7 @@ export const registerParticleEmitterHandle = (
     return;
   }
   context.emitters.add(handle);
+  context.sortedEmittersDirty = true;
 };
 
 export const unregisterParticleEmitterHandle = (
@@ -253,12 +265,31 @@ export const unregisterParticleEmitterHandle = (
     return;
   }
   context.emitters.delete(handle);
+  context.sortedEmittersDirty = true;
 };
 
 const serializeArray = (arr: Float32Array): string => {
   let s = "";
   for (let i = 0; i < arr.length; i += 1) s += arr[i] + ",";
   return s;
+};
+
+const hashString = (value: string): number => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+const hashNumber = (value: number): number => {
+  const str = Number.isFinite(value) ? String(value) : "0";
+  return hashString(str);
+};
+
+const combineHash = (hash: number, next: number): number => {
+  return Math.imul(hash ^ next, 16777619) >>> 0;
 };
 
 export const refreshParticleUniformKeys = (
@@ -270,7 +301,9 @@ export const refreshParticleUniformKeys = (
   uniforms.stopColor2Key = serializeArray(uniforms.stopColor2);
   uniforms.stopColor3Key = serializeArray(uniforms.stopColor3);
   uniforms.stopColor4Key = serializeArray(uniforms.stopColor4);
-  uniforms.uniformSignature = `${uniforms.fillType}|${uniforms.stopCount}|${uniforms.fadeStartMs}|${uniforms.sizeGrowthRate}|${uniforms.stopOffsetsKey}|${uniforms.stopColor0Key}`;
+  uniforms.uniformSignature = hashString(
+    `${uniforms.fillType}|${uniforms.stopCount}|${uniforms.fadeStartMs}|${uniforms.fadeInMs}|${uniforms.sizeGrowthRate}|${uniforms.stopOffsetsKey}|${uniforms.stopColor0Key}`
+  );
 };
 
 const uploadEmitterUniforms = (
@@ -281,6 +314,9 @@ const uploadEmitterUniforms = (
 ): void => {
   if (program.uniforms.fadeStartMs && cache.fadeStartMs !== u.fadeStartMs) {
     gl.uniform1f(program.uniforms.fadeStartMs, (cache.fadeStartMs = u.fadeStartMs));
+  }
+  if (program.uniforms.fadeInMs && cache.fadeInMs !== u.fadeInMs) {
+    gl.uniform1f(program.uniforms.fadeInMs, (cache.fadeInMs = u.fadeInMs));
   }
   if (
     program.uniforms.defaultLifetimeMs &&
@@ -317,6 +353,16 @@ const uploadEmitterUniforms = (
     gl.uniform1i(
       program.uniforms.alignToVelocity,
       (cache.alignToVelocity = alignVal)
+    );
+  }
+  const alignFlipVal = u.alignToVelocityFlip ? 1 : 0;
+  if (
+    program.uniforms.alignToVelocityFlip &&
+    cache.alignToVelocityFlip !== alignFlipVal
+  ) {
+    gl.uniform1i(
+      program.uniforms.alignToVelocityFlip,
+      (cache.alignToVelocityFlip = alignFlipVal)
     );
   }
   if (
@@ -504,17 +550,32 @@ export const uploadEmitterUniformsPublic = (
 const emitterRenderList: ParticleEmitterGpuDrawHandle[] = [];
 
 // Generate a signature for uniform values to enable batching
-const ensureUniformSignature = (u: ParticleEmitterGpuRenderUniforms): string => {
+const ensureUniformSignature = (u: ParticleEmitterGpuRenderUniforms): number => {
   if (!u.stopOffsetsKey) {
     u.stopOffsetsKey = serializeArray(u.stopOffsets);
   }
   if (!u.stopColor0Key) {
     u.stopColor0Key = serializeArray(u.stopColor0);
   }
-  if (!u.uniformSignature) {
-    u.uniformSignature = `${u.fillType}|${u.stopCount}|${u.fadeStartMs}|${u.sizeGrowthRate}|${u.stopOffsetsKey}|${u.stopColor0Key}`;
-  }
-  return u.uniformSignature;
+  const signature =
+    combineHash(
+      combineHash(
+        combineHash(
+          combineHash(
+            combineHash(
+              combineHash(hashNumber(u.fillType), hashNumber(u.stopCount)),
+              hashNumber(u.fadeStartMs)
+            ),
+            hashNumber(u.fadeInMs)
+          ),
+          hashNumber(u.sizeGrowthRate)
+        ),
+        hashString(u.stopOffsetsKey)
+      ),
+      hashString(u.stopColor0Key)
+    );
+  u.uniformSignature = signature;
+  return signature;
 };
 
 export const renderParticleEmitters = (
@@ -544,29 +605,52 @@ export const renderParticleEmitters = (
   }
 
   // Sort emitters by uniform signature to minimize uniform updates
-  emitterRenderList.length = 0;
-  emitters.forEach((handle) => {
-    if (handle.capacity > 0 && handle.getCurrentVao()) {
-      ensureUniformSignature(handle.uniforms);
-      emitterRenderList.push(handle);
-    }
-  });
-  
-  // Sort by uniform signature for batching
-  emitterRenderList.sort((a, b) => {
-    return (a.uniforms.uniformSignature ?? "").localeCompare(
-      b.uniforms.uniformSignature ?? ""
-    );
-  });
+  const sortedEmitters = context.sortedEmitters ?? emitterRenderList;
+  if (context.sortedEmittersDirty) {
+    sortedEmitters.length = 0;
+    emitters.forEach((handle) => {
+      if (handle.capacity > 0 && handle.getCurrentVao()) {
+        ensureUniformSignature(handle.uniforms);
+        sortedEmitters.push(handle);
+      }
+    });
+    context.sortedEmittersDirty = false;
+  } else {
+    let needsResort = false;
+    sortedEmitters.length = 0;
+    emitters.forEach((handle) => {
+      if (handle.capacity > 0 && handle.getCurrentVao()) {
+        const prevSignature = handle.uniforms.uniformSignature;
+        const nextSignature = ensureUniformSignature(handle.uniforms);
+        if (prevSignature !== nextSignature) {
+          needsResort = true;
+        }
+        sortedEmitters.push(handle);
+      }
+    });
+    context.sortedEmittersDirty = needsResort;
+  }
+
+  if (context.sortedEmittersDirty) {
+    sortedEmitters.sort((a, b) => {
+      return (a.uniforms.uniformSignature ?? 0) - (b.uniforms.uniformSignature ?? 0);
+    });
+    context.sortedEmittersDirty = false;
+  }
 
   const cache: UniformCache = {};
-  for (let i = 0; i < emitterRenderList.length; i++) {
-    const handle = emitterRenderList[i]!;
+  let lastSignature: number | undefined;
+  for (let i = 0; i < sortedEmitters.length; i++) {
+    const handle = sortedEmitters[i]!;
     const vao = handle.getCurrentVao();
     if (!vao) {
       continue;
     }
-    uploadEmitterUniforms(gl, program, handle.uniforms, cache);
+    const signature = handle.uniforms.uniformSignature ?? ensureUniformSignature(handle.uniforms);
+    if (signature !== lastSignature) {
+      uploadEmitterUniforms(gl, program, handle.uniforms, cache);
+      lastSignature = signature;
+    }
     gl.bindVertexArray(vao);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, handle.capacity);
   }

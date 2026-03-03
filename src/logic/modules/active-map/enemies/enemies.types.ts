@@ -18,6 +18,7 @@ import type { BricksModule } from "../bricks/bricks.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
+import type { DarkResearchModule } from "@logic/modules/camp/dark-research/dark-research.module";
 
 export interface AttackSeriesState {
   remainingShots: number;
@@ -33,6 +34,7 @@ export interface EnemySpawnData {
   readonly rotation?: number;
   readonly hp?: number;
   readonly attackCooldown?: number;
+  readonly spawnSourceId?: string;
 }
 
 export interface EnemyRuntimeState {
@@ -51,9 +53,12 @@ export interface EnemyRuntimeState {
   attackSeriesState?: AttackSeriesState;
   moveSpeed: number;
   physicalSize: number;
+  lockRotation: boolean;
   selfKnockBackDistance: number;
   selfKnockBackSpeed: number;
   reward?: ResourceStockpile;
+  soulReward?: number;
+  spawnSourceId?: string;
 }
 
 export interface EnemyResourceCollector {
@@ -94,6 +99,7 @@ export interface EnemiesModuleOptions {
   readonly arcs?: ArcModule;
   readonly bricks: BricksModule;
   readonly statusEffects: StatusEffectsModule;
+  readonly darkResearch?: DarkResearchModule;
   readonly obstacles?: ObstacleProvider;
   readonly pathfinder?: PathfindingService;
 }

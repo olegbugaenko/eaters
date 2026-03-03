@@ -10,6 +10,7 @@ import {
   UnitModuleId,
   getUnitModuleConfig,
 } from "../../../../db/unit-modules-db";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 import {
   ResourceStockpile,
   normalizeResourceAmount,
@@ -36,6 +37,7 @@ export type { UnitModuleWorkshopBridgeState } from "./unit-module-workshop.types
 import {
   createDefaultLevels,
   clampLevel,
+  getMaxLevel,
   scaleResourceStockpile,
   areModuleListsEqual,
 } from "./unit-module-workshop.helpers";
@@ -43,6 +45,7 @@ import {
   UnitModuleStateFactory,
   UnitModuleStateInput,
 } from "./unit-module-workshop.state-factory";
+import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
 
 export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   public readonly id = "unitModuleWorkshop";
@@ -66,7 +69,14 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     this.getSkillLevel = options.getSkillLevel;
     this.unlocks = options.unlocks;
     this.newUnlocks = options.newUnlocks;
-    this.stateFactory = new UnitModuleStateFactory();
+    this.stateFactory = new UnitModuleStateFactory({
+      getText: ({ id, name, description, bonusLabel }) =>
+        options.localization?.getUnitModuleText(id, { name, description, bonusLabel }) ?? {
+          name,
+          description,
+          bonusLabel,
+        },
+    });
   }
 
   public initialize(): void {
@@ -118,6 +128,10 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
       return false;
     }
     const currentLevel = this.levels.get(id) ?? 0;
+    const maxLevel = getMaxLevel(getUnitModuleConfig(id));
+    if (currentLevel >= maxLevel) {
+      return false;
+    }
     const cost = this.getUpgradeCost(id, currentLevel);
     if (!this.resources.spendResources(cost)) {
       return false;
@@ -126,6 +140,7 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     this.levels.set(id, nextLevel);
     this.pushState();
     this.notifyListeners();
+    trackAnalyticsEvent("unit_module_purchased", { moduleId: id, level: nextLevel });
     return true;
   }
 
@@ -137,7 +152,8 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     const unlocked = this.getSkillLevel(MODULE_UNLOCK_SKILL_ID) > 0;
     const visibleIds = unlocked
       ? UNIT_MODULE_IDS.filter((id) =>
-          this.unlocks.areConditionsMet(getUnitModuleConfig(id).unlockedBy)
+          this.unlocks.areConditionsMet(getUnitModuleConfig(id).unlockedBy) &&
+          !(isDemoBuild() && getUnitModuleConfig(id).lockedForDemo)
         )
       : [];
     const visibleSet = new Set<UnitModuleId>(visibleIds);
@@ -171,6 +187,9 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
       const config = getUnitModuleConfig(id);
       this.newUnlocks.registerUnlock(`biolab.organs.${id}`, () => {
         if (this.getSkillLevel(MODULE_UNLOCK_SKILL_ID) <= 0) {
+          return false;
+        }
+        if (isDemoBuild() && config.lockedForDemo) {
           return false;
         }
         return this.unlocks.areConditionsMet(config.unlockedBy);
@@ -212,7 +231,7 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
       data,
       UNIT_MODULE_IDS,
       createDefaultLevels,
-      (_id, raw) => clampLevel(raw)
+      (id, raw) => clampLevel(raw, getUnitModuleConfig(id))
     );
   }
 }

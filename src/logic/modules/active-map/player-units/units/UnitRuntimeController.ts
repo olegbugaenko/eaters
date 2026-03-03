@@ -1087,6 +1087,9 @@ export class UnitRuntimeController {
       direction,
       inflictedDamage,
       totalDamage,
+      targetType,
+      target.id,
+      effectOrigin,
     );
 
     if (totalDamage > 0 && unit.damageTransferPercent > 0) {

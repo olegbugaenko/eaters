@@ -10,6 +10,11 @@ import type { ExplosionType } from "@/db/explosions-db";
 
 export type UnitProjectileShape = "circle" | "sprite";
 
+export interface UnitProjectileWanderConfig {
+  intervalMs: number;
+  angleRangeDeg: number;
+}
+
 export interface UnitProjectileVisualConfig {
   radius: number;
   speed: number;
@@ -20,6 +25,7 @@ export interface UnitProjectileVisualConfig {
   tail?: BulletTailConfig;
   tailEmitter?: ParticleEmitterConfig;
   ringTrail?: SpellProjectileRingTrailConfig;
+  rotationSpinningDegPerSec?: number;
   shape?: UnitProjectileShape;
   /** Sprite name when shape === "sprite" */
   spriteName?: BulletSpriteName;
@@ -30,11 +36,13 @@ export interface UnitProjectileVisualConfig {
   /** Explosion type when projectile hits target (optional) */
   explosion?: ExplosionType;
   rendererCustomData?: Record<string, unknown>;
+  wander?: UnitProjectileWanderConfig;
 }
 
 export interface UnitProjectileSpawn {
   origin: SceneVector2;
   direction: SceneVector2;
+  targetPosition?: SceneVector2;
   damage: number;
   rewardMultiplier: number;
   armorPenetration: number;
@@ -42,6 +50,7 @@ export interface UnitProjectileSpawn {
   knockBackSpeed?: number;
   knockBackDirection?: SceneVector2;
   skipKnockback?: boolean;
+  ignoreTargetsOnPath?: boolean;
   targetTypes?: TargetType[];
   visual: UnitProjectileVisualConfig;
   onHit?: UnitProjectileOnHit;
@@ -60,8 +69,10 @@ export type UnitProjectileOnHit = (
 ) => boolean | void;
 
 export interface UnitProjectileRingTrailState {
-  config: Required<Omit<SpellProjectileRingTrailConfig, "color">> & {
+  config: Required<Omit<SpellProjectileRingTrailConfig, "color" | "offset" | "fadeInMs">> & {
     color: SceneColor;
+    offset: SceneVector2;
+    fadeInMs: number;
   };
   accumulatorMs: number;
 }
@@ -80,11 +91,22 @@ export interface UnitProjectileState extends UnitProjectileSpawn {
   radius: number;
   lifetimeMs: number;
   createdAt: number;
+  renderPosition: SceneVector2;
   ringTrail?: UnitProjectileRingTrailState;
   shape: UnitProjectileShape;
   hitRadius: number;
   damageRadius: number;
   position: SceneVector2;
+  wander?: {
+    intervalMs: number;
+    angleRangeRad: number;
+    accumulatorMs: number;
+  };
+  rotationSpin?: {
+    radiansPerMs: number;
+    rotationRad: number;
+  };
+  rendererCustomData: Record<string, unknown>;
   // GPU rendering slot (if using GPU instanced rendering)
   gpuSlot?: BulletSlotHandle;
   // Прапорець для пропуску руху в перший тік

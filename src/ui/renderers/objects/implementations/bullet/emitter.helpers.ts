@@ -12,7 +12,7 @@ import type {
   BulletEmitterKey,
 } from "./types";
 import type { ParticleEmitterConfig } from "../../../../../logic/interfaces/visuals/particle-emitters-config";
-import { getBulletRadius } from "./helpers";
+import { getBulletRadius, getMovementRotation } from "./helpers";
 
 // Caches for emitter configs
 const tailEmitterConfigCache = new WeakMap<
@@ -108,6 +108,8 @@ export const sanitizeTailEmitterConfig = (
     Number.isFinite(config.speedVariation) ? Number(config.speedVariation) : 0
   );
   const spread = Math.max(0, Number.isFinite(config.spread) ? Number(config.spread) : 0);
+  const spawnRadiusMin = Math.max(0, config.spawnRadius?.min ?? 0);
+  const spawnRadiusMax = Math.max(spawnRadiusMin, config.spawnRadius?.max ?? spawnRadiusMin);
 
   // Convert sizeEvolutionMult (multiplier at end of lifetime) to sizeGrowthRate (multiplier per second)
   // Formula: sizeGrowthRate = sizeEvolutionMult ^ (1 / lifetimeSeconds)
@@ -128,6 +130,8 @@ export const sanitizeTailEmitterConfig = (
     baseSpeed,
     speedVariation,
     spread,
+    spawnRadiusMin,
+    spawnRadiusMax,
     sizeGrowthRate,
   };
 };
@@ -141,10 +145,14 @@ export const serializeTailEmitterConfig = (config: BulletTailEmitterRenderConfig
     config.particlesPerSecond,
     config.particleLifetimeMs,
     config.fadeStartMs,
+    config.fadeInMs,
+    config.emissionDampingInterval ?? 0,
     config.baseSpeed,
     config.speedVariation,
     config.sizeRange.min,
     config.sizeRange.max,
+    config.spawnRadiusMin,
+    config.spawnRadiusMax,
     config.spread,
     config.offset.x,
     config.offset.y,
@@ -172,7 +180,7 @@ export const getTailEmitterOrigin = (
   };
   return transformObjectPoint(
     getInstanceRenderPosition(instance),
-    instance.data.rotation,
+    getMovementRotation(instance),
     offset
   );
 };
@@ -185,7 +193,7 @@ export const createTailParticle = (
   instance: SceneObjectInstance,
   config: BulletTailEmitterRenderConfig
 ): ParticleEmitterParticleState => {
-  const baseDirection = (instance.data.rotation ?? 0) + Math.PI;
+  const baseDirection = getMovementRotation(instance) + Math.PI;
   const halfSpread = config.spread / 2;
   const direction =
     baseDirection + (config.spread > 0 ? randomBetween(-halfSpread, halfSpread) : 0);
@@ -200,9 +208,17 @@ export const createTailParticle = (
     config.sizeRange.min === config.sizeRange.max
       ? config.sizeRange.min
       : randomBetween(config.sizeRange.min, config.sizeRange.max);
+  const spawnRadius =
+    config.spawnRadiusMin === config.spawnRadiusMax
+      ? config.spawnRadiusMin
+      : randomBetween(config.spawnRadiusMin, config.spawnRadiusMax);
+  const spawnAngle = Math.random() * Math.PI * 2;
 
   return {
-    position: { x: origin.x, y: origin.y },
+    position: {
+      x: origin.x + Math.cos(spawnAngle) * spawnRadius,
+      y: origin.y + Math.sin(spawnAngle) * spawnRadius,
+    },
     velocity: { x: Math.cos(direction) * speed, y: Math.sin(direction) * speed },
     ageMs: 0,
     lifetimeMs: config.particleLifetimeMs,
@@ -222,10 +238,10 @@ export const getGpuSpawnConfig = (
   speedVariation: config.speedVariation,
   sizeMin: config.sizeRange.min,
   sizeMax: config.sizeRange.max,
-  spawnRadiusMin: 0,
-  spawnRadiusMax: 0,
+  spawnRadiusMin: config.spawnRadiusMin,
+  spawnRadiusMax: config.spawnRadiusMax,
   arc: 0,
-  direction: (instance.data.rotation ?? 0) + Math.PI,
+  direction: getMovementRotation(instance) + Math.PI,
   spread: config.spread,
   radialVelocity: false,
 });

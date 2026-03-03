@@ -7,8 +7,10 @@ import {
 } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 import { Button } from "@ui-shared/Button";
+import { StableInput } from "@ui-shared/StableInput";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./UnitRosterView.css";
 import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 
@@ -19,7 +21,7 @@ interface UnitRosterViewProps {
 }
 
 const buildUnitMap = (
-  units: readonly UnitDesignerUnitState[]
+  units: readonly UnitDesignerUnitState[],
 ): Map<string, UnitDesignerUnitState> => {
   const map = new Map<string, UnitDesignerUnitState>();
   units.forEach((unit) => {
@@ -28,50 +30,68 @@ const buildUnitMap = (
   return map;
 };
 
-const BASE_TARGETING_OPTIONS: ReadonlyArray<{
+const TARGETING_MODE_DEFS: ReadonlyArray<{
   mode: UnitTargetingMode;
-  label: string;
-  description: string;
+  labelKey: string;
+  labelFallback: string;
+  descriptionKey: string;
+  descriptionFallback: string;
 }> = [
   {
     mode: "nearest",
-    label: "Nearest target",
-    description: "Engage the closest target within reach.",
+    labelKey: "voidCamp.unitRoster.targeting.nearest.label",
+    labelFallback: "Nearest target",
+    descriptionKey: "voidCamp.unitRoster.targeting.nearest.desc",
+    descriptionFallback: "Engage the closest target within reach.",
   },
   {
     mode: "firstBrick",
-    label: "Brick first",
-    description: "Prioritise the nearest brick before enemies.",
+    labelKey: "voidCamp.unitRoster.targeting.firstBrick.label",
+    labelFallback: "Brick first",
+    descriptionKey: "voidCamp.unitRoster.targeting.firstBrick.desc",
+    descriptionFallback: "Prioritise the nearest brick before enemies.",
   },
   {
     mode: "firstEnemy",
-    label: "Enemy first",
-    description: "Prioritise the nearest enemy before bricks.",
+    labelKey: "voidCamp.unitRoster.targeting.firstEnemy.label",
+    labelFallback: "Enemy first",
+    descriptionKey: "voidCamp.unitRoster.targeting.firstEnemy.desc",
+    descriptionFallback: "Prioritise the nearest enemy before bricks.",
   },
   {
     mode: "highestHp",
-    label: "Highest HP",
-    description: "Prioritise nearby enemies with the most health.",
+    labelKey: "voidCamp.unitRoster.targeting.highestHp.label",
+    labelFallback: "Highest HP",
+    descriptionKey: "voidCamp.unitRoster.targeting.highestHp.desc",
+    descriptionFallback: "Prioritise nearby enemies with the most health.",
   },
   {
     mode: "lowestHp",
-    label: "Lowest HP",
-    description: "Finish off weakened enemies first within range.",
+    labelKey: "voidCamp.unitRoster.targeting.lowestHp.label",
+    labelFallback: "Lowest HP",
+    descriptionKey: "voidCamp.unitRoster.targeting.lowestHp.desc",
+    descriptionFallback: "Finish off weakened enemies first within range.",
   },
   {
     mode: "highestDamage",
-    label: "Highest damage",
-    description: "Seek nearby threats that deal the most damage.",
+    labelKey: "voidCamp.unitRoster.targeting.highestDamage.label",
+    labelFallback: "Highest damage",
+    descriptionKey: "voidCamp.unitRoster.targeting.highestDamage.desc",
+    descriptionFallback: "Seek nearby threats that deal the most damage.",
   },
   {
     mode: "lowestDamage",
-    label: "Lowest damage",
-    description: "Pick safer targets that hit the weakest nearby.",
+    labelKey: "voidCamp.unitRoster.targeting.lowestDamage.label",
+    labelFallback: "Lowest damage",
+    descriptionKey: "voidCamp.unitRoster.targeting.lowestDamage.desc",
+    descriptionFallback: "Pick safer targets that hit the weakest nearby.",
   },
   {
     mode: "none",
-    label: "Standby (no attacks)",
-    description: "Do not attack; wander near the spawn point.",
+    labelKey: "voidCamp.unitRoster.targeting.none.label",
+    labelFallback: "Standby (no attacks)",
+    descriptionKey: "voidCamp.unitRoster.targeting.none.desc",
+    descriptionFallback: "Do not attack; wander near the spawn point.",
   },
 ];
 
@@ -79,9 +99,10 @@ const DEFAULT_TARGETING_MODE: UnitTargetingMode = "nearest";
 
 const buildTargetingOptions = (hasEnemyStrategies: boolean) =>
   hasEnemyStrategies
-    ? BASE_TARGETING_OPTIONS
-    : BASE_TARGETING_OPTIONS.filter(
-        (option) => option.mode !== "firstBrick" && option.mode !== "firstEnemy"
+    ? TARGETING_MODE_DEFS
+    : TARGETING_MODE_DEFS.filter(
+        (option) =>
+          option.mode !== "firstBrick" && option.mode !== "firstEnemy",
       );
 
 export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
@@ -90,6 +111,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
   hasEnemyStrategies,
 }) => {
   const { uiApi } = useAppLogic();
+  const { t } = useLocalization();
   const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
   const automationModule = uiApi.unitAutomation as UnitAutomationModuleUiApi;
 
@@ -98,10 +120,10 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
   const targetingByUnit = state.targetingByUnit ?? {};
   const targetingOptions = useMemo(
     () => buildTargetingOptions(hasEnemyStrategies),
-    [hasEnemyStrategies]
+    [hasEnemyStrategies],
   );
   const targetingLookup = useMemo(() => {
-    const map = new Map<UnitTargetingMode, (typeof BASE_TARGETING_OPTIONS)[number]>();
+    const map = new Map<UnitTargetingMode, (typeof targetingOptions)[number]>();
     targetingOptions.forEach((option) => {
       map.set(option.mode, option);
     });
@@ -111,7 +133,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
   const unitsById = useMemo(() => buildUnitMap(state.units), [state.units]);
   const rosterUnits = useMemo(
     () => roster.map((id) => unitsById.get(id) ?? null),
-    [roster, unitsById]
+    [roster, unitsById],
   );
   const rosterFull = roster.length >= maxSlots;
   const automationLookup = useMemo(() => {
@@ -123,18 +145,26 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       }
     >();
     automation.units.forEach((entry) => {
-      lookup.set(entry.designId, { enabled: entry.enabled, weight: entry.weight });
+      lookup.set(entry.designId, {
+        enabled: entry.enabled,
+        weight: entry.weight,
+      });
     });
     return lookup;
   }, [automation.units]);
 
   const resolveTargetingMode = useCallback(
-    (designId: string): UnitTargetingMode => targetingByUnit[designId]?.mode ?? DEFAULT_TARGETING_MODE,
-    [targetingByUnit]
+    (designId: string): UnitTargetingMode =>
+      targetingByUnit[designId]?.mode ?? DEFAULT_TARGETING_MODE,
+    [targetingByUnit],
   );
 
-  const [editingStrategyDesignId, setEditingStrategyDesignId] = useState<string | null>(null);
-  const [draftMode, setDraftMode] = useState<UnitTargetingMode>(DEFAULT_TARGETING_MODE);
+  const [editingStrategyDesignId, setEditingStrategyDesignId] = useState<
+    string | null
+  >(null);
+  const [draftMode, setDraftMode] = useState<UnitTargetingMode>(
+    DEFAULT_TARGETING_MODE,
+  );
 
   useEffect(() => {
     if (!editingStrategyDesignId) {
@@ -150,7 +180,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       }
       designer.setActiveRoster([...roster, unitId]);
     },
-    [designer, roster, rosterFull]
+    [designer, roster, rosterFull],
   );
 
   const handleRemoveFromRoster = useCallback(
@@ -160,7 +190,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       }
       designer.setActiveRoster(roster.filter((entry) => entry !== unitId));
     },
-    [designer, roster]
+    [designer, roster],
   );
 
   const handleMove = useCallback(
@@ -177,7 +207,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       next.splice(target, 0, moved);
       designer.setActiveRoster(next);
     },
-    [designer, roster]
+    [designer, roster],
   );
 
   const handleClearSlot = useCallback(
@@ -188,7 +218,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       const next = roster.filter((_, entryIndex) => entryIndex !== index);
       designer.setActiveRoster(next);
     },
-    [designer, roster]
+    [designer, roster],
   );
 
   const handleClearRoster = useCallback(() => {
@@ -202,14 +232,14 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
     (unitId: string, enabled: boolean) => {
       automationModule.setAutomationEnabled(unitId, enabled);
     },
-    [automationModule]
+    [automationModule],
   );
 
   const handleAutomationWeightChange = useCallback(
     (unitId: string, weight: number) => {
       automationModule.setAutomationWeight(unitId, weight);
     },
-    [automationModule]
+    [automationModule],
   );
 
   const openStrategySettings = useCallback(
@@ -217,7 +247,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       setEditingStrategyDesignId(designId);
       setDraftMode(resolveTargetingMode(designId));
     },
-    [resolveTargetingMode]
+    [resolveTargetingMode],
   );
 
   const handleCancelStrategy = useCallback(() => {
@@ -241,8 +271,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
 
   const isStrategyOpen = editingStrategyDesignId !== null;
   const editingUnit = useMemo(
-    () => (editingStrategyDesignId ? unitsById.get(editingStrategyDesignId) ?? null : null),
-    [editingStrategyDesignId, unitsById]
+    () =>
+      editingStrategyDesignId
+        ? (unitsById.get(editingStrategyDesignId) ?? null)
+        : null,
+    [editingStrategyDesignId, unitsById],
   );
   const draftOption = targetingLookup.get(draftMode) ?? targetingOptions[0]!;
 
@@ -251,8 +284,10 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       <header className="unit-roster__header">
         <div>
           <p className="body-md text-muted">
-            Select up to {maxSlots} units to deploy and reorder them to prioritise
-            deployment.
+            {t(
+              "voidCamp.unitRoster.subtitle",
+              "Select up to {{maxSlots}} units to deploy and reorder them to prioritise deployment.",
+            ).replace("{{maxSlots}}", String(maxSlots))}
           </p>
         </div>
         <button
@@ -261,7 +296,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
           onClick={handleClearRoster}
           disabled={roster.length === 0}
         >
-          Clear roster
+          {t("voidCamp.unitRoster.clearRoster", "Clear roster")}
         </button>
       </header>
       <div className="unit-roster__content">
@@ -269,14 +304,17 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
           <ol className="unit-roster__slot-list">
             {Array.from({ length: maxSlots }).map((_, index) => {
               const unit = rosterUnits[index] ?? null;
-              const currentMode = unit ? resolveTargetingMode(unit.id) : DEFAULT_TARGETING_MODE;
-              const currentOption = targetingLookup.get(currentMode) ?? targetingOptions[0]!;
+              const currentMode = unit
+                ? resolveTargetingMode(unit.id)
+                : DEFAULT_TARGETING_MODE;
+              const currentOption =
+                targetingLookup.get(currentMode) ?? targetingOptions[0]!;
               return (
                 <li
                   key={`roster-slot-${index}`}
                   className={classNames(
                     "unit-roster__slot",
-                    unit && "unit-roster__slot--filled"
+                    unit && "unit-roster__slot--filled",
                   )}
                 >
                   <span className="unit-roster__slot-index">{index + 1}</span>
@@ -284,25 +322,39 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                     <div className="unit-roster__slot-body">
                       <div className="unit-roster__slot-info">
                         <div className="unit-roster__slot-header">
-                          <span className="unit-roster__slot-name">{unit.name}</span>
+                          <span className="unit-roster__slot-name">
+                            {unit.name}
+                          </span>
                           <button
                             type="button"
                             className={classNames(
                               "primary-button",
                               "small-button",
-                              "button"
+                              "button",
                             )}
                             onClick={() => openStrategySettings(unit.id)}
                             aria-haspopup="dialog"
                             aria-expanded={
-                              isStrategyOpen && editingStrategyDesignId === unit.id
+                              isStrategyOpen &&
+                              editingStrategyDesignId === unit.id
                             }
                           >
-                            <span>Strategy: {currentOption.label}</span>
+                            <span>
+                              {t(
+                                "voidCamp.unitRoster.strategyPrefix",
+                                "Strategy",
+                              )}
+                              :{" "}
+                              {t(
+                                currentOption.labelKey,
+                                currentOption.labelFallback,
+                              )}
+                            </span>
                           </button>
                         </div>
                         <span className="unit-roster__slot-meta">
-                          {unit.modules.length} modules
+                          {unit.modules.length}{" "}
+                          {t("voidCamp.unitRoster.modules", "modules")}
                         </span>
                       </div>
                       <div className="unit-roster__slot-actions">
@@ -314,11 +366,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                               "small-button",
                               "button",
                               "square",
-                              "lg-font"
+                              "lg-font",
                             )}
                             onClick={() => handleMove(index, -1)}
                             disabled={index === 0}
-                            aria-label={`Move ${unit.name} up`}
+                            aria-label={`${t("voidCamp.unitRoster.move", "Move")} ${unit.name} ${t("voidCamp.unitRoster.up", "up")}`}
                           >
                             ↑
                           </button>
@@ -329,11 +381,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                               "small-button",
                               "button",
                               "square",
-                              "lg-font"
+                              "lg-font",
                             )}
                             onClick={() => handleMove(index, 1)}
                             disabled={index >= roster.length - 1}
-                            aria-label={`Move ${unit.name} down`}
+                            aria-label={`${t("voidCamp.unitRoster.move", "Move")} ${unit.name} ${t("voidCamp.unitRoster.down", "down")}`}
                           >
                             ↓
                           </button>
@@ -342,11 +394,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                             className={classNames(
                               "danger-button",
                               "small-button",
-                              "button"
+                              "button",
                             )}
                             onClick={() => handleClearSlot(index)}
                           >
-                            Remove
+                            {t("voidCamp.unitRoster.remove", "Remove")}
                           </button>
                         </div>
                         {automation.unlocked ? (
@@ -354,24 +406,34 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                             <label className="unit-roster__automation-toggle">
                               <input
                                 type="checkbox"
-                                checked={automationLookup.get(unit.id)?.enabled ?? false}
+                                checked={
+                                  automationLookup.get(unit.id)?.enabled ??
+                                  false
+                                }
                                 onChange={(event) =>
-                                  handleToggleAutomation(unit.id, event.target.checked)
+                                  handleToggleAutomation(
+                                    unit.id,
+                                    event.target.checked,
+                                  )
                                 }
                               />
-                              Automate
+                              {t("scene.summoning.automate", "Automate")}
                             </label>
                             <label className="unit-roster__automation-weight">
-                              <span>Weight</span>
-                              <input
+                              <span>
+                                {t("voidCamp.unitRoster.weight", "Weight")}
+                              </span>
+                              <StableInput
                                 type="number"
                                 min={1}
-                                value={automationLookup.get(unit.id)?.weight ?? 1}
-                                onChange={(event) => {
-                                  const nextValue = Number.parseInt(event.target.value, 10);
+                                value={
+                                  automationLookup.get(unit.id)?.weight ?? 1
+                                }
+                                onCommit={(value) => {
+                                  const nextValue = Number.parseInt(value, 10);
                                   handleAutomationWeightChange(
                                     unit.id,
-                                    Number.isNaN(nextValue) ? 1 : nextValue
+                                    Number.isNaN(nextValue) ? 1 : nextValue,
                                   );
                                 }}
                               />
@@ -381,7 +443,9 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="unit-roster__slot-empty">Empty slot</div>
+                    <div className="unit-roster__slot-empty">
+                      {t("voidCamp.unitRoster.emptySlot", "Empty slot")}
+                    </div>
                   )}
                 </li>
               );
@@ -390,48 +454,60 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
         </section>
         <section className="unit-roster__available">
           <div className="unit-roster__available-header">
-            <h3 className="heading-4">Available Units</h3>
+            <h3 className="heading-4">
+              {t("voidCamp.unitRoster.availableUnits", "Available Units")}
+            </h3>
             <p className="body-sm text-muted">
-              Build designs in the Unit Designer, then add them to your battle roster
-              here.
+              {t(
+                "voidCamp.unitRoster.availableHint",
+                "Build designs in the Unit Designer, then add them to your battle roster here.",
+              )}
             </p>
           </div>
           <ul className="unit-roster__list">
             {state.units.length === 0 ? (
-              <li className="unit-roster__empty">No units designed yet.</li>
+              <li className="unit-roster__empty">
+                {t("voidCamp.unitRoster.noUnits", "No units designed yet.")}
+              </li>
             ) : (
               state.units.map((unit) => {
                 const isActive = roster.includes(unit.id);
                 const slotIndex = roster.indexOf(unit.id);
                 const buttonLabel = isActive
-                  ? "Remove"
+                  ? t("voidCamp.unitRoster.remove", "Remove")
                   : rosterFull
-                  ? "Roster full"
-                  : "Add to roster";
+                    ? t("voidCamp.unitRoster.rosterFull", "Roster full")
+                    : t("voidCamp.unitRoster.addToRoster", "Add to roster");
                 return (
                   <li
                     key={unit.id}
                     className={classNames(
                       "unit-roster__list-item",
-                      isActive && "unit-roster__list-item--active"
+                      isActive && "unit-roster__list-item--active",
                     )}
                   >
                     <div className="unit-roster__list-info">
-                      <span className="unit-roster__list-name">{unit.name}</span>
+                      <span className="unit-roster__list-name">
+                        {unit.name}
+                      </span>
                       <span className="unit-roster__list-meta">
-                        {unit.modules.length} modules
+                        {unit.modules.length}{" "}
+                        {t("voidCamp.unitRoster.modules", "modules")}
                       </span>
                     </div>
                     <div className="unit-roster__list-actions">
                       {isActive ? (
-                        <span className="unit-roster__list-badge">Slot {slotIndex + 1}</span>
+                        <span className="unit-roster__list-badge">
+                          {t("voidCamp.unitRoster.slot", "Slot")}{" "}
+                          {slotIndex + 1}
+                        </span>
                       ) : null}
                       <button
                         type="button"
                         className={classNames(
                           isActive ? "danger-button" : "primary-button",
                           "small-button",
-                          "button"
+                          "button",
                         )}
                         onClick={() =>
                           isActive
@@ -465,18 +541,27 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="unit-roster__strategy-header">
-              <h3 id="unit-roster-strategy-title">Strategy settings</h3>
+              <h3 id="unit-roster-strategy-title">
+                {t("voidCamp.unitRoster.strategy", "Strategy settings")}
+              </h3>
               <p className="unit-roster__strategy-description">
                 {editingUnit ? (
                   <>
-                    Choose how <strong>{editingUnit.name}</strong> prioritises its
-                    targets during combat. Current selection:
+                    {t("voidCamp.unitRoster.strategyHintForUnit", "Choose how")}{" "}
+                    <strong>{editingUnit.name}</strong>{" "}
+                    {t(
+                      "voidCamp.unitRoster.strategyHintForUnitSuffix",
+                      "prioritises its targets during combat. Current selection:",
+                    )}
                     <span className="unit-roster__strategy-current">
-                      {draftOption.label}
+                      {t(draftOption.labelKey, draftOption.labelFallback)}
                     </span>
                   </>
                 ) : (
-                  "Choose how deployed units prioritise their targets during combat."
+                  t(
+                    "voidCamp.unitRoster.strategyHint",
+                    "Choose how deployed units prioritise their targets during combat.",
+                  )
                 )}
               </p>
             </div>
@@ -488,7 +573,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                     key={option.mode}
                     className={classNames(
                       "unit-roster__strategy-option",
-                      active && "unit-roster__strategy-option--active"
+                      active && "unit-roster__strategy-option--active",
                     )}
                   >
                     <input
@@ -500,10 +585,10 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                     />
                     <div className="unit-roster__strategy-option-content">
                       <span className="unit-roster__strategy-option-label">
-                        {option.label}
+                        {t(option.labelKey, option.labelFallback)}
                       </span>
                       <span className="unit-roster__strategy-option-description">
-                        {option.description}
+                        {t(option.descriptionKey, option.descriptionFallback)}
                       </span>
                     </div>
                   </label>
@@ -516,9 +601,11 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                 className="unit-roster__strategy-cancel"
                 onClick={handleCancelStrategy}
               >
-                Cancel
+                {t("settings.close", "Close")}
               </button>
-              <Button onClick={handleConfirmStrategy}>Save</Button>
+              <Button onClick={handleConfirmStrategy}>
+                {t("voidCamp.common.save", "Save")}
+              </Button>
             </div>
           </div>
         </div>

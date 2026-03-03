@@ -43,11 +43,12 @@ export class EnemyTargetingProvider implements TargetingProvider<"enemy", EnemyR
     return {
       id: enemy.id,
       type: "enemy",
-      position: enemy.position,
+      position: { ...enemy.position },
       hp: enemy.hp,
       maxHp: enemy.maxHp,
       armor: enemy.armor,
       baseDamage: enemy.baseDamage,
+      effectiveDamage: enemy.baseDamage,
       physicalSize: enemy.physicalSize,
       data: enemy,
     };

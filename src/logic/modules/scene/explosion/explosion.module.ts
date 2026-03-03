@@ -21,6 +21,7 @@ import {
 } from "./explosion.helpers";
 import { clamp01, clampNumber, lerp } from "@shared/helpers/numbers.helper";
 import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
+import { readStoredGraphicsSettings } from "../../../utils/graphicsSettings";
 export type {
   ExplosionRendererCustomData,
   SpawnExplosionByTypeOptions,
@@ -150,10 +151,16 @@ export class ExplosionModule implements GameModule {
       0
     );
 
-    const emitter = createEmitterCustomData(
-      config,
-      Math.max(baseInitialRadius, maxInitialOuterRadius)
-    );
+    const graphicsSettings = readStoredGraphicsSettings();
+    const shouldDisableEmitter =
+      (type.includes("BrickHit") && !graphicsSettings.brickHitParticles) ||
+      (type.includes("BrickDestroy") && !graphicsSettings.brickDestroyParticles);
+    const emitter = shouldDisableEmitter
+      ? undefined
+      : createEmitterCustomData(
+          config,
+          Math.max(baseInitialRadius, maxInitialOuterRadius)
+        );
     const effectLifetimeMs = computeEffectLifetime(config, emitter);
     const waveLifetimeMs = Math.max(1, config.lifetimeMs);
 

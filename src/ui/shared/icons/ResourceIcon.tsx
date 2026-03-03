@@ -1,4 +1,6 @@
 import { ResourceId, getResourceConfig } from "@db/resources-db";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./ResourceIcon.css";
 
 interface ResourceIconProps {
@@ -15,8 +17,10 @@ const buildClassName = (base: string, extra?: string): string => {
 };
 
 export const ResourceIcon: React.FC<ResourceIconProps> = ({ resourceId, className, label }) => {
-  const resourceLabel = label ?? getResourceConfig(resourceId).name;
-  const iconPath = `/images/resources/${resourceId}.svg`;
+  const { t } = useLocalization();
+  const fallbackName = getResourceConfig(resourceId).name;
+  const resourceLabel = label ?? t(`resources.${resourceId}.name`, fallbackName);
+  const iconPath = getAssetUrl(`images/resources/${resourceId}.svg`);
 
   return (
     <span className={buildClassName("resource-icon", className)} role="img" aria-label={resourceLabel}>

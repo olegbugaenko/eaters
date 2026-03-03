@@ -30,6 +30,7 @@ interface CirclePrimitiveOptions {
 interface DynamicCircleOptions {
   segments?: number;
   offset?: SceneVector2;
+  getOffset?: (instance: SceneObjectInstance) => SceneVector2 | undefined;
   radius?: number;
   getRadius?: (instance: SceneObjectInstance, previousRadius: number) => number;
   fill?: SceneFill;
@@ -104,6 +105,16 @@ const resolveFill = (
     return options.fill;
   }
   return instance.data.fill;
+};
+
+const resolveOffset = (
+  options: DynamicCircleOptions,
+  instance: SceneObjectInstance
+): SceneVector2 | undefined => {
+  if (typeof options.getOffset === "function") {
+    return options.getOffset(instance);
+  }
+  return options.offset;
 };
 
 const pushVertex = (
@@ -266,7 +277,8 @@ export const createDynamicCirclePrimitive = (
   // refreshFill tracks instance.data.fill reference changes for visual effects
   const hasRefreshFill = typeof options.refreshFill === "function";
   // Can only fast-path if fill doesn't need refresh tracking
-  const canFastPath = isStaticFill && isStaticRadius && !hasRefreshFill;
+  const canFastPath =
+    isStaticFill && isStaticRadius && !hasRefreshFill && !options.getOffset;
   
   // For solid fills, components don't depend on center/rotation
   const staticFill = isStaticFill ? options.fill : null;
@@ -274,15 +286,14 @@ export const createDynamicCirclePrimitive = (
   
   const segments = Math.max(3, Math.floor(options.segments ?? DEFAULT_SEGMENTS));
   const trig = getCircleTrigLut(segments);
-  const initialCenter = getCenter(instance, options.offset);
+  const initialCenter = getCenter(instance, options);
   let radius = Math.max(
     resolveRadius(options, instance, getRadiusFromSize(instance.data.size, 0)),
     0
   );
   
-  // For refreshFill: cache the resolved fill and track instance.data.fill reference
+  // For refreshFill: cache the resolved fill
   let cachedFill: SceneFill = resolveFill(options, instance);
-  let prevInstanceFillRef: SceneFill | undefined = hasRefreshFill ? instance.data.fill : undefined;
   
   const initialFillComponents = createFillVertexComponents({
     fill: cachedFill,
@@ -307,6 +318,8 @@ export const createDynamicCirclePrimitive = (
   previousFill.set(initialFillComponents);
   let previousCenterX = initialCenter.x;
   let previousCenterY = initialCenter.y;
+  let previousOffsetX = resolveOffset(options, instance)?.x ?? 0;
+  let previousOffsetY = resolveOffset(options, instance)?.y ?? 0;
   // Cache raw position for fast-path
   let prevPosX = getInstanceRenderPosition(instance).x;
   let prevPosY = getInstanceRenderPosition(instance).y;
@@ -317,48 +330,42 @@ export const createDynamicCirclePrimitive = (
     update(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
       
-      // Check if instance.data.fill reference changed (visual effect applied)
-      let fillRefChanged = false;
-      if (hasRefreshFill && target.data.fill !== prevInstanceFillRef) {
-        prevInstanceFillRef = target.data.fill;
+      // Check dirty flags for fill/color changes (visual effects)
+      let fillDirty = false;
+      if (hasRefreshFill && (target.data.fillDirty || target.data.colorDirty)) {
         cachedFill = options.refreshFill!(target);
-        fillRefChanged = true;
+        fillDirty = true;
       }
       
       // Fast path: skip expensive computations if nothing changed
       if (canFastPath &&
           pos.x === prevPosX &&
           pos.y === prevPosY &&
-          nextRotation === prevRotation) {
+          nextRotation === prevRotation &&
+          nextOffsetX === previousOffsetX &&
+          nextOffsetY === previousOffsetY) {
         return null;
       }
       
-      const nextCenter = getCenter(target, options.offset);
+      const nextCenter = getCenter(target, options);
       const nextRadius = Math.max(
         resolveRadius(options, target, getRadiusFromSize(target.data.size, radius)),
         0
       );
       
       // Skip fill computation for solid fills (color doesn't depend on position)
+      // For non-solid fills, use cachedFill (already resolved) instead of calling resolveFill again
       let fillComponents: Float32Array;
-      if (isSolidFill && !fillRefChanged) {
+      if (isSolidFill && !fillDirty) {
         fillComponents = fillScratch; // Reuse cached solid fill
-      } else if (fillRefChanged) {
-        // refreshFill was triggered - use the newly cached fill
+      } else {
+        // Use cachedFill - it's already been resolved (either initially or via dirty flag)
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
-          center: nextCenter,
-          rotation: target.data.rotation ?? 0,
-          size: {
-            width: nextRadius * 2,
-            height: nextRadius * 2,
-          },
-          radius: nextRadius,
-        });
-      } else {
-        fillComponents = writeFillVertexComponents(fillScratch, {
-          fill: resolveFill(options, target),
           center: nextCenter,
           rotation: target.data.rotation ?? 0,
           size: {
@@ -389,6 +396,8 @@ export const createDynamicCirclePrimitive = (
         prevPosX = pos.x;
         prevPosY = pos.y;
         prevRotation = nextRotation;
+        previousOffsetX = nextOffsetX;
+        previousOffsetY = nextOffsetY;
         return null;
       }
       radius = nextRadius;
@@ -397,6 +406,8 @@ export const createDynamicCirclePrimitive = (
       prevPosX = pos.x;
       prevPosY = pos.y;
       prevRotation = nextRotation;
+      previousOffsetX = nextOffsetX;
+      previousOffsetY = nextOffsetY;
       if (fillChanged) {
         previousFill.set(fillComponents);
       }
@@ -405,11 +416,16 @@ export const createDynamicCirclePrimitive = (
     updatePositionOnly(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
-      const nextCenter = getCenter(target, options.offset);
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
+      const nextCenter = getCenter(target, options);
       const centerChanged =
         nextCenter.x !== previousCenterX || nextCenter.y !== previousCenterY;
       const rotationChanged = nextRotation !== prevRotation;
-      if (!centerChanged && !rotationChanged) {
+      const offsetChanged =
+        nextOffsetX !== previousOffsetX || nextOffsetY !== previousOffsetY;
+      if (!centerChanged && !rotationChanged && !offsetChanged) {
         return null;
       }
       prevPosX = pos.x;
@@ -417,6 +433,8 @@ export const createDynamicCirclePrimitive = (
       prevRotation = nextRotation;
       previousCenterX = nextCenter.x;
       previousCenterY = nextCenter.y;
+      previousOffsetX = nextOffsetX;
+      previousOffsetY = nextOffsetY;
 
       const shouldUpdateFill =
         cachedFill.fillType !== 0 ||
@@ -455,11 +473,11 @@ export const createDynamicCirclePrimitive = (
 
 const getCenter = (
   instance: SceneObjectInstance,
-  offset: SceneVector2 | undefined
+  options: DynamicCircleOptions
 ): SceneVector2 => {
   return transformObjectPoint(
     getInstanceRenderPosition(instance),
     instance.data.rotation,
-    offset
+    resolveOffset(options, instance)
   );
 };

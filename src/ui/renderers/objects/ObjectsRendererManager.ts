@@ -15,7 +15,7 @@ import {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import type { SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { cloneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
 
 interface ManagedObject {
@@ -154,6 +154,30 @@ export class ObjectsRendererManager {
    */
   public getTiedChildren(parentId: string): ReadonlySet<string> | undefined {
     return this.tiedObjects.getChildren(parentId);
+  }
+
+  /**
+   * Get the rotation of an object by ID.
+   */
+  public getObjectRotation(objectId: string): number | undefined {
+    const managed = this.objects.get(objectId);
+    return managed?.instance.data.rotation;
+  }
+
+  /**
+   * Update rotation for tied children objects (e.g., status effect emitters).
+   */
+  public updateTiedChildrenRotation(parentId: string, rotation: number): void {
+    const children = this.tiedObjects.getChildren(parentId);
+    if (!children) {
+      return;
+    }
+    children.forEach((childId) => {
+      const managed = this.objects.get(childId);
+      if (managed) {
+        managed.instance.data.rotation = rotation;
+      }
+    });
   }
 
   public applyChanges(
@@ -562,6 +586,9 @@ export class ObjectsRendererManager {
     }
     this.objects.delete(id);
     this.autoAnimatingIds.delete(id);
+    
+    // Clean up interpolated positions for this object
+    this.interpolatedPositions.delete(id);
 
     // Unregister from tied objects (handles both parent and child cases)
     this.tiedObjects.unregisterChild(id);

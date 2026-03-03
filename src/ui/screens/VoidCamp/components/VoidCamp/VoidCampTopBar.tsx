@@ -1,4 +1,5 @@
 import { classNames } from "@ui/shared/classNames";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./VoidCampTopBar.css";
 
 interface VoidCampTopBarProps {
@@ -9,6 +10,8 @@ interface VoidCampTopBarProps {
   readonly onAchievementsClick?: () => void;
   readonly showAchievements?: boolean;
   readonly onExitClick: () => void;
+  readonly wishlistUrl?: string;
+  readonly feedbackUrl?: string;
 }
 
 export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
@@ -19,7 +22,10 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
   onAchievementsClick,
   showAchievements,
   onExitClick,
+  wishlistUrl,
+  feedbackUrl,
 }) => {
+  const { t } = useLocalization();
   return (
     <div className="void-camp-top-bar">
       <div className="void-camp-top-bar__left">
@@ -31,7 +37,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           )}
           onClick={onStatisticsClick}
         >
-          Statistics
+          {t("voidCamp.topBar.statistics", "Statistics")}
         </button>
         {showAchievements && onAchievementsClick && (
           <button
@@ -42,7 +48,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
             )}
             onClick={onAchievementsClick}
           >
-            Achievements
+            {t("voidCamp.topBar.achievements", "Achievements")}
           </button>
         )}
         <button
@@ -53,11 +59,35 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           )}
           onClick={onSettingsClick}
         >
-          Settings
+          {t("voidCamp.topBar.settings", "Settings")}
         </button>
       </div>
       <div className="void-camp-top-bar__right">
-        <span className="void-camp-top-bar__label">Version</span>
+        {wishlistUrl && (
+          <a
+            className={classNames(
+              "void-camp-top-bar__button",
+              "void-camp-top-bar__button--wishlist",
+              "void-camp-top-bar__link"
+            )}
+            href={wishlistUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("voidCamp.topBar.wishlist", "Wishlist on Steam")}
+          </a>
+        )}
+        {feedbackUrl && (
+          <a
+            className={classNames("void-camp-top-bar__feedback-link", "void-camp-top-bar__link")}
+            href={feedbackUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("voidCamp.topBar.feedback", "Feedback form")}
+          </a>
+        )}
+        <span className="void-camp-top-bar__label">{t("voidCamp.topBar.version", "Version")}</span>
         <button
           type="button"
           className={classNames(
@@ -67,7 +97,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           onClick={onVersionClick}
           disabled={!onVersionClick}
         >
-          {versionLabel ?? "Unknown"}
+          {versionLabel ?? t("voidCamp.topBar.unknownVersion", "Unknown")}
         </button>
         <button
           type="button"
@@ -77,7 +107,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
           )}
           onClick={onExitClick}
         >
-          Exit
+          {t("voidCamp.topBar.exit", "Exit")}
         </button>
       </div>
     </div>

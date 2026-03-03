@@ -97,6 +97,7 @@ export const serializeEmitterConfig = (config: PlayerUnitEmitterRenderConfig): s
     config.particlesPerSecond,
     config.particleLifetimeMs,
     config.fadeStartMs,
+    config.fadeInMs,
     config.sizeRange.min,
     config.sizeRange.max,
     config.offset.x,

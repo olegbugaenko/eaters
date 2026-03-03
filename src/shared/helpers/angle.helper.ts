@@ -62,3 +62,19 @@ export const normalizeRotation = (
   const normalized = normalizeAngle(value);
   return normalized === 0 ? 0 : normalized;
 };
+
+/**
+ * Interpolates between two angles using the shortest path.
+ * Handles non-finite values by falling back to 0.
+ */
+export const lerpAngle = (from: number, to: number, t: number): number => {
+  if (!Number.isFinite(from) || !Number.isFinite(to) || !Number.isFinite(t)) {
+    return 0;
+  }
+  const twoPi = Math.PI * 2;
+  const fromNormalized = normalizeAngle(from);
+  const toNormalized = normalizeAngle(to);
+  const delta =
+    ((toNormalized - fromNormalized + Math.PI * 3) % twoPi) - Math.PI;
+  return normalizeAngle(fromNormalized + delta * t);
+};

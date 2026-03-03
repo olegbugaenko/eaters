@@ -18,6 +18,7 @@ export interface SkillConfig {
   readonly effects: BonusEffectMap;
   readonly nodesRequired: Partial<Record<SkillId, number>>;
   readonly cost: SkillCostFunction;
+  readonly lockedForDemo?: boolean;
   readonly registerEvent?: {
     readonly text: string;
   };
@@ -29,6 +30,7 @@ export const SKILL_IDS = [
   "autorestart_rituals",
   "construction_guild",
   "construction_ledgers",
+  "draftsmanship",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -37,9 +39,11 @@ export const SKILL_IDS = [
   "arcane_amplifier",
   "sandstorm_ritual",
   "black_darts",
+  "electric_shards",
   "ring_of_fire",
   "sharp_mind",
   "sharp_mind2",
+  "magic_rain",
   "void_modules",
   "tail_spines",
   "pheromones",
@@ -66,6 +70,8 @@ export const SKILL_IDS = [
   "clarity3",
   "refinement",
   "refinement2",
+  "souls_harvest",
+  "wire_crafting",
   "vitality3",
   "vitality4",
   "arcane_research",
@@ -74,6 +80,7 @@ export const SKILL_IDS = [
   "engineered_plating",
   "armor_lore2",
   "armor_lore3",
+  "reinforced_silver_armor",
   "armor_lore4",
   "heavy_drill",
   "tool_fabrication",
@@ -81,10 +88,12 @@ export const SKILL_IDS = [
   "silver_drill",
   "penetration",
   "penetration2",
+  "wire_penetration",
   "penetration3",
   "soul_wood",
   "advanced_construction",
   "advanced_crafting",
+  "advanced_crafting2",
   "consiousness",
   "arcane_awareness",
   "weaken_curse",
@@ -125,6 +134,21 @@ const createDualResourceCost = (
   (level: number): ResourceAmount => ({
     [firstId]: Math.ceil(firstBase * Math.pow(firstGrowth, Math.max(level, 1))),
     [secondId]: Math.ceil(secondBase * Math.pow(secondGrowth, Math.max(level, 1))),
+  });
+
+const createTriResourceCost = (
+  firstId: ResourceId,
+  firstBase: number,
+  secondId: ResourceId,
+  secondBase: number,
+  thirdId: ResourceId,
+  thirdBase: number,
+  growth: number
+) =>
+  (level: number): ResourceAmount => ({
+    [firstId]: Math.ceil(firstBase * Math.pow(growth, Math.max(level, 1))),
+    [secondId]: Math.ceil(secondBase * Math.pow(growth, Math.max(level, 1))),
+    [thirdId]: Math.ceil(thirdBase * Math.pow(growth, Math.max(level, 1))),
   });
 
 const createMixedCost = (
@@ -245,13 +269,29 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { advanced_construction: 1 },
     cost: createResourceCost("silver", 100, 1.5),
   },
+  advanced_crafting2: {
+    id: "advanced_crafting2",
+    name: "Advanced Crafting II",
+    description:
+      "Improve your crafting speed.",
+    nodePosition: { x: -1, y: 7 },
+    maxLevel: 80,
+    icon: "crafting_speed_2.png",
+    effects: {
+      "crafting_speed_mult": {
+        multiplier: (level) => 1 + 0.125 * level,
+      },
+    },
+    nodesRequired: { advanced_crafting: 1 },
+    cost: createResourceCost("wire", 10, 1.5),
+  },
   construction_ledgers: {
     id: "construction_ledgers",
     name: "Construction Ledgers",
     description:
       "Account every shard and shipment; precision cuts future building costs.",
     nodePosition: { x: -2, y: 5 },
-    maxLevel: 80,
+    maxLevel: 20,
     icon: "constructions_ledger.png",
     effects: {
       building_cost_multiplier: {
@@ -259,7 +299,18 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       },
     },
     nodesRequired: { construction_guild: 1 },
-    cost: createResourceCost("paper", 8, 1.5),
+    cost: createResourceCost("paper", 8, 2.0),
+  },
+  draftsmanship: {
+    id: "draftsmanship",
+    name: "Draftsmanship",
+    description:
+      "Refine schematics for controlled overdrive, letting you push crafting limits at a cost.",
+    nodePosition: { x: -2, y: 6 },
+    maxLevel: 1,
+    effects: {},
+    nodesRequired: { construction_ledgers: 1 },
+    cost: createResourceCost("paper", 100, 1),
   },
   quarry_overseers: {
     id: "quarry_overseers",
@@ -309,6 +360,35 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { refinement: 7 },
     cost: createResourceCost('copper', 50, 1.5),
   },
+
+  souls_harvest: {
+    id: "souls_harvest",
+    name: "Souls Harvest",
+    description:
+      "Unlock Dark Research and let forbidden studies grow over time through harvested echoes.",
+    nodePosition: { x: 0, y: 6 },
+    maxLevel: 1,
+    icon: "resource_gain_4.png",
+    effects: {},
+    nodesRequired: { refinement2: 5 },
+    cost: createResourceCost('silver', 5000, 1),
+    registerEvent: {
+      text: "Whispers of Dark Research answer your harvest.",
+    },
+  },
+  wire_crafting: {
+    id: "wire_crafting",
+    name: "Wire Crafting",
+    description:
+      "Unlock access to wire crafting, allowing you to create more organs and buildings out of your materials.",
+    nodePosition: { x: 1, y: 6 },
+    maxLevel: 1,
+    icon: "wire_crafting.png",
+    effects: {
+    },
+    nodesRequired: { refinement2: 5 },
+    cost: createDualResourceCost('coal', 400, 1.5, 'copper', 1000, 1.5),
+  },
   void_modules: {
     id: "void_modules",
     name: "Chord",
@@ -357,6 +437,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
     icon: "ice_mastery.png",
+    lockedForDemo: true,
     effects: {},
     cost: createResourceCost("ice", 400, 1),
   },
@@ -369,6 +450,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { pheromones: 1 },
     maxLevel: 1,
     icon: "fire_mastery.png",
+    lockedForDemo: true,
     effects: {
     },
     cost: createResourceCost("magma", 400, 1),
@@ -474,6 +556,18 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { sandstorm_ritual: 1 },
     cost: createResourceCost('iron', 140, 1.65),
   },
+  electric_shards: {
+    id: "electric_shards",
+    name: "Electric Shards",
+    description:
+      "Crackle the lattice with unstable sparks, unlocking erratic shards of electricity.",
+    nodePosition: { x: 2, y: -6 },
+    maxLevel: 1,
+    icon: "electric_shards.png",
+    effects: {},
+    nodesRequired: { black_darts: 1 },
+    cost: createResourceCost('wire', 12, 1.0),
+  },
   ring_of_fire: {
     id: "ring_of_fire",
     name: "Ring of Fire",
@@ -482,6 +576,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 1, y: -6 },
     maxLevel: 1,
     icon: "ring_of_fire.png",
+    lockedForDemo: true,
     effects: {},
     nodesRequired: { black_darts: 1 },
     cost: createResourceCost('magma', 200, 1),
@@ -515,6 +610,17 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { sharp_mind: 5 },
     cost: createResourceCost('paper', 8, 1.5),
+  },
+  magic_rain: {
+    id: "magic_rain",
+    name: "Magic Rain",
+    description: "Unleash powerful bolts of arcane energy that rain down on your enemies.",
+    nodePosition: { x: -2, y: -6 },
+    maxLevel: 1,
+    icon: "magic_rain.png",
+    effects: {},
+    nodesRequired: { sharp_mind: 5 },
+    cost: createResourceCost('paper', 200, 1.5),
   },
   mana_reservior: {
     id: "mana_reservior",
@@ -892,6 +998,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { penetration: 5 },
     cost: createResourceCost('copper', 60, 1.5),
   },
+  wire_penetration: {
+    id: "wire_penetration",
+    name: "Piercing Fangs",
+    description:
+      "Wired impact channels sharpen the bite of your strikes against armor.",
+    nodePosition: { x: -7, y: 3 },
+    maxLevel: 15,
+    icon: "piercing_fangs.png",
+    effects: {
+      all_units_armor_penetration: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    nodesRequired: { penetration2: 5 },
+    cost: createResourceCost("wire", 50, 1.5),
+  },
   penetration3: {
     id: "penetration3",
     name: "Penetration III",
@@ -900,6 +1022,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: -8, y: 3 },
     maxLevel: 15,
     icon: "penetration_3.png",
+    lockedForDemo: true,
     effects: {
       all_units_armor_penetration: {
         income: (level) => 6 * level,
@@ -1021,6 +1144,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodesRequired: { armor_lore2: 5 },
     cost: createResourceCost('silver', 60, 1.5),
   },
+  reinforced_silver_armor: {
+    id: "reinforced_silver_armor",
+    name: "Reinforced Silver Armor",
+    description:
+      "Layer silvered plating with resilient supports, amplifying protection.",
+    nodePosition: { x: 7, y: 3 },
+    maxLevel: 15,
+    icon: "reinforced_armor.png",
+    effects: {
+      all_units_armor_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    nodesRequired: { armor_lore3: 5 },
+    cost: createResourceCost("tools", 100, 1.5),
+  },
   armor_lore4: {
     id: "armor_lore4",
     name: "Armor Lore IV",
@@ -1029,6 +1168,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     nodePosition: { x: 8, y: 3 },
     maxLevel: 15,
     icon: "armor5.png",
+    lockedForDemo: true,
     effects: {
       all_units_armor: {
         income: (level) => 15*level,

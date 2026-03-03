@@ -1,0 +1,43 @@
+# Локалізація UI
+
+Цей документ описує, як працює локалізація в проєкті та як перевіряти цілісність словників.
+
+## Де лежать переклади
+
+- Базові UI-стрінги: `src/localization/<lang>/ui.json`.
+- Додаткові домени: `maps.json`, `skills.json`, `unit-modules.json`, `buildings.json`, `resources.json`, `spells.json` у тій самій директорії.
+- Список підтримуваних мов береться з `src/db/languages-db.ts` (`LANGUAGE_CODES`, `LANGUAGES_DB`).
+
+## Правила для UI
+
+1. Будь-який статичний текст у React-компонентах має проходити через `t(key, fallback)`.
+2. Для нових рядків:
+   - спочатку додавайте ключ в `src/localization/en/ui.json`,
+   - далі додавайте той самий ключ у всі інші доступні локалі.
+3. Не залишайте «тимчасові» англійські рядки в JSX — перевірка в тестовому пайплайні має це підсвічувати через missing keys.
+
+## Автоматична перевірка missing keys
+
+У репозиторії є скрипт:
+
+- `scripts/check-localization-missing-keys.js`
+
+Що він робить:
+
+- читає базовий набір ключів з англійських словників доменів (`en/ui.json`, `en/maps.json`, `en/skills.json`, `en/unit-modules.json`, `en/buildings.json`, `en/resources.json`, `en/spells.json`),
+- бере список мов із `LANGUAGE_CODES` у `src/db/languages-db.ts`,
+- перевіряє всі інші локалі на відсутні ключі,
+- пише звіти в `logs/` (`.json` + `.txt`).
+
+### Запуск
+
+- Звичайний звіт (без падіння):
+  - `npm run check:localization-missing`
+- Строгий режим (помилка процесу, якщо знайдені missing keys):
+  - `npm run check:localization-missing:strict`
+
+## Інтеграція в тести
+
+`npm test` запускає strict-перевірку локалізації перед TypeScript-тестами.
+
+Це означає, що тестовий прогін фейлиться, якщо хоч в одній мові не вистачає ключів у будь-якому з підтриманих доменів локалізації.

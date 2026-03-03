@@ -10,7 +10,8 @@ export const createCraftingDefinition = (): ServiceDefinition<CraftingModule, "c
       unlocks: container.get("unlocks"),
       bonuses: container.get("bonuses"),
       newUnlocks: container.get("newUnlocks"),
+      localization: container.get("localization"),
     }),
   registerAsModule: true,
-  dependsOn: ["resources", "unlocks", "bonuses", "newUnlocks"],
+  dependsOn: ["resources", "unlocks", "bonuses", "newUnlocks", "localization"],
 });

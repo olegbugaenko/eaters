@@ -35,7 +35,7 @@ import {
   createBrickFill,
   cloneEmitterConfig,
 } from "./save-slot-scene-utils";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import { cloneRendererConfigForScene, deriveRendererStroke } from "@shared/helpers/renderer-clone.helper";
 
 export type SceneBounds = { x: number; y: number; width: number; height: number };

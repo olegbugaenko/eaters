@@ -10,3 +10,4 @@
 - Якщо губитеся в коді — почніть із [overview/file-structure.md](overview/file-structure.md) та [overview/interfaces.md](overview/interfaces.md).
 
 > Порада: шукайте ключові слова на кшталт `bridge key`, `spawn`, `upgrade` чи назви сервісів. Кожен файл містить розділ «Основні методи», де зібрані виклики, які найчастіше знадобляться при інтеграції.
+- Якщо працюєте з перекладами UI — див. [overview/localization.md](overview/localization.md).

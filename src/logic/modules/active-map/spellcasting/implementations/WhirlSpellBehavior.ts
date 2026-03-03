@@ -62,7 +62,7 @@ export class WhirlSpellBehavior implements SpellBehavior {
     const targetTypes =
       whirl.targetTypes && whirl.targetTypes.length > 0
         ? whirl.targetTypes
-        : (["brick"] as TargetType[]);
+        : (["brick", "enemy"] as TargetType[]);
 
     const spinSpeed = Math.max(0, whirl.spinSpeed ?? 2.5);
     const rotationSpeedMultiplier = whirl.rotationSpeedMultiplier ?? 1.0;

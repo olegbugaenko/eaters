@@ -25,6 +25,24 @@ import {
   STOP_OFFSETS_COMPONENTS,
 } from "../../objects/ObjectRenderer";
 
+// ============================================================================
+// Geometry Utilities
+// ============================================================================
+
+/**
+ * Pack vertices into a Float32Array for GPU upload.
+ */
+export const buildPackedVertices = (vertices: SceneVector2[]): Float32Array => {
+  const packed = new Float32Array(vertices.length * 2);
+  for (let i = 0; i < vertices.length; i += 1) {
+    const offset = i * 2;
+    const vertex = vertices[i]!;
+    packed[offset] = vertex.x;
+    packed[offset + 1] = vertex.y;
+  }
+  return packed;
+};
+
 interface FillVertexOptions {
   fill: SceneFill;
   center: SceneVector2;
@@ -83,26 +101,39 @@ const resolveRadius = (
 // Static fallback stops to avoid allocations
 const FALLBACK_SOLID_STOP: SceneGradientStop[] = [{ offset: 0, color: { r: 1, g: 1, b: 1, a: 1 } }];
 
+// OPTIMIZATION: Cache limited stops per gradient fill to avoid repeated allocations
+const gradientStopsCache = new WeakMap<readonly SceneGradientStop[], SceneGradientStop[]>();
+
 const limitStops = (stops: readonly SceneGradientStop[]): SceneGradientStop[] => {
-  // OPTIMIZATION: Don't slice if within limit - just return a copy
+  // Check cache first
+  let cached = gradientStopsCache.get(stops);
+  if (cached) {
+    return cached;
+  }
+  
+  // OPTIMIZATION: Don't slice if within limit - just return a copy (cached)
   if (stops.length <= MAX_GRADIENT_STOPS) {
-    return stops.slice();
-  }
-  const limited: SceneGradientStop[] = [];
-  const lastIndex = stops.length - 1;
-  limited.push(stops[0]!);
-  const middleCount = MAX_GRADIENT_STOPS - 2;
-  if (middleCount > 0) {
-    const step = lastIndex / (middleCount + 1);
-    for (let i = 1; i <= middleCount; i += 1) {
-      const rawIndex = Math.round(i * step);
-      const index = Math.min(lastIndex - 1, Math.max(1, rawIndex));
-      const candidate = (stops[index] ?? stops[lastIndex])!;
-      limited.push(candidate);
+    cached = stops.slice();
+  } else {
+    const limited: SceneGradientStop[] = [];
+    const lastIndex = stops.length - 1;
+    limited.push(stops[0]!);
+    const middleCount = MAX_GRADIENT_STOPS - 2;
+    if (middleCount > 0) {
+      const step = lastIndex / (middleCount + 1);
+      for (let i = 1; i <= middleCount; i += 1) {
+        const rawIndex = Math.round(i * step);
+        const index = Math.min(lastIndex - 1, Math.max(1, rawIndex));
+        const candidate = (stops[index] ?? stops[lastIndex])!;
+        limited.push(candidate);
+      }
     }
+    limited.push(stops[lastIndex]!);
+    cached = limited;
   }
-  limited.push(stops[lastIndex]!);
-  return limited;
+  
+  gradientStopsCache.set(stops, cached);
+  return cached;
 };
 
 // Cached solid stop per fill to avoid allocations
@@ -310,4 +341,24 @@ export const copyFillComponents = (
   components: Float32Array
 ): void => {
   target.set(components, offset + POSITION_COMPONENTS);
+};
+
+/**
+ * Build fill buffer data by repeating fill components for each vertex.
+ * Reuses target array if size matches.
+ */
+export const buildFillBufferData = (
+  vertexCount: number,
+  fillComponents: Float32Array,
+  target?: Float32Array
+): Float32Array => {
+  const requiredLength = vertexCount * FILL_COMPONENTS;
+  const data =
+    target && target.length === requiredLength
+      ? target
+      : new Float32Array(requiredLength);
+  for (let i = 0; i < vertexCount; i += 1) {
+    data.set(fillComponents, i * FILL_COMPONENTS);
+  }
+  return data;
 };

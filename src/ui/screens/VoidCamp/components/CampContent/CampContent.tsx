@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MapId } from "@db/maps-db";
-import { MapListEntry } from "@logic/modules/active-map/map/map.types";
+import { MapId } from "@/db/maps/maps-db";
+import { MapListEntry, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 import { CampTabsMenu } from "./TabMenu/CampTabsMenu";
 import { CampTabPanels } from "./TabPanels/CampTabPanels";
 import { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
@@ -11,25 +11,34 @@ import { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
+import {
+  CampTabKey,
+  CampTopLevelTabKey,
+  buildCampTabHasNew,
+  sanitizeCampTab,
+} from "./CampContent.helpers";
+import { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
 import "./CampContent.css";
 
-export type CampTabKey = "maps" | "skills" | "modules" | "buildings" | "crafting";
+export type { CampTabKey } from "./CampContent.helpers";
 
 interface CampContentProps {
   maps: MapListEntry[];
   clearedLevelsTotal: number;
   selectedMap: MapId | null;
+  mapResourcePreviewCache: MapResourcePreviewCache;
   onSelectMap: (mapId: MapId) => void;
   onSelectMapLevel: (mapId: MapId, level: number) => void;
   onStartMap: (mapId: MapId) => void;
   initialTab: CampTabKey;
-  onTabChange?: (tab: CampTabKey) => void;
+  onTabChange?: (tab: CampTopLevelTabKey) => void;
   resourceTotals: ResourceAmountPayload[];
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   unitDesignerState: UnitDesignerBridgeState;
   unitAutomationState: UnitAutomationBridgeState;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
+  darkResearchState: DarkResearchBridgeState;
   achievementsState: AchievementsBridgePayload;
   newUnlocksState: NewUnlockNotificationBridgeState;
 }
@@ -38,6 +47,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   maps,
   clearedLevelsTotal,
   selectedMap,
+  mapResourcePreviewCache,
   onSelectMap,
   onSelectMapLevel,
   onStartMap,
@@ -49,30 +59,39 @@ export const CampContent: React.FC<CampContentProps> = ({
   unitAutomationState,
   buildingsState,
   craftingState,
+  darkResearchState,
   achievementsState,
   newUnlocksState,
 }) => {
-  const [activeTab, setActiveTab] = useState<CampTabKey>(initialTab);
-  const fallbackTab = useMemo<CampTabKey>(() => {
+  const [activeTab, setActiveTab] = useState<CampTopLevelTabKey>(() => sanitizeCampTab(initialTab, {
+    moduleWorkshopUnlocked: moduleWorkshopState.unlocked,
+    buildingsUnlocked: buildingsState.unlocked || darkResearchState.unlocked,
+    craftingUnlocked: craftingState.unlocked,
+  }, initialTab === "maps" || initialTab === "skills" ? initialTab : "maps"));
+  const fallbackTab = useMemo<CampTopLevelTabKey>(() => {
     if (initialTab === "maps" || initialTab === "skills") {
       return initialTab;
     }
     return "maps";
   }, [initialTab]);
   const sanitizeTab = useCallback(
-    (tab: CampTabKey): CampTabKey => {
-      if (tab === "modules" && !moduleWorkshopState.unlocked) {
-        return fallbackTab;
-      }
-      if (tab === "buildings" && !buildingsState.unlocked) {
-        return fallbackTab;
-      }
-      if (tab === "crafting" && !craftingState.unlocked) {
-        return fallbackTab;
-      }
-      return tab;
-    },
-    [moduleWorkshopState.unlocked, buildingsState.unlocked, craftingState.unlocked, fallbackTab]
+    (tab: CampTabKey): CampTopLevelTabKey =>
+      sanitizeCampTab(
+        tab,
+        {
+          moduleWorkshopUnlocked: moduleWorkshopState.unlocked,
+          buildingsUnlocked: buildingsState.unlocked || darkResearchState.unlocked,
+          craftingUnlocked: craftingState.unlocked,
+        },
+        fallbackTab
+      ),
+    [
+      moduleWorkshopState.unlocked,
+      buildingsState.unlocked,
+      darkResearchState.unlocked,
+      craftingState.unlocked,
+      fallbackTab,
+    ]
   );
   useEffect(() => {
     setActiveTab(sanitizeTab(initialTab));
@@ -81,7 +100,7 @@ export const CampContent: React.FC<CampContentProps> = ({
     setActiveTab((current) => sanitizeTab(current));
   }, [sanitizeTab]);
   const handleTabChange = useCallback(
-    (tab: CampTabKey) => {
+    (tab: CampTopLevelTabKey) => {
       const sanitized = sanitizeTab(tab);
       setActiveTab(sanitized);
       onTabChange?.(sanitized);
@@ -89,13 +108,7 @@ export const CampContent: React.FC<CampContentProps> = ({
     [onTabChange, sanitizeTab]
   );
   const tabHasNew = useMemo(
-    () => ({
-      maps: (newUnlocksState.unseenByPrefix.maps ?? []).length > 0,
-      skills: false,
-      modules: (newUnlocksState.unseenByPrefix.biolab ?? []).length > 0,
-      crafting: (newUnlocksState.unseenByPrefix.crafting ?? []).length > 0,
-      buildings: (newUnlocksState.unseenByPrefix.buildings ?? []).length > 0,
-    }),
+    () => buildCampTabHasNew(newUnlocksState.unseenByPrefix),
     [newUnlocksState.unseenByPrefix]
   );
 
@@ -106,7 +119,7 @@ export const CampContent: React.FC<CampContentProps> = ({
           activeTab={activeTab}
           onChange={handleTabChange}
           modulesUnlocked={moduleWorkshopState.unlocked}
-          buildingsUnlocked={buildingsState.unlocked}
+          buildingsUnlocked={buildingsState.unlocked || darkResearchState.unlocked}
           craftingUnlocked={craftingState.unlocked}
           tabHasNew={tabHasNew}
         />
@@ -116,6 +129,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         maps={maps}
         clearedLevelsTotal={clearedLevelsTotal}
         selectedMap={selectedMap}
+        mapResourcePreviewCache={mapResourcePreviewCache}
         onSelectMap={onSelectMap}
         onSelectMapLevel={onSelectMapLevel}
         onStartMap={onStartMap}
@@ -125,7 +139,9 @@ export const CampContent: React.FC<CampContentProps> = ({
         unitAutomationState={unitAutomationState}
         buildingsState={buildingsState}
         craftingState={craftingState}
+        darkResearchState={darkResearchState}
         achievementsState={achievementsState}
+        newUnlocksState={newUnlocksState}
       />
     </div>
   );

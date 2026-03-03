@@ -25,11 +25,12 @@ import { PLAYER_UNIT_ABILITY_DEFINITIONS } from "../abilities";
 import type { AbilityDescription } from "../abilities/ability.types";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import { sanitizeRuntimeModifiers } from "../player-units.helpers";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import {
   cloneRendererConfigForScene,
   cloneAuraConfig,
 } from "@shared/helpers/renderer-clone.helper";
+import type { UnitDeathEffects } from "@shared/types/unit-death-effects";
 
 export interface UnitFactoryOptions {
   scene: SceneObjectManager;
@@ -83,6 +84,7 @@ export interface UnitFactoryResult {
   readonly critChance: number;
   readonly critMultiplier: number;
   readonly rewardMultiplier: number;
+  readonly soulDropChanceBonus: number;
   readonly damageTransferPercent: number;
   readonly damageTransferRadius: number;
   readonly attackStackBonusPerHit: number;
@@ -91,6 +93,7 @@ export interface UnitFactoryResult {
   readonly targetingMode: string;
   readonly renderer: PlayerUnitRendererConfig;
   readonly emitter?: ParticleEmitterConfig;
+  readonly deathEffects: UnitDeathEffects;
   readonly baseFillColor: SceneColor;
   readonly baseStrokeColor?: SceneColor;
   readonly visualEffects: VisualEffectState;
@@ -158,6 +161,7 @@ export class UnitFactory {
     });
 
     const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+    const deathEffects = config.deathEffects ?? [];
     const baseFillColor: SceneColor = {
       r: config.renderer.fill.r,
       g: config.renderer.fill.g,
@@ -257,6 +261,7 @@ export class UnitFactory {
       critChance,
       critMultiplier,
       rewardMultiplier: runtime.rewardMultiplier,
+      soulDropChanceBonus: runtime.soulDropChanceBonus,
       damageTransferPercent: runtime.damageTransferPercent,
       damageTransferRadius: runtime.damageTransferRadius,
       attackStackBonusPerHit: runtime.attackStackBonusPerHit,
@@ -265,6 +270,7 @@ export class UnitFactory {
       targetingMode: this.getDesignTargetingMode(data.designId ?? null, data.type),
       renderer: config.renderer,
       emitter,
+      deathEffects,
       baseFillColor,
       baseStrokeColor,
       visualEffects,

@@ -35,7 +35,7 @@ import {
   vectorLength,
   vectorHasLength,
 } from "../../../../shared/helpers/vector.helper";
-import { cloneSceneColor, sceneColorsEqual } from "@shared/helpers/scene-color.helper";
+import { cloneSceneColor, sceneColorsEqual } from "@shared/helpers/scene-style.helper";
 import { roundStat, sanitizeNumber } from "../../../../shared/helpers/numbers.helper";
 import { UnitStateFactory, UnitStateInput } from "./player-units.state-factory";
 import {
@@ -43,6 +43,7 @@ import {
   sanitizeUnitType,
   cloneEmitter,
   cloneRendererConfigForScene,
+  applyUnitDeathEffects,
 } from "./player-units.helpers";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
 import { BricksModule } from "../bricks/bricks.module";
@@ -71,6 +72,7 @@ import { PlayerUnitsTargetingProvider } from "./PlayerUnitsTargetingProvider";
 import type { DamageService } from "../targeting/DamageService";
 import type { EnemiesModule } from "../enemies/enemies.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import {
   ATTACK_DISTANCE_EPSILON,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -95,6 +97,8 @@ import type {
   PlayerUnitsModuleOptions,
   PlayerUnitSaveData,
 } from "./player-units.types";
+
+const SOUL_MAGNET_BONUS_SOURCE_ID = "runtime_player_units_soul_magnet";
 
 
 export class PlayerUnitsModule implements GameModule {
@@ -134,6 +138,7 @@ export class PlayerUnitsModule implements GameModule {
   private unitBlueprints = new Map<PlayerUnitType, PlayerUnitBlueprintStats>();
   private readonly statsReporter: UnitStatisticsReporter;
   private lastTickTimestampMs = performance.now();
+  private readonly statusEffectEmitters = new Map<string, Map<string, string[]>>();
 
   constructor(options: PlayerUnitsModuleOptions) {
     this.scene = options.scene;
@@ -141,6 +146,11 @@ export class PlayerUnitsModule implements GameModule {
     this.bridge = options.bridge;
     this.movement = options.movement;
     this.bonuses = options.bonuses;
+    this.bonuses.registerSource(SOUL_MAGNET_BONUS_SOURCE_ID, {
+      soul_drop_chance_add: {
+        income: (level) => this.getSoulMagnetBonusByLevel(level),
+      },
+    });
     this.explosions = options.explosions;
     this.statusEffects = options.statusEffects;
     const targeting = options.targeting ?? new TargetingService();
@@ -193,8 +203,28 @@ export class PlayerUnitsModule implements GameModule {
           });
         }
       },
+      applyBrickDamage: (brickId: string, damage: number, options) => {
+        const direction = options?.direction ?? { x: 0, y: 0 };
+        const result = this.bricks.applyDamage(brickId, damage, direction, {
+          rewardMultiplier: options?.rewardMultiplier,
+          armorPenetration: options?.armorPenetration,
+          skipKnockback: options?.skipKnockback,
+          overTime: options?.overTime,
+        });
+        return result.inflictedDamage;
+      },
+      applyTargetDamage: (targetId: string, damage: number, options) => {
+        if (!this.damage) {
+          return 0;
+        }
+        return this.damage.applyTargetDamage(targetId, damage, options);
+      },
       getBricksInRadius: (position: SceneVector2, radius: number) => {
         return this.getBrickIdsInRadius(position, radius);
+      },
+      getTargetsInRadius: (position: SceneVector2, radius: number, types) => {
+        const filter = types?.length ? { types } : undefined;
+        return this.targeting.findTargetsNear(position, radius, filter);
       },
       damageUnit: (unitId: string, damage: number) => {
         this.applyDamage(unitId, damage);
@@ -268,6 +298,57 @@ export class PlayerUnitsModule implements GameModule {
       },
       removeAura: (unitId, effectId) => {
         this.effects?.removeEffect(unitId, effectId as never);
+      },
+      applyEmitters: (unitId, effectId, emitters, options) => {
+        const unit = this.units.get(unitId);
+        if (!unit || emitters.length === 0) {
+          return;
+        }
+        const effectEmitters = this.statusEffectEmitters.get(unitId) ?? new Map();
+        if (effectEmitters.has(effectId)) {
+          return;
+        }
+        const ids: string[] = [];
+        const scaleMode = options?.offsetScale ?? "absolute";
+        emitters.forEach((emitter) => {
+          const scaledEmitter = this.scaleEmitterConfig(
+            emitter,
+            unit.physicalSize,
+            scaleMode,
+          );
+          const objectId = this.scene.addObject("statusEffectEmitter", {
+            position: { ...unit.position },
+            rotation: unit.rotation ?? 0,
+            fill: {
+              fillType: FILL_TYPES.SOLID,
+              color: { r: 0, g: 0, b: 0, a: 0 },
+            },
+            customData: {
+              emitter: scaledEmitter,
+              tiedToObjectId: unit.objectId,
+            },
+          });
+          ids.push(objectId);
+        });
+        if (ids.length > 0) {
+          effectEmitters.set(effectId, ids);
+          this.statusEffectEmitters.set(unitId, effectEmitters);
+        }
+      },
+      removeEmitters: (unitId, effectId) => {
+        const effectEmitters = this.statusEffectEmitters.get(unitId);
+        if (!effectEmitters) {
+          return;
+        }
+        const ids = effectEmitters.get(effectId);
+        if (!ids) {
+          return;
+        }
+        ids.forEach((id) => this.scene.removeObject(id));
+        effectEmitters.delete(effectId);
+        if (effectEmitters.size === 0) {
+          this.statusEffectEmitters.delete(unitId);
+        }
       },
       damageUnit: (unitId, amount) => {
         this.applyDamage(unitId, amount);
@@ -390,6 +471,12 @@ export class PlayerUnitsModule implements GameModule {
     const state = this.createUnitState(unit);
     this.units.set(state.id, state);
     this.unitOrder.push(state);
+    this.statusEffects.ensureInternalFurnace(
+      state.id,
+      state.attackStackBonusPerHit,
+      state.attackStackBonusCap,
+    );
+    this.syncSoulMagnetBonusSource();
     this.pushStats();
   }
 
@@ -443,9 +530,15 @@ export class PlayerUnitsModule implements GameModule {
       const state = this.createUnitState(unit);
       this.units.set(state.id, state);
       this.unitOrder.push(state);
+      this.statusEffects.ensureInternalFurnace(
+        state.id,
+        state.attackStackBonusPerHit,
+        state.attackStackBonusCap,
+      );
     });
 
     this.abilities.resetRun();
+    this.syncSoulMagnetBonusSource();
     this.pushStats();
   }
 
@@ -508,11 +601,6 @@ export class PlayerUnitsModule implements GameModule {
     };
 
     const state = this.unitStateFactory.createWithTransform(input);
-    this.statusEffects.ensureInternalFurnace(
-      state.id,
-      state.attackStackBonusPerHit,
-      state.attackStackBonusCap,
-    );
     return state;
   }
 
@@ -634,6 +722,10 @@ export class PlayerUnitsModule implements GameModule {
       }
     });
     return found;
+  }
+
+  public forEachUnit(visitor: (unit: PlayerUnitState) => void): void {
+    this.unitOrder.forEach((unit) => visitor(this.cloneUnit(unit)));
   }
 
   public forEachUnitNear(
@@ -830,9 +922,28 @@ export class PlayerUnitsModule implements GameModule {
     };
   }
 
+  private scaleEmitterConfig(
+    emitter: ParticleEmitterConfig,
+    physicalSize: number,
+    scaleMode: "absolute" | "unit",
+  ): ParticleEmitterConfig {
+    if (scaleMode !== "unit") {
+      return emitter;
+    }
+    const offset = emitter.offset ?? { x: 0, y: 0 };
+    return {
+      ...emitter,
+      offset: {
+        x: offset.x * physicalSize,
+        y: offset.y * physicalSize,
+      },
+    };
+  }
+
   private removeUnit(unit: PlayerUnitState): void {
     if (unit.hp <= 0) {
       this.statistics?.recordCreatureDeath();
+      applyUnitDeathEffects(unit.deathEffects, unit.position, this.explosions);
     }
     this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     this.scene.removeObject(unit.objectId);
@@ -840,6 +951,7 @@ export class PlayerUnitsModule implements GameModule {
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.arcs?.clearArcsForUnit(unit.id);
+    this.syncSoulMagnetBonusSource();
     if (this.unitOrder.length === 0) {
       this.onAllUnitsDefeated?.();
     }
@@ -857,6 +969,27 @@ export class PlayerUnitsModule implements GameModule {
     this.unitOrder = [];
     this.units.clear();
     this.abilities.resetRun();
+    this.syncSoulMagnetBonusSource();
+  }
+
+
+  private getSoulMagnetBonusByLevel(level: number): number {
+    if (level <= 0) {
+      return 0;
+    }
+    const config = getUnitModuleConfig("soulMagnet");
+    return Math.max(0, config.baseBonusValue + config.bonusPerLevel * Math.max(level - 1, 0));
+  }
+
+  private syncSoulMagnetBonusSource(): void {
+    let maxLevel = 0;
+    this.unitOrder.forEach((unit) => {
+      const level = unit.moduleLevels?.soulMagnet ?? 0;
+      if (level > maxLevel) {
+        maxLevel = level;
+      }
+    });
+    this.bonuses.setBonusCurrentLevel(SOUL_MAGNET_BONUS_SOURCE_ID, maxLevel);
   }
 
   private clampToMap(position: SceneVector2): SceneVector2 {

@@ -5,7 +5,7 @@ import type { SceneObjectManager } from "@core/logic/provided/services/scene-obj
 import type { SceneFill, SceneStroke } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { sanitizeRotation } from "@shared/helpers/validation.helper";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import { ENEMY_SCENE_OBJECT_TYPE } from "./enemies.const";
 import type { EnemySpawnData, InternalEnemyState } from "./enemies.types";
 import { getEnemyConfig } from "../../../../db/enemies-db";
@@ -16,9 +16,10 @@ import {
   scaleEnemyStat,
   getEnemyLevelStatMultiplier,
 } from "./enemies.helpers";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import { cloneResourceStockpile, normalizeResourceAmount } from "../../../../db/resources-db";
 import type { MovementService } from "@core/logic/provided/services/movement/MovementService";
+import { cloneParticleEmitterConfig } from "../../../helpers/particle-emitter.helper";
 
 export interface EnemyStateInput {
   readonly enemyId: string;
@@ -50,6 +51,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     
     const position = clampToMap(enemy.position);
     const rotation = sanitizeRotation(enemy.rotation ?? 0);
+    const spawnSourceId = enemy.spawnSourceId;
 
     const maxHp = stats.maxHp;
     const hp = clampNumber(enemy.hp ?? maxHp, 0, maxHp);
@@ -60,6 +62,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
     const attackRange = clampNumber(config.attackRange ?? 240, 0, Number.POSITIVE_INFINITY);
     const moveSpeed = clampNumber(config.moveSpeed, 0, Number.POSITIVE_INFINITY);
     const physicalSize = clampNumber(config.physicalSize, 0, Number.POSITIVE_INFINITY);
+    const lockRotation = Boolean(config.lockRotation);
     const DEFAULT_SELF_KNOCKBACK_DISTANCE = 6;
     const DEFAULT_SELF_KNOCKBACK_SPEED = 30;
     const selfKnockBackDistance = clampNumber(
@@ -123,9 +126,12 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
       attackSeriesState: undefined,
       moveSpeed,
       physicalSize,
+      lockRotation,
       selfKnockBackDistance,
       selfKnockBackSpeed,
       reward: stats.rewards,
+      soulReward: stats.soulReward,
+      spawnSourceId,
       fill,
       stroke,
       movementId,
@@ -136,6 +142,7 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
 
   protected override transform(state: InternalEnemyState): void {
     const config = getEnemyConfig(state.type);
+    const emitterConfig = config.emitter ? cloneParticleEmitterConfig(config.emitter) : undefined;
     
     // Pass renderer config in customData for the renderer
     const sceneObjectId = this.scene.addObject(ENEMY_SCENE_OBJECT_TYPE, {
@@ -148,6 +155,8 @@ export class EnemyStateFactory extends StateFactory<InternalEnemyState, EnemySta
         renderer: config.renderer,
         type: state.type,
         level: state.level,
+        emitter: emitterConfig,
+        physicalSize: state.physicalSize,
       },
     });
     state.sceneObjectId = sceneObjectId;

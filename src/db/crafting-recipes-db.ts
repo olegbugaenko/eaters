@@ -1,9 +1,9 @@
 import { ResourceAmount, ResourceId } from "./resources-db";
 import { SkillId } from "./skills-db";
 import { UnlockConditionList } from "@shared/types/unlocks";
-import { MapId } from "./maps-db";
+import { MapId } from "./maps/maps-db";
 
-export type CraftingRecipeId = "tools" | "paper";
+export type CraftingRecipeId = "tools" | "paper" | "wire";
 
 export interface CraftingRecipeConfig {
   readonly id: CraftingRecipeId;
@@ -23,6 +23,11 @@ const TOOL_INGREDIENTS: ResourceAmount = Object.freeze({
 const PAPER_INGREDIENTS: ResourceAmount = Object.freeze({
   organics: 50,
   wood: 10,
+});
+
+const WIRE_INGREDIENTS: ResourceAmount = Object.freeze({
+  coal: 100,
+  copper: 500,
 });
 
 const CRAFTING_RECIPE_DB: Record<CraftingRecipeId, CraftingRecipeConfig> = {
@@ -52,6 +57,21 @@ const CRAFTING_RECIPE_DB: Record<CraftingRecipeId, CraftingRecipeConfig> = {
       {
         type: "skill",
         id: "paper_milling",
+        level: 1,
+      },
+    ],
+  },
+  wire: {
+    id: "wire",
+    name: "Wire Fabrication",
+    productId: "wire",
+    productAmount: 1,
+    ingredients: WIRE_INGREDIENTS,
+    baseDurationMs: 3000,
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "wire_crafting",
         level: 1,
       },
     ],

@@ -11,6 +11,7 @@ import { SceneSummoningPanel } from "./SceneSummoningPanel";
 interface SceneSummoningPanelContainerProps {
   panelRef: MutableRefObject<HTMLDivElement | null>;
   selectedSpellIdRef: MutableRefObject<SpellId | null>;
+  spellCastPulse: { id: SpellId; token: number } | null;
   onSummon: (designId: UnitDesignId) => void;
   onHoverInfoChange: (content: SceneTooltipContent | null) => void;
   onToggleAutomation: (designId: UnitDesignId, enabled: boolean) => void;
@@ -19,6 +20,7 @@ interface SceneSummoningPanelContainerProps {
 export const SceneSummoningPanelContainer: React.FC<SceneSummoningPanelContainerProps> = ({
   panelRef,
   selectedSpellIdRef,
+  spellCastPulse,
   onSummon,
   onHoverInfoChange,
   onToggleAutomation,
@@ -35,6 +37,7 @@ export const SceneSummoningPanelContainer: React.FC<SceneSummoningPanelContainer
     <SceneSummoningPanel
       ref={panelRef}
       selectedSpellId={selectedSpellId}
+      spellCastPulse={spellCastPulse}
       onSelectSpell={handleSelectSpell}
       onSummon={onSummon}
       onHoverInfoChange={onHoverInfoChange}

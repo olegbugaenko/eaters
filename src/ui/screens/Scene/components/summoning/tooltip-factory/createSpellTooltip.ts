@@ -1,11 +1,17 @@
 import type {
   ProjectileSpellOption,
   PersistentAoeSpellOption,
+  ProjectilesRainSpellOption,
   SpellOption,
   WhirlSpellOption,
 } from "@logic/modules/active-map/spellcasting/spellcasting.types";
-import { SceneTooltipContent, SceneTooltipStat } from "../../tooltip/SceneTooltipPanel";
+import {
+  SceneTooltipContent,
+  SceneTooltipStat,
+} from "../../tooltip/SceneTooltipPanel";
 import { formatNumber } from "@ui-shared/format/number";
+
+type Translate = (key: string, fallback?: string) => string;
 
 const formatDamageRange = (min: number, max: number): string => {
   const clampedMin = Math.max(min, 0);
@@ -52,9 +58,7 @@ const formatSpellCost = (cost: SpellOption["cost"]): string => {
     }
     appendCost(
       key,
-      key
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase()),
+      key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()),
     );
   });
 
@@ -68,6 +72,7 @@ const formatSpellCost = (cost: SpellOption["cost"]): string => {
 const appendProjectileStats = (
   spell: ProjectileSpellOption,
   stats: SceneTooltipStat[],
+  t: Translate,
 ): void => {
   const effectiveMin = spell.damage.min * spell.spellPowerMultiplier;
   const effectiveMax = spell.damage.max * spell.spellPowerMultiplier;
@@ -81,13 +86,14 @@ const appendProjectileStats = (
   stats.push({
     label: "Damage",
     value: formatDamageRange(effectiveMin, effectiveMax),
-    hint: `Base ${baseDamageLabel} · Spell Power ${multiplierLabel}×`,
+    hint: `${t("scene.summoning.spellTooltip.base", "Base")} ${baseDamageLabel} · ${t("scene.summoning.spellTooltip.spellPower", "Spell Power")} ${multiplierLabel}×`,
   });
 };
 
 const appendWhirlStats = (
   spell: WhirlSpellOption,
   stats: SceneTooltipStat[],
+  t: Translate,
 ): void => {
   const multiplierLabel = formatNumber(spell.spellPowerMultiplier, {
     minimumFractionDigits: 2,
@@ -98,35 +104,44 @@ const appendWhirlStats = (
   const totalCapacity = spell.maxHealth * spell.spellPowerMultiplier;
 
   stats.push({
-    label: "Damage / s",
+    label: t("scene.summoning.spellTooltip.damagePerSecond", "Damage / s"),
     value: formatNumber(effectiveDps, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
       compact: false,
     }),
-    hint: `Base ${formatNumber(spell.damagePerSecond, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-      compact: false,
-    })} · Spell Power ${multiplierLabel}×`,
+    hint: `${t("scene.summoning.spellTooltip.base", "Base")} ${formatNumber(
+      spell.damagePerSecond,
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+        compact: false,
+      },
+    )} · ${t("scene.summoning.spellTooltip.spellPower", "Spell Power")} ${multiplierLabel}×`,
   });
 
   stats.push({
-    label: "Total Capacity",
+    label: t("scene.summoning.spellTooltip.totalCapacity", "Total Capacity"),
     value: formatNumber(totalCapacity, {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
       compact: false,
     }),
-    hint: `Storm dissipates after dealing ${formatNumber(spell.maxHealth, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-      compact: false,
-    })} base damage.`,
+    hint: `${t(
+      "scene.summoning.spellTooltip.totalCapacityHint",
+      "Storm dissipates after dealing {{value}} base damage.",
+    ).replace(
+      "{{value}}",
+      formatNumber(spell.maxHealth, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+        compact: false,
+      }),
+    )}`,
   });
 
   stats.push({
-    label: "Radius",
+    label: t("scene.summoning.spellTooltip.radius", "Radius"),
     value: `${formatNumber(spell.radius, {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
@@ -135,7 +150,7 @@ const appendWhirlStats = (
   });
 
   stats.push({
-    label: "Travel Speed",
+    label: t("scene.summoning.spellTooltip.travelSpeed", "Travel Speed"),
     value: `${formatNumber(spell.speed, {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
@@ -147,13 +162,14 @@ const appendWhirlStats = (
 const appendPersistentAoeStats = (
   spell: PersistentAoeSpellOption,
   stats: SceneTooltipStat[],
+  t: Translate,
 ): void => {
   const effectiveDps = spell.damagePerSecond * spell.spellPowerMultiplier;
 
   // Only show damage if it's > 0
   if (effectiveDps > 0) {
     stats.push({
-      label: "Damage / s",
+      label: t("scene.summoning.spellTooltip.damagePerSecond", "Damage / s"),
       value: formatNumber(effectiveDps, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -164,9 +180,13 @@ const appendPersistentAoeStats = (
 
   // Show damage reduction if present
   if (spell.damageReduction && spell.damageReduction > 0) {
-    const effectiveReduction = spell.damageReduction * spell.spellPowerMultiplier;
+    const effectiveReduction =
+      spell.damageReduction * spell.spellPowerMultiplier;
     stats.push({
-      label: "Damage Reduction",
+      label: t(
+        "scene.summoning.spellTooltip.damageReduction",
+        "Damage Reduction",
+      ),
       value: formatNumber(effectiveReduction, {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
@@ -179,7 +199,10 @@ const appendPersistentAoeStats = (
   const durationSeconds = spell.effectDurationSeconds ?? spell.durationSeconds;
   if (durationSeconds > 0) {
     stats.push({
-      label: "Effect Duration",
+      label: t(
+        "scene.summoning.spellTooltip.effectDuration",
+        "Effect Duration",
+      ),
       value: `${formatNumber(durationSeconds, {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
@@ -189,7 +212,7 @@ const appendPersistentAoeStats = (
   }
 
   stats.push({
-    label: "Radius",
+    label: t("scene.summoning.spellTooltip.radius", "Radius"),
     value: `${formatNumber(spell.endRadius, {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
@@ -198,18 +221,71 @@ const appendPersistentAoeStats = (
   });
 };
 
-export const createSpellTooltip = (spell: SpellOption): SceneTooltipContent => {
+const appendProjectilesRainStats = (
+  spell: ProjectilesRainSpellOption,
+  stats: SceneTooltipStat[],
+  t: Translate,
+): void => {
+  const effectiveMin = spell.damage.min * spell.spellPowerMultiplier;
+  const effectiveMax = spell.damage.max * spell.spellPowerMultiplier;
+  const baseDamageLabel = formatDamageRange(spell.damage.min, spell.damage.max);
+  const multiplierLabel = formatNumber(spell.spellPowerMultiplier, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    compact: false,
+  });
+
+  stats.push({
+    label: t("scene.summoning.spellTooltip.impactDamage", "Impact Damage"),
+    value: formatDamageRange(effectiveMin, effectiveMax),
+    hint: `${t("scene.summoning.spellTooltip.base", "Base")} ${baseDamageLabel} · ${t("scene.summoning.spellTooltip.spellPower", "Spell Power")} ${multiplierLabel}×`,
+  });
+
+  stats.push({
+    label: t("scene.summoning.spellTooltip.duration", "Duration"),
+    value: `${formatNumber(spell.durationSeconds, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+      compact: false,
+    })} s`,
+  });
+
+  stats.push({
+    label: t("scene.summoning.spellTooltip.spawnInterval", "Spawn Interval"),
+    value: `${formatNumber(spell.spawnIntervalMs, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      compact: false,
+    })} ms`,
+  });
+
+  stats.push({
+    label: t("scene.summoning.spellTooltip.rainRadius", "Rain Radius"),
+    value: `${formatNumber(spell.radius, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      compact: false,
+    })} u`,
+  });
+};
+
+export const createSpellTooltip = (
+  spell: SpellOption,
+  t: Translate,
+): SceneTooltipContent => {
   const stats: SceneTooltipStat[] = [];
   if (spell.type === "projectile") {
-    appendProjectileStats(spell, stats);
+    appendProjectileStats(spell, stats, t);
   } else if (spell.type === "whirl") {
-    appendWhirlStats(spell, stats);
+    appendWhirlStats(spell, stats, t);
+  } else if (spell.type === "projectiles_rain") {
+    appendProjectilesRainStats(spell, stats, t);
   } else {
-    appendPersistentAoeStats(spell, stats);
+    appendPersistentAoeStats(spell, stats, t);
   }
 
   stats.push({
-    label: "Cooldown",
+    label: t("scene.summoning.spellTooltip.cooldown", "Cooldown"),
     value: `${formatNumber(spell.cooldownSeconds, {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,

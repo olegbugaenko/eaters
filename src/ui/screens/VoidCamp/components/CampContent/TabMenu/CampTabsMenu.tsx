@@ -1,15 +1,18 @@
 import { classNames } from "@ui-shared/classNames";
 import { NewUnlockWrapper } from "@ui-shared/NewUnlockWrapper";
-import { CampTabKey } from "../CampContent";
+import { useLocalization } from "@ui/shared/useLocalization";
+import { CampTabKey } from "../CampContent.helpers";
 import "./CampTabsMenu.css";
 
+type CampTopLevelTabKey = Exclude<CampTabKey, "buildings">;
+
 type CampTabsMenuProps = {
-  activeTab: CampTabKey;
-  onChange: (tab: CampTabKey) => void;
+  activeTab: CampTopLevelTabKey;
+  onChange: (tab: CampTopLevelTabKey) => void;
   modulesUnlocked: boolean;
   buildingsUnlocked: boolean;
   craftingUnlocked: boolean;
-  tabHasNew: Record<CampTabKey, boolean>;
+  tabHasNew: Record<CampTopLevelTabKey, boolean>;
 };
 
 export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
@@ -20,28 +23,29 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
   craftingUnlocked,
   tabHasNew,
 }) => {
-  const tabPathByKey: Record<CampTabKey, string> = {
+  const { t } = useLocalization();
+  const tabPathByKey: Record<CampTopLevelTabKey, string> = {
     maps: "maps",
     skills: "skills",
     modules: "biolab",
     crafting: "crafting",
-    buildings: "buildings",
+    stronghold: "buildings",
   };
-  const tabs: { key: CampTabKey; label: string }[] = [
-    { key: "maps", label: "Map Selector" },
-    { key: "skills", label: "Skill Tree" },
+  const tabs: { key: CampTopLevelTabKey; label: string }[] = [
+    { key: "maps", label: t("voidCamp.tabs.maps", "Map Selector") },
+    { key: "skills", label: t("voidCamp.tabs.skills", "Skill Tree") },
   ];
 
   if (modulesUnlocked) {
-    tabs.push({ key: "modules", label: "Biolab" });
+    tabs.push({ key: "modules", label: t("voidCamp.tabs.modules", "Biolab") });
   }
 
   if (craftingUnlocked) {
-    tabs.push({ key: "crafting", label: "Crafting" });
+    tabs.push({ key: "crafting", label: t("voidCamp.tabs.crafting", "Crafting") });
   }
 
   if (buildingsUnlocked) {
-    tabs.push({ key: "buildings", label: "Buildings" });
+    tabs.push({ key: "stronghold", label: t("voidCamp.tabs.stronghold", "Stronghold") });
   }
 
   return (
@@ -61,10 +65,7 @@ export const CampTabsMenu: React.FC<CampTabsMenuProps> = ({
               className={classes}
               onClick={() => onChange(tab.key)}
             >
-              <NewUnlockWrapper
-                path={tabPathByKey[tab.key]}
-                hasNew={tabHasNew[tab.key]}
-              >
+              <NewUnlockWrapper path={tabPathByKey[tab.key]} hasNew={tabHasNew[tab.key]}>
                 {tab.label}
               </NewUnlockWrapper>
             </button>

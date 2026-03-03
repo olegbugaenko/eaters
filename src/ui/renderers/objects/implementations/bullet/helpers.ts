@@ -77,6 +77,18 @@ export const getBulletRadius = (instance: SceneObjectInstance): number => {
 };
 
 /**
+ * Gets projectile movement rotation (used for tail/emitters)
+ */
+export const getMovementRotation = (instance: SceneObjectInstance): number => {
+  const data = instance.data.customData as BulletRendererCustomData | undefined;
+  const rotation =
+    typeof data?.movementRotation === "number" && Number.isFinite(data.movementRotation)
+      ? data.movementRotation
+      : instance.data.rotation;
+  return typeof rotation === "number" && Number.isFinite(rotation) ? rotation : 0;
+};
+
+/**
  * Gets projectile shape (circle or sprite)
  */
 export const getProjectileShape = (instance: SceneObjectInstance): "circle" | "sprite" => {

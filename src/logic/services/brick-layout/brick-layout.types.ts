@@ -44,6 +44,14 @@ export interface SquareWithBricksOptions
   readonly rotation?: number;
 }
 
+export interface RectangleWithBricksOptions
+  extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
+  readonly center: SceneVector2;
+  readonly width: number;
+  readonly height: number;
+  readonly rotation?: number;
+}
+
 export interface ConnectorWithBricksOptions
   extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
   readonly start: SceneVector2;
@@ -57,6 +65,49 @@ export interface TemplateWithBricksOptions {
   readonly horizontalGap?: number; // Gap between bricks horizontally (default: 1)
   readonly verticalGap?: number; // Gap between bricks vertically (default: 1)
   readonly rotation?: number; // Rotation in radians (default: 0)
+}
+
+export interface BezierCurveSegment {
+  readonly start: SceneVector2;
+  readonly control1: SceneVector2;
+  readonly control2: SceneVector2;
+  readonly end: SceneVector2;
+}
+
+export interface BezierCurveWithBricksOptions {
+  readonly segments: readonly BezierCurveSegment[];
+  readonly spacing?: number;
+  readonly sampleStep?: number;
+  readonly rotationOffset?: number;
+  readonly thickness?: number;
+}
+
+export interface SpiralSleeveWithBricksOptions {
+  readonly center: SceneVector2;
+  readonly innerRadius: number;
+  readonly radiusStep: number;
+  readonly turns: number;
+  readonly width: number;
+  readonly startAngle?: number;
+  readonly clockwise?: boolean;
+  readonly spacing?: number;
+  readonly sampleStep?: number;
+  readonly rotationOffset?: number;
+}
+
+export interface BezierTransformOptions {
+  readonly position?: SceneVector2;
+  readonly scale?: number | SceneVector2;
+  readonly rotation?: number;
+}
+
+export interface BezierPolygonWithBricksOptions
+  extends Omit<PolygonWithBricksOptions, "vertices" | "holes"> {
+  readonly outline: readonly BezierCurveSegment[];
+  readonly holes?: readonly (readonly BezierCurveSegment[])[];
+  readonly sampleStep?: number;
+  readonly alignToEdge?: boolean;
+  readonly rotationOffset?: number;
 }
 
 export type BrickShapeBlueprint =
@@ -85,6 +136,12 @@ export type BrickShapeBlueprint =
       readonly generationOptions?: BrickGenerationOptions;
     }
   | {
+      readonly shape: "rectangle";
+      readonly brickType: BrickType;
+      readonly options: RectangleWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
       readonly shape: "connector";
       readonly brickType: BrickType;
       readonly options: ConnectorWithBricksOptions;
@@ -95,9 +152,40 @@ export type BrickShapeBlueprint =
       readonly brickType: BrickType;
       readonly options: TemplateWithBricksOptions;
       readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "bezierCurve";
+      readonly brickType: BrickType;
+      readonly options: BezierCurveWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "spiralSleeve";
+      readonly brickType: BrickType;
+      readonly options: SpiralSleeveWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
+    }
+  | {
+      readonly shape: "bezierPolygon";
+      readonly brickType: BrickType;
+      readonly options: BezierPolygonWithBricksOptions;
+      readonly generationOptions?: BrickGenerationOptions;
     };
 
 export interface BrickSpacing {
   radial: number;
   tangential: number;
 }
+
+export type BezierSegment = {
+  start: SceneVector2;
+  control1: SceneVector2;
+  control2: SceneVector2;
+  end: SceneVector2;
+};
+
+export type CurveParams = {
+  segments: readonly BezierSegment[];
+  spacing: number;
+  thickness: number;
+};

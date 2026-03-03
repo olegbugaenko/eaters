@@ -1,6 +1,7 @@
 import { useCallback, useId } from "react";
 import type { AchievementBridgeEntry } from "@logic/modules/shared/achievements/achievements.types";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./AchievementsModal.css";
 
 interface AchievementsModalProps {
@@ -14,6 +15,7 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
   onClose,
   achievements,
 }) => {
+  const { t } = useLocalization();
   const titleId = useId();
 
   const handleDialogClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -38,16 +40,16 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
       >
         <header className="achievements-modal__header">
           <h2 id={titleId} className="achievements-modal__title">
-            Achievements
+            {t("voidCamp.topBar.achievements", "Achievements")}
           </h2>
           <button type="button" className="achievements-modal__close" onClick={onClose}>
-            Close
+            {t("settings.close", "Close")}
           </button>
         </header>
         <div className="achievements-modal__content">
           {unlockedAchievements.length === 0 ? (
             <div className="achievements-modal__empty">
-              No achievements unlocked yet. Complete special maps to earn achievements!
+              {t("voidCamp.achievements.empty", "No achievements unlocked yet. Complete special maps to earn achievements!")}
             </div>
           ) : (
             <ul className="achievements-modal__list">
@@ -59,7 +61,7 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
                         {achievement.name}
                       </h3>
                       <p className="achievements-modal__item-level">
-                        Level {achievement.level} / {achievement.maxLevel}
+                        {t("voidCamp.common.level", "Level")} {achievement.level} / {achievement.maxLevel}
                       </p>
                     </div>
                   </div>
@@ -68,13 +70,13 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
                   </p>
                   {achievement.mapId && (
                     <p className="achievements-modal__item-source">
-                      Source: {achievement.mapId}
+                      {t("voidCamp.achievements.source", "Source")}: {achievement.mapId}
                     </p>
                   )}
                   <div className="achievements-modal__item-bonuses">
                     <BonusEffectsPreviewList
                       effects={achievement.bonusEffects}
-                      emptyLabel="No bonuses yet."
+                      emptyLabel={t("voidCamp.maps.noBonuses", "No bonuses yet.")}
                     />
                   </div>
                 </li>

@@ -3,6 +3,7 @@ import type { PlayerUnitType } from "../../../../db/player-units-db";
 import type { UnitModuleId, UnitModuleBonusType } from "../../../../db/unit-modules-db";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { UnitModuleWorkshopModule } from "../unit-module-workshop/unit-module-workshop.module";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 import type {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
@@ -88,6 +89,7 @@ export interface UnitDesignModuleOptions {
   bridge: DataBridge;
   bonuses: BonusesModule;
   workshop: UnitModuleWorkshopModule;
+  localization: LocalizationService;
 }
 
 export type UnitDesignerListener = (

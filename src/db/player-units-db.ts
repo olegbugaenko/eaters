@@ -10,6 +10,7 @@ import { ResourceCost } from "@shared/types/resources";
 import type { UnitModuleId } from "./unit-modules-db";
 import { mapLineToPolygonShape } from '@shared/helpers/paths.helper';
 import type { ExtendedRendererLayerFields, BaseRendererLayerConfig } from "@shared/types/renderer.types";
+import type { UnitDeathEffects } from "@shared/types/unit-death-effects";
 
 export type PlayerUnitType = "bluePentagon";
 
@@ -56,6 +57,7 @@ export interface PlayerUnitConfig {
   readonly baseCritChance?: number;
   readonly baseCritMultiplier?: number;
   readonly emitter?: ParticleEmitterConfig;
+  readonly deathEffects?: UnitDeathEffects;
   readonly cost: ResourceCost;
 }
 
@@ -270,6 +272,30 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           fill: { type: "base", brightness: -0.05 },
           stroke: { type: "base", width: 3.2, brightness: -0.05 },
         },
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          // тіло: довше й товстіше біля основи, помітніший силует
+          [ 
+            {x: 2, y: -3, width: 3.3}, 
+            {x: 1, y: -8, width: 2.4}, 
+            {x: -1, y: -11, width: 2.0},
+            {x: -3.5, y: -13, width: 1.5},
+            {x: -7, y: -14, width: 1.0}, 
+          ],
+          { requiresModule: "silverArmor", fill: { type: "base", brightness: -0.10 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          // тіло: довше й товстіше біля основи, помітніший силует
+          [ 
+            {x: 2, y: 3, width: 3.3}, 
+            {x: 1, y: 8, width: 2.4}, 
+            {x: -1, y: 11, width: 2.0},
+            {x: -3.5, y: 13, width: 1.5},
+            {x: -7, y: 14, width: 1.0}, 
+          ],
+          { requiresModule: "silverArmor", fill: { type: "base", brightness: -0.10 } },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
 
         // Верхній вусик (корінь + тіло + гачок)
         { shape: "polygon", requiresModule: "magnet",
@@ -306,6 +332,43 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           vertices: [ {x: 9.2, y: -4.3}, {x: 8.2, y: -4.9}, {x: 8.8, y: -3.7} ],
           fill: { type: "base", brightness: -0.05 },
           stroke: { type: "base", width: 1.1, brightness: -0.10 }
+        },
+
+        // Conductor tentacles
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: 0.8, y: 2.8, width: 1.4 }, { x: 5.8, y: 12.2, width: 1.2 }, { x: 13.4, y: 8.2, width: 1.2 }, { x: 18.8, y: 7.2, width: 1.2 } ], 
+          {
+            requiresModule: "conductorTentacles",
+            fill: { type: "base", brightness: -0.02 },
+            anim: { type: "sway", periodMs: 1650, amplitude: 3.3, falloff: "tip", axis: "normal", phase: 0.12 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: 0.8, y: -2.8, width: 1.4 }, { x: 5.8, y: -12.2, width: 1.2 }, { x: 13.4, y: -8.2, width: 1.2 }, { x: 18.8, y: -7.2, width: 1.2 } ],
+          {
+            requiresModule: "conductorTentacles",
+            fill: { type: "base", brightness: -0.02 },
+            anim: { type: "sway", periodMs: 1650, amplitude: 3.3, falloff: "tip", axis: "normal", phase: 3.26 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        {
+          shape: "circle",
+          requiresModule: "conductorTentacles",
+          radius: 8,
+          offset: { x: 20, y: 0 },
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.8, g: 0.95, b: 1.0, a: 0.65 } },
+                { offset: 0.55, color: { r: 0.7, g: 0.9, b: 1, a: 0.35 } },
+                { offset: 1, color: { r: 0.7, g: 0.9, b: 1, a: 0 } },
+              ],
+            },
+          },
         },
 
         // Tail needles (long quills anchored at the chord tip)
@@ -393,6 +456,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 0.6, b: 0.24, a: 0.75 } } },
             anim: { type: "sway", periodMs: 1650, amplitude: 5.6, falloff: "tip", axis: "normal", phase: 0.42 },
             groupId: "burningTail-glow",
+            connectionSlots: [{ id: "tailEnd", mode: "spine", t: 1 }],
           },
           { epsilon: 0.2, winding: "CCW" }
         ),
@@ -400,19 +464,20 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "burningTail",
           vertices: [
-            { x: -34.4, y: -1.3 },
-            { x: -38.2, y: -0.7 },
-            { x: -33.8, y: -0.2 },
-            { x: -31.0, y: -0.7 },
+            { x: 0.6, y: -0.1 },
+            { x: -3.2, y: 0.5 },
+            { x: 1.2, y: 1.0 },
+            { x: 4.0, y: 0.5 },
           ],
           fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 1, g: 0.58, b: 0.2, a: 0.85 } } },
           stroke: { type: "solid", width: 0.6, color: { r: 0.75, g: 0.22, b: 0.05, a: 1 } },
+          join: { anchorId: "tailEnd", targetGroupId: "burningTail-glow" },
         },
         {
           shape: "circle",
           requiresModule: "burningTail",
           radius: 22,
-          offset: { x: -36.6, y: -1.4 },
+          offset: { x: -1.6, y: -0.2 },
           fill: {
             type: "gradient",
             fill: {
@@ -424,6 +489,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
               ],
             },
           },
+          join: { anchorId: "tailEnd", targetGroupId: "burningTail-glow" },
         },
 
         // Freezing tail (crystal spine + glow)
@@ -468,6 +534,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
             fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.66, g: 0.95, b: 1, a: 0.78 } } },
             anim: { type: "sway", periodMs: 1880, amplitude: 5.4, falloff: "tip", axis: "normal", phase: 0.48 },
             groupId: "freezingTail-glow",
+            connectionSlots: [{ id: "tailEnd", mode: "spine", t: 1 }],
           },
           { epsilon: 0.2, winding: "CCW" }
         ),
@@ -475,19 +542,20 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           shape: "polygon",
           requiresModule: "freezingTail",
           vertices: [
-            { x: -33.0, y: -0.9 },
-            { x: -36.4, y: -0.5 },
-            { x: -32.4, y: -0.1 },
-            { x: -30.0, y: -0.6 },
+            { x: 1.0, y: -0.5 },
+            { x: -2.4, y: -0.1 },
+            { x: 1.6, y: 0.3 },
+            { x: 4.0, y: -0.2 },
           ],
           fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.66, g: 0.95, b: 1, a: 0.85 } } },
           stroke: { type: "solid", width: 0.6, color: { r: 0.24, g: 0.62, b: 0.95, a: 1 } },
+          join: { anchorId: "tailEnd", targetGroupId: "freezingTail-glow" },
         },
         {
           shape: "circle",
           requiresModule: "freezingTail",
           radius: 22.0,
-          offset: { x: -35.2, y: -0.6 },
+          offset: { x: -1.2, y: -0.2 },
           fill: {
             type: "gradient",
             fill: {
@@ -499,6 +567,7 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
               ],
             },
           },
+          join: { anchorId: "tailEnd", targetGroupId: "freezingTail-glow" },
         },
 
         // Effects
@@ -549,6 +618,13 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
         },
       ],
     },
+    deathEffects: [
+      {
+        kind: "explosion",
+        type: "unitDeath",
+        initialRadius: 10,
+      },
+    ],
     maxHp: 10,
     armor: 1,
     baseAttackDamage: 1.25,

@@ -72,6 +72,8 @@ import {
   extractCounter,
   computeModuleValue,
 } from "./unit-design.helpers";
+import { trackAnalyticsEvent } from "@shared/helpers/google-analytics.helper";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
   public readonly id = "unitDesign";
@@ -79,6 +81,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
   private readonly bridge: DataBridge;
   private readonly bonuses: BonusesModule;
   private readonly workshop: UnitModuleWorkshopModule;
+  private readonly localization: LocalizationService;
   private readonly moduleDetailFactory: UnitDesignModuleDetailFactory;
   private readonly availableModuleFactory: UnitDesignerAvailableModuleFactory;
 
@@ -98,6 +101,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     this.bridge = options.bridge;
     this.bonuses = options.bonuses;
     this.workshop = options.workshop;
+    this.localization = options.localization;
     this.moduleDetailFactory = new UnitDesignModuleDetailFactory();
     this.availableModuleFactory = new UnitDesignerAvailableModuleFactory();
   }
@@ -182,6 +186,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       this.rosterInitialized = true;
     }
     this.refreshComputedState();
+    trackAnalyticsEvent("unit_designer_create", { unitType: sanitizedType, name: config.name });
     return id;
   }
 
@@ -194,8 +199,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       return;
     }
     if (typeof updates.name === "string") {
-      const trimmed = updates.name.trim();
-      record.name = trimmed.length > 0 ? trimmed : DEFAULT_UNIT_NAME_FALLBACK;
+      record.name = updates.name.trim();
     }
     if (Array.isArray(updates.modules)) {
       record.modules = clampModuleCount(this.sanitizeModules(updates.modules));
@@ -213,6 +217,18 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     this.designOrder = this.designOrder.filter((entry) => entry !== id);
     this.cachedComputed.delete(id);
     this.designTargeting.delete(id);
+    // Remove deleted id from roster and re-sanitize; then auto-fill freed slot with next available design
+    this.activeRoster = sanitizeRoster(
+      this.activeRoster.filter((entry) => entry !== id),
+      this.designOrder
+    );
+    while (this.activeRoster.length < MAX_ACTIVE_UNITS) {
+      const nextId = this.designOrder.find((designId) => !this.activeRoster.includes(designId));
+      if (!nextId) {
+        break;
+      }
+      this.activeRoster = sanitizeRoster([...this.activeRoster, nextId], this.designOrder);
+    }
     if (!this.hasDesignForType(type)) {
       this.createDefaultDesign(type);
     }
@@ -466,6 +482,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
   ): UnitDesignerUnitState {
     const moduleDetails = this.createModuleDetails(record.modules);
     const blueprint = this.createBlueprint(record.type, bonusValues, moduleDetails);
+    const displayName = record.name.trim() || getPlayerUnitConfig(record.type).name;
     const cost = this.computeCost(record.type, moduleDetails);
     const runtime = this.computeRuntime(moduleDetails);
     const targetingMode = this.ensureDesignTargeting(record.id);
@@ -476,7 +493,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       modules: [...moduleDetails.map((detail) => detail.id)],
       moduleDetails,
       cost,
-      blueprint,
+      blueprint: { ...blueprint, name: displayName },
       runtime,
       targetingMode,
     };
@@ -535,6 +552,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     modules: readonly UnitDesignModuleDetail[]
   ): PlayerUnitRuntimeModifiers {
     let rewardMultiplier = 1;
+    let soulDropChanceBonus = 0;
     let damageTransferPercent = 0;
     let damageTransferRadius = PERFORATOR_RADIUS;
     let attackStackBonusPerHit = 0;
@@ -545,6 +563,9 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       switch (detail.id) {
         case "magnet":
           rewardMultiplier = Math.max(detail.bonusValue, 1);
+          break;
+        case "soulMagnet":
+          soulDropChanceBonus = Math.max(detail.bonusValue, 0);
           break;
         case "perforator":
           damageTransferPercent = Math.max(detail.bonusValue, 0);
@@ -562,6 +583,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
 
     return {
       rewardMultiplier,
+      soulDropChanceBonus,
       damageTransferPercent,
       damageTransferRadius,
       attackStackBonusPerHit,
@@ -635,12 +657,18 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           value: detail.bonusValue,
           format: "multiplier",
         };
+      case "soulMagnet":
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "percent",
+        };
       case "perforator":
         return {
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
-          hint: `within ${PERFORATOR_RADIUS} units`,
+          hint: this.localization.tUi("voidCamp.unitBonuses.withinUnits", "within {{value}} units").replace("{{value}}", String(PERFORATOR_RADIUS)),
         };
       case "silverArmor":
         return {
@@ -653,7 +681,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
-          hint: "Applies for 4s",
+          hint: this.localization.tUi("voidCamp.unitBonuses.appliesForSeconds", "Applies for {{value}}s").replace("{{value}}", "4"),
         };
       case "freezingTail": {
         const divisor = Math.max(detail.bonusValue, 0);
@@ -661,7 +689,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           label: detail.bonusLabel,
           value: divisor,
           format: "multiplier",
-          hint: "Divides enemy damage for 4s",
+          hint: this.localization.tUi("voidCamp.unitBonuses.dividesEnemyDamageSeconds", "Divides enemy damage for {{value}}s").replace("{{value}}", "4"),
         };
       }
       case "internalFurnace": {
@@ -672,7 +700,25 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
-          hint: `Stacks up to +${roundedCap}% attack`,
+          hint: this.localization.tUi("voidCamp.unitBonuses.stacksUpToAttack", "Stacks up to +{{value}}% attack").replace("{{value}}", String(roundedCap)),
+        };
+      }
+      case "conductorTentacles": {
+        const meta = getUnitModuleConfig(detail.id).meta;
+        const radius = Math.max(meta?.chainRadius ?? 0, 0);
+        const jumps = Math.max(meta?.chainJumps ?? 0, 0);
+        const hintParts: string[] = [];
+        if (jumps > 0) {
+          hintParts.push(this.localization.tUi("voidCamp.unitBonuses.chainsTimes", "Chains {{value}} times").replace("{{value}}", String(jumps)));
+        }
+        if (radius > 0) {
+          hintParts.push(this.localization.tUi("voidCamp.unitBonuses.withinUnits", "within {{value}} units").replace("{{value}}", String(radius)));
+        }
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "percent",
+          hint: hintParts.length > 0 ? hintParts.join(", ") : undefined,
         };
       }
       default:

@@ -2,7 +2,11 @@ import { useRef, useEffect } from "react";
 import type { SceneVector2, SceneUiApi } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
 import { TICK_INTERVAL } from "@core/logic/provided/services/game-loop/game-loop.const";
-import { getAllActiveBullets } from "@ui/renderers/primitives/gpu/bullet/BulletGpuRenderer";
+import { lerpAngle } from "@shared/helpers/angle.helper";
+import {
+  getAllActiveBullets,
+  type BulletInterpolatedState,
+} from "@ui/renderers/primitives/gpu/bullet/BulletGpuRenderer";
 import { clamp } from "@shared/helpers/numbers.helper";
 
 const DRIFT_SNAP_THRESHOLD = TICK_INTERVAL * 1.25;
@@ -17,6 +21,13 @@ interface UnitRenderSnapshot {
   next: SceneVector2;
   lastTickAt: number;
   tickCount?: number; // For bullets: skip interpolation on first tick
+}
+
+interface BulletRenderSnapshot extends UnitRenderSnapshot {
+  prevMovementRotation: number;
+  nextMovementRotation: number;
+  prevVisualRotation: number;
+  nextVisualRotation: number;
 }
 
 const getNow = () =>
@@ -34,11 +45,13 @@ export const usePositionInterpolation = (
 ) => {
   const unitSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const interpolatedPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
-  const interpolatedBulletPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
+  const interpolatedBulletPositionsRef = useRef<Map<string, BulletInterpolatedState>>(
+    new Map()
+  );
   const interpolatedBrickPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
   const interpolatedEnemyPositionsRef = useRef<Map<string, SceneVector2>>(new Map());
   const activeBulletKeysRef = useRef<Set<string>>(new Set());
-  const bulletSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
+  const bulletSnapshotsRef = useRef<Map<string, BulletRenderSnapshot>>(new Map());
   const brickSnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
   const enemySnapshotsRef = useRef<Map<string, UnitRenderSnapshot>>(new Map());
 
@@ -50,7 +63,7 @@ export const usePositionInterpolation = (
       const activeBullets = getAllActiveBullets();
       
       activeBullets.forEach((item) => {
-        const { handle, position } = item;
+        const { handle, position, movementRotation, visualRotation } = item;
         const key = `${handle.batchKey}:${handle.slotIndex}`;
         nextKeys.add(key);
         const existing = snapshots.get(key);
@@ -61,6 +74,10 @@ export const usePositionInterpolation = (
           snapshots.set(key, {
             prev: { ...position },
             next: { ...position },
+            prevMovementRotation: movementRotation,
+            nextMovementRotation: movementRotation,
+            prevVisualRotation: visualRotation,
+            nextVisualRotation: visualRotation,
             lastTickAt: timestamp,
             tickCount: 1,
           });
@@ -69,6 +86,10 @@ export const usePositionInterpolation = (
           snapshots.set(key, {
             prev: existing.next,
             next: { ...position },
+            prevMovementRotation: existing.nextMovementRotation,
+            nextMovementRotation: movementRotation,
+            prevVisualRotation: existing.nextVisualRotation,
+            nextVisualRotation: visualRotation,
             lastTickAt: timestamp,
             tickCount: (existing.tickCount ?? 1) + 1,
           });
@@ -225,7 +246,19 @@ export const usePositionInterpolation = (
         elapsed > DRIFT_SNAP_THRESHOLD
           ? 1
           : clamp(elapsed / TICK_INTERVAL, 0, 1);
-      positions.set(key, lerpVector(snapshot.prev, snapshot.next, alpha));
+      positions.set(key, {
+        position: lerpVector(snapshot.prev, snapshot.next, alpha),
+        movementRotation: lerpAngle(
+          snapshot.prevMovementRotation,
+          snapshot.nextMovementRotation,
+          alpha
+        ),
+        visualRotation: lerpAngle(
+          snapshot.prevVisualRotation,
+          snapshot.nextVisualRotation,
+          alpha
+        ),
+      });
     });
     return positions;
   };

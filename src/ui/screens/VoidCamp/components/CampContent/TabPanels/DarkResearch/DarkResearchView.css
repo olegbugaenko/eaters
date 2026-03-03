@@ -1,0 +1,203 @@
+.dark-research-view__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.dark-research-view__souls-line {
+  font-weight: 600;
+}
+
+/* Card (compact) --------------------------------------------------------- */
+
+.dark-research-card__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.dark-research-card__title {
+  margin: 0;
+}
+
+.dark-research-card__level {
+  color: var(--color-text-soft);
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.dark-research-card__progress {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.dark-research-card__progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
+  transition: width 0.2s ease;
+}
+
+.dark-research-card__queue-row {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.dark-research-card__queue-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.dark-research-card__queue-input {
+  width: 100%;
+  max-width: 100px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-raised);
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+/* Sidebar detail --------------------------------------------------------- */
+
+.dark-research-detail {
+  background: var(--color-surface-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.dark-research-detail__header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.dark-research-detail__header .heading-3 {
+  margin: 0;
+  min-width: 0;
+}
+
+.dark-research-detail__level {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.dark-research-detail__description {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.92);
+  line-height: 1.6;
+}
+
+.dark-research-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.dark-research-detail__section h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dark-research-detail__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dark-research-detail__metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: rgba(34, 34, 34, 0.75);
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 0.9rem;
+}
+
+.dark-research-detail__metric-value {
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.dark-research-detail__effects {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dark-research-detail__effect-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: rgba(34, 34, 34, 0.75);
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.dark-research-detail__effect-values {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+}
+
+.dark-research-detail__effect-arrow {
+  opacity: 0.65;
+}
+
+.dark-research-detail__effect-current {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.dark-research-detail__effect-next {
+  color: rgba(94, 234, 212, 0.95);
+  font-weight: 600;
+}
+
+.dark-research-detail__quick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}

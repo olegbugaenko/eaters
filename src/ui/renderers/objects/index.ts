@@ -12,7 +12,11 @@ import { AuraRenderer } from "./implementations/aura";
 import { SpellProjectileRingRenderer } from "./implementations/spell-projectile-ring";
 import { SandStormRenderer } from "./implementations/sand-storm";
 import { PersistentAoeSpellRenderer } from "./implementations/persistent-aoe-spell";
+import { ScreenOverlayRenderer } from "./implementations/screen-overlay";
 import { TiedObjectsRegistry } from "./TiedObjectsRegistry";
+import { SpellAreaHighlightRenderer } from "./implementations/spell-area-highlight/SpellAreaHighlightRenderer";
+import { SnowfallObjectRenderer } from "./implementations/snowfall/SnowfallObjectRenderer";
+import { StatusEffectEmitterObjectRenderer } from "./implementations/status-effect-emitter";
 
 export { ObjectsRendererManager } from "./ObjectsRendererManager";
 export { TiedObjectsRegistry } from "./TiedObjectsRegistry";
@@ -58,6 +62,10 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     // unitProjectileRing - now rendered via GPU instancing (RingGpuRenderer)
     ["sandStorm", new SandStormRenderer()],
     ["spellPersistentAoe", new PersistentAoeSpellRenderer()],
+    ["spellAreaHighlight", new SpellAreaHighlightRenderer()],
+    ["snowfall", new SnowfallObjectRenderer()],
+    ["screenOverlay", new ScreenOverlayRenderer()],
+    ["statusEffectEmitter", new StatusEffectEmitterObjectRenderer()],
   ]);
   const tiedObjectsRegistry = new TiedObjectsRegistry();
   return new ObjectsRendererManager(renderers, tiedObjectsRegistry);

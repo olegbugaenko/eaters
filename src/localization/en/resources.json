@@ -1,0 +1,44 @@
+{
+  "stone": {
+    "name": "Stone"
+  },
+  "sand": {
+    "name": "Sand"
+  },
+  "iron": {
+    "name": "Iron"
+  },
+  "organics": {
+    "name": "Organics"
+  },
+  "wood": {
+    "name": "Wood"
+  },
+  "copper": {
+    "name": "Copper"
+  },
+  "silver": {
+    "name": "Silver"
+  },
+  "coal": {
+    "name": "Coal"
+  },
+  "tools": {
+    "name": "Tools"
+  },
+  "paper": {
+    "name": "Paper"
+  },
+  "wire": {
+    "name": "Wire"
+  },
+  "ice": {
+    "name": "Ice"
+  },
+  "magma": {
+    "name": "Magma"
+  },
+  "uranium": {
+    "name": "Uranium Fields"
+  }
+}

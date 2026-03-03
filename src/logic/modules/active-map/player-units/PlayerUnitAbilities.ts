@@ -20,13 +20,16 @@ import {
 } from "./abilities/ability.const";
 import { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SoundEffectPlayer } from "../../../../core/logic/provided/modules/audio/audio.types";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import type { TargetSnapshot, TargetType } from "../targeting/targeting.types";
+import type { DamageApplicationOptions } from "../targeting/DamageService";
 
 // Re-export for backward compatibility
 export type AbilitySoundPlayer = SoundEffectPlayer;
 
 const ABILITY_SOUND_URLS: Partial<Record<AbilitySoundId, string>> = {
-  tailNeedle: "/audio/sounds/unit_effects/tail_volley.mp3", // TODO: Add specific sound if needed
+  tailNeedle: getAssetUrl("audio/sounds/unit_effects/tail_volley.mp3"), // TODO: Add specific sound if needed
 };
 
 interface PlayerUnitAbilitiesOptions {
@@ -38,7 +41,22 @@ interface PlayerUnitAbilitiesOptions {
   getUnitById: (id: string) => PlayerUnitAbilityState | undefined;
   getBrickPosition: (brickId: string) => SceneVector2 | null;
   damageBrick: (brickId: string, damage: number) => void;
+  applyBrickDamage: (
+    brickId: string,
+    damage: number,
+    options?: DamageApplicationOptions,
+  ) => number;
+  applyTargetDamage?: (
+    targetId: string,
+    damage: number,
+    options?: DamageApplicationOptions,
+  ) => number;
   getBricksInRadius: (position: SceneVector2, radius: number) => string[];
+  getTargetsInRadius: (
+    position: SceneVector2,
+    radius: number,
+    types?: readonly TargetType[],
+  ) => TargetSnapshot[];
   damageUnit: (unitId: string, damage: number) => void;
   findNearestBrick: (position: SceneVector2) => string | null;
   audio?: AbilitySoundPlayer;
@@ -48,6 +66,15 @@ interface PlayerUnitAbilitiesOptions {
 export interface AbilityActivationResult {
   abilityId: AbilitySoundId;
   statsChanged: boolean;
+}
+
+interface AbilityAttackContext {
+  attackDirection: SceneVector2;
+  inflictedDamage: number;
+  totalDamage: number;
+  targetType?: TargetType;
+  targetId?: string;
+  targetPosition?: SceneVector2;
 }
 
 interface AbilityRuntimeEntry {
@@ -71,7 +98,22 @@ export class PlayerUnitAbilities {
   private readonly getUnitById: (id: string) => PlayerUnitAbilityState | undefined;
   private readonly getBrickPosition: (brickId: string) => SceneVector2 | null;
   private readonly damageBrick: (brickId: string, damage: number) => void;
+  private readonly applyBrickDamage: (
+    brickId: string,
+    damage: number,
+    options?: DamageApplicationOptions,
+  ) => number;
+  private readonly applyTargetDamage?: (
+    targetId: string,
+    damage: number,
+    options?: DamageApplicationOptions,
+  ) => number;
   private readonly getBricksInRadius: (position: SceneVector2, radius: number) => string[];
+  private readonly getTargetsInRadius: (
+    position: SceneVector2,
+    radius: number,
+    types?: readonly TargetType[],
+  ) => TargetSnapshot[];
   private readonly damageUnit: (unitId: string, damage: number) => void;
   private readonly findNearestBrick: (position: SceneVector2) => string | null;
   private readonly audio?: AbilitySoundPlayer;
@@ -89,7 +131,10 @@ export class PlayerUnitAbilities {
     this.getUnitById = options.getUnitById;
     this.getBrickPosition = options.getBrickPosition;
     this.damageBrick = options.damageBrick;
+    this.applyBrickDamage = options.applyBrickDamage;
+    this.applyTargetDamage = options.applyTargetDamage;
     this.getBricksInRadius = options.getBricksInRadius;
+    this.getTargetsInRadius = options.getTargetsInRadius;
     this.damageUnit = options.damageUnit;
     this.findNearestBrick = options.findNearestBrick;
     this.audio = options.audio;
@@ -101,7 +146,10 @@ export class PlayerUnitAbilities {
       getUnitById: this.getUnitById,
       getBrickPosition: this.getBrickPosition,
       damageBrick: this.damageBrick,
+      applyBrickDamage: this.applyBrickDamage,
+      applyTargetDamage: this.applyTargetDamage,
       getBricksInRadius: this.getBricksInRadius,
+      getTargetsInRadius: this.getTargetsInRadius,
       damageUnit: this.damageUnit,
       findNearestBrick: this.findNearestBrick,
       projectiles: options.projectiles,
@@ -130,11 +178,7 @@ export class PlayerUnitAbilities {
     unit: PlayerUnitAbilityState,
     deltaSeconds: number,
     event: "tick" | "hit" = "tick",
-    attackContext?: {
-      attackDirection: SceneVector2;
-      inflictedDamage: number;
-      totalDamage: number;
-    },
+    attackContext?: AbilityAttackContext,
   ): AbilityActivationResult | null {
     const runtime = this.ensureUnitRuntime(unit);
     this.advanceCooldowns(runtime, deltaSeconds);
@@ -175,6 +219,9 @@ export class PlayerUnitAbilities {
       attackDirection: attackContext?.attackDirection,
       inflictedDamage: attackContext?.inflictedDamage,
       totalDamage: attackContext?.totalDamage,
+      targetType: attackContext?.targetType,
+      targetId: attackContext?.targetId,
+      targetPosition: attackContext?.targetPosition,
     };
 
     const result = runtimeEntry.definition.execute(executionContext as never);
@@ -205,11 +252,17 @@ export class PlayerUnitAbilities {
     attackDirection: SceneVector2,
     inflictedDamage: number,
     totalDamage: number,
+    targetType: TargetType,
+    targetId: string,
+    targetPosition: SceneVector2,
   ): void {
     this.processUnitAbilities(unit, 0, "hit", {
       attackDirection,
       inflictedDamage,
       totalDamage,
+      targetType,
+      targetId,
+      targetPosition,
     });
   }
 
@@ -225,11 +278,7 @@ export class PlayerUnitAbilities {
     unit: PlayerUnitAbilityState,
     runtime: UnitAbilityRuntime,
     event: "tick" | "hit" = "tick",
-    attackContext?: {
-      attackDirection: SceneVector2;
-      inflictedDamage: number;
-      totalDamage: number;
-    },
+    attackContext?: AbilityAttackContext,
   ): Array<{
     runtimeEntry: AbilityRuntimeEntry;
     cooldown: AbilityCooldownState;
@@ -266,6 +315,9 @@ export class PlayerUnitAbilities {
         attackDirection: attackContext?.attackDirection,
         inflictedDamage: attackContext?.inflictedDamage,
         totalDamage: attackContext?.totalDamage,
+        targetType: attackContext?.targetType,
+        targetId: attackContext?.targetId,
+        targetPosition: attackContext?.targetPosition,
       };
 
       const candidate = entry.definition.evaluate(evaluationContext as never);

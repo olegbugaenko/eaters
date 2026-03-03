@@ -4,6 +4,7 @@ import type { BuildingsWorkshopBridgeState } from "./buildings.types";
 export const DEFAULT_BUILDINGS_WORKSHOP_STATE: BuildingsWorkshopBridgeState = Object.freeze({
   unlocked: false,
   buildings: [],
+  hideMaxedWorkshop: false,
 });
 
 export const BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY = "buildings/workshop";

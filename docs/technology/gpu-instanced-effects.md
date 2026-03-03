@@ -15,6 +15,8 @@
 
 Ці рендерери використовують класичну модель: CPU підготовлює дані → завантажує в instance buffer → GPU рендерить.
 
+> Стандартний API для всіх GPU-примітивів: `acquire(...)`, `update(handle, data)`, `release(handle)`. У старих викликах можуть залишатися `acquireSlot`/`updateSlot`/`releaseSlot` або `acquireHandle`/`updateHandle` — це історичні назви з тим самим призначенням.
+
 #### PetalAuraGpuRenderer
 **Файл:** `src/ui/renderers/primitives/gpu/PetalAuraGpuRenderer.ts`
 
@@ -61,6 +63,31 @@
 - **Призначення:** Ударні хвилі вибухів
 - **Особливості:** Використовує спільні ресурси з `ParticleEmitterGpuRenderer` (шейдери)
 - **API:** `explosionWaveGpuRenderer.acquireSlot(config)`, `updateSlot()`, `releaseSlot()`
+
+### 1.5. Окремі GPU-примітиви (без batch-інстансів)
+
+Ці примітиви використовують GPU-шейдери, але не входять у модель `GpuBatchRenderer`: вони працюють з власними буферами/VAO на примітив або невеликий пул.
+
+#### PolygonGpuRenderer
+**Файл:** `src/ui/renderers/primitives/gpu/polygon/PolygonGpuRenderer.ts`
+
+- **Призначення:** GPU-рендер полігонів із анімаціями вершин, шумом/філаментами та crack‑масками.
+- **Особливості:** Працює на рівні окремого полігона (окремі буфери позицій та fill-компонентів).
+- **API:** `polygonGpuRenderer.acquireHandle(...)`, `updateHandle(...)`, `releaseHandle(...)`
+
+#### JoinedPolygonGpuRenderer
+**Файл:** `src/ui/renderers/primitives/gpu/joined/JoinedPolygonGpuRenderer.ts`
+
+- **Призначення:** Полігони/кола/спрайти, що «під’єднуються» до anchor‑точок у texture‑буфері.
+- **Особливості:** Читає anchor‑позиції з текстури та зсуває локальні вершини у вершинному шейдері.
+- **API:** `joinedPolygonGpuRenderer.acquireHandle(...)`, `updateHandle(...)`, `releaseHandle(...)`
+
+#### SpineGpuRenderer
+**Файл:** `src/ui/renderers/primitives/gpu/spine/SpineGpuRenderer.ts`
+
+- **Призначення:** «Хребетні» примітиви з деформацією сегментів і спрощеним solid‑fill.
+- **Особливості:** Інстанс‑пул із даними сплайнів у текстурі; на кожен інстанс передаються анімаційні параметри та колір.
+- **API:** `spineGpuRenderer.acquireHandle(...)`, `updateHandleFill(...)`, `releaseHandle(...)`
 
 ### 2. Спеціальний рендерер (implements `GpuInstancedPrimitiveLifecycle`)
 

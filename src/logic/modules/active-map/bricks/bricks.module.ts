@@ -16,8 +16,8 @@ import {
   cloneResourceStockpile,
   createEmptyResourceStockpile,
 } from "../../../../db/resources-db";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
 import {
   addVectors,
   scaleVector,
@@ -26,8 +26,8 @@ import {
   normalizeVector,
 } from "../../../../shared/helpers/vector.helper";
 import { createBrickFill } from "./bricks.fill.helper";
-import { tintSceneFill } from "@shared/helpers/scene-fill.helper";
-import { sceneColorsEqual } from "@shared/helpers/scene-color.helper";
+import { tintSceneFill } from "@shared/helpers/scene-style.helper";
+import { sceneColorsEqual } from "@shared/helpers/scene-style.helper";
 import { applyDamagePipeline, sanitizeDamageOptions } from "../../../helpers/damage-application";
 import {
   sanitizeHp,
@@ -194,9 +194,53 @@ export class BricksModule implements GameModule {
     return this.cloneState(state);
   }
 
+  public getBrickTotals(): { count: number; totalHp: number } {
+    return {
+      count: this.bricks.size,
+      totalHp: Math.max(0, this.totalHpCached),
+    };
+  }
+
+  public getBrickPositionIfAlive(brickId: string): SceneVector2 | null {
+    const state = this.bricks.get(brickId);
+    if (!state) {
+      return null;
+    }
+    return { ...state.position };
+  }
+
+  /**
+   * Tie-break epsilon (squared): bricks within this distance of the nearest count as "same distance".
+   * Then we pick the one latest in brickOrder (drawn on top).
+   */
+  private static readonly FIND_NEAREST_TIE_EPSILON_SQ = 4;
+
   public findNearestBrick(position: SceneVector2): BrickRuntimeState | null {
     const nearest = this.spatialIndex.queryNearest(position, { maxLayers: 128 });
-    return nearest ? this.cloneState(nearest) : null;
+    if (!nearest) {
+      return null;
+    }
+    const bestDistSq =
+      (nearest.position.x - position.x) ** 2 + (nearest.position.y - position.y) ** 2;
+    const radius = Math.sqrt(bestDistSq) + 2;
+    const candidates = this.spatialIndex.queryCircle(position, radius);
+    const tieThresholdSq = bestDistSq + BricksModule.FIND_NEAREST_TIE_EPSILON_SQ;
+    let topmost: InternalBrickState | null = null;
+    let topmostIndex = -1;
+    for (const brick of candidates) {
+      const dx = brick.position.x - position.x;
+      const dy = brick.position.y - position.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > tieThresholdSq) {
+        continue;
+      }
+      const index = this.brickOrder.findIndex((b) => b.id === brick.id);
+      if (index > topmostIndex) {
+        topmostIndex = index;
+        topmost = brick;
+      }
+    }
+    return topmost ? this.cloneState(topmost) : this.cloneState(nearest);
   }
 
   public findBricksNear(position: SceneVector2, radius: number): BrickRuntimeState[] {
@@ -310,6 +354,7 @@ export class BricksModule implements GameModule {
       {
         onInflicted: (amount) => {
           this.options.statistics?.recordDamageDealt(amount);
+          this.options.statistics?.recordAttackHit(1);
           this.statusEffects.handleTargetHit({ type: "brick", id: brickId });
         },
         onKnockback: () => {
@@ -453,9 +498,6 @@ export class BricksModule implements GameModule {
     this.bricksWithKnockback.delete(brick.id);
     this.totalHpCached -= brick.hp;
     this.pushStats();
-    if (this.bricks.size === 0) {
-      this.runState.complete(true);
-    }
   }
 
   private applyEffectDamage(

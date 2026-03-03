@@ -1,18 +1,35 @@
 import { SceneObjectManager } from "@core/logic/provided/services/scene-object-manager/SceneObjectManager";
-import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import { createRadialGradientFill } from "@shared/helpers/scene-fill.helper";
+import type { SceneSize, SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
+import { createRadialGradientFill } from "@shared/helpers/scene-style.helper";
+import { clampNumber } from "@shared/helpers/numbers.helper";
+import { getMapEffectConfig } from "../../../../db/map-effects-db";
+import type { MapEffectsModule } from "../map-effects/map-effects.module";
+import type { MapSnowfallEffectConfig, MapVisualEffectsConfig } from "../../../../db/maps/maps-db.types";
 
 const CAMERA_FOCUS_TICKS = 6;
+const RADIOACTIVITY_OVERLAY_ID = "map-radioactivity-overlay";
+const SNOWFALL_OBJECT_ID = "map-snowfall";
+const DEFAULT_SNOW_CULL_PADDING = 200;
 
 export class MapVisualEffects {
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
   private pendingCameraFocus: { point: SceneVector2; ticksRemaining: number } | null = null;
+  private radioactivityOverlayId: string | null = null;
+  private radioactivityElapsedMs = 0;
+  private snowfallObjectId: string | null = null;
+  private snowfallConfig: MapSnowfallEffectConfig | null = null;
 
-  constructor(private readonly scene: SceneObjectManager) {}
+  constructor(
+    private readonly scene: SceneObjectManager,
+    private readonly mapEffects: MapEffectsModule
+  ) {}
 
   public reset(): void {
     this.clearPortalObjects();
     this.pendingCameraFocus = null;
+    this.clearRadioactivityOverlay();
+    this.clearSnowfall();
+    this.snowfallConfig = null;
   }
 
   public setCameraFocus(point: SceneVector2): void {
@@ -68,9 +85,18 @@ export class MapVisualEffects {
     });
   }
 
-  public tick(): void {
+  public tick(deltaMs: number): void {
     this.applyPendingCameraFocus();
     this.updatePortalObjects();
+    this.updateRadioactivityOverlay(deltaMs);
+    this.updateSnowfall();
+  }
+
+  public setVisualEffects(config: MapVisualEffectsConfig | null): void {
+    this.snowfallConfig = config?.snowfall ?? null;
+    if (!this.snowfallConfig) {
+      this.clearSnowfall();
+    }
   }
 
   public clearPortalObjects(): void {
@@ -114,5 +140,188 @@ export class MapVisualEffects {
       ticksRemaining: pending.ticksRemaining - 1,
     };
   }
-}
 
+  private updateRadioactivityOverlay(deltaMs: number): void {
+    this.radioactivityElapsedMs += Math.max(deltaMs, 0);
+    const level = this.mapEffects.getEffectLevel("radioactivity");
+    if (level === null) {
+      this.clearRadioactivityOverlay();
+      return;
+    }
+    const config = getMapEffectConfig("radioactivity");
+    const visuals = config.visuals;
+    if (!visuals) {
+      this.clearRadioactivityOverlay();
+      return;
+    }
+
+    const intensity = clampNumber(
+      config.maxLevel > 0 ? level / config.maxLevel : 0,
+      0,
+      1
+    );
+    const timeSeconds = this.radioactivityElapsedMs / 1000;
+    const pulse = 0.7 + 0.3 * Math.sin(timeSeconds * 2.1);
+    const flicker = 0.7 + 0.3 * Math.sin(timeSeconds * 5.4 + 1.2);
+    const spikeBase = (Math.sin(timeSeconds * 3.6) + 1) / 2;
+    const spike = Math.pow(spikeBase, 3);
+    const artifactStrength = clampNumber(intensity * (0.6 + 0.6 * spike), 0, 1);
+    const camera = this.scene.getCamera();
+    const center = {
+      x: camera.position.x + camera.viewportSize.width / 2,
+      y: camera.position.y + camera.viewportSize.height / 2,
+    };
+    const size = this.resolveViewportSize(camera.viewportSize);
+    const baseAlpha = visuals.maxTintAlpha * intensity * (0.9 + 0.1 * flicker);
+    const radius = Math.max(size.width, size.height) * (0.6 + 0.2 * pulse);
+    const noiseEnabled = visuals.maxNoiseAlpha > 0 || visuals.maxNoiseColor > 0;
+    const fill = createRadialGradientFill(
+      radius,
+      [
+        {
+          offset: 0,
+          color: {
+            r: visuals.tintColor.r,
+            g: visuals.tintColor.g,
+            b: visuals.tintColor.b,
+            a: baseAlpha,
+          },
+        },
+        {
+          offset: 0.55,
+          color: {
+            r: visuals.tintColor.r,
+            g: visuals.tintColor.g,
+            b: visuals.tintColor.b,
+            a: baseAlpha * 0.6,
+          },
+        },
+        {
+          offset: 1,
+          color: {
+            r: visuals.tintColor.r,
+            g: visuals.tintColor.g,
+            b: visuals.tintColor.b,
+            a: 0,
+          },
+        },
+      ],
+      {
+        start: { x: 0, y: 0 },
+        noise: noiseEnabled
+          ? {
+              colorAmplitude: visuals.maxNoiseColor * artifactStrength,
+              alphaAmplitude: visuals.maxNoiseAlpha * artifactStrength,
+              scale: visuals.noiseScale,
+              density: visuals.noiseDensity,
+            }
+          : undefined,
+      }
+    );
+
+    if (!this.radioactivityOverlayId) {
+      this.radioactivityOverlayId = this.scene.addObject("screenOverlay", {
+        position: center,
+        size,
+        fill,
+        rotation: 0,
+        customData: { id: RADIOACTIVITY_OVERLAY_ID },
+      });
+      return;
+    }
+
+    this.scene.updateObject(this.radioactivityOverlayId, {
+      position: center,
+      size,
+      fill,
+    });
+  }
+
+  private resolveViewportSize(viewport: SceneSize): SceneSize {
+    const width = Math.max(0, viewport.width);
+    const height = Math.max(0, viewport.height);
+    return { width, height };
+  }
+
+  private clearRadioactivityOverlay(): void {
+    if (!this.radioactivityOverlayId) {
+      return;
+    }
+    this.scene.removeObject(this.radioactivityOverlayId);
+    this.radioactivityOverlayId = null;
+  }
+
+  private updateSnowfall(): void {
+    if (!this.snowfallConfig) {
+      this.clearSnowfall();
+      return;
+    }
+    const camera = this.scene.getCamera();
+    const viewport = this.resolveViewportSize(camera.viewportSize);
+    const spawnArea = this.snowfallConfig.spawnArea;
+    const spawnHeight = Math.max(0, spawnArea?.height ?? 160);
+    const horizontalPadding = Math.max(0, spawnArea?.horizontalPadding ?? 200);
+    const topOffset = Math.max(0, spawnArea?.topOffset ?? 0);
+    const cullPadding = Math.max(
+      DEFAULT_SNOW_CULL_PADDING,
+      this.snowfallConfig.cullPadding ?? DEFAULT_SNOW_CULL_PADDING,
+      spawnHeight + topOffset
+    );
+
+    const spawnTop = camera.position.y - topOffset;
+    const spawnRect = {
+      min: {
+        x: camera.position.x - horizontalPadding,
+        y: spawnTop - spawnHeight,
+      },
+      max: {
+        x: camera.position.x + viewport.width + horizontalPadding,
+        y: spawnTop,
+      },
+    };
+    const cullRect = {
+      min: {
+        x: camera.position.x - cullPadding,
+        y: camera.position.y - cullPadding,
+      },
+      max: {
+        x: camera.position.x + viewport.width + cullPadding,
+        y: camera.position.y + viewport.height + cullPadding,
+      },
+    };
+
+    if (!this.snowfallObjectId) {
+      this.snowfallObjectId = this.scene.addObject("snowfall", {
+        position: { x: 0, y: 0 },
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        customData: {
+          id: SNOWFALL_OBJECT_ID,
+          autoAnimate: true,
+          emitter: this.snowfallConfig.emitter,
+          spawnRect,
+          cullRect,
+        },
+      });
+      return;
+    }
+
+    this.scene.updateObject(this.snowfallObjectId, {
+      position: { x: 0, y: 0 },
+      customData: {
+        id: SNOWFALL_OBJECT_ID,
+        autoAnimate: true,
+        emitter: this.snowfallConfig.emitter,
+        spawnRect,
+        cullRect,
+      },
+    });
+  }
+
+  private clearSnowfall(): void {
+    if (!this.snowfallObjectId) {
+      return;
+    }
+    this.scene.removeObject(this.snowfallObjectId);
+    this.snowfallObjectId = null;
+  }
+}

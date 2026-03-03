@@ -1,0 +1,34 @@
+{
+  "quarry": {
+    "name": "Quarry",
+    "description": "Dedicate crews to hew stone around the clock, passively stockpiling rubble for the camp."
+  },
+  "well": {
+    "name": "Well",
+    "description": "Sink a reinforced well that seeps mana-laced water, bolstering both focus and resolve."
+  },
+  "iron_forest": {
+    "name": "Iron Forest",
+    "description": "Forest of steel and soul. Increase your eaters HP"
+  },
+  "mana_plant": {
+    "name": "Mana Plant",
+    "description": "Forest of steel and soul. Increase your eaters HP"
+  },
+  "blacksmith": {
+    "name": "Blacksmith",
+    "description": "Establish an arsenal where master smiths overhaul production lines for faster crafting."
+  },
+  "treasure_vault": {
+    "name": "Treasure Vault",
+    "description": "Invent better ways to store and refine your treasures."
+  },
+  "throughput_regulator": {
+    "name": "Throughput Regulator",
+    "description": "Install precise regulators to safely drive fabrication lines beyond standard tolerances."
+  },
+  "hunger_monument": {
+    "name": "Monument of Hunger",
+    "description": "Raise a monument that amplifies the colony's predatory instinct, increasing all unit attack."
+  }
+}

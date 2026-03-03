@@ -30,6 +30,7 @@ interface DynamicTrianglePrimitiveOptions {
   getVertices?: (instance: SceneObjectInstance) => TriangleVertices;
   fill?: SceneFill;
   getFill?: (instance: SceneObjectInstance) => SceneFill;
+  getRotation?: (instance: SceneObjectInstance) => number;
   offset?: SceneVector2;
 }
 
@@ -82,6 +83,19 @@ const resolveFill = (
     return options.fill;
   }
   return instance.data.fill;
+};
+
+const resolveRotation = (
+  options: DynamicTrianglePrimitiveOptions,
+  instance: SceneObjectInstance
+): number => {
+  if (typeof options.getRotation === "function") {
+    const resolved = options.getRotation(instance);
+    if (typeof resolved === "number" && Number.isFinite(resolved)) {
+      return resolved;
+    }
+  }
+  return instance.data.rotation ?? 0;
 };
 
 const computeGeometry = (vertices: TriangleVertices): TriangleGeometry => {
@@ -259,12 +273,12 @@ export const createDynamicTrianglePrimitive = (
   const getCenter = (target: SceneObjectInstance): SceneVector2 =>
     transformObjectPoint(
       getInstanceRenderPosition(target),
-      target.data.rotation,
+      resolveRotation(options, target),
       options.offset
     );
 
   let origin = getCenter(instance);
-  let rotation = instance.data.rotation ?? 0;
+  let rotation = resolveRotation(options, instance);
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
   // OPTIMIZATION: Use reusable scratch buffer instead of creating new Float32Array each frame
   const fillScratch = new Float32Array(FILL_COMPONENTS);
@@ -287,7 +301,7 @@ export const createDynamicTrianglePrimitive = (
     data,
     update(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
-      const nextRotation = target.data.rotation ?? 0;
+      const nextRotation = resolveRotation(options, target);
       
       // OPTIMIZATION: Fast-path for static vertices/fill - skip if position unchanged
       if (canFastPath &&
@@ -327,7 +341,7 @@ export const createDynamicTrianglePrimitive = (
     },
     updatePositionOnly(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
-      const nextRotation = target.data.rotation ?? 0;
+      const nextRotation = resolveRotation(options, target);
       if (
         pos.x === prevPosX &&
         pos.y === prevPosY &&

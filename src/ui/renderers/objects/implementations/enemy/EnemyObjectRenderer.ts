@@ -11,12 +11,33 @@ import {
 import { hasStroke, expandVerticesForStroke, createStrokeFill } from "@shared/helpers/stroke.helper";
 import { extractEnemyRendererData } from "./helpers";
 import { createCompositePrimitives } from "./composite-primitives.helpers";
+import {
+  getEmitterConfig,
+  getEmitterOrigin,
+  createEmitterParticle,
+  serializeEmitterConfig,
+  getGpuSpawnConfig,
+} from "./emitter.helpers";
+import { createParticleEmitterPrimitive } from "../../../primitives/ParticleEmitterPrimitive";
+import type { EnemyEmitterRenderConfig } from "./types";
 
 export class EnemyObjectRenderer extends ObjectRenderer {
   public register(instance: SceneObjectInstance): ObjectRegistration {
     const rendererData = extractEnemyRendererData(instance);
 
     const dynamicPrimitives: DynamicPrimitive[] = [];
+
+    const emitterPrimitive = createParticleEmitterPrimitive<EnemyEmitterRenderConfig>(instance, {
+      getConfig: getEmitterConfig,
+      getOrigin: getEmitterOrigin,
+      spawnParticle: createEmitterParticle,
+      serializeConfig: serializeEmitterConfig,
+      getGpuSpawnConfig,
+    });
+    if (emitterPrimitive) {
+      emitterPrimitive.autoAnimate = true;
+      dynamicPrimitives.push(emitterPrimitive);
+    }
 
     if (rendererData.kind === "composite" && rendererData.composite) {
       createCompositePrimitives(instance, rendererData.composite, dynamicPrimitives);

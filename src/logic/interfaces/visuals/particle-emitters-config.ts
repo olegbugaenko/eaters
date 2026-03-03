@@ -19,6 +19,11 @@ export interface ParticleEmitterConfig {
   particlesPerSecond: number;
   particleLifetimeMs: number;
   fadeStartMs: number;
+  /**
+   * Optional fade-in duration in milliseconds.
+   * When > 0, particle alpha ramps from 0 to full over this duration.
+   */
+  fadeInMs?: number;
   sizeRange: { min: number; max: number };
   color: SceneColor;
 
@@ -38,8 +43,13 @@ export interface ParticleEmitterConfig {
   spread?: number; // Angular spread in radians
   offset?: SceneVector2; // Offset from emitter origin
 
-  // Explosion-specific properties (optional)
+  // Explosion/bullet spawn properties (optional)
   emissionDurationMs?: number; // How long particles are emitted
+  /**
+   * Linearly damp the emission rate during the last N milliseconds of emission.
+   * 0 or undefined disables damping.
+   */
+  emissionDampingInterval?: number;
   spawnRadius?: { min: number; max: number }; // Spawn radius range
   /**
    * Ensures the maximum spawn radius scales with the initial radius of the explosion.
@@ -60,6 +70,14 @@ export interface ParticleEmitterConfig {
   // Visual properties (optional)
   fill?: SceneFill;
   shape?: ParticleEmitterShape;
+  /**
+   * If true, rotate particle quads to face their velocity direction.
+   */
+  alignToVelocity?: boolean;
+  /**
+   * If true, flip velocity-aligned particles by 180 degrees.
+   */
+  alignToVelocityFlip?: boolean;
 
   // Limits (optional)
   maxParticles?: number;

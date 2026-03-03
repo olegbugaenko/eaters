@@ -8,12 +8,13 @@ export interface TutorialMonitorInput {
   readonly stepId?: string;
   readonly actionCompleted?: boolean;
   readonly bricksRequired?: number;
+  readonly attacksRequired?: number;
 }
 
 export interface TutorialMonitorStatus {
   readonly stepId: string | null;
   readonly ready: boolean;
-  readonly reason?: "sanity" | "resources";
+  readonly reason?: "sanity" | "resources" | "attacks";
   readonly version: number;
 }
 

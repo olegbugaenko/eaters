@@ -7,6 +7,7 @@ import type {
   RuntimeContextSource,
 } from "@core/logic/provided/services/gameplay-ports";
 import type { StatisticsTracker } from "../statistics/statistics.module";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface ResourceAmountPayload {
   id: ResourceId;
@@ -33,6 +34,7 @@ export interface ResourcesModuleOptions {
   bonusValues: BonusValueSource;
   runtimeContext: RuntimeContextSource;
   statistics?: StatisticsTracker;
+  localization?: LocalizationService;
 }
 
 export interface ResourcesSaveData {

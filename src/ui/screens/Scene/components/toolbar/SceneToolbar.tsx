@@ -4,11 +4,13 @@ import { Button } from "@ui-shared/Button";
 import { ProgressBar } from "@ui-shared/ProgressBar";
 import { formatNumber } from "@ui-shared/format/number";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
-import { BRICK_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/bricks/bricks.const";
+import { OBJECTIVE_TOTAL_HP_BRIDGE_KEY } from "@logic/modules/active-map/objective-integrity/objective-integrity.const";
 import {
   PLAYER_UNIT_COUNT_BRIDGE_KEY,
   PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
 } from "@logic/modules/active-map/player-units/player-units.const";
+import { useLocalization } from "@ui/shared/useLocalization";
+import { MapEffectsBar } from "./MapEffectsBar";
 import "./SceneToolbar.css";
 
 interface SceneToolbarProps {
@@ -20,7 +22,8 @@ interface SceneToolbarProps {
   cameraPosition: { x: number; y: number };
 }
 
-const sanitizeId = (value: string): string => value.replace(/[^a-zA-Z0-9_-]/g, "_");
+const sanitizeId = (value: string): string =>
+  value.replace(/[^a-zA-Z0-9_-]/g, "_");
 
 export const SceneToolbar: React.FC<SceneToolbarProps> = ({
   bridge,
@@ -30,9 +33,14 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
   onScaleChange,
   cameraPosition,
 }) => {
-  const brickTotalHp = useBridgeValue(bridge, BRICK_TOTAL_HP_BRIDGE_KEY, 0);
+  const brickTotalHp = useBridgeValue(bridge, OBJECTIVE_TOTAL_HP_BRIDGE_KEY, 0);
   const unitCount = useBridgeValue(bridge, PLAYER_UNIT_COUNT_BRIDGE_KEY, 0);
-  const unitTotalHp = useBridgeValue(bridge, PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY, 0);
+  const unitTotalHp = useBridgeValue(
+    bridge,
+    PLAYER_UNIT_TOTAL_HP_BRIDGE_KEY,
+    0,
+  );
+  const { t } = useLocalization();
   const [brickInitialHp, setBrickInitialHp] = useState(0);
 
   useEffect(() => {
@@ -57,7 +65,9 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
   return (
     <div className="scene-toolbar">
       <div className="scene-toolbar__section scene-toolbar__section--left">
-        <Button onClick={onExit}>Exit Map [ESC]</Button>
+        <Button onClick={onExit}>
+          {t("scene.toolbar.exit", "Exit Map [ESC]")}
+        </Button>
       </div>
       <div className="scene-toolbar__section scene-toolbar__section--center">
         <svg
@@ -132,7 +142,9 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
           />
         </svg>
         <div className="scene-toolbar__hp">
-          <div className="scene-toolbar__hp-label">Brick Integrity</div>
+          <div className="scene-toolbar__hp-label">
+            {t("scene.toolbar.brickIntegrity", "Brick Integrity")}
+          </div>
           <ProgressBar
             className="scene-toolbar__hp-bar"
             current={brickTotalHp}
@@ -143,13 +155,20 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
           />
         </div>
         <div className="scene-toolbar__units">
-          Units: {unitCount} (HP {Math.round(unitTotalHp)})
+          {t("scene.toolbar.units", "Units")}: {unitCount} (
+          {t("scene.toolbar.hp", "HP")} {Math.round(unitTotalHp)})
         </div>
+        <MapEffectsBar bridge={bridge} />
       </div>
       <div className="scene-toolbar__section scene-toolbar__section--right">
         <label className="scene-toolbar__zoom">
           <span>
-            Zoom: {formatNumber(scale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x
+            {t("scene.toolbar.zoom", "Zoom")}:{" "}
+            {formatNumber(scale, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            {t("scene.common.timesShort", "×")}
           </span>
           <input
             type="range"
@@ -164,10 +183,13 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
           />
         </label>
         <div className="scene-toolbar__camera">
-          Camera: x {formatNumber(cameraPosition.x, {
+          {t("scene.toolbar.camera", "Camera")}: {t("scene.toolbar.axisX", "x")}{" "}
+          {formatNumber(cameraPosition.x, {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1,
-          })}, y {formatNumber(cameraPosition.y, {
+          })}
+          , {t("scene.toolbar.axisY", "y")}{" "}
+          {formatNumber(cameraPosition.y, {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1,
           })}

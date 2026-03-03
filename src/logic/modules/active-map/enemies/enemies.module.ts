@@ -19,6 +19,7 @@ import { DamageService } from "../targeting/DamageService";
 import { MovementService } from "@core/logic/provided/services/movement/MovementService";
 import type { MovementBodyState } from "@core/logic/provided/services/movement/movement.types";
 import { EnemyStateFactory, EnemyStateInput } from "./enemies.state-factory";
+import { getStatusEffectConfig } from "../../../../db/status-effects-db";
 import {
   subtractVectors,
   scaleVector,
@@ -41,7 +42,7 @@ import type {
   EnemySpawnData,
   InternalEnemyState,
 } from "./enemies.types";
-import { scaleEnemyResourceStockpile } from "./enemies.helpers";
+import { sanitizeEnemyLevel, scaleEnemyResourceStockpile } from "./enemies.helpers";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { getEnemyConfig, type EnemyConfig } from "../../../../db/enemies-db";
@@ -63,6 +64,8 @@ import { BrickObstacleProvider } from "./brick-obstacle-provider";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
+import { EnemySpawnSourceController } from "./enemy-spawn-source-controller";
+import { executeChainLightning } from "../chain-lightning.helpers";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -95,6 +98,7 @@ export class EnemiesModule implements GameModule {
   private readonly movement: MovementService;
   private readonly resources: EnemiesModuleOptions["resources"];
   private readonly bonuses: BonusesModule;
+  private readonly darkResearch?: EnemiesModuleOptions["darkResearch"];
   private readonly targeting?: TargetingService;
   private readonly damage?: DamageService;
   private readonly explosions?: ExplosionModule;
@@ -109,6 +113,7 @@ export class EnemiesModule implements GameModule {
     ENEMY_SPATIAL_GRID_CELL_SIZE,
   );
   private readonly statusEffects: StatusEffectsModule;
+  private readonly spawnSourceController = new EnemySpawnSourceController();
 
   private enemies = new Map<string, InternalEnemyState>();
   private enemyOrder: InternalEnemyState[] = [];
@@ -116,6 +121,7 @@ export class EnemiesModule implements GameModule {
   private totalHpCached = 0;
   private lastPushedCount = -1;
   private lastPushedTotalHp = -1;
+  private spawnerTimers = new Map<string, number>();
 
   constructor(options: EnemiesModuleOptions) {
     this.scene = options.scene;
@@ -124,6 +130,7 @@ export class EnemiesModule implements GameModule {
     this.movement = options.movement;
     this.resources = options.resources;
     this.bonuses = options.bonuses;
+    this.darkResearch = options.darkResearch;
     this.targeting = options.targeting;
     this.damage = options.damage;
     this.explosions = options.explosions;
@@ -267,22 +274,25 @@ export class EnemiesModule implements GameModule {
         anyChanged = true;
       }
 
-      // Update rotation based on movement direction or target direction
       const target = activeTargets.get(enemy.id);
-      const desiredRotation = this.computeEnemyRotation(
-        enemy,
-        target ?? null,
-        resolvedMovementState,
-      );
-      const newRotation = this.applyRotationSpeedLimit(
-        enemy.rotation,
-        desiredRotation,
-        deltaSeconds,
-        resolvedMovementState.velocity,
-      );
-      if (newRotation !== enemy.rotation) {
-        enemy.rotation = newRotation;
-        anyChanged = true;
+
+      // Update rotation based on movement direction or target direction (skip if locked)
+      if (!enemy.lockRotation) {
+        const desiredRotation = this.computeEnemyRotation(
+          enemy,
+          target ?? null,
+          resolvedMovementState,
+        );
+        const newRotation = this.applyRotationSpeedLimit(
+          enemy.rotation,
+          desiredRotation,
+          deltaSeconds,
+          resolvedMovementState.velocity,
+        );
+        if (newRotation !== enemy.rotation) {
+          enemy.rotation = newRotation;
+          anyChanged = true;
+        }
       }
 
       const knockbackOffset = this.updateEnemyKnockback(enemy, deltaMs);
@@ -326,6 +336,10 @@ export class EnemiesModule implements GameModule {
       this.trackNavigationProgress(enemy, deltaSeconds);
     });
 
+    const spawns: EnemySpawnData[] = [];
+    this.collectSpawnerSpawns(deltaMs, spawns);
+    spawns.forEach((spawn) => this.spawnEnemy(spawn));
+
     if (anyChanged) {
       this.pushStats();
     }
@@ -368,6 +382,20 @@ export class EnemiesModule implements GameModule {
     }
     return { ...enemy.position };
   };
+
+  public getObjectiveTotals(): { count: number; totalHp: number } {
+    let count = 0;
+    let totalHp = 0;
+    this.enemyOrder.forEach((enemy) => {
+      const config = getEnemyConfig(enemy.type);
+      if (!config.requireDestruction || enemy.hp <= 0) {
+        return;
+      }
+      count += 1;
+      totalHp += Math.max(enemy.hp, 0);
+    });
+    return { count, totalHp };
+  }
 
   public findNearestEnemy(position: SceneVector2): EnemyRuntimeState | null {
     const nearest = this.spatialIndex.queryNearest(position, {
@@ -473,6 +501,7 @@ export class EnemiesModule implements GameModule {
     this.totalHpCached = 0;
     this.lastPushedCount = -1;
     this.lastPushedTotalHp = -1;
+    this.spawnerTimers.clear();
 
     enemies.forEach((enemy) => {
       const input: EnemyStateInput = {
@@ -505,6 +534,7 @@ export class EnemiesModule implements GameModule {
   }
 
   private destroyEnemy(enemy: InternalEnemyState, rewardMultiplier = 1): void {
+    this.spawnerTimers.delete(enemy.id);
     if (enemy.reward && hasAnyResources(enemy.reward)) {
       let rewards = this.applyEnemyRewardBonuses(enemy.reward);
       const multiplier = Math.max(rewardMultiplier, 0);
@@ -515,6 +545,13 @@ export class EnemiesModule implements GameModule {
         this.resources.grantResources(rewards);
       }
     }
+
+    const soulDropChance = this.darkResearch?.getSoulDropChance() ?? 0;
+    const canDropSouls = enemy.moveSpeed > 0 && (enemy.soulReward ?? 0) > 0;
+    if (canDropSouls && soulDropChance > 0 && Math.random() <= soulDropChance) {
+      this.darkResearch?.addSoulsFromEnemyKill(enemy.soulReward ?? 0, enemy.level);
+    }
+
     this.scene.removeObject(enemy.sceneObjectId);
     this.movement.removeBody(enemy.movementId);
     this.enemies.delete(enemy.id);
@@ -753,18 +790,37 @@ export class EnemiesModule implements GameModule {
 
     if (config.arcAttack) {
       const arcAttack = config.arcAttack;
+      const isChain =
+        (arcAttack.chainRadius ?? 0) > 0 &&
+        (arcAttack.chainJumps ?? 0) > 0;
+      const chainDamage = arcAttack.damage ?? enemy.baseDamage;
+
+      // Rotate spawnOffset by the enemy's current rotation so it stays
+      // relative to the enemy's facing direction instead of world-space.
+      let rotatedOffset = arcAttack.spawnOffset;
+      if (rotatedOffset && (rotatedOffset.x !== 0 || rotatedOffset.y !== 0)) {
+        const cos = Math.cos(enemy.rotation);
+        const sin = Math.sin(enemy.rotation);
+        rotatedOffset = {
+          x: rotatedOffset.x * cos - rotatedOffset.y * sin,
+          y: rotatedOffset.x * sin + rotatedOffset.y * cos,
+        };
+      }
+
       this.arcs?.spawnArcBetweenTargets(
         arcAttack.arcType,
         { type: "enemy", id: enemy.id },
         { type: "unit", id: target.id },
-        { 
-          sourceOffset: arcAttack.spawnOffset,
+        {
+          sourceOffset: rotatedOffset,
           persistOnDeath: true,
         },
       );
       if (arcAttack.statusEffectId) {
         const effectTarget = { type: "unit", id: target.id } as const;
-        if (!this.statusEffects.hasEffect(arcAttack.statusEffectId, effectTarget)) {
+        const effectConfig = getStatusEffectConfig(arcAttack.statusEffectId);
+        const canStack = Math.max(effectConfig.maxStacks ?? 0, 0) > 1;
+        if (canStack || !this.statusEffects.hasEffect(arcAttack.statusEffectId, effectTarget)) {
           this.statusEffects.applyEffect(
             arcAttack.statusEffectId,
             effectTarget,
@@ -772,17 +828,40 @@ export class EnemiesModule implements GameModule {
           );
         }
       }
-      if (this.damage && enemy.baseDamage > 0) {
-        const knockBackDirection = toTarget;
-        this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
-          armorPenetration: 0,
-          knockBackDistance: config.knockBackDistance,
-          knockBackSpeed: config.knockBackSpeed,
-          knockBackDirection:
-            vectorLength(knockBackDirection) > 0
-              ? knockBackDirection
-              : normalizeVector(toTarget) || { x: 1, y: 0 },
-        });
+      if (this.damage && chainDamage > 0) {
+        const knockBackDirection =
+          vectorLength(toTarget) > 0
+            ? toTarget
+            : normalizeVector(toTarget) || { x: 1, y: 0 };
+        if (isChain) {
+          this.damage.applyTargetDamage(target.id, chainDamage, {
+            ...arcAttack.damageOptions,
+            knockBackDirection,
+          });
+          executeChainLightning({
+            startTarget: { id: target.id, type: "unit", position: target.position },
+            chainRadius: arcAttack.chainRadius!,
+            chainJumps: arcAttack.chainJumps!,
+            damage: chainDamage,
+            damageOptions: arcAttack.damageOptions,
+            dependencies: {
+              getTargetsInRadius: (position, radius, types) =>
+                this.targeting?.findTargetsNear(position, radius, types?.length ? { types: [...types] } : undefined) ?? [],
+              applyTargetDamage: (targetId, damageValue, options) =>
+                this.damage!.applyTargetDamage(targetId, damageValue, options ?? {}),
+              spawnArcBetweenTargets: this.arcs?.spawnArcBetweenTargets?.bind(this.arcs),
+            },
+            arcType: arcAttack.arcType,
+            chainTargetTypes: ["unit"],
+          });
+        } else {
+          this.damage.applyTargetDamage(target.id, enemy.baseDamage, {
+            armorPenetration: 0,
+            knockBackDistance: config.knockBackDistance,
+            knockBackSpeed: config.knockBackSpeed,
+            knockBackDirection,
+          });
+        }
       }
       // Spawn explosion at target position if configured
       if (arcAttack.explosionType && this.explosions) {
@@ -1176,16 +1255,22 @@ export class EnemiesModule implements GameModule {
       return ZERO_VECTOR;
     }
 
-    // Desired speed - slow down as we approach
+    // Desired speed - slow down as we approach.
+    // desiredSpeed drops linearly from moveSpeed down to 0 as we reach the
+    // attack range boundary.  With the proportional steering controller the
+    // effective stopping distance from speed v ≈ v * mass, so we scale the
+    // ramp by 1/mass so the enemy starts decelerating early enough.
     const approachDistance = Math.min(
       distanceOutsideRange,
       distanceToDestination,
     );
     const moveSpeed = this.getEffectiveMoveSpeed(enemy);
-    const desiredSpeed = Math.max(
-      Math.min(moveSpeed, approachDistance),
-      moveSpeed * 0.25,
-    );
+    const mass = this.getEnemyMass(enemy);
+    const rampDistance = moveSpeed * mass; // distance needed to stop from full speed
+    const speedRatio = rampDistance > 0
+      ? Math.min(approachDistance / rampDistance, 1)
+      : 1;
+    const desiredSpeed = moveSpeed * speedRatio;
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
     const avoidance = this.computeObstacleAvoidance(enemy, desiredVelocity);
@@ -1543,6 +1628,63 @@ export class EnemiesModule implements GameModule {
     }
   }
 
+  private collectSpawnerSpawns(deltaMs: number, queue: EnemySpawnData[]): void {
+    if (deltaMs <= 0) {
+      return;
+    }
+    const currentEnemies = [...this.enemyOrder];
+    currentEnemies.forEach((enemy) => {
+      if (enemy.hp <= 0) {
+        return;
+      }
+      const config = getEnemyConfig(enemy.type);
+      const spawner = config.spawner;
+      if (!spawner || spawner.spawnRate <= 0) {
+        return;
+      }
+      const timer = this.spawnerTimers.get(enemy.id) ?? 0;
+      const nextTimer = timer - deltaMs;
+      if (nextTimer > 0) {
+        this.spawnerTimers.set(enemy.id, nextTimer);
+        return;
+      }
+      if (!this.canSpawnFromSpawner(enemy.id, spawner.maxConcurrent)) {
+        const intervalMs = this.spawnSourceController.getSpawnIntervalMs(spawner.spawnRate);
+        this.spawnerTimers.set(enemy.id, intervalMs);
+        return;
+      }
+      const selectedType = this.spawnSourceController.selectEnemyType(
+        spawner.enemyTypes,
+        enemy.level,
+      );
+      if (selectedType) {
+        const levelOffset = spawner.levelOffset ?? 0;
+        const spawnLevel = sanitizeEnemyLevel(enemy.level + levelOffset);
+        queue.push({
+          type: selectedType,
+          level: spawnLevel,
+          position: { ...enemy.position },
+          spawnSourceId: enemy.id,
+        });
+      }
+      const intervalMs = this.spawnSourceController.getSpawnIntervalMs(spawner.spawnRate);
+      this.spawnerTimers.set(enemy.id, intervalMs);
+    });
+  }
+
+  private canSpawnFromSpawner(sourceId: string, maxConcurrent?: number): boolean {
+    if (maxConcurrent === undefined) {
+      return true;
+    }
+    let count = 0;
+    this.enemyOrder.forEach((enemy) => {
+      if (enemy.spawnSourceId === sourceId && enemy.hp > 0) {
+        count += 1;
+      }
+    });
+    return count < maxConcurrent;
+  }
+
   private cloneState(enemy: InternalEnemyState): EnemyRuntimeState {
     return {
       id: enemy.id,
@@ -1559,11 +1701,14 @@ export class EnemiesModule implements GameModule {
       attackRange: enemy.attackRange,
       moveSpeed: enemy.moveSpeed,
       physicalSize: enemy.physicalSize,
+      lockRotation: enemy.lockRotation,
       selfKnockBackDistance: enemy.selfKnockBackDistance,
       selfKnockBackSpeed: enemy.selfKnockBackSpeed,
       reward: enemy.reward
         ? cloneResourceStockpile(normalizeResourceAmount(enemy.reward))
         : undefined,
+      soulReward: enemy.soulReward,
+      spawnSourceId: enemy.spawnSourceId,
     };
   }
 }

@@ -32,7 +32,8 @@ export type BrickType =
   | "neutronBrick2"
   | "darkMatterBrick"
   | "floodedArch"
-  | "megaBrick";
+  | "megaBrick"
+  | "uraniumBrick";
 
 export interface BrickConfig {
   name?: string;
@@ -142,6 +143,12 @@ const ICE_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.85, g: 0.95, b: 1, a: 1 } },
   { offset: 0.4, color: { r: 0.65, g: 0.85, b: 0.95, a: 0.9 } },
   { offset: 1, color: { r: 0.4, g: 0.6, b: 0.8, a: 0.6 } },
+] as const;
+
+const URANIUM_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.8, g: 0.7, b: 0.5, a: 1 } },
+  { offset: 0.4, color: { r: 0.55, g: 0.65, b: 0.45, a: 1 } },
+  { offset: 1, color: { r: 0.35, g: 0.45, b: 0.16, a: 1 } },
 ] as const;
 
 const MAGMA_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
@@ -300,7 +307,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
         radiusOffset: -2,
       },
       destructionExplosion: {
-        type: "grayBrickDestroy",
+        type: "grayBrickDestroyV2",
         radiusMultiplier: 0.95,
       },
     },
@@ -616,9 +623,9 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.08, g: 0.08, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 840,
+      maxHp: 940,
       armor: 70,
-      baseDamage: 225,
+      baseDamage: 245,
       knockBackDistance: 90,
       knockBackSpeed: 190,
       brickKnockBackAmplitude: 6,
@@ -669,6 +676,42 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       ice: 0.5,
+    },
+  },
+  
+  uraniumBrick: {
+    size: { width: 30, height: 30 },
+    fill: {
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 28,
+      stops: URANIUM_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.05,
+        alphaAmplitude: 0.0,
+        scale: 0.15,
+      },
+    },
+    stroke: { color: { r: 0.3, g: 0.5, b: 0.2, a: 1 }, width: 2.4 },
+    destructubleData: {
+      maxHp: 6750,
+      armor: 1445,
+      baseDamage: 1355,
+      knockBackDistance: 190,
+      knockBackSpeed: 280,
+      brickKnockBackAmplitude: 4,
+      physicalSize: 20,
+      damageExplosion: {
+        type: "iceBrickHit",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "iceBrickDestroy",
+        radiusMultiplier: 1.25,
+      },
+    },
+    rewards: {
+      uranium: 0.1,
     },
   },
   smallMagma: {

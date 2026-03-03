@@ -1,6 +1,7 @@
 import { useCallback, useId } from "react";
 import type { MouseEventHandler } from "react";
 import type { GameVersionInfo } from "@db/version-db";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./VersionHistoryModal.css";
 
 interface VersionHistoryModalProps {
@@ -16,6 +17,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
   onClose,
   title = "Version history",
 }) => {
+  const { t } = useLocalization();
   const titleId = useId();
   const handleBackdropClick = useCallback(() => {
     onClose();
@@ -25,7 +27,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
     (event) => {
       event.stopPropagation();
     },
-    []
+    [],
   );
 
   if (!isOpen) {
@@ -48,7 +50,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
             className="version-history-modal__close"
             onClick={onClose}
           >
-            Close
+            {t("settings.close", "Close")}
           </button>
         </header>
         <div className="version-history-modal__list">

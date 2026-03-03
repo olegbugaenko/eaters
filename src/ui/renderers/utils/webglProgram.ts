@@ -13,6 +13,11 @@ export const compileShader = (
 
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     const info = gl.getShaderInfoLog(shader);
+    console.error("Shader compile failed", {
+      info,
+      type,
+      source,
+    });
     gl.deleteShader(shader);
     throw new Error(`Failed to compile shader: ${info ?? "unknown"}`);
   }

@@ -15,12 +15,18 @@ import { EventLogModule } from "../../shared/event-log/event-log.module";
 import { ArcModule } from "../../scene/arc/arc.module";
 import { EnemiesModule } from "../enemies/enemies.module";
 import type { EnemyRuntimeState } from "../enemies/enemies.types";
-import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps-db";
+import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import type { PlayerUnitState } from "../player-units/units/UnitTypes";
+import { MapId, MapListEntry as MapListEntryConfig } from "../../../../db/maps/maps-db";
+import type { EnemyType } from "../../../../db/enemies-db";
+import type { ResourceId, ResourceStockpile } from "../../../../db/resources-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
 import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
+import type { MapEffectPostProcessConfig } from "../../../../db/map-effects-db";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface ResourceRunController {
   startRun(): void;
@@ -48,6 +54,8 @@ export interface MapModuleOptions {
   sceneCleanup: MapSceneCleanupContract;
   getSkillLevel: (id: SkillId) => number;
   newUnlocks: NewUnlockNotificationService;
+  statusEffects?: StatusEffectsModule;
+  localization?: LocalizationService;
 }
 
 export interface MapSaveData {
@@ -91,6 +99,22 @@ export interface MapAutoRestartState {
   readonly enabled: boolean;
 }
 
+export interface MapEffectsBridgeState {
+  readonly radioactivity: {
+    level: number;
+    maxLevel: number;
+    postProcess?: MapEffectPostProcessConfig;
+  } | null;
+}
+
+export interface MapResourcePreview {
+  readonly resourceIds: ResourceId[];
+  readonly brickTotalsLevel1: ResourceStockpile;
+  readonly enemyRewardsLevel1: Partial<Record<EnemyType, ResourceStockpile>>;
+}
+
+export type MapResourcePreviewCache = Partial<Record<MapId, MapResourcePreview>>;
+
 export type MapModuleInstance = GameModule & { id: string };
 
 export type MapGenerationPayload = {
@@ -117,7 +141,7 @@ export interface MapModuleUiApi {
   inspectTargetAtPosition(
     position: SceneVector2,
     radius?: number
-  ): TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
+  ): TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState> | null;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

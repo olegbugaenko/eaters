@@ -1,31 +1,77 @@
 import { useMemo } from "react";
+import { getPlayerUnitConfig } from "@db/player-units-db";
+import { UNIT_DESIGNER_STATE_BRIDGE_KEY } from "@logic/modules/camp/unit-design/unit-design.const";
+import type { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import { MAP_INSPECTED_TARGET_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
+import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { useLocalization } from "@ui/shared/useLocalization";
 import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import { createTargetTooltip } from "./createTargetTooltip";
+import {
+  DARK_RESEARCH_STATE_BRIDGE_KEY,
+  DEFAULT_DARK_RESEARCH_STATE,
+} from "@logic/modules/camp/dark-research/dark-research.const";
+import type { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
 import { SceneTooltipContent, SceneTooltipPanel } from "./SceneTooltipPanel";
 
 const EMPTY_TARGET: TargetSnapshot<
-  "brick" | "enemy",
-  BrickRuntimeState | EnemyRuntimeState
+  "brick" | "enemy" | "playerUnit",
+  BrickRuntimeState | EnemyRuntimeState | PlayerUnitState
 > | null = null;
+
+const EMPTY_UNIT_DESIGNER_STATE: UnitDesignerBridgeState = {
+  units: [],
+  availableModules: [],
+  maxModules: 3,
+  activeRoster: [],
+  maxActiveUnits: 3,
+  targetingByUnit: {},
+};
 
 interface SceneTooltipBridgePanelProps {
   contentOverride?: SceneTooltipContent | null;
 }
 
-export const SceneTooltipBridgePanel: React.FC<SceneTooltipBridgePanelProps> = ({
-  contentOverride,
-}) => {
+export const SceneTooltipBridgePanel: React.FC<
+  SceneTooltipBridgePanelProps
+> = ({ contentOverride }) => {
   const { bridge } = useAppLogic();
-  const target = useBridgeValue(bridge, MAP_INSPECTED_TARGET_BRIDGE_KEY, EMPTY_TARGET);
-  const bridgeContent = useMemo(
-    () => (target ? createTargetTooltip(target) : null),
-    [target],
+  const { t } = useLocalization();
+  const target = useBridgeValue(
+    bridge,
+    MAP_INSPECTED_TARGET_BRIDGE_KEY,
+    EMPTY_TARGET,
   );
+  const unitDesignerState = useBridgeValue(
+    bridge,
+    UNIT_DESIGNER_STATE_BRIDGE_KEY,
+    EMPTY_UNIT_DESIGNER_STATE,
+  );
+  const darkResearchState = useBridgeValue(
+    bridge,
+    DARK_RESEARCH_STATE_BRIDGE_KEY,
+    DEFAULT_DARK_RESEARCH_STATE as DarkResearchBridgeState,
+  );
+  const bridgeContent = useMemo(() => {
+    if (!target) return null;
+    let playerUnitDisplayName: string | null = null;
+    if (target.type === "playerUnit" && target.data) {
+      const unit = target.data as PlayerUnitState;
+      const design = unit.designId
+        ? unitDesignerState.units.find((u) => u.id === unit.designId)
+        : null;
+      playerUnitDisplayName = design?.name?.trim()
+        ? design.name
+        : getPlayerUnitConfig(unit.type).name;
+    }
+    return createTargetTooltip(target, t, playerUnitDisplayName, {
+      darkResearchUnlocked: darkResearchState.unlocked,
+    });
+  }, [target, t, unitDesignerState.units, darkResearchState.unlocked]);
   const content = contentOverride ?? bridgeContent;
 
   return <SceneTooltipPanel content={content} />;

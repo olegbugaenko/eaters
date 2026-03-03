@@ -12,7 +12,7 @@ import type { BulletTailConfig } from "@/db/bullets-db";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import type { SpellProjectileRingTrailConfig } from "@/db/spells-db";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
-import { normalizeVector } from "../../../../shared/helpers/vector.helper";
+import { normalizeVector, sanitizeVector } from "../../../../shared/helpers/vector.helper";
 import {
   MAX_PROJECTILE_STEPS_PER_TICK,
   MIN_MOVEMENT_STEP,
@@ -43,6 +43,7 @@ import type {
   UnitProjectileRingTrailState,
   RingState,
   UnitProjectileState,
+  UnitProjectileWanderConfig,
 } from "./projectiles.types";
 
 
@@ -105,23 +106,28 @@ export class UnitProjectileController {
       y: direction.y * visual.speed,
     };
     const position = { ...origin };
+    const renderPosition = { ...position };
     const createdAt = performance.now();
     const lifetimeMs = Math.max(1, Math.floor(visual.lifetimeMs));
     const radius = Math.max(1, visual.radius);
     const hitRadius = Math.max(1, visual.hitRadius ?? radius);
     const damageRadius = Math.max(0, visual.damageRadius ?? 0);
     const rotation = Math.atan2(direction.y, direction.x);
-    const shape = visual.shape ?? "circle";
+    const movementRotation = rotation;
+    const shape = visual.shape ?? (visual.spriteName ? "sprite" : "circle");
     
     // Try GPU instanced rendering first (much faster for many projectiles)
     const gpuConfig = this.getGpuBulletConfig(visual, shape);
     const gpuSlot = gpuConfig ? acquireGpuBulletSlot(gpuConfig) : null;
+    // console.log("gpuSlot", gpuSlot, gpuConfig);
 
     const bulletGpuKey = gpuSlot ? `${gpuSlot.batchKey}:${gpuSlot.slotIndex}` : undefined;
     const rendererCustomData = {
       speed: visual.speed,
       maxSpeed: visual.speed,
       velocity,
+      movementRotation,
+      visualRotation: movementRotation,
       tail: visual.tail,
       tailEmitter: visual.tailEmitter,
       shape,
@@ -140,12 +146,19 @@ export class UnitProjectileController {
     if (gpuSlot) {
       // Use GPU instanced rendering for the main body
       objectId = `gpu-bullet-${gpuSlot.visualKey}-${gpuSlot.slotIndex}-${createdAt}`;
-      updateGpuBulletSlot(gpuSlot, position, rotation, radius, true);
+      updateGpuBulletSlot(
+        gpuSlot,
+        renderPosition,
+        movementRotation,
+        movementRotation,
+        radius,
+        true
+      );
 
       if (shouldCreateOverlay) {
         // Overlay only renders emitters - body/tail/glow are handled by GPU
         effectsObjectId = this.scene.addObject("unitProjectile", {
-          position,
+          position: renderPosition,
           size: { width: radius * 2, height: radius * 2 },
           rotation,
           fill: visual.fill,
@@ -160,6 +173,7 @@ export class UnitProjectileController {
           },
         });
       }
+      //console.log(`spawned gpu bullet: ${objectId}. Position: ${position.x},${position.y}. Origin: ${origin.x},${origin.y}.`);
     } else {
       // Fallback to scene object rendering
       objectId = this.scene.addObject("unitProjectile", {
@@ -167,8 +181,8 @@ export class UnitProjectileController {
         size: { width: radius * 2, height: radius * 2 },
         rotation,
         fill: visual.fill,
-        customData: rendererCustomData,
-      });
+      customData: rendererCustomData,
+    });
     }
 
     const ringTrail = visual.ringTrail
@@ -179,9 +193,11 @@ export class UnitProjectileController {
       ...projectile,
       origin,
       targetTypes,
+      direction,
       id: objectId,
       velocity,
       position,
+      renderPosition,
       elapsedMs: 0,
       lifetimeMs,
       createdAt,
@@ -190,6 +206,9 @@ export class UnitProjectileController {
       shape,
       hitRadius,
       damageRadius,
+      wander: this.createWanderState(visual.wander),
+      rotationSpin: this.createRotationSpinState(visual.rotationSpinningDegPerSec),
+      rendererCustomData,
       gpuSlot: gpuSlot ?? undefined,
       effectsObjectId,
       justSpawned: true, // Не рухати снаряд в перший тік
@@ -198,7 +217,7 @@ export class UnitProjectileController {
     this.projectiles.push(state);
     this.projectileIndex.set(objectId, state);
     if (ringTrail) {
-      this.spawnProjectileRing(state.position, ringTrail.config);
+      this.spawnProjectileRing(state.position, state.velocity, state.radius, ringTrail.config);
     }
     return objectId;
   }
@@ -231,7 +250,8 @@ export class UnitProjectileController {
       tailStartColor: tailColors.start,
       tailEndColor: tailColors.end,
       tailLengthMultiplier: visual.tail?.lengthMultiplier ?? 4.5,
-      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 1.75,
+      tailWidthMultiplier: visual.tail?.widthMultiplier ?? 2,
+      tailTaperMultiplier: visual.tail?.taperMultiplier ?? 0.7,
       tailOffsetMultiplier: visual.tail?.offsetMultiplier,
       shape,
       centerColor: radialColors?.center,
@@ -329,6 +349,11 @@ export class UnitProjectileController {
     for (let i = 0; i < this.projectiles.length; i += 1) {
       const projectile = this.projectiles[i]!;
       let hitTarget: TargetSnapshot | null = null;
+      let removed = false;
+      // console.log(`start tick: ${projectile.id}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}.`);
+          
+      this.updateProjectileWander(projectile, deltaMs);
+      this.updateProjectileRotationSpin(projectile, deltaMs);
 
       // Якщо снаряд щойно створений - пропускаємо рух, тільки оновлюємо візуал
       if (projectile.justSpawned) {
@@ -355,48 +380,94 @@ export class UnitProjectileController {
       const stepY = totalMoveY / steps;
 
       for (let j = 0; j < steps; j += 1) {
+        const previousPosition = {
+          x: projectile.position.x,
+          y: projectile.position.y,
+        };
         projectile.position.x += stepX;
         projectile.position.y += stepY;
 
-        const collided = this.findHitTarget(projectile.position, projectile.hitRadius, projectile);
-        if (collided) {
-          hitTarget = collided;
-          const handled = projectile.onHit?.({
-            targetId: collided.id,
-            targetType: collided.type,
-            brickId: isTargetOfType(collided, "brick") ? collided.id : undefined,
-            position: { ...projectile.position },
-          });
-          if (handled !== true) {
-            if (projectile.damageRadius > 0) {
-              this.damage.applyAreaDamage(
+        if (projectile.targetPosition) {
+          const hitRadius = Math.max(projectile.hitRadius, projectile.radius);
+          if (
+            this.isTargetReached(
+              previousPosition,
+              projectile.position,
+              projectile.targetPosition,
+              hitRadius,
+            )
+          ) {
+            projectile.onExpired?.({ ...projectile.position });
+            this.removeProjectile(projectile);
+            if (projectile.ringTrail) {
+              this.spawnProjectileRing(
                 projectile.position,
-                projectile.damageRadius,
-                projectile.damage,
-                {
-                  rewardMultiplier: projectile.rewardMultiplier,
-                  armorPenetration: projectile.armorPenetration,
-                  skipKnockback: projectile.skipKnockback === true,
-                  knockBackDistance: projectile.knockBackDistance,
-                  knockBackSpeed: projectile.knockBackSpeed,
-                  knockBackDirection: projectile.knockBackDirection,
-                  direction: projectile.direction,
-                  types: projectile.targetTypes,
-                }
+                projectile.velocity,
+                projectile.radius,
+                projectile.ringTrail.config
               );
-            } else {
-              this.applyProjectileDamage(projectile, collided);
             }
+            removed = true;
+            break;
           }
-          this.removeProjectile(projectile);
-          if (projectile.ringTrail) {
-            this.spawnProjectileRing(projectile.position, projectile.ringTrail.config);
+          //if(projectile.position.y > projectile.targetPosition.y || true) {
+          //  console.log(`overlooked target: ${projectile.id} - ${projectile.position.y > projectile.targetPosition.y}. Elapsed: ${projectile.elapsedMs}. totalMoveXY: ${totalMoveX},${totalMoveY}. stepXY: ${stepX},${stepY}. Position: ${projectile.position.x},${projectile.position.y}. Origin: ${projectile.origin.x},${projectile.origin.y}. Target: ${projectile.targetPosition.x},${projectile.targetPosition.y}`, projectile);
+          //}
+        }
+
+        if (!projectile.ignoreTargetsOnPath) {
+          const collided = this.findHitTarget(
+            projectile.position,
+            projectile.hitRadius,
+            projectile,
+          );
+          if (collided) {
+            hitTarget = collided;
+            const handled = projectile.onHit?.({
+              targetId: collided.id,
+              targetType: collided.type,
+              brickId: isTargetOfType(collided, "brick") ? collided.id : undefined,
+              position: { ...projectile.position },
+            });
+            if (handled !== true) {
+              if (projectile.damageRadius > 0) {
+                this.damage.applyAreaDamage(
+                  projectile.position,
+                  projectile.damageRadius,
+                  projectile.damage,
+                  {
+                    rewardMultiplier: projectile.rewardMultiplier,
+                    armorPenetration: projectile.armorPenetration,
+                    skipKnockback: projectile.skipKnockback === true,
+                    knockBackDistance: projectile.knockBackDistance,
+                    knockBackSpeed: projectile.knockBackSpeed,
+                    knockBackDirection: projectile.knockBackDirection,
+                    direction: projectile.direction,
+                    types: projectile.targetTypes,
+                  }
+                );
+              } else {
+                this.applyProjectileDamage(projectile, collided);
+              }
+            }
+            this.removeProjectile(projectile);
+            if (projectile.ringTrail) {
+              this.spawnProjectileRing(
+                projectile.position,
+                projectile.velocity,
+                projectile.radius,
+                projectile.ringTrail.config
+              );
+            }
+            break;
           }
-          break;
         }
       }
 
       if (hitTarget) {
+        continue;
+      }
+      if (removed) {
         continue;
       }
 
@@ -439,30 +510,140 @@ export class UnitProjectileController {
     }
     this.projectileIndex.delete(projectile.id);
   }
+
+  private createWanderState(
+    config: UnitProjectileWanderConfig | undefined,
+  ): UnitProjectileState["wander"] | undefined {
+    if (!config) {
+      return undefined;
+    }
+    const intervalMs = clampNumber(config.intervalMs, 0, Number.POSITIVE_INFINITY);
+    const angleRangeDeg = clampNumber(config.angleRangeDeg, 0, Number.POSITIVE_INFINITY);
+    if (intervalMs <= 0 || angleRangeDeg <= 0) {
+      return undefined;
+    }
+    return {
+      intervalMs,
+      angleRangeRad: (angleRangeDeg * Math.PI) / 180,
+      accumulatorMs: 0,
+    };
+  }
+
+  private updateProjectileWander(projectile: UnitProjectileState, deltaMs: number): void {
+    const wander = projectile.wander;
+    if (!wander) {
+      return;
+    }
+    const elapsed = Math.max(0, deltaMs);
+    if (elapsed <= 0) {
+      return;
+    }
+    wander.accumulatorMs += elapsed;
+    if (wander.accumulatorMs < wander.intervalMs) {
+      return;
+    }
+
+    while (wander.accumulatorMs >= wander.intervalMs) {
+      wander.accumulatorMs -= wander.intervalMs;
+      const angle = (Math.random() * 2 - 1) * wander.angleRangeRad;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const rotated = {
+        x: projectile.direction.x * cos - projectile.direction.y * sin,
+        y: projectile.direction.x * sin + projectile.direction.y * cos,
+      };
+      projectile.direction = normalizeVector(rotated) ?? projectile.direction;
+    }
+
+    const speed = projectile.visual.speed;
+    projectile.velocity = {
+      x: projectile.direction.x * speed,
+      y: projectile.direction.y * speed,
+    };
+  }
+
+  private createRotationSpinState(
+    rotationSpinningDegPerSec: number | undefined,
+  ): UnitProjectileState["rotationSpin"] | undefined {
+    if (!Number.isFinite(rotationSpinningDegPerSec)) {
+      return undefined;
+    }
+    const degreesPerSec = Math.abs(rotationSpinningDegPerSec ?? 0);
+    if (degreesPerSec <= 0) {
+      return undefined;
+    }
+    return {
+      radiansPerMs: (degreesPerSec * Math.PI) / 180 / 1000,
+      rotationRad: 0,
+    };
+  }
+
+  private updateProjectileRotationSpin(
+    projectile: UnitProjectileState,
+    deltaMs: number,
+  ): void {
+    const rotationSpin = projectile.rotationSpin;
+    if (!rotationSpin) {
+      return;
+    }
+    const elapsed = Math.max(0, deltaMs);
+    if (elapsed <= 0) {
+      return;
+    }
+    rotationSpin.rotationRad += rotationSpin.radiansPerMs * elapsed;
+  }
   
   /**
    * Updates projectile position in GPU slot or scene.
    */
   private updateProjectilePosition(projectile: UnitProjectileState): void {
-    const rotation = Math.atan2(projectile.velocity.y, projectile.velocity.x);
+    if (projectile.renderPosition) {
+      projectile.renderPosition.x = projectile.position.x;
+      projectile.renderPosition.y = projectile.position.y;
+    } else {
+      projectile.renderPosition = { ...projectile.position };
+    }
+    const visualPosition = projectile.renderPosition ?? projectile.position;
+    const movementRotation = Math.atan2(projectile.velocity.y, projectile.velocity.x);
+    const visualRotation = movementRotation + (projectile.rotationSpin?.rotationRad ?? 0);
+    const rendererCustomData = {
+      ...projectile.rendererCustomData,
+      movementRotation,
+      visualRotation,
+    };
+    const effectsRendererCustomData = projectile.effectsObjectId
+      ? {
+          ...rendererCustomData,
+          renderComponents: {
+            body: false,
+            tail: false,
+            glow: false,
+            emitters: true,
+          },
+        }
+      : rendererCustomData;
     if (projectile.gpuSlot) {
       updateGpuBulletSlot(
         projectile.gpuSlot,
-        projectile.position,
-        rotation,
+        visualPosition,
+        movementRotation,
+        visualRotation,
         projectile.radius,
         true
       );
     } else {
       this.scene.updateObject(projectile.id, {
-        position: { ...projectile.position },
+        position: { ...visualPosition },
+        rotation: visualRotation,
+        customData: rendererCustomData,
       });
     }
 
     if (projectile.effectsObjectId) {
       this.scene.updateObject(projectile.effectsObjectId, {
-        position: { ...projectile.position },
-        rotation,
+        position: { ...visualPosition },
+        rotation: movementRotation,
+        customData: effectsRendererCustomData,
       });
     }
   }
@@ -568,7 +749,34 @@ export class UnitProjectileController {
     );
   }
 
+  private isTargetReached(
+    start: SceneVector2,
+    end: SceneVector2,
+    target: SceneVector2,
+    radius: number,
+  ): boolean {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSq = dx * dx + dy * dy;
+    if (lengthSq <= 0) {
+      const diffX = target.x - end.x;
+      const diffY = target.y - end.y;
+      return diffX * diffX + diffY * diffY <= radius * radius;
+    }
+
+    const t = clamp01(
+      ((target.x - start.x) * dx + (target.y - start.y) * dy) / lengthSq,
+    );
+    const closestX = start.x + dx * t;
+    const closestY = start.y + dy * t;
+    const diffX = target.x - closestX;
+    const diffY = target.y - closestY;
+    return diffX * diffX + diffY * diffY <= radius * radius;
+  }
+
   private createRingTrailState(config: SpellProjectileRingTrailConfig): UnitProjectileRingTrailState {
+    const offset = sanitizeVector(config.offset, { x: 0, y: 0 }) ?? { x: 0, y: 0 };
+    const fadeInMs = clampNumber(config.fadeInMs ?? 0, 0, Number.POSITIVE_INFINITY);
     const sanitized = {
       spawnIntervalMs: Math.max(1, Math.floor(config.spawnIntervalMs)),
       lifetimeMs: Math.max(1, Math.floor(config.lifetimeMs)),
@@ -576,8 +784,10 @@ export class UnitProjectileController {
       endRadius: Math.max(Math.max(1, config.startRadius), config.endRadius),
       startAlpha: clamp01(config.startAlpha),
       endAlpha: clamp01(config.endAlpha),
+      fadeInMs,
       innerStop: clamp01(config.innerStop),
       outerStop: clamp01(config.outerStop),
+      offset,
       color: {
         r: clamp01(config.color.r ?? 0),
         g: clamp01(config.color.g ?? 0),
@@ -620,12 +830,22 @@ export class UnitProjectileController {
       trail.accumulatorMs -= interval;
       // Cap accumulator to prevent burst spawning on next frame
       trail.accumulatorMs = Math.min(trail.accumulatorMs, interval);
-      this.spawnProjectileRing(projectile.position, trail.config);
+      this.spawnProjectileRing(
+        projectile.position,
+        projectile.velocity,
+        projectile.radius,
+        trail.config
+      );
       this.ringsSpawnedThisFrame += 1;
     }
   }
 
-  private spawnProjectileRing(position: SceneVector2, config: UnitProjectileRingTrailState["config"]): void {
+  private spawnProjectileRing(
+    position: SceneVector2,
+    velocity: SceneVector2,
+    radius: number,
+    config: UnitProjectileRingTrailState["config"]
+  ): void {
     // GPU Instanced rendering - acquire slot and write initial data
     const gpuSlot = ringGpuRenderer.acquireSlot(undefined);
     if (!gpuSlot) {
@@ -639,15 +859,32 @@ export class UnitProjectileController {
     }
     const now = performance.now();
 
+    const offset = {
+      x: config.offset.x * radius,
+      y: config.offset.y * radius,
+    };
+    const movementRotation = Math.atan2(velocity.y, velocity.x);
+    const cos = Math.cos(movementRotation);
+    const sin = Math.sin(movementRotation);
+    const rotatedOffset = {
+      x: offset.x * cos - offset.y * sin,
+      y: offset.x * sin + offset.y * cos,
+    };
+    const ringPosition = {
+      x: position.x + rotatedOffset.x,
+      y: position.y + rotatedOffset.y,
+    };
+
     // Write ring data to GPU - animation happens in shader
     ringGpuRenderer.updateSlot(gpuSlot, {
-      position: { x: position.x, y: position.y },
+      position: ringPosition,
       createdAt: now,
       lifetimeMs: config.lifetimeMs,
       startRadius: config.startRadius,
       endRadius: config.endRadius,
       startAlpha: config.startAlpha,
       endAlpha: config.endAlpha,
+      fadeInMs: config.fadeInMs,
       innerStop,
       outerStop,
       color: config.color,

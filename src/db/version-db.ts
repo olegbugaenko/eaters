@@ -6,6 +6,46 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.3",
+    releaseDate:  "2026-02-10",
+    changes: [
+      "Added new maps",
+      "Added new mechanics for crafting speedup",
+      "Potential loot on maps now visible in sidebar",
+      "Fixed hover tooltips on objects - now they display effects and abilities properly",
+      "Significantly improved performance of animations",
+    ]
+  },
+  {
+    displayName: "v0.1.2b",
+    releaseDate: "2026-02-04",
+    changes: [
+      "Fixed UI for small screen sizes",
+      "Fixed scroll behaviour in unit designer",
+      "Fixed bug when deleted units were not removed from roster correctly",
+    ],
+  },
+  {
+    displayName: "v0.1.2a",
+    releaseDate: "2026-02-04",
+    changes: [
+      "Fixed bug when on small screen size run summary popup was not fully interactable",
+    ],
+  },
+  {
+    displayName: "v0.1.2",
+    releaseDate: "2026-02-03",
+    changes: [
+      "Added new maps",
+      "Added new organs",
+      "Refined particle effects",
+      "Rebalanced some spells",
+      "Performance improvements",
+      "Numerous bugfixes",
+      "Added possibility to RMB on map to inspect target",
+    ],
+  },
+  {
     displayName: "v0.1.1",
     releaseDate: "2026-01-15",
     changes: [

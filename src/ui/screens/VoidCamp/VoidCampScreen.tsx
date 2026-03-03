@@ -5,14 +5,15 @@ import {
   CampContent,
   CampTabKey,
 } from "@screens/VoidCamp/components/CampContent/CampContent";
-import { MapId } from "@db/maps-db";
+import { MapId } from "@/db/maps/maps-db";
 import { GAME_VERSIONS } from "@db/version-db";
 import {
   MAP_CLEARED_LEVELS_BRIDGE_KEY,
   MAP_LIST_BRIDGE_KEY,
+  MAP_RESOURCE_PREVIEW_BRIDGE_KEY,
   MAP_SELECTED_BRIDGE_KEY,
 } from "@logic/modules/active-map/map/map.const";
-import { MapListEntry } from "@logic/modules/active-map/map/map.types";
+import { MapListEntry, MapResourcePreviewCache } from "@logic/modules/active-map/map/map.types";
 import { TIME_BRIDGE_KEY } from "@logic/modules/shared/time/time.module";
 import { RESOURCE_TOTALS_BRIDGE_KEY } from "@logic/modules/shared/resources/resources.module";
 import type { ResourceAmountPayload } from "@logic/modules/shared/resources/resources.types";
@@ -60,6 +61,11 @@ import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
 } from "@logic/modules/active-map/unit-automation/unit-automation.const";
+import { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
+import {
+  DARK_RESEARCH_STATE_BRIDGE_KEY,
+  DEFAULT_DARK_RESEARCH_STATE,
+} from "@logic/modules/camp/dark-research/dark-research.const";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { VoidCampTopBar } from "@screens/VoidCamp/components/VoidCamp/VoidCampTopBar";
@@ -71,6 +77,8 @@ import {
 import { useAudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import type { AudioSettingKey, AudioSettings } from "@screens/VoidCamp/hooks/useAudioSettings";
 import { clampVolumePercentage } from "@logic/utils/audioSettings";
+import { useGraphicsSettings } from "@screens/VoidCamp/hooks/useGraphicsSettings";
+import type { GraphicsSettingKey } from "@screens/VoidCamp/hooks/useGraphicsSettings";
 import { StatisticsModal } from "@screens/VoidCamp/components/StatisticsModal/StatisticsModal";
 import { AchievementsModal } from "@screens/VoidCamp/components/AchievementsModal/AchievementsModal";
 import {
@@ -78,6 +86,9 @@ import {
   DEFAULT_ACHIEVEMENTS_STATE,
 } from "@logic/modules/shared/achievements/achievements.const";
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
+import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
+import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
+import { useLocalization } from "@ui/shared/useLocalization";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -93,6 +104,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   onTabChange,
 }) => {
   const { uiApi, bridge } = useAppLogic();
+  const { language, setLanguage, t } = useLocalization();
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState(false);
@@ -100,10 +112,16 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("game-data");
   const [statusMessage, setStatusMessage] = useState<SettingsMessage | null>(null);
   const { settings: audioSettings, setAudioSetting } = useAudioSettings();
+  const { settings: graphicsSettings, setGraphicsSetting } = useGraphicsSettings();
   const currentVersion = GAME_VERSIONS[0] ?? null;
   const timePlayed = useBridgeValue(bridge, TIME_BRIDGE_KEY, 0);
   const maps = useBridgeValue(bridge, MAP_LIST_BRIDGE_KEY, [] as MapListEntry[]);
   const selectedMap = useBridgeValue(bridge, MAP_SELECTED_BRIDGE_KEY, null as MapId | null);
+  const mapResourcePreviewCache = useBridgeValue(
+    bridge,
+    MAP_RESOURCE_PREVIEW_BRIDGE_KEY,
+    {} as MapResourcePreviewCache
+  );
   const clearedLevelsTotal = useBridgeValue(
     bridge,
     MAP_CLEARED_LEVELS_BRIDGE_KEY,
@@ -156,6 +174,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     CRAFTING_STATE_BRIDGE_KEY,
     DEFAULT_CRAFTING_STATE
   );
+  const darkResearchState = useBridgeValue(
+    bridge,
+    DARK_RESEARCH_STATE_BRIDGE_KEY,
+    DEFAULT_DARK_RESEARCH_STATE as DarkResearchBridgeState
+  );
 
   useEffect(() => {
     uiApi.audio.applyPercentageSettings(audioSettings);
@@ -177,6 +200,13 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       uiApi.audio.applyPercentageSettings(nextSettings);
     },
     [audioSettings, setAudioSetting, uiApi],
+  );
+
+  const handleGraphicsSettingChange = useCallback(
+    (key: GraphicsSettingKey, value: boolean) => {
+      setGraphicsSetting(key, value);
+    },
+    [setGraphicsSetting],
   );
 
   const handleOpenSettings = useCallback(() => {
@@ -216,7 +246,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     if (!uiApi.save.getActiveSlotId()) {
       setStatusMessage({
         tone: "error",
-        text: "Select a save slot before exporting progress.",
+        text: t("voidCamp.save.export.noSlot", "Select a save slot before exporting progress."),
       });
       return;
     }
@@ -225,7 +255,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     if (!data) {
       setStatusMessage({
         tone: "error",
-        text: "Unable to access save data for export.",
+        text: t("voidCamp.save.export.noData", "Unable to access save data for export."),
       });
       return;
     }
@@ -247,13 +277,13 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       anchor.click();
       setStatusMessage({
         tone: "success",
-        text: "Save exported successfully.",
+        text: t("voidCamp.save.export.success", "Save exported successfully."),
       });
     } catch (error) {
       console.error("Failed to export save", error);
       setStatusMessage({
         tone: "error",
-        text: "Failed to export save file.",
+        text: t("voidCamp.save.export.fail", "Failed to export save file."),
       });
     } finally {
       if (objectUrl) {
@@ -268,7 +298,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
       if (!uiApi.save.getActiveSlotId()) {
         setStatusMessage({
           tone: "error",
-          text: "Select a save slot before importing progress.",
+          text: t("voidCamp.save.import.noSlot", "Select a save slot before importing progress."),
         });
         return;
       }
@@ -288,7 +318,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         console.error("Failed to import save", error);
         setStatusMessage({
           tone: "error",
-          text: "Import failed. Ensure the file is a valid save export.",
+          text: t("voidCamp.save.import.fail", "Import failed. Ensure the file is a valid save export."),
         });
       }
     },
@@ -342,6 +372,8 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             showAchievements={hasUnlockedAchievements}
             onSettingsClick={handleOpenSettings}
             onExitClick={handleExit}
+            wishlistUrl={STEAM_WISHLIST_URL}
+            feedbackUrl={PLAYER_FEEDBACK_FORM_URL}
           />
         }
         content={
@@ -349,6 +381,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             maps={maps}
             clearedLevelsTotal={clearedLevelsTotal}
             selectedMap={selectedMap}
+            mapResourcePreviewCache={mapResourcePreviewCache}
             onSelectMap={(mapId) => uiApi.map.selectMap(mapId)}
             onSelectMapLevel={(mapId, level) => uiApi.map.selectMapLevel(mapId, level)}
             onStartMap={handleStartMap}
@@ -360,6 +393,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitDesignerState={unitDesignerState}
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
+            darkResearchState={darkResearchState}
             achievementsState={achievementsPayload}
             newUnlocksState={newUnlocksState}
           />
@@ -370,7 +404,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
           isOpen={isVersionHistoryOpen}
           onClose={() => setVersionHistoryOpen(false)}
           versions={GAME_VERSIONS}
-          title="Release notes"
+          title={t("voidCamp.releaseNotes.title", "Release notes")}
         />
       )}
       <SettingsModal
@@ -383,6 +417,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         statusMessage={statusMessage}
         audioSettings={audioSettings}
         onAudioSettingChange={handleAudioSettingChange}
+        graphicsSettings={graphicsSettings}
+        onGraphicsSettingChange={handleGraphicsSettingChange}
+        language={language}
+        onLanguageChange={setLanguage}
+        t={t}
       />
       <StatisticsModal
         isOpen={isStatisticsOpen}

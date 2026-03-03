@@ -7,6 +7,7 @@ import { UnitDesignId } from "../../../camp/unit-design/unit-design.types";
 import { UnitModuleId } from "../../../../../db/unit-modules-db";
 import { SkillId } from "../../../../../db/skills-db";
 import { VisualEffectState } from "../../../../visuals/VisualEffectState";
+import type { UnitDeathEffects } from "@shared/types/unit-death-effects";
 
 export interface PlayerUnitState {
   id: string;
@@ -32,6 +33,7 @@ export interface PlayerUnitState {
   critChance: number;
   critMultiplier: number;
   rewardMultiplier: number;
+  soulDropChanceBonus: number;
   damageTransferPercent: number;
   damageTransferRadius: number;
   attackStackBonusPerHit: number;
@@ -46,6 +48,7 @@ export interface PlayerUnitState {
   objectId: string;
   renderer: PlayerUnitRendererConfig;
   emitter?: ParticleEmitterConfig;
+  deathEffects: UnitDeathEffects;
   baseFillColor: SceneColor;
   baseStrokeColor?: SceneColor;
   appliedFillColor: SceneColor;

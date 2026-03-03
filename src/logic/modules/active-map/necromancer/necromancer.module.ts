@@ -75,6 +75,7 @@ export class NecromancerModule implements GameModule {
   private unsubscribeDesigns: (() => void) | null = null;
   private minSpawnManaCost: number = Number.POSITIVE_INFINITY;
   private sanityDepleted = false;
+  private minSanityFloor: number | null = null;
 
   constructor(options: NecromancerModuleOptions) {
     this.bridge = options.bridge;
@@ -127,6 +128,7 @@ export class NecromancerModule implements GameModule {
     this.sanity.max = 0;
     this.sanity.regenPerSecond = 0;
     this.sanityDepleted = false;
+    this.minSanityFloor = null;
     this.markResourcesDirty();
     this.pushResources();
     this.pushSpawnOptions();
@@ -177,6 +179,10 @@ export class NecromancerModule implements GameModule {
         this.sanity.current = nextSanity;
         changed = true;
       }
+    }
+
+    if (this.minSanityFloor !== null) {
+      this.ensureMinSanity(this.minSanityFloor);
     }
 
     this.checkSanityDepleted();
@@ -297,6 +303,24 @@ export class NecromancerModule implements GameModule {
     }
   }
 
+  public ensureMinSanity(minAmount: number): void {
+    if (this.sanity.current < minAmount) {
+      this.sanity.current = Math.min(minAmount, this.sanity.max);
+      this.markResourcesDirty();
+      this.pushResources();
+    }
+  }
+
+  public setSanityFloor(minAmount: number | null): void {
+    if (minAmount === null || !Number.isFinite(minAmount)) {
+      this.minSanityFloor = null;
+      return;
+    }
+    const sanitized = Math.max(0, minAmount);
+    this.minSanityFloor = sanitized;
+    this.ensureMinSanity(sanitized);
+  }
+
   public getSpawnPoints(): SceneVector2[] {
     return this.spawnPoints.map((point) => ({ ...point }));
   }
@@ -333,6 +357,7 @@ export class NecromancerModule implements GameModule {
     this.nextSpawnIndex = 0;
     this.pendingLoad = null;
     this.sanityDepleted = false;
+    this.minSanityFloor = null;
     this.markResourcesDirty();
     this.pushResources();
   }

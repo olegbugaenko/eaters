@@ -1,3 +1,5 @@
+import { getAssetUrl } from "@shared/helpers/assets.helper";
+
 type TextureEntry = {
   texture: WebGLTexture;
   width: number;
@@ -221,10 +223,19 @@ class TextureResourceManager {
   }
 
   private normalizePath(path: string, options?: LoadTextureOptions): string {
-    if (path.startsWith("/") || path.startsWith("http://") || path.startsWith("https://")) {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    const baseDir = options?.baseDir ?? "/images/sprites";
+    if (path.startsWith("./") || path.startsWith("../")) {
+      return path;
+    }
+    if (path.startsWith("images/")) {
+      return getAssetUrl(path);
+    }
+    if (path.startsWith("/")) {
+      return getAssetUrl(path);
+    }
+    const baseDir = options?.baseDir ?? getAssetUrl("images/sprites");
     return `${baseDir.replace(/\/$/, "")}/${path}`;
   }
 

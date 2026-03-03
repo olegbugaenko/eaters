@@ -153,11 +153,13 @@ class ExplosionWaveGpuRenderer extends GpuBatchRenderer<WaveInstance, WaveBatch,
       hasExplicitRadius: false,
       explicitRadius: 0,
       fadeStartMs: 0,
+      fadeInMs: 0,
       defaultLifetimeMs: 1000,
       shape: 1, // circle
       minParticleSize: 0.0001,
       lengthMultiplier: 1,
       alignToVelocity: false,
+      alignToVelocityFlip: false,
       sizeGrowthRate: 1.0,
     };
 
@@ -220,6 +222,13 @@ class ExplosionWaveGpuRenderer extends GpuBatchRenderer<WaveInstance, WaveBatch,
     if (!this.sharedResourcesExtended) {
       return;
     }
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(
+      gl.SRC_ALPHA,
+      gl.ONE_MINUS_SRC_ALPHA,
+      gl.ONE,
+      gl.ONE_MINUS_SRC_ALPHA
+    );
     // Upload uniforms for this batch
     uploadEmitterUniformsPublic(gl, batch.uniforms, cameraPosition, viewportSize);
   }
@@ -361,11 +370,13 @@ class ExplosionWaveGpuRenderer extends GpuBatchRenderer<WaveInstance, WaveBatch,
       hasExplicitRadius: config.hasExplicitRadius ?? false,
       explicitRadius: config.explicitRadius ?? 0,
       fadeStartMs: config.fadeStartMs,
+      fadeInMs: config.fadeInMs,
       defaultLifetimeMs: config.defaultLifetimeMs,
       shape: 1, // circle
       minParticleSize: 0.0001,
       lengthMultiplier: 1,
       alignToVelocity: false,
+      alignToVelocityFlip: false,
       sizeGrowthRate: 1.0,
     };
   }

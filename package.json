@@ -2,17 +2,28 @@
   "name": "eaters-react-electron",
   "version": "1.0.0",
   "description": "React + TypeScript application with Electron support",
-  "main": "public/electron.js",
+  "author": "Eaters Team",
+  "main": "electron/main.js",
   "private": true,
   "scripts": {
     "start": "webpack serve --mode development",
+    "start:stresstest": "node -e \"process.env.IS_STRESSTEST='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['serve', '--mode', 'development'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
+    "start:demo": "node -e \"process.env.IS_DEMO='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['serve', '--mode', 'development'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
+    "start:itch": "node -e \"process.env.IS_DEMO='1'; process.env.IS_GA='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['serve', '--mode', 'development'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
     "build": "webpack --mode production",
-    "build:electron": "npm run build && electron-builder",
-    "electron": "electron .",
-    "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "build:stresstest": "node -e \"process.env.IS_STRESSTEST='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['--mode', 'production'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
+    "build:demo": "node -e \"process.env.IS_DEMO='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['--mode', 'production'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
+    "build:itch": "node -e \"process.env.IS_DEMO='1'; process.env.IS_GA='1'; const { spawnSync } = require('child_process'); const result = spawnSync('webpack', ['--mode', 'production'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
+    "build:electron": "npm run build && electron-builder --config electron-builder.config.js --win",
+    "build:electron:demo": "node -e \"process.env.IS_DEMO='1'; const { spawnSync } = require('child_process'); const result = spawnSync('npm', ['run', 'build:electron'], { stdio: 'inherit', shell: true, env: process.env }); process.exit(result.status ?? 0);\"",
+    "electron": "node scripts/run-electron-dev.js",
+    "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && node scripts/run-electron-dev.js\"",
     "dist": "npm run build:electron",
-    "pack": "electron-builder --dir",
-    "test": "tsc -p tsconfig.tests.json && node build/tests/tests/run.js"
+    "pack": "electron-builder --config electron-builder.config.js --dir",
+    "test": "npm run check:localization-missing:strict && npm run check:ui-hardcoded-strings && tsc -p tsconfig.tests.json && node build/tests/tests/run.js",
+    "check:localization-missing": "node scripts/check-localization-missing-keys.js",
+    "check:localization-missing:strict": "node scripts/check-localization-missing-keys.js --fail-on-missing",
+    "check:ui-hardcoded-strings": "node scripts/check-hardcoded-ui-strings.js"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -39,29 +50,6 @@
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
-  },
-  "build": {
-    "appId": "com.example.eaters-react-electron",
-    "productName": "Eaters App",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "src/**/*",
-      "public/**/*",
-      "node_modules/**/*",
-      "index.html",
-      "*.json"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
   },
   "browserslist": {
     "production": [

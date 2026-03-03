@@ -181,6 +181,7 @@ const createEnemiesStub = (): EnemiesModule =>
     setEnemies: () => {},
     spawnEnemy: () => {},
     getEnemies: () => [],
+    getObjectiveTotals: () => ({ count: 0, totalHp: 0 }),
     findNearestEnemy: () => null,
     getEnemyState: () => null,
   } as unknown as EnemiesModule);
@@ -338,16 +339,15 @@ describe("MapModule", () => {
     maps.selectMap("initial");
     maps.restartSelectedMap();
 
-    const unitObject = scene
-      .getObjects()
-      .find((object) => object.type === "playerUnit");
-    assert(unitObject, "unit scene object should be spawned");
-    const unitPosition = unitObject!.data.position;
+    const config = getMapConfig("initial");
+    const spawnPoint =
+      config.spawnPoints?.[0] ?? config.playerUnits?.[0]?.position;
+    assert(spawnPoint, "spawn point should be defined");
 
     const safetyRadiusSq = PLAYER_UNIT_SPAWN_SAFE_RADIUS * PLAYER_UNIT_SPAWN_SAFE_RADIUS;
     bricks.getBrickStates().forEach((brick) => {
       assert(
-        distanceSq(brick.position, unitPosition) >= safetyRadiusSq,
+        distanceSq(brick.position, spawnPoint) >= safetyRadiusSq,
         "brick should be spawned outside of the safety radius"
       );
     });
@@ -573,6 +573,7 @@ describe("Map run control", () => {
       setBricks: () => {
         setBricksCalls += 1;
       },
+      getBrickTotals: () => ({ count: 0, totalHp: 0 }),
     } as unknown as BricksModule;
     let prepareForMapCalls = 0;
     let setUnitsCalls = 0;
@@ -706,6 +707,7 @@ describe("Map run control", () => {
       setBricks: (input: unknown) => {
         lastBricks = input;
       },
+      getBrickTotals: () => ({ count: 0, totalHp: 0 }),
     } as unknown as BricksModule;
     let lastUnits: unknown = null;
     const playerUnits = {
@@ -1187,7 +1189,10 @@ describe("Last played map tracking", () => {
     const bridge = new DataBridge();
     const runState = new MapRunState();
     const bonuses = createBonuses();
-    const bricks = { setBricks: () => {} } as unknown as BricksModule;
+    const bricks = {
+      setBricks: () => {},
+      getBrickTotals: () => ({ count: 0, totalHp: 0 }),
+    } as unknown as BricksModule;
     const playerUnits = {
       prepareForMap: () => {},
       setUnits: () => {},

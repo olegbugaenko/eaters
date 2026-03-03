@@ -1,5 +1,5 @@
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import type { ParticleEmitterConfig } from "../interfaces/visuals/particle-emitters-config";
 
 /**
@@ -20,6 +20,9 @@ export const cloneParticleEmitterConfig = (
   // Optional fields
   if (typeof config.emissionDurationMs === "number") {
     cloned.emissionDurationMs = config.emissionDurationMs;
+  }
+  if (typeof config.emissionDampingInterval === "number") {
+    cloned.emissionDampingInterval = config.emissionDampingInterval;
   }
   if (typeof config.baseSpeed === "number") {
     cloned.baseSpeed = config.baseSpeed;

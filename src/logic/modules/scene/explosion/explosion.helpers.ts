@@ -10,12 +10,12 @@ import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle
 import {
   cloneSceneFill,
   createRadialGradientFill,
-} from "@shared/helpers/scene-fill.helper";
+} from "@shared/helpers/scene-style.helper";
 import {
   cloneSceneColor,
   ensureColorAlpha,
   cloneColorWithAlpha,
-} from "@shared/helpers/scene-color.helper";
+} from "@shared/helpers/scene-style.helper";
 import { sanitizeAngle, sanitizeArc } from "../../../../shared/helpers/angle.helper";
 import { clamp01, clampNumber } from "@shared/helpers/numbers.helper";
 import type { WaveState } from "./explosion.types";
@@ -153,6 +153,7 @@ export const createEmitterCustomData = (
     particleLifetimeMs,
     fadeStartMs,
     emissionDurationMs,
+    emissionDampingInterval: config.emitter.emissionDampingInterval,
     sizeRange: { min: sizeMin, max: sizeMax },
     spawnRadius: { min: spawnRadiusMin, max: spawnRadiusMax },
     baseSpeed: Math.max(0, config.emitter.baseSpeed ?? 0),
@@ -164,6 +165,8 @@ export const createEmitterCustomData = (
     offset: { x: 0, y: 0 },
     maxParticles,
     shape: config.emitter.shape,
+    alignToVelocity: config.emitter.alignToVelocity ?? false,
+    alignToVelocityFlip: config.emitter.alignToVelocityFlip ?? false,
     sizeGrowthRate: config.emitter.sizeGrowthRate,
     radialVelocity: config.emitter.radialVelocity ?? false,
   };

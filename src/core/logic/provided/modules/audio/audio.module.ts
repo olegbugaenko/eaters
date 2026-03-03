@@ -15,6 +15,7 @@ import {
   MIN_EFFECT_INTERVAL_MS,
   MUSIC_VOLUME_MULTIPLIER,
 } from "./audio.const";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
 import { pickRandomTrackIndex, normalizeEffectUrl } from "./audio.helpers";
 
 export class AudioModule implements GameModule {
@@ -372,10 +373,7 @@ export class AudioModule implements GameModule {
       });
       return "";
     }
-    if (!track.startsWith("/")) {
-      return `/${track}`;
-    }
-    return track;
+    return getAssetUrl(track);
   }
 
   private resolveEffectTemplate(url: string): HTMLAudioElement | null {

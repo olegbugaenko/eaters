@@ -1,4 +1,4 @@
-import type { MapId } from "../../../../db/maps-db";
+import type { MapId } from "../../../../db/maps/maps-db";
 import type { SkillId } from "../../../../db/skills-db";
 import type { MapAutoRestartState } from "./map.types";
 
@@ -10,10 +10,12 @@ export const MAP_SELECTED_BRIDGE_KEY = "maps/selected";
 export const MAP_SELECTED_LEVEL_BRIDGE_KEY = "maps/selectedLevel";
 export const MAP_CLEARED_LEVELS_BRIDGE_KEY = "maps/clearedLevelsTotal";
 export const MAP_LAST_PLAYED_BRIDGE_KEY = "maps/lastPlayed";
+export const MAP_RESOURCE_PREVIEW_BRIDGE_KEY = "maps/resourcePreview";
 export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
 export const MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY = "maps/selectViewTransform";
 export const MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY = "maps/controlHintsCollapsed";
 export const MAP_INSPECTED_TARGET_BRIDGE_KEY = "maps/inspectedTarget";
+export const MAP_EFFECTS_BRIDGE_KEY = "maps/effects";
 
 /**
  * Default map auto-restart state.

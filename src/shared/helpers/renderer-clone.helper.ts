@@ -5,8 +5,8 @@ import type {
   SceneVector2,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneColor } from "@shared/helpers/scene-color.helper";
-import { cloneSceneFill, cloneSceneFillDeep } from "@shared/helpers/scene-fill.helper";
+import { cloneSceneColor } from "@shared/helpers/scene-style.helper";
+import { cloneSceneFill, cloneSceneFillDeep } from "@shared/helpers/scene-style.helper";
 import type {
   RendererFillConfig,
   RendererStrokeConfig,
@@ -136,6 +136,15 @@ const cloneRendererLayerShape = (
   };
 };
 
+const cloneRendererLayerAnchors = (
+  anchors: PlayerUnitRendererLayerConfig["anchors"] | undefined
+): PlayerUnitRendererLayerConfig["anchors"] | undefined => {
+  if (!anchors) {
+    return undefined;
+  }
+  return anchors.map((anchor) => ({ ...anchor }));
+};
+
 /**
  * Clones a PlayerUnitRendererLayerConfig.
  */
@@ -153,6 +162,15 @@ export const cloneRendererLayer = (
     requiresEffect: layer.requiresEffect,
     anim: layer.anim,
     groupId: layer.groupId,
+    anchors: cloneRendererLayerAnchors(layer.anchors),
+    connectionSlots: cloneRendererLayerAnchors(layer.connectionSlots),
+    join: layer.join
+      ? {
+          anchorId: layer.join.anchorId,
+          targetGroupId: layer.join.targetGroupId,
+          offset: layer.join.offset ? { ...layer.join.offset } : undefined,
+        }
+      : undefined,
   };
 
   if (layer.shape === "polygon") {

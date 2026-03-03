@@ -3,14 +3,20 @@
  * Визначає всі ключі та їх типи для перевірки під час компіляції.
  */
 
-import type { MapId } from "../../../db/maps-db";
+import type { MapId } from "../../../db/maps/maps-db";
 import type { UnitDesignId } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { PlayerUnitType } from "@db/player-units-db";
 import type { PlayerUnitBlueprintStats } from "@shared/types/player-units";
 import type { ResourceAmountPayload, ResourceRunSummaryPayload } from "@logic/modules/shared/resources/resources.types";
-import type { MapListEntry, MapAutoRestartState } from "@logic/modules/active-map/map/map.types";
+import type {
+  MapListEntry,
+  MapAutoRestartState,
+  MapEffectsBridgeState,
+  MapResourcePreviewCache,
+} from "@logic/modules/active-map/map/map.types";
 import type { BuildingsWorkshopBridgeState } from "@logic/modules/camp/buildings/buildings.types";
 import type { CraftingBridgeState } from "@logic/modules/camp/crafting/crafting.types";
+import type { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
 import type { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { UnitModuleWorkshopBridgeState } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
 import type { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
@@ -24,7 +30,9 @@ import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.ty
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
+import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
 import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
+import type { SupportedLanguage } from "@logic/services/localization/localization.types";
 
 /**
  * View transform для навігації по картах/скілах.
@@ -50,10 +58,12 @@ export interface BridgeSchema {
   "maps/selectedLevel": number;
   "maps/clearedLevelsTotal": number;
   "maps/lastPlayed": { mapId: MapId; level: number } | null;
+  "maps/resourcePreview": MapResourcePreviewCache;
   "maps/autoRestart": MapAutoRestartState;
   "maps/selectViewTransform": ViewTransform | null;
   "maps/controlHintsCollapsed": boolean;
-  "maps/inspectedTarget": TargetSnapshot<"brick" | "enemy", BrickRuntimeState | EnemyRuntimeState> | null;
+  "maps/inspectedTarget": TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState> | null;
+  "maps/effects": MapEffectsBridgeState;
 
   // Player Units
   "playerUnits/count": number;
@@ -65,6 +75,9 @@ export interface BridgeSchema {
   "bricks/count": number;
   "bricks/totalHp": number;
 
+  // Objectives
+  "objectives/totalHp": number;
+
   // Enemies
   "enemies/count": number;
   "enemies/totalHp": number;
@@ -72,6 +85,7 @@ export interface BridgeSchema {
   // Camp Modules
   "buildings/workshop": BuildingsWorkshopBridgeState;
   "crafting/state": CraftingBridgeState;
+  "darkResearch/state": DarkResearchBridgeState;
   "unitDesigner/state": UnitDesignerBridgeState;
   "unitModules/workshop": UnitModuleWorkshopBridgeState;
   "automation/state": UnitAutomationBridgeState;
@@ -103,6 +117,9 @@ export interface BridgeSchema {
 
   // New unlock notifications
   "newUnlocks/state": NewUnlockNotificationBridgeState;
+
+  // Localization
+  "localization/language": SupportedLanguage;
 }
 
 /**

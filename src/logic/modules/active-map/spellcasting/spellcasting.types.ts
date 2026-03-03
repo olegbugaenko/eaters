@@ -6,12 +6,14 @@ import type { BricksModule } from "../bricks/bricks.module";
 import type { NecromancerModule } from "../necromancer/necromancer.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
+import type { ArcModule } from "../../scene/arc/arc.module";
 import type { MapRunState } from "../map/MapRunState";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { SkillId } from "../../../../db/skills-db";
 import type { SceneVector2 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import type { DamageService } from "../targeting/DamageService";
 import type { TargetingService } from "../targeting/TargetingService";
+import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
 export interface SpellOptionBase {
   id: SpellId;
@@ -48,10 +50,19 @@ export interface PersistentAoeSpellOption extends SpellOptionBase {
   effectDurationSeconds?: number; // Duration of the effect on bricks
 }
 
+export interface ProjectilesRainSpellOption extends SpellOptionBase {
+  type: "projectiles_rain";
+  damage: SpellDamageConfig;
+  durationSeconds: number;
+  spawnIntervalMs: number;
+  radius: number;
+}
+
 export type SpellOption =
   | ProjectileSpellOption
   | WhirlSpellOption
-  | PersistentAoeSpellOption;
+  | PersistentAoeSpellOption
+  | ProjectilesRainSpellOption;
 
 export interface SpellcastingModuleOptions {
   bridge: DataBridge;
@@ -60,11 +71,13 @@ export interface SpellcastingModuleOptions {
   bricks: BricksModule;
   bonuses: BonusesModule;
   explosions?: ExplosionModule;
+  arcs?: ArcModule;
   projectiles: UnitProjectileController;
   damage: DamageService;
   targeting: TargetingService;
   getSkillLevel: (id: SkillId) => number;
   runState: MapRunState;
+  localization?: LocalizationService;
 }
 
 export interface SpellcastingModuleUiApi {

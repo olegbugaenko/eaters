@@ -1,5 +1,5 @@
 import { ResourceAmount } from "./resources-db";
-import type { MapId } from "./maps-db";
+import type { MapId } from "./maps/maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "@shared/types/unlocks";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
@@ -8,9 +8,11 @@ import type { ParticleEmitterConfig } from "../logic/interfaces/visuals/particle
 import type { BulletTailConfig } from "./bullets-db";
 import type { SpellProjectileRingTrailConfig } from "./spells-db";
 import type { BulletSpriteName } from "../logic/services/bullet-render-bridge/bullet-sprites.const";
+import type { StatusEffectId } from "./status-effects-db";
 
 export const UNIT_MODULE_IDS = [
   "magnet",
+  "soulMagnet",
   "perforator",
   "vitalHull",
   "ironForge",
@@ -22,6 +24,7 @@ export const UNIT_MODULE_IDS = [
   "burningTail",
   "freezingTail",
   "tailNeedles",
+  "conductorTentacles",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -42,6 +45,32 @@ export interface UnitModuleProjectileVisualConfig {
   readonly hitRadius?: number;
 }
 
+/**
+ * Describes a status effect that a unit module can apply.
+ * Used for UI display and future declarative effect application.
+ */
+export interface ModuleEffectApplication {
+  readonly effectId: StatusEffectId;
+  readonly target: "brick" | "unit" | "enemy";
+  /** Duration in milliseconds for time-limited effects */
+  readonly durationMs?: number;
+}
+
+/**
+ * Describes an ability that a unit module provides.
+ * Used for UI display of instant abilities like healing.
+ */
+export type ModuleAbilityType = "heal" | "frenzyBuff" | "fireball" | "chainLightning";
+
+export interface ModuleAbilityInfo {
+  readonly type: ModuleAbilityType;
+  readonly label: string;
+  /** Cooldown in seconds */
+  readonly cooldownSeconds?: number;
+  /** Maximum charges per run */
+  readonly maxCharges?: number;
+}
+
 export interface UnitModuleConfig {
   readonly id: UnitModuleId;
   readonly name: string;
@@ -52,9 +81,15 @@ export interface UnitModuleConfig {
   readonly bonusPerLevel: number;
   readonly manaCostMultiplier: number;
   readonly sanityCost: number;
+  readonly maxLevel?: number | null;
   readonly baseCost: ResourceAmount;
   readonly unlockedBy?: readonly UnlockCondition<MapId, SkillId>[];
   readonly canAttackDistant?: boolean;
+  readonly lockedForDemo?: boolean;
+  /** Status effect that this module applies when active */
+  readonly appliesEffect?: ModuleEffectApplication;
+  /** Ability that this module provides (for instant actions like healing) */
+  readonly providesAbility?: ModuleAbilityInfo;
   readonly meta?: {
     readonly cooldownSeconds?: number;
     readonly frenzyAttacks?: number;
@@ -68,6 +103,8 @@ export interface UnitModuleConfig {
     readonly lateralProjectileRange?: number;
     readonly lateralProjectileHitRadius?: number;
     readonly lateralProjectileVisual?: UnitModuleProjectileVisualConfig;
+    readonly chainRadius?: number;
+    readonly chainJumps?: number;
   };
 }
 
@@ -83,7 +120,23 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.1,
     manaCostMultiplier: 1.75,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { sand: 200 },
+  },
+
+  soulMagnet: {
+    id: "soulMagnet",
+    name: "Soul Magnet",
+    description:
+      "A soul-attuned gland tugs loose remnants from fallen foes, increasing the chance to extract souls after a kill.",
+    bonusLabel: "Soul drop chance bonus",
+    bonusType: "percent",
+    baseBonusValue: 0.1,
+    bonusPerLevel: 0.1,
+    manaCostMultiplier: 1.8,
+    sanityCost: 0,
+    maxLevel: 10,
+    baseCost: { paper: 100, wire: 100 },
   },
   perforator: {
     id: "perforator",
@@ -96,6 +149,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.01,
     manaCostMultiplier: 1.75,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { sand: 200 },
   },
   vitalHull: {
@@ -109,6 +163,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { organics: 200 },
     unlockedBy: [{ type: "map", id: "initial", level: 1 }],
   },
@@ -123,6 +178,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.08,
     manaCostMultiplier: 2.5,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { iron: 200 },
     unlockedBy: [{ type: "map", id: "initial", level: 1 }],
   },
@@ -137,6 +193,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.025,
     manaCostMultiplier: 2.4,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { iron: 200 },
     unlockedBy: [{ type: "skill", id: "tail_spines", level: 1 }],
     meta: {
@@ -201,6 +258,25 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       },
     },
   },
+  conductorTentacles: {
+    id: "conductorTentacles",
+    name: "Conductor Tentacles",
+    description:
+      "Copper-filamented feelers discharge volatile surges that leap between nearby masonry and foes.",
+    bonusLabel: "Chain lightning damage",
+    bonusType: "percent",
+    baseBonusValue: 0.38,
+    bonusPerLevel: 0.02,
+    manaCostMultiplier: 2.2,
+    sanityCost: 0,
+    maxLevel: 10,
+    baseCost: { wire: 20 },
+    unlockedBy: [{ type: "map", id: "oldForge", level: 1 }],
+    meta: {
+      chainRadius: 170,
+      chainJumps: 3,
+    },
+  },
   silverArmor: {
     id: "silverArmor",
     name: "Silver Carapace",
@@ -212,6 +288,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.05,
     manaCostMultiplier: 2.75,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { silver: 100 },
     unlockedBy: [{ type: "map", id: "wire", level: 1 }],
   },
@@ -226,6 +303,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.005,
     manaCostMultiplier: 2.85,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { coal: 100 },
     unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
   },
@@ -237,11 +315,18 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusLabel: "Healing pulse multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.4,
-    bonusPerLevel: 0.1,
+    bonusPerLevel: 0.075,
     manaCostMultiplier: 2.25,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { organics: 200, sand: 1000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
+    providesAbility: {
+      type: "heal",
+      label: "Healing Pulse",
+      cooldownSeconds: 4,
+      maxCharges: 100,
+    },
     meta: { cooldownSeconds: 4, healCharges: 100 },
   },
   frenzyGland: {
@@ -252,11 +337,16 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusLabel: "Rally surge multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.4,
-    bonusPerLevel: 0.1,
+    bonusPerLevel: 0.075,
     manaCostMultiplier: 2.25,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { organics: 200, stone: 2000 },
     unlockedBy: [{ type: "skill", id: "pheromones", level: 1 }],
+    appliesEffect: {
+      effectId: "frenzy",
+      target: "unit",
+    },
     meta: { cooldownSeconds: 5, frenzyAttacks: 8 },
   },
   fireballOrgan: {
@@ -270,6 +360,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.0375,
     manaCostMultiplier: 3.0,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { coal: 800, wood: 1600 },
     unlockedBy: [{ type: "map", id: "spruce", level: 1 }],
     canAttackDistant: true,
@@ -291,8 +382,15 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.05,
     manaCostMultiplier: 2.6,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { magma: 300, organics: 150 },
+    lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
+    appliesEffect: {
+      effectId: "meltingTail",
+      target: "brick",
+      durationMs: 4000,
+    },
     meta: { areaRadius: 30 },
   },
   freezingTail: {
@@ -306,8 +404,15 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     bonusPerLevel: 0.05,
     manaCostMultiplier: 2.6,
     sanityCost: 0,
+    maxLevel: 10,
     baseCost: { ice: 300, sand: 300 },
+    lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
+    appliesEffect: {
+      effectId: "freezingTail",
+      target: "brick",
+      durationMs: 4000,
+    },
     meta: { areaRadius: 30 },
   },
 };

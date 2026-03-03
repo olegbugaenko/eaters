@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const copyDirectory = async (source, destination) => {
@@ -48,6 +49,7 @@ module.exports = (env, argv) => {
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: isProduction ? '[name].[contenthash].js' : '[name].js',
+      publicPath: isProduction ? './' : '/',
       clean: true,
     },
     resolve: {
@@ -91,6 +93,11 @@ module.exports = (env, argv) => {
       new HtmlWebpackPlugin({
         template: './public/index.html',
         filename: 'index.html',
+      }),
+      new webpack.DefinePlugin({
+        "process.env.IS_DEMO": JSON.stringify(process.env.IS_DEMO ?? ""),
+        "process.env.IS_STRESSTEST": JSON.stringify(process.env.IS_STRESSTEST ?? ""),
+        "process.env.IS_GA": JSON.stringify(process.env.IS_GA ?? ""),
       }),
       new CopyStaticAssetsPlugin(),
     ],

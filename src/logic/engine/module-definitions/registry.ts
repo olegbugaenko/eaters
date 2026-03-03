@@ -10,6 +10,7 @@ import { createEnemiesDefinition } from "../../modules/active-map/enemies/enemie
 import { createBuildingsDefinition } from "../../modules/camp/buildings/buildings.factory";
 import { createBulletDefinition } from "../../modules/active-map/bullet/bullet.factory";
 import { createCraftingDefinition } from "../../modules/camp/crafting/crafting.factory";
+import { createDarkResearchDefinition } from "../../modules/camp/dark-research/dark-research.factory";
 import { createEffectsDefinition } from "../../modules/scene/effects/effects.factory";
 import { createExplosionDefinition } from "../../modules/scene/explosion/explosion.factory";
 import { createFireballDefinition } from "../../modules/scene/fireball/fireball.factory";
@@ -30,6 +31,7 @@ import { createUnitModuleWorkshopDefinition } from "../../modules/camp/unit-modu
 import { createUnitProjectilesDefinition } from "../../modules/active-map/projectiles/projectiles.factory";
 import { createUnlocksDefinition } from "../../definitions/modules/unlocks/factory";
 import { createNewUnlockNotificationDefinition } from "../../definitions/modules/new-unlock-notification/factory";
+import { createLocalizationDefinition } from "../../definitions/modules/localization/factory";
 import { ModuleDefinitionContext } from "@/core/logic/engine/module-definitions/context";
 
 export const registerModuleDefinitions = (
@@ -37,6 +39,7 @@ export const registerModuleDefinitions = (
   context: ModuleDefinitionContext,
 ): void => {
   registry.registerModules([
+    createLocalizationDefinition(),
     createNewUnlockNotificationDefinition(),
     createUnlocksDefinition(),
     createBonusesDefinition(),
@@ -47,6 +50,7 @@ export const registerModuleDefinitions = (
     createEventLogDefinition(),
     createSkillTreeDefinition(),
     createCraftingDefinition(),
+    createDarkResearchDefinition(),
     createBuildingsDefinition(),
     createUnitModuleWorkshopDefinition(),
     createUnitDesignDefinition(),

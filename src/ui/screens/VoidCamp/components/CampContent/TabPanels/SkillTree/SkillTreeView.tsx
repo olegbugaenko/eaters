@@ -29,10 +29,13 @@ import {
   getResourceConfig,
 } from "@db/resources-db";
 import { SkillId, getSkillConfig } from "@db/skills-db";
+import { getAssetUrl } from "@shared/helpers/assets.helper";
+import { isDemoBuild } from "@shared/helpers/demo.helper";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { classNames } from "@ui-shared/classNames";
 import { useResizeObserver } from "@ui-shared/useResizeObserver";
+import { useLocalization } from "@ui/shared/useLocalization";
 import "./SkillTreeView.css";
 
 const CELL_SIZE_X = 180;
@@ -79,12 +82,9 @@ interface SkillTreeLayout {
   edges: SkillTreeEdge[];
 }
 
-const SKILL_TREE_RESOURCES = RESOURCE_IDS.map((id) => {
-  const config = getResourceConfig(id);
-  return { id: config.id, label: config.name };
-});
+const SKILL_TREE_RESOURCES = RESOURCE_IDS.map((id) => ({ id }));
 
-const listResources = (names: string[]): string => {
+const listResources = (names: string[], andLabel: string): string => {
   if (names.length === 0) {
     return "";
   }
@@ -93,11 +93,11 @@ const listResources = (names: string[]): string => {
   }
   if (names.length === 2) {
     const [first, second] = names;
-    return `${first!} and ${second!}`;
+    return `${first!} ${andLabel} ${second!}`;
   }
   const last = names[names.length - 1]!;
   const others = names.slice(0, -1).map((name) => name!);
-  return `${others.join(", ")}, and ${last}`;
+  return `${others.join(", ")}, ${andLabel} ${last}`;
 };
 
 const getSkillInitials = (name: string): string =>
@@ -112,8 +112,9 @@ const getSkillIconPath = (icon?: string): string | null => {
     return null;
   }
   const hasExtension = icon.includes(".");
-  return `/images/skills/${hasExtension ? icon : `${icon}.svg`}`;
+  return getAssetUrl(`images/skills/${hasExtension ? icon : `${icon}.svg`}`);
 };
+const DEMO_LOCK_ICON = getAssetUrl("images/ui/lock.png");
 
 /**
  * Generates a phase offset for the wobble animation based on grid position.
@@ -143,12 +144,11 @@ const isNodeVisible = (node: SkillNodeBridgePayload): boolean => {
   return node.requirements.some((req) => req.currentLevel > 0);
 };
 
-const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
-  // Filter to only visible nodes for layout calculations
-  const visibleNodes = nodes.filter(isNodeVisible);
-  const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
-
-  if (visibleNodes.length === 0) {
+const computeLayout = (
+  nodes: SkillNodeBridgePayload[],
+  visibleNodes: SkillNodeBridgePayload[]
+): SkillTreeLayout => {
+  if (nodes.length === 0) {
     return {
       width: 0,
       height: 0,
@@ -157,7 +157,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
     };
   }
 
-  const first = visibleNodes[0];
+  const first = nodes[0];
   if (!first) {
     return {
       width: 0,
@@ -172,7 +172,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   let minY = first.position.y;
   let maxY = first.position.y;
 
-  visibleNodes.forEach((node) => {
+  nodes.forEach((node) => {
     minX = Math.min(minX, node.position.x);
     maxX = Math.max(maxX, node.position.x);
     minY = Math.min(minY, node.position.y);
@@ -192,6 +192,7 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
     });
   });
 
+  const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
   const edges: SkillTreeEdge[] = [];
   visibleNodes.forEach((node) => {
     const to = positions.get(node.id);
@@ -228,14 +229,15 @@ const computeLayout = (nodes: SkillNodeBridgePayload[]): SkillTreeLayout => {
   };
 };
 
-const getMissingResourceNames = (
-  missing: Record<ResourceId, number>
-): string[] =>
-  RESOURCE_IDS.filter((id) => (missing[id] ?? 0) > 0).map((id) =>
-    getResourceConfig(id).name.toLowerCase()
-  );
-
 export const SkillTreeView: React.FC = () => {
+  const { t } = useLocalization();
+  const getMissingResourceNames = useCallback(
+    (missing: Record<ResourceId, number>): string[] =>
+      RESOURCE_IDS.filter((id) => (missing[id] ?? 0) > 0).map((id) =>
+        t(`resources.${id}.name`, getResourceConfig(id).name).toLowerCase()
+      ),
+    [t]
+  );
   const { uiApi, bridge } = useAppLogic();
   const skillTree = useBridgeValue(
     bridge,
@@ -317,7 +319,10 @@ export const SkillTreeView: React.FC = () => {
     });
   }, [visibleNodes]);
 
-  const layout = useMemo(() => computeLayout(nodes), [nodes]);
+  const layout = useMemo(
+    () => computeLayout(nodes, visibleNodes),
+    [nodes, visibleNodes]
+  );
   const hoveredId = pointerHoveredId ?? focusHoveredId;
   // Update ref directly instead of useEffect
   hoveredIdRef.current = hoveredId;
@@ -705,10 +710,13 @@ export const SkillTreeView: React.FC = () => {
   );
   const gatherMoreHint = useMemo(() => {
     if (missingResourceNames.length === 0) {
-      return "Gather more resources to upgrade.";
+      return t("voidCamp.skills.gatherMoreGeneric", "Gather more resources to upgrade.");
     }
-    return `Gather more ${listResources(missingResourceNames)} to upgrade.`;
-  }, [missingResourceNames]);
+    return t("voidCamp.skills.gatherMore", "Gather more {{resources}} to upgrade.").replace(
+      "{{resources}}",
+      listResources(missingResourceNames, t("voidCamp.common.and", "and"))
+    );
+  }, [missingResourceNames, t]);
 
   const handleNodeClick = useCallback(
     (id: SkillId) => {
@@ -733,12 +741,6 @@ export const SkillTreeView: React.FC = () => {
         return;
       }
 
-      // Don't update hover if cursor is over a button (button's onMouseEnter handles it)
-      const target = event.target as HTMLElement;
-      if (target.closest("button.skill-tree-node")) {
-        return;
-      }
-
       const viewport = viewportRef.current;
       if (!viewport) {
         return;
@@ -748,6 +750,24 @@ export const SkillTreeView: React.FC = () => {
       const worldX = (event.clientX - rect.left - viewTransform.offsetX) / viewTransform.scale;
       const worldY = (event.clientY - rect.top - viewTransform.offsetY) / viewTransform.scale;
       pointerWorldRef.current = { x: worldX, y: worldY };
+      const target = event.target as HTMLElement;
+      const isOverNode = target.closest("button.skill-tree-node");
+
+      if (isOverNode) {
+        return;
+      }
+
+      if (pointerHoveredId) {
+        const position = layout.positions.get(pointerHoveredId);
+        if (position) {
+          const dx = worldX - position.x;
+          const dy = worldY - position.y;
+          const distanceSquared = dx * dx + dy * dy;
+          if (distanceSquared > HOVER_SNAP_RADIUS_LEAVE * HOVER_SNAP_RADIUS_LEAVE) {
+            setPointerHoveredId(null);
+          }
+        }
+      }
 
       let closestId: SkillId | null = null;
       let closestDistanceSquared = HOVER_SNAP_RADIUS_ENTER * HOVER_SNAP_RADIUS_ENTER;
@@ -778,7 +798,14 @@ export const SkillTreeView: React.FC = () => {
 
       setPointerHoveredId(closestId);
     },
-    [layout.positions, viewTransform.offsetX, viewTransform.offsetY, viewTransform.scale, visibleNodes]
+    [
+      layout.positions,
+      pointerHoveredId,
+      viewTransform.offsetX,
+      viewTransform.offsetY,
+      viewTransform.scale,
+      visibleNodes,
+    ]
   );
 
   const clearPointerHover = useCallback(() => {
@@ -1080,7 +1107,11 @@ export const SkillTreeView: React.FC = () => {
               hoveredId === node.id && "skill-tree-node--active",
               purchasedSkillId === node.id && "skill-tree-node--purchased"
             );
-            const iconSrc = getSkillIconPath(node.icon);
+            const config = getSkillConfig(node.id);
+            const iconSrc =
+              isDemoBuild() && config.lockedForDemo
+                ? DEMO_LOCK_ICON
+                : getSkillIconPath(node.icon);
             const nodeInitials = getSkillInitials(node.name);
 
             return (
@@ -1099,11 +1130,6 @@ export const SkillTreeView: React.FC = () => {
                 onMouseEnter={() => {
                   setPointerHoveredId(node.id);
                 }}
-                onMouseLeave={() =>
-                  setPointerHoveredId((current) =>
-                    current === node.id ? null : current
-                  )
-                }
                 onFocus={() => setFocusHoveredId(node.id)}
                 onBlur={() =>
                   setFocusHoveredId((current) =>
@@ -1116,7 +1142,7 @@ export const SkillTreeView: React.FC = () => {
                   }
                 }}
                 aria-disabled={inactive}
-                aria-label={`${node.name} level ${node.level} of ${node.maxLevel}`}
+                aria-label={`${node.name} ${t("voidCamp.common.level", "Level")} ${node.level} ${t("voidCamp.common.of", "of")} ${node.maxLevel}`}
               >
                 <div className="skill-tree-node__content">
                   <div className="skill-tree-node__level">
@@ -1139,7 +1165,7 @@ export const SkillTreeView: React.FC = () => {
             );
           })}
           {visibleNodes.length === 0 && (
-            <div className="skill-tree__empty">No skills available yet.</div>
+            <div className="skill-tree__empty">{t("voidCamp.skills.empty", "No skills available yet.")}</div>
           )}
         </div>
       </div>
@@ -1149,20 +1175,20 @@ export const SkillTreeView: React.FC = () => {
             <div className="skill-tree__details-header">
               <h2>{activeNode.name}</h2>
               <span className="skill-tree__details-level">
-                Level {activeNode.level} / {activeNode.maxLevel}
+                {t("voidCamp.common.level", "Level")} {activeNode.level} / {activeNode.maxLevel}
               </span>
             </div>
             <p className="skill-tree__details-description">{activeNode.description}</p>
             <div className="skill-tree__details-section">
-              <h3>Bonuses</h3>
+              <h3>{t("voidCamp.common.bonuses", "Bonuses")}</h3>
               <BonusEffectsPreviewList
                 className="skill-tree__bonus-effects"
                 effects={activeNode.bonusEffects}
-                emptyLabel="No bonuses from this skill."
+                emptyLabel={t("voidCamp.skills.noBonuses", "No bonuses from this skill.")}
               />
             </div>
             <div className="skill-tree__details-section">
-              <h3>Requirements</h3>
+              <h3>{t("voidCamp.skills.requirements", "Requirements")}</h3>
               {activeNode.requirements.length > 0 ? (
                 <ul className="skill-tree__requirements">
                   {activeNode.requirements.map((requirement) => {
@@ -1182,13 +1208,13 @@ export const SkillTreeView: React.FC = () => {
                   })}
                 </ul>
               ) : (
-                <div className="skill-tree__requirements-empty">No prerequisites.</div>
+                <div className="skill-tree__requirements-empty">{t("voidCamp.skills.noRequirements", "No prerequisites.")}</div>
               )}
             </div>
             <div className="skill-tree__details-section">
-              <h3>Next Level Cost</h3>
+              <h3>{t("voidCamp.skills.nextCost", "Next Level Cost")}</h3>
               {activeNode.maxed ? (
-                <div className="skill-tree__maxed">Max level reached.</div>
+                <div className="skill-tree__maxed">{t("voidCamp.skills.maxLevel", "Max level reached.")}</div>
               ) : activeNode.nextCost ? (
                 <ResourceCostDisplay
                   className="skill-tree__details-cost"
@@ -1197,22 +1223,22 @@ export const SkillTreeView: React.FC = () => {
                   resources={SKILL_TREE_RESOURCES}
                 />
               ) : (
-                <div className="skill-tree__requirements-empty">Meet prerequisites to reveal cost.</div>
+                <div className="skill-tree__requirements-empty">{t("voidCamp.skills.revealCost", "Meet prerequisites to reveal cost.")}</div>
               )}
             </div>
             {!activeNode.maxed && (
               <div className="skill-tree__hint">
                 {activeNode.unlocked
                   ? activeAffordable
-                    ? "Click a highlighted node to upgrade it."
+                    ? t("voidCamp.skills.hintUpgrade", "Click a highlighted node to upgrade it.")
                     : gatherMoreHint
-                  : "Unlock prerequisites to make this upgrade available."}
+                  : t("voidCamp.skills.hintUnlock", "Unlock prerequisites to make this upgrade available.")}
               </div>
             )}
           </>
         ) : (
           <div className="skill-tree__details-empty">
-            Hover over a skill node to inspect its details.
+            {t("voidCamp.skills.hoverHint", "Hover over a skill node to inspect its details.")}
           </div>
         )}
       </aside>

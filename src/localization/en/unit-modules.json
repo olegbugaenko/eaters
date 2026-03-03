@@ -1,0 +1,72 @@
+{
+  "magnet": {
+    "name": "Shard-Lure Tendrils",
+    "description": "Filamented feelers thrum with occult magnetism, drawing extra shards from every shattered brick your creature claims.",
+    "bonusLabel": "Brick reward multiplier"
+  },
+  "soulMagnet": {
+    "name": "Soul Magnet",
+    "description": "A soul-attuned gland tugs loose remnants from fallen foes, increasing the chance to extract souls after a kill.",
+    "bonusLabel": "Soul drop chance bonus"
+  },
+  "perforator": {
+    "name": "Rending Tentacles",
+    "description": "Whip-like limbs tear through targets so the force bleeds into adjacent masonry, weakening the formation around the strike.",
+    "bonusLabel": "Damage spillover"
+  },
+  "vitalHull": {
+    "name": "Vital Flesh",
+    "description": "Bio-reactive tissues graft and swell, thickening the creature’s living bulk and knitting wounds as it grows.",
+    "bonusLabel": "Max HP multiplier"
+  },
+  "ironForge": {
+    "name": "Iron Fangs",
+    "description": "Hardened iron fangs and knuckle-spikes bite deeper, turning each swing into a brutal, mauling strike.",
+    "bonusLabel": "Damage multiplier"
+  },
+  "silverArmor": {
+    "name": "Silver Carapace",
+    "description": "Interlocking argent scutes sheathe the body, scattering incoming blows across mirrored scales.",
+    "bonusLabel": "Armor multiplier"
+  },
+  "internalFurnace": {
+    "name": "Coal Heart",
+    "description": "An embered heart pumps heat through sinew—each consecutive hit stokes the blaze, compounding your offensive frenzy.",
+    "bonusLabel": "Attack bonus per hit"
+  },
+  "mendingGland": {
+    "name": "Mending Pheromone Gland",
+    "description": "Cultured sacs seep soothing pheromones that ripple through the pack, stitching flesh back together. Healing amount = (unit's attack) × (module multiplier). Limited to 10 heals per unit per run.",
+    "bonusLabel": "Healing pulse multiplier"
+  },
+  "frenzyGland": {
+    "name": "Frenzy Pheromone Gland",
+    "description": "Pressurized nodules burst with acrid signals, goading nearby allies into a sharp, short-lived killing trance. Bonus damage per attack = (unit's attack) × (module multiplier).",
+    "bonusLabel": "Rally surge multiplier"
+  },
+  "fireballOrgan": {
+    "name": "Fireball Organ",
+    "description": "A blazing core pulses with infernal energy, launching searing fireballs every 4 seconds. Each fireball explodes on impact, dealing (0.75 + 0.0375×level) × unit damage to the target brick and all neighbors within 40 units. However, each fireball launch causes 250% of the fireball's damage as self-damage to the unit.",
+    "bonusLabel": "Fireball damage multiplier"
+  },
+  "burningTail": {
+    "name": "Melting Tail",
+    "description": "Caustic glands coat struck masonry, making it more vulnerable to subsequent hits for a short time.",
+    "bonusLabel": "Incoming damage multiplier"
+  },
+  "freezingTail": {
+    "name": "Freezing Tail",
+    "description": "Thread cryogenic veins through the tail, letting each blow sheath bricks in biting frost.",
+    "bonusLabel": "Enemy damage divisor"
+  },
+  "tailNeedles": {
+    "name": "Chord Needles",
+    "description": "Socket barbed quills into the chord’s tip so every strike unleashes sideways volleys of piercing shards.",
+    "bonusLabel": "Side projectile damage"
+  },
+  "conductorTentacles": {
+    "name": "Conductor Tentacles",
+    "description": "Copper-filamented feelers discharge volatile surges that leap between nearby masonry and foes.",
+    "bonusLabel": "Chain lightning damage"
+  }
+}

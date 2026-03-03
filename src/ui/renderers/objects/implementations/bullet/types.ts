@@ -23,6 +23,8 @@ export interface BulletRendererCustomData {
   speed?: number;
   maxSpeed?: number;
   velocity?: SceneVector2;
+  movementRotation?: number;
+  visualRotation?: number;
   bulletGpuKey?: string;
   shape?: "circle" | "sprite";
   renderComponents?: {
@@ -37,6 +39,8 @@ export type BulletTailEmitterRenderConfig = ParticleEmitterBaseConfig & {
   baseSpeed: number;
   speedVariation: number;
   spread: number;
+  spawnRadiusMin: number;
+  spawnRadiusMax: number;
 };
 
 export type BulletEmitterKey = "tailEmitter" | "trailEmitter" | "smokeEmitter";

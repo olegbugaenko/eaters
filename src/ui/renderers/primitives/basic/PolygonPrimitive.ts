@@ -33,6 +33,7 @@ interface DynamicPolygonPrimitiveOptions {
   fill?: SceneFill;
   getFill?: (instance: SceneObjectInstance) => SceneFill;
   offset?: SceneVector2;
+  getOffset?: (instance: SceneObjectInstance) => SceneVector2 | undefined;
   /**
    * Callback to refresh fill when instance.data.fill reference changes.
    * Used for "base" fills in composite renderers that depend on visual effects.
@@ -113,8 +114,21 @@ const resolveFill = (
   return instance.data.fill;
 };
 
+const resolveOffset = (
+  options: { offset?: SceneVector2; getOffset?: (instance: SceneObjectInstance) => SceneVector2 | undefined },
+  instance: SceneObjectInstance
+): SceneVector2 | undefined => {
+  if (typeof options.getOffset === "function") {
+    return options.getOffset(instance);
+  }
+  return options.offset;
+};
+
 // OPTIMIZATION: Reusable geometry object to avoid per-frame allocations
-const computeGeometry = (vertices: PolygonVertices, out?: PolygonGeometry): PolygonGeometry => {
+export const computePolygonGeometry = (
+  vertices: PolygonVertices,
+  out?: PolygonGeometry
+): PolygonGeometry => {
   const result = out ?? {
     centerOffset: { x: 0, y: 0 },
     size: { width: MIN_SIZE, height: MIN_SIZE },
@@ -425,7 +439,7 @@ export const createStaticPolygonPrimitive = (
 ): StaticPrimitive => {
   const { center, vertices, fill, rotation, offset } = options;
   const origin = transformObjectPoint(center, rotation, offset);
-  const geometry = computeGeometry(vertices);
+  const geometry = computePolygonGeometry(vertices);
   const fillCenter = transformObjectPoint(
     origin,
     rotation ?? 0,
@@ -452,16 +466,17 @@ export const createDynamicPolygonPrimitive = (
   // refreshFill tracks instance.data.fill reference changes for visual effects
   const hasRefreshFill = typeof options.refreshFill === "function";
   // Can only fast-path if fill doesn't need refresh tracking
-  const canFastPath = isStaticVertices && isStaticFill && !hasRefreshFill;
+  const canFastPath =
+    isStaticVertices && isStaticFill && !hasRefreshFill && !options.getOffset;
   
   const initialVertices = resolveVertices(options, instance);
   let vertexCount = initialVertices.length;
-  let geometry = computeGeometry(initialVertices);
+  let geometry = computePolygonGeometry(initialVertices);
   const getCenter = (target: SceneObjectInstance): SceneVector2 =>
     transformObjectPoint(
       getInstanceRenderPosition(target),
       target.data.rotation,
-      options.offset
+      resolveOffset(options, target)
     );
 
   let origin = getCenter(instance);
@@ -469,9 +484,8 @@ export const createDynamicPolygonPrimitive = (
   let fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
   const fillScratch = new Float32Array(FILL_COMPONENTS);
   
-  // Cache the resolved fill and track instance.data.fill reference for refreshFill
+  // Cache the resolved fill for refreshFill
   let cachedFill: SceneFill = resolveFill(options, instance);
-  let prevInstanceFillRef: SceneFill | undefined = hasRefreshFill ? instance.data.fill : undefined;
   
   let fillComponents = writeFillVertexComponents(fillScratch, {
     fill: cachedFill,
@@ -487,6 +501,8 @@ export const createDynamicPolygonPrimitive = (
   let prevPosX = getInstanceRenderPosition(instance).x;
   let prevPosY = getInstanceRenderPosition(instance).y;
   let prevRotation = rotation;
+  let prevOffsetX = resolveOffset(options, instance)?.x ?? 0;
+  let prevOffsetY = resolveOffset(options, instance)?.y ?? 0;
 
   const primitive: DynamicPrimitive = {
     get data() {
@@ -495,13 +511,18 @@ export const createDynamicPolygonPrimitive = (
     update(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
       
       // Fast path: skip expensive computations if nothing changed
       // For static vertices/fill, only position and rotation matter
       if (canFastPath &&
           pos.x === prevPosX &&
           pos.y === prevPosY &&
-          nextRotation === prevRotation) {
+          nextRotation === prevRotation &&
+          nextOffsetX === prevOffsetX &&
+          nextOffsetY === prevOffsetY) {
         return null;
       }
       
@@ -510,6 +531,8 @@ export const createDynamicPolygonPrimitive = (
       prevPosX = pos.x;
       prevPosY = pos.y;
       prevRotation = rotation;
+      prevOffsetX = nextOffsetX;
+      prevOffsetY = nextOffsetY;
       
       // Skip expensive geometry/vertices work for static vertices
       let nextVertices: PolygonVertices;
@@ -517,25 +540,23 @@ export const createDynamicPolygonPrimitive = (
         nextVertices = initialVertices;
       } else {
         nextVertices = resolveVertices(options, target);
-        computeGeometry(nextVertices, geometry);
+        computePolygonGeometry(nextVertices, geometry);
       }
       currentVertices = nextVertices;
       const nextVertexCount = nextVertices.length;
       
       fillCenter = transformObjectPoint(origin, rotation, geometry.centerOffset);
       // Reuse a single scratch buffer to avoid per-frame allocations
-      // Check if fill reference changed (visual effect applied)
-      let fillRefChanged = false;
+      // Check dirty flags for fill/color changes (visual effects)
+      let fillDirty = false;
       if (hasRefreshFill) {
-        const fillChanged = target.data.fill !== prevInstanceFillRef;
-        if (fillChanged) {
-          prevInstanceFillRef = target.data.fill;
+        if (target.data.fillDirty || target.data.colorDirty) {
           cachedFill = options.refreshFill!(target);
-          fillRefChanged = true;
+          fillDirty = true;
         }
       }
       
-      // Skip resolveFill for static fill (unless refreshFill triggered)
+      // Skip resolveFill for static fill (unless dirty flag triggered)
       if (!isStaticFill) {
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: resolveFill(options, target),
@@ -543,16 +564,22 @@ export const createDynamicPolygonPrimitive = (
           rotation,
           size: geometry.size,
         });
-      } else if (fillRefChanged) {
-        // refreshFill was triggered - use the newly cached fill
+      } else if (fillDirty) {
+        // dirty flag triggered - use the newly cached fill
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: fillCenter,
           rotation,
           size: geometry.size,
         });
+      } else if (cachedFill.fillType === FILL_TYPES.SOLID) {
+        // OPTIMIZATION: For solid fills, just update center position (indices 4,5)
+        // This avoids full writeFillVertexComponents call
+        fillScratch[4] = fillCenter.x;
+        fillScratch[5] = fillCenter.y;
+        fillComponents = fillScratch;
       } else {
-        // Just update center position in fill components
+        // Non-solid static fill (gradient) - need full recalculation for center/rotation
         fillComponents = writeFillVertexComponents(fillScratch, {
           fill: cachedFill,
           center: fillCenter,
@@ -579,10 +606,15 @@ export const createDynamicPolygonPrimitive = (
     updatePositionOnly(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
       if (
         pos.x === prevPosX &&
         pos.y === prevPosY &&
-        nextRotation === prevRotation
+        nextRotation === prevRotation &&
+        nextOffsetX === prevOffsetX &&
+        nextOffsetY === prevOffsetY
       ) {
         return null;
       }
@@ -591,6 +623,8 @@ export const createDynamicPolygonPrimitive = (
       prevPosX = pos.x;
       prevPosY = pos.y;
       prevRotation = rotation;
+      prevOffsetX = nextOffsetX;
+      prevOffsetY = nextOffsetY;
 
       const expectedSize = Math.max(currentVertices.length - 2, 0) * 3 * VERTEX_COMPONENTS;
       if (data.length !== expectedSize) {
@@ -625,6 +659,7 @@ interface DynamicPolygonStrokePrimitiveOptions {
   getVertices?: (instance: SceneObjectInstance) => SceneVector2[];
   stroke: SceneStroke;
   offset?: SceneVector2;
+  getOffset?: (instance: SceneObjectInstance) => SceneVector2 | undefined;
   /**
    * Callback to refresh stroke when instance.data.stroke reference changes.
    * Used for "base" strokes in composite renderers that depend on visual effects.
@@ -992,6 +1027,7 @@ export const createDynamicPolygonStrokePrimitive = (
 ): DynamicPrimitive => {
   // Check if vertices are static (not animated)
   const isStaticVertices = !options.getVertices && !!options.vertices;
+  const hasDynamicOffset = typeof options.getOffset === "function";
   const hasRefreshStroke = typeof options.refreshStroke === "function";
   
   const resolveVerts = (target: SceneObjectInstance): PolygonVertices => {
@@ -1008,11 +1044,11 @@ export const createDynamicPolygonStrokePrimitive = (
     transformObjectPoint(
       getInstanceRenderPosition(target),
       target.data.rotation,
-      options.offset
+      resolveOffset(options, target)
     );
 
   let inner = resolveVerts(instance);
-  let geometry = computeGeometry(inner);
+  let geometry = computePolygonGeometry(inner);
   let origin = getCenter(instance);
   let rotation = instance.data.rotation ?? 0;
   
@@ -1036,6 +1072,8 @@ export const createDynamicPolygonStrokePrimitive = (
   let prevPosX = getInstanceRenderPosition(instance).x;
   let prevPosY = getInstanceRenderPosition(instance).y;
   let prevRotation = rotation;
+  let prevOffsetX = resolveOffset(options, instance)?.x ?? 0;
+  let prevOffsetY = resolveOffset(options, instance)?.y ?? 0;
 
   const primitive: DynamicPrimitive = {
     get data() {
@@ -1044,6 +1082,9 @@ export const createDynamicPolygonStrokePrimitive = (
     update(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
       
       // Check if stroke reference changed (visual effect applied)
       let strokeRefChanged = false;
@@ -1056,10 +1097,13 @@ export const createDynamicPolygonStrokePrimitive = (
       
       // Fast path: skip update if position/rotation unchanged, vertices are static, and stroke didn't change
       if (isStaticVertices &&
+          !hasDynamicOffset &&
           !strokeRefChanged &&
           pos.x === prevPosX &&
           pos.y === prevPosY &&
-          nextRotation === prevRotation) {
+          nextRotation === prevRotation &&
+          nextOffsetX === prevOffsetX &&
+          nextOffsetY === prevOffsetY) {
         return null;
       }
       
@@ -1068,11 +1112,13 @@ export const createDynamicPolygonStrokePrimitive = (
       prevPosX = pos.x;
       prevPosY = pos.y;
       prevRotation = rotation;
+      prevOffsetX = nextOffsetX;
+      prevOffsetY = nextOffsetY;
       
       // Skip expensive geometry/vertices work for static vertices
       if (!isStaticVertices) {
         inner = resolveVerts(target);
-        computeGeometry(inner, geometry);
+      computePolygonGeometry(inner, geometry);
         outer = expandVertices(inner, geometry.centerOffset, cachedStroke.width, outer);
       }
       
@@ -1109,10 +1155,15 @@ export const createDynamicPolygonStrokePrimitive = (
     updatePositionOnly(target: SceneObjectInstance) {
       const pos = getInstanceRenderPosition(target);
       const nextRotation = target.data.rotation ?? 0;
+      const nextOffset = resolveOffset(options, target);
+      const nextOffsetX = nextOffset?.x ?? 0;
+      const nextOffsetY = nextOffset?.y ?? 0;
       if (
         pos.x === prevPosX &&
         pos.y === prevPosY &&
-        nextRotation === prevRotation
+        nextRotation === prevRotation &&
+        nextOffsetX === prevOffsetX &&
+        nextOffsetY === prevOffsetY
       ) {
         return null;
       }
@@ -1121,6 +1172,8 @@ export const createDynamicPolygonStrokePrimitive = (
       prevPosX = pos.x;
       prevPosY = pos.y;
       prevRotation = rotation;
+      prevOffsetX = nextOffsetX;
+      prevOffsetY = nextOffsetY;
 
       const n = Math.min(inner.length, outer.length);
       const expectedSize = n * 2 * 3 * VERTEX_COMPONENTS;
@@ -1149,7 +1202,7 @@ export const createStaticPolygonStrokePrimitive = (
   if (!stroke || stroke.width <= 0) {
     return null;
   }
-  const geometry = computeGeometry(vertices);
+  const geometry = computePolygonGeometry(vertices);
   const expanded = expandVertices(vertices, geometry.centerOffset, stroke.width);
   return createStaticPolygonPrimitive({
     center: options.center,

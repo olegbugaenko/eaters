@@ -1,4 +1,4 @@
-import type { MapId } from "./maps-db";
+import type { MapId } from "./maps/maps-db";
 import type { SkillId } from "./skills-db";
 import type { UnlockCondition } from "@shared/types/unlocks";
 import { RESOURCE_IDS, ResourceAmount, ResourceId } from "./resources-db";
@@ -10,7 +10,9 @@ export type BuildingId =
   | "iron_forest"
   | "mana_plant"
   | "blacksmith"
-  | "treasure_vault";
+  | "treasure_vault"
+  | "throughput_regulator"
+  | "hunger_monument";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -163,7 +165,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       "Invent better ways to store and refine your treasures.",
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.16 * level,
+        multiplier: (level) => 1 + 0.1 * level,
       },
     },
     cost: createScalingCost({ silver: 500, copper: 1600 }, 1.75),
@@ -171,6 +173,45 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       {
         type: "skill",
         id: "advanced_construction",
+        level: 1,
+      },
+    ],
+  },
+  throughput_regulator: {
+    id: "throughput_regulator",
+    name: "Throughput Regulator",
+    description:
+      "Install precise regulators to safely drive fabrication lines beyond standard tolerances.",
+    effects: {
+      crafting_overdrive_max: {
+        income: (level) => level,
+      },
+    },
+    maxLevel: 3,
+    cost: createScalingCost({ silver: 2500, copper: 40000, stone: 800000 }, 3),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "draftsmanship",
+        level: 1,
+      },
+    ],
+  },
+  hunger_monument: {
+    id: "hunger_monument",
+    name: "Monument of Hunger",
+    description:
+      "Raise a monument that amplifies the colony's predatory instinct, increasing all unit attack.",
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    cost: createScalingCost({ sand: 50000 }, 2),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "draftsmanship",
         level: 1,
       },
     ],

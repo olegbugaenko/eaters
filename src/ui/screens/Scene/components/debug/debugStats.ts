@@ -13,6 +13,17 @@ export interface DebugStats {
   particleCapacity: number;
   particleEmitters: number;
   movableObjects: number;
+  joinedHandles: number;
+  joinedDrawCalls: number;
+  joinedRenderMs: number;
+  joinedUploadMs: number;
+  unitCount: number;
+  jointCount: number;
+  jointGpuCount: number;
+  jointCpuCount: number;
+  animationCount: number;
+  animationGpuCount: number;
+  animationCpuCount: number;
   // FPS tracking - updated by render loop
   frameCount: number;
   lastFpsUpdate: number;
@@ -27,6 +38,17 @@ export const debugStats: DebugStats = {
   particleCapacity: 0,
   particleEmitters: 0,
   movableObjects: 0,
+  joinedHandles: 0,
+  joinedDrawCalls: 0,
+  joinedRenderMs: 0,
+  joinedUploadMs: 0,
+  unitCount: 0,
+  jointCount: 0,
+  jointGpuCount: 0,
+  jointCpuCount: 0,
+  animationCount: 0,
+  animationGpuCount: 0,
+  animationCpuCount: 0,
   frameCount: 0,
   lastFpsUpdate: 0,
   currentFps: 0,
@@ -52,6 +74,42 @@ export const updateParticleStats = (
 /** Update movable objects count (called from useSceneCanvas) */
 export const updateMovableStats = (count: number): void => {
   debugStats.movableObjects = count;
+};
+
+export const updateJoinedStats = (stats: {
+  handles: number;
+  drawCalls: number;
+  renderMs: number;
+  uploadMs: number;
+}): void => {
+  debugStats.joinedHandles = stats.handles;
+  debugStats.joinedDrawCalls = stats.drawCalls;
+  debugStats.joinedRenderMs = stats.renderMs;
+  debugStats.joinedUploadMs = stats.uploadMs;
+};
+
+export const updateUnitStats = (count: number): void => {
+  debugStats.unitCount = count;
+};
+
+export const updateJointStats = (stats: {
+  total: number;
+  gpu: number;
+  cpu: number;
+}): void => {
+  debugStats.jointCount = stats.total;
+  debugStats.jointGpuCount = stats.gpu;
+  debugStats.jointCpuCount = stats.cpu;
+};
+
+export const updateAnimationStats = (stats: {
+  total: number;
+  gpu: number;
+  cpu: number;
+}): void => {
+  debugStats.animationCount = stats.total;
+  debugStats.animationGpuCount = stats.gpu;
+  debugStats.animationCpuCount = stats.cpu;
 };
 
 /** 

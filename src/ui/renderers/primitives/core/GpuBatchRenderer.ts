@@ -203,6 +203,13 @@ export abstract class GpuBatchRenderer<
   }
 
   /**
+   * Unified acquire API (alias for acquireSlot).
+   */
+  public acquire(config: TConfig): SlotHandle | null {
+    return this.acquireSlot(config);
+  }
+
+  /**
    * Update instance data in a slot.
    */
   public updateSlot(handle: SlotHandle, instance: TInstance): void {
@@ -219,6 +226,13 @@ export abstract class GpuBatchRenderer<
     this.writeInstanceData(batch, slotIndex, instance);
     batch.instances[slotIndex] = instance;
     batch.needsUpload = true;
+  }
+
+  /**
+   * Unified update API (alias for updateSlot).
+   */
+  public update(handle: SlotHandle, instance: TInstance): void {
+    this.updateSlot(handle, instance);
   }
 
   /**
@@ -249,6 +263,13 @@ export abstract class GpuBatchRenderer<
     const offset = slotIndex * instanceFloats;
     batch.instanceData[offset + activeIndex] = 0;
     batch.needsUpload = true;
+  }
+
+  /**
+   * Unified release API (alias for releaseSlot).
+   */
+  public release(handle: SlotHandle): void {
+    this.releaseSlot(handle);
   }
 
   /**

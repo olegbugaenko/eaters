@@ -12,9 +12,9 @@ import {
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
 import {
   cloneSceneFill,
-} from "@shared/helpers/scene-fill.helper";
+} from "@shared/helpers/scene-style.helper";
 import { ParticleEmitterShape } from "@/logic/services/particles/ParticleEmitterShared";
-import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-color.helper";
+import { sanitizeSceneColor, cloneSceneColor, ensureColorAlpha, cloneColorWithAlpha } from "@shared/helpers/scene-style.helper";
 import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import {
   DynamicPrimitive,
@@ -43,11 +43,13 @@ import {
   registerParticleEmitterHandle,
   unregisterParticleEmitterHandle,
 } from "./gpu/particle-emitter";
+import { RANDOM_GLSL } from "../shaders/random.glsl";
 
 export interface ParticleEmitterBaseConfig {
   particlesPerSecond: number;
   particleLifetimeMs: number;
   fadeStartMs: number;
+  fadeInMs: number;
   sizeRange: { min: number; max: number };
   offset: SceneVector2;
   color: SceneColor;
@@ -56,7 +58,9 @@ export interface ParticleEmitterBaseConfig {
   // Optional rendering tweaks
   aspectRatio?: number; // width/height; 1 = square, >1 stretched along X
   alignToVelocity?: boolean; // if true, rotate quad to face particle velocity
+  alignToVelocityFlip?: boolean; // if true, rotate 180 degrees when aligned to velocity
   emissionDurationMs?: number;
+  emissionDampingInterval?: number;
   capacity: number;
   sizeGrowthRate?: number; // Multiplier per second: 1.0 = no growth, 2.0 = doubles per second
 }
@@ -85,6 +89,14 @@ interface ParticleEmitterState<Config extends ParticleEmitterBaseConfig> {
   lastConfigRef: Config | null; // Cache config reference to avoid JSON.stringify on every frame
   warnedCpuSpawnFallback: boolean;
   warnedCpuMode: boolean;
+  // GPU update cache to avoid per-frame allocations
+  gpuUpdateCache: ParticleEmitterGpuUpdateCache | null;
+}
+
+interface ParticleEmitterGpuUpdateCache {
+  lastOrigin: SceneVector2;
+  lastRotation: number;
+  cachedSpawnParams: GpuSpawnParams | null;
 }
 
 interface ParticleEmitterCpuCache {
@@ -111,6 +123,11 @@ export interface GpuSpawnConfig {
   direction: number;
   spread: number;
   radialVelocity: boolean;
+  spawnShape?: "circle" | "rect";
+  spawnRectMin?: SceneVector2;
+  spawnRectMax?: SceneVector2;
+  cullRectMin?: SceneVector2;
+  cullRectMax?: SceneVector2;
 }
 
 export interface ParticleEmitterPrimitiveOptions<
@@ -244,6 +261,12 @@ interface ParticleSimulationProgram {
     direction: WebGLUniformLocation | null;
     spread: WebGLUniformLocation | null;
     radialVelocity: WebGLUniformLocation | null;
+    spawnShape: WebGLUniformLocation | null;
+    spawnRectMin: WebGLUniformLocation | null;
+    spawnRectMax: WebGLUniformLocation | null;
+    cullEnabled: WebGLUniformLocation | null;
+    cullMin: WebGLUniformLocation | null;
+    cullMax: WebGLUniformLocation | null;
   };
 }
 
@@ -460,6 +483,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
       lastConfigRef: config,
       warnedCpuSpawnFallback: false,
       warnedCpuMode: false,
+      gpuUpdateCache: null,
     };
   }
 
@@ -481,6 +505,7 @@ const createParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
     lastConfigRef: config,
     warnedCpuSpawnFallback: false,
     warnedCpuMode: false,
+    gpuUpdateCache: gpu ? { lastOrigin: { x: 0, y: 0 }, lastRotation: 0, cachedSpawnParams: null } : null,
   };
 
   if (gpu) {
@@ -511,6 +536,7 @@ const createEmptyParticleEmitterState = <
   lastConfigRef: null,
   warnedCpuSpawnFallback: false,
   warnedCpuMode: false,
+  gpuUpdateCache: null,
 });
 
 const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
@@ -561,12 +587,6 @@ const advanceParticleEmitterState = <Config extends ParticleEmitterBaseConfig>(
   state.ageMs = previousAge + deltaMs;
 
   const activeDelta = computeActiveDelta(previousAge, deltaMs, emissionDuration);
-
-  if (activeDelta > 0 && spawnRate > 0) {
-    state.spawnAccumulator += spawnRate * activeDelta;
-  } else {
-    state.spawnAccumulator = 0;
-  }
 
   const origin = options.getOrigin(instance, config);
 
@@ -648,26 +668,70 @@ const advanceParticleEmitterStateGpu = <
 
   const origin = options.getOrigin(instance, config);
   
-  // Check if GPU spawn is available
-  const gpuSpawnConfig = options.getGpuSpawnConfig?.(instance, config);
-  const useGpuSpawn = gpuSpawnConfig !== null && gpuSpawnConfig !== undefined;
+  const hasGpuSpawnProvider = typeof options.getGpuSpawnConfig === "function";
+  // Check if GPU spawn config needs refresh (rotation changed or first frame)
+  const currentRotation = instance.data.rotation ?? 0;
+  const cache = state.gpuUpdateCache;
+  const rotationChanged = !cache || cache.lastRotation !== currentRotation;
+  
+  // Get or update GPU spawn config only when needed
+  let gpuSpawnConfig: GpuSpawnConfig | null = null;
+  if (hasGpuSpawnProvider) {
+    if (rotationChanged || !cache?.cachedSpawnParams) {
+      gpuSpawnConfig = options.getGpuSpawnConfig!(instance, config);
+    }
+  }
+  const useGpuSpawn = hasGpuSpawnProvider && (gpuSpawnConfig !== null || cache?.cachedSpawnParams !== null);
   
   let spawnParams: GpuSpawnParams | undefined;
   
-  if (useGpuSpawn) {
+  if (hasGpuSpawnProvider && !useGpuSpawn) {
+    if (!state.warnedCpuSpawnFallback) {
+      console.error(
+        "[ParticleEmitter] GPU spawn config missing in GPU mode. " +
+          "CPU fallback is disabled. " +
+          `shape=${config.shape}, particlesPerSecond=${config.particlesPerSecond}`
+      );
+      state.warnedCpuSpawnFallback = true;
+    }
+    state.spawnAccumulator = 0;
+    if (gpu.handle) {
+      gpu.handle.activeCount = 0;
+    }
+  } else if (useGpuSpawn) {
     // GPU SPAWN PATH: No CPU slot tracking needed!
     // GPU shader handles slot availability via isActive flag
-    const spawnBudget = Math.min(
-      Math.floor(state.spawnAccumulator),
+    const dampingWindow = Math.max(0, config.emissionDampingInterval ?? 0);
+    const effectiveSpawnRate =
+      dampingWindow > 0 && Number.isFinite(emissionDuration)
+        ? spawnRate * clamp01(Math.max(0, emissionDuration - state.ageMs) / dampingWindow)
+        : spawnRate;
+    const desiredSpawnCount = Math.min(
+      effectiveSpawnRate * activeDelta,
       state.capacity // Can't spawn more than capacity
     );
-    
-    if (spawnBudget > 0) {
+
+    // Reuse cached spawnParams or create new one
+    if (cache && cache.cachedSpawnParams && !gpuSpawnConfig) {
+      // Fast path: reuse cached params, only update dynamic values
+      spawnParams = cache.cachedSpawnParams;
+      spawnParams.emitterPosition = origin;
+      spawnParams.spawnCount = desiredSpawnCount;
+    } else if (gpuSpawnConfig) {
+      // Need to rebuild spawnParams (first frame or rotation changed)
+      const spawnShape = gpuSpawnConfig.spawnShape === "rect" ? 1 : 0;
+      const spawnRectMin = gpuSpawnConfig.spawnRectMin ?? origin;
+      const spawnRectMax = gpuSpawnConfig.spawnRectMax ?? origin;
+      const cullMin = gpuSpawnConfig.cullRectMin ?? origin;
+      const cullMax = gpuSpawnConfig.cullRectMax ?? origin;
+      const cullEnabled =
+        Boolean(gpuSpawnConfig.cullRectMin) && Boolean(gpuSpawnConfig.cullRectMax);
+
       spawnParams = {
         emitterPosition: origin,
-        emitterRotation: instance.data.rotation ?? 0,
+        emitterRotation: currentRotation,
         spawnStartIndex: state.capacity, // Pass capacity for probability calculation
-        spawnCount: spawnBudget,
+        spawnCount: desiredSpawnCount,
         particleLifetime: config.particleLifetimeMs,
         baseSpeed: gpuSpawnConfig.baseSpeed,
         speedVariation: gpuSpawnConfig.speedVariation,
@@ -679,22 +743,27 @@ const advanceParticleEmitterStateGpu = <
         direction: gpuSpawnConfig.direction,
         spread: gpuSpawnConfig.spread,
         radialVelocity: gpuSpawnConfig.radialVelocity,
+        spawnShape,
+        spawnRectMin,
+        spawnRectMax,
+        cullEnabled,
+        cullMin,
+        cullMax,
       };
-      state.spawnAccumulator -= spawnBudget;
+
+      // Cache for next frame
+      if (cache) {
+        cache.cachedSpawnParams = spawnParams;
+        cache.lastRotation = currentRotation;
+        cache.lastOrigin.x = origin.x;
+        cache.lastOrigin.y = origin.y;
+      }
     }
-    
-    // Cap accumulator to prevent runaway growth
-    state.spawnAccumulator = Math.min(state.spawnAccumulator, state.capacity);
+
+    // No accumulator in GPU spawn path; probability-based spawn uses fractional counts directly.
+    state.spawnAccumulator = 0;
   } else {
     // CPU SPAWN PATH: Legacy - requires slot tracking
-    if (!state.warnedCpuSpawnFallback && options.getGpuSpawnConfig) {
-      console.warn(
-        "[ParticleEmitter] Falling back to CPU spawn in GPU mode: " +
-          `getGpuSpawnConfig returned null/undefined. ` +
-          `shape=${config.shape}, particlesPerSecond=${config.particlesPerSecond}`
-      );
-      state.warnedCpuSpawnFallback = true;
-    }
     const currentTimeMs = state.ageMs;
     const slots = gpu.slots;
     const freeSlots: number[] = [];
@@ -780,6 +849,10 @@ const advanceParticleEmitterStateGpu = <
   if (deltaMs > 0 || spawnParams) {
     stepParticleSimulation(gpu, state.capacity, deltaMs, spawnParams);
   }
+
+  // if(instance.type === "unitProjectile") {
+  //  console.log(`deltaMs[${instance.id}]`, deltaMs, origin, spawnParams);
+  //}
 
   // For GPU spawn path: always render full capacity, shader handles inactive particles
   // For CPU spawn path: activeCount is already set above
@@ -945,6 +1018,7 @@ const writeEmitterBufferCpu = <Config extends ParticleEmitterBaseConfig>(
 
 const SIMULATION_VERTEX_SHADER = `#version 300 es
 precision highp float;
+precision highp int;
 
 in vec2 a_position;
 in vec2 a_velocity;
@@ -972,6 +1046,12 @@ uniform float u_arc;
 uniform float u_direction;
 uniform float u_spread;
 uniform float u_radialVelocity;  // 0.0 or 1.0
+uniform float u_spawnShape;      // 0.0 = circle, 1.0 = rect
+uniform vec2 u_spawnRectMin;
+uniform vec2 u_spawnRectMax;
+uniform float u_cullEnabled;     // 0.0 or 1.0
+uniform vec2 u_cullMin;
+uniform vec2 u_cullMax;
 
 out vec2 v_position;
 out vec2 v_velocity;
@@ -980,19 +1060,7 @@ out float v_lifetime;
 out float v_size;
 out float v_isActive;
 
-// Pseudo-random functions
-float hash(float n) {
-  return fract(sin(n * 12.9898) * 43758.5453123);
-}
-
-float rand(int particleId, int paramId) {
-  float seed = float(particleId) * 7.1831 + float(paramId) * 13.7297 + u_currentTime * 0.001;
-  return hash(seed);
-}
-
-float randRange(int particleId, int paramId, float minVal, float maxVal) {
-  return mix(minVal, maxVal, rand(particleId, paramId));
-}
+${RANDOM_GLSL}
 
 void main() {
   int particleId = gl_VertexID;
@@ -1020,7 +1088,7 @@ void main() {
     // u_spawnStartIndex contains capacity for this calculation
     float capacity = max(u_spawnStartIndex, 1.0);
     float spawnProbability = min(u_spawnCount / capacity, 1.0);
-    float randomVal = rand(particleId, 99);
+    float randomVal = randPcg(particleId, 99);
     if (randomVal < spawnProbability) {
       // Generate new particle on GPU!
       isActive = 1.0;
@@ -1028,35 +1096,41 @@ void main() {
       lifetime = u_particleLifetime;
       
       // Random size
-      size = randRange(particleId, 0, u_sizeRange.x, u_sizeRange.y);
+      size = randRangeLegacy(particleId, 0, u_sizeRange.x, u_sizeRange.y);
       
       // Random speed
-      float speedVar = randRange(particleId, 1, -1.0, 1.0) * u_speedRange.y;
+      float speedVar = randRangeLegacy(particleId, 1, -1.0, 1.0) * u_speedRange.y;
       float speed = max(0.0, u_speedRange.x + speedVar);
       
       // Calculate spawn angle
       float spawnAngle;
       if (u_arc >= 6.28318) {
         // Full circle - random angle
-        spawnAngle = rand(particleId, 2) * 6.28318;
+        spawnAngle = randPcg(particleId, 2) * 6.28318;
       } else if (u_spread > 0.0) {
         // Directional with spread (for player units, bullets)
         // u_direction already includes rotation + offset, don't add u_emitterRotation again
         float halfSpread = u_spread * 0.5;
-        float spreadOffset = randRange(particleId, 2, -halfSpread, halfSpread);
+        float spreadOffset = randRangePcg(particleId, 2, -halfSpread, halfSpread);
         spawnAngle = u_direction + spreadOffset;
       } else {
         // Limited arc (for explosions with direction)
         float halfArc = u_arc * 0.5;
-        float arcOffset = randRange(particleId, 2, -halfArc, halfArc);
+        float arcOffset = randRangePcg(particleId, 2, -halfArc, halfArc);
         spawnAngle = u_direction + arcOffset;
       }
       
-      // Random spawn radius
-      float spawnRadius = randRange(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
-      
-      // Calculate spawn position
-      position = u_emitterPosition + vec2(cos(spawnAngle), sin(spawnAngle)) * spawnRadius;
+      if (u_spawnShape > 0.5) {
+        // Rectangle spawn
+        float spawnX = randRangeLegacy(particleId, 3, u_spawnRectMin.x, u_spawnRectMax.x);
+        float spawnY = randRangeLegacy(particleId, 4, u_spawnRectMin.y, u_spawnRectMax.y);
+        position = vec2(spawnX, spawnY);
+      } else {
+        // Radial spawn
+        float spawnRadius =
+          randRangeLegacy(particleId, 3, u_spawnRadiusRange.x, u_spawnRadiusRange.y);
+        position = u_emitterPosition + vec2(cos(spawnAngle), sin(spawnAngle)) * spawnRadius;
+      }
       
       // Calculate velocity direction
       float velocityAngle;
@@ -1068,6 +1142,18 @@ void main() {
       }
       
       velocity = vec2(cos(velocityAngle), sin(velocityAngle)) * speed;
+    }
+  }
+
+  if (u_cullEnabled > 0.5 && isActive > 0.5) {
+    if (
+      position.x < u_cullMin.x ||
+      position.y < u_cullMin.y ||
+      position.x > u_cullMax.x ||
+      position.y > u_cullMax.y
+    ) {
+      isActive = 0.0;
+      age = 0.0;
     }
   }
 
@@ -1120,6 +1206,12 @@ interface GpuSpawnParams {
   direction: number;
   spread: number;
   radialVelocity: boolean;
+  spawnShape: number;
+  spawnRectMin: { x: number; y: number };
+  spawnRectMax: { x: number; y: number };
+  cullEnabled: boolean;
+  cullMin: { x: number; y: number };
+  cullMax: { x: number; y: number };
 }
 
 const stepParticleSimulation = (
@@ -1140,7 +1232,7 @@ const stepParticleSimulation = (
   
   // GPU spawn uniforms
   const u = program.uniforms;
-  if (spawnParams && spawnParams.spawnCount > 0) {
+  if (spawnParams) {
     if (u.emitterPosition) {
       gl.uniform2f(u.emitterPosition, spawnParams.emitterPosition.x, spawnParams.emitterPosition.y);
     }
@@ -1180,10 +1272,31 @@ const stepParticleSimulation = (
     if (u.radialVelocity) {
       gl.uniform1f(u.radialVelocity, spawnParams.radialVelocity ? 1.0 : 0.0);
     }
+    if (u.spawnShape) {
+      gl.uniform1f(u.spawnShape, spawnParams.spawnShape);
+    }
+    if (u.spawnRectMin) {
+      gl.uniform2f(u.spawnRectMin, spawnParams.spawnRectMin.x, spawnParams.spawnRectMin.y);
+    }
+    if (u.spawnRectMax) {
+      gl.uniform2f(u.spawnRectMax, spawnParams.spawnRectMax.x, spawnParams.spawnRectMax.y);
+    }
+    if (u.cullEnabled) {
+      gl.uniform1f(u.cullEnabled, spawnParams.cullEnabled ? 1.0 : 0.0);
+    }
+    if (u.cullMin) {
+      gl.uniform2f(u.cullMin, spawnParams.cullMin.x, spawnParams.cullMin.y);
+    }
+    if (u.cullMax) {
+      gl.uniform2f(u.cullMax, spawnParams.cullMax.x, spawnParams.cullMax.y);
+    }
   } else {
     // No spawn this frame
     if (u.spawnCount) {
       gl.uniform1f(u.spawnCount, 0);
+    }
+    if (u.cullEnabled) {
+      gl.uniform1f(u.cullEnabled, 0);
     }
   }
   
@@ -1296,6 +1409,12 @@ const getSimulationProgram = (
     direction: gl.getUniformLocation(program, "u_direction"),
     spread: gl.getUniformLocation(program, "u_spread"),
     radialVelocity: gl.getUniformLocation(program, "u_radialVelocity"),
+    spawnShape: gl.getUniformLocation(program, "u_spawnShape"),
+    spawnRectMin: gl.getUniformLocation(program, "u_spawnRectMin"),
+    spawnRectMax: gl.getUniformLocation(program, "u_spawnRectMax"),
+    cullEnabled: gl.getUniformLocation(program, "u_cullEnabled"),
+    cullMin: gl.getUniformLocation(program, "u_cullMin"),
+    cullMax: gl.getUniformLocation(program, "u_cullMax"),
   };
 
   const programInfo: ParticleSimulationProgram = {
@@ -1575,11 +1694,13 @@ const createParticleEmitterGpuState = (
     hasExplicitRadius: false,
     explicitRadius: 0,
     fadeStartMs: 0,
+    fadeInMs: 0,
     defaultLifetimeMs: 0,
     shape: 0,
     minParticleSize: MIN_PARTICLE_SIZE,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    alignToVelocityFlip: false,
     sizeGrowthRate: 1.0,
   };
   refreshParticleUniformKeys(uniforms);
@@ -1894,11 +2015,13 @@ const createParticleEmitterGpuStateFromPool = (
     hasExplicitRadius: false,
     explicitRadius: 0,
     fadeStartMs: 0,
+    fadeInMs: 0,
     defaultLifetimeMs: 0,
     shape: 0,
     minParticleSize: MIN_PARTICLE_SIZE,
     lengthMultiplier: 1,
     alignToVelocity: false,
+    alignToVelocityFlip: false,
     sizeGrowthRate: 1.0,
   };
   refreshParticleUniformKeys(uniforms);
@@ -2069,11 +2192,13 @@ const updateParticleEmitterGpuUniforms = <
 >(gpu: ParticleEmitterGpuState, config: Config): void => {
   const uniforms = gpu.uniforms;
   uniforms.fadeStartMs = config.fadeStartMs;
+  uniforms.fadeInMs = config.fadeInMs;
   uniforms.defaultLifetimeMs = config.particleLifetimeMs;
   uniforms.shape = config.shape === "circle" ? 1 : config.shape === "triangle" ? 2 : 0;
   uniforms.minParticleSize = MIN_PARTICLE_SIZE;
   uniforms.lengthMultiplier = Math.max(config.aspectRatio ?? 1, 1);
   uniforms.alignToVelocity = config.alignToVelocity === true;
+  uniforms.alignToVelocityFlip = config.alignToVelocityFlip === true;
   uniforms.sizeGrowthRate = typeof config.sizeGrowthRate === "number" && Number.isFinite(config.sizeGrowthRate) ? config.sizeGrowthRate : 1.0;
 
   const fill = resolveParticleFill(config);
@@ -2276,15 +2401,17 @@ const computeParticleAlpha = (
   particle: ParticleEmitterParticleState,
   config: ParticleEmitterBaseConfig
 ): number => {
+  const fadeIn =
+    config.fadeInMs > 0 ? clamp01(particle.ageMs / Math.max(1, config.fadeInMs)) : 1;
   if (config.fadeStartMs >= particle.lifetimeMs) {
-    return 1;
+    return fadeIn;
   }
   if (particle.ageMs <= config.fadeStartMs) {
-    return 1;
+    return fadeIn;
   }
   const fadeDuration = Math.max(1, particle.lifetimeMs - config.fadeStartMs);
   const fadeProgress = clamp01((particle.ageMs - config.fadeStartMs) / fadeDuration);
-  return 1 - fadeProgress;
+  return fadeIn * (1 - fadeProgress);
 };
 
 const applyParticleAlpha = (components: Float32Array, alpha: number): void => {
@@ -2523,7 +2650,9 @@ export const sanitizeParticleEmitterConfig = (
     particlesPerSecond?: number;
     particleLifetimeMs?: number;
     fadeStartMs?: number;
+    fadeInMs?: number;
     emissionDurationMs?: number;
+    emissionDampingInterval?: number;
     sizeRange?: { min?: number; max?: number };
     offset?: SceneVector2;
     color?: SceneColor;
@@ -2532,6 +2661,7 @@ export const sanitizeParticleEmitterConfig = (
     maxParticles?: number;
     aspectRatio?: number;
     alignToVelocity?: boolean;
+    alignToVelocityFlip?: boolean;
   },
   options: ParticleEmitterSanitizerOptions = {}
 ): ParticleEmitterBaseConfig | null => {
@@ -2556,6 +2686,13 @@ export const sanitizeParticleEmitterConfig = (
     Math.min(
       particleLifetimeMs,
       Number.isFinite(config.fadeStartMs) ? Number(config.fadeStartMs) : 0
+    )
+  );
+  const fadeInMs = Math.max(
+    0,
+    Math.min(
+      particleLifetimeMs,
+      Number.isFinite(config.fadeInMs) ? Number(config.fadeInMs) : 0
     )
   );
   const sizeMinRaw = config.sizeRange?.min;
@@ -2586,6 +2723,11 @@ export const sanitizeParticleEmitterConfig = (
     Number.isFinite(config.emissionDurationMs)
       ? Math.max(0, Number(config.emissionDurationMs))
       : undefined;
+  const emissionDampingInterval =
+    typeof config.emissionDampingInterval === "number" &&
+    Number.isFinite(config.emissionDampingInterval)
+      ? Math.max(0, Number(config.emissionDampingInterval))
+      : undefined;
   const maxParticles =
     typeof config.maxParticles === "number" && config.maxParticles > 0
       ? Math.floor(config.maxParticles)
@@ -2602,14 +2744,17 @@ export const sanitizeParticleEmitterConfig = (
     particlesPerSecond,
     particleLifetimeMs,
     fadeStartMs,
+    fadeInMs,
     sizeRange: { min: sizeMin, max: sizeMax },
     offset,
     color,
     fill,
     shape,
     emissionDurationMs,
+    emissionDampingInterval,
     capacity,
     aspectRatio: Number.isFinite(config.aspectRatio) ? Math.max(Number(config.aspectRatio), 0.01) : undefined,
     alignToVelocity: config.alignToVelocity === true,
+    alignToVelocityFlip: config.alignToVelocityFlip === true,
   };
 };

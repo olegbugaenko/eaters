@@ -1,0 +1,1 @@
+export { StatusEffectEmitterObjectRenderer } from "./StatusEffectEmitterObjectRenderer";

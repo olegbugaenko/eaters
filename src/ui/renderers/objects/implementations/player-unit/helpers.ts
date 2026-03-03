@@ -7,8 +7,8 @@ import type {
   SceneSolidFill,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
 import { FILL_TYPES } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.const";
-import { cloneSceneFill } from "@shared/helpers/scene-fill.helper";
-import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-color.helper";
+import { cloneSceneFill } from "@shared/helpers/scene-style.helper";
+import { sanitizeSceneColor, cloneSceneColor } from "@shared/helpers/scene-style.helper";
 import { clamp01 } from "@shared/helpers/numbers.helper";
 import { createSolidFill } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.helpers";
 import type {
@@ -148,6 +148,9 @@ type PlayerLayerExtraFields = {
   segmentIndex?: RendererLayer["segmentIndex"];
   buildOpts?: RendererLayer["buildOpts"];
   groupId?: RendererLayer["groupId"];
+  anchors?: RendererLayer["anchors"];
+  connectionSlots?: RendererLayer["anchors"];
+  join?: RendererLayer["join"];
 };
 
 const sanitizePlayerCompositeLayer = createCompositeLayerSanitizer<
@@ -185,6 +188,9 @@ const sanitizePlayerCompositeLayer = createCompositeLayerSanitizer<
     segmentIndex: layer.segmentIndex,
     buildOpts: layer.buildOpts,
     groupId: layer.groupId,
+    anchors: layer.anchors,
+    connectionSlots: layer.connectionSlots,
+    join: layer.join,
   }),
 });
 
