@@ -45,7 +45,7 @@ const formatSeconds = (value: number): string =>
 const formatDistance = (value: number): string =>
   `${formatNumber(value, { maximumFractionDigits: 0 })} units`;
 
-const BASE_SOUL_DROP_CHANCE = 0.1;
+const BASE_SOUL_DROP_CHANCE = 0.2;
 
 const formatPercent = (value: number): string =>
   `${formatNumber(value * 100, { maximumFractionDigits: 2 })}%`;

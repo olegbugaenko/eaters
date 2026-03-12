@@ -142,6 +142,8 @@
 
 .modules-workshop__actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
   justify-content: flex-end;
 }
 

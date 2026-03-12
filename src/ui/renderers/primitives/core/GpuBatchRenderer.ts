@@ -250,7 +250,14 @@ export abstract class GpuBatchRenderer<
     }
 
     const instance = batch.instances[slotIndex];
-    if (instance && "active" in instance && (instance as { active: boolean }).active) {
+    if (!instance) {
+      // Slot already freed (e.g. clearInstances() was called between acquire and release).
+      // Pushing to freeSlots again would create duplicates, causing two callers to receive
+      // the same slot index and overwrite each other's GPU data.
+      return;
+    }
+
+    if ("active" in instance && (instance as { active: boolean }).active) {
       batch.activeCount = Math.max(0, batch.activeCount - 1);
     }
 

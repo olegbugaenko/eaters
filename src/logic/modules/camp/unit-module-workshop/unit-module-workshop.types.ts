@@ -26,6 +26,9 @@ export interface UnitModuleWorkshopItemState {
 export interface UnitModuleWorkshopBridgeState {
   readonly unlocked: boolean;
   readonly modules: readonly UnitModuleWorkshopItemState[];
+  readonly hideMaxedWorkshop?: boolean;
+  readonly showHiddenWorkshop?: boolean;
+  readonly hiddenModuleIds?: readonly UnitModuleId[];
 }
 
 export interface UnitModuleWorkshopModuleOptions {
@@ -39,10 +42,16 @@ export interface UnitModuleWorkshopModuleOptions {
 
 export interface UnitModuleWorkshopSaveData {
   readonly levels?: Partial<Record<UnitModuleId, number>>;
+  readonly hideMaxedWorkshop?: boolean;
+  readonly showHiddenWorkshop?: boolean;
+  readonly hiddenModuleIds?: UnitModuleId[];
 }
 
 export interface UnitModuleWorkshopUiApi {
   tryUpgradeModule(id: UnitModuleId): boolean;
+  setHideMaxedWorkshop(value: boolean): void;
+  setShowHiddenWorkshop(value: boolean): void;
+  setModuleHidden(id: UnitModuleId, hidden: boolean): void;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

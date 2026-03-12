@@ -30,5 +30,9 @@
   "hunger_monument": {
     "name": "Monument of Hunger",
     "description": "Raise a monument that amplifies the colony's predatory instinct, increasing all unit attack."
+  },
+  "mana_source": {
+    "name": "Source of Magic",
+    "description": "A crystalline wellspring that channels void energy into your spells, amplifying their power."
   }
 }

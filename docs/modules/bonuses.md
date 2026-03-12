@@ -12,7 +12,7 @@
 - `load()` / `save()` — наразі не зберігає стан (бонуси відтворюються з інших модулів).
 
 ## Основні методи
-- `registerSource(sourceId, effects)` — реєструє джерело бонусів і нормалізує формули ефектів.
+- `registerSource(sourceId, effects, category)` — реєструє джерело бонусів із категорією (skill, building, achievement, dark_research, map, unit_module, misc) і нормалізує формули ефектів.
 - `unregisterSource(sourceId)` — прибирає джерело з розрахунку.
 - `setSourceLevel(sourceId, level)` / `setBonusCurrentLevel` — змінює рівень джерела, запускає переобчислення.
 - `getBonusValue(id)` — повертає поточне значення бонусу з урахуванням бази, доходу та множників.

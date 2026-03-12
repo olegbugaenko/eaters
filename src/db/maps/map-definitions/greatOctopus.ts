@@ -38,6 +38,7 @@ const mapConfig = (() => {
     name: "The Great Octopus",
     size,
     icon: "great_octopus.png",
+    lockedForDemo: true,
     achievementId: "great_octopus" as const,
     spawnPoints: [spawnPoint],
     unlockedBy: [
@@ -48,7 +49,7 @@ const mapConfig = (() => {
       },
     ],
     nodePosition: { x: -4, y: 2 },
-    maxLevel: 10,
+    maxLevel: 5,
     bricks: () => [],
     enemies: ({ mapLevel }) => {
       const level = Math.max(1, Math.floor(mapLevel));

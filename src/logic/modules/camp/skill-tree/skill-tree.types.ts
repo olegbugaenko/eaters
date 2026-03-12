@@ -10,6 +10,7 @@ import type { LocalizationService } from "@logic/services/localization/Localizat
 
 export interface SkillNodeRequirementPayload {
   id: SkillId;
+  name: string;
   requiredLevel: number;
   currentLevel: number;
 }

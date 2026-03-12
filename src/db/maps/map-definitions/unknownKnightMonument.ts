@@ -40,7 +40,7 @@ const mapConfig = (() => {
   return {
     name: "Monument to the Unknown Knight",
     size,
-    icon: "unknown_knight_monument.png",
+    icon: "knight_monument.png",
     spawnPoints: [spawnPoint],
     nodePosition: { x: 6, y: 1 },
     lockedForDemo: false,

@@ -17,7 +17,7 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     id: "megaBrick",
     name: "Mega Brick Mastery",
     description: "Complete Mega Brick levels to boost brick rewards.",
-    maxLevel: 10,
+    maxLevel: 5,
     effects: {
       brick_rewards: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -28,7 +28,7 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     id: "ancientPyramids",
     name: "Ancient Piramids Mastery",
     description: "Complete Ancient Piramids levels to boost unit HP.",
-    maxLevel: 10,
+    maxLevel: 5,
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -39,7 +39,7 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     id: "deathfulGuns",
     name: "Deathful Guns Mastery",
     description: "Complete Deathful Guns levels to boost unit damage.",
-    maxLevel: 10,
+    maxLevel: 5,
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -50,7 +50,7 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     id: "deadly_tunnels",
     name: "Deadly Tunnels Mastery",
     description: "Complete Deadly Tunnels levels to boost unit damage.",
-    maxLevel: 10,
+    maxLevel: 5,
     effects: {
       all_units_armor_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
@@ -61,7 +61,7 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     id: "encaged_beast",
     name: "Encaged Beast Mastery",
     description: "Complete Encaged Beast levels to boost unit damage.",
-    maxLevel: 10,
+    maxLevel: 5,
     effects: {
       sanity_cap: {
         income: (level) => 2 * level,
@@ -72,7 +72,7 @@ const ACHIEVEMENTS_DB: Record<AchievementId, AchievementConfig> = {
     id: "great_octopus",
     name: "Great Octopus Mastery",
     description: "Complete Great Octopus levels to boost unit attack speed.",
-    maxLevel: 10,
+    maxLevel: 5,
     effects: {
       sanity_cap: {
         income: (level) => 2 * level,

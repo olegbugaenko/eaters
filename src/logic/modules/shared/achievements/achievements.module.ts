@@ -173,7 +173,7 @@ export class AchievementsModule implements GameModule {
     ACHIEVEMENT_IDS.forEach((id) => {
       const config = getAchievementConfig(id);
       const sourceId = this.getBonusSourceId(id);
-      this.bonuses.registerSource(sourceId, config.effects);
+      this.bonuses.registerSource(sourceId, config.effects, "achievement");
     });
   }
 

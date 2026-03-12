@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import type { CampStatisticsSnapshot } from "@logic/modules/shared/statistics/statistics.module";
 import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.types";
+import { getMapConfig } from "@/db/maps/maps-db";
+import type { MapId } from "@/db/maps/maps-db";
+import type { SkillId } from "@/db/skills-db";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { formatNumber } from "@ui/shared/format/number";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./StatisticsModal.css";
 
@@ -35,6 +39,34 @@ const formatDamage = (value: number): string =>
     compact: false,
   });
 
+function formatHistoryEntryText(
+  entry: EventLogEntry,
+  t: (key: string, fallback?: string) => string,
+  getMapName: (mapId: MapId, fallback: string) => string,
+  getSkillText: (skillId: SkillId, fallback: { name: string; description: string }) => { name: string; registerEventText?: string },
+): string {
+  const { type, text, payload } = entry;
+  if (!payload) {
+    return text;
+  }
+  if (type === "map-cleared" && payload.mapId != null && payload.level != null) {
+    const mapId = payload.mapId as MapId;
+    const config = getMapConfig(mapId);
+    const mapName = getMapName(mapId, config.name);
+    return t("voidCamp.statistics.history.mapCleared", "Map {{mapName}} cleared (Level {{level}})")
+      .replace("{{mapName}}", mapName)
+      .replace("{{level}}", String(payload.level));
+  }
+  if (type === "skill-obtained" && payload.skillId) {
+    const skill = getSkillText(payload.skillId as SkillId, { name: payload.skillId, description: "" });
+    const description = skill.registerEventText ?? payload.eventDescription ?? "";
+    return t("voidCamp.statistics.history.skillObtained", "Skill {{name}} obtained: {{description}}")
+      .replace("{{name}}", skill.name)
+      .replace("{{description}}", description);
+  }
+  return text;
+}
+
 export const StatisticsModal: React.FC<StatisticsModalProps> = ({
   isOpen,
   onClose,
@@ -44,13 +76,14 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
   eventLog,
 }) => {
   const { t } = useLocalization();
+  const { uiApi } = useAppLogic();
   const titleId = useId();
   const [activeTab, setActiveTab] = useState<"general" | "history">("general");
   const historyEntries = useMemo(() => {
     return eventLog.map((entry, index) => ({
       id: `${entry.realTimeMs}-${entry.type}-${index}`,
       gameTimeMs: entry.gameTimeMs,
-      text: entry.text,
+      entry,
     }));
   }, [eventLog]);
 
@@ -170,12 +203,19 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
                 </div>
               ) : (
                 <ul className="statistics-modal__history-list">
-                  {historyEntries.map((entry) => (
-                      <li key={entry.id} className="statistics-modal__history-item">
-                        <span className="statistics-modal__history-time">{formatDuration(entry.gameTimeMs)}</span>
-                        <span className="statistics-modal__history-separator">—</span>
-                        <span className="statistics-modal__history-text">{entry.text}</span>
-                      </li>
+                  {historyEntries.map((item) => (
+                    <li key={item.id} className="statistics-modal__history-item">
+                      <span className="statistics-modal__history-time">{formatDuration(item.gameTimeMs)}</span>
+                      <span className="statistics-modal__history-separator">—</span>
+                      <span className="statistics-modal__history-text">
+                        {formatHistoryEntryText(
+                          item.entry,
+                          t,
+                          uiApi.localization.getMapName.bind(uiApi.localization),
+                          uiApi.localization.getSkillText.bind(uiApi.localization),
+                        )}
+                      </span>
+                    </li>
                   ))}
                 </ul>
               )}

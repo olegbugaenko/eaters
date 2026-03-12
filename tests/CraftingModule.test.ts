@@ -21,11 +21,15 @@ const createCraftingModule = (overdriveMax: number) => {
   });
   const bonuses = new BonusesModule();
   bonuses.initialize();
-  bonuses.registerSource("test", {
-    crafting_overdrive_max: {
-      income: (level) => level,
+  bonuses.registerSource(
+    "test",
+    {
+      crafting_overdrive_max: {
+        income: (level) => level,
+      },
     },
-  });
+    "misc"
+  );
   bonuses.setSourceLevel("test", overdriveMax);
   const runState = new MapRunState();
   runState.start();

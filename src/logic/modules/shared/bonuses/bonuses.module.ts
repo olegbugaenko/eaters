@@ -1,6 +1,7 @@
 import { BaseGameModule } from "@/core/logic/engine/BaseGameModule";
 import { BonusId, getBonusConfig } from "../../../../db/bonuses-db";
 import {
+  BonusBreakdownEntry,
   BonusEffectContext,
   BonusEffectFormula,
   BonusEffectMap,
@@ -14,6 +15,7 @@ import type {
   BonusRule,
   BonusRuleContextInput,
 } from "./bonuses.types";
+import type { BonusSourceCategory } from "./bonuses.const";
 import {
   createBonusValueMap,
   sanitizeLevel,
@@ -60,12 +62,16 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
     // Bonuses are computed on demand.
   }
 
-  public registerSource(sourceId: string, effects: BonusEffectMap | undefined): void {
+  public registerSource(
+    sourceId: string,
+    effects: BonusEffectMap | undefined,
+    category: BonusSourceCategory
+  ): void {
     if (this.sources.has(sourceId)) {
       throw new Error(`Bonus source already registered: ${sourceId}`);
     }
     const sanitized = this.sanitizeEffects(effects);
-    this.sources.set(sourceId, { id: sourceId, effects: sanitized, level: 0 });
+    this.sources.set(sourceId, { id: sourceId, category, effects: sanitized, level: 0 });
     this.markDirty();
   }
 
@@ -122,6 +128,33 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
   public getBonusValue(id: BonusId): number {
     this.ensureValues();
     return this.cachedValues[id] ?? getBonusConfig(id).defaultValue;
+  }
+
+  public getBreakdown(bonusId: BonusId): BonusBreakdownEntry[] {
+    const entries: BonusBreakdownEntry[] = [];
+
+    for (const source of this.sources.values()) {
+      const effectTypes = source.effects[bonusId];
+      if (!effectTypes) {
+        continue;
+      }
+      const level = source.level;
+      Object.entries(effectTypes).forEach(([effectType, formula]) => {
+        const value = sanitizeEffectValue(
+          formula(level, this.effectContext),
+          effectType
+        );
+        entries.push({
+          sourceId: source.id,
+          category: source.category,
+          level,
+          effectType: effectType as BonusBreakdownEntry["effectType"],
+          value,
+        });
+      });
+    }
+
+    return entries;
   }
 
   public getAllValues(): BonusValueMap {

@@ -3,7 +3,7 @@ import { circleWithBricks, rectangleWithBricks } from "../../../logic/services/b
 import type { MapConfig } from "../maps-db.types";
 
 const mapConfig = (() => {
-  const size: SceneSize = { width: 1200, height: 1200 };
+  const size: SceneSize = { width: 1400, height: 1400 };
   const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
   const spawnPoint: SceneVector2 = { ...center };
 
@@ -15,11 +15,11 @@ const mapConfig = (() => {
     icon: "gear.png",
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
-      const gearLevel = baseLevel + 2;
-      const innerRadius = 260;
-      const outerRadius = 340;
-      const toothWidth = 120;
-      const toothHeight = 60;
+      const gearLevel = baseLevel + 1;
+      const innerRadius = 290;
+      const outerRadius = 440;
+      const toothWidth = 180;
+      const toothHeight = 120;
       const toothRadius = outerRadius + toothHeight / 2 + 20;
 
       const circle = circleWithBricks(
@@ -53,7 +53,7 @@ const mapConfig = (() => {
     enemies: ({ mapLevel }) => {
       const level = Math.max(1, Math.floor(mapLevel));
       const turretCount = 4;
-      const turretRadius = 520;
+      const turretRadius = 660;
       return Array.from({ length: turretCount }, (_, index) => {
         const angle = (index / turretCount) * Math.PI * 2;
         const position: SceneVector2 = {

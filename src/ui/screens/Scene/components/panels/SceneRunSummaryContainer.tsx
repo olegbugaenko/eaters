@@ -21,10 +21,9 @@ interface SceneRunSummaryContainerProps {
   autoRestartCountdown: number;
   onToggleAutoRestart: (enabled: boolean) => void;
   onRestart: () => void;
-  onLeaveToMapSelect: () => void;
+  onLeaveToCampWithTab: (tab: "skills" | "maps") => void;
   isPauseOpen: boolean;
   onResume: () => void;
-  onLeaveToCamp: () => void;
   onRunCompletionChange: (completed: boolean) => void;
 }
 
@@ -36,10 +35,9 @@ export const SceneRunSummaryContainer: React.FC<
   autoRestartCountdown,
   onToggleAutoRestart,
   onRestart,
-  onLeaveToMapSelect,
+  onLeaveToCampWithTab,
   isPauseOpen,
   onResume,
-  onLeaveToCamp,
   onRunCompletionChange,
 }) => {
   const { t } = useLocalization();
@@ -86,7 +84,7 @@ export const SceneRunSummaryContainer: React.FC<
     );
     const durationSeconds = Math.max(0, runDurationMs / 1000);
     return {
-      name: t("voidCamp.darkResearch.souls", "Souls"),
+      name: t("scene.runSummary.souls", "Souls"),
       amount: darkResearchState.totalSouls,
       gained,
       ratePerSecond: durationSeconds > 0 ? gained / durationSeconds : 0,
@@ -124,11 +122,17 @@ export const SceneRunSummaryContainer: React.FC<
                 ? "Run Ended"
                 : undefined
           }
-          primaryAction={{
-            label: "Return to Void Lab",
-            onClick: onLeaveToMapSelect,
-          }}
-          secondaryAction={{ label: "Restart Map", onClick: onRestart }}
+          primaryAction={{ label: t("scene.runSummary.restartMap", "Restart Map"), onClick: onRestart }}
+          returnActions={[
+            {
+              label: t("scene.runSummary.returnToSkills", "To Skill Tree"),
+              onClick: () => onLeaveToCampWithTab("skills"),
+            },
+            {
+              label: t("scene.runSummary.returnToMapSelect", "To Map Selection"),
+              onClick: () => onLeaveToCampWithTab("maps"),
+            },
+          ]}
           autoRestart={
             autoRestartState.unlocked
               ? {
@@ -142,17 +146,23 @@ export const SceneRunSummaryContainer: React.FC<
       )}
       {isPauseOpen && !resourceSummary.completed && (
         <SceneRunSummaryModal
-          title="Run Paused"
-          subtitle="Resources recovered so far:"
+          title={t("scene.runSummary.pausedTitle", "Run Paused")}
+          subtitle={t("scene.runSummary.pausedSubtitle", "Resources recovered so far:")}
           resources={resourceSummary.resources}
           souls={soulsSummary}
           bricksDestroyed={resourceSummary.bricksDestroyed}
           totalBricksDestroyed={resourceSummary.totalBricksDestroyed}
-          primaryAction={{ label: "Continue", onClick: onResume }}
-          secondaryAction={{
-            label: "Return to Void Lab",
-            onClick: onLeaveToCamp,
-          }}
+          primaryAction={{ label: t("scene.runSummary.continue", "Continue"), onClick: onResume }}
+          returnActions={[
+            {
+              label: t("scene.runSummary.returnToSkills", "To Skill Tree"),
+              onClick: () => onLeaveToCampWithTab("skills"),
+            },
+            {
+              label: t("scene.runSummary.returnToMapSelect", "To Map Selection"),
+              onClick: () => onLeaveToCampWithTab("maps"),
+            },
+          ]}
         />
       )}
     </>

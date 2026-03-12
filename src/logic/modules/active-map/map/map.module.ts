@@ -579,20 +579,16 @@ export class MapModule implements GameModule {
           stats.bestTimeMs = duration;
         }
       }
+      if (mapId === "greatOctopus" && level >= 1) {
+        this.options.artifacts?.grantArtifact("great_octopus_tentacle");
+      }
       if (isFirstSuccess) {
         const config = getMapConfig(mapId);
         this.options.eventLog.registerEvent(
           "map-cleared",
-          `Map ${config.name} cleared (Level ${level})`
+          `Map ${config.name} cleared (Level ${level})`,
+          { mapId, level }
         );
-
-        if (mapId === "greatOctopus" && level >= 1) {
-          this.options.artifacts?.grantArtifact("great_octopus_tentacle");
-          this.options.eventLog.registerEvent(
-            "artifact-unlocked",
-            "Artifact unlocked: Octopus Tentacle"
-          );
-        }
       }
     } else {
       stats.failure += 1;
@@ -1555,7 +1551,7 @@ export class MapModule implements GameModule {
         },
       };
 
-      this.options.bonuses.registerSource(sourceId, effects);
+      this.options.bonuses.registerSource(sourceId, effects, "map");
       this.currentMapBonusSourceId = sourceId;
     }
   }

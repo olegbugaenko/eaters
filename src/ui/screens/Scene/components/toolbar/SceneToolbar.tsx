@@ -63,7 +63,10 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
   const glowFilterId = `${shapePrefix}-glow`;
 
   return (
-    <div className="scene-toolbar">
+    <div
+      className="scene-toolbar"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="scene-toolbar__section scene-toolbar__section--left">
         <Button onClick={onExit}>
           {t("scene.toolbar.exit", "Exit Map [ESC]")}
@@ -150,13 +153,30 @@ export const SceneToolbar: React.FC<SceneToolbarProps> = ({
             current={brickTotalHp}
             max={clampedInitialHp}
             formatValue={(current, max) =>
-              `${Math.round(current)} / ${Math.round(max)}`
+              `${formatNumber(current, {
+                compact: true,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })} / ${formatNumber(max, {
+                compact: true,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
             }
           />
         </div>
         <div className="scene-toolbar__units">
-          {t("scene.toolbar.units", "Units")}: {unitCount} (
-          {t("scene.toolbar.hp", "HP")} {Math.round(unitTotalHp)})
+          {t("scene.toolbar.units", "Units")}:{" "}
+          {formatNumber(Math.round(unitCount), {
+            maximumFractionDigits: 0,
+            compact: true,
+          })}{" "}
+          ({t("scene.toolbar.hp", "HP")}{" "}
+          {formatNumber(unitTotalHp, {
+            compact: true,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })})
         </div>
         <MapEffectsBar bridge={bridge} />
       </div>

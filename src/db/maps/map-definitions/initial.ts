@@ -18,12 +18,13 @@ const mapConfig = {
     const baseLevel = Math.max(0, Math.floor(mapLevel));
     const innerLevel = baseLevel + 1;
     const center: SceneVector2 = { x: 600, y: 600 };
+    const scale = 0.92;
     const largeCircle = circleWithBricks(
       "smallSquareGray",
       {
         center,
-        innerRadius: 210,
-        outerRadius: 250,
+        innerRadius: Math.round(210 * scale),
+        outerRadius: Math.round(250 * scale),
       },
       { level: innerLevel },
     );
@@ -32,15 +33,15 @@ const mapConfig = {
       "smallSquareYellow",
       {
         center,
-        innerRadius: 150,
-        outerRadius: 210,
+        innerRadius: Math.round(150 * scale),
+        outerRadius: Math.round(210 * scale),
       },
       { level: baseLevel },
     );
 
     const satelliteCount = 8;
-    const satelliteRadius = 80;
-    const orbitRadius = 350 + satelliteRadius;
+    const satelliteRadius = Math.round(80 * scale);
+    const orbitRadius = Math.round(350 * scale) + satelliteRadius;
 
     const satellites = Array.from({ length: satelliteCount }, (_, index) => {
       const angle = (index / satelliteCount) * Math.PI * 2;

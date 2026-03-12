@@ -14,6 +14,7 @@ import type { NecromancerResourcesPayload } from "@logic/modules/active-map/necr
 const DEFAULT_NECROMANCER_RESOURCES: NecromancerResourcesPayload = {
   mana: { current: 0, max: 0 },
   sanity: { current: 0, max: 0 },
+  maxUnits: 0,
 };
 
 interface SceneTutorialBridgeMonitorProps {

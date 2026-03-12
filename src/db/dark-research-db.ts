@@ -29,7 +29,7 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     xpPowerBase: 0.1,
     effects: {
       all_units_armor_multiplier: {
-        multiplier: (level) => 1 + 0.01 * level,
+        multiplier: (level) => 1 + 0.02 * level,
       },
     },
   },
@@ -42,7 +42,7 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     xpPowerBase: 0.1,
     effects: {
       all_units_hp_multiplier: {
-        multiplier: (level) => 1 + 0.01 * level,
+        multiplier: (level) => 1 + 0.02 * level,
       },
     },
   },
@@ -55,7 +55,7 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     xpPowerBase: 0.1,
     effects: {
       brick_rewards: {
-        multiplier: (level) => 1 + 0.01 * level,
+        multiplier: (level) => 1 + 0.02 * level,
       },
     },
   },
@@ -68,7 +68,7 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     xpPowerBase: 0.1,
     effects: {
       all_units_attack_multiplier: {
-        multiplier: (level) => 1 + 0.01 * level,
+        multiplier: (level) => 1 + 0.02 * level,
       },
     },
   },

@@ -164,9 +164,11 @@ describe("DarkResearchModule", () => {
 
   test("applies soul drop chance bonus as multiplier", () => {
     const { module, bonuses } = createModule(() => 1);
-    bonuses.registerSource("test_soul_bonus", {
-      soul_drop_chance_add: { income: () => 0.1 },
-    });
+    bonuses.registerSource(
+      "test_soul_bonus",
+      { soul_drop_chance_add: { income: () => 0.1 } },
+      "misc"
+    );
     bonuses.setBonusCurrentLevel("test_soul_bonus", 1);
 
     module.initialize();

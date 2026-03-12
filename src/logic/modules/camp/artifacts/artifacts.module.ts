@@ -19,7 +19,7 @@ export class ArtifactsModule implements GameModule {
   private readonly newUnlocks;
   private readonly localization;
 
-  private readonly owned = new Set<ArtifactId>();
+  private readonly owned = new Map<ArtifactId, number>();
   private activeSlots: Array<ArtifactId | null> = Array.from({ length: ARTIFACTS_SLOT_COUNT }, () => null);
   private unlocked = false;
 
@@ -51,11 +51,24 @@ export class ArtifactsModule implements GameModule {
 
     if (typeof data === "object" && data !== null) {
       const parsed = data as ArtifactsSaveData;
-      parsed.owned?.forEach((id) => {
-        if (ARTIFACT_IDS.includes(id)) {
-          this.owned.add(id);
+
+      if (parsed.owned) {
+        if (Array.isArray(parsed.owned)) {
+          // Legacy format: ArtifactId[] — each entry counts as 1
+          parsed.owned.forEach((id) => {
+            if (ARTIFACT_IDS.includes(id as ArtifactId)) {
+              this.owned.set(id as ArtifactId, (this.owned.get(id as ArtifactId) ?? 0) + 1);
+            }
+          });
+        } else {
+          // New format: Record<ArtifactId, number>
+          Object.entries(parsed.owned).forEach(([id, count]) => {
+            if (ARTIFACT_IDS.includes(id as ArtifactId) && typeof count === "number" && count > 0) {
+              this.owned.set(id as ArtifactId, Math.max(count, 0));
+            }
+          });
         }
-      });
+      }
 
       parsed.activeSlots?.forEach((id, index) => {
         if (index >= ARTIFACTS_SLOT_COUNT) {
@@ -65,10 +78,13 @@ export class ArtifactsModule implements GameModule {
           this.activeSlots[index] = null;
           return;
         }
-        if (ARTIFACT_IDS.includes(id) && this.owned.has(id)) {
+        if (ARTIFACT_IDS.includes(id) && (this.owned.get(id) ?? 0) > 0) {
           this.activeSlots[index] = id;
         }
       });
+
+      // Validate: equipped count must not exceed owned count
+      this.clampEquippedToOwned();
     }
 
     this.refreshUnlocked();
@@ -77,8 +93,14 @@ export class ArtifactsModule implements GameModule {
   }
 
   public save(): unknown {
+    const ownedRecord: Record<string, number> = {};
+    this.owned.forEach((count, id) => {
+      if (count > 0) {
+        ownedRecord[id] = count;
+      }
+    });
     return {
-      owned: Array.from(this.owned),
+      owned: ownedRecord,
       activeSlots: this.activeSlots,
     } satisfies ArtifactsSaveData;
   }
@@ -92,10 +114,10 @@ export class ArtifactsModule implements GameModule {
   }
 
   public grantArtifact(artifactId: ArtifactId): void {
-    if (!ARTIFACT_IDS.includes(artifactId) || this.owned.has(artifactId)) {
+    if (!ARTIFACT_IDS.includes(artifactId)) {
       return;
     }
-    this.owned.add(artifactId);
+    this.owned.set(artifactId, (this.owned.get(artifactId) ?? 0) + 1);
     this.newUnlocks.invalidate("artifacts");
     this.pushState();
   }
@@ -105,13 +127,26 @@ export class ArtifactsModule implements GameModule {
       return;
     }
     if (artifactId !== null) {
-      if (!ARTIFACT_IDS.includes(artifactId) || !this.owned.has(artifactId)) {
+      if (!ARTIFACT_IDS.includes(artifactId)) {
         return;
       }
-      this.activeSlots = this.activeSlots.map((id) => (id === artifactId ? null : id));
+      const totalOwned = this.owned.get(artifactId) ?? 0;
+      if (totalOwned <= 0) {
+        return;
+      }
+      const equippedCount = this.activeSlots.filter((id) => id === artifactId).length;
+      // If we're replacing the same type in this slot, it doesn't consume an extra copy
+      const alreadyInThisSlot = this.activeSlots[slotIndex] === artifactId;
+      if (!alreadyInThisSlot && equippedCount >= totalOwned) {
+        return;
+      }
     }
     this.activeSlots[slotIndex] = artifactId;
     this.pushState();
+  }
+
+  public unequipSlot(slotIndex: number): void {
+    this.equipArtifact(slotIndex, null);
   }
 
   public getModifiers(): ArtifactsRuntimeModifiers {
@@ -132,6 +167,21 @@ export class ArtifactsModule implements GameModule {
     );
   }
 
+  private clampEquippedToOwned(): void {
+    const equippedCounts = new Map<ArtifactId, number>();
+    for (let i = 0; i < this.activeSlots.length; i += 1) {
+      const id = this.activeSlots[i];
+      if (!id) continue;
+      const current = equippedCounts.get(id) ?? 0;
+      const maxOwned = this.owned.get(id) ?? 0;
+      if (current >= maxOwned) {
+        this.activeSlots[i] = null;
+      } else {
+        equippedCounts.set(id, current + 1);
+      }
+    }
+  }
+
   private refreshUnlocked(): boolean {
     const next = this.unlocks.areConditionsMet(ARTIFACTS_UNLOCK_CONDITION);
     const changed = next !== this.unlocked;
@@ -142,7 +192,7 @@ export class ArtifactsModule implements GameModule {
   private registerUnlockNotifications(): void {
     this.newUnlocks.registerUnlock("artifacts", () => this.unlocked);
     ARTIFACT_IDS.forEach((id) => {
-      this.newUnlocks.registerUnlock(`artifacts.${id}`, () => this.owned.has(id));
+      this.newUnlocks.registerUnlock(`artifacts.${id}`, () => (this.owned.get(id) ?? 0) > 0);
     });
   }
 
@@ -153,7 +203,8 @@ export class ArtifactsModule implements GameModule {
       activeSlots: [...this.activeSlots],
       artifacts: ARTIFACT_IDS.map((id) => {
         const config = getArtifactConfig(id);
-        const equippedSlot = this.activeSlots.findIndex((slotId) => slotId === id);
+        const ownedCount = this.owned.get(id) ?? 0;
+        const equippedCount = this.activeSlots.filter((slotId) => slotId === id).length;
         return {
           id,
           name: this.localization?.tUi(`voidCamp.artifacts.items.${id}.name`, config.name) ?? config.name,
@@ -161,8 +212,9 @@ export class ArtifactsModule implements GameModule {
             this.localization?.tUi(`voidCamp.artifacts.items.${id}.description`, config.description) ??
             config.description,
           icon: config.icon,
-          owned: this.owned.has(id),
-          equippedSlot: equippedSlot >= 0 ? equippedSlot : null,
+          ownedCount,
+          equippedCount,
+          effects: { ...config.effects },
         };
       }),
     };

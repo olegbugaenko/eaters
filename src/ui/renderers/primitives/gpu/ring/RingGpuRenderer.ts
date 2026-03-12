@@ -299,7 +299,7 @@ class RingGpuRenderer extends GpuBatchRenderer<RingInstance, RingBatch, void> {
   }
 
   protected getActiveFloatIndex(): number {
-    return 13; // active flag is last
+    return 14; // active flag is last (indices: 0-1=pos, 2=createdAt, 3=lifetime, 4=startR, 5=endR, 6=startA, 7=endA, 8=fadeIn, 9=inner, 10=outer, 11=r, 12=g, 13=b, 14=active)
   }
 
   protected getVertexCount(_batch: RingBatch): number {

@@ -5,15 +5,18 @@
   },
   "stone_automatons": {
     "name": "Stone Automatons",
-    "description": "Bind mindless servitors to repeat simple rites for you, enabling basic ritual automation."
+    "description": "Bind mindless servitors to repeat simple rites for you, enabling basic ritual automation.",
+    "registerEventText": "You awaken your creator instinct."
   },
   "autorestart_rituals": {
     "name": "Autorestart Sigils",
-    "description": "Allows the map to automatically restart after completion or defeat."
+    "description": "Allows the map to automatically restart after completion or defeat.",
+    "registerEventText": "Sigils now repeat the ritual unbidden."
   },
   "construction_guild": {
     "name": "Construction Guild",
-    "description": "Found a guild to coordinate permanent worksites, unlocking dedicated building plans."
+    "description": "Found a guild to coordinate permanent worksites, unlocking dedicated building plans.",
+    "registerEventText": "A permanent guild answers your call."
   },
   "construction_ledgers": {
     "name": "Construction Ledgers",
@@ -21,7 +24,7 @@
   },
   "draftsmanship": {
     "name": "Draftsmanship",
-    "description": "Refine schematics for controlled overdrive, letting you push crafting limits at a cost."
+    "description": "Refine schematics to unlock access to new building blueprints."
   },
   "quarry_overseers": {
     "name": "Quarry Overseers",
@@ -77,7 +80,8 @@
   },
   "void_modules": {
     "name": "Chord",
-    "description": "Imprint a structural chord into your entities, enabling attachment of organs and parts."
+    "description": "Imprint a structural chord into your entities, enabling attachment of organs and parts.",
+    "registerEventText": "A chord resonates for organs and parts."
   },
   "tail_spines": {
     "name": "Tail Spines",
@@ -121,7 +125,7 @@
   },
   "stone_armor": {
     "name": "Stone Armor",
-    "description": "Bind stone plates over pulsing forms—basic armor that turns glancing blows."
+    "description": "Layer stone scales over pulsing forms—basic protection that turns glancing blows."
   },
   "vitality": {
     "name": "Vitality",
@@ -185,7 +189,7 @@
   },
   "vitality3": {
     "name": "Vitality III",
-    "description": "Engineered organs and redundant latticework markedly raise hit capacity."
+    "description": "Refined organs and redundant tissue markedly raise your creations' resilience."
   },
   "vitality4": {
     "name": "Vitality IV",
@@ -204,8 +208,8 @@
     "description": "Teach your creations to knit themselves mid‑battle—steady percentage regen."
   },
   "engineered_plating": {
-    "name": "Engineered Plating",
-    "description": "Outfit constructs with calculated bracing and plates—substantial increase to health."
+    "name": "Reinforced Carapace",
+    "description": "Craft and graft reinforced plating onto your creations—substantial increase to health."
   },
   "armor_lore2": {
     "name": "Armor Lore II",
@@ -217,39 +221,39 @@
   },
   "reinforced_silver_armor": {
     "name": "Reinforced Silver Armor",
-    "description": "Layer silvered plating with resilient supports, amplifying protection."
+    "description": "Layer silvered scales with resilient supports, amplifying protection."
   },
   "armor_lore4": {
     "name": "Armor Lore IV",
     "description": "Master forging of living plate—your hosts shrug off punishing blows."
   },
   "heavy_drill": {
-    "name": "Heavy Drill",
-    "description": "Replace crude bits with heavy augers. Mass and torque translate into damage."
+    "name": "Heavy Fangs",
+    "description": "Craft and implant dense, weighty fangs—mass and drive make every strike land harder."
   },
   "tool_fabrication": {
     "name": "Tool Fabrication",
-    "description": "Commission specialized implements, unlocking advanced crafting techniques."
+    "description": "Craft specialized implements and implants, unlocking advanced crafting."
   },
   "forged_strikes": {
     "name": "Forged Strikes",
-    "description": "Temper and quench—meticulous armaments push your vanguard's damage higher."
+    "description": "Forge and implant hardened strikers—your vanguard's strikes hit harder."
   },
   "silver_drill": {
-    "name": "Silver Drill",
-    "description": "Silvered bits bite deeper into stubborn matter, further amplifying attacks."
+    "name": "Silver Fangs",
+    "description": "Craft silvered fang-implants that bite deeper into matter, amplifying your creatures' attacks."
   },
   "penetration": {
     "name": "Penetration",
-    "description": "Hardened tips and angled force let your strikes pierce tougher shells."
+    "description": "Sharpen fangs and angle of strike—your creatures pierce tougher shells."
   },
   "penetration2": {
     "name": "Penetration II",
-    "description": "Refine the geometry of impact; even plated foes yield to your bite."
+    "description": "Refine implant geometry—even plated foes yield to your creatures' bite."
   },
   "wire_penetration": {
     "name": "Piercing Fangs",
-    "description": "Wired impact channels sharpen the bite of your strikes against armor."
+    "description": "Craft conductive fang-implants that sharpen your creatures' bite against armor."
   },
   "penetration3": {
     "name": "Penetration III",
@@ -297,11 +301,12 @@
   },
   "souls_harvest": {
     "name": "Souls Harvest",
-    "description": "Harvest souls from shattered bricks and defeated foes to power forbidden research."
+    "description": "Harvest souls from shattered bricks and defeated foes to power forbidden research.",
+    "registerEventText": "Whispers of Dark Research answer your harvest."
   },
   "intensive_motion": {
     "name": "Intensive Motion",
-    "description": "Drive your summons into intensive movement drills (+5% acceleration per level)."
+    "description": "Train your summons for intense bursts of motion (+5% acceleration per level)."
   },
   "intensive_motion2": {
     "name": "Intensive Motion II",

@@ -609,6 +609,10 @@ export class EnemiesModule implements GameModule {
     const canDropSouls = enemy.moveSpeed > 0 && (enemy.soulReward ?? 0) > 0;
     if (canDropSouls && soulDropChance > 0 && Math.random() <= soulDropChance) {
       this.darkResearch?.addSoulsFromEnemyKill(enemy.soulReward ?? 0, enemy.level);
+      this.explosions?.spawnExplosionByType("soulCollect", {
+        position: { ...enemy.position },
+        initialRadius: 14,
+      });
     }
 
     const linkedIds = enemy.linkedEnemyIds;

@@ -190,6 +190,25 @@ export class PlayerUnitAbilities {
       return null;
     }
 
+    // On "hit" events, execute ALL ready abilities (e.g. tailNeedles + chainLightning).
+    // On "tick" events, pick the single best candidate (e.g. heal vs frenzy).
+    if (event === "hit") {
+      return this.executeAllCandidates(candidates, unit, event, attackContext);
+    }
+
+    return this.executeBestCandidate(candidates, unit, event, attackContext);
+  }
+
+  private executeBestCandidate(
+    candidates: Array<{
+      runtimeEntry: AbilityRuntimeEntry;
+      cooldown: AbilityCooldownState;
+      candidate: AbilityCandidate<any>;
+    }>,
+    unit: PlayerUnitAbilityState,
+    event: "tick" | "hit",
+    attackContext?: AbilityAttackContext,
+  ): AbilityActivationResult | null {
     let best = candidates[0]!;
     let bestScore = best.candidate.score;
     let bestPriority = best.candidate.priority ?? 0;
@@ -209,7 +228,50 @@ export class PlayerUnitAbilities {
       return null;
     }
 
-    const { runtimeEntry, cooldown, candidate } = best;
+    return this.executeCandidate(best, unit, event, attackContext);
+  }
+
+  private executeAllCandidates(
+    candidates: Array<{
+      runtimeEntry: AbilityRuntimeEntry;
+      cooldown: AbilityCooldownState;
+      candidate: AbilityCandidate<any>;
+    }>,
+    unit: PlayerUnitAbilityState,
+    event: "tick" | "hit",
+    attackContext?: AbilityAttackContext,
+  ): AbilityActivationResult | null {
+    let lastResult: AbilityActivationResult | null = null;
+    let statsChanged = false;
+
+    for (const entry of candidates) {
+      if (entry.candidate.score <= 0) {
+        continue;
+      }
+      const result = this.executeCandidate(entry, unit, event, attackContext);
+      if (result) {
+        statsChanged = statsChanged || result.statsChanged;
+        lastResult = result;
+      }
+    }
+
+    if (lastResult && statsChanged) {
+      lastResult = { ...lastResult, statsChanged };
+    }
+    return lastResult;
+  }
+
+  private executeCandidate(
+    entry: {
+      runtimeEntry: AbilityRuntimeEntry;
+      cooldown: AbilityCooldownState;
+      candidate: AbilityCandidate<any>;
+    },
+    unit: PlayerUnitAbilityState,
+    event: "tick" | "hit",
+    attackContext?: AbilityAttackContext,
+  ): AbilityActivationResult | null {
+    const { runtimeEntry, cooldown, candidate } = entry;
     const executionContext = {
       unit,
       state: runtimeEntry.state,

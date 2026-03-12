@@ -38,7 +38,7 @@ const mapConfig = (() => {
       },
     ],
     nodePosition: { x: -4, y: 0 },
-    maxLevel: 10,
+    maxLevel: 5,
     bricks: ({ mapLevel }) => {
       const stoneLevel = mapLevel + 3;
 

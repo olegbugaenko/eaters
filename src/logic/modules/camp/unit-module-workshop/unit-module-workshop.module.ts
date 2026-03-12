@@ -59,6 +59,9 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   private unlocked = false;
   private visibleModuleIds: UnitModuleId[] = [];
   private levels: Map<UnitModuleId, number> = createDefaultLevels();
+  private hideMaxedWorkshop = false;
+  private showHiddenWorkshop = false;
+  private hiddenModuleIds = new Set<UnitModuleId>();
   private readonly stateFactory: UnitModuleStateFactory;
   private hasRegisteredUnlocks = false;
 
@@ -89,6 +92,9 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
 
   public reset(): void {
     this.levels = createDefaultLevels();
+    this.hideMaxedWorkshop = false;
+    this.showHiddenWorkshop = false;
+    this.hiddenModuleIds = new Set();
     this.refreshUnlockState();
     this.newUnlocks.invalidate("biolab");
     this.pushState();
@@ -97,6 +103,9 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
 
   public load(data: unknown | undefined): void {
     this.levels = this.parseSaveData(data);
+    this.hideMaxedWorkshop = this.parseHideMaxedWorkshop(data);
+    this.showHiddenWorkshop = this.parseShowHiddenWorkshop(data);
+    this.hiddenModuleIds = this.parseHiddenModuleIds(data);
     this.refreshUnlockState();
     this.newUnlocks.invalidate("biolab");
     this.pushState();
@@ -106,6 +115,9 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
   public save(): unknown {
     return {
       levels: serializeLevelsMap(this.levels),
+      hideMaxedWorkshop: this.hideMaxedWorkshop,
+      showHiddenWorkshop: this.showHiddenWorkshop,
+      hiddenModuleIds: this.hiddenModuleIds.size > 0 ? Array.from(this.hiddenModuleIds) : undefined,
     } satisfies UnitModuleWorkshopSaveData;
   }
 
@@ -146,6 +158,31 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
 
   public getModuleLevel(id: UnitModuleId): number {
     return this.levels.get(id) ?? 0;
+  }
+
+  public setHideMaxedWorkshop(value: boolean): void {
+    if (this.hideMaxedWorkshop === value) return;
+    this.hideMaxedWorkshop = value;
+    this.pushState();
+    this.notifyListeners();
+  }
+
+  public setShowHiddenWorkshop(value: boolean): void {
+    if (this.showHiddenWorkshop === value) return;
+    this.showHiddenWorkshop = value;
+    this.pushState();
+    this.notifyListeners();
+  }
+
+  public setModuleHidden(id: UnitModuleId, hidden: boolean): void {
+    if (!UNIT_MODULE_IDS.includes(id)) return;
+    if (hidden) {
+      this.hiddenModuleIds.add(id);
+    } else {
+      this.hiddenModuleIds.delete(id);
+    }
+    this.pushState();
+    this.notifyListeners();
   }
 
   private refreshUnlockState(): boolean {
@@ -216,6 +253,9 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
     const payload: UnitModuleWorkshopBridgeState = {
       unlocked: this.unlocked,
       modules,
+      hideMaxedWorkshop: this.hideMaxedWorkshop,
+      showHiddenWorkshop: this.showHiddenWorkshop,
+      hiddenModuleIds: this.hiddenModuleIds.size > 0 ? Array.from(this.hiddenModuleIds) : [],
     };
     DataBridgeHelpers.pushState(
       this.bridge,
@@ -233,5 +273,26 @@ export class UnitModuleWorkshopModule extends BaseGameModule<() => void> {
       createDefaultLevels,
       (id, raw) => clampLevel(raw, getUnitModuleConfig(id))
     );
+  }
+
+  private parseHideMaxedWorkshop(data: unknown): boolean {
+    if (data == null || typeof data !== "object" || !("hideMaxedWorkshop" in data)) return false;
+    return (data as UnitModuleWorkshopSaveData).hideMaxedWorkshop === true;
+  }
+
+  private parseShowHiddenWorkshop(data: unknown): boolean {
+    if (data == null || typeof data !== "object" || !("showHiddenWorkshop" in data)) return false;
+    return (data as UnitModuleWorkshopSaveData).showHiddenWorkshop === true;
+  }
+
+  private parseHiddenModuleIds(data: unknown): Set<UnitModuleId> {
+    if (data == null || typeof data !== "object" || !("hiddenModuleIds" in data)) return new Set();
+    const raw = (data as UnitModuleWorkshopSaveData).hiddenModuleIds;
+    if (!Array.isArray(raw)) return new Set();
+    const set = new Set<UnitModuleId>();
+    raw.forEach((id) => {
+      if (UNIT_MODULE_IDS.includes(id)) set.add(id);
+    });
+    return set;
   }
 }

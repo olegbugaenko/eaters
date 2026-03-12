@@ -235,6 +235,7 @@ const mapConfig = (() => {
     ],
     mapsRequired: { mine: 1 },
     maxLevel: 1,
+    resourceMultiplier: 1.5,
   } satisfies MapConfig;
 })();
 

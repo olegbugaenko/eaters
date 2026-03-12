@@ -48,8 +48,18 @@ const COMPACT_THRESHOLDS: CompactThreshold[] = [
   { value: 1_000, suffix: "K" },
 ];
 
-const formatCompactNumber = (value: number): string => {
+interface CompactFormatOptions {
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
+}
+
+const formatCompactNumber = (
+  value: number,
+  compactOptions?: CompactFormatOptions
+): string => {
   const absValue = Math.abs(value);
+  const minDecimals = compactOptions?.minimumFractionDigits ?? 0;
+  const maxDecimals = compactOptions?.maximumFractionDigits;
 
   for (const { value: threshold, suffix } of COMPACT_THRESHOLDS) {
     if (absValue < threshold) {
@@ -59,11 +69,20 @@ const formatCompactNumber = (value: number): string => {
     const scaled = value / threshold;
     const absScaled = Math.abs(scaled);
     const integerDigits = absScaled === 0 ? 1 : Math.floor(Math.log10(absScaled)) + 1;
-    const decimals = Math.max(0, 3 - integerDigits);
+    const suggestedDecimals = Math.max(0, 3 - integerDigits);
+    const decimals =
+      maxDecimals === 0
+        ? 0
+        : Math.max(suggestedDecimals, minDecimals);
     const factor = 10 ** decimals;
     const truncated = Math.trunc(scaled * factor) / factor;
     const formatted = decimals > 0 ? truncated.toFixed(decimals) : truncated.toString();
-    const trimmed = decimals > 0 ? formatted.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1") : formatted;
+    const trimmed =
+      minDecimals > 0
+        ? formatted
+        : decimals > 0
+          ? formatted.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1")
+          : formatted;
     return `${trimmed}${suffix}`;
   }
 
@@ -80,7 +99,11 @@ export const formatNumber = (
   }
 
   if (compact) {
-    const compactValue = formatCompactNumber(value);
+    const compactOptions: CompactFormatOptions = {
+      minimumFractionDigits: formatOptions.minimumFractionDigits,
+      maximumFractionDigits: formatOptions.maximumFractionDigits,
+    };
+    const compactValue = formatCompactNumber(value, compactOptions);
     if (compactValue !== value.toString()) {
       return compactValue;
     }

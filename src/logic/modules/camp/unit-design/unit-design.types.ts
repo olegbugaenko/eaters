@@ -4,6 +4,8 @@ import type { UnitModuleId, UnitModuleBonusType } from "../../../../db/unit-modu
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { UnitModuleWorkshopModule } from "../unit-module-workshop/unit-module-workshop.module";
 import type { LocalizationService } from "@logic/services/localization/LocalizationService";
+import type { BonusBreakdownEntry } from "@shared/types/bonuses";
+import type { BonusId } from "../../../../db/bonuses-db";
 import type {
   PlayerUnitBlueprintStats,
   PlayerUnitRuntimeModifiers,
@@ -105,6 +107,7 @@ export interface UnitDesignModuleUiApi {
   deleteDesign(id: UnitDesignId): void;
   setActiveRoster(roster: readonly UnitDesignId[]): void;
   setDesignTargetingMode(id: UnitDesignId, mode: UnitTargetingMode): void;
+  getBonusBreakdown(bonusId: BonusId): readonly BonusBreakdownEntry[];
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

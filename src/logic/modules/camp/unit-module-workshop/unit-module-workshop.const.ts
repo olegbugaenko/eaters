@@ -4,6 +4,9 @@ import type { SkillId } from "../../../../db/skills-db";
 export const DEFAULT_UNIT_MODULE_WORKSHOP_STATE: UnitModuleWorkshopBridgeState = Object.freeze({
   unlocked: false,
   modules: [],
+  hideMaxedWorkshop: false,
+  showHiddenWorkshop: false,
+  hiddenModuleIds: [],
 });
 
 export const UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY = "unitModules/workshop";

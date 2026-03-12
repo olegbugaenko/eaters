@@ -67,11 +67,6 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       radius: 5,
       speed: 150,
       lifetimeMs: 2500,
-      statusEffectId: "poison",
-      statusEffectOptions: {
-        durationMs: 5000,
-        damagePerSecond: 6,
-      },
       fill: {
         fillType: FILL_TYPES.SOLID,
         color: { r: 0.6, g: 0.6, b: 0.4, a: 1 },
@@ -610,7 +605,7 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       arcType: "bleeding",
       statusEffectId: "bleeding",
       statusEffectOptions: {
-        damagePerSecond: 124,
+        damagePerSecond: 184,
         durationMs: 4000,
       },
       spawnOffset: { x: 18, y: 0 },
@@ -749,7 +744,7 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     },
     maxHp: 90000,
     armor: 3600,
-    baseDamage: 2200,
+    baseDamage: 1760,
     attackInterval: 0.9,
     attackRange: 2200,
     moveSpeed: 0,
@@ -828,6 +823,8 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     },
     knockBackDistance: 160,
     knockBackSpeed: 170,
+    projectileKnockBackDistance: 10,
+    projectileKnockBackSpeed: 15,
   },
   bigGun: {
     name: "Big Gun",
@@ -972,7 +969,7 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     armor: 140,
     baseDamage: 350,
     attackInterval: 1.8,
-    attackRange: 600,
+    attackRange: 1600,
     moveSpeed: 0,
     physicalSize: 26,
     reward: normalizeResourceAmount({

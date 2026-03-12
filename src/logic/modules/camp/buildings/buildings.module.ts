@@ -58,6 +58,8 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   private visibleBuildingIds: BuildingId[] = [];
   private levels: Map<BuildingId, number> = createDefaultLevels();
   private hideMaxedWorkshop = false;
+  private showHiddenWorkshop = false;
+  private hiddenBuildingIds = new Set<BuildingId>();
   private readonly stateFactory: BuildingStateFactory;
   private hasRegisteredUnlocks = false;
 
@@ -88,6 +90,8 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   public reset(): void {
     this.levels = createDefaultLevels();
     this.hideMaxedWorkshop = false;
+    this.showHiddenWorkshop = false;
+    this.hiddenBuildingIds = new Set();
     this.syncAllBonusLevels();
     this.refreshUnlockState();
     this.newUnlocks.invalidate("buildings");
@@ -98,6 +102,8 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   public load(data: unknown | undefined): void {
     this.levels = this.parseSaveData(data);
     this.hideMaxedWorkshop = this.parseHideMaxedWorkshop(data);
+    this.showHiddenWorkshop = this.parseShowHiddenWorkshop(data);
+    this.hiddenBuildingIds = this.parseHiddenBuildingIds(data);
     this.syncAllBonusLevels();
     this.refreshUnlockState();
     this.newUnlocks.invalidate("buildings");
@@ -109,6 +115,8 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     return {
       levels: serializeLevelsMap(this.levels),
       hideMaxedWorkshop: this.hideMaxedWorkshop,
+      showHiddenWorkshop: this.showHiddenWorkshop,
+      hiddenBuildingIds: this.hiddenBuildingIds.size > 0 ? Array.from(this.hiddenBuildingIds) : undefined,
     } satisfies BuildingsSaveData;
   }
 
@@ -167,10 +175,32 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     this.notifyListeners();
   }
 
+  public setShowHiddenWorkshop(value: boolean): void {
+    if (this.showHiddenWorkshop === value) {
+      return;
+    }
+    this.showHiddenWorkshop = value;
+    this.pushState();
+    this.notifyListeners();
+  }
+
+  public setBuildingHidden(id: BuildingId, hidden: boolean): void {
+    if (!BUILDING_IDS.includes(id)) {
+      return;
+    }
+    if (hidden) {
+      this.hiddenBuildingIds.add(id);
+    } else {
+      this.hiddenBuildingIds.delete(id);
+    }
+    this.pushState();
+    this.notifyListeners();
+  }
+
   private registerBonusSources(): void {
     BUILDING_IDS.forEach((id) => {
       const config = getBuildingConfig(id);
-      this.bonuses.registerSource(this.getBonusSourceId(id), config.effects);
+      this.bonuses.registerSource(this.getBonusSourceId(id), config.effects, "building");
     });
   }
 
@@ -243,6 +273,8 @@ export class BuildingsModule extends BaseGameModule<() => void> {
       unlocked: this.unlocked,
       buildings,
       hideMaxedWorkshop: this.hideMaxedWorkshop,
+      showHiddenWorkshop: this.showHiddenWorkshop,
+      hiddenBuildingIds: this.hiddenBuildingIds.size > 0 ? Array.from(this.hiddenBuildingIds) : [],
     };
     DataBridgeHelpers.pushState(this.bridge, BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY, payload);
   }
@@ -263,6 +295,31 @@ export class BuildingsModule extends BaseGameModule<() => void> {
     }
     const v = (data as BuildingsSaveData).hideMaxedWorkshop;
     return v === true;
+  }
+
+  private parseShowHiddenWorkshop(data: unknown | undefined): boolean {
+    if (data == null || typeof data !== "object" || !("showHiddenWorkshop" in data)) {
+      return false;
+    }
+    const v = (data as BuildingsSaveData).showHiddenWorkshop;
+    return v === true;
+  }
+
+  private parseHiddenBuildingIds(data: unknown | undefined): Set<BuildingId> {
+    if (data == null || typeof data !== "object" || !("hiddenBuildingIds" in data)) {
+      return new Set();
+    }
+    const raw = (data as BuildingsSaveData).hiddenBuildingIds;
+    if (!Array.isArray(raw)) {
+      return new Set();
+    }
+    const set = new Set<BuildingId>();
+    raw.forEach((id) => {
+      if (BUILDING_IDS.includes(id as BuildingId)) {
+        set.add(id as BuildingId);
+      }
+    });
+    return set;
   }
 
   private cloneCost(source: ResourceStockpile): Record<string, number> {

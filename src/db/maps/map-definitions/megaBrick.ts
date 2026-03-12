@@ -24,7 +24,7 @@ const mapConfig = (() => {
       },
     ],
     nodePosition: { x: -1, y: 1 },
-    maxLevel: 10,
+    maxLevel: 5,
     achievementId: "megaBrick",
     bricks: ({ mapLevel }) => [
       templateWithBricks(

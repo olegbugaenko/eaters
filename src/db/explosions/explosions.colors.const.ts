@@ -49,6 +49,14 @@ export const WEAKEN_CURSE_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
   { offset: 1, color: { r: 0.45, g: 0.25, b: 0.5, a: 0.0 } },
 ] as const;
 
+/** Base #8826BF — soul collect explosion (wave + starburst) */
+export const SOUL_COLLECT_WAVE_GRADIENT_STOPS: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.65, g: 0.35, b: 0.85, a: 0.7 } },
+  { offset: 0.35, color: { r: 0.53, g: 0.15, b: 0.75, a: 0.55 } },
+  { offset: 0.7, color: { r: 0.4, g: 0.08, b: 0.6, a: 0.25 } },
+  { offset: 1, color: { r: 0.3, g: 0.05, b: 0.5, a: 0 } },
+] as const;
+
 // Color-themed waves for non-gray bricks
 export const YELLOW_BRICK_HIT_WAVE: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.95, g: 0.92, b: 0.55, a: 0.3 } },

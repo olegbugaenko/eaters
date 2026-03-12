@@ -149,7 +149,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
     }
 
     if (!available.includes(activeStrongholdTab)) {
-      setActiveStrongholdTab(available[0]);
+      setActiveStrongholdTab(available[0] ?? "buildings");
     }
   }, [activeStrongholdTab, buildingsState.unlocked, darkResearchState.unlocked, artifactsState.unlocked]);
 
@@ -204,7 +204,6 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
             <ModulesWorkshopView
               state={moduleWorkshopState}
               resources={resourceTotals}
-              hideMaxedWorkshop={buildingsState.hideMaxedWorkshop ?? false}
             />
           ) : activeModulesTab === "designer" ? (
             <UnitDesignerView state={unitDesignerState} resources={resourceTotals} />

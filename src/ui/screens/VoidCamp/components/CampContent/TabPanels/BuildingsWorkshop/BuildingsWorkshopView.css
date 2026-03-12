@@ -2,7 +2,14 @@
   height: 140px;
 }
 
-.buildings-workshop__hide-maxed {
+.buildings-workshop__filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.buildings-workshop__filter-checkbox {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -11,9 +18,15 @@
   white-space: nowrap;
 }
 
-.buildings-workshop__hide-maxed input[type="checkbox"] {
+.buildings-workshop__filter-checkbox input[type="checkbox"] {
   margin: 0;
   cursor: pointer;
+}
+
+.buildings-workshop__detail-actions-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
 }
 
 .buildings-workshop__card-title-row {

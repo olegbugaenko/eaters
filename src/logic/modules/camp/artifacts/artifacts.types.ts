@@ -4,13 +4,19 @@ import type { UnlockService } from "@logic/services/unlock/UnlockService";
 import type { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
 import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 
+export interface ArtifactEffectsBridge {
+  readonly sanityDecayMultiplier?: number;
+  readonly maxUnitsFlat?: number;
+}
+
 export interface ArtifactBridgeState {
   readonly id: ArtifactId;
   readonly name: string;
   readonly description: string;
   readonly icon?: string;
-  readonly owned: boolean;
-  readonly equippedSlot: number | null;
+  readonly ownedCount: number;
+  readonly equippedCount: number;
+  readonly effects: ArtifactEffectsBridge;
 }
 
 export interface ArtifactsBridgeState {
@@ -21,7 +27,7 @@ export interface ArtifactsBridgeState {
 }
 
 export interface ArtifactsSaveData {
-  readonly owned?: ArtifactId[];
+  readonly owned?: ArtifactId[] | Record<string, number>;
   readonly activeSlots?: Array<ArtifactId | null>;
 }
 
@@ -39,6 +45,7 @@ export interface ArtifactsModuleOptions {
 
 export interface ArtifactsModuleUiApi {
   equipArtifact(slotIndex: number, artifactId: ArtifactId | null): void;
+  unequipSlot(slotIndex: number): void;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

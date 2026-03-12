@@ -389,6 +389,9 @@
 }
 
 .unit-designer__stat dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
   font-weight: 400;
 }
 

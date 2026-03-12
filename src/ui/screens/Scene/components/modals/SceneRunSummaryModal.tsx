@@ -27,6 +27,8 @@ interface SceneRunSummaryModalProps {
   totalBricksDestroyed: number;
   primaryAction: SceneRunSummaryModalAction;
   secondaryAction?: SceneRunSummaryModalAction;
+  /** When set, shown as extra buttons (e.g. "To skill tree" / "To map selection") */
+  returnActions?: SceneRunSummaryModalAction[];
   title?: string;
   subtitle?: string;
   autoRestart?: SceneRunSummaryAutoRestartControls;
@@ -66,6 +68,7 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   totalBricksDestroyed,
   primaryAction,
   secondaryAction,
+  returnActions,
   autoRestart,
   title = "Run Complete",
   subtitle = "Resources recovered from the ruins:",
@@ -158,7 +161,12 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
         ) : null}
         <div className="scene-run-summary__actions">
           <Button onClick={primaryAction.onClick}>{primaryAction.label}</Button>
-          {secondaryAction ? (
+          {returnActions?.map((action, index) => (
+            <Button key={index} onClick={action.onClick}>
+              {action.label}
+            </Button>
+          ))}
+          {!returnActions && secondaryAction ? (
             <Button onClick={secondaryAction.onClick}>
               {secondaryAction.label}
             </Button>
