@@ -652,6 +652,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       hpRegenPerSecond,
       armor: Math.max(effectiveArmor, 0),
       bonuses,
+      organAttackMultiplier: appliedAttackMultiplier,
     };
   }
 

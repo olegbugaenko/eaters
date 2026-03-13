@@ -25,6 +25,7 @@ const mapConfig = (() => {
     name: "Transformer",
     size,
     spawnPoints: [spawnPoint],
+    lockedForDemo: true,
     nodePosition: { x: 7, y: 1 },
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));

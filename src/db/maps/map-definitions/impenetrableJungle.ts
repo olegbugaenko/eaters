@@ -189,7 +189,7 @@ const mapConfig = (() => {
     spawnPoints: [spawnPoint],
     nodePosition: { x: 1, y: 7 },
     icon: "jungle.png",
-    lockedForDemo: false,
+    lockedForDemo: true,
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const woodLevel = baseLevel + 2;

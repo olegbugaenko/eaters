@@ -424,6 +424,7 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                               resolveSourceName={resolveSourceName}
                               t={t}
                               ariaLabel={t("voidCamp.unitStats.breakdownHint", "Show stat breakdown")}
+                              organMultiplier={entry.organAttackMultiplier}
                             />
                           ) : null}
                         </dt>

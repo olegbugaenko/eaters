@@ -24,11 +24,12 @@ import {
 } from "./bonuses.helpers";
 import { BONUS_RULES } from "./bonuses.rules";
 import { BonusCalculator } from "./bonuses.calculator";
+import type { BonusesModuleUiApi } from "./bonuses.types";
 
 // Re-export types for backward compatibility
 export type { BonusValueMap, BonusValuesListener } from "./bonuses.types";
 
-export class BonusesModule extends BaseGameModule<BonusValuesListener> {
+export class BonusesModule extends BaseGameModule<BonusValuesListener> implements BonusesModuleUiApi {
   public readonly id = "bonuses";
 
   private sources = new Map<string, BonusSourceState>();
@@ -160,6 +161,11 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> {
   public getAllValues(): BonusValueMap {
     this.ensureValues();
     return { ...this.cachedValues };
+  }
+
+  // UiApi implementation
+  public getValues(): BonusValueMap {
+    return this.getAllValues();
   }
 
   public getBonusEffects(sourceId: string): BonusEffectPreview[] {

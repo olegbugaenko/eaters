@@ -2,6 +2,7 @@ import type { DataBridge } from "@/core/logic/ui/DataBridge";
 import type { CraftingRecipeId } from "../../../../db/crafting-recipes-db";
 import type { ResourceId } from "../../../../db/resources-db";
 import type { ResourcesModule } from "../../shared/resources/resources.module";
+import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
 import type { UnlockService } from "../../../services/unlock/UnlockService";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
@@ -36,6 +37,7 @@ export interface CraftingModuleOptions {
   readonly bonuses: BonusesModule;
   readonly newUnlocks: NewUnlockNotificationService;
   readonly localization?: LocalizationService;
+  readonly statistics?: StatisticsTracker;
 }
 
 export interface CraftingRecipeRuntimeState {

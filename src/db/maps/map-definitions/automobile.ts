@@ -72,6 +72,7 @@ const mapConfig = (() => {
     name: "Автомобіль",
     size,
     spawnPoints: [spawnPoint],
+    lockedForDemo: true,
     nodePosition: { x: 7, y: 3 },
     icon: "automobile.png",
     bricks: ({ mapLevel }) => {

@@ -10,6 +10,8 @@ export interface UnitStatEntry {
   readonly hint?: string;
   /** Bonus IDs to show breakdown for when user clicks the ? icon */
   readonly bonusIds?: readonly BonusId[];
+  /** Organ-only attack multiplier for breakdown popover (unit design); shown above skills/buildings. */
+  readonly organAttackMultiplier?: number;
 }
 
 export type UnitStatsTranslator = (key: string, fallback: string) => string;
@@ -128,6 +130,7 @@ export const buildUnitStatEntries = (
         t
       ),
       bonusIds: attackBonusIds,
+      organAttackMultiplier: blueprint.organAttackMultiplier,
     },
     {
       label: translate("voidCamp.unitStats.critChance", "Crit Chance"),

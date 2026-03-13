@@ -63,4 +63,6 @@ export interface PlayerUnitBlueprintStats {
   readonly physicalSize: number;
   readonly knockbackReduction: number;
   readonly bonuses?: readonly PlayerUnitBonusLine[];
+  /** Attack multiplier from equipped organs (unit design only). Shown in breakdown above skills/buildings. */
+  readonly organAttackMultiplier?: number;
 }

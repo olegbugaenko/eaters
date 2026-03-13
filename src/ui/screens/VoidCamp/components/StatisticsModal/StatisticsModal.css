@@ -81,8 +81,10 @@
 }
 
 .statistics-modal__item {
-  display: grid;
-  gap: 0.35rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-soft);
@@ -98,9 +100,12 @@
 }
 
 .statistics-modal__value {
-  font-size: 1.35rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 500;
   color: rgba(226, 232, 240, 0.98);
+  text-align: right;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .statistics-modal__note {

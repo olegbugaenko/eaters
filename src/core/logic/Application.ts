@@ -26,6 +26,7 @@ import type { ArtifactsModuleUiApi } from "@logic/modules/camp/artifacts/artifac
 import type { SkillTreeModuleUiApi } from "@logic/modules/camp/skill-tree/skill-tree.types";
 import type { NewUnlockNotificationUiApi } from "@logic/services/new-unlock-notification/new-unlock-notification.types";
 import type { LocalizationServiceUiApi } from "@logic/services/localization/localization.types";
+import type { BonusesModuleUiApi } from "@logic/modules/shared/bonuses/bonuses.types";
 
 type ModuleDefinitionList = ReturnType<typeof createModuleDefinitions>;
 type ApplicationDefinitionList = readonly [
@@ -156,6 +157,7 @@ export class Application {
       skillTree: this.services.skillTree as SkillTreeModuleUiApi,
       newUnlocks: this.services.newUnlocks as NewUnlockNotificationUiApi,
       localization: this.services.localization as LocalizationServiceUiApi,
+      bonuses: this.services.bonuses as BonusesModuleUiApi,
     };
   }
 

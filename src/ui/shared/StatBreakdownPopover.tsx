@@ -18,6 +18,8 @@ export interface StatBreakdownPopoverProps {
   t: (key: string, fallback: string) => string;
   /** Accessible label for the trigger */
   ariaLabel?: string;
+  /** Organ-only attack multiplier to show above skills/buildings breakdown (e.g. from unit blueprint) */
+  organMultiplier?: number;
 }
 
 const formatEntryValue = (
@@ -115,6 +117,7 @@ export const StatBreakdownPopover: React.FC<StatBreakdownPopoverProps> = ({
   resolveSourceName,
   t,
   ariaLabel = "Show stat breakdown",
+  organMultiplier,
 }) => {
   const [visible, setVisible] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<{ left: number; top: number } | null>(null);
@@ -163,9 +166,11 @@ export const StatBreakdownPopover: React.FC<StatBreakdownPopoverProps> = ({
     [bonusIds, getBreakdown]
   );
 
-  const hasContent = sections.some(
-    (s) => s.incomeGroups.length > 0 || s.multiplierGroups.length > 0
-  );
+  const hasContent =
+    (organMultiplier != null && organMultiplier > 0) ||
+    sections.some(
+      (s) => s.incomeGroups.length > 0 || s.multiplierGroups.length > 0
+    );
 
   const renderGroup = (
     group: { category: string; entries: BonusBreakdownEntry[]; subtotal: number },
@@ -223,6 +228,17 @@ export const StatBreakdownPopover: React.FC<StatBreakdownPopoverProps> = ({
         >
           ×
         </button>
+        {organMultiplier != null && organMultiplier > 0 && (
+          <div className="stat-breakdown-popover__section stat-breakdown-popover__organ-multiplier">
+            <div className="stat-breakdown-popover__section-title">
+              {t("voidCamp.unitStats.organMultiplier", "Organ multiplier")}
+              <span className="stat-breakdown-popover__section-total">
+                {" "}
+                {formatTotalMultiplier(organMultiplier)}
+              </span>
+            </div>
+          </div>
+        )}
         {sections.map((section) => {
           const hasIncome = section.incomeGroups.length > 0;
           const hasMultiplier = section.multiplierGroups.length > 0;

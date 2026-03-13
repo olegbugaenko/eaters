@@ -6,6 +6,7 @@ import { NewUnlockNotificationService } from "@logic/services/new-unlock-notific
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { ResourcesModule } from "../../shared/resources/resources.module";
+import type { StatisticsTracker } from "../../shared/statistics/statistics.module";
 import {
   CRAFTING_RECIPE_IDS,
   CraftingRecipeConfig,
@@ -50,6 +51,7 @@ export class CraftingModule implements GameModule {
   private readonly bonuses: BonusesModule;
   private readonly localization = null as import("@logic/services/localization/LocalizationService").LocalizationService | null;
   private readonly newUnlocks: NewUnlockNotificationService;
+  private readonly statistics?: StatisticsTracker;
 
   private runtimeStates = new Map<CraftingRecipeId, CraftingRecipeRuntimeState>();
   private visibleRecipeIds: CraftingRecipeId[] = [];
@@ -67,6 +69,7 @@ export class CraftingModule implements GameModule {
     this.bonuses = options.bonuses;
     this.localization = options.localization ?? null;
     this.newUnlocks = options.newUnlocks;
+    this.statistics = options.statistics;
     this.craftingSpeedMultiplier = this.sanitizeCraftingSpeedMultiplier(
       this.bonuses.getBonusValue("crafting_speed_mult")
     );
@@ -283,6 +286,9 @@ export class CraftingModule implements GameModule {
   ): void {
     const reward = createProductAmount(config.productId, config.productAmount);
     this.resources.grantResources(reward, { includeInRunSummary: false });
+    if (config.productAmount > 0) {
+      this.statistics?.recordMaterialsCrafted(config.productAmount);
+    }
     state.queue = Math.max(0, state.queue - 1);
     state.inProgress = false;
     state.progressMs = 0;

@@ -8,6 +8,20 @@ import { formatDuration } from "@ui/utils/formatDuration";
 import { formatNumber } from "@ui/shared/format/number";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useLocalization } from "@ui/shared/useLocalization";
+import { SANITY_DECAY_PER_SECOND } from "@logic/modules/active-map/necromancer/necromancer.const";
+import {
+  BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
+  DEFAULT_BUILDINGS_WORKSHOP_STATE,
+} from "@logic/modules/camp/buildings/buildings.const";
+import {
+  DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
+  UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+} from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
+import {
+  CRAFTING_STATE_BRIDGE_KEY,
+  DEFAULT_CRAFTING_STATE,
+} from "@logic/modules/camp/crafting/crafting.const";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import "./StatisticsModal.css";
 
 interface FavoriteMapInfo {
@@ -76,9 +90,9 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
   eventLog,
 }) => {
   const { t } = useLocalization();
-  const { uiApi } = useAppLogic();
+  const { uiApi, bridge } = useAppLogic();
   const titleId = useId();
-  const [activeTab, setActiveTab] = useState<"general" | "history">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "combat" | "history">("general");
   const historyEntries = useMemo(() => {
     return eventLog.map((entry, index) => ({
       id: `${entry.realTimeMs}-${entry.type}-${index}`,
@@ -86,6 +100,22 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
       entry,
     }));
   }, [eventLog]);
+
+  const moduleWorkshopState = useBridgeValue(
+    bridge,
+    UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
+  );
+  const buildingsState = useBridgeValue(
+    bridge,
+    BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
+    DEFAULT_BUILDINGS_WORKSHOP_STATE,
+  );
+  const craftingState = useBridgeValue(
+    bridge,
+    CRAFTING_STATE_BRIDGE_KEY,
+    DEFAULT_CRAFTING_STATE,
+  );
 
   const handleDialogClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
@@ -108,7 +138,13 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
       })} ${t("voidCamp.statistics.attempts", "attempts")}`
     : t("voidCamp.statistics.noRuns", "No runs recorded yet.");
 
-  const stats = [
+  interface StatEntry {
+    label: string;
+    value: string;
+    note?: string;
+  }
+
+  const stats: StatEntry[] = [
     {
       label: t("saveSelect.slot.timePlayed", "Time Played"),
       value: formatDuration(timePlayedMs),
@@ -141,6 +177,109 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
     },
   ];
 
+  if (moduleWorkshopState.unlocked) {
+    stats.push({
+      label: t("voidCamp.statistics.organsUnlocked", "Organs unlocked"),
+      value: formatCount(moduleWorkshopState.modules.length),
+      note: undefined,
+    });
+  }
+
+  if (buildingsState.unlocked) {
+    stats.push({
+      label: t("voidCamp.statistics.buildingsPurchased", "Buildings purchased"),
+      value: formatCount(
+        buildingsState.buildings.filter((building) => building.level > 0).length,
+      ),
+      note: undefined,
+    });
+  }
+
+  if (craftingState.unlocked) {
+    stats.push({
+      label: t("voidCamp.statistics.materialsCrafted", "Materials crafted"),
+      value: formatCount(statistics.materialsCrafted ?? 0),
+      note: undefined,
+    });
+  }
+
+  const bonusValues = uiApi.bonuses.getValues();
+
+  const combatStats: StatEntry[] = [
+    {
+      label: t("voidCamp.statistics.combat.maxSanity", "Max Sanity"),
+      value: formatCount(bonusValues.sanity_cap ?? 0),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.sanityDrainPerSecond", "Sanity drain per second"),
+      value: formatDamage(SANITY_DECAY_PER_SECOND),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.maxMana", "Max Mana"),
+      value: formatCount(bonusValues.mana_cap ?? 0),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.manaRegenPerSecond", "Mana regen per second"),
+      value: formatDamage(bonusValues.mana_regen ?? 0),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.allUnitsHpMultiplier", "All units HP multiplier"),
+      value: `×${formatNumber(bonusValues.all_units_hp_multiplier ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+    {
+      label: t(
+        "voidCamp.statistics.combat.allUnitsAttackMultiplier",
+        "All units attack multiplier",
+      ),
+      value: `×${formatNumber(bonusValues.all_units_attack_multiplier ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.allUnitsArmorBonus", "All units armor bonus"),
+      value: formatNumber(bonusValues.all_units_armor ?? 0, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.allUnitsArmorMultiplier", "All units armor multiplier"),
+      value: `×${formatNumber(bonusValues.all_units_armor_multiplier ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.brickRewardsMultiplier", "Brick rewards multiplier"),
+      value: `×${formatNumber(bonusValues.brick_rewards ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+  ];
+
+  if (craftingState.unlocked) {
+    combatStats.push({
+      label: t(
+        "voidCamp.statistics.combat.craftingSpeedMultiplier",
+        "Crafting speed multiplier",
+      ),
+      value: `×${formatNumber(bonusValues.crafting_speed_mult ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    });
+  }
+
   return (
     <div className="statistics-modal" onClick={onClose} role="presentation">
       <div
@@ -170,6 +309,16 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
                 type="button"
                 className={
                   "inline-tabs__button" +
+                  (activeTab === "combat" ? " inline-tabs__button--active" : "")
+                }
+                onClick={() => setActiveTab("combat")}
+              >
+                {t("voidCamp.statistics.combat", "Combat Stats")}
+              </button>
+              <button
+                type="button"
+                className={
+                  "inline-tabs__button" +
                   (activeTab === "history" ? " inline-tabs__button--active" : "")
                 }
                 onClick={() => setActiveTab("history")}
@@ -185,7 +334,19 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
         <div className="statistics-modal__content">
           {activeTab === "general" ? (
             <ul className="statistics-modal__list">
-              {stats.map((entry) => (
+              {stats.map((entry: StatEntry) => (
+                <li key={entry.label} className="statistics-modal__item">
+                  <span className="statistics-modal__label">{entry.label}</span>
+                  <span className="statistics-modal__value">{entry.value}</span>
+                  {entry.note ? (
+                    <span className="statistics-modal__note">{entry.note}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : activeTab === "combat" ? (
+            <ul className="statistics-modal__list">
+              {combatStats.map((entry: StatEntry) => (
                 <li key={entry.label} className="statistics-modal__item">
                   <span className="statistics-modal__label">{entry.label}</span>
                   <span className="statistics-modal__value">{entry.value}</span>
