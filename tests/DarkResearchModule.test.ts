@@ -159,7 +159,7 @@ describe("DarkResearchModule", () => {
 
     soulsHarvestLevel = 1;
     module.tick(0);
-    assert.strictEqual(module.getSoulDropChance(), 0.1);
+    assert.strictEqual(module.getSoulDropChance(), 0.2);
   });
 
   test("applies soul drop chance bonus as multiplier", () => {
@@ -173,7 +173,7 @@ describe("DarkResearchModule", () => {
 
     module.initialize();
 
-    assert.ok(Math.abs(module.getSoulDropChance() - 0.11) < 1e-9);
+    assert.ok(Math.abs(module.getSoulDropChance() - 0.22) < 1e-9);
   });
 
   test("updates bonus values from research levels", () => {

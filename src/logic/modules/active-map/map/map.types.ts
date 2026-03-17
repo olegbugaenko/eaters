@@ -77,6 +77,7 @@ export interface MapLevelStats {
   success: number;
   failure: number;
   bestTimeMs: number | null;
+  totalTimeMs: number;
 }
 
 export type MapStats = Partial<Record<MapId, Record<number, MapLevelStats>>>;
@@ -85,7 +86,10 @@ export interface MapListEntry extends MapListEntryConfig {
   readonly currentLevel: number;
   readonly selectedLevel: number;
   readonly attempts: number;
+  /** Max attempts across all levels; use for statistics (favorite map, top-by-time table). */
+  readonly maxAttemptsAcrossLevels: number;
   readonly bestTimeMs: number | null;
+  readonly totalTimeMs: number;
   readonly clearedLevels: number;
   readonly maxLevel: number;
   readonly selectable: boolean; // true if map can be selected/played

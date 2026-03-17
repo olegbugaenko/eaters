@@ -178,7 +178,7 @@ const mapConfig = (() => {
       },
     ],
     mapsRequired: { thicket: 1 },
-    maxLevel: 2,
+    maxLevel: 1,
   } satisfies MapConfig;
 })();
 

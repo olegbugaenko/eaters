@@ -1261,40 +1261,51 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                       : t("voidCamp.maps.none", "—")}
                   </dd>
                 </div>
+                <div>
+                  <dt>{t("voidCamp.maps.totalTime", "Total time")}</dt>
+                  <dd>
+                    {activeMap.totalTimeMs > 0
+                      ? formatDuration(activeMap.totalTimeMs)
+                      : t("voidCamp.maps.none", "—")}
+                  </dd>
+                </div>
               </dl>
               {activeMap.selectable && (
                 <div className="map-tree__details-actions">
+                  <div className="map-tree__details-actions-level-row">
+                    <button
+                      type="button"
+                      className={classNames("button", "secondary-button")}
+                      disabled={activeMap.selectedLevel <= 1}
+                      onClick={() =>
+                        onSelectLevel(
+                          activeMap.id,
+                          Math.max(activeMap.selectedLevel - 1, 1),
+                        )
+                      }
+                    >
+                      {t("voidCamp.maps.levelMinus", "Level -")}
+                    </button>
+                    <button
+                      type="button"
+                      className={classNames("button", "secondary-button")}
+                      disabled={activeMap.selectedLevel >= activeMap.currentLevel}
+                      onClick={() =>
+                        onSelectLevel(
+                          activeMap.id,
+                          Math.min(
+                            activeMap.selectedLevel + 1,
+                            activeMap.currentLevel,
+                          ),
+                        )
+                      }
+                    >
+                      {t("voidCamp.maps.levelPlus", "Level +")}
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    className={classNames("button", "secondary-button")}
-                    disabled={activeMap.selectedLevel <= 1}
-                    onClick={() =>
-                      onSelectLevel(
-                        activeMap.id,
-                        Math.max(activeMap.selectedLevel - 1, 1),
-                      )
-                    }
-                  >
-                    {t("voidCamp.maps.levelMinus", "Level -")}
-                  </button>
-                  <button
-                    type="button"
-                    className={classNames("button", "secondary-button")}
-                    onClick={() =>
-                      onSelectLevel(
-                        activeMap.id,
-                        Math.min(
-                          activeMap.selectedLevel + 1,
-                          activeMap.currentLevel,
-                        ),
-                      )
-                    }
-                  >
-                    {t("voidCamp.maps.levelPlus", "Level +")}
-                  </button>
-                  <button
-                    type="button"
-                    className={classNames("button", "primary-button")}
+                    className={classNames("button", "primary-button", "map-tree__details-actions-start")}
                     onClick={() => onStartMap(activeMap.id)}
                   >
                     {t("voidCamp.maps.startMap", "Start Map")}

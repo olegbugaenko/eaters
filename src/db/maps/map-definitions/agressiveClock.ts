@@ -93,6 +93,8 @@ const mapConfig = (() => {
         level: 1,
       },
     ],
+    icon: "agressive_clock.png",
+    lockedForDemo: true,
     mapsRequired: { theWheel: 1 },
     maxLevel: 1,
     bricks: ({ mapLevel }) => {

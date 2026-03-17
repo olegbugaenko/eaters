@@ -128,13 +128,6 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
                 : String(activeBuilding.level)}
             </span>
           </div>
-          <div className="buildings-workshop__detail-actions-row">
-            <Button
-              onClick={() => workshop.setBuildingHidden(activeBuilding.id, !isHidden)}
-            >
-              {isHidden ? t("voidCamp.common.unhide", "Unhide") : t("voidCamp.common.hide", "Hide")}
-            </Button>
-          </div>
           <p className="buildings-workshop__detail-description">{activeBuilding.description}</p>
           <div className="buildings-workshop__detail-section">
             <h4>{t("voidCamp.common.bonuses", "Bonuses")}</h4>
@@ -188,6 +181,13 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
             >
               {activeBuilding.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.buildings.construct", "Construct")}
             </Button>
+            <button
+              type="button"
+              className="button danger-button small-button"
+              onClick={() => workshop.setBuildingHidden(activeBuilding.id, !isHidden)}
+            >
+              {isHidden ? t("voidCamp.common.unhide", "Unhide") : t("voidCamp.common.hide", "Hide")}
+            </button>
           </div>
         </div>
       );

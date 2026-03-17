@@ -29,6 +29,13 @@ interface FavoriteMapInfo {
   attempts: number;
 }
 
+interface TopTimeMapInfo {
+  id: MapId;
+  name: string;
+  attempts: number;
+  totalTimeMs: number;
+}
+
 interface StatisticsModalProps {
   readonly isOpen: boolean;
   readonly onClose: () => void;
@@ -36,6 +43,7 @@ interface StatisticsModalProps {
   readonly favoriteMap: FavoriteMapInfo | null;
   readonly statistics: CampStatisticsSnapshot;
   readonly eventLog: EventLogEntry[];
+  readonly topTimeMaps: readonly TopTimeMapInfo[];
 }
 
 const formatCount = (value: number): string =>
@@ -88,6 +96,7 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
   favoriteMap,
   statistics,
   eventLog,
+  topTimeMaps,
 }) => {
   const { t } = useLocalization();
   const { uiApi, bridge } = useAppLogic();
@@ -333,17 +342,44 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
         </header>
         <div className="statistics-modal__content">
           {activeTab === "general" ? (
-            <ul className="statistics-modal__list">
-              {stats.map((entry: StatEntry) => (
-                <li key={entry.label} className="statistics-modal__item">
-                  <span className="statistics-modal__label">{entry.label}</span>
-                  <span className="statistics-modal__value">{entry.value}</span>
-                  {entry.note ? (
-                    <span className="statistics-modal__note">{entry.note}</span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+            <div className="statistics-modal__general">
+              <ul className="statistics-modal__list">
+                {stats.map((entry: StatEntry) => (
+                  <li key={entry.label} className="statistics-modal__item">
+                    <span className="statistics-modal__label">{entry.label}</span>
+                    <span className="statistics-modal__value">{entry.value}</span>
+                    {entry.note ? (
+                      <span className="statistics-modal__note">{entry.note}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {topTimeMaps.length > 0 && (
+                <div className="statistics-modal__section">
+                  <h3 className="statistics-modal__section-title">
+                    {t("voidCamp.statistics.topMapsByTime", "Top maps by time played")}
+                  </h3>
+                  <table className="statistics-modal__table">
+                    <thead>
+                      <tr>
+                        <th>{t("voidCamp.statistics.mapName", "Map")}</th>
+                        <th>{t("voidCamp.statistics.timeSpent", "Time Spent")}</th>
+                        <th>{t("voidCamp.statistics.attemptsShort", "Runs")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topTimeMaps.map((map) => (
+                        <tr key={map.id}>
+                          <td>{map.name}</td>
+                          <td>{formatDuration(map.totalTimeMs)}</td>
+                          <td>{formatCount(map.attempts)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           ) : activeTab === "combat" ? (
             <ul className="statistics-modal__list">
               {combatStats.map((entry: StatEntry) => (

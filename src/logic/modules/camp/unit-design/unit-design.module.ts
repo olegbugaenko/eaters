@@ -104,8 +104,8 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     this.bonuses = options.bonuses;
     this.workshop = options.workshop;
     this.localization = options.localization;
-    this.moduleDetailFactory = new UnitDesignModuleDetailFactory();
-    this.availableModuleFactory = new UnitDesignerAvailableModuleFactory();
+    this.moduleDetailFactory = new UnitDesignModuleDetailFactory(this.localization);
+    this.availableModuleFactory = new UnitDesignerAvailableModuleFactory(this.localization);
   }
 
   public initialize(): void {

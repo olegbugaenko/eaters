@@ -30,7 +30,7 @@ const GRID_W = 1200;
 const GRID_H = 900;
 
 const mapConfig = (() => {
-  const size: SceneSize = { width: 1500, height: 1500 };
+  const size: SceneSize = { width: 1500, height: 2000 };
   const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
   // Portal 100x100 top-left → spawn at center of portal
   const spawnPoint: SceneVector2 = { x: 50, y: 50 };
@@ -39,7 +39,7 @@ const mapConfig = (() => {
   const gridCenterY = center.y + 400;
   const gridLeft = center.x - GRID_W / 2;
   const gridRight = center.x + GRID_W / 2;
-  const gridTop = gridCenterY - GRID_H / 2;
+  const gridTop = gridCenterY - 300 - GRID_H / 2;
   const gridBottom = gridCenterY + GRID_H / 2;
 
   const createRectangle = (

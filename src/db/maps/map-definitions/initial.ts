@@ -24,7 +24,7 @@ const mapConfig = {
       {
         center,
         innerRadius: Math.round(210 * scale),
-        outerRadius: Math.round(250 * scale),
+        outerRadius: Math.round(235 * scale),
       },
       { level: innerLevel },
     );

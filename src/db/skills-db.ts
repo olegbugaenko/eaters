@@ -298,7 +298,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         multiplier: (level) => 1 + 0.125 * level,
       },
     },
-    nodesRequired: { advanced_crafting: 1 },
+    nodesRequired: { advanced_crafting: 5 },
     cost: createResourceCost("wire", 10, 1.5),
   },
   construction_ledgers: {

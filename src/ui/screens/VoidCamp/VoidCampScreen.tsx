@@ -356,15 +356,32 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const favoriteMap = useMemo(() => {
     let best: { id: MapId; name: string; attempts: number } | null = null;
     maps.forEach((map) => {
-      if (map.attempts <= 0) {
+      const attempts = map.maxAttemptsAcrossLevels;
+      if (attempts <= 0) {
         return;
       }
-      if (!best || map.attempts > best.attempts) {
-        best = { id: map.id, name: map.name, attempts: map.attempts };
+      if (!best || attempts > best.attempts) {
+        best = { id: map.id, name: map.name, attempts };
       }
     });
     return best;
   }, [maps]);
+
+  const topTimeMaps = useMemo(
+    () =>
+      maps
+        .filter((map) => (map.totalTimeMs ?? 0) > 0)
+        .slice()
+        .sort((a, b) => (b.totalTimeMs ?? 0) - (a.totalTimeMs ?? 0))
+        .slice(0, 10)
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          attempts: m.maxAttemptsAcrossLevels,
+          totalTimeMs: m.totalTimeMs ?? 0,
+        })),
+    [maps]
+  );
 
   return (
     <>
@@ -438,6 +455,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         favoriteMap={favoriteMap}
         statistics={statistics}
         eventLog={eventLog}
+        topTimeMaps={topTimeMaps}
       />
       <AchievementsModal
         isOpen={isAchievementsOpen}

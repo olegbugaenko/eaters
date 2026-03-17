@@ -186,16 +186,18 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
           actions={
             <>
               <Button
-                onClick={() => workshop.setModuleHidden(activeModule.id, !isHidden)}
-              >
-                {isHidden ? t("voidCamp.common.unhide", "Unhide") : t("voidCamp.common.hide", "Hide")}
-              </Button>
-              <Button
                 onClick={() => handleUpgrade(activeModule.id)}
                 disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
               >
                 {activeModule.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.common.unlock", "Unlock")}
               </Button>
+              <button
+                type="button"
+                className="button danger-button small-button"
+                onClick={() => workshop.setModuleHidden(activeModule.id, !isHidden)}
+              >
+                {isHidden ? t("voidCamp.common.unhide", "Unhide") : t("voidCamp.common.hide", "Hide")}
+              </button>
             </>
           }
         />

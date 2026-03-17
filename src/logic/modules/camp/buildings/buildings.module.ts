@@ -62,6 +62,7 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   private hiddenBuildingIds = new Set<BuildingId>();
   private readonly stateFactory: BuildingStateFactory;
   private hasRegisteredUnlocks = false;
+  private unsubscribeBonuses: (() => void) | null = null;
 
   constructor(options: BuildingsModuleOptions) {
     super();
@@ -79,6 +80,10 @@ export class BuildingsModule extends BaseGameModule<() => void> {
   }
 
   public initialize(): void {
+    this.unsubscribeBonuses = this.bonuses.subscribe(() => {
+      this.pushState();
+      this.notifyListeners();
+    });
     this.registerUnlockNotifications();
     this.syncAllBonusLevels();
     this.refreshUnlockState();

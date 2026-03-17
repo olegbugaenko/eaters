@@ -279,9 +279,19 @@
 }
 
 .map-tree__details-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+.map-tree__details-actions-level-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.map-tree__details-actions-start {
+  width: 100%;
 }
 
 .map-tree__details-empty {

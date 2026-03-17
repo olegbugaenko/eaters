@@ -539,7 +539,7 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     stroke: { color: { r: 0.3, g: 0.2, b: 0.1, a: 1 }, width: 1.5 },
     destructubleData: {
-      maxHp: 265,
+      maxHp: 365,
       armor: 24,
       baseDamage: 96,
       knockBackDistance: 70,

@@ -15,7 +15,7 @@ const mapConfig = (() => {
     icon: "silver_cup.png",
     spawnPoints: [spawnPoint],
     nodePosition: { x: 6, y: 0 },
-    lockedForDemo: false,
+    lockedForDemo: true,
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const silverLevel = baseLevel + 3;

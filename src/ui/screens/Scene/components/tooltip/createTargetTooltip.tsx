@@ -34,7 +34,7 @@ import type {
 type Translate = (key: string, fallback?: string) => string;
 
 const formatStatValue = (value: number): string =>
-  formatNumber(value, { maximumFractionDigits: 0 });
+  formatNumber(value);
 
 const formatHpValue = (current: number, max: number): string =>
   `${formatStatValue(current)} / ${formatStatValue(max)}`;

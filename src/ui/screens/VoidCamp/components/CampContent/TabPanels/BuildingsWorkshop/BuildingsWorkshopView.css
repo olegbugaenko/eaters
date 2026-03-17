@@ -23,12 +23,6 @@
   cursor: pointer;
 }
 
-.buildings-workshop__detail-actions-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: center;
-}
-
 .buildings-workshop__card-title-row {
   display: flex;
   justify-content: space-between;
@@ -42,6 +36,10 @@
   font-weight: 600;
   color: var(--color-text-strong);
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .buildings-workshop__card-level {
@@ -140,7 +138,9 @@
 
 .buildings-workshop__actions {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  justify-content: space-between;
 }
 
 @media (max-height: 849px) {

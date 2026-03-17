@@ -744,7 +744,7 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     },
     maxHp: 90000,
     armor: 3600,
-    baseDamage: 1760,
+    baseDamage: 2460,
     attackInterval: 0.9,
     attackRange: 2200,
     moveSpeed: 0,
