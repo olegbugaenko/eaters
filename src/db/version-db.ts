@@ -6,6 +6,19 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.4",
+    releaseDate: "2026-03-17",
+    changes: [
+      "Added new maps",
+      "Added new mechanics - dark research",
+      "Reduced mana cost penalty for organs",
+      "Added new buildings",
+      "Added new skills",
+      "Added toggleable damage visualisation",
+      "Numerous bugfixes and performance improvements",
+    ],
+  },
+  {
     displayName: "v0.1.3",
     releaseDate:  "2026-02-10",
     changes: [
