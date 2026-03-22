@@ -6,6 +6,16 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.4a",
+    releaseDate: "2026-03-22",
+    changes: [
+      "Impoved UI for summoning and casting panels",
+      "Spells are now slightly more powerful",
+      "Fixed bug when some resources might not be displayed correctly in left sidebar",
+      "Reworked UI for control unit fractions in roster"
+    ],
+  },
+  {
     displayName: "v0.1.4",
     releaseDate: "2026-03-17",
     changes: [

@@ -37,6 +37,7 @@ interface CampContentProps {
   moduleWorkshopState: UnitModuleWorkshopBridgeState;
   unitDesignerState: UnitDesignerBridgeState;
   unitAutomationState: UnitAutomationBridgeState;
+  maxUnitsOnMap: number;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
   darkResearchState: DarkResearchBridgeState;
@@ -59,6 +60,7 @@ export const CampContent: React.FC<CampContentProps> = ({
   moduleWorkshopState,
   unitDesignerState,
   unitAutomationState,
+  maxUnitsOnMap,
   buildingsState,
   craftingState,
   darkResearchState,
@@ -141,6 +143,7 @@ export const CampContent: React.FC<CampContentProps> = ({
         resourceTotals={resourceTotals}
         unitDesignerState={unitDesignerState}
         unitAutomationState={unitAutomationState}
+        maxUnitsOnMap={maxUnitsOnMap}
         buildingsState={buildingsState}
         craftingState={craftingState}
         darkResearchState={darkResearchState}

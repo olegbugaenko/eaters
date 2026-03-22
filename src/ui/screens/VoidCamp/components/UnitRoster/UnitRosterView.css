@@ -243,17 +243,73 @@
 .unit-roster__automation-weight {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 0.45rem;
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
 
-.unit-roster__automation-weight span {
+.unit-roster__automation-weight-label {
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.unit-roster__automation-weight input {
-  width: 4rem;
+.unit-roster__weight-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.unit-roster__weight-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.unit-roster__weight-step:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--color-accent);
+}
+
+.unit-roster__weight-step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.unit-roster__weight-value {
+  min-width: 1.6rem;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-strong);
+  font-size: 0.85rem;
+  padding: 0 0.1rem;
+  border-left: 1px solid rgba(148, 163, 184, 0.2);
+  border-right: 1px solid rgba(148, 163, 184, 0.2);
+  line-height: 1.55rem;
+}
+
+.unit-roster__weight-percent {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  min-width: 2.8rem;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
 }
 
 .unit-roster__slot-empty {

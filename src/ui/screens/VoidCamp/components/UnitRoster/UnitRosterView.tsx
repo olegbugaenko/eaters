@@ -7,10 +7,9 @@ import {
 } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 import { Button } from "@ui-shared/Button";
-import { StableInput } from "@ui-shared/StableInput";
+import { useLocalization } from "@ui/shared/useLocalization";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
-import { useLocalization } from "@ui/shared/useLocalization";
 import "./UnitRosterView.css";
 import type { UnitAutomationModuleUiApi } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 
@@ -18,6 +17,7 @@ interface UnitRosterViewProps {
   state: UnitDesignerBridgeState;
   automation: UnitAutomationBridgeState;
   hasEnemyStrategies: boolean;
+  maxUnitsOnMap: number;
 }
 
 const buildUnitMap = (
@@ -109,6 +109,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
   state,
   automation,
   hasEnemyStrategies,
+  maxUnitsOnMap,
 }) => {
   const { uiApi } = useAppLogic();
   const { t } = useLocalization();
@@ -240,6 +241,55 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
       automationModule.setAutomationWeight(unitId, weight);
     },
     [automationModule],
+  );
+
+  const totalEnabledWeight = useMemo(() => {
+    let total = 0;
+    roster.forEach((id) => {
+      if (automationLookup.get(id)?.enabled) {
+        total += automationLookup.get(id)?.weight ?? 1;
+      }
+    });
+    return total;
+  }, [roster, automationLookup]);
+
+  const getSharePercent = useCallback(
+    (unitId: string): number | null => {
+      const entry = automationLookup.get(unitId);
+      if (!entry?.enabled || totalEnabledWeight <= 0) return null;
+      const enabledCount = roster.filter(
+        (id) => automationLookup.get(id)?.enabled,
+      ).length;
+      if (enabledCount < 2) return null;
+      return Math.round((entry.weight / totalEnabledWeight) * 100);
+    },
+    [automationLookup, totalEnabledWeight, roster],
+  );
+
+  const getShareTooltip = useCallback(
+    (unitId: string): string => {
+      const entry = automationLookup.get(unitId);
+      if (!entry?.enabled || totalEnabledWeight <= 0) {
+        return t("voidCamp.unitRoster.shareHint", "Share of this unit type in the auto-spawned army");
+      }
+      const percent = entry.weight / totalEnabledWeight;
+      const approxCount = Math.round(percent * maxUnitsOnMap);
+      return t(
+        "voidCamp.unitRoster.shareTooltip",
+        "approximately {{count}} out of {{max}} maximum units",
+      )
+        .replace("{{count}}", String(approxCount))
+        .replace("{{max}}", String(maxUnitsOnMap));
+    },
+    [automationLookup, totalEnabledWeight, maxUnitsOnMap, t],
+  );
+
+  const handleWeightStep = useCallback(
+    (unitId: string, delta: 1 | -1) => {
+      const current = automationLookup.get(unitId)?.weight ?? 1;
+      handleAutomationWeightChange(unitId, Math.max(1, current + delta));
+    },
+    [automationLookup, handleAutomationWeightChange],
   );
 
   const openStrategySettings = useCallback(
@@ -419,25 +469,44 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                               />
                               {t("scene.summoning.automate", "Automate")}
                             </label>
-                            <label className="unit-roster__automation-weight">
-                              <span>
-                                {t("voidCamp.unitRoster.weight", "Weight")}
+                            <div
+                              className="unit-roster__automation-weight"
+                              title={getShareTooltip(unit.id)}
+                            >
+                              <span className="unit-roster__automation-weight-label">
+                                {t("voidCamp.unitRoster.weight", "Share")}
                               </span>
-                              <StableInput
-                                type="number"
-                                min={1}
-                                value={
-                                  automationLookup.get(unit.id)?.weight ?? 1
-                                }
-                                onCommit={(value) => {
-                                  const nextValue = Number.parseInt(value, 10);
-                                  handleAutomationWeightChange(
-                                    unit.id,
-                                    Number.isNaN(nextValue) ? 1 : nextValue,
-                                  );
-                                }}
-                              />
-                            </label>
+                              <div className="unit-roster__weight-stepper">
+                                <button
+                                  type="button"
+                                  className="unit-roster__weight-step"
+                                  onClick={() => handleWeightStep(unit.id, -1)}
+                                  disabled={
+                                    (automationLookup.get(unit.id)?.weight ??
+                                      1) <= 1
+                                  }
+                                  aria-label="Decrease share"
+                                >
+                                  −
+                                </button>
+                                <span className="unit-roster__weight-value">
+                                  {automationLookup.get(unit.id)?.weight ?? 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="unit-roster__weight-step"
+                                  onClick={() => handleWeightStep(unit.id, 1)}
+                                  aria-label="Increase share"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              {getSharePercent(unit.id) !== null && (
+                                <span className="unit-roster__weight-percent">
+                                  ≈{getSharePercent(unit.id)}%
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ) : null}
                       </div>

@@ -16,6 +16,10 @@ export interface ResourceCostDisplayProps {
   cost: Record<string, number>;
   missing?: Record<string, number>;
   resources?: readonly ResourceCostDisplayResource[];
+  /** When true, do not show "(+N needed)" for shortfalls (still styled as missing via color). */
+  hideMissing?: boolean;
+  /** When true, show only icon + amount (no resource name label). */
+  hideLabels?: boolean;
 }
 
 const formatAmount = (value: number): string => {
@@ -104,9 +108,15 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
   cost,
   missing,
   resources,
+  hideMissing = false,
+  hideLabels = false,
 }) => {
   const { t } = useLocalization();
-  const classes = classNames("resource-cost", className);
+  const classes = classNames(
+    "resource-cost",
+    hideLabels && "resource-cost--no-labels",
+    className,
+  );
 
   const getResourceLabel = (id: string, explicitLabel?: string): string => {
     if (id === "mana") {
@@ -159,9 +169,11 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
             {renderCostIcon(resource.id, label)}
             <span className="resource-cost__value">
               <span className="resource-cost__amount">{formatAmount(amount)}</span>
-              <span className="resource-cost__label">{label}</span>
+              {!hideLabels ? (
+                <span className="resource-cost__label">{label}</span>
+              ) : null}
             </span>
-            {missingAmount > 0 ? (
+            {!hideMissing && missingAmount > 0 ? (
               <span className="resource-cost__missing">
                 (+{formatAmount(missingAmount)} {t("voidCamp.common.needed", "needed")})
               </span>

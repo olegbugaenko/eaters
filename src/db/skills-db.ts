@@ -505,7 +505,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Spell Power",
     description: "Increase your spell power.",
     nodePosition: { x: -1, y: -3 },
-    maxLevel: 5,
+    maxLevel: 8,
     icon: "spell_power_1_5.png",
     effects: {
       spell_power: {

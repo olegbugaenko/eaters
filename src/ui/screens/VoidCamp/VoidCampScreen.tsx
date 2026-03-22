@@ -61,6 +61,11 @@ import {
   DEFAULT_UNIT_AUTOMATION_STATE,
   UNIT_AUTOMATION_STATE_BRIDGE_KEY,
 } from "@logic/modules/active-map/unit-automation/unit-automation.const";
+import {
+  NECROMANCER_RESOURCES_BRIDGE_KEY,
+} from "@logic/modules/active-map/necromancer/necromancer.const";
+import type { NecromancerResourcesPayload } from "@logic/modules/active-map/necromancer/necromancer.types";
+import { MAX_UNITS_ON_MAP } from "@logic/modules/active-map/necromancer/necromancer.const";
 import { DarkResearchBridgeState } from "@logic/modules/camp/dark-research/dark-research.types";
 import {
   DARK_RESEARCH_STATE_BRIDGE_KEY,
@@ -106,7 +111,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   onTabChange,
 }) => {
   const { uiApi, bridge } = useAppLogic();
-  const { language, setLanguage, t } = useLocalization();
+  const { language, setLanguage, availableLanguages, t } = useLocalization();
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isStatisticsOpen, setStatisticsOpen] = useState(false);
@@ -181,6 +186,12 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     DARK_RESEARCH_STATE_BRIDGE_KEY,
     DEFAULT_DARK_RESEARCH_STATE as DarkResearchBridgeState
   );
+  const necromancerResources = useBridgeValue(
+    bridge,
+    NECROMANCER_RESOURCES_BRIDGE_KEY,
+    { mana: { current: 0, max: 0 }, sanity: { current: 0, max: 0 }, maxUnits: MAX_UNITS_ON_MAP } as NecromancerResourcesPayload,
+  );
+  const maxUnitsOnMap = necromancerResources.maxUnits;
   const artifactsState = useBridgeValue(
     bridge,
     ARTIFACTS_STATE_BRIDGE_KEY,
@@ -416,6 +427,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             buildingsState={buildingsState}
             unitDesignerState={unitDesignerState}
             unitAutomationState={unitAutomationState}
+            maxUnitsOnMap={maxUnitsOnMap}
             craftingState={craftingState}
             darkResearchState={darkResearchState}
             artifactsState={artifactsState}
@@ -446,6 +458,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         onGraphicsSettingChange={handleGraphicsSettingChange}
         language={language}
         onLanguageChange={setLanguage}
+        availableLanguages={availableLanguages}
         t={t}
       />
       <StatisticsModal

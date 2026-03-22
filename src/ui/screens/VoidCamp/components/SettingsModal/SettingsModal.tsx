@@ -7,6 +7,7 @@ import type {
 } from "@screens/VoidCamp/hooks/useGraphicsSettings";
 import "./SettingsModal.css";
 import type { SupportedLanguage } from "@logic/services/localization/localization.types";
+import type { LanguageEntry } from "@db/languages-db";
 
 export type SettingsTab = "game-data" | "audio" | "graphics";
 
@@ -29,6 +30,7 @@ interface SettingsModalProps {
   readonly onGraphicsSettingChange: (key: GraphicsSettingKey, value: boolean) => void;
   readonly language: SupportedLanguage;
   readonly onLanguageChange: (language: SupportedLanguage) => void;
+  readonly availableLanguages: readonly LanguageEntry[];
   readonly t: (key: string, fallback?: string) => string;
 }
 
@@ -48,6 +50,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onGraphicsSettingChange,
   language,
   onLanguageChange,
+  availableLanguages,
   t,
 }) => {
   const titleId = useId();
@@ -144,7 +147,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     value={language}
                     onChange={(event) => onLanguageChange(event.target.value as SupportedLanguage)}
                   >
-                    <option value="en">{t("settings.language.english", "English")}</option>
+                    {availableLanguages.map((entry) => (
+                      <option key={entry.code} value={entry.code}>
+                        {entry.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

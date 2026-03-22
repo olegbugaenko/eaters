@@ -38,6 +38,7 @@ type CampTabPanelsProps = {
   resourceTotals: ResourceAmountPayload[];
   unitDesignerState: UnitDesignerBridgeState;
   unitAutomationState: UnitAutomationBridgeState;
+  maxUnitsOnMap: number;
   buildingsState: BuildingsWorkshopBridgeState;
   craftingState: CraftingBridgeState;
   darkResearchState: DarkResearchBridgeState;
@@ -59,6 +60,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
   resourceTotals,
   unitDesignerState,
   unitAutomationState,
+  maxUnitsOnMap,
   buildingsState,
   craftingState,
   darkResearchState,
@@ -212,6 +214,7 @@ export const CampTabPanels: React.FC<CampTabPanelsProps> = ({
               state={unitDesignerState}
               automation={unitAutomationState}
               hasEnemyStrategies={hasEnemyStrategies}
+              maxUnitsOnMap={maxUnitsOnMap}
             />
           )}
         </div>

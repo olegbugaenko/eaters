@@ -283,15 +283,17 @@ export const SceneSummoningPanel = forwardRef<
             </div>
           </div>
           <div className="scene-summoning-panel__section scene-summoning-panel__section--center">
-            <div className="scene-summoning-panel__spells-header">
-              {t("scene.summoning.header", "Summoning")}
-            </div>
-            <div className="scene-summoning-panel__unit-cap-indicator">
-              {t("scene.summoning.units", "Units")}: {unitCount}/
-              {resources.maxUnits} ·{" "}
-              {atUnitCap
-                ? t("scene.summoning.capReached", "Cap reached")
-                : `${remainingUnitSlots} ${t("scene.summoning.slotsLeft", "slots left")}`}
+            <div className="scene-summoning-panel__summon-title-row">
+              <div className="scene-summoning-panel__spells-header">
+                {t("scene.summoning.header", "Summoning")}
+              </div>
+              <div className="scene-summoning-panel__unit-cap-indicator">
+                {t("scene.summoning.units", "Units")}: {unitCount}/
+                {resources.maxUnits} ·{" "}
+                {atUnitCap
+                  ? t("scene.summoning.capReached", "Cap reached")
+                  : `${remainingUnitSlots} ${t("scene.summoning.slotsLeft", "slots left")}`}
+              </div>
             </div>
             {atUnitCap && (
               <div className="scene-summoning-panel__unit-cap-warning">
@@ -357,7 +359,7 @@ export const SceneSummoningPanel = forwardRef<
                       }}
                       aria-disabled={!canAfford}
                     >
-                      <div className="scene-summoning-panel__unit-header">
+                      <div className="scene-summoning-panel__unit-main-row">
                         <div className="scene-summoning-panel__unit-name-wrapper">
                           <span className="scene-summoning-panel__unit-name">
                             {option.name}
@@ -367,6 +369,14 @@ export const SceneSummoningPanel = forwardRef<
                               ({unitCountsByDesign[option.designId]})
                             </span>
                           )}
+                        </div>
+                        <div className="scene-summoning-panel__unit-cost">
+                          <ResourceCostDisplay
+                            cost={option.cost}
+                            missing={missing}
+                            hideMissing
+                            hideLabels
+                          />
                         </div>
                         {automationState.unlocked && (
                           <label
@@ -388,12 +398,6 @@ export const SceneSummoningPanel = forwardRef<
                             </span>
                           </label>
                         )}
-                      </div>
-                      <div className="scene-summoning-panel__unit-cost">
-                        <ResourceCostDisplay
-                          cost={option.cost}
-                          missing={missing}
-                        />
                       </div>
                     </div>
                   </div>
@@ -459,19 +463,21 @@ export const SceneSummoningPanel = forwardRef<
                     onFocus={() => showSpellTooltip(spell)}
                     onBlur={hideTooltip}
                   >
-                    <div className="scene-summoning-panel__spell-header">
+                    <div className="scene-summoning-panel__spell-main-row">
                       <span className="scene-summoning-panel__spell-name">
                         {spell.name}
                       </span>
+                      <div className="scene-summoning-panel__spell-cost">
+                        <ResourceCostDisplay
+                          cost={spell.cost}
+                          missing={missing}
+                          hideMissing
+                          hideLabels
+                        />
+                      </div>
                       <span className="scene-summoning-panel__spell-status">
                         {statusLabel}
                       </span>
-                    </div>
-                    <div className="scene-summoning-panel__spell-cost">
-                      <ResourceCostDisplay
-                        cost={spell.cost}
-                        missing={missing}
-                      />
                     </div>
                   </div>
                 );

@@ -9,6 +9,8 @@
   align-items: flex-end;
   z-index: 20;
   contain: layout;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .scene-summoning-panel__summon {
@@ -35,11 +37,26 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  background: var(--color-surface-saturated);
+  background: rgba(18, 20, 23, 0.75);
   padding: 0.85rem 1rem 1rem;
   gap: 0.5rem;
   justify-content: flex-start;
   align-items: flex-start;
+}
+
+.scene-summoning-panel__summon-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+}
+
+.scene-summoning-panel__summon-title-row .scene-summoning-panel__unit-cap-indicator {
+  flex: 0 1 auto;
+  margin-left: auto;
+  text-align: right;
 }
 
 .scene-summoning-panel__unit-cap-indicator {
@@ -140,7 +157,7 @@
 .scene-summoning-panel__unit-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.45rem;
   width: 100%;
   max-height: 235px;
   overflow-y: auto;
@@ -156,8 +173,8 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.6rem 0.85rem;
+  gap: 0;
+  padding: 0.45rem 0.65rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-soft);
   background: rgba(34, 34, 34, 0.45);
@@ -183,17 +200,22 @@
   opacity: 0.6;
 }
 
-.scene-summoning-panel__unit-header {
+.scene-summoning-panel__unit-main-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .scene-summoning-panel__unit-name-wrapper {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .scene-summoning-panel__unit-name {
@@ -201,6 +223,9 @@
   font-weight: 700;
   color: #f8fafc;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .scene-summoning-panel__unit-count {
@@ -214,23 +239,26 @@
 }
 
 .scene-summoning-panel__unit-cost {
-  font-size: 0.8rem;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
   color: #e2e8f0;
+  line-height: 1.2;
 }
 
 .scene-summoning-panel__automation-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.6rem;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
   border-radius: 0.6rem;
   border: 1px solid rgba(148, 163, 184, 0.35);
   background: rgba(15, 23, 42, 0.5);
   color: #cbd5f5;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   cursor: pointer;
   user-select: none;
   flex-shrink: 0;
+  margin-left: 0.55rem;
 }
 
 .scene-summoning-panel__automation-toggle input {
@@ -244,7 +272,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  background: var(--color-surface-saturated);
+  background: rgba(18, 20, 23, 0.75);
   padding: 0.85rem 1rem 1rem;
   height: 220px;
 }
@@ -276,22 +304,21 @@
 .scene-summoning-panel__spell-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.45rem;
   width: 100%;
   max-height: 235px;
   overflow-y: auto;
   padding-right: 0.35rem;
-  max-height: 235px;
 }
 
 .scene-summoning-panel__spell {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.6rem 0.85rem;
+  gap: 0;
+  padding: 0.45rem 0.65rem;
   border-radius: var(--radius-sm);
-  background: rgba(34, 34, 34, 0.45);
+  background: rgba(34, 34, 34, 0.55);
   border: 1px solid var(--color-border-soft);
   color: inherit;
   font: inherit;
@@ -353,28 +380,40 @@
   color: #facc15;
 }
 
-.scene-summoning-panel__spell-header {
+.scene-summoning-panel__spell-main-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .scene-summoning-panel__spell-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.95rem;
   font-weight: 600;
   color: #f8fafc;
 }
 
 .scene-summoning-panel__spell-status {
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #cbd5f5;
+  margin-left: 0.35rem;
 }
 
 .scene-summoning-panel__spell-cost {
-  font-size: 0.8rem;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  margin-right: 0.25rem;
 }
 
 @keyframes spell-cast-pulse {

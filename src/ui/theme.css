@@ -486,10 +486,21 @@ input[type="number"]:focus-visible {
   background: #101216;
 }
 
-select{
-  background-color: rgb(0, 0, 0);
+select {
+  background: rgba(15, 23, 25, 1);
+  color: var(--color-text-strong);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.5rem;
+  outline: none;
+  transition: border-color 0.2s ease;
 }
 
-option{
+select:focus {
+  border-color: var(--color-accent);
+}
+
+option {
   background-color: rgb(14, 15, 14);
+  color: var(--color-text-strong);
 }
