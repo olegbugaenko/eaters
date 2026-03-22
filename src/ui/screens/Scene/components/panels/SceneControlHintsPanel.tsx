@@ -4,7 +4,9 @@ import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import type { MapModuleUiApi } from "@logic/modules/active-map/map/map.types";
 import {
   DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
+  DEFAULT_MAP_SUMMONING_PANEL_HIDDEN,
   MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
+  MAP_SUMMONING_PANEL_HIDDEN_BRIDGE_KEY,
 } from "@logic/modules/active-map/map/map.const";
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./SceneControlHintsPanel.css";
@@ -17,10 +19,18 @@ export const SceneControlHintsPanel: React.FC = React.memo(() => {
     MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
     DEFAULT_MAP_CONTROL_HINTS_COLLAPSED
   );
+  const summoningPanelHidden = useBridgeValue(
+    bridge,
+    MAP_SUMMONING_PANEL_HIDDEN_BRIDGE_KEY,
+    DEFAULT_MAP_SUMMONING_PANEL_HIDDEN
+  );
   const { t } = useLocalization();
   const handleToggle = useCallback(() => {
     map.setControlHintsCollapsed(!collapsed);
   }, [collapsed, map]);
+  const handleToggleSummoningPanel = useCallback(() => {
+    map.setSummoningPanelHidden(!summoningPanelHidden);
+  }, [summoningPanelHidden, map]);
 
   return (
     <div className="scene-control-hints" data-collapsed={collapsed}>
@@ -44,6 +54,26 @@ export const SceneControlHintsPanel: React.FC = React.memo(() => {
           </ul>
         )}
       </div>
+      {/* Summoning panel toggle */}
+      <button
+        type="button"
+        className="scene-control-hints__magic-toggle"
+        onClick={handleToggleSummoningPanel}
+        title={
+          summoningPanelHidden
+            ? t("scene.controls.showPanels", "Show summoning & cast panels")
+            : t("scene.controls.hidePanels", "Hide summoning & cast panels")
+        }
+        aria-label={
+          summoningPanelHidden
+            ? t("scene.controls.showPanels", "Show summoning & cast panels")
+            : t("scene.controls.hidePanels", "Hide summoning & cast panels")
+        }
+      >
+        <span className="scene-control-hints__magic-icon" aria-hidden="true">
+          ✦
+        </span>
+      </button>
     </div>
   );
 });

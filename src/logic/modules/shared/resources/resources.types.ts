@@ -40,4 +40,6 @@ export interface ResourcesModuleOptions {
 export interface ResourcesSaveData {
   totals: ResourceAmount;
   bricksDestroyed?: number;
+  /** If true, the player has obtained this resource at least once (persists after spending to 0). */
+  everObtained?: Partial<Record<ResourceId, boolean>>;
 }

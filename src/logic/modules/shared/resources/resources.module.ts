@@ -3,7 +3,9 @@ import {
   RESOURCE_IDS,
   ResourceAmount,
   ResourceId,
+  ResourceEverObtained,
   ResourceStockpile,
+  createEmptyResourceEverObtained,
   createEmptyResourceStockpile,
   getResourceConfig,
   normalizeResourceAmount,
@@ -58,6 +60,8 @@ export class ResourcesModule implements GameModule {
   private readonly statistics?: StatisticsTracker;
   private readonly localization = null as import("@logic/services/localization/LocalizationService").LocalizationService | null;
   private totals: ResourceStockpile = createEmptyResourceStockpile();
+  /** Once true, resource stays visible in UI even at 0 balance (if unlocked by progression rules). */
+  private everObtained: ResourceEverObtained = createEmptyResourceEverObtained();
   private runGains: ResourceStockpile = createEmptyResourceStockpile();
   private runActive = false;
   private summaryCompleted = false;
@@ -93,6 +97,7 @@ export class ResourcesModule implements GameModule {
 
   public reset(): void {
     this.totals = createEmptyResourceStockpile();
+    this.everObtained = createEmptyResourceEverObtained();
     this.runGains = createEmptyResourceStockpile();
     this.runActive = false;
     this.summaryCompleted = false;
@@ -111,6 +116,8 @@ export class ResourcesModule implements GameModule {
     const parsed = this.parseSaveData(data);
     if (parsed) {
       this.totals = parsed.totals;
+      this.everObtained = parsed.everObtained;
+      this.syncEverObtainedFromTotals();
       this.totalBricksDestroyed = parsed.bricksDestroyed;
       this.runBricksDestroyed = 0;
       if (typeof this.totalBricksDestroyed === "number") {
@@ -129,6 +136,7 @@ export class ResourcesModule implements GameModule {
     return {
       totals: { ...this.totals },
       bricksDestroyed: this.totalBricksDestroyed,
+      everObtained: this.serializeEverObtained(),
     } satisfies ResourcesSaveData;
   }
 
@@ -228,6 +236,7 @@ export class ResourcesModule implements GameModule {
     });
 
     if (changed) {
+      this.syncEverObtainedFromTotals();
       this.forceRefreshVisibleResourceIds();
       this.pushTotals();
       this.pushRunSummary();
@@ -301,6 +310,9 @@ export class ResourcesModule implements GameModule {
     });
     this.totals = totals;
     this.passiveIncomeRemainder = remainder;
+    if (changed) {
+      this.syncEverObtainedFromTotals();
+    }
     return changed;
   }
 
@@ -394,12 +406,56 @@ export class ResourcesModule implements GameModule {
     if (isDemoBuild() && config.lockedForDemo) {
       return false;
     }
+    if (this.totals[id] > 0) {
+      return true;
+    }
+    if (this.everObtained[id]) {
+      return true;
+    }
     return this.progression.areConditionsMet(config.unlockedBy);
+  }
+
+  /** Marks resources with positive balance as ever obtained (idempotent). */
+  private syncEverObtainedFromTotals(): void {
+    RESOURCE_IDS.forEach((id) => {
+      if (this.totals[id] > 0) {
+        this.everObtained[id] = true;
+      }
+    });
+  }
+
+  private serializeEverObtained(): Partial<Record<ResourceId, boolean>> | undefined {
+    const out: Partial<Record<ResourceId, boolean>> = {};
+    let any = false;
+    RESOURCE_IDS.forEach((id) => {
+      if (this.everObtained[id]) {
+        out[id] = true;
+        any = true;
+      }
+    });
+    return any ? out : undefined;
+  }
+
+  private parseEverObtainedFromSave(data: ResourcesSaveData): ResourceEverObtained {
+    const result = createEmptyResourceEverObtained();
+    const raw = data.everObtained;
+    if (raw && typeof raw === "object") {
+      RESOURCE_IDS.forEach((id) => {
+        if (raw[id] === true) {
+          result[id] = true;
+        }
+      });
+    }
+    return result;
   }
 
   private parseSaveData(
     data: unknown
-  ): { totals: ResourceStockpile; bricksDestroyed: number } | null {
+  ): {
+    totals: ResourceStockpile;
+    everObtained: ResourceEverObtained;
+    bricksDestroyed: number;
+  } | null {
     if (
       typeof data !== "object" ||
       data === null ||
@@ -408,10 +464,13 @@ export class ResourcesModule implements GameModule {
       return null;
     }
 
-    const { totals, bricksDestroyed } = data as ResourcesSaveData;
+    const save = data as ResourcesSaveData;
+    const totals = normalizeResourceAmount(save.totals);
+    const everObtained = this.parseEverObtainedFromSave(save);
     return {
-      totals: normalizeResourceAmount(totals),
-      bricksDestroyed: sanitizeBrickCount(bricksDestroyed),
+      totals,
+      everObtained,
+      bricksDestroyed: sanitizeBrickCount(save.bricksDestroyed),
     };
   }
 }

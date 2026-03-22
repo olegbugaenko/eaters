@@ -3,7 +3,7 @@ import { describe, test } from "./testRunner";
 import { DataBridge } from "../src/core/logic/ui/DataBridge";
 import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.module";
 import { AchievementsModule } from "../src/logic/modules/shared/achievements/achievements.module";
-import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
+import type { MapLevelStats, MapStats } from "../src/logic/modules/active-map/map/map.types";
 
 const createBonuses = (): BonusesModule => {
   const bonuses = new BonusesModule();
@@ -15,9 +15,9 @@ const createAchievements = (bridge: DataBridge, bonuses: BonusesModule): Achieve
   new AchievementsModule({ bridge, bonuses });
 
 const createMegaBrickStats = (levels: number): MapStats => {
-  const stats: Record<number, { success: number; failure: number; bestTimeMs: number | null }> = {};
+  const stats: Record<number, MapLevelStats> = {};
   for (let level = 1; level <= levels; level += 1) {
-    stats[level] = { success: 1, failure: 0, bestTimeMs: null };
+    stats[level] = { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 };
   }
   return { megaBrick: stats };
 };

@@ -14,6 +14,7 @@ export const MAP_RESOURCE_PREVIEW_BRIDGE_KEY = "maps/resourcePreview";
 export const MAP_AUTO_RESTART_BRIDGE_KEY = "maps/autoRestart";
 export const MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY = "maps/selectViewTransform";
 export const MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY = "maps/controlHintsCollapsed";
+export const MAP_SUMMONING_PANEL_HIDDEN_BRIDGE_KEY = "maps/summoningPanelHidden";
 export const MAP_INSPECTED_TARGET_BRIDGE_KEY = "maps/inspectedTarget";
 export const MAP_EFFECTS_BRIDGE_KEY = "maps/effects";
 
@@ -26,6 +27,7 @@ export const DEFAULT_MAP_AUTO_RESTART_STATE: MapAutoRestartState = Object.freeze
 });
 
 export const DEFAULT_MAP_CONTROL_HINTS_COLLAPSED = false;
+export const DEFAULT_MAP_SUMMONING_PANEL_HIDDEN = false;
 export const INSPECT_TARGET_TOOLTIP_THROTTLE_MS = 200;
 
 /**

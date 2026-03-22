@@ -7,7 +7,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     // ВАЖЛИВО: розмір задається для контенту (а не для рамки/вікна)
     width: 1920,
-    height: 1080,
+    height: 1480,
     useContentSize: true,
 
     resizable: false,

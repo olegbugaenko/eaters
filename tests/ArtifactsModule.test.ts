@@ -6,7 +6,7 @@ import { ARTIFACTS_STATE_BRIDGE_KEY } from "../src/logic/modules/camp/artifacts/
 import { NewUnlockNotificationService } from "../src/logic/services/new-unlock-notification/NewUnlockNotification";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 
-const CLEARED = { success: 1, failure: 0, bestTimeMs: null };
+const CLEARED = { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 };
 
 function createModule() {
   const bridge = new DataBridge();

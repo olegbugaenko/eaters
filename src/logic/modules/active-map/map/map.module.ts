@@ -54,10 +54,12 @@ import {
   MAP_AUTO_RESTART_BRIDGE_KEY,
   MAP_SELECT_VIEW_TRANSFORM_BRIDGE_KEY,
   MAP_CONTROL_HINTS_COLLAPSED_BRIDGE_KEY,
+  MAP_SUMMONING_PANEL_HIDDEN_BRIDGE_KEY,
   MAP_INSPECTED_TARGET_BRIDGE_KEY,
   MAP_EFFECTS_BRIDGE_KEY,
   DEFAULT_MAP_AUTO_RESTART_STATE,
   DEFAULT_MAP_CONTROL_HINTS_COLLAPSED,
+  DEFAULT_MAP_SUMMONING_PANEL_HIDDEN,
   DEFAULT_MAP_ID,
   PLAYER_UNIT_SPAWN_SAFE_RADIUS,
   PLAYER_UNIT_SPAWN_JITTER_RADIUS,
@@ -98,6 +100,7 @@ export class MapModule implements GameModule {
   private autoRestartUnlocked = false;
   private autoRestartEnabled = false;
   private controlHintsCollapsed = DEFAULT_MAP_CONTROL_HINTS_COLLAPSED;
+  private summoningPanelHidden = DEFAULT_MAP_SUMMONING_PANEL_HIDDEN;
   private mapSelectViewTransform: { scale: number; worldX: number; worldY: number } | null = null;
   private readonly options: MapModuleOptions;
   private readonly sceneCleanup: MapSceneCleanupContract;
@@ -154,6 +157,7 @@ export class MapModule implements GameModule {
     this.pushMapResourcePreviewCache();
     this.pushMapSelectViewTransform();
     this.pushControlHintsState();
+    this.pushSummoningPanelState();
     this.objectiveIntegrity.reset();
     this.resetInspectedTargetState();
     this.resetMapEffectsState();
@@ -179,6 +183,8 @@ export class MapModule implements GameModule {
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
     this.controlHintsCollapsed =
       parsed?.controlHintsCollapsed ?? DEFAULT_MAP_CONTROL_HINTS_COLLAPSED;
+    this.summoningPanelHidden =
+      parsed?.summoningPanelHidden ?? DEFAULT_MAP_SUMMONING_PANEL_HIDDEN;
     this.mapSelectViewTransform = parsed?.mapSelectViewTransform ?? null;
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
@@ -190,6 +196,7 @@ export class MapModule implements GameModule {
     this.pushMapResourcePreviewCache();
     this.pushMapSelectViewTransform();
     this.pushControlHintsState();
+    this.pushSummoningPanelState();
 
     this.selection.applySavedSelection(
       parsed?.mapId ?? null,
@@ -208,6 +215,7 @@ export class MapModule implements GameModule {
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
       controlHintsCollapsed: this.controlHintsCollapsed,
+      summoningPanelHidden: this.summoningPanelHidden,
       lastPlayedMap: this.selection.getLastPlayedMap()
         ? {
             mapId: this.selection.getLastPlayedMap()!.mapId,
@@ -814,6 +822,14 @@ export class MapModule implements GameModule {
     );
   }
 
+  private pushSummoningPanelState(): void {
+    DataBridgeHelpers.pushState(
+      this.options.bridge,
+      MAP_SUMMONING_PANEL_HIDDEN_BRIDGE_KEY,
+      this.summoningPanelHidden
+    );
+  }
+
   public setMapSelectViewTransform(transform: { scale: number; worldX: number; worldY: number } | null): void {
     this.mapSelectViewTransform = transform;
     this.pushMapSelectViewTransform();
@@ -825,6 +841,14 @@ export class MapModule implements GameModule {
     }
     this.controlHintsCollapsed = collapsed;
     this.pushControlHintsState();
+  }
+
+  public setSummoningPanelHidden(hidden: boolean): void {
+    if (this.summoningPanelHidden === hidden) {
+      return;
+    }
+    this.summoningPanelHidden = hidden;
+    this.pushSummoningPanelState();
   }
 
   private generateBricks(config: MapConfig, mapLevel: number): BrickData[] {
@@ -1122,6 +1146,7 @@ export class MapModule implements GameModule {
       selectedLevels?: unknown;
       autoRestartEnabled?: unknown;
       controlHintsCollapsed?: unknown;
+      summoningPanelHidden?: unknown;
       lastPlayedMap?: unknown;
       mapSelectViewTransform?: unknown;
     };
@@ -1133,6 +1158,7 @@ export class MapModule implements GameModule {
     const selectedLevels = this.parseSelectedLevels(raw.selectedLevels);
     const autoRestartEnabled = raw.autoRestartEnabled === true;
     const controlHintsCollapsed = raw.controlHintsCollapsed === true;
+    const summoningPanelHidden = raw.summoningPanelHidden === true;
     const lastPlayedMap = this.parseLastPlayedMap(raw.lastPlayedMap);
     const mapSelectViewTransform = this.parseViewTransform(raw.mapSelectViewTransform);
     return {
@@ -1142,6 +1168,7 @@ export class MapModule implements GameModule {
       selectedLevels,
       autoRestartEnabled,
       controlHintsCollapsed,
+      summoningPanelHidden,
       lastPlayedMap,
       mapSelectViewTransform,
     };

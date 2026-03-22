@@ -215,6 +215,17 @@ export const createEmptyResourceStockpile = (): ResourceStockpile => {
   return stockpile;
 };
 
+/** Tracks whether the player has ever held a positive amount of each resource (for UI visibility). */
+export type ResourceEverObtained = Record<ResourceId, boolean>;
+
+export const createEmptyResourceEverObtained = (): ResourceEverObtained => {
+  const record = {} as ResourceEverObtained;
+  RESOURCE_IDS.forEach((id) => {
+    record[id] = false;
+  });
+  return record;
+};
+
 export const normalizeResourceAmount = (
   amount: ResourceAmount | ResourceStockpile | null | undefined
 ): ResourceStockpile => {

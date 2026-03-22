@@ -30,6 +30,8 @@ export const DEFAULT_FILAMENT_EDGE_BLUR = 0.25;
 export const DEFAULT_ROTATION = 0;
 export const MIN_MAP_SIZE = 1;
 export const MAX_SCALE = 4;
+/** Multiplier for min zoom: smaller = can zoom out further. 0.5 allows ~2x more zoom out than fit-to-screen. */
+export const MIN_ZOOM_SCALE_MULTIPLIER = 0.5;
 
 export const REMOVALS_PER_FLUSH = 128;
 export const REMOVAL_FLUSH_INTERVAL_MS = 250;

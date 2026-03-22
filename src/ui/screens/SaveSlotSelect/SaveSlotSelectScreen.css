@@ -57,13 +57,10 @@
 
 .save-slot-screen__language-popup-text {
   color: var(--color-text-muted);
-}
-
-.save-slot-screen__language-popup-search {
   margin-bottom: var(--spacing-md);
 }
 
-.save-slot-screen__language-popup-input {
+.save-slot-screen__language-popup-select {
   width: 100%;
   max-width: 360px;
   background: rgba(0, 0, 0, 0.35);
@@ -71,18 +68,12 @@
   border-radius: var(--radius-sm);
   color: var(--color-text-primary);
   padding: 8px 10px;
+  font-size: 1rem;
+  cursor: pointer;
 }
 
 .save-slot-screen__language-popup-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  justify-content: center;
-}
-
-.save-slot-screen__language-popup-no-results {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+  margin-top: var(--spacing-lg);
 }
 
 .save-slot-background {

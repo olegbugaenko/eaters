@@ -42,22 +42,22 @@ describe("demo locks", () => {
 
     const mapStats: MapStats = {
       trainingGrounds: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       foundations: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       initial: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       oldForge: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       wire: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       silverRing: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
     };
     const unlocks = new UnlockService({
@@ -92,22 +92,22 @@ describe("demo locks", () => {
 
     const mapStats: MapStats = {
       trainingGrounds: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       foundations: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       initial: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       oldForge: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       wire: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
       silverRing: {
-        1: { success: 1, failure: 0, bestTimeMs: null },
+        1: { success: 1, failure: 0, bestTimeMs: null, totalTimeMs: 0 },
       },
     };
     const unlocks = new UnlockService({

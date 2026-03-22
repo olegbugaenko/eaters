@@ -64,6 +64,7 @@ export interface BridgeSchema {
   "maps/autoRestart": MapAutoRestartState;
   "maps/selectViewTransform": ViewTransform | null;
   "maps/controlHintsCollapsed": boolean;
+  "maps/summoningPanelHidden": boolean;
   "maps/inspectedTarget": TargetSnapshot<"brick" | "enemy" | "playerUnit", BrickRuntimeState | EnemyRuntimeState | PlayerUnitState> | null;
   "maps/effects": MapEffectsBridgeState;
 

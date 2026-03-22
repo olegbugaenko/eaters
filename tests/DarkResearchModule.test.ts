@@ -5,6 +5,12 @@ import { BonusesModule } from "../src/logic/modules/shared/bonuses/bonuses.modul
 import { NewUnlockNotificationService } from "../src/logic/services/new-unlock-notification/NewUnlockNotification";
 import { DarkResearchModule } from "../src/logic/modules/camp/dark-research/dark-research.module";
 import { DARK_RESEARCH_STATE_BRIDGE_KEY } from "../src/logic/modules/camp/dark-research/dark-research.const";
+import {
+  DEFAULT_NEW_UNLOCKS_STATE,
+  NEW_UNLOCKS_BRIDGE_KEY,
+} from "../src/logic/services/new-unlock-notification/new-unlock-notification.const";
+import type { NewUnlockNotificationBridgeState } from "../src/logic/services/new-unlock-notification/new-unlock-notification.types";
+import { DARK_RESEARCH_IDS } from "../src/db/dark-research-db";
 import type { DarkResearchBridgeState } from "../src/logic/modules/camp/dark-research/dark-research.types";
 import { getSkillConfig } from "../src/db/skills-db";
 
@@ -30,7 +36,7 @@ const createModule = (getSkillLevel: () => number) => {
     getSkillLevel,
   });
 
-  return { module, bridge, bonuses };
+  return { module, bridge, bonuses, newUnlocks };
 };
 
 describe("DarkResearchModule", () => {
@@ -188,5 +194,35 @@ describe("DarkResearchModule", () => {
     const after = bonuses.getBonusValue("all_units_attack_multiplier");
 
     assert.ok(after > before, "Bite of Void should increase attack multiplier as it levels");
+  });
+
+  test("marking each darkResearch.{id} viewed clears stronghold new badge (no stuck bare path)", () => {
+    let soulsHarvestLevel = 0;
+    const { module, newUnlocks, bridge } = createModule(() => soulsHarvestLevel);
+
+    module.initialize();
+    soulsHarvestLevel = 1;
+    module.tick(0);
+
+    const snapshot = (bridge.getValue(NEW_UNLOCKS_BRIDGE_KEY) ??
+      DEFAULT_NEW_UNLOCKS_STATE) as NewUnlockNotificationBridgeState;
+    assert.ok(
+      DARK_RESEARCH_IDS.every((id) => snapshot.unseenPaths.includes(`darkResearch.${id}`)),
+      "each research should be unseen after mechanic unlocks mid-session"
+    );
+    assert.strictEqual(
+      snapshot.unseenPaths.includes("darkResearch"),
+      false,
+      "bare darkResearch path must not be registered — it was never markViewed from UI"
+    );
+
+    DARK_RESEARCH_IDS.forEach((id) => {
+      newUnlocks.markViewed(`darkResearch.${id}`);
+    });
+
+    const after = (bridge.getValue(NEW_UNLOCKS_BRIDGE_KEY) ??
+      DEFAULT_NEW_UNLOCKS_STATE) as NewUnlockNotificationBridgeState;
+    assert.deepStrictEqual(after.unseenByPrefix.darkResearch ?? [], []);
+    assert.deepStrictEqual(after.unseenPaths, []);
   });
 });

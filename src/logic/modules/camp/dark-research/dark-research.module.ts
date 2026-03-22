@@ -243,7 +243,9 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
     }
     this.hasRegisteredUnlocks = true;
 
-    this.newUnlocks.registerUnlock("darkResearch", () => this.getIsMechanicUnlocked());
+    // Only per-research paths — not a bare "darkResearch" entry. A duplicate top-level path
+    // used the same unlock check as each child but was never markViewed from the UI (cards use
+    // darkResearch.{id}), so the Stronghold tab badge stayed forever.
     DARK_RESEARCH_IDS.forEach((id) => {
       this.newUnlocks.registerUnlock(`darkResearch.${id}`, () => this.getIsMechanicUnlocked());
     });

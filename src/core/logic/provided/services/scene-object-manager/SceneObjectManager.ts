@@ -15,6 +15,7 @@ import {
   DEFAULT_COLOR,
   MIN_MAP_SIZE,
   MAX_SCALE,
+  MIN_ZOOM_SCALE_MULTIPLIER,
   REMOVALS_PER_FLUSH,
   REMOVAL_FLUSH_INTERVAL_MS,
 } from "./scene-object-manager.const";
@@ -453,8 +454,7 @@ export class SceneObjectManager {
     const minScaleHeight = safeScreenHeight / safeMapHeight;
     // Use Math.min to ensure map fits in viewport without scrolling
     const minScale = Math.min(minScaleWidth, minScaleHeight);
-    // Allow slightly smaller zoom (multiply by 0.75)
-    return clampNumber(minScale * 0.75, 0.1, MAX_SCALE);
+    return clampNumber(minScale * MIN_ZOOM_SCALE_MULTIPLIER, 0.1, MAX_SCALE);
   }
 
   private finalizeRemoval(id: string, accumulator: string[]): void {

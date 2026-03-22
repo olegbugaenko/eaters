@@ -14,6 +14,7 @@ import {
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useLocalization } from "@ui/shared/useLocalization";
 import { useBridgeRef } from "@ui-shared/useBridgeRef";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import "./SceneScreen.css";
 import { SceneTutorialActions } from "./hooks/tutorialSteps";
 import {
@@ -25,7 +26,11 @@ import {
   DEFAULT_SPELL_OPTIONS,
   SPELL_OPTIONS_BRIDGE_KEY,
 } from "@logic/modules/active-map/spellcasting/spellcasting.const";
-import { MAP_EFFECTS_BRIDGE_KEY } from "@logic/modules/active-map/map/map.const";
+import {
+  DEFAULT_MAP_SUMMONING_PANEL_HIDDEN,
+  MAP_EFFECTS_BRIDGE_KEY,
+  MAP_SUMMONING_PANEL_HIDDEN_BRIDGE_KEY,
+} from "@logic/modules/active-map/map/map.const";
 import { NECROMANCER_SPAWN_OPTIONS_BRIDGE_KEY } from "@logic/modules/active-map/necromancer/necromancer.const";
 import { useSceneRunState } from "./hooks/useSceneRunState";
 import { useSceneCameraInteraction } from "./hooks/useSceneCameraInteraction";
@@ -98,6 +103,11 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     bridge,
     MAP_EFFECTS_BRIDGE_KEY,
     DEFAULT_MAP_EFFECTS_STATE,
+  );
+  const summoningPanelHidden = useBridgeValue(
+    bridge,
+    MAP_SUMMONING_PANEL_HIDDEN_BRIDGE_KEY,
+    DEFAULT_MAP_SUMMONING_PANEL_HIDDEN,
   );
   const [summoningTooltipContent, setSummoningTooltipContent] =
     useState<SceneTooltipContent | null>(null);
@@ -523,14 +533,16 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         canAdvancePlayStep={canAdvancePlayStep}
         onAdvanceStepRef={handlePlayStepAdvanceRef}
       />
-      <SceneSummoningPanelContainer
-        panelRef={summoningPanelRef}
-        selectedSpellIdRef={selectedSpellIdRef}
-        spellCastPulse={spellCastPulse}
-        onSummon={handleSummonDesign}
-        onHoverInfoChange={setSummoningTooltipContent}
-        onToggleAutomation={handleToggleAutomation}
-      />
+      {!summoningPanelHidden && (
+        <SceneSummoningPanelContainer
+          panelRef={summoningPanelRef}
+          selectedSpellIdRef={selectedSpellIdRef}
+          spellCastPulse={spellCastPulse}
+          onSummon={handleSummonDesign}
+          onHoverInfoChange={setSummoningTooltipContent}
+          onToggleAutomation={handleToggleAutomation}
+        />
+      )}
       <div className="scene-canvas-wrapper" ref={wrapperRef}>
         <canvas
           ref={canvasRef}

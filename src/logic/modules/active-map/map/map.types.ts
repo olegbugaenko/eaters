@@ -69,6 +69,7 @@ export interface MapSaveData {
   selectedLevels?: Partial<Record<MapId, number>>;
   autoRestartEnabled?: boolean;
   controlHintsCollapsed?: boolean;
+  summoningPanelHidden?: boolean;
   lastPlayedMap?: { mapId: MapId; level: number };
   mapSelectViewTransform?: { scale: number; worldX: number; worldY: number };
 }
@@ -144,6 +145,7 @@ export interface MapModuleUiApi {
     transform: { scale: number; worldX: number; worldY: number } | null
   ): void;
   setControlHintsCollapsed(collapsed: boolean): void;
+  setSummoningPanelHidden(hidden: boolean): void;
   setInspectedTargetAtPosition(position: SceneVector2, radius?: number): void;
   clearInspectedTarget(): void;
   inspectTargetAtPosition(

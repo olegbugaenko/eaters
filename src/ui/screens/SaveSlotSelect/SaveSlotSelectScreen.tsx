@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../shared/Button";
 import { SaveSlotBackgroundScene } from "./SaveSlotBackgroundScene";
 import { VersionHistoryModal } from "@ui/shared/VersionHistoryModal";
@@ -45,7 +45,6 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
 }) => {
   const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [isLanguagePopupOpen, setLanguagePopupOpen] = useState(false);
-  const [languageQuery, setLanguageQuery] = useState("");
   const {
     language,
     setLanguage,
@@ -57,53 +56,11 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
 
   useEffect(() => {
     setLanguagePopupOpen(!hasStoredLanguagePreference());
-  }, [hasStoredLanguagePreference]);
-
-  useEffect(() => {
-    const active = availableLanguages.find((entry) => entry.code === language);
-    if (active) {
-      setLanguageQuery(active.label);
-    }
-  }, [availableLanguages, language]);
-
-  const filteredLanguages = useMemo(() => {
-    const query = languageQuery.trim().toLowerCase();
-    if (!query) {
-      return availableLanguages;
-    }
-    return availableLanguages.filter((entry) => {
-      return (
-        entry.label.toLowerCase().includes(query) ||
-        entry.code.toLowerCase().includes(query)
-      );
-    });
-  }, [availableLanguages, languageQuery]);
+  }, []); // Only on mount — do not close when user changes dropdown (Confirm button closes)
 
   const handleLanguageSelect = (nextLanguage: SupportedLanguage): void => {
     setLanguage(nextLanguage);
-    const selected = availableLanguages.find((entry) => entry.code === nextLanguage);
-    setLanguageQuery(selected?.label ?? "");
     setLanguagePopupOpen(false);
-  };
-
-  const handleLanguageSearchSubmit = (): void => {
-    const normalized = languageQuery.trim().toLowerCase();
-    if (!normalized) {
-      return;
-    }
-    const exact = availableLanguages.find(
-      (entry) =>
-        entry.label.toLowerCase() === normalized ||
-        entry.code.toLowerCase() === normalized,
-    );
-    if (exact) {
-      handleLanguageSelect(exact.code);
-      return;
-    }
-    const first = filteredLanguages[0];
-    if (first) {
-      handleLanguageSelect(first.code);
-    }
   };
 
   return (
@@ -201,38 +158,27 @@ export const SaveSlotSelectScreen: React.FC<SaveSlotSelectScreenProps> = ({
             <p className="save-slot-screen__language-popup-text">
               {t("saveSelect.language.popupText", "Select a language to continue.")}
             </p>
-            <div className="save-slot-screen__language-popup-search">
-              <input
-                type="text"
-                className="save-slot-screen__language-popup-input"
-                value={languageQuery}
-                onChange={(event) => setLanguageQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    handleLanguageSearchSubmit();
-                  }
-                }}
-                placeholder={t("saveSelect.language.searchPlaceholder", "Type to search language")}
-                autoFocus
-              />
-            </div>
-            <div className="save-slot-screen__language-popup-actions">
-              {filteredLanguages.map((entry) => (
-                <button
-                  key={entry.code}
-                  type="button"
-                  className="button secondary-button"
-                  onClick={() => handleLanguageSelect(entry.code)}
-                >
+            <select
+              className="save-slot-screen__language-popup-select"
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as SupportedLanguage)}
+              autoFocus
+            >
+              {availableLanguages.map((entry) => (
+                <option key={entry.code} value={entry.code}>
                   {entry.label}
-                </button>
+                </option>
               ))}
-              {filteredLanguages.length === 0 && (
-                <div className="save-slot-screen__language-popup-no-results">
-                  {t("saveSelect.language.noResults", "No languages found")}
-                </div>
-              )}
+            </select>
+            <div className="save-slot-screen__language-popup-actions">
+              <Button
+                onClick={() => {
+                  setLanguage(language);
+                  setLanguagePopupOpen(false);
+                }}
+              >
+                {t("saveSelect.language.confirm", "Confirm")}
+              </Button>
             </div>
           </div>
         </div>
