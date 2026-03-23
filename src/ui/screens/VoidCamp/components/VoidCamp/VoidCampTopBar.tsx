@@ -11,6 +11,7 @@ interface VoidCampTopBarProps {
   readonly showAchievements?: boolean;
   readonly onExitClick: () => void;
   readonly wishlistUrl?: string;
+  readonly discordUrl?: string;
   readonly feedbackUrl?: string;
 }
 
@@ -23,6 +24,7 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
   showAchievements,
   onExitClick,
   wishlistUrl,
+  discordUrl,
   feedbackUrl,
 }) => {
   const { t } = useLocalization();
@@ -75,6 +77,20 @@ export const VoidCampTopBar: React.FC<VoidCampTopBarProps> = ({
             rel="noreferrer"
           >
             {t("voidCamp.topBar.wishlist", "Wishlist on Steam")}
+          </a>
+        )}
+        {discordUrl && (
+          <a
+            className={classNames(
+              "void-camp-top-bar__button",
+              "void-camp-top-bar__button--discord",
+              "void-camp-top-bar__link"
+            )}
+            href={discordUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("voidCamp.topBar.discord", "Join Discord")}
           </a>
         )}
         {feedbackUrl && (

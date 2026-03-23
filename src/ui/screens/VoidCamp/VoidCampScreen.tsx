@@ -92,7 +92,7 @@ import {
 } from "@logic/modules/shared/achievements/achievements.const";
 import type { AchievementsBridgePayload } from "@logic/modules/shared/achievements/achievements.types";
 import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
-import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
+import { DISCORD_COMMUNITY_URL, PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
 import { useLocalization } from "@ui/shared/useLocalization";
 import { ARTIFACTS_STATE_BRIDGE_KEY, DEFAULT_ARTIFACTS_STATE } from "@logic/modules/camp/artifacts/artifacts.const";
 import type { ArtifactsBridgeState } from "@logic/modules/camp/artifacts/artifacts.types";
@@ -408,6 +408,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             onSettingsClick={handleOpenSettings}
             onExitClick={handleExit}
             wishlistUrl={STEAM_WISHLIST_URL}
+            discordUrl={DISCORD_COMMUNITY_URL}
             feedbackUrl={PLAYER_FEEDBACK_FORM_URL}
           />
         }

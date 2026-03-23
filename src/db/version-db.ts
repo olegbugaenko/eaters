@@ -6,6 +6,13 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.4b",
+    releaseDate: "2026-03-23",
+    changes: [
+      "Interface improvements",
+    ]
+  },
+  {
     displayName: "v0.1.4a",
     releaseDate: "2026-03-22",
     changes: [

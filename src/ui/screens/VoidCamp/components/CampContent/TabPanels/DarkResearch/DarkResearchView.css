@@ -20,6 +20,23 @@
   object-fit: contain;
 }
 
+.dark-research-view .master-detail__card {
+  border-color: transparent;
+  background: linear-gradient(
+    160deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
+}
+
+.dark-research-view .master-detail__card:hover {
+  border-color: transparent;
+}
+
+.dark-research-view .master-detail__card.master-detail__card--active {
+  border-color: var(--color-border-card-available);
+}
+
 /* Card (compact) --------------------------------------------------------- */
 
 .dark-research-card__title-row {
