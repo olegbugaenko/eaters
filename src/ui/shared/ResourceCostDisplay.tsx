@@ -4,6 +4,12 @@ import { classNames } from "@ui-shared/classNames";
 import { ResourceIcon } from "./icons/ResourceIcon";
 import { formatNumber } from "./format/number";
 import { useLocalization } from "@ui/shared/useLocalization";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
+import { HintTooltip } from "@ui-shared/HintTooltip";
+import {
+  ResourceShortfallEntry,
+  ResourceShortfallHintContent,
+} from "@ui-shared/ResourceShortfallHintContent";
 import "./ResourceCostDisplay.css";
 
 export interface ResourceCostDisplayResource {
@@ -20,6 +26,10 @@ export interface ResourceCostDisplayProps {
   hideMissing?: boolean;
   /** When true, show only icon + amount (no resource name label). */
   hideLabels?: boolean;
+  /** Shows compact progress bar for missing resources instead of "(+N needed)" labels. */
+  showMissingProgressBar?: boolean;
+  /** Placement for the missing resources tooltip. */
+  missingProgressTooltipPlacement?: "top" | "right";
 }
 
 const formatAmount = (value: number): string => {
@@ -103,6 +113,10 @@ const renderCostIcon = (id: string, label: string): React.ReactNode => {
   }
 };
 
+interface ComputedResourceShortfallEntry extends ResourceShortfallEntry {
+  completion: number;
+}
+
 export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
   className,
   cost,
@@ -110,8 +124,11 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
   resources,
   hideMissing = false,
   hideLabels = false,
+  showMissingProgressBar = false,
+  missingProgressTooltipPlacement = "top",
 }) => {
   const { t } = useLocalization();
+  const { uiApi } = useAppLogic();
   const classes = classNames(
     "resource-cost",
     hideLabels && "resource-cost--no-labels",
@@ -126,7 +143,10 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
       return t("voidCamp.common.sanity", explicitLabel ?? "Sanity");
     }
     if (isResourceId(id)) {
-      return t(`resources.${id}.name`, explicitLabel ?? getResourceConfig(id).name);
+      return uiApi.localization.getResourceName(
+        id,
+        explicitLabel ?? getResourceConfig(id).name,
+      );
     }
     if (explicitLabel) {
       return explicitLabel;
@@ -146,6 +166,33 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
     });
     return provided;
   })();
+
+  const shortfallEntries: ComputedResourceShortfallEntry[] = descriptors
+    .map((resource) => {
+      const amount = cost[resource.id] ?? 0;
+      const missingAmount = missing ? Math.max(missing[resource.id] ?? 0, 0) : 0;
+      if (amount <= 0 || missingAmount <= 0) {
+        return null;
+      }
+      const label = getResourceLabel(resource.id, resource.label);
+      const currentAmount = Math.max(0, amount - missingAmount);
+      const completion = amount > 0 ? Math.min(1, Math.max(0, currentAmount / amount)) : 1;
+      return {
+        id: resource.id,
+        label,
+        amount,
+        missingAmount,
+        currentAmount,
+        completion,
+      };
+    })
+    .filter((entry): entry is ComputedResourceShortfallEntry => entry !== null);
+
+  const shortageProgress = shortfallEntries.reduce<number>(
+    (min, entry) => Math.min(min, entry.completion),
+    1,
+  );
+  const shortageProgressPercent = Math.round(shortageProgress * 100);
 
   return (
     <div className={classes}>
@@ -181,6 +228,38 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
           </span>
         );
       })}
+      {showMissingProgressBar && shortfallEntries.length > 0 ? (
+        <span className="resource-cost__shortfall">
+          <HintTooltip
+            aria-label={t(
+              "voidCamp.common.missingResourcesHint",
+              "Missing resources details",
+            )}
+            placement={missingProgressTooltipPlacement}
+            contentClassName="resource-cost__shortfall-popup"
+            content={
+              <ResourceShortfallHintContent
+                progressPercent={shortageProgressPercent}
+                entries={shortfallEntries}
+                progressLabel={t(
+                  "voidCamp.common.resourcesProgress",
+                  "Resources progress",
+                )}
+                neededLabel={t("voidCamp.common.needed", "needed")}
+                formatAmount={formatAmount}
+                renderIcon={renderCostIcon}
+              />
+            }
+          >
+            <span className="resource-cost__shortfall-track" aria-hidden="true">
+              <span
+                className="resource-cost__shortfall-fill"
+                style={{ width: `${shortageProgressPercent}%` }}
+              />
+            </span>
+          </HintTooltip>
+        </span>
+      ) : null}
     </div>
   );
 };

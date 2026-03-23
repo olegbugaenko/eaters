@@ -100,6 +100,9 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   const getCardClassName = useCallback(
     (item: ModuleItem) => {
       const missing = computeMissingCost(item.nextCost, totals);
+      if (!item.maxed && item.nextCost && Object.keys(missing).length === 0) {
+        return "modules-workshop__card--available";
+      }
       return Object.keys(missing).length > 0
         ? "modules-workshop__card--missing-resources"
         : "";
@@ -122,6 +125,9 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
               <ResourceCostDisplay
                 cost={module.nextCost}
                 missing={moduleMissing}
+                hideMissing
+                showMissingProgressBar
+                missingProgressTooltipPlacement="right"
               />
             ) : (
               <span className="text-muted">

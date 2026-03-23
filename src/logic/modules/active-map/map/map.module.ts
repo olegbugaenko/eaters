@@ -844,6 +844,9 @@ export class MapModule implements GameModule {
   }
 
   public setSummoningPanelHidden(hidden: boolean): void {
+    if (process.env.IS_VIDEO_RECORD !== "1") {
+      return;
+    }
     if (this.summoningPanelHidden === hidden) {
       return;
     }

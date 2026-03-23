@@ -238,8 +238,8 @@
 .map-tree__details-header {
   display: flex;
   justify-content: space-between;
-  gap: var(--spacing-md);
-  align-items: center;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
 }
 
 .map-tree__details-locked {
@@ -255,6 +255,11 @@
 .map-tree__details-level {
   color: var(--color-text-subtle);
   font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  text-align: right;
 }
 
 .map-tree__details-list {

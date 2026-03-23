@@ -4,7 +4,7 @@ import { BuildingsWorkshopBridgeState } from "@/logic/modules/camp/buildings/bui
 import { DEFAULT_BUILDINGS_WORKSHOP_STATE } from "@/logic/modules/camp/buildings/buildings.const";
 import { ResourceCostDisplay } from "@ui-shared/ResourceCostDisplay";
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
-import { BuildingId } from "@db/buildings-db";
+import { BuildingId, getBuildingConfig } from "@db/buildings-db";
 import { Button } from "@ui-shared/Button";
 import { BonusEffectsPreviewList } from "@ui-shared/BonusEffectsPreviewList";
 import { MasterDetailLayout } from "@ui-shared/MasterDetailLayout/MasterDetailLayout";
@@ -78,9 +78,23 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
     []
   );
 
+  const getLocalizedBuildingText = useCallback(
+    (id: BuildingId): { name: string; description: string } => {
+      const fallback = getBuildingConfig(id);
+      return uiApi.localization.getBuildingText(id, {
+        name: fallback.name,
+        description: fallback.description,
+      });
+    },
+    [uiApi.localization]
+  );
+
   const getCardClassName = useCallback(
     (item: BuildingItem) => {
       const missing = computeMissingCost(item.nextCost, totals);
+      if (!item.maxed && item.nextCost && Object.keys(missing).length === 0) {
+        return "buildings-workshop__card--available";
+      }
       return Object.keys(missing).length > 0
         ? "buildings-workshop__card--missing-resources"
         : "";
@@ -91,6 +105,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   const renderCard = useCallback(
     (building: BuildingItem) => {
       const missing = computeMissingCost(building.nextCost, totals);
+      const localized = getLocalizedBuildingText(building.id);
       const levelLabel =
         building.maxLevel !== null
           ? `${building.level}/${building.maxLevel}`
@@ -98,12 +113,18 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
       return (
         <>
           <div className="buildings-workshop__card-title-row">
-            <span className="buildings-workshop__card-title heading-3">{building.name}</span>
+            <span className="buildings-workshop__card-title heading-3">{localized.name}</span>
             <span className="buildings-workshop__card-level">{levelLabel}</span>
           </div>
           <div className="buildings-workshop__card-cost">
             {building.nextCost ? (
-              <ResourceCostDisplay cost={building.nextCost} missing={missing} />
+              <ResourceCostDisplay
+                cost={building.nextCost}
+                missing={missing}
+                hideMissing
+                showMissingProgressBar
+                missingProgressTooltipPlacement="right"
+              />
             ) : (
               <span className="text-muted">{t("voidCamp.common.unavailable", "Unavailable")}</span>
             )}
@@ -111,24 +132,25 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
         </>
       );
     },
-    [totals, t]
+    [getLocalizedBuildingText, totals, t]
   );
 
   const renderDetail = useCallback(
     (activeBuilding: BuildingItem) => {
       const activeMissing = computeMissingCost(activeBuilding.nextCost, totals);
       const isHidden = hiddenSet.has(activeBuilding.id);
+      const localized = getLocalizedBuildingText(activeBuilding.id);
       return (
         <div className="buildings-workshop__detail">
           <div className="buildings-workshop__detail-header">
-            <h3 className="heading-3">{activeBuilding.name}</h3>
+            <h3 className="heading-3">{localized.name}</h3>
             <span className="buildings-workshop__detail-level">
               {activeBuilding.maxLevel !== null
                 ? `${activeBuilding.level}/${activeBuilding.maxLevel}`
                 : String(activeBuilding.level)}
             </span>
           </div>
-          <p className="buildings-workshop__detail-description">{activeBuilding.description}</p>
+          <p className="buildings-workshop__detail-description">{localized.description}</p>
           <div className="buildings-workshop__detail-section">
             <h4>{t("voidCamp.common.bonuses", "Bonuses")}</h4>
             <BonusEffectsPreviewList
@@ -192,7 +214,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
         </div>
       );
     },
-    [totals, handleUpgrade, hiddenSet, t]
+    [getLocalizedBuildingText, totals, handleUpgrade, hiddenSet, t]
   );
 
   const headerContent = (

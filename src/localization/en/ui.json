@@ -155,7 +155,7 @@
   "voidCamp.unitRoster.emptySlot": "Empty slot",
   "voidCamp.unitRoster.noUnits": "No units designed yet.",
   "voidCamp.unitRoster.strategy": "Strategy settings",
-  "voidCamp.unitRoster.weight": "Share",
+  "voidCamp.unitRoster.weight": "Distribution",
   "voidCamp.unitRoster.shareHint": "Share of this unit type in the auto-spawned army",
   "voidCamp.unitRoster.shareTooltip": "approximately {{count}} out of {{max}} maximum units",
   "voidCamp.common.of": "of",

@@ -155,7 +155,7 @@
   "voidCamp.unitRoster.emptySlot": "Порожній слот",
   "voidCamp.unitRoster.noUnits": "Істоти ще не створені.",
   "voidCamp.unitRoster.strategy": "Налаштування стратегії",
-  "voidCamp.unitRoster.weight": "Частка",
+  "voidCamp.unitRoster.weight": "Розподіл",
   "voidCamp.unitRoster.shareHint": "Частка цього типу в армії при автоматичному призиві",
   "voidCamp.unitRoster.shareTooltip": "приблизно {{count}} з {{max}} максимальних юнітів",
   "voidCamp.common.of": "з",

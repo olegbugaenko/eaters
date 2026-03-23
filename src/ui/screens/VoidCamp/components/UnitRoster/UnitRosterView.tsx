@@ -7,6 +7,7 @@ import {
 } from "@logic/modules/camp/unit-design/unit-design.types";
 import type { UnitDesignModuleUiApi } from "@logic/modules/camp/unit-design/unit-design.types";
 import { Button } from "@ui-shared/Button";
+import { HintTooltip } from "@ui-shared/HintTooltip";
 import { useLocalization } from "@ui/shared/useLocalization";
 import { UnitAutomationBridgeState } from "@logic/modules/active-map/unit-automation/unit-automation.types";
 import { UnitTargetingMode } from "@shared/types/unit-targeting";
@@ -253,17 +254,18 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
     return total;
   }, [roster, automationLookup]);
 
-  const getSharePercent = useCallback(
-    (unitId: string): number | null => {
+  const getShareLabel = useCallback(
+    (unitId: string): string | null => {
       const entry = automationLookup.get(unitId);
       if (!entry?.enabled || totalEnabledWeight <= 0) return null;
       const enabledCount = roster.filter(
         (id) => automationLookup.get(id)?.enabled,
       ).length;
       if (enabledCount < 2) return null;
-      return Math.round((entry.weight / totalEnabledWeight) * 100);
+      const approxCount = Math.round((entry.weight / totalEnabledWeight) * maxUnitsOnMap);
+      return `≈${approxCount}/${maxUnitsOnMap}`;
     },
-    [automationLookup, totalEnabledWeight, roster],
+    [automationLookup, totalEnabledWeight, roster, maxUnitsOnMap],
   );
 
   const getShareTooltip = useCallback(
@@ -471,7 +473,6 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                             </label>
                             <div
                               className="unit-roster__automation-weight"
-                              title={getShareTooltip(unit.id)}
                             >
                               <span className="unit-roster__automation-weight-label">
                                 {t("voidCamp.unitRoster.weight", "Share")}
@@ -501,9 +502,13 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                                   +
                                 </button>
                               </div>
-                              {getSharePercent(unit.id) !== null && (
+                              {getShareLabel(unit.id) !== null && (
                                 <span className="unit-roster__weight-percent">
-                                  ≈{getSharePercent(unit.id)}%
+                                  {getShareLabel(unit.id)}
+                                  <HintTooltip
+                                    text={getShareTooltip(unit.id)}
+                                    ariaLabel={t("voidCamp.unitRoster.shareHint", "Share of this unit type in the auto-spawned army")}
+                                  />
                                 </span>
                               )}
                             </div>

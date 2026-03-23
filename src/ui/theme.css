@@ -11,10 +11,13 @@
   --color-surface-saturated: rgba(34, 34, 34, 0.75);
   --color-surface-sidebar: rgba(34, 34, 34, 0.45);
   --color-surface-card: rgba(34, 34, 34, 0.45);
+  --color-surface-card-available-start: rgba(28, 42, 46, 0.96);
+  --color-surface-card-available-end: rgba(34, 48, 52, 0.96);
   --color-surface-elevated: rgba(34, 34, 34, 0.45);
   --color-surface-hover: rgba(132, 176, 212, 0.18);
   --color-border-soft: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
+  --color-border-card-available: rgba(156, 189, 248, 0.4);
   --color-border-accent: rgba(124, 255, 248, 0.13);
   --popup-bg-color: rgba(20, 26, 27, 0.95);
   --color-text-primary: #ffffff;

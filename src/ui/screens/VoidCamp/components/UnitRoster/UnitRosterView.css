@@ -303,11 +303,12 @@
 }
 
 .unit-roster__weight-percent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-accent);
-  min-width: 2.8rem;
-  text-align: left;
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }

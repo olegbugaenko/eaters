@@ -32,10 +32,14 @@
 }
 
 .modules-workshop__card-title {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text-strong);
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .modules-workshop__card-level {
@@ -62,6 +66,15 @@
 .modules-workshop__card--missing-resources {
   opacity: 0.7;
   border-color: var(--color-border-subtle);
+}
+
+.modules-workshop__card--available {
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
+  border-color: var(--color-border-card-available);
 }
 
 .modules-workshop__card--missing-resources:hover {

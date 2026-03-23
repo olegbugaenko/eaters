@@ -98,6 +98,7 @@ module.exports = (env, argv) => {
         "process.env.IS_DEMO": JSON.stringify(process.env.IS_DEMO ?? ""),
         "process.env.IS_STRESSTEST": JSON.stringify(process.env.IS_STRESSTEST ?? ""),
         "process.env.IS_GA": JSON.stringify(process.env.IS_GA ?? ""),
+        "process.env.IS_VIDEO_RECORD": JSON.stringify(process.env.IS_VIDEO_RECORD ?? ""),
       }),
       new CopyStaticAssetsPlugin(),
     ],

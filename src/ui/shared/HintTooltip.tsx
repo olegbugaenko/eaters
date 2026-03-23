@@ -1,17 +1,31 @@
 import { useState, useRef, useEffect } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { classNames } from "@ui-shared/classNames";
 import "./HintTooltip.css";
 
 interface HintTooltipProps {
   /** Hint text shown in the popover on hover/focus */
-  text: string;
+  text?: string;
+  /** Custom hint content. If provided, it has priority over text. */
+  content?: ReactNode;
   /** Accessible label for the trigger (e.g. "Overdrive help") */
   ariaLabel?: string;
+  /** Tooltip placement relative to trigger. */
+  placement?: "top" | "right";
+  /** Optional class for tooltip content container. */
+  contentClassName?: string;
+  /** Custom trigger node. */
+  children?: ReactNode;
 }
 
 export const HintTooltip: React.FC<HintTooltipProps> = ({
   text,
+  content,
   ariaLabel = "Show hint",
+  placement = "top",
+  contentClassName,
+  children,
 }) => {
   const [visible, setVisible] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<{ left: number; top: number } | null>(null);
@@ -22,7 +36,14 @@ export const HintTooltip: React.FC<HintTooltipProps> = ({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const gap = 6;
+    const gap = 8;
+    if (placement === "right") {
+      setPopoverStyle({
+        left: rect.right + gap,
+        top: rect.top + rect.height / 2,
+      });
+      return;
+    }
     setPopoverStyle({
       left: rect.left + rect.width / 2,
       top: rect.top - gap,
@@ -55,25 +76,41 @@ export const HintTooltip: React.FC<HintTooltipProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [visible]);
 
+  const popoverContent = content ?? text;
+
   const popoverEl =
     visible && popoverStyle ? (
       <span
-        className="hint-tooltip__popover"
+        className={classNames(
+          "hint-tooltip__popover",
+          `hint-tooltip__popover--${placement}`,
+          contentClassName,
+        )}
         role="tooltip"
         style={{
           left: popoverStyle.left,
           top: popoverStyle.top,
-          transform: "translate(-50%, -100%)",
+          transform:
+            placement === "right"
+              ? "translateY(-50%)"
+              : "translate(-50%, -100%)",
         }}
       >
-        {text}
+        {popoverContent}
       </span>
     ) : null;
+
+  if (!popoverContent) {
+    return null;
+  }
 
   return (
     <span
       ref={containerRef}
-      className="hint-tooltip"
+      className={classNames(
+        "hint-tooltip",
+        Boolean(children) ? "hint-tooltip--custom-trigger" : undefined,
+      )}
       onMouseEnter={() => setVisible(true)}
       onMouseLeave={() => setVisible(false)}
       onFocus={() => setVisible(true)}
@@ -81,13 +118,16 @@ export const HintTooltip: React.FC<HintTooltipProps> = ({
     >
       <span
         ref={triggerRef}
-        className="hint-tooltip__trigger"
+        className={classNames(
+          "hint-tooltip__trigger",
+          Boolean(children) ? "hint-tooltip__trigger--custom" : undefined,
+        )}
         role="button"
         tabIndex={0}
         aria-label={ariaLabel}
         aria-expanded={visible}
       >
-        ?
+        {children ?? "?"}
       </span>
       {typeof document !== "undefined" && document.body ? createPortal(popoverEl, document.body) : null}
     </span>

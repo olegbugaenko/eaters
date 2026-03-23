@@ -11,6 +11,8 @@ import {
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./SceneControlHintsPanel.css";
 
+const VIDEO_RECORD = typeof process !== "undefined" && process.env.IS_VIDEO_RECORD === "1";
+
 export const SceneControlHintsPanel: React.FC = React.memo(() => {
   const { uiApi, bridge } = useAppLogic();
   const map = useMemo(() => uiApi.map as MapModuleUiApi, [uiApi.map]);
@@ -54,26 +56,27 @@ export const SceneControlHintsPanel: React.FC = React.memo(() => {
           </ul>
         )}
       </div>
-      {/* Summoning panel toggle */}
-      <button
-        type="button"
-        className="scene-control-hints__magic-toggle"
-        onClick={handleToggleSummoningPanel}
-        title={
-          summoningPanelHidden
-            ? t("scene.controls.showPanels", "Show summoning & cast panels")
-            : t("scene.controls.hidePanels", "Hide summoning & cast panels")
-        }
-        aria-label={
-          summoningPanelHidden
-            ? t("scene.controls.showPanels", "Show summoning & cast panels")
-            : t("scene.controls.hidePanels", "Hide summoning & cast panels")
-        }
-      >
-        <span className="scene-control-hints__magic-icon" aria-hidden="true">
-          ✦
-        </span>
-      </button>
+      {VIDEO_RECORD && (
+        <button
+          type="button"
+          className="scene-control-hints__magic-toggle"
+          onClick={handleToggleSummoningPanel}
+          title={
+            summoningPanelHidden
+              ? t("scene.controls.showPanels", "Show summoning & cast panels")
+              : t("scene.controls.hidePanels", "Hide summoning & cast panels")
+          }
+          aria-label={
+            summoningPanelHidden
+              ? t("scene.controls.showPanels", "Show summoning & cast panels")
+              : t("scene.controls.hidePanels", "Hide summoning & cast panels")
+          }
+        >
+          <span className="scene-control-hints__magic-icon" aria-hidden="true">
+            ✦
+          </span>
+        </button>
+      )}
     </div>
   );
 });

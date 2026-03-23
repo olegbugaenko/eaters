@@ -1148,14 +1148,15 @@ export const MapSelectPanel: React.FC<MapSelectPanelProps> = ({
                 </div>
               )}
               <div className="map-tree__details-header">
-                <h2
+                <h3
                   className={classNames(
+                    "heading-3",
                     getMapConfig(activeMap.id).achievementId &&
                       "map-tree__details-title--achievement",
                   )}
                 >
                   {getLocalizedMapName(activeMap.id, activeMap.name)}
-                </h2>
+                </h3>
                 <span className="map-tree__details-level">
                   {t("voidCamp.common.level", "Level")}{" "}
                   {activeMap.selectedLevel} / {activeMap.currentLevel}

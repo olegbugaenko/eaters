@@ -6,6 +6,7 @@ declare namespace NodeJS {
     readonly PUBLIC_URL: string;
     readonly IS_DEMO?: string;
     readonly IS_STRESSTEST?: string;
+    readonly IS_VIDEO_RECORD?: string;
   }
 }
 
