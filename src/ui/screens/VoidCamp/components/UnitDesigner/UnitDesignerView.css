@@ -79,8 +79,12 @@
   gap: var(--spacing-sm);
   padding: var(--spacing-md) var(--spacing-lg);
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-soft);
-  background: var(--color-surface-card);
+  border: 1px solid transparent;
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -101,8 +105,13 @@
 }
 
 .unit-designer__list-item--active {
-  border-color: var(--color-border-accent);
-  box-shadow: 0 0 16px rgba(124, 204, 255, 0.3);
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
+  border-color: var(--color-border-card-available);
+  box-shadow: 0 0 16px rgba(124, 204, 255, 0.2);
 }
 
 .unit-designer__list-text {
@@ -169,8 +178,12 @@
   gap: var(--spacing-md);
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-soft);
-  background: var(--color-surface-card);
+  border: 1px solid transparent;
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
 }
 
 .unit-designer__selected-name {
@@ -212,9 +225,13 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  border: 1px solid var(--color-border-soft);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: var(--color-surface-card);
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
   padding: var(--spacing-xs);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }

@@ -250,11 +250,9 @@ export class ObjectsRendererManager {
         if (!entry || entry.length !== data.length) {
           return;
         }
-        if (!this.dynamicData) {
+        if (!this.tryWriteDynamicData(entry, data)) {
           return;
         }
-        // Update in-place, no copy needed - will do full upload at end
-        this.dynamicData.set(data, entry.offset);
         this.queueDynamicUpdate(entry, data);
       });
       this.recordDebugInterpolation(managed.instance.type);
@@ -322,11 +320,9 @@ export class ObjectsRendererManager {
             this.dynamicLayoutDirty = true;
             return;
           }
-          if (!this.dynamicData) {
+          if (!this.tryWriteDynamicData(entry, data)) {
             return;
           }
-          // Update in-place, no copy needed
-          this.dynamicData.set(data, entry.offset);
           this.queueDynamicUpdate(entry, data);
         });
       });
@@ -356,11 +352,9 @@ export class ObjectsRendererManager {
             this.dynamicLayoutDirty = true;
             return;
           }
-          if (!this.dynamicData) {
+          if (!this.tryWriteDynamicData(entry, data)) {
             return;
           }
-          // Update in-place, no copy needed
-          this.dynamicData.set(data, entry.offset);
           this.queueDynamicUpdate(entry, data);
         }
       });
@@ -568,11 +562,9 @@ export class ObjectsRendererManager {
         return;
       }
       // Continue streaming updates; offsets remain valid until rebuild happens
-      if (!this.dynamicData) {
+      if (!this.tryWriteDynamicData(entry, data)) {
         return;
       }
-      // Update in-place, no copy needed - will do full upload
-      this.dynamicData.set(data, entry.offset);
       this.queueDynamicUpdate(entry, data);
     });
   }
@@ -712,6 +704,24 @@ export class ObjectsRendererManager {
       this.pendingDynamicUpdates = [];
       this.pendingDynamicUpdateLength = 0;
     }
+  }
+
+  /**
+   * Guards against stale dynamic offsets during auto-animation/update passes.
+   * If layout changed but offsets were not rebuilt yet, defer to a full rebuild
+   * instead of crashing on Float32Array.set(...).
+   */
+  private tryWriteDynamicData(entry: DynamicEntry, data: Float32Array): boolean {
+    if (!this.dynamicData) {
+      return false;
+    }
+    const endOffset = entry.offset + data.length;
+    if (entry.offset < 0 || endOffset > this.dynamicData.length) {
+      this.dynamicLayoutDirty = true;
+      return false;
+    }
+    this.dynamicData.set(data, entry.offset);
+    return true;
   }
 
   public setDebugStatsEnabled(enabled: boolean): void {

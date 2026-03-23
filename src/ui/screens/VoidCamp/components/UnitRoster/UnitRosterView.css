@@ -98,16 +98,20 @@
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-sm);
-  border: 1px dashed var(--color-border-soft);
+  border: 1px dashed transparent;
   border-radius: var(--radius-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: rgba(34, 34, 34, 0.0);
+  padding: var(--spacing-lg) var(--spacing-lg);
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
+  min-height: 120px;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .unit-roster__slot--filled {
   border-style: solid;
-  background: rgba(34, 34, 34, 0.0);
 }
 
 .unit-roster__slot-index {
@@ -140,6 +144,19 @@
   color: var(--color-text-strong);
 }
 
+/* Keep unit-name tooltip trigger inline so Strategy stays top-right */
+.unit-roster .hint-tooltip--custom-trigger {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+}
+
+.unit-roster .hint-tooltip__trigger--custom {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+}
+
 .unit-roster__slot-meta {
   font-size: 0.85rem;
   color: var(--color-text-muted);
@@ -151,6 +168,7 @@
   justify-content: space-between;
   gap: var(--spacing-md);
   flex-wrap: wrap;
+  margin-top: var(--spacing-md);
 }
 
 .unit-roster__automation-controls {
@@ -318,7 +336,8 @@
   display: flex;
   align-items: center;
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 1.1rem;
+  margin-top: 6px;
 }
 
 .unit-roster__available {
@@ -337,13 +356,12 @@
 .unit-roster__list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   min-height: 0;
   overflow-y: auto;
-  padding-right: 0.25rem;
 }
 
 .unit-roster__list-item {
@@ -351,10 +369,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-md);
-  border: 1px solid var(--color-border-soft);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-surface-card);
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-card-available-start) 0%,
+    var(--color-surface-card-available-end) 100%
+  );
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -365,8 +387,8 @@
 }
 
 .unit-roster__list-item--active {
-  border-color: rgba(56, 189, 248, 0.55);
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+  border-color: rgba(226, 226, 246, 0.2);
+  box-shadow: 0 0 9px rgba(156, 189, 218, 0.75);
 }
 
 .unit-roster__list-info {
@@ -377,6 +399,38 @@
 
 .unit-roster__list-name {
   font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.unit-roster__unit-tooltip {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.unit-roster__unit-tooltip-title {
+  display: block;
+  font-weight: 600;
+  color: var(--color-text-strong);
+  margin-bottom: 0.3rem;
+}
+
+.unit-roster__unit-tooltip-modules {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.unit-roster__unit-tooltip-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.unit-roster__unit-tooltip-item {
+  font-size: 0.8rem;
   color: var(--color-text-strong);
 }
 

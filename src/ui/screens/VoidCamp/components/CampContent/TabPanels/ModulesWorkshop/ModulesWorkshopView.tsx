@@ -100,12 +100,17 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   const getCardClassName = useCallback(
     (item: ModuleItem) => {
       const missing = computeMissingCost(item.nextCost, totals);
-      if (!item.maxed && item.nextCost && Object.keys(missing).length === 0) {
-        return "modules-workshop__card--available";
+      const classNames: string[] = [];
+      if (item.maxed) {
+        classNames.push("modules-workshop__card--maxed");
       }
-      return Object.keys(missing).length > 0
-        ? "modules-workshop__card--missing-resources"
-        : "";
+      if (!item.maxed && item.nextCost && Object.keys(missing).length === 0) {
+        classNames.push("modules-workshop__card--available");
+      }
+      if (Object.keys(missing).length > 0) {
+        classNames.push("modules-workshop__card--missing-resources");
+      }
+      return classNames.join(" ");
     },
     [totals]
   );
@@ -120,15 +125,46 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
             <span className="modules-workshop__card-title heading-3">{module.name}</span>
             <span className="modules-workshop__card-level">{levelLabel}</span>
           </div>
-          <div className="modules-workshop__card-cost">
+          <div className="modules-workshop__card-body">
             {module.nextCost ? (
-              <ResourceCostDisplay
-                cost={module.nextCost}
-                missing={moduleMissing}
-                hideMissing
-                showMissingProgressBar
-                missingProgressTooltipPlacement="right"
-              />
+              <>
+                <div className="modules-workshop__card-cost">
+                  <ResourceCostDisplay
+                    cost={module.nextCost}
+                    missing={moduleMissing}
+                    hideMissing
+                  />
+                </div>
+                <div className="modules-workshop__card-action">
+                  <button
+                    type="button"
+                    className="button primary-button small-button modules-workshop__card-button"
+                    disabled={Object.keys(moduleMissing).length > 0 || module.maxed}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleUpgrade(module.id);
+                    }}
+                  >
+                    {module.maxed
+                      ? t("voidCamp.common.maxed", "Maxed")
+                      : module.level > 0
+                        ? t("voidCamp.common.upgrade", "Upgrade")
+                        : t("voidCamp.common.unlock", "Unlock")}
+                  </button>
+                  {Object.keys(moduleMissing).length > 0 ? (
+                    <ResourceCostDisplay
+                      className="modules-workshop__card-progress"
+                      cost={module.nextCost}
+                      missing={moduleMissing}
+                      hideMissing
+                      showMissingProgressBar
+                      showOnlyMissingProgressBar
+                      missingProgressTooltipPlacement="right"
+                    />
+                  ) : null}
+                </div>
+              </>
             ) : (
               <span className="text-muted">
                 {module.maxed ? t("voidCamp.common.maxed", "Maxed") : t("voidCamp.common.unavailable", "Unavailable")}
@@ -138,7 +174,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
         </>
       );
     },
-    [totals, formatLevelLabel, t]
+    [totals, formatLevelLabel, handleUpgrade, t]
   );
 
   const renderDetail = useCallback(

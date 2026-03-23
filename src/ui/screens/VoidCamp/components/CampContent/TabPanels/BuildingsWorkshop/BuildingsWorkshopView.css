@@ -50,16 +50,52 @@
   color: var(--color-text-subtle);
 }
 
+.buildings-workshop__card-body {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px;
+  gap: var(--spacing-sm);
+  align-items: stretch;
+}
+
 .buildings-workshop__card-cost {
+  min-width: 0;
   margin-top: auto;
   font-size: 0.9rem;
-  font-weight: 600;
   color: var(--color-accent);
+}
+
+.buildings-workshop__card-cost .resource-cost {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+}
+
+.buildings-workshop__card-action {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+  height: 100%;
+}
+
+.buildings-workshop__card-button {
+  width: 100%;
+}
+
+.buildings-workshop__card-progress {
+  width: 100%;
+}
+
+.buildings-workshop__card-progress .resource-cost__shortfall {
+  margin-top: 0;
 }
 
 .buildings-workshop__card--missing-resources {
   opacity: 0.7;
-  border-color: var(--color-border-subtle);
+  border-color: transparent;
 }
 
 .buildings-workshop__card--available {
@@ -73,6 +109,11 @@
 
 .buildings-workshop__card--missing-resources:hover {
   opacity: 0.85;
+  border-color: transparent;
+}
+
+.buildings-workshop__card--maxed {
+  border-color: var(--color-border-strong);
 }
 
 .buildings-workshop__detail {

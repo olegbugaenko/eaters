@@ -157,8 +157,12 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
   const selectedModuleIds = selectedUnit.modules;
   const selectedDetails = selectedUnit.moduleDetails;
   const availableModules = useMemo(
-    () => state.availableModules.filter((module) => module.level > 0),
-    [state.availableModules]
+    () =>
+      state.availableModules.filter(
+        (module) =>
+          module.level > 0 && !selectedModuleIds.includes(module.id),
+      ),
+    [state.availableModules, selectedModuleIds]
   );
   const ownedSkills = useMemo(
     () => skillTreeState.nodes.filter((node) => node.level > 0).map((node) => node.id),

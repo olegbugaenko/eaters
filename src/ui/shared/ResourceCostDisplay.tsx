@@ -30,6 +30,8 @@ export interface ResourceCostDisplayProps {
   showMissingProgressBar?: boolean;
   /** Placement for the missing resources tooltip. */
   missingProgressTooltipPlacement?: "top" | "right";
+  /** Renders only the missing progress bar section (without resource rows). */
+  showOnlyMissingProgressBar?: boolean;
 }
 
 const formatAmount = (value: number): string => {
@@ -126,6 +128,7 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
   hideLabels = false,
   showMissingProgressBar = false,
   missingProgressTooltipPlacement = "top",
+  showOnlyMissingProgressBar = false,
 }) => {
   const { t } = useLocalization();
   const { uiApi } = useAppLogic();
@@ -196,7 +199,8 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
 
   return (
     <div className={classes}>
-      {descriptors.map((resource) => {
+      {!showOnlyMissingProgressBar
+        ? descriptors.map((resource) => {
         const amount = cost[resource.id] ?? 0;
         if (amount <= 0) {
           return null;
@@ -227,7 +231,8 @@ export const ResourceCostDisplay: React.FC<ResourceCostDisplayProps> = ({
             ) : null}
           </span>
         );
-      })}
+      })
+        : null}
       {showMissingProgressBar && shortfallEntries.length > 0 ? (
         <span className="resource-cost__shortfall">
           <HintTooltip

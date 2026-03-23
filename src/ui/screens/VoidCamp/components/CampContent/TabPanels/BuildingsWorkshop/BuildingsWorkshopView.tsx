@@ -92,12 +92,17 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   const getCardClassName = useCallback(
     (item: BuildingItem) => {
       const missing = computeMissingCost(item.nextCost, totals);
-      if (!item.maxed && item.nextCost && Object.keys(missing).length === 0) {
-        return "buildings-workshop__card--available";
+      const classNames: string[] = [];
+      if (item.maxed) {
+        classNames.push("buildings-workshop__card--maxed");
       }
-      return Object.keys(missing).length > 0
-        ? "buildings-workshop__card--missing-resources"
-        : "";
+      if (!item.maxed && item.nextCost && Object.keys(missing).length === 0) {
+        classNames.push("buildings-workshop__card--available");
+      }
+      if (Object.keys(missing).length > 0) {
+        classNames.push("buildings-workshop__card--missing-resources");
+      }
+      return classNames.join(" ");
     },
     [totals]
   );
@@ -116,15 +121,46 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
             <span className="buildings-workshop__card-title heading-3">{localized.name}</span>
             <span className="buildings-workshop__card-level">{levelLabel}</span>
           </div>
-          <div className="buildings-workshop__card-cost">
+          <div className="buildings-workshop__card-body">
             {building.nextCost ? (
-              <ResourceCostDisplay
-                cost={building.nextCost}
-                missing={missing}
-                hideMissing
-                showMissingProgressBar
-                missingProgressTooltipPlacement="right"
-              />
+              <>
+                <div className="buildings-workshop__card-cost">
+                  <ResourceCostDisplay
+                    cost={building.nextCost}
+                    missing={missing}
+                    hideMissing
+                  />
+                </div>
+                <div className="buildings-workshop__card-action">
+                  <button
+                    type="button"
+                    className="button primary-button small-button buildings-workshop__card-button"
+                    disabled={Object.keys(missing).length > 0 || building.maxed}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleUpgrade(building.id);
+                    }}
+                  >
+                    {building.maxed
+                      ? t("voidCamp.common.maxed", "Maxed")
+                      : building.level > 0
+                        ? t("voidCamp.common.upgrade", "Upgrade")
+                        : t("voidCamp.buildings.construct", "Construct")}
+                  </button>
+                  {Object.keys(missing).length > 0 ? (
+                    <ResourceCostDisplay
+                      className="buildings-workshop__card-progress"
+                      cost={building.nextCost}
+                      missing={missing}
+                      hideMissing
+                      showMissingProgressBar
+                      showOnlyMissingProgressBar
+                      missingProgressTooltipPlacement="right"
+                    />
+                  ) : null}
+                </div>
+              </>
             ) : (
               <span className="text-muted">{t("voidCamp.common.unavailable", "Unavailable")}</span>
             )}
@@ -132,7 +168,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
         </>
       );
     },
-    [getLocalizedBuildingText, totals, t]
+    [getLocalizedBuildingText, handleUpgrade, totals, t]
   );
 
   const renderDetail = useCallback(

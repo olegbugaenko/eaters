@@ -331,6 +331,39 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
   );
   const draftOption = targetingLookup.get(draftMode) ?? targetingOptions[0]!;
 
+  const renderUnitNameWithTooltip = useCallback(
+    (unit: UnitDesignerUnitState, className: string) => {
+      const moduleNames = unit.moduleDetails.map((module) => module.name);
+      return (
+        <HintTooltip
+          ariaLabel={t("voidCamp.unitRoster.unitDetailsHint", "Show unit details")}
+          placement="right"
+          contentClassName="unit-roster__unit-tooltip"
+          content={
+            <span>
+              <span className="unit-roster__unit-tooltip-title">{unit.name}</span>
+              <span className="unit-roster__unit-tooltip-modules">
+                {t("voidCamp.unitRoster.modules", "modules")}: {moduleNames.length}
+              </span>
+              {moduleNames.length > 0 ? (
+                <ul className="unit-roster__unit-tooltip-list">
+                  {moduleNames.map((moduleName) => (
+                    <li key={moduleName} className="unit-roster__unit-tooltip-item">
+                      {moduleName}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </span>
+          }
+        >
+          <span className={className}>{unit.name}</span>
+        </HintTooltip>
+      );
+    },
+    [t],
+  );
+
   return (
     <div className="unit-roster stack-lg">
       <header className="unit-roster__header">
@@ -374,9 +407,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                     <div className="unit-roster__slot-body">
                       <div className="unit-roster__slot-info">
                         <div className="unit-roster__slot-header">
-                          <span className="unit-roster__slot-name">
-                            {unit.name}
-                          </span>
+                          {renderUnitNameWithTooltip(unit, "unit-roster__slot-name")}
                           <button
                             type="button"
                             className={classNames(
@@ -404,10 +435,6 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                             </span>
                           </button>
                         </div>
-                        <span className="unit-roster__slot-meta">
-                          {unit.modules.length}{" "}
-                          {t("voidCamp.unitRoster.modules", "modules")}
-                        </span>
                       </div>
                       <div className="unit-roster__slot-actions">
                         <div className="unit-roster__slot-controls">
@@ -561,13 +588,7 @@ export const UnitRosterView: React.FC<UnitRosterViewProps> = ({
                     )}
                   >
                     <div className="unit-roster__list-info">
-                      <span className="unit-roster__list-name">
-                        {unit.name}
-                      </span>
-                      <span className="unit-roster__list-meta">
-                        {unit.modules.length}{" "}
-                        {t("voidCamp.unitRoster.modules", "modules")}
-                      </span>
+                      {renderUnitNameWithTooltip(unit, "unit-roster__list-name")}
                     </div>
                     <div className="unit-roster__list-actions">
                       {isActive ? (
