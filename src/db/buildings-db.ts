@@ -12,7 +12,8 @@ export type BuildingId =
   | "blacksmith"
   | "treasure_vault"
   | "throughput_regulator"
-  | "hunger_monument";
+  | "hunger_monument"
+  | "mana_source";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -208,6 +209,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       },
     },
     cost: createScalingCost({ sand: 50000 }, 2),
+    unlockedBy: [
+      {
+        type: "skill",
+        id: "draftsmanship",
+        level: 1,
+      },
+    ],
+  },
+  mana_source: {
+    id: "mana_source",
+    name: "Source of Magic",
+    description:
+      "A crystalline wellspring that channels void energy into your spells, amplifying their power.",
+    effects: {
+      spell_power: {
+        multiplier: (level) => 1 + 0.1 * level,
+      },
+    },
+    cost: createScalingCost({ stone: 500000, organics: 50000 }, 1.75),
     unlockedBy: [
       {
         type: "skill",

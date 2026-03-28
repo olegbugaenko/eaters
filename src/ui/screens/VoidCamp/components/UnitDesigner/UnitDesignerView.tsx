@@ -6,6 +6,8 @@ import { UnitDesignerBridgeState } from "@logic/modules/camp/unit-design/unit-de
 import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { formatUnitModuleBonusValue } from "@ui-shared/format/unitModuleBonus";
 import { buildUnitStatEntries } from "@ui-shared/unitStats";
+import { StatBreakdownPopover } from "@ui-shared/StatBreakdownPopover";
+import { createBonusSourceNameResolver } from "@ui/helpers/bonusSourceName";
 import { getPlayerUnitConfig, PlayerUnitType } from "@db/player-units-db";
 import { UnitModuleId } from "@db/unit-modules-db";
 import { Button } from "@ui-shared/Button";
@@ -50,6 +52,10 @@ const getDefaultType = (units: readonly { type: PlayerUnitType }[], fallback: Pl
 export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resources }) => {
   const { uiApi, bridge } = useAppLogic();
   const { t } = useLocalization();
+  const resolveSourceName = useMemo(
+    () => createBonusSourceNameResolver(uiApi.localization),
+    [uiApi.localization]
+  );
   const designer = uiApi.unitDesign as UnitDesignModuleUiApi;
   const totals = useMemo(() => computeResourceTotals(resources), [resources]);
   const [selectedId, setSelectedId] = useState<string | null>(state.units[0]?.id ?? null);
@@ -409,7 +415,19 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                   <dl>
                     {statEntries.map((entry) => (
                       <div key={entry.label} className="unit-designer__stat">
-                        <dt>{entry.label}</dt>
+                        <dt>
+                          {entry.label}
+                          {entry.bonusIds?.length ? (
+                            <StatBreakdownPopover
+                              bonusIds={entry.bonusIds}
+                              getBreakdown={(id) => designer.getBonusBreakdown(id)}
+                              resolveSourceName={resolveSourceName}
+                              t={t}
+                              ariaLabel={t("voidCamp.unitStats.breakdownHint", "Show stat breakdown")}
+                              organMultiplier={entry.organAttackMultiplier}
+                            />
+                          ) : null}
+                        </dt>
                         <dd>
                           <span>{entry.value}</span>
                           {entry.hint ? (

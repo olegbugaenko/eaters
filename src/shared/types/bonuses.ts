@@ -17,3 +17,11 @@ export interface BonusEffectPreview {
   readonly currentValue: number;
   readonly nextValue: number;
 }
+
+export interface BonusBreakdownEntry {
+  readonly sourceId: string;
+  readonly category: string;
+  readonly level: number;
+  readonly effectType: "income" | "multiplier" | "base";
+  readonly value: number;
+}

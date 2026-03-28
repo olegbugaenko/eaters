@@ -1192,14 +1192,13 @@ export const SkillTreeView: React.FC = () => {
               {activeNode.requirements.length > 0 ? (
                 <ul className="skill-tree__requirements">
                   {activeNode.requirements.map((requirement) => {
-                    const config = getSkillConfig(requirement.id);
                     const met = requirement.currentLevel >= requirement.requiredLevel;
                     return (
                       <li
                         key={requirement.id}
                         className={met ? "skill-tree__requirement skill-tree__requirement--met" : "skill-tree__requirement"}
                       >
-                        <span className="skill-tree__requirement-name">{config.name}</span>
+                        <span className="skill-tree__requirement-name">{requirement.name}</span>
                         <span className="skill-tree__requirement-level">
                           {requirement.currentLevel} / {requirement.requiredLevel}
                         </span>

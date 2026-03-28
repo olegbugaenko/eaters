@@ -1,0 +1,18 @@
+.artifact-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.artifact-icon--image {
+  object-fit: contain;
+}
+
+.artifact-icon--letter {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+}

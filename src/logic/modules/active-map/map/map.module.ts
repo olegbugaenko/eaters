@@ -569,21 +569,28 @@ export class MapModule implements GameModule {
     this.selection.recordLastPlayed(mapId, level);
     this.pushLastPlayedMap();
     const stats = this.ensureLevelStats(mapId, level);
+    const duration = sanitizeDuration(result.durationMs);
+    if (duration !== null) {
+      stats.totalTimeMs += duration;
+    }
     if (result.success) {
       trackAnalyticsEvent("map_completed", { mapId, level, durationMs: result.durationMs });
       const isFirstSuccess = stats.success === 0;
       stats.success += 1;
-      const duration = sanitizeDuration(result.durationMs);
       if (duration !== null) {
         if (stats.bestTimeMs === null || duration < stats.bestTimeMs) {
           stats.bestTimeMs = duration;
         }
       }
+      if (mapId === "greatOctopus" && level >= 1) {
+        this.options.artifacts?.grantArtifact("great_octopus_tentacle");
+      }
       if (isFirstSuccess) {
         const config = getMapConfig(mapId);
         this.options.eventLog.registerEvent(
           "map-cleared",
-          `Map ${config.name} cleared (Level ${level})`
+          `Map ${config.name} cleared (Level ${level})`,
+          { mapId, level }
         );
       }
     } else {
@@ -1195,14 +1202,6 @@ export class MapModule implements GameModule {
     const selectableMapIds = new Set(selectableMaps.map((m) => m.id));
     const visibleMapIds = new Set<MapId>(selectableMapIds);
 
-    if (isDemoBuild()) {
-      getMapList().forEach((map) => {
-        if (getMapConfig(map.id).lockedForDemo) {
-          visibleMapIds.add(map.id);
-        }
-      });
-    }
-    
     // Find all maps that are required by selectable maps (show prerequisites)
     selectableMaps.forEach((map) => {
       const config = getMapConfig(map.id);
@@ -1256,7 +1255,9 @@ export class MapModule implements GameModule {
     const currentLevel = this.getHighestUnlockedLevel(map.id);
     const selectedLevel = this.getSelectedLevel(map.id);
     const attempts = this.getAttemptsForLevel(map.id, selectedLevel);
+    const maxAttemptsAcrossLevels = this.getMaxAttemptsAcrossLevels(map.id);
     const bestTimeMs = this.getBestTimeForLevel(map.id, selectedLevel);
+    const totalTimeMs = this.getTotalTimeForMap(map.id);
     const clearedLevels = Math.min(
       this.getClearedLevels(map.id),
       config.maxLevel
@@ -1267,10 +1268,12 @@ export class MapModule implements GameModule {
       currentLevel,
       selectedLevel,
       attempts,
+      maxAttemptsAcrossLevels,
       bestTimeMs,
       clearedLevels,
       maxLevel: config.maxLevel,
       selectable,
+      totalTimeMs,
     };
   }
 
@@ -1335,6 +1338,15 @@ export class MapModule implements GameModule {
     return entry.success + entry.failure;
   }
 
+  private getMaxAttemptsAcrossLevels(mapId: MapId): number {
+    const config = getMapConfig(mapId);
+    let max = 0;
+    for (let level = 1; level <= config.maxLevel; level += 1) {
+      max = Math.max(max, this.getAttemptsForLevel(mapId, level));
+    }
+    return max;
+  }
+
   private getBestTimeForLevel(mapId: MapId, level: number): number | null {
     const stats = this.mapStats[mapId];
     if (!stats) {
@@ -1350,6 +1362,20 @@ export class MapModule implements GameModule {
       return null;
     }
     return bestTimeMs;
+  }
+
+  private getTotalTimeForMap(mapId: MapId): number {
+    const stats = this.mapStats[mapId];
+    if (!stats) {
+      return 0;
+    }
+    let total = 0;
+    Object.values(stats).forEach((entry) => {
+      if (entry && typeof entry.totalTimeMs === "number") {
+        total += entry.totalTimeMs;
+      }
+    });
+    return total;
   }
 
   private getClearedLevels(mapId: MapId): number {
@@ -1439,7 +1465,8 @@ export class MapModule implements GameModule {
     const success = sanitizeCount(data.success);
     const failure = sanitizeCount(data.failure);
     const bestTimeMs = sanitizeDuration(data.bestTimeMs);
-    return { success, failure, bestTimeMs };
+    const totalTimeMs = sanitizeDuration(data.totalTimeMs) ?? 0;
+    return { success, failure, bestTimeMs, totalTimeMs };
   }
 
   private ensureLevelStats(mapId: MapId, level: number): MapLevelStats {
@@ -1449,12 +1476,15 @@ export class MapModule implements GameModule {
     const sanitizedLevel = sanitizeLevel(level);
     const mapEntry = this.mapStats[mapId]!;
     if (!mapEntry[sanitizedLevel]) {
-      mapEntry[sanitizedLevel] = { success: 0, failure: 0, bestTimeMs: null };
+      mapEntry[sanitizedLevel] = { success: 0, failure: 0, bestTimeMs: null, totalTimeMs: 0 };
       return mapEntry[sanitizedLevel]!;
     }
     const entry = mapEntry[sanitizedLevel]!;
     if (entry.bestTimeMs === undefined) {
       entry.bestTimeMs = null;
+    }
+    if (entry.totalTimeMs === undefined || !Number.isFinite(entry.totalTimeMs)) {
+      entry.totalTimeMs = 0;
     }
     return entry;
   }
@@ -1497,8 +1527,8 @@ export class MapModule implements GameModule {
         levelClone[level] = {
           success: stats.success,
           failure: stats.failure,
-          bestTimeMs:
-            stats.bestTimeMs === undefined ? null : stats.bestTimeMs,
+          bestTimeMs: stats.bestTimeMs === undefined ? null : stats.bestTimeMs,
+          totalTimeMs: stats.totalTimeMs ?? 0,
         };
       });
       clone[mapId as MapId] = levelClone;
@@ -1525,6 +1555,7 @@ export class MapModule implements GameModule {
           success: stats.success,
           failure: stats.failure,
           bestTimeMs: stats.bestTimeMs === undefined ? null : stats.bestTimeMs,
+          totalTimeMs: stats.totalTimeMs ?? 0,
         };
       });
       clone[mapId as MapId] = levelClone;
@@ -1547,7 +1578,7 @@ export class MapModule implements GameModule {
         },
       };
 
-      this.options.bonuses.registerSource(sourceId, effects);
+      this.options.bonuses.registerSource(sourceId, effects, "map");
       this.currentMapBonusSourceId = sourceId;
     }
   }

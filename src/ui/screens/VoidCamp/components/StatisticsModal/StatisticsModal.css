@@ -81,8 +81,10 @@
 }
 
 .statistics-modal__item {
-  display: grid;
-  gap: 0.35rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-soft);
@@ -98,9 +100,12 @@
 }
 
 .statistics-modal__value {
-  font-size: 1.35rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 500;
   color: rgba(226, 232, 240, 0.98);
+  text-align: right;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .statistics-modal__note {
@@ -156,6 +161,53 @@
 .statistics-modal__history-text {
   flex: 1 1 auto;
   font-size: 0.95rem;
+}
+
+.statistics-modal__general {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.statistics-modal__section {
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: var(--spacing-md);
+}
+
+.statistics-modal__section-title {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.statistics-modal__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.statistics-modal__table th,
+.statistics-modal__table td {
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.statistics-modal__table th {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.statistics-modal__table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.statistics-modal__table tbody tr:hover {
+  background: rgba(30, 64, 175, 0.4);
 }
 
 @media (max-width: 720px) {

@@ -8,6 +8,7 @@ describe("BonusCalculator", () => {
     const sources: BonusSourceState[] = [
       {
         id: "source",
+        category: "misc",
         level: 1,
         effects: {
           mana_cap: {

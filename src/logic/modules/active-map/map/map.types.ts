@@ -25,6 +25,7 @@ import type { TargetSnapshot } from "../targeting/targeting.types";
 import { MapRunState } from "./MapRunState";
 import { MapSceneCleanupContract } from "./map.scene-cleanup";
 import { NewUnlockNotificationService } from "@logic/services/new-unlock-notification/NewUnlockNotification";
+import type { ArtifactsModule } from "@logic/modules/camp/artifacts/artifacts.module";
 import type { MapEffectPostProcessConfig } from "../../../../db/map-effects-db";
 import type { LocalizationService } from "@logic/services/localization/LocalizationService";
 import type { DamageService } from "../targeting/DamageService";
@@ -55,6 +56,7 @@ export interface MapModuleOptions {
   sceneCleanup: MapSceneCleanupContract;
   getSkillLevel: (id: SkillId) => number;
   newUnlocks: NewUnlockNotificationService;
+  artifacts?: ArtifactsModule;
   statusEffects?: StatusEffectsModule;
   localization?: LocalizationService;
   damage?: DamageService;
@@ -75,6 +77,7 @@ export interface MapLevelStats {
   success: number;
   failure: number;
   bestTimeMs: number | null;
+  totalTimeMs: number;
 }
 
 export type MapStats = Partial<Record<MapId, Record<number, MapLevelStats>>>;
@@ -83,7 +86,10 @@ export interface MapListEntry extends MapListEntryConfig {
   readonly currentLevel: number;
   readonly selectedLevel: number;
   readonly attempts: number;
+  /** Max attempts across all levels; use for statistics (favorite map, top-by-time table). */
+  readonly maxAttemptsAcrossLevels: number;
   readonly bestTimeMs: number | null;
+  readonly totalTimeMs: number;
   readonly clearedLevels: number;
   readonly maxLevel: number;
   readonly selectable: boolean; // true if map can be selected/played

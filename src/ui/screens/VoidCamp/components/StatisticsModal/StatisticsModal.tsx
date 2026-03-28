@@ -1,14 +1,39 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import type { CampStatisticsSnapshot } from "@logic/modules/shared/statistics/statistics.module";
 import type { EventLogEntry } from "@logic/modules/shared/event-log/event-log.types";
+import { getMapConfig } from "@/db/maps/maps-db";
+import type { MapId } from "@/db/maps/maps-db";
+import type { SkillId } from "@/db/skills-db";
 import { formatDuration } from "@ui/utils/formatDuration";
 import { formatNumber } from "@ui/shared/format/number";
+import { useAppLogic } from "@ui/contexts/AppLogicContext";
 import { useLocalization } from "@ui/shared/useLocalization";
+import { SANITY_DECAY_PER_SECOND } from "@logic/modules/active-map/necromancer/necromancer.const";
+import {
+  BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
+  DEFAULT_BUILDINGS_WORKSHOP_STATE,
+} from "@logic/modules/camp/buildings/buildings.const";
+import {
+  DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
+  UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+} from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.const";
+import {
+  CRAFTING_STATE_BRIDGE_KEY,
+  DEFAULT_CRAFTING_STATE,
+} from "@logic/modules/camp/crafting/crafting.const";
+import { useBridgeValue } from "@ui-shared/useBridgeValue";
 import "./StatisticsModal.css";
 
 interface FavoriteMapInfo {
   name: string;
   attempts: number;
+}
+
+interface TopTimeMapInfo {
+  id: MapId;
+  name: string;
+  attempts: number;
+  totalTimeMs: number;
 }
 
 interface StatisticsModalProps {
@@ -18,6 +43,7 @@ interface StatisticsModalProps {
   readonly favoriteMap: FavoriteMapInfo | null;
   readonly statistics: CampStatisticsSnapshot;
   readonly eventLog: EventLogEntry[];
+  readonly topTimeMaps: readonly TopTimeMapInfo[];
 }
 
 const formatCount = (value: number): string =>
@@ -35,6 +61,34 @@ const formatDamage = (value: number): string =>
     compact: false,
   });
 
+function formatHistoryEntryText(
+  entry: EventLogEntry,
+  t: (key: string, fallback?: string) => string,
+  getMapName: (mapId: MapId, fallback: string) => string,
+  getSkillText: (skillId: SkillId, fallback: { name: string; description: string }) => { name: string; registerEventText?: string },
+): string {
+  const { type, text, payload } = entry;
+  if (!payload) {
+    return text;
+  }
+  if (type === "map-cleared" && payload.mapId != null && payload.level != null) {
+    const mapId = payload.mapId as MapId;
+    const config = getMapConfig(mapId);
+    const mapName = getMapName(mapId, config.name);
+    return t("voidCamp.statistics.history.mapCleared", "Map {{mapName}} cleared (Level {{level}})")
+      .replace("{{mapName}}", mapName)
+      .replace("{{level}}", String(payload.level));
+  }
+  if (type === "skill-obtained" && payload.skillId) {
+    const skill = getSkillText(payload.skillId as SkillId, { name: payload.skillId, description: "" });
+    const description = skill.registerEventText ?? payload.eventDescription ?? "";
+    return t("voidCamp.statistics.history.skillObtained", "Skill {{name}} obtained: {{description}}")
+      .replace("{{name}}", skill.name)
+      .replace("{{description}}", description);
+  }
+  return text;
+}
+
 export const StatisticsModal: React.FC<StatisticsModalProps> = ({
   isOpen,
   onClose,
@@ -42,17 +96,35 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
   favoriteMap,
   statistics,
   eventLog,
+  topTimeMaps,
 }) => {
   const { t } = useLocalization();
+  const { uiApi, bridge } = useAppLogic();
   const titleId = useId();
-  const [activeTab, setActiveTab] = useState<"general" | "history">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "combat" | "history">("general");
   const historyEntries = useMemo(() => {
     return eventLog.map((entry, index) => ({
       id: `${entry.realTimeMs}-${entry.type}-${index}`,
       gameTimeMs: entry.gameTimeMs,
-      text: entry.text,
+      entry,
     }));
   }, [eventLog]);
+
+  const moduleWorkshopState = useBridgeValue(
+    bridge,
+    UNIT_MODULE_WORKSHOP_STATE_BRIDGE_KEY,
+    DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
+  );
+  const buildingsState = useBridgeValue(
+    bridge,
+    BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY,
+    DEFAULT_BUILDINGS_WORKSHOP_STATE,
+  );
+  const craftingState = useBridgeValue(
+    bridge,
+    CRAFTING_STATE_BRIDGE_KEY,
+    DEFAULT_CRAFTING_STATE,
+  );
 
   const handleDialogClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
@@ -75,7 +147,13 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
       })} ${t("voidCamp.statistics.attempts", "attempts")}`
     : t("voidCamp.statistics.noRuns", "No runs recorded yet.");
 
-  const stats = [
+  interface StatEntry {
+    label: string;
+    value: string;
+    note?: string;
+  }
+
+  const stats: StatEntry[] = [
     {
       label: t("saveSelect.slot.timePlayed", "Time Played"),
       value: formatDuration(timePlayedMs),
@@ -108,6 +186,109 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
     },
   ];
 
+  if (moduleWorkshopState.unlocked) {
+    stats.push({
+      label: t("voidCamp.statistics.organsUnlocked", "Organs unlocked"),
+      value: formatCount(moduleWorkshopState.modules.length),
+      note: undefined,
+    });
+  }
+
+  if (buildingsState.unlocked) {
+    stats.push({
+      label: t("voidCamp.statistics.buildingsPurchased", "Buildings purchased"),
+      value: formatCount(
+        buildingsState.buildings.filter((building) => building.level > 0).length,
+      ),
+      note: undefined,
+    });
+  }
+
+  if (craftingState.unlocked) {
+    stats.push({
+      label: t("voidCamp.statistics.materialsCrafted", "Materials crafted"),
+      value: formatCount(statistics.materialsCrafted ?? 0),
+      note: undefined,
+    });
+  }
+
+  const bonusValues = uiApi.bonuses.getValues();
+
+  const combatStats: StatEntry[] = [
+    {
+      label: t("voidCamp.statistics.combat.maxSanity", "Max Sanity"),
+      value: formatCount(bonusValues.sanity_cap ?? 0),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.sanityDrainPerSecond", "Sanity drain per second"),
+      value: formatDamage(SANITY_DECAY_PER_SECOND),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.maxMana", "Max Mana"),
+      value: formatCount(bonusValues.mana_cap ?? 0),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.manaRegenPerSecond", "Mana regen per second"),
+      value: formatDamage(bonusValues.mana_regen ?? 0),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.allUnitsHpMultiplier", "All units HP multiplier"),
+      value: `×${formatNumber(bonusValues.all_units_hp_multiplier ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+    {
+      label: t(
+        "voidCamp.statistics.combat.allUnitsAttackMultiplier",
+        "All units attack multiplier",
+      ),
+      value: `×${formatNumber(bonusValues.all_units_attack_multiplier ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.allUnitsArmorBonus", "All units armor bonus"),
+      value: formatNumber(bonusValues.all_units_armor ?? 0, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.allUnitsArmorMultiplier", "All units armor multiplier"),
+      value: `×${formatNumber(bonusValues.all_units_armor_multiplier ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+    {
+      label: t("voidCamp.statistics.combat.brickRewardsMultiplier", "Brick rewards multiplier"),
+      value: `×${formatNumber(bonusValues.brick_rewards ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    },
+  ];
+
+  if (craftingState.unlocked) {
+    combatStats.push({
+      label: t(
+        "voidCamp.statistics.combat.craftingSpeedMultiplier",
+        "Crafting speed multiplier",
+      ),
+      value: `×${formatNumber(bonusValues.crafting_speed_mult ?? 1, {
+        maximumFractionDigits: 2,
+      })}`,
+      note: undefined,
+    });
+  }
+
   return (
     <div className="statistics-modal" onClick={onClose} role="presentation">
       <div
@@ -137,6 +318,16 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
                 type="button"
                 className={
                   "inline-tabs__button" +
+                  (activeTab === "combat" ? " inline-tabs__button--active" : "")
+                }
+                onClick={() => setActiveTab("combat")}
+              >
+                {t("voidCamp.statistics.combat", "Combat Stats")}
+              </button>
+              <button
+                type="button"
+                className={
+                  "inline-tabs__button" +
                   (activeTab === "history" ? " inline-tabs__button--active" : "")
                 }
                 onClick={() => setActiveTab("history")}
@@ -151,8 +342,47 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
         </header>
         <div className="statistics-modal__content">
           {activeTab === "general" ? (
+            <div className="statistics-modal__general">
+              <ul className="statistics-modal__list">
+                {stats.map((entry: StatEntry) => (
+                  <li key={entry.label} className="statistics-modal__item">
+                    <span className="statistics-modal__label">{entry.label}</span>
+                    <span className="statistics-modal__value">{entry.value}</span>
+                    {entry.note ? (
+                      <span className="statistics-modal__note">{entry.note}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {topTimeMaps.length > 0 && (
+                <div className="statistics-modal__section">
+                  <h3 className="statistics-modal__section-title">
+                    {t("voidCamp.statistics.topMapsByTime", "Top maps by time played")}
+                  </h3>
+                  <table className="statistics-modal__table">
+                    <thead>
+                      <tr>
+                        <th>{t("voidCamp.statistics.mapName", "Map")}</th>
+                        <th>{t("voidCamp.statistics.timeSpent", "Time Spent")}</th>
+                        <th>{t("voidCamp.statistics.attemptsShort", "Runs")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topTimeMaps.map((map) => (
+                        <tr key={map.id}>
+                          <td>{map.name}</td>
+                          <td>{formatDuration(map.totalTimeMs)}</td>
+                          <td>{formatCount(map.attempts)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : activeTab === "combat" ? (
             <ul className="statistics-modal__list">
-              {stats.map((entry) => (
+              {combatStats.map((entry: StatEntry) => (
                 <li key={entry.label} className="statistics-modal__item">
                   <span className="statistics-modal__label">{entry.label}</span>
                   <span className="statistics-modal__value">{entry.value}</span>
@@ -170,12 +400,19 @@ export const StatisticsModal: React.FC<StatisticsModalProps> = ({
                 </div>
               ) : (
                 <ul className="statistics-modal__history-list">
-                  {historyEntries.map((entry) => (
-                      <li key={entry.id} className="statistics-modal__history-item">
-                        <span className="statistics-modal__history-time">{formatDuration(entry.gameTimeMs)}</span>
-                        <span className="statistics-modal__history-separator">—</span>
-                        <span className="statistics-modal__history-text">{entry.text}</span>
-                      </li>
+                  {historyEntries.map((item) => (
+                    <li key={item.id} className="statistics-modal__history-item">
+                      <span className="statistics-modal__history-time">{formatDuration(item.gameTimeMs)}</span>
+                      <span className="statistics-modal__history-separator">—</span>
+                      <span className="statistics-modal__history-text">
+                        {formatHistoryEntryText(
+                          item.entry,
+                          t,
+                          uiApi.localization.getMapName.bind(uiApi.localization),
+                          uiApi.localization.getSkillText.bind(uiApi.localization),
+                        )}
+                      </span>
+                    </li>
                   ))}
                 </ul>
               )}

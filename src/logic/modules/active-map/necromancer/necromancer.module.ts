@@ -22,6 +22,7 @@ import { UnitDesignModule } from "../../camp/unit-design/unit-design.module";
 import { clampNumber } from "@shared/helpers/numbers.helper";
 import { sanitizeNumberWithFallback } from "../../../../shared/helpers/numbers.helper";
 import { MapRunState } from "../map/MapRunState";
+import { ArtifactsModule } from "../../camp/artifacts/artifacts.module";
 import type {
   NecromancerModuleOptions,
   NecromancerResourceSnapshot,
@@ -53,6 +54,7 @@ export class NecromancerModule implements GameModule {
   private readonly bonuses: BonusesModule;
   private readonly unitDesigns: UnitDesignModule;
   private readonly runState: MapRunState;
+  private readonly artifacts: ArtifactsModule | null;
 
   private mana: ResourceState = {
     current: 0,
@@ -84,6 +86,7 @@ export class NecromancerModule implements GameModule {
     this.bonuses = options.bonuses;
     this.unitDesigns = options.unitDesigns;
     this.runState = options.runState;
+    this.artifacts = options.artifacts ?? null;
     this.bonuses.subscribe((values) => {
       this.handleBonusValuesChanged(values);
     });
@@ -171,7 +174,7 @@ export class NecromancerModule implements GameModule {
 
     if (this.mapActive && this.sanity.current > -2) {
       const nextSanity = clampNumber(
-        this.sanity.current - SANITY_DECAY_PER_SECOND * deltaSeconds,
+        this.sanity.current - this.getSanityDecayPerSecond() * deltaSeconds,
         0,
         this.sanity.max
       );
@@ -326,7 +329,7 @@ export class NecromancerModule implements GameModule {
   }
 
   public getRemainingUnitCapacity(): number {
-    return Math.max(0, MAX_UNITS_ON_MAP - this.playerUnits.getActiveUnitCount());
+    return Math.max(0, this.getMaxUnitsOnMap() - this.playerUnits.getActiveUnitCount());
   }
 
   public getAffordableSpawnCount(): number {
@@ -529,9 +532,21 @@ export class NecromancerModule implements GameModule {
         current: clampNumber(this.sanity.current, 0, this.sanity.max),
         max: this.sanity.max,
       },
+      maxUnits: this.getMaxUnitsOnMap(),
     };
     this.resourcesDirty = false;
     DataBridgeHelpers.pushState(this.bridge, NECROMANCER_RESOURCES_BRIDGE_KEY, payload);
+  }
+
+
+  private getSanityDecayPerSecond(): number {
+    const modifiers = this.artifacts?.getModifiers() ?? { sanityDecayMultiplier: 1, maxUnitsFlat: 0 };
+    return SANITY_DECAY_PER_SECOND * Math.max(modifiers.sanityDecayMultiplier, 0);
+  }
+
+  private getMaxUnitsOnMap(): number {
+    const modifiers = this.artifacts?.getModifiers() ?? { sanityDecayMultiplier: 1, maxUnitsFlat: 0 };
+    return Math.max(0, MAX_UNITS_ON_MAP + Math.floor(modifiers.maxUnitsFlat));
   }
 
   private parseSaveData(data: unknown): ResourceAmountMap | null {

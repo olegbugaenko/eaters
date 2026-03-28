@@ -48,10 +48,21 @@ const COMPACT_THRESHOLDS: CompactThreshold[] = [
   { value: 1_000, suffix: "K" },
 ];
 
-const formatCompactNumber = (value: number): string => {
-  const absValue = Math.abs(value);
+interface CompactFormatOptions {
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
+}
 
-  for (const { value: threshold, suffix } of COMPACT_THRESHOLDS) {
+const formatCompactNumber = (
+  value: number,
+  compactOptions?: CompactFormatOptions,
+): string => {
+  const absValue = Math.abs(value);
+  const minDecimals = compactOptions?.minimumFractionDigits ?? 0;
+  const maxDecimals = compactOptions?.maximumFractionDigits;
+
+  for (let index = 0; index < COMPACT_THRESHOLDS.length; index += 1) {
+    const { value: threshold, suffix } = COMPACT_THRESHOLDS[index]!;
     if (absValue < threshold) {
       continue;
     }
@@ -59,11 +70,41 @@ const formatCompactNumber = (value: number): string => {
     const scaled = value / threshold;
     const absScaled = Math.abs(scaled);
     const integerDigits = absScaled === 0 ? 1 : Math.floor(Math.log10(absScaled)) + 1;
-    const decimals = Math.max(0, 3 - integerDigits);
+    const suggestedDecimals = Math.max(0, 3 - integerDigits);
+    const decimals = maxDecimals === 0 ? 0 : Math.max(suggestedDecimals, minDecimals);
     const factor = 10 ** decimals;
-    const truncated = Math.trunc(scaled * factor) / factor;
-    const formatted = decimals > 0 ? truncated.toFixed(decimals) : truncated.toString();
-    const trimmed = decimals > 0 ? formatted.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1") : formatted;
+    const rounded = Math.round(scaled * factor) / factor;
+
+    // If rounding pushes us to the next magnitude (e.g. 999.9K -> 1M),
+    // recompute using the next larger threshold.
+    if (Math.abs(rounded) >= 1000 && index > 0) {
+      const next = COMPACT_THRESHOLDS[index - 1]!;
+      const nextScaled = value / next.value;
+      const nextAbsScaled = Math.abs(nextScaled);
+      const nextIntegerDigits =
+        nextAbsScaled === 0 ? 1 : Math.floor(Math.log10(nextAbsScaled)) + 1;
+      const nextSuggestedDecimals = Math.max(0, 3 - nextIntegerDigits);
+      const nextDecimals = maxDecimals === 0 ? 0 : Math.max(nextSuggestedDecimals, minDecimals);
+      const nextFactor = 10 ** nextDecimals;
+      const nextRounded = Math.round(nextScaled * nextFactor) / nextFactor;
+      const nextFormatted =
+        nextDecimals > 0 ? nextRounded.toFixed(nextDecimals) : nextRounded.toString();
+      const nextTrimmed =
+        minDecimals > 0
+          ? nextFormatted
+          : nextDecimals > 0
+            ? nextFormatted.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1")
+            : nextFormatted;
+      return `${nextTrimmed}${next.suffix}`;
+    }
+
+    const formatted = decimals > 0 ? rounded.toFixed(decimals) : rounded.toString();
+    const trimmed =
+      minDecimals > 0
+        ? formatted
+        : decimals > 0
+          ? formatted.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1")
+          : formatted;
     return `${trimmed}${suffix}`;
   }
 
@@ -80,7 +121,11 @@ export const formatNumber = (
   }
 
   if (compact) {
-    const compactValue = formatCompactNumber(value);
+    const compactOptions: CompactFormatOptions = {
+      minimumFractionDigits: formatOptions.minimumFractionDigits,
+      maximumFractionDigits: formatOptions.maximumFractionDigits,
+    };
+    const compactValue = formatCompactNumber(value, compactOptions);
     if (compactValue !== value.toString()) {
       return compactValue;
     }

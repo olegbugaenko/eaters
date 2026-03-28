@@ -43,6 +43,8 @@ export type EnemyType =
   | "spinningAxeTurretEnemy"
   | "portalSpawnerEnemy"
   | "bronzeArcherPortalSpawnerEnemy"
+  | "carGuardian"
+  | "carGuardianPortalSpawnerEnemy"
   | "greatOctopusBody"
   | "greatOctopusSegment";
 

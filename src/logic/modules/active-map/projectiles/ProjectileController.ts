@@ -676,11 +676,11 @@ export class UnitProjectileController {
     this.projectiles = [];
     this.projectileIndex.clear();
     
-    // Also clear rings (GPU slots)
-    this.rings.forEach((ring) => {
+    for (const ring of this.rings) {
       ringGpuRenderer.releaseSlot(ring.gpuSlot);
-    });
+    }
     this.rings = [];
+    this.ringsSpawnedThisFrame = 0;
   }
 
   /**

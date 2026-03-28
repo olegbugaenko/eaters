@@ -11,6 +11,8 @@ export type SupportedLanguage = "en" | "ua" | "de" | "pl" | "ru";
 export interface LocalizedSkillText {
   readonly name: string;
   readonly description: string;
+  /** Optional text for event log when skill is obtained */
+  readonly registerEventText?: string;
 }
 
 export interface LocalizedUnitModuleText {

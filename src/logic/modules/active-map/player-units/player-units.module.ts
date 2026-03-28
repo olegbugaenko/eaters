@@ -146,11 +146,15 @@ export class PlayerUnitsModule implements GameModule {
     this.bridge = options.bridge;
     this.movement = options.movement;
     this.bonuses = options.bonuses;
-    this.bonuses.registerSource(SOUL_MAGNET_BONUS_SOURCE_ID, {
-      soul_drop_chance_add: {
-        income: (level) => this.getSoulMagnetBonusByLevel(level),
+    this.bonuses.registerSource(
+      SOUL_MAGNET_BONUS_SOURCE_ID,
+      {
+        soul_drop_chance_add: {
+          income: (level) => this.getSoulMagnetBonusByLevel(level),
+        },
       },
-    });
+      "unit_module"
+    );
     this.explosions = options.explosions;
     this.statusEffects = options.statusEffects;
     const targeting = options.targeting ?? new TargetingService();

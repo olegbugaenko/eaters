@@ -298,7 +298,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
         multiplier: (level) => 1 + 0.125 * level,
       },
     },
-    nodesRequired: { advanced_crafting: 1 },
+    nodesRequired: { advanced_crafting: 5 },
     cost: createResourceCost("wire", 10, 1.5),
   },
   construction_ledgers: {
@@ -321,9 +321,10 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "draftsmanship",
     name: "Draftsmanship",
     description:
-      "Refine schematics for controlled overdrive, letting you push crafting limits at a cost.",
+      "Refine schematics to unlock access to new building blueprints.",
     nodePosition: { x: -2, y: 6 },
     maxLevel: 1,
+    icon: "draftmanship.png",
     effects: {},
     nodesRequired: { construction_ledgers: 1 },
     cost: createResourceCost("paper", 500, 1),
@@ -384,7 +385,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Unlock Dark Research and let forbidden studies grow over time through harvested echoes.",
     nodePosition: { x: 0, y: 6 },
     maxLevel: 1,
-    icon: "resource_gain_4.png",
+    icon: "souls_extraction.png",
     effects: {},
     nodesRequired: { refinement2: 5 },
     cost: createResourceCost("silver", 25000, 1),
@@ -827,7 +828,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Strengthen the fibres that drive motion—your summons gain faster acceleration.",
     nodePosition: { x: -2, y: -1 },
     maxLevel: 5,
-    icon: "attack2.png",
+    icon: "speed_1.png",
     effects: {
       all_units_acceleration_multiplier: {
         multiplier: (level) => 1 + 0.06 * level,
@@ -843,7 +844,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Push your swarm into relentless bursts, further boosting acceleration.",
     nodePosition: { x: -3, y: -2 },
     maxLevel: 5,
-    icon: "attack3.png",
+    icon: "speed_2.png",
     effects: {
       all_units_acceleration_multiplier: {
         multiplier: (level) => 1 + 0.05 * level,
@@ -859,7 +860,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
       "Refine intensive movement patterns to keep acceleration climbing.",
     nodePosition: { x: -4, y: -2 },
     maxLevel: 4,
-    icon: "attack4.png",
+    icon: "speed_3.png",
     effects: {
       all_units_acceleration_multiplier: {
         multiplier: (level) => 1 + 0.05 * level,
@@ -935,9 +936,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   },
   heavy_drill: {
     id: "heavy_drill",
-    name: "Heavy Drill",
+    name: "Heavy Fangs",
     description:
-      "Replace crude bits with heavy augers. Mass and torque translate into damage.",
+      "Craft and implant dense, weighty fangs—mass and drive make every strike land harder.",
     nodePosition: { x: -6, y: -1 },
     maxLevel: 15,
     icon: "iron_drill.png",
@@ -953,7 +954,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "tool_fabrication",
     name: "Tool Fabrication",
     description:
-      "Commission specialized implements, unlocking advanced crafting techniques.",
+      "Craft specialized implements and implants, unlocking advanced crafting.",
     nodePosition: { x: -7, y: -2 },
     maxLevel: 1,
     icon: "tools.png",
@@ -965,7 +966,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "forged_strikes",
     name: "Forged Strikes",
     description:
-      "Temper and quench—meticulous armaments push your vanguard's damage higher.",
+      "Forge and implant hardened strikers—your vanguard's strikes hit harder.",
     nodePosition: { x: -8, y: -2 },
     maxLevel: 80,
     icon: "iron_tools.png",
@@ -979,9 +980,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   },
   silver_drill: {
     id: "silver_drill",
-    name: "Silver Drill",
+    name: "Silver Fangs",
     description:
-      "Silvered bits bite deeper into stubborn matter, further amplifying attacks.",
+      "Craft silvered fang-implants that bite deeper into matter, amplifying your creatures' attacks.",
     nodePosition: { x: -8, y: -1 },
     maxLevel: 15,
     icon: "silver_drill.png",
@@ -1029,7 +1030,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "penetration",
     name: "Penetration",
     description:
-      "Hardened tips and angled force let your strikes pierce tougher shells.",
+      "Sharpen fangs and angle of strike—your creatures pierce tougher shells.",
     nodePosition: { x: -6, y: 1 },
     maxLevel: 15,
     icon: "penetration_1.png",
@@ -1045,7 +1046,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "penetration2",
     name: "Penetration II",
     description:
-      "Refine the geometry of impact; even plated foes yield to your bite.",
+      "Refine implant geometry—even plated foes yield to your creatures' bite.",
     nodePosition: { x: -7, y: 2 },
     maxLevel: 15,
     icon: "penetration_2.png",
@@ -1061,7 +1062,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "wire_penetration",
     name: "Piercing Fangs",
     description:
-      "Wired impact channels sharpen the bite of your strikes against armor.",
+      "Craft conductive fang-implants that sharpen your creatures' bite against armor.",
     nodePosition: { x: -7, y: 3 },
     maxLevel: 15,
     icon: "piercing_fangs.png",
@@ -1126,7 +1127,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "stone_armor",
     name: "Stone Armor",
     description:
-      "Bind stone plates over pulsing forms—basic armor that turns glancing blows.",
+      "Layer stone scales over pulsing forms—basic protection that turns glancing blows.",
     nodePosition: { x: 3, y: 0 },
     maxLevel: 5,
     icon: "armor1.png",
@@ -1192,7 +1193,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     description:
       "Master forging of living plate—your hosts shrug off punishing blows.",
     nodePosition: { x: 7, y: 2 },
-    maxLevel: 15,
+    maxLevel: 25,
     effects: {
       all_units_armor: {
         income: (level) => 5 * level,
@@ -1211,11 +1212,11 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "reinforced_armor.png",
     effects: {
       all_units_armor_multiplier: {
-        multiplier: (level) => 1 + 0.1 * level,
+        multiplier: (level) => 1 + 0.125 * level,
       },
     },
     nodesRequired: { armor_lore3: 5 },
-    cost: createResourceCost("tools", 100, 1.5),
+    cost: createResourceCost("tools", 50, 1.5),
   },
   armor_lore4: {
     id: "armor_lore4",
@@ -1271,7 +1272,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     id: "vitality3",
     name: "Vitality III",
     description:
-      "Engineered organs and redundant latticework markedly raise hit capacity.",
+      "Refined organs and redundant tissue markedly raise your creations' resilience.",
     nodePosition: { x: 6, y: -1 },
     maxLevel: 15,
     icon: "health_3.png",
@@ -1345,9 +1346,9 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
   },
   engineered_plating: {
     id: "engineered_plating",
-    name: "Engineered Plating",
+    name: "Reinforced Carapace",
     description:
-      "Outfit constructs with calculated bracing and plates—substantial increase to health.",
+      "Craft and graft reinforced plating onto your creations—substantial increase to health.",
     nodePosition: { x: 8, y: -3 },
     maxLevel: 80,
     icon: "health_tools.png",

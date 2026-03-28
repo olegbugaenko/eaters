@@ -133,11 +133,11 @@ function App(): JSX.Element {
               setSceneTutorial(null);
               refreshSlotSummaries();
             }}
-            onLeaveToMapSelect={() => {
+            onLeaveToCampWithTab={(tab) => {
               uiApi.map.leaveCurrentMap();
               uiApi.audio.playPlaylist("camp");
               uiApi.gameLoop.start(); // Ensure game loop runs in camp
-              setVoidCampTab("skills");
+              setVoidCampTab(tab);
               setScreen("void-camp");
               setSceneTutorial(null);
               refreshSlotSummaries();

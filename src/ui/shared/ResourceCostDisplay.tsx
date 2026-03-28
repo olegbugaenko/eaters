@@ -23,11 +23,14 @@ const formatAmount = (value: number): string => {
     return "0";
   }
   if (Number.isInteger(value)) {
-    return formatNumber(value, { maximumFractionDigits: 0 });
+    return formatNumber(value, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
   }
   return formatNumber(value, {
     minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   });
 };
 

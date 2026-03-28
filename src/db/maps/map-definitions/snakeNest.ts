@@ -17,7 +17,7 @@ const mapConfig = (() => {
     };
   });
 
-  const enemiesPerRing = 3;
+  const enemiesPerRing = 4;
   const enemyPlacementRadius = ringRadius * 0.5;
 
   return {

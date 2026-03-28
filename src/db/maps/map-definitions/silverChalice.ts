@@ -5,17 +5,17 @@ import { generateTrapezoidOutline } from "../../../logic/services/brick-layout/o
 import type { MapConfig } from "../maps-db.types";
 
 const mapConfig = (() => {
-  const size: SceneSize = { width: 1500, height: 1500 };
+  const size: SceneSize = { width: 2100, height: 2100 };
   const center: SceneVector2 = { x: size.width / 2, y: size.height / 2 };
-  const spawnPoint: SceneVector2 = { x: center.x - 650, y: center.y };
+  const spawnPoint: SceneVector2 = { x: center.x - 920, y: center.y };
 
   return {
     name: "Silver Chalice",
     size,
-    icon: "silver_chalice.png",
+    icon: "silver_cup.png",
     spawnPoints: [spawnPoint],
     nodePosition: { x: 6, y: 0 },
-    lockedForDemo: false,
+    lockedForDemo: true,
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const silverLevel = baseLevel + 3;
@@ -24,34 +24,34 @@ const mapConfig = (() => {
       const sampleStep = 12;
 
       const baseOutline = generateTrapezoidOutline({
-        bottomWidth: 320,
-        topWidth: 120,
-        height: 140,
+        bottomWidth: 450,
+        topWidth: 170,
+        height: 200,
         convexity: {
-          left: { control1: 20, control2: 15 },
-          right: { control1: 20, control2: 15 },
-          bottom: { control1: 25, control2: 25 },
+          left: { control1: 28, control2: 21 },
+          right: { control1: 28, control2: 21 },
+          bottom: { control1: 35, control2: 35 },
         },
       });
 
       const stemOutline = generateTrapezoidOutline({
-        bottomWidth: 80,
-        topWidth: 80,
-        height: 200,
+        bottomWidth: 113,
+        topWidth: 113,
+        height: 283,
         convexity: {
-          left: { control1: 8, control2: 8 },
-          right: { control1: 8, control2: 8 },
+          left: { control1: 11, control2: 11 },
+          right: { control1: 11, control2: 11 },
         },
       });
 
       const bowlOutline = generateTrapezoidOutline({
-        bottomWidth: 100,
-        topWidth: 580,
-        height: 320,
+        bottomWidth: 141,
+        topWidth: 820,
+        height: 452,
         convexity: {
-          left: { control1: 40, control2: 25 },
-          right: { control1: 40, control2: 25 },
-          top: { control1: 40, control2: 40 },
+          left: { control1: 57, control2: 35 },
+          right: { control1: 57, control2: 35 },
+          top: { control1: 57, control2: 57 },
         },
       });
 
@@ -59,7 +59,7 @@ const mapConfig = (() => {
         "smallSilver",
         {
           outline: transformBezierOutline(baseOutline, {
-            position: { x: center.x, y: center.y + 280 },
+            position: { x: center.x, y: center.y + 396 },
           }),
           spacing,
           sampleStep,
@@ -72,7 +72,7 @@ const mapConfig = (() => {
         "smallSilver",
         {
           outline: transformBezierOutline(stemOutline, {
-            position: { x: center.x, y: center.y + 80 },
+            position: { x: center.x, y: center.y + 113 },
           }),
           spacing,
           sampleStep,
@@ -85,7 +85,7 @@ const mapConfig = (() => {
         "smallSilver",
         {
           outline: transformBezierOutline(bowlOutline, {
-            position: { x: center.x, y: center.y - 130 },
+            position: { x: center.x, y: center.y - 184 },
           }),
           spacing: spacing * 0.8,
           sampleStep: sampleStep * 0.7,

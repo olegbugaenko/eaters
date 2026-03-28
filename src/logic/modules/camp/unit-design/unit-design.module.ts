@@ -1,6 +1,7 @@
 import { DataBridge } from "@/core/logic/ui/DataBridge";
 import { BaseGameModule } from "@/core/logic/engine/BaseGameModule";
 import { DataBridgeHelpers } from "@/core/logic/ui/DataBridgeHelpers";
+import type { BonusId } from "../../../../db/bonuses-db";
 import {
   PLAYER_UNIT_TYPES,
   PlayerUnitType,
@@ -14,6 +15,7 @@ import {
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { BonusValueMap } from "../../shared/bonuses/bonuses.types";
 import { UnitModuleWorkshopModule } from "../unit-module-workshop/unit-module-workshop.module";
+import type { BonusBreakdownEntry } from "@shared/types/bonuses";
 import {
   PlayerUnitBlueprintStats,
   PlayerUnitBonusLine,
@@ -102,8 +104,8 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     this.bonuses = options.bonuses;
     this.workshop = options.workshop;
     this.localization = options.localization;
-    this.moduleDetailFactory = new UnitDesignModuleDetailFactory();
-    this.availableModuleFactory = new UnitDesignerAvailableModuleFactory();
+    this.moduleDetailFactory = new UnitDesignModuleDetailFactory(this.localization);
+    this.availableModuleFactory = new UnitDesignerAvailableModuleFactory(this.localization);
   }
 
   public initialize(): void {
@@ -299,6 +301,10 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     this.rosterInitialized = true;
     const units = this.getAllDesigns();
     this.emitState(units);
+  }
+
+  public getBonusBreakdown(bonusId: BonusId): readonly BonusBreakdownEntry[] {
+    return this.bonuses.getBreakdown(bonusId);
   }
 
   public setDesignTargetingMode(id: UnitDesignId, mode: UnitTargetingMode): void {
@@ -646,6 +652,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       hpRegenPerSecond,
       armor: Math.max(effectiveArmor, 0),
       bonuses,
+      organAttackMultiplier: appliedAttackMultiplier,
     };
   }
 

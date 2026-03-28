@@ -24,6 +24,8 @@ export interface BuildingsWorkshopBridgeState {
   readonly unlocked: boolean;
   readonly buildings: readonly BuildingWorkshopItemState[];
   readonly hideMaxedWorkshop?: boolean;
+  readonly showHiddenWorkshop?: boolean;
+  readonly hiddenBuildingIds?: readonly BuildingId[];
 }
 
 export interface BuildingsModuleOptions {
@@ -39,11 +41,15 @@ export interface BuildingsModuleOptions {
 export interface BuildingsSaveData {
   readonly levels?: Partial<Record<BuildingId, number>>;
   readonly hideMaxedWorkshop?: boolean;
+  readonly showHiddenWorkshop?: boolean;
+  readonly hiddenBuildingIds?: BuildingId[];
 }
 
 export interface BuildingsModuleUiApi {
   tryUpgradeBuilding(id: BuildingId): boolean;
   setHideMaxedWorkshop(value: boolean): void;
+  setShowHiddenWorkshop(value: boolean): void;
+  setBuildingHidden(id: BuildingId, hidden: boolean): void;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

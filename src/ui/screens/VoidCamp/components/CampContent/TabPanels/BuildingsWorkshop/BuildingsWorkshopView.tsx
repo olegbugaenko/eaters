@@ -50,10 +50,20 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
     return map;
   }, [resources]);
 
-  const hideMaxed = state.hideMaxedWorkshop ?? false;
+  const showMaxed = !(state.hideMaxedWorkshop ?? false);
+  const showHidden = state.showHiddenWorkshop ?? false;
+  const hiddenSet = useMemo(
+    () => new Set(state.hiddenBuildingIds ?? []),
+    [state.hiddenBuildingIds]
+  );
   const displayBuildings = useMemo(
-    () => (hideMaxed ? state.buildings.filter((b) => !b.maxed) : state.buildings),
-    [state.buildings, hideMaxed]
+    () =>
+      state.buildings.filter(
+        (b) =>
+          (showHidden || !hiddenSet.has(b.id)) &&
+          (showMaxed || !b.maxed)
+      ),
+    [state.buildings, showMaxed, showHidden, hiddenSet]
   );
 
   const handleUpgrade = useCallback(
@@ -107,6 +117,7 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
   const renderDetail = useCallback(
     (activeBuilding: BuildingItem) => {
       const activeMissing = computeMissingCost(activeBuilding.nextCost, totals);
+      const isHidden = hiddenSet.has(activeBuilding.id);
       return (
         <div className="buildings-workshop__detail">
           <div className="buildings-workshop__detail-header">
@@ -170,24 +181,41 @@ export const BuildingsWorkshopView: React.FC<BuildingsWorkshopViewProps> = ({
             >
               {activeBuilding.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.buildings.construct", "Construct")}
             </Button>
+            <button
+              type="button"
+              className="button danger-button small-button"
+              onClick={() => workshop.setBuildingHidden(activeBuilding.id, !isHidden)}
+            >
+              {isHidden ? t("voidCamp.common.unhide", "Unhide") : t("voidCamp.common.hide", "Hide")}
+            </button>
           </div>
         </div>
       );
     },
-    [totals, handleUpgrade, t]
+    [totals, handleUpgrade, hiddenSet, t]
   );
 
   const headerContent = (
     <>
       <p className="text-muted">{t("voidCamp.buildings.subtitle", "Raise permanent structures that empower your rituals.")}</p>
-      <label className="buildings-workshop__hide-maxed">
-        <input
-          type="checkbox"
-          checked={hideMaxed}
-          onChange={(e) => workshop.setHideMaxedWorkshop(e.target.checked)}
-        />
-        <span>{t("voidCamp.common.hideMaxed", "Hide Maxed")}</span>
-      </label>
+      <div className="buildings-workshop__filter-panel">
+        <label className="buildings-workshop__filter-checkbox">
+          <input
+            type="checkbox"
+            checked={showMaxed}
+            onChange={(e) => workshop.setHideMaxedWorkshop(!e.target.checked)}
+          />
+          <span>{t("voidCamp.common.showMaxed", "Show maxed")}</span>
+        </label>
+        <label className="buildings-workshop__filter-checkbox">
+          <input
+            type="checkbox"
+            checked={showHidden}
+            onChange={(e) => workshop.setShowHiddenWorkshop(e.target.checked)}
+          />
+          <span>{t("voidCamp.common.showHidden", "Show hidden")}</span>
+        </label>
+      </div>
     </>
   );
 

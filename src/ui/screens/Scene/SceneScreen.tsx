@@ -52,14 +52,14 @@ const DEFAULT_MAP_EFFECTS_STATE = { radioactivity: null };
 
 interface SceneScreenProps {
   onExit: () => void;
-  onLeaveToMapSelect: () => void;
+  onLeaveToCampWithTab: (tab: "skills" | "maps") => void;
   tutorial: SceneTutorialConfig | null;
   onTutorialComplete?: () => void;
 }
 
 export const SceneScreen: React.FC<SceneScreenProps> = ({
   onExit,
-  onLeaveToMapSelect,
+  onLeaveToCampWithTab,
   tutorial,
   onTutorialComplete,
 }) => {
@@ -408,17 +408,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
     setIsPauseOpen(false);
   }, []);
 
-  // Wrapper for onLeaveToMapSelect that properly cleans up the map before leaving
-  const handleLeaveToMapSelect = useCallback(() => {
-    cleanupCalledRef.current = true;
-    map.leaveCurrentMap();
-    onLeaveToMapSelect();
-  }, [map, onLeaveToMapSelect]);
-
-  const handleLeaveToCamp = useCallback(() => {
-    setIsPauseOpen(false);
-    handleLeaveToMapSelect();
-  }, [handleLeaveToMapSelect]);
+  const handleLeaveToCampWithTab = useCallback(
+    (tab: "skills" | "maps") => {
+      setIsPauseOpen(false);
+      cleanupCalledRef.current = true;
+      map.leaveCurrentMap();
+      onLeaveToCampWithTab(tab);
+    },
+    [map, onLeaveToCampWithTab],
+  );
 
   useEffect(() => {
     if (!joinedDebugEnabled || joinedDebugSpawnedRef.current) {
@@ -500,10 +498,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         autoRestartCountdown={autoRestartCountdown}
         onToggleAutoRestart={handleToggleAutoRestart}
         onRestart={handleRestart}
-        onLeaveToMapSelect={handleLeaveToMapSelect}
+        onLeaveToCampWithTab={handleLeaveToCampWithTab}
         isPauseOpen={isPauseOpen}
         onResume={handleResume}
-        onLeaveToCamp={handleLeaveToCamp}
         onRunCompletionChange={handleRunCompletionChange}
       />
       <SceneControlHintsPanel />

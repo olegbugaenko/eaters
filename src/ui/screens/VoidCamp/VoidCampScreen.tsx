@@ -89,6 +89,8 @@ import type { AchievementsBridgePayload } from "@logic/modules/shared/achievemen
 import { STEAM_WISHLIST_URL } from "@ui/shared/steam";
 import { PLAYER_FEEDBACK_FORM_URL } from "@ui/shared/community";
 import { useLocalization } from "@ui/shared/useLocalization";
+import { ARTIFACTS_STATE_BRIDGE_KEY, DEFAULT_ARTIFACTS_STATE } from "@logic/modules/camp/artifacts/artifacts.const";
+import type { ArtifactsBridgeState } from "@logic/modules/camp/artifacts/artifacts.types";
 
 interface VoidCampScreenProps {
   onStart: () => void;
@@ -178,6 +180,11 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
     bridge,
     DARK_RESEARCH_STATE_BRIDGE_KEY,
     DEFAULT_DARK_RESEARCH_STATE as DarkResearchBridgeState
+  );
+  const artifactsState = useBridgeValue(
+    bridge,
+    ARTIFACTS_STATE_BRIDGE_KEY,
+    DEFAULT_ARTIFACTS_STATE as ArtifactsBridgeState
   );
 
   useEffect(() => {
@@ -349,15 +356,32 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
   const favoriteMap = useMemo(() => {
     let best: { id: MapId; name: string; attempts: number } | null = null;
     maps.forEach((map) => {
-      if (map.attempts <= 0) {
+      const attempts = map.maxAttemptsAcrossLevels;
+      if (attempts <= 0) {
         return;
       }
-      if (!best || map.attempts > best.attempts) {
-        best = { id: map.id, name: map.name, attempts: map.attempts };
+      if (!best || attempts > best.attempts) {
+        best = { id: map.id, name: map.name, attempts };
       }
     });
     return best;
   }, [maps]);
+
+  const topTimeMaps = useMemo(
+    () =>
+      maps
+        .filter((map) => (map.totalTimeMs ?? 0) > 0)
+        .slice()
+        .sort((a, b) => (b.totalTimeMs ?? 0) - (a.totalTimeMs ?? 0))
+        .slice(0, 10)
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          attempts: m.maxAttemptsAcrossLevels,
+          totalTimeMs: m.totalTimeMs ?? 0,
+        })),
+    [maps]
+  );
 
   return (
     <>
@@ -394,6 +418,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
             unitAutomationState={unitAutomationState}
             craftingState={craftingState}
             darkResearchState={darkResearchState}
+            artifactsState={artifactsState}
             achievementsState={achievementsPayload}
             newUnlocksState={newUnlocksState}
           />
@@ -430,6 +455,7 @@ export const VoidCampScreen: React.FC<VoidCampScreenProps> = ({
         favoriteMap={favoriteMap}
         statistics={statistics}
         eventLog={eventLog}
+        topTimeMaps={topTimeMaps}
       />
       <AchievementsModal
         isOpen={isAchievementsOpen}

@@ -32,13 +32,13 @@ const mapConfig = (() => {
     enemySpawnPoints: [
       {
         position: enemySpawnPosition,
-        spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
+        spawnRate: 0.25,
         enemyTypes: [{ type: "spectreEnemy", weight: 1.0 }],
         maxConcurrent: 5,
       },
       {
         position: enemySpawnPosition2,
-        spawnRate: 0.2, // 1 ворог на 5 секунд (1/5 = 0.2)
+        spawnRate: 0.25,
         enemyTypes: [{ type: "spectreEnemy", weight: 1.0 }],
         maxConcurrent: 5,
       },
@@ -178,7 +178,7 @@ const mapConfig = (() => {
       },
     ],
     mapsRequired: { thicket: 1 },
-    maxLevel: 2,
+    maxLevel: 1,
   } satisfies MapConfig;
 })();
 

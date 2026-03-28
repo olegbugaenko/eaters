@@ -12,7 +12,7 @@ const mapConfig = (() => {
   const size: SceneSize = { width: 1000, height: 1000 };
   const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 30 };
   const sides = 5;
-  const outerRadius = 360;
+  const outerRadius = Math.round(360 * 0.92);
   const layerThicknessTraining =
     getBrickConfig("smallTrainingBrick").size.width;
   const layerThicknessGray = getBrickConfig("smallSquareGray").size.width;

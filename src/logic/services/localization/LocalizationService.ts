@@ -58,7 +58,9 @@ import type {
 type LocalizationBundle = {
   readonly ui: Readonly<Record<string, string>>;
   readonly maps: Readonly<Record<string, { readonly name?: string }>>;
-  readonly skills: Readonly<Record<string, { readonly name?: string; readonly description?: string }>>;
+  readonly skills: Readonly<
+    Record<string, { readonly name?: string; readonly description?: string; readonly registerEventText?: string }>
+  >;
   readonly unitModules: Readonly<
     Record<string, { readonly name?: string; readonly description?: string; readonly bonusLabel?: string }>
   >;
@@ -169,6 +171,7 @@ export class LocalizationService implements LocalizationServiceUiApi {
     return {
       name: localized?.name ?? fallback.name,
       description: localized?.description ?? fallback.description,
+      registerEventText: localized?.registerEventText ?? fallback.registerEventText,
     };
   }
 

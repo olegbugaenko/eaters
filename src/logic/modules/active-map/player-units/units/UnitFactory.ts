@@ -200,7 +200,12 @@ export class UnitFactory {
     const mendingLevel = ownedModuleIds.includes("mendingGland")
       ? Math.max(this.getModuleLevel("mendingGland"), 0)
       : 0;
-    const pheromoneHealingMultiplier = mendingLevel > 0 ? 1 + 0.1 * mendingLevel : 0;
+    const mendingConfig = getUnitModuleConfig("mendingGland");
+    const pheromoneHealingMultiplier =
+      mendingLevel > 0
+        ? mendingConfig.baseBonusValue +
+          mendingConfig.bonusPerLevel * Math.max(mendingLevel - 1, 0)
+        : 0;
     const frenzyLevel = ownedModuleIds.includes("frenzyGland")
       ? Math.max(this.getModuleLevel("frenzyGland"), 0)
       : 0;

@@ -139,11 +139,14 @@
   position: absolute;
   top: -1.8rem;
   padding: 0.25rem 0.5rem;
+  min-width: 8ch;
+  box-sizing: border-box;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(148, 163, 184, 0.4);
   font-size: 0.75rem;
   letter-spacing: 0.07em;
+  text-align: center;
 }
 
 .skill-tree-node__icon {

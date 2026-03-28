@@ -17,6 +17,7 @@ export interface NecromancerResourceMeter {
 export interface NecromancerResourcesPayload {
   mana: NecromancerResourceMeter;
   sanity: NecromancerResourceMeter;
+  maxUnits: number;
 }
 
 /**
@@ -50,6 +51,7 @@ export interface NecromancerModuleOptions {
   bonuses: import("../../shared/bonuses/bonuses.module").BonusesModule;
   unitDesigns: import("../../camp/unit-design/unit-design.module").UnitDesignModule;
   runState: import("../map/MapRunState").MapRunState;
+  artifacts?: import("../../camp/artifacts/artifacts.module").ArtifactsModule;
 }
 
 /**

@@ -45,7 +45,8 @@ export type ExplosionType =
   | "magicArrow"
   | "unitDeath"
   | "tentacleHit"
-  | "bleedSplash";
+  | "bleedSplash"
+  | "soulCollect";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;

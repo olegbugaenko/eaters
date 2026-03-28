@@ -34,7 +34,7 @@ const mapConfig = (() => {
       },
     ],
     nodePosition: { x: -3, y: 1 },
-    maxLevel: 10,
+    maxLevel: 5,
     achievementId: "deathfulGuns",
     bricks: ({ mapLevel }) => {
       const satelliteCount = 8;

@@ -187,9 +187,9 @@ const mapConfig = (() => {
     name: "Impenetrable Jungle",
     size,
     spawnPoints: [spawnPoint],
-    nodePosition: { x: 2, y: 6 },
+    nodePosition: { x: 1, y: 7 },
     icon: "jungle.png",
-    lockedForDemo: false,
+    lockedForDemo: true,
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const woodLevel = baseLevel + 2;

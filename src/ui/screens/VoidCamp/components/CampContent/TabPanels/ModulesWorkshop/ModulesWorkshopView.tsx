@@ -19,12 +19,10 @@ import type { NewUnlockNotificationBridgeState } from "@logic/services/new-unloc
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./ModulesWorkshopView.css";
 import type { UnitModuleWorkshopUiApi } from "@logic/modules/camp/unit-module-workshop/unit-module-workshop.types";
-import type { BuildingsModuleUiApi } from "@logic/modules/camp/buildings/buildings.types";
 
 interface ModulesWorkshopViewProps {
   state?: UnitModuleWorkshopBridgeState;
   resources: ResourceAmountPayload[];
-  hideMaxedWorkshop?: boolean;
 }
 
 type ModuleItem = UnitModuleWorkshopBridgeState["modules"][number];
@@ -44,12 +42,10 @@ const computeNextBonusValue = (
 export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   state = DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   resources,
-  hideMaxedWorkshop = false,
 }) => {
   const { uiApi, bridge } = useAppLogic();
   const { t } = useLocalization();
   const workshop = uiApi.unitModuleWorkshop as UnitModuleWorkshopUiApi;
-  const buildingsApi = uiApi.buildings as BuildingsModuleUiApi;
   const newUnlocksState = useBridgeValue(
     bridge,
     NEW_UNLOCKS_BRIDGE_KEY,
@@ -67,12 +63,20 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
     return map;
   }, [resources]);
 
+  const showMaxed = !(state.hideMaxedWorkshop ?? false);
+  const showHidden = state.showHiddenWorkshop ?? false;
+  const hiddenSet = useMemo(
+    () => new Set(state.hiddenModuleIds ?? []),
+    [state.hiddenModuleIds]
+  );
   const displayModules = useMemo(
     () =>
-      hideMaxedWorkshop
-        ? state.modules.filter((m) => !m.maxed)
-        : state.modules,
-    [state.modules, hideMaxedWorkshop]
+      state.modules.filter(
+        (m) =>
+          (showHidden || !hiddenSet.has(m.id)) &&
+          (showMaxed || !m.maxed)
+      ),
+    [state.modules, showMaxed, showHidden, hiddenSet]
   );
 
   const formatLevelLabel = useCallback(
@@ -134,6 +138,7 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   const renderDetail = useCallback(
     (activeModule: ModuleItem) => {
       const activeMissing = computeMissingCost(activeModule.nextCost, totals);
+      const isHidden = hiddenSet.has(activeModule.id);
       return (
         <ModuleDetailsCard
           name={activeModule.name}
@@ -179,30 +184,49 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
             )
           }
           actions={
-            <Button
-              onClick={() => handleUpgrade(activeModule.id)}
-              disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
-            >
-              {activeModule.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.common.unlock", "Unlock")}
-            </Button>
+            <>
+              <Button
+                onClick={() => handleUpgrade(activeModule.id)}
+                disabled={!activeModule.nextCost || Object.keys(activeMissing).length > 0}
+              >
+                {activeModule.level > 0 ? t("voidCamp.common.upgrade", "Upgrade") : t("voidCamp.common.unlock", "Unlock")}
+              </Button>
+              <button
+                type="button"
+                className="button danger-button small-button"
+                onClick={() => workshop.setModuleHidden(activeModule.id, !isHidden)}
+              >
+                {isHidden ? t("voidCamp.common.unhide", "Unhide") : t("voidCamp.common.hide", "Hide")}
+              </button>
+            </>
           }
         />
       );
     },
-    [totals, formatLevelLabel, handleUpgrade, t]
+    [totals, formatLevelLabel, handleUpgrade, hiddenSet, workshop, t]
   );
 
   const headerContent = (
     <>
       <p className="text-muted">{t("voidCamp.modules.subtitle", "Cultivate organs and manifested parts, then refine them over time.")}</p>
-      <label className="modules-workshop__hide-maxed">
-        <input
-          type="checkbox"
-          checked={hideMaxedWorkshop}
-          onChange={(e) => buildingsApi.setHideMaxedWorkshop(e.target.checked)}
-        />
-        <span>{t("voidCamp.common.hideMaxed", "Hide Maxed")}</span>
-      </label>
+      <div className="modules-workshop__filter-panel">
+        <label className="modules-workshop__filter-checkbox">
+          <input
+            type="checkbox"
+            checked={showMaxed}
+            onChange={(e) => workshop.setHideMaxedWorkshop(!e.target.checked)}
+          />
+          <span>{t("voidCamp.common.showMaxed", "Show maxed")}</span>
+        </label>
+        <label className="modules-workshop__filter-checkbox">
+          <input
+            type="checkbox"
+            checked={showHidden}
+            onChange={(e) => workshop.setShowHiddenWorkshop(e.target.checked)}
+          />
+          <span>{t("voidCamp.common.showHidden", "Show hidden")}</span>
+        </label>
+      </div>
     </>
   );
 

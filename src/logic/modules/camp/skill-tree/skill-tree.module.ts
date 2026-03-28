@@ -173,7 +173,8 @@ export class SkillTreeModule implements GameModule {
       }) ?? { name: config.name, description: config.description };
       this.eventLog.registerEvent(
         "skill-obtained",
-        `Skill ${skillText.name} obtained: ${config.registerEvent.text}`
+        `Skill ${skillText.name} obtained: ${config.registerEvent.text}`,
+        { skillId: id, eventDescription: config.registerEvent.text }
       );
     }
     if (KEY_SKILL_IDS.includes(id)) {
@@ -272,8 +273,14 @@ export class SkillTreeModule implements GameModule {
   private createRequirementPayloads(config: SkillConfig): SkillNodeRequirementPayload[] {
     return Object.entries(config.nodesRequired).map(([requiredId, requiredLevel]) => {
       const id = requiredId as SkillId;
+      const requiredConfig = getSkillConfig(id);
+      const localized = this.localization?.getSkillText(id, {
+        name: requiredConfig.name,
+        description: requiredConfig.description,
+      }) ?? { name: requiredConfig.name, description: requiredConfig.description };
       return {
         id,
+        name: localized.name,
         requiredLevel: requiredLevel ?? 0,
         currentLevel: this.levels[id] ?? 0,
       };
@@ -329,6 +336,7 @@ export class SkillTreeModule implements GameModule {
       }
       return (
         item.id === nextItem.id &&
+        item.name === nextItem.name &&
         item.requiredLevel === nextItem.requiredLevel &&
         item.currentLevel === nextItem.currentLevel
       );
@@ -407,7 +415,7 @@ export class SkillTreeModule implements GameModule {
     SKILL_IDS.forEach((id) => {
       const config = getSkillConfig(id);
       const sourceId = this.getBonusSourceId(id);
-      this.bonuses.registerSource(sourceId, config.effects);
+      this.bonuses.registerSource(sourceId, config.effects, "skill");
     });
   }
 

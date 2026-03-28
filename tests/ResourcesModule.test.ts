@@ -56,11 +56,15 @@ describe("ResourcesModule", () => {
     });
     const bonuses = new BonusesModule();
     bonuses.initialize();
-    bonuses.registerSource("test", {
-      stone_income: {
-        income: () => 2,
+    bonuses.registerSource(
+      "test",
+      {
+        stone_income: {
+          income: () => 2,
+        },
       },
-    });
+      "misc"
+    );
     bonuses.setSourceLevel("test", 1);
     const runState = new MapRunState();
     runState.start();

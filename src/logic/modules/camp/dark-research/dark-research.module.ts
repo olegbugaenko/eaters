@@ -24,7 +24,7 @@ import type {
   DarkResearchModuleUiApi,
 } from "./dark-research.types";
 
-const BASE_SOUL_DROP_CHANCE = 0.1;
+const BASE_SOUL_DROP_CHANCE = 0.2;
 const SOUL_XP_PER_SECOND = 1;
 
 export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
@@ -48,7 +48,11 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
 
     DARK_RESEARCH_IDS.forEach((id) => {
       this.states.set(id, { level: 0, xp: 0, assignedSouls: 0, autoAssignPercent: 0 });
-      this.bonuses.registerSource(this.getBonusSourceId(id), getDarkResearchConfig(id).effects);
+      this.bonuses.registerSource(
+        this.getBonusSourceId(id),
+        getDarkResearchConfig(id).effects,
+        "dark_research"
+      );
     });
   }
 

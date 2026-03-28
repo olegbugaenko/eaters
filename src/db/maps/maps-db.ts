@@ -1,5 +1,6 @@
 import type { MapConfig, MapId, MapListEntry } from "./maps-db.types";
 import adit from "./map-definitions/adit";
+import agressiveClock from "./map-definitions/agressiveClock";
 import ancientPyramids from "./map-definitions/ancientPyramids";
 import bezierGrove from "./map-definitions/bezierGrove";
 import coil from "./map-definitions/coil";
@@ -30,7 +31,9 @@ import stoneCottage from "./map-definitions/stoneCottage";
 import thicket from "./map-definitions/thicket";
 import theWheel from "./map-definitions/theWheel";
 import trainingGrounds from "./map-definitions/trainingGrounds";
+import transformer from "./map-definitions/transformer";
 import twinbladeAxe from "./map-definitions/twinbladeAxe";
+import automobile from "./map-definitions/automobile";
 import turretRings from "./map-definitions/turretRings";
 import tutorialZone from "./map-definitions/tutorialZone";
 import uraniumFields from "./map-definitions/uranium_fields";
@@ -62,6 +65,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   spruce,
   deadOak,
   theWheel,
+  agressiveClock,
   sphinx,
   spiralSleeves,
   stoneCottage,
@@ -80,6 +84,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   volcano,
   gear,
   twinbladeAxe,
+  automobile,
   megaBrick,
   ancientPyramids,
   deathfulGuns,
@@ -88,6 +93,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   greatOctopus,
   coalConvoy,
   geologicalExcavations,
+  transformer,
   uranium_fields: uraniumFields,
 };
 

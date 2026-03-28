@@ -5,6 +5,8 @@ export const DEFAULT_BUILDINGS_WORKSHOP_STATE: BuildingsWorkshopBridgeState = Ob
   unlocked: false,
   buildings: [],
   hideMaxedWorkshop: false,
+  showHiddenWorkshop: false,
+  hiddenBuildingIds: [],
 });
 
 export const BUILDINGS_WORKSHOP_STATE_BRIDGE_KEY = "buildings/workshop";

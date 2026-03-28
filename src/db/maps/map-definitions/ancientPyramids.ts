@@ -36,7 +36,7 @@ const mapConfig = (() => {
       },
     ],
     nodePosition: { x: -2, y: 1 },
-    maxLevel: 10,
+    maxLevel: 5,
     achievementId: "ancientPyramids",
     bricks: ({ mapLevel }) => {
       const pyramidLevel = Math.max(1, Math.floor(mapLevel)) + 1;

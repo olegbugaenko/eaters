@@ -4,7 +4,7 @@ import { GameModule } from "@core/logic/types";
 import { sanitizeNonNegativeNumber } from "../../../../shared/helpers/numbers.helper";
 import { TestTimeModule } from "../time/time.module";
 import { EVENT_LOG_BRIDGE_KEY } from "./event-log.const";
-import type { EventLogEntry, EventLogEntryType, EventLogSaveData } from "./event-log.types";
+import type { EventLogEntry, EventLogEntryPayload, EventLogEntryType, EventLogSaveData } from "./event-log.types";
 
 interface EventLogModuleOptions {
   bridge: DataBridge;
@@ -52,12 +52,13 @@ export class EventLogModule implements GameModule {
     // no-op
   }
 
-  public registerEvent(type: EventLogEntryType, text: string): void {
+  public registerEvent(type: EventLogEntryType, text: string, payload?: EventLogEntryPayload): void {
     const next: EventLogEntry = {
       realTimeMs: Date.now(),
       gameTimeMs: this.time.getTimePlayedMs(),
       type,
       text,
+      payload,
     };
     this.events = [...this.events, next];
     this.push();
@@ -81,15 +82,20 @@ export class EventLogModule implements GameModule {
         const gameTimeMs = sanitizeNonNegativeNumber(typed.gameTimeMs);
         const text = typeof typed.text === "string" ? typed.text : "";
         const type =
-          typed.type === "map-cleared" || typed.type === "skill-obtained"
+          typed.type === "map-cleared" ||
+          typed.type === "skill-obtained" ||
+          typed.type === "artifact-unlocked"
             ? typed.type
             : null;
         if (!type || !text) {
           return null;
         }
-        return { realTimeMs, gameTimeMs, text, type };
+        const payload = typed.payload && typeof typed.payload === "object" ? typed.payload : undefined;
+        return payload !== undefined
+          ? ({ realTimeMs, gameTimeMs, text, type, payload } as EventLogEntry)
+          : ({ realTimeMs, gameTimeMs, text, type } as EventLogEntry);
       })
-      .filter((entry): entry is EventLogEntry => Boolean(entry));
+      .filter((e): e is EventLogEntry => e !== null);
   }
 
   private push(): void {

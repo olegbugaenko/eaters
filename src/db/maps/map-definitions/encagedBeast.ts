@@ -35,7 +35,7 @@ const mapConfig = (() => {
       },
     ],
     nodePosition: { x: -3, y: 2 },
-    maxLevel: 10,
+    maxLevel: 5,
     bricks: ({ mapLevel }) => {
       const copperSquares = satellites.map((position) => {
         const squareSize = satelliteRadius * 2;

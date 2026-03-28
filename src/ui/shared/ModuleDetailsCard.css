@@ -142,7 +142,9 @@
 
 .modules-workshop__actions {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  justify-content: space-between;
 }
 
 .modules-workshop__details-empty {

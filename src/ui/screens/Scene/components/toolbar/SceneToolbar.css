@@ -32,6 +32,12 @@
   isolation: isolate;
   z-index: 0;
   overflow: visible;
+  /* Let right-clicks pass through to scene canvas; left/right sections stay interactive */
+  pointer-events: none;
+}
+
+.scene-toolbar__section--center > * {
+  pointer-events: auto;
 }
 
 .scene-toolbar__center-silhouette {

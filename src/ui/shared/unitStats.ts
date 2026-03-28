@@ -1,3 +1,4 @@
+import type { BonusId } from "@db/bonuses-db";
 import { getPlayerUnitConfig } from "@db/player-units-db";
 import { DRAG_COEFFICIENT } from "@core/logic/provided/services/movement/movement.types";
 import { PlayerUnitBlueprintStats } from "@shared/types/player-units";
@@ -7,6 +8,10 @@ export interface UnitStatEntry {
   readonly label: string;
   readonly value: string;
   readonly hint?: string;
+  /** Bonus IDs to show breakdown for when user clicks the ? icon */
+  readonly bonusIds?: readonly BonusId[];
+  /** Organ-only attack multiplier for breakdown popover (unit design); shown above skills/buildings. */
+  readonly organAttackMultiplier?: number;
 }
 
 export type UnitStatsTranslator = (key: string, fallback: string) => string;
@@ -95,11 +100,19 @@ export const buildUnitStatEntries = (
       ? Math.min(Math.sqrt(Math.max(blueprint.moveAcceleration, 0) / dragConst), Math.max(blueprint.moveSpeed, 0))
       : Math.max(blueprint.moveSpeed, 0);
 
+  const hpBonusIds: BonusId[] = ["all_units_hp_multiplier"];
+  const attackBonusIds: BonusId[] = ["all_units_attack_multiplier"];
+  if (blueprint.type === "bluePentagon") {
+    hpBonusIds.push("blue_vanguard_hp_multiplier");
+    attackBonusIds.push("blue_vanguard_attack_multiplier");
+  }
+
   const entries: UnitStatEntry[] = [
     {
       label: translate("voidCamp.unitStats.hp", "HP"),
       value: formatNumber(blueprint.effective.maxHp),
       hint: formatBaseHint(blueprint.base.maxHp, blueprint.multipliers.maxHp, t),
+      bonusIds: hpBonusIds,
     },
     {
       label: translate("voidCamp.unitStats.attack", "Attack"),
@@ -116,6 +129,8 @@ export const buildUnitStatEntries = (
         blueprint.multipliers.attackDamage,
         t
       ),
+      bonusIds: attackBonusIds,
+      organAttackMultiplier: blueprint.organAttackMultiplier,
     },
     {
       label: translate("voidCamp.unitStats.critChance", "Crit Chance"),
@@ -127,6 +142,7 @@ export const buildUnitStatEntries = (
         blueprint.critChance.bonus,
         t
       ),
+      bonusIds: ["all_units_crit_chance"],
     },
     {
       label: translate("voidCamp.unitStats.critMultiplier", "Crit Multiplier"),
@@ -138,6 +154,7 @@ export const buildUnitStatEntries = (
         blueprint.critMultiplier.multiplier,
         t
       ),
+      bonusIds: ["all_units_crit_mult"],
     },
     {
       label: translate("voidCamp.unitStats.armor", "Armor"),
@@ -145,6 +162,7 @@ export const buildUnitStatEntries = (
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }),
+      bonusIds: ["all_units_armor", "all_units_armor_multiplier"],
     },
     {
       label: translate("voidCamp.unitStats.hpRegen", "HP Regen"),
@@ -161,6 +179,7 @@ export const buildUnitStatEntries = (
           }),
         }
       ),
+      bonusIds: ["all_units_hp_regen_percentage"],
     },
     {
       label: translate("voidCamp.unitStats.armorPenetration", "Armor Penetration"),
@@ -172,6 +191,7 @@ export const buildUnitStatEntries = (
         "voidCamp.unitStats.armorPenetrationHint",
         "Reduces brick armor before damage is applied."
       ),
+      bonusIds: ["all_units_armor_penetration"],
     },
     {
       label: translate("voidCamp.unitStats.range", "Range"),
@@ -193,6 +213,7 @@ export const buildUnitStatEntries = (
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })} ${translate("voidCamp.unitStats.unitsPerSecondSq", "u/s²")}`,
+      bonusIds: ["all_units_acceleration_multiplier"],
     },
   ];
 

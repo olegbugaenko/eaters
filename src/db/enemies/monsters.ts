@@ -357,16 +357,18 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       ],
     },
     maxHp: 2500,
-    armor: 100,
+    armor: 75,
     baseDamage: 400,
     soulRewardBase: 1,
-    attackInterval: 1.8,
-    attackRange: 280,
-    moveSpeed: 75,
+    attackInterval: 2.2,
+    attackRange: 220,
+    moveSpeed: 95,
     physicalSize: 30,
     reward: {
       stone: 2,
     },
+    projectileKnockBackSpeed: 30,
+    projectileKnockBackDistance: 30,
     projectile: {
       radius: 6,
       speed: 200,
@@ -620,16 +622,18 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       ],
     },
     maxHp: 25000,
-    soulRewardBase: 2,
-    armor: 100,
+    soulRewardBase: 3,
+    armor: 200,
     baseDamage: 1600,
     attackInterval: 0.8,
-    attackRange: 520,
-    moveSpeed: 60,
+    attackRange: 250,
+    moveSpeed: 150,
     physicalSize: 30,
     reward: {
       stone: 2,
     },
+    projectileKnockBackSpeed: 0,
+    projectileKnockBackDistance: 0,
     projectile: {
       radius: 4,
       speed: 200,
@@ -698,6 +702,288 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
           { offset: 0, color: { r: 1, g: 0.75, b: 0.6, a: 0.1 } },
           { offset: 0.25, color: { r: 1, g: 0.75, b: 0.6, a: 0.05 } },
           { offset: 1, color: { r: 1, g: 0.75, b: 0.6, a: 0 } },
+        ],
+        noise: {
+          colorAmplitude: 0.0,
+          alphaAmplitude: 0.02,
+          scale: 0.3,
+        },
+      },
+      shape: "circle",
+      maxParticles: 100,
+    },
+    knockBackDistance: 80,
+    knockBackSpeed: 120,
+  },
+  carGuardian: {
+    name: "Car Guardian",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.7, g: 0.6, b: 0.65, a: 1 },
+      layers: [
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: 24, y: 0 },
+            { x: 10, y: -3 },
+            { x: 10, y: 3 },
+          ],
+        },
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: 10, y: -3 },
+            { x: 10, y: 3 },
+            { x: -5, y: 1 },
+            { x: -5, y: -1 },
+          ],
+        },
+        {
+          shape: "circle",
+          radius: 32,
+          segments: 48,
+          offset: { x: 0, y: 0 },
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 32,
+              stops: [
+                { offset: 0, color: { r: 0.75, g: 0.75, b: 0.78, a: 0.45 } },
+                { offset: 0.6, color: { r: 0.7, g: 0.7, b: 0.73, a: 0.3 } },
+                { offset: 1, color: { r: 0.65, g: 0.65, b: 0.68, a: 0.0 } },
+              ],
+            },
+          },
+        },
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 5, y: -8, width: 1.0 },
+            { x: 0, y: -22, width: 0.8 },
+            { x: -5, y: -26, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 3, y: -8, width: 1.0 },
+            { x: -4, y: -18, width: 0.8 },
+            { x: -11, y: -21, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 0, y: -8, width: 1.0 },
+            { x: -10, y: -16, width: 0.8 },
+            { x: -20, y: -18, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -5, y: 0, width: 1.2 },
+            { x: -15, y: -8, width: 1.0 },
+            { x: -20, y: -8, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 5, y: 8, width: 1.0 },
+            { x: 0, y: 22, width: 0.8 },
+            { x: -5, y: 26, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 3, y: 8, width: 1.0 },
+            { x: -4, y: 18, width: 0.8 },
+            { x: -11, y: 21, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 0, y: 8, width: 1.0 },
+            { x: -10, y: 16, width: 0.8 },
+            { x: -20, y: 18, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -5, y: 0, width: 1.2 },
+            { x: -15, y: 8, width: 1.0 },
+            { x: -20, y: 8, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+      ],
+    },
+    maxHp: 348000,
+    soulRewardBase: 12,
+    armor: 4550,
+    baseDamage: 7620,
+    attackInterval: 1.8,
+    attackRange: 280,
+    moveSpeed: 120,
+    physicalSize: 30,
+    reward: {
+      stone: 4,
+    },
+    arcAttack: {
+      arcType: "chainLightning",
+      spawnOffset: { x: 20, y: 0 },
+      chainRadius: 160,
+      chainJumps: 4,
+      damage: 7620,
+      damageOptions: {
+        rewardMultiplier: 1.0,
+        armorPenetration: 0,
+        skipKnockback: true,
+      },
+    },
+    emitter: {
+      particlesPerSecond: 85,
+      particleLifetimeMs: 700,
+      fadeStartMs: 200,
+      baseSpeed: 0.05,
+      speedVariation: 0.01,
+      sizeRange: { min: 14, max: 28 },
+      sizeEvolutionMult: 1.75,
+      spread: Math.PI / 5.5,
+      offset: { x: -0.75, y: 0 },
+      color: { r: 0.5, g: 0.55, b: 0.6, a: 0.4 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.7, g: 0.7, b: 0.75, a: 0.1 } },
+          { offset: 0.25, color: { r: 0.65, g: 0.65, b: 0.7, a: 0.05 } },
+          { offset: 1, color: { r: 0.6, g: 0.6, b: 0.65, a: 0 } },
         ],
         noise: {
           colorAmplitude: 0.0,
@@ -999,9 +1285,9 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     },
     maxHp: 12500,
     soulRewardBase: 2,
-    armor: 1000,
+    armor: 800,
     baseDamage: 0,
-    attackInterval: 1.8,
+    attackInterval: 2.2,
     attackRange: 280,
     moveSpeed: 60,
     physicalSize: 30,
@@ -1013,7 +1299,7 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       spawnOffset: { x: 20, y: 0 },
       chainRadius: 150,
       chainJumps: 3,
-      damage: 650,
+      damage: 550,
       damageOptions: {
         rewardMultiplier: 1.0,
         armorPenetration: 0,
@@ -1149,8 +1435,8 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
         },
       ],
     },
-    maxHp: 150000,
-    armor: 3200,
+    maxHp: 80000,
+    armor: 2200,
     baseDamage: 1800,
     attackInterval: 2,
     attackRange: 140,
@@ -1159,17 +1445,17 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     reward: normalizeResourceAmount({
       organics: 500,
     }),
-    soulRewardBase: 4,
+    soulRewardBase: 5,
     requireDestruction: true,
     projectile: {
-      damage: 1800,
+      damage: 1600,
       radius: 24,
       speed: 110,
       lifetimeMs: 2000,
       statusEffectId: "poison",
       statusEffectOptions: {
         durationMs: 4000,
-        damagePerSecond: 1400,
+        damagePerSecond: 1200,
       },
       fill: {
         fillType: FILL_TYPES.SOLID,
@@ -1290,9 +1576,9 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
         },
       ],
     },
-    maxHp: 150000,
-    armor: 3200,
-    baseDamage: 7200,
+    maxHp: 250000,
+    armor: 4200,
+    baseDamage: 14200,
     attackInterval: 2,
     attackRange: 220,
     moveSpeed: 35,
@@ -1300,17 +1586,17 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     reward: normalizeResourceAmount({
       organics: 800,
     }),
-    soulRewardBase: 5,
+    soulRewardBase: 10,
     requireDestruction: true,
     projectile: {
-      damage: 7200,
+      damage: 14200,
       radius: 28,
       speed: 110,
       lifetimeMs: 2000,
       statusEffectId: "poison",
       statusEffectOptions: {
         durationMs: 4000,
-        damagePerSecond: 5600,
+        damagePerSecond: 12600,
       },
       fill: {
         fillType: FILL_TYPES.SOLID,
@@ -1477,9 +1763,9 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
         ),
       ],
     },
-    maxHp: 75000,
-    armor: 2280,
-    baseDamage: 5200,
+    maxHp: 37500,
+    armor: 1140,
+    baseDamage: 2100,
     attackInterval: 0.55,
     attackRange: 440,
     moveSpeed: 108,

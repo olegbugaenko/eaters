@@ -84,7 +84,7 @@ const appendProjectileStats = (
   });
 
   stats.push({
-    label: "Damage",
+    label: t("scene.summoning.spellTooltip.power", "Damage"),
     value: formatDamageRange(effectiveMin, effectiveMax),
     hint: `${t("scene.summoning.spellTooltip.base", "Base")} ${baseDamageLabel} · ${t("scene.summoning.spellTooltip.spellPower", "Spell Power")} ${multiplierLabel}×`,
   });

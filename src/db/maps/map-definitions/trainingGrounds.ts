@@ -7,19 +7,20 @@ const mapConfig = (() => {
   const size: SceneSize = { width: 1000, height: 1000 };
   const spawnPoint: SceneVector2 = { x: center.x, y: center.y - 500 };
 
+  const scale = 0.92;
   // Голова смайлика
-  const headRadius = 280;
-  const headThickness = 20;
+  const headRadius = Math.round(280 * scale);
+  const headThickness = Math.round(20 * scale);
 
   // Очі
-  const eyeRadius = 35;
-  const eyeOffsetY = -60;
-  const eyeOffsetX = 80;
+  const eyeRadius = Math.round(35 * scale);
+  const eyeOffsetY = Math.round(-60 * scale);
+  const eyeOffsetX = Math.round(80 * scale);
 
   // Рот (дуга) - створюємо через сегменти кіл
-  const mouthRadius = 120;
+  const mouthRadius = Math.round(120 * scale);
   const mouthThickness = headThickness;
-  const mouthCenterY = center.y + 50;
+  const mouthCenterY = center.y + Math.round(50 * scale);
   const mouthStartAngle = Math.PI * 0.25; // ~45 градусів
   const mouthEndAngle = Math.PI * 0.75; // ~135 градусів
   const mouthSegments = 8; // кількість сегментів для рота

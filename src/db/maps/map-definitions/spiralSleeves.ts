@@ -13,6 +13,7 @@ const mapConfig = (() => {
     size,
     spawnPoints: [spawnPoint],
     nodePosition: { x: 2, y: 0 },
+    icon: "spirals.png",
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const sandLevel = baseLevel + 4;
