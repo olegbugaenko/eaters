@@ -14,6 +14,7 @@ export const BONUS_IDS = [
   "blue_vanguard_attack_multiplier",
   "blue_vanguard_hp_multiplier",
   "all_units_hp_multiplier",
+  "iron_forest_hp_effectiveness",
   "all_units_attack_multiplier",
   "all_units_armor",
   "all_units_armor_multiplier",
@@ -72,6 +73,11 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
   all_units_hp_multiplier: {
     id: "all_units_hp_multiplier",
     name: "All Units HP Multiplier",
+    defaultValue: 1,
+  },
+  iron_forest_hp_effectiveness: {
+    id: "iron_forest_hp_effectiveness",
+    name: "Iron Forest Effectiveness",
     defaultValue: 1,
   },
   all_units_attack_multiplier: {

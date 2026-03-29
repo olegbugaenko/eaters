@@ -14,7 +14,8 @@ export type BuildingId =
   | "throughput_regulator"
   | "hunger_monument"
   | "mana_source"
-  | "dark_library";
+  | "dark_library"
+  | "iron_canopy";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -69,7 +70,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       "Dedicate crews to hew stone around the clock, passively stockpiling rubble for the camp.",
     effects: {
       stone_income: {
-        income: (level) => 2 * level,
+        income: (level) => 2 * level * Math.pow(1.03, level),
       },
     },
     cost: createScalingCost({ copper: 50, wood: 50 }, 1.75),
@@ -111,7 +112,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
     effects: {
       all_units_hp_multiplier: {
         multiplier: (level) => 1 + 0.1 * level,
-      }
+      },
     },
     cost: createScalingCost({ iron: 200, wood: 100 }, 1.75),
     unlockedBy: [
@@ -252,6 +253,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       {
         type: "map",
         id: "mine",
+        level: 1,
+      },
+    ],
+  },
+  iron_canopy: {
+    id: "iron_canopy",
+    name: "Iron Canopy",
+    description:
+      "Raise a lattice of tempered arches and frost-hardened vines. (Iron Forest effectiveness bonus — placeholder, no gameplay effect yet.)",
+    effects: {
+      iron_forest_hp_effectiveness: {
+        multiplier: () => 1,
+      },
+    },
+    cost: createScalingCost({ silver: 20_000, ice: 1000 }, 1.75),
+    unlockedBy: [
+      {
+        type: "map",
+        id: "silverRing",
         level: 1,
       },
     ],

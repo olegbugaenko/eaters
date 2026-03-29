@@ -69,7 +69,7 @@ const mapConfig = (() => {
   ];
 
   return {
-    name: "Автомобіль",
+    name: "Automobile",
     size,
     spawnPoints: [spawnPoint],
     lockedForDemo: true,

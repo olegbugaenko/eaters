@@ -109,5 +109,8 @@
   },
   "nautilusShell": {
     "name": "Ammonite Shell"
+  },
+  "automobile": {
+    "name": "Automobile"
   }
 }

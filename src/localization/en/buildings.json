@@ -38,5 +38,9 @@
   "dark_library": {
     "name": "Dark Library",
     "description": "Archive volatile rites and accelerate every branch of dark research. Each level increases research XP rate by 20% (linear)."
+  },
+  "iron_canopy": {
+    "name": "Iron Canopy",
+    "description": "Raise a lattice of tempered arches and frost-hardened vines. (Iron Forest effectiveness bonus — placeholder, no gameplay effect yet.)"
   }
 }
