@@ -7,6 +7,7 @@ import type {
   BonusValueMap,
 } from "./bonuses.types";
 import { createBonusValueMap, sanitizeEffectValue } from "./bonuses.helpers";
+import type { BonusEffectFormula } from "@shared/types/bonuses";
 
 export interface BonusCalculatorInput {
   sources: Iterable<BonusSourceState>;
@@ -22,9 +23,10 @@ export class BonusCalculator {
     rules,
     ruleContext,
   }: BonusCalculatorInput): BonusValueMap {
-    const incomes = createBonusValueMap(() => 0);
-    const multipliers = createBonusValueMap(() => 1);
-    const baseOverrides = createBonusValueMap(() => Number.NaN);
+    const effectEntriesByBonus = new Map<
+      BonusId,
+      Array<{ readonly effectType: string; readonly level: number; readonly formula: BonusEffectFormula }>
+    >();
 
     for (const source of sources) {
       const level = source.level;
@@ -33,61 +35,98 @@ export class BonusCalculator {
           return;
         }
         const id = bonusId as BonusId;
+        const entries = effectEntriesByBonus.get(id) ?? [];
         Object.entries(effectTypes).forEach(([effectType, formula]) => {
-          const value = sanitizeEffectValue(formula(level, effectContext), effectType);
-          switch (effectType as BonusEffectType) {
-            case "income":
-              incomes[id] += value;
-              break;
-            case "multiplier":
-              multipliers[id] *= value;
-              break;
-            case "base":
-              baseOverrides[id] = value;
-              break;
-            default:
-              incomes[id] += value;
-              break;
-          }
+          entries.push({
+            effectType,
+            level,
+            formula,
+          });
         });
+        effectEntriesByBonus.set(id, entries);
       });
     }
 
-    BonusCalculator.applyRuleEffects(incomes, multipliers, rules, ruleContext);
+    const memo = new Map<BonusId, number>();
+    const visiting = new Set<BonusId>();
+    const progression = new Set<string>(ruleContext.progressionKeys ?? []);
+    const runtimeFlags = new Set<string>(ruleContext.runtimeFlags ?? []);
 
-    return createBonusValueMap((config, id) => {
-      const override = baseOverrides[id];
-      const base = Number.isNaN(override) ? config.defaultValue : override;
-      return (base + incomes[id]) * multipliers[id];
-    });
+    const resolveBonusValue = (id: BonusId): number => {
+      const cached = memo.get(id);
+      if (cached !== undefined) {
+        return cached;
+      }
+      if (visiting.has(id)) {
+        const trail = [...visiting, id].join(" -> ");
+        throw new Error(`Cyclic bonus dependency detected: ${trail}`);
+      }
+      visiting.add(id);
+
+      let income = 0;
+      let multiplier = 1;
+      let baseOverride = Number.NaN;
+      const entries = effectEntriesByBonus.get(id) ?? [];
+      entries.forEach(({ effectType, level, formula }) => {
+        const value = sanitizeEffectValue(
+          formula(level, effectContext, { getBonusValue: resolveBonusValue }),
+          effectType
+        );
+        switch (effectType as BonusEffectType) {
+          case "income":
+            income += value;
+            break;
+          case "multiplier":
+            multiplier *= value;
+            break;
+          case "base":
+            baseOverride = value;
+            break;
+          default:
+            income += value;
+            break;
+        }
+      });
+
+      const ruleEffects = BonusCalculator.getRuleEffectsForBonus(
+        id,
+        rules,
+        progression,
+        runtimeFlags,
+      );
+      income += ruleEffects.addFlat;
+      multiplier *= 1 + ruleEffects.addMultiplier;
+
+      const config = getBonusConfig(id);
+      const base = Number.isNaN(baseOverride) ? config.defaultValue : baseOverride;
+      const resolved = (base + income) * multiplier;
+      visiting.delete(id);
+      memo.set(id, resolved);
+      return resolved;
+    };
+
+    return createBonusValueMap((_config, id) => resolveBonusValue(id));
   }
 
-  private static applyRuleEffects(
-    incomes: BonusValueMap,
-    multipliers: BonusValueMap,
+  private static getRuleEffectsForBonus(
+    bonusId: BonusId,
     rules: BonusRule[],
-    ruleContext: BonusRuleContextInput,
-  ): void {
-    if (!rules.length) {
-      return;
-    }
-    const progression = new Set(ruleContext.progressionKeys ?? []);
-    const runtimeFlags = new Set(ruleContext.runtimeFlags ?? []);
-
+    progression: ReadonlySet<string>,
+    runtimeFlags: ReadonlySet<string>,
+  ): { addFlat: number; addMultiplier: number } {
+    let addFlat = 0;
+    let addMultiplier = 0;
     rules.forEach((rule) => {
+      if (rule.bonusId !== bonusId) {
+        return;
+      }
       if (!BonusCalculator.areRuleRequirementsMet(rule, progression, runtimeFlags)) {
         return;
       }
-      const bonusId = rule.bonusId;
-      getBonusConfig(bonusId);
-      const { addFlat = 0, addMultiplier = 0 } = rule.effects;
-      if (addFlat !== 0) {
-        incomes[bonusId] += addFlat;
-      }
-      if (addMultiplier !== 0) {
-        multipliers[bonusId] *= 1 + addMultiplier;
-      }
+      addFlat += rule.effects.addFlat ?? 0;
+      addMultiplier += rule.effects.addMultiplier ?? 0;
     });
+    return { addFlat, addMultiplier };
   }
 
   private static areRuleRequirementsMet(

@@ -111,7 +111,8 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       "Forest of steel and soul. Increase your eaters HP",
     effects: {
       all_units_hp_multiplier: {
-        multiplier: (level) => 1 + 0.1 * level,
+        multiplier: (level, _context, dependencies) =>
+          1 + 0.1 * level * (dependencies?.getBonusValue("iron_forest_hp_effectiveness") ?? 1),
       },
     },
     cost: createScalingCost({ iron: 200, wood: 100 }, 1.75),
@@ -264,7 +265,7 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       "Raise a lattice of tempered arches and frost-hardened vines. (Iron Forest effectiveness bonus — placeholder, no gameplay effect yet.)",
     effects: {
       iron_forest_hp_effectiveness: {
-        multiplier: () => 1,
+        multiplier: (level) => 1 + 0.05 * level,
       },
     },
     cost: createScalingCost({ silver: 20_000, ice: 1000 }, 1.75),

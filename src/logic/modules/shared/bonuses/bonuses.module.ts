@@ -142,7 +142,7 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> implement
       const level = source.level;
       Object.entries(effectTypes).forEach(([effectType, formula]) => {
         const value = sanitizeEffectValue(
-          formula(level, this.effectContext),
+          formula(level, this.effectContext, { getBonusValue: (id) => this.getBonusValue(id) }),
           effectType
         );
         entries.push({
@@ -184,11 +184,11 @@ export class BonusesModule extends BaseGameModule<BonusValuesListener> implement
       const config = getBonusConfig(bonusId as BonusId);
       Object.entries(effectTypes).forEach(([effectType, formula]) => {
         const currentValue = sanitizeEffectValue(
-          formula(level, this.effectContext),
+          formula(level, this.effectContext, { getBonusValue: (id) => this.getBonusValue(id) }),
           effectType
         );
         const nextValue = sanitizeEffectValue(
-          formula(nextLevel, this.effectContext),
+          formula(nextLevel, this.effectContext, { getBonusValue: (id) => this.getBonusValue(id) }),
           effectType
         );
         previews.push({
