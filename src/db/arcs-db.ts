@@ -8,6 +8,7 @@ export type ArcType =
   | "bleeding"
   | "laser"
   | "plasmaBeam"
+  | "hotPlasmaBeam"
   | "chainLightning"
   | "silverKeeper";
 
@@ -40,6 +41,8 @@ const LASER_ARC_COLOR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.99 };
 const LASER_ARC_BLUR: SceneColor = { r: 1.0, g: 0.65, b: 0.7, a: 0.25 };
 const PLASMA_BEAM_ARC_COLOR: SceneColor = { r: 0.45, g: 0.7, b: 1.0, a: 0.98 };
 const PLASMA_BEAM_ARC_BLUR: SceneColor = { r: 0.4, g: 0.65, b: 1.0, a: 0.7 };
+const HOT_PLASMA_BEAM_ARC_COLOR: SceneColor = { r: 1.0, g: 0.88, b: 0.5, a: 0.98 };
+const HOT_PLASMA_BEAM_ARC_BLUR: SceneColor = { r: 1.0, g: 0.55, b: 0.12, a: 0.72 };
 const CHAIN_ARC_COLOR: SceneColor = { r: 0.85, g: 0.95, b: 1.0, a: 0.95 };
 const CHAIN_ARC_BLUR: SceneColor = { r: 0.3, g: 0.7, b: 1.0, a: 0.35 };
 const SILVER_KEEPER_ARC_COLOR: SceneColor = { r: 1, g: 0.9, b: 1.0, a: 1 };
@@ -120,6 +123,19 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
     lifetimeMs: 950,
     fadeStartMs: 350,
+    bendsPer100Px: 0,
+    noiseAmplitude: 0,
+    oscillationPeriodMs: 0,
+    oscillationAmplitude: 0.0,
+  },
+  hotPlasmaBeam: {
+    coreColor: HOT_PLASMA_BEAM_ARC_COLOR,
+    blurColor: HOT_PLASMA_BEAM_ARC_BLUR,
+    coreWidth: 6,
+    blurWidth: 16,
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
+    lifetimeMs: 1_000,
+    fadeStartMs: 360,
     bendsPer100Px: 0,
     noiseAmplitude: 0,
     oscillationPeriodMs: 0,
