@@ -59,7 +59,7 @@ describe("DarkResearchModule", () => {
 
     const unlocked = getState(bridge);
     assert.strictEqual(unlocked.unlocked, true);
-    assert.strictEqual(unlocked.researches.length, 4);
+    assert.strictEqual(unlocked.researches.length, DARK_RESEARCH_IDS.length);
   });
 
   test("does not gain XP without assigned souls", () => {

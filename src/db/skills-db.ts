@@ -31,6 +31,7 @@ export const SKILL_IDS = [
   "construction_guild",
   "construction_ledgers",
   "draftsmanship",
+  "crafting_blueprints",
   "quarry_overseers",
   "granite_bonding",
   "bastion_foundations",
@@ -328,6 +329,23 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     effects: {},
     nodesRequired: { construction_ledgers: 1 },
     cost: createResourceCost("paper", 500, 1),
+  },
+  crafting_blueprints: {
+    id: "crafting_blueprints",
+    name: "Crafting Blueprints",
+    description:
+      "Archive optimized cut lists and material yields—each tier stretches workshop stockpiles further.",
+    nodePosition: { x: -2, y: 7 },
+    maxLevel: 20,
+    icon: "draftmanship.png",
+    effects: {
+      crafting_material_discount: {
+        multiplier: (level) => 1 + 0.05 * level,
+      },
+    },
+    nodesRequired: { draftsmanship: 1 },
+    cost: createResourceCost("paper", 1000, 1.5),
+    lockedForDemo: true,
   },
   quarry_overseers: {
     id: "quarry_overseers",
@@ -1052,7 +1070,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     icon: "penetration_2.png",
     effects: {
       all_units_armor_penetration: {
-        income: (level) => 3 * level,
+        income: (level) => 6 * level,
       },
     },
     nodesRequired: { penetration: 5 },
@@ -1079,12 +1097,12 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Penetration III",
     description: "Use hot magma to melt through armor.",
     nodePosition: { x: -8, y: 3 },
-    maxLevel: 15,
+    maxLevel: 25,
     icon: "penetration_3.png",
     lockedForDemo: true,
     effects: {
       all_units_armor_penetration: {
-        income: (level) => 6 * level,
+        income: (level) => 30 * level,
       },
     },
     nodesRequired: { penetration2: 5 },

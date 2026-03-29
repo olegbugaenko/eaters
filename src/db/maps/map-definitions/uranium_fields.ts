@@ -14,7 +14,7 @@ const mapConfig = (() => {
     name: "Uranium Fields",
     size,
     spawnPoints: [spawnPoint],
-    nodePosition: { x: 4, y: 6 },
+    nodePosition: { x: 6, y: 6 },
     icon: "uranium_fields.png",
     lockedForDemo: true,
     mapEffects: ["radioactivity"],
@@ -67,11 +67,11 @@ const mapConfig = (() => {
     unlockedBy: [
       {
         type: "map",
-        id: "mine",
+        id: "volcano",
         level: 1,
       },
     ],
-    mapsRequired: { mine: 1 },
+    mapsRequired: { volcano: 1 },
     maxLevel: 1,
   } satisfies MapConfig;
 })();

@@ -295,9 +295,9 @@ export class SceneObjectManager {
     const updated = Array.from(this.updated.values()).map((instance) =>
       this.cloneInstance(instance)
     );
-    const removed = actuallyRemoved.length > 0
-      ? actuallyRemoved
-      : Array.from(this.removed.values());
+    // Always drain the full removed set — it includes both quota-processed IDs
+    // and IDs finalized externally via flushAllPendingRemovals() between frames.
+    const removed = Array.from(this.removed.values());
 
     // Reset dirty flags on original instances after cloning
     // (renderer gets the dirty flags, next frame starts fresh)
@@ -329,6 +329,14 @@ export class SceneObjectManager {
     }
     this.lastRemovalFlushTimestampMs = Date.now();
     return removed;
+  }
+
+  public getActiveObjectIds(): Set<string> {
+    const ids = new Set(this.objects.keys());
+    for (const id of this.pendingRemovals) {
+      ids.delete(id);
+    }
+    return ids;
   }
 
   public getMapSize(): SceneSize {

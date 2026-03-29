@@ -175,6 +175,7 @@ export interface SceneUiApi {
     removed: string[];
   };
   flushAllPendingRemovals(): string[];
+  getActiveObjectIds(): Set<string>;
 }
 
 declare module "@core/logic/ui/ui-api.registry" {

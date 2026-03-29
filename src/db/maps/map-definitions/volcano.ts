@@ -59,8 +59,8 @@ const mapConfig = (() => {
     lockedForDemo: true,
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
-      const copperLevel = baseLevel + 2;
-      const stoneLevel = baseLevel + 4;
+      const copperLevel = baseLevel + 3;
+      const stoneLevel = baseLevel + 5;
       const magmaLevel = baseLevel;
 
       const volcanoBase = circleWithBricks(

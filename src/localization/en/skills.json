@@ -26,6 +26,10 @@
     "name": "Draftsmanship",
     "description": "Refine schematics to unlock access to new building blueprints."
   },
+  "crafting_blueprints": {
+    "name": "Crafting Blueprints",
+    "description": "Archive optimized cut lists and material yields—each tier stretches workshop stockpiles further."
+  },
   "quarry_overseers": {
     "name": "Quarry Overseers",
     "description": "Assign tireless haulers so rubble never settles—more stone per shattered brick."

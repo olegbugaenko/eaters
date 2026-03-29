@@ -108,6 +108,10 @@ export class ObjectsRendererManager {
     private readonly tiedObjects: TiedObjectsRegistry
   ) {}
 
+  public getObjectIds(): IterableIterator<string> {
+    return this.objects.keys();
+  }
+
   public bootstrap(instances: readonly SceneObjectInstance[]): void {
     instances.forEach((instance) => {
       if (this.objects.has(instance.id)) {

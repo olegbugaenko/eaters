@@ -59,6 +59,7 @@ export class CraftingModule implements GameModule {
   private progressBroadcastTimer = 0;
   private craftingSpeedMultiplier = 1;
   private maxOverdriveLevel = 0;
+  private craftingMaterialDiscount = 1;
   private craftingSpeedDirty = true;
   private hasRegisteredUnlocks = false;
 
@@ -75,6 +76,9 @@ export class CraftingModule implements GameModule {
     );
     this.maxOverdriveLevel = this.sanitizeOverdriveMaxLevel(
       this.bonuses.getBonusValue("crafting_overdrive_max")
+    );
+    this.craftingMaterialDiscount = this.sanitizeCraftingMaterialDiscount(
+      this.bonuses.getBonusValue("crafting_material_discount")
     );
     this.bonuses.subscribe((values) => this.handleBonusValuesUpdated(values));
     CRAFTING_RECIPE_IDS.forEach((id) => {
@@ -303,7 +307,10 @@ export class CraftingModule implements GameModule {
     state.inProgress = false;
     state.progressMs = 0;
     if (refund) {
-      this.resources.grantResources(config.ingredients, { includeInRunSummary: false });
+      this.resources.grantResources(
+        this.getRecipeCost(config, state.overdriveLevel),
+        { includeInRunSummary: false }
+      );
     }
   }
 
@@ -477,9 +484,15 @@ export class CraftingModule implements GameModule {
     const maxOverdriveLevel = this.sanitizeOverdriveMaxLevel(
       values.crafting_overdrive_max ?? this.maxOverdriveLevel
     );
+    const materialDiscount = this.sanitizeCraftingMaterialDiscount(
+      values.crafting_material_discount ?? this.craftingMaterialDiscount
+    );
     let shouldPush = false;
     if (Math.abs(multiplier - this.craftingSpeedMultiplier) < 1e-9) {
-      if (maxOverdriveLevel === this.maxOverdriveLevel) {
+      if (
+        maxOverdriveLevel === this.maxOverdriveLevel &&
+        Math.abs(materialDiscount - this.craftingMaterialDiscount) < 1e-9
+      ) {
         return;
       }
     } else {
@@ -491,6 +504,10 @@ export class CraftingModule implements GameModule {
       this.maxOverdriveLevel = maxOverdriveLevel;
       shouldPush = true;
       this.clampOverdriveLevels();
+    }
+    if (Math.abs(materialDiscount - this.craftingMaterialDiscount) >= 1e-9) {
+      this.craftingMaterialDiscount = materialDiscount;
+      shouldPush = true;
     }
     if (shouldPush) {
       this.pushState();
@@ -526,19 +543,48 @@ export class CraftingModule implements GameModule {
     config: CraftingRecipeConfig,
     overdriveLevel: number
   ): ResourceAmount {
-    const multiplier = this.getOverdriveMultiplier(overdriveLevel);
-    if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier === 1) {
-      return config.ingredients;
+    const overdriveMult = this.getOverdriveMultiplier(overdriveLevel);
+    let scaled: ResourceAmount;
+    if (!Number.isFinite(overdriveMult) || overdriveMult <= 0 || overdriveMult === 1) {
+      scaled = config.ingredients;
+    } else {
+      const normalized = normalizeResourceAmount(config.ingredients);
+      scaled = {};
+      (Object.keys(normalized) as ResourceId[]).forEach((id) => {
+        const value = normalized[id];
+        if (value > 0) {
+          scaled[id] = Math.ceil(value * overdriveMult);
+        }
+      });
     }
-    const normalized = normalizeResourceAmount(config.ingredients);
-    const scaled: ResourceAmount = {};
+    return this.applyCraftingMaterialDiscount(scaled);
+  }
+
+  private applyCraftingMaterialDiscount(amount: ResourceAmount): ResourceAmount {
+    const discount = this.getCraftingMaterialDiscount();
+    if (!Number.isFinite(discount) || discount <= 0 || Math.abs(discount - 1) < 1e-9) {
+      return amount;
+    }
+    const normalized = normalizeResourceAmount(amount);
+    const out: ResourceAmount = {};
     (Object.keys(normalized) as ResourceId[]).forEach((id) => {
       const value = normalized[id];
       if (value > 0) {
-        scaled[id] = Math.ceil(value * multiplier);
+        out[id] = Math.max(1, Math.ceil(value / discount));
       }
     });
-    return scaled;
+    return out;
+  }
+
+  private getCraftingMaterialDiscount(): number {
+    return this.craftingMaterialDiscount;
+  }
+
+  private sanitizeCraftingMaterialDiscount(value: number | undefined): number {
+    if (!Number.isFinite(value) || (value ?? 0) <= 0) {
+      return 1;
+    }
+    return value ?? 1;
   }
 
   private sanitizeCraftingSpeedMultiplier(value: number | undefined): number {

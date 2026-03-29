@@ -71,7 +71,7 @@ const mapConfig = (() => {
     name: "Geological Excavations",
     size,
     spawnPoints: [spawnPoint],
-    nodePosition: { x: 6, y: 6 },
+    nodePosition: { x: 5, y: 7 },
     icon: "geological_excavations.png",
     lockedForDemo: false,
     bricks: ({ mapLevel }) => {

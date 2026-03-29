@@ -54,6 +54,53 @@ const createCraftingModule = (overdriveMax: number) => {
   return { bridge, crafting };
 };
 
+const createCraftingModuleWithMaterialDiscount = (
+  overdriveMax: number,
+  materialDiscount: number,
+) => {
+  const bridge = new DataBridge();
+  const unlocks = new UnlockService({
+    getMapStats: () => ({}),
+    getSkillLevel: () => 1,
+  });
+  const bonuses = new BonusesModule();
+  bonuses.initialize();
+  bonuses.registerSource(
+    "test",
+    {
+      crafting_overdrive_max: {
+        income: (level) => level,
+      },
+      crafting_material_discount: {
+        multiplier: () => materialDiscount,
+      },
+    },
+    "misc"
+  );
+  bonuses.setSourceLevel("test", overdriveMax);
+  const runState = new MapRunState();
+  runState.start();
+  const resources = new ResourcesModule({
+    bridge,
+    progression: new UnlockProgressionAdapter(unlocks),
+    bonusValues: new BonusesValueAdapter(bonuses),
+    runtimeContext: new MapRunContextAdapter(runState),
+  });
+  resources.initialize();
+  const newUnlocks = new NewUnlockNotificationService({ bridge });
+  newUnlocks.initialize();
+  const crafting = new CraftingModule({
+    bridge,
+    resources,
+    unlocks,
+    bonuses,
+    newUnlocks,
+  });
+  crafting.initialize();
+
+  return { bridge, crafting };
+};
+
 const findRecipe = (state: CraftingBridgeState, id: string) => {
   const recipe = state.recipes.find((entry) => entry.id === id);
   assert(recipe, `recipe ${id} should exist`);
@@ -98,5 +145,24 @@ describe("CraftingModule overdrive", () => {
 
     assert.strictEqual(tools.overdriveLevel, 2);
     assert.strictEqual(paper.overdriveLevel, 1);
+  });
+});
+
+describe("CraftingModule material discount", () => {
+  test("divides recipe ingredient costs by crafting_material_discount", () => {
+    const { bridge } = createCraftingModuleWithMaterialDiscount(0, 2);
+    const payload = bridge.getValue(CRAFTING_STATE_BRIDGE_KEY) as CraftingBridgeState;
+    const recipe = findRecipe(payload, "tools");
+    assert.strictEqual(recipe.cost.iron, 25);
+    assert.strictEqual(recipe.cost.wood, 5);
+  });
+
+  test("applies material discount after overdrive cost scaling", () => {
+    const { bridge, crafting } = createCraftingModuleWithMaterialDiscount(3, 2);
+    crafting.setRecipeOverdriveLevel("tools", 2);
+    const payload = bridge.getValue(CRAFTING_STATE_BRIDGE_KEY) as CraftingBridgeState;
+    const recipe = findRecipe(payload, "tools");
+    assert.strictEqual(recipe.cost.iron, 100);
+    assert.strictEqual(recipe.cost.wood, 20);
   });
 });

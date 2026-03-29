@@ -399,10 +399,13 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({
             alt=""
             aria-hidden="true"
           />
-          <span>{t("voidCamp.darkResearch.souls", "Souls")}:</span>
-        </span>{" "}
-        {formatNumber(state.freeSouls, { maximumFractionDigits: 0 })}/
-        {formatNumber(state.totalSouls, { maximumFractionDigits: 0 })}
+          <span>{t("voidCamp.darkResearch.souls", "Souls (free/total):")}</span>
+        </span>
+        <span className="dark-research-view__souls-values">
+          {formatNumber(state.freeSouls, { maximumFractionDigits: 0 })}
+          <span className="dark-research-view__souls-sep">/</span>
+          {formatNumber(state.totalSouls, { maximumFractionDigits: 0 })}
+        </span>
       </p>
     </>
   );

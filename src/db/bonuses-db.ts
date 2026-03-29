@@ -27,6 +27,7 @@ export const BONUS_IDS = [
   "spell_power",
   "crafting_speed_mult",
   "crafting_overdrive_max",
+  "crafting_material_discount",
   "building_cost_multiplier",
   "soul_drop_chance_add",
   "dark_research_xp_multiplier"
@@ -142,6 +143,13 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
     id: "crafting_overdrive_max",
     name: "Crafting Overdrive Limit",
     defaultValue: 0,
+  },
+  crafting_material_discount: {
+    id: "crafting_material_discount",
+    name: "Crafting Material Discount",
+    description:
+      "Divides material costs for crafting recipes. Higher values reduce each ingredient requirement.",
+    defaultValue: 1,
   },
   building_cost_multiplier: {
     id: "building_cost_multiplier",

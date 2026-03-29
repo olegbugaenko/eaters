@@ -5,6 +5,7 @@ export const DARK_RESEARCH_IDS = [
   "darkest_endurance",
   "greediness",
   "bite_of_void",
+  "void_penetration",
 ] as const;
 
 export type DarkResearchId = (typeof DARK_RESEARCH_IDS)[number];
@@ -69,6 +70,20 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     effects: {
       all_units_attack_multiplier: {
         multiplier: (level) => 1 + 0.02 * level,
+      },
+    },
+  },
+  void_penetration: {
+    id: "void_penetration",
+    name: "Void Penetration",
+    description:
+      "Teach your brood to find seams in plated defenses. Grants +2 brick armor penetration per research level.",
+    icon: "penetration_2.png",
+    maxXpPerLevelBase: 100,
+    xpPowerBase: 0.1,
+    effects: {
+      all_units_armor_penetration: {
+        income: (level) => 2 * level,
       },
     },
   },

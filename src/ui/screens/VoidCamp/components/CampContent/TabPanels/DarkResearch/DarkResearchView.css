@@ -5,6 +5,11 @@
 }
 
 .dark-research-view__souls-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
   font-weight: 600;
 }
 
@@ -12,6 +17,15 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.dark-research-view__souls-values {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.1rem;
+  white-space: nowrap;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.04em;
 }
 
 .dark-research-view__souls-icon {

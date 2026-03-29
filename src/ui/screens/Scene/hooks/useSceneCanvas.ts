@@ -283,6 +283,20 @@ export const useSceneCanvas = ({
         fireRingGpuRenderer.clearInstances();
         
         applyPendingVisibilityCleanup();
+
+        // Reconcile: remove renderer objects that no longer exist in the scene.
+        // Guards against edge-case timing gaps between setInterval / rAF / visibilitychange.
+        const activeIds = sceneRef.current.getActiveObjectIds();
+        const orphanedIds: string[] = [];
+        for (const id of objectsRenderer.getObjectIds()) {
+          if (!activeIds.has(id)) {
+            orphanedIds.push(id);
+          }
+        }
+        if (orphanedIds.length > 0) {
+          objectsRenderer.applyChanges({ added: [], updated: [], removed: orphanedIds });
+          applySync();
+        }
       }
     };
 

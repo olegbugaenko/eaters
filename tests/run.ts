@@ -58,6 +58,7 @@ import "./PlayerUnitsModule.test";
 import "./MapModule.test";
 import "./UnitAutomationModule.test";
 import "./Application.test";
+import "./CraftingModule.test";
 import "./ResourcesModule.test";
 import "./ResourceCalculator.test";
 import "./UnitModuleWorkshopModule.test";
