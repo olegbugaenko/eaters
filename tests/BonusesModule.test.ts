@@ -77,4 +77,36 @@ describe("BonusesModule", () => {
       /already registered/
     );
   });
+
+  test("applies Iron Canopy effectiveness to Iron Forest HP multiplier", () => {
+    const bonuses = new BonusesModule();
+    bonuses.initialize();
+
+    bonuses.registerSource(
+      "iron_forest",
+      {
+        all_units_hp_multiplier: {
+          multiplier: (level, _context, deps) =>
+            1 + 0.1 * level * (deps?.getBonusValue("iron_forest_hp_effectiveness") ?? 1),
+        },
+      },
+      "building"
+    );
+    bonuses.registerSource(
+      "iron_canopy",
+      {
+        iron_forest_hp_effectiveness: {
+          multiplier: (level) => 1 + 0.05 * level,
+        },
+      },
+      "building"
+    );
+
+    bonuses.setSourceLevel("iron_forest", 3);
+    bonuses.setSourceLevel("iron_canopy", 2);
+
+    const values = bonuses.getAllValues();
+    assert(Math.abs(values.iron_forest_hp_effectiveness - 1.1) < 1e-6);
+    assert(Math.abs(values.all_units_hp_multiplier - 1.33) < 1e-6);
+  });
 });

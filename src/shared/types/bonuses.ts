@@ -4,7 +4,15 @@ export type BonusEffectType = "income" | "multiplier" | "base";
 
 export type BonusEffectContext = Record<string, number>;
 
-export type BonusEffectFormula = (level: number, context?: BonusEffectContext) => number;
+export interface BonusFormulaDependencies {
+  readonly getBonusValue: (id: BonusId) => number;
+}
+
+export type BonusEffectFormula = (
+  level: number,
+  context?: BonusEffectContext,
+  dependencies?: BonusFormulaDependencies,
+) => number;
 
 export type BonusEffectTypeMap = Partial<Record<BonusEffectType | string, BonusEffectFormula>>;
 
