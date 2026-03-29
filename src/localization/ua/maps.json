@@ -92,6 +92,9 @@
   "geologicalExcavations": {
     "name": "Геологічні розкопки"
   },
+  "fossilizedDinosaur": {
+    "name": "Скам'янілий динозавр"
+  },
   "impenetrableJungle": {
     "name": "Непроглядні джунглі"
   },

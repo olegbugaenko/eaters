@@ -77,13 +77,13 @@ const DARK_RESEARCH_DB: Record<DarkResearchId, DarkResearchConfig> = {
     id: "void_penetration",
     name: "Void Penetration",
     description:
-      "Teach your brood to find seams in plated defenses. Grants +2 brick armor penetration per research level.",
+      "Teach your brood to find seams in plated defenses. Grants +2% to armor penetration multiplier per research level.",
     icon: "penetration_2.png",
     maxXpPerLevelBase: 100,
     xpPowerBase: 0.1,
     effects: {
-      all_units_armor_penetration: {
-        income: (level) => 2 * level,
+      all_units_armor_penetration_multiplier: {
+        multiplier: (level) => 1 + 0.02 * level,
       },
     },
   },

@@ -32,6 +32,7 @@ export type EnemyType =
   | "spectreEnemy"
   | "encagedBeastEnemy"
   | "coalConvoyGuardian"
+  | "coalFlameGuardian"
   | "silverKeeperEnemy"
   | "freezeTurretEnemy"
   | "snakeEnemy"

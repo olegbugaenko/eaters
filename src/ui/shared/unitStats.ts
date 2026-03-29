@@ -191,7 +191,10 @@ export const buildUnitStatEntries = (
         "voidCamp.unitStats.armorPenetrationHint",
         "Reduces brick armor before damage is applied."
       ),
-      bonusIds: ["all_units_armor_penetration"],
+      bonusIds: [
+        "all_units_armor_penetration",
+        "all_units_armor_penetration_multiplier",
+      ],
     },
     {
       label: translate("voidCamp.unitStats.range", "Range"),

@@ -715,6 +715,510 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     knockBackDistance: 80,
     knockBackSpeed: 120,
   },
+  coalFlameGuardian: {
+    name: "Fossil Guardian",
+    renderer: {
+      kind: "composite",
+      fill: { r: 1, g: 0.7, b: 0.6, a: 1 },
+      layers: [
+        // Spike
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: 24, y: 0 },
+            { x: 10, y: -3 },
+            { x: 10, y: 3 },
+          ],
+        },
+        {
+          shape: "polygon",
+          fill: { type: "base", brightness: 0.2 },
+          vertices: [
+            { x: 10, y: -3 },
+            { x: 10, y: 3 },
+            { x: -5, y: 1 },
+            { x: -5, y: -1 },
+          ],
+        },
+        {
+          shape: "circle",
+          radius: 32,
+          segments: 48,
+          offset: { x: 0, y: 0 },
+          fill: {
+            type: "gradient",
+
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 32,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.8, b: 0.6, a: 0.45 } },
+                { offset: 0.6, color: { r: 1, g: 0.8, b: 0.6, a: 0.3 } },
+                { offset: 1, color: { r: 1.0, g: 0.8, b: 0.6, a: 0.0 } },
+              ],
+            },
+          },
+        },
+        // Left side
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 5, y: -8, width: 1.0 },
+            { x: 0, y: -22, width: 0.8 },
+            { x: -5, y: -26, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 3, y: -8, width: 1.0 },
+            { x: -4, y: -18, width: 0.8 },
+            { x: -11, y: -21, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: -2, width: 1.2 },
+            { x: 0, y: -8, width: 1.0 },
+            { x: -10, y: -16, width: 0.8 },
+            { x: -20, y: -18, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -5, y: 0, width: 1.2 },
+            { x: -15, y: -8, width: 1.0 },
+            { x: -20, y: -8, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 1.1,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+
+        // Right side
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 5, y: 8, width: 1.0 },
+            { x: 0, y: 22, width: 0.8 },
+            { x: -5, y: 26, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 3, y: 8, width: 1.0 },
+            { x: -4, y: 18, width: 0.8 },
+            { x: -11, y: 21, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 3,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 10, y: 2, width: 1.2 },
+            { x: 0, y: 8, width: 1.0 },
+            { x: -10, y: 16, width: 0.8 },
+            { x: -20, y: 18, width: 0.6 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 6,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: -5, y: 0, width: 1.2 },
+            { x: -15, y: 8, width: 1.0 },
+            { x: -20, y: 8, width: 0.8 },
+          ],
+          {
+            fill: { type: "base", brightness: 0.3 },
+            stroke: { type: "base", width: 1.4, brightness: -0.12 },
+            anim: {
+              type: "sway",
+              periodMs: 1500,
+              amplitude: 5,
+              falloff: "tip",
+              axis: "normal",
+              phase: 4.24,
+            },
+          },
+          { epsilon: 0.25, winding: "CCW" },
+        ),
+        
+      ],
+    },
+    maxHp: 750000,
+    soulRewardBase: 10,
+    armor: 5000,
+    baseDamage: 7000,
+    attackInterval: 0.8,
+    attackRange: 250,
+    moveSpeed: 150,
+    physicalSize: 30,
+    reward: {
+      stone: 2,
+    },
+    projectileKnockBackSpeed: 0,
+    projectileKnockBackDistance: 0,
+    streamAttack: {
+      damage: 7000,
+      durationMs: 1920,
+      tickIntervalMs: 120,
+      range: 240,
+      angleDeg: 30,
+      spawnOffset: { x: 14, y: 0 },
+      statusEffectId: "burn",
+      statusEffectOptions: {
+        damagePerSecond: 1236,
+        durationMs: 3500,
+      },
+      visual: {
+        color: { r: 1, g: 0.56, b: 0.15, a: 0.78 },
+        coreColor: { r: 1, g: 0.96, b: 0.72, a: 0.95 },
+        edgeColor: { r: 0.95, g: 0.08, b: 0.0, a: 0.12 },
+        widthStart: 8,
+        widthEnd: 34,
+        innerWidthMultiplier: 0.46,
+        raggedness: 0.22,
+        waveAmplitude: 0.34,
+        waveFrequency: 2.4,
+        pulseSpeed: 0.018,
+        pulseIntensity: 0.14,
+        segments: 14,
+        /**
+         * Дефолти з `buildFlameEmitters` (EnemyStreamAttackController): три шари вогню + іскри.
+         * `spread` для шарів 1–3 прив’язаний до `angleDeg` (30°) так само, як у коді:
+         * `(angleDeg * π / 180) * множник`.
+         * `emissionDurationMs` має збігатися з `streamAttack.durationMs`, якщо хочете повну довжину атаки.
+         */
+        flameEmitters: [
+          {
+            particlesPerSecond: 42,
+            particleLifetimeMs: 820,
+            fadeStartMs: 340,
+            fadeInMs: 30,
+            emissionDurationMs: 1920,
+            sizeRange: { min: 12, max: 28 },
+            sizeEvolutionMult: 4.6,
+            baseSpeed: 0.28,
+            speedVariation: 0.06,
+            spread: (30 * Math.PI / 180) * 1.1,
+            offset: { x: 0, y: 0 },
+            color: { r: 0.95, g: 0.08, b: 0.0, a: 0.28 },
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 0.3, g: 0.3, b: 0.2, a: 0.65 } },
+                { offset: 0.35, color: { r: 0.3, g: 0.3, b: 0.2, a: 0.6 } },
+                { offset: 1, color: { r: 0.3, g: 0.3, b: 0.2, a: 0 } },
+              ],
+              noise: {
+                colorAmplitude: 0.0,
+                alphaAmplitude: 0.02,
+                scale: 0.3,
+              },
+            },
+            shape: "circle",
+            maxParticles: 48,
+          },
+          {
+            particlesPerSecond: 32,
+            particleLifetimeMs: 1220,
+            fadeStartMs: 540,
+            fadeInMs: 30,
+            emissionDurationMs: 1920,
+            sizeRange: { min: 22, max: 38 },
+            sizeEvolutionMult: 3.6,
+            baseSpeed: 0.21,
+            speedVariation: 0.04,
+            spread: (25 * Math.PI / 180) * 1.1,
+            offset: { x: 0, y: 0 },
+            color: { r: 0.95, g: 0.08, b: 0.0, a: 0.28 },
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.36, b: 0.75, a: 0.35 } },
+                { offset: 0.35, color: { r: 0.95, g: 0.28, b: 0.54, a: 0.2 } },
+                { offset: 1, color: { r: 0.95, g: 0.18, b: 0.5, a: 0 } },
+              ],
+              noise: {
+                colorAmplitude: 0.0,
+                alphaAmplitude: 0.02,
+                scale: 0.3,
+              },
+            },
+            shape: "circle",
+            maxParticles: 88,
+          },{
+            particlesPerSecond: 62,
+            particleLifetimeMs: 720,
+            fadeStartMs: 340,
+            fadeInMs: 30,
+            emissionDurationMs: 1920,
+            sizeRange: { min: 16, max: 30 },
+            sizeEvolutionMult: 3.1,
+            baseSpeed: 0.21,
+            speedVariation: 0.04,
+            spread: (10 * Math.PI / 180) * 1.1,
+            offset: { x: 0, y: 0 },
+            color: { r: 0.95, g: 0.08, b: 0.0, a: 0.28 },
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.66, b: 1, a: 0.35 } },
+                { offset: 0.35, color: { r: 0.95, g: 0.58, b: 0.85, a: 0.2 } },
+                { offset: 1, color: { r: 0.95, g: 0.58, b: 0.85, a: 0 } },
+              ],
+              noise: {
+                colorAmplitude: 0.0,
+                alphaAmplitude: 0.02,
+                scale: 0.3,
+              },
+            },
+            shape: "circle",
+            maxParticles: 88,
+          },/*
+          {
+            particlesPerSecond: 35,
+            particleLifetimeMs: 600,
+            fadeStartMs: 320,
+            fadeInMs: 20,
+            emissionDurationMs: 1920,
+            sizeRange: { min: 14, max: 26 },
+            sizeEvolutionMult: 2.1,
+            baseSpeed: 0.32,
+            speedVariation: 0.08,
+            spread: (30 * Math.PI / 180) * 0.85,
+            offset: { x: 0, y: 0 },
+            color: { r: 1, g: 0.56, b: 0.15, a: 0.42 },
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.96, b: 0.72, a: 0.55 } },
+                { offset: 0.35, color: { r: 1, g: 0.56, b: 0.15, a: 0.3 } },
+                { offset: 1, color: { r: 1, g: 0.56, b: 0.15, a: 0 } },
+              ],
+              noise: {
+                colorAmplitude: 0.0,
+                alphaAmplitude: 0.02,
+                scale: 0.3,
+              },
+            },
+            shape: "circle",
+            maxParticles: 32,
+          },*/
+          /*
+          {
+            particlesPerSecond: 18,
+            particleLifetimeMs: 320,
+            fadeStartMs: 80,
+            fadeInMs: 15,
+            emissionDurationMs: 1920,
+            sizeRange: { min: 8, max: 16 },
+            sizeEvolutionMult: 1.6,
+            baseSpeed: 0.36,
+            speedVariation: 0.1,
+            spread: (30 * Math.PI / 180) * 0.65,
+            offset: { x: 0, y: 0 },
+            color: { r: 1, g: 0.96, b: 0.72, a: 0.52 },
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.96, b: 0.72, a: 0.75 } },
+                { offset: 0.35, color: { r: 1, g: 0.96, b: 0.72, a: 0.4 } },
+                { offset: 1, color: { r: 1, g: 0.96, b: 0.72, a: 0 } },
+              ],
+            },
+            shape: "circle",
+            maxParticles: 12,
+          },
+          {
+            particlesPerSecond: 28,
+            particleLifetimeMs: 1220,
+            emissionDurationMs: 1920,
+            fadeStartMs: 220,
+            fadeInMs: 40,
+            baseSpeed: 0.11,
+            speedVariation: 0.03,
+            spread: Math.PI / 5,
+            offset: { x: 0, y: 0 },
+            sizeRange: { min: 5, max: 9 },
+            sizeEvolutionMult: 0.65,
+            color: { r: 1, g: 0.84, b: 0.35, a: 0.9 },
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.98, b: 0.74, a: 0.32 } },
+                { offset: 0.6, color: { r: 1, g: 0.62, b: 0.14, a: 0.18 } },
+                { offset: 1, color: { r: 0.85, g: 0.12, b: 0.0, a: 0 } },
+              ],
+            },
+            shape: "triangle",
+            alignToVelocity: true,
+            maxParticles: 18,
+          },*/
+        ],
+        /** Якщо задано `flameEmitters`, рендер іде з нього; це поле лишається для автогенерації без `flameEmitters` і як дзеркало для 4-го шару — тримай узгодженим з останнім елементом `flameEmitters`. */
+        sparks: {
+          particlesPerSecond: 28,
+          particleLifetimeMs: 1220,
+          emissionDurationMs: 720,
+          fadeStartMs: 220,
+          fadeInMs: 40,
+          baseSpeed: 0.11,
+          speedVariation: 0.03,
+          spread: Math.PI / 5,
+          offset: { x: 0, y: 0 },
+          sizeRange: { min: 5, max: 9 },
+          sizeEvolutionMult: 0.65,
+          color: { r: 1, g: 0.84, b: 0.35, a: 0.9 },
+          fill: {
+            fillType: FILL_TYPES.RADIAL_GRADIENT,
+            stops: [
+              { offset: 0, color: { r: 1, g: 0.98, b: 0.74, a: 0.32 } },
+              { offset: 0.6, color: { r: 1, g: 0.62, b: 0.14, a: 0.18 } },
+              { offset: 1, color: { r: 0.85, g: 0.12, b: 0.0, a: 0 } },
+            ],
+          },
+          shape: "triangle",
+          alignToVelocity: true,
+          maxParticles: 18,
+        },
+      },
+    },
+    emitter: {
+      particlesPerSecond: 90,
+      particleLifetimeMs: 750,
+      fadeStartMs: 200,
+      baseSpeed: 0.05,
+      speedVariation: 0.01,
+      sizeRange: { min: 14.2, max: 28.4 },
+      sizeEvolutionMult: 1.75, // Particles grow from 1x to 1.25x size over lifetime
+      spread: Math.PI / 5.5,
+      offset: { x: -0.75, y: 0 },
+      color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 1, g: 0.75, b: 0.6, a: 0.1 } },
+          { offset: 0.25, color: { r: 1, g: 0.75, b: 0.6, a: 0.05 } },
+          { offset: 1, color: { r: 1, g: 0.75, b: 0.6, a: 0 } },
+        ],
+        noise: {
+          colorAmplitude: 0.0,
+          alphaAmplitude: 0.02,
+          scale: 0.3,
+        },
+      },
+      shape: "circle",
+      maxParticles: 100,
+    },
+    knockBackDistance: 80,
+    knockBackSpeed: 120,
+  },
   carGuardian: {
     name: "Car Guardian",
     renderer: {

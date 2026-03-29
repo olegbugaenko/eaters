@@ -46,6 +46,7 @@ export type MapId =
   | "greatOctopus"
   | "coalConvoy"
   | "geologicalExcavations"
+  | "fossilizedDinosaur"
   | "transformer"
   | "gear"
   | "twinbladeAxe"

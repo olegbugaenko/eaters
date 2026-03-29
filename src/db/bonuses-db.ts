@@ -22,6 +22,7 @@ export const BONUS_IDS = [
   "all_units_crit_chance",
   "all_units_hp_regen_percentage",
   "all_units_armor_penetration",
+  "all_units_armor_penetration_multiplier",
   "all_units_knockback_reduction",
   "all_units_acceleration_multiplier",
   "spell_power",
@@ -113,8 +114,14 @@ const BONUS_DB: Record<BonusId, BonusConfig> = {
   },
   all_units_armor_penetration: {
     id: "all_units_armor_penetration",
-    name: "Brick Armor Penetration",
+    name: "Armor Penetration",
     defaultValue: 0
+  },
+  all_units_armor_penetration_multiplier: {
+    id: "all_units_armor_penetration_multiplier",
+    name: "Armor Penetration Multiplier",
+    description: "Multiplies total armor penetration after flat bonuses are summed.",
+    defaultValue: 1,
   },
   all_units_knockback_reduction: {
     id: "all_units_knockback_reduction",

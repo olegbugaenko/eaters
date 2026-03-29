@@ -7,6 +7,7 @@ import coil from "./map-definitions/coil";
 import unknownKnightMonument from "./map-definitions/unknownKnightMonument";
 import coalConvoy from "./map-definitions/coalConvoy";
 import geologicalExcavations from "./map-definitions/geologicalExcavations";
+import fossilizedDinosaur from "./map-definitions/fossilizedDinosaur";
 import deadOak from "./map-definitions/deadOak";
 import deadlyTunnels from "./map-definitions/deadlyTunnels";
 import deathfulGuns from "./map-definitions/deathfulGuns";
@@ -97,6 +98,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   greatOctopus,
   coalConvoy,
   geologicalExcavations,
+  fossilizedDinosaur,
   transformer,
   uranium_fields: uraniumFields,
 };

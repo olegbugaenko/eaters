@@ -64,9 +64,16 @@ export const computePlayerUnitBlueprint = (
     sanitizeAdditive(values["all_units_hp_regen_percentage"], 0),
     0
   );
-  const globalArmorPenetration = Math.max(
+  const globalArmorPenetrationFlat = Math.max(
     sanitizeAdditive(values["all_units_armor_penetration"], 0),
     0
+  );
+  const globalArmorPenetrationMultiplier = Math.max(
+    sanitizeMultiplier(values["all_units_armor_penetration_multiplier"], 1),
+    0
+  );
+  const globalArmorPenetration = roundStat(
+    globalArmorPenetrationFlat * globalArmorPenetrationMultiplier
   );
 
   let specificAttackMultiplier = 1;
