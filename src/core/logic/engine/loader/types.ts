@@ -1,4 +1,5 @@
 import { ServiceContainer } from "../ServiceContainer";
+import type { GameModulePauseScope } from "../../types";
 
 type BivariantCallback<Args extends any[], Return> = {
   bivarianceHack(...args: Args): Return;
@@ -12,6 +13,7 @@ export interface ServiceDefinition<
   token: TToken;
   factory: (container: ServiceContainer<TServices>) => TInstance;
   registerAsModule?: boolean;
+  modulePauseScope?: GameModulePauseScope;
   onReady?: BivariantCallback<[instance: TInstance, container: ServiceContainer<TServices>], void>;
   dependsOn?: readonly string[];
 }

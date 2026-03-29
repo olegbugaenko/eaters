@@ -15,7 +15,7 @@ const TIP_RADIUS = 180;
 const mapConfig = (() => {
   const size: SceneSize = { width: 1200, height: 1200 };
   const center: SceneVector2 = { x: 600, y: 600 };
-  const spawnPoint: SceneVector2 = { x: 600, y: 100 };
+  const spawnPoint: SceneVector2 = { x: 200, y: 600 };
 
   const computeSpineWorldPositions = (tentacleIdx: number): SceneVector2[] => {
     const angle = (tentacleIdx / TENTACLE_COUNT) * Math.PI * 2;

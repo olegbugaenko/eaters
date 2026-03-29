@@ -18,6 +18,7 @@ import { ArcModule } from "../../scene/arc/arc.module";
 import { MapEffectsModule } from "../map-effects/map-effects.module";
 import type { MapEffectId } from "../../../../db/map-effects-db";
 import type { DamageService } from "../targeting/DamageService";
+import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 
 interface MapRunLifecycleOptions {
   runState: MapRunState;
@@ -32,6 +33,7 @@ interface MapRunLifecycleOptions {
   scene: SceneObjectManager;
   mapEffects: MapEffectsModule;
   damage?: DamageService;
+  explosions?: ExplosionModule;
 }
 
 interface StartRunPayload {
@@ -134,12 +136,23 @@ export class MapRunLifecycle {
     this.activeMapLevel = 0;
   }
 
-  public completeRun(): void {
+  public completeRun(success: boolean): void {
     this.runActive = false;
     this.options.unitsAutomation.onMapEnd();
     this.options.visuals.clearPendingFocus();
     this.options.necromancer.pauseMap();
     this.options.damage?.clearFloatingTexts();
+    const portalPositions = this.options.visuals.getPortalPositions();
+    if (success) {
+      portalPositions.forEach((position) => {
+        this.options.explosions?.spawnExplosionByType("mapVictoryWave", { position, initialRadius: 45 });
+      });
+    } else {
+      this.options.visuals.animatePortalCollapse();
+      portalPositions.forEach((position) => {
+        this.options.explosions?.spawnExplosionByType("mapDefeatWave", { position, initialRadius: 45 });
+      });
+    }
   }
 
   public tick(deltaMs: number): void {

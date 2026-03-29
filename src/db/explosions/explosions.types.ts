@@ -46,7 +46,9 @@ export type ExplosionType =
   | "unitDeath"
   | "tentacleHit"
   | "bleedSplash"
-  | "soulCollect";
+  | "soulCollect"
+  | "mapVictoryWave"
+  | "mapDefeatWave";
 
 export interface ExplosionWaveConfig {
   initialInnerRadius: number;
@@ -82,6 +84,7 @@ export interface ExplosionStarburstConfig {
 export interface ExplosionConfig {
   lifetimeMs: number;
   defaultInitialRadius: number;
+  allowInSimulationPause?: boolean;
   waves: readonly ExplosionWaveConfig[];
   emitter: ParticleEmitterConfig;
   starburst?: ExplosionStarburstConfig;

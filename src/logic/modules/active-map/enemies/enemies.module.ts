@@ -42,7 +42,12 @@ import type {
   EnemySpawnData,
   InternalEnemyState,
 } from "./enemies.types";
-import { sanitizeEnemyLevel, scaleEnemyResourceStockpile } from "./enemies.helpers";
+import {
+  sanitizeEnemyLevel,
+  scaleEnemyAttackDamageByLevel,
+  scaleEnemyResourceStockpile,
+  scaleStatusEffectApplicationOptionsByEnemyLevel,
+} from "./enemies.helpers";
 import { EnemyTargetingProvider } from "./enemies.targeting-provider";
 import type { ExplosionModule } from "../../scene/explosion/explosion.module";
 import { getEnemyConfig, type EnemyConfig } from "../../../../db/enemies-db";
@@ -59,13 +64,15 @@ import type {
   ObstacleDescriptor,
   ObstacleProvider,
 } from "@/logic/shared/navigation/navigation.types";
-import { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
 import { BrickObstacleProvider } from "./brick-obstacle-provider";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import { EnemySpawnSourceController } from "./enemy-spawn-source-controller";
 import { executeChainLightning } from "../chain-lightning.helpers";
+import { NavigationCoordinator } from "@/logic/shared/navigation/NavigationCoordinator";
+import { NavigationWorldSnapshot } from "@/logic/shared/navigation/NavigationWorldSnapshot";
+import { EnemyStreamAttackController } from "./EnemyStreamAttackController";
 
 const ENEMY_PASSABILITY: PassabilityTag = "enemy";
 const ENEMY_COLLISION_RESOLUTION_ITERATIONS = 4;
@@ -77,17 +84,6 @@ const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dy = a.y - b.y;
   return dx * dx + dy * dy;
 };
-
-interface EnemyNavigationState {
-  targetId: string;
-  targetPosition: SceneVector2;
-  targetRadius: number;
-  waypoints: SceneVector2[];
-  goalReached: boolean;
-  repathCooldown: number;
-  lastPosition: SceneVector2;
-  stuckTimer: number;
-}
 
 export class EnemiesModule implements GameModule {
   public readonly id = "enemies";
@@ -105,15 +101,15 @@ export class EnemiesModule implements GameModule {
   private readonly projectiles?: UnitProjectileController;
   private readonly arcs?: ArcModule;
   private readonly obstacles: ObstacleProvider;
-  private readonly pathfinder: PathfindingService;
+  private readonly navigation: NavigationCoordinator;
   private readonly navigationCellSize: number;
-  private readonly navigationState = new Map<string, EnemyNavigationState>();
   private readonly stateFactory: EnemyStateFactory;
   private readonly spatialIndex = new SpatialGrid<InternalEnemyState>(
     ENEMY_SPATIAL_GRID_CELL_SIZE,
   );
   private readonly statusEffects: StatusEffectsModule;
   private readonly spawnSourceController = new EnemySpawnSourceController();
+  private readonly streamAttacks: EnemyStreamAttackController;
 
   private enemies = new Map<string, InternalEnemyState>();
   private enemyOrder: InternalEnemyState[] = [];
@@ -139,16 +135,28 @@ export class EnemiesModule implements GameModule {
     this.statusEffects = options.statusEffects;
     this.obstacles =
       options.obstacles ?? new BrickObstacleProvider(options.bricks);
-    this.pathfinder =
-      options.pathfinder ??
-      new PathfindingService({
-        obstacles: this.obstacles,
-        getMapSize: () => this.scene.getMapSize(),
-      });
-    this.navigationCellSize = this.pathfinder.getCellSize();
+    this.navigation =
+      options.navigation ??
+      new NavigationCoordinator(
+        new NavigationWorldSnapshot({
+          obstacles: this.obstacles,
+          getMapSize: () => this.scene.getMapSize(),
+          pathfinder: options.pathfinder,
+          getObstacleRevision: () => options.bricks.getNavigationRevision(),
+          plannerBudgetPerTick: 96,
+        }),
+      );
+    this.navigationCellSize = this.navigation.getCellSize();
     this.stateFactory = new EnemyStateFactory({
       scene: this.scene,
       movement: this.movement,
+    });
+    this.streamAttacks = new EnemyStreamAttackController({
+      scene: this.scene,
+      targeting: this.targeting,
+      damage: this.damage,
+      statusEffects: this.statusEffects,
+      getEnemyById: (enemyId) => this.enemies.get(enemyId),
     });
 
     if (this.targeting) {
@@ -196,7 +204,8 @@ export class EnemiesModule implements GameModule {
     let anyChanged = false;
 
     // Кешуємо всі перешкоди один раз на початку tick для всіх ворогів
-    this.pathfinder.cacheAllObstacles(ENEMY_PASSABILITY);
+    this.navigation.beginPlanningTick();
+    this.navigation.cacheAllObstacles(ENEMY_PASSABILITY);
 
     const activeTargets = new Map<
       string,
@@ -341,6 +350,8 @@ export class EnemiesModule implements GameModule {
       this.trackNavigationProgress(enemy, deltaSeconds);
     });
 
+    this.streamAttacks.tick(deltaMs);
+
     const spawns: EnemySpawnData[] = [];
     this.collectSpawnerSpawns(deltaMs, spawns);
     spawns.forEach((spawn) => this.spawnEnemy(spawn));
@@ -400,6 +411,10 @@ export class EnemiesModule implements GameModule {
       totalHp += Math.max(enemy.hp, 0);
     });
     return { count, totalHp };
+  }
+
+  private getNavigationActorId(enemyId: string): string {
+    return `enemy:${enemyId}`;
   }
 
   public findNearestEnemy(position: SceneVector2): EnemyRuntimeState | null {
@@ -620,11 +635,12 @@ export class EnemiesModule implements GameModule {
     const tentacleIndex = enemy.tentacleIndex;
 
     this.scene.removeObject(enemy.sceneObjectId);
+    this.streamAttacks.clearBySourceEnemyId(enemy.id);
     this.movement.removeBody(enemy.movementId);
     this.enemies.delete(enemy.id);
     this.enemyOrder = this.enemyOrder.filter((item) => item.id !== enemy.id);
     this.spatialIndex.delete(enemy.id);
-    this.navigationState.delete(enemy.id);
+    this.navigation.clearActor(this.getNavigationActorId(enemy.id));
     this.statusEffects.clearTargetEffects({ type: "enemy", id: enemy.id });
 
     if (linkedIds) {
@@ -911,7 +927,9 @@ export class EnemiesModule implements GameModule {
       const isChain =
         (arcAttack.chainRadius ?? 0) > 0 &&
         (arcAttack.chainJumps ?? 0) > 0;
-      const chainDamage = arcAttack.damage ?? enemy.baseDamage;
+      const chainDamage =
+        scaleEnemyAttackDamageByLevel(arcAttack.damage, enemy.level) ??
+        enemy.baseDamage;
 
       // Rotate spawnOffset by the enemy's current rotation so it stays
       // relative to the enemy's facing direction instead of world-space.
@@ -938,11 +956,15 @@ export class EnemiesModule implements GameModule {
         const effectTarget = { type: "unit", id: target.id } as const;
         const effectConfig = getStatusEffectConfig(arcAttack.statusEffectId);
         const canStack = Math.max(effectConfig.maxStacks ?? 0, 0) > 1;
+        const scaledStatusEffectOptions = scaleStatusEffectApplicationOptionsByEnemyLevel(
+          arcAttack.statusEffectOptions,
+          enemy.level,
+        );
         if (canStack || !this.statusEffects.hasEffect(arcAttack.statusEffectId, effectTarget)) {
           this.statusEffects.applyEffect(
             arcAttack.statusEffectId,
             effectTarget,
-            arcAttack.statusEffectOptions,
+            scaledStatusEffectOptions,
           );
         }
       }
@@ -1020,6 +1042,10 @@ export class EnemiesModule implements GameModule {
 
       const explosionStatusEffectId = explosionAttack.statusEffectId;
       if (explosionStatusEffectId) {
+        const scaledStatusEffectOptions = scaleStatusEffectApplicationOptionsByEnemyLevel(
+          explosionAttack.statusEffectOptions,
+          enemy.level,
+        );
         this.targeting?.forEachTargetNear(
           enemy.position,
           Math.max(0, explosionAttack.radius),
@@ -1032,7 +1058,7 @@ export class EnemiesModule implements GameModule {
               this.statusEffects.applyEffect(
                 explosionStatusEffectId,
                 effectTarget,
-                explosionAttack.statusEffectOptions,
+                scaledStatusEffectOptions,
               );
             }
           },
@@ -1041,6 +1067,33 @@ export class EnemiesModule implements GameModule {
       }
 
       return true;
+    }
+
+    if (config.streamAttack) {
+      const streamAttack = config.streamAttack;
+      const scaledDamage =
+        scaleEnemyAttackDamageByLevel(streamAttack.damage, enemy.level) ??
+        enemy.baseDamage;
+      const scaledStatusEffectOptions = scaleStatusEffectApplicationOptionsByEnemyLevel(
+        streamAttack.statusEffectOptions,
+        enemy.level,
+      );
+      return (
+        this.streamAttacks.spawn({
+          sourceEnemy: enemy,
+          targetId: target.id,
+          targetPosition: target.position,
+          config: {
+            ...streamAttack,
+            damageOptions: streamAttack.damageOptions ?? {
+              knockBackDistance: config.knockBackDistance,
+              knockBackSpeed: config.knockBackSpeed,
+            },
+          },
+          damage: scaledDamage,
+          statusEffectOptions: scaledStatusEffectOptions,
+        }) !== null
+      );
     }
 
     // Якщо є конфіг снаряда — перевіряємо чи сегмент має право стріляти
@@ -1081,7 +1134,9 @@ export class EnemiesModule implements GameModule {
         projectiles.spawn({
           origin,
           direction: projectileDirection,
-          damage: projectileConfig.damage ?? enemy.baseDamage,
+          damage:
+            scaleEnemyAttackDamageByLevel(projectileConfig.damage, enemy.level) ??
+            enemy.baseDamage,
           rewardMultiplier: 1, // Вороги не дають нагороди за атаку
           armorPenetration: 0,
           knockBackDistance: projKnockDist,
@@ -1106,6 +1161,10 @@ export class EnemiesModule implements GameModule {
             }
             const projectileStatusEffectId = config.projectile?.statusEffectId;
             if (projectileStatusEffectId) {
+              const scaledStatusEffectOptions = scaleStatusEffectApplicationOptionsByEnemyLevel(
+                config.projectile?.statusEffectOptions,
+                enemy.level,
+              );
               const effectTarget =
                 hitContext.targetType === "enemy"
                   ? ({ type: "enemy", id: hitContext.targetId } as const)
@@ -1114,7 +1173,7 @@ export class EnemiesModule implements GameModule {
                 this.statusEffects.applyEffect(
                   projectileStatusEffectId,
                   effectTarget,
-                  config.projectile?.statusEffectOptions,
+                  scaledStatusEffectOptions,
                 );
               }
             }
@@ -1186,6 +1245,7 @@ export class EnemiesModule implements GameModule {
   }
 
   private clearSceneObjects(): void {
+    this.streamAttacks.clear();
     this.enemyOrder.forEach((enemy) => {
       this.scene.removeObject(enemy.sceneObjectId);
       this.movement.removeBody(enemy.movementId);
@@ -1194,7 +1254,7 @@ export class EnemiesModule implements GameModule {
     this.enemies.clear();
     this.enemyOrder = [];
     this.spatialIndex.clear();
-    this.navigationState.clear();
+    this.navigation.clearActorsByPrefix("enemy:");
   }
 
   private updateNavigationState(
@@ -1203,7 +1263,7 @@ export class EnemiesModule implements GameModule {
     deltaSeconds: number,
   ): void {
     if (!target) {
-      this.navigationState.delete(enemy.id);
+      this.navigation.clearActor(this.getNavigationActorId(enemy.id));
       return;
     }
 
@@ -1222,136 +1282,46 @@ export class EnemiesModule implements GameModule {
     const turnTime = maxForce > 0 ? moveSpeed / maxForce : 0.2;
     const maneuverMargin = moveSpeed * turnTime * 0.5; // Conservative margin
     const targetRadius = baseTargetRadius + maneuverMargin;
-
-    const existing = this.navigationState.get(enemy.id);
-    const distanceToTargetSq = distanceSquared(enemy.position, target.position);
-    const targetMoved = existing
-      ? distanceSquared(existing.targetPosition, target.position) >
-        this.navigationCellSize * this.navigationCellSize * 0.5
-      : true;
-
-    if (distanceToTargetSq <= baseTargetRadius * baseTargetRadius) {
-      this.navigationState.set(enemy.id, {
-        targetId: target.id,
-        targetPosition: { ...target.position },
-        targetRadius: baseTargetRadius,
-        waypoints: [],
-        goalReached: true,
-        repathCooldown: 0.2,
-        lastPosition: { ...enemy.position },
-        stuckTimer: 0,
-      });
-      return;
-    }
-
-    const repathCooldown = Math.max(
-      (existing?.repathCooldown ?? 0) - deltaSeconds,
-      0,
-    );
-    const needsPath =
-      !existing ||
-      existing.targetId !== target.id ||
-      existing.goalReached ||
-      existing.waypoints.length === 0 ||
-      repathCooldown <= 0 ||
-      targetMoved;
-
-    if (!needsPath && existing) {
-      existing.targetRadius = baseTargetRadius;
-      existing.targetPosition = { ...target.position };
-      existing.repathCooldown = repathCooldown;
-      this.navigationState.set(enemy.id, existing);
-      return;
-    }
-
-    const path = this.pathfinder.findPathToTarget({
-      start: enemy.position,
-      target: target.position,
+    this.navigation.planNavigation({
+      actorId: this.getNavigationActorId(enemy.id),
+      actorPosition: enemy.position,
+      target,
       targetRadius,
       entityRadius: enemy.physicalSize,
       passabilityTag: ENEMY_PASSABILITY,
-    });
-
-    // Адаптивний cooldown: далекі вороги рідше перераховують шлях
-    const distanceToTarget = Math.sqrt(distanceToTargetSq);
-    let repathCooldownValue: number;
-    if (path.goalReached) {
-      repathCooldownValue = 0.2;
-    } else if (distanceToTarget > 300) {
-      // Далеко - рідко перераховувати (1 раз/сек)
-      repathCooldownValue = 1.0;
-    } else if (distanceToTarget > 150) {
-      // Середня відстань
-      repathCooldownValue = 0.6;
-    } else {
-      // Близько - частіше
-      repathCooldownValue = 0.35;
-    }
-
-    this.navigationState.set(enemy.id, {
-      targetId: target.id,
-      targetPosition: { ...target.position },
-      targetRadius: baseTargetRadius, // Store base radius (without margin) for goal checking
-      waypoints: path.waypoints.map((point) => ({ ...point })),
-      goalReached: path.goalReached,
-      repathCooldown: repathCooldownValue,
-      lastPosition: { ...enemy.position },
-      stuckTimer: 0,
+      deltaSeconds,
+      goalCooldownSeconds: 0.2,
+      getRepathCooldown: ({ distanceToTarget, path }) => {
+        if (path.goalReached) {
+          return 0.2;
+        }
+        if (distanceToTarget > 300) {
+          return 1.0;
+        }
+        if (distanceToTarget > 150) {
+          return 0.6;
+        }
+        return 0.35;
+      },
     });
   }
 
   private consumeWaypoints(
     enemy: InternalEnemyState,
-    navigation: EnemyNavigationState | undefined,
     target: { position: SceneVector2 } | null,
   ): void {
-    if (!navigation) {
-      return;
-    }
-    const threshold = Math.max(
-      enemy.physicalSize * 0.5,
-      this.navigationCellSize * 0.5,
-    );
-    const thresholdSq = threshold * threshold;
-
-    while (navigation.waypoints.length > 0) {
-      const waypoint = navigation.waypoints[0]!;
-      if (distanceSquared(enemy.position, waypoint) > thresholdSq) {
-        break;
-      }
-      navigation.waypoints.shift();
-    }
-
-    if (navigation.waypoints.length === 0) {
-      navigation.goalReached = target
-        ? distanceSquared(enemy.position, target.position) <=
-          navigation.targetRadius * navigation.targetRadius
-        : navigation.goalReached;
-    }
+    this.navigation.consumeWaypoints(this.getNavigationActorId(enemy.id), enemy.position, target?.position ?? null, {
+      threshold: Math.max(enemy.physicalSize * 0.5, this.navigationCellSize * 0.5),
+    });
   }
 
   private trackNavigationProgress(
     enemy: InternalEnemyState,
     deltaSeconds: number,
   ): void {
-    const navigation = this.navigationState.get(enemy.id);
-    if (!navigation) {
-      return;
-    }
-
-    const movedSq = distanceSquared(enemy.position, navigation.lastPosition);
-    if (movedSq < 1) {
-      navigation.stuckTimer += deltaSeconds;
-      if (navigation.stuckTimer > 0.6) {
-        navigation.repathCooldown = 0;
-        navigation.waypoints = [];
-        navigation.goalReached = false;
-      }
-      return;
-    }
-
-    navigation.stuckTimer = 0;
-    navigation.lastPosition = { ...enemy.position };
+    this.navigation.trackProgress(this.getNavigationActorId(enemy.id), enemy.position, deltaSeconds, {
+      stuckTimeout: 0.6,
+    });
   }
 
   /**
@@ -1371,10 +1341,10 @@ export class EnemiesModule implements GameModule {
       return this.computeBrakingForce(enemy, movementState);
     }
 
-    const navigation = this.navigationState.get(enemy.id);
-    this.consumeWaypoints(enemy, navigation, target);
+    this.consumeWaypoints(enemy, target);
 
-    const destination = navigation?.waypoints[0] ?? target.position;
+    const navigation = this.navigation.getState(this.getNavigationActorId(enemy.id));
+    const destination = this.navigation.getDestination(this.getNavigationActorId(enemy.id), target.position);
     const toDestination = subtractVectors(destination, enemy.position);
     const distanceToDestination = vectorLength(toDestination);
     const toTarget = subtractVectors(target.position, enemy.position);

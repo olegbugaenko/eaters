@@ -6,6 +6,15 @@ export interface GameVersionInfo {
 
 export const GAME_VERSIONS: GameVersionInfo[] = [
   {
+    displayName: "v0.1.4c",
+    releaseDate: "2026-03-26",
+    changes: [
+      "Further small interface improvements",
+      "Added different effects for victory/loss",
+      "Fixed bug where new notification on dark research tab wont disapper"
+    ]
+  },
+  {
     displayName: "v0.1.4b",
     releaseDate: "2026-03-23",
     changes: [

@@ -1,5 +1,11 @@
 {
   "twinbladeAxe": {
     "name": "Twinblade Axe"
+  },
+  "desertCrater": {
+    "name": "Кратер в пустыне"
+  },
+  "nautilusShell": {
+    "name": "Аммонитовая раковина"
   }
 }

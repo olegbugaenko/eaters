@@ -80,6 +80,7 @@ export class BricksModule implements GameModule {
   private readonly runState: MapRunState;
   private readonly stateFactory: BrickStateFactory;
   private readonly targeting?: TargetingService;
+  private navigationRevision = 0;
 
   constructor(private readonly options: BricksModuleOptions) {
     this.runState = options.runState;
@@ -196,6 +197,10 @@ export class BricksModule implements GameModule {
       count: this.bricks.size,
       totalHp: Math.max(0, this.totalHpCached),
     };
+  }
+
+  public getNavigationRevision(): number {
+    return this.navigationRevision;
   }
 
   public getBrickPositionIfAlive(brickId: string): SceneVector2 | null {
@@ -444,6 +449,7 @@ export class BricksModule implements GameModule {
     this.totalHpCached = 0;
     this.lastPushedBrickCount = -1;
     this.lastPushedTotalHp = -1;
+    this.navigationRevision += 1;
 
     bricks.forEach((brick) => {
       const input: BrickStateInput = {
@@ -494,6 +500,7 @@ export class BricksModule implements GameModule {
     this.spatialIndex.delete(brick.id);
     this.bricksWithKnockback.delete(brick.id);
     this.totalHpCached -= brick.hp;
+    this.navigationRevision += 1;
     this.pushStats();
   }
 

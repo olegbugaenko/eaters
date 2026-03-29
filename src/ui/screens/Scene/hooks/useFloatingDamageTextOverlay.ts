@@ -36,7 +36,10 @@ export const useFloatingDamageTextOverlay = ({
   const graphicsEnabledRef = useRef(readStoredGraphicsSettings().floatingDamageText);
   const lastSettingsReadAtRef = useRef(0);
   const rafIdRef = useRef(0);
+  const timeoutIdRef = useRef<number | null>(null);
   const renderingRef = useRef(false);
+  const lastRenderAtRef = useRef(0);
+  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
 
   const syncGraphicsFlag = (): boolean => {
     const now = performance.now();
@@ -52,36 +55,62 @@ export const useFloatingDamageTextOverlay = ({
     return enabled;
   };
 
+  const queueRender = (delayMs = 0) => {
+    if (delayMs <= 0) {
+      rafIdRef.current = requestAnimationFrame(renderTick);
+      return;
+    }
+    if (timeoutIdRef.current !== null) {
+      clearTimeout(timeoutIdRef.current);
+    }
+    timeoutIdRef.current = window.setTimeout(() => {
+      timeoutIdRef.current = null;
+      rafIdRef.current = requestAnimationFrame(renderTick);
+    }, delayMs);
+  };
+
   const startRenderLoop = () => {
     if (renderingRef.current) return;
     renderingRef.current = true;
-    rafIdRef.current = requestAnimationFrame(renderTick);
+    queueRender();
   };
 
   const renderTick = () => {
+    const now = performance.now();
+    const minInterval = DAMAGE_TEXT_TUNING.renderIntervalMs;
     const texts = floatingTextRef.current;
     const baseCanvas = canvasRef.current;
     const overlayCanvas = overlayCanvasRef.current;
 
     if (texts.length === 0 || !baseCanvas || !overlayCanvas) {
       if (texts.length === 0 && overlayCanvas) {
-        const ctx = overlayCanvas.getContext("2d");
+        const ctx = contextRef.current ?? overlayCanvas.getContext("2d");
         if (ctx) ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
       }
+      contextRef.current = overlayCanvas ? contextRef.current : null;
       renderingRef.current = false;
       return;
     }
+
+    const elapsedSinceRender = now - lastRenderAtRef.current;
+    if (elapsedSinceRender < minInterval) {
+      queueRender(minInterval - elapsedSinceRender);
+      return;
+    }
+    lastRenderAtRef.current = now;
 
     if (overlayCanvas.width !== baseCanvas.width || overlayCanvas.height !== baseCanvas.height) {
       overlayCanvas.width = baseCanvas.width;
       overlayCanvas.height = baseCanvas.height;
+      contextRef.current = null;
     }
 
-    const context = overlayCanvas.getContext("2d");
+    const context = contextRef.current ?? overlayCanvas.getContext("2d");
     if (!context) {
       renderingRef.current = false;
       return;
     }
+    contextRef.current = context;
     context.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
     if (!syncGraphicsFlag()) {
@@ -89,7 +118,6 @@ export const useFloatingDamageTextOverlay = ({
       return;
     }
 
-    const now = performance.now();
     const lifetimeMs = DAMAGE_TEXT_TUNING.lifetimeMs;
     const risePerMs = DAMAGE_TEXT_TUNING.riseSpeedWorldUnitsPerSecond / 1000;
     const camera = scene.getCamera();
@@ -118,6 +146,9 @@ export const useFloatingDamageTextOverlay = ({
       const x = normalizedX * overlayCanvas.width;
       const y = normalizedY * overlayCanvas.height;
       const alpha = Math.max(0, 1 - ageMs / lifetimeMs);
+      if (alpha <= 0.02) {
+        continue;
+      }
 
       let amountText: string;
       let fillColor: string;
@@ -162,7 +193,7 @@ export const useFloatingDamageTextOverlay = ({
     texts.length = writeIdx;
 
     if (writeIdx > 0) {
-      rafIdRef.current = requestAnimationFrame(renderTick);
+      queueRender();
     } else {
       renderingRef.current = false;
     }
@@ -223,7 +254,11 @@ export const useFloatingDamageTextOverlay = ({
     return () => {
       unsubscribe();
       cancelAnimationFrame(rafIdRef.current);
+      if (timeoutIdRef.current !== null) {
+        clearTimeout(timeoutIdRef.current);
+      }
       renderingRef.current = false;
+      contextRef.current = null;
       floatingTextRef.current.length = 0;
     };
   }, [bridge]);

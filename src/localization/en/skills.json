@@ -301,7 +301,7 @@
   },
   "souls_harvest": {
     "name": "Souls Harvest",
-    "description": "Harvest souls from shattered bricks and defeated foes to power forbidden research.",
+    "description": "Harvest souls from defeated living enemies (not turrets) and use them in your dark experiments.",
     "registerEventText": "Whispers of Dark Research answer your harvest."
   },
   "intensive_motion": {

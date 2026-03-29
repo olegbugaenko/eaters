@@ -34,7 +34,9 @@ const createEnemySpawnData = () => ({
 
 const createEmptyBricks = (): BricksModule =>
   ({
+    forEachBrick: () => {},
     forEachBrickNear: () => {},
+    getNavigationRevision: () => 0,
   } as unknown as BricksModule);
 
 class ProjectileSpy {
@@ -178,6 +180,70 @@ describe("EnemiesModule", () => {
     assert.strictEqual(firstCall.damage, 480);
   });
 
+  test("fire parasite uses stream attack ticks instead of projectiles", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    const targeting = new TargetingService();
+    const damageCalls: Array<{ id: string; amount: number }> = [];
+    const damage = {
+      applyTargetDamage: (targetId: string, amount: number) => {
+        damageCalls.push({ id: targetId, amount });
+        return amount;
+      },
+    } as unknown as DamageServiceType;
+
+    const unitTarget: TargetSnapshot = {
+      id: "unit-stream-target",
+      type: "unit",
+      position: { x: 120, y: 0 },
+      hp: 100000,
+      maxHp: 100000,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 12,
+    };
+
+    const provider: TargetingProvider = {
+      types: ["unit"],
+      getById: (id) => (id === unitTarget.id ? unitTarget : null),
+      findNearest: () => unitTarget,
+      findInRadius: () => [unitTarget],
+      forEachInRadius: (_position, _radius, visitor) => {
+        visitor(unitTarget);
+      },
+    };
+    targeting.registerProvider(provider);
+
+    const { module, scene } = createEnemiesModuleWithDeps({
+      runState,
+      targeting,
+      damage,
+    });
+
+    module.setEnemies([
+      {
+        type: "fireParasiteEnemy",
+        level: 1,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    module.tick(1100);
+    assert.strictEqual(
+      scene.getObjects().some((object) => object.type === "enemyStream"),
+      true,
+      "fire parasite should spawn stream scene object",
+    );
+
+    module.tick(130);
+
+    assert.strictEqual(damageCalls.length > 0, true, "stream attack should apply damage");
+    assert.strictEqual(damageCalls[0]?.id, unitTarget.id);
+    assert.strictEqual(damageCalls[0]?.amount, 1100);
+  });
+
   test("applies projectile status effect with options from enemy config", () => {
     const runState = new MapRunState();
     runState.start();
@@ -251,6 +317,124 @@ describe("EnemiesModule", () => {
     assert(poison, "expected active poison effect");
     assert.strictEqual(poison?.damagePerSecond, 6);
     assert.strictEqual(poison?.remainingMs, 5000);
+  });
+
+  test("scales projectile status effect damage by enemy level", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    const targeting = new TargetingService();
+    const projectiles = new ProjectileSpy();
+    const statusEffects = new StatusEffectsModule({
+      damage: { applyTargetDamage: () => 0 } as unknown as DamageServiceType,
+    });
+
+    const unitTarget: TargetSnapshot = {
+      id: "unit-poison-scaled-target",
+      type: "unit",
+      position: { x: 120, y: 0 },
+      hp: 100000,
+      maxHp: 100000,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 12,
+    };
+
+    const provider: TargetingProvider = {
+      types: ["unit"],
+      getById: (id) => (id === unitTarget.id ? unitTarget : null),
+      findNearest: () => unitTarget,
+      findInRadius: () => [unitTarget],
+      forEachInRadius: (_position, _radius, visitor) => {
+        visitor(unitTarget);
+      },
+    };
+    targeting.registerProvider(provider);
+
+    const { module } = createEnemiesModuleWithDeps({
+      runState,
+      targeting,
+      projectiles: projectiles as unknown as UnitProjectileController,
+      statusEffects,
+    });
+
+    module.setEnemies([
+      {
+        type: "turretEnemy",
+        level: 2,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    module.tick(2000);
+
+    const firstCall = projectiles.calls[0];
+    assert(firstCall, "expected projectile spawn payload");
+    assert.strictEqual(typeof firstCall.onHit, "function", "projectile should have onHit callback");
+
+    firstCall.onHit({
+      targetId: unitTarget.id,
+      targetType: "unit",
+      position: { ...unitTarget.position },
+    });
+
+    const poison = statusEffects
+      .getActiveEffectsForTarget({ type: "unit", id: unitTarget.id })
+      .find((effect) => effect.id === "poison");
+    assert(poison, "expected active poison effect");
+    assert.strictEqual(poison?.damagePerSecond, 18);
+  });
+
+  test("scales projectile damage override by enemy level", () => {
+    const runState = new MapRunState();
+    runState.start();
+
+    const targeting = new TargetingService();
+    const projectiles = new ProjectileSpy();
+
+    const unitTarget: TargetSnapshot = {
+      id: "unit-fire-parasite-target",
+      type: "unit",
+      position: { x: 120, y: 0 },
+      hp: 100000,
+      maxHp: 100000,
+      armor: 0,
+      baseDamage: 0,
+      effectiveDamage: 0,
+      physicalSize: 12,
+    };
+
+    const provider: TargetingProvider = {
+      types: ["unit"],
+      getById: (id) => (id === unitTarget.id ? unitTarget : null),
+      findNearest: () => unitTarget,
+      findInRadius: () => [unitTarget],
+      forEachInRadius: (_position, _radius, visitor) => {
+        visitor(unitTarget);
+      },
+    };
+    targeting.registerProvider(provider);
+
+    const { module } = createEnemiesModuleWithDeps({
+      runState,
+      targeting,
+      projectiles: projectiles as unknown as UnitProjectileController,
+    });
+
+    module.setEnemies([
+      {
+        type: "fireParasiteEnemy",
+        level: 3,
+        position: { x: 0, y: 0 },
+      },
+    ]);
+
+    module.tick(2000);
+
+    const firstCall = projectiles.calls[0];
+    assert(firstCall, "expected projectile spawn payload");
+    assert.strictEqual(firstCall.damage, 9900);
   });
 
 

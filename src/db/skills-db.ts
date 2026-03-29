@@ -1229,7 +1229,7 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     lockedForDemo: true,
     effects: {
       all_units_armor: {
-        income: (level) => 15 * level,
+        income: (level) => 25 * level,
       },
     },
     nodesRequired: { armor_lore3: 5 },

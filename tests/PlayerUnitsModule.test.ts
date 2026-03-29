@@ -707,4 +707,5 @@ describe("PlayerUnitsModule", () => {
     );
     assert.strictEqual(distantState!.maxHp, distantBefore.maxHp);
   });
+
 });

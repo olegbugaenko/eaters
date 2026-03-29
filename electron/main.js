@@ -91,6 +91,25 @@ function registerFileProtocol() {
 }
 
 app.whenReady().then(() => {
+  const versions = {
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+    userDataPath: app.getPath("userData"),
+  };
+
+  // Helpful when comparing performance between Electron builds.
+  console.log("[eaters] electron/chrome versions:", versions);
+
+  // Also persist to a file (stdout might be hidden for packaged exe).
+  try {
+    const fs = require("fs");
+    const logPath = path.join(app.getPath("userData"), "electron-versions.log");
+    fs.writeFileSync(logPath, JSON.stringify(versions, null, 2), "utf8");
+  } catch (_err) {
+    // Ignore logging failure.
+  }
+
   registerFileProtocol();
   createWindow();
 });

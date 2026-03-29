@@ -30,10 +30,21 @@ import { createUnitAutomationDefinition } from "../../modules/active-map/unit-au
 import { createUnitDesignDefinition } from "../../modules/camp/unit-design/unit-design.factory";
 import { createUnitModuleWorkshopDefinition } from "../../modules/camp/unit-module-workshop/unit-module-workshop.factory";
 import { createUnitProjectilesDefinition } from "../../modules/active-map/projectiles/projectiles.factory";
+import { createNavigationDefinition } from "../../shared/navigation/navigation.factory";
 import { createUnlocksDefinition } from "../../definitions/modules/unlocks/factory";
 import { createNewUnlockNotificationDefinition } from "../../definitions/modules/new-unlock-notification/factory";
 import { createLocalizationDefinition } from "../../definitions/modules/localization/factory";
 import { ModuleDefinitionContext } from "@/core/logic/engine/module-definitions/context";
+import type { ServiceDefinition } from "@/core/logic/engine/loader/types";
+import type { GameModulePauseScope } from "@/core/logic/types";
+
+const withPauseScope = <TInstance, TToken extends string, TServices extends Record<string, any>>(
+  definition: ServiceDefinition<TInstance, TToken, TServices>,
+  modulePauseScope: GameModulePauseScope,
+): ServiceDefinition<TInstance, TToken, TServices> => ({
+  ...definition,
+  modulePauseScope,
+});
 
 export const registerModuleDefinitions = (
   registry: ModuleRegistry,
@@ -41,38 +52,39 @@ export const registerModuleDefinitions = (
 ): void => {
   registry.registerModules([
     createLocalizationDefinition(),
-    createNewUnlockNotificationDefinition(),
+    withPauseScope(createNewUnlockNotificationDefinition(), "background"),
     createUnlocksDefinition(),
-    createBonusesDefinition(),
-    createAchievementsDefinition(),
-    createStatisticsDefinition(),
-    createResourcesDefinition(),
-    createTimeDefinition(),
-    createEventLogDefinition(),
-    createSkillTreeDefinition(),
-    createCraftingDefinition(),
-    createDarkResearchDefinition(),
-    createBuildingsDefinition(),
-    createArtifactsDefinition(),
-    createUnitModuleWorkshopDefinition(),
-    createUnitDesignDefinition(),
-    createAudioDefinition(),
-    createExplosionDefinition(),
-    createStatusEffectsDefinition(),
+    withPauseScope(createBonusesDefinition(), "background"),
+    withPauseScope(createAchievementsDefinition(), "background"),
+    withPauseScope(createStatisticsDefinition(), "background"),
+    withPauseScope(createResourcesDefinition(), "background"),
+    withPauseScope(createTimeDefinition(), "background"),
+    withPauseScope(createEventLogDefinition(), "background"),
+    withPauseScope(createSkillTreeDefinition(), "background"),
+    withPauseScope(createCraftingDefinition(), "background"),
+    withPauseScope(createDarkResearchDefinition(), "background"),
+    withPauseScope(createBuildingsDefinition(), "background"),
+    withPauseScope(createArtifactsDefinition(), "background"),
+    withPauseScope(createUnitModuleWorkshopDefinition(), "background"),
+    withPauseScope(createUnitDesignDefinition(), "background"),
+    withPauseScope(createAudioDefinition(), "background"),
+    withPauseScope(createExplosionDefinition(), "mapSimulation"),
+    withPauseScope(createStatusEffectsDefinition(), "mapSimulation"),
     createTargetingDefinition(),
     createDamageDefinition(),
-    createBricksDefinition(),
+    withPauseScope(createBricksDefinition(), "mapSimulation"),
+    createNavigationDefinition(),
     createUnitProjectilesDefinition(),
-    createEnemiesDefinition(),
-    createPlayerUnitsDefinition(context),
-    createNecromancerDefinition(),
-    createUnitAutomationDefinition(),
-    createArcDefinition(),
-    createEffectsDefinition(),
-    createFireballDefinition(),
-    createBulletDefinition(),
-    createMapDefinition(context),
-    createSpellcastingDefinition(),
-    createTutorialMonitorDefinition(),
+    withPauseScope(createEnemiesDefinition(), "mapSimulation"),
+    withPauseScope(createPlayerUnitsDefinition(context), "mapSimulation"),
+    withPauseScope(createNecromancerDefinition(), "mapSimulation"),
+    withPauseScope(createUnitAutomationDefinition(), "mapSimulation"),
+    withPauseScope(createArcDefinition(), "mapSimulation"),
+    withPauseScope(createEffectsDefinition(), "mapSimulation"),
+    withPauseScope(createFireballDefinition(), "mapSimulation"),
+    withPauseScope(createBulletDefinition(), "mapSimulation"),
+    withPauseScope(createMapDefinition(context), "mapSimulation"),
+    withPauseScope(createSpellcastingDefinition(), "mapSimulation"),
+    withPauseScope(createTutorialMonitorDefinition(), "mapSimulation"),
   ]);
 };

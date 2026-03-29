@@ -121,22 +121,56 @@ export const DarkResearchView: React.FC<DarkResearchViewProps> = ({
               <span className="text-muted">
                 {t("voidCamp.darkResearch.assignedSouls", "Assigned souls")}
               </span>
-              <StableInput
-                type="number"
-                inputMode="numeric"
-                min={0}
-                className="dark-research-card__queue-input"
-                value={research.assignedSouls}
-                onCommit={(value) => {
-                  const parsed = Number(value);
-                  darkResearch.setAssignedSouls(
-                    research.id,
-                    Number.isFinite(parsed)
-                      ? Math.max(0, Math.floor(parsed))
-                      : 0,
-                  );
-                }}
-              />
+              <div className="dark-research-card__queue-control">
+                <button
+                  type="button"
+                  className={classNames(
+                    "secondary-button",
+                    "small-button",
+                    "button",
+                  )}
+                  disabled={research.assignedSouls <= 0}
+                  onClick={() => darkResearch.adjustAssignedSouls(research.id, -1)}
+                  aria-label={t(
+                    "voidCamp.darkResearch.decreaseAssignedSouls",
+                    "Decrease assigned souls",
+                  )}
+                >
+                  -
+                </button>
+                <StableInput
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className="dark-research-card__queue-input"
+                  value={research.assignedSouls}
+                  onCommit={(value) => {
+                    const parsed = Number(value);
+                    darkResearch.setAssignedSouls(
+                      research.id,
+                      Number.isFinite(parsed)
+                        ? Math.max(0, Math.floor(parsed))
+                        : 0,
+                    );
+                  }}
+                />
+                <button
+                  type="button"
+                  className={classNames(
+                    "secondary-button",
+                    "small-button",
+                    "button",
+                  )}
+                  disabled={state.freeSouls <= 0}
+                  onClick={() => darkResearch.adjustAssignedSouls(research.id, 1)}
+                  aria-label={t(
+                    "voidCamp.darkResearch.increaseAssignedSouls",
+                    "Increase assigned souls",
+                  )}
+                >
+                  +
+                </button>
+              </div>
             </label>
             <label className="dark-research-card__queue-label">
               <span className="text-muted">

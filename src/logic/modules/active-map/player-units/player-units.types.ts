@@ -23,6 +23,7 @@ import type { TargetingService } from "../targeting/TargetingService";
 import type { DamageService } from "../targeting/DamageService";
 import type { EnemiesModule } from "../enemies/enemies.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import type { NavigationCoordinator } from "@/logic/shared/navigation/NavigationCoordinator";
 
 export interface PlayerUnitSpawnData {
   readonly designId?: UnitDesignId;
@@ -46,6 +47,7 @@ export interface PlayerUnitsModuleOptions {
   targeting?: TargetingService;
   damage?: DamageService;
   enemies?: EnemiesModule;
+  navigation?: NavigationCoordinator;
   arcs?: ArcModule;
   effects?: EffectsModule;
   fireballs?: FireballModule;

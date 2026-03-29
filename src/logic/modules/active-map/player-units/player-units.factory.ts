@@ -7,6 +7,7 @@ import { UnitModuleWorkshopModule } from "../../camp/unit-module-workshop/unit-m
 import { PlayerUnitsModule } from "./player-units.module";
 import type { DamageService } from "../targeting/DamageService";
 import type { EnemiesModule } from "../enemies/enemies.module";
+import type { NavigationCoordinator } from "@/logic/shared/navigation/NavigationCoordinator";
 
 export const createPlayerUnitsDefinition = (
   context: ModuleDefinitionContext,
@@ -25,6 +26,7 @@ export const createPlayerUnitsDefinition = (
       targeting: container.get("targeting"),
       damage: container.get("damage"),
       enemies: container.get("enemies"),
+      navigation: container.get<NavigationCoordinator>("navigationCoordinator"),
       runState: container.get("mapRunState"),
       arcs: undefined,
       effects: undefined,
@@ -51,6 +53,7 @@ export const createPlayerUnitsDefinition = (
     "targeting",
     "damage",
     "enemies",
+    "navigationCoordinator",
     "unitDesign",
     "unitModuleWorkshop",
     "skillTree",

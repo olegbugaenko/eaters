@@ -106,5 +106,11 @@
   },
   "twinbladeAxe": {
     "name": "Сокира-двосіч"
+  },
+  "desertCrater": {
+    "name": "Кратер в пустелі"
+  },
+  "nautilusShell": {
+    "name": "Амонітова мушля"
   }
 }

@@ -14,6 +14,7 @@ export const DAMAGE_TEXT_TUNING = {
   fontSizePx: 18,
   maxConcurrentTexts: 80,
   aggregationWindowMs: 100,
+  renderIntervalMs: 33,
 } as const;
 
 export const DAMAGE_TEXT_BRIDGE_KEY = "combat/floatingDamageText" as const;

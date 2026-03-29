@@ -5,7 +5,12 @@ import { BootstrapDefinitionList, createBootstrapDefinitions } from "./engine/lo
 import { createModuleDefinitions } from "@/core/logic/engine/module-definitions";
 import { createModuleDefinitionContext } from "@/core/logic/engine/module-definitions/context";
 import { registerModuleDefinitions } from "@/logic/engine/module-definitions/registry";
-import { GameModule, SaveSlotId, StoredSaveData } from "./types";
+import {
+  GameModule,
+  GameModulePauseScope,
+  SaveSlotId,
+  StoredSaveData,
+} from "./types";
 import { createServiceLookup } from "./engine/loader/createServiceLookup";
 import { DEFAULT_MODULE_CONFIG } from "@logic/config/modules";
 import { ModuleRegistryConfig } from "./engine/ModuleRegistry";
@@ -123,18 +128,24 @@ export class Application {
     this.serviceContainer.register(definition.token, instance);
 
     if (definition.registerAsModule) {
-      this.registerModule(instance as unknown as GameModule);
+      this.registerModule(
+        instance as unknown as GameModule,
+        definition.modulePauseScope,
+      );
     }
 
     definition.onReady?.(instance, this.serviceContainer);
     return instance as TDefinition extends ServiceDefinition<infer Instance, string, any> ? Instance : never;
   }
 
-  private registerModule(module: GameModule): void {
+  private registerModule(
+    module: GameModule,
+    pauseScope: GameModulePauseScope = "mapSimulation",
+  ): void {
     const { saveManager, gameLoop } = this.services;
     this.modules.push(module);
     saveManager.registerModule(module);
-    gameLoop.registerModule(module);
+    gameLoop.registerModule(module, pauseScope);
   }
 
   private createUiApiModules(): LogicUiApiRegistry {

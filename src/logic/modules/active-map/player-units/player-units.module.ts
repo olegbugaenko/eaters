@@ -72,6 +72,9 @@ import { PlayerUnitsTargetingProvider } from "./PlayerUnitsTargetingProvider";
 import type { DamageService } from "../targeting/DamageService";
 import type { EnemiesModule } from "../enemies/enemies.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
+import { NavigationCoordinator } from "@/logic/shared/navigation/NavigationCoordinator";
+import { NavigationWorldSnapshot } from "@/logic/shared/navigation/NavigationWorldSnapshot";
+import { BrickObstacleProvider } from "../enemies/brick-obstacle-provider";
 import type { ParticleEmitterConfig } from "../../../interfaces/visuals/particle-emitters-config";
 import {
   ATTACK_DISTANCE_EPSILON,
@@ -132,6 +135,8 @@ export class PlayerUnitsModule implements GameModule {
   private readonly projectiles: UnitProjectileController;
   private readonly runState: MapRunState;
   private readonly unitStateFactory: UnitStateFactory;
+  private readonly navigation: NavigationCoordinator;
+  private readonly ownsNavigation: boolean;
 
   private units = new Map<string, PlayerUnitState>();
   private unitOrder: PlayerUnitState[] = [];
@@ -254,6 +259,17 @@ export class PlayerUnitsModule implements GameModule {
 
     this.damage = options.damage;
     this.enemies = options.enemies;
+    this.navigation =
+      options.navigation ??
+      new NavigationCoordinator(
+        new NavigationWorldSnapshot({
+          obstacles: new BrickObstacleProvider(this.bricks),
+          getMapSize: () => this.scene.getMapSize(),
+          getObstacleRevision: () => this.bricks.getNavigationRevision(),
+          plannerBudgetPerTick: 96,
+        }),
+      );
+    this.ownsNavigation = !options.navigation;
 
     this.runtimeController = new UnitRuntimeController({
       scene: this.scene,
@@ -266,6 +282,7 @@ export class PlayerUnitsModule implements GameModule {
       projectiles: this.projectiles,
       damage: this.damage,
       enemies: this.enemies,
+      navigation: this.navigation,
       statusEffects: this.statusEffects,
       getDesignTargetingMode: this.getDesignTargetingMode,
       syncUnitTargetingMode: (unit) => this.syncUnitTargetingMode(unit),
@@ -407,6 +424,9 @@ export class PlayerUnitsModule implements GameModule {
       return;
     }
     this.lastTickTimestampMs = performance.now();
+    if (this.ownsNavigation) {
+      this.navigation.beginPlanningTick();
+    }
 
     // Update positions FIRST so abilities use current positions
     const deltaSeconds = Math.max(deltaMs, 0) / 1000;
@@ -959,6 +979,7 @@ export class PlayerUnitsModule implements GameModule {
     this.statusEffects.clearTargetEffects({ type: "unit", id: unit.id });
     this.scene.removeObject(unit.objectId);
     this.movement.removeBody(unit.movementId);
+    this.runtimeController.clearUnitNavigationState(unit.id);
     this.units.delete(unit.id);
     this.unitOrder = this.unitOrder.filter((current) => current.id !== unit.id);
     this.arcs?.clearArcsForUnit(unit.id);
@@ -977,6 +998,7 @@ export class PlayerUnitsModule implements GameModule {
       this.movement.removeBody(unit.movementId);
       this.arcs?.clearArcsForUnit(unit.id);
     });
+    this.runtimeController.clearAllNavigationState();
     this.unitOrder = [];
     this.units.clear();
     this.abilities.resetRun();

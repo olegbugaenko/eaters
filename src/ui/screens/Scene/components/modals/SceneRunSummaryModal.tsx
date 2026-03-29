@@ -32,6 +32,8 @@ interface SceneRunSummaryModalProps {
   title?: string;
   subtitle?: string;
   autoRestart?: SceneRunSummaryAutoRestartControls;
+  /** Controls backdrop tint: true = teal (win), false = red (loss), undefined = neutral */
+  success?: boolean;
 }
 
 const formatDelta = (value: number): string => {
@@ -72,6 +74,7 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   autoRestart,
   title = "Run Complete",
   subtitle = "Resources recovered from the ruins:",
+  success,
 }) => {
   const { t } = useLocalization();
   const collectedResources = resources.filter(
@@ -79,9 +82,15 @@ export const SceneRunSummaryModal: React.FC<SceneRunSummaryModalProps> = ({
   );
   const hasSouls = (souls?.gained ?? 0) > 0;
   const hasResources = collectedResources.length > 0 || hasSouls;
+  const backdropClass =
+    success === true
+      ? "scene-run-summary__backdrop scene-run-summary__backdrop--success"
+      : success === false
+        ? "scene-run-summary__backdrop scene-run-summary__backdrop--failure"
+        : "scene-run-summary__backdrop";
   return (
     <div className="scene-run-summary">
-      <div className="scene-run-summary__backdrop" />
+      <div className={backdropClass} />
       <div className="scene-run-summary__dialog">
         <h2 className="scene-run-summary__title">
           {t("scene.runSummary.title", title)}

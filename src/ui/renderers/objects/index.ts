@@ -6,6 +6,7 @@ import { ExplosionObjectRenderer } from "./implementations/explosion";
 import { PolygonObjectRenderer } from "./implementations/polygon";
 import { PlayerUnitObjectRenderer } from "./implementations/player-unit";
 import { EnemyObjectRenderer } from "./implementations/enemy";
+import { EnemyStreamObjectRenderer } from "./implementations/enemy-stream/EnemyStreamObjectRenderer";
 import { PortalObjectRenderer } from "./implementations/portal";
 import { ArcRenderer } from "./implementations/arc";
 import { AuraRenderer } from "./implementations/aura";
@@ -54,6 +55,7 @@ export const createObjectsRendererManager = (): ObjectsRendererManager => {
     ["polygon", new PolygonObjectRenderer()],
     ["playerUnit", new PlayerUnitObjectRenderer()],
     ["enemy", new EnemyObjectRenderer()],
+    ["enemyStream", new EnemyStreamObjectRenderer()],
     ["portal", new PortalObjectRenderer()],
     ["arc", new ArcRenderer()],
     ["aura", new AuraRenderer()],

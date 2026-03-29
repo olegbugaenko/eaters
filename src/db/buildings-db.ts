@@ -13,7 +13,8 @@ export type BuildingId =
   | "treasure_vault"
   | "throughput_regulator"
   | "hunger_monument"
-  | "mana_source";
+  | "mana_source"
+  | "dark_library";
 
 export type BuildingCostFunction = (level: number) => ResourceAmount;
 
@@ -232,6 +233,25 @@ const BUILDING_DB: Record<BuildingId, BuildingConfig> = {
       {
         type: "skill",
         id: "draftsmanship",
+        level: 1,
+      },
+    ],
+  },
+  dark_library: {
+    id: "dark_library",
+    name: "Dark Library",
+    description:
+      "Archive volatile rites and accelerate every branch of dark research. Each level increases research XP rate linearly.",
+    effects: {
+      dark_research_xp_multiplier: {
+        multiplier: (level) => 1 + 0.2 * level,
+      },
+    },
+    cost: createScalingCost({ magma: 200, wood: 20_000, stone: 500_000 }, 1.75),
+    unlockedBy: [
+      {
+        type: "map",
+        id: "mine",
         level: 1,
       },
     ],

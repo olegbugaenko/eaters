@@ -26,6 +26,8 @@ import snakeNest from "./map-definitions/snakeNest";
 import impenetrableJungle from "./map-definitions/impenetrableJungle";
 import sphinx from "./map-definitions/sphinx";
 import spiralSleeves from "./map-definitions/spiralSleeves";
+import desertCrater from "./map-definitions/desertCrater";
+import nautilusShell from "./map-definitions/nautilusShell";
 import spruce from "./map-definitions/spruce";
 import stoneCottage from "./map-definitions/stoneCottage";
 import thicket from "./map-definitions/thicket";
@@ -68,6 +70,8 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   agressiveClock,
   sphinx,
   spiralSleeves,
+  desertCrater,
+  nautilusShell,
   stoneCottage,
   bezierGrove,
   snakeNest,

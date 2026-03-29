@@ -60,6 +60,7 @@ export interface MapModuleOptions {
   statusEffects?: StatusEffectsModule;
   localization?: LocalizationService;
   damage?: DamageService;
+  explosions?: import("../../scene/explosion/explosion.module").ExplosionModule;
 }
 
 export interface MapSaveData {

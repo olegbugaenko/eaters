@@ -1,1 +1,6 @@
-{}
+{
+  "dark_library": {
+    "name": "Dunkle Bibliothek",
+    "description": "Bewahre gefährliche Riten und beschleunige jeden Zweig der dunklen Forschung. Jede Stufe erhöht die Forschungs-XP-Rate linear um 20 %."
+  }
+}

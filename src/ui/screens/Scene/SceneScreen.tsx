@@ -46,7 +46,10 @@ import type {
   SceneUiApi,
   SceneVector2,
 } from "@core/logic/provided/services/scene-object-manager/scene-object-manager.types";
-import type { GameLoopUiApi } from "@core/logic/provided/services/game-loop/game-loop.types";
+import type {
+  GameLoopPauseMode,
+  GameLoopUiApi,
+} from "@core/logic/provided/services/game-loop/game-loop.types";
 import { SceneTutorialBridgeMonitor } from "./components/tutorial/SceneTutorialBridgeMonitor";
 import { SceneSummoningPanelContainer } from "./components/summoning/SceneSummoningPanelContainer";
 import { createJoinedDebugRendererConfig } from "./components/debug/joinedDebugConfig";
@@ -333,9 +336,15 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
       showTutorial,
     });
 
+    const pauseMode: GameLoopPauseMode = runCompleted
+      ? "simulation"
+      : shouldPause
+        ? "full"
+        : "none";
+
+    gameLoop.setPauseMode(pauseMode);
+
     if (shouldPause) {
-      // Stop gameLoop
-      gameLoop.stop();
       // Only pause map if NOT waiting for spell cast
       if (!isSpellStepWaitingForCast) {
         console.log("[PauseEffect] Pausing map");
@@ -346,10 +355,9 @@ export const SceneScreen: React.FC<SceneScreenProps> = ({
         map.resumeActiveMap();
       }
     } else {
-      // Resume everything
+      // Resume gameplay and return loop to normal dispatch
       console.log("[PauseEffect] Resuming map and gameLoop");
       map.resumeActiveMap();
-      gameLoop.start();
     }
 
     return undefined;

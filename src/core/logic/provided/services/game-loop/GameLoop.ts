@@ -1,16 +1,33 @@
-import { GameModule } from "@core/logic/types";
-import type { TickListener } from "./game-loop.types";
+import { GameModule, GameModulePauseScope } from "@core/logic/types";
+import type { GameLoopPauseMode, TickListener } from "./game-loop.types";
 import { TICK_INTERVAL, MAX_DELTA_MS } from "./game-loop.const";
 
 export class GameLoop {
-  private modules: GameModule[] = [];
+  private modules: Array<{
+    module: GameModule;
+    pauseScope: GameModulePauseScope;
+  }> = [];
+  private readonly registeredModuleIds = new Set<string>();
+  private readonly registeredModuleInstances = new Set<GameModule>();
   private timer: number | null = null;
   private lastTick: number = 0;
   private tickListeners: Set<TickListener> = new Set();
   private visibilityChangeHandler: (() => void) | null = null;
+  private pauseMode: GameLoopPauseMode = "none";
 
-  public registerModule(module: GameModule): void {
-    this.modules.push(module);
+  public registerModule(
+    module: GameModule,
+    pauseScope: GameModulePauseScope = "mapSimulation",
+  ): void {
+    if (this.registeredModuleInstances.has(module)) {
+      throw new Error(`GameLoop module already registered: ${module.id}`);
+    }
+    if (this.registeredModuleIds.has(module.id)) {
+      throw new Error(`GameLoop module id already registered: ${module.id}`);
+    }
+    this.modules.push({ module, pauseScope });
+    this.registeredModuleInstances.add(module);
+    this.registeredModuleIds.add(module.id);
   }
 
   public addTickListener(listener: TickListener): () => void {
@@ -22,6 +39,14 @@ export class GameLoop {
     return this.lastTick;
   }
 
+  public getPauseMode(): GameLoopPauseMode {
+    return this.pauseMode;
+  }
+
+  public setPauseMode(mode: GameLoopPauseMode): void {
+    this.pauseMode = mode;
+  }
+
   /**
    * Cleans up expired objects that accumulated while the tab was inactive.
    * Called when the tab becomes visible again after being hidden.
@@ -29,8 +54,8 @@ export class GameLoop {
   private cleanupExpiredObjects(): void {
     // Call cleanupExpired() on modules that support it (uses absolute time)
     this.modules.forEach((module) => {
-      if (typeof module.cleanupExpired === "function") {
-        module.cleanupExpired();
+      if (typeof module.module.cleanupExpired === "function") {
+        module.module.cleanupExpired();
       }
     });
   }
@@ -58,7 +83,18 @@ export class GameLoop {
       // Clamp delta to avoid huge updates after background tab throttling
       const delta = Math.min(Math.max(deltaRaw, 0), MAX_DELTA_MS);
       this.lastTick = now;
-      this.modules.forEach((module) => module.tick(delta));
+      const pauseMode = this.pauseMode;
+      if (pauseMode === "none") {
+        this.modules.forEach(({ module }) => module.tick(delta));
+      } else {
+        this.modules.forEach(({ module, pauseScope }) => {
+          if (pauseScope === "background") {
+            module.tick(delta);
+            return;
+          }
+          module.tickInPauseMode?.(delta, pauseMode);
+        });
+      }
       this.tickListeners.forEach((listener) =>
         listener({ timestamp: now, deltaMs: delta })
       );
@@ -74,5 +110,6 @@ export class GameLoop {
       document.removeEventListener("visibilitychange", this.visibilityChangeHandler);
       this.visibilityChangeHandler = null;
     }
+    this.pauseMode = "none";
   }
 }

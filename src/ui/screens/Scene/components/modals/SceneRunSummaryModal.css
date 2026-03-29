@@ -8,12 +8,33 @@
   pointer-events: none;
 }
 
+@keyframes scene-run-summary-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scene-run-summary-dialog-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .scene-run-summary__backdrop {
   position: absolute;
   inset: 0;
   background: rgba(6, 12, 24, 0.75);
   backdrop-filter: blur(6px);
   pointer-events: auto;
+  animation: scene-run-summary-backdrop-in 0.35s ease-out both;
+}
+
+.scene-run-summary__backdrop--success {
+  background: rgba(0, 30, 28, 0.82);
+  box-shadow: inset 0 0 120px 40px rgba(0, 200, 160, 0.10);
+}
+
+.scene-run-summary__backdrop--failure {
+  background: rgba(60, 6, 6, 0.18);
+  box-shadow: inset 0 0 180px 60px rgba(200, 20, 10, 0.22);
 }
 
 .scene-run-summary__dialog {
@@ -27,6 +48,7 @@
   border: 1px solid var(--color-border-soft);
   pointer-events: auto;
   color: var(--color-text-primary);
+  animation: scene-run-summary-dialog-in 0.35s 0.05s ease-out both;
 }
 
 .scene-run-summary__title {

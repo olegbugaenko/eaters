@@ -3,6 +3,7 @@ import { sanitizeLevel } from "@shared/helpers/validation.helper";
 import type { EnemyConfig, EnemyType } from "../../../../db/enemies-db";
 import { isEnemyType, getEnemyConfig } from "../../../../db/enemies-db";
 import type { ResourceStockpile } from "../../../../db/resources-db";
+import type { StatusEffectApplicationOptions } from "../status-effects/status-effects.types";
 import {
   RESOURCE_IDS,
   normalizeResourceAmount,
@@ -80,6 +81,64 @@ export const scaleEnemyStat = (
   }
 
   return Math.max(0, scaled);
+};
+
+export const scaleEnemyAttackDamageByLevel = (
+  baseDamage: number | undefined,
+  level: number,
+): number | undefined => {
+  if (typeof baseDamage !== "number" || !Number.isFinite(baseDamage)) {
+    return baseDamage;
+  }
+  const multiplier = getEnemyLevelStatMultiplier(sanitizeEnemyLevel(level));
+  if (multiplier === 1) {
+    return Math.max(0, baseDamage);
+  }
+  return Math.max(0, Math.round(baseDamage * multiplier));
+};
+
+export const scaleStatusEffectApplicationOptionsByEnemyLevel = (
+  options: StatusEffectApplicationOptions | undefined,
+  enemyLevel: number,
+): StatusEffectApplicationOptions | undefined => {
+  if (!options) {
+    return options;
+  }
+  const multiplier = getEnemyLevelStatMultiplier(enemyLevel);
+  if (multiplier === 1) {
+    return options;
+  }
+  return {
+    ...options,
+    damagePerSecond:
+      typeof options.damagePerSecond === "number"
+        ? Math.max(0, options.damagePerSecond * multiplier)
+        : options.damagePerSecond,
+    damagePerTick:
+      typeof options.damagePerTick === "number"
+        ? Math.max(0, options.damagePerTick * multiplier)
+        : options.damagePerTick,
+    bonusDamage:
+      typeof options.bonusDamage === "number"
+        ? Math.max(0, options.bonusDamage * multiplier)
+        : options.bonusDamage,
+    flatReduction:
+      typeof options.flatReduction === "number"
+        ? Math.max(0, options.flatReduction * multiplier)
+        : options.flatReduction,
+    perHitBonus:
+      typeof options.perHitBonus === "number"
+        ? Math.max(0, options.perHitBonus * multiplier)
+        : options.perHitBonus,
+    cap:
+      typeof options.cap === "number"
+        ? Math.max(0, options.cap * multiplier)
+        : options.cap,
+    armorReductionPerStack:
+      typeof options.armorReductionPerStack === "number"
+        ? Math.max(0, options.armorReductionPerStack * multiplier)
+        : options.armorReductionPerStack,
+  };
 };
 
 /**

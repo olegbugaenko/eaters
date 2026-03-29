@@ -1,1 +1,6 @@
-{}
+{
+  "dark_library": {
+    "name": "Mroczna biblioteka",
+    "description": "Archiwizuj nietrwałe rytuały i przyspiesz każdą gałąź mrocznych badań. Każdy poziom daje +20% do tempa XP badań (liniowo)."
+  }
+}

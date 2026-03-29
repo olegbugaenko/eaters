@@ -52,6 +52,7 @@ import "./OctopusTentaclePrimitives.test";
 import "./BulletModule.test";
 import "./FireballModule.test";
 import "./ExplosionModule.test";
+import "./GameLoop.test";
 import "./BricksModule.test";
 import "./PlayerUnitsModule.test";
 import "./MapModule.test";

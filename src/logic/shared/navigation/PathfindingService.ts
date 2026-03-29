@@ -9,9 +9,10 @@ import type { ObstacleDescriptor, ObstacleProvider } from "./navigation.types";
 const DEFAULT_CELL_SIZE = 14;
 const DIAGONAL_COST = Math.SQRT2;
 const SMALL_NUMBER = 1e-3;
-const GRID_CACHE_TTL_MS = 300; // Кешуємо сітку на 300мс (було 150)
-const MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 1.5; // Збираємо перешкоди тільки в 1.5x відстані від шляху
-const GLOBAL_OBSTACLE_CACHE_TTL_MS = 50; // Кеш перешкод на кадр (~20 FPS)
+const GRID_CACHE_TTL_MS = 300;
+const MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 1.5;
+const GLOBAL_OBSTACLE_CACHE_TTL_MS = 50;
+const SEARCH_WINDOW_PADDING_CELLS = 4;
 
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dx = a.x - b.x;
@@ -70,6 +71,10 @@ class MinHeap {
     return this.heap.length;
   }
 
+  public clear(): void {
+    this.heap.length = 0;
+  }
+
   private bubbleUp(index: number): void {
     while (index > 0) {
       const parent = Math.floor((index - 1) / 2);
@@ -104,11 +109,12 @@ class MinHeap {
 }
 
 interface CachedGrid {
-  obstacles: ObstacleDescriptor[];
-  grid: { blocked: Uint8Array; cols: number; rows: number };
+  grid: PathGrid;
   timestamp: number;
   clearance: number;
-  mapSize: SceneSize;
+  obstacleHash: number;
+  obstacleCount: number;
+  boundsKey: string;
 }
 
 interface GlobalObstacleCache {
@@ -117,12 +123,33 @@ interface GlobalObstacleCache {
   passabilityTag: string;
 }
 
+interface SearchBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+interface PathGrid {
+  blocked: Uint8Array;
+  cols: number;
+  rows: number;
+  originX: number;
+  originY: number;
+}
+
 export class PathfindingService {
   private readonly obstacles: ObstacleProvider;
   private readonly getMapSize: () => SceneSize;
   private readonly cellSize: number;
   private gridCache: CachedGrid | null = null;
   private globalObstacleCache: GlobalObstacleCache | null = null;
+  private readonly open = new MinHeap();
+  private gScore = new Float32Array(0);
+  private cameFrom = new Int32Array(0);
+  private scoreStamp = new Uint32Array(0);
+  private visitedStamp = new Uint32Array(0);
+  private searchGeneration = 1;
 
   constructor(options: PathfindingServiceOptions) {
     this.obstacles = options.obstacles;
@@ -185,19 +212,19 @@ export class PathfindingService {
     radius: number,
     passabilityTag: string
   ): ObstacleDescriptor[] {
-    // Якщо є глобальний кеш - фільтруємо його (O(n), але без forEachObstacleNear)
     if (this.globalObstacleCache && this.globalObstacleCache.passabilityTag === passabilityTag) {
-      const radiusSq = radius * radius;
-      return this.globalObstacleCache.obstacles.filter((obs) => {
+      const collected: ObstacleDescriptor[] = [];
+      for (const obs of this.globalObstacleCache.obstacles) {
         const dx = obs.position.x - center.x;
         const dy = obs.position.y - center.y;
-        // Враховуємо радіус перешкоди
         const effectiveRadius = radius + obs.radius;
-        return dx * dx + dy * dy <= effectiveRadius * effectiveRadius;
-      });
+        if (dx * dx + dy * dy <= effectiveRadius * effectiveRadius) {
+          collected.push(obs);
+        }
+      }
+      return collected;
     }
 
-    // Fallback: збираємо локально
     const collected: ObstacleDescriptor[] = [];
     this.obstacles.forEachObstacleNear(center, radius, (obstacle) => {
       if (!isPassableFor(obstacle, passabilityTag)) {
@@ -235,16 +262,16 @@ export class PathfindingService {
       return { waypoints: [], goalReached: true };
     }
 
-    // Використовуємо кешовану сітку якщо можливо
-    const grid = this.getOrCreateGrid(mapSize, obstacles, clearance);
+    const bounds = this.getSearchBounds(mapSize, center, collectionRadius);
+    const grid = this.getOrCreateGrid(obstacles, clearance, bounds);
     const startIndex = this.findNearestWalkableIndex(request.start, grid);
-    const goalMask = this.computeGoalMask(request.target, goalRadius + this.cellSize * 0.5, grid);
+    const expandedGoalRadius = goalRadius + this.cellSize * 0.5;
 
-    if (startIndex < 0 || goalMask.every((value) => !value)) {
+    if (startIndex < 0 || !this.hasWalkableGoalCell(request.target, expandedGoalRadius, grid)) {
       return { waypoints: [], goalReached: false };
     }
 
-    const path = this.search(startIndex, goalMask, grid, request.target);
+    const path = this.search(startIndex, grid, request.target, expandedGoalRadius);
     if (path.length === 0) {
       return { waypoints: [], goalReached: false };
     }
@@ -278,201 +305,71 @@ export class PathfindingService {
     return { x: lerp(start.x, end.x, t), y: lerp(start.y, end.y, t) };
   }
 
-  /**
-   * Отримує кешовану сітку або створює нову
-   */
-  private getOrCreateGrid(
+  private getSearchBounds(
     mapSize: SceneSize,
+    center: SceneVector2,
+    collectionRadius: number,
+  ): SearchBounds {
+    const padding = this.cellSize * SEARCH_WINDOW_PADDING_CELLS;
+    return {
+      minX: clampNumber(center.x - collectionRadius - padding, 0, mapSize.width),
+      minY: clampNumber(center.y - collectionRadius - padding, 0, mapSize.height),
+      maxX: clampNumber(center.x + collectionRadius + padding, 0, mapSize.width),
+      maxY: clampNumber(center.y + collectionRadius + padding, 0, mapSize.height),
+    };
+  }
+
+  private getOrCreateGrid(
     obstacles: readonly ObstacleDescriptor[],
-    clearance: number
-  ): { blocked: Uint8Array; cols: number; rows: number } {
+    clearance: number,
+    bounds: SearchBounds,
+  ): PathGrid {
     const now = performance.now();
-    
-    // Перевіряємо чи кеш валідний
+    const obstacleHash = this.computeObstacleHash(obstacles);
+    const boundsKey = `${bounds.minX}|${bounds.minY}|${bounds.maxX}|${bounds.maxY}`;
+
     if (
       this.gridCache &&
       now - this.gridCache.timestamp < GRID_CACHE_TTL_MS &&
       this.gridCache.clearance === clearance &&
-      this.gridCache.mapSize.width === mapSize.width &&
-      this.gridCache.mapSize.height === mapSize.height &&
-      this.areObstaclesSimilar(this.gridCache.obstacles, obstacles)
+      this.gridCache.obstacleCount === obstacles.length &&
+      this.gridCache.obstacleHash === obstacleHash &&
+      this.gridCache.boundsKey === boundsKey
     ) {
-      // Використовуємо кеш, але оновлюємо перешкоди які змінилися
-      const updatedGrid = this.updateGridForChangedObstacles(
-        this.gridCache.grid,
-        this.gridCache.obstacles,
-        obstacles,
-        clearance
-      );
-      
-      // Оновлюємо кеш
-      this.gridCache.obstacles = [...obstacles];
-      this.gridCache.grid = updatedGrid;
-      this.gridCache.timestamp = now;
-      
-      return updatedGrid;
+      return this.gridCache.grid;
     }
 
-    // Створюємо нову сітку
-    const grid = this.createGrid(mapSize, obstacles, clearance);
-    
-    // Кешуємо
+    const grid = this.createGrid(bounds, obstacles, clearance);
     this.gridCache = {
-      obstacles: [...obstacles],
       grid,
       timestamp: now,
       clearance,
-      mapSize: { ...mapSize },
+      obstacleHash,
+      obstacleCount: obstacles.length,
+      boundsKey,
     };
 
     return grid;
   }
 
-  /**
-   * Перевіряє чи перешкоди схожі (для кешування)
-   */
-  private areObstaclesSimilar(
-    cached: readonly ObstacleDescriptor[],
-    current: readonly ObstacleDescriptor[]
-  ): boolean {
-    // Якщо кількість сильно відрізняється - точно не схожі
-    if (Math.abs(cached.length - current.length) > cached.length * 0.1) {
-      return false;
+  private computeObstacleHash(obstacles: readonly ObstacleDescriptor[]): number {
+    let hash = obstacles.length | 0;
+    for (let i = 0; i < obstacles.length; i += 1) {
+      const obstacle = obstacles[i]!;
+      const x = Math.round(obstacle.position.x * 10);
+      const y = Math.round(obstacle.position.y * 10);
+      const radius = Math.round(obstacle.radius * 10);
+      hash =
+        ((hash * 31) ^ x ^ (y * 17) ^ (radius * 13)) >>> 0;
     }
-
-    // Швидка перевірка - якщо кількість однакова, вважаємо схожими
-    // (детальна перевірка була б занадто дорогою)
-    return cached.length === current.length;
+    return hash;
   }
 
-  /**
-   * Оновлює сітку тільки для змінених перешкод (інкрементальне оновлення)
-   */
-  private updateGridForChangedObstacles(
-    grid: { blocked: Uint8Array; cols: number; rows: number },
-    oldObstacles: readonly ObstacleDescriptor[],
-    newObstacles: readonly ObstacleDescriptor[],
-    clearance: number
-  ): { blocked: Uint8Array; cols: number; rows: number } {
-    const mapSize = this.getMapSize();
-    
-    // Якщо перешкод багато, простіше пересоздати сітку
-    if (newObstacles.length > 200) {
-      return this.createGrid(mapSize, newObstacles, clearance);
-    }
-
-    // Створюємо мапу старих перешкод для швидкого пошуку
-    const oldMap = new Map<string, ObstacleDescriptor>();
-    oldObstacles.forEach((obs) => {
-      const key = `${obs.position.x.toFixed(1)},${obs.position.y.toFixed(1)},${obs.radius.toFixed(1)}`;
-      oldMap.set(key, obs);
-    });
-
-    // Знаходимо видалені перешкоди (були в старому, немає в новому)
-    const removed: ObstacleDescriptor[] = [];
-    oldMap.forEach((obs) => {
-      const key = `${obs.position.x.toFixed(1)},${obs.position.y.toFixed(1)},${obs.radius.toFixed(1)}`;
-      if (!newObstacles.some((n) => {
-        const nKey = `${n.position.x.toFixed(1)},${n.position.y.toFixed(1)},${n.radius.toFixed(1)}`;
-        return nKey === key;
-      })) {
-        removed.push(obs);
-      }
-    });
-
-    // Знаходимо додані перешкоди (є в новому, немає в старому)
-    const added: ObstacleDescriptor[] = [];
-    newObstacles.forEach((obs) => {
-      const key = `${obs.position.x.toFixed(1)},${obs.position.y.toFixed(1)},${obs.radius.toFixed(1)}`;
-      if (!oldMap.has(key)) {
-        added.push(obs);
-      }
-    });
-
-    // Якщо змін занадто багато - пересоздаємо сітку
-    if (removed.length + added.length > Math.max(newObstacles.length * 0.3, 50)) {
-      const mapSize = this.getMapSize();
-      return this.createGrid(mapSize, newObstacles, clearance);
-    }
-
-    // Інкрементальне оновлення: очищаємо клітинки від видалених перешкод
-    this.clearObstaclesFromGrid(grid, removed, clearance);
-    
-    // Додаємо нові перешкоди
-    this.addObstaclesToGrid(grid, added, clearance);
-
-    return grid;
-  }
-
-  /**
-   * Видаляє перешкоди з сітки
-   */
-  private clearObstaclesFromGrid(
-    grid: { blocked: Uint8Array; cols: number; rows: number },
-    obstacles: readonly ObstacleDescriptor[],
-    clearance: number
-  ): void {
-    const { blocked, cols, rows } = grid;
-    const half = this.cellSize * 0.5;
-    const halfDiag = half * Math.SQRT2;
-
-    for (const obstacle of obstacles) {
-      const inflation = obstacle.radius + clearance;
-      const minX = clampNumber(Math.floor((obstacle.position.x - inflation) / this.cellSize), 0, cols - 1);
-      const maxX = clampNumber(Math.floor((obstacle.position.x + inflation) / this.cellSize), 0, cols - 1);
-      const minY = clampNumber(Math.floor((obstacle.position.y - inflation) / this.cellSize), 0, rows - 1);
-      const maxY = clampNumber(Math.floor((obstacle.position.y + inflation) / this.cellSize), 0, rows - 1);
-
-      for (let y = minY; y <= maxY; y += 1) {
-        const centerY = y * this.cellSize + half;
-        for (let x = minX; x <= maxX; x += 1) {
-          const centerX = x * this.cellSize + half;
-          const dx = centerX - obstacle.position.x;
-          const dy = centerY - obstacle.position.y;
-          if (dx * dx + dy * dy <= (inflation + halfDiag) * (inflation + halfDiag)) {
-            blocked[y * cols + x] = 0; // Очищаємо
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Додає перешкоди до сітки
-   */
-  private addObstaclesToGrid(
-    grid: { blocked: Uint8Array; cols: number; rows: number },
-    obstacles: readonly ObstacleDescriptor[],
-    clearance: number
-  ): void {
-    const { blocked, cols, rows } = grid;
-    const half = this.cellSize * 0.5;
-    const halfDiag = half * Math.SQRT2;
-
-    for (const obstacle of obstacles) {
-      const inflation = obstacle.radius + clearance;
-      const minX = clampNumber(Math.floor((obstacle.position.x - inflation) / this.cellSize), 0, cols - 1);
-      const maxX = clampNumber(Math.floor((obstacle.position.x + inflation) / this.cellSize), 0, cols - 1);
-      const minY = clampNumber(Math.floor((obstacle.position.y - inflation) / this.cellSize), 0, rows - 1);
-      const maxY = clampNumber(Math.floor((obstacle.position.y + inflation) / this.cellSize), 0, rows - 1);
-
-      for (let y = minY; y <= maxY; y += 1) {
-        const centerY = y * this.cellSize + half;
-        for (let x = minX; x <= maxX; x += 1) {
-          const centerX = x * this.cellSize + half;
-          const dx = centerX - obstacle.position.x;
-          const dy = centerY - obstacle.position.y;
-          if (dx * dx + dy * dy <= (inflation + halfDiag) * (inflation + halfDiag)) {
-            blocked[y * cols + x] = 1; // Блокуємо
-          }
-        }
-      }
-    }
-  }
-
-  private createGrid(map: SceneSize, obstacles: readonly ObstacleDescriptor[], clearance: number) {
-    const cols = Math.max(1, Math.ceil(map.width / this.cellSize));
-    const rows = Math.max(1, Math.ceil(map.height / this.cellSize));
+  private createGrid(bounds: SearchBounds, obstacles: readonly ObstacleDescriptor[], clearance: number): PathGrid {
+    const originX = Math.floor(bounds.minX / this.cellSize) * this.cellSize;
+    const originY = Math.floor(bounds.minY / this.cellSize) * this.cellSize;
+    const cols = Math.max(1, Math.ceil((bounds.maxX - originX) / this.cellSize));
+    const rows = Math.max(1, Math.ceil((bounds.maxY - originY) / this.cellSize));
     const cells = cols * rows;
     const half = this.cellSize * 0.5;
     const halfDiag = half * Math.SQRT2;
@@ -480,15 +377,31 @@ export class PathfindingService {
 
     for (const obstacle of obstacles) {
       const inflation = obstacle.radius + clearance;
-      const minX = clampNumber(Math.floor((obstacle.position.x - inflation) / this.cellSize), 0, cols - 1);
-      const maxX = clampNumber(Math.floor((obstacle.position.x + inflation) / this.cellSize), 0, cols - 1);
-      const minY = clampNumber(Math.floor((obstacle.position.y - inflation) / this.cellSize), 0, rows - 1);
-      const maxY = clampNumber(Math.floor((obstacle.position.y + inflation) / this.cellSize), 0, rows - 1);
+      const minX = clampNumber(
+        Math.floor((obstacle.position.x - inflation - originX) / this.cellSize),
+        0,
+        cols - 1,
+      );
+      const maxX = clampNumber(
+        Math.floor((obstacle.position.x + inflation - originX) / this.cellSize),
+        0,
+        cols - 1,
+      );
+      const minY = clampNumber(
+        Math.floor((obstacle.position.y - inflation - originY) / this.cellSize),
+        0,
+        rows - 1,
+      );
+      const maxY = clampNumber(
+        Math.floor((obstacle.position.y + inflation - originY) / this.cellSize),
+        0,
+        rows - 1,
+      );
 
       for (let y = minY; y <= maxY; y += 1) {
-        const centerY = y * this.cellSize + half;
+        const centerY = originY + y * this.cellSize + half;
         for (let x = minX; x <= maxX; x += 1) {
-          const centerX = x * this.cellSize + half;
+          const centerX = originX + x * this.cellSize + half;
           const dx = centerX - obstacle.position.x;
           const dy = centerY - obstacle.position.y;
           if (dx * dx + dy * dy <= (inflation + halfDiag) * (inflation + halfDiag)) {
@@ -498,17 +411,17 @@ export class PathfindingService {
       }
     }
 
-    return { blocked, cols, rows };
+    return { blocked, cols, rows, originX, originY };
   }
 
   private findNearestWalkableIndex(
     position: SceneVector2,
-    grid: { blocked: Uint8Array; cols: number; rows: number },
+    grid: PathGrid,
   ): number {
-    const { cols, rows } = grid;
+    const { cols, rows, originX, originY } = grid;
     const clampToCell = (value: number, max: number) => clampNumber(value, 0, max);
-    const cellX = clampToCell(Math.floor(position.x / this.cellSize), cols - 1);
-    const cellY = clampToCell(Math.floor(position.y / this.cellSize), rows - 1);
+    const cellX = clampToCell(Math.floor((position.x - originX) / this.cellSize), cols - 1);
+    const cellY = clampToCell(Math.floor((position.y - originY) / this.cellSize), rows - 1);
     const index = cellY * cols + cellX;
     if (grid.blocked[index] === 0) {
       return index;
@@ -533,57 +446,80 @@ export class PathfindingService {
     return -1;
   }
 
-  private computeGoalMask(
+  private hasWalkableGoalCell(
     target: SceneVector2,
     radius: number,
-    grid: { blocked: Uint8Array; cols: number; rows: number },
-  ): Uint8Array {
-    const { cols, rows, blocked } = grid;
-    const mask = new Uint8Array(blocked.length);
+    grid: PathGrid,
+  ): boolean {
+    const { cols, rows, blocked, originX, originY } = grid;
     const radiusSq = radius * radius;
     const half = this.cellSize * 0.5;
+    const minX = clampNumber(
+      Math.floor((target.x - radius - originX) / this.cellSize),
+      0,
+      cols - 1,
+    );
+    const maxX = clampNumber(
+      Math.floor((target.x + radius - originX) / this.cellSize),
+      0,
+      cols - 1,
+    );
+    const minY = clampNumber(
+      Math.floor((target.y - radius - originY) / this.cellSize),
+      0,
+      rows - 1,
+    );
+    const maxY = clampNumber(
+      Math.floor((target.y + radius - originY) / this.cellSize),
+      0,
+      rows - 1,
+    );
 
-    for (let y = 0; y < rows; y += 1) {
-      const centerY = y * this.cellSize + half;
-      for (let x = 0; x < cols; x += 1) {
+    for (let y = minY; y <= maxY; y += 1) {
+      const centerY = originY + y * this.cellSize + half;
+      for (let x = minX; x <= maxX; x += 1) {
         const idx = y * cols + x;
         if (blocked[idx] !== 0) {
           continue;
         }
-        const centerX = x * this.cellSize + half;
+        const centerX = originX + x * this.cellSize + half;
         const dx = centerX - target.x;
         const dy = centerY - target.y;
         if (dx * dx + dy * dy <= radiusSq) {
-          mask[idx] = 1;
+          return true;
         }
       }
     }
 
-    return mask;
+    return false;
   }
 
   private search(
     start: number,
-    goalMask: Uint8Array,
-    grid: { blocked: Uint8Array; cols: number; rows: number },
+    grid: PathGrid,
     target: SceneVector2,
+    goalRadius: number,
   ): SceneVector2[] {
     const { blocked, cols, rows } = grid;
     const total = blocked.length;
-    const gScore = new Float32Array(total);
-    const fScore = new Float32Array(total);
-    const cameFrom = new Int32Array(total).fill(-1);
-    const open = new MinHeap();
-    const visited = new Uint8Array(total);
+    this.ensureSearchCapacity(total);
+    const generation = this.beginSearchGeneration();
+    this.open.clear();
 
-    for (let i = 0; i < total; i += 1) {
-      gScore[i] = Number.POSITIVE_INFINITY;
-      fScore[i] = Number.POSITIVE_INFINITY;
-    }
+    const startCellX = start % cols;
+    const startCellY = Math.floor(start / cols);
+    const targetCellX = (target.x - grid.originX - this.cellSize * 0.5) / this.cellSize;
+    const targetCellY = (target.y - grid.originY - this.cellSize * 0.5) / this.cellSize;
+    const goalRadiusSq = goalRadius * goalRadius;
 
-    gScore[start] = 0;
-    fScore[start] = this.heuristic(this.indexToPosition(start, cols), target);
-    open.push({ index: start, priority: fScore[start] });
+    this.scoreStamp[start] = generation;
+    this.visitedStamp[start] = 0;
+    this.gScore[start] = 0;
+    this.cameFrom[start] = -1;
+    this.open.push({
+      index: start,
+      priority: this.heuristic(startCellX, startCellY, targetCellX, targetCellY),
+    });
 
     const neighbors: readonly [number, number, number][] = [
       [1, 0, 1],
@@ -596,26 +532,24 @@ export class PathfindingService {
       [-1, -1, DIAGONAL_COST],
     ];
 
-    while (open.size > 0) {
-      const current = open.pop();
+    while (this.open.size > 0) {
+      const current = this.open.pop();
       if (!current) {
         break;
       }
-      if (visited[current.index]) {
+      if (this.visitedStamp[current.index] === generation) {
         continue;
       }
       const currentIndex = current.index;
-      const currentScore = gScore[currentIndex];
-      if (currentScore === undefined) {
-        continue;
-      }
-      visited[currentIndex] = 1;
+      this.visitedStamp[currentIndex] = generation;
+      const currentScore = this.gScore[currentIndex]!;
+      const x = currentIndex % cols;
+      const y = Math.floor(currentIndex / cols);
 
-      if (goalMask[currentIndex]) {
-        return this.reconstructPath(cameFrom, currentIndex, cols);
+      if (this.isGoalIndex(currentIndex, x, y, target, goalRadiusSq, grid)) {
+        return this.reconstructPath(this.cameFrom, currentIndex, grid);
       }
 
-      const { x, y } = this.indexToCell(currentIndex, cols);
       for (const [dx, dy, cost] of neighbors) {
         const nx = x + dx;
         const ny = y + dy;
@@ -634,43 +568,95 @@ export class PathfindingService {
           }
         }
         const tentativeG = currentScore + cost;
-        const neighborScore = gScore[neighborIndex];
-        if (neighborScore === undefined || tentativeG >= neighborScore) {
+        if (
+          this.scoreStamp[neighborIndex] === generation &&
+          tentativeG >= this.gScore[neighborIndex]!
+        ) {
           continue;
         }
-        cameFrom[neighborIndex] = currentIndex;
-        gScore[neighborIndex] = tentativeG;
-        fScore[neighborIndex] = tentativeG + this.heuristic(this.indexToPosition(neighborIndex, cols), target);
-        open.push({ index: neighborIndex, priority: fScore[neighborIndex] });
+        this.scoreStamp[neighborIndex] = generation;
+        this.cameFrom[neighborIndex] = currentIndex;
+        this.gScore[neighborIndex] = tentativeG;
+        this.open.push({
+          index: neighborIndex,
+          priority:
+            tentativeG + this.heuristic(nx, ny, targetCellX, targetCellY),
+        });
       }
     }
 
     return [];
   }
 
-  private heuristic(position: SceneVector2, target: SceneVector2): number {
-    return Math.hypot(position.x - target.x, position.y - target.y) / this.cellSize;
+  private ensureSearchCapacity(total: number): void {
+    if (this.gScore.length >= total) {
+      return;
+    }
+    this.gScore = new Float32Array(total);
+    this.cameFrom = new Int32Array(total);
+    this.scoreStamp = new Uint32Array(total);
+    this.visitedStamp = new Uint32Array(total);
   }
 
-  private reconstructPath(cameFrom: Int32Array, current: number, cols: number): SceneVector2[] {
+  private beginSearchGeneration(): number {
+    this.searchGeneration += 1;
+    if (this.searchGeneration === 0xffffffff) {
+      this.searchGeneration = 1;
+      this.scoreStamp.fill(0);
+      this.visitedStamp.fill(0);
+    }
+    return this.searchGeneration;
+  }
+
+  private isGoalIndex(
+    index: number,
+    cellX: number,
+    cellY: number,
+    target: SceneVector2,
+    goalRadiusSq: number,
+    grid: PathGrid,
+  ): boolean {
+    if (grid.blocked[index] !== 0) {
+      return false;
+    }
+    const centerX = grid.originX + cellX * this.cellSize + this.cellSize * 0.5;
+    const centerY = grid.originY + cellY * this.cellSize + this.cellSize * 0.5;
+    const dx = centerX - target.x;
+    const dy = centerY - target.y;
+    return dx * dx + dy * dy <= goalRadiusSq;
+  }
+
+  private heuristic(
+    cellX: number,
+    cellY: number,
+    targetCellX: number,
+    targetCellY: number,
+  ): number {
+    const dx = Math.abs(cellX - targetCellX);
+    const dy = Math.abs(cellY - targetCellY);
+    const diagonal = Math.min(dx, dy);
+    const straight = Math.max(dx, dy) - diagonal;
+    return diagonal * DIAGONAL_COST + straight;
+  }
+
+  private reconstructPath(cameFrom: Int32Array, current: number, grid: PathGrid): SceneVector2[] {
     const points: SceneVector2[] = [];
     let idx: number | null = current;
     while (idx !== null && idx >= 0) {
-      points.push(this.indexToPosition(idx, cols));
+      points.push(this.indexToPosition(idx, grid));
       const parentValue: number = cameFrom[idx] ?? -1;
       idx = typeof parentValue === "number" && parentValue >= 0 ? parentValue : null;
     }
     return points.reverse();
   }
 
-  private indexToPosition(index: number, cols: number): SceneVector2 {
-    const x = index % cols;
-    const y = Math.floor(index / cols);
-    return { x: x * this.cellSize + this.cellSize * 0.5, y: y * this.cellSize + this.cellSize * 0.5 };
-  }
-
-  private indexToCell(index: number, cols: number): { x: number; y: number } {
-    return { x: index % cols, y: Math.floor(index / cols) };
+  private indexToPosition(index: number, grid: PathGrid): SceneVector2 {
+    const x = index % grid.cols;
+    const y = Math.floor(index / grid.cols);
+    return {
+      x: grid.originX + x * this.cellSize + this.cellSize * 0.5,
+      y: grid.originY + y * this.cellSize + this.cellSize * 0.5,
+    };
   }
 
   private smoothPath(

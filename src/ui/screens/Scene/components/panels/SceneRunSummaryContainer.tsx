@@ -122,6 +122,7 @@ export const SceneRunSummaryContainer: React.FC<
                 ? "Run Ended"
                 : undefined
           }
+          success={resourceSummary.success ?? undefined}
           primaryAction={{ label: t("scene.runSummary.restartMap", "Restart Map"), onClick: onRestart }}
           returnActions={[
             {

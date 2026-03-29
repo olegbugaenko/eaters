@@ -11,7 +11,7 @@ import {
 import { useLocalization } from "@ui/shared/useLocalization";
 import "./SceneControlHintsPanel.css";
 
-const VIDEO_RECORD = typeof process !== "undefined" && process.env.IS_VIDEO_RECORD === "1";
+const VIDEO_RECORD = process.env.IS_VIDEO_RECORD === "1";
 
 export const SceneControlHintsPanel: React.FC = React.memo(() => {
   const { uiApi, bridge } = useAppLogic();

@@ -46,7 +46,8 @@ export type EnemyType =
   | "carGuardian"
   | "carGuardianPortalSpawnerEnemy"
   | "greatOctopusBody"
-  | "greatOctopusSegment";
+  | "greatOctopusSegment"
+  | "fireParasiteEnemy";
 
 export interface EnemyAuraConfig {
   petalCount: number;
@@ -110,6 +111,37 @@ export interface EnemyProjectileConfig extends UnitProjectileVisualConfig {
   readonly targetHitCooldownMs?: number;
 }
 
+export interface EnemyStreamAttackVisualConfig {
+  readonly color: SceneColor;
+  readonly coreColor?: SceneColor;
+  readonly edgeColor?: SceneColor;
+  readonly widthStart?: number;
+  readonly widthEnd?: number;
+  readonly innerWidthMultiplier?: number;
+  readonly raggedness?: number;
+  readonly waveAmplitude?: number;
+  readonly waveFrequency?: number;
+  readonly pulseSpeed?: number;
+  readonly pulseIntensity?: number;
+  readonly segments?: number;
+  readonly sparks?: ParticleEmitterConfig;
+  /** Override auto-generated flame layers. Each entry is a standard ParticleEmitterConfig. */
+  readonly flameEmitters?: readonly ParticleEmitterConfig[];
+}
+
+export interface EnemyStreamAttackConfig {
+  readonly spawnOffset?: SceneVector2;
+  readonly durationMs: number;
+  readonly tickIntervalMs: number;
+  readonly damage?: number;
+  readonly angleDeg: number;
+  readonly range?: number;
+  readonly statusEffectId?: StatusEffectId;
+  readonly statusEffectOptions?: StatusEffectApplicationOptions;
+  readonly damageOptions?: DamageApplicationOptions;
+  readonly visual: EnemyStreamAttackVisualConfig;
+}
+
 export interface EnemyTargetingOptions {
   readonly avoidSharedTargets?: boolean;
   readonly skipTargetsWithEffects?: readonly StatusEffectId[];
@@ -151,6 +183,7 @@ export interface EnemyConfig {
   readonly soulRewardBase?: number;
   readonly emitter?: ParticleEmitterConfig;
   readonly projectile?: EnemyProjectileConfig;
+  readonly streamAttack?: EnemyStreamAttackConfig;
   readonly projectileMinSegmentIndex?: number;
   readonly projectileVolley?: {
     readonly count: number;

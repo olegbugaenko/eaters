@@ -111,6 +111,7 @@ export class MapModule implements GameModule {
   private lastMapEffectsSnapshot: MapEffectsBridgeState | null = null;
   private mapResourcePreviewCache: MapResourcePreviewCache | null = null;
   private readonly objectiveIntegrity: ObjectiveIntegrityService;
+  private pendingCompletionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: MapModuleOptions) {
     this.options = options;
@@ -143,6 +144,7 @@ export class MapModule implements GameModule {
       scene: options.scene,
       mapEffects,
       damage: options.damage,
+      explosions: options.explosions,
     });
 
     options.runState.subscribe((event) => this.handleRunStateEvent(event));
@@ -183,8 +185,11 @@ export class MapModule implements GameModule {
     this.autoRestartEnabled = Boolean(parsed?.autoRestartEnabled);
     this.controlHintsCollapsed =
       parsed?.controlHintsCollapsed ?? DEFAULT_MAP_CONTROL_HINTS_COLLAPSED;
+    // Summoning panel toggle exists only for IS_VIDEO_RECORD builds; otherwise always show panels.
     this.summoningPanelHidden =
-      parsed?.summoningPanelHidden ?? DEFAULT_MAP_SUMMONING_PANEL_HIDDEN;
+      process.env.IS_VIDEO_RECORD === "1"
+        ? parsed?.summoningPanelHidden ?? DEFAULT_MAP_SUMMONING_PANEL_HIDDEN
+        : DEFAULT_MAP_SUMMONING_PANEL_HIDDEN;
     this.mapSelectViewTransform = parsed?.mapSelectViewTransform ?? null;
     // stats changed from save → invalidate cached clone
     this.statsCloneDirty = true;
@@ -208,6 +213,8 @@ export class MapModule implements GameModule {
   }
 
   public save(): unknown {
+    const summoningPanelHiddenForSave =
+      process.env.IS_VIDEO_RECORD === "1" ? this.summoningPanelHidden : false;
     return {
       mapId: this.selection.getSelectedMapId() ?? DEFAULT_MAP_ID,
       mapLevel: serializeLevel(this.selection.getSelectedMapLevel()),
@@ -215,7 +222,7 @@ export class MapModule implements GameModule {
       selectedLevels: this.cloneSelectedLevels(),
       autoRestartEnabled: this.autoRestartEnabled,
       controlHintsCollapsed: this.controlHintsCollapsed,
-      summoningPanelHidden: this.summoningPanelHidden,
+      summoningPanelHidden: summoningPanelHiddenForSave ? true : undefined,
       lastPlayedMap: this.selection.getLastPlayedMap()
         ? {
             mapId: this.selection.getLastPlayedMap()!.mapId,
@@ -607,7 +614,7 @@ export class MapModule implements GameModule {
     // stats mutated → invalidate cached clone
     this.statsCloneDirty = true;
     this.options.achievements.syncFromMapStats(this.mapStats);
-    this.runLifecycle.completeRun();
+    this.runLifecycle.completeRun(result.success);
     this.pushMapList();
     this.pushSelectedMap();
     this.pushSelectedMapLevel();
@@ -698,7 +705,13 @@ export class MapModule implements GameModule {
     }
     const durationMs = resources.getRunDurationMs();
     this.recordRunResult({ success, durationMs });
-    resources.finishRun(success);
+    if (this.pendingCompletionTimer !== null) {
+      clearTimeout(this.pendingCompletionTimer);
+    }
+    this.pendingCompletionTimer = setTimeout(() => {
+      this.pendingCompletionTimer = null;
+      resources.finishRun(success);
+    }, 500);
   }
 
   private handleRunStateEvent(event: MapRunEvent): void {

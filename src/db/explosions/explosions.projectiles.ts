@@ -499,11 +499,11 @@ export const PROJECTILE_EXPLOSIONS: Partial<Record<ExplosionType, ExplosionConfi
   },
   tentacleHit: {
     lifetimeMs: 1_000,
-    defaultInitialRadius: 8,
+    defaultInitialRadius: 12,
     waves: createSimpleWave({
-      defaultInitialRadius: 8,
-      radiusExtension: 22,
-      startAlpha: 0.7,
+      defaultInitialRadius: 12,
+      radiusExtension: 32,
+      startAlpha: 1,
       endAlpha: 0,
       gradientStops: TENTACLE_HIT_WAVE_GRADIENT_STOPS,
     }),

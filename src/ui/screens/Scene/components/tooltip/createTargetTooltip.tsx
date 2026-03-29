@@ -22,6 +22,7 @@ import {
 } from "@db/unit-modules-db";
 import type { BrickRuntimeState } from "@logic/modules/active-map/bricks/bricks.types";
 import type { EnemyRuntimeState } from "@logic/modules/active-map/enemies/enemies.types";
+import { scaleStatusEffectApplicationOptionsByEnemyLevel } from "@logic/modules/active-map/enemies/enemies.helpers";
 import type { PlayerUnitState } from "@logic/modules/active-map/player-units/units/UnitTypes";
 import type { TargetSnapshot } from "@logic/modules/active-map/targeting/targeting.types";
 import { ResourceIcon } from "@ui-shared/icons/ResourceIcon";
@@ -155,12 +156,17 @@ const buildEnemyStats = (
 
   // Show effect stats for any status effect the enemy can apply
   if (enemyConfig.projectile?.statusEffectId) {
+    const scaledEffectOptions =
+      scaleStatusEffectApplicationOptionsByEnemyLevel(
+        enemyConfig.projectile.statusEffectOptions,
+        enemy.level,
+      ) ?? {};
     const effectConfig = getStatusEffectConfig(
       enemyConfig.projectile.statusEffectId,
     );
     const effectStats = formatEffectApplicationStats(
       enemyConfig.projectile.statusEffectId,
-      enemyConfig.projectile.statusEffectOptions ?? {},
+      scaledEffectOptions,
     );
     if (effectStats.length > 0) {
       stats.push({
@@ -177,12 +183,17 @@ const buildEnemyStats = (
   }
 
   if (enemyConfig.arcAttack?.statusEffectId) {
+    const scaledEffectOptions =
+      scaleStatusEffectApplicationOptionsByEnemyLevel(
+        enemyConfig.arcAttack.statusEffectOptions,
+        enemy.level,
+      ) ?? {};
     const effectConfig = getStatusEffectConfig(
       enemyConfig.arcAttack.statusEffectId,
     );
     const effectStats = formatEffectApplicationStats(
       enemyConfig.arcAttack.statusEffectId,
-      enemyConfig.arcAttack.statusEffectOptions ?? {},
+      scaledEffectOptions,
     );
     if (effectStats.length > 0) {
       // Add effect name as a header with nested stats underneath

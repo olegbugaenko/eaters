@@ -174,6 +174,7 @@ export class DarkResearchModule implements GameModule, DarkResearchModuleUiApi {
   }
 
   public addSoulsFromEnemyKill(baseSouls: number, _enemyLevel: number): void {
+    console.log("addSoulsFromEnemyKill", baseSouls, _enemyLevel, this.unlocked, this.totalSouls);
     if (!this.unlocked) {
       return;
     }

@@ -1,6 +1,7 @@
 import { BRICK_EXPLOSIONS } from "./explosions.bricks";
 import { PROJECTILE_EXPLOSIONS } from "./explosions.projectiles";
 import { PLAYER_UNIT_EXPLOSIONS } from "./explosions.player-units";
+import { MAP_COMPLETION_EXPLOSIONS } from "./explosions.map-completion";
 import type { ExplosionConfig, ExplosionType } from "./explosions.types";
 
 export type {
@@ -20,6 +21,7 @@ const EXPLOSION_DB: Record<ExplosionType, ExplosionConfig> = {
   ...PROJECTILE_EXPLOSIONS,
   ...BRICK_EXPLOSIONS,
   ...PLAYER_UNIT_EXPLOSIONS,
+  ...MAP_COMPLETION_EXPLOSIONS,
 } as Record<ExplosionType, ExplosionConfig>;
 
 export const getExplosionConfig = (type: ExplosionType): ExplosionConfig => {

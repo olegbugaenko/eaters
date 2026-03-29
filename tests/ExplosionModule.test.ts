@@ -96,4 +96,44 @@ describe("ExplosionModule", () => {
     }
     assert.strictEqual(emitter.spawnRadius.max, expectedSpawnMax);
   });
+
+  test("simulation pause advances only flagged explosions", () => {
+    const flaggedScene = new SceneObjectManager();
+    const flaggedModule = new ExplosionModule({ scene: flaggedScene });
+    flaggedModule.spawnExplosionByType("mapVictoryWave", {
+      position: { x: 30, y: 40 },
+    });
+
+    const flaggedBefore = flaggedScene
+      .getObjects()
+      .map((object) => ({ id: object.id, width: object.data.size?.width ?? 0 }));
+
+    flaggedModule.tickInPauseMode?.(100, "simulation");
+
+    const flaggedAfter = flaggedScene.getObjects();
+    assert.strictEqual(flaggedAfter.length, flaggedBefore.length);
+    assert(
+      flaggedAfter.some((object, index) => object.data.size?.width !== flaggedBefore[index]?.width),
+      "completion explosions should keep expanding during simulation pause"
+    );
+
+    const regularScene = new SceneObjectManager();
+    const regularModule = new ExplosionModule({ scene: regularScene });
+    regularModule.spawnExplosionByType("plasmoid", {
+      position: { x: 30, y: 40 },
+    });
+
+    const regularBefore = regularScene
+      .getObjects()
+      .map((object) => ({ id: object.id, width: object.data.size?.width ?? 0 }));
+
+    regularModule.tickInPauseMode?.(100, "simulation");
+
+    const regularAfter = regularScene.getObjects();
+    assert.strictEqual(regularAfter.length, regularBefore.length);
+    assert(
+      regularAfter.every((object, index) => object.data.size?.width === regularBefore[index]?.width),
+      "regular explosions should stay frozen during simulation pause"
+    );
+  });
 });

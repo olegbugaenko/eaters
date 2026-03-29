@@ -103,5 +103,11 @@
   },
   "twinbladeAxe": {
     "name": "Twinblade Axe"
+  },
+  "desertCrater": {
+    "name": "Desert Crater"
+  },
+  "nautilusShell": {
+    "name": "Ammonite Shell"
   }
 }

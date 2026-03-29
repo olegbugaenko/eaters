@@ -14,6 +14,7 @@ import type { EnemyType } from "../../../../db/enemies-db";
 import type { UnitProjectileController } from "../projectiles/ProjectileController";
 import type { ObstacleProvider } from "@/logic/shared/navigation/navigation.types";
 import type { PathfindingService } from "@/logic/shared/navigation/PathfindingService";
+import type { NavigationCoordinator } from "@/logic/shared/navigation/NavigationCoordinator";
 import type { BricksModule } from "../bricks/bricks.module";
 import type { BonusesModule } from "../../shared/bonuses/bonuses.module";
 import type { StatusEffectsModule } from "../status-effects/status-effects.module";
@@ -114,4 +115,5 @@ export interface EnemiesModuleOptions {
   readonly darkResearch?: DarkResearchModule;
   readonly obstacles?: ObstacleProvider;
   readonly pathfinder?: PathfindingService;
+  readonly navigation?: NavigationCoordinator;
 }

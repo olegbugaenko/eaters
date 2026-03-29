@@ -24,6 +24,11 @@ import { UnitProjectileController } from "../../projectiles/ProjectileController
 import type { PlayerUnitState } from "./UnitTypes";
 import { clampNumber, clampProbability } from "@shared/helpers/numbers.helper";
 import {
+  isPassableFor,
+  type PassabilityTag,
+} from "@/logic/shared/navigation/passability.types";
+import { NavigationCoordinator } from "@/logic/shared/navigation/NavigationCoordinator";
+import {
   ATTACK_DISTANCE_EPSILON,
   APPROACH_RAMP_DISTANCE,
   COLLISION_RESOLUTION_ITERATIONS,
@@ -51,6 +56,7 @@ export interface UnitRuntimeControllerOptions {
   projectiles: UnitProjectileController;
   damage?: DamageService;
   enemies?: EnemiesModule;
+  navigation: NavigationCoordinator;
   statusEffects: StatusEffectsModule;
   getDesignTargetingMode: (
     designId: string | null,
@@ -70,6 +76,18 @@ export interface UnitUpdateResult {
   unitsRemoved: PlayerUnitState[];
 }
 
+interface EnemyFirstSearchState {
+  candidateIds: string[];
+  candidateSignature: string;
+  cursor: number;
+  completed: boolean;
+  completedAtMs?: number;
+  obstacleRevision: number;
+  blockedEnemyId?: string;
+  blockingBrickId?: string;
+  blockingBrickObstacleRevision?: number;
+}
+
 import { roundStat } from "../../../../../shared/helpers/numbers.helper";
 import {
   cloneVector,
@@ -82,7 +100,16 @@ import {
   normalizeVector,
 } from "../../../../../shared/helpers/vector.helper";
 
+const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+};
+
 export class UnitRuntimeController {
+  private static readonly PLAYER_UNIT_PASSABILITY: PassabilityTag = "playerUnit";
+  private static readonly ENEMY_FIRST_SEARCH_MEMORY_KEY = "enemy-first-search";
+  private static readonly ENEMY_FIRST_RESCAN_INTERVAL_MS = 500;
   private readonly scene: SceneObjectManager;
   private readonly movement: MovementService;
   private readonly bricks: BricksModule;
@@ -93,6 +120,7 @@ export class UnitRuntimeController {
   private readonly projectiles: UnitProjectileController;
   private readonly damage?: DamageService;
   private readonly enemies?: EnemiesModule;
+  private readonly navigation: NavigationCoordinator;
   private readonly statusEffects: StatusEffectsModule;
   private readonly getDesignTargetingMode: (
     designId: string | null,
@@ -116,6 +144,7 @@ export class UnitRuntimeController {
     this.projectiles = options.projectiles;
     this.damage = options.damage;
     this.enemies = options.enemies;
+    this.navigation = options.navigation;
     this.statusEffects = options.statusEffects;
     this.getDesignTargetingMode = options.getDesignTargetingMode;
     this.syncUnitTargetingMode = options.syncUnitTargetingMode;
@@ -132,6 +161,8 @@ export class UnitRuntimeController {
     const removedUnitIds = new Set<string>();
     let statsDirty = false;
     const unitsRemoved: PlayerUnitState[] = [];
+
+    this.navigation.cacheAllObstacles(UnitRuntimeController.PLAYER_UNIT_PASSABILITY);
 
     const markUnitRemoved = (unit: PlayerUnitState): void => {
       if (removedUnitIds.has(unit.id)) {
@@ -192,6 +223,21 @@ export class UnitRuntimeController {
       const resolved = this.resolveTarget(unit);
       const target = resolved?.target ?? null;
       plannedTargets.set(unit.id, resolved?.target.id ?? null);
+      if (
+        unit.targetingMode === "firstEnemy" &&
+        target &&
+        resolved?.type === "enemy"
+      ) {
+        this.updateNavigationState(unit, target, deltaSeconds);
+      } else if (
+        unit.targetingMode === "firstEnemy" &&
+        target &&
+        resolved?.type === "brick"
+      ) {
+        this.clearUnitNavigationPathState(unit.id);
+      } else {
+        this.clearUnitNavigationState(unit.id);
+      }
 
       const force = this.computeDesiredForce(unit, movementState, target);
       this.movement.setForce(unit.movementId, force);
@@ -273,7 +319,7 @@ export class UnitRuntimeController {
         }
       }
 
-      if (collidedBrickIds.length > 0) {
+      if (collidedBrickIds.length > 0 && unit.targetingMode !== "firstEnemy") {
         for (const brickId of collidedBrickIds) {
           const collidedBrick = this.bricks.getBrickState(brickId);
           if (!collidedBrick) {
@@ -285,6 +331,10 @@ export class UnitRuntimeController {
           plannedTargets.set(unit.id, collidedBrick.id);
           break;
         }
+      }
+
+      if (unit.targetingMode === "firstEnemy") {
+        this.trackNavigationProgress(unit, deltaSeconds);
       }
 
       const rotation = this.computeRotation(unit, target, resolvedVelocity);
@@ -321,15 +371,29 @@ export class UnitRuntimeController {
     return { statsChanged: statsDirty, unitsRemoved };
   }
 
+  public clearUnitNavigationState(unitId: string): void {
+    this.navigation.clearActor(this.getNavigationActorId(unitId));
+  }
+
+  public clearUnitNavigationPathState(unitId: string): void {
+    this.navigation.clearActorState(this.getNavigationActorId(unitId));
+  }
+
+  public clearAllNavigationState(): void {
+    this.navigation.clearActorsByPrefix("player-unit:");
+  }
+
   private resolveTarget(unit: PlayerUnitState): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
     const mode = this.syncUnitTargetingMode(unit);
     if (mode === "none") {
       unit.targetBrickId = null;
+      this.clearUnitNavigationState(unit.id);
       return null;
     }
 
     if (unit.targetBrickId) {
-      // Перевіряємо чи це брік
+      // Перевіряємо чи це брік. Для `firstEnemy` brick fallback теж має бути "липким",
+      // інакше юніт щотік скидає ціль, пересканує ворогів і застрягає в коливаннях.
       const brickTarget = this.getBrickTarget(unit.targetBrickId);
       if (brickTarget && brickTarget.hp > 0) {
         return { target: brickTarget, type: "brick" };
@@ -370,13 +434,433 @@ export class UnitRuntimeController {
       );
     }
     if (mode === "firstEnemy") {
+      return this.findEnemyFirstTarget(unit);
+    }
+    return this.findTargetByCriterion(unit, mode);
+  }
+
+  private getNavigationActorId(unitId: string): string {
+    return `player-unit:${unitId}`;
+  }
+
+  private getUnitNavigationTargetRadius(
+    unit: PlayerUnitState,
+    target: BrickRuntimeState | EnemyRuntimeState,
+  ): number {
+    return unit.baseAttackDistance + unit.physicalSize + target.physicalSize;
+  }
+
+  private findEnemyFirstTarget(
+    unit: PlayerUnitState,
+  ): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
+    const actorId = this.getNavigationActorId(unit.id);
+    const enemyCandidates = this.findNearestEnemyCandidates(unit.position);
+    if (enemyCandidates.length === 0) {
+      this.navigation.clearActorMemory(
+        actorId,
+        UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+      );
       return (
-        this.findNearestTargetByType(unit.position, "enemy") ??
         this.findNearestTargetByType(unit.position, "brick") ??
         this.findNearestTarget(unit.position)
       );
     }
-    return this.findTargetByCriterion(unit, mode);
+
+    const candidateSignature = enemyCandidates.map((enemy) => enemy.id).join("|");
+    const obstacleRevision = this.bricks.getNavigationRevision();
+    const existingSearchState =
+      this.navigation.getActorMemory<EnemyFirstSearchState>(
+        actorId,
+        UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+      );
+    const enemyById = new Map(enemyCandidates.map((enemy) => [enemy.id, enemy]));
+    const nearestEnemy = enemyCandidates[0] ?? null;
+
+    // When obstacles changed and we know which enemy was blocked, do a focused
+    // re-evaluation instead of re-scanning all candidates. A full re-scan can
+    // find a technically reachable but impractical path through a narrow gap
+    // left by one destroyed brick while other blockers remain, causing oscillation.
+    if (
+      existingSearchState &&
+      existingSearchState.obstacleRevision !== obstacleRevision &&
+      existingSearchState.blockedEnemyId
+    ) {
+      const currentCandidateIds = enemyCandidates.map((enemy) => enemy.id);
+      const fastResult = this.reevaluateBlockedPath(
+        unit,
+        actorId,
+        existingSearchState,
+        obstacleRevision,
+        enemyById,
+        candidateSignature,
+        currentCandidateIds,
+      );
+      if (fastResult) {
+        return fastResult;
+      }
+    }
+
+    const shouldReuseCompletedState =
+      existingSearchState?.completed === true &&
+      typeof existingSearchState.completedAtMs === "number" &&
+      performance.now() - existingSearchState.completedAtMs <
+        UnitRuntimeController.ENEMY_FIRST_RESCAN_INTERVAL_MS;
+    let searchState =
+      existingSearchState &&
+      existingSearchState.candidateSignature === candidateSignature &&
+      existingSearchState.obstacleRevision === obstacleRevision &&
+      (existingSearchState.completed !== true || shouldReuseCompletedState)
+        ? existingSearchState
+        : {
+            candidateIds: enemyCandidates.map((enemy) => enemy.id),
+            candidateSignature,
+            cursor: 0,
+            completed: false,
+            obstacleRevision,
+            blockedEnemyId:
+              existingSearchState?.blockedEnemyId &&
+              enemyCandidates.some(
+                (enemy) => enemy.id === existingSearchState.blockedEnemyId,
+              )
+                ? existingSearchState.blockedEnemyId
+                : undefined,
+            blockingBrickId:
+              this.isBlockingBrickAlive(existingSearchState?.blockingBrickId)
+                ? existingSearchState!.blockingBrickId
+                : undefined,
+            blockingBrickObstacleRevision:
+              this.isBlockingBrickAlive(existingSearchState?.blockingBrickId)
+                ? obstacleRevision
+                : undefined,
+          };
+
+    while (searchState.cursor < searchState.candidateIds.length) {
+      const enemyId = searchState.candidateIds[searchState.cursor]!;
+      const enemy = enemyById.get(enemyId);
+      if (!enemy) {
+        searchState.cursor += 1;
+        continue;
+      }
+
+      const path = this.navigation.probePath({
+        start: unit.position,
+        target: enemy.position,
+        targetRadius: this.getUnitNavigationTargetRadius(unit, enemy),
+        entityRadius: unit.physicalSize,
+        passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
+      });
+      if (path === null) {
+        return this.buildEnemyFirstFallbackTarget(
+          unit,
+          actorId,
+          enemyById,
+          nearestEnemy,
+          searchState,
+        );
+      }
+      searchState.cursor += 1;
+      if (path.goalReached || path.waypoints.length > 0) {
+        this.navigation.clearActorMemory(
+          actorId,
+          UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+        );
+        return { target: enemy, type: "enemy" };
+      }
+    }
+
+    searchState = {
+      ...searchState,
+      cursor: searchState.candidateIds.length,
+      completed: true,
+      completedAtMs: performance.now(),
+    };
+    this.navigation.setActorMemory(
+      actorId,
+      UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+      searchState,
+    );
+
+    return this.buildEnemyFirstFallbackTarget(
+      unit,
+      actorId,
+      enemyById,
+      nearestEnemy,
+      searchState,
+    );
+  }
+
+  private buildEnemyFirstFallbackTarget(
+    unit: PlayerUnitState,
+    actorId: string,
+    enemyById: ReadonlyMap<string, EnemyRuntimeState>,
+    nearestEnemy: EnemyRuntimeState | null,
+    searchState: EnemyFirstSearchState,
+  ): { target: BrickRuntimeState | EnemyRuntimeState; type: "brick" | "enemy" } | null {
+    const blockedEnemy =
+      (searchState.blockedEnemyId
+        ? enemyById.get(searchState.blockedEnemyId) ?? null
+        : null) ?? nearestEnemy;
+    if (!blockedEnemy) {
+      return null;
+    }
+
+    if (
+      searchState.blockingBrickId &&
+      searchState.blockingBrickObstacleRevision === searchState.obstacleRevision
+    ) {
+      const existingBlocker = this.getBrickTarget(searchState.blockingBrickId);
+      if (existingBlocker && existingBlocker.hp > 0) {
+        const nextState: EnemyFirstSearchState = {
+          ...searchState,
+          blockedEnemyId: blockedEnemy.id,
+          blockingBrickId: existingBlocker.id,
+          blockingBrickObstacleRevision: searchState.obstacleRevision,
+        };
+        this.navigation.setActorMemory(
+          actorId,
+          UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+          nextState,
+        );
+        return { target: existingBlocker, type: "brick" };
+      }
+    }
+
+    const distToEnemy = Math.hypot(
+      blockedEnemy.position.x - unit.position.x,
+      blockedEnemy.position.y - unit.position.y,
+    );
+    const blocker =
+      this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
+      this.findNearestImpassableBrick(
+        unit,
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
+      );
+    if (blocker) {
+      const nextState: EnemyFirstSearchState = {
+        ...searchState,
+        blockedEnemyId: blockedEnemy.id,
+        blockingBrickId: blocker.id,
+        blockingBrickObstacleRevision: searchState.obstacleRevision,
+      };
+      this.navigation.setActorMemory(
+        actorId,
+        UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+        nextState,
+      );
+      return { target: blocker, type: "brick" };
+    }
+
+    const nextState: EnemyFirstSearchState = {
+      ...searchState,
+      blockedEnemyId: blockedEnemy.id,
+      blockingBrickId: undefined,
+      blockingBrickObstacleRevision: undefined,
+    };
+    this.navigation.setActorMemory(
+      actorId,
+      UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+      nextState,
+    );
+    return { target: blockedEnemy, type: "enemy" };
+  }
+
+  /**
+   * When obstacles changed and we have a known blocked enemy, try to find the
+   * next blocker without re-scanning all candidates. Never returns an enemy —
+   * only a brick or null (fall through to the standard while-loop).
+   */
+  private reevaluateBlockedPath(
+    unit: PlayerUnitState,
+    actorId: string,
+    previousState: EnemyFirstSearchState,
+    obstacleRevision: number,
+    enemyById: ReadonlyMap<string, EnemyRuntimeState>,
+    candidateSignature: string,
+    candidateIds: string[],
+  ): { target: BrickRuntimeState; type: "brick" } | null {
+    const blockedEnemy = previousState.blockedEnemyId
+      ? enemyById.get(previousState.blockedEnemyId)
+      : undefined;
+    if (!blockedEnemy) {
+      return null;
+    }
+
+    if (this.isBlockingBrickAlive(previousState.blockingBrickId)) {
+      const existingBlocker = this.bricks.getBrickState(
+        previousState.blockingBrickId!,
+      )!;
+      const nextState: EnemyFirstSearchState = {
+        candidateIds,
+        candidateSignature,
+        cursor: candidateIds.length,
+        completed: true,
+        completedAtMs: performance.now(),
+        obstacleRevision,
+        blockedEnemyId: blockedEnemy.id,
+        blockingBrickId: existingBlocker.id,
+        blockingBrickObstacleRevision: obstacleRevision,
+      };
+      this.navigation.setActorMemory(
+        actorId,
+        UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+        nextState,
+      );
+      return { target: existingBlocker, type: "brick" };
+    }
+
+    const distToEnemy = Math.hypot(
+      blockedEnemy.position.x - unit.position.x,
+      blockedEnemy.position.y - unit.position.y,
+    );
+    const nextBlocker =
+      this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
+      this.findNearestImpassableBrick(
+        unit,
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
+      );
+    if (nextBlocker) {
+      const nextState: EnemyFirstSearchState = {
+        candidateIds,
+        candidateSignature,
+        cursor: candidateIds.length,
+        completed: true,
+        completedAtMs: performance.now(),
+        obstacleRevision,
+        blockedEnemyId: blockedEnemy.id,
+        blockingBrickId: nextBlocker.id,
+        blockingBrickObstacleRevision: obstacleRevision,
+      };
+      this.navigation.setActorMemory(
+        actorId,
+        UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+        nextState,
+      );
+      return { target: nextBlocker, type: "brick" };
+    }
+
+    return null;
+  }
+
+  private isBlockingBrickAlive(brickId: string | undefined): boolean {
+    if (!brickId) return false;
+    const brick = this.bricks.getBrickState(brickId);
+    return Boolean(
+      brick &&
+        brick.hp > 0 &&
+        !isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY),
+    );
+  }
+
+  private findNearestEnemyCandidates(
+    position: SceneVector2,
+  ): EnemyRuntimeState[] {
+    if (!this.enemies) {
+      return [];
+    }
+    const mapSize = this.scene.getMapSize();
+    const maxRadius = Math.max(
+      Math.hypot(mapSize.width, mapSize.height),
+      TARGETING_RADIUS_STEP,
+    );
+    const targets = this.targeting.findTargetsNear(position, maxRadius, {
+      types: ["enemy"],
+    });
+    return targets
+      .filter((target): target is TargetSnapshot<"enemy", EnemyRuntimeState> =>
+        isTargetOfType<"enemy", EnemyRuntimeState>(target, "enemy"),
+      )
+      .map((target) => target.data ?? this.enemies!.getEnemyState(target.id))
+      .filter((enemy): enemy is EnemyRuntimeState => Boolean(enemy && enemy.hp > 0))
+      .sort((a, b) => {
+        const aDistance = distanceSquared(a.position, position);
+        const bDistance = distanceSquared(b.position, position);
+        return aDistance - bDistance;
+      });
+  }
+
+  private findPrimaryBlockingBrickTowardsTarget(
+    unit: PlayerUnitState,
+    target: EnemyRuntimeState,
+  ): BrickRuntimeState | null {
+    const corridorRadius = Math.max(
+      Math.hypot(target.position.x - unit.position.x, target.position.y - unit.position.y) *
+        0.5 +
+        unit.physicalSize * 2,
+      unit.physicalSize * 4,
+    );
+    const corridorCenter = {
+      x: (unit.position.x + target.position.x) * 0.5,
+      y: (unit.position.y + target.position.y) * 0.5,
+    };
+    const candidates = this.bricks.findBricksNear(corridorCenter, corridorRadius);
+    let best: BrickRuntimeState | null = null;
+    let bestDistanceSq = Number.POSITIVE_INFINITY;
+
+    candidates.forEach((brick) => {
+      if (
+        isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY) ||
+        !this.segmentIntersectsBrick(unit.position, target.position, brick, unit.physicalSize)
+      ) {
+        return;
+      }
+      const candidateDistanceSq = distanceSquared(unit.position, brick.position);
+      const distanceImproved =
+        candidateDistanceSq + TARGETING_SCORE_EPSILON < bestDistanceSq;
+      if (!best || distanceImproved) {
+        best = brick;
+        bestDistanceSq = candidateDistanceSq;
+      }
+    });
+
+    return best;
+  }
+
+  private findNearestImpassableBrick(
+    unit: PlayerUnitState,
+    maxSearchRadius?: number,
+  ): BrickRuntimeState | null {
+    const searchRadius = maxSearchRadius ?? unit.physicalSize * 8;
+    let bestId: string | null = null;
+    let bestDistanceSq = Number.POSITIVE_INFINITY;
+    this.bricks.forEachBrickNear(unit.position, searchRadius, (brick) => {
+      if (isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY)) {
+        return;
+      }
+      const candidateDistanceSq = distanceSquared(unit.position, brick.position);
+      if (candidateDistanceSq < bestDistanceSq) {
+        bestDistanceSq = candidateDistanceSq;
+        bestId = brick.id;
+      }
+    });
+    return bestId ? this.bricks.getBrickState(bestId) : null;
+  }
+
+  private segmentIntersectsBrick(
+    start: SceneVector2,
+    end: SceneVector2,
+    brick: BrickRuntimeState,
+    clearance: number,
+  ): boolean {
+    const segment = subtractVectors(end, start);
+    const lengthSq = segment.x * segment.x + segment.y * segment.y;
+    if (lengthSq <= 0) {
+      return false;
+    }
+    const toBrick = subtractVectors(brick.position, start);
+    const t = clampNumber(
+      (toBrick.x * segment.x + toBrick.y * segment.y) / lengthSq,
+      0,
+      1,
+    );
+    const closestPoint = {
+      x: start.x + segment.x * t,
+      y: start.y + segment.y * t,
+    };
+    const combinedRadius = Math.max(brick.physicalSize + clearance, 0);
+    return (
+      distanceSquared(closestPoint, brick.position) <=
+      combinedRadius * combinedRadius
+    );
   }
 
   private findNearestTargetByType(
@@ -680,6 +1164,47 @@ export class UnitRuntimeController {
     return false;
   }
 
+  private updateNavigationState(
+    unit: PlayerUnitState,
+    target: BrickRuntimeState | EnemyRuntimeState,
+    deltaSeconds: number,
+  ): void {
+    this.navigation.planNavigation({
+      actorId: this.getNavigationActorId(unit.id),
+      actorPosition: unit.position,
+      target,
+      targetRadius: this.getUnitNavigationTargetRadius(unit, target),
+      entityRadius: unit.physicalSize,
+      passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
+      deltaSeconds,
+      goalCooldownSeconds: 0.2,
+      getRepathCooldown: ({ distanceToTarget, path }) => {
+        if (path.goalReached) {
+          return 0.2;
+        }
+        if (distanceToTarget > 280) {
+          return 0.8;
+        }
+        if (distanceToTarget > 140) {
+          return 0.45;
+        }
+        return 0.25;
+      },
+    });
+  }
+
+  private trackNavigationProgress(
+    unit: PlayerUnitState,
+    deltaSeconds: number,
+  ): void {
+    this.navigation.trackProgress(
+      this.getNavigationActorId(unit.id),
+      unit.position,
+      deltaSeconds,
+      { stuckTimeout: 0.6 },
+    );
+  }
+
   private computeDesiredForce(
     unit: PlayerUnitState,
     movementState: MovementBodyState,
@@ -692,7 +1217,15 @@ export class UnitRuntimeController {
       return this.computeBrakingForce(unit, movementState);
     }
 
+    const destination =
+      unit.targetingMode === "firstEnemy"
+        ? this.navigation.getDestination(
+            this.getNavigationActorId(unit.id),
+            target.position,
+          )
+        : target.position;
     const toTarget = subtractVectors(target.position, unit.position);
+    const toDestination = subtractVectors(destination, unit.position);
     const distance = vectorLength(toTarget);
     const attackRange = unit.baseAttackDistance + unit.physicalSize + target.physicalSize;
     const distanceOutsideRange = Math.max(distance - attackRange, 0);
@@ -701,7 +1234,11 @@ export class UnitRuntimeController {
       return this.computeBrakingForce(unit, movementState);
     }
 
-    const direction = distance > 0 ? scaleVector(toTarget, 1 / distance) : ZERO_VECTOR;
+    const destinationDistance = vectorLength(toDestination);
+    const direction =
+      destinationDistance > 0
+        ? scaleVector(toDestination, 1 / destinationDistance)
+        : ZERO_VECTOR;
     if (!vectorHasLength(direction)) {
       return ZERO_VECTOR;
     }
@@ -716,7 +1253,7 @@ export class UnitRuntimeController {
     let desiredVelocity = scaleVector(direction, desiredSpeed);
 
     // Додаємо obstacle avoidance щоб не налазити на цеглу
-    const avoidance = this.computeObstacleAvoidance(unit, desiredVelocity);
+    const avoidance = this.computeObstacleAvoidance(unit, desiredVelocity, target);
     if (vectorHasLength(avoidance)) {
       desiredVelocity = addVectors(desiredVelocity, avoidance);
     }
@@ -729,7 +1266,8 @@ export class UnitRuntimeController {
    */
   private computeObstacleAvoidance(
     unit: PlayerUnitState,
-    desiredVelocity: SceneVector2
+    desiredVelocity: SceneVector2,
+    target: BrickRuntimeState | EnemyRuntimeState | null,
   ): SceneVector2 {
     if (!vectorHasLength(desiredVelocity)) {
       return ZERO_VECTOR;
@@ -740,8 +1278,10 @@ export class UnitRuntimeController {
 
     this.forEachBrickNear(unit.position, avoidanceRadius, (brick) => {
       // Перевіряємо чи цегла прохідна для юніта
-      if (brick.passableFor && brick.passableFor.length > 0) {
-        // Якщо є passableFor - цегла прохідна, пропускаємо
+      if (isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY)) {
+        return;
+      }
+      if (target && "maxHp" in brick && target.id === brick.id) {
         return;
       }
 
@@ -872,6 +1412,9 @@ export class UnitRuntimeController {
     for (let iteration = 0; iteration < COLLISION_RESOLUTION_ITERATIONS; iteration += 1) {
       let collided = false;
       this.forEachBrickNear(resolvedPosition, unit.physicalSize, (brick) => {
+        if (isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY)) {
+          return;
+        }
         const brickRadius = Math.max(brick.physicalSize, 0);
         const combinedRadius = unit.physicalSize + brickRadius;
         if (combinedRadius <= 0) {

@@ -34,5 +34,9 @@
   "mana_source": {
     "name": "Source of Magic",
     "description": "A crystalline wellspring that channels void energy into your spells, amplifying their power."
+  },
+  "dark_library": {
+    "name": "Dark Library",
+    "description": "Archive volatile rites and accelerate every branch of dark research. Each level increases research XP rate by 20% (linear)."
   }
 }

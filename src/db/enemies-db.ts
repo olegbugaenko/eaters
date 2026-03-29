@@ -6,6 +6,8 @@ export type {
   EnemyAuraConfig,
   EnemyConfig,
   EnemyProjectileConfig,
+  EnemyStreamAttackConfig,
+  EnemyStreamAttackVisualConfig,
   EnemyRendererCompositeConfig,
   EnemyRendererConfig,
   EnemyRendererLayerConfig,

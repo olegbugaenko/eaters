@@ -1,6 +1,7 @@
 import { ServiceDefinition } from "@/core/logic/engine/loader/types";
 import { EnemiesModule } from "./enemies.module";
 import type { ArcModule } from "../../scene/arc/arc.module";
+import type { NavigationCoordinator } from "@/logic/shared/navigation/NavigationCoordinator";
 
 export const createEnemiesDefinition = (): ServiceDefinition<
   EnemiesModule,
@@ -21,6 +22,7 @@ export const createEnemiesDefinition = (): ServiceDefinition<
       projectiles: container.get("unitProjectiles"),
       arcs: container.getOptional<ArcModule>("arc") ?? undefined,
       bricks: container.get("bricks"),
+      navigation: container.get<NavigationCoordinator>("navigationCoordinator"),
       statusEffects: container.get("statusEffects"),
       darkResearch: container.get("darkResearch"),
     }),
@@ -32,6 +34,7 @@ export const createEnemiesDefinition = (): ServiceDefinition<
     "explosion",
     "unitProjectiles",
     "bricks",
+    "navigationCoordinator",
     "statusEffects",
     "resources",
     "bonuses",

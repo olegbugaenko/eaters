@@ -41,6 +41,7 @@ export const createMapDefinition = (
       statusEffects: container.get("statusEffects"),
       localization: container.get("localization"),
       damage: container.get("damage"),
+      explosions: container.get("explosion"),
     });
   },
   registerAsModule: true,

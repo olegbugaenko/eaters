@@ -10,6 +10,9 @@ const CAMERA_FOCUS_TICKS = 6;
 const RADIOACTIVITY_OVERLAY_ID = "map-radioactivity-overlay";
 const SNOWFALL_OBJECT_ID = "map-snowfall";
 const DEFAULT_SNOW_CULL_PADDING = 200;
+const PORTAL_BASE_RADIUS = 45;
+const PORTAL_COLLAPSE_DURATION_MS = 500;
+const PORTAL_COLLAPSE_INTERVAL_MS = 16;
 
 export class MapVisualEffects {
   private portalObjects: { id: string; position: SceneVector2 }[] = [];
@@ -18,6 +21,10 @@ export class MapVisualEffects {
   private radioactivityElapsedMs = 0;
   private snowfallObjectId: string | null = null;
   private snowfallConfig: MapSnowfallEffectConfig | null = null;
+  private portalCollapseAnimation: {
+    interval: ReturnType<typeof setInterval>;
+    objectIds: string[];
+  } | null = null;
 
   constructor(
     private readonly scene: SceneObjectManager,
@@ -25,6 +32,7 @@ export class MapVisualEffects {
   ) {}
 
   public reset(): void {
+    this.clearPortalCollapseAnimation();
     this.clearPortalObjects();
     this.pendingCameraFocus = null;
     this.clearRadioactivityOverlay();
@@ -105,6 +113,74 @@ export class MapVisualEffects {
     }
     this.portalObjects.forEach((portal) => this.scene.removeObject(portal.id));
     this.portalObjects = [];
+  }
+
+  public getPortalPositions(): SceneVector2[] {
+    return this.portalObjects.map((p) => ({ x: p.position.x, y: p.position.y }));
+  }
+
+  public animatePortalCollapse(): void {
+    if (this.portalObjects.length === 0) {
+      return;
+    }
+    const portalsSnapshot = this.portalObjects.map((p) => ({ ...p }));
+    this.clearPortalObjects();
+    this.clearPortalCollapseAnimation();
+
+    const objectIds: string[] = portalsSnapshot.map((portal) =>
+      this.spawnCollapsedPortal(portal.position, PORTAL_BASE_RADIUS, 1)
+    );
+
+    const startTime = performance.now();
+    const interval = setInterval(() => {
+      const elapsed = performance.now() - startTime;
+      const t = Math.min(elapsed / PORTAL_COLLAPSE_DURATION_MS, 1);
+      const easedT = t * t;
+      const radius = Math.max(0.5, PORTAL_BASE_RADIUS * (1 - easedT));
+      const alpha = 1 - easedT;
+
+      objectIds.forEach((id) => this.scene.removeObject(id));
+      objectIds.length = 0;
+
+      portalsSnapshot.forEach((portal) => {
+        objectIds.push(this.spawnCollapsedPortal(portal.position, radius, alpha));
+      });
+
+      if (t >= 1) {
+        clearInterval(interval);
+        objectIds.forEach((id) => this.scene.removeObject(id));
+        objectIds.length = 0;
+        this.portalCollapseAnimation = null;
+      }
+    }, PORTAL_COLLAPSE_INTERVAL_MS);
+
+    this.portalCollapseAnimation = { interval, objectIds };
+  }
+
+  private spawnCollapsedPortal(position: SceneVector2, radius: number, alpha: number): string {
+    return this.scene.addObject("portal", {
+      position: { x: position.x, y: position.y },
+      size: { width: radius * 2, height: radius * 2 },
+      fill: createRadialGradientFill(radius, [
+        { offset: 0, color: { r: 0.3, g: 0.04, b: 0.04, a: 0.1 * alpha } },
+        { offset: 0.5, color: { r: 0.55, g: 0.05, b: 0.05, a: 0.04 * alpha } },
+        { offset: 0.7, color: { r: 0.88, g: 0.12, b: 0.08, a: 0.55 * alpha } },
+        { offset: 0.8, color: { r: 0.95, g: 0.16, b: 0.1, a: 0.7 * alpha } },
+        { offset: 0.9, color: { r: 0.8, g: 0.1, b: 0.07, a: 0.65 * alpha } },
+        { offset: 1, color: { r: 0.5, g: 0.04, b: 0.04, a: 0 } },
+      ]),
+      rotation: 0,
+      customData: { radius, emitter: { particlesPerSecond: 0 } },
+    });
+  }
+
+  private clearPortalCollapseAnimation(): void {
+    if (!this.portalCollapseAnimation) {
+      return;
+    }
+    clearInterval(this.portalCollapseAnimation.interval);
+    this.portalCollapseAnimation.objectIds.forEach((id) => this.scene.removeObject(id));
+    this.portalCollapseAnimation = null;
   }
 
   private updatePortalObjects(): void {

@@ -54,27 +54,14 @@ export class ExplosionModule implements GameModule {
   }
 
   public tick(deltaMs: number): void {
-    if (deltaMs <= 0 || this.explosions.length === 0) {
+    this.tickExplosions(deltaMs, () => true);
+  }
+
+  public tickInPauseMode(deltaMs: number, mode: "simulation" | "full"): void {
+    if (mode !== "simulation") {
       return;
     }
-
-    const survivors: ExplosionState[] = [];
-
-    this.explosions.forEach((explosion) => {
-      explosion.elapsedMs += deltaMs;
-      this.updateExplosion(explosion);
-
-      if (explosion.elapsedMs >= explosion.effectLifetimeMs) {
-        explosion.waves.forEach((wave: WaveState) =>
-          this.options.scene.removeObject(wave.id)
-        );
-        return;
-      }
-
-      survivors.push(explosion);
-    });
-
-    this.explosions = survivors;
+    this.tickExplosions(deltaMs, (explosion) => explosion.allowInSimulationPause);
   }
 
   public spawnExplosion(options: SpawnExplosionOptions): void {
@@ -213,6 +200,7 @@ export class ExplosionModule implements GameModule {
       elapsedMs: 0,
       waveLifetimeMs: Math.max(1, config.lifetimeMs),
       effectLifetimeMs,
+      allowInSimulationPause: config.allowInSimulationPause === true,
       waves,
       createdAt,
     });
@@ -288,6 +276,35 @@ export class ExplosionModule implements GameModule {
         fill: wave.fill,
       });
     });
+  }
+
+  private tickExplosions(
+    deltaMs: number,
+    shouldAdvance: (explosion: ExplosionState) => boolean
+  ): void {
+    if (deltaMs <= 0 || this.explosions.length === 0) {
+      return;
+    }
+
+    const survivors: ExplosionState[] = [];
+
+    this.explosions.forEach((explosion) => {
+      if (shouldAdvance(explosion)) {
+        explosion.elapsedMs += deltaMs;
+        this.updateExplosion(explosion);
+      }
+
+      if (explosion.elapsedMs >= explosion.effectLifetimeMs) {
+        explosion.waves.forEach((wave: WaveState) =>
+          this.options.scene.removeObject(wave.id)
+        );
+        return;
+      }
+
+      survivors.push(explosion);
+    });
+
+    this.explosions = survivors;
   }
 
   private clearExplosions(): void {

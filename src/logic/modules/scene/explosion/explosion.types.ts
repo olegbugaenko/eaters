@@ -38,6 +38,7 @@ export interface ExplosionState {
   elapsedMs: number;
   waveLifetimeMs: number;
   effectLifetimeMs: number;
+  allowInSimulationPause: boolean;
   waves: WaveState[];
   createdAt: number;
 }

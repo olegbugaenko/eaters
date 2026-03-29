@@ -22,6 +22,8 @@ export type MapId =
   | "theWheel"
   | "sphinx"
   | "spiralSleeves"
+  | "desertCrater"
+  | "nautilusShell"
   | "stoneCottage"
   | "bezierGrove"
   | "snakeNest"

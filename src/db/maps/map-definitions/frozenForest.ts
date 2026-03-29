@@ -84,7 +84,7 @@ const mapConfig = (() => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const iceLevel = baseLevel;
       const treeTrunkLevel = baseLevel;
-      const treeCanopyLevel = baseLevel + 1;
+      const treeCanopyLevel = baseLevel + 3;
 
       const frozenLake = circleWithBricks(
         "smallIce",
