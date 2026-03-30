@@ -118,5 +118,8 @@
   },
   "automobile": {
     "name": "Автомобіль"
+  },
+  "hotCorridors": {
+    "name": "Hot Corridors"
   }
 }
