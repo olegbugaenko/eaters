@@ -493,12 +493,12 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     name: "Radiation Control",
     description:
       "Unlocks new organs that fuse Darwinian evolution, radiation, and a touch of magic.",
-    nodePosition: { x: 2, y: 5 },
+    nodePosition: { x: 4, y: 4 },
     nodesRequired: { fire_mastery: 1 },
     maxLevel: 1,
     lockedForDemo: true,
     effects: {},
-    cost: createResourceCost("uranium", 1000, 1),
+    cost: createResourceCost("uranium", 500, 1),
   },
   // top
   glass_latticework: {

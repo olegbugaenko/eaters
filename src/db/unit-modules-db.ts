@@ -406,7 +406,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     manaCostMultiplier: 2.6,
     sanityCost: 0,
     maxLevel: 10,
-    baseCost: { magma: 300, organics: 150 },
+    baseCost: { magma: 300, organics: 450000 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
     appliesEffect: {
@@ -428,7 +428,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     manaCostMultiplier: 2.6,
     sanityCost: 0,
     maxLevel: 10,
-    baseCost: { ice: 300, sand: 300 },
+    baseCost: { ice: 300, sand: 800000 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
     appliesEffect: {
