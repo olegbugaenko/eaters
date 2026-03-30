@@ -99,18 +99,53 @@ const createChaoticLoopSegments = (
   });
 };
 
+const createInnerLoopWithLeftChamberSegments = (
+  size: SceneSize,
+  inset: number,
+  cornerRadius: number,
+  distortion: number,
+): readonly BezierCurveSegment[] => {
+  const chaoticSegments = [...createChaoticLoopSegments(size, inset, cornerRadius, distortion)];
+  const left = inset;
+
+  chaoticSegments.splice(
+    6,
+    1,
+    {
+      start: { x: left, y: 1320 },
+      control1: { x: left + 12, y: 1230 },
+      control2: { x: left + 92, y: 1135 },
+      end: { x: left + 150, y: 1080 },
+    },
+    {
+      start: { x: left + 150, y: 1080 },
+      control1: { x: left + 240, y: 1020 },
+      control2: { x: left + 240, y: 980 },
+      end: { x: left + 150, y: 920 },
+    },
+    {
+      start: { x: left + 150, y: 920 },
+      control1: { x: left + 92, y: 865 },
+      control2: { x: left + 12, y: 770 },
+      end: { x: left, y: 680 },
+    },
+  );
+
+  return chaoticSegments;
+};
+
 const mapConfig = (() => {
   const size: SceneSize = { width: 2000, height: 2000 };
   const spawnPoint: SceneVector2 = { x: 320, y: 1000 };
 
   const enemyPositions: readonly SceneVector2[] = [
-    { x: 520, y: 1000 },
-    { x: 860, y: 320 },
-    { x: 1360, y: 360 },
+    { x: 320, y: 1000 },
+    { x: 620, y: 620 },
+    { x: 1000, y: 320 },
+    { x: 1380, y: 620 },
     { x: 1680, y: 1000 },
-    { x: 1360, y: 1640 },
-    { x: 880, y: 1690 },
-    { x: 520, y: 1200 },
+    { x: 1380, y: 1380 },
+    { x: 620, y: 1380 },
   ];
 
   const turretPositions: readonly SceneVector2[] = [
@@ -121,7 +156,7 @@ const mapConfig = (() => {
   ];
 
   const outerWallSegments = createChaoticLoopSegments(size, 180, 280, 120);
-  const innerWallSegments = createChaoticLoopSegments(size, 460, 220, 90);
+  const innerWallSegments = createInnerLoopWithLeftChamberSegments(size, 460, 220, 90);
 
   return {
     name: "Hot Corridors",
