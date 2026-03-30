@@ -375,26 +375,24 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
 
         // Uranium whiskers
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
-          [ { x: -9, y: 0, width: 1.8 }, { x: -12, y: 9, width: 1.5 }, { x: -16, y: 11, width: 1.2 }, { x: -20, y: 18, width: 0.8 } ],
+          [ { x: -9, y: 0, width: 1.8 }, { x: -12, y: 9, width: 1.5 }, { x: -16, y: 11, width: 0.9 }, { x: -20, y: 18, width: 0.4 } ],
           {
             requiresModule: "uraniumWhiskers",
             fill: { type: "base", brightness: -0.1 },
             anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 0.2 },
-            groupId: "uraniumWhiskers-right",
-            connectionSlots: [{ id: "whiskerRightEnd", mode: "spine", t: 0.75 }],
           },
           { epsilon: 0.25, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
-          [ { x: 0, y: 0, width: 1.1 }, { x: -7, y: 4, width: 0.9 }, { x: -12, y: 5, width: 0.7 }, { x: -20, y: 9, width: 0.6 } ],
+          [ { x: -9, y: 0, width: 1.8 }, { x: -12, y: -9, width: 1.5 }, { x: -16, y: -11, width: 0.9 }, { x: -20, y: -18, width: 0.4 } ],
           {
             requiresModule: "uraniumWhiskers",
             fill: { type: "base", brightness: -0.1 },
-            anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 3.34 },
-            join: { anchorId: "whiskerRightEnd", targetGroupId: "uraniumWhiskers-right" },
+            anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 0.2 + 3.14 },
           },
           { epsilon: 0.25, winding: "CCW" }
         ),
+        
 
 
         // Tail needles (long quills anchored at the chord tip)
