@@ -55,6 +55,19 @@ const createHarness = (levels: Partial<Record<UnitModuleId, number>>) => {
 };
 
 describe("Unit module effects are applied in biolab bridge payload", () => {
+  test("iron forge increases attack damage when equipped", () => {
+    const { module, designId, getUnit } = createHarness({ ironForge: 1 });
+    const baseline = getUnit().blueprint;
+
+    module.updateDesign(designId, { modules: ["ironForge"] });
+    const boosted = getUnit().blueprint;
+
+    assert(
+      boosted.effective.attackDamage > baseline.effective.attackDamage,
+      "iron forge should increase attack damage",
+    );
+  });
+
   test("uranium whiskers increases both attack and move speed", () => {
     const { module, designId, getUnit } = createHarness({ uraniumWhiskers: 1 });
     const baseline = getUnit().blueprint;
