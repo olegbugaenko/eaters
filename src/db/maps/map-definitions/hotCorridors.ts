@@ -5,6 +5,7 @@ import type { BezierCurveSegment } from "../../../logic/services/brick-layout/br
 import type { MapConfig } from "../maps-db.types";
 
 const CIRCLE_KAPPA = 0.5522847498307936;
+const TAU = Math.PI * 2;
 
 const createRoundedLoopSegments = (
   size: SceneSize,
@@ -70,18 +71,81 @@ const createRoundedLoopSegments = (
   ];
 };
 
+const createChaoticLoopSegments = (
+  size: SceneSize,
+  inset: number,
+  cornerRadius: number,
+  distortion: number,
+): readonly BezierCurveSegment[] => {
+  const baseSegments = createRoundedLoopSegments(size, inset, cornerRadius);
+
+  return baseSegments.map((segment, index) => {
+    const indexRatio = index / baseSegments.length;
+    const angleA = indexRatio * TAU;
+    const angleB = (indexRatio + 0.37) * TAU;
+    const angleC = (indexRatio + 0.73) * TAU;
+
+    return {
+      ...segment,
+      control1: {
+        x: segment.control1.x + Math.cos(angleA) * distortion * 0.7,
+        y: segment.control1.y + Math.sin(angleB) * distortion,
+      },
+      control2: {
+        x: segment.control2.x + Math.sin(angleC) * distortion * 0.9,
+        y: segment.control2.y + Math.cos(angleA) * distortion * 0.8,
+      },
+    };
+  });
+};
+
+const createInnerLoopWithLeftChamberSegments = (
+  size: SceneSize,
+  inset: number,
+  cornerRadius: number,
+  distortion: number,
+): readonly BezierCurveSegment[] => {
+  const chaoticSegments = [...createChaoticLoopSegments(size, inset, cornerRadius, distortion)];
+  const left = inset;
+
+  chaoticSegments.splice(
+    6,
+    1,
+    {
+      start: { x: left, y: 1320 },
+      control1: { x: left + 12, y: 1230 },
+      control2: { x: left + 92, y: 1135 },
+      end: { x: left + 150, y: 1080 },
+    },
+    {
+      start: { x: left + 150, y: 1080 },
+      control1: { x: left + 240, y: 1020 },
+      control2: { x: left + 240, y: 980 },
+      end: { x: left + 150, y: 920 },
+    },
+    {
+      start: { x: left + 150, y: 920 },
+      control1: { x: left + 92, y: 865 },
+      control2: { x: left + 12, y: 770 },
+      end: { x: left, y: 680 },
+    },
+  );
+
+  return chaoticSegments;
+};
+
 const mapConfig = (() => {
   const size: SceneSize = { width: 2000, height: 2000 };
   const spawnPoint: SceneVector2 = { x: 320, y: 1000 };
 
   const enemyPositions: readonly SceneVector2[] = [
-    { x: 520, y: 1000 },
-    { x: 860, y: 320 },
-    { x: 1360, y: 360 },
-    { x: 1680, y: 1000 },
-    { x: 1360, y: 1640 },
-    { x: 880, y: 1690 },
-    { x: 520, y: 1200 },
+    { x: 340, y: 1000 },
+    { x: 720, y: 300 },
+    { x: 1000, y: 300 },
+    { x: 1280, y: 300 },
+    { x: 1660, y: 1000 },
+    { x: 1280, y: 1700 },
+    { x: 720, y: 1700 },
   ];
 
   const turretPositions: readonly SceneVector2[] = [
@@ -91,8 +155,8 @@ const mapConfig = (() => {
     { x: 280, y: 1000 },
   ];
 
-  const outerWallSegments = createRoundedLoopSegments(size, 180, 280);
-  const innerWallSegments = createRoundedLoopSegments(size, 460, 220);
+  const outerWallSegments = createChaoticLoopSegments(size, 180, 280, 120);
+  const innerWallSegments = createInnerLoopWithLeftChamberSegments(size, 460, 220, 90);
 
   return {
     name: "Hot Corridors",
@@ -108,7 +172,7 @@ const mapConfig = (() => {
           "smallMagma",
           {
             segments: outerWallSegments,
-            spacing: 1,
+            spacing: 14,
             sampleStep: 8,
             thickness: 120,
           },
@@ -118,7 +182,7 @@ const mapConfig = (() => {
           "smallMagma",
           {
             segments: innerWallSegments,
-            spacing: 1,
+            spacing: 14,
             sampleStep: 8,
             thickness: 110,
           },
