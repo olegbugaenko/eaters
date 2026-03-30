@@ -99,7 +99,7 @@ const createChaoticLoopSegments = (
   });
 };
 
-const createOuterLoopWithLeftChamberSegments = (
+const createInnerLoopWithLeftChamberSegments = (
   size: SceneSize,
   inset: number,
   cornerRadius: number,
@@ -112,22 +112,22 @@ const createOuterLoopWithLeftChamberSegments = (
     6,
     1,
     {
-      start: { x: left, y: 1420 },
-      control1: { x: left - 12, y: 1320 },
-      control2: { x: left - 95, y: 1210 },
-      end: { x: left - 150, y: 1140 },
+      start: { x: left, y: 1320 },
+      control1: { x: left + 12, y: 1230 },
+      control2: { x: left + 92, y: 1135 },
+      end: { x: left + 150, y: 1080 },
     },
     {
-      start: { x: left - 150, y: 1140 },
-      control1: { x: left - 230, y: 1060 },
-      control2: { x: left - 230, y: 940 },
-      end: { x: left - 150, y: 860 },
+      start: { x: left + 150, y: 1080 },
+      control1: { x: left + 240, y: 1020 },
+      control2: { x: left + 240, y: 980 },
+      end: { x: left + 150, y: 920 },
     },
     {
-      start: { x: left - 150, y: 860 },
-      control1: { x: left - 95, y: 790 },
-      control2: { x: left - 12, y: 680 },
-      end: { x: left, y: 580 },
+      start: { x: left + 150, y: 920 },
+      control1: { x: left + 92, y: 865 },
+      control2: { x: left + 12, y: 770 },
+      end: { x: left, y: 680 },
     },
   );
 
@@ -139,13 +139,13 @@ const mapConfig = (() => {
   const spawnPoint: SceneVector2 = { x: 320, y: 1000 };
 
   const enemyPositions: readonly SceneVector2[] = [
-    { x: 320, y: 1000 },
-    { x: 620, y: 620 },
-    { x: 1000, y: 320 },
-    { x: 1380, y: 620 },
-    { x: 1680, y: 1000 },
-    { x: 1380, y: 1380 },
-    { x: 620, y: 1380 },
+    { x: 340, y: 1000 },
+    { x: 720, y: 300 },
+    { x: 1000, y: 300 },
+    { x: 1280, y: 300 },
+    { x: 1660, y: 1000 },
+    { x: 1280, y: 1700 },
+    { x: 720, y: 1700 },
   ];
 
   const turretPositions: readonly SceneVector2[] = [
@@ -155,8 +155,8 @@ const mapConfig = (() => {
     { x: 280, y: 1000 },
   ];
 
-  const outerWallSegments = createOuterLoopWithLeftChamberSegments(size, 180, 280, 120);
-  const innerWallSegments = createChaoticLoopSegments(size, 460, 220, 90);
+  const outerWallSegments = createChaoticLoopSegments(size, 180, 280, 120);
+  const innerWallSegments = createInnerLoopWithLeftChamberSegments(size, 460, 220, 90);
 
   return {
     name: "Hot Corridors",
