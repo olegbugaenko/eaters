@@ -373,6 +373,28 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           },
         },
 
+        // Uranium whiskers
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: -9, y: 0, width: 1.8 }, { x: -15, y: 22, width: 0.9 } ],
+          {
+            requiresModule: "uraniumWhiskers",
+            fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.7, g: 0.92, b: 0.28, a: 0.82 } } },
+            stroke: { type: "solid", width: 0.95, color: { r: 0.76, g: 1.0, b: 0.36, a: 0.55 } },
+            anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 0.2 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: -9, y: 0, width: 1.8 }, { x: -15, y: -22, width: 0.9 } ],
+          {
+            requiresModule: "uraniumWhiskers",
+            fill: { type: "solid", fill: { fillType: FILL_TYPES.SOLID, color: { r: 0.7, g: 0.92, b: 0.28, a: 0.82 } } },
+            stroke: { type: "solid", width: 0.95, color: { r: 0.76, g: 1.0, b: 0.36, a: 0.55 } },
+            anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 3.34 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+
         // Tail needles (long quills anchored at the chord tip)
         { shape: "polygon", requiresModule: "tailNeedles",
           vertices: [ { x: -7.6, y: 0.6 }, { x: -23.6, y: 3.4 }, { x: -8.4, y: 2.4 } ],

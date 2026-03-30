@@ -610,6 +610,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     let hpMultiplier = 1;
     let attackMultiplier = 1;
     let armorMultiplier = 1;
+    let moveSpeedMultiplier = 1;
 
     modules.forEach((detail) => {
       switch (detail.id) {
@@ -622,6 +623,18 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
         case "silverArmor":
           armorMultiplier *= Math.max(detail.bonusValue, 0);
           break;
+        case "uraniumWhiskers": {
+          const config = getUnitModuleConfig(detail.id);
+          const level = Math.max(detail.level, 1);
+          const attackBase = Math.max(config.meta?.attackBaseBonusValue ?? 1, 0);
+          const attackPerLevel = Math.max(config.meta?.attackBonusPerLevel ?? 0, 0);
+          moveSpeedMultiplier *= Math.max(detail.bonusValue, 0);
+          attackMultiplier *= Math.max(
+            attackBase + attackPerLevel * Math.max(level - 1, 0),
+            0,
+          );
+          break;
+        }
         default:
           break;
       }
@@ -630,6 +643,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     const appliedHpMultiplier = Math.max(hpMultiplier, 0);
     const appliedAttackMultiplier = Math.max(attackMultiplier, 0);
     const appliedArmorMultiplier = Math.max(armorMultiplier, 0);
+    const appliedMoveSpeedMultiplier = Math.max(moveSpeedMultiplier, 0);
     const effectiveMaxHp = roundStat(blueprint.effective.maxHp * appliedHpMultiplier);
     const effectiveAttackDamage = roundStat(
       blueprint.effective.attackDamage * appliedAttackMultiplier
@@ -638,6 +652,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       (blueprint.hpRegenPercentage * 0.01) * effectiveMaxHp
     );
     const effectiveArmor = roundStat(blueprint.armor * appliedArmorMultiplier);
+    const effectiveMoveSpeed = roundStat(blueprint.moveSpeed * appliedMoveSpeedMultiplier);
 
     return {
       ...blueprint,
@@ -651,6 +666,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       },
       hpRegenPerSecond,
       armor: Math.max(effectiveArmor, 0),
+      moveSpeed: Math.max(effectiveMoveSpeed, 0),
       bonuses,
       organAttackMultiplier: appliedAttackMultiplier,
     };
@@ -726,6 +742,23 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           value: detail.bonusValue,
           format: "percent",
           hint: hintParts.length > 0 ? hintParts.join(", ") : undefined,
+        };
+      }
+      case "uraniumWhiskers": {
+        const config = getUnitModuleConfig(detail.id);
+        const level = Math.max(detail.level, 1);
+        const attackValue = Math.max(
+          (config.meta?.attackBaseBonusValue ?? 1) +
+            (config.meta?.attackBonusPerLevel ?? 0) * Math.max(level - 1, 0),
+          0,
+        );
+        return {
+          label: detail.bonusLabel,
+          value: detail.bonusValue,
+          format: "multiplier",
+          hint: this.localization
+            .tUi("voidCamp.unitBonuses.attackMultiplier", "Attack multiplier ×{{value}}")
+            .replace("{{value}}", String(Math.round(attackValue * 1000) / 1000)),
         };
       }
       default:

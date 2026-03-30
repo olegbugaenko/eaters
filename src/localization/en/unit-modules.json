@@ -68,5 +68,10 @@
     "name": "Conductor Tentacles",
     "description": "Copper-filamented feelers discharge volatile surges that leap between nearby masonry and foes.",
     "bonusLabel": "Chain lightning damage"
+  },
+  "uraniumWhiskers": {
+    "name": "Uranium Whiskers",
+    "description": "Irradiated barbs bloom from the tail core, quickening movement while driving each strike with unstable uranium force.",
+    "bonusLabel": "Move speed multiplier"
   }
 }

@@ -168,7 +168,6 @@ export class UnitFactory {
       drag,
     });
 
-    const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
     const deathEffects = config.deathEffects ?? [];
     const baseFillColor: SceneColor = {
       r: config.renderer.fill.r,
@@ -194,6 +193,21 @@ export class UnitFactory {
     const ownedModuleIds = Array.isArray(data.equippedModules)
       ? data.equippedModules.filter((id): id is UnitModuleId => UNIT_MODULE_IDS.includes(id))
       : [];
+    const emitter = config.emitter ? cloneEmitter(config.emitter) : undefined;
+    if (emitter && ownedModuleIds.includes("uraniumWhiskers")) {
+      emitter.particlesPerSecond = Math.round(emitter.particlesPerSecond * 1.2);
+      emitter.maxParticles = Math.round((emitter.maxParticles ?? 100) * 1.2);
+      emitter.color = { r: 0.82, g: 0.98, b: 0.3, a: 0.48 };
+      emitter.fill = {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.9, g: 1, b: 0.4, a: 0.12 } },
+          { offset: 0.24, color: { r: 0.72, g: 0.95, b: 0.28, a: 0.08 } },
+          { offset: 1, color: { r: 0.62, g: 0.9, b: 0.2, a: 0 } },
+        ],
+      };
+    }
     const ownedSkills = this.collectOwnedSkills();
     const abilityContext = this.createAbilityContext(ownedModuleIds, ownedSkills);
 
