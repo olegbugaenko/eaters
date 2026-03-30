@@ -112,19 +112,26 @@ const createInnerLoopWithLeftChamberSegments = (
     6,
     1,
     {
-      start: { x: left, y: 1320 },
-      control1: { x: left + 12, y: 1230 },
-      control2: { x: left + 92, y: 1135 },
-      end: { x: left + 150, y: 1080 },
+      start: { x: left, y: 1420 },
+      control1: { x: left + 12, y: 1330 },
+      control2: { x: left + 92, y: 1235 },
+      end: { x: left + 150, y: 1180 },
     },
     {
-      start: { x: left + 150, y: 1080 },
-      control1: { x: left + 240, y: 1020 },
-      control2: { x: left + 240, y: 980 },
-      end: { x: left + 150, y: 920 },
+      start: { x: left + 150, y: 1180 },
+      control1: { x: left + 240, y: 1190 },
+      control2: { x: left + 320, y: 1300 },
+      end: { x: left + 400, y: 1000 },
+    },
+    // play here
+    {
+      start: { x: left + 400, y: 1000 },
+      control1: { x: left + 320, y: 700 },
+      control2: { x: left + 240, y: 810 },
+      end: { x: left + 150, y: 820 },
     },
     {
-      start: { x: left + 150, y: 920 },
+      start: { x: left + 150, y: 820 },
       control1: { x: left + 92, y: 865 },
       control2: { x: left + 12, y: 770 },
       end: { x: left, y: 680 },
@@ -136,7 +143,7 @@ const createInnerLoopWithLeftChamberSegments = (
 
 const mapConfig = (() => {
   const size: SceneSize = { width: 2000, height: 2000 };
-  const spawnPoint: SceneVector2 = { x: 320, y: 1000 };
+  const spawnPoint: SceneVector2 = { x: 520, y: 1000 };
 
   const enemyPositions: readonly SceneVector2[] = [
     { x: 340, y: 1000 },
@@ -151,7 +158,7 @@ const mapConfig = (() => {
   const turretPositions: readonly SceneVector2[] = [
     { x: 1000, y: 260 },
     { x: 1720, y: 1000 },
-    { x: 1000, y: 1740 },
+    { x: 1000, y: 1590 },
     { x: 280, y: 1000 },
   ];
 
@@ -176,7 +183,7 @@ const mapConfig = (() => {
             sampleStep: 8,
             thickness: 120,
           },
-          { level: baseLevel + 2 },
+          { level: baseLevel + 1 },
         ),
         bezierCurveWithBricks(
           "smallMagma",
@@ -186,7 +193,7 @@ const mapConfig = (() => {
             sampleStep: 8,
             thickness: 110,
           },
-          { level: baseLevel + 2 },
+          { level: baseLevel + 1 },
         ),
       ];
     },
@@ -198,7 +205,7 @@ const mapConfig = (() => {
           (position) =>
             ({
               type: "fireParasiteEnemy",
-              level,
+              level: level + 1,
               position,
             }) satisfies EnemySpawnData,
         ),

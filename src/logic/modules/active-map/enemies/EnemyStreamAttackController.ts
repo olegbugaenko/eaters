@@ -396,11 +396,15 @@ export class EnemyStreamAttackController {
         }
 
         if (this.damage && stream.damage > 0) {
+          const defaultKnockBackDirection = {
+            x: -stream.direction.x,
+            y: -stream.direction.y,
+          };
           this.damage.applyTargetDamage(target.id, stream.damage, {
             ...stream.damageOptions,
             direction: stream.direction,
             knockBackDirection:
-              stream.damageOptions?.knockBackDirection ?? stream.direction,
+              stream.damageOptions?.knockBackDirection ?? defaultKnockBackDirection,
             payload: {
               amount: stream.damage,
               context: {
