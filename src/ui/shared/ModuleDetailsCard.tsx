@@ -11,7 +11,7 @@ interface ModuleDetailsCardProps {
   description: string;
   effectLabel: string;
   currentEffect: string;
-  effectRows?: readonly { label: string; value: string }[];
+  effectRows?: readonly { label: string; value: string; nextValue?: string | null }[];
   nextEffect?: string | null;
   manaMultiplier: number;
   sanityCost: number;
@@ -66,6 +66,19 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
               <span className="modules-workshop__effect-label">{row.label}</span>
               <span className="modules-workshop__effect-values">
                 <span className="modules-workshop__effect-current">{row.value}</span>
+                {row.nextValue ? (
+                  <>
+                    <span
+                      className="modules-workshop__effect-arrow"
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
+                    <span className="modules-workshop__effect-next">
+                      {row.nextValue}
+                    </span>
+                  </>
+                ) : null}
               </span>
             </div>
           ))

@@ -27,18 +27,6 @@ interface ModulesWorkshopViewProps {
 
 type ModuleItem = UnitModuleWorkshopBridgeState["modules"][number];
 
-const computeNextBonusValue = (
-  base: number,
-  perLevel: number,
-  currentLevel: number
-): number => {
-  const nextLevel = currentLevel + 1;
-  if (nextLevel <= 0) {
-    return 0;
-  }
-  return base + perLevel * (nextLevel - 1);
-};
-
 export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
   state = DEFAULT_UNIT_MODULE_WORKSHOP_STATE,
   resources,
@@ -196,16 +184,24 @@ export const ModulesWorkshopView: React.FC<ModulesWorkshopViewProps> = ({
                 )
               : t("voidCamp.common.locked", "Locked")
           }
+          effectRows={activeModule.bonusLines.map((line) => ({
+            label: line.label,
+            value:
+              activeModule.level > 0
+                ? formatUnitModuleBonusValue(line.bonusType, line.currentBonusValue)
+                : t("voidCamp.common.locked", "Locked"),
+            nextValue:
+              line.nextBonusValue === null
+                ? null
+                : formatUnitModuleBonusValue(line.bonusType, line.nextBonusValue),
+          }))}
           nextEffect={
             activeModule.maxed
               ? null
               : formatUnitModuleBonusValue(
                   activeModule.bonusType,
-                  computeNextBonusValue(
-                    activeModule.baseBonusValue,
-                    activeModule.bonusPerLevel,
-                    activeModule.level
-                  )
+                  activeModule.baseBonusValue +
+                    activeModule.bonusPerLevel * activeModule.level
                 )
           }
           manaMultiplier={activeModule.manaCostMultiplier}
