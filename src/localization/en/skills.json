@@ -103,6 +103,10 @@
     "name": "Fire Mastery",
     "description": "Master the art of fire magic."
   },
+  "radiation_control": {
+    "name": "Radiation Control",
+    "description": "Unlocks new organs that fuse Darwinian evolution, radiation, and a touch of magic."
+  },
   "emberglass_reactors": {
     "name": "Emberglass Reactors",
     "description": "Channel heat through mirrored chambers; surging sand becomes lasting mana stores."
@@ -246,6 +250,10 @@
   "silver_drill": {
     "name": "Silver Fangs",
     "description": "Craft silvered fang-implants that bite deeper into matter, amplifying your creatures' attacks."
+  },
+  "uranium_mitochondria": {
+    "name": "Uranium Mitochondria",
+    "description": "Metabolism accelerated by a new radioactive element pushes your jaw-muscle power to another level."
   },
   "penetration": {
     "name": "Penetration",

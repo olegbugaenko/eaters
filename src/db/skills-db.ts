@@ -50,6 +50,7 @@ export const SKILL_IDS = [
   "pheromones",
   "ice_mastery",
   "fire_mastery",
+  "radiation_control",
   "emberglass_reactors",
   "spiritual_powers",
   // "damage_lore",
@@ -90,6 +91,7 @@ export const SKILL_IDS = [
   "tool_fabrication",
   "forged_strikes",
   "silver_drill",
+  "uranium_mitochondria",
   "penetration",
   "penetration2",
   "wire_penetration",
@@ -485,6 +487,18 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     lockedForDemo: true,
     effects: {},
     cost: createResourceCost("magma", 400, 1),
+  },
+  radiation_control: {
+    id: "radiation_control",
+    name: "Radiation Control",
+    description:
+      "Unlocks new organs that fuse Darwinian evolution, radiation, and a touch of magic.",
+    nodePosition: { x: 2, y: 5 },
+    nodesRequired: { fire_mastery: 1 },
+    maxLevel: 1,
+    lockedForDemo: true,
+    effects: {},
+    cost: createResourceCost("uranium", 1000, 1),
   },
   // top
   glass_latticework: {
@@ -1011,6 +1025,22 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { heavy_drill: 5 },
     cost: createResourceCost("silver", 150, 1.5),
+  },
+  uranium_mitochondria: {
+    id: "uranium_mitochondria",
+    name: "Uranium Mitochondria",
+    description:
+      "Metabolism accelerated by a new radioactive element pushes your jaw-muscle power to another level.",
+    nodePosition: { x: -9, y: -1 },
+    maxLevel: 25,
+    lockedForDemo: true,
+    effects: {
+      all_units_attack_multiplier: {
+        multiplier: (level) => 1 + 0.08 * level,
+      },
+    },
+    nodesRequired: { silver_drill: 15 },
+    cost: createResourceCost("uranium", 50, 1.5),
   },
   critical_chance: {
     id: "critical_chance",
