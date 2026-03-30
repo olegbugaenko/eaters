@@ -99,7 +99,7 @@ const mapConfig = (() => {
 
     enemies: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
-      const enemyLevel = baseLevel + 2;
+      const enemyLevel = baseLevel + 1;
       const result: EnemySpawnData[] = [];
 
       // One chamber per pair of adjacent septa (12 chambers total).
