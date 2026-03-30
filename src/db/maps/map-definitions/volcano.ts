@@ -60,8 +60,8 @@ const mapConfig = (() => {
     bricks: ({ mapLevel }) => {
       const baseLevel = Math.max(0, Math.floor(mapLevel));
       const copperLevel = baseLevel + 3;
-      const stoneLevel = baseLevel + 5;
       const magmaLevel = baseLevel;
+      const magmaCraterLevel = 1;
 
       const volcanoBase = circleWithBricks(
         "smallCopper",
@@ -74,13 +74,13 @@ const mapConfig = (() => {
       );
 
       const volcanoCore = circleWithBricks(
-        "smallSquareGray",
+        "smallMagma",
         {
           center,
           innerRadius: 0,
           outerRadius: volcanoInnerRadius - 40,
         },
-        { level: stoneLevel },
+        { level: magmaCraterLevel },
       );
 
       const magmaFlows = magmaFlowPaths.map((flow) =>
