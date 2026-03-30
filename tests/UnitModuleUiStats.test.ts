@@ -6,16 +6,23 @@ import { createTargetTooltip } from "../src/ui/screens/Scene/components/tooltip/
 
 const t = (_key: string, fallback?: string) => fallback ?? _key;
 
-const createUnitDesignModule = (): UnitDesignModule =>
+const createUnitDesignModule = (
+  moduleLevels?: Partial<Record<string, number>>,
+  onState?: (state: any) => void,
+): UnitDesignModule =>
   new UnitDesignModule({
-    bridge: { setState: () => {} } as any,
+    bridge: {
+      setState: (_key: string, value: unknown) => {
+        onState?.(value);
+      },
+    } as any,
     bonuses: {
       subscribe: () => () => {},
       getValues: () => ({}),
     } as any,
     workshop: {
       subscribe: () => () => {},
-      getModuleLevel: () => 1,
+      getModuleLevel: (id: string) => moduleLevels?.[id] ?? 1,
     } as any,
     localization: {
       tUi: (_key: string, fallback: string) => fallback,
@@ -73,6 +80,38 @@ describe("Unit module UI stat presentation", () => {
     const labels = bonusLines.map((entry: { label: string }) => entry.label);
     assert(labels.includes("Move speed multiplier"), "uranium move speed bonus should be exposed");
     assert(labels.includes("Attack multiplier"), "uranium attack bonus should be exposed");
+  });
+
+  test("biolab bridge state reflects uranium whiskers attack and move-speed bonuses", () => {
+    let latestState: any = null;
+    const module = createUnitDesignModule(
+      {
+        uraniumWhiskers: 1,
+      },
+      (state) => {
+        latestState = state;
+      },
+    );
+    module.initialize();
+    const designId = module.createDesign("bluePentagon");
+    module.updateDesign(designId, {
+      modules: ["uraniumWhiskers"],
+    });
+
+    const unit = latestState?.units?.find((entry: any) => entry.id === designId);
+    assert(unit, "expected biolab bridge state to include updated design");
+
+    const bonusLabels = (unit.blueprint.bonuses ?? []).map((entry: { label: string }) => entry.label);
+    assert(
+      bonusLabels.includes("Move speed multiplier"),
+      "bridge state should include uranium move speed bonus line",
+    );
+    assert(
+      bonusLabels.includes("Attack multiplier"),
+      "bridge state should include uranium attack bonus line",
+    );
+    assert(unit.blueprint.organAttackMultiplier > 1, "uranium should increase organ attack multiplier");
+    assert(unit.blueprint.moveSpeed > 0, "uranium should keep positive movement speed");
   });
 
   test("map right-click tooltip shows declarative module status effects and abilities", () => {

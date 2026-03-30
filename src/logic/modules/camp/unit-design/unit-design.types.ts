@@ -33,6 +33,11 @@ export interface UnitDesignModuleDetail {
   readonly bonusLabel: string;
   readonly bonusType: UnitModuleBonusType;
   readonly bonusValue: number;
+  readonly bonusLines: readonly {
+    label: string;
+    bonusType: UnitModuleBonusType;
+    bonusValue: number;
+  }[];
   readonly manaCostMultiplier: number;
   readonly sanityCost: number;
 }
@@ -57,6 +62,11 @@ export interface UnitDesignerAvailableModuleState {
   readonly bonusLabel: string;
   readonly bonusType: UnitModuleBonusType;
   readonly bonusValue: number;
+  readonly bonusLines: readonly {
+    label: string;
+    bonusType: UnitModuleBonusType;
+    bonusValue: number;
+  }[];
   readonly manaCostMultiplier: number;
   readonly sanityCost: number;
 }

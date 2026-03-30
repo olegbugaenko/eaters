@@ -404,6 +404,10 @@ export const UnitDesignerView: React.FC<UnitDesignerViewProps> = ({ state, resou
                 previewModule.bonusType,
                 previewModule.bonusValue
               )}
+              effectRows={previewModule.bonusLines.map((line) => ({
+                label: line.label,
+                value: formatUnitModuleBonusValue(line.bonusType, line.bonusValue),
+              }))}
               manaMultiplier={previewModule.manaCostMultiplier}
               sanityCost={previewModule.sanityCost}
             />
