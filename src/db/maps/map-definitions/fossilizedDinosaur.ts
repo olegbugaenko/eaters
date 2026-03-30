@@ -123,7 +123,7 @@ const mapConfig = (() => {
     { x: 130, y: 130 },
     { x: size.width - 130, y: 130 },
     { x: size.width - 130, y: size.height - 330 },
-    { x: 130, y: size.height - 330 },
+    { x: 130, y: size.height/2 - 120 },
   ];
 
   return {

@@ -737,33 +737,39 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
           vertices: [
             { x: 10, y: -3 },
             { x: 10, y: 3 },
-            { x: -5, y: 1 },
-            { x: -5, y: -1 },
+            { x: 3, y: 1 },
+            { x: 3, y: -1 },
           ],
         },
         // Horns (concave inward)
-        {
-          shape: "polygon",
-          fill: { type: "base", brightness: 0.32 },
-          vertices: [
-            { x: 18, y: -7 },
-            { x: 8, y: -18 },
-            { x: 1, y: -16 },
-            { x: 6, y: -8 },
-            { x: 11, y: -4 },
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 16, y: -2, width: 1.8 },
+            { x: 20, y: -11, width: 1.7 },
+            { x: 24, y: -16, width: 1.5 },
+            { x: 28, y: -15, width: 1.2 },
+            { x: 32, y: -12, width: 0.9 },
           ],
-        },
-        {
-          shape: "polygon",
-          fill: { type: "base", brightness: 0.32 },
-          vertices: [
-            { x: 18, y: 7 },
-            { x: 8, y: 18 },
-            { x: 1, y: 16 },
-            { x: 6, y: 8 },
-            { x: 11, y: 4 },
+          {
+            fill: { type: "base", brightness: 0.32 },
+          },
+        ),
+        ...mapLineToPolygonShape<
+          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
+        >(
+          [
+            { x: 16, y: 2, width: 1.8 },
+            { x: 20, y: 11, width: 1.7 },
+            { x: 24, y: 16, width: 1.5 },
+            { x: 28, y: 15, width: 1.2 },
+            { x: 32, y: 12, width: 0.9 },
           ],
-        },
+          {
+            fill: { type: "base", brightness: 0.32 },
+          },
+        ),
         {
           shape: "circle",
           radius: 32,
@@ -831,51 +837,6 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
           },
           { epsilon: 0.25, winding: "CCW" },
         ),
-        ...mapLineToPolygonShape<
-          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
-        >(
-          [
-            { x: 10, y: -2, width: 1.2 },
-            { x: 0, y: -8, width: 1.0 },
-            { x: -10, y: -16, width: 0.8 },
-            { x: -20, y: -18, width: 0.6 },
-          ],
-          {
-            fill: { type: "base", brightness: 0.3 },
-            stroke: { type: "base", width: 1.4, brightness: -0.12 },
-            anim: {
-              type: "sway",
-              periodMs: 1500,
-              amplitude: 5,
-              falloff: "tip",
-              axis: "normal",
-              phase: 1.1,
-            },
-          },
-          { epsilon: 0.25, winding: "CCW" },
-        ),
-        ...mapLineToPolygonShape<
-          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
-        >(
-          [
-            { x: -5, y: 0, width: 1.2 },
-            { x: -15, y: -8, width: 1.0 },
-            { x: -20, y: -8, width: 0.8 },
-          ],
-          {
-            fill: { type: "base", brightness: 0.3 },
-            stroke: { type: "base", width: 1.4, brightness: -0.12 },
-            anim: {
-              type: "sway",
-              periodMs: 1500,
-              amplitude: 5,
-              falloff: "tip",
-              axis: "normal",
-              phase: 1.1,
-            },
-          },
-          { epsilon: 0.25, winding: "CCW" },
-        ),
 
         // Right side
         ...mapLineToPolygonShape<
@@ -924,51 +885,6 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
           },
           { epsilon: 0.25, winding: "CCW" },
         ),
-        ...mapLineToPolygonShape<
-          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
-        >(
-          [
-            { x: 10, y: 2, width: 1.2 },
-            { x: 0, y: 8, width: 1.0 },
-            { x: -10, y: 16, width: 0.8 },
-            { x: -20, y: 18, width: 0.6 },
-          ],
-          {
-            fill: { type: "base", brightness: 0.3 },
-            stroke: { type: "base", width: 1.4, brightness: -0.12 },
-            anim: {
-              type: "sway",
-              periodMs: 1500,
-              amplitude: 6,
-              falloff: "tip",
-              axis: "normal",
-              phase: 4.24,
-            },
-          },
-          { epsilon: 0.25, winding: "CCW" },
-        ),
-        ...mapLineToPolygonShape<
-          Omit<EnemyRendererLayerConfig, "shape" | "vertices">
-        >(
-          [
-            { x: -5, y: 0, width: 1.2 },
-            { x: -15, y: 8, width: 1.0 },
-            { x: -20, y: 8, width: 0.8 },
-          ],
-          {
-            fill: { type: "base", brightness: 0.3 },
-            stroke: { type: "base", width: 1.4, brightness: -0.12 },
-            anim: {
-              type: "sway",
-              periodMs: 1500,
-              amplitude: 5,
-              falloff: "tip",
-              axis: "normal",
-              phase: 4.24,
-            },
-          },
-          { epsilon: 0.25, winding: "CCW" },
-        ),
         
         // Serpent tail + longer side sprouts (silver keeper inspired)
         ...mapLineToPolygonShape<
@@ -976,11 +892,11 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
         >(
           [
             { x: 4, y: 0, width: 3.9 },
-            { x: -6, y: -4, width: 3.4 },
-            { x: -18, y: 5, width: 3.1 },
-            { x: -30, y: -6, width: 2.5 },
-            { x: -42, y: 8, width: 1.7 },
-            { x: -54, y: -10, width: 1.1 },
+            { x: -6, y: -3, width: 3.4 },
+            { x: -18, y: 4, width: 3.1 },
+            { x: -30, y: -5, width: 2.5 },
+            { x: -42, y: 5, width: 1.7 },
+            { x: -54, y: -4, width: 1.1 },
           ],
           {
             fill: { type: "base", brightness: 0.28 },
@@ -1098,9 +1014,9 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
     maxHp: 750000,
     soulRewardBase: 10,
     armor: 5000,
-    baseDamage: 7000,
-    attackInterval: 0.8,
-    attackRange: 250,
+    baseDamage: 32000,
+    attackInterval: 1.4,
+    attackRange: 550,
     moveSpeed: 150,
     physicalSize: 30,
     reward: {
@@ -1113,7 +1029,7 @@ export const MONSTERS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       explosionType: "hotPlasmaExplosion",
       explosionRadius: 52,
       spawnOffset: { x: 14, y: 0 },
-      damage: 7000,
+      damage: 32000,
       statusEffectId: "burn",
       statusEffectOptions: {
         damagePerSecond: 1236,
