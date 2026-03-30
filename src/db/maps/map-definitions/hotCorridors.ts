@@ -183,7 +183,7 @@ const mapConfig = (() => {
             sampleStep: 8,
             thickness: 120,
           },
-          { level: baseLevel + 2 },
+          { level: baseLevel + 1 },
         ),
         bezierCurveWithBricks(
           "smallMagma",
@@ -193,7 +193,7 @@ const mapConfig = (() => {
             sampleStep: 8,
             thickness: 110,
           },
-          { level: baseLevel + 2 },
+          { level: baseLevel + 1 },
         ),
       ];
     },
@@ -205,7 +205,7 @@ const mapConfig = (() => {
           (position) =>
             ({
               type: "fireParasiteEnemy",
-              level,
+              level: level + 1,
               position,
             }) satisfies EnemySpawnData,
         ),
