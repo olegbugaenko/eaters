@@ -1098,4 +1098,87 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       spawnOffset: { x: 2, y: 0 },
     },
   },
+  hotCorridorTurretEnemy: {
+    name: "Hot Corridor Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.85, g: 0.35, b: 0.15, a: 1 },
+      layers: [
+        {
+          shape: "circle",
+          radius: 32,
+          segments: 40,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              end: 32,
+              stops: [
+                { offset: 0, color: { r: 1, g: 0.75, b: 0.35, a: 0.5 } },
+                { offset: 0.65, color: { r: 0.95, g: 0.35, b: 0.12, a: 0.28 } },
+                { offset: 1, color: { r: 0.7, g: 0.15, b: 0.08, a: 0 } },
+              ],
+            },
+          },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 18, y: -4 },
+            { x: 4, y: -6 },
+            { x: 4, y: 6 },
+            { x: 18, y: 4 },
+          ],
+          fill: { type: "base", brightness: -0.1 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 4, y: -8 },
+            { x: -11, y: -12 },
+            { x: -11, y: 12 },
+            { x: 4, y: 8 },
+          ],
+          fill: { type: "base", brightness: 0.18 },
+        },
+      ],
+      auras: [
+        {
+          petalCount: 12,
+          innerRadius: 20,
+          outerRadius: 34,
+          petalWidth: 0.5,
+          rotationSpeed: 0.4,
+          color: { r: 1, g: 0.55, b: 0.2, a: 0.25 },
+          alpha: 0.22,
+        },
+      ],
+    },
+    maxHp: 98000,
+    armor: 1900,
+    baseDamage: 2500,
+    attackInterval: 2.2,
+    attackRange: 560,
+    moveSpeed: 0,
+    physicalSize: 32,
+    reward: normalizeResourceAmount({
+      copper: 120,
+      coal: 50,
+      stone: 85,
+    }),
+    arcAttack: {
+      arcType: "hotPlasmaBeam",
+      explosionType: "hotPlasmaExplosion",
+      explosionRadius: 52,
+      spawnOffset: { x: 14, y: 0 },
+      statusEffectId: "burn",
+      statusEffectOptions: {
+        damagePerSecond: 1236,
+        durationMs: 3500,
+      },
+    },
+    knockBackDistance: 160,
+    knockBackSpeed: 190,
+  },
 };

@@ -41,6 +41,7 @@ import turretRings from "./map-definitions/turretRings";
 import tutorialZone from "./map-definitions/tutorialZone";
 import uraniumFields from "./map-definitions/uranium_fields";
 import volcano from "./map-definitions/volcano";
+import hotCorridors from "./map-definitions/hotCorridors";
 import wire from "./map-definitions/wire";
 
 export type {
@@ -87,6 +88,7 @@ const MAPS_DB: Record<MapId, MapConfig> = {
   silverChalice,
   frozenForest,
   volcano,
+  hotCorridors,
   gear,
   twinbladeAxe,
   automobile,

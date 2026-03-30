@@ -48,7 +48,8 @@ export type EnemyType =
   | "carGuardianPortalSpawnerEnemy"
   | "greatOctopusBody"
   | "greatOctopusSegment"
-  | "fireParasiteEnemy";
+  | "fireParasiteEnemy"
+  | "hotCorridorTurretEnemy";
 
 export interface EnemyAuraConfig {
   petalCount: number;

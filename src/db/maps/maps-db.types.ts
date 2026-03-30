@@ -38,6 +38,7 @@ export type MapId =
   | "silverChalice"
   | "frozenForest"
   | "volcano"
+  | "hotCorridors"
   | "megaBrick"
   | "ancientPyramids"
   | "deathfulGuns"

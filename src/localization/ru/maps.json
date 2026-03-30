@@ -10,5 +10,8 @@
   },
   "automobile": {
     "name": "Автомобиль"
+  },
+  "hotCorridors": {
+    "name": "Hot Corridors"
   }
 }

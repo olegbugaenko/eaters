@@ -115,5 +115,8 @@
   },
   "automobile": {
     "name": "Automobile"
+  },
+  "hotCorridors": {
+    "name": "Hot Corridors"
   }
 }
