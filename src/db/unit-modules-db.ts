@@ -31,6 +31,18 @@ export const UNIT_MODULE_IDS = [
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
 
 export type UnitModuleBonusType = "multiplier" | "percent";
+export type UnitModuleBonusStat =
+  | "maxHp"
+  | "attackDamage"
+  | "armor"
+  | "moveSpeed"
+  | "brickRewardMultiplier"
+  | "soulDropChance"
+  | "damageTransferPercent"
+  | "attackStackPerHit"
+  | "abilityPower"
+  | "armorPenetration"
+  | "knockbackReduction";
 
 export interface UnitModuleProjectileVisualConfig {
   readonly radius: number;
@@ -72,6 +84,32 @@ export interface ModuleAbilityInfo {
   readonly maxCharges?: number;
 }
 
+export interface ModuleBonusEffect {
+  readonly kind: "bonus";
+  readonly stat: UnitModuleBonusStat;
+  readonly label: string;
+  readonly bonusType: UnitModuleBonusType;
+  readonly baseBonusValue: number;
+  readonly bonusPerLevel: number;
+}
+
+export interface ModuleStatusEffectApplication {
+  readonly kind: "status";
+  readonly effectId: StatusEffectId;
+  readonly target: "brick" | "unit" | "enemy";
+  readonly durationMs?: number;
+}
+
+export interface ModuleAbilityEffect {
+  readonly kind: "ability";
+  readonly ability: ModuleAbilityInfo;
+}
+
+export type UnitModuleEffect =
+  | ModuleBonusEffect
+  | ModuleStatusEffectApplication
+  | ModuleAbilityEffect;
+
 export interface UnitModuleConfig {
   readonly id: UnitModuleId;
   readonly name: string;
@@ -108,6 +146,10 @@ export interface UnitModuleConfig {
     readonly chainJumps?: number;
     readonly attackBaseBonusValue?: number;
     readonly attackBonusPerLevel?: number;
+    readonly armorPenetrationBaseBonusValue?: number;
+    readonly armorPenetrationBonusPerLevel?: number;
+    readonly knockbackReductionBaseBonusValue?: number;
+    readonly knockbackReductionBonusPerLevel?: number;
   };
 }
 
@@ -205,6 +247,8 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       lateralProjectileSpacing: 3,
       lateralProjectileRange: 820,
       lateralProjectileHitRadius: 12,
+      armorPenetrationBaseBonusValue: 0.15,
+      armorPenetrationBonusPerLevel: 0.02,
       lateralProjectileVisual: {
         radius: 12, // Larger for sprite visibility (32x32 sprite)
         speed: 170,
@@ -314,6 +358,10 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     maxLevel: 10,
     baseCost: { silver: 100 },
     unlockedBy: [{ type: "map", id: "wire", level: 1 }],
+    meta: {
+      knockbackReductionBaseBonusValue: 0.04,
+      knockbackReductionBonusPerLevel: 0.005,
+    },
   },
   internalFurnace: {
     id: "internalFurnace",
@@ -451,3 +499,100 @@ export const getUnitModuleConfig = (id: UnitModuleId): UnitModuleConfig => {
 
 export const getAllUnitModuleConfigs = (): UnitModuleConfig[] =>
   UNIT_MODULE_IDS.map((id) => getUnitModuleConfig(id));
+
+const MODULE_BONUS_STATS: Partial<Record<UnitModuleId, UnitModuleBonusStat>> = {
+  magnet: "brickRewardMultiplier",
+  soulMagnet: "soulDropChance",
+  perforator: "damageTransferPercent",
+  vitalHull: "maxHp",
+  ironForge: "attackDamage",
+  silverArmor: "armor",
+  internalFurnace: "attackStackPerHit",
+  mendingGland: "abilityPower",
+  frenzyGland: "abilityPower",
+  fireballOrgan: "abilityPower",
+  burningTail: "abilityPower",
+  freezingTail: "abilityPower",
+  tailNeedles: "abilityPower",
+  conductorTentacles: "abilityPower",
+  uraniumWhiskers: "moveSpeed",
+};
+
+export const getUnitModuleEffects = (id: UnitModuleId): readonly UnitModuleEffect[] => {
+  const config = getUnitModuleConfig(id);
+  const effects: UnitModuleEffect[] = [];
+
+  const mappedStat = MODULE_BONUS_STATS[id];
+  if (mappedStat) {
+    effects.push({
+      kind: "bonus",
+      stat: mappedStat,
+      label: config.bonusLabel,
+      bonusType: config.bonusType,
+      baseBonusValue: config.baseBonusValue,
+      bonusPerLevel: config.bonusPerLevel,
+    });
+  }
+
+  if (id === "uraniumWhiskers") {
+    effects.push({
+      kind: "bonus",
+      stat: "attackDamage",
+      label: "Attack multiplier",
+      bonusType: "multiplier",
+      baseBonusValue: config.meta?.attackBaseBonusValue ?? 1,
+      bonusPerLevel: config.meta?.attackBonusPerLevel ?? 0,
+    });
+  }
+
+  if (
+    typeof config.meta?.armorPenetrationBaseBonusValue === "number" &&
+    typeof config.meta?.armorPenetrationBonusPerLevel === "number"
+  ) {
+    effects.push({
+      kind: "bonus",
+      stat: "armorPenetration",
+      label: "Armor penetration bonus",
+      bonusType: "percent",
+      baseBonusValue: config.meta.armorPenetrationBaseBonusValue,
+      bonusPerLevel: config.meta.armorPenetrationBonusPerLevel,
+    });
+  }
+
+  if (
+    typeof config.meta?.knockbackReductionBaseBonusValue === "number" &&
+    typeof config.meta?.knockbackReductionBonusPerLevel === "number"
+  ) {
+    effects.push({
+      kind: "bonus",
+      stat: "knockbackReduction",
+      label: "Knockback reduction bonus",
+      bonusType: "percent",
+      baseBonusValue: config.meta.knockbackReductionBaseBonusValue,
+      bonusPerLevel: config.meta.knockbackReductionBonusPerLevel,
+    });
+  }
+
+  if (config.appliesEffect) {
+    effects.push({
+      kind: "status",
+      effectId: config.appliesEffect.effectId,
+      target: config.appliesEffect.target,
+      durationMs: config.appliesEffect.durationMs,
+    });
+  }
+
+  if (config.providesAbility) {
+    effects.push({
+      kind: "ability",
+      ability: config.providesAbility,
+    });
+  }
+
+  return effects;
+};
+
+export const getUnitModuleBonusEffects = (id: UnitModuleId): readonly ModuleBonusEffect[] =>
+  getUnitModuleEffects(id).filter(
+    (effect): effect is ModuleBonusEffect => effect.kind === "bonus",
+  );
