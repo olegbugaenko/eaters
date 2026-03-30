@@ -41,6 +41,7 @@ export type UnitModuleBonusStat =
   | "damageTransferPercent"
   | "attackStackPerHit"
   | "abilityPower"
+  | "acceleration"
   | "armorPenetration"
   | "knockbackReduction";
 
@@ -330,7 +331,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     name: "Uranium Whiskers",
     description:
       "Irradiated barbs bloom from the tail core, quickening movement while driving each strike with unstable uranium force.",
-    bonusLabel: "Move speed multiplier",
+    bonusLabel: "Acceleration multiplier",
     bonusType: "multiplier",
     baseBonusValue: 1.4,
     bonusPerLevel: 0.01,
@@ -515,7 +516,7 @@ const MODULE_BONUS_STATS: Partial<Record<UnitModuleId, UnitModuleBonusStat>> = {
   freezingTail: "abilityPower",
   tailNeedles: "abilityPower",
   conductorTentacles: "abilityPower",
-  uraniumWhiskers: "moveSpeed",
+  uraniumWhiskers: "acceleration",
 };
 
 export const getUnitModuleEffects = (id: UnitModuleId): readonly UnitModuleEffect[] => {

@@ -11,6 +11,7 @@ type DesignerState = {
       effective: { maxHp: number; attackDamage: number };
       armor: number;
       moveSpeed: number;
+      moveAcceleration: number;
       armorPenetration: number;
       knockbackReduction: number;
       bonuses?: Array<{ label: string }>;
@@ -68,7 +69,7 @@ describe("Unit module effects are applied in biolab bridge payload", () => {
     );
   });
 
-  test("uranium whiskers increases both attack and move speed", () => {
+  test("uranium whiskers increases both attack and acceleration", () => {
     const { module, designId, getUnit } = createHarness({ uraniumWhiskers: 1 });
     const baseline = getUnit().blueprint;
 
@@ -76,10 +77,10 @@ describe("Unit module effects are applied in biolab bridge payload", () => {
     const boosted = getUnit().blueprint;
 
     assert(boosted.effective.attackDamage > baseline.effective.attackDamage);
-    assert(boosted.moveSpeed > baseline.moveSpeed);
+    assert(boosted.moveAcceleration > baseline.moveAcceleration);
     assert((boosted.organAttackMultiplier ?? 1) > 1);
     const labels = (boosted.bonuses ?? []).map((line) => line.label);
-    assert(labels.includes("Move speed multiplier"));
+    assert(labels.includes("Acceleration multiplier"));
     assert(labels.includes("Attack multiplier"));
   });
 

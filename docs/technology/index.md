@@ -8,3 +8,4 @@
 - [gpu-instanced-effects.md](gpu-instanced-effects.md) — архітектура GPU-рендерерів, життєвий цикл, різні типи примітивів та робота з Transform Feedback.
 - [scene-colors.md](scene-colors.md) — як працюють `SceneColor`/`SceneFill`, санітизація кольорів та версіонування payloads.
 - [joined-gpu-debug.md](joined-gpu-debug.md) — debug‑режим для профайлування GPU‑join примітивів.
+- [movement-and-physics.md](movement-and-physics.md) — як обчислюється рух юнітів (acceleration, drag, cap speed) і чому speed-бонуси можуть проявлятися по-різному.

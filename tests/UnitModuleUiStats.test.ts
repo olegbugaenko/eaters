@@ -78,11 +78,11 @@ describe("Unit module UI stat presentation", () => {
 
     const bonusLines = boostedBlueprint.bonuses ?? [];
     const labels = bonusLines.map((entry: { label: string }) => entry.label);
-    assert(labels.includes("Move speed multiplier"), "uranium move speed bonus should be exposed");
+    assert(labels.includes("Acceleration multiplier"), "uranium acceleration bonus should be exposed");
     assert(labels.includes("Attack multiplier"), "uranium attack bonus should be exposed");
   });
 
-  test("biolab bridge state reflects uranium whiskers attack and move-speed bonuses", () => {
+  test("biolab bridge state reflects uranium whiskers attack and acceleration bonuses", () => {
     let latestState: any = null;
     const module = createUnitDesignModule(
       {
@@ -103,8 +103,8 @@ describe("Unit module UI stat presentation", () => {
 
     const bonusLabels = (unit.blueprint.bonuses ?? []).map((entry: { label: string }) => entry.label);
     assert(
-      bonusLabels.includes("Move speed multiplier"),
-      "bridge state should include uranium move speed bonus line",
+      bonusLabels.includes("Acceleration multiplier"),
+      "bridge state should include uranium acceleration bonus line",
     );
     assert(
       bonusLabels.includes("Attack multiplier"),

@@ -612,6 +612,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     let attackMultiplier = 1;
     let armorMultiplier = 1;
     let moveSpeedMultiplier = 1;
+    let accelerationMultiplier = 1;
     let armorPenetrationBonus = 0;
     let knockbackReductionBonus = 0;
 
@@ -636,6 +637,9 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
           case "moveSpeed":
             moveSpeedMultiplier *= value;
             break;
+          case "acceleration":
+            accelerationMultiplier *= value;
+            break;
           case "armorPenetration":
             armorPenetrationBonus += value;
             break;
@@ -652,6 +656,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     const appliedAttackMultiplier = Math.max(attackMultiplier, 0);
     const appliedArmorMultiplier = Math.max(armorMultiplier, 0);
     const appliedMoveSpeedMultiplier = Math.max(moveSpeedMultiplier, 0);
+    const appliedAccelerationMultiplier = Math.max(accelerationMultiplier, 0);
     const effectiveMaxHp = roundStat(blueprint.effective.maxHp * appliedHpMultiplier);
     const effectiveAttackDamage = roundStat(
       blueprint.effective.attackDamage * appliedAttackMultiplier
@@ -661,6 +666,9 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     );
     const effectiveArmor = roundStat(blueprint.armor * appliedArmorMultiplier);
     const effectiveMoveSpeed = roundStat(blueprint.moveSpeed * appliedMoveSpeedMultiplier);
+    const effectiveMoveAcceleration = roundStat(
+      blueprint.moveAcceleration * appliedAccelerationMultiplier
+    );
 
     return {
       ...blueprint,
@@ -675,6 +683,7 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       hpRegenPerSecond,
       armor: Math.max(effectiveArmor, 0),
       moveSpeed: Math.max(effectiveMoveSpeed, 0),
+      moveAcceleration: Math.max(effectiveMoveAcceleration, 0),
       armorPenetration: Math.max(blueprint.armorPenetration + armorPenetrationBonus, 0),
       knockbackReduction: Math.max(blueprint.knockbackReduction + knockbackReductionBonus, 0),
       bonuses,

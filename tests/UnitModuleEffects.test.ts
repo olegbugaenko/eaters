@@ -32,7 +32,7 @@ describe("Unit module effects contract", () => {
     });
   });
 
-  test("uranium whiskers applies both move speed and attack multipliers", () => {
+  test("uranium whiskers applies both acceleration and attack multipliers", () => {
     const module = createUnitDesignModule();
     const baseBlueprint = (module as any).createBlueprint("bluePentagon", {}, []);
     const blueprint = (module as any).createBlueprint("bluePentagon", {}, [
@@ -52,7 +52,7 @@ describe("Unit module effects contract", () => {
     const uraniumEffects = getUnitModuleBonusEffects("uraniumWhiskers");
     assert.strictEqual(uraniumEffects.length, 2);
     assert(blueprint.effective.attackDamage > baseBlueprint.effective.attackDamage, "attack multiplier should apply");
-    assert(blueprint.moveSpeed > baseBlueprint.moveSpeed, "move speed multiplier should apply");
+    assert(blueprint.moveAcceleration > baseBlueprint.moveAcceleration, "acceleration multiplier should apply");
   });
 
   test("module effects expose extended combat stats for armor penetration and knockback reduction", () => {
