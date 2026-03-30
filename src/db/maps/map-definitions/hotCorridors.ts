@@ -99,7 +99,7 @@ const createChaoticLoopSegments = (
   });
 };
 
-const createInnerLoopWithLeftChamberSegments = (
+const createOuterLoopWithLeftChamberSegments = (
   size: SceneSize,
   inset: number,
   cornerRadius: number,
@@ -112,22 +112,22 @@ const createInnerLoopWithLeftChamberSegments = (
     6,
     1,
     {
-      start: { x: left, y: 1320 },
-      control1: { x: left + 12, y: 1230 },
-      control2: { x: left + 92, y: 1135 },
-      end: { x: left + 150, y: 1080 },
+      start: { x: left, y: 1420 },
+      control1: { x: left - 12, y: 1320 },
+      control2: { x: left - 95, y: 1210 },
+      end: { x: left - 150, y: 1140 },
     },
     {
-      start: { x: left + 150, y: 1080 },
-      control1: { x: left + 240, y: 1020 },
-      control2: { x: left + 240, y: 980 },
-      end: { x: left + 150, y: 920 },
+      start: { x: left - 150, y: 1140 },
+      control1: { x: left - 230, y: 1060 },
+      control2: { x: left - 230, y: 940 },
+      end: { x: left - 150, y: 860 },
     },
     {
-      start: { x: left + 150, y: 920 },
-      control1: { x: left + 92, y: 865 },
-      control2: { x: left + 12, y: 770 },
-      end: { x: left, y: 680 },
+      start: { x: left - 150, y: 860 },
+      control1: { x: left - 95, y: 790 },
+      control2: { x: left - 12, y: 680 },
+      end: { x: left, y: 580 },
     },
   );
 
@@ -155,8 +155,8 @@ const mapConfig = (() => {
     { x: 280, y: 1000 },
   ];
 
-  const outerWallSegments = createChaoticLoopSegments(size, 180, 280, 120);
-  const innerWallSegments = createInnerLoopWithLeftChamberSegments(size, 460, 220, 90);
+  const outerWallSegments = createOuterLoopWithLeftChamberSegments(size, 180, 280, 120);
+  const innerWallSegments = createChaoticLoopSegments(size, 460, 220, 90);
 
   return {
     name: "Hot Corridors",
