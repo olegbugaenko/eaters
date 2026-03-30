@@ -25,6 +25,7 @@ export const UNIT_MODULE_IDS = [
   "freezingTail",
   "tailNeedles",
   "conductorTentacles",
+  "uraniumWhiskers",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -105,6 +106,8 @@ export interface UnitModuleConfig {
     readonly lateralProjectileVisual?: UnitModuleProjectileVisualConfig;
     readonly chainRadius?: number;
     readonly chainJumps?: number;
+    readonly attackBaseBonusValue?: number;
+    readonly attackBonusPerLevel?: number;
   };
 }
 
@@ -278,6 +281,25 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       chainJumps: 3,
     },
   },
+  uraniumWhiskers: {
+    id: "uraniumWhiskers",
+    name: "Uranium Whiskers",
+    description:
+      "Irradiated barbs bloom from the tail core, quickening movement while driving each strike with unstable uranium force.",
+    bonusLabel: "Move speed multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 1.4,
+    bonusPerLevel: 0.01,
+    manaCostMultiplier: 3.0,
+    sanityCost: 0,
+    maxLevel: 10,
+    baseCost: { uranium: 200, organics: 2_000_000 },
+    unlockedBy: [{ type: "skill", id: "radiation_control", level: 1 }],
+    meta: {
+      attackBaseBonusValue: 2.25,
+      attackBonusPerLevel: 0.075,
+    },
+  },
   silverArmor: {
     id: "silverArmor",
     name: "Silver Carapace",
@@ -384,7 +406,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     manaCostMultiplier: 2.6,
     sanityCost: 0,
     maxLevel: 10,
-    baseCost: { magma: 300, organics: 150 },
+    baseCost: { magma: 300, organics: 450000 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "fire_mastery", level: 1 }],
     appliesEffect: {
@@ -406,7 +428,7 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
     manaCostMultiplier: 2.6,
     sanityCost: 0,
     maxLevel: 10,
-    baseCost: { ice: 300, sand: 300 },
+    baseCost: { ice: 300, sand: 800000 },
     lockedForDemo: true,
     unlockedBy: [{ type: "skill", id: "ice_mastery", level: 1 }],
     appliesEffect: {
