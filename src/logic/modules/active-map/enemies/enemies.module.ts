@@ -1085,10 +1085,7 @@ export class EnemiesModule implements GameModule {
           targetPosition: target.position,
           config: {
             ...streamAttack,
-            damageOptions: streamAttack.damageOptions ?? {
-              knockBackDistance: config.knockBackDistance,
-              knockBackSpeed: config.knockBackSpeed,
-            },
+            damageOptions: streamAttack.damageOptions,
           },
           damage: scaledDamage,
           statusEffectOptions: scaledStatusEffectOptions,
