@@ -550,16 +550,21 @@ export class UnitRuntimeController {
         passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
       });
       if (path === null) {
-        return this.buildEnemyFirstFallbackTarget(
-          unit,
-          actorId,
-          enemyById,
-          nearestEnemy,
-          searchState,
-        );
+        searchState.cursor += 1;
+        continue;
       }
       searchState.cursor += 1;
       if (path.goalReached || path.waypoints.length > 0) {
+        const approachPoint = path.waypoints[path.waypoints.length - 1] ?? unit.position;
+        if (
+          this.hasBlockingBrickOnSegment(
+            approachPoint,
+            enemy.position,
+            Math.max(unit.physicalSize * 0.6, 6),
+          )
+        ) {
+          continue;
+        }
         this.navigation.clearActorMemory(
           actorId,
           UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
@@ -661,7 +666,7 @@ export class UnitRuntimeController {
       UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
       nextState,
     );
-    return { target: blockedEnemy, type: "enemy" };
+    return this.findNearestTargetByType(unit.position, "brick");
   }
 
   /**
@@ -861,6 +866,31 @@ export class UnitRuntimeController {
       distanceSquared(closestPoint, brick.position) <=
       combinedRadius * combinedRadius
     );
+  }
+
+  private hasBlockingBrickOnSegment(
+    start: SceneVector2,
+    end: SceneVector2,
+    clearance: number,
+  ): boolean {
+    const corridorCenter = {
+      x: (start.x + end.x) * 0.5,
+      y: (start.y + end.y) * 0.5,
+    };
+    const corridorRadius = Math.max(
+      Math.hypot(end.x - start.x, end.y - start.y) * 0.55 + clearance * 2,
+      clearance * 2,
+    );
+    const candidates = this.bricks.findBricksNear(corridorCenter, corridorRadius);
+    for (const brick of candidates) {
+      if (isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY)) {
+        continue;
+      }
+      if (this.segmentIntersectsBrick(start, end, brick, clearance)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private findNearestTargetByType(
