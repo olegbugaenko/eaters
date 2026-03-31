@@ -548,25 +548,23 @@ export class UnitRuntimeController {
         targetRadius: this.getUnitNavigationTargetRadius(unit, enemy),
         entityRadius: unit.physicalSize,
         passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
-      }, { ignoreBudget: true });
-      searchState.cursor += 1;
-      if (!path) {
+      });
+      if (path === null) {
+        searchState.cursor += 1;
         continue;
       }
-
-      const bodyReachPath = this.navigation.probePath({
-        start: unit.position,
-        target: enemy.position,
-        targetRadius: unit.physicalSize + enemy.physicalSize,
-        entityRadius: unit.physicalSize,
-        passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
-      }, { ignoreBudget: true });
-
-      if (
-        (path.goalReached || path.waypoints.length > 0) &&
-        bodyReachPath &&
-        (bodyReachPath.goalReached || bodyReachPath.waypoints.length > 0)
-      ) {
+      searchState.cursor += 1;
+      if (path.goalReached || path.waypoints.length > 0) {
+        const approachPoint = path.waypoints[path.waypoints.length - 1] ?? unit.position;
+        if (
+          this.hasBlockingBrickOnSegment(
+            approachPoint,
+            enemy.position,
+            Math.max(unit.physicalSize * 0.6, 6),
+          )
+        ) {
+          continue;
+        }
         this.navigation.clearActorMemory(
           actorId,
           UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
@@ -640,7 +638,7 @@ export class UnitRuntimeController {
       this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
       this.findNearestImpassableBrick(
         unit,
-        Math.max(unit.physicalSize * 8, distToEnemy * 0.95),
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
       );
     if (blocker) {
       const nextState: EnemyFirstSearchState = {
@@ -723,7 +721,7 @@ export class UnitRuntimeController {
       this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
       this.findNearestImpassableBrick(
         unit,
-        Math.max(unit.physicalSize * 8, distToEnemy * 0.95),
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
       );
     if (nextBlocker) {
       const nextState: EnemyFirstSearchState = {
@@ -868,6 +866,31 @@ export class UnitRuntimeController {
       distanceSquared(closestPoint, brick.position) <=
       combinedRadius * combinedRadius
     );
+  }
+
+  private hasBlockingBrickOnSegment(
+    start: SceneVector2,
+    end: SceneVector2,
+    clearance: number,
+  ): boolean {
+    const corridorCenter = {
+      x: (start.x + end.x) * 0.5,
+      y: (start.y + end.y) * 0.5,
+    };
+    const corridorRadius = Math.max(
+      Math.hypot(end.x - start.x, end.y - start.y) * 0.55 + clearance * 2,
+      clearance * 2,
+    );
+    const candidates = this.bricks.findBricksNear(corridorCenter, corridorRadius);
+    for (const brick of candidates) {
+      if (isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY)) {
+        continue;
+      }
+      if (this.segmentIntersectsBrick(start, end, brick, clearance)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private findNearestTargetByType(

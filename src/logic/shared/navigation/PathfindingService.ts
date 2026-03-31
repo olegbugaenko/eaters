@@ -11,7 +11,6 @@ const DIAGONAL_COST = Math.SQRT2;
 const SMALL_NUMBER = 1e-3;
 const GRID_CACHE_TTL_MS = 300;
 const MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 1.5;
-const FALLBACK_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 2.5;
 const GLOBAL_OBSTACLE_CACHE_TTL_MS = 50;
 const SEARCH_WINDOW_PADDING_CELLS = 4;
 
@@ -250,10 +249,6 @@ export class PathfindingService {
       pathDistance * MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER + clearance * 2,
       Math.hypot(mapSize.width, mapSize.height)
     );
-    const fallbackCollectionRadius = Math.min(
-      pathDistance * FALLBACK_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER + clearance * 2,
-      Math.hypot(mapSize.width, mapSize.height),
-    );
 
     // Використовуємо глобальний кеш якщо доступний
     const center = {
@@ -267,37 +262,22 @@ export class PathfindingService {
       return { waypoints: [], goalReached: true };
     }
 
+    const bounds = this.getSearchBounds(mapSize, center, collectionRadius);
+    const grid = this.getOrCreateGrid(obstacles, clearance, bounds);
+    const startIndex = this.findNearestWalkableIndex(request.start, grid);
     const expandedGoalRadius = goalRadius + this.cellSize * 0.5;
-    const tryBuildPath = (radius: number): PathResult | null => {
-      const localObstacles = this.getObstaclesInRadius(center, radius, passabilityTag);
-      const bounds = this.getSearchBounds(mapSize, center, radius);
-      const grid = this.getOrCreateGrid(localObstacles, clearance, bounds);
-      const startIndex = this.findNearestWalkableIndex(request.start, grid);
-      if (
-        startIndex < 0 ||
-        !this.hasWalkableGoalCell(request.target, expandedGoalRadius, grid)
-      ) {
-        return null;
-      }
-      const path = this.search(startIndex, grid, request.target, expandedGoalRadius);
-      if (path.length === 0) {
-        return null;
-      }
-      const smoothed = this.smoothPath(path, localObstacles, clearance);
-      return { waypoints: smoothed.slice(1), goalReached: false };
-    };
 
-    const primaryResult = tryBuildPath(collectionRadius);
-    if (primaryResult) {
-      return primaryResult;
+    if (startIndex < 0 || !this.hasWalkableGoalCell(request.target, expandedGoalRadius, grid)) {
+      return { waypoints: [], goalReached: false };
     }
-    if (fallbackCollectionRadius > collectionRadius + SMALL_NUMBER) {
-      const fallbackResult = tryBuildPath(fallbackCollectionRadius);
-      if (fallbackResult) {
-        return fallbackResult;
-      }
+
+    const path = this.search(startIndex, grid, request.target, expandedGoalRadius);
+    if (path.length === 0) {
+      return { waypoints: [], goalReached: false };
     }
-    return { waypoints: [], goalReached: false };
+
+    const smoothed = this.smoothPath(path, obstacles, clearance);
+    return { waypoints: smoothed.slice(1), goalReached: false };
   }
 
   private isLineClear(
@@ -717,3 +697,4 @@ export class PathfindingService {
     return true;
   }
 }
+
