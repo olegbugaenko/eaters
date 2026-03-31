@@ -40,5 +40,8 @@
   },
   "uranium": {
     "name": "Uranium Fields"
+  },
+  "titanium": {
+    "name": "Titanium"
   }
 }

@@ -203,6 +203,10 @@
     "name": "Vitality IV",
     "description": "Use coal to boost creatures body temperature, increase metabolism and increase vitality."
   },
+  "titanium_bones": {
+    "name": "Titanium Bones",
+    "description": "Use titanium to build a powerful skeleton."
+  },
   "arcane_research": {
     "name": "Arcane Research",
     "description": "Document repeatable mana experiments; each insight slightly accelerates regen."
