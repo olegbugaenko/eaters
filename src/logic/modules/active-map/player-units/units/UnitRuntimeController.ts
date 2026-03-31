@@ -548,7 +548,7 @@ export class UnitRuntimeController {
         targetRadius: this.getUnitNavigationTargetRadius(unit, enemy),
         entityRadius: unit.physicalSize,
         passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
-      });
+      }, { ignoreBudget: true });
       if (path === null) {
         return this.buildEnemyFirstFallbackTarget(
           unit,
@@ -633,7 +633,7 @@ export class UnitRuntimeController {
       this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
       this.findNearestImpassableBrick(
         unit,
-        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.95),
       );
     if (blocker) {
       const nextState: EnemyFirstSearchState = {
@@ -661,7 +661,7 @@ export class UnitRuntimeController {
       UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
       nextState,
     );
-    return { target: blockedEnemy, type: "enemy" };
+    return this.findNearestTargetByType(unit.position, "brick");
   }
 
   /**
@@ -716,7 +716,7 @@ export class UnitRuntimeController {
       this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
       this.findNearestImpassableBrick(
         unit,
-        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.95),
       );
     if (nextBlocker) {
       const nextState: EnemyFirstSearchState = {
