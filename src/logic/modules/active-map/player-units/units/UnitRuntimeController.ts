@@ -549,17 +549,24 @@ export class UnitRuntimeController {
         entityRadius: unit.physicalSize,
         passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
       }, { ignoreBudget: true });
-      if (path === null) {
-        return this.buildEnemyFirstFallbackTarget(
-          unit,
-          actorId,
-          enemyById,
-          nearestEnemy,
-          searchState,
-        );
-      }
       searchState.cursor += 1;
-      if (path.goalReached || path.waypoints.length > 0) {
+      if (!path) {
+        continue;
+      }
+
+      const bodyReachPath = this.navigation.probePath({
+        start: unit.position,
+        target: enemy.position,
+        targetRadius: unit.physicalSize + enemy.physicalSize,
+        entityRadius: unit.physicalSize,
+        passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
+      }, { ignoreBudget: true });
+
+      if (
+        (path.goalReached || path.waypoints.length > 0) &&
+        bodyReachPath &&
+        (bodyReachPath.goalReached || bodyReachPath.waypoints.length > 0)
+      ) {
         this.navigation.clearActorMemory(
           actorId,
           UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
