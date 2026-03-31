@@ -1,5 +1,9 @@
 import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
-import { UNIT_MODULE_IDS, UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
+import {
+  getUnitModuleBonusEffects,
+  UnitModuleId,
+  getUnitModuleConfig,
+} from "../../../../db/unit-modules-db";
 import { UnitDesignerAvailableModuleState } from "./unit-design.types";
 import { computeModuleValue } from "./unit-design.helpers";
 import type { LocalizationService } from "@logic/services/localization/LocalizationService";
@@ -32,20 +36,36 @@ export class UnitDesignerAvailableModuleFactory extends StateFactory<
         bonusLabel: config.bonusLabel,
       };
 
-    const bonusValue = computeModuleValue(
-      config.bonusType,
-      config.baseBonusValue,
-      config.bonusPerLevel,
-      level
-    );
+    const bonusLines = getUnitModuleBonusEffects(input.moduleId).map((effect) => ({
+      label: effect.label,
+      bonusType: effect.bonusType,
+      bonusValue: computeModuleValue(
+        effect.bonusType,
+        effect.baseBonusValue,
+        effect.bonusPerLevel,
+        level
+      ),
+    }));
+    const primary = bonusLines[0] ?? {
+      label: localized.bonusLabel,
+      bonusType: config.bonusType,
+      bonusValue: computeModuleValue(
+        config.bonusType,
+        config.baseBonusValue,
+        config.bonusPerLevel,
+        level
+      ),
+    };
+
     return {
       id: input.moduleId,
       name: localized.name,
       description: localized.description,
       level,
-      bonusLabel: localized.bonusLabel,
-      bonusType: config.bonusType,
-      bonusValue,
+      bonusLabel: primary.label,
+      bonusType: primary.bonusType,
+      bonusValue: primary.bonusValue,
+      bonusLines,
       manaCostMultiplier: config.manaCostMultiplier,
       sanityCost: config.sanityCost,
     };

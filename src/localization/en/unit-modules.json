@@ -72,6 +72,6 @@
   "uraniumWhiskers": {
     "name": "Uranium Whiskers",
     "description": "Irradiated barbs bloom from the tail core, quickening movement while driving each strike with unstable uranium force.",
-    "bonusLabel": "Move speed multiplier"
+    "bonusLabel": "Acceleration multiplier"
   }
 }

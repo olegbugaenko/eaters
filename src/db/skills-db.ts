@@ -79,6 +79,7 @@ export const SKILL_IDS = [
   "wire_crafting",
   "vitality3",
   "vitality4",
+  "titanium_bones",
   "arcane_research",
   "paper_milling",
   "restoration",
@@ -1347,6 +1348,21 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     },
     nodesRequired: { vitality3: 5 },
     cost: createResourceCost("coal", 150, 1.5),
+  },
+  titanium_bones: {
+    id: "titanium_bones",
+    name: "Titanium Bones",
+    description: "Use titanium to build a powerful skeleton.",
+    nodePosition: { x: 9, y: -1 },
+    maxLevel: 15,
+    lockedForDemo: true,
+    effects: {
+      all_units_hp_multiplier: {
+        multiplier: (level) => 1 + 0.08 * level,
+      },
+    },
+    nodesRequired: { vitality4: 5 },
+    cost: createResourceCost("titanium", 50, 1.5),
   },
   paper_milling: {
     id: "paper_milling",

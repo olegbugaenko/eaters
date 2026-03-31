@@ -11,6 +11,7 @@ interface ModuleDetailsCardProps {
   description: string;
   effectLabel: string;
   currentEffect: string;
+  effectRows?: readonly { label: string; value: string; nextValue?: string | null }[];
   nextEffect?: string | null;
   manaMultiplier: number;
   sanityCost: number;
@@ -26,6 +27,7 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
   description,
   effectLabel,
   currentEffect,
+  effectRows,
   nextEffect,
   manaMultiplier,
   sanityCost,
@@ -58,27 +60,51 @@ export const ModuleDetailsCard: React.FC<ModuleDetailsCardProps> = ({
         <h4>
           {nextEffect ? t("voidCamp.common.bonuses", "Bonuses") : effectTitle}
         </h4>
-        <div className="modules-workshop__effect-preview">
-          <span className="modules-workshop__effect-label">{effectLabel}</span>
-          <span className="modules-workshop__effect-values">
-            <span className="modules-workshop__effect-current">
-              {currentEffect}
+        {effectRows && effectRows.length > 0 ? (
+          effectRows.map((row) => (
+            <div className="modules-workshop__effect-preview" key={row.label}>
+              <span className="modules-workshop__effect-label">{row.label}</span>
+              <span className="modules-workshop__effect-values">
+                <span className="modules-workshop__effect-current">{row.value}</span>
+                {row.nextValue ? (
+                  <>
+                    <span
+                      className="modules-workshop__effect-arrow"
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
+                    <span className="modules-workshop__effect-next">
+                      {row.nextValue}
+                    </span>
+                  </>
+                ) : null}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="modules-workshop__effect-preview">
+            <span className="modules-workshop__effect-label">{effectLabel}</span>
+            <span className="modules-workshop__effect-values">
+              <span className="modules-workshop__effect-current">
+                {currentEffect}
+              </span>
+              {nextEffect ? (
+                <>
+                  <span
+                    className="modules-workshop__effect-arrow"
+                    aria-hidden="true"
+                  >
+                    →
+                  </span>
+                  <span className="modules-workshop__effect-next">
+                    {nextEffect}
+                  </span>
+                </>
+              ) : null}
             </span>
-            {nextEffect ? (
-              <>
-                <span
-                  className="modules-workshop__effect-arrow"
-                  aria-hidden="true"
-                >
-                  →
-                </span>
-                <span className="modules-workshop__effect-next">
-                  {nextEffect}
-                </span>
-              </>
-            ) : null}
-          </span>
-        </div>
+          </div>
+        )}
       </div>
       <div className="modules-workshop__details-section">
         <h4>{t("voidCamp.moduleDetails.unitCosts", "Unit Costs")}</h4>

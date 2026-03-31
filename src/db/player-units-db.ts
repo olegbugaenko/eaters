@@ -384,11 +384,29 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           { epsilon: 0.25, winding: "CCW" }
         ),
         ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: -9, y: 0, width: 1.8 }, { x: -13, y: 7, width: 1.5 }, { x: -18, y: 8, width: 0.9 }, { x: -23, y: 12, width: 0.4 } ],
+          {
+            requiresModule: "uraniumWhiskers",
+            fill: { type: "base", brightness: -0.1 },
+            anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 0.2 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
           [ { x: -9, y: 0, width: 1.8 }, { x: -12, y: -9, width: 1.5 }, { x: -16, y: -11, width: 0.9 }, { x: -20, y: -18, width: 0.4 } ],
           {
             requiresModule: "uraniumWhiskers",
             fill: { type: "base", brightness: -0.1 },
             anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 0.2 + 3.14 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: -9, y: 0, width: 1.8 }, { x: -13, y: -7, width: 1.5 }, { x: -18, y: -8, width: 0.9 }, { x: -23, y: -12, width: 0.4 } ],
+          {
+            requiresModule: "uraniumWhiskers",
+            fill: { type: "base", brightness: -0.1 },
+            anim: { type: "sway", periodMs: 1320, amplitude: 2.4, falloff: "tip", axis: "normal", phase: 0.2 },
           },
           { epsilon: 0.25, winding: "CCW" }
         ),

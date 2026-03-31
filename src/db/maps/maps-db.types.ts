@@ -53,7 +53,8 @@ export type MapId =
   | "twinbladeAxe"
   | "automobile"
   | "agressiveClock"
-  | "uranium_fields";
+  | "uranium_fields"
+  | "shieldOfTitans";
 
 export interface MapBrickGeneratorOptions {
   readonly mapLevel: number;

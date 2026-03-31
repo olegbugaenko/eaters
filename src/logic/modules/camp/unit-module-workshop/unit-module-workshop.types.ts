@@ -15,6 +15,12 @@ export interface UnitModuleWorkshopItemState {
   readonly baseBonusValue: number;
   readonly bonusPerLevel: number;
   readonly currentBonusValue: number;
+  readonly bonusLines: readonly {
+    label: string;
+    bonusType: UnitModuleBonusType;
+    currentBonusValue: number;
+    nextBonusValue: number | null;
+  }[];
   readonly manaCostMultiplier: number;
   readonly sanityCost: number;
   readonly level: number;

@@ -10,6 +10,8 @@ import type { MapStats } from "../src/logic/modules/active-map/map/map.types";
 import { UnlockService } from "../src/logic/services/unlock/UnlockService";
 import { NewUnlockNotificationService } from "../src/logic/services/new-unlock-notification/NewUnlockNotification";
 import type { ResourcesModule } from "../src/logic/modules/shared/resources/resources.module";
+import { UnitModuleStateFactory } from "../src/logic/modules/camp/unit-module-workshop/unit-module-workshop.state-factory";
+import { createEmptyResourceStockpile } from "../src/db/resources-db";
 
 describe("UnitModuleWorkshopModule", () => {
   test("hides locked modules until unlock conditions are met", () => {
@@ -68,6 +70,29 @@ describe("UnitModuleWorkshopModule", () => {
     assert.deepStrictEqual(
       unlockedState.modules.map((item: { id: string }) => item.id),
       ["magnet", "perforator", "vitalHull", "ironForge"]
+    );
+  });
+
+  test("builds multi-effect bonus lines for uranium whiskers", () => {
+    const factory = new UnitModuleStateFactory();
+    const state = factory.create({
+      id: "uraniumWhiskers",
+      level: 1,
+      getUpgradeCost: () => {
+        const cost = createEmptyResourceStockpile();
+        cost.stone = 10;
+        return cost;
+      },
+    });
+
+    assert.strictEqual(state.bonusLines.length, 2);
+    assert.deepStrictEqual(
+      state.bonusLines.map((line) => line.label),
+      ["Acceleration multiplier", "Attack multiplier"]
+    );
+    assert.deepStrictEqual(
+      state.bonusLines.map((line) => line.nextBonusValue),
+      [1.41, 2.325]
     );
   });
 });

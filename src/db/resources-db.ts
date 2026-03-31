@@ -16,7 +16,8 @@ export type ResourceId =
   | "wire"
   | "ice"
   | "magma"
-  | "uranium";
+  | "uranium"
+  | "titanium";
 
 export interface ResourceConfig {
   readonly id: ResourceId;
@@ -183,6 +184,19 @@ const RESOURCE_DB: Record<ResourceId, ResourceConfig> = {
       {
         type: "map",
         id: "mine",
+        level: 1,
+      },
+    ],
+  },
+  titanium: {
+    id: "titanium",
+    name: "Titanium",
+    description: "Dense alloy salvaged from titanic shield-forges.",
+    lockedForDemo: true,
+    unlockedBy: [
+      {
+        type: "map",
+        id: "frozenForest",
         level: 1,
       },
     ],

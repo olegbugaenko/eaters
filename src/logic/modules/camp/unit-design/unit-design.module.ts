@@ -10,6 +10,7 @@ import {
 import {
   UNIT_MODULE_IDS,
   UnitModuleId,
+  getUnitModuleBonusEffects,
   getUnitModuleConfig,
 } from "../../../../db/unit-modules-db";
 import { BonusesModule } from "../../shared/bonuses/bonuses.module";
@@ -604,46 +605,58 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     modules: readonly UnitDesignModuleDetail[]
   ): PlayerUnitBlueprintStats {
     const blueprint = computePlayerUnitBlueprint(type, bonusValues);
-    const bonuses: PlayerUnitBonusLine[] = modules.map((detail) =>
-      this.createBonusLine(detail)
+    const bonuses: PlayerUnitBonusLine[] = modules.flatMap((detail) =>
+      this.createBonusLines(detail)
     );
     let hpMultiplier = 1;
     let attackMultiplier = 1;
     let armorMultiplier = 1;
     let moveSpeedMultiplier = 1;
+    let accelerationMultiplier = 1;
+    let armorPenetrationBonus = 0;
+    let knockbackReductionBonus = 0;
 
     modules.forEach((detail) => {
-      switch (detail.id) {
-        case "vitalHull":
-          hpMultiplier *= Math.max(detail.bonusValue, 0);
-          break;
-        case "ironForge":
-          attackMultiplier *= Math.max(detail.bonusValue, 0);
-          break;
-        case "silverArmor":
-          armorMultiplier *= Math.max(detail.bonusValue, 0);
-          break;
-        case "uraniumWhiskers": {
-          const config = getUnitModuleConfig(detail.id);
-          const level = Math.max(detail.level, 1);
-          const attackBase = Math.max(config.meta?.attackBaseBonusValue ?? 1, 0);
-          const attackPerLevel = Math.max(config.meta?.attackBonusPerLevel ?? 0, 0);
-          moveSpeedMultiplier *= Math.max(detail.bonusValue, 0);
-          attackMultiplier *= Math.max(
-            attackBase + attackPerLevel * Math.max(level - 1, 0),
-            0,
-          );
-          break;
+      const level = Math.max(detail.level, 1);
+      const effects = getUnitModuleBonusEffects(detail.id);
+      effects.forEach((effect) => {
+        const value = Math.max(
+          effect.baseBonusValue + effect.bonusPerLevel * Math.max(level - 1, 0),
+          0,
+        );
+        switch (effect.stat) {
+          case "maxHp":
+            hpMultiplier *= value;
+            break;
+          case "attackDamage":
+            attackMultiplier *= value;
+            break;
+          case "armor":
+            armorMultiplier *= value;
+            break;
+          case "moveSpeed":
+            moveSpeedMultiplier *= value;
+            break;
+          case "acceleration":
+            accelerationMultiplier *= value;
+            break;
+          case "armorPenetration":
+            armorPenetrationBonus += value;
+            break;
+          case "knockbackReduction":
+            knockbackReductionBonus += value;
+            break;
+          default:
+            break;
         }
-        default:
-          break;
-      }
+      });
     });
 
     const appliedHpMultiplier = Math.max(hpMultiplier, 0);
     const appliedAttackMultiplier = Math.max(attackMultiplier, 0);
     const appliedArmorMultiplier = Math.max(armorMultiplier, 0);
     const appliedMoveSpeedMultiplier = Math.max(moveSpeedMultiplier, 0);
+    const appliedAccelerationMultiplier = Math.max(accelerationMultiplier, 0);
     const effectiveMaxHp = roundStat(blueprint.effective.maxHp * appliedHpMultiplier);
     const effectiveAttackDamage = roundStat(
       blueprint.effective.attackDamage * appliedAttackMultiplier
@@ -653,6 +666,9 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
     );
     const effectiveArmor = roundStat(blueprint.armor * appliedArmorMultiplier);
     const effectiveMoveSpeed = roundStat(blueprint.moveSpeed * appliedMoveSpeedMultiplier);
+    const effectiveMoveAcceleration = roundStat(
+      blueprint.moveAcceleration * appliedAccelerationMultiplier
+    );
 
     return {
       ...blueprint,
@@ -667,64 +683,82 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
       hpRegenPerSecond,
       armor: Math.max(effectiveArmor, 0),
       moveSpeed: Math.max(effectiveMoveSpeed, 0),
+      moveAcceleration: Math.max(effectiveMoveAcceleration, 0),
+      armorPenetration: Math.max(blueprint.armorPenetration + armorPenetrationBonus, 0),
+      knockbackReduction: Math.max(blueprint.knockbackReduction + knockbackReductionBonus, 0),
       bonuses,
       organAttackMultiplier: appliedAttackMultiplier,
     };
   }
 
-  private createBonusLine(detail: UnitDesignModuleDetail): PlayerUnitBonusLine {
+  private createBonusLines(detail: UnitDesignModuleDetail): PlayerUnitBonusLine[] {
+    const level = Math.max(detail.level, 1);
+    const effects = getUnitModuleBonusEffects(detail.id);
+    if (effects.length > 0) {
+      return effects.map((effect) => {
+        const value = Math.max(
+          effect.baseBonusValue + effect.bonusPerLevel * Math.max(level - 1, 0),
+          0,
+        );
+        return {
+          label: effect.label,
+          value,
+          format: effect.bonusType === "percent" ? "percent" : "multiplier",
+        };
+      });
+    }
+
     switch (detail.id) {
       case "magnet":
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "multiplier",
-        };
+        }];
       case "soulMagnet":
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
-        };
+        }];
       case "perforator":
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
           hint: this.localization.tUi("voidCamp.unitBonuses.withinUnits", "within {{value}} units").replace("{{value}}", String(PERFORATOR_RADIUS)),
-        };
+        }];
       case "silverArmor":
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "multiplier",
-        };
+        }];
       case "burningTail":
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
           hint: this.localization.tUi("voidCamp.unitBonuses.appliesForSeconds", "Applies for {{value}}s").replace("{{value}}", "4"),
-        };
+        }];
       case "freezingTail": {
         const divisor = Math.max(detail.bonusValue, 0);
-        return {
+        return [{
           label: detail.bonusLabel,
           value: divisor,
           format: "multiplier",
           hint: this.localization.tUi("voidCamp.unitBonuses.dividesEnemyDamageSeconds", "Divides enemy damage for {{value}}s").replace("{{value}}", "4"),
-        };
+        }];
       }
       case "internalFurnace": {
-        const level = Math.max(detail.level, 1);
         const capPercent = Math.max(1 + 0.1 * (level - 1), 0) * 100;
         const roundedCap = Math.round(capPercent * 10) / 10;
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
           hint: this.localization.tUi("voidCamp.unitBonuses.stacksUpToAttack", "Stacks up to +{{value}}% attack").replace("{{value}}", String(roundedCap)),
-        };
+        }];
       }
       case "conductorTentacles": {
         const meta = getUnitModuleConfig(detail.id).meta;
@@ -737,36 +771,19 @@ export class UnitDesignModule extends BaseGameModule<UnitDesignerListener> {
         if (radius > 0) {
           hintParts.push(this.localization.tUi("voidCamp.unitBonuses.withinUnits", "within {{value}} units").replace("{{value}}", String(radius)));
         }
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: "percent",
           hint: hintParts.length > 0 ? hintParts.join(", ") : undefined,
-        };
-      }
-      case "uraniumWhiskers": {
-        const config = getUnitModuleConfig(detail.id);
-        const level = Math.max(detail.level, 1);
-        const attackValue = Math.max(
-          (config.meta?.attackBaseBonusValue ?? 1) +
-            (config.meta?.attackBonusPerLevel ?? 0) * Math.max(level - 1, 0),
-          0,
-        );
-        return {
-          label: detail.bonusLabel,
-          value: detail.bonusValue,
-          format: "multiplier",
-          hint: this.localization
-            .tUi("voidCamp.unitBonuses.attackMultiplier", "Attack multiplier ×{{value}}")
-            .replace("{{value}}", String(Math.round(attackValue * 1000) / 1000)),
-        };
+        }];
       }
       default:
-        return {
+        return [{
           label: detail.bonusLabel,
           value: detail.bonusValue,
           format: detail.bonusType === "percent" ? "percent" : "multiplier",
-        };
+        }];
     }
   }
 

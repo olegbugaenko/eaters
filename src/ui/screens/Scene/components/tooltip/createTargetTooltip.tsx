@@ -16,6 +16,7 @@ import {
 import { formatEffectApplicationStats } from "@db/status-effects-db.helpers";
 import {
   getUnitModuleConfig,
+  getUnitModuleEffects,
   UNIT_MODULE_IDS,
   type UnitModuleId,
   type ModuleAbilityType,
@@ -331,9 +332,13 @@ const buildUnitModuleEffectStats = (
 
     const moduleConfig = getUnitModuleConfig(moduleId);
 
-    // Handle status effects the module can apply
-    if (moduleConfig.appliesEffect) {
-      const { effectId, durationMs } = moduleConfig.appliesEffect;
+    const moduleEffects = getUnitModuleEffects(moduleId);
+
+    moduleEffects.forEach((moduleEffect) => {
+      if (moduleEffect.kind !== "status") {
+        return;
+      }
+      const { effectId, durationMs } = moduleEffect;
       const effectConfig = getStatusEffectConfig(effectId);
 
       // Calculate the effect bonus based on module level
@@ -364,11 +369,13 @@ const buildUnitModuleEffectStats = (
           stats.push({ label: stat.label, value: stat.value, nested: true });
         });
       }
-    }
+    });
 
-    // Handle abilities the module provides (like healing)
-    if (moduleConfig.providesAbility) {
-      const ability = moduleConfig.providesAbility;
+    moduleEffects.forEach((moduleEffect) => {
+      if (moduleEffect.kind !== "ability") {
+        return;
+      }
+      const ability = moduleEffect.ability;
       const abilityStats = formatAbilityStats(
         ability.type,
         moduleConfig,
@@ -385,7 +392,7 @@ const buildUnitModuleEffectStats = (
           stats.push({ label: stat.label, value: stat.value, nested: true });
         });
       }
-    }
+    });
   }
 
   return stats;

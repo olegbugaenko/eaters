@@ -35,7 +35,8 @@ export type BrickType =
   | "darkMatterBrick"
   | "floodedArch"
   | "megaBrick"
-  | "uraniumBrick";
+  | "uraniumBrick"
+  | "titaniumBrick";
 
 export interface BrickConfig {
   name?: string;
@@ -151,6 +152,13 @@ const URANIUM_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
   { offset: 0, color: { r: 0.8, g: 0.7, b: 0.5, a: 1 } },
   { offset: 0.4, color: { r: 0.55, g: 0.65, b: 0.45, a: 1 } },
   { offset: 1, color: { r: 0.35, g: 0.45, b: 0.16, a: 1 } },
+] as const;
+
+/** Yellow-grey titanium metal */
+const TITANIUM_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
+  { offset: 0, color: { r: 0.95, g: 0.92, b: 0.72, a: 1 } },
+  { offset: 0.45, color: { r: 0.78, g: 0.76, b: 0.58, a: 1 } },
+  { offset: 1, color: { r: 0.52, g: 0.52, b: 0.48, a: 1 } },
 ] as const;
 
 const MAGMA_RADIAL_GRADIENT: readonly SceneGradientStop[] = [
@@ -803,6 +811,41 @@ const BRICK_DB: Record<BrickType, BrickConfig> = {
     },
     rewards: {
       uranium: 0.1,
+    },
+  },
+  titaniumBrick: {
+    size: { width: 30, height: 30 },
+    fill: {
+      fillType: FILL_TYPES.RADIAL_GRADIENT,
+      start: { x: 0, y: 0 },
+      end: 28,
+      stops: TITANIUM_RADIAL_GRADIENT,
+      noise: {
+        colorAmplitude: 0.04,
+        alphaAmplitude: 0.0,
+        scale: 0.14,
+      },
+    },
+    stroke: { color: { r: 0.45, g: 0.44, b: 0.38, a: 1 }, width: 2.2 },
+    destructubleData: {
+      maxHp: 750_000,
+      armor: 30000,
+      baseDamage: 30_000,
+      knockBackDistance: 180,
+      knockBackSpeed: 260,
+      brickKnockBackAmplitude: 4,
+      physicalSize: 20,
+      damageExplosion: {
+        type: "grayBrickHit",
+        radiusMultiplier: 0.85,
+      },
+      destructionExplosion: {
+        type: "grayBrickDestroy",
+        radiusMultiplier: 1.15,
+      },
+    },
+    rewards: {
+      titanium: 0.1,
     },
   },
   smallMagma: {

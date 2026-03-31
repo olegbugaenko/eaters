@@ -1,5 +1,9 @@
 import { StateFactory } from "@/core/logic/provided/factories/StateFactory";
-import { UnitModuleId, getUnitModuleConfig } from "../../../../db/unit-modules-db";
+import {
+  UnitModuleId,
+  getUnitModuleBonusEffects,
+  getUnitModuleConfig,
+} from "../../../../db/unit-modules-db";
 import { ResourceStockpile } from "../../../../db/resources-db";
 import { UnitModuleWorkshopItemState } from "./unit-module-workshop.types";
 import { computeBonusValue, getMaxLevel, toRecord } from "./unit-module-workshop.helpers";
@@ -44,6 +48,18 @@ export class UnitModuleStateFactory extends StateFactory<
       description: config.description,
       bonusLabel: config.bonusLabel,
     };
+    const bonusLines = getUnitModuleBonusEffects(input.id).map((effect) => ({
+      label: effect.label,
+      bonusType: effect.bonusType,
+      currentBonusValue: computeBonusValue(
+        effect.baseBonusValue,
+        effect.bonusPerLevel,
+        input.level
+      ),
+      nextBonusValue: maxed
+        ? null
+        : computeBonusValue(effect.baseBonusValue, effect.bonusPerLevel, input.level + 1),
+    }));
 
     return {
       id: input.id,
@@ -58,6 +74,7 @@ export class UnitModuleStateFactory extends StateFactory<
         config.bonusPerLevel,
         input.level
       ),
+      bonusLines,
       manaCostMultiplier: config.manaCostMultiplier,
       sanityCost: config.sanityCost,
       level: input.level,
