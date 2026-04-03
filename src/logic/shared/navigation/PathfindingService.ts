@@ -13,7 +13,8 @@ const GRID_CACHE_TTL_MS = 300;
 const MAX_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 1.5;
 const FALLBACK_OBSTACLE_COLLECTION_RADIUS_MULTIPLIER = 2.5;
 const GLOBAL_OBSTACLE_CACHE_TTL_MS = 50;
-const SEARCH_WINDOW_PADDING_CELLS = 4;
+const SEARCH_WINDOW_PADDING_CELLS = 0;
+const SMOOTHING_SAFETY_PADDING_PX = 5;
 
 const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
   const dx = a.x - b.x;
@@ -284,6 +285,7 @@ export class PathfindingService {
         return null;
       }
       const smoothed = this.smoothPath(path, localObstacles, clearance);
+      // console.log('path', smoothed, localObstacles, request, bounds);
       return { waypoints: smoothed.slice(1), goalReached: false };
     };
 
@@ -705,12 +707,11 @@ export class PathfindingService {
     obstacles: readonly ObstacleDescriptor[],
     clearance: number,
   ): boolean {
-    const combinedClearanceSq = clearance * clearance;
     for (const obstacle of obstacles) {
-      const expanded = obstacle.radius + clearance;
+      const expanded = obstacle.radius + clearance + SMOOTHING_SAFETY_PADDING_PX;
       const projection = this.projectPointOnSegment(start, end, obstacle.position);
       const distSq = distanceSquared(projection, obstacle.position);
-      if (distSq <= expanded * expanded - combinedClearanceSq + SMALL_NUMBER) {
+      if (distSq <= expanded * expanded) {
         return false;
       }
     }

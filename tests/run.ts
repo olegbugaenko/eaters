@@ -55,6 +55,7 @@ import "./ExplosionModule.test";
 import "./GameLoop.test";
 import "./BricksModule.test";
 import "./PlayerUnitsModule.test";
+import "./UnitRuntimeController.enemy-first.test";
 import "./MapModule.test";
 import "./UnitAutomationModule.test";
 import "./Application.test";

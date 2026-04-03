@@ -26,6 +26,7 @@ export const UNIT_MODULE_IDS = [
   "tailNeedles",
   "conductorTentacles",
   "uraniumWhiskers",
+  "titaniumExoskeleton",
 ] as const;
 
 export type UnitModuleId = (typeof UNIT_MODULE_IDS)[number];
@@ -326,6 +327,26 @@ const UNIT_MODULE_DB: Record<UnitModuleId, UnitModuleConfig> = {
       chainJumps: 3,
     },
   },
+  titaniumExoskeleton: {
+    id: "titaniumExoskeleton",
+    name: "Titanium Exoskeleton",
+    description:
+      "A lattice of titanium struts braces the body—massive vitality paired with deadened recoil when blows land.",
+    bonusLabel: "Max HP multiplier",
+    bonusType: "multiplier",
+    baseBonusValue: 2.25,
+    bonusPerLevel: 0.075,
+    manaCostMultiplier: 3.0,
+    sanityCost: 0,
+    maxLevel: 10,
+    baseCost: { titanium: 120, stone: 1200 },
+    lockedForDemo: true,
+    unlockedBy: [{ type: "skill", id: "titanium_fibers", level: 1 }],
+    meta: {
+      knockbackReductionBaseBonusValue: 0.2,
+      knockbackReductionBonusPerLevel: 0.01,
+    },
+  },
   uraniumWhiskers: {
     id: "uraniumWhiskers",
     name: "Uranium Whiskers",
@@ -517,6 +538,7 @@ const MODULE_BONUS_STATS: Partial<Record<UnitModuleId, UnitModuleBonusStat>> = {
   tailNeedles: "abilityPower",
   conductorTentacles: "abilityPower",
   uraniumWhiskers: "acceleration",
+  titaniumExoskeleton: "maxHp",
 };
 
 export const getUnitModuleEffects = (id: UnitModuleId): readonly UnitModuleEffect[] => {

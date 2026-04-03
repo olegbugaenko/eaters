@@ -699,7 +699,7 @@ export class PlayerUnitsModule implements GameModule {
 
     this.scene.updateObject(unit.objectId, {
       position: { ...unit.position },
-      rotation: unit.rotation,
+      rotation: unit.visualRotation,
       ...(fillUpdate ? { fill: fillUpdate } : {}),
       ...(strokeUpdate ? { stroke: strokeUpdate } : {}),
     });
@@ -948,6 +948,7 @@ export class PlayerUnitsModule implements GameModule {
       position: { ...unit.position },
       spawnPosition: { ...unit.spawnPosition },
       preCollisionVelocity: { ...unit.preCollisionVelocity },
+      lastSteeringForce: { ...unit.lastSteeringForce },
       lastNonZeroVelocity: { ...unit.lastNonZeroVelocity },
       wanderTarget: unit.wanderTarget ? { ...unit.wanderTarget } : null,
     };

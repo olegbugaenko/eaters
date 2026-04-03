@@ -17,6 +17,7 @@ export interface PlayerUnitState {
   spawnPosition: SceneVector2;
   movementId: string;
   rotation: number;
+  visualRotation: number;
   hp: number;
   maxHp: number;
   armor: number;
@@ -41,6 +42,7 @@ export interface PlayerUnitState {
   attackStackBonusCap: number;
   attackCooldown: number;
   preCollisionVelocity: SceneVector2;
+  lastSteeringForce: SceneVector2;
   lastNonZeroVelocity: SceneVector2;
   targetBrickId: string | null;
   targetingMode: UnitTargetingMode;

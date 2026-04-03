@@ -69,6 +69,11 @@
     "description": "Copper-filamented feelers discharge volatile surges that leap between nearby masonry and foes.",
     "bonusLabel": "Chain lightning damage"
   },
+  "titaniumExoskeleton": {
+    "name": "Titanium Exoskeleton",
+    "description": "A lattice of titanium struts braces the body—massive vitality paired with deadened recoil when blows land.",
+    "bonusLabel": "Max HP multiplier"
+  },
   "uraniumWhiskers": {
     "name": "Uranium Whiskers",
     "description": "Irradiated barbs bloom from the tail core, quickening movement while driving each strike with unstable uranium force.",

@@ -411,7 +411,23 @@ const PLAYER_UNITS_DB: Record<PlayerUnitType, PlayerUnitConfig> = {
           { epsilon: 0.25, winding: "CCW" }
         ),
         
-
+        // Titanium exoskeleton
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: -2, y: 0, width: 2.8 }, { x: -2, y: 5, width: 2.5 }, { x: 2, y: 9, width: 1.9 }, { x: -5, y: 11, width: 1.4 }, { x: -10, y: 8, width: 0.8 } ],
+          {
+            requiresModule: "titaniumExoskeleton",
+            fill: { type: "base", brightness: 0.05, saturationShift: -0.15 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
+        ...mapLineToPolygonShape<Omit<PlayerUnitRendererLayerConfig, "shape" | "vertices">>(
+          [ { x: -2, y: 0, width: 2.8 }, { x: -2, y: -5, width: 2.5 }, { x: 2, y: -9, width: 1.9 }, { x: -5, y: -11, width: 1.4 }, { x: -10, y: -8, width: 0.8 } ],
+          {
+            requiresModule: "titaniumExoskeleton",
+            fill: { type: "base", brightness: 0.05, saturationShift: -0.15 },
+          },
+          { epsilon: 0.25, winding: "CCW" }
+        ),
 
         // Tail needles (long quills anchored at the chord tip)
         { shape: "polygon", requiresModule: "tailNeedles",

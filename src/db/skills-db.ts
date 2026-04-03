@@ -49,6 +49,7 @@ export const SKILL_IDS = [
   "tail_spines",
   "pheromones",
   "ice_mastery",
+  "titanium_fibers",
   "fire_mastery",
   "radiation_control",
   "emberglass_reactors",
@@ -476,6 +477,18 @@ const SKILL_DB: Record<SkillId, SkillConfig> = {
     lockedForDemo: true,
     effects: {},
     cost: createResourceCost("ice", 400, 1),
+  },
+  titanium_fibers: {
+    id: "titanium_fibers",
+    name: "Titanium Fibers",
+    description:
+      "Weave high-tensile strands through the chord—unlock the Titanium Exoskeleton organ for immense durability and stability under impact.",
+    nodePosition: { x: 3, y: 5 },
+    nodesRequired: { ice_mastery: 1 },
+    maxLevel: 1,
+    lockedForDemo: true,
+    effects: {},
+    cost: createResourceCost("titanium", 500, 1),
   },
   fire_mastery: {
     id: "fire_mastery",

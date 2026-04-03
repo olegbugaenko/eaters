@@ -99,6 +99,10 @@
     "name": "Ice Mastery",
     "description": "Master the art of ice magic, allowing you to freeze enemies."
   },
+  "titanium_fibers": {
+    "name": "Titanium Fibers",
+    "description": "Weave high-tensile strands through the chord—unlock the Titanium Exoskeleton organ for immense durability and stability under impact."
+  },
   "fire_mastery": {
     "name": "Fire Mastery",
     "description": "Master the art of fire magic."

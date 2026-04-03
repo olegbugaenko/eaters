@@ -109,6 +109,8 @@ const distanceSquared = (a: SceneVector2, b: SceneVector2): number => {
 export class UnitRuntimeController {
   private static readonly PLAYER_UNIT_PASSABILITY: PassabilityTag = "playerUnit";
   private static readonly ENEMY_FIRST_SEARCH_MEMORY_KEY = "enemy-first-search";
+  private static readonly OPPORTUNITY_CHECK_KEY = "opportunity-check-ms";
+  private static readonly OPPORTUNITY_CHECK_INTERVAL_MS = 300;
   private static readonly ENEMY_FIRST_RESCAN_INTERVAL_MS = 500;
   private readonly scene: SceneObjectManager;
   private readonly movement: MovementService;
@@ -240,6 +242,7 @@ export class UnitRuntimeController {
       }
 
       const force = this.computeDesiredForce(unit, movementState, target);
+      unit.lastSteeringForce = cloneVector(force);
       this.movement.setForce(unit.movementId, force);
     });
 
@@ -319,7 +322,8 @@ export class UnitRuntimeController {
         }
       }
 
-      if (collidedBrickIds.length > 0 && unit.targetingMode !== "firstEnemy") {
+      if (collidedBrickIds.length > 0) {
+        console.warn('collidedBrickIds', collidedBrickIds, unit);
         for (const brickId of collidedBrickIds) {
           const collidedBrick = this.bricks.getBrickState(brickId);
           if (!collidedBrick) {
@@ -339,6 +343,7 @@ export class UnitRuntimeController {
 
       const rotation = this.computeRotation(unit, target, resolvedVelocity);
       unit.rotation = rotation;
+      unit.visualRotation = this.computeVisualRotation(unit, resolvedVelocity);
       this.updateSceneState(unit);
 
       if (!target || !targetType) {
@@ -403,6 +408,12 @@ export class UnitRuntimeController {
       if (this.enemies) {
         const enemyTarget = this.enemies.getEnemyState(unit.targetBrickId);
         if (enemyTarget && enemyTarget.hp > 0) {
+          if (mode === "firstEnemy") {
+            const closer = this.tryOpportunisticEnemySwitch(unit, enemyTarget);
+            if (closer) {
+              return closer;
+            }
+          }
           return { target: enemyTarget, type: "enemy" };
         }
       }
@@ -546,27 +557,25 @@ export class UnitRuntimeController {
         start: unit.position,
         target: enemy.position,
         targetRadius: this.getUnitNavigationTargetRadius(unit, enemy),
-        entityRadius: unit.physicalSize,
+        entityRadius: unit.physicalSize*1.5,
         passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
-      }, { ignoreBudget: true });
-      searchState.cursor += 1;
-      if (!path) {
+      });
+      if (path === null) {
+        searchState.cursor += 1;
         continue;
       }
-
-      const bodyReachPath = this.navigation.probePath({
-        start: unit.position,
-        target: enemy.position,
-        targetRadius: unit.physicalSize + enemy.physicalSize,
-        entityRadius: unit.physicalSize,
-        passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
-      }, { ignoreBudget: true });
-
-      if (
-        (path.goalReached || path.waypoints.length > 0) &&
-        bodyReachPath &&
-        (bodyReachPath.goalReached || bodyReachPath.waypoints.length > 0)
-      ) {
+      searchState.cursor += 1;
+      if (path.goalReached || path.waypoints.length > 0) {
+        const approachPoint = path.waypoints[path.waypoints.length - 1] ?? unit.position;
+        if (
+          this.hasBlockingBrickOnSegment(
+            approachPoint,
+            enemy.position,
+            Math.max(unit.physicalSize * 0.6, 6),
+          )
+        ) {
+          continue;
+        }
         this.navigation.clearActorMemory(
           actorId,
           UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
@@ -640,7 +649,7 @@ export class UnitRuntimeController {
       this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
       this.findNearestImpassableBrick(
         unit,
-        Math.max(unit.physicalSize * 8, distToEnemy * 0.95),
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
       );
     if (blocker) {
       const nextState: EnemyFirstSearchState = {
@@ -723,7 +732,7 @@ export class UnitRuntimeController {
       this.findPrimaryBlockingBrickTowardsTarget(unit, blockedEnemy) ??
       this.findNearestImpassableBrick(
         unit,
-        Math.max(unit.physicalSize * 8, distToEnemy * 0.95),
+        Math.max(unit.physicalSize * 8, distToEnemy * 0.5),
       );
     if (nextBlocker) {
       const nextState: EnemyFirstSearchState = {
@@ -758,6 +767,31 @@ export class UnitRuntimeController {
     );
   }
 
+  private hasBlockingBrickOnSegment(
+    start: SceneVector2,
+    end: SceneVector2,
+    clearance: number,
+  ): boolean {
+    const corridorCenter = {
+      x: (start.x + end.x) * 0.5,
+      y: (start.y + end.y) * 0.5,
+    };
+    const corridorRadius = Math.max(
+      Math.hypot(end.x - start.x, end.y - start.y) * 0.55 + clearance * 2,
+      clearance * 2,
+    );
+    const candidates = this.bricks.findBricksNear(corridorCenter, corridorRadius);
+    for (const brick of candidates) {
+      if (isPassableFor(brick, UnitRuntimeController.PLAYER_UNIT_PASSABILITY)) {
+        continue;
+      }
+      if (this.segmentIntersectsBrick(start, end, brick, clearance)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private findNearestEnemyCandidates(
     position: SceneVector2,
   ): EnemyRuntimeState[] {
@@ -783,6 +817,78 @@ export class UnitRuntimeController {
         const bDistance = distanceSquared(b.position, position);
         return aDistance - bDistance;
       });
+  }
+
+  private tryOpportunisticEnemySwitch(
+    unit: PlayerUnitState,
+    currentEnemy: EnemyRuntimeState,
+  ): { target: EnemyRuntimeState; type: "enemy" } | null {
+    if (!this.enemies) {
+      return null;
+    }
+
+    const actorId = this.getNavigationActorId(unit.id);
+    const lastCheckMs =
+      this.navigation.getActorMemory<number>(actorId, UnitRuntimeController.OPPORTUNITY_CHECK_KEY) ?? 0;
+    const now = performance.now();
+    if (now - lastCheckMs < UnitRuntimeController.OPPORTUNITY_CHECK_INTERVAL_MS) {
+      return null;
+    }
+    this.navigation.setActorMemory(actorId, UnitRuntimeController.OPPORTUNITY_CHECK_KEY, now);
+
+    const currentDistSq = distanceSquared(unit.position, currentEnemy.position);
+    const searchRadius = Math.sqrt(currentDistSq);
+    const targets = this.targeting.findTargetsNear(unit.position, searchRadius, {
+      types: ["enemy"],
+    });
+
+    let bestEnemy: EnemyRuntimeState | null = null;
+    let bestDistSq = Infinity;
+    for (const snapshot of targets) {
+      if (!isTargetOfType<"enemy", EnemyRuntimeState>(snapshot, "enemy")) {
+        continue;
+      }
+      if (snapshot.id === currentEnemy.id) {
+        continue;
+      }
+      const enemy = snapshot.data ?? this.enemies.getEnemyState(snapshot.id);
+      if (!enemy || enemy.hp <= 0) {
+        continue;
+      }
+      const dSq = distanceSquared(unit.position, enemy.position);
+      if (dSq < bestDistSq) {
+        bestDistSq = dSq;
+        bestEnemy = enemy;
+      }
+    }
+
+    if (!bestEnemy) {
+      return null;
+    }
+
+    const attackRange = unit.baseAttackDistance + unit.physicalSize + bestEnemy.physicalSize;
+    const currentDist = Math.sqrt(currentDistSq);
+    const bestDist = Math.sqrt(bestDistSq);
+    if (bestDist >= currentDist - attackRange) {
+      return null;
+    }
+
+    if (
+      this.hasBlockingBrickOnSegment(
+        unit.position,
+        bestEnemy.position,
+        Math.max(unit.physicalSize * 0.6, 6),
+      )
+    ) {
+      return null;
+    }
+
+    unit.targetBrickId = bestEnemy.id;
+    this.navigation.clearActorMemory(
+      actorId,
+      UnitRuntimeController.ENEMY_FIRST_SEARCH_MEMORY_KEY,
+    );
+    return { target: bestEnemy, type: "enemy" };
   }
 
   private findPrimaryBlockingBrickTowardsTarget(
@@ -1181,7 +1287,7 @@ export class UnitRuntimeController {
       actorPosition: unit.position,
       target,
       targetRadius: this.getUnitNavigationTargetRadius(unit, target),
-      entityRadius: unit.physicalSize,
+      entityRadius: unit.physicalSize*1.5,
       passabilityTag: UnitRuntimeController.PLAYER_UNIT_PASSABILITY,
       deltaSeconds,
       goalCooldownSeconds: 0.2,
@@ -1222,6 +1328,13 @@ export class UnitRuntimeController {
         return this.computeIdleWanderForce(unit, movementState);
       }
       return this.computeBrakingForce(unit, movementState);
+    }
+
+    if (unit.targetingMode === "firstEnemy") {
+      const actorId = this.getNavigationActorId(unit.id);
+      this.navigation.consumeWaypoints(actorId, unit.position, target.position, {
+        threshold: Math.max(unit.physicalSize * 0.5, this.navigation.getCellSize() * 0.5),
+      });
     }
 
     const destination =
@@ -1489,6 +1602,7 @@ export class UnitRuntimeController {
     }
 
     resolvedPosition = this.clampToMap(resolvedPosition);
+
     return {
       position: resolvedPosition,
       velocity: resolvedVelocity,
@@ -1532,6 +1646,22 @@ export class UnitRuntimeController {
     }
 
     return unit.rotation;
+  }
+
+  private computeVisualRotation(
+    unit: PlayerUnitState,
+    velocity: SceneVector2,
+  ): number {
+    if (vectorHasLength(unit.lastSteeringForce)) {
+      return Math.atan2(unit.lastSteeringForce.y, unit.lastSteeringForce.x);
+    }
+    if (vectorHasLength(unit.preCollisionVelocity)) {
+      return Math.atan2(unit.preCollisionVelocity.y, unit.preCollisionVelocity.x);
+    }
+    if (vectorHasLength(velocity)) {
+      return Math.atan2(velocity.y, velocity.x);
+    }
+    return unit.visualRotation;
   }
 
   private getAttackOutcome(
