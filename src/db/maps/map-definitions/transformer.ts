@@ -59,7 +59,7 @@ const mapConfig = (() => {
     },
     enemies: () => {
       return turretAngles.map((angle) => ({
-        type: "plasmaBeamTurretEnemy",
+        type: "plasmaStormTurretEnemy",
         level: 5,
         position: {
           x: center.x + Math.cos(angle) * turretRadius,

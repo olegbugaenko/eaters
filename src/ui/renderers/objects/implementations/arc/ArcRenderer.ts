@@ -79,6 +79,15 @@ export class ArcRenderer extends ObjectRenderer {
             kinkFrequency: Math.max(0, config.kinkFrequency ?? 0),
             oscAmplitude: config.oscillationAmplitude,
             oscAngularSpeed: (Math.PI * 2) / Math.max(1, config.oscillationPeriodMs),
+            edgeRoughness: config.edgeRoughness ?? 0,
+            edgeNoiseFreq: config.edgeNoiseFreq ?? 8,
+            edgeNoiseFreqCross: config.edgeNoiseFreqCross ?? 2,
+            strandDensity: config.strandDensity ?? 0,
+            strandSharpness: config.strandSharpness ?? 4,
+            strandJitter: config.strandJitter ?? 0,
+            glowBreakup: config.glowBreakup ?? 0,
+            glowBreakupFreq: config.glowBreakupFreq ?? 6,
+            turbulenceSpeed: config.turbulenceSpeed ?? 1,
           };
           batchKey = [
             uniforms.coreColor.join(","),
@@ -93,6 +102,15 @@ export class ArcRenderer extends ObjectRenderer {
             uniforms.kinkFrequency,
             uniforms.oscAmplitude,
             uniforms.oscAngularSpeed,
+            uniforms.edgeRoughness,
+            uniforms.edgeNoiseFreq,
+            uniforms.edgeNoiseFreqCross,
+            uniforms.strandDensity,
+            uniforms.strandSharpness,
+            uniforms.strandJitter,
+            uniforms.glowBreakup,
+            uniforms.glowBreakupFreq,
+            uniforms.turbulenceSpeed,
           ].join("|");
 
           batchConfig = {

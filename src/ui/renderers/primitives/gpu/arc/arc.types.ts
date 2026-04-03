@@ -22,6 +22,15 @@ export type ArcGpuUniforms = {
   kinkFrequency: number;
   oscAmplitude: number;
   oscAngularSpeed: number; // radians per ms
+  edgeRoughness: number;
+  edgeNoiseFreq: number;
+  edgeNoiseFreqCross: number;
+  strandDensity: number;
+  strandSharpness: number;
+  strandJitter: number;
+  glowBreakup: number;
+  glowBreakupFreq: number;
+  turbulenceSpeed: number;
 };
 
 export interface ArcBatchConfig {
@@ -51,6 +60,15 @@ export interface ArcSharedResources {
     kinkFrequency: WebGLUniformLocation | null;
     oscAmplitude: WebGLUniformLocation | null;
     oscAngularSpeed: WebGLUniformLocation | null;
+    edgeRoughness: WebGLUniformLocation | null;
+    edgeNoiseFreq: WebGLUniformLocation | null;
+    edgeNoiseFreqCross: WebGLUniformLocation | null;
+    strandDensity: WebGLUniformLocation | null;
+    strandSharpness: WebGLUniformLocation | null;
+    strandJitter: WebGLUniformLocation | null;
+    glowBreakup: WebGLUniformLocation | null;
+    glowBreakupFreq: WebGLUniformLocation | null;
+    turbulenceSpeed: WebGLUniformLocation | null;
   };
   attributes: {
     unitPos: number;

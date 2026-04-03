@@ -41,6 +41,7 @@ export type EnemyType =
   | "bigGun"
   | "laserTurretEnemy"
   | "plasmaBeamTurretEnemy"
+  | "plasmaStormTurretEnemy"
   | "spinningAxeTurretEnemy"
   | "portalSpawnerEnemy"
   | "bronzeArcherPortalSpawnerEnemy"

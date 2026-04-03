@@ -1098,6 +1098,137 @@ export const TURRETS_ENEMIES: Partial<Record<EnemyType, EnemyConfig>> = {
       spawnOffset: { x: 2, y: 0 },
     },
   },
+  plasmaStormTurretEnemy: {
+    knockBackDistance: 180,
+    knockBackSpeed: 180,
+    name: "Plasma Storm Turret",
+    renderer: {
+      kind: "composite",
+      fill: { r: 0.12, g: 0.18, b: 0.65, a: 1 },
+      layers: [
+        {
+          shape: "circle",
+          radius: 36,
+          fill: {
+            type: "gradient",
+            fill: {
+              fillType: FILL_TYPES.RADIAL_GRADIENT,
+              start: { x: 0, y: 0 },
+              stops: [
+                { offset: 0, color: { r: 0.4, g: 0.6, b: 1.0, a: 0.5 } },
+                { offset: 0.6, color: { r: 0.25, g: 0.4, b: 0.9, a: 0.25 } },
+                { offset: 1, color: { r: 0.15, g: 0.25, b: 0.7, a: 0 } },
+              ],
+            },
+          },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 19, y: -5 },
+            { x: 0, y: -5 },
+            { x: 0, y: 5 },
+            { x: 19, y: 5 },
+          ],
+          fill: { type: "base", brightness: -0.35 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 0, y: -6 },
+            { x: -10, y: -9 },
+            { x: -10, y: 9 },
+            { x: 0, y: 6 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -2, y: -7 },
+            { x: -3, y: -14 },
+            { x: -9, y: -14 },
+            { x: -9, y: -7 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 9, y: -12 },
+            { x: 0, y: -19 },
+            { x: -9, y: -19 },
+            { x: -14, y: -12 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: -2, y: 7 },
+            { x: -3, y: 14 },
+            { x: -9, y: 14 },
+            { x: -9, y: 7 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+        {
+          shape: "polygon",
+          vertices: [
+            { x: 9, y: 12 },
+            { x: 0, y: 19 },
+            { x: -9, y: 19 },
+            { x: -14, y: 12 },
+          ],
+          fill: { type: "base", brightness: 0.55 },
+        },
+      ],
+    },
+    maxHp: 56500,
+    armor: 1165,
+    baseDamage: 480,
+    attackInterval: 2.1,
+    attackRange: 650,
+    moveSpeed: 0,
+    physicalSize: 28,
+    reward: normalizeResourceAmount({
+      copper: 80,
+    }),
+    emitter: {
+      particlesPerSecond: 90,
+      particleLifetimeMs: 750,
+      fadeStartMs: 200,
+      baseSpeed: 0.08,
+      speedVariation: 0.01,
+      sizeRange: { min: 14.2, max: 28.4 },
+      sizeEvolutionMult: 1.75,
+      spread: Math.PI / 5.5,
+      offset: { x: -0.75, y: 0 },
+      color: { r: 0.2, g: 0.85, b: 0.95, a: 0.4 },
+      fill: {
+        fillType: FILL_TYPES.RADIAL_GRADIENT,
+        start: { x: 0, y: 0 },
+        stops: [
+          { offset: 0, color: { r: 0.6, g: 0.75, b: 1, a: 0.1 } },
+          { offset: 0.25, color: { r: 0.6, g: 0.75, b: 1, a: 0.05 } },
+          { offset: 1, color: { r: 0.6, g: 0.75, b: 1, a: 0 } },
+        ],
+        noise: {
+          colorAmplitude: 0.0,
+          alphaAmplitude: 0.02,
+          scale: 0.3,
+        },
+      },
+      shape: "circle",
+      maxParticles: 100,
+    },
+    arcAttack: {
+      arcType: "plasmaStorm",
+      explosionType: "plasmaBeam",
+      explosionRadius: 36,
+      spawnOffset: { x: 2, y: 0 },
+    },
+  },
   hotCorridorTurretEnemy: {
     name: "Hot Corridor Turret",
     renderer: {

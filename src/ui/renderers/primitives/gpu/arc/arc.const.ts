@@ -88,6 +88,15 @@ uniform float u_kinkAmplitude;
 uniform float u_kinkFrequency;
 uniform float u_oscAmplitude;
 uniform float u_oscAngularSpeed;
+uniform float u_edgeRoughness;
+uniform float u_edgeNoiseFreq;
+uniform float u_edgeNoiseFreqCross;
+uniform float u_strandDensity;
+uniform float u_strandSharpness;
+uniform float u_strandJitter;
+uniform float u_glowBreakup;
+uniform float u_glowBreakupFreq;
+uniform float u_turbulenceSpeed;
 
 out vec4 fragColor;
 
@@ -113,6 +122,27 @@ float valueNoise(float x) {
 
 float tri(float x) {
   return abs(fract(x) - 0.5) * 2.0 - 0.5;
+}
+
+float hash2(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float valueNoise2D(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  float a = hash2(i);
+  float b = hash2(i + vec2(1.0, 0.0));
+  float c = hash2(i + vec2(0.0, 1.0));
+  float d = hash2(i + vec2(1.0, 1.0));
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y) * 2.0 - 1.0;
+}
+
+float fbm2D(vec2 p) {
+  return valueNoise2D(p) * 0.5
+       + valueNoise2D(p * 2.7 + vec2(7.0, 3.0)) * 0.3
+       + valueNoise2D(p * 6.3 + vec2(13.0, 11.0)) * 0.2;
 }
 
 void main(){
@@ -142,6 +172,20 @@ void main(){
   float blur = u_blurWidth * max(0.0, endTaper) * shortScale;
   float safeBlur = max(blur, 0.0001);
 
+  // Edge roughness — 2D turbulence for organic boundaries + core bleed
+  float edgeDist = dist;
+  float turb = 0.0;
+  if (u_edgeRoughness > 0.0) {
+    float turbTime = v_age * u_turbulenceSpeed * 0.001;
+    float beamWidth = max(core + blur, 0.001);
+    vec2 turbUV = vec2(
+      t * u_edgeNoiseFreq + turbTime * 0.5 + seed * 5.0,
+      baseOffset / beamWidth * u_edgeNoiseFreqCross + seed * 3.0
+    );
+    turb = fbm2D(turbUV + vec2(turbTime * 0.7, turbTime * 0.3));
+    edgeDist = max(0.0, dist + turb * u_edgeRoughness * core * 2.5);
+  }
+
   // Time-based fade
   float fade = 1.0;
   if (u_fadeStartMs < v_lifetime) {
@@ -155,12 +199,37 @@ void main(){
   // Discard inactive/cleared instances
   if (v_lifetime <= 0.0) discard;
 
-  // Glow: fades from blurColor at core edge to transparent at blur edge
-  float glowFalloff = 1.0 - smoothstep(core, core + blur, dist);
+  // Glow: smooth falloff, unaffected by turbulence
+  float glowFalloff = 1.0 - smoothstep(core, core + safeBlur, dist);
   
-  // Core: sharp center with slight softness at edge
-  float coreFalloff = 1.0 - smoothstep(core * 0.8, core, dist);
-  
+  // Core: uses edgeDist — turbulence displaces the boundary
+  float coreTransition = core * mix(0.2, 0.5, u_edgeRoughness);
+  float coreFalloff = 1.0 - smoothstep(core - coreTransition, core, edgeDist);
+
+  // Strands — fibrous pattern across beam width
+  if (u_strandDensity > 0.0) {
+    float turbTime = v_age * u_turbulenceSpeed * 0.001;
+    float normOff = baseOffset / max(core + blur, 0.001);
+    float jitter = valueNoise(t * 12.0 + seed * 3.0 + turbTime * 2.0) * u_strandJitter;
+    float strandPhase = (normOff + jitter) * u_strandDensity * 3.14159;
+    float strandMask = pow(abs(sin(strandPhase)), u_strandSharpness);
+    coreFalloff *= mix(0.3, 1.0, strandMask);
+    glowFalloff *= mix(0.5, 1.0, strandMask * 0.7);
+  }
+
+  // Glow breakup — 2D wisps in the outer aura
+  if (u_glowBreakup > 0.0) {
+    float turbTime = v_age * u_turbulenceSpeed * 0.001;
+    float beamWidth = max(core + blur, 0.001);
+    vec2 wispUV = vec2(
+      t * u_glowBreakupFreq + turbTime * 0.4 + seed * 7.0,
+      baseOffset / beamWidth * 3.0
+    );
+    float wispTurb = fbm2D(wispUV);
+    float wispMask = smoothstep(-0.2, 0.5, wispTurb);
+    glowFalloff *= mix(1.0, wispMask, u_glowBreakup * (1.0 - coreFalloff));
+  }
+
   // Blend: core over glow
   vec3 rgb = mix(u_blurColor.rgb, u_coreColor.rgb, coreFalloff);
   float alpha = mix(u_blurColor.a * glowFalloff, u_coreColor.a, coreFalloff);

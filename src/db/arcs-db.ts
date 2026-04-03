@@ -10,7 +10,8 @@ export type ArcType =
   | "plasmaBeam"
   | "hotPlasmaBeam"
   | "chainLightning"
-  | "silverKeeper";
+  | "silverKeeper"
+  | "plasmaStorm";
 
 export interface ArcConfig {
   readonly coreColor: SceneColor;
@@ -27,6 +28,15 @@ export interface ArcConfig {
   readonly kinkFrequency?: number;
   readonly oscillationPeriodMs: number;
   readonly oscillationAmplitude: number;
+  readonly edgeRoughness?: number;
+  readonly edgeNoiseFreq?: number;
+  readonly edgeNoiseFreqCross?: number;
+  readonly strandDensity?: number;
+  readonly strandSharpness?: number;
+  readonly strandJitter?: number;
+  readonly glowBreakup?: number;
+  readonly glowBreakupFreq?: number;
+  readonly turbulenceSpeed?: number;
 }
 
 const HEAL_ARC_COLOR: SceneColor = { r: 0.6, g: 1.0, b: 0.5, a: 0.55 };
@@ -47,6 +57,8 @@ const CHAIN_ARC_COLOR: SceneColor = { r: 0.85, g: 0.95, b: 1.0, a: 0.95 };
 const CHAIN_ARC_BLUR: SceneColor = { r: 0.3, g: 0.7, b: 1.0, a: 0.35 };
 const SILVER_KEEPER_ARC_COLOR: SceneColor = { r: 1, g: 0.9, b: 1.0, a: 1 };
 const SILVER_KEEPER_ARC_BLUR: SceneColor = { r: 0.7, g: 0.5, b: 0.9, a: 0.85 };
+const PLASMA_STORM_ARC_COLOR: SceneColor = { r: 0.85, g: 0.92, b: 1.0, a: 0.95 };
+const PLASMA_STORM_ARC_BLUR: SceneColor = { r: 0.6, g: 0.8, b: 1.0, a: 0.6 };
 
 const ARC_DB: Record<ArcType, ArcConfig> = {
   heal: {
@@ -170,6 +182,28 @@ const ARC_DB: Record<ArcType, ArcConfig> = {
     kinkFrequency: 1.2,
     oscillationPeriodMs: 170,
     oscillationAmplitude: 0.4,
+  },
+  plasmaStorm: {
+    coreColor: PLASMA_STORM_ARC_COLOR,
+    blurColor: PLASMA_STORM_ARC_BLUR,
+    coreWidth: 20,
+    blurWidth: 30,
+    soundEffectUrl: getAssetUrl("audio/sounds/unit_effects/laser_02.mp3"),
+    lifetimeMs: 1200,
+    fadeStartMs: 600,
+    bendsPer100Px: 1.5,
+    noiseAmplitude: 8,
+    aperiodicStrength: 0.5,
+    oscillationPeriodMs: 300,
+    oscillationAmplitude: 0.5,
+    edgeRoughness: 0.7,
+    edgeNoiseFreq: 8,
+    edgeNoiseFreqCross: 6,
+    glowBreakup: 0,
+    glowBreakupFreq: 4,
+    turbulenceSpeed: 0.4,
+    kinkAmplitude: 1.3,
+    kinkFrequency: 1.2,
   },
 };
 

@@ -68,6 +68,15 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
       kinkFrequency: gl.getUniformLocation(programResult.program, "u_kinkFrequency"),
       oscAmplitude: gl.getUniformLocation(programResult.program, "u_oscAmplitude"),
       oscAngularSpeed: gl.getUniformLocation(programResult.program, "u_oscAngularSpeed"),
+      edgeRoughness: gl.getUniformLocation(programResult.program, "u_edgeRoughness"),
+      edgeNoiseFreq: gl.getUniformLocation(programResult.program, "u_edgeNoiseFreq"),
+      edgeNoiseFreqCross: gl.getUniformLocation(programResult.program, "u_edgeNoiseFreqCross"),
+      strandDensity: gl.getUniformLocation(programResult.program, "u_strandDensity"),
+      strandSharpness: gl.getUniformLocation(programResult.program, "u_strandSharpness"),
+      strandJitter: gl.getUniformLocation(programResult.program, "u_strandJitter"),
+      glowBreakup: gl.getUniformLocation(programResult.program, "u_glowBreakup"),
+      glowBreakupFreq: gl.getUniformLocation(programResult.program, "u_glowBreakupFreq"),
+      turbulenceSpeed: gl.getUniformLocation(programResult.program, "u_turbulenceSpeed"),
     };
 
     const attributes = {
@@ -162,6 +171,15 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
         kinkFrequency: 0,
         oscAmplitude: 0,
         oscAngularSpeed: 0,
+        edgeRoughness: 0,
+        edgeNoiseFreq: 0,
+        edgeNoiseFreqCross: 0,
+        strandDensity: 0,
+        strandSharpness: 0,
+        strandJitter: 0,
+        glowBreakup: 0,
+        glowBreakupFreq: 0,
+        turbulenceSpeed: 0,
       },
     };
   }
@@ -217,6 +235,15 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
     if (sharedUniforms.kinkFrequency) gl.uniform1f(sharedUniforms.kinkFrequency, batchUniforms.kinkFrequency);
     if (sharedUniforms.oscAmplitude) gl.uniform1f(sharedUniforms.oscAmplitude, batchUniforms.oscAmplitude);
     if (sharedUniforms.oscAngularSpeed) gl.uniform1f(sharedUniforms.oscAngularSpeed, batchUniforms.oscAngularSpeed);
+    if (sharedUniforms.edgeRoughness) gl.uniform1f(sharedUniforms.edgeRoughness, batchUniforms.edgeRoughness);
+    if (sharedUniforms.edgeNoiseFreq) gl.uniform1f(sharedUniforms.edgeNoiseFreq, batchUniforms.edgeNoiseFreq);
+    if (sharedUniforms.edgeNoiseFreqCross) gl.uniform1f(sharedUniforms.edgeNoiseFreqCross, batchUniforms.edgeNoiseFreqCross);
+    if (sharedUniforms.strandDensity) gl.uniform1f(sharedUniforms.strandDensity, batchUniforms.strandDensity);
+    if (sharedUniforms.strandSharpness) gl.uniform1f(sharedUniforms.strandSharpness, batchUniforms.strandSharpness);
+    if (sharedUniforms.strandJitter) gl.uniform1f(sharedUniforms.strandJitter, batchUniforms.strandJitter);
+    if (sharedUniforms.glowBreakup) gl.uniform1f(sharedUniforms.glowBreakup, batchUniforms.glowBreakup);
+    if (sharedUniforms.glowBreakupFreq) gl.uniform1f(sharedUniforms.glowBreakupFreq, batchUniforms.glowBreakupFreq);
+    if (sharedUniforms.turbulenceSpeed) gl.uniform1f(sharedUniforms.turbulenceSpeed, batchUniforms.turbulenceSpeed);
   }
 
   protected getInstanceFloats(): number {
@@ -269,6 +296,15 @@ class ArcGpuRenderer extends GpuBatchRenderer<ArcInstance, ArcBatch, ArcBatchCon
         kinkFrequency: config.uniforms.kinkFrequency,
         oscAmplitude: config.uniforms.oscAmplitude,
         oscAngularSpeed: config.uniforms.oscAngularSpeed,
+        edgeRoughness: config.uniforms.edgeRoughness,
+        edgeNoiseFreq: config.uniforms.edgeNoiseFreq,
+        edgeNoiseFreqCross: config.uniforms.edgeNoiseFreqCross,
+        strandDensity: config.uniforms.strandDensity,
+        strandSharpness: config.uniforms.strandSharpness,
+        strandJitter: config.uniforms.strandJitter,
+        glowBreakup: config.uniforms.glowBreakup,
+        glowBreakupFreq: config.uniforms.glowBreakupFreq,
+        turbulenceSpeed: config.uniforms.turbulenceSpeed,
       };
     }
 
